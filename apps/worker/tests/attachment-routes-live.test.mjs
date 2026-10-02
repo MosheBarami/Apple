@@ -47,7 +47,7 @@ import { MAX_ATTACHMENT_BYTES } from '@apple/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `golem-attachment-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `apple-attachment-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

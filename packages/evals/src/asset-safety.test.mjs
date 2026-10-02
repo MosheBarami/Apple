@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', '..', 'apps', 'worker');
-const dir = mkdtempSync(join(tmpdir(), 'golem-asset-safety-'));
+const dir = mkdtempSync(join(tmpdir(), 'apple-asset-safety-'));
 const out = join(dir, 'assets.mjs');
 // assets.ts deliberately has no runtime imports, so a plain transpile is the whole build.
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'assets.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe', cwd: WORKER });
@@ -1614,7 +1614,7 @@ function adminEnv() {
 const adminOp = async (op, key = 'test-admin-key') => {
   const { env, forwarded } = adminEnv();
   const res = await worker.fetch(
-    new Request('https://golem.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
+    new Request('https://apple.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
       method: 'POST',
       headers: { 'X-Admin-Key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ op, timeoutMs: 5000 }),

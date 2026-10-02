@@ -78,7 +78,7 @@ async function fakeOrigin({ mode = 'store', store = new Map(), health = null } =
 
 /** A capture directory in capture-rollback.mjs's shape: the bytes, plus a manifest describing them. */
 function capture(files, over = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'golem-rollback-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-rollback-'));
   const entries = Object.entries(files);
   for (const [remote, { body }] of entries) {
     const dest = join(dir, remote);
@@ -114,7 +114,7 @@ async function run(script, args, env = {}) {
   try {
     const { stdout, stderr } = await execFile(process.execPath, [join(ROOT, 'infra', script), ...args], {
       cwd: ROOT, encoding: 'utf8',
-      env: { ...process.env, GOLEM_ADMIN_KEY: 'test-admin-key', ...env },
+      env: { ...process.env, APPLE_ADMIN_KEY: 'test-admin-key', ...env },
     });
     return { exit: 0, out: `${stdout}${stderr}` };
   } catch (e) {

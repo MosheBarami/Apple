@@ -174,7 +174,7 @@ const runDeploy = (origin, src) => execFile(process.execPath, [
   // No worker cache sits in front of these origins, so the production wait window would add 45
   // seconds of sleeping to every suite run and buy nothing. See WAITS in the script.
   '--cache-waits', '0',
-], { env: { ...process.env, GOLEM_ADMIN_KEY: 'test-key', API_BASE: origin.url } });
+], { env: { ...process.env, APPLE_ADMIN_KEY: 'test-key', API_BASE: origin.url } });
 
 test('an honest origin: the page is verified at the URL a reader types, not the key it is stored under', async () => {
   const origin = await fakeOrigin();

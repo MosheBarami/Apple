@@ -65,7 +65,7 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
   const byId = Object.fromEntries(list.map((u) => [u.id, u]));
   const userRows = list.slice(0, 100).map((u) => ({ k: u.id.slice(0, 8), email: maskEmail(u.email), created: iso(u.created_at), lastSignIn: iso(u.last_sign_in_at),
-    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|^e2e|load-?test/i.test(u.email || ''),
+    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|@apple\.internal$|^e2e|load-?test/i.test(u.email || ''),
     worker: accounts[u.id] || null }));
   const workerPlans = Object.entries(accounts).map(([id, x]) => ({ k: id.slice(0, 8), email: maskEmail(byId[id]?.email) || null, ...x }));
 
@@ -110,8 +110,8 @@ export function business() {
     const [users, ap, bl, au, st, ins, ck] = await Promise.all([
       process.env.SUPABASE_ACCESS_TOKEN ? section(sbUsers) : { error: 'חסר SUPABASE_ACCESS_TOKEN' },
       apple().catch(() => null),
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר GOLEM_ADMIN_KEY' },
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר GOLEM_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר APPLE_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר APPLE_ADMIN_KEY' },
       sentry().catch(() => null), insights().catch(() => null),
       import('./clerk.mjs').then((m) => m.clerk()).catch(() => null)]);
     if (users.error && !ap?.ok) return fail(users.error, { errors: { supabase: users.error, apple: ap?.reason ?? null } });

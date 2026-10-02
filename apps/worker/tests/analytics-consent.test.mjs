@@ -29,7 +29,7 @@ import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `golem-consent-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `apple-consent-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'analytics-consent.ts')],
@@ -60,7 +60,7 @@ function db(rows = []) {
   return { CORPUS, raw: base.raw, close: base.close };
 }
 
-const PREFS_OUT = join(tmpdir(), `golem-consent-prefs-${process.pid}.mjs`);
+const PREFS_OUT = join(tmpdir(), `apple-consent-prefs-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'preferences.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: PREFS_OUT,

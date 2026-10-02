@@ -83,7 +83,7 @@ if (flag('show-settings')) {
 
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
 const KEY = envCompat('APPLE_ADMIN_KEY');
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 const tasks = buildTasks(check, select).filter((t) => !only || t.id === only);
 if (!tasks.length) { console.error(`no task matched --only ${only}`); process.exit(2); }

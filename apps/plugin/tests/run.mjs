@@ -788,7 +788,7 @@ function wait() return 0 end
 -- Modules register here as they load, dependency-first, so a later module's own
 -- \`require(script.Parent.Paths)\` finds the real Paths this same chunk evaluated.
 local __plugin = {}
-script = setmetatable({ Name = "GolemPlugin" }, {
+script = setmetatable({ Name = "ApplePlugin" }, {
 	__index = function(t, k)
 		if k == "Parent" then return setmetatable({}, { __index = function(_, mod) return __plugin[mod] end }) end
 		return __plugin[k]

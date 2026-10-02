@@ -21,7 +21,7 @@
 // --studio    exercise the plugin round-trip, which POSTs to /api/admin/studio-op. OFF by default:
 //             §12.5 says a smoke run may never go against /api/admin/*, and the previous guard was
 //             `if (ADMIN)` — which is always true, because this file reads .env into process.env
-//             at startup and GOLEM_ADMIN_KEY lives there. A guard on a value the script itself
+//             at startup and APPLE_ADMIN_KEY lives there. A guard on a value the script itself
 //             guarantees is not a guard.
 import { readFileSync } from 'node:fs';
 import { envCompat } from '../scripts/lib/env-compat.mjs';
@@ -35,7 +35,7 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
 const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env');
+  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env');
 }
 
 const BASE = process.env.API_BASE;

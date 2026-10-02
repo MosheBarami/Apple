@@ -1,8 +1,8 @@
-// Visual benchmark driver: runs REAL Golem agent builds against live Roblox Studio, renders the
+// Visual benchmark driver: runs REAL Apple agent builds against live Roblox Studio, renders the
 // result through the plugin, critiques it, feeds the critique back, and records the score
 // trajectory across correction rounds.
 //
-// This harness answers the only question that matters: can Golem take a scene from blockout to
+// This harness answers the only question that matters: can Apple take a scene from blockout to
 // something that passes a quality gate on its own, without a human pointing at the defects? A gate
 // that merely rejects bad scenes is worth nothing if nothing ever improves.
 //
@@ -33,7 +33,7 @@ function loadEnv() {
   }
   return {
     apiBase: process.env.API_BASE ?? out.API_BASE,
-    adminKey: process.env.ADMIN_KEY ?? envCompat('APPLE_ADMIN_KEY') ?? out.GOLEM_ADMIN_KEY,
+    adminKey: process.env.ADMIN_KEY ?? envCompat('APPLE_ADMIN_KEY') ?? out.APPLE_ADMIN_KEY,
   };
 }
 
@@ -377,7 +377,7 @@ async function main() {
 
   const info = await client.info();
   if (!info.pluginConnected) {
-    console.error('Roblox Studio is not connected to this project — open the Golem plugin and connect first.');
+    console.error('Roblox Studio is not connected to this project — open the Apple plugin and connect first.');
     process.exit(2);
   }
 

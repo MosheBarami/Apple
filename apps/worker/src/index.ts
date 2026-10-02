@@ -1,4 +1,4 @@
-// Golem worker entry: API routes + static serving + DO exports.
+// Apple worker entry: API routes + static serving + DO exports.
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -2298,7 +2298,7 @@ app.get('/api/projects/:id/roadmap/next', async (c) => {
  *
  * The brief is regenerated from a fresh scan rather than from a roadmap the client sends back:
  * a client-supplied brief would let any caller hand the builder arbitrary instructions attributed
- * to Golem's own roadmap. Only the milestone id crosses the wire.
+ * to Apple's own roadmap. Only the milestone id crosses the wire.
  */
 app.post('/api/projects/:id/roadmap/brief', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
@@ -2622,7 +2622,7 @@ app.post('/api/billing/webhook', async (c) => {
   }
 
   // A request Host is not a billing role. Only Apple's deployment may resolve provider state;
-  // golem is an explicitly bound replica, not a second independent Stripe authority. Check both
+  // legacy is an explicitly bound replica, not a second independent Stripe authority. Check both
   // prerequisites before an authority call can commit an otherwise undeliverable purchase.
   if (c.env.BILLING_WORKER_NAME !== BILLING_AUTHORITY_WORKER || !c.env.LEGACY_QUOTA_DO) {
     recordEvent({

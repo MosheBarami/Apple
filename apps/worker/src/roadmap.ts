@@ -19,7 +19,7 @@
 // HONESTY. Detection is three-valued on purpose. `present` and `absent` are claims about the
 // project; `unknown` is the answer when the scan hit a cap and genuinely could not see (a code-only
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
-// the confident next step — it is offered with `verify` telling the user Golem could not tell.
+// the confident next step — it is offered with `verify` telling the user Apple could not tell.
 import type { StudioOp, OpResult, ProductMode } from '@apple/shared';
 import { creditRangeForRuns } from '@apple/shared';
 import { APPLE_UI_SOURCE } from './ui-kit';
@@ -818,7 +818,7 @@ interface MilestoneSpec {
   why: string;
   impact: string;
   complexity: Complexity;
-  /** Golem effort, in the units the product actually bills in */
+  /** Apple effort, in the units the product actually bills in */
   mode: ProductMode;
   runs: number;
   dependsOn: readonly string[];

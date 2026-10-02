@@ -60,7 +60,7 @@ import Base from '../layouts/Base.astro';
 
 /** A tree in the shape release.mjs reads, with the generated files written by --write. */
 async function fixture({ ledger = LEDGER, page = PAGE, version = '0.2.0' } = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'golem-release-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-release-'));
   mkdirSync(join(dir, 'docs'), { recursive: true });
   mkdirSync(join(dir, 'apps', 'site', 'src', 'pages'), { recursive: true });
   writeFileSync(join(dir, 'docs', 'RELEASES.json'), `${JSON.stringify(ledger, null, 2)}\n`);
@@ -155,7 +155,7 @@ test('a ledger whose version does not follow from its own changes fails the wire
   const bad = JSON.parse(JSON.stringify(LEDGER));
   bad.releases[0].version = '0.1.1';
   bad.releases[0].tag = 'v0.1.1';
-  const dir = mkdtempSync(join(tmpdir(), 'golem-release-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-release-'));
   try {
     mkdirSync(join(dir, 'docs'), { recursive: true });
     mkdirSync(join(dir, 'apps', 'site', 'src', 'pages'), { recursive: true });

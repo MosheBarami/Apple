@@ -5954,7 +5954,7 @@ export class SessionDO extends DurableObject<Env> {
     // discard the result anyway, but a run with memory switched off must not spend a neuron — or a
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
     if (agent.trace.length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
-      // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
+      // Distillation is Apple's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
       if (budgetLeft.creditsRemaining <= 0) return;

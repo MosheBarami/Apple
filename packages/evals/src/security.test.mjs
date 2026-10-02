@@ -167,7 +167,7 @@ function routeBodies(src) {
   });
 }
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-security-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-security-'));
 
 // `cloudflare:workers` has no Node implementation. The only thing the worker imports from it is
 // the DurableObject base class, so a two-line shim lets the REAL entry module — routes, middleware
@@ -247,19 +247,19 @@ const PROVIDER_HOSTS = ['api.openai.com', 'generativelanguage.googleapis.com', '
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 
-const SUPABASE_URL = 'https://supa.golem.test';
+const SUPABASE_URL = 'https://supa.apple.test';
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const STRANGER_ID = '22222222-2222-4222-8222-222222222222';
 const PROJECT_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const OTHER_PROJECT_ID = 'ffffffff-eeee-4ddd-8ccc-bbbbbbbbbbbb';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
-const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'golem-test', alg: 'ES256', use: 'sig' };
+const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'apple-test', alg: 'ES256', use: 'sig' };
 const JWKS_BODY = JSON.stringify({ keys: [jwk] });
 
 async function mintJwt(sub, extra = {}) {
-  return new jose.SignJWT({ email: `${sub}@golem.test`, role: 'authenticated', ...extra })
-    .setProtectedHeader({ alg: 'ES256', kid: 'golem-test' })
+  return new jose.SignJWT({ email: `${sub}@apple.test`, role: 'authenticated', ...extra })
+    .setProtectedHeader({ alg: 'ES256', kid: 'apple-test' })
     .setIssuer(`${SUPABASE_URL}/auth/v1`)
     .setAudience('authenticated')
     .setSubject(sub)
@@ -270,8 +270,8 @@ async function mintJwt(sub, extra = {}) {
 const OWNER_JWT = await mintJwt(OWNER_ID);
 const STRANGER_JWT = await mintJwt(STRANGER_ID);
 // Signed by a DIFFERENT key: structurally perfect, cryptographically worthless.
-const FORGED_JWT = await new jose.SignJWT({ email: 'x@golem.test', role: 'service_role' })
-  .setProtectedHeader({ alg: 'ES256', kid: 'golem-test' })
+const FORGED_JWT = await new jose.SignJWT({ email: 'x@apple.test', role: 'service_role' })
+  .setProtectedHeader({ alg: 'ES256', kid: 'apple-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
   .setSubject(OWNER_ID)
@@ -340,9 +340,9 @@ function makeEnv(opts = {}) {
     // bodies instead of stopping at the availability check — an egress test that never leaves
     // "this tool is not configured here" proves nothing about egress. Both hosts are fictional and
     // are reached only through the injected `webFetch` in `studioCtx`, never through the network.
-    WEB_TOOL_ALLOWLIST: 'search.golem.test,shots.golem.test',
-    SEARCH_API_URL: 'https://search.golem.test/search',
-    SCREENSHOT_API_URL: 'https://shots.golem.test/png',
+    WEB_TOOL_ALLOWLIST: 'search.apple.test,shots.apple.test',
+    SEARCH_API_URL: 'https://search.apple.test/search',
+    SCREENSHOT_API_URL: 'https://shots.apple.test/png',
     AI: {
       run: async (model, payload) => {
         trace.order.push('AI.run');
@@ -440,7 +440,7 @@ async function call(path, { method = 'GET', jwt, adminKey, headers = {}, body, e
   if (adminKey) h['X-Admin-Key'] = adminKey;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env ?? makeEnv(),
   );
   const text = await res.text();
@@ -792,10 +792,10 @@ function studioCtx(env, overrides = {}) {
     // with a call that never left the process. Injecting here keeps the two facts separate: this
     // stub answers the web tools, and `allFetched` keeps meaning what A1 says it means.
     webFetch: async (url) => {
-      const isPng = url.includes('shots.golem.test') || url.endsWith('.png');
-      const isJson = url.includes('search.golem.test') || url.includes('api.github.com') || url.includes('google.serper.dev');
+      const isPng = url.includes('shots.apple.test') || url.endsWith('.png');
+      const isJson = url.includes('search.apple.test') || url.includes('api.github.com') || url.includes('google.serper.dev');
       const isText = url.includes('context7.com');
-      const body = url.includes('search.golem.test')
+      const body = url.includes('search.apple.test')
         ? JSON.stringify({ results: [{ title: 'A thread', url: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
         : url.includes('google.serper.dev')
           ? JSON.stringify({ organic: [{ title: 'A thread', link: 'https://devforum.roblox.com/t/example', snippet: 'a snippet' }] })
@@ -2123,7 +2123,7 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
       STRIPE_SECRET_KEY: 'sk_test_SENTINEL_a4',
       STRIPE_PRICE_BUILDER: 'price_SENTINEL_builder',
       STRIPE_PRICE_STUDIO: 'price_SENTINEL_studio',
-      BILLING_TEST_ADMINS: `nobody@golem.test, ${OWNER_ID}@golem.test`,
+      BILLING_TEST_ADMINS: `nobody@apple.test, ${OWNER_ID}@apple.test`,
     };
     const ask = (jwt) => call('/api/billing/config', { env: billingEnv, jwt });
     const anon = await ask();
@@ -2249,8 +2249,8 @@ test('A4 FIXED — raw-probe is refused by the kill switch and by an exhausted c
   // to arrive as an HTTP error rather than an unhandled throw.
   for (const [reason, message] of [
     ['killed', 'AI generation is paused right now.'],
-    ['daily_cap', "Golem has reached today's shared building capacity. It resets at midnight UTC."],
-    ['monthly_cap', "Golem has reached this month's shared building capacity."],
+    ['daily_cap', "Apple has reached today's shared building capacity. It resets at midnight UTC."],
+    ['monthly_cap', "Apple has reached this month's shared building capacity."],
   ]) {
     reset();
     const env = makeEnv({ budget: { reserve: { ok: false, reason, message } } });
@@ -3334,12 +3334,12 @@ test('A9 every outbound request in this suite was answered by the stub, and the 
   const hosts = [...new Set(allFetched.map((f) => new URL(f.url).host))].sort();
   assert.deepEqual(
     hosts,
-    // supa.golem.test  — JWKS + PostgREST, this file's own fake Supabase
+    // supa.apple.test  — JWKS + PostgREST, this file's own fake Supabase
     // apis.roblox.com  — the Creator Store catalogue lookup made by find_verified_asset (not a
     //                    model call, and free, but stubbed regardless)
     // (api.openai.com left this list with D-VISION-1: no model is reached over HTTP any more —
     //  every inference, the outside models included, goes through the AI binding.)
-    ['apis.roblox.com', 'supa.golem.test'],
+    ['apis.roblox.com', 'supa.apple.test'],
     'a new outbound host appeared — confirm it is stubbed and that it is not a paid endpoint',
   );
   const inference = allFetched.filter((f) => ['api.openai.com', 'generativelanguage.googleapis.com', 'api.deepseek.com'].some((h) => f.url.includes(h)));

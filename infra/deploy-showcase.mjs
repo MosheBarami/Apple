@@ -52,7 +52,7 @@ try {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   }
-} catch { /* the environment is expected to carry API_BASE and GOLEM_ADMIN_KEY */ }
+} catch { /* the environment is expected to carry API_BASE and APPLE_ADMIN_KEY */ }
 
 const BASE = (arg('base') ?? process.env.API_BASE ?? '').replace(/\/$/, '');
 
@@ -115,7 +115,7 @@ async function main() {
   // Checked HERE rather than at module scope: infra/deploy-showcase.test.mjs imports this file to
   // exercise `verify`, and a credential check at import time would make the guard unrunnable
   // without the production key — which is how a verifier ends up with no test at all.
-  if (!BASE || !envCompat('APPLE_ADMIN_KEY')) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
+  if (!BASE || !envCompat('APPLE_ADMIN_KEY')) throw new Error('API_BASE / APPLE_ADMIN_KEY missing');
   const uiDir = resolve(arg('ui', join(REPO, 'docs/evidence/ui-showcase')));
   const mapDir = resolve(arg('maps', join(REPO, 'docs/evidence/map-showcase')));
 

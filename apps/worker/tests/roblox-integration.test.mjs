@@ -40,7 +40,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-roblox-integration-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-roblox-integration-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -58,7 +58,7 @@ const API_KEY = 'OpenCloudKeyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'roblox-test', alg: 'ES256', use: 'sig' };
-const OWNER_JWT = await new jose.SignJWT({ email: 'owner@golem.test', role: 'authenticated' })
+const OWNER_JWT = await new jose.SignJWT({ email: 'owner@apple.test', role: 'authenticated' })
   .setProtectedHeader({ alg: 'ES256', kid: 'roblox-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
@@ -121,7 +121,7 @@ async function call(path, { method = 'GET', body } = {}) {
   const headers = { Authorization: `Bearer ${OWNER_JWT}` };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
   );
   const text = await res.text();
@@ -251,6 +251,6 @@ test('A KEY WITHOUT THE PROBE\'S SCOPE IS NOT PROBED — consent is not borrowed
 });
 
 test('the check is private to the person whose key it is', async () => {
-  const res = await APP.fetch(new Request('https://golem.test/api/me/roblox-key/check'), env());
+  const res = await APP.fetch(new Request('https://apple.test/api/me/roblox-key/check'), env());
   assert.equal(res.status, 401, 'no token, no answer about somebody else\'s credential');
 });

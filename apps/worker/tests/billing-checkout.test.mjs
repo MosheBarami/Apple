@@ -36,7 +36,7 @@ const LIVE = {
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
 };
-const RETURN_TO = 'https://golem.example/app/usage';
+const RETURN_TO = 'https://apple.example/app/usage';
 const build = (env, over = {}) =>
   B.buildCheckoutRequest(env, { userId: 'u_1', email: 'a@b.c', plan: 'builder', returnTo: RETURN_TO, ...over });
 const params = (r) => new URLSearchParams(r.body);

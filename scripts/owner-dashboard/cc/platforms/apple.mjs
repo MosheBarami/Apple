@@ -76,7 +76,7 @@ export const NOT_EXPOSED = [
 ];
 
 export function apple() {
-  if (!envCompat('APPLE_ADMIN_KEY')) return Promise.resolve(ok({ configured: false, need: ['GOLEM_ADMIN_KEY'], notExposed: NOT_EXPOSED }));
+  if (!envCompat('APPLE_ADMIN_KEY')) return Promise.resolve(ok({ configured: false, need: ['APPLE_ADMIN_KEY'], notExposed: NOT_EXPOSED }));
   return cached('apple', async () => {
     const [analytics, spend, wiring, stats, builds, errLog, calls, models, routing, census, product, health, st] = await Promise.all([
       section(() => get('/api/admin/analytics?days=7', 'האנליטיקה')),

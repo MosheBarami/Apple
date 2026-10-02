@@ -144,7 +144,7 @@ export function costs() {
     const haveAdmin = Boolean(envCompat('APPLE_ADMIN_KEY'));
     const [usage, logs, ap, cf, sb] = await Promise.all([
       haveCf ? section(() => cfUsage(now)) : { error: 'חסרים CLOUDFLARE_API_TOKEN או CLOUDFLARE_ACCOUNT_ID' },
-      haveAdmin ? section(modelCalls) : { error: 'חסר GOLEM_ADMIN_KEY' },
+      haveAdmin ? section(modelCalls) : { error: 'חסר APPLE_ADMIN_KEY' },
       apple().catch(() => null), cloudflare().catch(() => null), supabase().catch(() => null)]);
     if (usage.error && logs.error) return fail(usage.error, { errors: { cloudflare: usage.error, worker: logs.error } });
     const a = ap?.ok ? ap : {};

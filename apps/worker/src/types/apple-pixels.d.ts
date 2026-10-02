@@ -1,6 +1,6 @@
 // Ambient types for `@apple/design/pixels`, which is plain .mjs.
 //
-// Same pattern as golem-design.d.ts: the package ships JavaScript, the worker is TypeScript, and
+// Same pattern as apple-design.d.ts: the package ships JavaScript, the worker is TypeScript, and
 // this file is the seam. It must stay in step with src/pixels.mjs by hand — which is exactly the
 // kind of drift that produced OH-6, so the conformance test asserts the two agree.
 declare module '@apple/design/pixels' {

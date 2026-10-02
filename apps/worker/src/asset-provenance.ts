@@ -48,11 +48,11 @@ export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
 
 /**
  * Who owns the thing. Manifest §42 turns on this distinction and nothing else: third-party
- * material may be *used* under its licence but must never be presented as Golem's own work.
+ * material may be *used* under its licence but must never be presented as Apple's own work.
  *
  * `user_generated` is deliberately its own class rather than being folded into either side —
  * GenerationService output is produced in the customer's own Studio session under their own
- * account, so it is neither Golem's to claim nor a third party's to be credited.
+ * account, so it is neither Apple's to claim nor a third party's to be credited.
  */
 export const ASSET_ORIGINALITIES = ['golem_original', 'user_generated', 'third_party'] as const;
 export type AssetOriginality = (typeof ASSET_ORIGINALITIES)[number];
@@ -144,7 +144,7 @@ export interface AssetProvenance {
   /** ISO 8601 date-time, when the licence string and the file were observed. */
   retrievedAt: string;
   /**
-   * ISO 8601, when the asset entered Golem's control as a Roblox asset — distinct from
+   * ISO 8601, when the asset entered Apple's control as a Roblox asset — distinct from
    * `retrievedAt`, which is when the source page was read. null until imported.
    *
    * Optional in the type only because rows written before this field existed do not carry one;
@@ -152,7 +152,7 @@ export interface AssetProvenance {
    */
   importedAt?: string | null;
   /**
-   * What Golem changed relative to the file the source published: `['decimated to 900 tris',
+   * What Apple changed relative to the file the source published: `['decimated to 900 tris',
    * 'retextured to 512px']`. An empty array means "used exactly as downloaded" — which is itself
    * a claim, so it is recorded rather than assumed.
    *

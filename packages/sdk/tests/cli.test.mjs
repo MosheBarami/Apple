@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COMMANDS, UsageError, parseArgs } from '../src/cli-args.mjs';
 import { startServer } from './fake-server.mjs';
+import { LEGACY_NAME } from '../../../scripts/lib/legacy-name.mjs';
 
 const BIN = join(dirname(fileURLToPath(import.meta.url)), '../bin/apple.mjs');
 const PROJECT = '3f2a1c9e-77b4-4c2a-9a1e-0b8d6e4f1234';
@@ -128,7 +129,7 @@ test('the pre-rename token variable still works, and is not advertised', async (
   try {
     // APPLE_TOKEN is REMOVED from the child's environment rather than set empty: the resolution
     // is `?? `, so an empty string is a value and would legitimately win over the fallback.
-    const r = await apple(['me', '--base-url', s.baseUrl], { APPLE_TOKEN: undefined, GOLEM_TOKEN: 'from-old-env' });
+    const r = await apple(['me', '--base-url', s.baseUrl], { APPLE_TOKEN: undefined, APPLE_TOKEN: 'from-old-env' });
     assert.equal(r.code, 0, r.stderr);
     assert.equal(s.requests.at(-1).headers.authorization, 'Bearer from-old-env',
       'the pre-rename environment variable no longer resolves — that breaks a shell that works today');
@@ -139,7 +140,7 @@ test('the pre-rename token variable still works, and is not advertised', async (
   assert.equal(help.code, 2, 'bare `apple` still prints usage and exits 2');
   const printed = help.stdout + help.stderr;
   assert.match(printed, /APPLE_TOKEN/, 'the help no longer names the variable it does document');
-  assert.doesNotMatch(printed, /golem/i, 'the CLI help still prints the old product name');
+  assert.doesNotMatch(printed, LEGACY_NAME, 'the CLI help still prints the old product name');
 });
 
 test('an API error exits 1 and prints the server sentence on stderr', async () => {

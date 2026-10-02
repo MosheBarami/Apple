@@ -18,10 +18,10 @@ const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 // it lives in .env, never in the tree.
 const LOAD_PASSWORD = envCompat('APPLE_LOAD_PASSWORD');
 if (!LOAD_PASSWORD) {
-  throw new Error('GOLEM_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
+  throw new Error('APPLE_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
 }
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -33,7 +33,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const s = [...arr].sort((a,
 const stats = (name, arr, extra = '') => console.log(`  ${name.padEnd(22)} n=${String(arr.length).padStart(3)}  p50=${pct(arr,0.5)}ms  p95=${pct(arr,0.95)}ms  max=${pct(arr,1)}ms ${extra}`);
 const t = () => Date.now();
 
-console.log(`\n=== Golem load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
+console.log(`\n=== Apple load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
 
 // ---- phase 1: concurrent sign-in --------------------------------------------
 console.log('[1] concurrent sign-in');
@@ -44,7 +44,7 @@ const users = (await Promise.all(
     try {
       const r = await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
         method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: `load${i}@golem.internal`, password: LOAD_PASSWORD }),
+        body: JSON.stringify({ email: `load${i}@apple.internal`, password: LOAD_PASSWORD }),
       });
       const d = await r.json();
       if (!d.access_token) { authFails.push(`user${i}: ${d.error_description ?? d.msg ?? r.status}`); return null; }

@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 
 // One implementation: the production TypeScript, transpiled with the worker's own esbuild.
-const dest = join(tmpdir(), `golem-transcript-${process.pid}.mjs`);
+const dest = join(tmpdir(), `apple-transcript-${process.pid}.mjs`);
 execFileSync(
   join(REPO, 'apps', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(REPO, 'apps', 'worker', 'src', 'transcript.ts'), '--format=esm', '--target=es2022', `--outfile=${dest}`],

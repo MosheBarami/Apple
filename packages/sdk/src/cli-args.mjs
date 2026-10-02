@@ -180,7 +180,7 @@ export function helpText() {
     ...rows,
     '',
     // THE OLD VARIABLE STILL WORKS AND IS NO LONGER ADVERTISED, and the two halves are separate
-    // decisions. bin/apple.mjs keeps reading GOLEM_TOKEN / GOLEM_API_URL after APPLE_TOKEN /
+    // decisions. bin/apple.mjs keeps reading APPLE_TOKEN / APPLE_API_URL after APPLE_TOKEN /
     // APPLE_API_URL, so a shell that has exported the pre-rename name since before the rename
     // keeps working — removing the fallback would break a working setup to tidy a string.
     // Printing it is the other half: this text is the most-read sentence the CLI has, and the

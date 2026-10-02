@@ -424,7 +424,7 @@ export function lateralPivotToleranceStuds(x: number, z: number): number {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Hard allowlist of asset types Golem may auto-insert.
+ * Hard allowlist of asset types Apple may auto-insert.
  *
  * Images, Decals and **Meshes** are created as Open Use by default, so one upload is usable by
  * every customer's experience by id. **Models are not** — they need the per-place "Allow Loading

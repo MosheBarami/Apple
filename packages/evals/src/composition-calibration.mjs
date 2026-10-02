@@ -45,7 +45,7 @@ const OUT = join(HERE, '..', 'tasks-visual', 'composition');
 export async function loadCompositionModule() {
   const src = join(REPO, 'apps', 'worker', 'src', 'composition.ts');
   const bin = join(REPO, 'apps', 'worker', 'node_modules', '.bin', 'esbuild');
-  const dest = join(tmpdir(), `golem-composition-${process.pid}-${process.hrtime.bigint()}.mjs`);
+  const dest = join(tmpdir(), `apple-composition-${process.pid}-${process.hrtime.bigint()}.mjs`);
   execFileSync(bin, [src, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: join(REPO, 'apps', 'worker'),

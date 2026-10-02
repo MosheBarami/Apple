@@ -50,7 +50,7 @@ export async function evaluateGameLogic({ live = false, adminKey, output, budget
   if (!live) throw new Error('paid evaluation requires explicit --live; no request made');
   if (!budgetPath) throw new Error('existing total budget ledger is required');
   readSpendLedger(budgetPath);
-  if (!adminKey) throw new Error('GOLEM_ADMIN_KEY is required');
+  if (!adminKey) throw new Error('APPLE_ADMIN_KEY is required');
   if (!output || examples.length < 1 || examples.length > 10) throw new Error('new output directory and 1..10 examples required');
   if (examples.some((e) => Buffer.byteLength(e.prompt + SYSTEM) > 2000)) throw new Error('prompt exceeds bounded cost allocation');
   const directory = resolve(output);

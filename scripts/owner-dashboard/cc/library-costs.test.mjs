@@ -228,7 +228,7 @@ test('business derive: masks emails, builds the funnel from real rows, flags rea
   const now = Date.UTC(2026, 8, 20);
   const users = [
     { id: '11111111-1111-1111-1111-111111111111', email: 'owner@example.com', created_at: '2026-09-19T10:00:00Z', last_sign_in_at: '2026-09-19T11:00:00Z', confirmed: true, plan: 'enterprise', is_admin: true, projects: 2 },
-    { id: '22222222-2222-2222-2222-222222222222', email: 'load-test-1@golem.internal', created_at: '2026-09-01T10:00:00Z', last_sign_in_at: null, confirmed: false, plan: 'free', is_admin: false, projects: 0 },
+    { id: '22222222-2222-2222-2222-222222222222', email: 'load-test-1@apple.internal', created_at: '2026-09-01T10:00:00Z', last_sign_in_at: null, confirmed: false, plan: 'free', is_admin: false, projects: 0 },
   ];
   const out = business.derive({ users, now, builds: [{ actorId: users[0].id }, { actorId: users[0].id }],
     a: { spend: { killed: false }, billing: { keyMode: 'test', production: true, webhook: true }, routing: [{ id: 'm', label: 'M', provider: 'workers-ai', available: true }] },

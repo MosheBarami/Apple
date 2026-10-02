@@ -7,7 +7,7 @@
 // store what it already holds and sends only what is missing, so it is safe to re-run.
 //
 //   node packages/asset-library/upload.mjs [--force]
-// Env: API_BASE, GOLEM_ADMIN_KEY (read from the repo .env when present). Same admin route as
+// Env: API_BASE, APPLE_ADMIN_KEY (read from the repo .env when present). Same admin route as
 // deploy-static.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,7 +24,7 @@ try {
 } catch { /* no .env: the environment must carry both values */ }
 const BASE = process.env.API_BASE;
 const KEY = envCompat('APPLE_ADMIN_KEY');
-if (!BASE || !KEY) throw new Error('API_BASE / GOLEM_ADMIN_KEY missing');
+if (!BASE || !KEY) throw new Error('API_BASE / APPLE_ADMIN_KEY missing');
 const force = process.argv.includes('--force');
 
 const index = JSON.parse(readFileSync(join(HERE, 'index.json'), 'utf8'));

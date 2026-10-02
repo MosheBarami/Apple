@@ -1,6 +1,6 @@
 // Types for the Luau intelligence cluster in `packages/evals/src`, declared HERE.
 //
-// Same seam, and the same reasoning, as golem-design.d.ts: that package is plain ESM with JSDoc
+// Same seam, and the same reasoning, as apple-design.d.ts: that package is plain ESM with JSDoc
 // and no build step, the worker is TypeScript, and the consumer that needs types is the honest
 // place to write them. These declarations are deliberately NARROWER than the modules — they cover
 // only what `luau-review.ts` uses, so a field appearing here is one the product actually reads.

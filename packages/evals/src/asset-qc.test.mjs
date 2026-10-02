@@ -1,7 +1,7 @@
 // Tests for the asset pipeline's pure logic: the source decision table, the Creator Store
 // verification gate, provenance/licence validation, and the scale-plausibility maths.
 //
-// These rules decide two things that are expensive to get wrong — whether Golem executes a
+// These rules decide two things that are expensive to get wrong — whether Apple executes a
 // stranger's Lua inside a customer's place, and whether it can honestly say where every asset it
 // ships came from — so they are pinned here rather than left to inspection.
 //

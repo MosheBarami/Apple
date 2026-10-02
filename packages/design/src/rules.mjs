@@ -1,6 +1,6 @@
 // rules.mjs — the design intelligence itself.
 //
-// WHY THIS EXISTS. §G: "Golem must STOP defaulting to inventing every Roblox GUI
+// WHY THIS EXISTS. §G: "Apple must STOP defaulting to inventing every Roblox GUI
 // and every visual primitive from a blank canvas." §K says what to do instead:
 // extract the GRAMMAR from good work, then build original primitives from it —
 // explicitly NOT paste third-party UI into generated games.
@@ -23,7 +23,7 @@
 //
 // PROVENANCE IS A LICENCE BOUNDARY, NOT A CITATION STYLE.
 //
-//   golem-authored   written for Crystal Canyon, owned outright, safe to reproduce
+//   apple-authored   written for Crystal Canyon, owned outright, safe to reproduce
 //   learned-pattern  a general grammar observed in a licence-clear source
 //   reference-only   observed in a source we may READ but may not copy
 //
@@ -73,7 +73,7 @@ export const STYLE_FAMILIES = Object.freeze([
   'mobile-first', 'controller-first',
 ]);
 
-export const PROVENANCE_KINDS = Object.freeze(['golem-authored', 'learned-pattern', 'reference-only']);
+export const PROVENANCE_KINDS = Object.freeze(['apple-authored', 'learned-pattern', 'reference-only']);
 
 // A rule that claims a platform it was not written for is the same dishonesty as
 // a rule that claims a genre it was not written for, so the vocabulary is closed.
@@ -82,7 +82,7 @@ export const PROVENANCE_KINDS = Object.freeze(['golem-authored', 'learned-patter
 export const PLATFORMS = Object.freeze(['desktop', 'mobile', 'gamepad']);
 
 const CC = (file) => ({
-  kind: 'golem-authored',
+  kind: 'apple-authored',
   source: `apps/benchmark/crystal-canyon/src/client/${file}`,
   validated: 'rendered and reviewed in Studio, 2026-09-01',
 });
@@ -91,7 +91,7 @@ const CC = (file) => ({
  *  `docs/evidence/2026-09-01-ui-motion-frames.md`. A motion rule that was only LOOKED at is a
  *  taste claim; one with a frame table behind it can be argued with. */
 const MEASURED = (file) => ({
-  kind: 'golem-authored',
+  kind: 'apple-authored',
   source: `apps/benchmark/crystal-canyon/src/client/${file}`,
   validated: 'sampled frame by frame in Studio, 2026-09-01 — see docs/evidence/2026-09-01-ui-motion-frames.md',
 });
@@ -106,13 +106,13 @@ const MEASURED = (file) => ({
  *
  * `validated` says "documented" rather than "rendered" on purpose. A documented
  * behaviour has been WRITTEN DOWN by the engine's authors; it has not been seen
- * to work in a Golem fixture. `retrieve` gives its +2 only to rules that have,
+ * to work in an Apple fixture. `retrieve` gives its +2 only to rules that have,
  * so these correctly rank below the ones that shipped.
  */
 const DOCS = (file) => ({
   kind: 'learned-pattern',
   source: `Roblox/creator-docs content/en-us/reference/engine/${file} (CC-BY-4.0)`,
-  validated: 'documented engine behaviour; not yet built in a Golem fixture',
+  validated: 'documented engine behaviour; not yet built in an Apple fixture',
 });
 
 /**
@@ -126,14 +126,14 @@ const DOCS = (file) => ({
 const TYCOON = (file) => ({
   kind: 'learned-pattern',
   source: `DLinacre/slime-factory-tycoon@c471a2ef7d ${file} (MIT)`,
-  validated: 'observed in one shipped tycoon; not yet built in a Golem fixture',
+  validated: 'observed in one shipped tycoon; not yet built in an Apple fixture',
 });
 
 /** Same source, same licence, but a prose guide rather than the API reference. */
 const GUIDE = (file) => ({
   kind: 'learned-pattern',
   source: `Roblox/creator-docs content/en-us/${file} (CC-BY-4.0)`,
-  validated: 'documented engine behaviour; not yet built in a Golem fixture',
+  validated: 'documented engine behaviour; not yet built in an Apple fixture',
 });
 
 /** @type {ReadonlyArray<object>} */
@@ -221,7 +221,7 @@ export const RULES = Object.freeze([
     because: 'Measuring a colour against the surface it is painted on gets stricter as the world gets darker: a readout tuned in a lit scene has no floor left in the dark scene the game actually spends its time in, and unlike a wayfinding colour the player cannot walk somewhere else to read it.',
     prevents: 'A health readout that is legible in the lit entrance corridor and invisible for the rest of the game.',
     provenance: {
-      kind: 'golem-authored',
+      kind: 'apple-authored',
       source: 'packages/design (extension of colour.measure-guide-contrast-against-its-own-ground to low-light genres)',
       validated: 'not yet built',
     },
@@ -250,7 +250,7 @@ export const RULES = Object.freeze([
     because: 'A chunky style communicates grouping through one carved surface. Strip the surface and proximity is the only cue left, and proximity is not stable across viewport widths, because the gaps themselves are what change.',
     prevents: 'A minimal HUD whose three clusters read as one block on a wide monitor and as unrelated floating labels on a narrow one.',
     provenance: {
-      kind: 'golem-authored',
+      kind: 'apple-authored',
       source: 'packages/design (the dual of panel.one-plate-language, whose premise minimalism removes)',
       validated: 'not yet built',
     },
@@ -339,7 +339,7 @@ export const RULES = Object.freeze([
     rule: 'The product layer must not restate a cost that the accounting layer owns. Show the number from ONE source or show no number.',
     because: 'Two copies of a price drift, and the copy the user sees is not the copy the balance gate reads.',
     prevents: 'A UI showing "1 / 4 / 10 credits" while the gate charged 1 / 2 / 3 — users shown a cost 2-3x higher than the one taken.',
-    provenance: { kind: 'golem-authored', source: 'apps/web product modes', validated: 'found and fixed in review' },
+    provenance: { kind: 'apple-authored', source: 'apps/web product modes', validated: 'found and fixed in review' },
   },
   // ---------------------------------------------------------------- motion
   {
@@ -402,7 +402,7 @@ export const RULES = Object.freeze([
     rule: 'Measure a wayfinding colour against the SURFACE IT IS PAINTED ON, not against the biome palette generally, and keep a numeric benchmark.',
     because: 'A route disappearing into its own ground is invisible however well the hue reads elsewhere.',
     prevents: 'A frost accent scoring 136 on the ice road it was painted on, against a 170 working benchmark.',
-    provenance: { kind: 'golem-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'measured per-surface' },
+    provenance: { kind: 'apple-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'measured per-surface' },
     tokens: { contrastBenchmark: 170, metric: 'sum of absolute RGB channel deltas' },
   },
   // ---------------------------------------------------------------- icons
@@ -683,7 +683,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'Roblox/creator-docs content/en-us/tutorials/use-case-tutorials/modeling/assemble-modular-environments.md + content/en-us/parts/materials.md (CC-BY-4.0)',
-      validated: 'documented grammar; not yet built in a Golem fixture',
+      validated: 'documented grammar; not yet built in an Apple fixture',
     },
   },
   {
@@ -695,7 +695,7 @@ export const RULES = Object.freeze([
     because: 'The period\'s tiny targets, absent focus states and missing accessibility affordances were platform limitations of their moment, not stylistic decisions — so reproducing them makes a game unplayable rather than nostalgic, and no player reads them as a reference to anything.',
     prevents: 'A "retro" HUD with 24px buttons and no gamepad focus: correct in a screenshot, unusable on a phone or a console.',
     provenance: {
-      kind: 'golem-authored',
+      kind: 'apple-authored',
       source: 'packages/design (synthesis of layout.touch-floor-from-smallest-target, motion.reduced-motion-removes-travel-not-outcome and layout.safe-area-is-opt-out-for-decoration-only)',
       validated: 'not yet built',
     },
@@ -709,7 +709,7 @@ export const RULES = Object.freeze([
     rule: 'Pick one material for the whole build and do not make exceptions for "special" objects.',
     because: 'A single emissive object in a flat-shaded world is not a highlight, it is the only thing that looks wrong.',
     prevents: 'Reaching for Neon on one prop in a world of 1562 SmoothPlastic parts.',
-    provenance: { kind: 'golem-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'a Neon mote was proposed and refused on this rule' },
+    provenance: { kind: 'apple-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'a Neon mote was proposed and refused on this rule' },
   },
   {
     id: 'geometry.a-yaw-is-not-a-rotation',
@@ -719,7 +719,7 @@ export const RULES = Object.freeze([
     rule: 'To present a corner rather than a face, rotate on all three axes. A Y-only yaw leaves the top and bottom faces horizontal.',
     because: 'A cube yawed 45 degrees still shows a flat square lid to any camera near its own height, so it reads as a box, not a gem.',
     prevents: 'Six gold boxes floating in the sky in the hero shot.',
-    provenance: { kind: 'golem-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'rendered before and after' },
+    provenance: { kind: 'apple-authored', source: 'apps/benchmark/crystal-canyon/world/Build.luau', validated: 'rendered before and after' },
   },
   //[[ THREE FAMILIES THAT HAD NO RULE, CLOSED FROM THE ONE LICENCE-CLEAR SOURCE.
   //
@@ -883,7 +883,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'Reselim/Flipper (MIT) src/Spring.lua; Roblox/otter (MIT) modules/otter/src/spring.lua + docs/api-reference.md; chriscerie/roact-spring (MIT) src/SpringValue.lua',
-      validated: 'read all three solvers: each computes `complete` as an AND over |velocity| and |position - goal|, and each then overwrites the computed value with the goal (Flipper `value = complete and g or p1`; otter `p1 = goalPosition; v1 = 0`; roact-spring `position = to`). Flipper\'s src/Spring.spec.lua asserts exact equality with the goal after settling. Scoped to the conjunction so it does not restate the existing golem-authored motion.a-reversible-transition-must-land-exactly-on-rest, which it corroborates. The three libraries pick DIFFERENT thresholds, which is why the next rule exists. Not run in Studio.',
+      validated: 'read all three solvers: each computes `complete` as an AND over |velocity| and |position - goal|, and each then overwrites the computed value with the goal (Flipper `value = complete and g or p1`; otter `p1 = goalPosition; v1 = 0`; roact-spring `position = to`). Flipper\'s src/Spring.spec.lua asserts exact equality with the goal after settling. Scoped to the conjunction so it does not restate the existing apple-authored motion.a-reversible-transition-must-land-exactly-on-rest, which it corroborates. The three libraries pick DIFFERENT thresholds, which is why the next rule exists. Not run in Studio.',
     },
     tokens: {"flipperVelocityLimit":0.001,"flipperPositionLimit":0.001,"otterVelocityLimit":0.001,"otterPositionLimit":0.01},
   },
@@ -1044,7 +1044,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'tijnepema/lucide-roblox (MIT; the icon SVGs under icons/svg/ are Lucide, ISC)',
-      validated: 'counted every SVG in the checkout: 1709 of 1709 carry viewBox 0 0 24 24, stroke-width 2, stroke-linecap round, stroke-linejoin round and fill none — zero exceptions. Scoped to the stroke constants so it does not restate the existing golem-authored icon.one-set-drawn-on-one-grid.',
+      validated: 'counted every SVG in the checkout: 1709 of 1709 carry viewBox 0 0 24 24, stroke-width 2, stroke-linecap round, stroke-linejoin round and fill none — zero exceptions. Scoped to the stroke constants so it does not restate the existing apple-authored icon.one-set-drawn-on-one-grid.',
     },
     tokens: {"designBoxUnits":24,"strokeUnits":2,"strokeToBoxRatio":0.0833,"cap":"round","join":"round","defaultFill":"none"},
   },
@@ -1104,7 +1104,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'tijnepema/lucide-roblox (MIT; icon SVGs are Lucide, ISC) cross-checked against afrxo/roblox-agent-skills (MIT) skills/roblox-ui/references/design-guidelines.md',
-      validated: 'counted rx across the checkout: 300 rx=2 and 90 rx=1 out of 407 total, so two values carry 96% of all rounded corners in 1709 icons. The second source states the same constraint independently as an anti-pattern table row: mixed radii 4/8/6/12, pick 2 radii max and token them. Phrased as a small closed set rather than a hard count of two, so it does not contradict the existing golem-authored nav.tall-rail-states-its-own-radius, which exists precisely because a pill radius means something different on a tall channel.',
+      validated: 'counted rx across the checkout: 300 rx=2 and 90 rx=1 out of 407 total, so two values carry 96% of all rounded corners in 1709 icons. The second source states the same constraint independently as an anti-pattern table row: mixed radii 4/8/6/12, pick 2 radii max and token them. Phrased as a small closed set rather than a hard count of two, so it does not contradict the existing apple-authored nav.tall-rail-states-its-own-radius, which exists precisely because a pill radius means something different on a tall channel.',
     },
     tokens: {"observedRadiiCoveringNinetySixPercent":2,"glyphCornerUnits":2,"gridUnits":24,"cornerToBoxRatio":0.0833},
   },
@@ -1149,7 +1149,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'afrxo/roblox-agent-skills (MIT) skills/roblox-ui/references/design-guidelines.md; Crabzzai/SimpleDialogue (MIT) src/UI/DialogueUI.luau',
-      validated: 'read the reference document, which states the floor, the decoupling and the inter-target gap explicitly. Read the Luau source in the checkout: CreateOptionButton parents the TextButton to a \'Hitbox\' frame sized UDim2.new(1, 20, 1, 10) at position UDim2.new(0, -10, 0, -5) around a 450x40 row, inside a UIListLayout whose Padding is UDim.new(0, 10) — the 5px per-side vertical overhang is exactly half that gap, so neighbouring targets meet and never overlap. Stated as engine geometry, not as the reactive-library API the file happens to use. Merged from two candidates found by two extractors reading unrelated repositories. Neither executed; this is the escape hatch that keeps the existing golem-authored layout.touch-floor-from-smallest-target without paying for it in screen area.',
+      validated: 'read the reference document, which states the floor, the decoupling and the inter-target gap explicitly. Read the Luau source in the checkout: CreateOptionButton parents the TextButton to a \'Hitbox\' frame sized UDim2.new(1, 20, 1, 10) at position UDim2.new(0, -10, 0, -5) around a 450x40 row, inside a UIListLayout whose Padding is UDim.new(0, 10) — the 5px per-side vertical overhang is exactly half that gap, so neighbouring targets meet and never overlap. Stated as engine geometry, not as the reactive-library API the file happens to use. Merged from two candidates found by two extractors reading unrelated repositories. Neither executed; this is the escape hatch that keeps the existing apple-authored layout.touch-floor-from-smallest-target without paying for it in screen area.',
     },
     tokens: {"hitTargetPx":44,"exampleGlyphPx":32,"exampleRowHeightPx":40,"exampleHitTargetHeightPx":50,"exampleListGapPx":10,"examplePerSideExpansionPx":5,"maxExpansionAsFractionOfGap":0.5},
   },
@@ -1311,7 +1311,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'gcaptn/cyan-ui (MIT) + nightcycle/synthetic (Apache-2.0); dissent recorded from loneka/onyx-ui (MIT)',
-      validated: 'read cyan-ui src/Themes.luau (rest/hover/press step 500 to 600 to 400 on the accent and 200 to 300 to 100 on the secondary surface, and the same shape again in the dark map) and synthetic src/Component/Button/FilledButton/ColdFusion.luau (hover renders at elevation e+1, press at e-1). onyx-ui src/Components/Button.luau does NOT reverse — hover and press are 2/3 and 3/3 of one emphasis unit in the same direction. This is the direction axis; the existing golem-authored button.press-is-a-hard-cut governs the timing axis and the two compose.',
+      validated: 'read cyan-ui src/Themes.luau (rest/hover/press step 500 to 600 to 400 on the accent and 200 to 300 to 100 on the secondary surface, and the same shape again in the dark map) and synthetic src/Component/Button/FilledButton/ColdFusion.luau (hover renders at elevation e+1, press at e-1). onyx-ui src/Components/Button.luau does NOT reverse — hover and press are 2/3 and 3/3 of one emphasis unit in the same direction. This is the direction axis; the existing apple-authored button.press-is-a-hard-cut governs the timing axis and the two compose.',
     },
     tokens: {"syntheticElevation":{"rest":"e","hover":"e + 1","press":"e - 1"},"cyanColourScaleSteps":{"restLight":500,"hoverLight":600,"pressLight":400,"restDark":600,"hoverDark":700,"pressDark":500}},
   },
@@ -1563,7 +1563,7 @@ export const RULES = Object.freeze([
     because: 'Turning scaling on implicitly turns wrapping on, so writing "do not wrap" afterwards silently turns scaling back OFF. Both halves read as exactly what the author intended — shrink to fit, stay on one line — and together they produce neither. The failure is invisible in every screenshot taken at the design resolution, because at that size nothing needed to shrink; it only appears on the small screen the clamp existed for, which is the screen nobody renders.',
     prevents: 'A helper called clampText that has never once clamped anything: 105 labels across a HUD and every panel carrying a size constraint that does nothing, because a size constraint is inert unless the text is scaling.',
     provenance: {
-      kind: 'golem-authored',
+      kind: 'apple-authored',
       source: 'apps/benchmark/crystal-canyon/src/client/Theme.luau',
       validated: 'probed in a live Studio session: TextScaled=true alone reads back true; TextScaled=true followed by TextWrapped=false reads back FALSE; constraint-then-TextScaled reads back true, lays out on one line for a 13-character string in a 112px pill, and still honours MaxTextSize for a short one. 2026-09-01',
     },

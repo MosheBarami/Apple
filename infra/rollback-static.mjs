@@ -42,7 +42,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { judgeRestore, planRestore } from '../scripts/lib/rollback-rules.mjs';
-import { envCompat } from '../scripts/lib/env-compat.mjs';
+import { envCompat, legacyEnvName } from '../scripts/lib/env-compat.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 
@@ -131,11 +131,15 @@ const KEY = envCompat('APPLE_ADMIN_KEY') ?? (() => {
   // .env is a convenience, not a requirement: the key may come from the environment, which is how
   // this file is driven against a throwaway origin in its own tests.
   try {
-    const m = readFileSync(join(ROOT, '.env'), 'utf8').match(/^GOLEM_ADMIN_KEY=(.*)$/m);
-    return m === null ? null : m[1];
+    const text = readFileSync(join(ROOT, '.env'), 'utf8');
+    for (const name of ['APPLE_ADMIN_KEY', legacyEnvName('APPLE_ADMIN_KEY')]) {
+      const m = text.match(new RegExp(`^${name}=(.*)$`, 'm'));
+      if (m !== null) return m[1];
+    }
+    return null;
   } catch { return null; }
 })();
-if (!KEY) { console.error('rollback-static: GOLEM_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
+if (!KEY) { console.error('rollback-static: APPLE_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
 
 const failures = [];
 let uploaded = 0;
@@ -150,7 +154,7 @@ for (const f of plan.restore) {
       stdio: ['ignore', 'pipe', 'pipe'],
       // The child reads .env only for values the environment does not already carry, so these two
       // win. That is what keeps a rollback aimed at the origin `--base` names and nowhere else.
-      env: { ...process.env, API_BASE: BASE, GOLEM_ADMIN_KEY: KEY },
+      env: { ...process.env, API_BASE: BASE, APPLE_ADMIN_KEY: KEY },
     });
     uploaded += 1;
   } catch (e) {

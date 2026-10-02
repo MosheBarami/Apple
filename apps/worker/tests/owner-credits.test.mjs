@@ -69,7 +69,7 @@ test('CONTROL: the address matcher finds a literal in code and ignores comments 
   assert.deepEqual(personalAddresses("const url = 'https://x.dev/'; const e = 'someone@mail.co';"), [1],
     'a URL before the literal must not hide it as a comment');
   assert.deepEqual(personalAddresses("const t = 'Name@Example.com';"), []);
-  assert.deepEqual(personalAddresses("const t = 'buyer@golem.test';"), []);
+  assert.deepEqual(personalAddresses("const t = 'buyer@apple.test';"), []);
 });
 
 // ------------------------------------------------------------------ the route, over HTTP

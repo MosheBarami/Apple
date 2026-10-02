@@ -91,7 +91,7 @@ export async function main(args) {
   const manifest = JSON.parse(readFileSync(path, 'utf8'));
   if (manifest.origin !== ORIGIN || !UUID.test(manifest.projectId ?? '')) throw Error('Unapproved credential destination');
   const key = envCompat('APPLE_ADMIN_KEY');
-  if (!key) throw Error('GOLEM_ADMIN_KEY required');
+  if (!key) throw Error('APPLE_ADMIN_KEY required');
   const get = route => observationGet(key, route);
   const [info, messages, logs] = await Promise.all([
     get(`/api/admin/session-info/${manifest.projectId}`),

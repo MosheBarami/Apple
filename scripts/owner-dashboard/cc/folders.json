@@ -119,8 +119,8 @@
     ]
   },
   "apps/plugin": {
-    "he": "התוסף הישן (Golem). זה לא המוצר ולא מתפרסם: נשאר רק כקבצי בדיקה ונתוני ייחוס שבדיקות אחרות קוראות. המוצר האמיתי הוא apps/apple-plugin.",
-    "en": "The legacy (Golem) plugin. Not the product and never shipped: kept only as test fixtures and reference data. The real plugin is apps/apple-plugin.",
+    "he": "התוסף הישן (Apple). זה לא המוצר ולא מתפרסם: נשאר רק כקבצי בדיקה ונתוני ייחוס שבדיקות אחרות קוראות. המוצר האמיתי הוא apps/apple-plugin.",
+    "en": "The legacy (Apple) plugin. Not the product and never shipped: kept only as test fixtures and reference data. The real plugin is apps/apple-plugin.",
     "docs": [
       {
         "label": "Roblox Studio plugins",

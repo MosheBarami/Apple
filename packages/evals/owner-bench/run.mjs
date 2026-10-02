@@ -11,7 +11,7 @@
  *          [--from <id>] [--only <id>] [--ids a,b,c] [--max-credits N] [--redo] [--dry-run] [--base <url>]
  *
  * Sign-in comes from the environment (or the repo's .env, loaded without overriding), never from flags, never printed:
- *   GOLEM_BENCH_JWT (+ GOLEM_BENCH_REFRESH_TOKEN to refresh it), or GOLEM_E2E_EMAIL + GOLEM_E2E_PASSWORD.
+ *   APPLE_BENCH_JWT (+ APPLE_BENCH_REFRESH_TOKEN to refresh it), or APPLE_E2E_EMAIL + APPLE_E2E_PASSWORD.
  * The account must OWN the project (other accounts get 404). A refresh token is rotated by Supabase on use: do not
  * share the owner's browser session with this runner; use a dedicated sign-in.
  */
@@ -80,7 +80,7 @@ export function createAuth({ fetch: fetchFn, env, now = Date.now, supabaseUrl = 
   let exp = token ? jwtExpiry(token) : null;
   const email = envCompat('APPLE_E2E_EMAIL', env), password = envCompat('APPLE_E2E_PASSWORD', env);
   if (!token && !refresh && !(email && password)) {
-    throw new Error('no sign-in: set GOLEM_BENCH_JWT (and GOLEM_BENCH_REFRESH_TOKEN), or GOLEM_E2E_EMAIL and GOLEM_E2E_PASSWORD');
+    throw new Error('no sign-in: set APPLE_BENCH_JWT (and APPLE_BENCH_REFRESH_TOKEN), or APPLE_E2E_EMAIL and APPLE_E2E_PASSWORD');
   }
   const grant = async (type, body) => {
     const r = await fetchFn(`${supabaseUrl}/auth/v1/token?grant_type=${type}`, { method: 'POST', headers: { apikey: anonKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

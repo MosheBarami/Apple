@@ -13,7 +13,7 @@
  * low but not zero — report differences that survive a rerun, not single-row flips.
  *
  * Usage:
- *   GOLEM_ADMIN_KEY=... node src/generate-eval-remote.mjs --data mlxdata-apple-v5/test.jsonl \
+ *   APPLE_ADMIN_KEY=... node src/generate-eval-remote.mjs --data mlxdata-apple-v5/test.jsonl \
  *     --base lab-llama-3b --adapter lab-llama-3b:apple-v5 --out runs/remote-v5.json [--kind game-logic]
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -68,7 +68,7 @@ async function ask(side, row, key, maxTokens) {
 async function main() {
   const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []));
   const key = envCompat('APPLE_ADMIN_KEY');
-  if (!key) throw new Error('GOLEM_ADMIN_KEY is required');
+  if (!key) throw new Error('APPLE_ADMIN_KEY is required');
   if (!args.data || !args.out || !args.base || !args.adapter) throw new Error('usage: --data F --base KEY[:LORA] --adapter KEY[:LORA] --out F [--kind K] [--max-tokens N]');
   const rows = heldOutRows(readFileSync(args.data, 'utf8'), args.kind);
   if (!rows.length) throw new Error('no held-out rows; nothing evaluated');

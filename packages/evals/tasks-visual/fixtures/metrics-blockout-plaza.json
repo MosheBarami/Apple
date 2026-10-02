@@ -1,5 +1,5 @@
 {
-  "_comment": "Golem's CURRENT output shape for vis-03-plaza: every requested object exists, and the scene is a block-out. Bare baseplate, one material, untouched Lighting, nothing smaller than 2 studs. Used by grade-visual.test.mjs to prove object existence cannot buy a pass.",
+  "_comment": "Apple's CURRENT output shape for vis-03-plaza: every requested object exists, and the scene is a block-out. Bare baseplate, one material, untouched Lighting, nothing smaller than 2 studs. Used by grade-visual.test.mjs to prove object existence cannot buy a pass.",
   "taskId": "vis-03-plaza",
   "subject": "game.Workspace",
   "boundsSize": [118.0, 14.5, 116.0],
