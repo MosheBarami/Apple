@@ -1,0 +1,1046 @@
+{
+  "_doc": "Data for scripts/reorg-repo.mjs. phases: P1 deletions, P2 docs, P3 platforms, P4 scripts subfolders. Phases without default:true run only when named (--phase P4).",
+  "phases": {
+    "P1": {
+      "title": "zero-coupling deletions and stale tooling files",
+      "default": true
+    },
+    "P2": {
+      "title": "docs: delete superseded, move into architecture/design/operations, prune unreferenced evidence",
+      "default": true
+    },
+    "P3": {
+      "title": "platforms/: one folder per external service (infra/ and supabase/ are absorbed)",
+      "default": true
+    },
+    "P4": {
+      "title": "scripts/ subfolders (optional, last, rewrites CI paths)",
+      "default": false
+    }
+  },
+  "evidenceList": "scripts/reorg/evidence-delete.txt",
+  "evidencePhase": "P2",
+  "evidenceKeepSince": "2026-09-24",
+  "evidenceProtected": [
+    "pixels",
+    "ui-showcase",
+    "map-showcase",
+    "probes",
+    "lumen-isles-2026-09-19",
+    "supabase-rollout-2026-09-18",
+    "2026-09-22-browser-qa"
+  ],
+  "evidenceProtectedPrefix": [
+    "catalog-",
+    "2026-09-01-golden",
+    "2026-09-22-browser-qa"
+  ],
+  "deletes": [
+    {
+      "path": "apps/web/.qa",
+      "phase": "P1",
+      "why": "old QA screenshots (about 10 MB); only the owner dashboard path allow-lists named it"
+    },
+    {
+      "path": "apps/site/.qa",
+      "phase": "P1",
+      "why": "old QA screenshots (about 10 MB); only the owner dashboard path allow-lists named it"
+    },
+    {
+      "path": "apps/plugin/api-docs.json",
+      "phase": "P1",
+      "why": "Roblox API dump, 7.3 MB; nothing reads it (tests read globalTypes.d.luau)"
+    },
+    {
+      "path": "apps/plugin/release/apple-plugin.rbxm",
+      "phase": "P1",
+      "why": "stale build of the legacy plugin; its README says do not install"
+    },
+    {
+      "path": "apps/plugin/sourcemap.json",
+      "phase": "P1",
+      "why": "Rojo-generated, no reader"
+    },
+    {
+      "path": "apps/apple-plugin/release/apple-restore-engine-proof2.rbxl",
+      "phase": "P1",
+      "why": "no reader, not in ARTIFACTS.md"
+    },
+    {
+      "path": "apps/apple-plugin/release/apple-restore-engine-proof.rbxl",
+      "phase": "P1",
+      "why": "r3 proof, failed in Studio (5/7); its bytes do not even match the ARTIFACTS.md hash"
+    },
+    {
+      "path": "apps/apple-plugin/release/apple-restore-engine-proof-r5-current.rbxl",
+      "phase": "P1",
+      "why": "ARTIFACTS.md says it is stale (r6 supersedes it)"
+    },
+    {
+      "path": "tests/fixtures/polyhaven-models.json",
+      "phase": "P1",
+      "why": "no reader; no connector code exists"
+    },
+    {
+      "path": "tests/fixtures/sketchfab-search.json",
+      "phase": "P1",
+      "why": "no reader; no connector code exists"
+    },
+    {
+      "path": "scripts/prepare-supabase-rollout-2026-09-18.mjs",
+      "phase": "P1",
+      "why": "one-shot; its output is in docs/evidence/supabase-rollout-2026-09-18/"
+    },
+    {
+      "path": "scripts/checklist-mark.mjs",
+      "phase": "P1",
+      "why": "no reader"
+    },
+    {
+      "path": "scripts/harvest-roblox-knowledge.mjs",
+      "phase": "P1",
+      "why": "one-shot harvester"
+    },
+    {
+      "path": "scripts/harvest-roblox-knowledge.test.mjs",
+      "phase": "P1",
+      "why": "its test is run by no workspace member and not by the tests/*.test.mjs glob"
+    },
+    {
+      "path": "scripts/fixtures",
+      "phase": "P1",
+      "why": "only reader was the harvester test"
+    },
+    {
+      "path": "graphify-out/GRAPH_REPORT.md",
+      "phase": "P1",
+      "why": "stale generated graph report (767 files; the tree has 10k+)"
+    },
+    {
+      "path": "FINISH-THE-PRODUCT.md",
+      "phase": "P1",
+      "why": "duplicate of docs/MISSION-PROMPT.md apart from Spark/Credit wording"
+    },
+    {
+      "path": "supabase/.temp",
+      "phase": "P1",
+      "why": "Supabase CLI link scratch, no reader"
+    },
+    {
+      "path": ".claude/settings.local.json",
+      "phase": "P1",
+      "why": "tracked but gitignored, contents are {}",
+      "cached": true
+    },
+    {
+      "path": ".agents/skills/apple-owner-autonomy",
+      "phase": "P1",
+      "why": "describes hooks that CLAUDE.md says were removed"
+    },
+    {
+      "path": "tests/owner-autonomy-hooks.test.mjs",
+      "phase": "P1",
+      "why": "skips itself when .claude/hooks is absent, so it passes vacuously"
+    },
+    {
+      "path": "docs/CHECKPOINT-prod-glm-stable.json",
+      "phase": "P2",
+      "why": "no reader; pins golem.* names of a retired deploy"
+    },
+    {
+      "path": "docs/superpowers",
+      "phase": "P2",
+      "why": "plan for the removed asset library"
+    },
+    {
+      "path": "docs/corrections",
+      "phase": "P2",
+      "why": "a correction to a commit message; history is in git"
+    },
+    {
+      "path": "docs/PROVENANCE-meshy.md",
+      "phase": "P2",
+      "why": "provenance log of generated assets; no reader"
+    },
+    {
+      "path": "docs/backlog/FLOWFIELD-IS-ORPHANED.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/HANDOFF-HERO-START.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/SITE-DEPLOY-WOULD-DELETE-THE-SHOWCASE-LINK.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/HANDOFF-LINK-THE-SHOWCASE.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/landing-showcase-door.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/DISCORD-IS-NOT-503-IT-IS-401-AND-THAT-IS-CORRECT.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/HANDOFF-CLAY-REACHABLE.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/CI-IS-BLOCKED-ON-GITHUB-BILLING-2026-09-21.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/backlog/HANDOFF-AGENTS-MD-NAMES-FOUR-PATHS-NO-CLONE-HAS.md",
+      "phase": "P2",
+      "why": "closed or obsolete handoff (its own header says so)"
+    },
+    {
+      "path": "docs/requirements",
+      "phase": "P2",
+      "why": "contract/probe map with 0 customer-verified tags, not wired to CI"
+    },
+    {
+      "path": "scripts/requirements-map.mjs",
+      "phase": "P2",
+      "why": "only reader of docs/requirements"
+    },
+    {
+      "path": "docs/MONITORING.md",
+      "phase": "P2",
+      "why": "replaced by platforms/sentry/README.md",
+      "redirect": "platforms/sentry/README.md"
+    },
+    {
+      "path": "docs/CLOUDFLARE-SURFACE.md",
+      "phase": "P2",
+      "why": "replaced by platforms/cloudflare/README.md (re-read from the account 2026-10-02)",
+      "redirect": "platforms/cloudflare/README.md"
+    },
+    {
+      "path": "docs/DEPLOY-INTEGRATION.md",
+      "phase": "P2",
+      "why": "merged into platforms/cloudflare/README.md",
+      "redirect": "platforms/cloudflare/README.md"
+    }
+  ],
+  "moves": [
+    {
+      "from": "infra/supabase",
+      "to": "platforms/supabase",
+      "phase": "P3",
+      "why": "Supabase migrations, runner and tests"
+    },
+    {
+      "from": "infra/deploy-worker.mjs",
+      "to": "platforms/cloudflare/deploy/deploy-worker.mjs",
+      "phase": "P3",
+      "why": "Cloudflare deploy path"
+    },
+    {
+      "from": "infra/deploy-static.mjs",
+      "to": "platforms/cloudflare/deploy/deploy-static.mjs",
+      "phase": "P3",
+      "why": "Cloudflare deploy path"
+    },
+    {
+      "from": "infra/deploy-showcase.mjs",
+      "to": "platforms/cloudflare/deploy/deploy-showcase.mjs",
+      "phase": "P3",
+      "why": "Cloudflare deploy path"
+    },
+    {
+      "from": "infra/rollback-static.mjs",
+      "to": "platforms/cloudflare/deploy/rollback-static.mjs",
+      "phase": "P3",
+      "why": "Cloudflare deploy path"
+    },
+    {
+      "from": "infra/capture-rollback.mjs",
+      "to": "platforms/cloudflare/deploy/capture-rollback.mjs",
+      "phase": "P3",
+      "why": "Cloudflare deploy path"
+    },
+    {
+      "from": "infra/smoke.mjs",
+      "to": "platforms/cloudflare/verify/smoke.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/e2e.mjs",
+      "to": "platforms/cloudflare/verify/e2e.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/healthcheck.mjs",
+      "to": "platforms/cloudflare/verify/healthcheck.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/loadtest.mjs",
+      "to": "platforms/cloudflare/verify/loadtest.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/real-chat.mjs",
+      "to": "platforms/cloudflare/verify/real-chat.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/store-validation.mjs",
+      "to": "platforms/cloudflare/verify/store-validation.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/pair-helper.mjs",
+      "to": "platforms/cloudflare/verify/pair-helper.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "infra/checkpoint-test.mjs",
+      "to": "platforms/cloudflare/verify/checkpoint-test.mjs",
+      "phase": "P3",
+      "why": "checks run against the deployed worker"
+    },
+    {
+      "from": "scripts/critical-flows.mjs",
+      "to": "platforms/cloudflare/verify/critical-flows.mjs",
+      "phase": "P3",
+      "why": "check run against the deployed worker"
+    },
+    {
+      "from": "infra/discord-server.mjs",
+      "to": "platforms/discord/discord-server.mjs",
+      "phase": "P3",
+      "why": "Discord server provisioning"
+    },
+    {
+      "from": "infra/provision-outbox-token.mjs",
+      "to": "platforms/supabase/provision-outbox-token.mjs",
+      "phase": "P3",
+      "why": "Supabase membership outbox token provisioning"
+    },
+    {
+      "from": "docs/COMPOSITION.md",
+      "to": "docs/architecture/COMPOSITION.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/THINKING-UX.md",
+      "to": "docs/architecture/THINKING-UX.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/VISUAL-LOOP.md",
+      "to": "docs/architecture/VISUAL-LOOP.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/PLAYTEST-VIEWPORT.md",
+      "to": "docs/architecture/PLAYTEST-VIEWPORT.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/SCALE-V2.md",
+      "to": "docs/architecture/SCALE-V2.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/BUDGET-SHARDING.md",
+      "to": "docs/architecture/BUDGET-SHARDING.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/SCRIPTING-CURRICULUM.md",
+      "to": "docs/architecture/SCRIPTING-CURRICULUM.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/SOURCE-INTELLIGENCE.md",
+      "to": "docs/architecture/SOURCE-INTELLIGENCE.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/ASSET-PIPELINE.md",
+      "to": "docs/architecture/ASSET-PIPELINE.md",
+      "phase": "P2",
+      "why": "system design doc"
+    },
+    {
+      "from": "docs/embedding-retrieval.md",
+      "to": "docs/architecture/knowledge/embedding-retrieval.md",
+      "phase": "P2",
+      "why": "retrieval and knowledge design doc"
+    },
+    {
+      "from": "docs/retrieval-bakeoff.md",
+      "to": "docs/architecture/knowledge/retrieval-bakeoff.md",
+      "phase": "P2",
+      "why": "retrieval and knowledge design doc"
+    },
+    {
+      "from": "docs/knowledge-retrieval-diagnosis.md",
+      "to": "docs/architecture/knowledge/knowledge-retrieval-diagnosis.md",
+      "phase": "P2",
+      "why": "retrieval and knowledge design doc"
+    },
+    {
+      "from": "docs/knowledge-survivability.md",
+      "to": "docs/architecture/knowledge/knowledge-survivability.md",
+      "phase": "P2",
+      "why": "retrieval and knowledge design doc"
+    },
+    {
+      "from": "docs/DESIGN-LOCK.md",
+      "to": "docs/design/DESIGN-LOCK.md",
+      "phase": "P2",
+      "why": "visual design doc"
+    },
+    {
+      "from": "docs/DESIGN-TYPE.md",
+      "to": "docs/design/DESIGN-TYPE.md",
+      "phase": "P2",
+      "why": "visual design doc"
+    },
+    {
+      "from": "docs/FRESH-PUBLIC-DESIGN.md",
+      "to": "docs/design/FRESH-PUBLIC-DESIGN.md",
+      "phase": "P2",
+      "why": "visual design doc"
+    },
+    {
+      "from": "docs/STUDIO-DESIGN-ASSETS.md",
+      "to": "docs/design/STUDIO-DESIGN-ASSETS.md",
+      "phase": "P2",
+      "why": "visual design doc"
+    },
+    {
+      "from": "docs/ROBLOX-STYLE-SPEC.md",
+      "to": "docs/design/ROBLOX-STYLE-SPEC.md",
+      "phase": "P2",
+      "why": "visual design doc"
+    },
+    {
+      "from": "docs/PLUGIN-RELEASE.md",
+      "to": "docs/operations/PLUGIN-RELEASE.md",
+      "phase": "P2",
+      "why": "operations doc"
+    },
+    {
+      "from": "docs/SECURITY.md",
+      "to": "docs/operations/SECURITY.md",
+      "phase": "P2",
+      "why": "operations doc"
+    },
+    {
+      "from": "docs/SECURITY-TRIAGE-2026-08-31.md",
+      "to": "docs/operations/SECURITY-TRIAGE-2026-08-31.md",
+      "phase": "P2",
+      "why": "operations doc"
+    },
+    {
+      "from": "docs/LOAD-TEST.md",
+      "to": "docs/operations/LOAD-TEST.md",
+      "phase": "P2",
+      "why": "operations doc"
+    },
+    {
+      "from": "docs/apple-os",
+      "to": "docs/operations/apple-os",
+      "phase": "P2",
+      "why": "Apple OS notes"
+    },
+    {
+      "from": "docs/DESIGN-SPEC.md",
+      "to": "docs/design/DESIGN-SPEC.md",
+      "phase": "P2",
+      "why": "cited by code comments; already marked superseded inside"
+    },
+    {
+      "from": "docs/frontier-for-roblox.md",
+      "to": "docs/training/frontier-for-roblox.md",
+      "phase": "P2",
+      "why": "training and corpus research"
+    },
+    {
+      "from": "docs/github-corpus-licences.md",
+      "to": "docs/training/github-corpus-licences.md",
+      "phase": "P2",
+      "why": "training and corpus research"
+    },
+    {
+      "from": "docs/model-serving-reality.md",
+      "to": "docs/training/model-serving-reality.md",
+      "phase": "P2",
+      "why": "training and corpus research"
+    },
+    {
+      "from": "docs/roblox-dataset-v2-volume.md",
+      "to": "docs/training/roblox-dataset-v2-volume.md",
+      "phase": "P2",
+      "why": "training and corpus research"
+    },
+    {
+      "from": "scripts/land-worktrees.mjs",
+      "to": "scripts/dev/land-worktrees.mjs",
+      "phase": "P4",
+      "why": "developer workflow tooling"
+    },
+    {
+      "from": "scripts/verify-worktree.mjs",
+      "to": "scripts/dev/verify-worktree.mjs",
+      "phase": "P4",
+      "why": "developer workflow tooling"
+    },
+    {
+      "from": "scripts/build-ui-proof-place.mjs",
+      "to": "scripts/studio-proof/build-ui-proof-place.mjs",
+      "phase": "P4",
+      "why": "Studio UI proof"
+    },
+    {
+      "from": "scripts/run-apple-ui-visual-proof.luau",
+      "to": "scripts/studio-proof/run-apple-ui-visual-proof.luau",
+      "phase": "P4",
+      "why": "Studio UI proof"
+    },
+    {
+      "from": "scripts/run-apple-generation-engine-proof.luau",
+      "to": "apps/apple-plugin/proof/run-apple-generation-engine-proof.luau",
+      "phase": "P4",
+      "why": "plugin engine proofs"
+    },
+    {
+      "from": "scripts/run-apple-restore-engine-proof.luau",
+      "to": "apps/apple-plugin/proof/run-apple-restore-engine-proof.luau",
+      "phase": "P4",
+      "why": "plugin engine proofs"
+    },
+    {
+      "from": "scripts/run-apple-studio-engine-proof.luau",
+      "to": "apps/apple-plugin/proof/run-apple-studio-engine-proof.luau",
+      "phase": "P4",
+      "why": "plugin engine proofs"
+    },
+    {
+      "from": "scripts/build-lumen-isles.mjs",
+      "to": "apps/experiences/lumen-isles/scripts/build-lumen-isles.mjs",
+      "phase": "P4",
+      "why": "belongs to the Lumen Isles experience"
+    },
+    {
+      "from": "scripts/open-lumen-authoring.luau",
+      "to": "apps/experiences/lumen-isles/scripts/open-lumen-authoring.luau",
+      "phase": "P4",
+      "why": "belongs to the Lumen Isles experience"
+    },
+    {
+      "from": "scripts/check-api-base.mjs",
+      "to": "scripts/checks/check-api-base.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-app-bundle.mjs",
+      "to": "scripts/checks/check-app-bundle.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-asset-wall.mjs",
+      "to": "scripts/checks/check-asset-wall.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-backlog.mjs",
+      "to": "scripts/checks/check-backlog.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-ci-references.mjs",
+      "to": "scripts/checks/check-ci-references.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-committed-imports.mjs",
+      "to": "scripts/checks/check-committed-imports.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-copy.mjs",
+      "to": "scripts/checks/check-copy.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-credit-figures.mjs",
+      "to": "scripts/checks/check-credit-figures.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-deadends.mjs",
+      "to": "scripts/checks/check-deadends.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-dispositions.mjs",
+      "to": "scripts/checks/check-dispositions.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-escape-hatches.mjs",
+      "to": "scripts/checks/check-escape-hatches.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-landing-budget.mjs",
+      "to": "scripts/checks/check-landing-budget.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-module-resolution.mjs",
+      "to": "scripts/checks/check-module-resolution.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-offer.mjs",
+      "to": "scripts/checks/check-offer.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-pixels.mjs",
+      "to": "scripts/checks/check-pixels.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-proof-figures.mjs",
+      "to": "scripts/checks/check-proof-figures.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-rebrand.mjs",
+      "to": "scripts/checks/check-rebrand.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-resolution.mjs",
+      "to": "scripts/checks/check-resolution.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-schema-drift.mjs",
+      "to": "scripts/checks/check-schema-drift.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-site-links.mjs",
+      "to": "scripts/checks/check-site-links.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-site-semantics.mjs",
+      "to": "scripts/checks/check-site-semantics.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-template-freshness.mjs",
+      "to": "scripts/checks/check-template-freshness.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-unstyled-classes.mjs",
+      "to": "scripts/checks/check-unstyled-classes.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/check-workspace-coverage.mjs",
+      "to": "scripts/checks/check-workspace-coverage.mjs",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/secret-scan.py",
+      "to": "scripts/checks/secret-scan.py",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/test_secret_scan.py",
+      "to": "scripts/checks/test_secret_scan.py",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/inspect-plugin-build.py",
+      "to": "scripts/checks/inspect-plugin-build.py",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/known-exposures.json",
+      "to": "scripts/checks/known-exposures.json",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/known-fixtures.json",
+      "to": "scripts/checks/known-fixtures.json",
+      "phase": "P4",
+      "why": "checks CI runs, and the secret scanner with its registers"
+    },
+    {
+      "from": "scripts/build-chunk-witness.mjs",
+      "to": "scripts/build/build-chunk-witness.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/build-module-embeddings.mjs",
+      "to": "scripts/build/build-module-embeddings.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/build-ui-construction.mjs",
+      "to": "scripts/build/build-ui-construction.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/build-verified-modules.mjs",
+      "to": "scripts/build/build-verified-modules.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/rebuild-ui-embeddings-local.mjs",
+      "to": "scripts/build/rebuild-ui-embeddings-local.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/gen-components.mjs",
+      "to": "scripts/build/gen-components.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/curate-templates.mjs",
+      "to": "scripts/build/curate-templates.mjs",
+      "phase": "P4",
+      "why": "generators of committed data"
+    },
+    {
+      "from": "scripts/harvest-hf.mjs",
+      "to": "scripts/harvest/harvest-hf.mjs",
+      "phase": "P4",
+      "why": "corpus harvesters"
+    },
+    {
+      "from": "scripts/harvest-templates.mjs",
+      "to": "scripts/harvest/harvest-templates.mjs",
+      "phase": "P4",
+      "why": "corpus harvesters"
+    },
+    {
+      "from": "scripts/ingest-owner-corpus.mjs",
+      "to": "scripts/harvest/ingest-owner-corpus.mjs",
+      "phase": "P4",
+      "why": "corpus harvesters"
+    },
+    {
+      "from": "scripts/probe-kit-pins.mjs",
+      "to": "scripts/harvest/probe-kit-pins.mjs",
+      "phase": "P4",
+      "why": "corpus harvesters"
+    }
+  ],
+  "symlinks": [
+    {
+      "path": ".agents/skills/rbxai-working-rules/SKILL.md",
+      "target": "../../../.claude/skills/rbxai-working-rules/SKILL.md",
+      "phase": "P1",
+      "why": "was a copy that differed only by a banner"
+    }
+  ],
+  "refEdits": [
+    {
+      "file": "scripts/owner-dashboard/cc/media.mjs",
+      "phase": "P1",
+      "find": "  'apps/site/\\.qa/',\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "the .qa folders are gone",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/media.mjs",
+      "phase": "P1",
+      "find": "  'apps/web/\\.qa/',\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "the .qa folders are gone",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/platforms/design-history.mjs",
+      "phase": "P1",
+      "find": "  \\{ dir: 'apps/site/\\.qa'[^\\n]*\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "the .qa folders are gone",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/platforms/design-history.mjs",
+      "phase": "P1",
+      "find": "  \\{ dir: 'apps/web/\\.qa'[^\\n]*\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "the .qa folders are gone",
+      "rerunOk": true
+    },
+    {
+      "file": "apps/worker/src/sound-design.ts",
+      "phase": "P1",
+      "find": "globalTypes\\.d\\.luau and apps/plugin/api-docs\\.json",
+      "replace": "globalTypes.d.luau and the API dump that used to sit beside it",
+      "expect": 1,
+      "why": "the API dump was removed",
+      "rerunOk": true
+    },
+    {
+      "file": ".gitignore",
+      "phase": "P1",
+      "find": "^!apps/plugin/release/\\*\\.rbxm\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "the file this un-ignored is gone",
+      "rerunOk": true,
+      "flags": "m"
+    },
+    {
+      "file": ".gitignore",
+      "phase": "P1",
+      "find": "#\\n# GRAPH_REPORT\\.md stays tracked: it is small, it is the part a person reads, and its \"built from\\n# commit\" line is what tells you the rest is stale\\.\\ngraphify-out/\\*\\n!graphify-out/GRAPH_REPORT\\.md\\n",
+      "replace": "graphify-out/\n",
+      "expect": 1,
+      "why": "GRAPH_REPORT.md is no longer tracked",
+      "rerunOk": true
+    },
+    {
+      "file": ".gitignore",
+      "phase": "P1",
+      "find": "^secrets/\\n",
+      "replace": "secrets/\n# Supabase CLI link scratch (project ref, CLI version); `supabase link` rewrites it.\nsupabase/.temp/\n",
+      "expect": 1,
+      "why": "supabase/.temp was tracked CLI scratch",
+      "rerunOk": true,
+      "flags": "m"
+    },
+    {
+      "file": "apps/apple-plugin/proof/ARTIFACTS.md",
+      "phase": "P1",
+      "find": "^\\| `release/apple-restore-engine-proof\\.rbxl` [^\\n]*\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "r3 file removed",
+      "rerunOk": true,
+      "flags": "m"
+    },
+    {
+      "file": "apps/apple-plugin/proof/ARTIFACTS.md",
+      "phase": "P1",
+      "find": "^\\| `release/apple-restore-engine-proof-r5-current\\.rbxl` [^\\n]*\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "r5 file removed",
+      "rerunOk": true,
+      "flags": "m"
+    },
+    {
+      "file": "apps/apple-plugin/proof/ARTIFACTS.md",
+      "phase": "P1",
+      "find": "The older post-r4 candidate `release/apple-restore-engine-proof-r5-current\\.rbxl` is now stale because\\n[^\\n]*\\n\\n",
+      "replace": "",
+      "expect": 1,
+      "why": "r5 file removed",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/gate-suite.mjs",
+      "phase": "P1",
+      "find": "harvest-hf, harvest-roblox-knowledge and\\n  //   harvest-templates feed",
+      "replace": "harvest-hf and\n  //   harvest-templates feed",
+      "expect": 1,
+      "why": "harvest-roblox-knowledge.mjs was removed",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/autonomy/README.md",
+      "phase": "P1",
+      "find": " tests/owner-autonomy-hooks\\.test\\.mjs",
+      "replace": "",
+      "expect": 1,
+      "why": "the vacuous hook test was removed",
+      "rerunOk": true
+    }
+  ],
+  "jsonEdits": [
+    {
+      "file": "scripts/owner-dashboard/cc/folders.json",
+      "phase": "P1",
+      "deleteKeys": [
+        "scripts/fixtures"
+      ],
+      "why": "scripts/fixtures was removed with the harvester test"
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/folders.json",
+      "phase": "P2",
+      "deleteKeys": [
+        "docs/superpowers",
+        "docs/corrections",
+        "docs/requirements"
+      ],
+      "why": "folders were removed"
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/folders.json",
+      "phase": "P2",
+      "sortKeys": true,
+      "why": "descriptions for the new docs folders",
+      "setKeys": {
+        "docs/architecture": {
+          "he": "תיעוד של איך המערכת בנויה: הרכבת סצנות, חוויית החשיבה, הלולאה החזותית, סקייל ותקציב, ושליפת ידע (בתת-תיקייה knowledge).",
+          "en": "How the system works: composition, thinking UX, the visual loop, scale and budget, and knowledge retrieval (in knowledge/).",
+          "docs": []
+        },
+        "docs/operations": {
+          "he": "תיעוד תפעולי: שחרור התוסף, בדיקות אבטחה, בדיקת עומס, מסמכי Apple OS, ורשימת הפעולות שעדיין מחכות לאישור שלך.",
+          "en": "Operations docs: releasing the plugin, security review, load test, the Apple OS notes, and the list of actions still waiting for the owner.",
+          "docs": []
+        },
+        "docs/training": {
+          "he": "ארכיון מחקר האימון והקורפוס. האימון בוטל ב-V3, והתיקייה נשמרת כהיסטוריה.",
+          "en": "Archived training and corpus research. Training was cancelled in V3; kept as history.",
+          "docs": []
+        }
+      }
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/folders.json",
+      "phase": "P1",
+      "sortKeys": true,
+      "why": "the reorganisation plan folder",
+      "setKeys": {
+        "scripts/reorg": {
+          "he": "תוכנית ארגון המאגר כנתונים (plan.json) ורשימת העדויות למחיקה. הסקריפט scripts/reorg-repo.mjs קורא אותם, ואפשר להריץ אותו שוב.",
+          "en": "The repository reorganisation as data (plan.json) and the evidence delete list. scripts/reorg-repo.mjs reads them and can be re-run.",
+          "docs": []
+        }
+      }
+    },
+    {
+      "file": "scripts/owner-dashboard/cc/folders.json",
+      "phase": "P3",
+      "sortKeys": true,
+      "why": "descriptions for platforms/",
+      "setKeys": {
+        "platforms": {
+          "he": "כל מה שקשור לשירותים חיצוניים, תיקייה לכל שירות: Cloudflare, Supabase, Sentry, Stripe, Discord, Roblox ו-GitHub. סקריפטי פריסה ובדיקה, שינויי מסד נתונים והסבר קצר איך כל שירות מחובר.",
+          "en": "Everything about external services, one folder per service: Cloudflare, Supabase, Sentry, Stripe, Discord, Roblox and GitHub. Deploy and verify scripts, database migrations, and a short note on how each is wired.",
+          "docs": []
+        },
+        "platforms/cloudflare": {
+          "he": "השרת והאחסון ב-Cloudflare: סקריפטי הפריסה והחזרה לאחור (deploy), ובדיקות מול השרת החי (verify).",
+          "en": "The worker and its storage on Cloudflare: deploy and rollback scripts (deploy) and checks against the live worker (verify).",
+          "docs": [
+            {
+              "label": "Wrangler",
+              "url": "https://developers.cloudflare.com/workers/wrangler/"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "allowedMentions": [
+    {
+      "glob": "^docs/(DECISIONS|FAILURES|CHECKPOINT-2026-09-20)\\.md$"
+    },
+    {
+      "glob": "^docs/autonomy/(DECISIONS|READING-NOTES-2026-10-01|RESEARCH-REPORT|OWNER_PROMPT)\\.md$"
+    },
+    {
+      "glob": "^docs/backlog/"
+    },
+    {
+      "glob": "^docs/(MISSION-PROMPT|MISSION-LEDGER|FINISH-REPORT|FINISH-REPORT-100|CHECKPOINT|BLOCKERS|PASS-STATE)\\.md$"
+    },
+    {
+      "glob": "^GATES\\.md$"
+    },
+    {
+      "glob": "^WORKLIST\\.md$"
+    },
+    {
+      "glob": "^graphify-out/"
+    },
+    {
+      "glob": "^scripts/autonomy-supervisor\\.py$"
+    }
+  ],
+  "foldersOrphanOk": [
+    "infra",
+    "supabase",
+    "graphify-out"
+  ]
+}
