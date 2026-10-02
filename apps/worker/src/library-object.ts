@@ -148,6 +148,36 @@ export function storeCandidates(query: string, limit = 3): LibraryCandidate[] {
 
 /** Where the numbered candidates stand: a row in front of the spawn. */
 export const LINEUP = 'game.Workspace.ApplePicks';
+
+/** Where along x a new thing may stand in front of the spawn: the middle first, then 8 studs at a time either side. */
+export const LANE_STEPS = [0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40, 48, -48, 56, -56, 64, -64];
+
+/**
+ * Whether an overlap answer (the parts in a box, at most 50 listed, and how many there were) holds anything that is in
+ * the way: a listed part outside `ignore` (the thing being replaced, the numbered row), or more than were listed. Pure.
+ */
+export function blocksLane(parts: unknown, count: unknown, ignore: string[]): boolean {
+  const listed = Array.isArray(parts) ? parts.filter((p): p is string => typeof p === 'string') : [];
+  if (Number(count ?? listed.length) > listed.length) return true;
+  const bare = (p: string) => p.replace(/^game\./, '');
+  const skip = ignore.map(bare);
+  return listed.some((p) => !skip.some((g) => bare(p) === g || bare(p).startsWith(`${g}.`)));
+}
+
+/**
+ * The x nearest the middle where a box `width` by `depth` centred at z stands on empty ground (nothing from the floor up
+ * to 40 studs), or 0 when there is none or Studio cannot say. A second object stood in the first one (test 4, the duck
+ * on the butter's stage, 2026-10-02).
+ */
+export async function freeLaneX(ctx: AgentCtx, width: number, depth: number, z: number, ignore: string[]): Promise<number> {
+  for (const x of LANE_STEPS) {
+    const r = await ctx.execStudioOp({ op: 'spatial_query', action: 'overlap', center: [x, 20.3, z], size: [width, 40, depth] }, 15_000).catch(() => null);
+    if (!r?.ok) return 0;
+    const d = r.data as { parts?: unknown; count?: unknown };
+    if (!blocksLane(d.parts, d.count, ignore)) return x;
+  }
+  return 0;
+}
 const PARTS_FOLDER = 'game.ServerStorage.AppleParts';
 const SLOTS: V3[] = [[-18, 0, -30], [0, 0, -30], [18, 0, -30]];
 const PICK_LENGTH = 12;
@@ -224,6 +254,10 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
   const copy = await librarySafetyCopy(ctx, 'before showing ready-made models');
   if ('error' in copy) return null;
   await clearLineup(ctx);
+  // The row goes where nothing stands (three 12-stud picks 18 apart, with room round them).
+  const own = objectNameOf(request);
+  const rowX = await freeLaneX(ctx, 58, 16, SLOTS[0]![2], [LINEUP, `game.Workspace.${own}`, `game.Workspace.${own}Stage`]);
+  const slots = SLOTS.map(([x, y, z]) => [x + rowX, y, z] as V3);
   const made = await ctx.execStudioOp({ op: 'create_instances', items: [
     { ...typed({ className: 'Model', name: 'ApplePicks' }), parent: 'game.Workspace' },
   ] }, 20_000);
@@ -236,7 +270,7 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
   const tags: InstanceSpecLite[] = [];
   for (const c of candidates) {
     const index = placed.length + 1;
-    const slot = SLOTS[index - 1]!;
+    const slot = slots[index - 1]!;
     const into = `${PARTS_FOLDER}.ApplePick${index}`;
     await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: `ApplePick${index}` }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
     let from = into;
@@ -365,7 +399,11 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
   const stageName = `game.Workspace.${name}Stage`;
   for (const path of [model, stageName]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const fit = libraryFit(before.size);
-  const at: V3 = [0, 2, -26];
+  // Beside what is already there, never in it: the size it will have (its long side along x) on its stage, with a gap.
+  const k = fit.length ? fit.length / Math.max(before.size[0], before.size[2], 0.1) : fit.height! / Math.max(before.size[1], 0.1);
+  const wide = Math.max(before.size[0], before.size[2]) * k, deep = Math.min(before.size[0], before.size[2]) * k;
+  const x = await freeLaneX(ctx, wide + 18, deep + 18, -26, [LINEUP, model, stageName]);
+  const at: V3 = [x, 2, -26];
   const copied = await ctx.execStudioOp({ op: 'place_copies', items: [{ from, parent: 'game.Workspace', name, at, ...fit, along: 'x' }] }, 60_000);
   if (!copied.ok) return { error: `The picked model could not be moved: ${String(copied.error ?? '').slice(0, 200)}` };
   await clearLineup(ctx);

@@ -154,3 +154,23 @@ test('the cool kit twinkles without hiding the model', () => {
   const bright = kit.match(/name: 'CoolLight'[^}]*Brightness: \{ t: 'number' as const, v: ([\d.]+) \}/);
   assert.ok(bright && Number(bright[1]) <= 1, 'a soft light');
 });
+
+// Test 4 (2026-10-02): "make me a rubber duck" with the butter already there stood candidate 2 inside the butter's
+// stage, and the pick would have landed in it too.
+test('a second object finds empty ground beside the first, never in it', () => {
+  assert.equal(L.LANE_STEPS[0], 0, 'the middle first');
+  assert.ok(L.LANE_STEPS.includes(32) && L.LANE_STEPS.includes(-32), 'both sides');
+  assert.equal(L.blocksLane([], 0, []), false, 'empty ground');
+  assert.equal(L.blocksLane(['game.Workspace.StickOfButterStage.Stage'], 1, []), true, 'the butter is in the way');
+  assert.equal(L.blocksLane(['Workspace.ApplePicks.Pick1.Part'], 1, ['game.Workspace.ApplePicks']), false, 'the row itself is not');
+  assert.equal(L.blocksLane(['game.Workspace.RubberDuck.Body'], 1, ['game.Workspace.RubberDuck']), false, 'nor the thing being remade');
+  assert.equal(L.blocksLane(['game.Workspace.RubberDuckStage.Rim'], 1, ['game.Workspace.RubberDuck']), true, 'a longer name is another thing');
+  assert.equal(L.blocksLane(Array(50).fill('game.Workspace.ApplePicks.P'), 51, ['game.Workspace.ApplePicks']), true, 'more than were listed');
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  const offer = src.slice(src.indexOf('export async function offerLibraryObjects'), src.indexOf('export interface PendingObjectChoice'));
+  const place = src.slice(src.indexOf('export async function placeChosenObject'), src.indexOf('export function playCheckReading'));
+  assert.ok(offer.indexOf('freeLaneX(') > 0 && offer.indexOf('freeLaneX(') < offer.indexOf("name: 'ApplePicks'"), 'the row looks for room before it stands up');
+  assert.ok(!/SLOTS\[index - 1\]/.test(offer), 'slots are moved to the free lane');
+  assert.ok(place.indexOf('freeLaneX(') > 0 && place.indexOf('freeLaneX(') < place.indexOf("op: 'place_copies'"), 'the pick looks for room before it moves');
+  assert.ok(!/const at: V3 = \[0, 2, -26\]/.test(place), 'never the fixed middle');
+});

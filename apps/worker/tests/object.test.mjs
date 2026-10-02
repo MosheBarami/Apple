@@ -1005,3 +1005,20 @@ test('a wrapper end hidden in the body comes out at its end, not under it (test 
   assert.equal(parts[1].at[1], 3, 'not pushed under'); assert.equal(parts[2].at[1], 3);
   assert.ok(parts[1].at[0] <= -15 && parts[2].at[0] >= 15, `${parts[1].at[0]} / ${parts[2].at[0]}: at the ends`);
 });
+
+// Test 4 (2026-10-02): a second object's counter pill was drawn on the first one's (both top left).
+test('each object counter gets its own spot on screen', () => {
+  const tree = { name: 'StarterGui', children: [
+    { name: 'StickOfButterHUD', class: 'ScreenGui', children: [{ name: 'TopLeft', children: [{ name: 'Counter' }] }] },
+    { name: 'GameHUD', class: 'ScreenGui', children: [{ name: 'Coins' }] },
+    { name: 'RubberDuckHUD', class: 'ScreenGui', children: [{ name: 'Top', children: [{ name: 'Counter' }] }] },
+  ] };
+  assert.deepEqual(O.objectScreens(tree), ['StickOfButterHUD', 'RubberDuckHUD'], 'object screens only, in order');
+  assert.deepEqual(O.objectScreens(null), []);
+  assert.equal(O.COUNTER_SPOTS[0], 'top-left', 'the first object keeps the old spot');
+  assert.equal(new Set(O.COUNTER_SPOTS).size, O.COUNTER_SPOTS.length, 'no two the same');
+  const src = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
+  const hud = src.slice(src.indexOf('export async function writeObjectHud'), src.indexOf('export async function buildObject'));
+  assert.ok(!/at: 'top-left'/.test(hud), 'the counter spot is chosen, not fixed');
+  assert.match(hud, /screens\.includes\(`\$\{name\}HUD`\) \? screens\.indexOf\(`\$\{name\}HUD`\)/, 'a remade object keeps its own spot');
+});

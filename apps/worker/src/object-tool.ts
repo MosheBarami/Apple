@@ -1141,16 +1141,37 @@ export async function groundAndSpawn(ctx: AgentCtx, studs: string[] | null): Pro
   if (studs) await ctx.execStudioOp(applySurfaceOp([...studs, 'game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']), 60_000).catch(() => undefined);
 }
 
+/** Where an object's counter pill sits: the first object's top left, the next ones along the top. */
+export const COUNTER_SPOTS = ['top-left', 'top', 'top-right', 'left', 'right'] as const;
+
+/** The names of the object screens in StarterGui (a ScreenGui named …HUD holding a Counter), in order. Pure. */
+export function objectScreens(root: unknown): string[] {
+  const kids = (root && typeof root === 'object' ? (root as { children?: unknown[] }).children : null) ?? [];
+  const holds = (n: unknown, want: string): boolean => {
+    const node = n as { name?: unknown; children?: unknown[] } | null;
+    return !!node && (node.name === want || (node.children ?? []).some((c) => holds(c, want)));
+  };
+  return kids.flatMap((k) => {
+    const node = k as { name?: unknown; class?: unknown; children?: unknown[] };
+    return typeof node.name === 'string' && /HUD$/.test(node.name) && node.class === 'ScreenGui' && (node.children ?? []).some((c) => holds(c, 'Counter')) ? [node.name] : [];
+  });
+}
+
 /**
  * An object's studded screen: one counter pill (the number with its caption) and a hint bar, and the LocalScript that
  * counts every move a player set off on the model named `name` (AppleAnimatePlayed). Merged into the screen, never
  * redrawn. Returns what went wrong, or null. Shared by build_object and a library object.
  */
 export async function writeObjectHud(ctx: AgentCtx, name: string, hud: { counter?: unknown; hint?: unknown; icon?: unknown }): Promise<string | null> {
+  // A second object's counter goes beside the first one's, never on it (test 4, 2026-10-02): its own place among the
+  // object screens already there, in the order they were made.
+  const gui = await ctx.execStudioOp({ op: 'get_tree', root: 'game.StarterGui', maxDepth: 4, maxNodes: 400 }, 20_000).catch(() => null);
+  const screens = gui?.ok ? objectScreens((gui.data as { root?: unknown }).root) : [];
+  const at = COUNTER_SPOTS[(screens.includes(`${name}HUD`) ? screens.indexOf(`${name}HUD`) : screens.length) % COUNTER_SPOTS.length]!;
   const screen = studdedScreen({ name: `${name}HUD`, pieces: [
     // One pill: the number with its caption inside (owner, 2026-10-01: a separate "Keys pressed" pill looked like a
     // button that did nothing).
-    ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const, caption: String(hud.counter).slice(0, 24) }] : []),
+    ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at, caption: String(hud.counter).slice(0, 24) }] : []),
     ...(hud.hint ? [{ kind: 'bar' as const, name: 'Hint', text: String(hud.hint).slice(0, 60), colour: 'yellow' as const, at: 'bottom' as const }] : []),
   ] });
   // Merged, never redrawn: a rebuilt object keeps whatever was added to its screen since (the upgrades, a shop).
