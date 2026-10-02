@@ -288,3 +288,18 @@ test('the starter goes on the tile nearest the spawn, and a flat machine stands 
   assert.match(boot, /if size\.Y < s\.width \* 0\.25 then[\s\S]{0,200}plinth\.Name = "Plinth"/);
   assert.ok(readFileSync(join(WORKER, 'src', 'components.generated.ts'), 'utf8').includes('PlinthGlow'), 'the bundle is regenerated');
 });
+
+test('a laundry tycoon is a Tycoon with a full shop of laundry machines, named for what they are', () => {
+  // Owner's test, 2026-10-02: "make me a laundry tycoon make no mistakes" became "Laundry Simulator" selling one faucet.
+  assert.equal(P.genreWord('make me a laundry tycoon make no mistakes'), 'Tycoon');
+  assert.equal(P.genreWord('a keyboard simulator'), 'Simulator');
+  assert.equal(P.plotSimRecipe('make me a laundry tycoon', 1, { library: [], hubProps: [], hasComponents: false }).title, 'Laundry Tycoon');
+  assert.equal(P.pieceName('/Workspace/WashingMachine'), 'Washing Machine');
+  assert.equal(P.pieceName('/SavedGameModules/Workspace/HH washing machine'), 'Washing Machine');
+  // One library model and no hero: it comes again in tier colours, so the shop has four things to buy.
+  const m = P.machineLadder('laundry', undefined, [{ game: 'g', path: '/Workspace/WashingMachine' }]);
+  assert.equal(m.length, 4);
+  assert.equal(m[0].name, 'Mega Washing Machine');
+  assert.ok(m.slice(1).every((x) => x.from === `ServerStorage.AppleParts.Machine_${m[0].id}` && x.hue !== undefined), 'recoloured copies of the library model');
+  assert.ok(m.every((x, i) => i === 0 || x.price > m[i - 1].price), 'each dearer than the last');
+});

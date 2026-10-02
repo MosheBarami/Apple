@@ -74,6 +74,18 @@ export function subjectOf(text: string | undefined, hero?: string): string {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** The kind of game the request names: "a laundry tycoon" is a Tycoon, not a Simulator (owner's test, 2026-10-02). Pure. */
+export function genreWord(text: string | undefined): string {
+  const m = /\b(tycoon|factory|clicker|simulator)\b/i.exec(String(text ?? ''));
+  return m ? cap(m[1]!.toLowerCase()) : 'Simulator';
+}
+
+/** A library piece's own name, read: "WashingMachine" -> "Washing Machine", "HH washing machine" -> "Washing Machine". Pure. */
+export function pieceName(path: string): string {
+  return (path.split('/').pop() ?? '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[^A-Za-z ]+/g, ' ').trim().split(/\s+/)
+    .filter((w, i, all) => !(i === 0 && all.length > 1 && w.length <= 2 && w === w.toUpperCase())).filter(Boolean).slice(0, 3).map(cap).join(' ');
+}
 const TIER_NAMES = ['Classic', 'Neon', 'Ice', 'Gold', 'Lava', 'Galaxy'];
 const TIER_HUES = [0, 0.83, 0.55, 0.13, 0.02, 0.72];
 const TIER_COLOURS: StudColour[] = ['blue', 'pink', 'blue', 'yellow', 'red', 'purple'];
@@ -97,11 +109,19 @@ export function machineLadder(subject: string, hero: string | undefined, library
   if (hero) { heroTier(0); for (const i of middle) heroTier(i); }
   library.slice(0, 6 - heroTiers).forEach((ref, k) => {
     // Named for what it is (owner's play test, 2026-10-01: a grand piano was sold as "Royal Keyboard").
-    const own = (ref.path.split('/').pop() ?? '').replace(/[^A-Za-z ]+/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 3).map(cap).join(' ');
+    const own = pieceName(ref.path);
     out.push({ id: `${cap(subject)}Lib${k + 1}`, name: `${['Mega', 'Ultra', 'Royal', 'Mythic', 'Cosmic', 'Titan'][k]} ${own.length >= 3 && own.length <= 20 ? own : cap(subject)}`, ...tier(out.length),
       ref, icon: '✨', colour: TIER_COLOURS[(out.length) % TIER_COLOURS.length] });
   });
   if (hero) heroTier(3);
+  // A short ladder is a shop with one thing in it (owner's test, 2026-10-02: a laundry tycoon sold one faucet): with no
+  // hero, the best library model comes again in tier colours until there are four.
+  const first = out.find((m) => m.ref);
+  for (let i = 1; !hero && first && out.length < 4 && i < TIER_NAMES.length; i++) {
+    const own = pieceName(first.ref!.path);
+    out.push({ id: `${cap(subject)}${TIER_NAMES[i]}`, name: `${TIER_NAMES[i]} ${own.length >= 3 && own.length <= 20 ? own : cap(subject)}`, ...tier(out.length),
+      perPress: 1 + out.length, from: `ServerStorage.AppleParts.Machine_${first.id}`, hue: TIER_HUES[i], icon: '✨', colour: TIER_COLOURS[i] });
+  }
   return out;
 }
 
@@ -251,7 +271,7 @@ export function heroSpot(recipe: PlotSimRecipe): [number, number] {
 export function plotSimRecipe(idea: string, seed: number, found: { hero?: string; library: LibRef[]; hubProps: PlotSimRecipe['hubProps']; hasComponents: boolean }): PlotSimRecipe {
   const subject = subjectOf(idea, found.hero);
   return {
-    kind: 'plot-sim', title: `${cap(subject)} Simulator`, subject, seed, players: playersIn(idea), currency: 'Coins',
+    kind: 'plot-sim', title: `${cap(subject)} ${genreWord(idea)}`, subject, seed, players: playersIn(idea), currency: 'Coins',
     ...(found.hero ? { hero: found.hero } : {}),
     machines: machineLadder(subject, found.hero, found.library),
     hubProps: found.hubProps,

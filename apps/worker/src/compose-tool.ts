@@ -11,7 +11,7 @@ import { PLAY_TEST_STOP, runSteps } from './compose-run';
 import { orchardRecipe } from './recipes';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
 import { userWantsOwnSurface } from './surfaces';
-import { isPlotSimRequest, plotSimRecipe, plotSimSteps, heroSpot, type PlotSimRecipe } from './compose-plotsim';
+import { isPlotSimRequest, pieceName, plotSimRecipe, plotSimSteps, heroSpot, type PlotSimRecipe } from './compose-plotsim';
 import type { LibRef } from './compose';
 
 export type IdeaPlan = { recipe: Recipe; template: string } | { error: string };
@@ -115,10 +115,32 @@ const KIN: Record<string, string[]> = {
   computer: ['laptop', 'monitor', 'console'], drill: ['excavator', 'digger', 'miner'], oven: ['stove', 'grill', 'fryer'],
 };
 
+/**
+ * A subject that is a trade, not a thing, is searched as the things it runs on (owner's test, 2026-10-02: "laundry"
+ * found one faucet; the library has washing machines, dryers and washers).
+ */
+const THINGS: Record<string, string[]> = {
+  laundry: ['washing machine', 'dryer', 'washer'], bakery: ['oven', 'bread', 'cake'], pizza: ['pizza oven', 'pizza'],
+  farm: ['tractor', 'barn', 'silo'], mining: ['drill', 'excavator', 'minecart'], coffee: ['coffee machine', 'espresso'],
+};
+
 /** Library models of the subject, then of its kin, one per source game: different looks for the machine ladder. */
 async function subjectModels(ctx: AgentCtx, subject: string, limit: number): Promise<LibRef[]> {
   // Half the subject itself, half its kin, then the subject again for what is left: the library's keyboards are four
   // flat desk props, its grand pianos are the machines a player wants to buy (owner's screenshots, 2026-10-01).
+  const things = THINGS[subject];
+  if (things) {
+    // Small pieces count here (a Bloxburg dryer is 9 parts): they are fitted to a plot tile either way.
+    const out: LibRef[] = [];
+    // The piece is the thing itself, not a thing named after it ("Dryer Chair" is a chair).
+    const isThe = (t: string, path: string) => pieceName(path).toLowerCase().split(' ').pop() === t.split(' ').pop();
+    for (const t of things) {
+      for (const r of await libraryModels(ctx, t, limit, 8)) {
+        if (out.length < limit && isThe(t, r.path) && !out.some((o) => o.game === r.game && o.path === r.path)) out.push(r);
+      }
+    }
+    if (out.length) return out;
+  }
   const own = await libraryModels(ctx, subject, limit);
   const kin = KIN[subject] ?? [];
   const out = own.slice(0, kin.length ? Math.ceil(limit / 2) : limit);
@@ -230,9 +252,11 @@ async function composePlotSim(ctx: AgentCtx, idea: string) {
     ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`
     // Short lines a player reads at a glance (round 8 of the owner's test 1: one long sentence with two brackets in a row).
     : [
-      `Your ${recipe.subject} is now **${recipe.title}**: a hub${recipe.hero ? ` with your ${recipe.subject} in the middle` : ''} and ${recipe.players} plots around it, one for each player.`,
+      recipe.hero
+        ? `Your ${recipe.subject} is now **${recipe.title}**: a hub with your ${recipe.subject} in the middle and ${recipe.players} plots around it, one for each player.`
+        : `**${recipe.title}** is ready: a hub and ${recipe.players} plots around it, one for each player.`,
       `- Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning Coins.`,
-      `- The Shop (button, or the SHOP pad in the hub) sells ${recipe.machines.length} ${recipe.subject}s: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second; pressing your own pays extra.`,
+      `- The Shop (button, or the SHOP pad in the hub) sells ${recipe.machines.length} machine${recipe.machines.length === 1 ? '' : 's'}: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second; pressing your own pays extra.`,
       `- Upgrades make every press and every second worth more; Rebirth starts you over with a permanent boost.`,
     ].join('\n');
   return {
