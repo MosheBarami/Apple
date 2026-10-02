@@ -221,6 +221,8 @@ export const TOOL = {
   insert_sound: { kind: 'building', label: 'Added a sound', live: 'Adding a sound' },
   insert_vfx: { kind: 'building', label: 'Added a visual effect', live: 'Adding a visual effect' },
   insert_library_model: { kind: 'building', label: 'Added a model from the library', live: 'Adding a model' },
+  preview_library_models: { kind: 'searching_assets', label: 'Looked at ready-made models', live: 'Looking at ready-made models' },
+  dress_object: { kind: 'building', label: 'Added extras to it', live: 'Adding extras' },
   insert_owner_component: { kind: 'building', label: 'Added a piece from the game library', live: 'Adding a piece' },
   query_owner_catalog: { kind: 'searching_assets', label: 'Looked in the game library', live: 'Finding the right pieces' },
   browse_owner_library: { kind: 'searching_assets', label: 'Looked in your game library', live: 'Looking through your games' },
