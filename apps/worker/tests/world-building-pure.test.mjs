@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { planCopies, sampleAlong, sampleWithin, seeded, MAX_COPIES } from '../src/placement.ts';
 import { applyOrigin, readOrigin, sharedParent } from '../src/local-space.ts';
-import { expandTerrainPath, TERRAIN_PATH_OP_CAP, TERRAIN_VOXEL_CAP } from '../src/terrain-path.ts';
+import { expandTerrainPath, TERRAIN_PATH_OP_CAP, TERRAIN_VOXEL_CAP, WATER_LEVEL_DEFAULT } from '../src/terrain-path.ts';
 
 const LIMIT = 100_000;
 const near = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) <= eps, `${a} is not within ${eps} of ${b}`);
@@ -114,6 +114,20 @@ test('a local-space batch is turned about the vertical and moved: world position
   assert.deepEqual(arch[0].props.Position.v, [-6, 4, 0], 'the input must not be mutated');
 });
 
+test('a point with a non-zero local z, turned by a yaw that is not a quarter turn, lands where the rotation matrix puts it (both terms of x\' and z\')', () => {
+  // The quarter-turn cases above leave one term of each coordinate multiplied by zero, so a sign error in the other cannot show.
+  // Ry(30): x' = cos*x + sin*z, z' = -sin*x + cos*z. Local (3, 1, 5): x' = 2.5981 + 2.5 = 5.0981, z' = -1.5 + 4.3301 = 2.8301.
+  const out = applyOrigin([part('P', { Position: v3([3, 1, 5]) })], { at: [10, 2, -20], yaw: 30 });
+  const [x, y, z] = out.items[0].props.Position.v;
+  near(x, 10 + 5.0981, 1e-3); near(y, 3); near(z, -20 + 2.8301, 1e-3);
+  // A point on the local z axis only: yaw 90 sends it to +x (x' = z), and yaw -90 to -x.
+  assert.deepEqual(applyOrigin([part('Z', { Position: v3([0, 0, 5]) })], { at: [0, 0, 0], yaw: 90 }).items[0].props.Position.v, [5, 0, 0]);
+  assert.deepEqual(applyOrigin([part('Z', { Position: v3([0, 0, 5]) })], { at: [0, 0, 0], yaw: -90 }).items[0].props.Position.v, [-5, 0, 0]);
+  // A CFrame with a local z goes through the same point(): the position agrees with the plain Position form.
+  const cf = applyOrigin([part('C', { CFrame: { t: 'CFrame', v: [3, 1, 5, 1, 0, 0, 0, 1, 0, 0, 0, 1] } })], { at: [10, 2, -20], yaw: 30 }).items[0].props.CFrame.v;
+  near(cf[0], 10 + 5.0981, 1e-3); near(cf[2], -20 + 2.8301, 1e-3);
+});
+
 test('with no yaw only the position moves; a part with no Position stands at the origin; Orientation wraps', () => {
   const out = applyOrigin([part('Plain'), part('Turned', { Orientation: v3([10, 170, 0]) })], { at: [5, 0, 5] });
   assert.deepEqual(out.items[0].props.Position.v, [5, 0, 5]);
@@ -183,6 +197,22 @@ test('water carves everything first, then fills the lower three quarters; a mate
   assert.deepEqual(water.operations[n].center, [0, 8 + 4.5, 0]);
   const road = expandTerrainPath({ points: [[0, 5, 0], [0, 5, 30]], width: 12, depth: 4, fill: 'material', material: 'Enum.Material.Sand' });
   assert.equal(road.operations.every((o) => o.material === 'Enum.Material.Sand'), true);
+});
+
+test('waterLevel chooses how much of the depth the water fills (default 0.75); 0 leaves the channel dry; a bad value is refused by name', () => {
+  const line = { points: [[0, 20, 0], [40, 20, 0]], width: 8, depth: 12, fill: 'Water' };
+  const half = expandTerrainPath({ ...line, waterLevel: 0.5 });
+  const n = half.operations.length / 2;
+  assert.deepEqual(half.operations[n].size, [8, 6, 8]);
+  assert.deepEqual(half.operations[n].center, [0, 8 + 3, 0]);
+  const full = expandTerrainPath({ ...line, waterLevel: 1 });
+  assert.deepEqual(full.operations[n].size, [8, 12, 8]);
+  assert.deepEqual(expandTerrainPath({ ...line, waterLevel: WATER_LEVEL_DEFAULT }).operations, expandTerrainPath(line).operations, 'the default is the old fixed three quarters');
+  const dry = expandTerrainPath({ ...line, waterLevel: 0 });
+  assert.equal(dry.operations.length, n, 'level 0 lays no water blocks');
+  assert.equal(dry.operations.every((o) => o.material === 'Enum.Material.Air'), true);
+  for (const bad of [1.5, -0.1, 'half', NaN]) assert.match(expandTerrainPath({ ...line, waterLevel: bad }).error ?? 'accepted', /waterLevel must be 0-1/, String(bad));
+  assert.match(expandTerrainPath({ ...line, fill: 'Air', waterLevel: 0.5 }).error ?? 'accepted', /applies only with fill "Water"/);
 });
 
 test('a path that is too long, too big or malformed is refused with the number', () => {
