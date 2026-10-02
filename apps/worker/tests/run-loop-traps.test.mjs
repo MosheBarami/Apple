@@ -706,6 +706,81 @@ test('A PROVIDER-CUT TOOL CALL SAYS WHY AND HOW MUCH TO SEND, instead of a bare 
   } finally { h.stop(); }
 });
 
+// ================================================= the loop guard names what is repeating ===
+
+const bulk = (target, value) => ['set_properties_bulk', { targets: [`game.Workspace.${target}`], props: { Transparency: { t: 'number', v: value } } }];
+const bulkAnswer = (op) => (op.op === 'set_props_bulk' ? { ok: true, data: { count: 1 } } : { ok: true, data: {} });
+// A plugin that reports the ops these runs use (a plugin that reports nothing is not offered tools it cannot be shown to support).
+const loopCaps = { schema: 'golem.studio-ops.v1', operations: [...new Set(['set_props_bulk', 'get_tree', 'snapshot', 'list_scripts', ...(W.TOOLS.audit_build.studioOps ?? [])])].map((op) => ({ op, status: 'supported' })) };
+const userNotes = (h) => h.store.get('agent').llm.filter((m) => m.role === 'user' && !m.pinned).map((m) => m.content);
+
+test('TWELVE EDITS TO TWELVE DIFFERENT SETS ARE NOT "THE SAME THING TWELVE TIMES": the run is not ended by the guard', async () => {
+  const h = await makeSession({ connected: true, capabilities: loopCaps, answerOp: bulkAnswer, responses: [...Array.from({ length: 12 }, (_, i) => calls(bulk(`Wall${i}`, 0.5))), answer({ text: 'Done with the walls.' })] });
+  try {
+    await start(h, { text: 'make the garden walls see-through' });
+    for (let i = 0; i < 13 && !lastEnd(h); i++) await h.session.alarm();
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, /kept changing the same thing over and over/, 'the loop guard ended twelve different edits as one');
+    assert.equal(h.ops.filter((o) => o.op === 'set_props_bulk').length, 12, 'control: not every edit reached Studio');
+    assert.ok(!userNotes(h).some((n) => /times in a row/.test(n)), 'a retune nudge was sent for work on twelve different targets');
+  } finally { h.stop(); }
+});
+
+test('TWELVE EDITS TO ONE SET: the nudge at six names the tool, the target, the property and the count; the stop at twelve says so on the trace', async () => {
+  const h = await makeSession({ connected: true, capabilities: loopCaps, answerOp: bulkAnswer, responses: Array.from({ length: 12 }, (_, i) => calls(bulk('Wall1', (i + 1) / 20))) });
+  try {
+    await start(h, { text: 'make the garden wall see-through' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    const nudges = userNotes(h).filter((n) => /times in a row/.test(n));
+    assert.equal(nudges.length, 1, 'the retune nudge must be sent once, at the sixth change');
+    assert.match(nudges[0], /^\[Harness note, not the user\] You have applied set_properties_bulk to "1 target\(s\): game\.Workspace\.Wall1 set Transparency" \(setting Transparency\) 6 times in a row, and it succeeded each time/);
+    assert.match(nudges[0], /switch tool, target or approach/);
+    const end = lastEnd(h);
+    assert.equal(end?.stopReason, 'incomplete', 'twelve changes to one target did not end the run');
+    assert.match(assistantRow(h).content, /kept changing the same thing over and over/, 'the person\'s sentence changed');
+    const trace = JSON.parse(h.sql.messages.find((m) => m.role === 'assistant').tool_trace ?? '[]');
+    assert.match(trace.at(-1).summary, /set_properties_bulk on 1 target\(s\): game\.Workspace\.Wall1 set Transparency, 12 times in a row/, 'the owner\'s trace row does not say what repeated');
+  } finally { h.stop(); }
+});
+
+test('ALTERNATING CHECKS AND EDITS: the nudge adds that checking between edits did not change the outcome', async () => {
+  const h = await makeSession({
+    connected: true,
+    capabilities: loopCaps,
+    answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : bulkAnswer(op)),
+    responses: Array.from({ length: 12 }, (_, i) => (i % 2 === 0 ? calls(bulk('Wall1', (i + 2) / 30)) : calls(['audit_build', {}]))),
+  });
+  try {
+    await start(h, { text: 'make the garden wall see-through' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    const nudge = userNotes(h).find((n) => /times in a row/.test(n));
+    assert.ok(nudge, 'six edits with checks between them never produced the nudge');
+    assert.match(nudge, /Checking between edits did not change the outcome\./);
+  } finally { h.stop(); }
+});
+
+test('A DUPLICATE-STREAK STOP AND A READ-STALL STOP NAME WHAT REPEATED ON THE OWNER\'S TRACE, and the person\'s sentence stays as it was', async () => {
+  const same = () => calls(['get_project_tree', { root: 'game.Workspace' }]);
+  const dup = await makeSession({ connected: true, answerOp: emptyTree, responses: [...Array.from({ length: 12 }, same), answer({ text: 'Done.' })] });
+  const stall = await makeSession({ connected: true, answerOp: emptyTree, responses: [...Array.from({ length: 24 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])), answer({ text: 'Done.' })] });
+  const traceOf = (h) => JSON.parse(h.sql.messages.find((m) => m.role === 'assistant').tool_trace ?? '[]');
+  try {
+    await start(dup, { text: 'make a coin game' });
+    for (let i = 0; i < 20 && !lastEnd(dup); i++) await dup.session.alarm();
+    assert.equal(lastEnd(dup)?.stopReason, 'incomplete', 'the fixture never reached the duplicate-streak bound');
+    assert.match(traceOf(dup).at(-1).summary, /stopped: 3 steps in a row repeated get_project_tree on game\.Workspace/);
+    assert.match(assistantRow(dup).content, /kept doing the same thing again and again/, 'the person\'s sentence changed');
+
+    await start(stall, { text: 'make a coin game' });
+    for (let i = 0; i < 30 && !lastEnd(stall); i++) await stall.session.alarm();
+    assert.equal(lastEnd(stall)?.stopReason, 'incomplete', 'the fixture never reached the read-stall bound');
+    const last = traceOf(stall).at(-1).summary;
+    assert.match(last, /stopped after 20 reads with no change; last reads: /);
+    assert.match(last, /Look\d+/, 'the last reads are not named');
+    assert.match(assistantRow(stall).content, /kept looking at your place instead of building/, 'the person\'s sentence changed');
+  } finally { dup.stop(); stall.stop(); }
+});
+
 const OWES_WORK_NUDGE = /You have not changed the project yet/;
 
 test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHANGE IT — it ends, and says why', async () => {

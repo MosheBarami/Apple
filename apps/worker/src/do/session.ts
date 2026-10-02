@@ -91,12 +91,12 @@ import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
-import { aim, trimTranscriptReport } from '../transcript';
+import { aim, changedProps, trimTranscriptReport } from '../transcript';
 import type { LibraryRun } from '../library-run';
 import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, pushHarness, buildNudge, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, pushHarness, buildNudge, retuneNudge, READ_STALL_LIMIT, alternatesWithChecks, type LastChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -170,6 +170,17 @@ import {
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
+
+/** Say, on the last persisted trace row, why the run was stopped (the owner reads the trace; the person reads the note). Bounded. */
+function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): void {
+  const last = agent.trace[agent.trace.length - 1];
+  if (last) last.summary = `${last.summary} · ${text}`.slice(0, 400);
+}
+
+/** The last few trace rows, as the rows describe themselves, for the note that a read-only stall ended the run. */
+function lastReads(trace: readonly ToolTraceEntry[], n: number): string {
+  return trace.slice(-n).map((t) => t.summary.replace(/\s+/g, ' ').slice(0, 80)).join('; ') || 'none';
+}
 
 /** Tool calls run per step; the prompt tells the model the same number. */
 const MAX_CALLS_PER_STEP = 4;
@@ -392,6 +403,10 @@ interface AgentState {
   partSteers?: { missing: number; steers: number };
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
+  /** The change the loop guard is counting right now, so its nudge and its stop can say WHAT repeated. */
+  lastChange?: LastChange;
+  /** The last call refused as a duplicate, so a duplicate-streak stop can name it. */
+  lastDuplicate?: { tool: string; aim: string };
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
   kitZone?: KitZone;
   /** Consecutive terrain writes since the last other change (terrain-streak.ts; round 6 made 951). */
@@ -4820,6 +4835,7 @@ export class SessionDO extends DurableObject<Env> {
       if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES && !failedAlike)) {
         // the model is looping — refuse the duplicate and steer it back to the work
         duplicatesThisStep += 1;
+        agent.lastDuplicate = { tool: call.name, aim: aim(call.arguments) };
         const planNext = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
         const planHint = planNext ? ` Your plan's next step is "${planNext.title}" (${planNext.tool}); do that now.` : '';
         const steer =
@@ -4991,8 +5007,12 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
-        const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
+        const changeAim = aim(call.arguments);
+        const retune = afterChange(agent.changesByTarget, `${call.name} ${changeAim}`);
         agent.changesByTarget = retune.counts;
+        agent.lastChange = { tool: call.name, aim: changeAim, props: changedProps(call.arguments), count: retune.count };
+        // The owner reads the persisted trace: say WHAT repeated on the row that tripped the guard, not only that something did.
+        if (retune.action !== 'none') entry.summary = `${entry.summary} · ${call.name} on ${changeAim || 'the same target'}, ${retune.count} times in a row`.slice(0, 300);
         agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
         if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
       }
@@ -5273,6 +5293,9 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
         : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
       agent.terminalNote = note;
+      // What was repeated, on the row the owner reads (the sentence above is for the person, and stays as it was).
+      const dup = agent.lastDuplicate;
+      annotateLastTrace(agent, `stopped: ${agent.duplicateStreak ?? MAX_DUPLICATE_STREAK} steps in a row repeated${dup ? ` ${dup.tool}${dup.aim ? ` on ${dup.aim}` : ''}` : ' a call already made'}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5327,6 +5350,7 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
         : 'Apple stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
       agent.terminalNote = note;
+      annotateLastTrace(agent, `stopped after ${agent.readsSinceChange ?? READ_STALL_LIMIT} reads with no change; last reads: ${lastReads(agent.trace, 3)}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5346,8 +5370,11 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (retuneThisStep === 'nudge') {
-      pushHarness(agent.llm, 'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
-          'finish anything else the request still needs, and then reply to the user.');
+      const last = agent.lastChange;
+      const isCheck = (name: string) => VERIFIERS.has(name) || name === 'render_view' || name.startsWith('check_');
+      pushHarness(agent.llm, last
+        ? retuneNudge(last, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name), alternatesWithChecks(agent.trace, last.tool, last.count, isCheck))
+        : 'You have changed the same thing several times in a row. Switch tool, target or approach, or keep the best version you have and reply to the user.');
     }
     if (idle.action === 'build') {
       pushHarness(agent.llm, 'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +

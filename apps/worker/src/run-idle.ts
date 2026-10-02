@@ -131,10 +131,50 @@ export const RETUNE_LIMIT = 12;
 
 export type RetuneAction = 'none' | 'nudge' | 'finish';
 
-export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction } {
+export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction; count: number } {
   const n = (counts?.[key] ?? 0) + 1;
   const action: RetuneAction = n >= RETUNE_LIMIT ? 'finish' : n === RETUNE_NUDGE ? 'nudge' : 'none';
-  return { counts: { [key]: n }, action };
+  return { counts: { [key]: n }, action, count: n };
+}
+
+/** What repeated: the change the loop guard counted, kept on the run so the nudge and the stop can name it. */
+export interface LastChange {
+  tool: string;
+  aim: string;
+  props: string[];
+  count: number;
+}
+
+/**
+ * Did checks sit between the repeated edits (an audit, a render, a check_*)? Looks back over the entries that cover the last
+ * `count` changes by `tool` and asks whether at least half of those gaps held a check. The measured shape (canyon map,
+ * 2026-10-02): ten alternating "Checking the build" and "Tweaking lots of things at once" steps ended by the loop guard.
+ */
+export function alternatesWithChecks(trace: readonly { tool: string }[], tool: string, count: number, isCheck: (name: string) => boolean): boolean {
+  if (count < 3) return false;
+  let seen = 0;
+  let checks = 0;
+  for (let i = trace.length - 1; i >= 0 && seen < count; i--) {
+    const t = trace[i]!.tool;
+    if (t === tool) seen += 1;
+    else if (isCheck(t)) checks += 1;
+  }
+  return seen >= count && checks >= Math.ceil((count - 1) / 2);
+}
+
+/**
+ * The note at the nudge: which tool, on what, setting what, how many times in a row, and what to do about it. It is written
+ * into a user-role turn, so the tool is held to the registry's own names and every word the model's arguments supplied goes
+ * through fenceForQuote, as in buildNudge.
+ */
+export function retuneNudge(c: LastChange, isTool: (name: string) => boolean, alternating: boolean): string {
+  const tool = isTool(c.tool) ? c.tool : 'a tool';
+  const target = fenceForQuote(c.aim).slice(0, 120);
+  const props = c.props.map((p) => fenceForQuote(p)).filter(Boolean).slice(0, 8);
+  return `You have applied ${tool}${target ? ` to "${target}"` : ''}${props.length ? ` (setting ${props.join(', ')})` : ''} ${c.count} times in a row, and it succeeded each time. ` +
+    'If the result still looks wrong, name what you see and switch tool, target or approach. ' +
+    (alternating ? 'Checking between edits did not change the outcome. ' : '') +
+    'If it looks right, keep the best version you have, finish anything else the request still needs, and then reply to the user.';
 }
 
 

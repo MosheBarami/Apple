@@ -2745,6 +2745,18 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
     assert.match(nudge, /fenceForQuote\(t\.error \?\? t\.summary \?\? ''\)/, 'buildNudge puts raw trace text into a user-role turn');
     assert.match(nudge, /isTool\(t\.tool\)/, 'buildNudge names a tool the registry does not know — the model chooses those names');
   }
+  // REVIEWED 2026-10-02: the retune nudge is `retuneNudge(agent.lastChange, …)`. It names the tool and the target the loop guard
+  // counted, and the target comes from the model's own arguments (transcript.ts aim), so it is held to the same rule: a tool name
+  // only from the registry, the target and property names only through fenceForQuote, inside their own quotation.
+  {
+    const idleSrc = readCode('run-idle.ts');
+    const nudge = bodyBlock(idleSrc, idleSrc.indexOf('export function retuneNudge('));
+    assert.ok(nudge.length > 200, 'retuneNudge was not found — this test would check nothing');
+    assert.match(nudge, /isTool\(c\.tool\)/, 'retuneNudge repeats a tool name the model chose');
+    assert.match(nudge, /fenceForQuote\(c\.aim\)/, 'retuneNudge puts a raw target into a user-role turn');
+    assert.match(nudge, /c\.props\.map\(\(p\) => fenceForQuote\(p\)\)/, 'retuneNudge puts raw property names into a user-role turn');
+    assert.match(session, /retuneNudge\(last, \(name\) => Object\.prototype\.hasOwnProperty\.call\(TOOLS, name\)/, 'the retune nudge no longer holds its tool name to the registry');
+  }
   const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
   assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
   assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');

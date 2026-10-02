@@ -150,9 +150,11 @@ test('the same target changed again and again is told to stop tuning, then ended
 });
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
-  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{aim\(call\.arguments\)\}`\);/);
+  // The key is the tool and what it was aimed at; what the aim was is also kept (agent.lastChange) so the nudge can name it.
+  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const changeAim = aim\(call\.arguments\);\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{changeAim\}`\);/);
+  assert.match(SESSION, /agent\.lastChange = \{ tool: call\.name, aim: changeAim, props: changedProps\(call\.arguments\), count: retune\.count \};/);
   assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
-  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*pushHarness\(agent\.llm, /);
+  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{[\s\S]{0,600}pushHarness\(agent\.llm, /);
 });
 
 // 2026-09-23: bound endings said "What it built is in your place" and nothing about what that was.
