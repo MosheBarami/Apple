@@ -375,7 +375,15 @@ test('every canvas on the front page is a decoration that stops for reduced moti
     assert.ok(/position:\s*absolute[\s\S]*inset:\s*0/.test(block) || /(?:^|;|\s)height\s*:/.test(block),
       `${name}: the canvas box is sized by its drawing, so it can shift the layout when the script runs`);
   }
-  assert.ok(canvases >= 1, 'no canvas component was found on the front page; the scan has drifted');
+  //[[ RESTATED 2026-10-02 (phase 6, "Ember Rail"). This ended `canvases >= 1`, a vacuity guard for the
+  //   three canvas grounds the owner picked in September. The rebuild retired every canvas on the front
+  //   page (docs/DESIGN-LOCK.md is superseded: no ambient loop, no canvas), so the count is now zero ON
+  //   PURPOSE and is held there as a tripwire. Every rule in the loop above still applies to a canvas
+  //   that returns, and one returning is a design decision this assertion makes someone take. The scan
+  //   itself is proven live by the page's imports being found at all. ]]
+  assert.ok(files.size >= 4, `only ${files.size} components were found under index.astro and the footer; the scan has drifted`);
+  assert.equal(canvases, 0,
+    'a <canvas> is back on the front page. The Ember Rail design has none; if the owner wants one, the guards above hold it and this tripwire is the review.');
 });
 
 test('one stage cannot take the others down with it', () => {

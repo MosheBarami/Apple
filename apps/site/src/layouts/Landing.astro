@@ -3,7 +3,6 @@
 // front page's structure on top of it. The reverse order is what forced 117 `!important`s.
 import '../styles/apple-minimal.css';
 import '../styles/landing.css';
-import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -62,7 +61,7 @@ const ogImage = new URL('/og.png', site);
         derived: the script below reads `--theme-color` off :root and writes it here on load and on
         every toggle, so the band cannot disagree with the palette again. The server-rendered value
         is the dark ground, which is what the default `data-theme="dark"` renders. */}
-    <meta name="theme-color" id="theme-color" content="#000000" />
+    <meta name="theme-color" id="theme-color" content="#0a0c10" />
 
     <script is:inline>
       // Runs before first paint, exactly as Base.astro's does: no flash of the wrong theme, and the
@@ -80,7 +79,6 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
-    <Aura />
     <slot />
 
 

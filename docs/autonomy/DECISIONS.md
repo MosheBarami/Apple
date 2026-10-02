@@ -324,3 +324,28 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   stripped from the unpushed WIP + merge commits before any push, kept on disk and gitignored. The unstripped
   history is local-only at `refs/backup/private-wip-2026-09-28` (+ `.autonomy/backups/codex-wip-2026-09-28/`).
   Reverse: `git show refs/backup/private-wip-2026-09-28` and commit to a private remote.
+
+## D-EMBER-1 (2026-10-02, phase 6): the web design is rebuilt from zero as "Ember Rail"
+
+- **Decision (owner brief 2026-10-02):** a new design language and a new logo for the site and the app.
+  Dark by default, flat, hairline-bordered, one signal colour (Ember: `#ff8a4c` dark, `#a63f0a` light). No
+  aurora, no glass, no gradient, no glow, no ambient canvas. Blur only on the top bar and the composer.
+  Elevation from surface steps; the one shadow is under a menu, dialog or toast. A 2px "plate edge" under the
+  primary button only. Tight radii 4/6/10/14/20. Short motion that only moves `transform` and `opacity`, and is
+  OFF (not shortened) under reduced motion. The logo is a rounded brick with two studs and a prompt chevron
+  cut out of its face, its right stud snapping down when something real happens (Studio pairing). The gimmick
+  is the Baseplate, a playable brick toy under the landing composer that only reacts to the visitor's hands.
+- **Supersedes:** D-GLASS-1 (frosted glass over an aurora), the graphite-plus-green palette and "nothing above
+  weight 400" in `docs/DESIGN-LOCK.md` / `docs/DESIGN-TYPE.md`, and the owner's September canvas picks
+  (NoiseField, ParticleWord, BeamFlow, PointerRim, DeviceFrame, ticker, scramble) on the landing. "One
+  product, site and app share their tokens" is kept: `apps/site/tests/living-background.test.mjs` compares
+  them in both themes.
+- **Does not touch:** the V3 UI contract. Dark stays the default, no model menu, no Plan/Agent/Autonomous
+  selector, the composer is disabled until Studio is paired and Stop is separate, the `cartoony | studded |
+  none` UI themes never reskin the shell, and nothing synthetic is shown as live (every picture of a
+  behaviour carries the word "Illustration").
+- **Done so far (slice 1):** tokens in both apps, the logo (SVG assets, favicon, OG card, `AppleMark`,
+  `AppleGlyph`), the site header, footer and landing page, and the app shell (rail, top bar, popovers, buttons,
+  focus). **Not yet rebuilt:** see the phase 6 report.
+- **Reverse:** restore `apps/web/src/design/glass.css` from history and the picks kit from commit
+  `76c30935`; the old tokens are in the same history.

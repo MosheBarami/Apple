@@ -12,7 +12,7 @@ import type { ProductModel } from '@golem/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { formatSettings, shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
-import { useProvideCheckpoints } from '../lib/shell';
+import { useProvideCheckpoints, useProvideStudioLink } from '../lib/shell';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useProjectSocket } from '../lib/use-project-socket';
 import { studioConnection } from '../lib/studio-connection';
@@ -370,6 +370,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // "last seen". Passing it here is what stops a paired project being shown the first-time
   // setup card every time the page is reloaded while Studio happens to be quiet.
   const studioStatus = studioConnection(conn, studio.connected, studio.everConnected, studio.link.lastSeenAt !== null);
+  // The logo's Snap reads this from the shell: lifted while Studio is disconnected, seated once it is back.
+  useProvideStudioLink(studioStatus);
 
   /**
    * Bind this project to whatever place Studio has open now.

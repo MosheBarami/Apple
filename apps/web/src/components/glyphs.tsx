@@ -2,65 +2,52 @@
 // marks follow light/dark without a second asset.
 
 /**
- * The Apple mark: a hexagonal outline containing an isometric cube.
+ * The Apple mark (phase 6, "Ember Rail"): a rounded brick with two studs and a prompt chevron cut
+ * out of its face. One drawing, shared with the public site (apps/site/src/components/AppleMark.astro)
+ * and baked into favicon.svg, so a visitor sees the same object before and after signing up.
  *
- * Geometry only — not a monolith, not a face, not a character. The outer
- * hexagon is never filled, the three interior lines are the classic "cube in
- * hexagon" isometric read (a vertical from the top vertex to the centre, then
- * out to the lower-left and lower-right vertices), and the whole thing inherits
- * `currentColor`. There is deliberately no accent fill and no animation: a mark
- * that blinks or reacts is a mascot, and the mascot direction is cancelled.
+ * It takes `--accent` (Ember: #ff8a4c on the dark ground, #a63f0a on the light one). No fruit
+ * outline, no leaf, no bite.
  *
- * Used at 32px beside the wordmark, ~28px in the workspace rail, and 22px as
- * the assistant avatar in the conversation.
+ * THE SNAP. The right-hand stud is its own shape. `state="lifted"` raises it (translateY(-3px),
+ * rotate(-8deg)); `state="seated"` clicks it down over 320ms with --ease-snap. The shell drives it
+ * from the Studio connection it already knows (lib/shell.tsx): lifted while Studio is disconnected,
+ * seated once it is connected again. It is never driven by a timer and never moves on its own, and
+ * under reduced motion it is simply seated (design/ember.css).
+ *
+ * Used at 28px in the rail and the conversations drawer, 36px on the welcome sheet and 30px as the
+ * mark beside a turn.
  */
-export function AppleGlyph({ size = 28, className }: { size?: number; className?: string }) {
+export function AppleGlyph({
+  size = 28,
+  className,
+  state = 'seated',
+}: {
+  /** Height in CSS pixels; the width follows the 32x36 viewBox. */
+  size?: number;
+  className?: string;
+  state?: 'seated' | 'lifted';
+}) {
   return (
     <svg
-      width={size}
+      width={Math.round((size * 32) / 36)}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 32 36"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={`apple-mark${className ? ` ${className}` : ''}`}
+      data-state={state}
       aria-hidden="true"
       focusable="false"
     >
-      {/* Regular hexagon, vertex at top and bottom, circumradius 13 about (16,16). */}
-      <path
-        d="M16 3 L27.26 9.5 L27.26 22.5 L16 29 L4.74 22.5 L4.74 9.5 Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* The cube's three visible faces, as the three shared edges.
-
-          THE Y POINTS DOWN, NOT UP, and that is a correction rather than a preference. Running it
-          from the APEX to the centre and out to the two LOWER vertices draws a cube seen from
-          BELOW: what reads as the top of the shape is two side faces meeting at an edge, and there
-          is no top face at all. This app drew that version while apps/site drew the corrected one,
-          so the mark in the product and the mark on the site were different objects. */}
-      <path
-        d="M16 28.6 V16 M16 16 L4.95 9.62 M16 16 L27.05 9.62"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* And the stud. A cube is a box; a box with a stud is the thing this product builds with,
-          and it is the one detail that says Roblox without writing Roblox. Lighter than the
-          structure so it drops out first at small sizes rather than closing into a dot. */}
-      <ellipse
-        cx="16"
-        cy="8.63"
-        rx="4.2"
-        ry="2.4"
-        stroke="currentColor"
-        strokeWidth="1.15"
-        fill="none"
-      />
+      <g fill="var(--accent)">
+        <path
+          fillRule="evenodd"
+          d="M10 11H22A7 7 0 0 1 29 18V26A7 7 0 0 1 22 33H10A7 7 0 0 1 3 26V18A7 7 0 0 1 10 11ZM9.4 16.2 19.6 22 9.4 27.8 7.8 25.2 13.6 22 7.8 18.8ZM21 26.4H25.6A1.2 1.2 0 0 1 25.6 28.8H21A1.2 1.2 0 0 1 21 26.4Z"
+        />
+        <rect className="stud" x="7" y="6.5" width="7" height="5.5" rx="2" />
+        <rect className="stud stud--snap" x="18" y="6.5" width="7" height="5.5" rx="2" />
+      </g>
     </svg>
   );
 }
