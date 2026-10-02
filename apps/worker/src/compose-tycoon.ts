@@ -138,15 +138,16 @@ export function tycoonRecipe(request: string, seed: number, theme: TycoonTheme, 
 /** A base's centre: two rows facing each other across the spawn street. Pure. */
 export function baseCentre(i: number): [number, number] {
   const col = Math.floor(i / 2), side = i % 2 === 0 ? -1 : 1;
-  return [(col - 1) * 76 + 38, side * 48];
+  return [(col - 0.5) * 64, side * 40];
 }
 
-const BASE = 64;
+// A base is a room's worth, not a field (round 2 of the owner's laundry test: a 64-stud plate with everything at the back).
+const BASE = 52;
 /** Where things stand inside a base, relative to its centre (x along the belt, z toward the street is +). */
-const BELT_Z = -10, BELT_Y = 2, BELT_LEN = 46, BELT_X = -2;
-const DROPPER_X = [-21, -15.5, -10];
-const MACHINE_X = [-2, 6, 14, 20];
-const SELLER_X = 24;
+const BELT_Z = -8, BELT_Y = 2, BELT_LEN = 40, BELT_X = -3;
+const DROPPER_X = [-19, -14, -9];
+const MACHINE_X = [-3, 3, 9, 14];
+const SELLER_X = 20;
 const BASE_COLOURS = ['#4f8cff', '#ff5a7a', '#36c27a', '#ffb02e', '#a066ff', '#2ec4d6'];
 
 export interface TycoonUnlock { id: string; label: string; price: number; after?: string }
@@ -172,21 +173,24 @@ const font = { t: 'EnumItem', v: 'Enum.Font.FredokaOne' };
 
 /** A sign: a billboard over a part with one line, readable from across the base. */
 function sign(text: string, height: number, colour = '#ffffff', name = 'Label'): InstanceSpecLite {
-  return { className: 'BillboardGui', name: 'Sign', props: { Size: udim2(0, 220, 0, 54), StudsOffset: [0, height, 0], MaxDistance: 90, LightInfluence: 0 }, children: [
+  return { className: 'BillboardGui', name: 'Sign', props: { Size: udim2(0, 180, 0, 44), StudsOffset: [0, height, 0], MaxDistance: 45, LightInfluence: 0 }, children: [
     { className: 'TextLabel', name, props: { Size: udim2(1, 0, 1, 0), BackgroundTransparency: 1, Text: text, TextScaled: true, Font: font, TextColor3: colour }, children: [{ className: 'UIStroke', name: 'Stroke', props: { Thickness: 2, Color: '#1b1b1b' } }] },
   ] };
 }
 
 /** A dropper built from parts: a hopper on four legs over the belt, named, with its spout under it. */
-function dropperModel(id: string, theme: TycoonTheme, x: number, z: number, colour: string): InstanceSpecLite {
+function dropperModel(id: string, theme: TycoonTheme, x: number, z: number, colour: string, named: boolean): InstanceSpecLite {
   const y = BELT_Y + 0.5;
   return { className: 'Model', name: id, children: [
     part('Hopper', [4, 3, 8.4], [x, y + 7, z], colour, { Material: 'SmoothPlastic' }),
+    // Heaped with what it drops, so it reads as what it is (round 2: "an orange box on legs").
+    ...[[-0.8, 8.9, -2], [0.7, 9.1, 0.2], [-0.3, 8.8, 2.2], [0.9, 8.7, -1.1]].map(([dx, dy, dz], k) =>
+      ({ className: 'Part', name: `Heap${k + 1}`, props: { Shape: 'Ball', Size: [2.2, 2.2, 2.2], Position: [x + dx!, y + dy!, z + dz!], Anchored: true, CanCollide: false, Color: theme.item.color, Material: 'Fabric' } })),
     part('Funnel', [2.4, 1.2, 2.4], [x, y + 5, z], '#3b3f4a'),
     // The legs stand outside the rails, so nothing on the belt runs into them.
     ...[[-1.7, -3.9], [1.7, -3.9], [-1.7, 3.9], [1.7, 3.9]].map(([dx, dz], k) => part(`Leg${k + 1}`, [0.5, 8, 0.5], [x + dx!, y + 2.5, z + dz!], '#3b3f4a')),
     { ...part('Spout', [1, 0.4, 1], [x, y + 4.2, z], '#000000', { Transparency: 1, CanCollide: false, CanTouch: false }) },
-    { ...part('Name', [0.2, 0.2, 0.2], [x, y + 9, z], '#000000', { Transparency: 1, CanCollide: false }), children: [sign(theme.dropper, 1.4)] },
+    ...(named ? [{ ...part('Name', [0.2, 0.2, 0.2], [x, y + 10, z], '#000000', { Transparency: 1, CanCollide: false }), children: [sign(theme.dropper, 1.6)] }] : []),
   ] };
 }
 
@@ -233,30 +237,37 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
 
   // The map: grass, the street with the spawn, and one base per player.
   const cols = Math.ceil(recipe.players / 2);
-  const width = cols * 76 + 40;
+  const width = cols * 64 + 40, groundX = (cols - 2) * 32;
   const bases: InstanceSpecLite[] = [];
   for (let i = 0; i < recipe.players; i++) {
     const [cx, cz] = baseCentre(i);
     const side = i % 2 === 0 ? 1 : -1; // the street is toward z = 0: belt and pads are laid out facing it
     const z = (dz: number) => cz + side * dz;
     const colour = BASE_COLOURS[i % BASE_COLOURS.length]!;
-    const padSlots: V3[] = unlocks.map((_, k) => [cx - 20 + (k % 6) * 8, 1.2, z(6 + Math.floor(k / 6) * 8)]);
+    const padSlots: V3[] = unlocks.map((_, k) => [cx - 18 + (k % 6) * 7, 1.2, z(4 + Math.floor(k / 6) * 7)]);
     bases.push({ className: 'Model', name: String(i + 1), children: [
       part('Floor', [BASE, 1, BASE], [cx, 0.5, cz], colour),
-      part('Spawn', [8, 1, 8], [cx, 1.1, z(24)], '#ffffff', { Material: 'SmoothPlastic' }),
-      { ...part('Sign', [0.2, 0.2, 0.2], [cx, 1, z(30)], '#000000', { Transparency: 1, CanCollide: false }), children: [sign(`Base ${i + 1}`, 6, colour)] },
+      part('Spawn', [8, 1, 8], [cx, 1.1, z(17)], '#ffffff', { Material: 'SmoothPlastic' }),
+      { ...part('Sign', [0.2, 0.2, 0.2], [cx, 1, z(BASE / 2)], '#000000', { Transparency: 1, CanCollide: false }), children: [sign(`Base ${i + 1}`, 6, colour)] },
       part('Conveyor', [BELT_LEN, 1, 6], [cx + BELT_X, BELT_Y, z(BELT_Z)], '#2b2e36', { Material: 'Fabric' }),
-      part('RailBack', [BELT_LEN, 1.4, 0.5], [cx + BELT_X, BELT_Y + 1.2, z(BELT_Z) - 3.25], '#ffd34d'),
-      part('RailFront', [BELT_LEN, 1.4, 0.5], [cx + BELT_X, BELT_Y + 1.2, z(BELT_Z) + 3.25], '#ffd34d'),
+      // Low rails: the laundry riding the belt is the game, and 1.4-stud rails hid it (round 2).
+      part('RailBack', [BELT_LEN, 0.7, 0.5], [cx + BELT_X, BELT_Y + 0.85, z(BELT_Z) - 3.25], '#ffd34d'),
+      part('RailFront', [BELT_LEN, 0.7, 0.5], [cx + BELT_X, BELT_Y + 0.85, z(BELT_Z) + 3.25], '#ffd34d'),
+      // A low wall round the base with its door on the street side: a base, not a plate.
+      part('WallBack', [BASE, 3, 1], [cx, 2.5, z(-BASE / 2 + 0.5)], '#ffffff'),
+      part('WallLeft', [1, 3, BASE], [cx - BASE / 2 + 0.5, 2.5, cz], '#ffffff'),
+      part('WallRight', [1, 3, BASE], [cx + BASE / 2 - 0.5, 2.5, cz], '#ffffff'),
+      part('WallFrontLeft', [BASE / 2 - 6, 3, 1], [cx - BASE / 4 - 3, 2.5, z(BASE / 2 - 0.5)], '#ffffff'),
+      part('WallFrontRight', [BASE / 2 - 6, 3, 1], [cx + BASE / 4 + 3, 2.5, z(BASE / 2 - 0.5)], '#ffffff'),
       { ...part('Seller', [5, 3, 8], [cx + SELLER_X, 2, z(BELT_Z)], '#2fd66b', { Material: 'SmoothPlastic' }), children: [sign(`${theme.seller.name} - sells your ${theme.machines[theme.machines.length - 1]?.becomes ?? theme.item.name}`, 4)] },
       { className: 'Folder', name: 'Drops' },
       { className: 'Folder', name: 'Pads', children: unlocks.map((u, k) => padPart(u, padSlots[k]!)) },
     ] });
   }
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [
-    part('Ground', [width, 2, 200], [0, -1, 0], '#5fbf4a'),
-    part('Street', [width, 0.2, 20], [0, 0.1, 0], '#9aa3ad', { Material: 'SmoothPlastic' }),
-    { className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [-width / 2 + 14, 0.6, 0], Anchored: true, Color: '#ffffff' } },
+    part('Ground', [width, 2, 160], [groundX, -1, 0], '#5fbf4a'),
+    part('Street', [width, 0.2, 24], [groundX, 0.1, 0], '#9aa3ad', { Material: 'SmoothPlastic' }),
+    { className: 'SpawnLocation', name: 'Spawn', props: { Size: [8, 1, 8], Position: [groundX - width / 2 + 12, 0.6, 0], Anchored: true, Color: '#ffffff' } },
     { className: 'Folder', name: 'Tycoons', children: bases },
     { className: 'Folder', name: 'Props' },
   ] }] });
@@ -272,7 +283,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
     const bz = cz + side * BELT_Z;
     const held = `game.ServerStorage.AppleTycoonParts.${i + 1}`;
     steps.push({ kind: 'create', parent: held, items: [
-      ...DROPPER_X.map((dx, k) => dropperModel(`Dropper${k + 1}`, theme, cx + dx, bz, '#ff8a3d')),
+      ...DROPPER_X.map((dx, k) => dropperModel(`Dropper${k + 1}`, theme, cx + dx, bz, '#ff8a3d', k === 0)),
       ...theme.machines.map((m, k) => machineModel(`Machine${k + 1}`, m, cx + MACHINE_X[k]!, bz, !!looks.machines[k], side)),
       { className: 'Model', name: 'FastBelt', children: [part('Booster', [3, 0.3, 6.2], [cx + BELT_X - 14, BELT_Y + 0.6, bz], '#4fe3ff', { Material: 'Neon', CanCollide: false, CanTouch: false })] },
     ] });
@@ -280,7 +291,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
       if (!ref) return;
       // The machine's library look stands behind the belt beside its gate, a tile wide.
       steps.push({ kind: 'place', from: `ServerStorage.AppleParts.TycoonMachine${k + 1}`, parent: `ServerStorage.AppleTycoonParts.${i + 1}.Machine${k + 1}`, name: 'Look',
-        at: [cx + MACHINE_X[k]!, 1, bz - side * 8], yaw: side > 0 ? 0 : 180, height: 6.5 });
+        at: [cx + MACHINE_X[k]!, 1, bz - side * 7.5], yaw: side > 0 ? 0 : 180, height: 8.5 });
     });
     if (looks.seller) steps.push({ kind: 'place', from: 'ServerStorage.AppleParts.TycoonSeller', parent: `Workspace.AppleMap.Tycoons.${i + 1}`, name: 'SellerLook',
       at: [cx + SELLER_X + 3, 1, bz - side * 9], yaw: side > 0 ? 0 : 180, length: 12 });

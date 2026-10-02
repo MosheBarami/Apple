@@ -9,7 +9,7 @@ import type { InstanceSpecLite, Step } from './compose';
 import { LIBRARY_IMPORT_MS } from './local-owner-corpus';
 import { applySurfaceOp } from './surfaces';
 
-const ENUMS: Record<string, string> = { Material: 'Material', TopSurface: 'SurfaceType', BottomSurface: 'SurfaceType' };
+const ENUMS: Record<string, string> = { Material: 'Material', TopSurface: 'SurfaceType', BottomSurface: 'SurfaceType', Shape: 'PartType' };
 
 /** A composer value as the plugin's typed PropValue. */
 export function propValue(key: string, v: unknown): PropValue | undefined {

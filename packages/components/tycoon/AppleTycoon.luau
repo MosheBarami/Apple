@@ -225,7 +225,7 @@ function AppleTycoon.start(config: any, economy: any)
 			d = itemTemplate:Clone()
 		else
 			local p = Instance.new("Part")
-			p.Size = Vector3.new(1.6, 1, 1.6)
+			p.Size = Vector3.new(2.2, 1.4, 2.2) -- big enough to see riding the belt (round 2: the laundry was invisible)
 			p.Material = Enum.Material.Fabric
 			p.Color = itemColor
 			d = p
