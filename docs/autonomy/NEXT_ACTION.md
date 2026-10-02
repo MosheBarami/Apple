@@ -1,5 +1,23 @@
 # NEXT ACTION (V3)
 
+**2026-10-02 afternoon: NOT frontier. The morning's "FRONTIER, 5 of 5 green" claim is withdrawn: the owner rejected it
+(the 5 tests were fitted, and the same kit went on every object). Binding method from now: memory `generalize-not-patch`.**
+
+- Baseline measured on the owner's fixed bank: `packages/evals/owner-bench/BASELINE.md`. 26 of 30 items, mean 7.27/18,
+  3,423 credits, meter 27.8%. Worst: objects matched the request 0.33/2, maps 5.3/18, sound 0.08.
+- Root causes found (framework level): a pre-model library step chose by name; D-MODELLIB-2 refused building by noun;
+  a harness nudge spoke as the user ("build from Parts rather than looking for assets"); no self-check; duplicate names
+  block editing. Fixes are on the integration branch `integration/giant` (worktree /Users/moshe/Developer/RbxAI-integration),
+  not deployed.
+
+**Next, in order:**
+1. Finish merging the remaining branches into `integration/giant` (world-building, the four capability tracks, golem
+   rename A/B1, repo organisation, GitHub platform, website round 2) with every suite green; make main's CI green.
+2. Deploy the integrated worker + plugin; re-run the bank and `heldout-v1.json` (fresh chats), with photo review.
+3. Open the giant PR for ultrareview; fix its findings; then the cloud steps of the golem runbook.
+
+---
+
 **2026-10-02 morning: FRONTIER. 5 of 5 silly tests are green, every open critique item is closed.**
 
 - Owner: "remove entirely the 3 options and do an automatic as before". An object request now imports only the best clean
