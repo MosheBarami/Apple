@@ -76,20 +76,18 @@ test('the steps build a hub with 4 plots, every simulator system, its config and
   assert.ok(steps.some((s) => s.kind === 'place' && s.from === 'ServerStorage.AppleParts.HubSell'), 'the sell stand is placed');
 });
 
-test('the session routes a simulator request to compose_game first, and compose_game to the plot simulator', () => {
+test('compose_game is offered, never forced: no template guess from the request words decides the first tool', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /\(!\('error' in ideaRecipe\(text\)\) \|\| isPlotSimRequest\(text\)\) \? \{ composeFirst: true \}/);
-  const tool = readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8');
-  assert.match(tool, /if \('error' in plan && isPlotSimRequest\(idea\)\) return composePlotSim\(ctx, idea\);/);
+  assert.doesNotMatch(session, /composeFirst|ideaRecipe/, 'phase 1: the run starts with the model, which chooses compose_game when the idea calls for it');
 });
 
 // The owner's 93-step run (2026-10-01, 274 credits): compose_game ran, then the model rebuilt plots and screens by hand
 // with 24 build_object calls and 49 tree reads. A built plot simulator is played once and answered.
-test('a composed plot simulator ends the run at play-and-answer, and a game already in the project does not refuse it', () => {
+test('a composed plot simulator ends the run at play-and-answer, narrows nothing, and a game already in the project does not refuse it', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  assert.match(session, /call\.name === 'compose_game' && out\.mutatedProject === true && out\.ok && isPlotSimRequest\([^)]*\)\) \{\s*agent\.composedPlotSim = true;\s*agent\.objectBuilt = true;/);
-  const after = session.slice(session.indexOf('const AFTER_OBJECT'), session.indexOf('const AFTER_OBJECT') + 400);
-  assert.match(after, /agent\.composedPlotSim \? \['play_check', 'get_output_logs'\]/);
+  // The composer says which template it made; the request's words decide nothing (phase 1).
+  assert.match(session, /call\.name === 'compose_game' && out\.mutatedProject === true && out\.ok && \['plot-sim', 'tycoon'\]\.includes\(String\(\(out\.detail as \{ template\?: unknown \} \| undefined\)\?\.template \?\? ''\)\)\) \{\s*agent\.composedPlotSim = true;/);
+  assert.doesNotMatch(session, /AFTER_OBJECT|objectBuilt/, 'no tool narrowing after a build');
   assert.match(session, /const continueLine = mode === 'agent' && !isPlotSimRequest\(text\) \? continueGameLine\(/);
 });
 
@@ -231,14 +229,13 @@ test('every plot starts with the cheapest machine, and the composer says so', ()
 // Round 7 of test 1 (2026-10-01): the model's answer kept saying "you spawn in a hub"; every player starts on their plot.
 test('a checked plot simulator is answered with what the composer built and what the check measured', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  // RESTATED 2026-10-01 (round 8 of test 2): the same ending also answers a built object (composedObject).
-  const at = session.search(/if \(\(?agent\.composedPlotSim[^\n]*agent\.composedForUser && agent\.playChecked/);
+    const at = session.search(/if \(\(?agent\.composedPlotSim[^\n]*agent\.composedForUser && agent\.playChecked/);
   assert.ok(at > 0, 'the composed ending exists');
   const end = session.slice(at, at + 600);
   assert.match(end, /!agent\.lastCheckProblem\)/, 'only when the check passed');
   assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
   assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
-  assert.ok(at < session.indexOf('const AFTER_OBJECT'), 'before the next model step is prepared');
+  assert.ok(at < session.indexOf('const focusedAllowed'), 'before the next model step is prepared');
 });
 
 // Round 9 of test 1 (2026-10-01): bare roads, and the hero's yellow stage stacked on the hub's plaza.

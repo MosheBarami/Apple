@@ -60,37 +60,15 @@ test('upgrades: a good default, and what the model gives is checked and bounded'
   assert.match(U.readUpgrades([{ id: 'A' }, { id: 'A' }]).error, /unique/);
 });
 
-test('which requests are upgrades', () => {
-  for (const t of ['add an upgrades gui that actually functions', 'add upgrades', 'can you add an upgrade shop', 'make upgrading work']) assert.ok(U.isUpgradesRequest(t), t);
-  for (const t of ['make a tycoon game with upgrades', 'make an asmr keyboard', 'build me a simulator with upgrades']) assert.ok(!U.isUpgradesRequest(t), t);
-});
-
-test('the run calls add_upgrades first for an upgrades request, then only checks', () => {
-  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  assert.match(src, /isUpgradesRequest\(text\) \? \{ upgradesFirst: true\b/);
-  assert.match(src, /agent\.upgradesFirst && !talkOnly && offeredAllowed\.has\('add_upgrades'\) \? \{ requiredTool: 'add_upgrades' \}/);
-  assert.match(src, /call\.name === 'add_upgrades' && out\.ok && agent\.upgradesRun\) agent\.objectBuilt = true/);
-});
-
-test('a failed build_object is retried, not swapped for hand-made instances (the fence lifts after three failures)', () => {
-  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  const lift = src.slice(src.indexOf("if (call.name === 'build_object') {"), src.indexOf("if (call.name === 'build_object') {") + 300);
-  assert.match(lift, /agent\.objectFails = out\.ok \? 0 : \(agent\.objectFails \?\? 0\) \+ 1/);
-  assert.match(lift, /if \(out\.ok \|\| agent\.objectFails >= 3\) agent\.objectFirst = false/);
-  assert.doesNotMatch(src, /if \(call\.name === 'build_object'\) agent\.objectFirst = false;/, 'one failure lifts the fence again');
-});
-
-test('after the object is built an object run cannot add upgrades, and an upgrades run cannot rebuild the object', () => {
-  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  // RESTATED 2026-10-01 (test 3 round 6): the object branch now drops build_object after two builds; the property is
-  // still that each branch offers only its own builder.
-  const after = src.slice(src.indexOf('const AFTER_OBJECT'), src.indexOf('const AFTER_OBJECT') + 700);
-  assert.match(after, /agent\.upgradesRun\s*\?\s*\['add_upgrades'/);
-  const upgradesBranch = after.slice(0, after.indexOf('agent.composedPlotSim ?'));
-  const objectBranch = after.slice(after.indexOf("agent.composedPlotSim ? ['play_check', 'get_output_logs']") + 60, after.indexOf('const focusedAllowed'));
-  assert.ok(objectBranch.includes("'build_object'"), 'the object branch was not found');
-  assert.doesNotMatch(objectBranch, /add_upgrades/, 'an object run may add upgrades');
-  assert.doesNotMatch(upgradesBranch, /'build_object'/, 'an upgrades run may rebuild the object');
+test('add_upgrades is offered like any tool and never forced by the request\'s words; nothing narrows the toolset after it', () => {
+  const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' }).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // RESTATED phase 1 (2026-10-02): the run used to call add_upgrades first for an "upgrades" request (upgradesFirst, a
+  // requiredTool), then fence itself to check-and-answer (AFTER_OBJECT). The agent decides now.
+  assert.doesNotMatch(src, /upgradesFirst|upgradesRun|isUpgradesRequest/);
+  assert.doesNotMatch(src, /AFTER_OBJECT|objectBuilt/);
+  assert.equal(src.split('\n').filter((l) => /\brequiredTool\b/.test(l) && !/sequenceStep/.test(l)).length, 0);
+  const upgrades = execFileSync('cat', [join(WORKER, 'src', 'upgrades-tool.ts')], { encoding: 'utf8' });
+  assert.doesNotMatch(upgrades, /export function isUpgradesRequest/, 'a request classifier is gone');
 });
 
 // Play test, 2026-10-01: the model named the currency Taps, the economy kept Coins, and the counter sat at 0.
@@ -159,12 +137,10 @@ test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidde
   assert.ok((animate.match(/stepOn\(target, model, joints, rest, clip\)/g) ?? []).length >= 2, 'key clips step too');
 });
 
-// Owner's game request, 2026-10-01: one build_object inside a whole-game run fenced the run to "check and answer";
-// create_instances and read_script were refused and plots, a HUD and "Maps" were built as one-part objects.
-test('only a one-object run is fenced after build_object; a game run keeps its tools', () => {
+// Owner's game request, 2026-10-01: one build_object inside a whole-game run fenced the run to "check and answer".
+// RESTATED phase 1: no run is fenced after any build; the agent keeps every tool it was offered.
+test('no run is fenced after build_object: a one-object run and a game run keep the same tools', () => {
   const src = execFileSync('cat', [join(WORKER, 'src', 'do', 'session.ts')], { encoding: 'utf8' });
-  assert.match(src, /isObjectRequest\(text\) \? \{ objectFirst: true, objectRun: true \}/);
-  // RESTATED 2026-10-01 (round 8 of test 2): the fenced branch also keeps the object's own answer; still only objectRun.
-  assert.match(src, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) \{?\s*agent\.objectBuilt = true/);
-  assert.doesNotMatch(src, /call\.name === 'build_object' && out\.ok\) agent\.objectBuilt = true/, 'any build_object fences the run again');
+  assert.doesNotMatch(src, /call\.name === 'build_object' && out\.ok && agent\.objectRun/);
+  assert.doesNotMatch(src, /objectFirst|objectRun/);
 });

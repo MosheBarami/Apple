@@ -268,8 +268,8 @@ export async function placeInserted(
   exec: Exec,
   path: string,
   m: LibraryModel,
-  want: { position?: number[]; scale?: number; height?: number },
-): Promise<{ position: number[]; size: number[] | null; scaledBy: number | null } | { error: string }> {
+  want: { position?: number[]; scale?: number; height?: number; longest?: number },
+): Promise<{ position: number[]; size: number[] | null; sizeNote?: string; scaledBy: number | null } | { error: string }> {
   const bounds = async () => {
     const b = await exec({ op: 'spatial_query', action: 'bounds', path }, 15_000);
     const d = (b.ok ? b.data : null) as { center?: unknown; size?: unknown; bottomY?: unknown } | null;
@@ -281,7 +281,10 @@ export async function placeInserted(
   if (!b) return { error: 'the inserted model has no measurable bounds' };
   let factor: number | null = null;
   if (want.scale !== undefined) factor = want.scale;
-  else {
+  else if (want.longest !== undefined) {
+    const side = Math.max(...b.size);
+    if (side > 0) factor = want.longest / side;
+  } else {
     const target = want.height ?? (m.file ? DEFAULT_HEIGHT[m.kind] ?? 4 : undefined);
     const h = b.size[1] ?? 0;
     if (target !== undefined && h > 0) factor = target / h;
@@ -299,5 +302,7 @@ export async function placeInserted(
     const mv = await exec({ op: 'transform_instances', paths: [path], move }, 20_000);
     if (!mv.ok) return { error: `moving failed: ${mv.error ?? 'transform_instances failed'}` };
   }
-  return { position: to, size: b.size.map((n) => Math.round(n * 100) / 100), scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
+  const side = Math.max(...b.size);
+  // Measured, said against the player: the agent judges whether that suits the thing, the harness does not resize it.
+  return { position: to, size: b.size.map((n) => Math.round(n * 100) / 100), sizeNote: `about ${Math.round(side)} studs at its longest (${Math.round(side / 5 * 10) / 10} player heights; a player is 5 studs tall)`, scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
 }

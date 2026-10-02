@@ -45,12 +45,16 @@ test('run flow: build_game records the project\'s game and the next run reads it
   assert.match(src, /\?\? refuseRebuild\(agent\.continuesGame, call\.name\)/);
 });
 
-test('run flow: a new idea the composer can build is composed first (seen live: the model shaped terrain by hand instead)', async () => {
+test('run flow: compose_game is offered like every other tool and never forced, by a template guess or by anything else', async () => {
   const { readFileSync } = await import('node:fs');
-  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
-  // RESTATED 2026-10-01: a simulator idea (compose-plotsim.ts) is composed first too, beside the orchard template.
-  assert.match(src, /mode === 'agent' && !continueLine && \(!\('error' in ideaRecipe\(text\)\) \|\| isPlotSimRequest\(text\)\) \? \{ composeFirst: true \}/);
-  assert.match(src, /agent\.composeFirst && !talkOnly && offeredAllowed\.has\('compose_game'\) \? \{ requiredTool: 'compose_game' \}/);
-  assert.match(src, /agent\.composeFirst && call\.name !== 'compose_game' && READ_ONLY_WITHHELD\.has\(call\.name\)/);
-  assert.match(src, /if \(call\.name === 'compose_game'\) agent\.composeFirst = false;/);
+  const src = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // RESTATED phase 1 (2026-10-02): the request's words used to pick compose_game, build_object or add_upgrades before the
+  // model spoke (a regex decided "this is a game"). Now the run starts with the model, which chooses; only a sequence the
+  // USER spelled out ("first X, then Y") can require a tool.
+  assert.equal(/composeFirst|objectFirst|upgradesFirst|coolFirst/.test(src), false, 'a forced-first flag is back');
+  assert.equal(/\bideaRecipe\b|isObjectRequest|isUpgradesRequest|isUpgradeRequest/.test(src), false, 'a request classifier routes the run');
+  const required = src.split('\n').filter((l) => /\brequiredTool\b/.test(l) && !/sequenceStep/.test(l));
+  assert.deepEqual(required, [], 'a tool is required by something other than the user\'s own sequence');
+  assert.match(src, /toolDefs\(offerStudio, offeredAllowed\)/, 'the tools offered are the permitted set');
+  assert.match(src, /\? \{ requiredTool: sequenceStep\.tool \}/, 'the user\'s own sequence still requires its tool');
 });

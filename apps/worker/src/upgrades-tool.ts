@@ -35,12 +35,6 @@ export const DEFAULT_UPGRADES: UpgradeSpec[] = [
   { id: 'Golden', label: 'Golden Touch', kind: 'multiplier', amount: 2, cost: 500, growth: 4, max: 10 },
 ];
 
-/** "add upgrades", "an upgrade shop that works": the request this tool answers, not a whole game. Pure. */
-export function isUpgradesRequest(text: string | undefined): boolean {
-  const t = String(text ?? '').toLowerCase();
-  return /\bupgrad(e|es|ing)\b/.test(t) && !/\b(make|build|create)\s+(me\s+)?(a|an)\s+[\w\s-]{0,30}\b(game|tycoon|simulator|obby)\b/.test(t);
-}
-
 /** The upgrades the model gave, checked, or the defaults. Pure (tests/upgrades.test.mjs). */
 export function readUpgrades(raw: unknown): UpgradeSpec[] | { error: string } {
   if (raw === undefined || (Array.isArray(raw) && raw.length === 0)) return DEFAULT_UPGRADES;

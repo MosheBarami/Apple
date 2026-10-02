@@ -1,6 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
-import { COOL_EFFECTS, coolLibraryObject } from './library-object';
+import { annotateModels, candidateOf, placeLibraryPiece, placeSizeOf, previewLibraryModels } from './library-object';
+import { dressObject } from './dress-object';
 import { renderShowsTerrain } from '@golem/shared';
 import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
@@ -3047,7 +3048,8 @@ export const TOOLS: Record<string, ToolImpl> = {
           notVerified: 'The player-side check did not produce a report, so nothing on the player\'s screen was observed. Do not claim any UI works.',
         };
       }
-      return summarisePlayCheck(res);
+      // What interaction the check exercised, said plainly: a check that touched nothing proves nothing about a click or a walk-in.
+      return { ...summarisePlayCheck(res), interaction: touch.length ? `walked onto ${touch.join(', ')}` : 'none: no part was named in touch, so nothing was walked into or pressed (the screen and the output were read)' };
     },
   },
   /**
@@ -4688,7 +4690,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_ui_asset',
       description:
-        `Search Apple's UI image library: 5,000+ CC0 PNGs (buttons, panels, bars, borders, HUD and menu icons, controller/keyboard/touch prompts, emotes, cursors) AND ${UI_STORE_COUNT.toLocaleString('en-US')} free Roblox Creator Store UI images. Use it before generating an image for a standard UI element. Plain words match names (e.g. "coin icon", "shop button", "gamepass", "settings", "rebirth"); \`genre\` lifts that genre's Creator Store images; \`pack\` narrows the CC0 part to one pack; an empty query lists the packs. \`results\` are CC0 files: pass an \`asset\` to upload_ui_asset, or as an icon to insert_ui_component. \`store\` hits are already on Roblox: their \`image\` (rbxassetid://…) goes straight into an icon of insert_ui_component or an Image property, never uploaded. Nothing is uploaded or changed by this call.`,
+        `Search Apple's UI image library: 5,000+ CC0 PNGs (buttons, panels, bars, borders, HUD and menu icons, controller/key/touch prompts, emotes, cursors) AND ${UI_STORE_COUNT.toLocaleString('en-US')} free Roblox Creator Store UI images. Use it before generating an image for a standard UI element. Plain words match names (e.g. "coin icon", "shop button", "gamepass", "settings", "rebirth"); \`genre\` lifts that genre's Creator Store images; \`pack\` narrows the CC0 part to one pack; an empty query lists the packs. \`results\` are CC0 files: pass an \`asset\` to upload_ui_asset, or as an icon to insert_ui_component. \`store\` hits are already on Roblox: their \`image\` (rbxassetid://…) goes straight into an icon of insert_ui_component or an Image property, never uploaded. Nothing is uploaded or changed by this call.`,
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the element, e.g. "red round button" or "pause".' },
@@ -4787,7 +4789,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Search the full session-configured local owner SQLite corpus through the paired plugin FIRST, with ingested cloud owner seed components as fallback, for native components (including UI, maps and code), then script-free Roblox Creator Store models for a ready-made prop, building, tree/rock/plant, vehicle, character, pet, weapon or kit. Call it BEFORE building any detailed object. Plain nouns work best; genre and kind narrow it. By default only Roblox-owned models are returned. If those cannot cover the requested object, retry with includeThirdParty=true; this adds free third-party models available in the existing catalog. They are marked requiresThirdPartyLoading and may be refused by Studio unless the experience already permits third-party asset loading. Never claim they are guaranteed to load or visually suitable without inspecting the preview. In Agent mode, Apple shows up to three real thumbnails and pauses for the project owner's visual choice. Nothing is inserted or uploaded by this call.",
+        "Search the owner corpus (through the paired plugin) first, then script-free Roblox Creator Store models, for a ready-made prop, building, plant, vehicle, character, pet, weapon or kit; call it before building a detailed object. Use your own plain words, as many queries as you need; genre and kind narrow it. Only Roblox-owned models by default; includeThirdParty=true adds free third-party ones (marked requiresThirdPartyLoading; Studio may refuse them). Whether one looks right or fits is unverified until you preview it (preview_library_models). In Agent mode Apple may show the owner up to three thumbnails to pick from. Nothing is inserted by this call.",
       parameters: S(
         {
           sourceSHA: {type:'string',description:'Optional original source SHA from query_owner_catalog; scopes the full local index.'},
@@ -4878,7 +4880,12 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['query_owner_library'],
     plainSummary: browseSummary,
-    run: browseOwnerLibrary,
+    // A models search says, per row, whether it can be copied script-free and why not: information for the agent's own choice.
+    run: async (ctx, a) => {
+      const out = await browseOwnerLibrary(ctx, a);
+      const rows = (out as { items?: unknown }).items;
+      return a.kind === 'model' && Array.isArray(rows) ? { ...out, items: annotateModels(rows) } : out;
+    },
   },
   import_owner_library: {
     def: {
@@ -4973,47 +4980,65 @@ export const TOOLS: Record<string, ToolImpl> = {
       return { widened: true, note: 'Every tool is offered from the next step.' };
     },
   },
-  cool_library_model: {
+  preview_library_models: {
     def: {
-      name: 'cool_library_model',
-      description: "Makes the ready-made object in the place cooler, the way THIS object and THIS request call for (never the same kit for everything): wear = library words for ONE thing that sits on top of it and suits it (a chef hat on a pizza, sunglasses or a pirate hat on a duck, a crown on royalty, a halo on an angel); effect = the one effect that suits it. A glow, spinning neon orbs and a lit stage rim are added too.",
+      name: 'preview_library_models',
+      description: "Look at ready-made models before choosing. Pass 1-6 candidates you found ({ id } from find_library_model, { gameId, path } from browse_owner_library). Each is staged off the place and measured (name, game, parts, size against a player, dominant colour, anything that blocks it); nothing is placed or chosen for you. snapshot: true also shows the user one picture of them in a row, then removes the row. If none fits, build it another way or ask.",
       parameters: S({
-        wear: { type: 'string', description: 'library search words for the one thing on top, e.g. "chef hat"' },
-        effect: { type: 'string', enum: [...COOL_EFFECTS] },
-      }, ['wear', 'effect']),
+        models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, name: { type: 'string' }, game: { type: 'string' } } } },
+        snapshot: { type: 'boolean' },
+      }, ['models']),
     },
     studio: true,
-    studioOps: ['create_instances', 'delete_instances', 'set_props', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'place_copies', 'import_owner_library', 'strip_descendants', 'get_instance'],
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
-    plainSummary: (_a, _r, failed) => failed ? 'Could not make it cooler' : 'Made it cooler',
-    run: async (ctx, a) => {
-      const spec = await ctx.objectMemory?.load().catch(() => undefined) as Record<string, unknown> | undefined;
-      if (!spec?.library) return { error: 'There is no ready-made object in this place to make cooler; build_object makes one.' };
-      return coolLibraryObject(ctx, spec, a);
+    studioOps: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'import_owner_library', 'strip_descendants'],
+    plainSummary: (_a, r, failed) => failed ? 'Could not look at the models' : `Looked at ${(r as { previews?: unknown[] } | undefined)?.previews?.length ?? 0} ready-made model(s)`,
+    run: (ctx, a) => previewLibraryModels(ctx, Array.isArray(a.models) ? a.models : [], { snapshot: a.snapshot === true }),
+  },
+  dress_object: {
+    def: {
+      name: 'dress_object',
+      description: "Optional extras for an object already in the place; nothing is added unless you ask, and an empty call is an error. target = game.Workspace.<Name>. stage: a slab under it (it is raised onto it). click { motion, sound? }: the whole object moves when clicked or walked into. counter { label, hint? }: counts those moves (needs click). attach: other ready-made pieces fixed to it. light, effect: on the part in `on` (default: the click body). Ground, spawn, lighting and camera are never touched.",
+      parameters: S({
+        target: { type: 'string' },
+        stage: { type: 'object', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
+        click: { type: 'object', properties: { motion: { type: 'string', enum: ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] }, sound: { type: 'string' }, amount: { type: 'number' } } },
+        counter: { type: 'object', properties: { label: { type: 'string' }, hint: { type: 'string' } } },
+        attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
+        light: { type: 'object', properties: { on: { type: 'string' }, color: { type: 'string' }, brightness: { type: 'number' }, range: { type: 'number' } } },
+        effect: { type: 'object', properties: { preset: { type: 'string' }, on: { type: 'string' }, scale: { type: 'number' }, rate: { type: 'number' } } },
+      }, ['target']),
     },
+    studio: true,
+    studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'import_owner_library', 'strip_descendants'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not dress the object' : 'Dressed the object',
+    run: dressObject,
   },
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build the ONE thing asked for in one call (no desk, monitor or room unless asked): every piece its own part, bright colours, motions with sounds. Make it RECOGNISABLE at a glance: its real proportions (a stick, bar, pencil or sword is long and thin, 4 or more : 1 : 1; a coin, pizza or cookie is flat; a ball or fruit is round) and the 2-3 details that say what it is (a donut: a flat ring, icing on top, sprinkles), never covering the body (a wrapper goes under or around one end), each detail ON the outside of the body (at = the body's centre plus half both sizes), never inside it; words go in a part's text. Size it 2-3 times a player's height at its longest (a player is 5 studs; too small is grown for you). Keyboards, keypads, pianos: ONE part with rows (laid out for you). Studs, stage, rig, lighting and a counter screen are added.",
+      description: "Build ONE object from parts in one call. Each part is named, sized [x,y,z] studs (a player is 5 tall) and centred at `at` (y up from the ground), on the outside of what it decorates. Words go in a part's text; a part moves only if it has a move; rows lays out labelled cells. Nothing is added unasked (no stage, counter, lighting, ground change, or resizing by part name); stage, screen and focus are opt-in. The result has measured `checks` (hidden or floating parts, covered or low-contrast words, proportions, nothing moving): information, not a verdict. A taken name is an error; replace: true puts the new one there.",
       parameters: S({
-        name: { type: 'string' },
-        scale: { type: 'number', description: 'multiplies every size; 3-6 makes a toy-sized thing walkable' },
+        name: { type: 'string', description: 'Any language.' },
+        scale: { type: 'number' },
+        at: { type: 'array', items: { type: 'number' }, description: 'Footprint centre on the ground. Default: beside what is there.' },
+        replace: { type: 'boolean' },
         parts: { type: 'array', items: { type: 'object', properties: {
-          name: { type: 'string', description: 'what the part is, e.g. Crown, FlameLeft, Wrapper' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
-          size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' }, description: 'centre [x,y,z], y up from the ground' },
-          color: { type: 'string', description: '#rrggbb' }, text: { type: 'string' }, key: { type: 'string' },
-          repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
-          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'key labels row by row, e.g. [["Esc","1","2"],["Q","W"],["Space"]]. Symbol keys by NAME, never the bare character: "Backslash", "Quote", "Backquote" (a bare \\ or " breaks the JSON). The F row and the modifiers are added for you.' },
-          move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, sound: { type: 'string', description: 'words, e.g. keyboard click' } } },
-        // A name saying what the part is, always (test 3 round 9, 2026-10-01: an upgrade's details came unnamed and the
-        // answer could only say "two red wedges"). A rows entry is named too.
+          name: { type: 'string' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
+          size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' } }, rot: { type: 'array', items: { type: 'number' } },
+          color: { type: 'string', description: '#rrggbb' }, material: { type: 'string', enum: ['Plastic', 'Neon'] }, transparency: { type: 'number' }, surface: { type: 'string', enum: ['smooth'] },
+          text: { description: 'A string, or { value, face, color, font, glow }.' }, key: { type: 'string', description: 'Enum.KeyCode name for move.on "key".' }, rides: { type: 'string', description: 'A part it moves with.' },
+          repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, names: { type: 'array', items: { type: 'string' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
+          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Labelled cells row by row, instead of one part. Also unit, gap, height, widths {label: cells}, color(s), textColor, case, align, keys, move.' },
+          move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, hinge: { type: 'string', enum: ['bottom', 'top', 'back', 'front', 'left', 'right', 'center'] }, amount: { type: 'number' }, sound: { type: 'string', description: 'Sound id or words.' } } },
         }, required: ['name'] } },
-        screen: { type: 'object' },
+        stage: { type: 'object', description: 'Slab under it. Absent: none.', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
+        screen: { type: 'object', description: "Counter and hint on the player's screen. Absent: none.", properties: { counter: { type: 'string' }, hint: { type: 'string' } } },
+        focus: { type: 'boolean', description: 'Turn the Studio camera to it.' },
       }, ['name', 'parts']),
     },
     studio: true,
-    studioOps: ['create_instances', 'delete_instances', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'camera_focus'],
+    studioOps: ['create_instances', 'delete_instances', 'get_instance', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'camera_focus', 'spatial_query'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not build it' : 'Built it',
     run: buildObject,
@@ -5058,16 +5083,21 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Insert ONE verified Creator Store model after the project owner chose its real preview. Pass the exact library `id` that the owner selected. A query cannot silently choose the best match. Third-party rows require the experience's Roblox third-party loading setting; a refusal leaves the place unchanged. Downloaded file rows are not insertable because uploading a new permanent Model needs separate authority. Every insertion is scanned inside the place; scripted assets are removed before they count. Use this for detailed props, buildings, nature, vehicles, pets and characters. If insertion fails, leave it unbuilt until another choice. To place many copies of the approved model, insert one and clone_instances it.",
+        "Place ONE ready-made model you chose, as a script-free copy, and report its measured size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side, studs), height or scale; nothing else is added (dress_object adds extras on request). name = what it is called (any language); a taken name is an error (another name, or replace: true). Third-party Store rows need the experience's third-party loading setting; a refusal leaves the place unchanged; downloaded file rows are not insertable. Every insertion is scanned in the place and scripts are removed. For copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
-          position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Where the bottom-centre lands, in studs. Default [0,0,0].' },
-          height: { type: 'number', description: 'Target height in studs (the model is scaled uniformly).' },
-          scale: { type: 'number', minimum: 0.001, maximum: 1000, description: 'Uniform scale factor instead of height.' },
+          gameId: { type: 'string', description: 'With path: an owner-library piece instead of a Store row.' },
+          path: { type: 'string' },
+          name: { type: 'string' },
+          position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Bottom-centre. Default [0,0,0] (Store row), beside what is there (owner piece).' },
+          size: { type: 'number', description: 'Longest side in studs.' },
+          height: { type: 'number', description: 'Target height in studs.' },
+          scale: { type: 'number', minimum: 0.001, maximum: 1000 },
+          replace: { type: 'boolean' },
           parent: { type: 'string', description: 'Default game.Workspace.' },
         },
-        ['id'],
+        [],
       ),
     },
     studio: true,
@@ -5076,6 +5106,14 @@ export const TOOLS: Record<string, ToolImpl> = {
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => {
+      if (a.gameId !== undefined || a.path !== undefined) {
+        const piece = candidateOf({ gameId: a.gameId, path: a.path, name: a.name });
+        if ('error' in piece) return piece;
+        const size = placeSizeOf(a);
+        if ('error' in size) return size;
+        return placeLibraryPiece(ctx, piece, { name: a.name, at: a.position, replace: a.replace, size });
+      }
+      if (a.id === undefined) return { error: 'give { id } from find_library_model, or { gameId, path } from browse_owner_library' };
       if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
       if (String(a.id ?? '').startsWith('owner:')) {
         if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
@@ -5105,6 +5143,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
       const height = a.height === undefined ? undefined : Number(a.height);
       if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
+      const longest = a.size === undefined ? undefined : Number(a.size);
+      if (longest !== undefined && !(longest > 0 && longest <= 2000)) return { error: 'size must be between 0 and 2000 studs' };
+      if ([scale, height, longest].filter((v) => v !== undefined).length > 1) return { error: 'give one of size (longest side in studs), height or scale, not several' };
 
       const assetId = pick.assetId;
       const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
@@ -5116,7 +5157,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (path) paths = [path];
       }
       const where = paths.length === 1
-        ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height })
+        ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height, longest })
         : { error: 'inserted as several pieces; left where Roblox put them' };
       return {
         ...placed,
