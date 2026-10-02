@@ -43,7 +43,16 @@ export interface TycoonRecipe {
 
 const cap = (s: string) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 const HEX = /^#[0-9a-f]{6}$/i;
-const clean = (v: unknown, max = 28) => String(v ?? '').replace(/[^A-Za-z0-9 '\-]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+/**
+ * A name a sign can hold: the thing itself, not a sentence about it, cut at a whole word (live 2026-10-02: the agent
+ * wrote "Laundry Hamper that drops piles..." and the sign read "Laundry Hamper That Drops Pi"). Pure.
+ */
+export function clean(v: unknown, max = 24): string {
+  const text = String(v ?? '').replace(/[^A-Za-z0-9 '\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = text.split(/\b(?:that|which|who|where|with|for|to|so)\b/i)[0]!.trim().split(' ').filter(Boolean).slice(0, 4);
+  while (words.length > 1 && words.join(' ').length > max) words.pop();
+  return words.join(' ').slice(0, max);
+}
 const colourOr = (v: unknown, fallback: string) => (typeof v === 'string' && HEX.test(v) ? v : fallback);
 
 /**
@@ -338,6 +347,6 @@ export function tycoonForUser(recipe: TycoonRecipe, report: { missing: string[] 
     `- Your ${t.dropper} drops ${t.item.name} onto a conveyor. It goes ${chain}, and each machine makes it worth more.`,
     `- The ${t.seller.name} at the end of the belt pays you ${t.currency} for every one.`,
     `- Step on the green pads to buy, in order: ${tycoonUnlocks(t).map((u) => `${u.label} (${short(u.price)})`).join(', ')}.`,
-    fromLibrary ? `- ${fromLibrary} of the machines are models from your library; the rest are built from parts.` : '',
+    fromLibrary ? `- ${fromLibrary === t.machines.length ? 'Every machine is a model' : fromLibrary === 1 ? 'One machine is a model' : `${fromLibrary} machines are models`} from your library${fromLibrary < t.machines.length ? '; the rest are built from parts' : ''}.` : '',
   ].filter(Boolean).join('\n');
 }

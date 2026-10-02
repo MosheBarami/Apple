@@ -69,3 +69,13 @@ test('every class and property the tycoon writes is one the plugin accepts', () 
   for (const s of steps) if (s.kind === 'create') s.items.forEach(walk);
   assert.deepEqual([...bad], []);
 });
+
+test('names are the thing, cut at a whole word', () => {
+  // Live 2026-10-02: "Laundry Hamper That Drops Pi", "Happy Customer Pickup Counte".
+  assert.equal(T.clean('Laundry Hamper that drops piles of dirty clothes'), 'Laundry Hamper');
+  assert.equal(T.clean('Happy Customer Pickup Counter'), 'Happy Customer Pickup');
+  assert.equal(T.clean('Washing Machine'), 'Washing Machine');
+  const th = T.tycoonTheme(REQ, { dropper: 'Laundry Hamper that drops piles of dirty clothes', seller: { name: 'Happy Customer Pickup Counter' } });
+  assert.equal(th.dropper, 'Laundry Hamper');
+  assert.match(T.tycoonForUser(T.tycoonRecipe(REQ, 1, th, { machines: [{ game: 'g', path: '/W/Washer' }] }), { missing: [] }), /One machine is a model from your library; the rest are built from parts\./);
+});
