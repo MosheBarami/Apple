@@ -2373,6 +2373,12 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // Stop button, and nothing else. It can end a run; it cannot read, start or change one, which
       // is strictly less than agent-run above already grants the same key.
       'POST /api/admin/agent-stop/:id',
+      // Reviewed 2026-10-02: clears a project's conversation, memory and run state (d63ea3f1, the owner's "every
+      // benchmark request runs in a new clean chat") and keeps the Studio pairing and the checkpoints. It refuses
+      // with 409 while a run is in progress, builds nothing and reads nothing back. That is a write the same key
+      // already has through agent-run and run-tool, and the owner-authenticated twin (POST
+      // /api/projects/:id/bench/reset) goes through withOwnedProject; this one is the service key's.
+      'POST /api/admin/bench-reset/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',
