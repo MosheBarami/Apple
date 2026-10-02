@@ -82,7 +82,7 @@ const BIN = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|rbxm|rbxl|rbxlx|zip|gz|mp3
 const FROZEN = (p) => p.startsWith('docs/evidence/') || p === 'docs/PASS-LOG.md' || p === 'pnpm-lock.yaml'
   || p === 'CHANGELOG.md' || p.startsWith('docs/releases/') || p === 'docs/RELEASES.json'
   || p.startsWith('scripts/reorg/') || p === 'scripts/reorg-repo.mjs' || p === 'docs/operations/REPO-CLEANUP-PENDING.md'
-  || p === 'scripts/known-fixtures.json' || p === 'scripts/known-exposures.json';
+  || /^scripts\/(checks\/)?known-(fixtures|exposures)\.json$/.test(p);
 const JSLIKE = /\.(mjs|cjs|js|ts|tsx|jsx|astro)$/;
 const MDLIKE = /\.mdx?$/;
 
@@ -209,14 +209,15 @@ function escapedRewrite(text, from, to) {
   return [out, n];
 }
 function segmentRewrite(text, from, to) {
+  // `'infra', 'x.mjs'` (node path.join) and `"infra" / "x.py"` (python pathlib): consecutive quoted segments
   const fs_ = from.split('/'); const ts = to.split('/');
   if (fs_.length < 2) return [text, 0];
   let src = '';
-  fs_.forEach((s, i) => { src += (i ? '\\s*,\\s*' : '') + `(['"])${esc(s)}\\${i + 1}`; });
-  // backrefs: group i+1 is the quote of segment i
+  // group 1+2i is the quote of segment i, group 2+2i the separator before segment i+1
+  fs_.forEach((s, i) => { src += (i ? '(\\s*[,/]\\s*)' : '') + `(['"])${esc(s)}\\${i ? 2 * i + 1 : 1}`; });
   const re = new RegExp(src, 'g');
   let n = 0;
-  const out = text.replace(re, (m, q) => { n++; return ts.map((s) => `${q}${s}${q}`).join(', '); });
+  const out = text.replace(re, (m, q, sep) => { n++; return ts.map((s) => `${q}${s}${q}`).join(sep); });
   return [out, n];
 }
 
@@ -467,7 +468,7 @@ function flush() {
   // directories the moves and deletes emptied; rmdir only ever removes an EMPTY directory, so untracked content is safe
   for (const p0 of [...touched.moved.map((m) => m.from), ...delPaths]) {
     let d = p0;
-    while (d && d !== '.' && d !== '/') { try { fs.rmdirSync(d); } catch { break; } d = path.posix.dirname(d); }
+    while (d && d !== '.' && d !== '/') { try { fs.rmdirSync(d); } catch (e) { if (e.code !== 'ENOENT') break; } d = path.posix.dirname(d); }
   }
   for (const s of touched.symlinks) {
     fs.rmSync(s.path, { force: true });

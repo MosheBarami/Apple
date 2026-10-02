@@ -17,6 +17,7 @@ function fixture() {
   const dir = mkdtempSync(join(tmpdir(), 'reorg-repo-'));
   const put = (p, s) => { mkdirSync(dirname(join(dir, p)), { recursive: true }); writeFileSync(join(dir, p), s); };
   put('infra/deploy.mjs', "import { x } from '../scripts/lib/x.mjs';\nconst root = new URL('..', import.meta.url).pathname;\nconsole.log(x, root);\n");
+  put('tools/check.py', 'p = ROOT / "infra" / "deploy.mjs"\n');
   put('scripts/lib/x.mjs', 'export const x = 1;\n');
   put('tests/uses.test.mjs', "import { join } from 'node:path';\nconst a = join(ROOT, 'infra', 'deploy.mjs');\nconst b = 'infra/deploy.mjs';\nconst c = new URL('../infra/deploy.mjs', import.meta.url);\n");
   put('docs/OLD.md', '# Old\nsee [the runbook](RUNBOOK.md) and `docs/RUNBOOK.md`\n');
@@ -75,6 +76,8 @@ test('apply moves, deletes and rewrites every kind of reference; a second apply 
     assert.match(reader, /join\(ROOT, 'platforms', 'cloudflare', 'deploy', 'deploy\.mjs'\)/);
     assert.match(reader, /'platforms\/cloudflare\/deploy\/deploy\.mjs'/);
     assert.match(reader, /new URL\('\.\.\/platforms\/cloudflare\/deploy\/deploy\.mjs', import\.meta\.url\)/);
+    // python pathlib segments
+    assert.match(f.read('tools/check.py'), /ROOT \/ "platforms" \/ "cloudflare" \/ "deploy" \/ "deploy\.mjs"/);
     // markdown: a relative link to a moved doc, a literal path, and the moved doc's own links
     assert.match(f.read('docs/OLD.md'), /\]\(operations\/RUNBOOK\.md\)/);
     assert.match(f.read('docs/OLD.md'), /`docs\/operations\/RUNBOOK\.md`/);

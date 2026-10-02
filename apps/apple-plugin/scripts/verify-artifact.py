@@ -104,7 +104,7 @@ def main() -> int:
         return 2
     artifact = Path(sys.argv[1])
 
-    spec = importlib.util.spec_from_file_location("inspector", REPO / "scripts" / "inspect-plugin-build.py")
+    spec = importlib.util.spec_from_file_location("inspector", REPO / "scripts" / "checks" / "inspect-plugin-build.py")
     inspector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(inspector)
 
