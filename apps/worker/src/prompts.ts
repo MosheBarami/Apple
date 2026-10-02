@@ -271,7 +271,16 @@ const MODE_RULES: Record<ProductMode, (offered: ReadonlySet<string>) => string> 
   agent: agentRules,
 };
 
+/**
+ * The self-check's one rule (self-check.ts), said only to a run that was OFFERED `look`: a prompt may not order a call to a
+ * tool the run does not have. Short on purpose: it is read on every step.
+ */
+const LOOK_RULE = `After you build or change something the user will look at, call look with \`expect\` naming what the request should show: it frames your work from several angles, including a player's eye level, and reports what is seen, not seen or cannot tell. Fix what it did not see or what looks wrong, then answer. Say only what you saw or read back in this run, and say plainly what you did not check. It cannot see text on a player's screen.`;
+/** Named only when the run was offered it: a prompt may not direct a call to a tool the run does not have. */
+const LOOK_RULE_PLAY = ' play_check shows what a player\'s screen says.';
+
 function agentRules(offered: ReadonlySet<string>): string {
+  const withLook = (rules: string): string => (offered.has('look') ? `${rules}\n\n${LOOK_RULE}${offered.has('play_check') ? LOOK_RULE_PLAY : ''}` : rules);
   const head = `You are the builder. Implement the requested feature end to end: inspect the project, make the
 edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
 output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.`;
@@ -280,20 +289,20 @@ output logs). Create an undo waypoint before your first change. Report what you 
     const check = verifiers.length
       ? `include at least one verification step (${verifiers.join(', ')}) — a build nobody checked is\nnot a finished build`
       : 'note that no verification tool is offered in this session, so say plainly in your reply that the\nresult was not automatically checked';
-    return `${head}
+    return withLook(`${head}
 
 Your FIRST call is ${PLANNER_TOOL}. The user is watching a checklist appear before anything in their
 project moves, and that checklist is the only thing that tells them what is about to happen — prose
 about what you are about to do is a second, worse copy of it. Name the tool each step will use, using
-only tools offered in this run, and ${check}. Then carry the plan out; do not call ${PLANNER_TOOL} again.`;
+only tools offered in this run, and ${check}. Then carry the plan out; do not call ${PLANNER_TOOL} again.`);
   }
   const check = verifiers.length
     ? `Check your work with ${verifiers.join(' or ')} before you report it.`
     : 'Nothing offered in this session can check a build automatically, so say plainly what you could not verify.';
-  return `${head}
+  return withLook(`${head}
 
 There is no build checklist in this session: the planning tool is not offered, so do not try to
-announce one — act with the tools you have. ${check}`;
+announce one — act with the tools you have. ${check}`);
 }
 
 /**

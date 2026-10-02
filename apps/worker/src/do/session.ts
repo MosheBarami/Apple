@@ -103,6 +103,12 @@ import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceC
 import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary, isUpgradeRequest } from '../request-scope';
 import { objectUpgradeLine } from '../object-tool';
 import { persistWithShedding } from '../persist';
+// THE SELF-CHECK (M1, docs/autonomy/PHASE-3-4-PLAN.md): the switch, the run's evidence ledger, the decision at the
+// moment of answering, and the optional text judge. See self-check.ts for what each part is and why it exists.
+import { selfCheckMode } from '../self-check';
+import { newLedger, type EvidenceLedger } from '../evidence-ledger';
+import { checkAtAnswer, forcedLookMessage } from '../self-check-run';
+import { LOOK_TOOL } from '../look-tool';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { runIntentFor } from '../run-intent';
@@ -614,6 +620,8 @@ function failureText(resultForLlm: string | undefined): string {
 const STEER_KEY = 'steerQueue';
 type QueuedSteer = { id: string; text: string; at: number };
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
+/** Where the run's evidence ledger lives: its own key, never inside the agent state (the transcript already presses its 128 KiB cap). */
+const SELF_CHECK_KEY = 'selfCheckLedger';
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 /** What the request's list and the plan's building steps named that nothing this run built is named for. */
@@ -2662,7 +2670,7 @@ export class SessionDO extends DurableObject<Env> {
       const running = await this.ctx.storage.get<AgentState>('agent');
       if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
       for (const key of ['agent', 'memory', 'memoryEditedAt', 'pendingObjectChoice', 'pendingAssetChoice', 'builtObject', 'builtGame',
-        'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'opQueue']) await this.ctx.storage.delete(key);
+        'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'opQueue', SELF_CHECK_KEY]) await this.ctx.storage.delete(key);
       this.opQueue = [];
       this.sql.exec('delete from message_models');
       this.sql.exec('delete from message_revisions');
@@ -4142,6 +4150,8 @@ export class SessionDO extends DurableObject<Env> {
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
     const modeBase = toolsForMode(agent.mode, offerStudio, toolNames());
+    // With the self-check off the run is exactly what it was before it existed: no look is offered either.
+    if (selfCheckMode(this.env) === 'off') modeBase.delete(LOOK_TOOL);
     // A request that forbade changes gets no tool that can make one — narrowing only, like the
     // permissions below. The playtest stays: it restores anything it disturbs, and it is often
     // exactly what such a request asks for.
@@ -4587,6 +4597,12 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: piece });
     }
 
+    // The tool context and the run's evidence ledger (when the self-check is on) serve both the tool loop below and the
+    // moment of answering, so they are made once, here.
+    const ctx = this.agentCtx(agent);
+    const ledger = selfCheckMode(this.env) === 'off' ? undefined : await this.ledgerFor(agent);
+    if (ledger) ctx.evidence = ledger;
+
     if (!res.toolCalls.length) {
       if (sequence) {
         await this.finishRun(agent, 'incomplete', undefined,
@@ -4736,6 +4752,12 @@ export class SessionDO extends DurableObject<Env> {
         }
         agent.finalText = agent.playChecked ? `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.` : agent.composedForUser;
       }
+      // THE SELF-CHECK AT THE MOMENT OF ANSWERING (self-check-run.ts): look at the work before saying anything about it,
+      // send the reply's unsupported claims back, and say what is still unchecked in one plain line after the agent's words.
+      // Not for an answer the product composes itself (it is built from the build, not from the model's retelling).
+      if (!owesWork && agent.mode === 'agent' && !agent.judgedReady && !(agent.composedObject && agent.composedForUser)) {
+        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected)) return;
+      }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
     }
@@ -4748,7 +4770,6 @@ export class SessionDO extends DurableObject<Env> {
     // A real call was made, so the text-payload steer's run of consecutive uses is over.
     agent.textCallSteers = 0;
 
-    const ctx = this.agentCtx(agent);
     // What propose_plan validates against: exactly the set this step will execute, so a plan can
     // never promise a tool the run was not given. And the plan tool's own run-level memory, so it
     // can keep its promise never to refuse more than twice in a row. See PlanState in tools.ts.
@@ -4909,6 +4930,7 @@ export class SessionDO extends DurableObject<Env> {
       // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
       const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
       if (studioDown) agent.studioDropped = true;
+      const ledgerSeq = ledger?.seq;
       const out = allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
@@ -4928,6 +4950,7 @@ export class SessionDO extends DurableObject<Env> {
             ok: false,
             detail: undefined,
           };
+      if (ledger && ledger.seq !== ledgerSeq) await this.saveLedger(agent, ledger);
       const entry: ToolTraceEntry = {
         tool: call.name,
         summary: out.summary,
@@ -4965,6 +4988,8 @@ export class SessionDO extends DurableObject<Env> {
         if (!('error' in kit)) agent.kitZone = kitZone(kit.facts);
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
+      // A look at the work is a check too: reading after it is the idle the bound above already counts.
+      if (out.ok && call.name === LOOK_TOOL && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
@@ -5083,7 +5108,7 @@ export class SessionDO extends DurableObject<Env> {
       //   agent reasons from. What the scan finds is reported in the tag's ATTRIBUTES, the one
       //   place content cannot reach because the tag carries the run's unguessable id, and on the
       //   tool row, so the user sees that a page tried it. ]]
-      const fenced = fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool: call.name, body: out.resultForLlm });
+      const fenced = this.fencedToolOutput(agent, call.name, out.resultForLlm);
       if (fenced.threats.length) {
         const note = describeThreats(fenced.findings);
         entry.summary = `${entry.summary} · ${note}`;
@@ -5478,6 +5503,104 @@ export class SessionDO extends DurableObject<Env> {
    * exact id was written by the content, and that everything after it is still inside the fence.
    * Unrecognised beats forgeable.
    */
+  // ------------------------------------------------------------------------------ the self-check ---
+
+  /** The run's ledger: the stored one when it belongs to THIS run, otherwise a fresh one. */
+  private async ledgerFor(agent: AgentState): Promise<EvidenceLedger> {
+    const stored = await this.ctx.storage.get<{ msgId?: string; ledger?: EvidenceLedger }>(SELF_CHECK_KEY);
+    return stored?.msgId === agent.msgId && stored.ledger?.v === 1 ? stored.ledger : newLedger();
+  }
+
+  private async saveLedger(agent: AgentState, ledger: EvidenceLedger): Promise<void> {
+    await this.ctx.storage.put(SELF_CHECK_KEY, { msgId: agent.msgId, ledger });
+  }
+
+  /**
+   * The agent has stopped calling tools and written its answer. Decide, with the ledger, whether it may go (see
+   * self-check-run.ts) and carry the decision out. Returns true when the run must take another step instead of ending.
+   */
+  private async selfCheckAtAnswer(
+    agent: AgentState,
+    ledger: EvidenceLedger,
+    ctx: AgentCtx,
+    allowed: ReadonlySet<string>,
+    studioConnected: boolean,
+  ): Promise<boolean> {
+    const decision = checkAtAnswer({
+      ledger,
+      reply: agent.finalText ?? '',
+      lookAvailable: allowed.has(LOOK_TOOL),
+      studioConnected,
+      can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
+    });
+    if (decision.action === 'finish') {
+      if (decision.note) {
+        // The same way every other product note is added: after the agent's own words, never in place of them.
+        const prior = agent.streamedText ?? '';
+        agent.finalText = agent.finalText ? `${agent.finalText}\n\n${decision.note}` : decision.note;
+        agent.streamedText = prior ? `${prior}\n\n${decision.note}` : decision.note;
+        this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${decision.note}` : decision.note });
+      }
+      await this.saveLedger(agent, ledger);
+      return false;
+    }
+    if (decision.action === 'steer') {
+      agent.llm.push({ role: 'user', content: decision.message });
+    } else {
+      // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
+      const out = await this.runSelfCheckLook(agent, ledger, ctx);
+      if (!out.ok) {
+        // A look that could not run gives the agent nothing to act on: no extra model step, and the final line says so.
+        const after = checkAtAnswer({
+          ledger, reply: agent.finalText ?? '', lookAvailable: allowed.has(LOOK_TOOL), studioConnected,
+          can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
+        });
+        if (after.action === 'finish') {
+          if (after.note) {
+            const prior = agent.streamedText ?? '';
+            agent.finalText = agent.finalText ? `${agent.finalText}\n\n${after.note}` : after.note;
+            agent.streamedText = prior ? `${prior}\n\n${after.note}` : after.note;
+            this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${after.note}` : after.note });
+          }
+          await this.saveLedger(agent, ledger);
+          return false;
+        }
+        if (after.action === 'steer') agent.llm.push({ role: 'user', content: after.message });
+      } else {
+        agent.llm.push({ role: 'user', content: forcedLookMessage(this.fencedToolOutput(agent, LOOK_TOOL, out.resultForLlm).text) });
+      }
+    }
+    await this.saveLedger(agent, ledger);
+    await this.persistAgent(agent);
+    await this.ctx.storage.setAlarm(Date.now() + 10);
+    return true;
+  }
+
+  /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
+  private async runSelfCheckLook(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx) {
+    ctx.evidence = ledger;
+    const toolId = `selfcheck_${agent.step}_look`;
+    const t0 = Date.now();
+    agent.phase = phaseForTool(LOOK_TOOL);
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, tool: LOOK_TOOL });
+    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
+    const out = await runTool(ctx, LOOK_TOOL, '{}');
+    agent.trace.push({
+      tool: LOOK_TOOL, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0, detail: out.detail,
+      ...(out.ok ? {} : { error: failureText(out.resultForLlm) }),
+    });
+    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
+    agent.uiTools = agent.uiTools ?? [];
+    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: out.ok, summary: out.summary, durationMs: Date.now() - t0, detail: out.detail });
+    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
+    return out;
+  }
+
+  /** Tool output as the model reads it: fenced as untrusted data under the run's own unguessable id. The ONE place it is built. */
+  private fencedToolOutput(agent: AgentState, tool: string, body: string) {
+    return fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool, body });
+  }
+
   private fenceIdFor(agent: AgentState): string {
     if (!agent.fenceId) agent.fenceId = crypto.randomUUID().slice(0, 8);
     return agent.fenceId;
@@ -5559,6 +5682,7 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'asset_sources_owed', owed: false });
     }
     await this.ctx.storage.delete('assetSourcesAwaitingRun');
+    await this.ctx.storage.delete(SELF_CHECK_KEY);
     // Nothing this run queued may still be applied to the place now that it has ended.
     const abandoned = await this.dropOpsForEndedRuns(undefined);
     // A regrant that arrived while this run was still live is deliberately deferred until now.
@@ -5953,7 +6077,8 @@ export class SessionDO extends DurableObject<Env> {
     // The mode is checked BEFORE the model call, not inside the writer. `applyModelUpdate` would
     // discard the result anyway, but a run with memory switched off must not spend a neuron — or a
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
-    if (agent.trace.length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
+    // A look the self-check ran on the agent's behalf is not substantive work: it must not tip a small run into distillation.
+    if (agent.trace.filter((t) => t.tool !== LOOK_TOOL).length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
       // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
@@ -6151,6 +6276,12 @@ export class SessionDO extends DurableObject<Env> {
       // The run's user is the project owner (startRun records `bind.ownerId`); a tool that acts in
       // the user's own account (generate_model_external) needs it. No run, no user.
       userId: agent?.userId,
+      // For `look`: what the run was asked, and where a model call made inside a tool is counted (it reaches the Credits
+      // with the next step's settlement, like every other compute this run used).
+      ...(agent ? {
+        request: agent.request,
+        addNeurons: (n: number) => { agent.neuronsUsed = (agent.neuronsUsed ?? 0) + n; },
+      } : {}),
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       approvedLibraryAssetId: agent?.approvedLibraryAssetId,
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,

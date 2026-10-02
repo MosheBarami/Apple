@@ -393,8 +393,12 @@ test('G10: a message sent during a run is queued and reaches the model at the ne
     const req = h.chatCalls[1]?.req;
     assert.ok(req, 'the run never took its next step');
     const users = req.messages.filter((m) => m.role === 'user').map((m) => String(m.content));
-    assert.ok(users.at(-1).includes('also make the tower blue'), 'the direction did not reach the next step');
-    assert.ok(/do not redo completed steps/i.test(users.at(-1)), 'the direction must keep completed work');
+    // The recorded request shares its message array with the run, so a message the run appends AFTER this step (the
+    // self-check's look observations, when the answer is about to end the run) is also in it: find the direction, do
+    // not assume it is the last user message.
+    const direction = users.find((u) => u.includes('also make the tower blue'));
+    assert.ok(direction, 'the direction did not reach the next step');
+    assert.ok(/do not redo completed steps/i.test(direction), 'the direction must keep completed work');
     assert.equal(h.sent.filter((m) => m.type === 'steer' && m.state === 'applied').length, 1);
     assert.ok(h.sql.messages.some((m) => m.role === 'user' && m.content === 'also make the tower blue'), 'the direction is not in the conversation');
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 1, 'the completed change was repeated');
