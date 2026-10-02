@@ -1,5 +1,5 @@
 /**
- * A STUDDED map for a lane-defense idea, in the look of the owner's reference worlds (docs/ROBLOX-STYLE-SPEC.md and the
+ * A STUDDED map for a lane-defense idea, in the look of the owner's reference worlds (docs/design/ROBLOX-STYLE-SPEC.md and the
  * reference images of 2026-10-01): a raised grass island whose edge drops in BANDED rust cliffs into bright water, a
  * wide warm path with wooden curbs, dark soil plots in wooden frames with a sign, a gate the enemies come through, a sand
  * plaza at the base, a blue spawn pad. Every brick is Plastic; the composer's surface step then gives everything the

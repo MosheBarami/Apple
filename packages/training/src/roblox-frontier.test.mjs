@@ -210,7 +210,7 @@ for (const item of FRONTIER_ITEMS) {
 
 //[[ THE DOCUMENT CLAIMS THE MAX NUMBER IS THE APPLE NUMBER. THIS IS WHAT THAT CLAIM RESTS ON.
 //
-//   docs/frontier-for-roblox.md §6 and §8.8 both said "nothing here supports or refutes a claim
+//   docs/training/frontier-for-roblox.md §6 and §8.8 both said "nothing here supports or refutes a claim
 //   about MAX", because every arm ran the `apple` lane. §10 retires that, without a single neuron,
 //   on one fact: in AGENT mode the two lanes send the SAME REQUEST. The bench posts
 //   `{ model: settings.gateway, prompt, system, maxTokens: settings.requestedTokens }`, and for
@@ -242,7 +242,7 @@ test('the MAX Agent lane and the Apple Agent lane send a byte-identical request,
     return JSON.stringify({ model: s.gateway, prompt: 'PROMPT', system: arm.system, maxTokens: s.requestedTokens });
   };
   assert.equal(body('apple', 'agent'), body('apple-max', 'agent'),
-    'apple and apple-max no longer resolve to the same request in Agent mode. docs/frontier-for-roblox.md '
+    'apple and apple-max no longer resolve to the same request in Agent mode. docs/training/frontier-for-roblox.md '
     + '§10 says the 87.5% covers MAX because the request is identical; that claim is now false and '
     + 'must be retracted or re-measured on the MAX lane.');
 

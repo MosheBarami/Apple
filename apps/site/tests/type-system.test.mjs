@@ -21,7 +21,7 @@
  *      look tokenised and disagree is the original defect wearing a better shirt.
  *
  * It deliberately does not pin which faces are in the stack. That is a design decision, it is
- * recorded in docs/DESIGN-TYPE.md with its arithmetic, and a guard that pinned it would go red the
+ * recorded in docs/design/DESIGN-TYPE.md with its arithmetic, and a guard that pinned it would go red the
  * day the decision is revisited rather than the day the system breaks.
  *
  * THE DENOMINATOR IS ASSERTED. A scanner that finds no font-family declarations reports a clean

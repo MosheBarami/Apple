@@ -503,7 +503,7 @@ test('report() renders and is labelled an internal model', () => {
 //   went 460,000 -> 1,800,000, because at the old cap the live product refused every build. The
 //   constants moved, the enforcement moved, and the test above was re-aimed the same day. The
 //   DOCUMENTS did not: docs/COST-MODEL.md still carried "## Hard maximum: $10.06 / month" and
-//   "the hard maximum is still $10.06/month", and docs/SCALE-V2.md and docs/BUDGET-SHARDING.md
+//   "the hard maximum is still $10.06/month", and docs/architecture/SCALE-V2.md and docs/architecture/BUDGET-SHARDING.md
 //   restated it. The safeguards allowed $24.80 and the owner had been told $10.06.
 //
 //   This is the same shape as scripts/check-credit-figures.mjs — a published figure checked
@@ -541,7 +541,7 @@ const HARD_MAX_DOC_EXEMPT_DIRS = ['docs/evidence/', 'docs/audit/'];
  * Documents whose figures sit INSIDE an arithmetic argument rather than stating the current
  * ceiling, and which therefore need their author rather than a find-and-replace.
  *
- * EMPTY, AND THAT IS THE POINT — it held docs/BUDGET-SHARDING.md, with the instruction "delete this
+ * EMPTY, AND THAT IS THE POINT — it held docs/architecture/BUDGET-SHARDING.md, with the instruction "delete this
  * entry when it has been re-derived". It has been. Every figure the 2026-09-20 repricing moved was
  * re-derived from the constants rather than replaced: the daily ceiling 25,000 -> 100,000, the
  * ledger's admitted steps/day 172/675/25,000 -> 689/2,702/100,000, the realistic burst 5.7 -> 23

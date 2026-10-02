@@ -219,19 +219,19 @@
     },
     {
       "path": "docs/MONITORING.md",
-      "phase": "P2",
+      "phase": "P3",
       "why": "replaced by platforms/sentry/README.md",
       "redirect": "platforms/sentry/README.md"
     },
     {
       "path": "docs/CLOUDFLARE-SURFACE.md",
-      "phase": "P2",
+      "phase": "P3",
       "why": "replaced by platforms/cloudflare/README.md (re-read from the account 2026-10-02)",
       "redirect": "platforms/cloudflare/README.md"
     },
     {
       "path": "docs/DEPLOY-INTEGRATION.md",
-      "phase": "P2",
+      "phase": "P3",
       "why": "merged into platforms/cloudflare/README.md",
       "redirect": "platforms/cloudflare/README.md"
     }
@@ -939,6 +939,42 @@
       "replace": "",
       "expect": 1,
       "why": "the vacuous hook test was removed",
+      "rerunOk": true
+    },
+    {
+      "file": "apps/site/src/components/BuiltScreen.astro",
+      "phase": "P2",
+      "find": "the long note that used to sit here, and\\n\\s+docs/backlog/landing-showcase-door\\.md, say why\\.",
+      "replace": "the long note that used to sit here (removed with\n          its handoff; see git history) says why.",
+      "expect": 1,
+      "why": "the handoff was closed and removed",
+      "rerunOk": true
+    },
+    {
+      "file": "docs/evals/FINDINGS.md",
+      "phase": "P2",
+      "find": "`docs/backlog/HANDOFF-CLAY-REACHABLE\\.md`",
+      "replace": "the handoff HANDOFF-CLAY-REACHABLE (closed and removed 2026-10-02; see git history)",
+      "expect": 1,
+      "why": "the handoff was closed and removed",
+      "rerunOk": true
+    },
+    {
+      "file": "docs/training/model-serving-reality.md",
+      "phase": "P2",
+      "find": "`docs/backlog/HANDOFF-CLAY-REACHABLE\\.md`",
+      "replace": "the handoff HANDOFF-CLAY-REACHABLE (closed and removed 2026-10-02; see git history)",
+      "expect": 1,
+      "why": "the handoff was closed and removed",
+      "rerunOk": true
+    },
+    {
+      "file": "scripts/ci-parity.mjs",
+      "phase": "P2",
+      "find": "See docs/backlog/CI-IS-BLOCKED-ON-GITHUB-BILLING-2026-09-21\\.md\\.",
+      "replace": "(That handoff was closed and removed; CI runs again. See git history.)",
+      "expect": 1,
+      "why": "the handoff was closed and removed",
       "rerunOk": true
     }
   ],

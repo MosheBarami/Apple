@@ -3,7 +3,7 @@
 `docs/FINISH-REPORT-100.md` §3.9 measured the hole:
 
 ```
-grep -rn -iE 'unseen' docs/evals/*.md docs/frontier-for-roblox.md → 0 matches
+grep -rn -iE 'unseen' docs/evals/*.md docs/training/frontier-for-roblox.md → 0 matches
 ```
 
 Every score this project publishes was published without saying whether the questions were

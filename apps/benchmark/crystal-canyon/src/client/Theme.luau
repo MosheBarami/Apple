@@ -60,7 +60,7 @@
 	mount are all the same carved slab, which is what makes three clusters read
 	as one interface.
 
-	Section numbers in comments refer to docs/ROBLOX-STYLE-SPEC.md.
+	Section numbers in comments refer to docs/design/ROBLOX-STYLE-SPEC.md.
 
 	Six decisions below are not obvious and are worth reading before editing.
 

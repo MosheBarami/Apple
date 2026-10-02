@@ -220,7 +220,7 @@ svg {
   color: var(--ink);
 }
 
-/* ONE FOCUS RING, EVERYWHERE: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
+/* ONE FOCUS RING, EVERYWHERE: 2px of the accent at a 4px offset (docs/design/DESIGN-LOCK.md, rule 6).
    `:where()` keeps it at zero specificity so a component can move the ring to a better box — the
    landing composer does — without having to out-shout it. Nothing may remove it. */
 :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {

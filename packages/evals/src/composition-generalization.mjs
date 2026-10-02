@@ -1,7 +1,7 @@
 // Does the composition gate mean anything outside a plaza?
 //
 // apps/worker/src/composition.ts was calibrated on twelve fixtures derived from ONE captured
-// scene, and docs/COMPOSITION.md says so in its own "Honest limits": "a calibration set, not a
+// scene, and docs/architecture/COMPOSITION.md says so in its own "Honest limits": "a calibration set, not a
 // validation set". This harness runs the SAME production module — bundled from
 // apps/worker/src/composition.ts, never mirrored — over fifteen independent synthetic scene
 // families and reports what happens, including where it is bad.
@@ -74,7 +74,7 @@ export const RENDER_H = 180;
  * They are re-measured here for information only. Nothing in this file promotes a metric out of
  * this table, and composition-generalization.test.mjs asserts that none of them has been quietly
  * moved into the kept list — resurrecting a falsified metric because it happened to score well on
- * a second, weaker-labelled set is exactly the failure mode docs/COMPOSITION.md was written about.
+ * a second, weaker-labelled set is exactly the failure mode docs/architecture/COMPOSITION.md was written about.
  */
 export const FALSIFIED = {
   energyGini: { ladderAuc: 0.5, why: 'the central hypothesis of the original work, refuted: a composed scene and a tiled carpet spread edge energy alike once both fill the frame' },
@@ -93,7 +93,7 @@ export const FALSIFIED = {
   silhouetteRange: { ladderAuc: null, why: 'did not separate reliably (0.44-0.78 band)' },
 };
 
-/** Metrics docs/COMPOSITION.md kept, with the ladder AUC they were kept on. */
+/** Metrics docs/architecture/COMPOSITION.md kept, with the ladder AUC they were kept on. */
 export const KEPT = {
   'structure.verticalDominance': 1.0,
   'structure.heightHierarchy': 1.0,

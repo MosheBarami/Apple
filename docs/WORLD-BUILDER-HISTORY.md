@@ -200,7 +200,7 @@ Each of these sat on the code it describes. The code kept a two-line pointer.
 
 	 The monument must stay the tallest thing in the map by a clear margin: the
 	 composition gate measures verticalDominance (tallest ÷ second tallest) and
-	 fails below 1.25, and docs/COMPOSITION.md records a live run scoring exactly
+	 fails below 1.25, and docs/architecture/COMPOSITION.md records a live run scoring exactly
 	 1.000. Everything else is held down for it — cliffs and their boulder masses top
 	 out around 50 (which is why the `cliff` tier stops there), tall pines at 34,
 	 the secondary landmarks around 52.

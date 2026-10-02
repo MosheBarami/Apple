@@ -1575,7 +1575,7 @@ export function scanToText(scan: HierarchyScan): string {
 // The verification gate above answers "is this safe and free?". It does not answer "does this
 // belong in THIS game", and those are different questions with different failure modes. A
 // photoreal PBR chair from a verified creator passes every security assertion and still ruins a
-// bright simulator, because docs/ROBLOX-STYLE-SPEC.md §9 says a realistic material is an automatic
+// bright simulator, because docs/design/ROBLOX-STYLE-SPEC.md §9 says a realistic material is an automatic
 // fail. So a second, independent ranking runs on style.
 //
 // Every axis below is computed from a DETERMINISTIC signal — triangle count, texture presence,
@@ -1644,7 +1644,7 @@ function hex(h: string): RGB {
 }
 
 /**
- * The one calibrated target: the bright simulator category described by docs/ROBLOX-STYLE-SPEC.md.
+ * The one calibrated target: the bright simulator category described by docs/design/ROBLOX-STYLE-SPEC.md.
  * The palette is that document's §1 environment table, verbatim, so the two cannot drift by
  * paraphrase. Callers with a different art direction pass their own `StyleTarget`.
  */

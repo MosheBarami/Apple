@@ -2,7 +2,7 @@
 /**
  * WHAT IS THE RELEVANCE FILTER HIDING?
  *
- * `docs/github-corpus-licences.md` reports 1,986 licence-clean admit candidates narrowed to 1,063
+ * `docs/training/github-corpus-licences.md` reports 1,986 licence-clean admit candidates narrowed to 1,063
  * by `isRobloxRelevant` — primary language Lua or Luau, or the owner/name naming roblox/rbx/luau.
  * The other 923 are described there as "irrelevant, licence-clean but off-topic".
  *

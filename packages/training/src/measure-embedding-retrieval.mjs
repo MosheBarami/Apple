@@ -8,7 +8,7 @@
  * customer talks. 31 customer-phrased queries return the wrong module first. The knowledge is
  * present and is not reached — this repository's central failure mode, at the knowledge layer.
  *
- * docs/knowledge-retrieval-diagnosis.md establishes that a pure scoring fix tops out at 74% top-1
+ * docs/architecture/knowledge/knowledge-retrieval-diagnosis.md establishes that a pure scoring fix tops out at 74% top-1
  * and 88% in-top-5, because six of the thirty-one failures are VOCABULARY ABSENT: the customer's
  * noun appears nowhere in the module's id, family or contract, so no weighting over those tokens
  * can reach it. `interval-overlap` scores ZERO on "check if two time slots clash".

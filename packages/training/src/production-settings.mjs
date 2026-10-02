@@ -38,7 +38,7 @@
 //   mode. That is a real product change, not a simplification: the entitlement axis still controls
 //   effort policy and paid capability, but it no longer selects a different foundation model. So
 //   every lane in every mode sends the same request — which makes the §10 claim in
-//   docs/frontier-for-roblox.md hold MORE widely, not less, and roblox-frontier.test.mjs asserts
+//   docs/training/frontier-for-roblox.md hold MORE widely, not less, and roblox-frontier.test.mjs asserts
 //   that rather than the retired `super-agent -> rune` difference.
 //
 //   The retired names are kept below as an explicit REJECTION list. A caller passing `stone` gets a

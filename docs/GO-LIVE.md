@@ -168,7 +168,7 @@ person rather than on work.
 **The first is Roblox itself.** This product builds Roblox games, and Roblox lets developers under
 18 earn Robux — selling the plugin on the Creator Store, or selling passes inside a place. It needs
 no card processor and no bank account to start earning, and the audience is already there. The
-distribution work is done: see `docs/PLUGIN-RELEASE.md`, whose remaining steps are Studio and
+distribution work is done: see `docs/operations/PLUGIN-RELEASE.md`, whose remaining steps are Studio and
 Creator Dashboard actions the owner can perform at 15.
 
 Read the Roblox blocker below as the priority one. This section is the one that waits.
@@ -283,7 +283,7 @@ page reads *"Early preview. Public Studio installation is not available yet."*
 **That sentence is true. Do not remove it until it is false.** Deleting it without publishing the
 plugin is the one thing this repository is built not to do.
 
-See `docs/PLUGIN-RELEASE.md` for the release path and for what must be proven before the flag flips.
+See `docs/operations/PLUGIN-RELEASE.md` for the release path and for what must be proven before the flag flips.
 
 ---
 

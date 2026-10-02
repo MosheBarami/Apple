@@ -232,7 +232,7 @@ export function hardFailChecks(result: RenderViewResult, subject: SubjectKind = 
   }
   // Plastic everywhere is the signature of parts that were created and never art-directed — when the
   // colour was left alone too. Plastic in four or more chosen colours is the classic stylised Roblox
-  // look (docs/ROBLOX-STYLE-SPEC.md), a decision rather than a default (F-059).
+  // look (docs/design/ROBLOX-STYLE-SPEC.md), a decision rather than a default (F-059).
   const plastic = (merged.get('Plastic') ?? 0) + (merged.get('SmoothPlastic') ?? 0);
   const total = [...merged.values()].reduce((a, b) => a + b, 0);
   if (total >= 6 && plastic / total > 0.9 && colours <= 3) {
@@ -341,7 +341,7 @@ export async function critiqueViews(
   // sky and ground stop diluting them — the same grey slab reads colourfulness 46.2 whole-frame and
   // 1.7 masked, which is the difference between a check that never fires and one that does. Second,
   // the structural half needs no image at all, so a bad macro composition can be rejected before any
-  // detail is paid for. docs/COMPOSITION.md carries the measured separations and the rejected
+  // detail is paid for. docs/architecture/COMPOSITION.md carries the measured separations and the rejected
   // candidates.
   const composition = decoded.map(({ view, rgb }) => ({
     name: view.name,

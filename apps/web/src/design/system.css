@@ -173,7 +173,7 @@
    *   `rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`. Everything else separates with a
    *   hairline.
    *
-   *   --shadow-pop and --shadow-modal keep their names because docs/DESIGN-LOCK.md licenses those
+   *   --shadow-pop and --shadow-modal keep their names because docs/design/DESIGN-LOCK.md licenses those
    *   two and no others, and five stylesheets read them. What changed is what they contain: they
    *   were `0 10px 30px #0000004d` and `0 24px 70px #00000066` — a 30px and a 70px blur of pure
    *   black, which is the house style of every dark SaaS template and the thing the owner rejected
@@ -281,7 +281,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 /* THE ONE PRIMARY ACTION ON A SCREEN, and the only place the accent is spent as a fill.
    It was `background: var(--ink)` — a white button, which is what a product looks like when it has
    no colour of its own. The fill is dark enough against the page (2.6:1) to read as a raised object
-   rather than a glow, and carries --ink at 6.4:1. See docs/DESIGN-LOCK.md. */
+   rather than a glow, and carries --ink at 6.4:1. See docs/design/DESIGN-LOCK.md. */
 .btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-deep); border:1px solid var(--accent-deep); border-radius:var(--r-md); min-height:var(--h-md); padding:0 16px; font-size:14px; box-shadow:var(--shadow-primary); }
 /* Hover deepens the TINT rather than darkening a fill — the object is a piece of coloured light on
    the surface, so more of it is the only response that keeps it the same object. */

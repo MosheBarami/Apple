@@ -863,7 +863,7 @@ export const ARMS = Object.freeze({
   //[[ WHICH ARM IS PRODUCTION CHANGED ON 2026-09-21, AND BOTH ARE KEPT.
   //   `house-rules` was production's IDENTITY until the measurement below shipped. It is now the
   //   HISTORICAL CONTROL: retiring it would delete the baseline the four new rules are measured
-  //   against, and every number in docs/frontier-for-roblox.md §8 is read against it.
+  //   against, and every number in docs/training/frontier-for-roblox.md §8 is read against it.
   'house-rules': { id: 'house-rules', system: HOUSE_RULES_SYSTEM, what: "production's written code rules AS THEY STOOD BEFORE 2026-09-21 — the historical control" },
   'house-rules-plus': {
     id: 'house-rules-plus',

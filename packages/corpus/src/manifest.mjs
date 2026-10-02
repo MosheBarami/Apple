@@ -242,7 +242,7 @@ ${notFetched.length > 20 ? `\n…and ${notFetched.length - 20} more. Full list: 
 
 ${scannedRecords.length} of ${records.length} sources carry a scan verdict.
 
-The ordering is load-bearing and \`docs/SOURCE-INTELLIGENCE.md\` says so: *"Security scanning
+The ordering is load-bearing and \`docs/architecture/SOURCE-INTELLIGENCE.md\` says so: *"Security scanning
 happens before extraction, not after. A malicious loader must never reach a chunker, an
 embedder, or a reviewer's clipboard."* The scanner existing and the scanner having run are
 different facts, and only the second one is a safety property — which is why this section counts

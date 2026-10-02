@@ -9,7 +9,7 @@
  *   agent_status.phase     → the state between tools, when no tool is in flight
  *   msg_end.stopReason     → the terminal state
  *
- * `docs/THINKING-UX.md` carries the full mapping, including the four §Y states
+ * `docs/architecture/THINKING-UX.md` carries the full mapping, including the four §Y states
  * this protocol genuinely cannot express. They are absent here on purpose: an
  * honest "Working" beats a fabricated "Evaluating kit".
  *
@@ -92,7 +92,7 @@ export type StopReason = 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
 
 export interface ToolStartEvent {
   type: 'tool_start';
-  /** Client receipt time. See `docs/THINKING-UX.md` on whose clock this is. */
+  /** Client receipt time. See `docs/architecture/THINKING-UX.md` on whose clock this is. */
   at: number;
   toolId: string;
   tool: string;
@@ -585,7 +585,7 @@ export function reduceActivity(input: ActivityInput): ActivityRun {
     // it has no reported name, and the heading above it is the state the worker
     // had genuinely announced at that moment. The live case is the auto visual
     // critique, which emits a `tool_end` with no `tool_start` — see §4 of
-    // docs/THINKING-UX.md.
+    // docs/architecture/THINKING-UX.md.
     if (last && (last.kind === step.kind || step.kind === 'working')) {
       last.steps.push(step);
       continue;

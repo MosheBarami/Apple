@@ -600,7 +600,7 @@ If the benchmark itself is ever deleted, this goes with it in the same commit.
 
 Imported by nothing in the tree, and that is the decision rather than an oversight.
 
-It is the LOSING ARM of the retrieval bake-off. `docs/retrieval-bakeoff.md` records the row:
+It is the LOSING ARM of the retrieval bake-off. `docs/architecture/knowledge/retrieval-bakeoff.md` records the row:
 precomputed Workers AI embeddings scored **70/80 — 87%** at one embed call per query, against the
 need-index ranker's 73/80 at zero model calls. The same document records why the gap is wider than
 those numbers make it look: the embedding index was **already stale within an hour**, because eight

@@ -3,7 +3,7 @@
 // The load-bearing test in this file is `an omission is invisible to the check
 // layer and visible to the playbook`. Everything else guards the machinery; that
 // one is the measurement that makes L3 a rung rather than a second opinion, and
-// docs/SOURCE-INTELLIGENCE.md §7 is explicit that "an unmeasured technique is not
+// docs/architecture/SOURCE-INTELLIGENCE.md §7 is explicit that "an unmeasured technique is not
 // a rung."
 import test from 'node:test';
 import assert from 'node:assert/strict';

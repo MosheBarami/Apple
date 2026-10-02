@@ -512,7 +512,7 @@ to this repository" — accurate for `raw/`, but silent on the other 36 checkout
   comment "WebGL scene reads these" — nothing reads them (cancelled 3D mascot).
 - **D56.** Native Studio viewport capture is **not obtainable in-engine** — measured, not inferred:
   `ThumbnailGenerator` is not a valid service name and `CaptureService:CaptureScreenshot`'s callback never
-  fires in edit mode (`docs/VISUAL-LOOP.md:15-17`, re-verified `docs/MISSION-LEDGER.md:57`). The only native
+  fires in edit mode (`docs/architecture/VISUAL-LOOP.md:15-17`, re-verified `docs/MISSION-LEDGER.md:57`). The only native
   path is Roblox's own Studio MCP `screen_capture` — a local developer tool, and
   `docs/evidence/2026-09-01-capture-transport-discriminated.md` records it timing out and taking the whole MCP
   transport down across five attempts. A real capture requires either a Roblox PluginSecurity readback API

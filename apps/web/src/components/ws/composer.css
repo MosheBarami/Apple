@@ -6,7 +6,7 @@
  * the workspace, the @-mention picker, and the character count.
  *
  * TOKENS ONLY. No raw colour, no radius outside --r-*, no shadow but --shadow-pop
- * (docs/DESIGN-LOCK.md rules 1 and 3). Every transition stops under prefers-reduced-motion.
+ * (docs/design/DESIGN-LOCK.md rules 1 and 3). Every transition stops under prefers-reduced-motion.
  */
 
 /* ------------------------------------------------------------------ the panel --- */

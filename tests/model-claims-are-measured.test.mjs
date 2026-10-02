@@ -6,21 +6,21 @@
  * roblox ai model'"*, and the disposition on that row is **do not write the claim anywhere
  * user-facing** until an unseen-set number supports it.
  *
- * That disposition lived in a document. Documents do not fail builds. `docs/frontier-for-roblox.md`
+ * That disposition lived in a document. Documents do not fail builds. `docs/training/frontier-for-roblox.md`
  * §8.7 and §9.6 both say "nothing user-facing carries such a claim today" — which was TRUE when each
  * was written and is a fact about a moment, not a property of the repository. One marketing edit
  * makes it false and nothing anywhere says so.
  *
  * WHAT THE NUMBERS ACTUALLY ARE, so the failure message can name them rather than gesture:
  * **91.3%** on the eighty game-logic requests where the verified-module library holds the answer,
- * and **87.5%** on the sixteen engine-facing tasks where it does not (`docs/frontier-for-roblox.md`
+ * and **87.5%** on the sixteen engine-facing tasks where it does not (`docs/training/frontier-for-roblox.md`
  * §9.5). A customer's request does not know which set it is in, so the second one is the number any
  * superlative would have to be written against — and 87.5% of sixteen items is not a claim to
  * frontier, it is a good score on a small suite.
  *
  * THIS IS NOT A COPY RULE. It is the rule that a claim about TRAINING must be backed by a
  * measurement of training, and nothing in this repository has one: every model both lanes serve is
- * a third-party foundation model, and `docs/model-serving-reality.md` records the vendor refusing —
+ * a third-party foundation model, and `docs/training/model-serving-reality.md` records the vendor refusing —
  * error 5005 — to apply this account's own adapters to it. A superlative about training would not be
  * an exaggeration; it would be about something that did not happen.
  *
@@ -118,10 +118,10 @@ test('no user-facing surface claims the model was trained here or is the most-tr
     'A user-facing surface makes a claim about TRAINING that no measurement in this repository '
     + 'supports.\n\n'
     + `${findings.join('\n')}\n\n`
-    + 'Every model both lanes serve is a third-party foundation model, and docs/model-serving-reality.md '
+    + 'Every model both lanes serve is a third-party foundation model, and docs/training/model-serving-reality.md '
     + 'records the vendor refusing (error 5005) to apply this account\'s own adapters to it. The numbers '
     + 'that DO exist are 91.3% where the verified-module library holds the answer and 87.5% where it does '
-    + 'not (docs/frontier-for-roblox.md §9.5); a customer\'s request does not know which set it is in, so '
+    + 'not (docs/training/frontier-for-roblox.md §9.5); a customer\'s request does not know which set it is in, so '
     + 'the second is the one a superlative would have to be written against. Rewrite the sentence, or '
     + 'produce the measurement first.');
 });

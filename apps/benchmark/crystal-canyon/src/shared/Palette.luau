@@ -2,7 +2,7 @@
 --[[
 	Crystal Canyon — style tokens.
 
-	This module is the machine-readable half of docs/ROBLOX-STYLE-SPEC.md. The
+	This module is the machine-readable half of docs/design/ROBLOX-STYLE-SPEC.md. The
 	spec is prose so a human can judge it; this is the same grammar as values so
 	the UI cannot drift from it, and so the style gate has something concrete to
 	assert against.

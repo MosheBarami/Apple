@@ -33,7 +33,7 @@
  *   light, which the ceiling exempts.
  *
  * WHY IT IS A SEPARATE FILE RATHER THAN MORE LINES IN system.css. The lead owns the locked system;
- * this is one surface's use of it. See docs/DESIGN-LOCK.md.
+ * this is one surface's use of it. See docs/design/DESIGN-LOCK.md.
  *
  * SCOPED ONE LEVEL DEEPER THAN system.css ON PURPOSE, the same discipline layout.css and
  * dashboard.css record: main.tsx imports ./app (which reaches this file) BEFORE

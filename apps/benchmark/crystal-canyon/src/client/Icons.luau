@@ -2,7 +2,7 @@
 --[[
 	Crystal Canyon — Icons: one original pictogram family.
 
-	§12 of the brief and §4 of docs/ROBLOX-STYLE-SPEC.md between them rule out
+	§12 of the brief and §4 of docs/design/ROBLOX-STYLE-SPEC.md between them rule out
 	the two easy answers. Emoji are ornament in this category and never
 	functional icons, and this build ships no uploaded image assets, so every
 	glyph the UI needs is DRAWN here out of Roblox UI primitives: rounded

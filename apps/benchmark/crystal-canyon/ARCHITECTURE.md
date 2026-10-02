@@ -1,7 +1,7 @@
 # Crystal Canyon — architecture contract
 
 The Golem simulator/tycoon benchmark. Original work built to the category
-grammar in `docs/ROBLOX-STYLE-SPEC.md`. Nothing here is copied from any
+grammar in `docs/design/ROBLOX-STYLE-SPEC.md`. Nothing here is copied from any
 existing experience.
 
 This file is the contract every module is written against. Modules are authored

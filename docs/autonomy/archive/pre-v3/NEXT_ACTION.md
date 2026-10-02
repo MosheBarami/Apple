@@ -334,7 +334,7 @@ business days (evidence/20260923T1100Z-final-publish-appeal).
 1. Re-probe `https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=107230158271368,6415005344`
    (Rojo is the control) and the Violations & Appeals page once a day.
 2. Accepted → set STUDIO_PLUGIN_STORE_LIVE true, drop the known-issue entry, redeploy site + web, close
-   F-020/F-034/F-038 with the probe as evidence (per docs/PLUGIN-RELEASE.md).
+   F-020/F-034/F-038 with the probe as evidence (per docs/operations/PLUGIN-RELEASE.md).
 3. Refused → read the stated reason, record it in F-038, and change only what it names. Never remove a tool
    (owner direction); a second appeal is not possible on the same decision.
 

@@ -81,7 +81,7 @@
 
 /* THE TYPOGRAPHIC HALF system.css sets sizes for and stops at. `.es__title` and `.es__body` get
    their colour, size and zeroed margin there; neither gets tracking, and neither gets
-   `text-wrap:pretty` — which docs/DESIGN-LOCK.md asks for on any paragraph a customer reads, and
+   `text-wrap:pretty` — which docs/design/DESIGN-LOCK.md asks for on any paragraph a customer reads, and
    which matters most precisely here. "Summon your first project" and "Apple stopped before it was
    done" are short enough that a greedy break strands the last word on a line of its own, in the
    centre of a panel, where it reads as a fragment. Properties only, no redeclaration: system.css

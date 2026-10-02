@@ -368,7 +368,7 @@ function planSymlinks() {
 function liveCorpus(excludePrefixes) {
   const parts = [];
   for (const [now, e] of files) {
-    if (excludePrefixes.some((x) => now.startsWith(x))) continue;
+    if (now !== 'docs/evidence/README.md' && excludePrefixes.some((x) => now.startsWith(x))) continue; // the evidence ledger README names entries
     if (BIN.test(now)) continue;
     const t = readText(e); if (t) parts.push(t);
   }

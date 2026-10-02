@@ -115,7 +115,7 @@ const settings = resolveSettings({
 //   So the shave comes off the EFFECTIVE budget: replicate N sends `effectiveTokens - (N - 1)`,
 //   6500 -> 6499 -> 6498, which is below the ceiling and therefore reaches the provider. Replicate 1
 //   sends the production body unchanged. The cost of the difference is measured rather than waved
-//   at: §2 of docs/frontier-for-roblox.md records `finish_reason: "length"` occurring 6 times in 560
+//   at: §2 of docs/training/frontier-for-roblox.md records `finish_reason: "length"` occurring 6 times in 560
 //   arm-prompts and ZERO times in the 320 single-call ones, so one token off 6,500 cannot move a row
 //   here. What it is NOT is production's exact body, and `sentMaxTokens` is recorded on every run so
 //   a reader can see which replicate they are holding.

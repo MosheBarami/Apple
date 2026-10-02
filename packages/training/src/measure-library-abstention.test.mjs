@@ -50,7 +50,7 @@ test('an uncovered request out-scores a covered one on the raw total, which is w
 /**
  * THE HARNESS REPRODUCES THE TWO NUMBERS THAT ARE ALREADY ON RECORD.
  *
- * 73/80 is the shipped door's top-1 in docs/frontier-for-roblox.md §4.1, and 80/80 is the library
+ * 73/80 is the shipped door's top-1 in docs/training/frontier-for-roblox.md §4.1, and 80/80 is the library
  * sanity the comparator establishes by running every module. A harness that cannot reproduce a
  * number somebody else already measured is not a harness; measure-embedding-retrieval.mjs makes
  * the same check against 49/80 for the same reason.
@@ -130,7 +130,7 @@ test('a floor of zero is the door as it ships today, with no generation anywhere
  * A guard nobody has seen fail is not a guard, so this is the one that sees it: at a floor nothing
  * can clear, the hybrid has to collapse onto each arm's own recorded total, counted from the same
  * rows by a different expression. Those totals are the seven numbers in
- * docs/frontier-for-roblox.md §4.1, so this also pins the table to the runs it was written from.
+ * docs/training/frontier-for-roblox.md §4.1, so this also pins the table to the runs it was written from.
  */
 test('abstaining on every request scores exactly what that arm scores alone', () => {
   const all = out.sweep.at(-1);
@@ -140,7 +140,7 @@ test('abstaining on every request scores exactly what that arm scores alone', ()
   assert.deepEqual(all.hybridOutOf80, out.armTotals, 'the fallback is not being joined prompt by prompt');
   assert.deepEqual(out.armTotals, {
     baseline: 53, fewshot: 74, fewshotcustomer: 68, fewshotrandom: 67, secondpass: 62, specrepair: 58, oracle: 63,
-  }, 'the recorded arms are no longer the seven runs docs/frontier-for-roblox.md 4.1 reports');
+  }, 'the recorded arms are no longer the seven runs docs/training/frontier-for-roblox.md 4.1 reports');
 });
 
 /**

@@ -6,7 +6,7 @@
  * is the model's verdict and belongs in the denominator, and until that day it did not. Two runs
  * had already been recorded under the old arithmetic. Re-running them against the model would not
  * have fixed them — it would have produced DIFFERENT ANSWERS, because §4.4 of
- * docs/frontier-for-roblox.md establishes that this gateway resamples across an hour. A number
+ * docs/training/frontier-for-roblox.md establishes that this gateway resamples across an hour. A number
  * corrected by resampling is a new measurement wearing the old one's name.
  *
  * So the answers are re-judged instead. Every row of a frontier run carries `answer` verbatim,

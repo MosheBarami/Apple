@@ -1,7 +1,7 @@
 // "923 irrelevant, licence-clean but off-topic" was a judgement about repositories nobody opened.
 //
 // WHY THIS EXISTS. `isRobloxRelevant` decides on two fields: `primary_language` and the owner/name
-// string. `docs/github-corpus-licences.md` then reported the 923 it rejected as "irrelevant". A
+// string. `docs/training/github-corpus-licences.md` then reported the 923 it rejected as "irrelevant". A
 // repository written mostly in TypeScript and named for its product can hold a thousand Luau files
 // and be filed under that word without a byte being counted — the same shape as the 5.45 GB that
 // stood in for Luau volume until the trees were read.

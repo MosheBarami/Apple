@@ -382,7 +382,7 @@ test('is keyboard reachable and keeps a visible focus ring — the composer incl
   expect(link.width).toBeGreaterThanOrEqual(2);
 
   // THE COMPOSER HAD NO VISIBLE RING (`outline: none` on the textarea won the cascade). The ring
-  // now lives on the composer: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
+  // now lives on the composer: 2px of the accent at a 4px offset (docs/design/DESIGN-LOCK.md, rule 6).
   await page.locator('form.composer textarea').focus();
   const ring = await page.locator('form.composer').evaluate((el) => {
     const s = getComputedStyle(el);

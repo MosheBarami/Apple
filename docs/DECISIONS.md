@@ -443,7 +443,7 @@ STRUCTURE:
   models, how it works, pricing.
 
 That second one supersedes the landing's own founding constraint, recorded in
-`apps/site/src/styles/landing.css:1-22` and `docs/DESIGN-SPEC.md` §0–§1: *"One viewport. No scroll.
+`apps/site/src/styles/landing.css:1-22` and `docs/design/DESIGN-SPEC.md` §0–§1: *"One viewport. No scroll.
 The whole proposition held in a single frame."* Subjects that were deliberately moved off the
 landing — how it works, pricing — come back onto it. That is the owner's call, and DESIGN-SPEC has
 to be updated with it rather than left to contradict the page.
@@ -468,7 +468,7 @@ would have been a capability claim with no capability under it:
    product. Two meanings for one word on the page that introduces the unit is how a reader plans
    against the wrong number.
 
-**Consequence.** `docs/DESIGN-SPEC.md` §0 and §1 are rewritten. They had been describing the warm
+**Consequence.** `docs/design/DESIGN-SPEC.md` §0 and §1 are rewritten. They had been describing the warm
 Golem palette, Inter, and one non-scrolling screen — none of which was on the page, and two
 separate changes had left them behind. That file opens by claiming precedence over "an older
 written description", so a stale copy of it is not merely unhelpful: anyone following it faithfully

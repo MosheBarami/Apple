@@ -2,7 +2,7 @@
 
 **Found 2026-09-21 by the design lane, measured on the live origin rather than read out of a
 stylesheet.** This file records the finding and names what is still a decision. It does not make
-that decision. `docs/DESIGN-TYPE.md` already carries the type, WebGL and rosebud decisions and is
+that decision. `docs/design/DESIGN-TYPE.md` already carries the type, WebGL and rosebud decisions and is
 not repeated here.
 
 ## The measurement
@@ -23,7 +23,7 @@ Both are deliberate and neither is a mistake in itself:
 
 - `global.css` is the **warm-dark redesign of 2026-09-19**, and its own header says so: "The bar is
   tesana.ai, measured in Chrome." A monochrome charcoal system where hierarchy comes from size and
-  space, which is also what `docs/DESIGN-LOCK.md` locked.
+  space, which is also what `docs/design/DESIGN-LOCK.md` locked.
 - `landing.css` is the **rosebud-in-green pass of 2026-09-20**, written the next day against the
   owner's instruction to follow rosebud.ai closely *in our own green*, deleting the current visual
   language where the two disagree and keeping only the typeface.
@@ -58,7 +58,7 @@ The owner's own words sit on both sides of this:
 - 2026-09-20, in Hebrew, about rosebud.ai: *"you must copy them exactly, only in green — this is a
   very aggressive decision … if it means deleting the current visual language of the site, do it
   without asking; only keep the typeface."* The later instruction, and unambiguous.
-- `docs/DESIGN-LOCK.md`, locked the same day: "cinematic graphite … a **single restrained** green,
+- `docs/design/DESIGN-LOCK.md`, locked the same day: "cinematic graphite … a **single restrained** green,
   hierarchy from size and space rather than weight or colour", with "no random visual mixing" named
   as the rule the file exists to enforce.
 

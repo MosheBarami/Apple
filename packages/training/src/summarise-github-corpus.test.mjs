@@ -117,7 +117,7 @@ test('the card keeps saying what it does not establish',
 
 test('every licence-verified repository is either in the ledger or excluded for a stated reason',
   { skip: !(existsSync(TREES) && existsSync(REPOS)) && 'the tree pass or the ledger is absent' }, () => {
-    // WHY THIS EXISTS. docs/github-corpus-licences.md headlined 1,063 licence-verified repositories
+    // WHY THIS EXISTS. docs/training/github-corpus-licences.md headlined 1,063 licence-verified repositories
     // and the ledger held 1,024. The 39 in between were nowhere: not a row, not a reason, not a
     // count. 28 held no Luau, and ELEVEN held 310 licence-clean Luau files and were excluded by a
     // regex that could not see a file named UNLICENSE — an exclusion that read, in the artifact,
@@ -180,7 +180,7 @@ test('a currency report from a smaller corpus cannot be quoted as though it cove
 test("the card's currency claim is the measurement's own numbers, or it is not a claim",
   { skip: !existsSync(CARD) && 'the card has not been generated' }, () => {
     // WHY THIS EXISTS. The currency pass ran on 2026-09-21 and was written up in
-    // docs/github-corpus-licences.md. The card — the only part of this corpus that reaches a fresh
+    // docs/training/github-corpus-licences.md. The card — the only part of this corpus that reaches a fresh
     // clone — carried no currency row at all, and its what_this_does_not_establish list still told
     // a reader the corpus had never been checked for it. A document does not fail a build. This
     // does.

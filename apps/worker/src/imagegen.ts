@@ -1,4 +1,4 @@
-// Image generation on Cloudflare Workers AI, art-directed against docs/ROBLOX-STYLE-SPEC.md.
+// Image generation on Cloudflare Workers AI, art-directed against docs/design/ROBLOX-STYLE-SPEC.md.
 //
 // The point of this file is that it does NOT concatenate a user's words with "roblox style" and
 // hope. A caller states what it wants STRUCTURALLY — subject, target surface, palette roles,

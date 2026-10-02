@@ -6,7 +6,7 @@
  * Every step after the first opened by re-announcing that stale phase. Nothing told the customer
  * the next step was being written.
  *
- * And two phases the shared vocabulary declares were never sent (docs/THINKING-UX.md §4):
+ * And two phases the shared vocabulary declares were never sent (docs/architecture/THINKING-UX.md §4):
  * `verifying`, for the check the worker runs by itself after a change, and `rebuilding`, for the
  * moment that check orders the layout started over.
  *

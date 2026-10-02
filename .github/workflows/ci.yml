@@ -263,7 +263,7 @@ jobs:
         run: rojo --version
 
       - name: Build the plugin and verify the built bytes
-        # One command, the same one a person runs locally and the one docs/PLUGIN-RELEASE.md names:
+        # One command, the same one a person runs locally and the one docs/operations/PLUGIN-RELEASE.md names:
         # parse every source, refuse a require of a module that is not bundled, rojo build
         # apps/apple-plugin/default.project.json into release/apple-studio.rbxm, scan the artifact
         # for secrets (scripts/inspect-plugin-build.py), then read the BUILT bytes for every

@@ -29,4 +29,4 @@ What changed in the product because of it:
 - the /status known issue `plugin-not-in-creator-store` has `resolvedAt: '2026-09-24'`.
 
 Not done: `LATEST_PLUGIN_VERSION` in `apps/worker/src/plugin-version.ts` stays `1.0.0` until a signed-out install
-shows which build the store hands a new customer (docs/PLUGIN-RELEASE.md).
+shows which build the store hands a new customer (docs/operations/PLUGIN-RELEASE.md).

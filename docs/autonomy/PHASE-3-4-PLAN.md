@@ -106,10 +106,10 @@ Test protocol for every gate:
   - Leak guard: `tests/knowledge-no-bank.test.mjs` plus a worker-bundle metafile check that `packages/evals/owner-bench/requests.json` is absent.
   - Flags: `SELF_CHECK`, `STORE_V2`, `KNOWLEDGE_V2`, `BEHAVIOUR_V2`.
   - A `ctx.addNeurons` hook so tool-internal model calls count toward `agent.neuronsUsed` (a fix for the uncounted look and vision cost).
-  - Tool-description fixes: `insert_asset` says "scripts removed" but the plugin refuses the asset; `find_verified_asset` is mesh-only; stale `design_sound` text; stale `docs/VISUAL-LOOP.md`.
+  - Tool-description fixes: `insert_asset` says "scripts removed" but the plugin refuses the asset; `find_verified_asset` is mesh-only; stale `design_sound` text; stale `docs/architecture/VISUAL-LOOP.md`.
   - Remove subject-specific worked examples (donut, butter, the treasure-chest genre skill, campfire kit text) in favour of archetype wording. Existing leak hits are listed in the knowledge study.
   - Freeze the held-out bank file and write the baseline run protocol.
-- **Files:** new `tests/knowledge-no-bank.test.mjs`; edits to `creator-skills.ts`, `prompts.ts`, `object-tool.ts` headers, `assets.ts`, `audio-tools.ts`, `docs/VISUAL-LOOP.md`, `session.ts:4442`.
+- **Files:** new `tests/knowledge-no-bank.test.mjs`; edits to `creator-skills.ts`, `prompts.ts`, `object-tool.ts` headers, `assets.ts`, `audio-tools.ts`, `docs/architecture/VISUAL-LOOP.md`, `session.ts:4442`.
 - **Generalization test:** baseline arm A on the fresh set, with all flags off. This yields the real baseline for every later delta.
 - **Criterion moved:** none, by design. This is the baseline and a guard.
 - **Cost:** baseline runs only, no per-run change.

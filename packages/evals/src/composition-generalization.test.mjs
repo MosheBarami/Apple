@@ -153,7 +153,7 @@ test('no previously falsified metric has been promoted into the kept list', () =
   for (const m of Object.keys(FALSIFIED)) {
     assert.ok(!(m in KEPT), `${m} was falsified on the ladder and must not be resurrected here`);
   }
-  // the specific refutations docs/COMPOSITION.md records, still recorded
+  // the specific refutations docs/architecture/COMPOSITION.md records, still recorded
   assert.ok('energyGini' in FALSIFIED, 'the central refuted hypothesis must stay recorded as refuted');
   assert.ok('energyEntropy' in FALSIFIED);
   assert.ok('centroidOffset' in FALSIFIED, 'centroidOffset scored 1.000 on the ladder and is still excluded');
@@ -255,7 +255,7 @@ test('the enclosure mechanism explains most of the false rejections', () => {
 });
 
 test('verticalElements no longer separates outside the plaza — a kept metric, falsified here', () => {
-  // docs/COMPOSITION.md records structure.verticalElements at AUC 1.000 on the twelve-rung ladder.
+  // docs/architecture/COMPOSITION.md records structure.verticalElements at AUC 1.000 on the twelve-rung ladder.
   // On fifteen independent families it is at or below chance. Asserted so the finding cannot be
   // lost, and so that if it ever recovers somebody has to come and delete this test deliberately.
   const row = rep.metricTable.find((m) => m.metric === 'structure.verticalElements');

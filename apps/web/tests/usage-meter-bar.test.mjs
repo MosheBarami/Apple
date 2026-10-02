@@ -86,7 +86,7 @@ test('THE TWO ARE NOT THE SAME PICTURE — which is the entire defect', () => {
 });
 
 test('and they are still not the same picture with motion switched off', () => {
-  // The opt-out rule 5 of docs/DESIGN-LOCK.md requires is where this defect would come back: turn
+  // The opt-out rule 5 of docs/design/DESIGN-LOCK.md requires is where this defect would come back: turn
   // the sweep off and the two states collapse into one empty track again unless something else
   // carries the difference.
   assert.notEqual(REDUCED, '', 'a rule that adds motion must add its own opt-out in the same commit');

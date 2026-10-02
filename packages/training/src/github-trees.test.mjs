@@ -1,6 +1,6 @@
 // A truncated file tree is a floor, and must never be rendered as a total.
 //
-// WHY THIS EXISTS. `docs/github-corpus-licences.md` reported "1,063 licence-verified,
+// WHY THIS EXISTS. `docs/training/github-corpus-licences.md` reported "1,063 licence-verified,
 // Roblox-relevant repositories. 5.45 GB." The 5.45 GB was repository size — checkouts, images,
 // binaries, vendored dependencies — standing in a Luau-shaped hole, because the trees had never
 // been read and `luau_lua_file_count` was 0 on every row. The document said so in its own words,

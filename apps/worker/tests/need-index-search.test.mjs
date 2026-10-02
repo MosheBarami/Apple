@@ -81,7 +81,7 @@ test('every verified module has customer vocabulary — a gap here is a module t
 //   This read `assert.deepEqual(score(searchVerifiedModules), {49, 67})` as a CONTROL: it proved
 //   the comparison below was being made against the same shipped scorer the 61% baseline came from.
 //   That is a good control and it is kept — but on 2026-09-20 `searchVerifiedModules` was changed
-//   to delegate to the need ranker, because the bake-off in docs/retrieval-bakeoff.md chose it.
+//   to delegate to the need ranker, because the bake-off in docs/architecture/knowledge/retrieval-bakeoff.md chose it.
 //   From that commit the control was asserting that the NEW door still behaves like the OLD one,
 //   which is the opposite of what shipping the improvement means. It failed, correctly, and its
 //   message named the right cause: "a baseline that moved".
@@ -95,7 +95,7 @@ test('customer-phrased retrieval clears the recorded floor', () => {
   const control = score(searchVerifiedModulesByContract);
   assert.deepEqual(control, SHIPPED_BASELINE,
     'the ORIGINAL contract scorer no longer reproduces 49/80 and 67/80 — the baseline every number '
-    + 'in docs/retrieval-bakeoff.md is quoted against has moved, so the comparison below is void');
+    + 'in docs/architecture/knowledge/retrieval-bakeoff.md is quoted against has moved, so the comparison below is void');
 
   const got = score(searchVerifiedModulesByNeed);
   assert.ok(got.top1 >= FLOOR.top1, `top-1 fell to ${got.top1}/80; the recorded floor is ${FLOOR.top1}/80`);
@@ -123,7 +123,7 @@ test('contract-phrased retrieval does not pay for it', () => {
 });
 
 test('the worked failure from the diagnosis now returns the right module', () => {
-  // Recorded in docs/knowledge-retrieval-diagnosis.md: this query did not return purchase-transaction
+  // Recorded in docs/architecture/knowledge/knowledge-retrieval-diagnosis.md: this query did not return purchase-transaction
   // AT ALL under the shipped scorer — not in the top five. It returned trade-offer-check and
   // cooldown-clock, because "check" is a substring of trade-offer-CHECK and ordered-CHECKpoints.
   const got = searchVerifiedModulesByNeed(

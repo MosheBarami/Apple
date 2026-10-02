@@ -32,7 +32,7 @@ browser ── WebSocket ──▶ SessionDO ◀── long-poll ── Studio p
 | `apps/worker` | The backend: API, DOs, gateway, RAG, static serving |
 | `apps/web` | App SPA (Vite + React) served at `/app` |
 | `apps/site` | Marketing site (Astro) served at `/` |
-| `apps/apple-plugin` | **The Studio plugin that ships** (Luau + Rojo). See `docs/PLUGIN-RELEASE.md` |
+| `apps/apple-plugin` | **The Studio plugin that ships** (Luau + Rojo). See `docs/operations/PLUGIN-RELEASE.md` |
 | `apps/plugin` | Legacy Studio plugin — **not the product**, kept as a reference. See `apps/plugin/README.md` |
 | `packages/shared` | Wire protocol + domain types |
 | `packages/corpus` | RAG corpus pipeline (creator-docs, CC-BY-4.0) |

@@ -9,7 +9,7 @@
 // `data/sources.json` carried `security.class: "unscanned"`, and fifteen of those sources had
 // already been checked out and read closely enough to extract 48 design rules from them.
 //
-// `docs/SOURCE-INTELLIGENCE.md` is explicit that this ordering is load-bearing: "Security
+// `docs/architecture/SOURCE-INTELLIGENCE.md` is explicit that this ordering is load-bearing: "Security
 // scanning happens before extraction, not after. A malicious loader must never reach a
 // chunker, an embedder, or a reviewer's clipboard." The scanner existing and the scanner
 // having run are different facts, and only the second one is a safety property.

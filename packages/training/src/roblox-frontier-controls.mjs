@@ -270,7 +270,7 @@ end)
 /**
  * A SECOND CORRECT ANSWER, WRITTEN TO DISAGREE WITH THE FIRST EVERYWHERE IT IS FREE TO.
  *
- * docs/frontier-for-roblox.md section 8.8 named the audit this belongs to: all fifty checks have a
+ * docs/training/frontier-for-roblox.md section 8.8 named the audit this belongs to: all fifty checks have a
  * control proving they CAN fail, and not one had a control proving it can pass against anything but
  * its own hand-written pass case. A check tuned to one implementation looks exactly like a check
  * the model failed.

@@ -52,7 +52,7 @@ export const COMPONENTS = Object.freeze([
   'card', 'counter', 'gauge', 'tab', 'icon', 'layout', 'motion', 'typography',
   //[[ `progression` is the first non-VISUAL component here, and it is deliberate.
   //
-  //   docs/SOURCE-INTELLIGENCE.md §8 says the corpus is judged by one thing — does the
+  //   docs/architecture/SOURCE-INTELLIGENCE.md §8 says the corpus is judged by one thing — does the
   //   simulator/tycoon build get better — and names three questions it must answer
   //   better than this phase managed alone. One of them is *"What do real simulator
   //   progression curves look like, against the ones guessed in `Config.luau`?"*
@@ -198,7 +198,7 @@ export const RULES = Object.freeze([
     prevents: 'A player who has been told the objective in words and still does not know which way to walk.',
     provenance: {
       kind: 'reference-only',
-      source: 'docs/ROBLOX-STYLE-SPEC.md §7 — derived from reference screenshots that are NOT redistributed and were inspected once (see that document\'s §10)',
+      source: 'docs/design/ROBLOX-STYLE-SPEC.md §7 — derived from reference screenshots that are NOT redistributed and were inspected once (see that document\'s §10)',
       validated: 'not yet built',
     },
   },
@@ -236,7 +236,7 @@ export const RULES = Object.freeze([
     prevents: 'A tower upgrade panel covering the exact lane the player opened it to defend.',
     provenance: {
       kind: 'reference-only',
-      source: 'docs/ROBLOX-STYLE-SPEC.md §6 ("the centre stays empty"), extended to genres where the whole play surface is load-bearing; the underlying screenshots are NOT redistributed (that document\'s §10)',
+      source: 'docs/design/ROBLOX-STYLE-SPEC.md §6 ("the centre stays empty"), extended to genres where the whole play surface is load-bearing; the underlying screenshots are NOT redistributed (that document\'s §10)',
       validated: 'not yet built',
     },
   },
@@ -1571,7 +1571,7 @@ export const RULES = Object.freeze([
 
 
   // ------------------------------------------------------------ progression
-  //[[ These three answer docs/SOURCE-INTELLIGENCE.md §8's second question, and they are
+  //[[ These three answer docs/architecture/SOURCE-INTELLIGENCE.md §8's second question, and they are
   //   the first rules in this library extracted from a shipped GAME rather than from
   //   engine documentation or a UI kit. The evidence is weaker in kind and the
   //   provenance says so: one team's balance decisions, not a measured genre consensus.
@@ -1617,7 +1617,7 @@ export const RULES = Object.freeze([
   },
 
   // ------------------------------------------------------- engine styling
-  //[[ docs/SOURCE-INTELLIGENCE.md §8's FIRST question: "What does a shop panel look
+  //[[ docs/architecture/SOURCE-INTELLIGENCE.md §8's FIRST question: "What does a shop panel look
   //   like built on StyleSheet/StyleRule rather than hand-set properties on every
   //   instance?" It went unanswered longer than the other two because no checked-out
   //   GAME uses the API — it is recent and the corpus skews older — so the answer comes

@@ -22,7 +22,7 @@
  * Empty, loading, error and success are the four screens a customer meets when nothing is
  * happening, and they should not be four different layouts.
  *
- * THE ACCENT IS SPENT ONCE HERE, ON THE BAR. docs/DESIGN-LOCK.md allows it on a live indicator, and
+ * THE ACCENT IS SPENT ONCE HERE, ON THE BAR. docs/design/DESIGN-LOCK.md allows it on a live indicator, and
  * the bar is the only thing on this panel claiming the work is still alive. Everything else — the
  * mark, every step, every step dot — is drawn on the neutral ramp. A completed step is deliberately
  * NOT marked in --good: a second green beside the bar would make neither of them the answer, and a

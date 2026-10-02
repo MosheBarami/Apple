@@ -131,7 +131,7 @@
  * WIDTH, "animating it would draw a balance travelling through values the account never held", and
  * that still holds. A short segment sweeping a track is the opposite claim: it is legible
  * precisely because it is not a value. It carries its own reduced-motion opt-out, per rule 5 of
- * docs/DESIGN-LOCK.md, and the opt-out does not freeze the segment mid-track, because a segment
+ * docs/design/DESIGN-LOCK.md, and the opt-out does not freeze the segment mid-track, because a segment
  * that has stopped IS a length again.
  *
  * NO NEW COLOUR. --muted and --surface-3 are already in this panel's vocabulary; the dotted track

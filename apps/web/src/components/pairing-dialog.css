@@ -13,7 +13,7 @@
    status ramp is spent on facts a reader must act on and nothing else: a lapsed expiry, the
    place-mismatch warning, and the success mark. The success ring lost its green FILL for exactly
    this reason — a tinted plate behind a green tick, on the same panel as a green button, is the
-   "two green things and neither is the answer" that docs/DESIGN-LOCK.md names. The mark keeps the
+   "two green things and neither is the answer" that docs/design/DESIGN-LOCK.md names. The mark keeps the
    status colour because the shape is the status; the plate behind it is a surface step.
 
    FOUR SHARED CLASSES. .pairing-code-box, .pairing-code, .pairing-label and .pairing-countdown are

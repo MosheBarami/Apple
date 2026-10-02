@@ -56,7 +56,7 @@
  *   IT IS THE FIRST FAMILY, not the stack. check-pixels compares `fontFamily.split(',')[0]`, which
  *   is what the browser reports whether or not that family resolved to anything, so a longer entry
  *   here could never match. The decision behind the stack, and why there is no webfont to fall back
- *   FROM, is docs/DESIGN-TYPE.md. ]]*/
+ *   FROM, is docs/design/DESIGN-TYPE.md. ]]*/
 export const APPROVED_FONT_STACKS = ['-apple-system'];
 
 /**

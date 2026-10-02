@@ -8,7 +8,7 @@ name: Plugin release
 # text received over HTTP into a ModuleScript and requires it (`apps/plugin/src/Ops.luau:521`) — and
 # told a human to overwrite asset 132128477945417 "Golem", which Roblox removed. Both are retired:
 # `apps/plugin` is kept only as test fixtures (see `apps/plugin/README.md`), and 132128477945417
-# answers 404 on toolbox-service. Never publish to it. `docs/PLUGIN-RELEASE.md` is the runbook.
+# answers 404 on toolbox-service. Never publish to it. `docs/operations/PLUGIN-RELEASE.md` is the runbook.
 #
 # The version is read from `apps/apple-plugin/src/Bridge.luau` (PLUGIN_VERSION / PLUGIN_PROTOCOL),
 # the constant the plugin sends on every request, and the build is the same `build.mjs` a person

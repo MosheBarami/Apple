@@ -1,4 +1,4 @@
-// licence.mjs — §3 of docs/SOURCE-INTELLIGENCE.md, made executable.
+// licence.mjs — §3 of docs/architecture/SOURCE-INTELLIGENCE.md, made executable.
 //
 // Produces a LicenceVerdict per source, with `reuse` and `training` decided
 // INDEPENDENTLY. Conflating them is the specific failure §0 exists to prevent:

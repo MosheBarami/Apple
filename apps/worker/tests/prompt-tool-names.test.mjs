@@ -326,7 +326,7 @@ test('the base prompt names all three knowledge libraries, in every mode and bot
 //
 //   2026-09-21: four rules were added to IDENTITY because the Roblox frontier benchmark measured
 //   them moving two items from failing in five straight samples to passing in three
-//   (docs/frontier-for-roblox.md §8). A measured gain that lands in a string the composer drops on
+//   (docs/training/frontier-for-roblox.md §8). A measured gain that lands in a string the composer drops on
 //   some branch is worth nothing on that branch, and nothing here would have said so: the file's
 //   existing guard asserts only that each variant is over 500 characters.
 //

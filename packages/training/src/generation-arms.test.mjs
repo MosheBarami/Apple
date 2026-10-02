@@ -87,7 +87,7 @@ test('the fidelity gate goes red when the baseline system prompt drifts', () => 
 //   the worker's effort scale or a gateway ceiling moves, this goes red and the review is: re-record
 //   the shipped baseline at the new budget, then re-run any arm you intend to compare against it.
 //   Do not bump the number. 6500 is `min(4400 x 2, stone ceiling 6500)` as of commit 8b61c91; the
-//   seven arms in docs/frontier-for-roblox.md §4 were all taken at 5500, which is why that section
+//   seven arms in docs/training/frontier-for-roblox.md §4 were all taken at 5500, which is why that section
 //   names its own budget rather than pointing here.
 test('the harness, production and the recorded baseline are all on the same output budget', () => {
   const production = resolveSettings({ lane: 'apple', mode: 'agent' });

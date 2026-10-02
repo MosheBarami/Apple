@@ -7,7 +7,7 @@
 // recent account payments have failed". Six jobs, `steps: []`, one to seven seconds each, all
 // reported as `failure`. The runner is the only place this repository has ever measured itself in
 // the state a customer would get, and it is dark until somebody with a payment method fixes it.
-// See docs/backlog/CI-IS-BLOCKED-ON-GITHUB-BILLING-2026-09-21.md.
+// (That handoff was closed and removed; CI runs again. See git history.)
 //
 // And separately, four times in one night, a test passed here and failed there. The corpus test
 // read a 10 MB gitignored artefact (1567734). `App.tsx` opened on a Mac and was ENOENT on the

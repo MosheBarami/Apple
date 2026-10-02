@@ -1,4 +1,4 @@
-// playbooks.mjs — L3 of the ladder in docs/SOURCE-INTELLIGENCE.md §7.
+// playbooks.mjs — L3 of the ladder in docs/architecture/SOURCE-INTELLIGENCE.md §7.
 //
 // L2 is retrieval: a brief in, a ranked set of constraints out. That answers
 // "what must be true of this interface?" and it answers nothing about ORDER, and

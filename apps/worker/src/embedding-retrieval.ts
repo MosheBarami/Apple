@@ -5,7 +5,7 @@
 // (61%) when it is phrased the way a customer talks. The knowledge is PRESENT and is not REACHED —
 // this repository's central failure shape, at the knowledge layer.
 //
-// docs/knowledge-retrieval-diagnosis.md puts a ceiling of 74% top-1 on any pure scoring fix,
+// docs/architecture/knowledge/knowledge-retrieval-diagnosis.md puts a ceiling of 74% top-1 on any pure scoring fix,
 // because six of the thirty-one failures are VOCABULARY ABSENT: the customer's noun appears nowhere
 // in the module's id, family or contract, so no weighting over those tokens can reach it.
 // `interval-overlap` scores exactly ZERO under the keyword scorer on "check if two time slots
@@ -19,7 +19,7 @@
 // 2026-09-20 while `apps/worker/src/embedding-retrieval.ts` was absent from the tree AND from every
 // branch in git. The harness imports it, so the harness could not run, so the number could not be
 // reproduced by anyone who tried. A number whose instrument is missing is not a result. This file
-// restores the instrument; the run that re-measured it is cited in docs/embedding-retrieval.md.
+// restores the instrument; the run that re-measured it is cited in docs/architecture/knowledge/embedding-retrieval.md.
 //
 // SAFETY, and it is the same argument verified-modules.ts makes. The index is STATICALLY imported
 // so esbuild embeds it in the bundle: no filesystem read at runtime, no fetch, no external code.
@@ -71,7 +71,7 @@ export const EMBEDDING_UI_TEXT_HASH = IX.uiTextHash;
  * THE FLOOR BELOW WHICH A UI LOOKUP MUST SAY IT FOUND NOTHING.
  *
  * Measured, not chosen by feel, and RE-AIMED against the corpus as it stands rather than inherited.
- * docs/embedding-retrieval.md chose 0.55 against a 21-row UI corpus. That corpus is now 29 rows —
+ * docs/architecture/knowledge/embedding-retrieval.md chose 0.55 against a 21-row UI corpus. That corpus is now 29 rows —
  * the eight screen files the document predicted would land have landed — and on 2026-09-20 the
  * same harness re-measured every floor over the shipping composition (live `getUIConstruction`
  * first, embedding only on its misses), 53 recorded lookups:

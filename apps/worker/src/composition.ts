@@ -28,7 +28,7 @@
 //
 // EVERY METRIC HERE IS A CANDIDATE UNTIL MEASURED. The calibration in
 // packages/evals/src/composition-calibration.mjs ranks each one against a labelled ladder, and the
-// ones that do not separate are recorded as rejected in docs/COMPOSITION.md. Do not promote a
+// ones that do not separate are recorded as rejected in docs/architecture/COMPOSITION.md. Do not promote a
 // metric into a gate without a measured separation.
 
 // verticalElementHeights lives in @golem/shared: the worker gates on it and the web app displays
@@ -284,7 +284,7 @@ export interface StructureMetrics {
    *  cloned prop field, whatever the part count. */
   volumeGini: number;
   /** volume of the largest connected mass / volume of the second largest.
-   *  MEASURED AND REJECTED as a focal-dominance signal — see docs/COMPOSITION.md. At a 1-stud
+   *  MEASURED AND REJECTED as a focal-dominance signal — see docs/architecture/COMPOSITION.md. At a 1-stud
    *  clustering gap a paved scene fuses into a single mass, so this returns the "infinitely
    *  dominant" sentinel for a uniformly tiled plate and for a real plaza alike. Retained only
    *  because massCount is worth reporting. */

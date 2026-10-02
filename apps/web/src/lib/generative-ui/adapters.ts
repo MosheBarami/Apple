@@ -227,7 +227,7 @@ export function comparisonToDocument(
       // from bad at AUC 0.667 and part count at 0.611 — both close to a coin flip. Showing them
       // side by side in a before/after invites the reader to conclude that more parts and more
       // colours mean a better scene, which is the exact belief that measurement falsified.
-      // Landmark dominance separated at AUC 1.000. See docs/COMPOSITION.md.
+      // Landmark dominance separated at AUC 1.000. See docs/architecture/COMPOSITION.md.
       stats: view
         ? [
             { key: 'Coverage', value: `${Math.round(view.meta.subjectCoverage * 100)}%` },

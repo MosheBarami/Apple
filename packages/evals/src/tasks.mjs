@@ -54,7 +54,7 @@ export const SCRIPTING_TOPICS = [
 ];
 const TOPIC_SET = new Set(SCRIPTING_TOPICS);
 
-/** Task-file categories that make up the scripting curriculum (docs/SCRIPTING-CURRICULUM.md). */
+/** Task-file categories that make up the scripting curriculum (docs/architecture/SCRIPTING-CURRICULUM.md). */
 export const SCRIPTING_CATEGORIES = [
   'scripting-security',
   'scripting-persistence',

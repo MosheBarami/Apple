@@ -2884,9 +2884,9 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Administrative access restrictions
       · apps/worker/src/index.ts:427 — every /api/admin/* request must present X-Admin-Key, compared by secretEquals (index.ts:420), a whole-length constant-time compare with a comment stating that no test in the repository can prove the timing pro
 - [✓] Security configuration review
-      · A real adversarial review exists and its conclusions are held in place by executable checks. docs/SECURITY.md records a four-reviewer audit of the deployed service (2026-08-30) in which every claimed finding was handed to an independent age
+      · A real adversarial review exists and its conclusions are held in place by executable checks. docs/operations/SECURITY.md records a four-reviewer audit of the deployed service (2026-08-30) in which every claimed finding was handed to an independent age
 - [☐] Vulnerability reporting channel
-      · Nothing anywhere invites or routes a security report. Searched: no SECURITY.md at the repository root (docs/SECURITY.md is an audit record, not a reporting policy, and GitHub only surfaces a root, .github/ or docs/ SECURITY.md as a policy —
+      · Nothing anywhere invites or routes a security report. Searched: no SECURITY.md at the repository root (docs/operations/SECURITY.md is an audit record, not a reporting policy, and GitHub only surfaces a root, .github/ or docs/ SECURITY.md as a policy —
       → Create SECURITY.md at the repository root stating: where to send a report (a dedicated address, e.g. security@ on the product domain, or apple.labs.app@gmail.com if no other mailbox exists), what to include, the acknowledgement target (e.g. 3 business days), that testing must stay on the reporter's 
 - [☐] Security incident response procedures
       · The mechanisms exist; the procedure does not. Mechanisms found: a kill switch at apps/worker/src/index.ts:2420 POST /api/admin/kill-switch (checked inside the spend reservation, packages/evals/src/security.test.mjs:1881); a tested automatic
@@ -3238,7 +3238,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Permission-aware caching
       · User-scoped content is marked private with a lifetime bounded by the object, and the property is asserted from both directions. apps/worker/src/index.ts:628-635 serves generated images as `private, max-age=${remainingLife(metadata)}` with t
 - [☐] Autoscaling thresholds
-      · Specified in a design document, implemented nowhere. docs/SCALE-V2.md:481-505 gives exact thresholds (projected > 20,000 neurons → maxInFlight 4; > 25,000 → defer Free builds; > 32,000 → questions only) plus an hour-of-day 1.5×-trailing-mea
+      · Specified in a design document, implemented nowhere. docs/architecture/SCALE-V2.md:481-505 gives exact thresholds (projected > 20,000 neurons → maxInFlight 4; > 25,000 → defer Free builds; > 32,000 → questions only) plus an hour-of-day 1.5×-trailing-mea
       → Implement the smallest useful piece: add a `/projection` route to apps/worker/src/do/budget.ts returning `projectedDayNeurons = dayNeurons * (86400 / secondsElapsedTodayUTC)` computed from the day's own ledger (the `spend` table written at budget.ts:~350), and a `tier` field of 'normal' | 'throttle'
 - [✓] Capacity planning
       · A runnable, tested capacity model, not a prose estimate. packages/evals/src/economics.mjs:504-529 `queueModel(requestsPerDay)` concentrates daily traffic into a peak minute (PEAK_HOUR_SHARE_OF_DAY=0.15, PEAK_MINUTE_BURSTINESS=2.0 at :160-16
@@ -3255,7 +3255,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · BUILT for exactly one dependency: apps/worker/src/providers/health.ts (32-sample ring, median latency, last error kind), recorded on every inference at apps/worker/src/gateway.ts:357 and :362, tested at packages/evals/src/providers.test.mjs
       → Add `GET /api/admin/dependencies` in apps/worker/src/index.ts that runs, each under an AbortSignal.timeout(2000), a `select 1` against env.CORPUS, a HEAD to `${env.SUPABASE_URL}/rest/v1/` with the anon key, an env.KV.get of a sentinel key, and a 1-vector env.VEC.query, returning {name, ok, latencyMs
 - [~] Defined service reliability objectives
-      · A target table is WRITTEN: docs/SCALE-V2.md:320 '### 2.5 SLA targets' gives p50/p95 queue-wait and hard-cap numbers per class (Clay question <200ms/≤5s, Pro build <2s/≤60s, Free build <5s/≤10min, 45-min hard floor). But docs/SCALE-V2.md:3 s
+      · A target table is WRITTEN: docs/architecture/SCALE-V2.md:320 '### 2.5 SLA targets' gives p50/p95 queue-wait and hard-cap numbers per class (Clay question <200ms/≤5s, Pro build <2s/≤60s, Free build <5s/≤10min, 45-min hard floor). But docs/architecture/SCALE-V2.md:3 s
       → Create docs/RELIABILITY-OBJECTIVES.md stating objectives for the service that actually ships (e.g. /api/health availability, /api/me p95, agent-run success rate, a monthly error budget), each naming the metric already computed in apps/worker/src/analytics.ts (latencyRollup at :696, successRollup, er
 - [~] Availability monitoring
       · A real, well-built probe exists and is proven: infra/healthcheck.mjs probes /api/health, /, /pricing, /app/ asserting status AND content type AND body shape, has a third 'unobserved' verdict with its own exit code, and wires auto-rollback —
@@ -3278,8 +3278,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The one retry that ships is real and bounded: apps/worker/src/gateway.ts:349 `MAX_RATE_LIMIT_WAITS = 3` with linear backoff at :379 (1.2s/2.4s/3.6s), admitted only when `adapter.classifyError(e).retryable` (:377), and a BILLED failure is ne
       → Add a test in packages/evals/src/providers.test.mjs with a fake AI binding that throws 'AiError 3021' on every call and assert G.chat rejects with RateLimitedError after exactly 4 invocations, so the bound at apps/worker/src/gateway.ts:349 is falsifiable. Separately, wire apps/worker/src/op-failure.
 - [☐] Circuit breaker behavior
-      · Searched apps/worker/src/gateway.ts, apps/worker/src/providers/*.ts, apps/worker/src/do/budget.ts and apps/worker/src/do/session.ts for breaker/circuit/consecutiveFailures/openUntil/halfOpen/failover — zero hits. docs/SCALE-V2.md:355 states
-      → Implement docs/SCALE-V2.md §3.5 in apps/worker/src/do/budget.ts, which every inference already round-trips through: store `{consecutiveFailures, openUntil}` per model id, increment on a non-rate-limit failure reported by a new `/breaker-fail` call from apps/worker/src/gateway.ts's catch at :360, ope
+      · Searched apps/worker/src/gateway.ts, apps/worker/src/providers/*.ts, apps/worker/src/do/budget.ts and apps/worker/src/do/session.ts for breaker/circuit/consecutiveFailures/openUntil/halfOpen/failover — zero hits. docs/architecture/SCALE-V2.md:355 states
+      → Implement docs/architecture/SCALE-V2.md §3.5 in apps/worker/src/do/budget.ts, which every inference already round-trips through: store `{consecutiveFailures, openUntil}` per model id, increment on a non-rate-limit failure reported by a new `/breaker-fail` call from apps/worker/src/gateway.ts's catch at :360, ope
 - [✓] Emergency feature disablement
       · Global AI kill switch, end to end. State: apps/worker/src/do/budget.ts:393 `/kill` persists {killed, killedReason}; every reservation is refused at budget.ts:214 and :256 with the operator's own reason carried to the caller. Worker: apps/wo
 - [☐] Incident severity classification

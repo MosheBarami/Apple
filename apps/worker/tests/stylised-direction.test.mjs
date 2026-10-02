@@ -5,7 +5,7 @@
  * Apple MAX came back as flat 0.2-stud slabs on realistic Grass, a grey path and two-part trees,
  * next to reference shots of bright, fenced, signposted plots. The model had followed its brief.
  * The brief banned Plastic outright, capped every large surface at HSV saturation 0.35 and offered
- * only desaturated palettes — the exact opposite of docs/ROBLOX-STYLE-SPEC.md, the repository's own
+ * only desaturated palettes — the exact opposite of docs/design/ROBLOX-STYLE-SPEC.md, the repository's own
  * spec for simulators and tycoons ("Bright, saturated, high-key. No muted palettes"). The two
  * critics then enforced the same ban: vision.ts hard-failed any scene over 90% Plastic and
  * critic-input.ts reported every Plastic part as a "factory default", colours or not.

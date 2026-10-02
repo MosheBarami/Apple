@@ -187,6 +187,11 @@
     "en": "All project documents: the autonomous agent's mission and state, decisions, evidence for every experiment, research, eval results, backlog and release notes.",
     "docs": []
   },
+  "docs/architecture": {
+    "he": "תיעוד של איך המערכת בנויה: הרכבת סצנות, חוויית החשיבה, הלולאה החזותית, סקייל ותקציב, ושליפת ידע (בתת-תיקייה knowledge).",
+    "en": "How the system works: composition, thinking UX, the visual loop, scale and budget, and knowledge retrieval (in knowledge/).",
+    "docs": []
+  },
   "docs/audit": {
     "he": "דוחות ביקורת על הקוד: מה באמת עובד במוצר (\"ספר החשבונות\" של Apple), ספקי מודלים, מודלי בטיחות של Roblox ודוח האימון הראשון.",
     "en": "Code audits: what really works in the product (the Apple ledger), inference providers, Roblox safety models, and the first training report.",
@@ -200,11 +205,6 @@
   "docs/backlog": {
     "he": "רשימת המשימות: 1,249 פיצ'רים שביקשת, רשימת בדיקה, חסמים, מבואות סתומים והערות על תקלות CI.",
     "en": "The backlog: the 1,249 requested features, the checklist, blockers, dead ends and CI incident notes.",
-    "docs": []
-  },
-  "docs/corrections": {
-    "he": "תיקונים לטעויות בהודעות קומיט קודמות. ההודעות עצמן לא נערכות, ולכן התיקון נכתב כקובץ.",
-    "en": "Corrections to mistakes in earlier commit messages; commits are not amended, so the correction is a file.",
     "docs": []
   },
   "docs/design": {
@@ -227,6 +227,11 @@
     "en": "The gauntlet: a separate fresh-context critic compares what was built against the real references, not a description of them. Includes round screenshots.",
     "docs": []
   },
+  "docs/operations": {
+    "he": "תיעוד תפעולי: שחרור התוסף, בדיקות אבטחה, בדיקת עומס, מסמכי Apple OS, ורשימת הפעולות שעדיין מחכות לאישור שלך.",
+    "en": "Operations docs: releasing the plugin, security review, load test, the Apple OS notes, and the list of actions still waiting for the owner.",
+    "docs": []
+  },
   "docs/playbook": {
     "he": "ספר השיטה: איך עובדים כאן ומה כבר נלמד בדרך הקשה, בקצרה, כדי שסוכן חדש לא יבזבז שעות על מה שכבר ידוע.",
     "en": "The playbook: how work gets done here and what has been learned the hard way, short enough for a new agent to read first.",
@@ -235,11 +240,6 @@
   "docs/releases": {
     "he": "הערות שחרור לגרסאות v0.1.0 ו-v0.2.0: מה נוסף ומה השתנה.",
     "en": "Release notes for v0.1.0 and v0.2.0: what was added and changed.",
-    "docs": []
-  },
-  "docs/requirements": {
-    "he": "דרישות בפורמט שמחשב קורא: 83 \"חוזי ביצוע\" ובדיקות אוטומטיות שמוודאות אותם.",
-    "en": "Machine-readable requirements: 83 execution contracts and the probes that check them.",
     "docs": []
   },
   "docs/research": {
@@ -257,9 +257,9 @@
     "en": "Your definition of done (DONE.md): clauses each measured against the deployed product, not the code.",
     "docs": []
   },
-  "docs/superpowers": {
-    "he": "תוכנית עבודה אחת שנכתבה בכלי התכנון \"superpowers\": איך לגרום למדיניות מקורות הנכסים באמת לשלוט בבנייה.",
-    "en": "One implementation plan written with the superpowers planning skill: making the asset-source policy actually govern a build.",
+  "docs/training": {
+    "he": "ארכיון מחקר האימון והקורפוס. האימון בוטל ב-V3, והתיקייה נשמרת כהיסטוריה.",
+    "en": "Archived training and corpus research. Training was cancelled in V3; kept as history.",
     "docs": []
   },
   "graphify-out": {

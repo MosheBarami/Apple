@@ -215,7 +215,7 @@
 .settings-card :is(input,select,textarea)::placeholder { color:var(--faint); }
 /* Hover and focus are the same step, because a field has one "you are here" and reaching it with a
    mouse or a tab key is not a different fact. The ring itself is never drawn here — rule 6 of
-   docs/DESIGN-LOCK.md says it is 2px of accent at 4px offset everywhere, and a component that
+   docs/design/DESIGN-LOCK.md says it is 2px of accent at 4px offset everywhere, and a component that
    restyles it is a component keyboard users get a different product on. */
 .settings-card :is(input:not([type='checkbox']):not([type='radio']),select,textarea):hover:not(:disabled) { border-color:var(--surface-3); }
 /* `background-color` AND NEVER THE `background` SHORTHAND ON A FIELD. The shorthand resets

@@ -311,7 +311,7 @@ back up. A guard that cannot fire is the thing this suite exists to find, includ
 
 ### 9.4 What this does not fix
 
-- **Three of the nine runs `docs/frontier-for-roblox.md` §8 reads from are replays**, and were
+- **Three of the nine runs `docs/training/frontier-for-roblox.md` §8 reads from are replays**, and were
   recorded before `--replicate` existed. They are already discarded by that document's §8.3; they
   are not re-run here, because re-running them would produce different answers and a number
   corrected by resampling is a new measurement wearing the old one's name.

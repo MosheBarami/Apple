@@ -96,7 +96,7 @@ const BASELINE_SYSTEM =
 //[[ 2026-09-21: THE RECORDING MOVED, AND THE OLD ONE IS KEPT RATHER THAN OVERWRITTEN.
 //
 //   `eval-production-apple-agent-armA-shipped.json` was taken on 2026-09-20 at effectiveTokens
-//   5500, and it is the provenance of all seven arms in docs/frontier-for-roblox.md §4. Production
+//   5500, and it is the provenance of all seven arms in docs/training/frontier-for-roblox.md §4. Production
 //   now sends 6500, so that file can no longer be the fidelity source without the gate certifying a
 //   budget the product stopped sending — but deleting it would erase what those seven arms were
 //   measured at. Both exist; this names the current one, and §4 names the other.

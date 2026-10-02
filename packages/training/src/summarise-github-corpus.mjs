@@ -94,7 +94,7 @@ if (isMain) {
   }
 
   // The fourth pass measured whether this is CURRENT Luau — the thing the request actually names,
-  // "כל סוגי הluau העדכניים". It was written up in docs/github-corpus-licences.md and nowhere the
+  // "כל סוגי הluau העדכניים". It was written up in docs/training/github-corpus-licences.md and nowhere the
   // machine reads. A document does not fail a build, and the card is the only part of this corpus
   // that reaches a fresh clone; a consumer reading `validation` saw no currency row at all and the
   // list below still told them the corpus had never been checked for it. Same wiring as the

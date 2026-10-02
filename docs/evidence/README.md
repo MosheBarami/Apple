@@ -19,3 +19,10 @@ Related, outside this directory:
 - `../DECISIONS.md` — decisions and their reasoning
 - `../evals/RESULTS.md`, `../evals/FINDINGS.md` — benchmark results
 - `../ROBLOX-STYLE-SPEC.md`, `../evals/VISUAL-RUBRIC.md` — the quality bar
+
+## Pruning
+
+On 2026-10-02 the entries dated before 2026-09-24 that no live file named (117 files) were removed from the tree by
+`scripts/reorg-repo.mjs`; the list is `scripts/reorg/evidence-delete.txt` and git history holds every byte
+(`git log --diff-filter=D -- docs/evidence/<name>`). Newer entries, undated ones and anything a doc, test or tool
+cites were kept. Add a row to the table above when you add an entry that a claim depends on.

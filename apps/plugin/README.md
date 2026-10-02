@@ -13,7 +13,7 @@ This file exists because there were two Studio plugins in this repository for a 
 said which one was real — so both looked maintained, `README.md` pointed at this one, and the
 worker's own comments cite its files as the thing they must match. That ambiguity is resolved here.
 
-Decided 2026-09-19 (commit `f6ad60a`). The runbook for the one that ships is `docs/PLUGIN-RELEASE.md`.
+Decided 2026-09-19 (commit `f6ad60a`). The runbook for the one that ships is `docs/operations/PLUGIN-RELEASE.md`.
 
 ## Retired, and not to be used
 
@@ -47,7 +47,7 @@ also `handlers.insert_asset`, which pulls a remote asset into the user's place.
 Neither is a bug. Both are load-bearing for the legacy design, and `run_code` is what the worker's
 Luau tools were built on. That is precisely why this plugin cannot be the public one: the capability
 and the prohibition are the same line of code. `apps/apple-plugin` refuses `run_code` by name, and
-the worker withholds the dependent tools and says so — see `docs/PLUGIN-RELEASE.md`.
+the worker withholds the dependent tools and says so — see `docs/operations/PLUGIN-RELEASE.md`.
 
 ## Why it is still here, rather than deleted
 

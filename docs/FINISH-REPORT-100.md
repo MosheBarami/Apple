@@ -101,7 +101,7 @@ Four rows. Each was verified by me against the live origin in §1; the guard cou
 |---|---|
 | `features-as-interactive-demos` | §1.1 — four operable panels driven live. Commits `88148dd`, `d82abf0`. |
 | `typography-system` | Live `/_astro/index.B_ZE0UbA.css` carries 8 × `var(--font-mono)`; the landing spelled the stacks out nine times. Track reports 303 elements measured before/after, 0 rendered differently — **not reproduced by me**. Commit `26bba69`. |
-| `webgl-marketing-experience` | Closed as a written decision, `docs/DESIGN-TYPE.md` §2, with a table of what ships against each item. No WebGL context, no 3D library, on the owner's own cancellation of the 3D mascot. Commit `f2f7ec1`. |
+| `webgl-marketing-experience` | Closed as a written decision, `docs/design/DESIGN-TYPE.md` §2, with a table of what ships against each item. No WebGL context, no 3D library, on the owner's own cancellation of the 3D mascot. Commit `f2f7ec1`. |
 | `landing-horizon-is-one-colour` | §1.4 — 3 × `--horizon-key` live, measured green `rgb(0,215,142)` on a page whose `--accent` is `#f4f3f2`. Commits `f94b96d`, `d6b5f0c`, `b0dd03a`. |
 
 Two checkers that were red at session start and are now exit 0 under their own run (exit code captured on its own line, not through a pipe):
@@ -235,7 +235,7 @@ Three tracks shipped pictures tonight and none was scored. **Next:** `node packa
 ### 3.9 No model number carries the seen/unseen split
 
 ```
-grep -rn -iE 'unseen' docs/evals/*.md docs/frontier-for-roblox.md → 0 matches
+grep -rn -iE 'unseen' docs/evals/*.md docs/training/frontier-for-roblox.md → 0 matches
 ```
 
 95.0% vs 91.3%, 15/15 datastore-safety, 83.3%→87.5% house-rules-plus were all produced tonight (track report; **I did not re-run them**). None can carry the owner's "world's most trained Roblox AI model" sentence without the split. **Next:** re-run the production eval with the held-out set reported separately.

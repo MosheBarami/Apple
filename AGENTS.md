@@ -71,7 +71,7 @@ apps/
               Creator Store as "Apple Studio", asset 107230158271368. The store build (5 scripts,
               uploaded 2026-09-19) is 1.0.0 by inference: every committed Bridge.luau declares 1.0.0,
               but nobody has read the published bytes. The source is 1.1.0 and unpublished. Runbook:
-              docs/PLUGIN-RELEASE.md.
+              docs/operations/PLUGIN-RELEASE.md.
   plugin/     LEGACY — test fixtures only. Not built, not shipped, not installable; ~16 test files
               elsewhere read its source, which is the only reason it exists (apps/plugin/README.md).
               Its release/apple-plugin.rbxm is stale, and its asset 132128477945417 was removed.
@@ -202,8 +202,8 @@ something really happened, it is here.
 | `docs/backlog/CHECKLIST-V2.md` | the owner's list of record — 1,200 items in 60 sections |
 | `docs/BLOCKERS.md` | what is known broken |
 | `docs/COST-MODEL.md` | every Credit figure on the site derives from this |
-| `docs/SECURITY.md`, `docs/MONITORING.md` | trust boundaries; Sentry |
-| `docs/THINKING-UX.md`, `docs/VISUAL-LOOP.md` | the run surface and the visual gate |
+| `docs/operations/SECURITY.md`, `docs/MONITORING.md` | trust boundaries; Sentry |
+| `docs/architecture/THINKING-UX.md`, `docs/architecture/VISUAL-LOOP.md` | the run surface and the visual gate |
 
 `packages/evals/src/success-metrics.mjs` prints the current completion figure recomputed from the
 marks — **run it rather than quoting a number from a document.**

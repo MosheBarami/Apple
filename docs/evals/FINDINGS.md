@@ -3,7 +3,7 @@
 > **The suite these numbers came from no longer exists in this form.** Every score below was
 > measured against the 56-task suite. It has since grown to 84 tasks — the 28-task scripting
 > curriculum added weight-3/4 tasks that carry 57.8% of the total, plus a `no_antipattern` check
-> type the old runs never faced (see [SCRIPTING-CURRICULUM.md](../SCRIPTING-CURRICULUM.md)). A
+> type the old runs never faced (see [SCRIPTING-CURRICULUM.md](../architecture/SCRIPTING-CURRICULUM.md)). A
 > future overall score is **not** comparable to the 98.9% below; re-baseline before comparing.
 
 ## `@cf/zai-org/glm-5.3-flash` IS production again — asked of the deployed worker, 2026-09-21
@@ -120,11 +120,11 @@ Raw results: `packages/evals/results/*.json`. Rerun: `node src/run.mjs --models 
 > read out of a config: **both product lanes serve `@cf/zai-org/glm-5.3-flash`.** Specifically —
 > item 1's "keep gpt-oss-120b as the default builder model" was reversed: nothing routes to
 > `@cf/openai/gpt-oss-120b` today. Item 3's BYO-LoRA plan for `qwen2.5-coder-32b` cannot be reached
-> from production at all; `docs/model-serving-reality.md` has the account's own refusal, re-taken
+> from production at all; `docs/training/model-serving-reality.md` has the account's own refusal, re-taken
 > 2026-09-21. Item 4's "clay stays for fast/cheap Clay mode" no longer describes any choice a
 > customer can make.
 >
-> **On `clay`, this file and `docs/model-serving-reality.md` disagreed, and both were wrong.** The
+> **On `clay`, this file and `docs/training/model-serving-reality.md` disagreed, and both were wrong.** The
 > table at the top of this page annotates `clay` as "reached by Plan"; model-serving-reality §2 says
 > "no product lane routes here any more". `gatewayModelFor` was bundled out of
 > `apps/worker/src/do/session.ts` with esbuild and **run** over every input on 2026-09-21, rather
@@ -142,7 +142,7 @@ Raw results: `packages/evals/results/*.json`. Rerun: `node src/run.mjs --models 
 > the caller omits `productModel`, and `gatewayModelFor` then returns the mode unchanged. A caller
 > that asks for mode `clay` and sends no product model is served `@cf/qwen/qwen3-30b-a3b-fp8` while
 > `effectiveProductModel` records the run as `apple` — the lane whose model is GLM. Written up with
-> the exact symbols in `docs/backlog/HANDOFF-CLAY-REACHABLE.md`; not fixed here, because
+> the exact symbols in the handoff HANDOFF-CLAY-REACHABLE (closed and removed 2026-10-02; see git history); not fixed here, because
 > `apps/worker/src/do/session.ts` is held by another session.
 >
 > The numbers themselves also predate a grader fix: see the 96.8-vs-97.6 note above.

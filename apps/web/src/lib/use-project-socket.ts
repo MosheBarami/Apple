@@ -242,7 +242,7 @@ export interface ProjectSocket {
    * `agentStatus` alone is only the latest phase, so phase durations were
    * previously unrecoverable — the transition that ended a phase was overwritten
    * by the one that began the next. Two honesty caveats travel with this list
-   * and are spelled out in `docs/THINKING-UX.md`: the timestamps are client
+   * and are spelled out in `docs/architecture/THINKING-UX.md`: the timestamps are client
    * receipt times, not the worker's clock, and `agent_status` carries no
    * `msgId`, so marks can only ever be attributed to the run in flight.
    */

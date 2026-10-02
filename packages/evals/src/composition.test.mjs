@@ -100,7 +100,7 @@ test('the geometry mask is recovered from the render with negligible collision',
 
 test('masked colourfulness separates a grey slab from a coloured build', () => {
   // The documented reason the previous check was dead. Measured here so the claim in
-  // docs/COMPOSITION.md cannot drift away from the code.
+  // docs/architecture/COMPOSITION.md cannot drift away from the code.
   const slab = Math.max(...byId['grey-plate'].views.map((v) => v.metrics.maskedColorfulness));
   const built = Math.max(...byId['real-improved'].views.map((v) => v.metrics.maskedColorfulness));
   assert.ok(slab < C.COMPOSITION_GATES.maskedColorfulness, `grey slab masked colourfulness ${slab} should trip the floor`);
@@ -165,7 +165,7 @@ test('structureFromLayout reads the wire format the plugin already sends', () =>
 });
 
 test('a legitimate interior is NOT rejected — the false positive the docs warn about', () => {
-  // docs/COMPOSITION.md flags this risk explicitly: an interior has no landmark by design, so a
+  // docs/architecture/COMPOSITION.md flags this risk explicitly: an interior has no landmark by design, so a
   // landmark rule could reject correct work. Measured on a plausible tavern interior (walls, floor,
   // ceiling, bar counter, stools, tables, fireplace) it passes, because the wall-and-ceiling shell
   // clusters as one tall element with the furniture beneath it. Note what the metric is really

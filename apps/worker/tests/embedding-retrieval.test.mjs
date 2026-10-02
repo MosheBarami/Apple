@@ -7,7 +7,7 @@
 // every score drifts by an unknown amount, and nothing anywhere would have said so.
 //
 // THE OTHER HALF OF WHY THIS FILE EXISTS. apps/worker/src/embedding-retrieval.ts was measured on
-// 2026-09-20, written up in docs/embedding-retrieval.md with a "66/80 — 82.5%, as it would ship"
+// 2026-09-20, written up in docs/architecture/knowledge/embedding-retrieval.md with a "66/80 — 82.5%, as it would ship"
 // row, and then never committed — absent from the working tree and from every branch in git. The
 // measurement harness imports it, so the harness could not run and the number could not be checked
 // by anyone who tried. A module with no test is how that happens twice.

@@ -42,7 +42,7 @@ body .toast-stack { inset-block-end:24px; inset-inline:auto 24px; width:min(400p
 
 /* ----------------------------------------------------------------------------- the row --- */
 
-/* A ROW IS A THING THAT FLOATS, which is the one case docs/DESIGN-LOCK.md allows a shadow in
+/* A ROW IS A THING THAT FLOATS, which is the one case docs/design/DESIGN-LOCK.md allows a shadow in
    besides a modal — so it takes `--shadow-pop` rather than the hand-rolled `0 8px 25px #0004` the
    base rule carries. `align-items:flex-start` so the dot and the dismiss control stay on the first
    line of a message that runs to three.

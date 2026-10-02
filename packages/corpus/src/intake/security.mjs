@@ -1,4 +1,4 @@
-// security.mjs — §4 of docs/SOURCE-INTELLIGENCE.md: the gate that decides what must never be
+// security.mjs — §4 of docs/architecture/SOURCE-INTELLIGENCE.md: the gate that decides what must never be
 // learned from. It runs second in the pipeline, immediately after provenance, so a malicious
 // loader never reaches a chunker, an embedder, or a reviewer's clipboard.
 //

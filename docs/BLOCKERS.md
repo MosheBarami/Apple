@@ -318,7 +318,7 @@ Creator Store directly and whose conclusion stands on its own.
 **Status:** OPEN, previously triaged, not re-triaged this session.
 
 GitHub reports 27 advisories (7 high, 15 moderate, 5 low) on `main`, surfaced on
-every push. `docs/SECURITY-TRIAGE-2026-08-31.md` records the prior finding that the
+every push. `docs/operations/SECURITY-TRIAGE-2026-08-31.md` records the prior finding that the
 highs are build/dev exposure rather than production exposure, and that the one
 reachable sink — a react-router open redirect — was fixed directly.
 

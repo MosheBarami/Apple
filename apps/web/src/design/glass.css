@@ -7,7 +7,7 @@
  * matte "glass" surfaces, with a little friendly motion — cards that lift, controls that squish when
  * pressed, popovers that pop, lists that arrive one after another.
  *
- * It supersedes three lines of docs/DESIGN-LOCK.md for the shell ("glass is reserved for the
+ * It supersedes three lines of docs/design/DESIGN-LOCK.md for the shell ("glass is reserved for the
  * composer and the top bar", "a card does not cast", "two radii"). Reverse: drop the import of this
  * file from main.tsx; nothing else reads it.
  *

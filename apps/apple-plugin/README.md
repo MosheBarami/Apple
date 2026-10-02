@@ -2,7 +2,7 @@
 
 **This is the product.** Decided 2026-09-19: `apps/plugin` is the legacy build and is
 not submitted to anything — `apps/plugin/README.md` says why it stays in the tree, and
-`docs/PLUGIN-RELEASE.md` is the runbook for getting this one onto the Creator Store.
+`docs/operations/PLUGIN-RELEASE.md` is the runbook for getting this one onto the Creator Store.
 
 New source and package, separate from `apps/plugin` and the removed Creator Store
 asset. This is not a re-upload or renamed binary. Nothing here changes the existing

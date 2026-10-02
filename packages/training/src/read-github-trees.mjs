@@ -3,7 +3,7 @@
  * The second pass: open the file tree of every licence-verified, Roblox-relevant repository.
  *
  * `probe-github-leads.mjs` read the repository OBJECT — which carries the licence — for all 4,269
- * unopened leads. It did not read the file TREE, so `docs/github-corpus-licences.md` had to say, in
+ * unopened leads. It did not read the file TREE, so `docs/training/github-corpus-licences.md` had to say, in
  * its own words: "Not a file count. The leads were never tree-read, so `luau_lua_file_count` is 0
  * across all of them and the 5.45 GB is repository size, not Luau."
  *
@@ -45,7 +45,7 @@ const IN = resolve(HERE, '..', 'discovery', 'v2', 'github-probed.jsonl');
 const OUT = resolve(HERE, '..', 'discovery', 'v2', 'github-trees.jsonl');
 
 /**
- * Roblox-relevant, by the same rule `docs/github-corpus-licences.md` used to get 1,063.
+ * Roblox-relevant, by the same rule `docs/training/github-corpus-licences.md` used to get 1,063.
  *
  * The original search sweep pulled in `sindresorhus/awesome` and `public-apis/public-apis`, which
  * are licence-clean and have nothing to do with Roblox. Primary language Lua or Luau, OR the

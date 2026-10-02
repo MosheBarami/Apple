@@ -13,7 +13,7 @@
  * (`:root[data-theme='light'] .studio-dock`), the answer here carries three or four. The
  * containers are true as well as convenient: none of these classes appear outside the shell.
  *
- * Tokens only, one weight, one radius set, the accent spent once. See docs/DESIGN-LOCK.md.
+ * Tokens only, one weight, one radius set, the accent spent once. See docs/design/DESIGN-LOCK.md.
  */
 
 /* ------------------------------------------------- the measured system --- */

@@ -1,7 +1,7 @@
 // Rank every candidate composition metric against the labelled ladder, and say plainly which ones
 // do not work.
 //
-// This file is the evidence behind docs/COMPOSITION.md. It reports, per metric:
+// This file is the evidence behind docs/architecture/COMPOSITION.md. It reports, per metric:
 //   auc  probability that a randomly chosen good fixture (label >= 5) outranks a randomly chosen
 //        bad one (label <= 3). 0.5 is a coin flip, 1.0 is perfect separation. This decides whether
 //        a metric is kept, because a correlation can be carried by the middle of the ladder while

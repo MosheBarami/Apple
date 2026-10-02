@@ -27,7 +27,7 @@ errors, concurrency 3.
 
 - **Scripting curriculum** (weight 3–4 per task, 89 of 154 total weight):
   scripting-security 7, scripting-persistence 7, scripting-systems 7,
-  scripting-gameplay 7. See [docs/SCRIPTING-CURRICULUM.md](../../docs/SCRIPTING-CURRICULUM.md).
+  scripting-gameplay 7. See [docs/architecture/SCRIPTING-CURRICULUM.md](../../docs/architecture/SCRIPTING-CURRICULUM.md).
 - **Everything else** (weight 1–2): api-knowledge 12, luau-correctness 10,
   debugging 8, project-comprehension 6, tool-selection 6, multi-file 5,
   ui-implementation 5, failure-recovery 4.

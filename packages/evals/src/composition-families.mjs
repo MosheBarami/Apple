@@ -10,7 +10,7 @@
 // REAL and are untouched by this file.
 //
 // WHY THIS EXISTS.
-// docs/COMPOSITION.md states its own limit plainly: "Twelve fixtures derived from one real scene
+// docs/architecture/COMPOSITION.md states its own limit plainly: "Twelve fixtures derived from one real scene
 // is a calibration set, not a validation set." Every threshold in
 // apps/worker/src/composition.ts was fitted against one plaza. This file asks the only question
 // that matters next: does the gate mean anything on a scene that is not a plaza?

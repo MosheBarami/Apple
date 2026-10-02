@@ -237,6 +237,6 @@ against a sideloaded build.
 §13.2 says a row whose blocker is a design choice is not owner-blocked: the cheaper branch gets
 built completely and the other is recorded as reversible.
 
-**AI Gateway billing mode is not yet a row.** `apps/worker/src/do/budget.ts`, `docs/SECURITY.md` and
+**AI Gateway billing mode is not yet a row.** `apps/worker/src/do/budget.ts`, `docs/operations/SECURITY.md` and
 `BLOCKERS.md` are reported to contradict each other on it. That contradiction is mine to resolve by
 re-probing all three before asking you anything.

@@ -349,7 +349,7 @@ export interface SceneLayout {
  * [x, y, z, sx, sy, sz, yawDeg].
  *
  * The ratio of the first two entries is `verticalDominance`, the one metric that separated good
- * composition from bad across the whole calibration ladder — see docs/COMPOSITION.md. Below about
+ * composition from bad across the whole calibration ladder — see docs/architecture/COMPOSITION.md. Below about
  * 1.25 nothing dominates and the scene has no landmark, however many parts it contains.
  */
 export function verticalElementHeights(parts: number[][], minHeight = 2, planGap = 3): number[] {

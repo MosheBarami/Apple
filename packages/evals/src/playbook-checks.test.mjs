@@ -2,7 +2,7 @@
 //
 // What this file has to establish is that `playbook_complete` fails work that
 // `no_design_violation` passes — otherwise it is a second opinion rather than a
-// new verdict, and docs/SOURCE-INTELLIGENCE.md §7 does not count that as a rung.
+// new verdict, and docs/architecture/SOURCE-INTELLIGENCE.md §7 does not count that as a rung.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

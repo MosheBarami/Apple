@@ -5,7 +5,7 @@
  * ------------------------------------------------------------------------------------------------
  * THE NUMBER THIS EXISTS TO FILL IN
  * ------------------------------------------------------------------------------------------------
- * docs/frontier-for-roblox.md §6 names its own largest hole:
+ * docs/training/frontier-for-roblox.md §6 names its own largest hole:
  *
  *     "Coverage. All eighty curriculum requests have a verified module, so retrieve-then-hand-over
  *      is measured only where it can win. Its score on a request the library does not cover is

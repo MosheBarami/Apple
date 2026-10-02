@@ -79,7 +79,7 @@ for (const spec of SPECS) {
 }
 
 test('the parity harness can fail: a mutated port turns the original specs red', { skip: luauMissing() && 'luau is not on PATH' }, () => {
-  // The framing distance is the value docs/VISUAL-LOOP.md records as MEASURED — 1.35x the subject
+  // The framing distance is the value docs/architecture/VISUAL-LOOP.md records as MEASURED — 1.35x the subject
   // radius, after 2.1x put scenes at 8-11% of frame and the critic called them "a postage stamp in
   // a void". `render.spec.luau` pins the band. Moving it is exactly the drift this file exists to
   // catch, so the harness is made to catch it here, in the open, rather than assumed to.

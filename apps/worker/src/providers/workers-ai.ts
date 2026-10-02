@@ -160,7 +160,7 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
  * established is the billing consequence: gateway.ts computes neurons locally from the returned
  * usage, so the two runs two minutes apart were charged 207 neurons EACH for one generation. An
  * eval that treats such a pair as two samples reports a precision that does not exist;
- * docs/frontier-for-roblox.md §8.3 discards one on exactly this evidence.
+ * docs/training/frontier-for-roblox.md §8.3 discards one on exactly this evidence.
  */
 export function gatewayOpts(env: Env, kind: string, cacheTtl: number, sessionId?: string, model?: string) {
   const id = env.AI_GATEWAY_ID;

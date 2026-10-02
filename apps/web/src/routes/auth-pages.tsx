@@ -83,7 +83,7 @@ function DoneMark() {
  *
  * `alert` is the ONLY variant that takes a colour, and the reason is arithmetic rather than taste:
  * `--good` (#99d4b0) and `--accent` (#8fd3ab) are three points apart, so a green tick above the
- * green primary button is two green things on one screen — the exact defect docs/DESIGN-LOCK.md
+ * green primary button is two green things on one screen — the exact defect docs/design/DESIGN-LOCK.md
  * rule 4 names. Success reads from the headline and from the single accented action beneath it.
  */
 function CardMark({ kind }: { kind: 'mail' | 'alert' | 'done' }) {

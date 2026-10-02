@@ -4,7 +4,7 @@
 // there is no binding to call. The REST route `/accounts/:id/ai/run/:model` and `env.AI.run(model,
 // …)` are the same models on the same platform; what differs is the network hop in front of them,
 // and that difference is why the latency number this repo reports is decomposed rather than
-// quoted as one figure. See docs/embedding-retrieval.md.
+// quoted as one figure. See docs/architecture/knowledge/embedding-retrieval.md.
 //
 // WHAT IS RECORDED WITH EVERY CALL. Workers AI returns `meta.neurons` and the billed input-token
 // count. Both are kept, because "it scored better" without "and it cost this" is half a result.
