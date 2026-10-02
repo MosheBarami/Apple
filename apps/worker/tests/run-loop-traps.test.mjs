@@ -595,6 +595,117 @@ test('THE LIBRARY ORDER SURVIVES ACROSS STEPS: a search with no hit in one step 
   } finally { direct.stop(); searched.stop(); }
 });
 
+// ======================================= fewer failed build calls, and calls that explain themselves ===
+
+const toolResults = (h) => h.store.get('agent').llm.filter((m) => m.role === 'tool').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+const efforts = (h) => h.chatCalls.map((c) => c.req.reasoningEffort);
+// A value the worker cannot type without the class (a CFrame as a bare array) is refused HERE, before Studio is asked.
+const unreadable = (n) => ({ items: [{ className: 'Part', name: `Marker ${n}`, parent: 'game.Workspace', props: { CFrame: [0, 5, 0] } }] });
+const studioRefuses = () => ({ ok: false, error: 'the plugin said no', failure: 'refused', remedy: 'none' });
+
+test('A REFUSAL THE WORKER MADE BEFORE SENDING ANYTHING DOES NOT MARK THE STEP AS FAILED (the signal that buys careful thinking); one that reached Studio does', async () => {
+  const text = 'put a marker post by the gate';
+  const free = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', unreadable(1)]), answer({ text: 'ok' })] });
+  const paid = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', { items: [{ className: 'Part', name: 'Marker', parent: 'game.Workspace' }] }]), answer({ text: 'ok' })] });
+  try {
+    await start(free, { text });
+    await free.session.alarm();
+    assert.equal(free.ops.filter((o) => o.op === 'create_instances').length, 0, 'control: the refused batch reached Studio');
+    await start(paid, { text });
+    await paid.session.alarm();
+    assert.equal(paid.ops.filter((o) => o.op === 'create_instances').length, 1, 'control: the failing batch never reached Studio');
+    assert.equal(paid.store.get('agent').priorStepFailed, true, 'a failure that reached Studio no longer marks the step as failed');
+    assert.equal(free.store.get('agent').priorStepFailed, false, 'a free worker-side refusal marked the step as failed');
+    // MEASURED, and worth saying: in Agent mode the baseline effort is already `high` (reasoning.ts BASELINE, V3 G01), so this
+    // signal changes the effort only where something lowers it first (the object and upgrade lanes, a greeting). Counted per
+    // step in these two scripted runs the effort is the same before and after this change.
+    assert.deepEqual(efforts(free), efforts(paid));
+  } finally { free.stop(); paid.stop(); }
+});
+
+test('A CALL THE WORKER REFUSED IS NOT "ALREADY MADE": the same call sent again meets the same refusal, not a duplicate guard', async () => {
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', unreadable(1)]), calls(['create_instances', unreadable(1)]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a marker post by the gate' });
+    for (let i = 0; i < 2; i++) await h.session.alarm();
+    const replies = toolResults(h);
+    assert.equal(replies.length, 2);
+    for (const reply of replies) {
+      assert.match(reply, /Nothing was created/, reply);
+      assert.match(reply, /items\[0\]\.props\.CFrame/, 'the refusal does not say where the bad value is');
+      assert.doesNotMatch(reply, /already made this exact call/, 'a refused call was counted as made');
+    }
+  } finally { h.stop(); }
+});
+
+test('A CALL THAT REACHED STUDIO AND FAILED IS A DUPLICATE ON THE SECOND TRY, AND THE REFUSAL NAMES THE LAST ERROR', async () => {
+  const same = { items: [{ className: 'Part', name: 'Marker', parent: 'game.Workspace' }] };
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [calls(['create_instances', same]), calls(['create_instances', same]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a marker post by the gate' });
+    for (let i = 0; i < 2; i++) await h.session.alarm();
+    assert.equal(h.ops.filter((o) => o.op === 'create_instances').length, 1, 'the identical call reached Studio twice');
+    const second = toolResults(h)[1];
+    assert.match(second, /already made this exact call/);
+    assert.match(second, /Its last error was: .*the plugin said no/, `the duplicate refusal does not say what went wrong: ${second}`);
+  } finally { h.stop(); }
+});
+
+test('A RESPONSE WITH FIVE CALLS GETS FIVE RESULTS: the fifth says it was not run and to resend', async () => {
+  const five = calls(...[1, 2, 3, 4, 5].map((n) => ['get_ui_construction', { id: `screen-${n}` }]));
+  const h = await makeSession({ connected: true, responses: [five, answer({ text: 'ok' })] });
+  try {
+    await start(h);
+    await h.session.alarm();
+    const llm = h.store.get('agent').llm;
+    const asked = llm.find((m) => m.role === 'assistant' && m.toolCalls?.length === 5);
+    assert.ok(asked, 'the fixture did not reach the transcript as one five-call turn');
+    for (const call of asked.toolCalls) assert.ok(llm.some((m) => m.role === 'tool' && m.toolCallId === call.id), `call ${call.id} was never answered`);
+    const fifth = llm.find((m) => m.role === 'tool' && m.toolCallId === asked.toolCalls[4].id);
+    assert.match(fifth.content, /not run: at most 4 calls per step; resend/);
+  } finally { h.stop(); }
+});
+
+test('THE CREATE-CONFLICT FENCE PROTECTS WHAT WAS THERE, NOT WHAT THIS RUN MADE; and a bare path is rooted for delete', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => {
+      if (op.op === 'create_instances' && op.items[0].name === 'Post') return { ok: true, data: { created: ['game.Workspace.Post'], count: 1 } };
+      if (op.op === 'create_instances') return { ok: false, error: 'game.Workspace already contains a child named Clash', failure: 'conflict' };
+      return { ok: true, data: { deleted: op.paths } };
+    },
+    responses: [
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Post', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Clash', parent: 'game.Workspace' }] }]),
+      calls(['delete_instances', { paths: ['Workspace.Post'] }]),
+      calls(['delete_instances', { paths: ['game.Workspace.OldHouse'] }]),
+      answer({ text: 'ok' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a post by the gate' });
+    for (let i = 0; i < 4; i++) await h.session.alarm();
+    const deletes = h.ops.filter((o) => o.op === 'delete_instances');
+    assert.deepEqual(deletes.map((o) => o.paths), [['game.Workspace.Post']], 'what the run made was fenced, or what was already there was not');
+    assert.equal(h.store.get('agent').blockDeletesAfterCreateConflict, true, 'control: the conflict did not set the fence');
+    assert.match(toolResults(h).at(-1), /already in the place were not deleted/);
+  } finally { h.stop(); }
+});
+
+test('A PROVIDER-CUT TOOL CALL SAYS WHY AND HOW MUCH TO SEND, instead of a bare JSON parse error', async () => {
+  const cut = answer({ finishReason: 'length', toolCalls: [{ id: 'cut-1', name: 'create_instances', arguments: '{"items":[{"className":"Part","name":"Po' }] });
+  const h = await makeSession({ connected: true, answerOp: studioRefuses, responses: [cut, answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'put a row of posts by the gate' });
+    await h.session.alarm();
+    const reply = toolResults(h)[0];
+    assert.match(reply, /output was cut off/i, reply);
+    assert.match(reply, /batches of at most \d+ items/);
+    assert.doesNotMatch(reply, /Unexpected end of JSON|not valid JSON/);
+    assert.equal(h.ops.filter((o) => o.op === 'create_instances').length, 0);
+  } finally { h.stop(); }
+});
+
 const OWES_WORK_NUDGE = /You have not changed the project yet/;
 
 test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHANGE IT — it ends, and says why', async () => {
@@ -746,7 +857,7 @@ test('a run that changed something and then only reads is ended at the read-stal
     connected: true,
     answerOp: (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } } : { ok: true, data: {} }),
     responses: [
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],
@@ -781,7 +892,7 @@ test('a stopped run tells a young creator what they got, and names no tool', asy
     },
     responses: [
       calls(['import_owner_library', { gameId, path: '/StarterGui/ShopGui', mode: 'self' }], ['import_owner_library', { gameId, path: '/Workspace', mode: 'children' }]),
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],
@@ -958,7 +1069,7 @@ test('F-045: a refusal the product can explain, on a run that changed nothing, I
     connected: true,
     answerOp: (op) => (op.op === 'get_tree' ? emptyTree(op) : { ok: false, error: 'writes require explicit edit consent', failure: 'refused', remedy: 'edit_consent' }),
     responses: [
-      calls(['create_instances', { instances: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
+      calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
     ],

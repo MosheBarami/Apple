@@ -77,7 +77,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
@@ -93,6 +93,7 @@ import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, 
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import type { LibraryRun } from '../library-run';
+import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
 import { afterStep, afterChange, pushHarness, buildNudge, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
@@ -169,6 +170,15 @@ import {
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
+
+/** Tool calls run per step; the prompt tells the model the same number. */
+const MAX_CALLS_PER_STEP = 4;
+
+/** Are these tool-call arguments JSON (or JSON the worker can recover), rather than a payload cut off mid-way? */
+function argumentsReadable(json: string | undefined): boolean {
+  if (!json) return true;
+  try { JSON.parse(json); return true; } catch { return recoverJsonObject(json) !== undefined; }
+}
 
 const STOPPED_IN_FLIGHT = Symbol('stopped in flight');
 const STOP_POLL_MS = 250;
@@ -364,6 +374,14 @@ interface AgentState {
   buildNudged?: boolean;
   /** What this run has done with the model library (library-run.ts); the order gate and the insert failure hints read it. */
   libraryRun?: LibraryRun;
+  /**
+   * Studio ops this run has queued. A tool call that moved this counter REACHED Studio; one that did not was refused by the
+   * worker before anything was sent. That difference decides whether a repeat is a duplicate and whether a failure is worth
+   * a more expensive next step (both used to treat a free worker-side refusal like a failed build).
+   */
+  studioOps?: number;
+  /** Paths this run created (created-paths.ts): a delete of only these is let through the create-conflict fence. */
+  createdPaths?: string[];
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
@@ -4758,7 +4776,7 @@ export class SessionDO extends DurableObject<Env> {
     let retuneThisStep: RetuneAction = 'none';
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
-    for (const call of res.toolCalls.slice(0, 4)) {
+    for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
       if (await this.stopForAccess(agent)) return;
       if (sequence) {
         const next = sequenceProgress(sequence, agent.trace);
@@ -4816,6 +4834,8 @@ export class SessionDO extends DurableObject<Env> {
             (retry || failedAlike
               ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
               : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
+            // When that earlier attempt failed, say how: "you already made this call" alone sends the model hunting for a result it never got.
+            (agent.failedCalls?.find((f) => f.sig === failSig)?.error ? ` Its last error was: ${agent.failedCalls.find((f) => f.sig === failSig)!.error}.` : '') +
             steer,
           toolCallId: call.id,
           name: call.name,
@@ -4875,14 +4895,16 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       if (repeated && retry) retry.retries += 1;
-      else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
+      //[[ THE SIGNATURE IS STORED AFTER THE CALL, and only when it actually ran (below, with the trace entry). It used to be
+      //   stored here, before the tool had run, so a call the worker refused for its own reasons (a bad property, a limit, an
+      //   order gate) counted as "already made" and the model's corrected resend was refused as a duplicate of the call that
+      //   never happened. ]]
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
       //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
       //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
       //   the failure mode is not a lost dedupe: the put rejects, the alarm dies, and the
       //   retry re-runs the step's paid LLM call and its mutating tools. 40 is far more than
       //   the duplicate-call guard needs — it only ever compares against the current run. ]]
-      if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
       // Announce the stage this tool actually represents, immediately before it
       // runs. The phase is derived from the tool, so the UI never claims a
       // stage the agent has not entered.
@@ -4902,7 +4924,22 @@ export class SessionDO extends DurableObject<Env> {
       // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
       const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
       if (studioDown) agent.studioDropped = true;
-      const out = allowed.has(call.name)
+      const opsBefore = agent.studioOps ?? 0;
+      // A response the provider cut off mid-call has arguments that are not JSON. The bare parse error told the model nothing
+      // about WHY, and it resent the same oversize payload; say what happened and how much to send.
+      const cutOff = agent.lastFinishReason === 'length' && allowed.has(call.name) && !argumentsReadable(call.arguments);
+      const cuts = cutOff ? (agent.lengthRecoveries = (agent.lengthRecoveries ?? 0) + 1) : 0;
+      const out = cutOff
+        ? {
+            summary: `${safeToolName}: the output was cut off, so it was not run`,
+            resultForLlm: JSON.stringify({
+              error: `Your output was cut off at the provider's limit, so this call's arguments were incomplete and nothing ran. Resend it as batches of at most ${cuts >= 4 ? 4 : cuts >= 2 ? 10 : 20} items, one call per batch.`,
+              executed: false,
+            }),
+            ok: false,
+            detail: undefined,
+          }
+        : allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
             summary: studioDown
@@ -4934,10 +4971,18 @@ export class SessionDO extends DurableObject<Env> {
       };
       agent.trace.push(entry);
       executedThisStep += 1;
+      // Did this call actually run? A Studio tool that sent no op was refused by the worker first: that is not "already made".
+      const reachedStudio = (agent.studioOps ?? 0) > opsBefore;
+      if (allowed.has(call.name) && !cutOff && (reachedStudio || TOOLS[call.name]?.studio !== true) && !(repeated && retry) && call.name !== 'propose_plan') {
+        agent.seenCalls.push(sig);
+        if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
+      }
       agent.terrainStreak = nextTerrainStreak(agent.terrainStreak ?? 0, call.name, out.ok, out.mutatedProject === true);
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
-      if (!out.ok) agent.priorStepFailed = true;
+      // Only a failure that reached Studio buys the careful (and expensive) next step. A refusal the worker made before sending
+      // anything is free to correct, and forcing high effort on it was measured at 131 s and 155 s of thinking per step.
+      if (!out.ok && reachedStudio) agent.priorStepFailed = true;
       // A composite tool can fail after an earlier sub-operation already changed Studio. runTool
       // reports that residual mutation explicitly even when `ok` is false; losing it here would
       // make refund/delivery bookkeeping claim nothing changed when the place did.
@@ -5137,6 +5182,20 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
 
+    // At most four calls run per step; the rest get a result too, so the transcript stays well formed and the model is
+    // told to resend them rather than waiting for results that will never come.
+    if (res.toolCalls.length > MAX_CALLS_PER_STEP) {
+      const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
+      for (const call of res.toolCalls.slice(MAX_CALLS_PER_STEP)) {
+        if (answered.has(call.id)) continue;
+        agent.llm.push({
+          role: 'tool',
+          content: `[${call.name}] not run: at most ${MAX_CALLS_PER_STEP} calls per step; resend this one in your next step.`,
+          toolCallId: call.id,
+          name: call.name,
+        });
+      }
+    }
     // Checked again here, not only inside the tool loop: a stop that arrives after the last
     // tool's check would otherwise be overwritten by this step's tail persist below, and the
     // next alarm would carry on as though the button had never been pressed.
@@ -5149,7 +5208,7 @@ export class SessionDO extends DurableObject<Env> {
       // Every call of the turn gets a result, so the transcript stays well formed and the model
       // knows these were never attempted.
       const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
-      for (const call of res.toolCalls.slice(0, 4)) {
+      for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
         if (answered.has(call.id)) continue;
         agent.llm.push({
           role: 'tool',
@@ -6146,7 +6205,9 @@ export class SessionDO extends DurableObject<Env> {
       addSources: (fresh) => { if (!agent) return []; agent.sources ??= []; return addSources(agent.sources, fresh); },
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
       // response, and a flag captured when the context was constructed would miss the conflict.
-      blockDirectDeletion: () => agent?.blockDeletesAfterCreateConflict === true,
+      // The fence protects what was in the place BEFORE this run; what the run created itself can still be removed.
+      blockDirectDeletion: (paths) => agent?.blockDeletesAfterCreateConflict === true && !coveredByCreated(agent.createdPaths, paths),
+      noteCreated: (paths) => { if (agent) agent.createdPaths = addCreated(agent.createdPaths, paths); },
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
       // Frames go to the browser and nowhere else. They are deliberately not
@@ -6452,6 +6513,8 @@ export class SessionDO extends DurableObject<Env> {
     // Queueing an op is activity: it un-parks the poll so the next one holds again rather than
     // sleeping through the work that is about to arrive.
     this.lastActivity = Date.now();
+    // Counted here, once the op is really queued: a tool call that moved this counter reached Studio (AgentState.studioOps).
+    if (run) run.studioOps = (run.studioOps ?? 0) + 1;
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
 
@@ -6472,6 +6535,7 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    if (run && result.ok) run.createdPaths = rememberCreated(run.createdPaths, studioOp.op, result.data);
     if (run && studioOp.op === 'import_owner_library' && studioOp.replace === true && result.ok && !run.keepOwnerOriginal) {
       run.keepOwnerOriginal = true;
       await this.persistAgent(run);

@@ -70,6 +70,7 @@ export async function insertLocalOwner(ctx: AgentCtx, a: Record<string,unknown>)
     byteLength:Number(job.nativeBytes),nativeInstances:Number(job.nativeInstances),parent:String(a.parent ?? 'game.ServerStorage')},120_000);
   if (!out.ok) return {error:out.error ?? 'Local native import refused'};
   const landed=await placeImportedOwner((o,t)=>ctx.execStudioOp(o as StudioOp,t),out.data,{position:position ?? undefined,scale,height});
+  ctx.noteCreated?.((Array.isArray(landed.inserted) ? landed.inserted as unknown[] : []).filter((p): p is string => typeof p==='string'));
   return {...out.data as Record<string,unknown>,...landed,componentId:LOCAL_OWNER_PREFIX+nodeId,
     note:'Script-free native chunk imported. Exact scripts remain inert in local records. External media, original service placement and cross-chunk references require review; gameplay and native pixels remain unverified.'};
 }

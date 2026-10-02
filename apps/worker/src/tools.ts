@@ -10,7 +10,7 @@ import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
-import { normaliseItems, normaliseProps } from './studio-props';
+import { normaliseItems, normaliseProps, describeRefusals, createLimitIssues, planCreateBatches, normaliseStudioPaths } from './studio-props';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
 import { RENDER_VIEWS } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
@@ -179,7 +179,9 @@ export interface AgentCtx {
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   /** Live run fence: direct model deletion is refused after a create name conflict. */
-  blockDirectDeletion?: () => boolean;
+  blockDirectDeletion?: (paths?: readonly string[]) => boolean;
+  /** Tell the run which paths a tool just put in the place under their FINAL names (an insert renames after the plugin replies). */
+  noteCreated?(paths: readonly string[]): void;
   createCheckpoint(label: string, kind: 'auto' | 'manual' | 'pre_agent'): Promise<CheckpointMeta | { error: string }>;
   /** Roll the place back to a checkpoint. Optional so an older caller still satisfies this type. */
   restoreCheckpoint?(id: string): Promise<{ ok: boolean; error?: string }>;
@@ -1518,6 +1520,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
     finalPaths = settled.paths;
     warning = settled.warning;
   }
+  ctx.noteCreated?.(finalPaths);
 
   return {
     assetId,
@@ -2047,6 +2050,7 @@ async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>)
       parent: String(a.parent ?? 'game.Workspace'), name: component.name.slice(0,96) }, 120_000);
     if (!imported.ok) return insertFailure(ctx, { ...insertStage(imported), error: imported.error ?? 'Native owner import failed', extra: { library: component.id } });
     const landed = await placeImportedOwner((o, t) => ctx.execStudioOp(o as StudioOp, t), imported.data, { position: Array.isArray(pos) ? pos : undefined, scale, height });
+    ctx.noteCreated?.(Array.isArray(landed.inserted) ? (landed.inserted as unknown[]).filter((p): p is string => typeof p === 'string') : []);
     return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
       note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
   }
@@ -2074,6 +2078,7 @@ async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>)
     const grouped = await ctx.execStudioOp({ op: 'group_instances', paths, name: pick.name.replace(/[^A-Za-z0-9 _-]+/g, '').slice(0, 50) || 'LibraryModel' }, 20_000);
     const path = grouped.ok ? strOrNull(rec(grouped.data).path) : null;
     if (path) paths = [path];
+    ctx.noteCreated?.(paths);
   }
   const where = paths.length === 1
     ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height })
@@ -2084,6 +2089,37 @@ async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>)
     library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
     ...('error' in where ? { placementWarning: where.error } : { placed: where }),
   };
+}
+
+/**
+ * Send a create_instances list as one call, or as sequential calls when it is over the per-call limits (studio-props.ts
+ * CREATE_LIMITS). A call that fails after earlier ones landed says how many items DID land, so the model carries on from
+ * there instead of rebuilding what is already in the place; those calls changed Studio, so the result says so.
+ */
+async function createInBatches(ctx: AgentCtx, items: unknown[]): Promise<unknown> {
+  const batches = planCreateBatches(items);
+  if (batches.length <= 1) return op(ctx, { op: 'create_instances', items: items as never[] });
+  const merged: Record<string, unknown> = {};
+  let landed = 0;
+  for (let i = 0; i < batches.length; i++) {
+    const res = await op(ctx, { op: 'create_instances', items: batches[i] as never[] });
+    const r = rec(res);
+    if (typeof r.error === 'string') {
+      const where = `Batch ${i + 1} of ${batches.length} failed`;
+      return landed
+        ? { ...r, error: `${where} after ${landed} of ${items.length} items were created: ${r.error} The ${items.length - landed} items from index ${landed} on were not created; send those again once the cause is fixed.`, createdItems: landed, projectMutated: true }
+        : { ...r, error: `${where}: ${r.error}` };
+    }
+    landed += batches[i]!.length;
+    for (const [key, value] of Object.entries(r)) merged[key] = Array.isArray(value) && Array.isArray(merged[key]) ? [...(merged[key] as unknown[]), ...value] : value;
+  }
+  // Hundreds of created paths would push the result past the tool-result ceiling and cut it mid-JSON; the head is enough to
+  // address what was built, and the count says the rest exists.
+  const compact: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(merged)) {
+    if (Array.isArray(value) && value.length > 20) { compact[key] = value.slice(0, 20); compact[`${key}More`] = value.length - 20; } else compact[key] = value;
+  }
+  return { ...compact, batches: batches.length, createdItems: landed };
 }
 
 export const TOOLS: Record<string, ToolImpl> = {
@@ -2564,7 +2600,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, UI, folders...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}, "Size":{"t":"UDim2","v":[0.5,0,0.1,0]}, "AnchorPoint":{"t":"Vector2","v":[0.5,0.5]}}. Supported prop types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. ParticleEmitter Transparency and Size are NumberSequence, not NumberRange: {"t":"NumberSequence","v":[[0,0.2,0],[1,1,0]]} (time 0..1, value, envelope); ParticleEmitter Color is {"t":"ColorSequence","v":[[0,[1,0.8,0.4]],[1,[1,0.4,0.1]]]}. If the result reports propIssues, the instances WERE created — fix the listed properties with set_properties.',
+        'Create instances (parts, models, UI, folders...). Each item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}, "Size":{"t":"UDim2","v":[0.5,0,0.1,0]}, "AnchorPoint":{"t":"Vector2","v":[0.5,0.5]}}. Supported prop types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. ParticleEmitter Transparency and Size are NumberSequence, not NumberRange: {"t":"NumberSequence","v":[[0,0.2,0],[1,1,0]]} (time 0..1, value, envelope); ParticleEmitter Color is {"t":"ColorSequence","v":[[0,[1,0.8,0.4]],[1,[1,0.4,0.1]]]}. If the result reports propIssues, the instances WERE created — fix the listed properties with set_properties. Limits per call: at most 120 items, 400 instances in all, 40 children per instance, 12 levels deep and 48 properties per instance; a larger list of separate items is split into sequential calls for you. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless you write Anchored false; on those classes a bare Size, Position, Orientation or Color array and a bare Material, Shape or surface name are read as what they can only be.',
       parameters: S({
         items: {
           type: 'array',
@@ -2600,6 +2636,9 @@ export const TOOLS: Record<string, ToolImpl> = {
     //   position goes and call it a success. A refusal here is a tool error the model corrects in
     //   the same turn: no round trip, no failed op, nothing touched in the place. ]]
     run: (ctx, a) => {
+      // `items` missing used to go to the plugin as [] and come back "items must contain at least one instance", which reads
+      // as a problem with the list's length rather than with its absence.
+      if (!Array.isArray(a.items)) return Promise.resolve({ error: 'items was missing or not an array, so nothing was sent. Send items: [{className, name, parent, props?, children?}, ...].' });
       // D-UIONLY-1: UI classes come from insert_ui_component only.
       const handMadeUi = refuseLibraryItems(Array.isArray(a.items) ? a.items.filter(item => !isEmptyScreenGuiHost(item)) : a.items, UI_RULE);
       if (handMadeUi) return Promise.resolve(handMadeUi);
@@ -2613,9 +2652,11 @@ export const TOOLS: Record<string, ToolImpl> = {
       const pass = normaliseItems(a.items);
       if (pass.refusals.length > 0) {
         return Promise.resolve({
-          error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${pass.refusals.map((r) => r.message).join(' ')}`,
+          error: `Nothing was created. ${pass.refusals.length === 1 ? 'One property' : `${pass.refusals.length} properties`} could not be read, and the rest were left alone rather than half-building the set: ${describeRefusals(pass.refusals)}`,
         });
       }
+      const issues = createLimitIssues((pass.items as unknown[]) ?? []);
+      if (issues.length) return Promise.resolve({ error: `Nothing was created. ${issues.join(' ')}` });
       // D-MODELLIB-2 is an ORDER (model-rule.ts): a Model of Parts waits until the run has tried the library,
       // at most twice, and never when the library is not on offer. A mesh cannot be created at all.
       const order = libraryOrder(ctx);
@@ -2624,7 +2665,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (handMadeModel.ordered) noteOrderRefusal(ctx);
         return Promise.resolve(handMadeModel);
       }
-      return op(ctx, { op: 'create_instances', items: (pass.items as never[]) ?? [] });
+      return createInBatches(ctx, (pass.items as unknown[]) ?? []);
     },
   },
   /**
@@ -2782,8 +2823,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['delete_instances'],
     mutatesProject: true,
-    run: (ctx, a) => ctx.blockDirectDeletion?.()
-      ? Promise.resolve({ error: 'A create name conflict occurred in this run. Existing saved instances were not deleted. Inspect, edit or rename the existing path instead.' })
+    run: (ctx, a) => ctx.blockDirectDeletion?.((a.paths as string[]) ?? [])
+      ? Promise.resolve({ error: 'A create name conflict occurred in this run, so instances that were already in the place were not deleted (what this run created itself can still be removed). Inspect, edit or rename the existing path instead.' })
       : op(ctx, { op: 'delete_instances', paths: (a.paths as string[]) ?? [] }),
   },
   move_instances: {
@@ -6053,6 +6094,8 @@ export async function runTool(
     }
     args = parsed as Record<string, unknown>;
   }
+  // ONE PATH SPELLING for every Studio tool: `Workspace.Lamp` means `game.Workspace.Lamp` here as it does in create_instances.
+  if (impl.studio) args = normaliseStudioPaths(args);
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
     let result = await impl.run(ctx, args);
