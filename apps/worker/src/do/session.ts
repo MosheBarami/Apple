@@ -94,7 +94,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, afterToolOutcome, FAIL_STEER_AT, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -389,6 +389,8 @@ interface AgentState {
    * that keeps failing the same way is stopped at MAX_SAME_FAILURES. Bounded like `retryableCalls`.
    */
   failedCalls?: { sig: string; error: string; count: number }[];
+  /** Consecutive failures per tool whatever the arguments (run-idle.ts afterToolOutcome); one success of the tool clears it. */
+  failStreaks?: Record<string, number>;
   /**
    * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
    * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
@@ -4763,6 +4765,7 @@ export class SessionDO extends DurableObject<Env> {
     let duplicatesThisStep = 0;
     let mutatedThisStep = false;
     let retuneThisStep: RetuneAction = 'none';
+    let failThisStep: { action: FailureAction; tool: string; error: string } | undefined;
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
     for (const call of res.toolCalls.slice(0, 4)) {
@@ -5056,6 +5059,12 @@ export class SessionDO extends DurableObject<Env> {
           failed.push({ sig: failSig, error, count: prior && prior.error === error ? prior.count + 1 : 1 });
         }
         agent.failedCalls = failed.slice(-8);
+        // The same TOOL failing again with different arguments each time is invisible to the signature above.
+        const outcome = afterToolOutcome(agent.failStreaks, call.name, out.ok);
+        agent.failStreaks = outcome.streaks;
+        if (outcome.action === 'finish' || (outcome.action === 'steer' && failThisStep?.action !== 'finish')) {
+          failThisStep = { action: outcome.action, tool: call.name, error: out.summary.slice(0, 200) };
+        }
       }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
@@ -5284,6 +5293,28 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       await this.finishRun(agent, 'incomplete');
       return;
+    }
+    // A tool that keeps failing, whatever it is sent (owner benchmark 2026-10-02: dozens of billed retries on a map).
+    if (failThisStep?.action === 'finish') {
+      const note = agent.mutated
+        ? `Apple stopped because the same kind of step kept failing. ${spaced(builtSummary(agent.made))}Tell it what to try next and it will carry on from there.`
+        : 'Apple stopped because the same kind of step kept failing, and nothing in your place was changed. Send your message again, or say what to try differently.';
+      agent.terminalNote = note;
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, 'incomplete');
+      return;
+    }
+    if (failThisStep?.action === 'steer') {
+      agent.llm.push({
+        role: 'user',
+        content:
+          `Your last ${agent.failStreaks?.[failThisStep.tool] ?? FAIL_STEER_AT} calls to ${failThisStep.tool} failed the same way, with different arguments each time ` +
+          `(latest: ${fenceForQuote(failThisStep.error)}). Another variation of the same call will most likely fail too: read the current state to ` +
+          'see what is really there, or change your approach (a different tool, or smaller steps), instead of retrying with new numbers.',
+      });
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {

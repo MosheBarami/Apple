@@ -300,3 +300,24 @@ test('an owner game recreate or StarterGui import brings its own HUD, so no gene
   assert.equal(buildsHud('insert_ui_component', '{}'), true);
   assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
 });
+
+test('CREDITS: failures are counted per tool across ANY arguments; one success of that tool clears them', async () => {
+  const { afterToolOutcome, FAIL_STEER_AT, FAIL_END_AT } = await import('../src/run-idle.ts');
+  let s = {};
+  const actions = [];
+  for (let i = 0; i < FAIL_END_AT; i++) { const r = afterToolOutcome(s, 'create_instances', false); s = r.streaks; actions.push(r.action); }
+  assert.deepEqual(actions.map((a, i) => (a === 'none' ? null : i + 1)).filter(Boolean), [FAIL_STEER_AT, FAIL_STEER_AT * 2, FAIL_END_AT], 'steer at 3 and 6, end at 8');
+  assert.equal(actions.at(-1), 'finish');
+  // One failure in four never reaches the first steer.
+  let t = {};
+  for (let i = 0; i < 40; i++) { const r = afterToolOutcome(t, 'set_properties', i % 4 !== 0); t = r.streaks; assert.equal(r.action, 'none', `a mostly-successful tool was steered at call ${i}`); }
+  // Another tool's failures are its own count, and its success clears only its own.
+  let u = afterToolOutcome({}, 'a', false).streaks;
+  u = afterToolOutcome(u, 'b', false).streaks;
+  u = afterToolOutcome(u, 'b', true).streaks;
+  assert.deepEqual(u, { a: 1 });
+});
+
+test('CREDITS: the run loop feeds the failure count only with calls that ran', () => {
+  assert.match(SESSION, /if \(allowed\.has\(call\.name\)\) \{[\s\S]{0,900}afterToolOutcome\(agent\.failStreaks, call\.name, out\.ok\)/);
+});

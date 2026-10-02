@@ -1209,3 +1209,58 @@ test('RESUMED WORKFLOW PROMPT ADVANCES TO EDIT WITHOUT REPLAYING READ', async ()
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
   } finally { h.stop(); }
 });
+
+// ================================================ 9. credits: a run that cannot make progress stops paying ===
+//
+// Owner benchmark 2026-10-02: map runs retried failing calls "dozens of times". A model that hand-computes
+// coordinates changes the arguments on every retry, so the identical-call guard (MAX_SAME_FAILURES) never
+// sees a repeat and every failed step is billed. These drive the real run loop with failures whose
+// arguments differ each time.
+
+const failingWrite = (i) => calls(['set_properties', { path: `game.Workspace.Part${i}`, props: { Position: { t: 'Vector3', v: [i, 5, i * 2] } } }]);
+const userText = (call) => call.req.messages.filter((m) => m.role === 'user').map((m) => m.content).join('\n');
+
+test('CREDITS: a tool failing again and again with DIFFERENT arguments is steered at 3 and ended at 8', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'set_props' ? { ok: false, error: 'No instance at that path', failure: 'refused' } : { ok: true, data: {} }),
+    responses: [...Array.from({ length: 100 }, (_, i) => failingWrite(i)), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'build me a big hilly map with a river' });
+    for (let i = 0; i < 120 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended: every retry changed its arguments, so no guard saw a repeat');
+    const writes = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(writes >= 3, `only ${writes} writes reached Studio: the fixture checks nothing`);
+    assert.ok(writes <= 8, `${writes} failed writes ran before the run stopped (${h.chatCalls.length} paid model steps)`);
+    // The steer arrives at the third failure, in the model's own transcript, carrying the shared error. (The
+    // harness keeps the request objects by reference, so the last one holds the whole transcript.)
+    const seen = h.chatCalls.at(-1).req.messages;
+    const steerAt = seen.findIndex((m) => m.role === 'user' && /failed the same way/.test(m.content));
+    assert.ok(steerAt > 0, 'the third failure was not answered with a steer');
+    assert.match(seen[steerAt].content, /No instance at that path/, 'the steer must carry the error the calls shared');
+    assert.equal(seen.slice(0, steerAt).filter((m) => m.role === 'tool').length, 3, 'the steer must come after exactly the third failure');
+    // No capability is cut: the tool is still offered on the step after the steer.
+    assert.ok(h.chatCalls.every((c) => c.req.tools.some((t) => t.name === 'set_properties')), 'the failing tool was withheld; that changes the offered set and the cached prefix');
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
+
+test('CREDITS control: one failure in four never trips the failure guard', async () => {
+  let n = 0;
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'set_props' && n++ % 4 === 0 ? { ok: false, error: 'No instance at that path', failure: 'refused' } : { ok: true, data: {} }),
+    responses: [...Array.from({ length: 40 }, (_, i) => failingWrite(i)), answer({ text: 'Built it.' })],
+  });
+  try {
+    await start(h, { text: 'tune the parts' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.ops.filter((op) => op.op === 'set_props').length >= 20, 'the fixture checks nothing: the writes did not run');
+    const joined = h.chatCalls.map(userText).join('\n');
+    assert.doesNotMatch(joined, /failed the same way/, 'a run that mostly succeeds was steered as failing');
+    assert.doesNotMatch(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /kept failing/);
+  } finally { h.stop(); }
+});
