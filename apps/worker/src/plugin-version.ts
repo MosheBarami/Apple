@@ -1,3 +1,5 @@
+import { WIRE_HEADERS, readWire } from '@apple/shared';
+
 /**
  * What the worker will, and will not, refuse to talk to.
  *
@@ -130,8 +132,8 @@ export function parseProtocol(raw: string | null | undefined): number | null {
 /** Pull the plugin's self-report off a request. Missing or malformed reads as unknown. */
 export function readPluginHeaders(h: Headers): { version: string | null; protocol: number | null } {
   return {
-    version: sanitizeVersion(h.get('X-Golem-Plugin-Version')),
-    protocol: parseProtocol(h.get('X-Golem-Plugin-Protocol')),
+    version: sanitizeVersion(readWire(h, WIRE_HEADERS.pluginVersion)),
+    protocol: parseProtocol(readWire(h, WIRE_HEADERS.pluginProtocol)),
   };
 }
 

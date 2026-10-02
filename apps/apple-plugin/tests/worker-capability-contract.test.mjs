@@ -175,7 +175,9 @@ test('the report the plugin emits parses — it never lands in compatibility mod
   const { C } = await workerModules();
   const { bundled, noRenderer } = pluginReports();
   for (const [label, report] of [['bundled', bundled], ['no-renderer', noRenderer]]) {
-    assert.equal(report.schema, C.PLUGIN_CAPABILITY_SCHEMA, `${label}: schema must be the one the worker reads`);
+    // RESTATED (the wire rename): the plugin may report the schema in either spelling; what matters is that the worker
+    // reads it and normalises it to the one it speaks.
+    assert.equal(C.normalisePluginCapabilities(report)?.schema, C.PLUGIN_CAPABILITY_SCHEMA, `${label}: schema must be one the worker reads`);
     const parsed = C.parsePluginCapabilities(report);
     assert.ok(parsed, `${label}: the worker REJECTED this plugin's own report, so every tool would silently be offered`);
     // Round-tripping through the canonical DTO is what SessionDO persists, and it must survive.

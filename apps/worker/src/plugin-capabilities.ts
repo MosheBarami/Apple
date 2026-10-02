@@ -1,4 +1,5 @@
 import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } from '@apple/shared';
+import { CAPABILITY_SCHEMA, isCapabilitySchema } from '@apple/shared';
 
 /**
  * Explicit Studio-operation capability report sent by a plugin poll.
@@ -8,7 +9,9 @@ import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } fr
  * report therefore means "unknown" and preserves the existing tool set. Only an explicit
  * `unsupported` entry may remove a tool.
  */
-export const PLUGIN_CAPABILITY_SCHEMA = 'golem.studio-ops.v1' as const;
+// Accepted in BOTH spellings (the published plugin still sends the old one). Every report that leaves
+// this module carries the new one, so a report stored before the rename reads back normalised.
+export const PLUGIN_CAPABILITY_SCHEMA = CAPABILITY_SCHEMA;
 
 export type StudioOpName = StudioOp['op'];
 export type PluginOperationStatus = 'supported' | 'unsupported';
@@ -86,7 +89,7 @@ function reasonText(value: unknown): string | null {
  */
 export function parsePluginCapabilities(raw: unknown): ParsedPluginCapabilities | null {
   const top = record(raw);
-  if (!top || top.schema !== PLUGIN_CAPABILITY_SCHEMA || !Array.isArray(top.operations)) return null;
+  if (!top || !isCapabilitySchema(top.schema) || !Array.isArray(top.operations)) return null;
   if (top.operations.length < 1 || top.operations.length > MAX_OPERATIONS) return null;
 
   const operations = new Map<string, Readonly<PluginOperationCapability>>();

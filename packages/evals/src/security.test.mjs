@@ -636,7 +636,12 @@ test('A1 /api/me and /api/health leak no credential', async () => {
   // is build-identity disclosure, which is the deliberate trade — an observable deploy is worth
   // more here than concealing which commit is live from someone who can already read the bundle.
   // assertNoSecret above still runs over the whole body, so if it ever carried one, that fails.
-  assert.deepEqual(Object.keys(health.json).sort(), ['buildSha', 'ok', 'time', 'version']);
+  // REVIEWED when the rename added two fields: `compat` is a constant label that says which wire spellings this
+  // build accepts (scripts/rename-golem.mjs --phase B2 reads it before releasing clients), and `legacyWire` is a map of
+  // per-isolate COUNTS of old-spelling reads — numbers keyed by a header or protocol name, no identifier, no credential.
+  assert.deepEqual(Object.keys(health.json).sort(), ['buildSha', 'compat', 'legacyWire', 'ok', 'time', 'version']);
+  assert.equal(health.json.compat, 'wire-both');
+  assert.ok(Object.values(health.json.legacyWire).every((n) => Number.isInteger(n) && n > 0), 'legacyWire carries counts and nothing else');
   assert.equal(/^[0-9a-f]{7,40}$|^unknown$/.test(health.json.buildSha), true,
     `buildSha must be a git sha or 'unknown', got ${health.json.buildSha}`);
 });
@@ -1575,7 +1580,8 @@ test('A2 STATIC CHECK — resume replays the same snapshot, and a socket is only
   // (2) and (3): the resolver itself.
   const resolver = session.slice(session.indexOf('private socketRole('), session.indexOf('private presenceBeats('));
   assert.match(resolver, /if \(userId === bind\.ownerId\) return \{ userId, role: 'owner' \}/, 'owner comes from the binding');
-  assert.match(resolver, /const role = asCollabRole\(req\.headers\.get\('X-Golem-Role'\)\)/, 'any other role must pass the allowlist');
+  // RESTATED (the wire rename): the role is read in either header spelling, and still only THROUGH the allowlist.
+  assert.match(resolver, /const role = asCollabRole\(readWire\(req\.headers, WIRE_HEADERS\.role\)\)/, 'any other role must pass the allowlist');
   assert.match(resolver, /return role === null \? null : \{ userId, role \}/, 'an unrecognised role must refuse, never default');
   assert.equal(/as CollabRole/.test(resolver), false, 'a cast is not a check');
 
@@ -2140,7 +2146,7 @@ test('A4 /api/providers is NOT an admin route and IS behind user auth', async ()
     for (const r of [anon, admin]) {
       assert.deepEqual(Object.keys(r.json).filter((k) => !['checkout', 'purchasable', 'testMode', 'currency'].includes(k)), [],
         'the public billing answer grew a field; review it');
-      assert.equal(/SENTINEL|@golem\.test/.test(r.text), false, 'the billing answer echoed a secret or an address');
+      assert.equal(/SENTINEL|@apple\.test/.test(r.text), false, 'the billing answer echoed a secret or an address');
     }
   }
 

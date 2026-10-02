@@ -425,6 +425,31 @@ test('THE VOLUME TRIM DOES NOT COMPOUND: running the assignment twice gives the 
   assert.match(r.output, /assigned:\s+1\s+missing:\s+0/);
 });
 
+test('A PLACE BUILT BEFORE THE RENAME: the trim does not compound across it, and the place converges to the new attribute', { skip: haveLuau('luau') ? false : 'luau not on PATH' }, () => {
+  // The Sound was trimmed once by an old pass: the OLD attribute records the original volume (1), and Volume holds
+  // the trimmed value. A pass that read only the new name would take 0.501187 as the base and trim to 0.251189.
+  const chunk = D.assignSoundsLuau([{ path: 'game.Workspace.Crackle', bus: 'SFX', volumeDb: -6, minDistance: 8, maxDistance: 60 }]);
+  const r = runLuau([
+    'local ss = game:GetService("SoundService")',
+    'MAKE("SoundGroup", "SFX", ss)',
+    'local workspace_ = MAKE("Folder", "Workspace", game)',
+    'local sound = MAKE("Sound", "Crackle", workspace_)',
+    'sound.Volume = 0.501187',
+    'sound:SetAttribute("GolemBaseVolume", 1)',
+    `local function pass() ${'\n'}${chunk}${'\n'} end`,
+    'pass()',
+    'local afterOne = sound.Volume',
+    'pass()',
+    'print(string.format("%.6f %.6f %s %s", afterOne, sound.Volume, tostring(sound:GetAttribute("AppleBaseVolume")), tostring(sound:GetAttribute("GolemBaseVolume"))))',
+  ].join('\n'));
+  assert.ok(r.ok, `the chunk failed to run:\n${r.output}`);
+  const [afterOne, afterTwo, appleAttr, golemAttr] = r.output.trim().split('\n')[0].split(/\s+/);
+  assert.ok(Math.abs(Number(afterOne) - 0.501187) < 0.001, `the first pass after the rename moved the volume to ${afterOne} — it re-baselined off the trimmed value`);
+  assert.equal(afterTwo, afterOne, 'and the second pass must not move it either');
+  assert.equal(appleAttr, '1', 'the base is now recorded under the new name');
+  assert.equal(golemAttr, 'nil', 'and the old attribute is cleared, so the place converges to one');
+});
+
 test('a Sound that is not there is REPORTED as missing, not counted as assigned', { skip: haveLuau('luau') ? false : 'luau not on PATH' }, () => {
   // The count and the misses both come back, so the caller can tell "all of them" from "the ones
   // that happened to exist". A pass that assigned three of eight and reported success is the exact

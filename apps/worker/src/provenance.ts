@@ -356,7 +356,7 @@ export interface CommercialUseReport {
  */
 export function commercialUseReport(projectId: string, assets: ProjectAsset[]): CommercialUseReport {
   const findings: ComplianceFinding[] = [];
-  const counts: Record<AssetOriginality | 'unknown', number> = { golem_original: 0, user_generated: 0, third_party: 0, unknown: 0 };
+  const counts: Record<AssetOriginality | 'unknown', number> = { apple_original: 0, user_generated: 0, third_party: 0, unknown: 0 };
 
   for (const { use, provenance } of assets) {
     if (!provenance) {
@@ -535,7 +535,7 @@ export function attributionReport(projectId: string, assets: ProjectAsset[], now
     const licenceId = normaliseLicence(provenance.licence);
     const rule = licenceId ? LICENCES[licenceId] : undefined;
 
-    if (originality === 'golem_original') report.original.push(entry);
+    if (originality === 'apple_original') report.original.push(entry);
     else if (originality === 'user_generated') report.userGenerated.push(entry);
     else if (rule?.attributionRequired || provenance.attributionRequired) report.required.push(entry);
     else report.courtesy.push(entry);

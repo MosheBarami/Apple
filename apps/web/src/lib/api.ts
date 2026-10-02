@@ -1,6 +1,6 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@apple/shared';
+import { PRICE_CURRENCY, WIRE_HEADERS, readWire, type RobloxScope, type AssetSourcePolicy } from '@apple/shared';
 import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@apple/shared';
 import type { ApiKeyMode, ApiScope } from '@apple/shared';
 import type { ApiKeyView } from './api-keys.ts';
@@ -1123,7 +1123,7 @@ export interface ExportSaved {
  *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
  *   it becomes 0 somebody divides by it.
  *
- *   IT IS CHECKED. The worker sends X-Golem-Export-SHA256 over the bytes it actually wrote, and a
+ *   IT IS CHECKED. The worker sends X-Apple-Export-SHA256 (and the old spelling) over the bytes it actually wrote, and a
  *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
  *   JSON file that will not parse both save silently. The digest is recomputed over what was
  *   received and the file is saved ONLY if it matches, because a half file on disk under a
@@ -1164,7 +1164,7 @@ export async function downloadExport(
 
   const declaredLength = Number(res.headers.get('Content-Length'));
   const total = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
-  const declaredDigest = (res.headers.get('X-Golem-Export-SHA256') ?? '').trim().toLowerCase();
+  const declaredDigest = (readWire(res.headers, WIRE_HEADERS.exportSha256) ?? '').trim().toLowerCase();
 
   const chunks: Uint8Array[] = [];
   let received = 0;

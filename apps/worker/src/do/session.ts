@@ -43,6 +43,7 @@ import type {
 import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@apple/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@apple/shared';
 import { asUiTheme, uiThemeContextLine, type UiTheme } from '@apple/shared';
+import { WIRE_HEADERS, echoSubprotocol, readWire } from '@apple/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -1241,7 +1242,7 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * WHO IS ON THIS SOCKET.
    *
-   * `X-Golem-Role` is trusted for exactly one reason: a Durable Object is reachable only through
+   * `X-Apple-Role` (or the old spelling, read by readWire) is trusted for exactly one reason: a Durable Object is reachable only through
    * its stub, every worker path that forwards to `/ws` SETS this header (overwriting whatever the
    * browser sent), and `sessionStub` is itself confined to ownership-checked and admin-gated call
    * sites by a static check in packages/evals/src/security.test.mjs. The value is still validated
@@ -1252,7 +1253,7 @@ export class SessionDO extends DurableObject<Env> {
     const userId = req.headers.get('X-User-Id');
     if (!userId) return null;
     if (userId === bind.ownerId) return { userId, role: 'owner' };
-    const role = asCollabRole(req.headers.get('X-Golem-Role'));
+    const role = asCollabRole(readWire(req.headers, WIRE_HEADERS.role));
     return role === null ? null : { userId, role };
   }
 
@@ -2092,7 +2093,7 @@ export class SessionDO extends DurableObject<Env> {
       if (who === null) return json({ error: 'forbidden' }, 403);
       // The worker may carry the already-validated grant deadline over a private header. Keep the
       // value only in memory and pin it onto the run; never persist the member's JWT or the header.
-      const rawGrantExpiry = req.headers.get('X-Golem-Grant-Expires-At');
+      const rawGrantExpiry = readWire(req.headers, WIRE_HEADERS.grantExpiresAt);
       const grantExpiresAt = rawGrantExpiry === null ? null : canonicalGrantExpiry(rawGrantExpiry);
       if (grantExpiresAt === undefined) return json({ error: 'bad_grant_expiry' }, 400);
       // the JWT is kept only in memory for the lifetime of this DO instance so a
@@ -2184,7 +2185,8 @@ export class SessionDO extends DurableObject<Env> {
         }
       }
       // browsers abort the handshake unless a requested subprotocol is echoed back
-      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
+      // echo whichever version protocol the client listed: a fixed new value would abort an old client's handshake
+      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': echoSubprotocol(req.headers.get('Sec-WebSocket-Protocol')) } });
     }
 
     if (path === '/plugin/register' && req.method === 'POST') {
@@ -2245,7 +2247,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/plugin/poll' && req.method === 'POST') {
-      const token = req.headers.get('X-Golem-Token') ?? '';
+      const token = readWire(req.headers, WIRE_HEADERS.token) ?? '';
       const expect = await this.ctx.storage.get<string>('pluginTokenHash');
       let issuedAt = await this.ctx.storage.get<number>('pluginTokenIssuedAt');
       if (issuedAt === undefined) {

@@ -136,7 +136,7 @@ test('every source site is classified as ours, the user’s, or somebody else’
   for (const site of ASSET_SOURCE_SITES) {
     assert.ok(ASSET_ORIGINALITY[site], `${site} is unclassified — it would default to being treated as ours`);
   }
-  assert.equal(originalityOf('procedural'), 'golem_original');
+  assert.equal(originalityOf('procedural'), 'apple_original');
   assert.equal(originalityOf('generated_roblox'), 'user_generated');
   for (const site of ['kenney', 'quaternius', 'ambientcg', 'poly_haven', 'sketchfab', 'creator_store', 'roblox_official']) {
     assert.equal(originalityOf(site), 'third_party', `${site} is not ours to claim`);
@@ -151,10 +151,10 @@ test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third p
     tags: ['lowpoly', 'market'],
     createdAt: '2026-08-31T11:00:00.000Z',
   });
-  // `golem_original` is a PERSISTED originality value written into provenance rows and into user
+  // `apple_original` is a PERSISTED originality value written into provenance rows and into user
   // places; the rebrand exempts it for exactly that reason. `author` is different — it is rendered
   // in the credits panel, so it carries the brand and follows it.
-  assert.equal(originalityOf(mine.source), 'golem_original');
+  assert.equal(originalityOf(mine.source), 'apple_original');
   assert.equal(mine.author, 'Apple');
   assert.equal(mine.attributionRequired, false);
 
@@ -171,7 +171,7 @@ test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third p
   // and it is not a commercial problem
   const c = commercialUseReport(PROJECT, [used(mine)]);
   assert.equal(c.ok, true);
-  assert.equal(c.counts.golem_original, 1);
+  assert.equal(c.counts.apple_original, 1);
   assert.equal(c.findings.length, 0);
 });
 
@@ -397,7 +397,7 @@ test('a mixed project separates our work, their work and the obligations attache
 
   const c = commercialUseReport(PROJECT, assets);
   assert.equal(c.ok, true);
-  assert.deepEqual(c.counts, { golem_original: 1, user_generated: 0, third_party: 3, unknown: 0 });
+  assert.deepEqual(c.counts, { apple_original: 1, user_generated: 0, third_party: 3, unknown: 0 });
 });
 
 test('the export is deterministic — the same project renders identically twice', () => {

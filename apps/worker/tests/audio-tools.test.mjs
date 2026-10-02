@@ -293,7 +293,35 @@ test('assign_sounds uses typed reads/writes and never writes an asset id', async
   const writes = ops.filter((op) => op.op === 'set_props');
   assert.equal(writes.length, 2);
   assert.deepEqual(writes[0].props.SoundGroup, { t: 'Instance', v: 'game.SoundService.SFX' });
-  assert.equal(writes[0].attributes.GolemBaseVolume.v, 0.8);
+  assert.equal(writes[0].attributes.AppleBaseVolume.v, 0.8);
+  assert.equal('GolemBaseVolume' in writes[0].attributes, false, 'the old attribute name is never written any more');
+});
+
+/** One assign_sounds pass over a Sound whose current Volume and attributes the test chooses. */
+async function assignOver(volume, attributes) {
+  const { ctx, ops } = ctxWith({ opResult: (op) => {
+    if (op.op === 'get_tree') return { ok: true, data: { root: { path: 'game.SoundService', children: [{ path: 'game.SoundService.SFX', name: 'SFX', class: 'SoundGroup' }] } } };
+    if (op.op === 'get_instance') return { ok: true, data: { class: 'Sound', props: { Volume: { t: 'number', v: volume } }, attributes } };
+    return { ok: true, data: { ok: true } };
+  } });
+  const r = await call(ctx, 'assign_sounds', { assignments: [{ path: 'game.Workspace.Crackle', bus: 'SFX', volumeDb: -6 }] });
+  assert.equal(r.ok, true, r.resultForLlm);
+  return ops.filter((op) => op.op === 'set_props')[0];
+}
+
+test('STORAGE FALLBACK: a Sound trimmed by a pass BEFORE the rename keeps its recorded base volume, and the place converges to the new attribute', async () => {
+  // The place carries the old attribute (base 1.0) and a Volume already trimmed to 0.5. Reading only the new name
+  // would take 0.5 as the base and trim again: -6 dB becomes -12 dB, silently, in a user's place.
+  const write = await assignOver(0.5, { GolemBaseVolume: { t: 'number', v: 1 } });
+  const dbScale = 10 ** (-6 / 20);
+  assert.ok(Math.abs(write.props.Volume.v - 1 * dbScale) < 1e-9, `trimmed from the recorded base, not the already-trimmed volume: ${write.props.Volume.v}`);
+  assert.equal(write.attributes.AppleBaseVolume.v, 1, 'the base is carried over under the new name');
+});
+
+test('a Sound that already carries the NEW attribute is trimmed from it and gets no attribute write', async () => {
+  const write = await assignOver(0.5, { AppleBaseVolume: { t: 'number', v: 1 }, GolemBaseVolume: { t: 'number', v: 0.2 } });
+  assert.ok(Math.abs(write.props.Volume.v - 10 ** (-6 / 20)) < 1e-9, 'the new attribute wins over the old');
+  assert.equal(write.attributes, undefined, 'nothing is written back when the new attribute is already there');
 });
 
 test('a bad path or bus is refused before any code runs in the place', async () => {
