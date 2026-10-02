@@ -1,7 +1,7 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
-import { benchEvaluate } from '../owner-bench';
+import { benchClean, benchEvaluate } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
 import { isObjectRequest } from '../object-tool';
@@ -2668,7 +2668,9 @@ export class SessionDO extends DurableObject<Env> {
       this.sql.exec('delete from message_revisions');
       this.sql.exec('delete from messages');
       this.sql.exec('delete from oplog');
-      return json({ ok: true, reset: true });
+      // The place too, when Studio is there: a fresh chat on a used place is not a fresh request.
+      const left = (await this.pluginConnected()) ? await benchClean(this.agentCtx()) : ['Studio is not connected'];
+      return json({ ok: left.length === 0, reset: true, left: left.slice(0, 20) });
     }
 
     // The owner's benchmark: measure the place after a request's run ended (owner-bench.ts). Never during a run.

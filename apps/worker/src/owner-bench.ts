@@ -175,3 +175,33 @@ export async function benchEvaluate(ctx: AgentCtx, env: Env, projectId: string, 
     ...(problems.length ? { problems } : {}),
   };
 }
+
+/** What a clean Baseplate keeps at the top of Workspace; everything else a request made goes. */
+const KEEP_TOP = new Set(['Camera', 'Terrain', 'Baseplate', 'SpawnLocation']);
+const CLEAR_ROOTS = ['game.Workspace', 'game.StarterGui', 'game.ServerScriptService', 'game.ServerStorage', 'game.ReplicatedStorage',
+  'game.StarterPack', 'game.SoundService', 'game.Lighting', 'game.StarterPlayer.StarterPlayerScripts', 'game.StarterPlayer.StarterCharacterScripts'];
+
+/**
+ * Empties the place back to a bare Baseplate before a benchmark request (live 2026-10-02: a checkpoint restore put the
+ * baseline back but left every earlier request's build standing, so items 2-8 were built and judged in a cluttered
+ * place). Returns what is left over that should not be; empty means clean.
+ */
+export async function benchClean(ctx: AgentCtx): Promise<string[]> {
+  const exec = ctx.execStudioOp;
+  for (const root of CLEAR_ROOTS) {
+    const t = await exec({ op: 'get_tree', root, maxDepth: 1, maxNodes: 400 }, 20_000).catch(() => null);
+    const kids = t?.ok ? (((t.data as { root?: { children?: { name?: string; path?: string }[] } }).root?.children) ?? []) : [];
+    for (const k of kids) {
+      if (root === 'game.Workspace' && k.name && KEEP_TOP.has(k.name)) continue;
+      if (k.path) await exec({ op: 'delete_instances', paths: [k.path] }, 20_000).catch(() => undefined);
+    }
+  }
+  await exec({ op: 'terrain_edit', action: 'clear' } as never, 30_000).catch(() => undefined);
+  const left: string[] = [];
+  for (const root of CLEAR_ROOTS) {
+    const t = await exec({ op: 'get_tree', root, maxDepth: 1, maxNodes: 400 }, 20_000).catch(() => null);
+    const kids = t?.ok ? (((t.data as { root?: { children?: { name?: string; path?: string }[] } }).root?.children) ?? []) : [];
+    for (const k of kids) if (!(root === 'game.Workspace' && k.name && KEEP_TOP.has(k.name))) left.push(k.path ?? `${root}.${k.name}`);
+  }
+  return left;
+}
