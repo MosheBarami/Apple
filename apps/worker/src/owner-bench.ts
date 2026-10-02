@@ -106,8 +106,9 @@ export async function benchEvaluate(ctx: AgentCtx, env: Env, projectId: string, 
   // 1. What the place holds.
   const census: BenchCensus = { parts: 0, scripts: 0, sounds: 0, animations: 0, fx: 0, screens: 0, lights: 0, truncated: false };
   for (const root of ['game.Workspace', 'game.StarterGui', 'game.ServerScriptService', 'game.ReplicatedStorage', 'game.StarterPlayer', 'game.Lighting', 'game.SoundService']) {
-    const t = await exec({ op: 'get_tree', root, maxDepth: 20, maxNodes: 1200 }, 30_000).catch(() => null);
-    if (!t?.ok) continue;
+    // 12 is the plugin's deepest tree (a deeper ask is refused, and every count read 0, live 2026-10-02).
+    const t = await exec({ op: 'get_tree', root, maxDepth: 12, maxNodes: 1200 }, 30_000).catch(() => null);
+    if (!t?.ok) { census.truncated = true; continue; }
     const d = t.data as { root?: unknown; truncated?: unknown };
     countTree(d.root, census);
     if (d.truncated) census.truncated = true;
