@@ -2,194 +2,106 @@
 <!--
   THE SOURCE OF apps/site/public/og.png. Rendered by scripts/make-brand-assets.mjs.
 
-  Why an HTML source rasterised to PNG, rather than the SVG this replaced:
+  Why an HTML source rasterised to PNG: og:image wants a raster (the major consumers of Open Graph
+  document PNG, JPEG, GIF and WEBP, and do not list SVG), and a diff of a PNG says "binary files
+  differ" and nothing about what changed. This file is the reviewable artefact.
 
-  1. og:image WANTS A RASTER. The tag pointed at /og.svg. The major consumers of Open Graph
-     (Facebook, X, LinkedIn, Slack, iMessage) document PNG/JPEG/GIF/WEBP for og:image and do not
-     list SVG — so the most likely reading of the old setup is that every share of this site showed
-     no preview image at all. That is stated as the documented platform requirement rather than as
-     something measured here: this repository cannot exercise those crawlers, and the honest
-     summary is "the format was outside what they document", not "I watched it fail".
-  2. THE TYPE IS THE DESIGN. The landing's identity is Archivo at font-stretch 118%. An SVG can
-     name a font it does not carry and will silently substitute; a browser rendering this HTML
-     loads the real variable font, and the generator asserts the face arrived before it shoots.
-
-  WHAT THIS REPLACED, because the diff is startling. The previous og.svg was untouched Golem: a
-  warm #17150F ground, an #FF9A4D amber lamp, a stone-grey monolith, and a Georgia serif wordmark
-  that read "Golem". It was the single most-shared image the product had, and it named a product
-  that no longer exists in a palette that was deleted two rebrands ago.
+  REBUILT 2026-10-02 (phase 6, "Ember Rail"). Self-contained on purpose: no webfont, no network, no
+  stylesheet from another origin. The type is the system stack the site itself uses, the logo is the
+  inline lockup (same drawing as apps/site/public/logo-dark.svg) and every colour is a token value
+  from apps/site/src/styles/apple-minimal.css, dark theme. The previous card loaded Archivo, Figtree
+  and Geist Mono from fonts.googleapis.com and painted a blue gradient; both are gone.
 
   Kept deliberately narrow: no claim, no price, no adoption. A share card is seen by people who
   have not opened the page yet, so everything on it has to be true without the page to qualify it.
 -->
 <meta charset="utf-8" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link
-  rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Figtree:wght@300..900&family=Geist+Mono:wght@100..900&display=block"
-/>
 <style>
-  /* `display=block` above, not `swap`. A swap renders fallback type first and repaints when the
-     real face lands — fine for a page a human is reading, wrong for a one-shot screenshot, which
-     can capture the fallback frame. Block holds the text invisible until the face is ready, and
-     the generator waits on document.fonts before it shoots either way. */
-  * {
-    box-sizing: border-box;
-    margin: 0;
-  }
+  * { box-sizing: border-box; margin: 0; }
 
   html,
-  body {
-    width: 1200px;
-    height: 630px;
-    overflow: hidden;
-  }
+  body { width: 1200px; height: 630px; overflow: hidden; }
 
   body {
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 64px 72px;
-    background: #080a0f;
-    font-family: 'Figtree', sans-serif;
-    color: #f3f5f9;
+    padding: 64px 72px 56px 112px;
+    background: #0a0c10;
+    color: #f3f5f8;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* The landing's hero gradient, re-aimed. On the page it is an ellipse centred above the
-     viewport; here the card is wider than it is tall, so the same stops are pulled to the
-     upper-left to leave the headline sitting in the darker half. */
-  .ground {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-      ellipse 95% 130% at 18% -18%,
-      #1f5fd0 0%,
-      #123a8a 32%,
-      #0b1733 60%,
-      #080a0f 86%
-    );
-  }
+  /* The Rail: a one-pixel line down the inline-start margin with square nodes, the structure the
+     site is built on. The last node is the lit one. */
+  .rail { position: absolute; inset-block: 64px 56px; inset-inline-start: 72px; width: 1px; background: #3a4150; }
+  .node { position: absolute; inset-inline-start: -5px; width: 11px; height: 11px; background: #0a0c10; border: 1px solid #6b7587; border-radius: 2px; }
+  .node.lit { background: #ff8a4c; border-color: #ff8a4c; }
 
-  .row {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .mark {
-    flex: none;
-  }
-
-  .mark path,
-  .mark polygon {
-    fill: none;
-    stroke: #f3f5f9;
-    stroke-width: 1.6;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-  }
-
-  .wordmark,
-  h1 {
-    font-family: 'Archivo', sans-serif;
-    font-stretch: 118%;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: -0.022em;
-  }
-
-  .wordmark {
-    font-size: 30px;
-  }
-
-  main {
-    position: relative;
-  }
+  .logo { width: 188px; height: auto; display: block; color: #f3f5f8; }
 
   h1 {
-    font-size: 86px;
-    line-height: 0.92;
+    font-size: 84px;
+    font-weight: 600;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
   }
 
-  .l1 {
-    display: block;
-    color: #ffffff;
-  }
-
-  /* Line two is painted by a clipped gradient, exactly as on the landing. The colour is set first
-     so a renderer without background-clip gets pale blue rather than nothing. */
-  .l2 {
-    display: block;
-    color: #c4e8ff;
-    background: linear-gradient(180deg, #f6fcff, #c4e8ff 58%, #e2d8ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-  }
-
-  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
-    .l2 {
-      color: transparent;
-    }
-  }
+  .ember { color: #ff8a4c; }
 
   .sub {
-    margin-top: 26px;
-    max-width: 30ch;
-    font-size: 24px;
+    margin-top: 28px;
+    max-width: 34ch;
+    font-size: 26px;
     line-height: 1.45;
-    color: #cfe0f7;
+    color: #c3c9d4;
   }
 
   footer {
-    position: relative;
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-family: 'Geist Mono', monospace;
-    font-size: 19px;
-    color: #8d95a8;
+    gap: 14px;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 20px;
+    color: #9aa3b2;
   }
 
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #38b6ff;
-    flex: none;
-  }
-
-  .sep {
-    color: #4a5163;
-  }
+  .stud { width: 12px; height: 9px; border-radius: 3px; background: #ff8a4c; flex: none; }
+  .sep { color: #6b7587; }
 </style>
 
-<div class="ground"></div>
+<div class="rail">
+  <span class="node" style="top: 0"></span>
+  <span class="node" style="top: 232px"></span>
+  <span class="node lit" style="top: 440px"></span>
+</div>
 
-<header class="row">
-  <!-- The product mark, identical geometry to apps/site/src/components/AppleMark.astro: a regular
-       hexagon of circumradius 13 on a 32-unit canvas, and three lines describing a cube's top,
-       left and right faces without drawing one of them. -->
-  <svg class="mark" width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
-    <polygon points="16 3 27.26 9.5 27.26 22.5 16 29 4.74 22.5 4.74 9.5"></polygon>
-    <path d="M16 3.4V16m0 0-11.05 6.38M16 16l11.05 6.38"></path>
+<header>
+  <svg class="logo" viewBox="0 0 128 36" role="img" aria-label="Apple" fill="none">
+    <g fill="#ff8a4c">
+      <path fill-rule="evenodd" d="M10 11H22A7 7 0 0 1 29 18V26A7 7 0 0 1 22 33H10A7 7 0 0 1 3 26V18A7 7 0 0 1 10 11ZM9.4 16.2 19.6 22 9.4 27.8 7.8 25.2 13.6 22 7.8 18.8ZM21 26.4H25.6A1.2 1.2 0 0 1 25.6 28.8H21A1.2 1.2 0 0 1 21 26.4Z"/>
+      <rect x="7" y="6.5" width="7" height="5.5" rx="2"/>
+      <rect x="18" y="6.5" width="7" height="5.5" rx="2"/>
+    </g>
+    <g transform="translate(-4 0)" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M44 27 52 9 60 27M47 21H57"/>
+      <path d="M69 15V33"/><circle cx="75" cy="21" r="6"/>
+      <path d="M89 15V33"/><circle cx="95" cy="21" r="6"/>
+      <path d="M109 8V27"/>
+      <path d="M116 21H128A6 6 0 1 0 126.2 25.3"/>
+    </g>
   </svg>
-  <span class="wordmark">Apple</span>
 </header>
 
 <main>
-  <h1>
-    <span class="l1">Describe a</span>
-    <span class="l1">Roblox game.</span>
-    <span class="l2">Apple builds it.</span>
-  </h1>
+  <h1>Describe a Roblox game.<br /><span class="ember">Apple builds it.</span></h1>
   <p class="sub">The parts, the scripts, the systems — straight into the place you have open in Studio.</p>
 </main>
 
 <footer>
-  <span class="dot"></span>
+  <span class="stud"></span>
   <span>Works inside Roblox Studio</span>
   <span class="sep">·</span>
   <span>Free to start</span>
