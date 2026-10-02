@@ -6,6 +6,9 @@ backward-compatible wire/storage code) are in the git branch that carries this f
 everything that touches a live system. Every step below needs the owner's approval, is run by the orchestrator one step at a
 time, and has a verification and a rollback. Do not run two steps in one sitting.
 
+**This branch carries phases A and B1 only.** B2 (the clients sending the new wire spellings) is NOT in it: it is on the branch
+`golem-rename-b2`, and section 1 says exactly how and when it is merged. Read section 1 before merging anything.
+
 This file names the old name on purpose, in the open. It is allowlisted by `scripts/check-no-golem.mjs` as a record of the removal and is
 deleted with the last step.
 
@@ -27,26 +30,59 @@ metadata beyond what the sweep reported; fetch-only request traffic of the `gole
 
 ## 1. Order of operations, end to end
 
-1. **Merge phases A and B1** (everything in the branch up to the commit named `apple rename: B1 ...`). Nothing client-facing changes: the worker now
-   accepts both wire spellings. The orchestrator merges by re-running `node scripts/rename-golem.mjs --phase A` on the newer `main`
-   if it moved (the codemod is re-runnable and idempotent; do not hand-merge renames), then runs `pnpm install` once (the workspace packages
-   were renamed `@golem/*` to `@apple/*`) and the full suites.
+### 1.1 The two branches (why B2 cannot be merged by accident)
+
+| Branch | Tree | Merge it |
+|---|---|---|
+| `worktree-wf_1cadd7fe-3c0-6` (this one) | A + B1. B2 (`a6758353`) was reverted by `b93b4341`; the guard allowlist is re-pinned for that tree by `ba451208` (one entry, `b2-pending-old-wire-spellings`, holds the old wire spellings the clients still send). | any time, after review |
+| `golem-rename-b2` | a descendant of the tip of the branch above plus two commits that undo `b93b4341` and `ba451208`: A + B1 + B2, guard green. | ONLY after step 3 below holds |
+
+Why this is hard to get wrong:
+
+1. The branch you merge first has no B2 in its tree. Merging it cannot ship B2, whatever its history contains.
+2. B2 arrives only through the one named branch, as a small, reviewable change on top. `golem-rename-b2` is a descendant of the first
+   branch, so merging it brings that change and nothing else; merging it WITHOUT the first branch brings all of A, B1 and B2 at once, which is the
+   mistake to avoid: merge the first branch first, deploy, verify, then this one.
+3. The deploy gate is a measurement, not a promise: `curl -s https://apple.moshe-barami111.workers.dev/api/health` must contain `"compat":"wire-both"` and a `legacyWire` object
+   (that is what B1 adds). `node scripts/rename-golem.mjs --phase B2` re-checks it itself and refuses without it (`--force` overrides; do not use it).
+4. The guard stays honest on both trees: on the first branch the entry `b2-pending-old-wire-spellings` must match exactly 143 hits (fewer or more fails it); the B2 merge
+   deletes the entry and restores two pins, and the guard fails if either is left behind.
+5. If the first branch is merged by SQUASH or REBASE, the ancestry that `golem-rename-b2` relies on is gone. Do not merge it then. Re-derive B2 on the new `main` with
+   `node scripts/rename-golem.mjs --phase B2` (idempotent; it applies the same gate), review the diff against `golem-rename-b2` and run the suites.
+
+Why B2 waits: a client that sends `apple.v1` / `X-Apple-*` to the currently deployed (old) worker is rejected, and the current deploy is what the benchmark is running against.
+`infra/smoke.mjs`, `infra/e2e.mjs` and the owner-bench runner are such clients.
+
+### 1.2 The sequence
+
+1. **Merge phases A and B1** (the first branch). Nothing client-facing changes: the worker now accepts both wire spellings. If `main` moved,
+   re-run `node scripts/rename-golem.mjs --phase A` on it (the codemod is re-runnable and idempotent; do not hand-merge renames), then run `pnpm install` once (the workspace
+   packages were renamed `@golem/*` to `@apple/*`) and the full suites.
 2. **After the live benchmark has finished**, deploy `apple`: `node infra/deploy-worker.mjs apple`. It stamps BUILD_SHA and fetches what it deployed.
 3. **Verify B1 is live**: `curl -s https://apple.moshe-barami111.workers.dev/api/health` must contain `"compat":"wire-both"` and a `legacyWire` object.
-4. **Only then merge B2** (the commits named `apple rename: B2 ...`): clients send the new spellings. `node scripts/rename-golem.mjs --phase B2` refuses to run
-   unless step 3 holds (`--force` overrides, do not use it).
+4. **Only then merge `golem-rename-b2`** (B2): clients send the new spellings.
 5. **Owner's call (D6): build and publish plugin 1.1.0** from the B2 sources (`node apps/apple-plugin/scripts/build.mjs`, then the Creator Store upload
    the owner already knows). Building and publishing the artifact is not part of this workflow.
-6. Phase C steps below, in order, each with approval.
+6. Phase C steps below, in order, each with approval. C2a (what the old Durable Objects hold) gates C2.
 7. Phase D when the counters allow it.
-
-Why B2 must wait: a client that sends `apple.v1` / `X-Apple-*` to the currently deployed (old) worker is rejected, and the current deploy is what
-the benchmark is running against. `infra/smoke.mjs`, `infra/e2e.mjs` and the owner-bench runner are such clients.
 
 ## 2. Phase C: the cloud, one step at a time
 
 Conventions: `ACC` is the Cloudflare account id; `wrangler` is run from `apps/worker`; every step first records its rollback pointer in the
 orchestrator's log. Secrets are never printed. "Verify" lists observations, not hopes: state what you measured.
+
+**Rename in place where Cloudflare allows it; copy only where it does not.** A copy is a migration with a window, a reconciliation and a rollback problem; a rename is one
+metadata call. What each resource allows:
+
+| Resource | Can it be renamed? | So |
+|---|---|---|
+| KV namespace `golem-kv` | YES: the title is mutable metadata (`PUT /accounts/$ACC/storage/kv/namespaces/<id>` with `{"title":"apple-kv"}`; the Cloudflare MCP tool `kv_namespace_update` does the same). The id does not change, no key moves, and the worker binds by id. | C4: rename in place |
+| R2 bucket | already `apple-media` | nothing |
+| D1 `golem-corpus` | NO (no rename in the API or wrangler; the database id is the identity and the name is fixed at create) | C7: copy |
+| Vectorize `golem-docs` | NO | C5: rebuild |
+| AI Gateway `golem` | NO: the gateway id IS its name | C6: create, switch, delete |
+| Durable Object class names | A class is renamed with a `renamed_classes` migration, which keeps its storage. None is needed: no `apple` class carries the old name (`SessionDO`, `QuotaDO`, `PairingDO`, `AdminDO`, `BudgetDO`, `DiscordDO`). The old name exists only in the NAMESPACES owned by the `golem` worker, and those cannot move between workers at all. | C2a: measure, export or record as abandoned; C2: they go with the worker |
+| Worker `golem` | NO (a worker's name is its identity); `apple` already exists | C2 |
 
 ### C0. Preconditions for the whole phase
 
@@ -57,6 +93,7 @@ orchestrator's log. Secrets are never printed. "Verify" lists observations, not 
 - The Stripe webhook endpoint is READ (Stripe dashboard, Developers, Webhooks) and its URL recorded. `docs/GO-LIVE.md` says the billing webhook
   requires the legacy worker because every billing mutation is replicated into its `QuotaDO`. If the endpoint still points at the `golem` host, it
   must be moved to the `apple` host (a Stripe dashboard change, owner's account) BEFORE C1.
+- The `golem` Durable Objects are measured and every one that holds data has a disposition (C2a); C2 is not run without it.
 - Rollback pointers recorded: `apple` current deployment id (`wrangler deployments list --name apple`), `golem` deployment `3e5e5071...` / BUILD_SHA `89becd9`
   (from the pre-workflow sweep; re-read it with `wrangler deployments list --name golem`).
 
@@ -67,8 +104,9 @@ Repo (run `node scripts/rename-golem.mjs --phase C-repo` for the mechanical part
 - delete `LEGACY_QUOTA_DO` from `apps/worker/src/env.ts` and `wrangler.apple.jsonc`; delete the replica write in `apps/worker/src/index.ts` (the block around
   `BILLING_REPLICA_WORKER`) and `apps/worker/src/billing-origin-authority.ts`' replica constant; delete the billing-replica tests
   (`billing-webhook-authority.test.mjs` replica cases, `billing-wiring-report.test.mjs`, the `LEGACY_QUOTA_DO` cases in `billing-test-admins.test.mjs`);
-- remove the `golem` target from `infra/deploy-worker.mjs`, delete `apps/worker/wrangler.jsonc` (the old worker's config), and the legacy-host redirect
+- remove the legacy-host redirect
   (`LEGACY_PRODUCT_HOST` in `packages/shared/src/index.ts` and its use in `apps/worker/src/index.ts`, `apps/worker/tests/legacy-host.test.mjs`);
+- KEEP the `golem` target of `infra/deploy-worker.mjs` and `apps/worker/wrangler.jsonc` until C2a is closed (C2a may need to deploy one read-only export route to `golem`); remove both in the commit that follows C2a;
 - remove the `MEMBERSHIP_OUTBOX_CONSUMER`/`BILLING_WORKER_NAME` handling that distinguishes the two deployments only after C3 (the outbox consumer rows).
 
 Deploy: `node infra/deploy-worker.mjs apple`.
@@ -78,19 +116,64 @@ and shows the new BUILD_SHA; plugin poll and a project socket still work (`node 
 
 Rollback: `wrangler rollback --name apple <previous deployment id>` (recorded in C0). Nothing in this step is irreversible.
 
+### C2a. Measure what the `golem` Durable Objects hold, and export it or record that it is abandoned (GATE for C2)
+
+Why this exists. `wrangler delete --name golem` destroys the six Durable Object namespaces the `golem` worker owns (`golem_SessionDO`, `golem_QuotaDO`,
+`golem_PairingDO`, `golem_AdminDO`, `golem_BudgetDO`, `golem_DiscordDO`) together with their storage, and that storage is NOT recoverable. The `apple` worker has namespaces of its own with the same class names, and an
+object's id is derived from (namespace, name): a project id that has a conversation in `golem_SessionDO` has an EMPTY object under `apple_SessionDO`, and `apple` cannot read the other one (its only
+cross-worker binding, `LEGACY_QUOTA_DO`, points at `QuotaDO` and is removed in C1). The conversation lives only in `SessionDO` (`apps/worker/src/user-export.ts`: "the conversation is written to SESSION_DO and has never
+been written" to Supabase), so a project that was last used while the product ran on `golem` has its transcript, checkpoints, oplog and collaboration comments nowhere else. The pre-workflow sweep counted about 77
+`golem_SessionDO` objects; that figure was not re-measured here.
+
+C2 does not run until this step is closed with a disposition for every object that holds data. Nothing in it writes to a user's data; it is the one step before C2 that is allowed to take as long as it takes.
+
+1. **Freeze the baseline FIRST, before any probe.** List the namespaces and their objects (`GET /accounts/$ACC/workers/durable_objects/namespaces`, then for each
+   `GET .../namespaces/<namespace id>/objects?limit=1000`, following `cursor`; each object comes back as `{id, hasStoredData}`; documented by Cloudflare, not called in this workflow, so check the response shape
+   on the first page). Record per namespace: number of objects and number with `hasStoredData: true`. Order matters: a probe of an id that was never used instantiates the object and its constructor creates its tables, after which it
+   reads as "has data". Names are not listed (only hex ids), which is why step 3 starts from the project ids Supabase knows.
+2. **Traffic on the `golem` host, last N = 30 days** (the owner may choose a longer N; record it). Workers analytics for the script `golem` by path, and the Durable Object invocations for it (GraphQL
+   `durableObjectsInvocationsAdaptiveGroups`, filtered on the script; field names UNVERIFIED, so if the dataset does not take it fall back to `wrangler tail golem --format json` for at least 24 hours and count by path).
+   The number that matters: requests under `/api/projects/<id>/` and `/ws` on the `golem` host. Any is a client still using `golem`: fix that (move it, or find out who it is) before anything is deleted. Cron invocations are not
+   evidence of use (C0 has the arithmetic).
+3. **Map projects to people, read-only.** With the Supabase MCP (`execute_sql`):
+   `select p.id, p.owner_id, p.created_at, p.updated_at, p.last_activity_at from public.projects p order by p.last_activity_at desc nulls last;`
+   and classify each owner: real person, or synthetic (the load-test accounts `load*@golem.internal` / `load*@apple.internal`, the E2E and benchmark accounts: the owner names them). Do NOT copy emails or names into the evidence
+   record; carry counts and, per project, a short hash of the id.
+4. **Per-object last activity, for the projects of step 3 only** (the `golem` worker at BUILD_SHA `89becd9` still has `GET /api/admin/session-info/<projectId>` and `GET /api/admin/session-messages/<projectId>`,
+   both `X-Admin-Key`, read-only; the key is read from the environment and never printed):
+   `/session-info/<id>` answers `messages` (the count), the newest 25 `oplog` rows with `created_at`, `pluginConnected`; an object that was never initialised answers `400 session not initialized` (nothing to keep);
+   `/session-messages/<id>?limit=1` answers the newest message with its `created_at`. Last activity = the later of the two. Objects of step 1 that no project id of step 3 maps to are ORPHANS: no user route reaches
+   a DO without a project row (`withOwnedProject` reads `public.projects` first), so record their count and `hasStoredData` and nothing else.
+5. **Decide per project with data**, and write the decision down. Exactly one of:
+   - **abandoned**: the owner is a synthetic account (named by the owner), or last activity is older than N days AND the project has no row with `last_activity_at` inside the window AND the owner confirms in chat that no one needs it.
+     Record the evidence: counts of messages and oplog rows, last-activity date, owner class. Nothing is exported.
+   - **exported**: everything else. Transcript: page `GET /api/admin/session-messages/<id>?limit=100&before=<oldest created_at so far>` until a page comes back short, and write one JSON file per project
+     with its sha256 in a manifest. Files go OUTSIDE the repository (for example `~/Backups/golem-do-export-<date>/`), are never committed (they are people's conversations) and are copied to private storage the owner chooses.
+     The person is told and offered their file (it is the same shape as the product's own transcript export). What no admin route returns (checkpoints and their chunks, collaboration comments, reviews): if a real person's project has any
+     and the owner wants them kept, add one read-only route `GET /api/admin/session-export/:id` that forwards to the Durable Object's existing `/export`, deploy THAT to `golem` (`node infra/deploy-worker.mjs golem`; this is the reason
+     C1 must not delete the `golem` deploy target until C2a is closed) and export through it; otherwise the owner signs off in chat that those parts are given up, and that is recorded.
+6. **The other five namespaces**, each with its own disposition: `golem_QuotaDO` (the billing replica C1 stops writing: record its row count, and compare the plan and credits of a few accounts with `apple`'s `QuotaDO` before calling it abandoned), `golem_BudgetDO` (the spend
+   ledger: record `GET /api/admin/spend` of the `golem` host once as its final figure and confirm `apple`'s guard is the one in force), `golem_PairingDO` (short-lived pairing codes: abandoned by nature), `golem_AdminDO` (30-day
+   event log: abandoned by nature), `golem_DiscordDO` (record whether it holds any state; if the Discord integration is live, its state is the integration's own and needs the same export-or-abandon decision).
+7. **Close the gate.** Write `docs/evidence/golem-do-disposition-<date>.md` (counts and hashes only, no personal data): N, the window, the baseline counts of step 1, the number of objects in each disposition, the manifest
+   hash of the exported files, and the owner's confirmation (quote the chat line). C2 starts only if every object with `hasStoredData: true` has a disposition, no real-person project is "undecided", and the traffic of step 2 shows no client.
+
+Verify: the count of dispositions equals the count of `hasStoredData: true` objects of step 1 (orphans counted separately); the manifest hashes match the files on disk.
+Rollback: not applicable (read-only). If the gate cannot be closed, `golem` is NOT deleted: it stays as a data store, and the decision to wipe the name from the cloud waits for the owner.
+
 ### C2. Retire the `golem` worker (IRREVERSIBLE)
 
-Pre: C1 verified for at least one full billing cycle of traffic; C0's fetch-only traffic measurement shows no real client on the `golem` host; the `SENTRY_DSN`
+Pre: C2a is closed (its record exists and says so); C1 verified for at least one full billing cycle of traffic; C0's fetch-only traffic measurement shows no real client on the `golem` host; the `SENTRY_DSN`
 secret has been deleted from `golem` first (`wrangler secret delete SENTRY_DSN --name golem`) so its errors stop arriving in the product's Sentry (`docs/GO-LIVE.md`
 records that legacy `golem` events reached `apple-worker`).
 
 Do: `wrangler delete --name golem`. This removes the `golem.moshe-barami111.workers.dev` host (it 404s afterwards, there is no redirect: a workers.dev host exists only
-while a worker of that name exists), its 77 `golem_SessionDO` objects and its six `golem_*` Durable Object namespaces.
+while a worker of that name exists) and its six `golem_*` Durable Object namespaces with every object in them (about 77 `golem_SessionDO` objects per the sweep; the C2a record is the authority for what they held).
 
 Verify: `curl -sI https://golem.moshe-barami111.workers.dev/` is not 200 (404 or 1042); `apple` health, billing webhook test and plugin poll are green.
 
 Rollback: re-deploy the recorded `golem` version (`wrangler versions deploy` is not available once the worker is deleted, so this is a fresh `wrangler deploy` of the
-tree at the commit that built BUILD_SHA `89becd9`, using the removed `wrangler.jsonc`). The Durable Object storage is NOT recoverable. This is why C2 waits.
+tree at the commit that built BUILD_SHA `89becd9`, using the removed `wrangler.jsonc`). The Durable Object storage is NOT recoverable: what C2a exported is all that survives. This is why C2a gates C2.
 
 ### C3. Supabase: remove the `golem` outbox consumer (new migration `0014`; do NOT edit `0009`)
 
@@ -115,17 +198,21 @@ worker `scheduled` log shows acknowledgements).
 Rollback: `insert into public.membership_outbox_consumers (consumer) values ('golem') on conflict do nothing;` then
 `node infra/provision-outbox-token.mjs --consumer golem --worker golem` (only meaningful if a `golem` worker exists, i.e. before C2).
 
-### C4. KV: `golem-kv` to `apple-kv`
+### C4. KV: rename `golem-kv` to `apple-kv` IN PLACE
 
-Do: `wrangler kv namespace create apple-kv`; copy every key including its expiration (list with `wrangler kv key list --namespace-id cc341a7db4d748139f161fdc292e6e84`,
-then `wrangler kv bulk put` per batch; keys with a TTL must be re-put with `--expiration`); switch `kv_namespaces[0].id` in `wrangler.apple.jsonc` to the new id; deploy `apple`;
-keep the old namespace one full cycle.
+A KV namespace's title is mutable metadata, so nothing is copied, no key moves and no binding changes: `wrangler.apple.jsonc` binds by id (`cc341a7db4d748139f161fdc292e6e84`), and the id stays the same.
+
+Pre: record `kv_namespace_get` for the id (title `golem-kv`) and a key count per prefix (`wrangler kv key list --namespace-id <id> --prefix <p>`; prefixes below).
+
+Do: one call, `PUT /accounts/$ACC/storage/kv/namespaces/cc341a7db4d748139f161fdc292e6e84` with `{"title":"apple-kv"}` (or the Cloudflare MCP `kv_namespace_update`). No deploy is needed. The repository half
+(the title in docs and comments) is swapped by phase C-repo.
 
 Prefixes that matter (from `apps/worker/src/user-export.ts`, the erasure/export contract): `ws:`, `wsv:`, `wst:`, `image:`, `audio:`, `share:link:`, `share:grant:`, `idem:`, `config:models`.
 
-Verify: key counts match per prefix before the switch; a real export and a real erase round trip on a throwaway account cover the new namespace.
+Verify: `kv_namespace_get` returns the SAME id with title `apple-kv`; `kv_namespaces_list` shows no `golem-kv`; per-prefix key counts equal the Pre counts; `/api/health` is green and a project's files and a
+generated image still load (they read this namespace).
 
-Rollback: put the old id back in `wrangler.apple.jsonc` and redeploy. Do not delete the old namespace until a full cycle of TTLs has passed.
+Rollback: the same call with `{"title":"golem-kv"}`. Nothing else was touched.
 
 ### C5. Vectorize: `golem-docs` to `apple-docs`
 
@@ -225,8 +312,19 @@ agrees; the owner accepts that an old plugin then stops pairing.
 | Step | Reversible | How |
 |---|---|---|
 | B1/B2 deploy | yes | `wrangler rollback`; B1 changes nothing for old clients |
+| C2a | n/a (read-only; its exports are files outside the repo) | none needed |
 | C1 | yes | redeploy previous `apple` |
-| C2 | NO (DO storage lost) | rebuild from the recorded commit |
+| C2 | NO (DO storage lost) | rebuild from the recorded commit; only what C2a exported survives |
 | C3 | yes | re-insert the consumer, reprovision the token |
-| C4, C5, C6, C7 | yes while the old resource is kept | switch the binding back |
+| C4 | yes | rename the title back (same id throughout) |
+| C5, C6, C7 | yes while the old resource is kept | switch the binding back |
 | C8 to C12 | mostly n/a / GitHub rename reversible | as stated |
+
+## 6. History notes (nothing was rewritten)
+
+- **Commit `131ce206`** (`apple rename: package scope @golem/* -> @apple/* ...`) is muddled: besides the scope rename it carried an unrelated rewrite of `scripts/check-rebrand.mjs`
+  (62 lines added, 101 removed: its closed exception list replaced by exceptions derived from `scripts/golem-allowlist.json`). That allowlist is first added by `79f6faad`, so between those two commits
+  `check-rebrand.mjs` reads a file that does not exist yet (not run at the intermediate commits here); treat the commits from `131ce206` up to `79f6faad` as one unit when bisecting. The codemod itself was added by
+  `fae0e104` and is not touched by `131ce206` (checked: the only file outside the mechanical scope edits with a large diff is `check-rebrand.mjs`). History was left as written: the point of a record is that it is not edited.
+- **B2 was split off after the fact.** It was committed as `a6758353` in the middle of this branch, was reverted by `b93b4341`, and lives on `golem-rename-b2` (section 1.1). The revert is a commit, not a rewrite, so
+  `a6758353` is still reachable from both branches.
