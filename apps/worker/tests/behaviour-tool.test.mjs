@@ -36,20 +36,23 @@ const written = (studio) => studio.scripts.get(`${MODEL}.AppleBehaviours`);
 
 // ------------------------------------------------------------------------------------------------ vocabulary
 
-test('the catalogue is derived from the same table that validates: every verb, every parameter, every default', () => {
+test('the catalogue is derived from the same table that validates: every verb, every parameter, every default, in one result', () => {
   const d = B.describeVerbs();
   assert.deepEqual(Object.keys(d.verbs).sort(), [...B.VERBS].sort());
   assert.equal(B.VERBS.length, 9);
   for (const verb of B.VERBS) {
+    const line = d.verbs[verb];
     for (const [name, spec] of Object.entries(B.PARAMS[verb])) {
-      const line = d.verbs[verb].takes[name];
-      assert.ok(line, `${verb}.${name} is missing from the catalogue`);
-      if (spec.t !== 'vec' || spec.def) assert.match(line, /default/, `${verb}.${name} states its default`);
+      assert.ok(line.includes(`${name} `), `${verb}.${name} is missing from the catalogue`);
+      if (spec.t !== 'vec' || spec.def) assert.ok(line.includes(`=${Array.isArray(spec.def) ? `[${spec.def.join(',')}]` : spec.def}`), `${verb}.${name} states its default (${spec.def})`);
+      if (spec.t === 'num') assert.ok(line.includes(`${spec.min}..${spec.max}`), `${verb}.${name} states its range`);
+      if (spec.t === 'enum') assert.ok(line.includes(spec.values.join('|')), `${verb}.${name} lists its values`);
     }
-    assert.ok(d.verbs[verb].does.length > 20, `${verb} says what it does`);
+    assert.ok(line.split('. takes:')[0].length > 20, `${verb} says what it does`);
   }
-  assert.match(d.everyBehaviourTakes.trigger, /click.*prompt.*touch.*near.*auto/);
-  assert.ok(JSON.stringify(d).length < 7000, 'the catalogue stays small enough to read in one go');
+  assert.match(d.every, /trigger \{on: click\|prompt\|touch\|near\|auto/);
+  assert.match(d.every, /mode toggle\|pulse\|hold\|once/);
+  assert.ok(JSON.stringify(d).length < 2500, `the catalogue (${JSON.stringify(d).length}) leaves room under the 3000-character result cut`);
 });
 
 // ------------------------------------------------------------------------------------------------ one behaviour
@@ -255,8 +258,9 @@ test('the runtime script and every config this tool writes pass the plugin\'s ow
 test('with no behaviours it lists the verbs and what the model already has', async () => {
   const { studio } = place();
   const r = await call(studio, {});
-  assert.ok(r.verbs.swing && r.verbs.sound && r.everyBehaviourTakes);
+  assert.ok(r.verbs.swing && r.verbs.sound && r.every);
   assert.deepEqual(r.behaviours, []);
+  assert.ok(JSON.stringify(r).length <= 2900, `the lookup result is ${JSON.stringify(r).length} characters; runTool cuts at 3000 and a cut catalogue is a wrong one`);
   assert.deepEqual(studio.ops.map((o) => o.op), ['get_tree'], 'a lookup writes nothing');
 });
 
@@ -265,7 +269,7 @@ test('first call: writes the data into the model, installs the runtime, and read
   const r = await call(studio, { behaviours: [swing({ id: 'open', trigger: { on: 'prompt', text: 'Open' }, ease: 'Back', with: [`${MODEL}.Knob`] })] });
   assert.ok(!r.error, r.error);
   assert.equal(r.changed, true);
-  assert.deepEqual(r.behaviours, [{ id: 'open', verb: 'swing', trigger: 'prompt', mode: 'toggle' }]);
+  assert.deepEqual(r.behaviours, ['open:swing:prompt/toggle']);
   assert.equal(r.verified.behaviours, 'read back and matches');
   assert.equal(r.verified.runtime, 'installed and read back');
   const src = written(studio);
@@ -297,7 +301,7 @@ test('a second call adds to the file, a repeated id replaces, remove removes, an
   const opsBefore = studio.ops.length;
   const r = await call(studio, { behaviours: [{ verb: 'fade', target: `${MODEL}.Knob`, id: 'gone' }, swing({ id: 'open', angle: -45 })] });
   assert.ok(!r.error, r.error);
-  assert.deepEqual(r.behaviours.map((b) => b.id), ['gone', 'open'], 'the replaced one is now last, in the order written');
+  assert.deepEqual(r.behaviours.map((b) => b.split(':')[0]), ['gone', 'open'], 'the replaced one is now last, in the order written');
   assert.deepEqual(r.replaced, ['open']);
   assert.equal(C.parseConfigSource(written(studio)).records.find((x) => x.id === 'open').angle, -45);
   const second = studio.ops.slice(opsBefore);
@@ -307,17 +311,45 @@ test('a second call adds to the file, a repeated id replaces, remove removes, an
   assert.equal(r.verified.runtime, 'already current');
 
   const removed = await call(studio, { remove: ['gone'] });
-  assert.deepEqual(removed.behaviours.map((b) => b.id), ['open']);
+  assert.deepEqual(removed.behaviours.map((b) => b.split(':')[0]), ['open']);
   assert.deepEqual(removed.removed, ['gone']);
   assert.match((await call(studio, { remove: ['nope'] })).error, /no behaviour with id "nope" .*it has: open/);
+});
+
+test('paths may be written relative to the model, as the reports print them, and mean the same as the full path', async () => {
+  const { studio } = place();
+  const r = await call(studio, { behaviours: [{ verb: 'swing', id: 'open', target: 'Cover', with: ['Knob'], hinge: { pivot: [0, -1, -1], axis: 'x' }, angle: -90, trigger: { on: 'click', at: 'Body' } }] });
+  assert.ok(!r.error, r.error);
+  const rec = C.parseConfigSource(written(studio)).records[0];
+  assert.deepEqual(rec.target, { segs: ['Cover'] });
+  assert.deepEqual(rec.with, [{ segs: ['Knob'] }]);
+  assert.deepEqual(rec.trigger.at, { segs: ['Body'] });
+  const full = place();
+  await call(full.studio, { behaviours: [{ verb: 'swing', id: 'open', target: `${MODEL}.Cover`, with: [`${MODEL}.Knob`], hinge: { pivot: [0, -1, -1], axis: 'x' }, angle: -90, trigger: { on: 'click', at: `${MODEL}.Body` } }] });
+  assert.equal(written(studio), written(full.studio), 'the same file either way');
+  assert.match((await call(studio, { behaviours: [{ verb: 'fade', target: 'Lid' }] })).error, /no child named Lid/);
+});
+
+test('a result never outgrows the 3000-character cut, however many behaviours and notes there are', async () => {
+  const { studio } = place();
+  const many = Array.from({ length: 40 }, (_, i) => ({ verb: 'light', target: `${MODEL}.Cover`, id: `lamp${i}`, trigger: 'click' }));
+  const r = await call(studio, { behaviours: many });
+  assert.ok(!r.error, r.error);
+  assert.equal(r.behaviours.length, 40);
+  assert.ok(r.notes.length <= 6 && /…and \d+ more$/.test(r.notes[r.notes.length - 1]), 'the notes are the first few and a count');
+  assert.ok(JSON.stringify(r).length <= 3000, `the result is ${JSON.stringify(r).length} characters`);
+  const again = await call(studio, {});
+  assert.equal(again.behaviours.length, 11, 'ten, and a count of the rest');
+  assert.match(again.behaviours[10], /…and 30 more/);
+  assert.ok(JSON.stringify(again).length <= 3000, `the lookup with 40 behaviours is ${JSON.stringify(again).length} characters`);
 });
 
 test('ids are made unique when the agent gives none', async () => {
   const { studio } = place();
   const r = await call(studio, { behaviours: [{ verb: 'fade', target: `${MODEL}.Knob` }, { verb: 'fade', target: `${MODEL}.Cover` }] });
-  assert.deepEqual(r.behaviours.map((b) => b.id), ['fade', 'fade2']);
+  assert.deepEqual(r.behaviours.map((b) => b.split(':')[0]), ['fade', 'fade2']);
   const again = await call(studio, { behaviours: [{ verb: 'fade', target: `${MODEL}.Body` }] });
-  assert.deepEqual(again.behaviours.map((b) => b.id), ['fade', 'fade2', 'fade3']);
+  assert.deepEqual(again.behaviours.map((b) => b.split(':')[0]), ['fade', 'fade2', 'fade3']);
 });
 
 test('a file edited by hand is not merged into; replace writes it afresh', async () => {
@@ -330,7 +362,7 @@ test('a file edited by hand is not merged into; replace writes it afresh', async
   const before = studio.scripts.get(path);
   const fresh = await call(studio, { replace: true, behaviours: [{ verb: 'fade', target: `${MODEL}.Knob`, id: 'only' }] });
   assert.ok(!fresh.error, fresh.error);
-  assert.deepEqual(fresh.behaviours.map((b) => b.id), ['only']);
+  assert.deepEqual(fresh.behaviours.map((b) => b.split(':')[0]), ['only']);
   assert.notEqual(studio.scripts.get(path), before);
 });
 
@@ -341,7 +373,7 @@ test('an existing behaviour that no longer holds (its part is gone) is dropped a
   finalize(m.root, MODEL);
   const r = await call(studio, { behaviours: [{ verb: 'fade', target: `${MODEL}.Body`, id: 'new' }] });
   assert.ok(!r.error, r.error);
-  assert.deepEqual(r.behaviours.map((b) => b.id), ['open', 'new']);
+  assert.deepEqual(r.behaviours.map((b) => b.split(':')[0]), ['open', 'new']);
   assert.match(r.notes.join(' '), /dropped an existing behaviour that no longer holds \(gone\).*no child named Knob/);
 });
 
@@ -362,7 +394,7 @@ test('a sound written in an earlier run survives a merge in a later one, though 
   const later = Object.assign(fakeStudio(studio.root, { scripts: studio.scripts, hash }), { discoveredAssetIds: undefined });
   const r = await call(later, { behaviours: [{ verb: 'fade', target: `${MODEL}.Knob`, id: 'gone' }] });
   assert.ok(!r.error, r.error);
-  assert.deepEqual(r.behaviours.map((b) => b.id), ['hum', 'gone'], 'the earlier sound is still there');
+  assert.deepEqual(r.behaviours.map((b) => b.split(':')[0]), ['hum', 'gone'], 'the earlier sound is still there');
   assert.ok(!(r.notes ?? []).some((n) => /dropped/.test(n)), 'and was not dropped');
   const stillRefused = await call(later, { behaviours: [{ verb: 'sound', soundId: 'rbxassetid://4242', target: `${MODEL}.Cover`, id: 'again' }] });
   assert.match(stillRefused.error, /Refused \(D-FXLIB-1\)/, 'a NEW request for that id is still judged');
@@ -514,7 +546,7 @@ test('through the real registry: model_anatomy then add_behaviour on one model, 
   assert.equal(done.mutatedProject, true);
   assert.equal(C.parseConfigSource(written(studio)).records[0].angle, -100);
   const after = JSON.parse((await T.runTool(studio, 'model_anatomy', JSON.stringify({ model: MODEL }))).resultForLlm);
-  assert.deepEqual(after.behaviours, [{ id: 'swing', verb: 'swing' }], 'the next look sees what was written');
+  assert.deepEqual(after.behaviours, ['swing:swing'], 'the next look sees what was written');
 });
 
 // ------------------------------------------------------------------------------------------------ generality

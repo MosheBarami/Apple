@@ -124,6 +124,10 @@ export function parseTree(data: unknown): ModelTree | { error: string } {
 
 /** Where a path (as the agent writes it) lands in the tree, or why not. `Name#k` picks the kth of several same-named siblings. */
 export function findNode(tree: ModelTree, path: string, parseSegments: (p: string) => string[] | null): TNode | { error: string } {
+  // A path may be written relative to the model (`Cover`, `Group.Cover`, `["Smooth Block Model#2"]`), the way the reports show them.
+  const trimmed = String(path ?? '').trim();
+  if (trimmed && !/^game\b/i.test(trimmed) && trimmed !== '(the model)') path = `${tree.root.path}${trimmed.startsWith('[') ? '' : '.'}${trimmed}`;
+  else if (trimmed === '(the model)') path = tree.root.path;
   const want = parseSegments(path);
   const have = parseSegments(tree.root.path);
   if (!want || !have) return { error: `${path} is not a path (game.Workspace.Model.Part, or game.Workspace["Model Name"].Part)` };
@@ -400,7 +404,20 @@ export interface AnatomyReport {
   [k: string]: unknown;
 }
 
-function partView(a: Anatomy, p: PartRec, names: (i: number) => string, centre: Vec3): Record<string, unknown> {
+/**
+ * A tool result is cut at 3000 characters by runTool (MAX_RESULT_CHARS) and re-sent on every later step, so the report FITS under
+ * that on its own instead of being sliced mid-JSON: it sheds the least useful detail in a fixed order and says what it shed.
+ */
+export const REPORT_BUDGET = 2900;
+
+/** A node's path relative to the model, which every tool here also accepts in place of the full path. */
+export function relPath(tree: ModelTree, n: TNode): string {
+  if (n === tree.root) return '(the model)';
+  const rest = n.address.slice(tree.root.address.length);
+  return rest.startsWith('.') ? rest.slice(1) : rest;
+}
+
+function partView(tree: ModelTree, a: Anatomy, p: PartRec, names: (i: number) => string, centre: Vec3): Record<string, unknown> {
   const n = p.node;
   const props = n.props;
   const kids = n.children;
@@ -408,80 +425,81 @@ function partView(a: Anatomy, p: PartRec, names: (i: number) => string, centre: 
   const sounds = kids.filter((k) => k.className === 'Sound').map((k) => k.name);
   const lights = kids.filter((k) => isLightClass(k.className)).map((k) => k.name);
   const emitters = kids.filter((k) => k.className === 'ParticleEmitter').map((k) => k.name);
-  const view: Record<string, unknown> = {
-    i: p.i,
-    name: n.name,
-    path: n.address,
-    class: n.className,
-    size: round3(p.size),
-    at: round3([p.centre[0] - centre[0], p.centre[1] - centre[1], p.centre[2] - centre[2]]),
-    anchored: bool(props, 'Anchored') ?? null,
-  };
-  const material = str(obj(props.Material).v ?? props.Material);
-  if (material) view.material = material.replace(/^Enum\.Material\./, '');
+  const view: Record<string, unknown> = { i: p.i, name: n.name };
+  const path = relPath(tree, n);
+  if (path !== n.name) view.path = path;
+  if (n.className !== 'Part') view.class = n.className;
+  view.size = round3(p.size);
+  view.at = round3([p.centre[0] - centre[0], p.centre[1] - centre[1], p.centre[2] - centre[2]]);
+  if (bool(props, 'Anchored') === false) view.anchored = false;
+  const material = str(obj(props.Material).v ?? props.Material)?.replace(/^Enum\.Material\./, '');
   const colour = hex(props.Color);
-  if (colour) view.color = colour;
+  if (material || colour) view.look = [material, colour].filter(Boolean).join(' ');
   const transparency = num(props, 'Transparency');
   if (transparency) view.transparency = round(transparency, 2);
   if (bool(props, 'CanCollide') === false) view.canCollide = false;
   if (bool(props, 'CanTouch') === false) view.canTouch = false;
   if (bool(props, 'CanQuery') === false) view.canQuery = false;
-  if (n.ambiguous) view.ambiguous = true;
   if (kids.some((k) => k.className === 'ClickDetector')) view.clickable = true;
   if (prompt) view.prompt = str(obj(prompt.props.ActionText).v ?? prompt.props.ActionText) ?? true;
   if (sounds.length) view.sounds = sounds;
   if (lights.length) view.lights = lights;
   if (emitters.length) view.emitters = emitters;
   const joined = a.joinedTo.get(p.i);
-  if (joined?.length) view.joinedTo = joined.slice(0, 8).map(names);
+  if (joined?.length) view.joinedTo = joined.slice(0, 6).map(names);
   const hangs = a.rides.get(p.i);
-  if (hangs?.length) view.hangsFromIt = hangs.slice(0, 12).map(names);
+  if (hangs?.length) view.hangsFromIt = hangs.slice(0, 8).map(names);
   const touching = a.contacts.get(p.i);
-  if (touching?.length) view.restsAgainst = touching.slice(0, 8).map(names);
+  if (touching?.length) view.restsAgainst = touching.slice(0, 6).map(names);
   return view;
 }
 
-export interface ReportOptions { focus?: string; maxParts?: number; parseSegments: (p: string) => string[] | null; existing?: { id: string; verb: string }[] }
+const hingeView = (h: Hinge) => ({
+  axis: h.axis, pivot: h.pivot, at: h.world.pivot, restsOn: h.restsOn, supports: h.supports,
+  positiveCarries: h.positiveCarries, negativeCarries: h.negativeCarries, edgeSide: h.edgeSide,
+});
+
+export interface ReportOptions { focus?: string; maxParts?: number; parseSegments: (p: string) => string[] | null; existing?: { id: string; verb: string }[]; budget?: number }
 
 export function report(tree: ModelTree, opts: ReportOptions): AnatomyReport | { error: string } {
   const a = analyse(tree);
   if (a.parts.length === 0) return { error: `${tree.root.path} contains no parts to read (a Model with BaseParts, or a part itself, is needed)` };
+  const budget = opts.budget ?? REPORT_BUDGET;
   const centre = a.bounds!.center;
   const label = (i: number) => `${a.parts[i - 1]!.node.name}(${i})`;
+  const rel = (n: TNode) => relPath(tree, n);
   const notes: string[] = [];
   const out: AnatomyReport = { model: tree.root.address, class: tree.root.className, partCount: a.parts.length };
 
   const contents = {
-    scripts: tree.nodes.filter((n) => SCRIPT_CLASSES.has(n.className) && n.name !== BEHAVIOUR_MODULE).map((n) => `${n.className} ${n.address}`),
-    sounds: tree.nodes.filter((n) => n.className === 'Sound').map((n) => n.address),
+    scripts: tree.nodes.filter((n) => SCRIPT_CLASSES.has(n.className) && n.name !== BEHAVIOUR_MODULE).map((n) => `${n.className} ${rel(n)}`).slice(0, 8),
+    sounds: tree.nodes.filter((n) => n.className === 'Sound').map(rel).slice(0, 8),
     lights: tree.nodes.filter((n) => isLightClass(n.className)).length,
     particleEmitters: tree.nodes.filter((n) => n.className === 'ParticleEmitter').length,
     clickDetectors: tree.nodes.filter((n) => n.className === 'ClickDetector').length,
     prompts: tree.nodes.filter((n) => n.className === 'ProximityPrompt').length,
   };
   if (!contents.scripts.length && !contents.sounds.length) notes.push('nothing in this model runs or makes a sound: no Script, LocalScript or Sound is inside it');
-  if (tree.truncated) notes.push('the place cut the tree short (too many instances); parts beyond the cut are not listed');
-  if (a.partsTruncated) notes.push(`only the first ${MAX_PARTS} parts were analysed`);
+  if (a.joints.some((j) => j.class === 'Motor6D')) notes.push('Motor6D joints here (rigged for animate_model): a behaviour moving the same part would fight the joint');
   const dup = new Map<string, number>();
   for (const p of a.parts) if (p.node.ambiguous) dup.set(p.node.name, (dup.get(p.node.name) ?? 0) + 1);
-  if (dup.size) notes.push(`parts that share a name with a sibling (${[...dup].slice(0, 6).map(([n, c]) => `${n} x${c}`).join(', ')}): other tools cannot address them by name; add_behaviour can, using the path shown here (Name#2 is the second of that name)`);
-  if (a.joints.some((j) => j.class === 'Motor6D')) notes.push('this model has Motor6D joints (rigged for animate_model); do not move the same part with a behaviour as well, the joint would fight it');
+  if (dup.size) notes.push(`${[...dup].slice(0, 4).map(([n, c]) => `${n} x${c}`).join(', ')} share names with siblings: other tools cannot address them by name; add_behaviour can, by the path shown (Name#2 = the second of that name)`);
+  if (tree.truncated) notes.push('the place cut the tree short; parts beyond the cut are not listed');
+  if (a.partsTruncated) notes.push(`only the first ${MAX_PARTS} parts were analysed`);
 
   if (opts.focus) {
     const found = findNode(tree, opts.focus, opts.parseSegments);
     if ('error' in found) return found;
     const rec = a.parts.find((p) => p.node === found);
     if (!rec) return { error: `${found.address} is a ${found.className}, not a part; name a part (use model_anatomy without \`part\` to list them)` };
-    const hinges = hingeCandidates(a, rec);
     Object.assign(out, {
-      part: partView(a, rec, label, centre),
-      hinges,
-      hingeHelp: 'swing: hinge = { pivot, axis } from one of these (pivot is the edge as -1..1 of each half-size of THIS part; axis is its own x, y or z). A positive angle carries the part\'s centre toward positiveCarries, a negative one toward negativeCarries: choose the sign that opens it the way you want. `with` lists parts that must swing along (hangsFromIt, and anything resting on it).',
-      centre: { pivot: [0, 0, 0], note: 'spin and bob use the part\'s centre; spin takes hinge.axis x, y or z' },
-      contents: { children: rec.node.children.map((k) => `${k.className} ${k.name}`).slice(0, 20) },
+      part: partView(tree, a, rec, label, centre),
+      hinges: hingeCandidates(a, rec, 5).map(hingeView),
+      hingeHelp: 'swing: hinge = { pivot, axis } from one of these (pivot: the edge as -1..1 of each half-size of THIS part; axis: its own x, y or z). A positive angle carries the part\'s centre toward positiveCarries, a negative one toward negativeCarries: pick the sign that goes where you want. `with` = parts that swing along (hangsFromIt, and what rests on it). spin and bob use the centre.',
+      children: rec.node.children.map((k) => `${k.className} ${k.name}`).slice(0, 12),
       notes,
     });
-    return out;
+    return fitReport(out, budget);
   }
 
   const maxParts = Math.max(5, Math.min(80, Math.floor(opts.maxParts ?? 40)));
@@ -494,29 +512,69 @@ export function report(tree: ModelTree, opts: ReportOptions): AnatomyReport | { 
     .map((p) => ({ p, h: hingeCandidates(a, p, 1)[0]! }))
     .filter((m) => m.h.restsOn > 0)
     .sort((x, y) => y.h.restsOn - x.h.restsOn || vol(y.p) - vol(x.p))
-    .slice(0, 6)
-    .map(({ p, h }) => ({ i: p.i, part: p.node.address, size: round3(p.size), bestHinge: { axis: h.axis, pivot: h.pivot, restsOn: h.restsOn, positiveCarries: h.positiveCarries } }));
+    .slice(0, 4)
+    .map(({ p, h }) => ({ i: p.i, part: rel(p.node), bestHinge: { axis: h.axis, pivot: h.pivot, restsOn: h.restsOn, positiveCarries: h.positiveCarries } }));
 
-  const clickable = a.parts.filter((p) => p.node.children.some((k) => k.className === 'ClickDetector')).map((p) => p.node.address);
-  const prompts = a.parts.filter((p) => p.node.children.some((k) => k.className === 'ProximityPrompt')).map((p) => p.node.address);
+  const partsWith = (test: (p: PartRec) => boolean) => a.parts.filter(test).map((p) => rel(p.node));
+  const cannotClick = partsWith((p) => bool(p.node.props, 'CanQuery') === false).slice(0, 10);
+  const cannotTouch = partsWith((p) => bool(p.node.props, 'CanTouch') === false).slice(0, 10);
   Object.assign(out, {
-    bounds: { center: round3(a.bounds!.center), size: round3(a.bounds!.size), note: 'world axes; each part\'s `at` is its centre relative to this centre' },
+    bounds: { center: round3(a.bounds!.center), size: round3(a.bounds!.size) },
     rootPart: a.rootPart ? label(a.rootPart) : null,
-    parts: chosen.map((p) => partView(a, p, label, centre)),
-    ...(chosen.length < a.parts.length ? { shown: chosen.length, omitted: `${a.parts.length - chosen.length} smaller parts (ask with part: <path> for any of them)` } : {}),
-    joints: a.joints.slice(0, 60).map((j) => ({ class: j.class, name: j.name, between: [label(j.a), label(j.b)] })),
+    parts: chosen.map((p) => partView(tree, a, p, label, centre)),
+    ...(chosen.length < a.parts.length ? { omitted: `${a.parts.length - chosen.length} smaller parts (part: <path> shows any of them)` } : {}),
+    joints: a.joints.slice(0, 40).map((j) => `${j.class} ${j.name}: ${label(j.a)} - ${label(j.b)}`),
     interaction: {
-      clickable,
-      prompts,
-      cannotBeClicked: a.parts.filter((p) => bool(p.node.props, 'CanQuery') === false).map((p) => p.node.address).slice(0, 20),
-      cannotBeTouched: a.parts.filter((p) => bool(p.node.props, 'CanTouch') === false).map((p) => p.node.address).slice(0, 20),
-      note: 'a ClickDetector needs the part to answer raycasts (CanQuery), Touched needs CanTouch; both are true unless listed',
+      clickable: partsWith((p) => p.node.children.some((k) => k.className === 'ClickDetector')).slice(0, 10),
+      prompts: partsWith((p) => p.node.children.some((k) => k.className === 'ProximityPrompt')).slice(0, 10),
+      ...(cannotClick.length ? { cannotBeClicked: cannotClick } : {}),
+      ...(cannotTouch.length ? { cannotBeTouched: cannotTouch } : {}),
     },
     contents,
-    ...(opts.existing?.length ? { behaviours: opts.existing } : {}),
+    ...(opts.existing?.length ? { behaviours: opts.existing.map((b) => `${b.id}:${b.verb}`) } : {}),
     movable,
     notes,
+    help: 'at = part centre relative to bounds.center (world axes). Paths are relative to the model; the full path works too. part: <path> gives hinge candidates.',
   });
+  return fitReport(out, budget);
+}
+
+/** Shed detail, least useful first, until the report fits; say what was shed. Never slices JSON. */
+export function fitReport(out: AnatomyReport, budget: number): AnatomyReport {
+  const size = () => JSON.stringify(out).length;
+  const shed: string[] = [];
+  const parts = out.parts as Record<string, unknown>[] | undefined;
+  if (parts && size() > budget) {
+    const keep = new Set<number>();
+    for (const m of (out.movable as { i: number }[] | undefined) ?? []) keep.add(m.i);
+    const root = /\((\d+)\)$/.exec(String(out.rootPart ?? ''));
+    if (root) keep.add(Number(root[1]));
+    const volume = (v: Record<string, unknown>) => (v.size as number[]).reduce((x, y) => x * y, 1);
+    const valuable = (v: Record<string, unknown>) => keep.has(v.i as number) || v.clickable || v.prompt || v.sounds || v.lights || v.emitters;
+    let dropped = 0;
+    while (size() > budget && parts.length > 6) {
+      let at = -1;
+      for (let k = 0; k < parts.length; k++) if (!valuable(parts[k]!) && (at < 0 || volume(parts[k]!) < volume(parts[at]!))) at = k;
+      if (at < 0) break;
+      parts.splice(at, 1);
+      dropped++;
+    }
+    if (dropped) { shed.push(`${dropped} more parts`); out.omitted = `${(out.partCount as number) - parts.length} smaller parts (part: <path> shows any of them)`; }
+  }
+  const joints = out.joints as string[] | undefined;
+  for (const keepJoints of [12, 4, 0]) {
+    if (!joints || size() <= budget || joints.length <= keepJoints) continue;
+    out.joints = joints.slice(0, keepJoints);
+    out.jointsOmitted = joints.length - keepJoints;
+    shed.push('joints');
+  }
+  const notes = out.notes as string[] | undefined;
+  if (notes && size() > budget && notes.length > 2) { out.notes = notes.slice(0, 2); shed.push('notes'); }
+  const hinges = out.hinges as unknown[] | undefined;
+  while (hinges && size() > budget && hinges.length > 2) { hinges.pop(); shed.push('a hinge candidate'); }
+  if (size() > budget && out.help) { delete out.help; shed.push('help'); }
+  if (size() > budget && out.hingeHelp) { out.hingeHelp = 'swing: hinge = { pivot, axis } from a candidate; a positive angle carries the centre toward positiveCarries, a negative one toward negativeCarries.'; shed.push('help'); }
+  if (shed.length) out.shed = [...new Set(shed)].join(', ');
   return out;
 }
 

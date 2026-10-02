@@ -96,44 +96,40 @@ const COMMON = ['id', 'verb', 'target', 'with', 'trigger', 'mode', 'hold', 'dela
 const SPECIAL: Partial<Record<Verb, string[]>> = { swing: ['hinge'], spin: ['hinge'], sound: ['sound', 'soundId'] };
 
 const WHAT: Record<Verb, string> = {
-  swing: 'turn the target (and `with` parts) about a hinge line and back. hinge = { pivot: [x,y,z] a point on the target\'s box as -1..1 of each half-size, axis: "x"|"y"|"z" the box\'s own axis }; model_anatomy lists hinge candidates and which way a positive angle carries the part',
-  slide: 'move the target (and `with` parts) by an offset and back',
-  spin: 'turn the target without end about an axis through a pivot (hinge = { pivot?, axis? }, default its centre about y); with a trigger it starts and stops on it',
-  bob: 'rise and fall about where the target rests, as a sine or as hops; with a trigger it starts and stops on it',
-  fade: 'go to a transparency (and stop colliding once it is gone) and come back',
-  light: 'switch the lights under the target on and off (or make one if there is none), optionally glow Neon while on',
-  sound: 'play a Sound from the target: `sound` is the path of a Sound already in the place (it is cloned), or `soundId` an id from Apple\'s sound library (find_sound); loop true makes it start and stop with the trigger',
-  emit: 'burst the particle emitters under the target, or with sustain true switch them on and off',
-  bounce: 'launch whoever touches the target along a direction; always listens for touch',
+  swing: 'turn the target (and `with` parts) about a hinge line and back; hinge = {pivot: a point on the target\'s box as -1..1 of each half-size, axis: its own x|y|z}',
+  slide: 'move the target (and `with`) by an offset and back',
+  spin: 'turn without end about an axis through a pivot (hinge = {pivot?, axis?}, default centre about y)',
+  bob: 'rise and fall about rest, as a sine or as hops',
+  fade: 'go to a transparency (not solid once gone) and back',
+  light: 'switch the lights under the target (or make one), optionally glow Neon',
+  sound: 'play a Sound from the target: `sound` = path of a Sound in the place (cloned) or `soundId` from find_sound; loop starts/stops with the trigger',
+  emit: 'burst the particle emitters under the target, or sustain true to switch them on and off',
+  bounce: 'launch whoever touches the target; always listens for touch',
 };
 
+const takes = (name: string, s: Spec): string =>
+  s.t === 'num' ? `${name} ${s.min}..${s.max}${s.nonzero ? ' (not 0)' : ''} =${s.def}`
+    : s.t === 'enum' ? `${name} ${s.values.join('|')} =${s.def}`
+      : s.t === 'bool' ? `${name} =${s.def}`
+        : `${name} [x,y,z] ${s.min === 0 ? '0' : '±'}${s.limit}${s.nonzero ? ' (not all 0)' : ''}${s.def ? ` =[${s.def.join(',')}]` : ''}`;
+
+/**
+ * The verbs and what each takes, generated from PARAMS (the table that validates), as one short line per verb: a tool result is
+ * cut at 3000 characters, and this is returned whole on the lookup call.
+ */
 export function describeVerbs(): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
+  const verbs: Record<string, string> = {};
   for (const verb of VERBS) {
-    const takes: Record<string, string> = {};
-    for (const [name, s] of Object.entries(PARAMS[verb])) {
-      takes[name] = s.t === 'num' ? `${s.min}..${s.max}${s.unit ? ` ${s.unit}` : ''}, default ${s.def}${s.nonzero ? ', not 0' : ''}`
-        : s.t === 'enum' ? `${s.values.join(' | ')}, default ${s.def}`
-          : s.t === 'bool' ? `true | false, default ${s.def}`
-            : `[x, y, z] ${s.unit}${s.def ? `, default [${s.def.join(', ')}]` : ''}${s.nonzero ? ', not all 0' : ''}`;
-    }
-    out[verb] = { does: WHAT[verb], takes, ...(verb === 'bounce' ? { triggers: ['touch'] } : {}) };
+    verbs[verb] = `${WHAT[verb]}. takes: ${Object.entries(PARAMS[verb]).map(([n, s]) => takes(n, s)).join('; ')}`;
   }
   return {
-    verbs: out,
-    everyBehaviourTakes: {
-      id: 'a name to edit or remove it later (letters, digits, _); same id again replaces it',
-      target: 'path of a part or sub-model inside the model (default: the whole model); a part that shares its name with a sibling is written Name#2',
-      with: 'more paths that move together with the target (swing, slide, spin, bob)',
-      trigger: '{ on: click | prompt | touch | near | auto, at?: path of the part that carries the click or prompt, text?: prompt action text, reach?: studs, cooldown?: seconds } or just the string. Defaults: click, except spin and bob (auto) and bounce (touch)',
-      mode: 'toggle (each trigger flips it) | pulse (on, back after hold seconds) | hold (on while touching or near) | once (on and stays). Defaults: toggle, touch pulses, near holds',
-      hold: 'seconds a pulse lasts (default 2) or a touch holds (0.5)',
-      delay: 'seconds to wait after the trigger',
-      ease: EASES.join(' | '),
-      auto: 'starts on its own; swing, slide and fade then go back and forth (hold = the pause at each end). Not for a one-shot sound or a burst',
-    },
-    movingParts: 'moving parts are anchored; a weld or joint between a moving part and one that stays still is switched off. Several movers on one part compose.',
-    runs: 'when the game runs (Play); nothing happens in Edit',
+    verbs,
+    every: 'id (edit/remove later; the same id replaces); target (a part or sub-model, default the whole model); with [paths that move together]; ' +
+      `trigger {on: ${TRIGGERS.join('|')}, at: the part that carries the click/prompt, text, reach studs, cooldown s} or just the name (default click; spin, bob auto; bounce touch); ` +
+      'mode toggle|pulse|hold|once (click toggles, touch pulses, near holds); hold s; delay s; ' + `ease ${EASES.join('|')}. ` +
+      'auto starts on its own (swing, slide, fade then go back and forth), not for a one-shot sound or burst.',
+    paths: 'relative to the model (Cover, Group.Cover) or full; the 2nd of a repeated name is Name#2',
+    runs: 'when the game runs, not in Edit. Moving parts are anchored; a joint between a moving part and one that stays is switched off.',
   };
 }
 
@@ -414,6 +410,15 @@ export function crossChecks(tree: ModelTree, records: readonly BehaviourRecord[]
 
 // ---------------------------------------------------------------------------------------------------------- the tool
 
+/** `open:swing:prompt/toggle`: one short string per behaviour, because a tool result is cut at 3000 characters. */
+const summaryOf = (r: BehaviourRecord): string => `${r.id}:${r.verb}:${String(obj(r.trigger).on)}/${String(r.mode)}`;
+
+/** The notes that fit: the first few, each clipped, and a count of the rest. */
+export function fitNotes(notes: readonly string[], keep = 5, each = 260): string[] {
+  const shown = notes.slice(0, keep).map((n) => (n.length > each ? `${n.slice(0, each - 1)}…` : n));
+  return notes.length > keep ? [...shown, `…and ${notes.length - keep} more`] : shown;
+}
+
 const MAX_BEHAVIOURS = 40;
 const RUNTIME_PATH = 'game.ServerScriptService.AppleBehave';
 
@@ -460,7 +465,7 @@ export async function addBehaviour(ctx: AgentCtx, a: Record<string, unknown>) {
   if (a.behaviours === undefined && a.remove === undefined) {
     return {
       model: tree.root.address,
-      behaviours: existing.map((r) => ({ id: r.id, verb: r.verb, trigger: obj(r.trigger).on, mode: r.mode })),
+      behaviours: fitNotes(existing.map(summaryOf), 10, 80),
       ...catalogue,
       next: 'add_behaviour {model, behaviours: [{verb, target, trigger, ...parameters}]}; read the model first with model_anatomy {model}',
     };
@@ -517,12 +522,12 @@ export async function addBehaviour(ctx: AgentCtx, a: Record<string, unknown>) {
   return {
     changed: true,
     model: tree.root.address,
-    behaviours: all.map((r) => ({ id: r.id, verb: r.verb, trigger: obj(r.trigger).on, mode: r.mode })),
+    behaviours: all.map(summaryOf),
     added: added.map((r) => r.id),
     ...(replaced.length ? { replaced } : {}),
     ...(removed.length ? { removed } : {}),
     verified,
-    ...(notes.length ? { notes } : {}),
+    ...(notes.length ? { notes: fitNotes(notes) } : {}),
     next: 'These run when the game runs, not in Edit. Check it in play (play_check or run_and_check) before saying it works; ask for the model\'s state with model_anatomy if a path may have changed.',
   };
 }

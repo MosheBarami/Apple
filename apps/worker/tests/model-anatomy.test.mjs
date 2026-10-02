@@ -37,7 +37,7 @@ test('parseTree: addresses, relative segments, and #k only where siblings share 
 test('findNode: exact, #k, out-of-range, ambiguous without #k, missing with the names that exist', () => {
   const { root } = anonymousModel();
   const t = treeOf(root);
-  const at = (p) => A.findNode(t, p, parseSegments);
+  const at = (p) => A.findNode(t, p, parseInstancePathLike);
   assert.equal(at('game.Workspace.Piece.MeshPart').name, 'MeshPart');
   assert.equal(at('game.Workspace.Piece.Part#2').children.length, 0);
   assert.equal(at('game.Workspace.Piece.Part#2'), t.root.children[1], 'the second of the two, not the first');
@@ -46,7 +46,12 @@ test('findNode: exact, #k, out-of-range, ambiguous without #k, missing with the 
   assert.match(at('game.Workspace.Piece.Part').error, /2 children named Part; say which one with Part#1 to Part#2/);
   assert.match(at('game.Workspace.Piece.Mesh').error, /no child named Mesh \(it has: .*MeshPart/);
   assert.match(at('game.Workspace.Other.Part').error, /not inside game\.Workspace\.Piece/);
-  assert.match(at('Piece.Part').error, /not a path/);
+  // relative paths, the way the reports show them
+  assert.equal(at('MeshPart'), t.root.children[2], 'a path may be written relative to the model');
+  assert.equal(at('Part#2'), t.root.children[1]);
+  assert.equal(at('["Part#1"]'), t.root.children[0], 'the bracketed form the reports print');
+  assert.equal(at('(the model)'), t.root);
+  assert.match(at('Piece.Part').error, /no child named Piece/, 'a leading model name is not a path inside the model');
 });
 
 test('every address the reader writes resolves back to the node it names, including odd and repeated names', () => {
@@ -141,11 +146,11 @@ test('report: an overview lists parts, interaction facts and movable hints; and 
   assert.deepEqual(cover.size, [4, 0.4, 3]);
   assert.deepEqual(cover.at.length, 3);
   assert.equal(r.parts.find((p) => p.name === 'Knob').sounds[0], 'Hum');
-  assert.deepEqual(r.interaction.clickable, ['game.Workspace.Unit.Cover']);
+  assert.deepEqual(r.interaction.clickable, ['Cover'], 'paths are relative to the model');
   assert.equal(r.contents.sounds.length, 1);
   assert.equal(r.contents.scripts.length, 0);
   assert.ok(r.movable.length >= 1 && r.movable[0].bestHinge.restsOn > 0);
-  assert.ok(r.joints.some((j) => j.class === 'WeldConstraint'));
+  assert.ok(r.joints.some((j) => /^WeldConstraint Hold: Cover\(2\) - Knob\(3\)$/.test(j)));
   assert.ok(!r.notes.some((n) => /nothing in this model runs/.test(n)), 'there is a Sound, so that note is not made');
 });
 
@@ -153,7 +158,7 @@ test('report: a model with no scripts and no sounds says so, as a fact', () => {
   const t = treeOf(anonymousModel().root);
   const r = A.report(t, { parseSegments });
   assert.ok(r.notes.some((n) => /nothing in this model runs or makes a sound/.test(n)));
-  assert.ok(r.notes.some((n) => /share a name with a sibling.*Part x2.*Name#2/.test(n)));
+  assert.ok(r.notes.some((n) => /Part x2 share names with siblings.*Name#2/.test(n)));
 });
 
 test('report: a focused part gives its detail and hinge candidates, and refuses a non-part', () => {
@@ -175,6 +180,30 @@ test('report: a large model shows its biggest parts and says how many it left ou
   assert.equal(r.partCount, 60);
   assert.match(r.omitted, /50 smaller parts/);
   assert.ok(r.parts.every((p, i, all) => i === 0 || p.i > all[i - 1].i), 'shown in model order');
+});
+
+test('a report always fits under the 3000-character result cut: it sheds the least useful detail, keeps what matters, and says what it shed', () => {
+  for (const n of [12, 40, 120, 240]) {
+    const parts = Array.from({ length: n }, (_, i) => part(i % 3 ? 'Smooth Block Model' : `Part${i}`, { at: [(i % 10) * 2, Math.floor(i / 10) * 1.2 + 0.5, 0], size: [2 + (i === 7 ? 6 : 0), 1, 2], material: 'Wood', color: [0.6, 0.4, 0.2] }));
+    for (let i = 1; i < Math.min(n, 30); i++) parts[0].children.push(joint(`Link${i}`, 'WeldConstraint', parts[0], parts[i]));
+    parts[5].children.push(inst('Detector', 'ClickDetector'));
+    parts[9 % n].children.push(inst('Hum', 'Sound', { SoundId: { t: 'string', v: 'rbxassetid://5' } }));
+    const t = treeOf(finalize(inst('Big', 'Model', {}, parts), 'game.Workspace.Big'));
+    const r = A.report(t, { parseSegments });
+    const size = JSON.stringify(r).length;
+    assert.ok(size <= 3000, `${n} parts: the overview is ${size} characters, over the cut`);
+    assert.equal(r.partCount, Math.min(n, 250));
+    assert.ok(r.parts.length >= Math.min(6, n), `${n} parts: some parts are always shown`);
+    assert.ok(r.parts.some((p) => p.clickable) || n < 6, 'the part with a click detector is never the one dropped');
+    assert.ok(r.parts.some((p) => p.sounds), 'nor the part with a sound');
+    if (n >= 120) {
+      assert.match(r.shed, /more parts/, `${n} parts: what was shed is said`);
+      assert.match(r.omitted, /smaller parts/);
+    }
+    const focus = A.report(t, { parseSegments, focus: 'game.Workspace.Big.Part0' });
+    assert.ok(JSON.stringify(focus).length <= 3000, `${n} parts: a focused part is ${JSON.stringify(focus).length} characters`);
+    assert.ok(focus.hinges.length >= 1);
+  }
 });
 
 test('report: a model with Motor6D joints warns that behaviours and rigs fight', () => {
