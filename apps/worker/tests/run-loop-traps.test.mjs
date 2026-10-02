@@ -486,7 +486,7 @@ test('PAIRED AGENT WITH A NARROWED PLUGIN: the verifiers the prompt names are th
 
 // ==================================================== 5. a run that cannot build, and text calls ===
 
-const RESEARCH_NUDGE = /spent several steps researching without changing the project/;
+const RESEARCH_NUDGE = /Nothing has changed in the project yet/;
 
 test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
   const offline = await makeSession({
@@ -501,6 +501,7 @@ test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
     responses: [
       calls(['get_ui_construction', { id: 'screen-shop' }]),
       calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(['get_verified_module', { id: 'cooldown-clock' }]),
     ],
   });
   try {
@@ -511,10 +512,65 @@ test('A RUN THAT CANNOT BUILD IS NOT TOLD TO BUILD', async () => {
 
     // CONTROL: the same research on a run that CAN build is still steered, so the check above can see the nudge.
     await start(paired);
-    for (let i = 0; i < 2; i++) await paired.session.alarm();
+    for (let i = 0; i < 3; i++) await paired.session.alarm();
     assert.equal(paired.store.get('agent').llm.some((m) => m.role === 'user' && RESEARCH_NUDGE.test(m.content)), true,
       'the control failed: a run that can build is no longer steered, so the assertion above proves nothing');
   } finally { offline.stop(); paired.stop(); }
+});
+
+// Owner benchmark 2026-10-02: the model said "the user said build geometry from Parts rather than looking for
+// assets" when the person had sent one line. The sentence was the harness's own nudge, pushed as a `user` turn.
+const stall = (n) => ['create_instances', { items: [{ className: 'Part', name: `Lantern post ${n}`, parent: 'game.Workspace', props: { Size: [1, 8, 1] } }] }];
+const refuseWrites = (op) => ({ ok: false, error: 'Nothing was created. Size could not be read as a Vector3 (lantern post).', failure: 'refused' });
+const NUDGE_TEXT = /Nothing has changed in the project yet/;
+
+test('THE "NOTHING CHANGED YET" NOTE IS SENT ONCE, NAMES THE LAST FAILURE, AND NEVER TELLS THE MODEL TO SKIP THE LIBRARY', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: refuseWrites,
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(stall(1)),
+      calls(stall(2)),
+      calls(stall(3)),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a row of lantern posts along the path' });
+    for (let i = 0; i < 5; i++) await h.session.alarm();
+    const turns = h.store.get('agent').llm.filter((m) => m.role === 'user');
+    const notes = turns.filter((m) => NUDGE_TEXT.test(m.content));
+    assert.equal(notes.length, 1, `the note must fire exactly once per run, got ${notes.length}`);
+    assert.doesNotMatch(notes[0].content, /Parts rather than|rather than looking for assets/i, 'the note steers the model away from the library');
+    assert.match(notes[0].content, /create_instances: .*Nothing was created/, 'the note does not name the last failure');
+    assert.match(notes[0].content, /library, Creator Store/, 'the note does not restate the asset order');
+  } finally { h.stop(); }
+});
+
+test('EVERY TURN THE HARNESS PUSHES AS "user" SAYS SO; only the person\'s own steer goes without', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: refuseWrites,
+    responses: [
+      calls(['get_ui_construction', { id: 'screen-shop' }]),
+      calls(['get_ui_construction', { id: 'screen-inventory' }]),
+      calls(stall(1)),
+      answer({ text: 'I will build the posts now.' }),
+      answer({ text: 'Done with the posts.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'put a row of lantern posts along the path' });
+    for (let i = 0; i < 5; i++) await h.session.alarm();
+    const turns = h.store.get('agent').llm.filter((m) => m.role === 'user' && !m.pinned);
+    assert.ok(turns.length >= 2, `the run pushed too few harness turns to prove anything (${turns.length})`);
+    for (const turn of turns) {
+      assert.ok(turn.content.startsWith('[Harness note, not the user]') || turn.content.startsWith('New direction from the user'),
+        `a harness turn speaks as the person: ${turn.content.slice(0, 80)}`);
+    }
+    assert.ok(turns.some((m) => /You have not changed the project yet/.test(m.content)), 'control: the owes-work steer was not exercised');
+  } finally { h.stop(); }
 });
 
 const OWES_WORK_NUDGE = /You have not changed the project yet/;

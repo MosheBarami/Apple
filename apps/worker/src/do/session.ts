@@ -94,7 +94,7 @@ import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, pushHarness, buildNudge, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -359,6 +359,8 @@ interface AgentState {
   readsSinceChange?: number;
   /** Times a run that was about to stop was handed its owed work back (run-idle). */
   autonomousContinues?: number;
+  /** The one "nothing has changed yet" harness note was sent this run (run-idle.ts buildNudge). */
+  buildNudged?: boolean;
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
@@ -4032,7 +4034,7 @@ export class SessionDO extends DurableObject<Env> {
     if ((await this.ctx.storage.get<string>('assetSourcesAwaitingRun')) === agent.msgId) {
       const steer = assetSourceAnswerSteer(this.pinnedPrefs?.asset_sources);
       if (steer) {
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         await this.ctx.storage.delete('assetSourcesAwaitingRun');
       }
     }
@@ -4529,14 +4531,10 @@ export class SessionDO extends DurableObject<Env> {
           : cuts >= 2
             ? 'Split large instance/script work into small tool calls of at most four logical items.'
             : 'Split any large tool payload into smaller calls instead of trying to describe the whole build at once.';
-      agent.llm.push({
-        role: 'user',
-        content:
-          'Your previous provider response hit its output ceiling before it became a complete action. ' +
+      pushHarness(agent.llm, 'Your previous provider response hit its output ceiling before it became a complete action. ' +
           'It was not shown to the user and did not end the run. Continue the SAME task from the ' +
           'successful tools/results already in the transcript. Do not repeat completed work. ' +
-          batchHint,
-      });
+          batchHint);
       await this.persistAgent(agent);
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
@@ -4611,15 +4609,11 @@ export class SessionDO extends DurableObject<Env> {
       if (rescued?.refused) {
         const steers = (agent.textCallSteers ?? 0) + 1;
         agent.textCallSteers = steers;
-        agent.llm.push({
-          role: 'user',
-          content:
-            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
+        pushHarness(agent.llm, `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
             'It was not run and the user did not see it. ' +
             (allowed.has(rescued.refused)
               ? 'Call the tool.'
-              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'),
-        });
+              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'));
         if (steers <= MAX_TEXT_CALL_STEERS) {
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -4631,7 +4625,7 @@ export class SessionDO extends DurableObject<Env> {
           .some((tool) => tool.name === artifact.tool);
         if (!artifact.attempted && available) {
           agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-          agent.llm.push({ role: 'user', content: `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.` });
+          pushHarness(agent.llm, `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.`);
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
@@ -4663,12 +4657,8 @@ export class SessionDO extends DurableObject<Env> {
       const owesWork = askedForWork && canBuild;
       if (owesWork) {
         agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-        agent.llm.push({
-          role: 'user',
-          content:
-            'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
-            'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
-        });
+        pushHarness(agent.llm, 'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
+            'with a tool call, in this turn. If you were mid-sentence, carry out that action.');
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4708,7 +4698,7 @@ export class SessionDO extends DurableObject<Env> {
       // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
       const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
       if (partNext) {
-        agent.llm.push({ role: 'user', content: partNext });
+        pushHarness(agent.llm, partNext);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4718,7 +4708,7 @@ export class SessionDO extends DurableObject<Env> {
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
-        agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER });
+        pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4729,7 +4719,7 @@ export class SessionDO extends DurableObject<Env> {
       if (agent.composedObject && agent.composedForUser && !agent.lastCheckProblem && allowed.has('play_check')) {
         if (!agent.playChecked && !agent.sentToPlayCheck) {
           agent.sentToPlayCheck = true;
-          agent.llm.push({ role: 'user', content: 'Check it once in play now: call play_check. Write nothing else.' });
+          pushHarness(agent.llm, 'Check it once in play now: call play_check. Write nothing else.');
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
@@ -5207,10 +5197,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
-      agent.llm.push({
-        role: 'user',
-        content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''),
-      });
+      pushHarness(agent.llm, UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''));
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
@@ -5256,7 +5243,7 @@ export class SessionDO extends DurableObject<Env> {
           agent.readsSinceChange = 0;
           agent.readsWithheldOnce = true;
         }
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         idle.action = 'none';
       }
     }
@@ -5297,26 +5284,18 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (retuneThisStep === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
-          'finish anything else the request still needs, and then reply to the user.',
-      });
+      pushHarness(agent.llm, 'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
+          'finish anything else the request still needs, and then reply to the user.');
     }
     if (idle.action === 'build') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
-          'already know. If a detail is missing, choose a sensible default instead of reading again.',
-      });
+      pushHarness(agent.llm, 'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
+          'already know. If a detail is missing, choose a sensible default instead of reading again.');
     }
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
       const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
-      agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
+      pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER);
     } else if (idle.action === 'finish') {
       const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
       const prior = agent.streamedText ?? '';
@@ -5327,18 +5306,11 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (idle.action === 'answer') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
-          'Only call another tool if one specific fact you need is still missing.',
-      });
+      pushHarness(agent.llm, 'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
+          'Only call another tool if one specific fact you need is still missing.');
     }
     if (idle.action === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content: AUTONOMOUS_IDLE_STEER,
-      });
+      pushHarness(agent.llm, AUTONOMOUS_IDLE_STEER);
     }
     // If the model has spent several steps without changing anything, steer it. Mutation truth
     // comes from the tool implementation's co-located metadata through runTool, rather than a
@@ -5348,17 +5320,20 @@ export class SessionDO extends DurableObject<Env> {
     // "create the instances" could only invite a call to a tool they do not have — refused as
     // unavailable, a paid step each time.
     const built = agent.mutated === true;
-    if (!built && agent.step >= 2 && canBuild && studioConnected) {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
-      });
+    // ONCE per run, built from what happened (run-idle.ts buildNudge). It used to repeat every step and told the
+    // model to build "from Parts rather than looking for assets" in the user's voice; the model quoted it back as
+    // something the user had said (owner benchmark 2026-10-02).
+    if (!built && !agent.buildNudged && agent.step >= 2 && canBuild && studioConnected) {
+      const text = buildNudge(agent.trace, agent.readsSinceChange ?? 0);
+      if (text) {
+        agent.buildNudged = true;
+        pushHarness(agent.llm, text);
+      }
     }
     // The plan's next step may call for a craft recipe the prompt did not carry (skill-cards.ts).
     const skillSteer = canBuild ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? []) : null;
     if (skillSteer) {
-      agent.llm.push({ role: 'user', content: skillSteer.message });
+      pushHarness(agent.llm, skillSteer.message);
       agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
     }
     this.captureProvenance(agent, ctx);

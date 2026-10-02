@@ -31,6 +31,38 @@ export const ANSWER_ONLY_NUDGE = 5;
 export const READ_STALL_NUDGE = 10;
 export const READ_STALL_LIMIT = 20;
 
+/**
+ * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`
+ * role, so a steer from the harness reads as the person speaking. Owner benchmark 2026-10-02 (a canyon map):
+ * the model reasoned "the user said build geometry from Parts rather than looking for assets" while the
+ * person's only message was one line; the sentence was the harness's own nudge. A turn the person really sent
+ * ("New direction from the user …", session.ts applySteers) is the only one that goes without it.
+ */
+export const HARNESS_PREFIX = '[Harness note, not the user] ';
+
+/** The one place a harness turn is pushed, so the prefix cannot drift. */
+export function pushHarness(llm: { push(m: { role: 'user'; content: string }): unknown }, text: string): void {
+  llm.push({ role: 'user', content: HARNESS_PREFIX + text });
+}
+
+/**
+ * The note for a run that can build and has changed nothing, or null while it is too early to say. Fires after
+ * a real failure or three read-only steps (the caller latches it, once per run). It reports what happened and
+ * restates the asset order; it does not tell the model what to build or to skip the library.
+ */
+export function buildNudge(trace: readonly { tool: string; ok: boolean; error?: string; summary?: string }[], readOnlySteps: number): string | null {
+  const failed = trace.filter((t) => !t.ok);
+  if (!failed.length && readOnlySteps < 3) return null;
+  const head = (t: { tool: string; error?: string; summary?: string }) => {
+    const said = (t.error ?? t.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    return said ? `${t.tool}: ${said}` : t.tool;
+  };
+  const last = [...new Set(failed.slice(-3).map(head))];
+  return 'Nothing has changed in the project yet. ' +
+    (last.length ? `Last failures: ${last.join(' | ')}. ` : `${readOnlySteps} read-only steps so far. `) +
+    'Asset order: library, Creator Store, adapt or combine, then build from Parts. Next pick the step that fits.';
+}
+
 export interface IdleState {
   /** A verifier passed after the latest change to the place. */
   verifiedAfterMutation?: boolean;
@@ -207,7 +239,7 @@ export function leavesWorkOpen(text: string | null | undefined): boolean {
 }
 
 export const AUTONOMOUS_CONTINUE_STEER =
-  'The user already asked for this whole request to be finished, so do not ask them anything. ' +
+  'This run is autonomous: nobody is waiting to answer a question, so do not ask one. ' +
   'Your last reply names work that is still missing, broken or unverified. Do that work now with tool ' +
   'calls — fix the defects your checks reported, then playtest the game loop the request asked for. ' +
   'Reply to the user only when nothing the request needs is left, and end that reply with a statement, not a question.';
