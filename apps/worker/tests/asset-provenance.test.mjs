@@ -39,8 +39,10 @@ test('every agent-run call site passes the run in', () => {
   // error, degraded provenance.
   const callSites = [...SESSION.matchAll(/this\.agentCtx\(([^)]*)\)/g)].map((m) => m[1].trim());
   const withRun = callSites.filter((a) => a === 'agent');
-  // One site since the automatic visual self-critique loop left runStep (3dc0d89c, Q21).
-  assert.equal(withRun.length, 1, 'the agent-run call site must pass the run');
+  // One site since the automatic visual self-critique loop left runStep (3dc0d89c, Q21). TWO since 2026-10-02: the
+  // library step of an object run (libraryObjectStep) builds its context from the same run, so what it discovers is the
+  // run's. REVIEWED: it passes `agent`; a run-less site would be counted below instead.
+  assert.equal(withRun.length, 2, 'the agent-run call site must pass the run');
 
   // THE RUN-LESS SITES ARE NAMED, NOT COUNTED. A bare count is a number the next person bumps
   // when their route trips it, which is exactly how a provenance-degrading call site gets waved

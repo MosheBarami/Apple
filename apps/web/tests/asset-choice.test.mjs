@@ -22,3 +22,17 @@ test('the choice surface shows only three validated options from the library sea
   assert.deepEqual(visualOptions([{ ...tool, detail: { kind: 'asset_choices', options: [row(-1, 'Bad'), row(20, 'Pine')] } }]), [row(20, 'Pine')]);
   assert.deepEqual(visualOptions([{ ...tool, tool: 'other' }]), []);
 });
+
+// 2026-10-02: ready-made models from the owner library stand in the place, numbered; the user picks one of three.
+test('a numbered model standing in the place is an option, and its snapshot is a same-origin project image only', async () => {
+  const { visualSnapshot } = await import(`file://${out}`);
+  const detail = { kind: 'asset_choices', image: '/api/projects/p-1/images/i-2', options: [
+    { index: 1, name: 'Butter', where: 'ASMR Pack' }, { index: 2, name: 'Vanilla Donut' }, { index: 7, name: 'Out of range' }, { name: 'No number' },
+  ] };
+  const tool = { tool: 'find_library_model', ok: true, detail };
+  assert.deepEqual(visualOptions([tool]).map((o) => o.name), ['Butter', 'Vanilla Donut']);
+  assert.equal(visualSnapshot([tool]), '/api/projects/p-1/images/i-2');
+  for (const image of ['https://evil.example/x.png', 'javascript:alert(1)', '/api/projects/p/images/../../x', 42]) {
+    assert.equal(visualSnapshot([{ ...tool, detail: { ...detail, image } }]), null, String(image));
+  }
+});

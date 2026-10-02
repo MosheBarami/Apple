@@ -1126,6 +1126,64 @@ export function hingePoint(p: ObjectPart, origin: V3): V3 {
 
 const clipText = (s: unknown) => String(s ?? '').slice(0, 300);
 
+/**
+ * The ground and the spawn every object stands with: a bright green Baseplate, the spawn 8 studs in front of the
+ * stage facing it, and studs on what is listed plus the Baseplate and spawn (null: the user wants their own surface).
+ * Shared by build_object and a library object (library-object.ts).
+ */
+export async function groundAndSpawn(ctx: AgentCtx, studs: string[] | null): Promise<void> {
+  await ctx.execStudioOp({ op: 'set_props', path: 'game.Workspace.Baseplate', props: { Color: { t: 'Color3', v: [0.38, 0.79, 0.29] }, Material: { t: 'EnumItem', v: 'Enum.Material.Plastic' } } }, 20_000).catch(() => undefined);
+  const spawnAt: V3 = [0, 0.5, 8];
+  const spawn = await ctx.execStudioOp({ op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: spawnAt }, Orientation: { t: 'Vector3', v: [0, 0, 0] } } }, 20_000).catch(() => ({ ok: false }));
+  if (!('ok' in spawn) || !spawn.ok) {
+    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'SpawnLocation', name: 'SpawnLocation', props: { Size: [8, 1, 8], Position: spawnAt, Anchored: true, Color: '#4fc3ff' } }), parent: 'game.Workspace' }] }, 20_000).catch(() => undefined);
+  }
+  if (studs) await ctx.execStudioOp(applySurfaceOp([...studs, 'game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']), 60_000).catch(() => undefined);
+}
+
+/**
+ * An object's studded screen: one counter pill (the number with its caption) and a hint bar, and the LocalScript that
+ * counts every move a player set off on the model named `name` (AppleAnimatePlayed). Merged into the screen, never
+ * redrawn. Returns what went wrong, or null. Shared by build_object and a library object.
+ */
+export async function writeObjectHud(ctx: AgentCtx, name: string, hud: { counter?: unknown; hint?: unknown; icon?: unknown }): Promise<string | null> {
+  const screen = studdedScreen({ name: `${name}HUD`, pieces: [
+    // One pill: the number with its caption inside (owner, 2026-10-01: a separate "Keys pressed" pill looked like a
+    // button that did nothing).
+    ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const, caption: String(hud.counter).slice(0, 24) }] : []),
+    ...(hud.hint ? [{ kind: 'bar' as const, name: 'Hint', text: String(hud.hint).slice(0, 60), colour: 'yellow' as const, at: 'bottom' as const }] : []),
+  ] });
+  // Merged, never redrawn: a rebuilt object keeps whatever was added to its screen since (the upgrades, a shop).
+  const failedUi = await writeScreen(ctx, screen);
+  if (failedUi) return `hud: ${clipText(failedUi)}`;
+  const src = `-- ${name}'s screen: counts every move (AppleAnimatePlayed) and pops the counter. Written by Apple; edit freely.
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local gui = Players.LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("${name}HUD")
+local counter = gui:FindFirstChild("Counter", true)
+local value = counter and counter:FindFirstChild("Value")
+local n = 0
+local played = game:GetService("ReplicatedStorage"):WaitForChild("AppleAnimatePlayed")
+-- Only what a player set off counts: a loop that starts by itself is not a press.
+played.OnClientEvent:Connect(function(model, _clip, player)
+	if (model and model.Name ~= "${name}") or player == nil then return end
+	n += 1
+	if value then value.Text = tostring(n) end
+	if counter then
+		local s = counter:FindFirstChild("Pop") or Instance.new("UIScale")
+		s.Name = "Pop"
+		s.Parent = counter
+		s.Scale = 1.15
+		TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+	end
+end)
+`;
+  const path = `game.StarterPlayer.StarterPlayerScripts.${name}HUDScript`;
+  await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+  const sc = await ctx.execStudioOp({ op: 'edit_script', path, source: src, create: { className: 'LocalScript', parent: 'game.StarterPlayer.StarterPlayerScripts' } }, 60_000);
+  return sc.ok ? null : `hud script: ${clipText(sc.error)}`;
+}
+
 export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) {
   // A "make it cooler" run adds to the object that is there; every other build stands alone (test 3, 2026-10-01).
   const memory = ctx.objectMemory;
@@ -1205,13 +1263,7 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
   }
 
   // The ground and the spawn: a bright studded field and a spawn that faces the object.
-  await ctx.execStudioOp({ op: 'set_props', path: 'game.Workspace.Baseplate', props: { Color: { t: 'Color3', v: [0.38, 0.79, 0.29] }, Material: { t: 'EnumItem', v: 'Enum.Material.Plastic' } } }, 20_000).catch(() => undefined);
-  const spawnAt: V3 = [0, 0.5, 8];
-  const spawn = await ctx.execStudioOp({ op: 'set_props', path: 'game.Workspace.SpawnLocation', props: { Position: { t: 'Vector3', v: spawnAt }, Orientation: { t: 'Vector3', v: [0, 0, 0] } } }, 20_000).catch(() => ({ ok: false }));
-  if (!('ok' in spawn) || !spawn.ok) {
-    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'SpawnLocation', name: 'SpawnLocation', props: { Size: [8, 1, 8], Position: spawnAt, Anchored: true, Color: '#4fc3ff' } }), parent: 'game.Workspace' }] }, 20_000).catch(() => undefined);
-  }
-  if (wantsStuds) await ctx.execStudioOp(applySurfaceOp([model, `game.Workspace.${plan.name}Stage`, 'game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']), 60_000).catch(() => undefined);
+  await groundAndSpawn(ctx, wantsStuds ? [model, `game.Workspace.${plan.name}Stage`] : null);
   // Studding an object turns every part under it to studded Plastic, Neon too (the plugin's explicit apply_surface;
   // test 3 round 4, 2026-10-01: the cool orbs and the lit rim came out Plastic, and so did the keyboard's glow case).
   // What is meant to glow glows again.
@@ -1313,44 +1365,8 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
   const asked = given && typeof given === 'object' ? given as Record<string, unknown> : null;
   const hud = (given === false ? null : asked && (asked.counter || asked.hint) ? asked : defaults ? { ...defaults, ...(asked ?? {}) } : asked) as Record<string, unknown> | null;
   if (hud && (hud.counter || hud.hint)) {
-    const screen = studdedScreen({ name: `${plan.name}HUD`, pieces: [
-      // One pill: the number with its caption inside (owner, 2026-10-01: a separate "Keys pressed" pill looked like a
-      // button that did nothing).
-      ...(hud.counter ? [{ kind: 'counter' as const, name: 'Counter', text: '0', icon: String(hud.icon ?? '#').slice(0, 2), colour: 'purple' as const, plus: false, at: 'top-left' as const, caption: String(hud.counter).slice(0, 24) }] : []),
-      ...(hud.hint ? [{ kind: 'bar' as const, name: 'Hint', text: String(hud.hint).slice(0, 60), colour: 'yellow' as const, at: 'bottom' as const }] : []),
-    ] });
-    // Merged, never redrawn: a rebuilt object keeps whatever was added to its screen since (the upgrades, a shop).
-    const failedUi = await writeScreen(ctx, screen);
-    const ui = failedUi ? { ok: false, error: failedUi } : { ok: true };
-    if (!ui.ok) problems.push(`hud: ${clipText(ui.error)}`);
-    else {
-      const src = `-- ${plan.name}'s screen: counts every move (AppleAnimatePlayed) and pops the counter. Written by Apple; edit freely.
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local gui = Players.LocalPlayer:WaitForChild("PlayerGui"):WaitForChild("${plan.name}HUD")
-local counter = gui:FindFirstChild("Counter", true)
-local value = counter and counter:FindFirstChild("Value")
-local n = 0
-local played = game:GetService("ReplicatedStorage"):WaitForChild("AppleAnimatePlayed")
--- Only what a player set off counts: a loop that starts by itself is not a press.
-played.OnClientEvent:Connect(function(model, _clip, player)
-	if (model and model.Name ~= "${plan.name}") or player == nil then return end
-	n += 1
-	if value then value.Text = tostring(n) end
-	if counter then
-		local s = counter:FindFirstChild("Pop") or Instance.new("UIScale")
-		s.Name = "Pop"
-		s.Parent = counter
-		s.Scale = 1.15
-		TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
-	end
-end)
-`;
-      const path = `game.StarterPlayer.StarterPlayerScripts.${plan.name}HUDScript`;
-      await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
-      const sc = await ctx.execStudioOp({ op: 'edit_script', path, source: src, create: { className: 'LocalScript', parent: 'game.StarterPlayer.StarterPlayerScripts' } }, 60_000);
-      if (!sc.ok) problems.push(`hud script: ${clipText(sc.error)}`);
-    }
+    const failed = await writeObjectHud(ctx, plan.name, hud);
+    if (failed) problems.push(failed);
   }
   const keys = moving.filter((p) => p.move!.on === 'key' && p.key).length;
   // Kept for a later "make it cooler", with the words that made it (its shape words).

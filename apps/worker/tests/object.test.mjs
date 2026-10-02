@@ -749,7 +749,9 @@ test('an object run answers with what was built, once the play check passed', ()
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   assert.match(session, /call\.name === 'build_object' && out\.ok && agent\.objectRun\) \{[\s\S]{0,260}agent\.composedObject = true/);
   assert.match(session, /\(agent\.composedPlotSim \|\| agent\.composedObject\) && agent\.composedForUser && agent\.playChecked && !agent\.lastCheckProblem/);
-  assert.match(session, /!\/\^the player has no\/i\.test\(seen\.leaderstats\)/, 'no money line for a game without money');
+  // RESTATED 2026-10-02: the reading moved into library-object.ts playCheckReading, shared with the library step.
+  assert.match(session, /const reading = playCheckReading\(out\.detail\)/);
+  assert.match(readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8'), /!\/\^the player has no\/i\.test\(d\.leaderstats\)/, 'no money line for a game without money');
   const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
   assert.match(tool, /plan\.parts\.some\(\(p\) => p\.key\) \? \{\} : \{ forUser: objectForUser\(plan\) \}/, 'keyboards keep their own answer');
 });
@@ -889,7 +891,8 @@ test('a decoration that loops is quiet when the player has something to set off'
 
 test('what is meant to glow is Neon again after the object is studded (test 3 round 4)', () => {
   const tool = readFileSync(join(WORKER, 'src', 'object-tool.ts'), 'utf8');
-  const studs = tool.indexOf('if (wantsStuds) await ctx.execStudioOp(applySurfaceOp(');
+  // RESTATED 2026-10-02: the studs moved into groundAndSpawn; the property is still that Neon comes back after them.
+  const studs = tool.indexOf('await groundAndSpawn(ctx, wantsStuds ?');
   const glow = tool.indexOf("plan.parts.filter((p) => p.material === 'Neon')");
   assert.ok(studs > 0 && glow > studs, 'Neon is put back after the studs, not before');
   assert.match(tool.slice(glow, glow + 500), /Material: \{ t: 'EnumItem', v: 'Enum\.Material\.Neon' \}/);

@@ -81,7 +81,10 @@ test('the worker\'s search_docs sends exactly the fields the reader takes', () =
     'search_docs no longer returns { title, url } per hit — lib/doc-sources.ts must follow it');
   assert.match(body, /return \{ results: \[\]/, 'the no-results shape is an object, which the reader relies on to show nothing');
   // And the array reaches the browser: detailForUi forwards any non-error object, arrays included.
-  const forward = tools.slice(tools.indexOf('function detailForUi'), tools.indexOf('export async function runTool'));
+  // RESTATED 2026-10-02: detailForUi's own body, to its closing brace. The slice used to run on to runTool and took in
+  // recoverJsonObject, whose JSON parse rejects a top-level array (a call's arguments, not tool_end.detail).
+  const fwdAt = tools.indexOf('function detailForUi');
+  const forward = tools.slice(fwdAt, tools.indexOf('\n}\n', fwdAt) + 2);
   assert.match(forward, /typeof result !== 'object' \|\| result === null/);
   assert.doesNotMatch(forward, /Array\.isArray/, 'the worker began filtering arrays out of tool_end.detail');
 });

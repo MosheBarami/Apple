@@ -32,7 +32,10 @@ const INDEX = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
 
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const handler = stripComments(SESSION.slice(SESSION.indexOf("case 'edit_resend'"), SESSION.indexOf("case 'stop': {")));
-const run = stripComments(SESSION.slice(SESSION.indexOf('private async startRunInner'), SESSION.indexOf('private async startRunInner') + 6000));
+// RESTATED 2026-10-02: the whole method, not a fixed 6000-character window (the object pick added lines before the
+// revision copy and pushed it out of the window; the code under test did not change).
+const runAt = SESSION.indexOf('private async startRunInner');
+const run = stripComments(SESSION.slice(runAt, SESSION.indexOf('\n  private ', runAt + 30) > runAt ? SESSION.indexOf('\n  private ', runAt + 30) : runAt + 20000));
 
 // -------------------------------------------------------------------- what counts ---
 

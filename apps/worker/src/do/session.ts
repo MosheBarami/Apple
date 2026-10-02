@@ -69,6 +69,7 @@ import {
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
 import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
+import { clearLineup, coolLibraryObject, offerLibraryObjects, placeChosenObject, playCheckReading, type PendingObjectChoice } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -294,6 +295,15 @@ interface AgentState {
   composedObject?: boolean;
   /** The model answered a built object without playing it, and was sent to play_check once. */
   sentToPlayCheck?: boolean;
+  /**
+   * The owner picked one of the ready-made models offered for an object (library-object.ts), or none of them (null):
+   * the run places that one with no model call, or builds it with build_object.
+   */
+  objectPick?: { index: number | null; pending: PendingObjectChoice };
+  /** The library step of an object run (offer or place) has run; it runs once, before any model call. */
+  libraryStepDone?: boolean;
+  /** A row of offered models from an earlier run is still standing and this run did not pick from it: take it down. */
+  staleLineup?: boolean;
   /** This run makes the project's last built object cooler (isUpgradeRequest + the stored builtObject). */
   upgradingObject?: boolean;
   /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
@@ -1583,6 +1593,82 @@ export class SessionDO extends DurableObject<Env> {
    * G03: pause the run because the paired place went away. Queued ops of this run are withdrawn
    * so a reconnect cannot deliver them behind the user's back; the run waits for `continue`.
    */
+  /**
+   * The library step of an object run (library-object.ts), once and before any model call (owner, 2026-10-02: models
+   * come from the library or the Creator Store first, the user picks from three, procedural only rarely). It offers
+   * ready-made models and ends the run, or places the one the owner picked, plays it once and ends the run, both with
+   * no model call. False means the run goes on: nothing fit, "none of these", Studio away, or the pick failed, and
+   * build_object makes it. A row offered earlier and not picked from is taken down first.
+   */
+  private async libraryObjectStep(agent: AgentState): Promise<boolean> {
+    if (!(await this.pluginConnected())) return false;
+    const ctx = this.agentCtx(agent);
+    const row = (tool: string, ok: boolean, t0: number, summary: string, detail?: unknown) => {
+      const toolId = crypto.randomUUID();
+      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool, summary: tool });
+      this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok, summary, detail });
+      agent.trace.push({ tool, summary, ok, durationMs: Date.now() - t0, ...(detail === undefined ? {} : { detail }) });
+    };
+    const pick = agent.objectPick;
+    if (!pick && agent.staleLineup) await clearLineup(ctx);
+    if (pick && pick.index === null) { await clearLineup(ctx); return false; }
+    if (pick && pick.index !== null) {
+      const t0 = Date.now();
+      const placed = await placeChosenObject(ctx, pick.pending, pick.index) as Record<string, unknown>;
+      const ok = !('error' in placed);
+      row('place_library_model', ok, t0, ok ? `✓ placed ${String((placed.library as { name?: unknown } | undefined)?.name ?? 'the model')}` : `✗ ${String(placed.error).slice(0, 120)}`, placed);
+      if (placed.changed === true || placed.projectMutated === true) { agent.mutated = true; agent.made = addMade(agent.made, 'place_library_model'); }
+      if (!ok) return false;
+      agent.objectFirst = false;
+      agent.objectBuilt = true;
+      // Played once by the harness, not the model: no model call for the whole pick.
+      const t1 = Date.now();
+      const out = await runTool(ctx, 'play_check', '{}');
+      row('play_check', out.ok, t1, out.summary, out.detail);
+      const reading = out.ok ? playCheckReading(out.detail) : undefined;
+      agent.playChecked = out.ok;
+      agent.lastCheckProblem = reading?.problem;
+      agent.lastCheckSeen = reading?.seen;
+      agent.finalText = `${String(placed.forUser ?? '')}${reading ? reading.problem ? `\n\nOne thing is not right yet: ${reading.problem.replace(/\s*\(Studio's own[^)]*\)/, '')}` : `\n\nI play-tested it: ${reading.seen}.` : ''}`;
+      await this.finishRun(agent, 'done');
+      return true;
+    }
+    // "Make it cooler" on a ready-made object: the kit goes around the model that is there, never a rebuild.
+    if (agent.objectRun && agent.upgradingObject) {
+      const spec = await ctx.objectMemory?.load().catch(() => undefined) as Record<string, unknown> | undefined;
+      if (!spec?.library) return false;
+      const t0 = Date.now();
+      const cooled = await coolLibraryObject(ctx, spec) as Record<string, unknown>;
+      const ok = !('error' in cooled);
+      row('cool_library_model', ok, t0, ok ? '✓ made it cooler' : `✗ ${String(cooled.error).slice(0, 120)}`, cooled);
+      if (!ok) return false;
+      agent.mutated = true;
+      agent.made = addMade(agent.made, 'cool_library_model');
+      agent.objectFirst = false;
+      agent.objectBuilt = true;
+      agent.finalText = String(cooled.forUser ?? '');
+      await this.finishRun(agent, 'done');
+      return true;
+    }
+    if (agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
+      const t0 = Date.now();
+      const offer = await offerLibraryObjects(ctx, agent.request ?? '');
+      if (!offer) return false;
+      await this.ctx.storage.put('pendingObjectChoice', { request: offer.request, name: offer.name, options: offer.options } satisfies PendingObjectChoice);
+      row('find_library_model', true, t0, `✓ ${offer.options.length} ready-made model${offer.options.length === 1 ? '' : 's'} to choose from`, {
+        kind: 'asset_choices',
+        options: offer.options.map((o) => ({ index: o.index, name: o.name, ...(o.game ? { where: o.game } : {}), ...(o.assetId ? { assetId: o.assetId } : {}) })),
+        ...(offer.image ? { image: offer.image } : {}),
+      });
+      agent.mutated = true;
+      agent.made = addMade(agent.made, 'find_library_model');
+      agent.finalText = offer.text;
+      await this.finishRun(agent, 'done');
+      return true;
+    }
+    return false;
+  }
+
   private async pauseForStudio(agent: AgentState, reason: StudioPauseReason): Promise<void> {
     agent.pausedForStudio = { at: Date.now(), reason };
     await this.dropOpsForRun(agent.msgId);
@@ -3352,21 +3438,31 @@ export class SessionDO extends DurableObject<Env> {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
-    const pendingChoice = await this.ctx.storage.get<PendingAssetChoice>('pendingAssetChoice') ?? null;
+    // The ready-made models offered for an object (library-object.ts): "Use visual option N" places one, "None of these"
+    // builds it. Only the project owner picks, as for the legacy choice below.
+    const pendingObject = await this.ctx.storage.get<PendingObjectChoice>('pendingObjectChoice') ?? null;
+    const objectPickIndex = mode === 'agent' && pendingObject && initiatedBy === bind.ownerId ? ASSET_CHOICE_MESSAGE.exec(text)?.[1] : undefined;
+    const objectPick = pendingObject && mode === 'agent' && initiatedBy === bind.ownerId
+      ? objectPickIndex && pendingObject.options.some((o) => o.index === Number(objectPickIndex)) ? { index: Number(objectPickIndex), pending: pendingObject }
+        : text === 'None of these look right. Find different visual options.' ? { index: null, pending: pendingObject } : undefined
+      : undefined;
+    const pendingChoice = objectPick ? null : await this.ctx.storage.get<PendingAssetChoice>('pendingAssetChoice') ?? null;
     const selectedAsset = mode === 'agent' && pendingChoice?.mode === 'agent'
       ? selectedLibraryAsset(text, pendingChoice, initiatedBy, bind.ownerId)
       : null;
     const rejectedChoice = text === 'None of these look right. Find different visual options.' &&
       mode === 'agent' && pendingChoice?.mode === 'agent' && initiatedBy === bind.ownerId;
-    if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset) {
+    if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset && !objectPick) {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'That visual choice is no longer available. Ask Apple to find fresh options.' });
       return;
     }
-    if (text === 'None of these look right. Find different visual options.' && !rejectedChoice) {
+    if (text === 'None of these look right. Find different visual options.' && !rejectedChoice && !objectPick) {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'Those visual options are no longer available. Ask Apple to search again.' });
       return;
     }
-    const effectiveRequest = selectedAsset && pendingChoice
+    const effectiveRequest = objectPick
+      ? objectPick.index === null ? `${objectPick.pending.request}\n\nNone of the ready-made models fit, so build it with build_object.` : objectPick.pending.request
+      : selectedAsset && pendingChoice
       ? `${pendingChoice.request}\n\nThe project owner selected the preview of the ready-made model "${selectedAsset.name}" (library id ${selectedAsset.id}). Continue the unfinished build and use insert_library_model with that exact id. Do not search for another model for this same item.`
       : rejectedChoice && pendingChoice
       ? `${pendingChoice.request}\n\nThe project owner rejected these visual options: ${pendingChoice.options.map((o) => o.name).join(', ')}. Search for visually different ready-made models. Do not insert any model until one is chosen.`
@@ -3394,6 +3490,7 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'quota', quota: quota.state });
     // One approval is scoped to one admitted run. A new unrelated message invalidates old cards.
     await this.ctx.storage.delete('pendingAssetChoice');
+    await this.ctx.storage.delete('pendingObjectChoice');
     // Mark the socket only after quota admission succeeded. A refused request must not leave a
     // collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
@@ -3542,6 +3639,7 @@ export class SessionDO extends DurableObject<Env> {
       // builder. UI-only: the world direction is unchanged by it.
       llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine, upgradeLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       ...(upgradeLine ? { objectFirst: true, objectRun: true, upgradingObject: true } : {}),
+      ...(objectPick ? { objectFirst: true, objectRun: true, objectPick } : pendingObject ? { staleLineup: true } : {}),
       ...(continueLine ? { continuesGame: true } : {}),
       // A game the composer can make (the orchard, or a simulator / tycoon / "make it a full game": compose-plotsim.ts)
       // is made by compose_game first, from components and the library, never piece by piece.
@@ -4023,6 +4121,12 @@ export class SessionDO extends DurableObject<Env> {
       agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
       await this.finishRun(agent, 'done');
       return;
+    }
+    // Library first for one object (owner, 2026-10-02), before any model call: offer ready-made models, or place the
+    // one the owner picked. Either ends the run here; nothing to offer, or "none of these", goes on to build_object.
+    if (agent.mode === 'agent' && !agent.libraryStepDone && (agent.objectRun || agent.staleLineup)) {
+      agent.libraryStepDone = true;
+      if (await this.libraryObjectStep(agent)) return;
     }
     if (sequenceStep && sequenceStep.state !== 'next') {
       await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
@@ -4829,16 +4933,10 @@ export class SessionDO extends DurableObject<Env> {
         if (typeof said === 'string' && said.trim()) agent.composedForUser = said.trim();
       }
       if (call.name === 'play_check' && out.ok) {
-        const d = out.detail as { verdict?: unknown; playerSees?: unknown } | undefined;
-        agent.lastCheckProblem = typeof d?.verdict === 'string' && /^no_|broken|error|fail/i.test(d.verdict) && typeof d.playerSees === 'string' ? d.playerSees : undefined;
-        const seen = out.detail as { leaderstats?: unknown; clientErrors?: unknown[]; serverErrors?: unknown[] } | undefined;
-        const errors = (seen?.clientErrors?.length ?? 0) + (seen?.serverErrors?.length ?? 0);
-        // "Coins 0 at the start → Coins 70 at the end" reads as "Coins went from 0 to 70".
-        const ls = typeof seen?.leaderstats === 'string' ? /^(\w+) (-?[\d.,]+) at the start → \1 (-?[\d.,]+) at the end$/.exec(seen.leaderstats.trim()) : null;
-        // Not "on their own": presses on the player's own machines pay too (round 13's answer overstated it).
-        // A game with no money says nothing about money (round 8 of test 2: "the player has no leaderstats folder").
-        const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof seen?.leaderstats === 'string' && !/^the player has no/i.test(seen.leaderstats) ? seen.leaderstats : '';
-        agent.lastCheckSeen = `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}`;
+        // What the check measured, in the answer's words (library-object.ts playCheckReading, shared with the library step).
+        const reading = playCheckReading(out.detail);
+        agent.lastCheckProblem = reading.problem;
+        agent.lastCheckSeen = reading.seen;
       }
       // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
       // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.

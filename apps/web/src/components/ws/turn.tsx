@@ -28,7 +28,7 @@ import { ContextMenu, useContextMenu, type MenuItem } from '../picks/chat/contex
 import { RollingNumber } from '../picks/chat/rolling-number';
 import { ExpandableImages } from '../picks/chat/expandable-images';
 import { AssetChoice } from './asset-choice';
-import { visualOptions } from './asset-choice-model';
+import { visualOptions, visualSnapshot } from './asset-choice-model';
 import { Answer, RunSources } from './answer';
 import { RunSteps } from './run-steps';
 import { cn } from '../../lib/utils';
@@ -223,6 +223,7 @@ export function Turn({
     [item.tools, item.id, item.createdAt],
   );
   const assetOptions = useMemo(() => visualOptions(item.tools), [item.tools]);
+  const assetSnapshot = useMemo(() => visualSnapshot(item.tools), [item.tools]);
 
   // The one split (lib/reply-docs.ts): an image or a sound Apple made stays in the reply; every other
   // document is technical detail and is not drawn at all (owner decision D-THINK-1).
@@ -388,6 +389,7 @@ export function Turn({
         <ReplyMedia docs={replyDocs.media} />
         {item.mode === 'agent' && assetOptions.length > 0 && <AssetChoice
           options={assetOptions}
+          snapshot={assetSnapshot}
           disabled={!onChooseAsset || item.streaming}
           onChoose={(index) => onChooseAsset?.(index)}
         />}

@@ -6,7 +6,11 @@
 .gx-asset-choice__option:disabled { cursor: default; opacity: .65; }
 .gx-asset-choice__image { display: block; aspect-ratio: 1; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, var(--paper)); }
 .gx-asset-choice__image img { width: 100%; height: 100%; object-fit: contain; }
-.gx-asset-choice__name, .gx-asset-choice__action { display: block; padding: 7px 3px 0; }
+.gx-asset-choice__name, .gx-asset-choice__action, .gx-asset-choice__where { display: block; padding: 7px 3px 0; }
+.gx-asset-choice__where { padding-top: 2px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-asset-choice__hint { margin: -6px 0 12px; color: var(--muted); font-size: 13px; }
+.gx-asset-choice__snapshot { display: block; width: 100%; max-height: 260px; object-fit: cover; margin: 0 0 12px; border-radius: 12px; border: 1px solid var(--line); }
+.gx-asset-choice__number { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ink); font-size: 44px; font-weight: 750; }
 .gx-asset-choice__name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gx-asset-choice__action { color: var(--accent); font-size: 12px; }
 .gx-asset-choice__reject { margin-top: 12px; border: 0; padding: 8px 2px; background: transparent; color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
