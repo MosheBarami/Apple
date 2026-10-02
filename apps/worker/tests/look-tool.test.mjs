@@ -104,6 +104,20 @@ test('look\'s description says what it returns and what it cannot see', () => {
   assert.deepEqual(Object.keys(d.parameters.properties).sort(), ['expect', 'questions', 'targets', 'views']);
 });
 
+test('look is offered to every plugin that can show a picture of the place, and withheld from one that cannot', async () => {
+  const { filterToolsForPlugin } = await import('../src/plugin-capabilities.ts');
+  const studioTools = Object.entries(T.TOOLS).filter(([, t]) => t.studio);
+  const requirements = Object.fromEntries(studioTools.map(([name, t]) => [name, t.studioOps ?? []]));
+  const alternatives = Object.fromEntries(Object.entries(T.TOOLS).map(([name, t]) => [name, t.studioOpAlternatives ?? []]));
+  const report = (...entries) => ({ schema: 'golem.studio-ops.v1', operations: entries.map(([op, status]) => (status === 'supported' ? { op, status } : { op, status, reason: `${op} is ${status}` })) });
+  const offered = (rawReport) => filterToolsForPlugin(['look'], requirements, rawReport, alternatives).allowed.has('look');
+  assert.equal(offered(null), true, 'a plugin that sends no report (the store build) keeps the look: the box views work there');
+  assert.equal(offered(report(['render_view', 'supported'])), true);
+  assert.equal(offered(report(['render_view', 'unsupported'], ['capture_studio_viewport', 'supported'])), true, 'native capture alone is enough');
+  assert.equal(offered(report(['render_view', 'unsupported'], ['capture_studio_viewport', 'unsupported'])), false, 'no way to show a picture at all');
+  assert.equal(offered(report(['render_view', 'unsupported'])), false, 'a report that says render_view is gone and names no capture');
+});
+
 // ==================================================================================== the run ===
 
 test('a look records itself in the ledger, counts its cost, shows the user the frames and keeps pixels out of the transcript', async () => {

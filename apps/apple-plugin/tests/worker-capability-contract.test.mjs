@@ -168,8 +168,12 @@ const WITHHELD_BY_DESIGN = [
   'run_luau', 'run_spec',
 ].sort();
 
-/** The visual/layout gate: four tools, all of them standing on the one operation `render_view`. */
-const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'render_view'];
+/**
+ * The visual/layout gate: five tools standing on the one operation `render_view`. `look` (the self-check, M1) joined it: with no
+ * alternatives passed it needs render_view like the rest. The worker's session DOES pass alternatives, and there a plugin with native
+ * capture and no renderer keeps the look (tests/look-tool.test.mjs in apps/worker holds that).
+ */
+const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'look', 'render_view'];
 
 test('the report the plugin emits parses — it never lands in compatibility mode', { skip }, async () => {
   const { C } = await workerModules();

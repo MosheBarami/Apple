@@ -4120,6 +4120,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     // render_view is the one operation every plugin has; the native route (viewport, camera, capture) is tried
     // first at run time and the box views are the labelled fallback, so an older plugin still gets a look.
     studioOps: ['render_view'],
+    // …and a plugin that has native capture but no renderer still gets the look (the native route is the whole route there).
+    studioOpAlternatives: [['render_view'], ['capture_studio_viewport']],
     plainSummary: lookSummary,
     run: (ctx, a) => runLookTool(ctx, a),
   },
