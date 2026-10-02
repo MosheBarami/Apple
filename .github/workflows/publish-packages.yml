@@ -1,0 +1,152 @@
+name: Publish packages
+
+# Publishes the workspace packages that opt in (`publishConfig.registry` = https://npm.pkg.github.com
+# in their package.json: today the shared wire contract and the SDK) to GitHub Packages.
+# Read docs/operations/GITHUB.md ("Publishing packages") before editing.
+#
+#   pull_request     -> `dry-run` only: typecheck, then `npm publish --dry-run`. Read-only token, no secrets.
+#   push tag packages-v<version>  -> `publish`
+#   workflow_dispatch -> `publish` only when "publish" is ticked AND the run is on main or a packages-v tag;
+#                        anything else is a dry run
+#
+# THIS WORKFLOW NEVER RUNS ON A PULL REQUEST WITH WRITE ACCESS. The only job that holds
+# `packages: write` is `publish`, and its `if:` excludes the pull_request event.
+#
+# Scope: GitHub Packages requires the npm scope to equal the repository owner, so the script stages
+# a copy of each package as @<owner>/<name> (lower-case owner) and publishes that. The source
+# package.json names (@golem/*, later @apple/*) are untouched. No package name appears in this file,
+# so the @golem -> @apple rename needs no edit here.
+#
+# It uses only GITHUB_TOKEN. No Cloudflare, Supabase or provider secret is available to it, and it
+# publishes nothing that has not first been typechecked and tested.
+
+on:
+  push:
+    tags: ['packages-v*']
+  pull_request:
+    paths:
+      - 'packages/shared/**'
+      - 'packages/sdk/**'
+      - 'scripts/github/publish-packages.mjs'
+      - '.github/workflows/publish-packages.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Actually publish (otherwise a dry run). Only honoured on main or a packages-v tag.'
+        type: boolean
+        default: false
+      tag:
+        description: 'Release tag the version must match, e.g. packages-v0.1.0 (needed to publish from a dispatch)'
+        type: string
+        default: ''
+
+concurrency:
+  group: publish-packages-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '11.13.0'
+
+jobs:
+  dry-run:
+    name: Packages dry run
+    # Also the fallback for a dispatch that ticked "publish" from a branch: it dry-runs instead of doing nothing.
+    if: >-
+      github.event_name == 'pull_request'
+      || (github.event_name == 'workflow_dispatch'
+          && !(inputs.publish == true
+               && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/packages-v'))))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test the publishable packages
+        # Path filters, not package names: they survive the @golem -> @apple rename.
+        # `check` is the SDK's syntax pass (and compiles its Python); `test` is its offline suite.
+        run: |
+          set -euo pipefail
+          pnpm --filter ./packages/shared typecheck
+          pnpm --filter ./packages/sdk check
+          pnpm --filter ./packages/sdk test
+
+      - name: Which packages publish
+        run: node scripts/github/publish-packages.mjs --list
+
+      - name: npm publish --dry-run (staged, renamed to the owner scope)
+        run: node scripts/github/publish-packages.mjs --dry-run --repo "$GITHUB_REPOSITORY"
+
+  publish:
+    name: Publish packages to GitHub Packages
+    # Never on pull_request. A dispatch publishes only from main or a release tag.
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && inputs.publish == true
+          && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/packages-v')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the next step can prove the tagged commit is on main.
+          fetch-depth: 0
+
+      - name: The release commit is on main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not reachable from main; tag a commit that is on main."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test the publishable packages
+        run: |
+          set -euo pipefail
+          pnpm --filter ./packages/shared typecheck
+          pnpm --filter ./packages/sdk check
+          pnpm --filter ./packages/sdk test
+
+      - name: Publish
+        # The script refuses a tag that is not packages-v<version>, skips a version that already
+        # exists on the registry, and never edits the source package.json files.
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/github/publish-packages.mjs --publish --tag "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"

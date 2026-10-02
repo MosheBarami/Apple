@@ -1,0 +1,44 @@
+name: Bug
+description: Something that worked, or should work, does not.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public. Do not paste secrets, tokens, cookies, `.env` values, or place files you do not want shared.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Worker / API
+        - Web app
+        - Marketing site
+        - Studio plugin
+        - SDK
+        - CI / tooling
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build or commit
+      description: The short SHA (the worker reports it as BUILD_SHA) or the plugin version.
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Exact steps, or the prompt that was sent. Say whether it was a fresh chat.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Error text, a screenshot, a run id, a path under docs/evidence.
