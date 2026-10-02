@@ -285,3 +285,9 @@ test('a bare directory passed to `node --test` is caught, and the file-list form
     rmSync(bare.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
 });
+
+test('a non-node test script that names a directory is not read as node --test (python unittest -s tests)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../scripts/check-workspace-coverage.mjs', import.meta.url), 'utf8');
+  assert.match(src, /\/\\bnode\\s\+--test\\b\/\.test\(script\) \? script\.split/, 'the directory rule must apply only to node --test scripts');
+});

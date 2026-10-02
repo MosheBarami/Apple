@@ -223,7 +223,8 @@ for (const dir of ALL) {
     //   tests/*.test.mjs`), which the shell expands and every supported Node accepts. This makes
     //   that the rule rather than the convention. `node --test` with NO argument is still the best
     //   form and is untouched by this.
-    for (const arg of script.split(/\s+/)) {
+    // Only a `node --test` script resolves its arguments as modules; `python3 -m unittest discover -s tests` is not one.
+    for (const arg of /\bnode\s+--test\b/.test(script) ? script.split(/\s+/) : []) {
       if (arg.startsWith('-') || arg.includes('*') || arg === '') continue;
       const candidate = join(dir, arg.replace(/^["']|["']$/g, ''));
       if (existsSync(candidate) && statSync(candidate).isDirectory()) {
