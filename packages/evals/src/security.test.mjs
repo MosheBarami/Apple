@@ -950,8 +950,8 @@ const TOOL_ARGS = {
   // the same op-sender and library path as insert_library_model (no new fetch, no key beyond the user's own upload key),
   // strips scripts, measures, and removes what it staged; dress_object only creates and edits instances in the user's own
   // place through the op-sender. Neither reaches the network on its own.
-  preview_library_models: { ids: ['cs-18717544'] },
-  dress_object: { target: 'Workspace.Thing', counter: { name: 'Count' } },
+  preview_library_models: { models: [{ id: 'cs-18717544' }] },
+  dress_object: { target: 'game.Workspace.Thing', counter: { label: 'Clicks' } },
   // D-UILIB-2 (b54e84d). Egress reviewed 2026-09-23 by the security lane: find_ui_asset searches
   // the index bundled from packages/asset-library/index.json — no fetch, no key. upload_ui_asset
   // resolves `asset` by EXACT lookup in that index (a made-up path is refused before any read),
