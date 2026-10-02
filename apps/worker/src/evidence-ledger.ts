@@ -167,12 +167,19 @@ class Recorder {
 
   props(props: unknown, path: string, name: string, via: 'write' | 'read'): void {
     if (!isObj(props)) return;
+    // The label's own Visible property: the one static fact that can say its text is NOT shown. True says nothing (an ancestor
+    // may still hide it), so it only ever clears an earlier "hidden"; whether a player sees it is a player check's to say.
+    const shown = isObj(props.Visible) && props.Visible.t === 'bool' ? props.Visible.v : undefined;
+    const hidden = shown === false ? false : null;
     for (const [key, value] of Object.entries(props)) {
       if (COLOUR_KEY.test(key)) this.colour(path, name, key, value, via);
       else if (TEXT_KEY.test(key)) {
         const t = textOf(value);
-        if (t) this.text(t, path, via, null);
+        if (t) this.text(t, path, via, hidden);
       }
+    }
+    if (shown !== undefined) {
+      for (const f of this.l.texts) if (f.where === path && f.via !== 'play') f.visible = hidden;
     }
   }
 }

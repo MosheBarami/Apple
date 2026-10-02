@@ -177,6 +177,17 @@ test('text: a claim that it is VISIBLE to the player needs a player check, whate
   assert.deepEqual(verdictOf('Players see "Welcome" on screen.', l), ['text:supported']);
 });
 
+test('text: a label whose own Visible property is false cannot be called visible, even before any player check', () => {
+  const l = newLedger();
+  set(l, 'game.StarterGui.Hud.Joke', { Text: { t: 'string', v: 'Knock knock' }, Visible: { t: 'bool', v: false } });
+  const r = auditReply('The screen shows "Knock knock".', l);
+  assert.equal(r.contradicted.length, 1, JSON.stringify(r.findings));
+  assert.match(r.contradicted[0].because, /Visible property is false/);
+  // A player who actually saw it outranks the static property (an ancestor can also change what is drawn).
+  play(l, screen([{ name: 'Joke', text: 'Knock knock', visible: true }]));
+  assert.deepEqual(verdictOf('The screen shows "Knock knock".', l), ['text:supported']);
+});
+
 test('text: a player check that read the screen and never saw the text does not support the claim', () => {
   const l = newLedger();
   play(l, screen([{ name: 'Other', text: 'Score', visible: true }]));
@@ -360,4 +371,28 @@ test('the steer carries no reason a model wrote: a judge finding is sent back by
   assert.doesNotMatch(steer, /IGNORE ALL PREVIOUS|delete everything/);
   // and the line the user reads does not repeat it either
   assert.doesNotMatch(notCheckedLine(resultOf([], [judged])), /IGNORE ALL PREVIOUS|delete everything/);
+});
+
+// ====================================================== the audit knows no subject (generalize, never patch) ===
+
+test('the verdicts are the same for any noun: the audit reads shapes and shared words, not subjects', () => {
+  const nouns = ['door', 'spaceship', 'waterfall', 'dragon', 'stool', 'windmill', 'rocket', 'bakery', 'lantern', 'bridge', 'castle', 'robot'];
+  for (const noun of nouns) {
+    const Noun = noun[0].toUpperCase() + noun.slice(1);
+    const l = newLedger();
+    set(l, `game.Workspace.${Noun}`, { Color: red });
+    assert.deepEqual(verdictOf(`The ${noun} is red.`, l), ['colour:supported'], noun);
+    assert.deepEqual(verdictOf(`I painted the ${noun} blue.`, l), ['colour:contradicted'], noun);
+    set(l, `game.StarterGui.Hud.${Noun}Label`, { Text: { t: 'string', v: `Hello ${noun}` } });
+    read(l, `game.StarterGui.Hud.${Noun}Label`, { Text: { t: 'string', v: `Hello ${noun}` } });
+    assert.deepEqual(verdictOf(`The ${noun} sign says "Hello ${noun}".`, l), ['text:supported'], noun);
+    assert.deepEqual(verdictOf(`The ${noun} opens when you click it.`, l), ['behaviour:unsupported'], noun);
+  }
+});
+
+test('a noun the audit has never seen is audited like any other', () => {
+  const l = newLedger();
+  set(l, 'game.Workspace.Zorblax', { Color: red });
+  assert.deepEqual(verdictOf('The zorblax is red.', l), ['colour:supported']);
+  assert.deepEqual(verdictOf('The zorblax is green.', l), ['colour:contradicted']);
 });

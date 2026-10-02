@@ -114,7 +114,7 @@ const NUMBER_WORDS: Record<string, number> = {
 /** Measurements and durations: numbers followed by these are not counts of things in the place. */
 const UNIT_NOUNS = new Set([
   'second', 'minute', 'hour', 'day', 'week', 'stud', 'point', 'credit', 'step', 'time', 'level', 'percent', 'degree', 'way', 'thing',
-  'part', 'piece', 'line', 'word', 'letter', 'option', 'idea', 'reason', 'tip', 'item', 'frame', 'tick', 'round', 'turn', 'try', 'attempt',
+  'line', 'word', 'letter', 'option', 'idea', 'reason', 'tip', 'frame', 'tick', 'round', 'turn', 'try', 'attempt',
 ]);
 
 // ------------------------------------------------------------------------------ extraction ---
@@ -281,18 +281,18 @@ function colourWhat(f: ColourFact): string {
 
 function lookSaysColour(claim: Claim, l: EvidenceLedger): Finding | null {
   const subject = subjectTokens(claim.subject);
+  // Whether a colour word in a look's text names the colour the agent claimed. A word is judged by its own first family.
+  const agrees = (word: string): boolean => sameColour(claim.colour!, [...(familiesOfWord(word) ?? [])][0] ?? 'grey') === true;
   for (const o of [...l.looks].reverse()) {
     if (o.mutationSeq !== l.mutationSeq) continue; // a look at an older state is not evidence about this one
     const text = `${o.about} ${o.note}`;
     if (subject.length && !tokensMatch(subject, pathTokens(text.replace(/[^A-Za-z ]/g, ' ')))) continue;
     const words = colourWordsIn(text);
     if (o.verdict === 'seen') {
-      if (words.some((w) => sameColour(claim.colour!, familiesOfWord(w.base) ? [...familiesOfWord(w.base)!][0]! : 'grey') === true)) {
-        return found(claim, 'supported', 'a look at the place saw it that way');
-      }
+      if (words.some((w) => agrees(w.base))) return found(claim, 'supported', 'a look at the place saw it that way');
       if (words.length) return found(claim, 'contradicted', `a look at the place saw it as ${words[0]!.word}, not ${claim.colour}`);
     }
-    if (o.verdict === 'not_seen' && words.some((w) => sameColour(claim.colour!, [...(familiesOfWord(w.base) ?? [])][0] ?? 'grey') === true)) {
+    if (o.verdict === 'not_seen' && words.some((w) => agrees(w.base))) {
       return found(claim, 'contradicted', 'a look at the place did not see it as claimed');
     }
   }
@@ -334,6 +334,7 @@ function evalText(claim: Claim, l: EvidenceLedger): Finding {
   if (claim.visible) {
     if (played.some((t) => t.visible === true)) return found(claim, 'supported', 'a player check saw that text on screen');
     if (played.length) return found(claim, 'contradicted', 'a player check found that text hidden: the player would not see it');
+    if (facts.some((t) => t.visible === false)) return found(claim, 'contradicted', 'the text\'s own Visible property is false, so a player would not see it');
     const screenRead = l.plays.some((p) => p.mutationSeq === l.mutationSeq && p.observed && p.screens > 0);
     if (screenRead) return found(claim, 'unsupported', 'a player check read the screen and did not see that text', 'none');
     return found(claim, 'unsupported', 'no player check has seen that text on screen', 'play');
@@ -382,8 +383,11 @@ export function auditClaims(claims: Claim[], l: EvidenceLedger): Finding[] {
   return claims.map((c) => evaluate(c, l));
 }
 
+/** Longest reply the audit reads. A reply is a few sentences; this only bounds a pathological one. */
+const REPLY_MAX_CHARS = 20_000;
+
 export function auditReply(reply: string, l: EvidenceLedger): AuditResult {
-  const claims = extractClaims(typeof reply === 'string' ? reply : '');
+  const claims = extractClaims(typeof reply === 'string' ? reply.slice(0, REPLY_MAX_CHARS) : '');
   return resultOf(claims, auditClaims(claims, l));
 }
 

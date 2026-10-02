@@ -225,6 +225,18 @@ test('no camera reading at all: the camera is not moved, and the current view is
   assert.equal(out.cameraRestored, null);
 });
 
+test('a Studio that does not answer at all is given up on at once, not waited on operation by operation', async () => {
+  const p = plugin();
+  const dead = async (op) => { p.ops.push(op); return { id: 'x', ok: false, error: 'Studio did not respond within 20s', failure: 'timeout' }; };
+  const d = deps({ ops: p.ops, exec: dead });
+  const out = await runLook(d, args());
+  assert.equal(out.ok, false);
+  assert.equal(p.ops.length, 1, 'one operation, then the answer');
+  assert.match(out.error, /Studio did not answer/);
+  assert.equal(out.cameraRestored, null);
+  assert.equal(d.observe.inputs.length, 0);
+});
+
 test('nothing in space to frame (no targets): the current view only', async () => {
   const p = plugin();
   const out = await runLook(deps(p), args({ touched: [], targets: [] }));

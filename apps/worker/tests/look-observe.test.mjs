@@ -25,8 +25,9 @@ const base = { request: 'a small garden with a fountain', expect: ['a fountain i
 test('the schema asks for observations and has no score, grade or rating anywhere in it', () => {
   const text = JSON.stringify(OBSERVE_SCHEMA);
   assert.doesNotMatch(text, /score|grade|rating|quality|\"passed\"/i);
-  const verdicts = OBSERVE_SCHEMA.schema.properties.observations.items.properties.verdict.enum;
-  assert.deepEqual([...verdicts].sort(), ['cannot_tell', 'not_seen', 'seen']);
+  const item = OBSERVE_SCHEMA.schema.properties.observations.items;
+  assert.deepEqual([...item.properties.verdict.enum].sort(), ['cannot_tell', 'not_seen', 'seen']);
+  assert.deepEqual([...item.required].sort(), Object.keys(item.properties).sort(), 'every property is required, as in the other vision schemas');
 });
 
 test('the prompt says what a look is for: observations, no score, prefer "cannot tell", untrusted text stays data', () => {

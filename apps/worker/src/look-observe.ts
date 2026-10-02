@@ -83,7 +83,8 @@ export const OBSERVE_SCHEMA = {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['about', 'verdict', 'note'],
+          // Every property is required, like the other vision schemas here (a strict JSON-schema mode wants it); `view` may be empty.
+          required: ['about', 'verdict', 'note', 'view'],
           properties: {
             about: { type: 'string', maxLength: 140 },
             verdict: { type: 'string', enum: ['seen', 'not_seen', 'cannot_tell'] },

@@ -217,6 +217,14 @@ export async function runLook(d: LookDeps, a: LookArgs): Promise<LookOutcome> {
   };
 
   const info = await call({ op: 'viewport_info' });
+  // A Studio that did not answer at all will not answer the next ten operations either: do not spend minutes of timeouts finding out.
+  if (!info.ok && (info.failure === 'timeout' || info.failure === 'transport')) {
+    return {
+      ok: false, source: 'none', views: [], observations: [], answers: [], issues: [], neurons: 0, cameraRestored: null,
+      note: 'Nothing was observed.',
+      error: 'I could not look at the place: Studio did not answer. Do not claim anything about how it looks.',
+    };
+  }
   const saved = isObj(info.data) && isObj(info.data.camera) && Array.isArray(info.data.camera.cframe)
     && info.data.camera.cframe.length === 12 && info.data.camera.cframe.every((n: unknown) => typeof n === 'number' && Number.isFinite(n))
     ? (info.data.camera.cframe as number[])

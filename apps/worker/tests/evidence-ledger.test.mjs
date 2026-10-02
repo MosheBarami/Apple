@@ -87,6 +87,16 @@ test('text written into a label and text read back are both facts, and neither i
   assert.deepEqual(l.texts.map((t) => [t.text, t.via, t.visible]), [['Welcome Back', 'write', null], ['Welcome Back', 'read', null]]);
 });
 
+test('text whose own Visible property is false is recorded as hidden, by write or by read, and showing it again clears that', () => {
+  const l = newLedger();
+  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.StarterGui.Hud.Joke', props: { Text: { t: 'string', v: 'Knock knock' }, Visible: { t: 'bool', v: false } } }, result: {}, ok: true });
+  assert.deepEqual(l.texts.map((t) => [t.text, t.via, t.visible]), [['Knock knock', 'write', false]]);
+  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.StarterGui.Hud.Joke', props: { Visible: { t: 'bool', v: true } } }, result: {}, ok: true });
+  assert.deepEqual(l.texts.map((t) => t.visible), [null], 'it is no longer known to be hidden (an ancestor may still hide it, which only a player check can say)');
+  recordToolCall(l, { tool: 'get_instance', kind: 'read', args: {}, result: { path: 'game.StarterGui.Hud.Joke', name: 'Joke', props: { Text: { t: 'string', v: 'Knock knock' }, Visible: { t: 'bool', v: false } } }, ok: true });
+  assert.ok(l.texts.some((t) => t.via === 'read' && t.visible === false));
+});
+
 test('a real play check records what the player saw: visible and hidden text apart, and the errors', () => {
   const l = newLedger();
   recordToolCall(l, {
