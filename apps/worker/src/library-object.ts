@@ -462,8 +462,10 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   const b = await bounds(ctx.execStudioOp, body) ?? await bounds(ctx.execStudioOp, model);
   if (!b) return { error: `${name} is no longer in the place.` };
   const problems: string[] = [];
-  const fx = vfxPlan('sparkle_shimmer', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 6)), rate: 2 });
-  const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 2 }, Range: { t: 'number' as const, v: 20 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
+  // A few twinkles and a soft light, never a haze: at scale 2.5, rate 2 with the level-up aura on top, the butter turned
+  // into a white blob a few seconds into Play (live 2026-10-02), and the model the user picked could not be seen.
+  const fx = vfxPlan('sparkle_shimmer', { path: body, className: 'Part' }, { scale: 1.5, rate: 0.5 });
+  const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 1 }, Range: { t: 'number' as const, v: 12 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
   const sparkled = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in fx ? [] : fx.items), light] }, 60_000).catch(() => null);
   if (!sparkled?.ok) problems.push('sparkles');
 
@@ -516,8 +518,9 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
     const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: crownPick.gameId, path: crownPick.path, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
     if (imported?.ok) {
       await ctx.execStudioOp({ op: 'strip_descendants', root: folderPath, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
-      // Big enough to read from the spawn (a 60% crown on the 7-stud butter was a speck): most of the short side.
-      const crownWidth = Math.max(5, Math.min(b.size[0], b.size[2]) * 0.9);
+      // Big enough to read from the spawn (a 60% crown on the 7-stud butter was a speck, 90% still a thin ring): a little
+      // over the short side, never more than half the long one.
+      const crownWidth = Math.max(5, Math.min(Math.max(b.size[0], b.size[2]) / 2, Math.min(b.size[0], b.size[2]) * 1.1));
       const top: V3 = [cx, b.bottomY + b.size[1] - 0.2, cz];
       const placed = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: folderPath, parent: model, name: 'Crown', at: top, length: crownWidth }] }, 60_000).catch(() => null);
       const cb = placed?.ok ? await bounds(ctx.execStudioOp, `${model}.Crown`) : null;
@@ -534,10 +537,10 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
     await ctx.execStudioOp({ op: 'delete_instances', paths: [madeFolder ? PARTS_FOLDER : folderPath] }, 20_000).catch(() => undefined);
   }
 
-  // A golden aura rising round it and a glow outline on the whole model (the library's effect presets).
-  const aura = vfxPlan('level_up_aura', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 8)), rate: 0.6 });
+  // A glow outline on the whole model (the library's preset). No level-up aura: it is a few-second burst for a player,
+  // and left on it was a column of light that washed the object out.
   const glow = vfxPlan('egg_glow', { path: model, className: 'Model' });
-  const shone = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in aura ? [] : aura.items), ...('error' in glow ? [] : glow.items)] }, 60_000).catch(() => null);
+  const shone = 'error' in glow ? null : await ctx.execStudioOp({ op: 'create_instances', items: glow.items }, 60_000).catch(() => null);
   // An outline only: the preset's fill washed the model out and hid its own print (the butter's "BUTTER", live 2026-10-02).
   if (shone?.ok) await ctx.execStudioOp({ op: 'set_props', path: `${model}.Glow`, props: { FillTransparency: { t: 'number', v: 1 } } }, 20_000).catch(() => undefined);
 
@@ -545,7 +548,7 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   await ctx.objectMemory?.save({ ...spec, cool: true }).catch(() => undefined);
   const what = objectWords(String(spec.request ?? '')).join(' ') || 'object';
   const added = [crowned ? `it wears a crown from your library ("${crownPick!.name}"${crownPick!.game ? ` from ${crownPick!.game}` : ''})` : '',
-    sparkled?.ok ? 'it sparkles' : '', shone?.ok ? 'a golden aura rises round it and it glows' : '',
+    sparkled?.ok ? 'it sparkles' : '', shone?.ok ? 'it glows' : '',
     spins ? 'four neon orbs circle above it' : '', 'the rim of its stage lights up'].filter(Boolean);
   return {
     changed: true, projectMutated: true, object: model, ...(problems.length ? { problems } : {}),

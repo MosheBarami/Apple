@@ -141,3 +141,16 @@ test('a second "cooler" clears the first one before measuring, and measures the 
     assert.ok(kit.indexOf(stale) < firstMeasure, `${stale} cleared first`);
   }
 });
+
+// Test 3, round 3 (2026-10-02): a few seconds into Play the cooled butter was a white blob (the level-up aura left on,
+// sparkles at scale 2.5 and twice the rate, two lights). The model the user picked must stay visible.
+test('the cool kit twinkles without hiding the model', () => {
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
+  assert.ok(!/vfxPlan\('level_up_aura'/.test(kit), 'no level-up aura left on (a few-second burst for a player)');
+  const m = kit.match(/vfxPlan\('sparkle_shimmer', [^)]*\{ scale: ([\d.]+), rate: ([\d.]+) \}/);
+  assert.ok(m, 'sparkles found');
+  assert.ok(Number(m[1]) <= 2 && Number(m[2]) <= 1, `sparkles stay small and few (scale ${m[1]}, rate ${m[2]})`);
+  const bright = kit.match(/name: 'CoolLight'[^}]*Brightness: \{ t: 'number' as const, v: ([\d.]+) \}/);
+  assert.ok(bright && Number(bright[1]) <= 1, 'a soft light');
+});
