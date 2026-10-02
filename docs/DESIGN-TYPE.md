@@ -1,5 +1,15 @@
 # The type decision, and the two design decisions beside it
 
+> **UPDATED 2026-10-02 (phase 6, D-EMBER-1).** The decision "system stack, no webfont" STANDS: the stack is now
+> `ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif` with
+> `ui-monospace, 'SF Mono', Menlo, Consolas, monospace`, and no font file is downloaded. What changed is the
+> weight rule: "nothing above 400" is overturned. Body is 400, UI and display are 500 and 600, nothing is
+> above 600. The landing h1 is `clamp(2.25rem, 6vw + .5rem, 3.5rem)` (3.5rem is the `check-copy` cap),
+> tracking -0.03em; page h1 2.25rem; h2 1.75rem; body 1rem; caption and eyebrow 0.8125rem (the minimum text
+> size; the spec table said 0.75rem for the eyebrow and 0.8125rem for the minimum, and the minimum wins).
+> Eyebrows are mono, sentence case, never all caps. Credits, usage, counts and timings use tabular numerals.
+> The site's wordmark is drawn as paths, so it needs no font.
+
 Three rows of the outstanding ledger ask for a decision rather than for code. This file is the
 decision, with the measurement behind it, so that the next person to read the stylesheet and the
 next person to read a memory file are reading the same thing.
