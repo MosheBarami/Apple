@@ -422,7 +422,7 @@
         "tests/check-escape-hatches.test.mjs"
       ],
       "token": "Golem",
-      "max": 13,
+      "max": 11,
       "reason": "comments, test fixtures and labels that state the rename itself (the footer byline history, the retired Roblox asset named Golem, the design-history page labels, the one-operator test)",
       "removal": "delete the comment/page when its subject is deleted; the design-history page is a decision for the repo-organise workflow"
     },

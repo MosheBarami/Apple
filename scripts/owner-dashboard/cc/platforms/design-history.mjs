@@ -1,5 +1,5 @@
-// GET /api/cc/design-history: how the site and the web app looked, from the first commit (when the
-// product was Apple) to today. Three real sources: the commits that touched a style sheet, layout,
+// GET /api/cc/design-history: how the site and the web app looked, from the first commit (before the
+// product was renamed to Apple) to today. Three real sources: the commits that touched a style sheet, layout,
 // design token, brand file or design doc (from the commits page's background walk, so no second
 // pass over the history); every design screenshot on disk, placed at the commit that first added
 // it; and the design entries of the two decision logs.

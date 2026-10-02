@@ -1,4 +1,4 @@
-// היסטוריית עיצוב: how the product looked and why, since the day it was called Golem. Every row is
+// היסטוריית עיצוב: how the product looked and why, from the first commit on. Every row is
 // real (GET /api/cc/design-history): commits that touched style, layout, brand or design-doc files,
 // screenshots placed on the day git (or their file name) dates them, and the design decisions from
 // docs/DECISIONS.md and docs/autonomy/DECISIONS.md. Oldest first, so it reads as the story it is.
@@ -9,6 +9,11 @@ import { nd, day, stamp, sha7, path, thumb, lightbox } from './repo-kit.js';
 const KIND_HE = { style: 'עיצוב (CSS)', layout: 'מבנה עמוד', brand: 'מותג', doc: 'מסמך עיצוב', shot: 'צילום מסך' };
 const APP_HE = { web: 'אפליקציית הווב', site: 'האתר', docs: 'מסמכים', both: 'שתיהן' };
 const FROM_HE = { git: 'תאריך הקומיט שהוסיף את הקובץ', name: 'תאריך משם הקובץ', mtime: 'תאריך שינוי הקובץ בדיסק' };
+// The two eras of the history. The first one ends at the commit that renamed the product to Apple, so
+// naming it "Apple" too (what the rename codemod turned its old name into) made the eyebrow read "from
+// Apple to Apple" and gave the era filter two identical chips. It gets a neutral, true label instead:
+// "the earlier version" (הגרסה הקודמת, "Earlier version"). Exported so the test pins the wording.
+export const ERA_LABEL = { legacy: 'הגרסה הקודמת', apple: 'Apple' };
 const FOLD = 6; const FOLD_SHOTS = 8;
 const st = { era: '', app: '', kind: '', open: new Set() };
 let sets = {};
@@ -33,8 +38,8 @@ function eraBanner(d) {
   const gn = n('legacy'); const an = n('apple');
   return html`<section class="card dh-era">
     <div class="dh-era-bar">
-      <div class="dh-e legacy" style="flex:${gd.toFixed(1)}"><b>Apple</b><span>${day(g.from)} עד ${day(g.to)}</span><small>${num(gn.c)} שינויי עיצוב · ${num(gn.s)} צילומים</small></div>
-      <div class="dh-e apple" style="flex:${ad.toFixed(1)}"><b>Apple</b><span>מ-${day(a.from)} ועד היום</span><small>${num(an.c)} שינויי עיצוב · ${num(an.s)} צילומים</small></div>
+      <div class="dh-e legacy" style="flex:${gd.toFixed(1)}"><b>${ERA_LABEL.legacy}</b><span>${day(g.from)} עד ${day(g.to)}</span><small>${num(gn.c)} שינויי עיצוב · ${num(gn.s)} צילומים</small></div>
+      <div class="dh-e apple" style="flex:${ad.toFixed(1)}"><b>${ERA_LABEL.apple}</b><span>מ-${day(a.from)} ועד היום</span><small>${num(an.c)} שינויי עיצוב · ${num(an.s)} צילומים</small></div>
     </div>
     <dl class="dh-era-kv">
       <div><dt>הקומיט הראשון</dt><dd>${sha7(g.firstCommit?.sha)} <span dir="auto">${g.firstCommit?.subject}</span></dd></div>
@@ -50,7 +55,7 @@ function chips(label, key, opts) {
 function filters(d) {
   const cnt = (f) => d.timeline.filter(f).length;
   return html`<section class="card dh-filters">
-    ${chips('תקופה', 'era', [['', 'הכול'], ['legacy', 'Apple', cnt((c) => c.era === 'legacy')], ['apple', 'Apple', cnt((c) => c.era === 'apple')]])}
+    ${chips('תקופה', 'era', [['', 'הכול'], ['legacy', ERA_LABEL.legacy, cnt((c) => c.era === 'legacy')], ['apple', ERA_LABEL.apple, cnt((c) => c.era === 'apple')]])}
     ${chips('איפה', 'app', [['', 'הכול'], ...['web', 'site', 'docs'].map((a) => [a, APP_HE[a], cnt((c) => c.apps.includes(a))])])}
     ${chips('סוג השינוי', 'kind', [['', 'הכול'], ...Object.keys(KIND_HE).map((k) => [k, KIND_HE[k], k === 'shot' ? d.shots.length : cnt((c) => c.kinds[k])])])}
   </section>`;
@@ -82,7 +87,7 @@ function timeline(d) {
     const cs = open ? x.c : x.c.slice(0, FOLD); const ss = open ? x.s : x.s.slice(0, FOLD_SHOTS);
     sets[k] = x.s.map(shotItem);
     const hidden = (x.c.length - cs.length) + (x.s.length - ss.length);
-    const divider = !passed && k >= rename ? ((passed = true), html`<li class="dh-rename" data-k="rename"><span>כאן Golem הפך ל-Apple</span>${sha7(d.era.apple.commit?.sha)}</li>`) : '';
+    const divider = !passed && k >= rename ? ((passed = true), html`<li class="dh-rename" data-k="rename"><span>כאן שם המוצר הוחלף ל-Apple</span>${sha7(d.era.apple.commit?.sha)}</li>`) : '';
     return html`${divider}<li class="dh-day ${era}" data-k="d-${k}" style="--i:${Math.min(di, 12)}">
       <header class="dh-dh"><h3>${day(k)}</h3><span>${x.c.length ? `${num(x.c.length)} שינויים` : ''}${x.c.length && x.s.length ? ' · ' : ''}${x.s.length ? `${num(x.s.length)} צילומים` : ''}</span></header>
       ${cs.length ? html`<ol class="dh-cs">${cs.map(cRow)}</ol>` : ''}
@@ -106,7 +111,7 @@ export default {
   title: 'היסטוריית עיצוב',
   nav: 'היסטוריית עיצוב',
   glyph: 'palette',
-  eyebrow: 'ריפו וידע · מ-Apple ועד Apple',
+  eyebrow: `ריפו וידע · מ${ERA_LABEL.legacy} ועד ${ERA_LABEL.apple}`,
   sub: 'כל שינוי בקבצי העיצוב והמבנה, כל צילום מסך במקום שלו בזמן, וההחלטות שהובילו לשם. מהיום הראשון ועד היום.',
   endpoint: '/api/cc/design-history',
   render(d) {
