@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { part, inst, finalize, fakeStudio, coverModel, leafModel, anonymousModel } from './behaviour-fixtures.mjs';
+import { HARNESS, MOCK, MODULE, luauAvailable, runLuau } from '../../../packages/components/tests/behave-mock.mjs';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WORKER, '..', '..');
@@ -188,6 +189,50 @@ test('everything the worker writes passes the runtime\'s own check, with the sam
   writeFileSync(file, probe);
   const out = execFileSync('luau', [file], { encoding: 'utf8' });
   assert.equal(out.trim().split('\n').length, recs.length, out);
+});
+
+test('end to end: the sign the anatomy recommends lifts the cover in the runtime, and what rides with it goes along', { skip: luauAvailable() ? false : 'luau is not on PATH' }, async () => {
+  const m = coverModel();
+  const studio = fakeStudio(m.root, { hash });
+  const focus = JSON.parse((await T.runTool(studio, 'model_anatomy', JSON.stringify({ model: MODEL, part: `${MODEL}.Cover` }))).resultForLlm);
+  const back = focus.hinges.find((h) => h.axis === 'x' && h.pivot[1] === -1 && h.pivot[2] === -1);
+  const angle = back.negativeCarries === '+y' ? -100 : 100; // the agent reads which sign carries the part up
+  const done = await call(studio, { behaviours: [{ verb: 'swing', id: 'open', target: `${MODEL}.Cover`, with: [`${MODEL}.Knob`], hinge: { pivot: back.pivot, axis: back.axis }, angle, seconds: 0.5, ease: 'Linear' }] });
+  assert.ok(!done.error, done.error);
+  const cfg = written(studio);
+  const body = cfg.slice(cfg.indexOf('return {'));
+  // The same geometry the fixture describes, in the mock world, with the module the tool wrote.
+  const scene = `
+local w = newWorld()
+local base = w.part("Body", 0, 0.5, 0, 4, 1, 3)
+local cover = w.part("Cover", 0, 1.2, 0, 4, 0.4, 3)
+local knob = w.part("Knob", 0, 1.5, 1.4, 0.4, 0.4, 0.4)
+local model = w.model("Unit", base, cover, knob)
+local seam = make("Weld", "Seam"); seam.Part0 = base; seam.Part1 = cover; seam.Parent = base
+local hold = make("WeldConstraint", "Hold"); hold.Part0 = cover; hold.Part1 = knob; hold.Parent = cover
+local m = make("ModuleScript", "AppleBehaviours"); m._value = (function()
+${body}
+end)(); m.Parent = model
+w.start()
+assert(#warnings == 0, table.concat(warnings, "; "))
+cover:FindFirstChildWhichIsA("ClickDetector").MouseClick:Fire({})
+w.run(1)
+local c, k, b = { cover.CFrame:GetComponents() }, { knob.CFrame:GetComponents() }, { base.CFrame:GetComponents() }
+print(string.format("cover %.4f %.4f %.4f", c[1], c[2], c[3]))
+print(string.format("knob %.4f %.4f %.4f", k[1], k[2], k[3]))
+print(string.format("base %.4f %.4f %.4f", b[1], b[2], b[3]))
+print("seam " .. tostring(seam.Enabled) .. " hold " .. tostring(hold.Enabled) .. " anchored " .. tostring(cover.Anchored) .. " " .. tostring(model:GetAttribute("AppleBehave_open")))
+`;
+  const out = runLuau(`${HARNESS}\nlocal AppleBehave = (function()\n${MODULE}\nend)()\n${MOCK}\n${scene}`, 'e2e');
+  const row = (name) => out.split('\n').find((l) => l.startsWith(name + ' ')).split(' ').slice(1).map(Number);
+  const [cx, cy, cz] = row('cover');
+  assert.ok(cy > 1.2 + 1, `the cover's centre went up (y = ${cy})`);
+  assert.ok(cz < 0, `and back toward the hinge edge it turns about (z = ${cz})`);
+  assert.ok(Math.abs(cx) < 1e-6, 'about the x axis: no sideways drift');
+  const [, ky] = row('knob');
+  assert.ok(ky > 1.5 + 0.5, `the knob that rides with it went up too (y = ${ky})`);
+  assert.deepEqual(row('base'), [0, 0.5, 0], 'the body did not move');
+  assert.match(out, /seam false hold true anchored true true/, 'the weld to the body is off, the weld to the knob is left alone');
 });
 
 test('the runtime script and every config this tool writes pass the plugin\'s own source refusal list', () => {
