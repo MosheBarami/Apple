@@ -420,7 +420,6 @@ export function fitNotes(notes: readonly string[], keep = 5, each = 260): string
 }
 
 const MAX_BEHAVIOURS = 40;
-const RUNTIME_PATH = 'game.ServerScriptService.AppleBehave';
 
 export async function addBehaviour(ctx: AgentCtx, a: Record<string, unknown>) {
   if (!behaviourEnabled(ctx.env)) return { error: 'add_behaviour is switched off on this deployment (BEHAVIOUR_V2=off)' };
@@ -549,4 +548,3 @@ export async function installRuntime(ctx: AgentCtx): Promise<{ error?: string; v
   return { verified };
 }
 
-export { RUNTIME_PATH };
