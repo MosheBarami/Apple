@@ -1,0 +1,4 @@
+{
+  "_comment": "Justified exceptions to no-subject-literals.test.mjs. Each entry: path (from the repo root), literal (as the guard reports it), reason, approvedOn (the owner's approval date, YYYY-MM-DD). The count is a tripwire: it only shrinks.",
+  "entries": []
+}
