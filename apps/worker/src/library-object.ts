@@ -453,11 +453,15 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   const name = String(spec.name ?? '');
   if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(name)) return { error: 'The object is not recorded.' };
   const model = `game.Workspace.${name}`;
-  const b = await bounds(ctx.execStudioOp, model);
+  const body = `${model}.AppleBody`;
+  // What an earlier "cooler" added goes first, then the object is measured by its own body: measured with an earlier
+  // crown still on, the new crown stood on top of the old one, 3 studs over the butter (live 2026-10-02).
+  for (const path of [`${model}Cool`, `${model}.Crown`, `${body}.CrownRoot`, `${body}.SparkleShimmerFX`, `${body}.CoolLight`, `${body}.LevelUpAuraFX`, `${model}.Glow`]) {
+    await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+  }
+  const b = await bounds(ctx.execStudioOp, body) ?? await bounds(ctx.execStudioOp, model);
   if (!b) return { error: `${name} is no longer in the place.` };
   const problems: string[] = [];
-  const body = `${model}.AppleBody`;
-  for (const path of [`${model}Cool`, `${body}.SparkleShimmerFX`, `${body}.CoolLight`]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const fx = vfxPlan('sparkle_shimmer', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 6)), rate: 2 });
   const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 2 }, Range: { t: 'number' as const, v: 20 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
   const sparkled = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in fx ? [] : fx.items), light] }, 60_000).catch(() => null);
@@ -504,7 +508,7 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   })());
   if (crownPick?.gameId && crownPick.path && b.size.every((n) => n > 0)) {
     const folderPath = `${PARTS_FOLDER}.AppleCrown`;
-    for (const path of [`${model}.Crown`, folderPath]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+    await ctx.execStudioOp({ op: 'delete_instances', paths: [folderPath] }, 20_000).catch(() => undefined);
     const parts = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
     const madeFolder = !parts?.ok;
     if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
@@ -531,7 +535,6 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   }
 
   // A golden aura rising round it and a glow outline on the whole model (the library's effect presets).
-  for (const path of [`${body}.LevelUpAuraFX`, `${model}.Glow`]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   const aura = vfxPlan('level_up_aura', { path: body, className: 'Part' }, { scale: Math.max(1, Math.min(4, Math.max(...b.size) / 8)), rate: 0.6 });
   const glow = vfxPlan('egg_glow', { path: model, className: 'Model' });
   const shone = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in aura ? [] : aura.items), ...('error' in glow ? [] : glow.items)] }, 60_000).catch(() => null);

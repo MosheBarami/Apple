@@ -127,3 +127,17 @@ test('CamelCase names are words, and the cool kit crowns a library object withou
   assert.match(kit, /path: `\$\{model\}\.AppleBody`, props: \{ Anchored: \{ t: 'bool', v: false \} \}/, 'the body is let go again');
   assert.match(kit, /strip_descendants', root: folderPath, classes: \['LocalScript', 'Script', 'ModuleScript', 'Sound'\]/, 'the crown is script-free too');
 });
+
+// Test 3, round 2 (2026-10-02): cooled twice, the new crown stood on the old one, 3 studs over the butter.
+test('a second "cooler" clears the first one before measuring, and measures the body', () => {
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
+  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
+  const firstMeasure = kit.indexOf('await bounds(');
+  const clearCrown = kit.indexOf('`${model}.Crown`');
+  assert.ok(firstMeasure > 0 && clearCrown > 0, 'both found');
+  assert.ok(clearCrown < firstMeasure, 'the old crown goes before the object is measured');
+  assert.match(kit.slice(firstMeasure - 30, firstMeasure + 60), /bounds\(ctx\.execStudioOp, body\)/, 'measured by its own body');
+  for (const stale of ['${body}.CrownRoot', '${body}.LevelUpAuraFX', '${model}.Glow', '${model}Cool']) {
+    assert.ok(kit.indexOf(stale) < firstMeasure, `${stale} cleared first`);
+  }
+});
