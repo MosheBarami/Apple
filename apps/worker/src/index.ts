@@ -4538,6 +4538,24 @@ app.post('/api/admin/agent-run/:id', async (c) => {
   return c.json(await res.json(), res.status as 200);
 });
 
+/**
+ * The owner's benchmark on his OWN project, with his own sign-in (owner, 2026-10-02): a fresh chat (conversation,
+ * memory and run state cleared; pairing and checkpoints kept) and the evaluation of what a finished request built.
+ * Owner only, never a collaborator; neither route builds anything.
+ */
+app.post('/api/projects/:id/bench/reset', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const res = await ctx.stub.fetch('https://do/bench-reset', { method: 'POST' });
+  return c.json(await res.json(), res.status as 200);
+});
+app.post('/api/projects/:id/bench/evaluate', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  const res = await ctx.stub.fetch('https://do/bench-evaluate', { method: 'POST', body: JSON.stringify(await c.req.json().catch(() => ({}))) });
+  return c.json(await res.json(), res.status as 200);
+});
+
 /** A fresh chat on a benchmark project, owner-key gated: conversation and memory gone, pairing and checkpoints kept. */
 app.post('/api/admin/bench-reset/:id', async (c) => {
   const res = await sessionStub(c.env, c.req.param('id')).fetch('https://do/bench-reset', { method: 'POST' });

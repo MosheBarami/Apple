@@ -1,6 +1,7 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
+import { benchEvaluate } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
 import { isObjectRequest } from '../object-tool';
@@ -2668,6 +2669,16 @@ export class SessionDO extends DurableObject<Env> {
       this.sql.exec('delete from messages');
       this.sql.exec('delete from oplog');
       return json({ ok: true, reset: true });
+    }
+
+    // The owner's benchmark: measure the place after a request's run ended (owner-bench.ts). Never during a run.
+    if (path === '/bench-evaluate' && req.method === 'POST') {
+      const running = await this.ctx.storage.get<AgentState>('agent');
+      if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
+      if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
+      const { request, reply } = (await req.json().catch(() => ({}))) as { request?: string; reply?: string };
+      const bind = await this.bind();
+      return json({ ok: true, ...(await benchEvaluate(this.agentCtx(), this.env, bind?.projectId ?? 'bench', String(request ?? ''), String(reply ?? ''))) });
     }
 
     if (path === '/purge' && req.method === 'POST') {
