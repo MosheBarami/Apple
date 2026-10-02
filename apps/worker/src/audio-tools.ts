@@ -376,7 +376,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'generate_sound',
       description:
-        'Synthesise an original sound effect — footsteps by surface, UI clicks and chimes, combat impacts and whooshes, or a seamlessly looping ambience bed. These are SYNTHESISED from oscillators and filtered noise, not fetched and not produced by a model: they cost nothing, are original work, and are reproducible from a seed, so asking again with the same seed returns the same take. There is NO text-to-audio here — it plays recipes from the catalogue below, not descriptions, so a request for "the sound of a dragon eating a bell" is refused rather than approximated. The result is played to the user in the workspace and stays downloadable for an hour. IT IS NOT IN THEIR GAME: nothing in this product uploads audio to Roblox, so never tell the user the sound has been placed — they can hear it, and they must upload it themselves before a Sound can use it.\n\nCatalogue:\n' +
+        'Synthesise an original sound effect from a recipe in the catalogue below (oscillators and filtered noise: free, original, the same seed gives the same take). NO text-to-audio: a description instead of a recipe is refused. The user hears it in the workspace and can download it for an hour. IT IS NOT IN THEIR GAME: nothing here uploads audio to Roblox, so never say it was placed; they upload it themselves before a Sound can use it.\n\nCatalogue:\n' +
         sfxCatalogue().map((s) => `  ${s.name} (${s.family}${s.loop ? ', loops' : ''}) — ${s.summary} ${s.use}`).join('\n'),
       parameters: S(
         {

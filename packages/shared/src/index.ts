@@ -163,7 +163,7 @@ export type StudioOp =
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
   | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
-      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design'; params?: Record<string, string | number> }
+      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design' | 'find'; params?: Record<string, string | number> }
   | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }

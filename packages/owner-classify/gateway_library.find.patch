@@ -1,0 +1,25 @@
+--- /private/tmp/claude-501/-Users-moshe-Developer-RbxAI/3fb82a4b-1c81-47a7-87f0-604bc56d5f9b/scratchpad/w/gateway_library.orig.py	2026-10-02 15:34:00
++++ gateway_library.py	2026-10-02 15:34:05
+@@ -23,6 +23,8 @@
+   GET /v1/library/ui?purpose=&kit=&game=&style=&q=&level=&clean=&after=&limit=   screens and panels: purpose, style, buttons, defects (library_ui.py)
+   GET /v1/library/ui?kits=1&need=<purposes|brainrot|garden|simulator>   UI kits ranked by how completely and cleanly they cover the need (&kit=<id>: that one, every purpose)
+   GET /v1/library/ui?game=<id>&path=          one screen or panel in full (texts, buttons and what each does, every defect with its path)
++  GET /v1/library/find?q=&type=&subtype=&colour=&size=&min_quality=&game=&limit=&explain=1   the user's whole request matched by meaning, style, colour, size and type
++                                              over every classified item (packages/owner-classify): compact candidates with description, size, colours, quality, provenance
+   GET /v1/library/report                      totals over everything the library knows
+ 
+ The other library tools write families.json, names.json, verify.json (+ entries/<id>.verify.json), content.json,
+@@ -674,6 +676,13 @@
+         import gateway_library
+         import library_ui  # imports nothing of this module at load, so only once it is served
+         handler.reply(200, library_ui.serve(gateway_library, value, number))
++    elif path == '/v1/library/find':
++        import sys
++        code = str(HERE.parent / 'owner-classify')  # packages/owner-classify; reads only its own sidecar index, imports nothing of this module
++        if code not in sys.path:
++            sys.path.insert(0, code)
++        import find_route
++        handler.reply(200, find_route.serve(value, number))
+     elif path == '/v1/library/report':
+         handler.reply(200, report())
+     elif path == '/v1/library/artifact':

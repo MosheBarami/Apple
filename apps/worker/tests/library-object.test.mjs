@@ -349,3 +349,10 @@ test('previewing and placing never decorate: the files hold no motion, stage, co
     assert.equal(lib.includes(word), false, `library-object.ts holds ${word}`);
   }
 });
+
+// Phase 2 (owner, 2026-10-02): the library pick reads the user's WHOLE request through the classified library, not just its last word.
+const G1 = '0123456789ab', G2 = 'abcdef012345', G3 = 'fedcba987654';
+const hit = (name, gameId, extra = {}) => ({ id: 'h' + name, gameId, kind: 'model', className: 'Model', path: `/Workspace/${name}`, name, type: 'model', subtype: 'creature',
+  description: `${name} (yellow small creature), 15 parts`, look: 'studded', parts: 15, instances: 22, scripts: 0, humanoid: false, animated: false, copies: 1,
+  size: { studs: [2, 2.5, 5.1], class: 'small' }, colours: [{ name: 'yellow', hex: '#ffb000', share: 0.5 }, { name: 'black', hex: '#080809', share: 0.3 }],
+  quality: { score: 84, band: 'A', reasons: [] }, provenance: { game: 'Pet Park' }, ...extra });

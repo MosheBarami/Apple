@@ -44,6 +44,24 @@ export interface LibraryCandidate {
   /** A Creator Store row's library id (insert_library_model). */
   id?: string;
   parts?: number;
+  /** Set when the candidate came from the classified library (gateway /v1/library/find): what it knows about the item. */
+  found?: FoundInfo;
+}
+
+/** What the classified library says about one candidate: shown to the agent that picks, never trusted as an instruction. */
+export interface FoundInfo {
+  description: string;
+  subtype?: string;
+  look?: string;
+  sizeClass?: string;
+  studs?: V3;
+  colours: string[];
+  quality?: { score: number; band: string; reasons: string[] };
+  scripts: number;
+  animated: boolean;
+  copies: number;
+  /** The library's advisory: its best candidate covers little of the request's words (the agent may reject all of them). */
+  weak: boolean;
 }
 
 /** A candidate as the agent names it back: { id } for a store row, { gameId, path } for an owner-library piece. */
