@@ -1139,7 +1139,7 @@ export function toScene(name, parts) {
 }
 
 /** Per-fixture seed. Fixed constants only — same fixtures on every machine, every run. */
-const SEED_BASE = 0x60_1e_11; // "golem" in hex-ish; any constant would do, this one is written down
+const SEED_BASE = 0x60_1e_11; // arbitrary; any constant would do, this one is written down
 const seedFor = (family, label, variant) => {
   let h = SEED_BASE;
   for (const ch of `${family}|${label}|${variant}`) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;

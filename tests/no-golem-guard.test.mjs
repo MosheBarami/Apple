@@ -136,3 +136,29 @@ test('--local reports the NAME of a golem-named variable in an .env file and nev
     assert.doesNotMatch(r.stdout + r.stderr, /hunter2/);
   } finally { done(s); }
 });
+
+/* ------------------------------------------------------------------ the REAL tree --- */
+
+test('the real tree passes the guard with the committed allowlist', () => {
+  const r = spawnSync('node', [GUARD, '--root', REPO], { encoding: 'utf8' });
+  assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+  assert.match(r.stdout, /CLEAN/);
+  assert.match(r.stdout, /scanned \d{4,} tracked file/, 'it scanned the whole repository, not nothing');
+});
+
+test('MUTATION: with the allowlist taken away the real tree goes red — the guard is reading the tree', () => {
+  const r = spawnSync('node', [GUARD, '--root', REPO, '--allowlist', join(tmpdir(), 'no-such-allowlist.json'), '--count'], { encoding: 'utf8' });
+  assert.equal(r.status, 1);
+  assert.ok(Number(r.stdout.trim()) > 500, `only ${r.stdout.trim()} violations without the allowlist: the scan is not reading the repository`);
+});
+
+test('every allowlist entry says why it exists and when it goes', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { entries } = JSON.parse(readFileSync(join(REPO, 'scripts', `${OLD}-allowlist.json`), 'utf8'));
+  assert.ok(entries.length > 5, 'the allowlist is not empty, so this test checks something');
+  for (const e of entries) {
+    assert.ok(e.id, 'an entry has an id');
+    assert.ok(e.reason.length >= 40, `${e.id}: a reason, not a label`);
+    assert.ok(e.removal.length >= 8, `${e.id}: a removal condition`);
+  }
+});

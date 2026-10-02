@@ -68,6 +68,8 @@ const WILDCARD_OK = [
   // The detectors: programs whose whole job is to look for the old name in a deployed bundle, a built
   // plugin or a string literal. They have to name what they look for.
   /^scripts\/(check-rebrand\.mjs|probe-s1\.mjs|inspect-plugin-build\.py)$/,
+  // The runbook that removes the old name from the cloud: it names the resources it removes.
+  /^docs\/operations\/GOLEM-REMOVAL-RUNBOOK\.md$/,
 ];
 
 function die(msg) { console.error(`check-no-golem: ${msg}`); process.exit(2); }
