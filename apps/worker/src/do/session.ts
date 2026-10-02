@@ -7302,5 +7302,3 @@ async function gunzip(b: Uint8Array): Promise<string> {
   const stream = new Blob([b as unknown as ArrayBuffer]).stream().pipeThrough(ds);
   return await new Response(stream).text();
 }
-
-let requiredTool = 'build_object';
