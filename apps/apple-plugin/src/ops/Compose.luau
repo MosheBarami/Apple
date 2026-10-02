@@ -44,6 +44,51 @@ function Compose.build(api)
 		return lo, hi
 	end
 
+	-- Old-style meshes (a Part drawn by a FileMesh SpecialMesh) draw at the mesh's own size times its Scale, whatever the
+	-- part's box says, so a piece measured by its parts was fitted wrong (test 4, 2026-10-02: a duck whose 12-stud box
+	-- drew a 5-stud duck). Each becomes a MeshPart of the size it draws, so every box after this is what you see. One
+	-- template per mesh per call; a mesh Roblox will not load stays as it was.
+	local MAX_SOLIDIFY = 40
+	local function solidify(self: any, root: any)
+		local okService, assets = pcall(function() return self.game:GetService("AssetService") end)
+		if not okService or not assets then return end
+		local made: { [string]: any } = {}
+		local count = 0
+		for _, d in api.descendantsOf(root) or {} do
+			if count >= MAX_SOLIDIFY then break end
+			pcall(function()
+				if not d:IsA("SpecialMesh") or d.MeshType ~= Enum.MeshType.FileMesh or d.MeshId == "" then return end
+				local part = d.Parent
+				if not part or not part:IsA("BasePart") or part:IsA("MeshPart") then return end
+				count += 1
+				local template = made[d.MeshId]
+				if template == nil then
+					local okMake, mp = pcall(function() return assets:CreateMeshPartAsync(d.MeshId) end)
+					template = if okMake and typeof(mp) == "Instance" then mp else false
+					made[d.MeshId] = template
+				end
+				if not template then return end
+				local native = template.MeshSize
+				local scale = d.Scale
+				local size = Vector3.new(math.max(native.X * scale.X, 0.05), math.max(native.Y * scale.Y, 0.05), math.max(native.Z * scale.Z, 0.05))
+				local mp = template:Clone()
+				mp.Name = part.Name
+				mp.TextureID = d.TextureId
+				for _, key in { "Color", "Material", "Reflectance", "Transparency", "CastShadow", "Anchored", "CanCollide", "CanQuery", "CanTouch", "Massless" } do
+					pcall(function() mp[key] = part[key] end)
+				end
+				mp.Size = size
+				mp.CFrame = part.CFrame * CFrame.new(d.Offset)
+				for _, c in part:GetChildren() do
+					if c ~= d and not c:IsA("JointInstance") and not c:IsA("WeldConstraint") then c.Parent = mp end
+				end
+				mp.Parent = part.Parent
+				part:Destroy()
+			end)
+		end
+		for _, t in made do if t then pcall(function() t:Destroy() end) end end
+	end
+
 	local function placeOne(self: any, item: any): (string?, string?)
 		if type(item) ~= "table" then return nil, "each item must be an object" end
 		local name, nameErr = api.safeName(item.name, "name")
@@ -87,6 +132,7 @@ function Compose.build(api)
 			if api.isScript(d) or api.isA(d, "Sound") then api.destroyInstance(d)
 			elseif api.isA(d, "BasePart") then pcall(function() d.Anchored = true end) end
 		end
+		solidify(self, copy)
 		local ok, err = pcall(function()
 			copy.Name = name
 			copy.Parent = parent
