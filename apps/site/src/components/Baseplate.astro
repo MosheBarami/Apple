@@ -1,0 +1,65 @@
+---
+/**
+ * THE BASEPLATE: a small playable building toy under the hero composer (phase 6, "Ember Rail").
+ *
+ * WHAT IT IS FOR. The product is words in, a built place out, and that is hard to feel from a
+ * paragraph. The toy gives a first-time visitor something to do with their hands in the first ten
+ * seconds, and then offers one honest bridge to the real thing: "Describe this to Apple" writes a
+ * sentence about the bricks that are really there into the composer above, and stops.
+ *
+ * WHAT IT MUST NEVER DO, and what keeps it honest:
+ *   - It never pretends to be Apple building a game. The caption says so in words, always visible.
+ *   - Every brick came from a visitor's own click or key press. Nothing is pre-built, nothing is
+ *     simulated, nothing replays.
+ *   - It never submits the form. The visitor edits the sentence and presses Build themselves.
+ *   - It sends nothing anywhere. The layout may be kept in sessionStorage for this tab only.
+ *   - It is optional: a "Skip the baseplate" link comes first, and it is never the page's main content.
+ *
+ * Built from DOM and CSS only (about 3 KB of script), no canvas, no WebGL, no dependency. The
+ * studs are drawn by baseplate.ts so the markup here stays tiny; with no scripting the whole toy is
+ * hidden, because a toy that cannot be played is a picture of one.
+ *
+ * Rules and sentence: baseplate-model.ts. Drawing: baseplate.ts. Looks: baseplate.css.
+ */
+import './baseplate.css';
+
+const tools = [
+  { id: 'red', label: 'Red brick' },
+  { id: 'blue', label: 'Blue brick' },
+  { id: 'green', label: 'Green brick' },
+  { id: 'yellow', label: 'Yellow brick' },
+] as const;
+---
+
+<div class="toy" role="group" aria-label="Toy baseplate" data-baseplate>
+  <a class="toy-skip" href="#toy-end">Skip the baseplate</a>
+  <p class="toy-caption">A toy baseplate. Place bricks with your hands. Apple builds in Studio from words.</p>
+
+  <div class="toy-tray" role="group" aria-label="Brick colour">
+    {tools.map((t) => (
+      <button type="button" class="swatch-btn" data-tool={t.id} aria-pressed={t.id === 'red' ? 'true' : 'false'} aria-label={t.label}>
+        <span class={`swatch swatch--${t.id}`} aria-hidden="true"></span>
+      </button>
+    ))}
+    <button type="button" class="toy-erase" data-tool="erase" aria-pressed="false">Remove</button>
+  </div>
+
+  <div class="toy-plate">
+    <div class="toy-grid" role="grid" data-grid aria-label="Baseplate"></div>
+  </div>
+
+  <p class="toy-hint">Keys: arrows move, Space places, Delete removes, 1 to 4 pick a colour.</p>
+
+  <div class="toy-actions">
+    <button type="button" class="btn" data-clear>Clear baseplate</button>
+    <button type="button" class="btn btn-primary" data-bridge hidden>Describe this to Apple</button>
+  </div>
+
+  <p class="visually-hidden" role="status" aria-live="polite" data-live></p>
+  <span id="toy-end"></span>
+</div>
+
+<script>
+  import { mountBaseplate } from './baseplate';
+  document.querySelectorAll<HTMLElement>('[data-baseplate]').forEach(mountBaseplate);
+</script>

@@ -1,0 +1,232 @@
+/*
+ * THE BASEPLATE'S LOOKS (components/Baseplate.astro, baseplate.ts).
+ *
+ * Bricks are the one place the "plate edge" appears besides the primary button: a 2px solid darker
+ * shade under the brick, no blur. Colour is decoration here and never the only carrier of meaning:
+ * an occupied stud is a raised block with its own edge, an empty one is a hollow ring, so the two
+ * differ by SHAPE. Every brick draws its --brick-*-edge, because on the light paper the bare fills
+ * are only 1.5 to 3.0:1 against the ground and the edge is what carries the outline.
+ *
+ * The toy never reuses Ember for a brick (yellow is the fourth hue), so the accent keeps meaning
+ * "primary action, live step, focus".
+ */
+
+.toy {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* With no scripting the toy cannot be played, so it is not shown. */
+.no-js .toy {
+  display: none;
+}
+
+/* Reached by keyboard first; hidden until it has focus. */
+.toy-skip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.toy-skip:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: visible;
+  clip: auto;
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.toy-caption {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.toy-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.swatch-btn,
+.toy-erase {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.swatch-btn {
+  display: inline-grid;
+  place-items: center;
+}
+
+.toy-erase {
+  padding: 0 var(--s-4);
+}
+
+/* The chosen tool is told by a heavier box and an underline bar, not by colour alone. */
+.swatch-btn[aria-pressed='true'],
+.toy-erase[aria-pressed='true'] {
+  background: var(--surface-3);
+  border-color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--ink);
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--e);
+  border-radius: 4px;
+  background: var(--b);
+}
+
+.swatch--red,
+.brick--red {
+  --b: var(--brick-red);
+  --e: var(--brick-red-edge);
+}
+
+.swatch--blue,
+.brick--blue {
+  --b: var(--brick-blue);
+  --e: var(--brick-blue-edge);
+}
+
+.swatch--green,
+.brick--green {
+  --b: var(--brick-green);
+  --e: var(--brick-green-edge);
+}
+
+.swatch--yellow,
+.brick--yellow {
+  --b: var(--brick-yellow);
+  --e: var(--brick-yellow-edge);
+}
+
+/* The plate: a recessed surface the studs sit on. Room above the top row so a tall stack never clips. */
+.toy-plate {
+  padding: var(--s-3) var(--s-2) var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.toy-grid {
+  display: grid;
+  gap: 12px;
+  min-height: 292px;
+  padding-block-start: 24px;
+  /* A vertical swipe scrolls the page; only a horizontal drag lays bricks. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.toy-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 12), minmax(44px, 1fr));
+  gap: 4px;
+}
+
+.cell {
+  position: relative;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* The empty stud: a hollow ring. */
+.cell::before {
+  content: '';
+  position: absolute;
+  inset-inline: 30%;
+  inset-block: 34% 14%;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+}
+
+.cell:hover,
+.cell:focus-visible {
+  background: var(--surface-3);
+}
+
+.cell[data-height='3'] {
+  cursor: not-allowed;
+}
+
+/* A brick: raised, edged, with its own stud on top and a plate edge under it. Clicks pass through
+   to the stud below, so the board is always hit-tested by its cells. */
+.brick {
+  position: absolute;
+  inset-inline: 5px;
+  inset-block-end: calc(6px + var(--level, 0) * 10px);
+  z-index: calc(var(--level, 0) + 1);
+  height: 24px;
+  border: 2px solid var(--e);
+  border-radius: 5px;
+  background: var(--b);
+  box-shadow: 0 2px 0 var(--e);
+  pointer-events: none;
+}
+
+.brick::after {
+  content: '';
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline: 30%;
+  height: 7px;
+  border: 2px solid var(--e);
+  border-block-end: 0;
+  border-radius: 3px 3px 0 0;
+  background: var(--b);
+}
+
+/* A brick settles into place: it drops 14px with a small snap. Switched off under reduced motion
+   by apple-minimal.css, where the brick is simply there. */
+@keyframes brick-drop {
+  from {
+    transform: translateY(-14px);
+  }
+}
+
+.brick.is-new {
+  animation: brick-drop var(--dur-3) var(--ease-snap) both;
+}
+
+.toy-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.toy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

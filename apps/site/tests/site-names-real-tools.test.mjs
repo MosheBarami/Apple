@@ -145,19 +145,22 @@ test('the guard has teeth', () => {
       'them have been rewritten, and this guard is now checking nothing',
   );
 
-  // 4. The owner now wants one disappearing, friendly activity phrase on the landing. The
-  //    technical proof page keeps its accurate tool vocabulary; the run illustration must not
-  //    look like a log. Read the rendered figure so comments and unrelated proof copy cannot pass.
+  // 4. The landing's run illustration must not look like a log. RESTATED 2026-10-02 (phase 6): the
+  //    "activity" figure (one cycling friendly phrase) was retired with the Illustration rebuild of
+  //    "How a run actually goes"; the figure is now four named steps lit once, labelled "Illustration".
+  //    The property is unchanged, a picture of a run on the landing prints no tool name and no
+  //    log line, so it is read off the rendered figure and its presence is asserted, or the guard
+  //    would stay green over its absence.
   const landing = readFileSync(join(DIST, 'index.html'), 'utf8');
-  const figure = landing.match(/<div class="activity"[^>]*>([\s\S]*?)<\/div>\s*<\/figure>/);
+  const figure = landing.match(/<figure class="cycle"[^>]*>([\s\S]*?)<\/figure>/);
   assert.ok(
     figure,
-    'the landing has no activity figure any more — it was renamed or removed, and assertions 1-3 ' +
+    'the landing has no run illustration any more — it was renamed or removed, and assertions 1-3 ' +
       'would have stayed green over its absence',
   );
   const inFigure = [...new Set([...visible(figure[1]).matchAll(TOOLISH)].map((m) => m[1]))];
-  assert.deepEqual(inFigure, [], `the landing's activity line exposes technical tool names: ${inFigure.join(', ')}`);
-  assert.equal((figure[1].match(/class="activity-current"/g) ?? []).length, 1, 'one replaceable activity phrase');
-  assert.match(visible(figure[1]), /Checking your place/);
+  assert.deepEqual(inFigure, [], `the landing's run illustration exposes technical tool names: ${inFigure.join(', ')}`);
+  assert.equal((figure[1].match(/class="cycle-step"/g) ?? []).length, 4, 'the illustration is the four steps of a run');
+  assert.match(visible(figure[1]), /Illustration/, 'the picture of a run no longer says it is an illustration');
   assert.doesNotMatch(literalsIn(landing), /get_project_tree/, 'the interactive demo must not reveal a wire/tool name either');
 });
