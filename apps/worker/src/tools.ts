@@ -9,6 +9,7 @@ import type { Env } from './env';
 import { generatedImageCapacity, saveGeneratedImage } from './generated-images';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { retryHint, remedyHint, retryEligibility } from './op-failure';
+import { planCopyRounds } from './dup-names';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps } from './studio-props';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
@@ -407,7 +408,7 @@ function directName(value: unknown, label: string): string | { error: string } {
   return name;
 }
 
-function boundedPaths(value: unknown, label = 'paths'): string[] | { error: string } {
+function boundedPaths(value: unknown, label = 'paths', allowRepeats = false): string[] | { error: string } {
   if (!Array.isArray(value) || value.length === 0 || value.length > DIRECT_EDIT_LIMITS.items) {
     return { error: `${label} must contain 1-${DIRECT_EDIT_LIMITS.items} instance paths` };
   }
@@ -416,7 +417,7 @@ function boundedPaths(value: unknown, label = 'paths'): string[] | { error: stri
   for (let index = 0; index < value.length; index++) {
     const path = boundedPath(value[index], `${label}[${index}]`);
     if (typeof path !== 'string') return path;
-    if (seen.has(path)) return { error: `${label} contains the same path more than once: ${path}` };
+    if (seen.has(path) && !allowRepeats) return { error: `${label} contains the same path more than once: ${path}` };
     seen.add(path);
     out.push(path);
   }
@@ -852,6 +853,9 @@ async function runTerrainEdits(ctx: AgentCtx, a: Record<string, unknown>): Promi
 function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<string, unknown> | null {
   const root = treeRoot(data);
   if (!root) return null;
+  // Only a plugin that says so honours a read reference as the address of a write. An older one reads with it
+  // and refuses everything else, and the outline must not promise what the connected Studio cannot do.
+  const refsWritable = (data as { refsWritable?: unknown }).refsWritable === true;
   const lines: string[] = [];
   let used = 0;
   let total = 0;
@@ -875,7 +879,7 @@ function treeOutline(data: unknown, budget = MAX_RESULT_CHARS - 300): Record<str
     total += 1;
     const name = node.name ?? node.path?.split('.').pop() ?? '?';
     const unfetched = Number((node as { moreChildren?: unknown }).moreChildren) || 0;
-    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; this path cannot select one]` : ''}${typeof node.readRef === 'string' && /^read-ref:[0-9a-f-]{36}:\d+$/.test(node.readRef) ? ` readRef=${node.readRef} (get_instance reads only)` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
+    const line = `${'  '.repeat(depth)}${name} (${node.class ?? '?'})${siblings > 1 ? ` [ambiguous: ${siblings} siblings named ${name}; ${refsWritable ? 'address each by its readRef' : 'this path cannot select one'}]` : ''}${typeof node.readRef === 'string' && /^read-ref:[0-9a-f-]{36}:\d+$/.test(node.readRef) ? ` readRef=${node.readRef} (${refsWritable ? 'use it as the path in any tool' : 'get_instance reads only'})` : ''}${spatial(node)}${unfetched > 0 ? ` +${unfetched} more children not fetched` : ''}`;
     if (used + line.length + 1 <= budget) {
       lines.push(line);
       used += line.length + 1;
@@ -1315,9 +1319,13 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   }
   if (leftover.length) return discard(`${leftover.length} script(s) survived removal: ${leftover.slice(0, 6).join(', ')}`);
 
+  // The plugin makes a name that is already taken unique ("Lamp" becomes "Lamp (2)"); say so, or the agent looks
+  // for the model under the name it knows and finds the older one.
+  const renamed = rec(inserted.data).renamed;
   return {
     assetId,
     inserted: paths,
+    ...(Array.isArray(renamed) && renamed.length ? { renamed } : {}),
     scan: scan.verdict,
     // Codes and one-line reasons only. An excerpt of the removed Luau would put the attacker's text
     // into the transcript, where the model reads it as prose.
@@ -1767,7 +1775,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   get_project_tree: {
     def: {
       name: 'get_project_tree',
-      description: 'Snapshot of the game instance tree with names, classes, measured part positions/sizes/anchoring when available, and duplicate-name warnings. Start here to understand a project. Ambiguous sibling paths cannot target a single instance; do not guess which sibling is intended.',
+      description: 'Snapshot of the game instance tree with names, classes, measured part positions/sizes/anchoring when available, and duplicate-name warnings. Start here to understand a project. Siblings that share a name are marked: a plain path cannot select one of them, so never guess which is meant. Where the outline shows a readRef for one, that readRef is its address.',
       parameters: S({
         root: { type: 'string', description: 'Path to start from, e.g. "game.Workspace". Default: whole game (key services).' },
         maxDepth: { type: 'number', description: 'Depth limit, default 4' },
@@ -2319,7 +2327,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   set_properties: {
     def: {
       name: 'set_properties',
-      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances. Reports what each value WAS, so you can quote the change rather than the intention.',
+      description: 'Set properties/attributes on an existing instance. Same typed prop format as create_instances. Reports what each value WAS, so you can quote the change rather than the intention. path may be a readRef from get_project_tree to change one of several same-named siblings.',
       parameters: S({ path: { type: 'string' }, props: { type: 'object' }, attributes: { type: 'object' } }, ['path']),
     },
     studio: true,
@@ -2450,7 +2458,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
   },
   delete_instances: {
-    def: { name: 'delete_instances', description: 'Delete instances by path only when the user asked for removal or after a replacement is already verified in Studio. A duplicate-name create error means the existing object should be inspected and edited or renamed; never delete working paths or props to make that name available.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
+    def: { name: 'delete_instances', description: 'Delete instances by path only when the user asked for removal or after a replacement is already verified in Studio. A duplicate-name create error means the existing object should be inspected and edited or renamed; never delete working paths or props to make that name available. To remove one of several same-named copies, pass its readRef from get_project_tree in place of the path.', parameters: S({ paths: { type: 'array', items: { type: 'string' } } }, ['paths']) },
     studio: true,
     studioOps: ['delete_instances'],
     mutatesProject: true,
@@ -2461,7 +2469,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   move_instances: {
     def: {
       name: 'move_instances',
-      description: 'Reparent existing instances without recreating them. Each move is { path, newParent }. Paths stay inside Apple\'s writable place scope and Studio refuses cycles, duplicate targets and sibling-name collisions.',
+      description: 'Reparent existing instances without recreating them. Each move is { path, newParent }; either may be a readRef from get_project_tree when siblings share a name. Paths stay inside Apple\'s writable place scope and Studio refuses cycles, duplicate targets and sibling-name collisions.',
       parameters: S({
         moves: {
           type: 'array',
@@ -2541,25 +2549,43 @@ export const TOOLS: Record<string, ToolImpl> = {
   clone_instances: {
     def: {
       name: 'clone_instances',
-      description: 'Clone existing instances through Studio. Clones receive collision-free names and may optionally be placed under a specific writable parent.',
+      description: 'Clone existing instances through Studio. Clones receive collision-free names and may optionally be placed under a specific writable parent. For several copies of one thing list its path more than once or pass copies (every listed source is cloned that many times; at most 120 clones per call). A source may be a readRef from get_project_tree.',
       parameters: S({
         paths: { type: 'array', minItems: 1, maxItems: DIRECT_EDIT_LIMITS.items, items: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars } },
+        copies: { type: 'number', minimum: 1, maximum: DIRECT_EDIT_LIMITS.items, description: 'Clones of each listed source. Default 1.' },
         parent: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars },
       }, ['paths']),
     },
     studio: true,
     studioOps: ['clone_instances'],
     mutatesProject: true,
-    run: (ctx, a) => {
-      const paths = boundedPaths(a.paths);
-      if (!Array.isArray(paths)) return Promise.resolve(paths);
+    run: async (ctx, a) => {
+      const paths = boundedPaths(a.paths, 'paths', true);
+      if (!Array.isArray(paths)) return paths;
       let parent: string | undefined;
       if (a.parent !== undefined) {
         const parsed = boundedPath(a.parent, 'parent');
-        if (typeof parsed !== 'string') return Promise.resolve(parsed);
+        if (typeof parsed !== 'string') return parsed;
         parent = parsed;
       }
-      return op(ctx, { op: 'clone_instances', paths, ...(parent ? { parent } : {}) });
+      const plan = planCopyRounds(paths, a.copies ?? 1);
+      if ('error' in plan) return plan;
+      // The plugin refuses a repeated target inside one op, so N copies of one source are N rounds. Doing the
+      // split here, not in the plugin, is what makes it work with the plugin already installed.
+      const created: unknown[] = [];
+      const refs: unknown[] = [];
+      for (const [index, round] of plan.rounds.entries()) {
+        const res = await op(ctx, { op: 'clone_instances', paths: round, ...(parent ? { parent } : {}) });
+        if (toolError(res)) {
+          // Earlier rounds are already in the place: say so, so the agent does not clone them a second time.
+          return plan.rounds.length === 1 ? res : { ...(res as Record<string, unknown>), completed: index, created, ...(created.length ? { projectMutated: true } : {}) };
+        }
+        const data = res as { created?: unknown; refs?: unknown };
+        if (plan.rounds.length === 1) return res;
+        if (Array.isArray(data.created)) created.push(...data.created);
+        if (Array.isArray(data.refs)) refs.push(...data.refs);
+      }
+      return { created, count: created.length, ...(refs.length ? { refs } : {}), rounds: plan.rounds.length };
     },
   },
   group_instances: {
@@ -2603,7 +2629,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   rename_instance: {
     def: {
       name: 'rename_instance',
-      description: 'Rename one existing instance without recreating it. Studio refuses protected structures and sibling-name collisions.',
+      description: 'Rename one existing instance without recreating it. Studio refuses protected structures and sibling-name collisions. path may be a readRef from get_project_tree: renaming one of several same-named siblings is how they become addressable by plain paths.',
       parameters: S({ path: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars }, name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars } }, ['path', 'name']),
     },
     studio: true,
