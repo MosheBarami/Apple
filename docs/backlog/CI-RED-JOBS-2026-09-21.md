@@ -80,9 +80,9 @@ thing you think it did, and is the tree it measured the tree the runner will see
 
 # Two more, found after the first version of this file — and one correction
 
-## `pnpm -r test` — `@golem/corpus` needs a 10 MB file that is gitignored
+## `pnpm -r test` — `@apple/corpus` needs a 10 MB file that is gitignored
 
-After `node --test tests/` was fixed for Node 22, `pnpm -r test` got past `@golem/lumen-isles` and
+After `node --test tests/` was fixed for Node 22, `pnpm -r test` got past `@apple/lumen-isles` and
 stopped at the next package:
 
 ```
@@ -160,7 +160,7 @@ CI PARITY — a clean clone of b6c274b, installed and built in the clone
   pass  exit  0  node scripts/check-app-bundle.mjs
   pass  exit  0  node scripts/check-landing-budget.mjs
   pass  exit  0  node scripts/check-asset-wall.mjs
-  pass  exit  0  pnpm --filter @golem/evals check
+  pass  exit  0  pnpm --filter @apple/evals check
   pass  exit  0  node scripts/check-workspace-coverage.mjs
   pass  exit  0  node scripts/check-rebrand.mjs --offline
   pass  exit  0  node scripts/check-ci-references.mjs
@@ -197,7 +197,7 @@ blocked, and it is not the same thing.
 ## And the big one: `pnpm -r test` is green in a clean clone
 
 The step this file spends most of its length on. It bailed at four different packages in succession
-earlier tonight — @golem/corpus, @golem/training, @golem/web, @golem/site — each fix exposing the
+earlier tonight — @apple/corpus, @apple/training, @apple/web, @apple/site — each fix exposing the
 next, and its one confirmed pass on a runner was at `1032707`, before ten more commits landed.
 
 Re-measured at `381cc61`, in a clone in the scratch directory rather than in this checkout, with

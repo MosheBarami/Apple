@@ -11,7 +11,7 @@
 //      have no effect on the main tree.
 //
 //   2. THE WORKING LOCKFILE, NOT THE COMMITTED ONE. The committed pnpm-lock.yaml does not satisfy
-//      the committed package.json — `@golem/evals` was added as a dependency without updating it —
+//      the committed package.json — `@apple/evals` was added as a dependency without updating it —
 //      so `--frozen-lockfile` fails in a fresh checkout. That is a real repository defect and this
 //      script does not hide it: it copies the working tree's lockfile and SAYS it did.
 //

@@ -5,7 +5,7 @@
  * source records with paths, hashes or line ranges, so none are produced: a source here is a lookup
  * tool that FINISHED OK, named with the vocabulary's own sentence. Nothing here implies live browsing.
  */
-import { PRODUCT_MODEL_INFO, type StudioPlace } from '@golem/shared';
+import { PRODUCT_MODEL_INFO, type StudioPlace } from '@apple/shared';
 import { kindForTool, labelForTool } from '../tool-vocabulary.ts';
 
 export interface ToolLike {

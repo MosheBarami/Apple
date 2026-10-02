@@ -12,7 +12,7 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@golem/shared';
+import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@apple/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------

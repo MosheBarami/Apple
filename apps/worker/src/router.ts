@@ -16,7 +16,7 @@
 //                  and ui-implementation (66.7 vs 100).
 // So: inspection/orchestration steps route cheap with no measured quality loss; steps that
 // actually author Luau or build UI stay on the flagship, where the gap is real.
-import type { ProductMode } from '@golem/shared';
+import type { ProductMode } from '@apple/shared';
 
 /**
  * NOTE — model routing was removed in the GLM-5.3-flash migration.

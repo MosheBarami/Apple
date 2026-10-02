@@ -19,14 +19,14 @@
 //
 //   PRECEDENCE IS NOT RECOMPUTED HERE. The server merges, with the same function the agent's
 //   prompt is built from. This file only COMPARES two values it was handed, using the strictness
-//   order that lives in @golem/shared — a second implementation of the layering rule in the
+//   order that lives in @apple/shared — a second implementation of the layering rule in the
 //   browser would disagree with the server the first time either one changed.
 //
 // THE CONTROL ITSELF IS A BLOCK LIST, and it lives in components/ws/tool-permissions.ts. Two
 // states, not three: `allow` is the absence of a restriction, and `ask` is collapsed to a refusal
 // by the worker. What is left here is the part that control cannot answer on its own — which
 // layer imposed a block, and what to tell a person about a tool a finished run never got.
-import { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES, isToolPermission, toolPermissionRank, type ToolPermission } from '@golem/shared';
+import { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES, isToolPermission, toolPermissionRank, type ToolPermission } from '@apple/shared';
 import type { MemoryScope } from './api';
 
 export { GOVERNED_TOOLS, GOVERNED_TOOL_NAMES };

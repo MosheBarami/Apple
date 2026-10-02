@@ -12,7 +12,7 @@ import { fakeStudio } from './fixtures/fake-studio.mjs';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'library-placement-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-await esbuild.build({ entryPoints: ['src/library-placement.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'p.mjs'), alias: { '@golem/shared': '../../packages/shared/src/index.ts' } });
+await esbuild.build({ entryPoints: ['src/library-placement.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'p.mjs'), alias: { '@apple/shared': '../../packages/shared/src/index.ts' } });
 const P = await import(pathToFileURL(join(dir, 'p.mjs')).href);
 
 const TREE = { name: 'Tree', class: 'Model', center: [300, -40, 300], size: [4, 8, 4] };

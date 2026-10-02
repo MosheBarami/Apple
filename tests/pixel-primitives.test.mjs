@@ -56,7 +56,7 @@ test('the two former copies now consume the shared module rather than redefining
   // "deduplicated" from "removed".
   for (const rel of ['apps/worker/src/composition.ts', 'packages/evals/src/props.mjs']) {
     const src = readFileSync(join(ROOT, rel), 'utf8');
-    assert.match(src, /from '@golem\/design\/pixels'/, `${rel} must import the shared primitives`);
+    assert.match(src, /from '@apple\/design\/pixels'/, `${rel} must import the shared primitives`);
     assert.match(src, /geometryMask\(/, `${rel} must still actually USE the mask`);
   }
 });

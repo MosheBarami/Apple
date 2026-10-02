@@ -3,7 +3,7 @@
  * (packages/components/proof/run-steps.luau) runs the same Steps from the command bar; the two must agree, and the
  * plugin's place_copies / strip_descendants ops (apps/apple-plugin/src/ops/Compose.luau) do exactly what the harness does.
  */
-import type { InstanceSpec, PropValue, StudioOp } from '@golem/shared';
+import type { InstanceSpec, PropValue, StudioOp } from '@apple/shared';
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite, Step } from './compose';
 import { LIBRARY_IMPORT_MS } from './local-owner-corpus';

@@ -56,7 +56,7 @@ So every number below describes one tree.
   - `gate-check.mjs --lint` (line 133)
   - `check-site-links` (164), `check-credit-figures` (171), `check-site-semantics` (177), `check-dispositions` (185)
   - `check-app-bundle` (191), `check-landing-budget` (199), `check-asset-wall` (208)
-  - `pnpm --filter @golem/evals check` (281)
+  - `pnpm --filter @apple/evals check` (281)
   - I ran all of these separately, below.
 
 ### Results table

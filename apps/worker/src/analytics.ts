@@ -298,7 +298,7 @@ export type Outcome = (typeof OUTCOMES)[number];
  * answer that was wrong in our favour, and wrong by the exact amount that matters most.
  *
  * This is the ANALYTICS vocabulary, deliberately wider than the `msg_end.stopReason` the browser is
- * sent: that union lives in @golem/shared and is rendered by apps/web, and widening it is a change
+ * sent: that union lives in @apple/shared and is rendered by apps/web, and widening it is a change
  * to a contract this file does not own.
  */
 export const BUILD_OUTCOMES = ['done', 'failed', 'stopped', 'quota', 'incomplete', 'error', 'step_limit', 'timeout', 'unknown'] as const;

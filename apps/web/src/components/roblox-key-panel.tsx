@@ -29,7 +29,7 @@
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ROBLOX_SCOPES, type RobloxScope } from '@golem/shared';
+import { ROBLOX_SCOPES, type RobloxScope } from '@apple/shared';
 import {
   checkRobloxKey, deleteRobloxKey, fetchRobloxKey, fetchRobloxWrites, putRobloxKey,
   type RobloxKeyHealth,

@@ -16,7 +16,7 @@ import { fakeStudio } from './fixtures/fake-studio.mjs';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'library-assemble-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@golem/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
 await esbuild.build({ entryPoints: ['src/tools.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'), alias });
 await esbuild.build({ entryPoints: ['src/library-assemble.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'assemble.mjs'), alias });
 const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);

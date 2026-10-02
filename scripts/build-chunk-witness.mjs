@@ -33,7 +33,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 if (!hasChunks()) {
   console.error(`${CHUNKS_REPO_PATH} is not in this checkout, so there is nothing to witness.`);
-  console.error('Build the corpus first:  pnpm --filter @golem/corpus chunk');
+  console.error('Build the corpus first:  pnpm --filter @apple/corpus chunk');
   process.exit(1);
 }
 

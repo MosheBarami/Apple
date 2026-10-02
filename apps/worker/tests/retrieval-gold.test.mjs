@@ -49,7 +49,7 @@ const GOLD = JSON.parse(readFileSync(join(REPO, 'packages', 'evals', 'data', 're
 //
 // So this file measures where the corpus exists and SAYS SO where it does not, which is the same
 // treatment packages/evals/src/luau-ast.test.mjs already gives the same corpus. Until this commit
-// the read was unconditional: on the runner it threw ENOENT, took @golem/worker down, and every
+// the read was unconditional: on the runner it threw ENOENT, took @apple/worker down, and every
 // package behind it went unrun — an outcome that told nobody that retrieval was unmeasured.
 //
 // ZERO IS THE DISCRIMINATOR AND NOTHING ELSE IS. A corpus that is present but small still fails
@@ -67,7 +67,7 @@ function unmeasured(t) {
   if (HAS_CORPUS) return false;
   t.diagnostic('packages/corpus/data/chunks.jsonl is not in this checkout — it is a 10 MB build '
     + 'artefact and this file needs its TEXT, which no tracked witness can stand in for. NOTHING '
-    + 'was measured by this test here. Build it with `pnpm --filter @golem/corpus chunk`.');
+    + 'was measured by this test here. Build it with `pnpm --filter @apple/corpus chunk`.');
   return true;
 }
 

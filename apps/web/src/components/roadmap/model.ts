@@ -492,7 +492,7 @@ export function effortLabel(effort: string | null | undefined): string {
  *
  * `effortLabel` above says how much WORK a milestone is — "about two Agent runs". Nobody is
  * charged in runs. The worker derives the credit range from the same `runs` that line is built
- * from, through `creditRangeForRuns` in @golem/shared, so the two can never disagree.
+ * from, through `creditRangeForRuns` in @apple/shared, so the two can never disagree.
  *
  * THE THREE REFUSALS, each of which would otherwise print a price that is not true:
  *

@@ -25,8 +25,8 @@
  * reason that says the classification is unknown. An optimistic default here re-runs a mutation
  * against somebody's place on the strength of a guess.
  */
-import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@golem/shared';
-import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@golem/shared';
+import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@apple/shared';
+import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@apple/shared';
 
 /**
  * The ops that change the user's place. Mirrors the `MUTATING` table in apps/plugin/src/Ops.luau,

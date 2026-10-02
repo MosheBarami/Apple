@@ -18,7 +18,7 @@
 // packages/corpus/data/style-visual-evidence.json. That ledger is evidence/provenance only; this
 // module still emits Golem-authored grammar, not copied source layouts.
 
-import { composeBrief, COMPONENTS, STYLE_FAMILIES } from '@golem/design';
+import { composeBrief, COMPONENTS, STYLE_FAMILIES } from '@apple/design';
 import { styleVisualCueBlock } from './style-visual-evidence.ts';
 
 /**

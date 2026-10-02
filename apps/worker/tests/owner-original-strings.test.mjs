@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
 const dir=mkdtempSync(join(tmpdir(),'owner-original-worker-'));test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',tsconfigRaw:{},outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',tsconfigRaw:{},outfile:join(dir,'tools.mjs'),alias:{'@apple/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const source='a'.repeat(64),id=source+':binary:-42',text="\uFEFF-- ORIGINAL untrusted source\r\nreturn '😀'",bytes=Buffer.from(text),digest=b=>createHash('sha256').update(b).digest('hex');
 function ctx(reply){return {userId:'owner',localOwnerGateway:true,studioConnected:()=>true,env:{},execStudioOp:async op=>({ok:true,data:await reply(op)})};}

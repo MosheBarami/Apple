@@ -16,7 +16,7 @@
 // afterwards, because a create call cannot reference a sibling it is creating.
 import sfx from '../../../packages/asset-library/sfx/index.json';
 import vfx from '../../../packages/asset-library/vfx/index.json';
-import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@golem/shared';
+import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@apple/shared';
 import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';
 

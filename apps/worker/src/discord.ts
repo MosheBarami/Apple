@@ -14,7 +14,7 @@
 // THE THREE-SECOND WALL. Discord kills an interaction that is not answered within three seconds.
 // A build takes minutes. So `/build` answers with a DEFERRED response (type 5) — a loading state —
 // and the message is edited afterwards. Everything else here answers immediately.
-import type { QuotaState, RunSnapshot } from '@golem/shared';
+import type { QuotaState, RunSnapshot } from '@apple/shared';
 
 // ---------------------------------------------------------------- wire constants
 // Values are Discord's, not ours. Named so a reader does not have to remember what 5 means.

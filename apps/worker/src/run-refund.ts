@@ -18,7 +18,7 @@
 // separated from the Durable Object that has to carry them out, so both can be tested by argument.
 import type { BuildOutcome } from './analytics';
 
-/** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @golem/shared. */
+/** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @apple/shared. */
 export type RunStopReason = 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
 
 export interface RefundInputs {

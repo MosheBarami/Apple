@@ -18,7 +18,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RULES } from '@golem/design';
+import { RULES } from '@apple/design';
 
 import { designBrief } from '../src/design-brief.ts';
 import {

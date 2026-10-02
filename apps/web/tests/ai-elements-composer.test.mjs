@@ -28,7 +28,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { ATTACHMENT_ACCEPT } from '@golem/shared';
+import { ATTACHMENT_ACCEPT } from '@apple/shared';
 import { WEB, bundle, count, decomment, element, renderWith, unescape } from './ui-bundle.mjs';
 
 const ui = await bundle(

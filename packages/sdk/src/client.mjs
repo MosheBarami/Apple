@@ -11,7 +11,7 @@ import { HEADERS } from './wire.mjs';
 /**
  * Plans this client will send to `/api/billing/checkout`.
  *
- * A COPY of `PLAN_IDS` in @golem/shared, and deliberately so: that module is TypeScript and
+ * A COPY of `PLAN_IDS` in @apple/shared, and deliberately so: that module is TypeScript and
  * this one is plain JavaScript that a browser, a CLI and Node all load without a build step.
  * A copy that nothing checks is drift waiting to happen, so `tests/protocol-parity.test.mjs`
  * reads the declaration in packages/shared/src/index.ts and fails when the two disagree.

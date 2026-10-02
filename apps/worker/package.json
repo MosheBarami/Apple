@@ -1,5 +1,5 @@
 {
-  "name": "@golem/worker",
+  "name": "@apple/worker",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -10,9 +10,9 @@
     "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
-    "@golem/design": "workspace:*",
-    "@golem/evals": "workspace:*",
-    "@golem/shared": "workspace:*",
+    "@apple/design": "workspace:*",
+    "@apple/evals": "workspace:*",
+    "@apple/shared": "workspace:*",
     "hono": "^4.6.0",
     "jose": "^5.9.0"
   },

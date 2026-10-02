@@ -276,6 +276,6 @@ test('the workspace announces PLANNING while it runs, not building', async () =>
   // the workspace then tells the user their project is being changed while nothing is — and
   // propose_plan is the one tool in the registry for which that is most obviously false: it runs at
   // the moment BEFORE any change, which is the entire reason the user is being shown it.
-  const { phaseForTool } = await import('@golem/shared');
+  const { phaseForTool } = await import('@apple/shared');
   assert.equal(phaseForTool('propose_plan'), 'planning');
 });

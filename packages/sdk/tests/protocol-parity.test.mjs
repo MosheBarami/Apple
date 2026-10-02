@@ -1,6 +1,6 @@
 // The SDK's runtime allowlists against the TypeScript unions they copy.
 //
-// WHY A COPY EXISTS AT ALL. `@golem/shared` is TypeScript. This SDK is plain JavaScript that
+// WHY A COPY EXISTS AT ALL. `@apple/shared` is TypeScript. This SDK is plain JavaScript that
 // Node, a browser, a CLI and a Worker all load with no build step, and a TypeScript union
 // does not exist at runtime anyway — `MODES` has to be a real array or nothing can check a
 // mode that arrived from a CLI flag or from Python.
@@ -118,9 +118,9 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
 test('every SDK client defaults to the canonical origin, never the legacy host', () => {
   const canonical = declaration('export const PRODUCT_ORIGIN =').match(/'([^']+)'/)?.[1];
   assert.equal(canonical, 'https://apple.moshe-barami111.workers.dev',
-    'PRODUCT_ORIGIN in @golem/shared is not what this test was written against — re-read it');
+    'PRODUCT_ORIGIN in @apple/shared is not what this test was written against — re-read it');
   const legacy = declaration('export const LEGACY_PRODUCT_HOST =').match(/'([^']+)'/)?.[1];
-  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @golem/shared — re-aim this test');
+  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @apple/shared — re-aim this test');
 
   // (1) The JavaScript default, via the value the client actually resolves against.
   assert.equal(DEFAULT_BASE_URL, canonical);
@@ -168,7 +168,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
  * scripts/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
  * exists to keep that file's text from drifting away from its declarations.
  */
-test('every backticked *Mode name in @golem/shared is a type that exists', () => {
+test('every backticked *Mode name in @apple/shared is a type that exists', () => {
   // Every backtick-quoted SPAN, then the *Mode identifiers inside it. NOT
   // /`([A-Z][A-Za-z]*Mode)`/ — the defect's own form is `mode: AppleMode`, where the backtick sits
   // before `mode:`, so a pattern anchored to the identifier's own backticks walks straight past it.

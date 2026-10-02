@@ -23,7 +23,7 @@ import type { Env } from '../env';
 import type { LinkRecord, RedeemResult, RateVerdict } from '../discord';
 import { editOriginal, progressLine, rateLimitForCommand, RATE_DEFAULT, RATE_WINDOW_MS } from '../discord';
 import { rateLimitCheck, type RateBucket } from '../public-api';
-import type { RunSnapshot } from '@golem/shared';
+import type { RunSnapshot } from '@apple/shared';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_LEN = 8;

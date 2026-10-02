@@ -215,7 +215,7 @@ test('no project-changing tool reaches the user under its own name', async () =>
   const dir = mkdtempSync(join(tmpdir(), 'run-idle-tools-'));
   try {
     await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@golem/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+      alias: { '@apple/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
     const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
     const { builtSummary, addMade, madeKey } = await import('../src/run-idle.ts');
     const writers = T.projectMutatingToolNames();

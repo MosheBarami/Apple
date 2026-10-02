@@ -9,7 +9,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
-import { STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
+import { STUDIO_PLUGIN_STORE_LIVE } from '@apple/shared';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';

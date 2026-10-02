@@ -29,7 +29,7 @@
  * as well as checking every name here against the worker's real registry, because the server
  * rejects an unknown name and the checkbox would then save nothing.
  */
-import { GOVERNED_TOOLS, type ToolPermission } from '@golem/shared';
+import { GOVERNED_TOOLS, type ToolPermission } from '@apple/shared';
 
 export interface GovernableTool {
   /** The exact registered tool name. Validated against the worker's TOOLS registry by the test. */
@@ -45,7 +45,7 @@ export interface GovernableTool {
  * The offered list, DERIVED rather than typed out again.
  *
  * It used to be a hand-written array here. The same twelve-ish tools were also written down in
- * @golem/shared, where the worker's own test holds every name against the live registry and the
+ * @apple/shared, where the worker's own test holds every name against the live registry and the
  * run transcript reads the labels to say which tools a run was denied. Two lists that agree today
  * is not one list: the failure only shows up when somebody edits one of them, and the shape it
  * takes is a checkbox the server rejects, or a withheld tool the transcript cannot name. The

@@ -36,7 +36,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from '@golem/shared';
+import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from '@apple/shared';
 import {
   admitFiles,
   attachmentFailure,

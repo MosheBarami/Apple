@@ -26,7 +26,7 @@
  * Pure and DOM-free so `tests/activity-model.test.mjs` can run it under
  * `node --test`: this module imports types only.
  */
-import { phaseForTool, type AgentPhase } from '@golem/shared';
+import { phaseForTool, type AgentPhase } from '@apple/shared';
 import {
   ACTIVITY,
   ACTIVITY_LABEL,

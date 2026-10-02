@@ -37,7 +37,7 @@
 //    "They gave us a key" and "they agreed to this particular action" are different facts, which
 //    is the lesson the 299 uploads taught at the account level and which applies again here.
 import type { Env } from './env';
-import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@golem/shared';
+import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@apple/shared';
 import { oncePerIsolate } from './schema-once';
 
 export interface CredentialEnv {
@@ -46,12 +46,12 @@ export interface CredentialEnv {
   CREDENTIAL_KEY?: string;
 }
 
-// The scope vocabulary lives in @golem/shared: the settings panel offers these choices and this
+// The scope vocabulary lives in @apple/shared: the settings panel offers these choices and this
 // module validates what comes back, and a list that existed in two places would let the panel
 // offer a scope the worker refuses. They are RECORDED from what the customer declares rather than
 // probed, because probing means making a real call against their account with a credential we have
 // not yet been told we may use.
-export { ROBLOX_SCOPES, isRobloxScope, type RobloxScope } from '@golem/shared';
+export { ROBLOX_SCOPES, isRobloxScope, type RobloxScope } from '@apple/shared';
 
 export interface StoredCredential {
   userId: string;

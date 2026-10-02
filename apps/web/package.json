@@ -1,5 +1,5 @@
 {
-  "name": "@golem/web",
+  "name": "@apple/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -13,7 +13,7 @@
     "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
-    "@golem/shared": "workspace:*",
+    "@apple/shared": "workspace:*",
     "@radix-ui/react-use-controllable-state": "^1.2.6",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",

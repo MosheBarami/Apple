@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 const esbuild=await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir=mkdtempSync(join(tmpdir(),'owner-library-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@apple/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const id='abcdef012345';
 const GAME={id,name:'Farm Game',place:true,terrain:true,lighting:{Brightness:2},services:{

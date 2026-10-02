@@ -26,7 +26,7 @@
 // which means the change passes the gates the agent passes. There is deliberately no way to reach
 // a writing tool directly.
 import type { ApiScope } from './api-keys';
-import type { GatewayToolDef } from '@golem/shared';
+import type { GatewayToolDef } from '@apple/shared';
 
 // ---------------------------------------------------------------------------
 // protocol versions

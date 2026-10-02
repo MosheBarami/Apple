@@ -31,13 +31,13 @@ export const HEADERS = Object.freeze({
 });
 
 /**
- * Mirrors `ProductMode` in @golem/shared. There is one kind of request (V3 G01); `agent` is only
+ * Mirrors `ProductMode` in @apple/shared. There is one kind of request (V3 G01); `agent` is only
  * the wire value a chat frame still carries, and the server normalizes any legacy value to it.
  */
 export const MODES = Object.freeze(['agent']);
 
 /**
- * Client message types the session socket accepts. Mirrors `ClientMsg` in @golem/shared.
+ * Client message types the session socket accepts. Mirrors `ClientMsg` in @apple/shared.
  *
  * A TypeScript union is a COMPILE-TIME promise. This SDK is called from plain JavaScript,
  * from a CLI whose arguments are strings a user typed, and from Python — none of which the
@@ -56,7 +56,7 @@ export const CLIENT_MSG_TYPES = Object.freeze([
   'ping',
 ]);
 
-/** Activities a `presence` message may report. Mirrors the union in @golem/shared. */
+/** Activities a `presence` message may report. Mirrors the union in @apple/shared. */
 export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building']);
 
 /**
@@ -70,7 +70,7 @@ export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building
  * never loses its body to a 308 — so an SDK caller is not carried across by it. Anyone handed this
  * package therefore talked to a month-old worker by default and had no way to notice.
  *
- * `PRODUCT_ORIGIN` in @golem/shared is the same string. It is repeated rather than imported
+ * `PRODUCT_ORIGIN` in @apple/shared is the same string. It is repeated rather than imported
  * because this package is consumed as plain files by the CLI and mirrored by the Python and Luau
  * clients, which cannot import TypeScript; protocol-parity.test.mjs asserts the three agree.
  */

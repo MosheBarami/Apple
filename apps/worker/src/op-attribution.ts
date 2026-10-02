@@ -31,7 +31,7 @@
  * out-of-run ops, and it is the actual fix; this module exists so the partition itself
  * is testable without standing up a Durable Object.
  */
-import type { PendingOp } from '@golem/shared';
+import type { PendingOp } from '@apple/shared';
 
 export interface OpPartition {
   keep: PendingOp[];

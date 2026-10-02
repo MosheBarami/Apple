@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as shared from '@golem/shared';
+import * as shared from '@apple/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(WEB, 'src', p), 'utf8');

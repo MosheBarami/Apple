@@ -31,7 +31,7 @@
  * docs/FAILURES.md.
  */
 import { turnGroups } from './transcript.ts';
-import type { GatewayMessage } from '@golem/shared';
+import type { GatewayMessage } from '@apple/shared';
 
 /** The fields shedding touches. Deliberately structural: this module has no business knowing
  *  what else a run carries, and typing it that way keeps it out of session.ts's import cycle. */

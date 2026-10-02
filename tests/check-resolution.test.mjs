@@ -52,7 +52,7 @@ test('a healthy checkout reports SOUND, and says how many links it looked at', (
 /* ------------------------------------------------------------ the corruption --- */
 
 test('THE DEFECT: a workspace link resolving into a worktree is caught', () => {
-  // What happened tonight. @golem/shared in three packages and @golem/design in two were pointing
+  // What happened tonight. @apple/shared in three packages and @apple/design in two were pointing
   // into a worktree, so every typecheck and test in the main tree was reading a frozen copy at an
   // old commit while reporting on this one.
   const dir = scratch();
@@ -64,7 +64,7 @@ test('THE DEFECT: a workspace link resolving into a worktree is caught', () => {
   const r = run(dir);
   assert.equal(r.exit, 1, r.out);
   assert.match(r.out, /RESOLVES INTO A WORKTREE/);
-  assert.match(r.out, /apps\/web\/node_modules\/@golem\/shared/);
+  assert.match(r.out, /apps\/web\/node_modules\/@apple\/shared/);
   assert.match(r.out, /RESOLUTION BROKEN — 1 finding/);
 });
 

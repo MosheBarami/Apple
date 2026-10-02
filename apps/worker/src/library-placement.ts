@@ -1,5 +1,5 @@
 import type { AgentCtx } from './tools';
-import type { StudioOp } from '@golem/shared';
+import type { StudioOp } from '@apple/shared';
 
 /**
  * PUTTING IMPORTED MODELS WHERE A PLAYER WOULD FIND THEM.

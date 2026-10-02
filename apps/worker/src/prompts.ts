@@ -1,12 +1,12 @@
 // System prompts for Apple's modes. Modes are product surfaces, not models:
 // they set persona, autonomy budget, and verification policy.
-import type { ProductMode } from '@golem/shared';
+import type { ProductMode } from '@apple/shared';
 // A FACT THE MODEL CANNOT GET ANYWHERE ELSE. search_docs indexes Roblox's public documentation,
 // not Apple's, so nothing in a run tells the model whether its own plugin can be installed today —
 // and asked, it answers from pretraining, which means Toolbox and "Get Plugin". Imported as the
 // constants rather than written as a sentence so the guidance follows the listing in both
 // directions, exactly like every install affordance in the UI — see pluginInstallGuidance.
-import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@golem/shared';
+import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@apple/shared';
 import { worldBuildingBrief } from './worldbuilding.ts';
 // The tools the prompt instructs the model to CALL are read from what the run was offered, never
 // written here by hand — see modeRules. These are the two sources of truth that reading needs.
@@ -378,7 +378,7 @@ export const BRIEF_START = '<<<ART_DIRECTION>>>';
 //   same reason the art-direction markers do: they are a property of the PROMPT — where a
 //   block starts, where it ends, and what replaces it when it is collapsed — not of the
 //   thing that fills it. Keeping them together also means `collapseArtDirection` can see
-//   both blocks without importing the composer, which would drag @golem/design into every
+//   both blocks without importing the composer, which would drag @apple/design into every
 //   consumer of this module. ]]
 export const UI_BRIEF_START = '<<<UI_GRAMMAR>>>';
 export const UI_BRIEF_END = '<<<END_UI_GRAMMAR>>>';

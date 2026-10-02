@@ -8,7 +8,7 @@ const esbuild=await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 import {createHash} from 'node:crypto';
 const dir=mkdtempSync(join(tmpdir(),'owner-local-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@apple/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const raw='a'.repeat(64)+':42',id='owner-local:'+raw,sha='b'.repeat(64),jobId='c'.repeat(64);
 function context(exec,extra={}) {return {env:{},userId:'owner',localOwnerGateway:true,studioConnected:()=>true,execStudioOp:exec,createCheckpoint:async()=>({id:'cp'}),addMemoryFact:async()=>'',...extra};}
@@ -59,7 +59,7 @@ test('returned child IDs route directly back to local owner reads without a clou
 test('real agent context carries run owner into reads; admin context cannot impersonate that owner',async()=>{
  const sessionOut=join(dir,'session.mjs');
  await esbuild.build({entryPoints:['src/do/session.ts'],bundle:true,format:'esm',platform:'node',outfile:sessionOut,
-  alias:{'@golem/shared':'../../packages/shared/src/index.ts','cloudflare:workers':'./tests/stubs/cloudflare-workers.mjs'}});
+  alias:{'@apple/shared':'../../packages/shared/src/index.ts','cloudflare:workers':'./tests/stubs/cloudflare-workers.mjs'}});
  const {SessionDO}=await import(pathToFileURL(sessionOut).href);
  let calls=0;
  const host={env:{},boundProjectId:'project',pinnedPrefs:null,opQueue:[],pluginConnectedNow:()=>true,playtestBus:()=>undefined,

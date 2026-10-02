@@ -19,10 +19,10 @@ import type {
   StudioEventSelection,
   StudioEventState,
   StudioPauseReason,
-} from '@golem/shared';
+} from '@apple/shared';
 // The rule for what counts as a new version of a message, shared with the DO so the count this
 // client shows before the round trip and the rows the server writes cannot disagree.
-import { recordsRevision } from '@golem/shared';
+import { recordsRevision } from '@apple/shared';
 // The composer's UI theme for this project; read at send time so the frame carries the current pick.
 import { readUiTheme } from './ui-theme';
 import type { PhaseMark } from '../components/ws/activity-model';
@@ -110,7 +110,7 @@ export interface ChatItem extends TraceFields {
    *
    * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
    * is incremented optimistically when an edit is sent — the server applies the same rule (see
-   * `recordsRevision` in @golem/shared), so the two agree, and a reload corrects them if they ever
+   * `recordsRevision` in @apple/shared), so the two agree, and a reload corrects them if they ever
    * do not. Undefined means "nothing known", never "none": a worker that predates the feature
    * sends no field, and drawing "no earlier versions" from that would be an answer nobody checked.
    */

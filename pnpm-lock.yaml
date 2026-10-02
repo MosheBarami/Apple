@@ -31,7 +31,7 @@ importers:
       '@astrojs/sitemap':
         specifier: ^3.2.0
         version: 3.7.3
-      '@golem/shared':
+      '@apple/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       astro:
@@ -43,7 +43,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@golem/shared':
+      '@apple/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@radix-ui/react-use-controllable-state':
@@ -158,13 +158,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@golem/design':
+      '@apple/design':
         specifier: workspace:*
         version: link:../../packages/design
-      '@golem/evals':
+      '@apple/evals':
         specifier: workspace:*
         version: link:../../packages/evals
-      '@golem/shared':
+      '@apple/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       hono:
@@ -201,7 +201,7 @@ importers:
 
   packages/evals:
     dependencies:
-      '@golem/design':
+      '@apple/design':
         specifier: workspace:*
         version: link:../design
 

@@ -7,8 +7,8 @@
 //
 // A git worktree placed INSIDE the repository has the main `pnpm-workspace.yaml` as its nearest
 // ancestor workspace root, so pnpm run from within it rewrites the MAIN tree's workspace links to
-// point at the worktree's frozen copies. Five went tonight — `@golem/shared` in apps/web,
-// apps/site and apps/worker, `@golem/design` in apps/worker and packages/evals — and for some
+// point at the worktree's frozen copies. Five went tonight — `@apple/shared` in apps/web,
+// apps/site and apps/worker, `@apple/design` in apps/worker and packages/evals — and for some
 // window every typecheck and test in the main checkout was reading a frozen copy at an old commit.
 //
 // rbxai-a3's phrasing is the one to keep: a dead harness gives a WRONG number about the RIGHT

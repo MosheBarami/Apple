@@ -17,7 +17,7 @@
  * this build does not recognise falls through to the generic sentence. It is never rendered — a
  * worker deployed ahead of the app must degrade, not leak.
  */
-import { isRunFailure, type RunFailure } from '@golem/shared';
+import { isRunFailure, type RunFailure } from '@apple/shared';
 
 export type OutcomeTone = 'note' | 'bad';
 
@@ -103,7 +103,7 @@ export function outcomeLine(
  * Does the reply already say what this line would? Two cases, neither a guess from wording:
  *
  *   - `incomplete`: the worker never stores an incomplete reply without its own closing sentence
- *     (finishRun; the contract is written on msg_end.content in @golem/shared). That sentence names
+ *     (finishRun; the contract is written on msg_end.content in @apple/shared). That sentence names
  *     the real reason — the read-stall bound, a refusal and its remedy — so "That run finished
  *     without changing anything" under it is a second, vaguer account of the same ending.
  *   - any stop whose sentence IS the reply's last paragraph: "Stopped." under "Stopped.".

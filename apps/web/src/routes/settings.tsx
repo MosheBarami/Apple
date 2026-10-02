@@ -15,7 +15,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PairingCodeDto } from '@golem/shared';
+import type { PairingCodeDto } from '@apple/shared';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { getAccessToken, supabase, type ProfileRow } from '../lib/supabase';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';

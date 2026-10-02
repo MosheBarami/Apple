@@ -1,4 +1,4 @@
-// @golem/shared — wire protocol + domain types shared by worker, web app, evals.
+// @apple/shared — wire protocol + domain types shared by worker, web app, evals.
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
 import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
@@ -3106,7 +3106,7 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // Attachment policy.
 //
 // Re-exported rather than defined here so the rules sit in one file with their reasons, and so
-// `import { MAX_ATTACHMENT_BYTES } from '@golem/shared'` reads the same in the browser, in the
+// `import { MAX_ATTACHMENT_BYTES } from '@apple/shared'` reads the same in the browser, in the
 // worker and in the Durable Object. A second copy of a ceiling is how a picker comes to accept a
 // file the server refuses.
 // ---------------------------------------------------------------------------

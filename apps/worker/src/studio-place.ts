@@ -27,7 +27,7 @@
  * is stored and what was reported, so it can be exercised directly. do/session.ts does the
  * persisting and the refusing; this file decides.
  */
-import type { StudioPlace } from '@golem/shared';
+import type { StudioPlace } from '@apple/shared';
 
 /** What the plugin said about the place it has open. Numbers are untrusted wire values. */
 export interface PlaceReport {

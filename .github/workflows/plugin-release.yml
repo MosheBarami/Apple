@@ -189,8 +189,8 @@ jobs:
         # enforces that they still match (packages/evals/src/plugin-version.test.mjs).
         run: |
           pnpm --filter @apple/studio-plugin test
-          pnpm --filter @golem/worker typecheck
-          pnpm --filter @golem/evals test
+          pnpm --filter @apple/worker typecheck
+          pnpm --filter @apple/evals test
 
       # ------------------------------------------------------------- build --
       - name: Install Rojo

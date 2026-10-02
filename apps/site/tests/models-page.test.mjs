@@ -58,7 +58,7 @@ test('the build and the registry are both here, so nothing below is vacuous', ()
   assert.equal(LEGACY_MODEL_IDS.length, 4);
 });
 
-test('THE ENGINE IS THE REGISTRY\'S: Apple, named from @golem/shared, on every plan', () => {
+test('THE ENGINE IS THE REGISTRY\'S: Apple, named from @apple/shared, on every plan', () => {
   const built = text(section('built-in'));
   for (const m of MODEL_REGISTRY) {
     assert.ok(built.includes(m.displayName), `the page does not name ${m.displayName}`);

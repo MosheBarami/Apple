@@ -17,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'menu-binder-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-await esbuild.build({ entryPoints: ['src/menu-binder.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'binder.mjs'), alias: { '@golem/shared': '../../packages/shared/src/index.ts' } });
+await esbuild.build({ entryPoints: ['src/menu-binder.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'binder.mjs'), alias: { '@apple/shared': '../../packages/shared/src/index.ts' } });
 const B = await import(pathToFileURL(join(dir, 'binder.mjs')).href);
 
 const LUAU = process.env.LUAU_BIN || 'luau';
@@ -106,7 +106,7 @@ test('the binder passes the same source rules a script the agent writes must pas
     `export { UI_RULE } from ${JSON.stringify(join(process.cwd(), 'src/ui-components.ts'))};`,
     `export { FX_RULE } from ${JSON.stringify(join(process.cwd(), 'src/fx-library.ts'))};`,
   ].join('\n'));
-  await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'guards.mjs'), alias: { '@golem/shared': '../../packages/shared/src/index.ts' } });
+  await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'guards.mjs'), alias: { '@apple/shared': '../../packages/shared/src/index.ts' } });
   const G = await import(pathToFileURL(join(dir, 'guards.mjs')).href);
   const variants = G.luauScanVariants(B.BINDER_SOURCE);
   assert.equal(G.refuseNewHandMadeModelLuau(variants), null);

@@ -1,7 +1,7 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { COOL_EFFECTS, coolLibraryObject } from './library-object';
-import { renderShowsTerrain } from '@golem/shared';
+import { renderShowsTerrain } from '@apple/shared';
 import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -11,8 +11,8 @@ import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from '.
 import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps } from './studio-props';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
-import { RENDER_VIEWS } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@apple/shared';
+import { RENDER_VIEWS } from '@apple/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
@@ -297,7 +297,7 @@ export interface AgentCtx {
   /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused). */
   widenTools?: () => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */
-  addSources?: (fresh: import('@golem/shared').RunSource[]) => number[];
+  addSources?: (fresh: import('@apple/shared').RunSource[]) => number[];
 }
 
 /**

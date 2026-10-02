@@ -35,7 +35,7 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: `pnpm --filter @golem/site exec astro preview --port ${PORT}`,
+    command: `pnpm --filter @apple/site exec astro preview --port ${PORT}`,
     url: `http://localhost:${PORT}`,
     /**
      * NEVER REUSE. This was `!process.env.CI`, which meant that outside CI Playwright attached to

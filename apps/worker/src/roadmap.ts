@@ -20,8 +20,8 @@
 // project; `unknown` is the answer when the scan hit a cap and genuinely could not see (a code-only
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
 // the confident next step — it is offered with `verify` telling the user Golem could not tell.
-import type { StudioOp, OpResult, ProductMode } from '@golem/shared';
-import { creditRangeForRuns } from '@golem/shared';
+import type { StudioOp, OpResult, ProductMode } from '@apple/shared';
+import { creditRangeForRuns } from '@apple/shared';
 import { APPLE_UI_SOURCE } from './ui-kit';
 import { parseCensus } from './playtest';
 

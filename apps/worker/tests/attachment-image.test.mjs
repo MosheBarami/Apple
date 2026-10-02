@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { encodePng } from '../src/png.ts';
-import { validateAttachment, MAX_ATTACHMENT_BYTES, MAX_IMAGE_ATTACHMENT_BYTES } from '@golem/shared';
+import { validateAttachment, MAX_ATTACHMENT_BYTES, MAX_IMAGE_ATTACHMENT_BYTES } from '@apple/shared';
 import { putAttachment, promptWithAttachments } from '../src/attachments.ts';
 import { inspectAttachmentImage } from '../src/attachment-vision.ts';
 

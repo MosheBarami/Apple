@@ -25,7 +25,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MESSAGE_MAX_CHARS, MESSAGE_WARN_CHARS } from '@golem/shared';
+import { MESSAGE_MAX_CHARS, MESSAGE_WARN_CHARS } from '@apple/shared';
 import { matchesShortcut, shortcutLabel } from '../src/lib/shortcuts.ts';
 import { ENTER_SEND, newlineBinding, sendBinding, sendHint } from '../src/lib/send-key.ts';
 import { DEFAULT_PREFS, SEND_KEYS, isSendKey, normalisePrefs } from '../src/lib/prefs.ts';
