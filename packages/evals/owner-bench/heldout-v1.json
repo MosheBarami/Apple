@@ -1,0 +1,28 @@
+{
+  "version": "owner-heldout-v1",
+  "frozen": "2026-10-02",
+  "note": "Held-out generalization bank: 3 never-tried requests per category, written blind by an agent that had not seen requests.json, prompts or skills; 11 items that came out close to requests.json (same subject or same system) were replaced by the orchestrator before freezing. Never edit an item after seeing its score: version the bank instead. Keep these prompts out of skills, RAG, system prompts, tests and fixes.",
+  "items": [
+    { "id": "h01", "category": "object", "turns": ["make a tiny glowing mushroom lamp, purple and pink"] },
+    { "id": "h02", "category": "object", "turns": ["build a huge rusty pirate cannon on wheels"] },
+    { "id": "h03", "category": "object", "turns": ["i want a cute ice cream truck, pastel colors"] },
+    { "id": "h04", "category": "silly", "turns": ["a couch that runs away from you when you try to sit on it"] },
+    { "id": "h05", "category": "silly", "turns": ["make a toilet that launches you into space when you sit on it"] },
+    { "id": "h06", "category": "silly", "turns": ["every time i jump a chicken falls from the sky"] },
+    { "id": "h07", "category": "modify", "turns": ["build a small wooden treehouse with a ladder", "now make it a spooky haunted one with fog and a flickering lantern"] },
+    { "id": "h08", "category": "modify", "turns": ["make a small sailboat", "give it a pirate flag and make the sails black and torn"] },
+    { "id": "h09", "category": "modify", "turns": ["create a simple castle gate with two towers", "add a drawbridge that opens when I touch the button and make everything look like ice"] },
+    { "id": "h10", "category": "map", "turns": ["make a tropical island with a volcano and a beach"] },
+    { "id": "h11", "category": "map", "turns": ["make a spooky swamp with a broken wooden dock and fireflies"] },
+    { "id": "h12", "category": "map", "turns": ["i need a big futuristic city with tall towers and flying roads"] },
+    { "id": "h13", "category": "system", "turns": ["make doors that only open if you have the right colored key"] },
+    { "id": "h14", "category": "system", "turns": ["add a fishing system where i can catch fish and sell them"] },
+    { "id": "h15", "category": "system", "turns": ["a jetpack i can buy that lets me fly for 10 seconds"] },
+    { "id": "h16", "category": "ui", "turns": ["make a quest log window that shows my current missions"] },
+    { "id": "h17", "category": "ui", "turns": ["add a minimap in the corner of the screen"] },
+    { "id": "h18", "category": "ui", "turns": ["make an inventory screen with a grid of my items and a close button"] },
+    { "id": "h19", "category": "game", "turns": ["make a tower defense game with one lane and 3 tower types"] },
+    { "id": "h20", "category": "game", "turns": ["a sword fighting arena where the last one standing wins"] },
+    { "id": "h21", "category": "game", "turns": ["a simple hide and seek game for 8 players in a school"] }
+  ]
+}
