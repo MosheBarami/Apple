@@ -179,7 +179,7 @@ export async function benchEvaluate(ctx: AgentCtx, env: Env, projectId: string, 
 /** What a clean Baseplate keeps at the top of Workspace; everything else a request made goes. */
 const KEEP_TOP = new Set(['Camera', 'Terrain', 'Baseplate', 'SpawnLocation']);
 const CLEAR_ROOTS = ['game.Workspace', 'game.StarterGui', 'game.ServerScriptService', 'game.ServerStorage', 'game.ReplicatedStorage',
-  'game.StarterPack', 'game.SoundService', 'game.Lighting', 'game.StarterPlayer.StarterPlayerScripts', 'game.StarterPlayer.StarterCharacterScripts'];
+  'game.StarterPack', 'game.SoundService', 'game.Lighting', 'game.MaterialService', 'game.StarterPlayer.StarterPlayerScripts', 'game.StarterPlayer.StarterCharacterScripts'];
 
 /**
  * Empties the place back to a bare Baseplate before a benchmark request (live 2026-10-02: a checkpoint restore put the
