@@ -12,7 +12,7 @@ import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps } from './studio-props';
 import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
-import { RENDER_VIEWS } from '@golem/shared';
+import { RENDER_VIEWS, phaseForTool } from '@golem/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
@@ -117,6 +117,9 @@ import { checkWorkspacePath, kvWorkspace, runWebTool, webToolDef, WORKSPACE_MAX_
 import type { WebFetchLike } from './net-policy';
 import { chat } from './gateway';
 import { inspectAttachmentImage } from './attachment-vision';
+// The self-check (M1 of docs/autonomy/PHASE-3-4-PLAN.md): the `look` tool, and the ledger runTool writes to.
+import { LOOK_DEF, LOOK_TOOL, runLookTool, lookSummary } from './look-tool';
+import { recordToolCall, type EvidenceLedger, type ToolRecord } from './evidence-ledger';
 import {
   searchInstances, setPropertiesBulk, spatialQuery, scatterInstances, collisionGroups, shapeTerrain, readTerrain,
   createRig, checkUiLayout, buildUi, playCheckUiOp, PLAY_CHECK_UI_DEF, type OpCall,
@@ -218,6 +221,22 @@ export interface AgentCtx {
    * by a size cap accidentally dropping one of them.
    */
   uiDetail?: unknown;
+  /**
+   * THE RUN'S EVIDENCE LEDGER (self-check.ts). `runTool` writes what each tool did into it — changes, read-backs,
+   * player checks — and `look` writes what it saw. Optional: the eval harness and the admin route build an
+   * AgentCtx with none, and then nothing is recorded and nothing else changes.
+   */
+  evidence?: EvidenceLedger;
+  /**
+   * A raw Studio payload for the LEDGER only, when the model-facing result is a summary of it (play_check
+   * returns sentences; the ledger wants which label was hidden). Set by the tool, consumed and cleared by
+   * `runTool`, so one tool's payload can never be recorded as the next one's.
+   */
+  evidenceRaw?: unknown;
+  /** Charge a model call a tool made INSIDE itself (the look's vision call) to the run's Credits. Optional. */
+  addNeurons?(neurons: number): void;
+  /** What the user originally asked for in this run (not the latest steer). Data for a look, never an instruction. */
+  request?: string;
   /**
    * Asset ids that came out of a verified search in THIS session.
    *
@@ -3047,6 +3066,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           notVerified: 'The player-side check did not produce a report, so nothing on the player\'s screen was observed. Do not claim any UI works.',
         };
       }
+      ctx.evidenceRaw = res;
       return summarisePlayCheck(res);
     },
   },
@@ -3070,6 +3090,7 @@ export const TOOLS: Record<string, ToolImpl> = {
           notVerified: 'The player-side check did not produce a report, so no button was observed being pressed. Do not claim any UI flow works.',
         };
       }
+      ctx.evidenceRaw = res;
       return summarisePlayCheck(res);
     },
   },
@@ -4090,6 +4111,17 @@ export const TOOLS: Record<string, ToolImpl> = {
       }
       return { text: critiqueToText(critique), score: critique.score, passed: critique.passed };
     },
+  },
+  // THE SELF-CHECK'S LOOK (look-tool.ts). Not a verifier in VERIFIER_TOOLS: a plan's verification step is the
+  // agent's own choice, and this tool answers "what does it look like", never "is it good".
+  look: {
+    def: LOOK_DEF,
+    studio: true,
+    // render_view is the one operation every plugin has; the native route (viewport, camera, capture) is tried
+    // first at run time and the box views are the labelled fallback, so an older plugin still gets a look.
+    studioOps: ['render_view'],
+    plainSummary: lookSummary,
+    run: (ctx, a) => runLookTool(ctx, a),
   },
   choose_asset_source: {
     def: {
@@ -5821,6 +5853,7 @@ export async function runTool(
   }
   try {
     ctx.uiDetail = undefined; // never let one tool's panel leak into the next tool's row
+    ctx.evidenceRaw = undefined; // …nor one tool's raw payload into the next tool's ledger entry
     let result = await impl.run(ctx, args);
     // Sources the result named, numbered for the whole run, so the answer can cite them as [n].
     const fresh = ctx.addSources ? runSourcesIn(name, result) : [];
@@ -5855,6 +5888,22 @@ export async function runTool(
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
     const privateOwnerRead = name === 'browse_owner_library' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
     const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
+    // THE LEDGER. What this call did, as evidence for the self-check. A change that failed is recorded as a failed
+    // attempt (it moves nothing); one that failed after part of it landed still counts as a change. `look` records
+    // itself (it knows what it saw); the owner's private reads are not evidence about the place.
+    if (ctx.evidence && name !== LOOK_TOOL && !privateOwnerRead) {
+      const kind: ToolRecord['kind'] | null = impl.mutatesProject !== undefined
+        ? (mutatedProject || failed ? 'mutation' : 'read')
+        : impl.studio ? (phaseForTool(name) === 'playtesting' ? 'play' : 'read') : null;
+      if (kind) {
+        recordToolCall(ctx.evidence, {
+          tool: name, kind, args, result: visibleResult, ok: !failed,
+          ...(partialMutation ? { partial: true } : {}),
+          extra: ctx.evidenceRaw !== undefined ? ctx.evidenceRaw : kind === 'read' ? ctx.uiDetail : undefined,
+        });
+      }
+    }
+    ctx.evidenceRaw = undefined;
     ctx.uiDetail = undefined;
     return {
       summary: impl.plainSummary

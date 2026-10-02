@@ -37,6 +37,16 @@ test('a failed change is recorded as a failure, moves nothing and leaves no fact
   assert.deepEqual(l.names, []);
 });
 
+test('a composite that failed after it already changed the place still counts as a change, but none of what it wrote is trusted', () => {
+  const l = newLedger();
+  recordToolCall(l, { ...create([{ className: 'Part', name: 'Door', parent: 'game.Workspace', props: { Color: red } }]), ok: false, partial: true, result: { error: 'half done' } });
+  assert.equal(l.mutationSeq, 1, 'the place changed, so a look is owed');
+  assert.deepEqual(l.touched, ['game.Workspace.Door']);
+  assert.deepEqual(l.colours, []);
+  assert.deepEqual(l.names, []);
+  assert.equal(l.entries.at(-1).ok, false);
+});
+
 test('colours written by create_instances are facts known by write, nested children included', () => {
   const l = newLedger();
   recordToolCall(l, create([{

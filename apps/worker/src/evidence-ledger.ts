@@ -359,6 +359,11 @@ export interface ToolRecord {
   ok: boolean;
   /** A raw Studio payload the tool computed from the same read, when the model-facing result is a summary of it. */
   extra?: unknown;
+  /**
+   * A composite tool that FAILED after an earlier step already changed the place. The place did change, so the
+   * change counter moves and the paths are remembered; what it wrote is not trusted, so no colour or text is.
+   */
+  partial?: boolean;
 }
 
 function describe(c: ToolRecord, touchedNow: string[]): string {
@@ -385,6 +390,15 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
       } else recordPlay(rec, c.tool, true, c.result, c.extra);
     } else if (c.kind === 'play') {
       recordPlay(rec, c.tool, false, c.result, undefined);
+    } else if (c.kind === 'mutation' && c.partial) {
+      l.mutationSeq += 1;
+      const paths: string[] = [];
+      // Walked into a scratch ledger: the names are wanted, the facts are not.
+      walkSpecs(new Recorder(newLedger(), 0), args.items, 'game.Workspace', paths);
+      pathsIn(args, paths);
+      pathsIn(c.result, paths);
+      touchedNow = [...new Set(paths)];
+      for (const p of touchedNow) touch(l, p);
     }
     pushCapped(l.entries, { seq: l.seq, kind: c.kind, tool: c.tool, text: describe(c, touchedNow), ok: c.ok, mutationSeq: l.mutationSeq }, LEDGER_LIMITS.entries);
   } catch {
