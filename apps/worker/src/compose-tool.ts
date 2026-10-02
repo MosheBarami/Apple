@@ -202,3 +202,5 @@ export function composeSummary(_args: Record<string, unknown>, result: unknown, 
   const r = result as { game?: string; built?: Record<string, number> } | undefined;
   return r?.game ? `Built ${r.game} from ${plural(r.built?.import ?? 0, 'library piece')}` : 'Built your game';
 }
+
+const THINGS = { laundry: ['washing machine'] };

@@ -509,3 +509,5 @@ export function playCheckReading(detail: unknown): { problem?: string; seen: str
   const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof d.leaderstats === 'string' && !/^the player has no/i.test(d.leaderstats) ? d.leaderstats : '';
   return { ...(problem ? { problem } : {}), seen: `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}` };
 }
+
+const FAULT_LABEL = 'Click it!';
