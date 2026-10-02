@@ -61,7 +61,7 @@ for _, s in config.stage or {} do
 	end
 	-- A colour family, not a flat paint: every part takes the hue s.hue (0..1) and keeps its own lightness, so a
 	-- two-tone keycap stays two-tone (the plot simulator's variants of the player's own object). Set, not turned: a
-	-- rainbow keyboard turned by a hue is still a rainbow, and the owner's Gold Keyboard looked like the Classic one.
+	-- rainbow object turned by a hue is still a rainbow, and a recoloured tier looked like the first one.
 	if type(s.hue) == "number" then
 		for _, p in copy:GetDescendants() do
 			if p:IsA("BasePart") then
@@ -71,12 +71,12 @@ for _, s in config.stage or {} do
 		end
 	end
 	-- A copy is a still model: a part that moved under its own rig (a keycap) falls apart once copied and scaled
-	-- (live 2026-10-01: the placed Classic Keyboard was keycaps scattered over five tiles).
+	-- (live 2026-10-01: a placed machine was parts scattered over five tiles).
 	for _, p in copy:GetDescendants() do
 		if p:IsA("BasePart") then p.Anchored = true end
 	end
 	-- Fit to a size, then measure: ScaleTo can fail inside its pcall and leave the copy as it was (the owner's placed
-	-- Classic Keyboard covered three plot tiles). When the measure says it did not fit, every part is scaled about the
+	-- a placed machine covered three plot tiles). When the measure says it did not fit, every part is scaled about the
 	-- pivot by hand, joints with it.
 	local function fit(measure: (Vector3) -> number, want: number)
 		local _, size = (copy :: Model):GetBoundingBox()
@@ -105,7 +105,7 @@ for _, s in config.stage or {} do
 		-- Fit the widest side to s.width (a machine on a plot tile).
 		fit(function(v) return math.max(v.X, v.Z) end, s.width)
 	end
-	-- A machine stands on a plinth: a keyboard fitted to a plot tile is a third of a stud thin and read as a sticker on
+	-- A machine stands on a plinth: a flat machine fitted to a plot tile is a third of a stud thin and read as a sticker on
 	-- the tile (round 12 of the owner's test 1). The plinth is part of the copy, so it is placed and sold with it.
 	if s.width and copy:IsA("Model") then
 		local box, size = (copy :: Model):GetBoundingBox()

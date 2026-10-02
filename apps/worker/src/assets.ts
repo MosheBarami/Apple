@@ -371,15 +371,24 @@ export function scaleRuleFor(intent: string | undefined): { key: string; rule: S
   const text = intent.toLowerCase();
   const exact = SCALE_ENVELOPES[text];
   if (exact) return { key: text, rule: exact };
-  let bestKey: string | null = null;
-  let best: ScaleEnvelope | null = null;
-  for (const [key, rule] of Object.entries(SCALE_ENVELOPES)) {
-    if (text.includes(key) && (bestKey === null || key.length > bestKey.length)) {
-      bestKey = key;
-      best = rule;
-    }
-  }
-  return bestKey && best ? { key: bestKey, rule: best } : { key: 'prop', rule: PROP_ENVELOPE };
+  const key = headKey(text, Object.keys(SCALE_ENVELOPES));
+  return key ? { key, rule: SCALE_ENVELOPES[key]! } : { key: 'prop', rule: PROP_ENVELOPE };
+}
+
+/**
+ * The table key a free-text intent names, by WHOLE words (a key inside another word is not the key: "car" is not "carpet", "tree" is
+ * not "street"), a plural matching its singular. When several words are keys, the LATER word wins (in English "wooden crate" and "lamp
+ * post" put the thing last), and the longer key wins a tie. The agent states `intent` itself on insert; this only reads what it wrote. Pure.
+ */
+export function headKey(text: string, keys: readonly string[]): string | null {
+  const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+  let best: { key: string; at: number } | null = null;
+  words.forEach((w, at) => {
+    const key = keys.find((k) => k === w) ?? keys.find((k) => k === singular(w));
+    if (key && (best === null || at > best.at || (at === best.at && key.length > best.key.length))) best = { key, at };
+  });
+  return best ? (best as { key: string }).key : null;
 }
 
 export interface ScaleCheck {
@@ -2170,12 +2179,8 @@ export function expectedTier(intent: string | undefined): { key: string; tier: S
   const text = intent.toLowerCase();
   const exact = INTENT_TIERS[text];
   if (exact) return { key: text, tier: exact };
-  let bestKey: string | null = null;
-  let best: ScaleTier | null = null;
-  for (const [key, tier] of Object.entries(INTENT_TIERS)) {
-    if (text.includes(key) && (bestKey === null || key.length > bestKey.length)) { bestKey = key; best = tier; }
-  }
-  return bestKey && best ? { key: bestKey, tier: best } : { key: 'prop', tier: 'waist' };
+  const key = headKey(text, Object.keys(INTENT_TIERS));
+  return key ? { key, tier: INTENT_TIERS[key]! } : { key: 'prop', tier: 'waist' };
 }
 
 /**
@@ -2961,7 +2966,8 @@ export function describeAssetRequest(req: AssetRequest): AssetDescription {
     .filter((w) => w.length > 1 && !FILLER.has(w));
   const query = (words.join(' ') || req.description.trim()).slice(0, 80);
   const need = req.need ?? NEED_WORDS.find(([re]) => re.test(req.description))?.[1] ?? 'prop';
-  const intent = req.intent ?? scaleRuleFor(words[0] ?? req.description).key;
+  // The agent's stated intent when it gave one; else the table key the description names (by whole words, the head noun last).
+  const intent = req.intent ?? scaleRuleFor(words.join(' ') || req.description).key;
   return { query, need, intent, category: need === 'ui_icon' || need === 'texture' || need === 'particle' ? 'decal' : 'mesh' };
 }
 

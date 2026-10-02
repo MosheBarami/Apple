@@ -219,19 +219,28 @@ export const AUTONOMOUS_IDLE_STEER =
   'playtested), make that change now. If nothing is left, reply to the user with the final summary and no ' +
   'tool calls, ending with a statement, not a question.';
 
-// A request to build a game, as opposed to a prop, a script or a question about one.
-const GAME_REQUEST = /\b(game|simulator|tycoon|obby|roleplay|rpg|shooter|battlegrounds?|survival|horror|racing|tower defen[cs]e)\b/i;
+/**
+ * Whether THIS RUN built something game-shaped, judged by what it built and not by the words of the request: a composed or saved
+ * game (builtGame), or scripts together with at least two other kinds of change. (A keyword list of game genres used to decide
+ * that a request "owed" a HUD and a playtest: a request in another language, or for a genre not on the list, owed nothing, and a
+ * script fix that said "game" owed both.)
+ */
+export function builtAGame(run: { builtGame?: boolean; made?: Record<string, number> }): boolean {
+  if (run.builtGame === true) return true;
+  const kinds = Object.keys(run.made ?? {});
+  return (run.made?.edit_script ?? 0) >= 1 && kinds.length >= 3;
+}
 
 /**
  * What a built game still lacks that a player notices in the first minute: nothing on screen (no
- * currency, no action buttons) or a loop nobody has played. Only what this run can supply is owed.
+ * currency, no action buttons) or a loop nobody has played. Said from what the run built; the agent decides whether it matters.
+ * Only what this run can supply is owed.
  */
 export function gameGaps(
-  request: string | null | undefined,
-  run: { hudBuilt?: boolean; playChecked?: boolean },
+  run: { hudBuilt?: boolean; playChecked?: boolean; builtGame?: boolean; made?: Record<string, number> },
   canPlay: boolean,
 ): ('hud' | 'playtest')[] {
-  if (!request || !GAME_REQUEST.test(request)) return [];
+  if (!builtAGame(run)) return [];
   const gaps: ('hud' | 'playtest')[] = [];
   if (!run.hudBuilt) gaps.push('hud');
   if (canPlay && !run.playChecked) gaps.push('playtest');

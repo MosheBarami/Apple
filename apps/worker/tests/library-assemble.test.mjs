@@ -509,7 +509,7 @@ test('the prompt names the flow (compose, judge, fix, answer) as the way to buil
   assert.ok(at > 0, 'the paragraph');
   const paragraph = src.slice(at, src.indexOf('\n- ', at + 10));
   assert.ok(paragraph.length < 1300, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
-  assert.match(paragraph, /compose_game \{request\}[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
+  assert.match(paragraph, /compose_game \(you pick the template[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
   assert.match(paragraph, /never build a different game instead/);
   assert.match(paragraph, /install_owner_system \{gameId\}/);
   assert.match(paragraph, /If an imported game can load code from the internet, say so in one plain sentence/);

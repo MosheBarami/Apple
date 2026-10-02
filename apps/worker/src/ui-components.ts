@@ -434,7 +434,7 @@ const BUILD: Record<string, { size: [number, number]; anchor: Anchor; build: (b:
       const list = items(a, def).slice(0, 10);
       const cardA = b.role('card');
       return b.window(s(a.title, 'Leaderboard'), [b.rows(list.map((it, i) => b.slice(`Row${i + 1}`, 'card', sized(1, r3(0.9 / Math.max(5, list.length))), [
-        i === 0 ? b.icon('Rank', 'crown', box(0.03, 0.5, 0.14, 0.8, 0, 0.5)) : b.label('Rank', `#${i + 1}`, cardA, box(0.03, 0.5, 0.14, 0.6, 0, 0.5)),
+        i === 0 ? b.icon('Rank', 'trophy', box(0.03, 0.5, 0.14, 0.8, 0, 0.5)) : b.label('Rank', `#${i + 1}`, cardA, box(0.03, 0.5, 0.14, 0.6, 0, 0.5)),
         b.label('Name', s(it.name, `Player${i + 1}`), cardA, box(0.2, 0.5, 0.5, 0.6, 0, 0.5)),
         b.label('Value', s(it.value, '0'), cardA, box(0.97, 0.5, 0.28, 0.6, 1, 0.5)),
       ])), 0.015)], { close: false, headerIcon: 'trophy' });
@@ -655,7 +655,7 @@ export const insertUiComponent = {
     description:
       'The ONLY way to put game UI in the place (D-UIONLY-1): inserts one ready-made component from Apple\'s UI library in a genre skin, with the skin\'s font. Existing Roblox image ids show the stored artwork; missing ids use the same library recipe and measured colours in a keyless native renderer. This does not upload assets. ' +
       `component: ${UI_COMPONENT_IDS.join(', ')}. genre picks the skin: simulator/tycoon/clicker/pet, obby/parkour/tower, adventure/horror/rpg/survival, shooter/fps/fighting. ` +
-      'colour picks the skin colour; title/text/value/items fill it in (items: strings, or {name, value, price, icon, locked, kind: toggle|slider|dropdown, options}); icon is an icon key (coin, gem, star, heart, gear, trophy, cart, lock, timer, rebirth, quest, key, gift, crown, sword, shield, jump, target, pet, ...). ' +
+      'colour picks the skin colour; title/text/value/items fill it in (items: strings, or {name, value, price, icon, locked, kind: toggle|slider|dropdown, options}); icon is an icon key (coin, gem, star, heart, gear, trophy, cart, lock, timer, rebirth, quest, key, gift, sword, shield, jump, target, pet, ...). ' +
       'Without parent it becomes a new ScreenGui named `name` in StarterGui; parent may be an existing ScreenGui/Frame to nest it. billboard_tag and surface_sign need parent = the part. anchor/position/size are screen fractions. ' +
       'Afterwards change text/position/visibility with set_properties; wire behaviour in a LocalScript that finds the inserted instances by path. Creating Frames, buttons, labels or images any other way is refused.',
     parameters: {

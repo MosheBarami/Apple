@@ -845,7 +845,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'Place a SpawnLocation on solid ground at the entrance to the main play area.',
       'Aim the spawn so the first thing in frame is the landmark the game is about.',
-      'Take the landmark and the props around the spawn from the model library: find_library_model with a plain noun, then insert_library_model where it stands. Never build a prop from parts (D-MODELLIB-2).',
+      'Take the landmark and the props around the spawn from the model library: find_library_model with a plain noun, then insert_library_model where it stands. Prefer a library model to a prop built from parts; build one only when the library has none that is it.',
       'Give the spawn area a floor, a boundary and a readable path onward.',
     ],
     acceptance: ['A player spawns on the ground, not in the air.', 'The landmark is visible from the spawn without moving the camera.'],
@@ -995,7 +995,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'insert_ui_component("shop_window") — the library shop with item cards; never draw a shop by hand (D-UIONLY-1).',
       'Set each card\'s Text from the real server catalog, and wire its buy button to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
-      'Build a shop the player walks to, with the purchasable items shown in the world. Take the stall or building and the items on display from find_library_model and insert_library_model never from parts (D-MODELLIB-2).',
+      'Build a shop the player walks to, with the purchasable items shown in the world. Take the stall or building and the items on display from find_library_model and insert_library_model; build from parts only what the library has no model for.',
       'Take the purchase decision on the server and deduct there.',
     ],
     acceptance: ['A purchase deducts on the server and cannot be repeated for free.'],
@@ -1215,7 +1215,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     dependsOn: ['sim_zones', 'save_progress'], genres: ['simulator'], satisfiedBy: ['pets'],
     build: [
       'Add eggs with a server-side rarity roll and a pet that follows the player. Take the pet and egg models from find_library_model (kind "pet") and insert_library_model (D-MODELLIB-1).',
-      'Put insert_vfx("egg_glow") on each egg and insert_vfx("pet_hatch") on the hatch spot; the hatch script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")) (D-FXLIB-1).',
+      'Put a glow preset (find_vfx) on each egg and insert_vfx("pet_hatch") on the hatch spot; the hatch script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")) (D-FXLIB-1).',
       'Apply the pet multiplier on the server and persist the inventory.',
     ],
     acceptance: ['Rarity is rolled server-side.', 'Pets survive a rejoin.'],

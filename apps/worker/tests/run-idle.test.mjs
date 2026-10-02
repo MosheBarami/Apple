@@ -265,21 +265,31 @@ test('the run loop hands every run its owed work back, bounded, instead of endin
   assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: AUTONOMOUS_IDLE_STEER/);
 });
 
-test('a built game with nothing on screen or an unplayed loop is not finished; other requests owe nothing', async () => {
-  const { gameGaps, gameGapSteer } = await import('../src/run-idle.ts');
-  const ask = 'Build Basically Grow A Garden Type Game include 6 plots make the full game make no mistakes';
-  assert.deepEqual(gameGaps(ask, {}, true), ['hud', 'playtest']);
-  assert.deepEqual(gameGaps(ask, { hudBuilt: true }, true), ['playtest']);
-  assert.deepEqual(gameGaps(ask, { hudBuilt: true, playChecked: true }, true), []);
+test('a built game with nothing on screen or an unplayed loop is not finished: said from what the run BUILT, not from words of the request', async () => {
+  const { gameGaps, gameGapSteer, builtAGame } = await import('../src/run-idle.ts');
+  // RESTATED phase 1: a regex over genre words in the request decided that "a game" owed a HUD and a playtest (a request in
+  // another language, or for a genre not on the list, owed nothing; a script fix that said "game" owed both).
+  const game = { builtGame: true };
+  assert.deepEqual(gameGaps(game, true), ['hud', 'playtest']);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, true), ['playtest']);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true, playChecked: true }, true), []);
   // a run that cannot play is not told to
-  assert.deepEqual(gameGaps('make an obby', { hudBuilt: true }, false), []);
-  // not a game: a prop, or no request at all
-  assert.deepEqual(gameGaps('build a wooden bridge over the river', {}, true), []);
-  assert.deepEqual(gameGaps(undefined, {}, true), []);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, false), []);
+  // scripts together with other kinds of change are game-shaped, whatever language the request was in
+  const handBuilt = { made: { edit_script: 2, create_instances: 3, build_object: 1 } };
+  assert.equal(builtAGame(handBuilt), true);
+  assert.deepEqual(gameGaps(handBuilt, true), ['hud', 'playtest']);
+  // not a game: a prop, a script fix, nothing built
+  assert.equal(builtAGame({ made: { build_object: 1 } }), false);
+  assert.equal(builtAGame({ made: { edit_script: 4 } }), false, 'a script fix is not a game');
+  assert.deepEqual(gameGaps({}, true), []);
+  assert.deepEqual(gameGaps({ made: { build_object: 2, dress_object: 1 } }, true), [], 'a built object owes no HUD');
   const steer = gameGapSteer(['hud', 'playtest']);
   assert.match(steer, /ScreenGui/);
   assert.match(steer, /play_check/);
   assert.doesNotMatch(steer, /garden|plot|seed/i, 'the steer teaches one game instead of games');
+  const code = (await import('node:fs')).readFileSync(new URL('../src/run-idle.ts', import.meta.url), 'utf8');
+  assert.equal(/GAME_REQUEST/.test(code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'no genre-word list decides what a request owes');
 });
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
@@ -287,7 +297,7 @@ test('the run loop records the HUD and the playtest, and steers an unfinished ga
   // The property: a play_check that worked marks the run as played; so does a judge_game that played (sessions other than 0).
   assert.match(SESSION, /out\.ok && \(call\.name === 'play_check' \|\| \(call\.name === 'judge_game' && [^\n]*sessions[^\n]*\)\) agent\.playChecked = true/);
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
-  const uses = SESSION.match(/gameGaps\(agent\.request, agent, allowed\.has\('play_check'\)\)/g) ?? [];
+  const uses = SESSION.match(/gameGaps\(agent, allowed\.has\('play_check'\)\)/g) ?? [];
   assert.equal(uses.length, 3, 'the prose, idle and duplicate-streak endings must all check the game');
   assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
 });

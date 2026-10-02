@@ -1,6 +1,6 @@
 --!strict
--- AppleAnimate's client half: a real key press plays the clips bound to that key (play = "key"), so a keyboard in the
--- game types along with the player's own keyboard. Keys typed into a text box or a menu are not sent.
+-- AppleAnimate's client half: a real key press plays the clips bound to that key (play = "key"), so a row of keys in the
+-- game types along with the player's own keys. Keys typed into a text box or a menu are not sent.
 local UserInputService = game:GetService("UserInputService")
 local remote = game:GetService("ReplicatedStorage"):WaitForChild("AppleAnimateKey") :: RemoteEvent
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -14,7 +14,7 @@ end)
 local played = game:GetService("ReplicatedStorage"):WaitForChild("AppleAnimatePlayed", 10)
 
 -- A big white "+N" with a black outline rises off every key this player presses or steps on and fades (the owner's
--- reference: a walk-on keyboard with "+1" popping under the player's feet). N is what a press pays them (PerPress, from
+-- reference: a walk-on row of keys with "+1" popping under the player's feet). N is what a press pays them (PerPress, from
 -- AppleUpgrades), else 1: one more key. At most ten a second, so a run across the keys is a shower, not a wall.
 local TweenService = game:GetService("TweenService")
 local me = game:GetService("Players").LocalPlayer

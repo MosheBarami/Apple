@@ -4576,7 +4576,7 @@ export class SessionDO extends DurableObject<Env> {
       // The person already asked for the whole request (V3: proceed automatically, no routine approval), so
       // "want me to…?" or "not fixed yet" is work, not an ending,
       // and a game with nothing on screen or a loop nobody played is not finished either.
-      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+      const gaps = gameGaps(agent, allowed.has('play_check'));
       // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
       // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
       const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
@@ -5017,7 +5017,7 @@ export class SessionDO extends DurableObject<Env> {
     // Three in a row is a loop, not deliberation: end on what the run has, and say so.
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
-    const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+    const streakGaps = gameGaps(agent, allowed.has('play_check'));
     const streakParts = agent.duplicateStreak >= MAX_DUPLICATE_STREAK ? openParts(agent) : [];
     // Open work at the wall. Less than at the last move-on means the run built something in between.
     const streakOpen = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
@@ -5148,7 +5148,7 @@ export class SessionDO extends DurableObject<Env> {
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
-      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+      const gaps = gameGaps(agent, allowed.has('play_check'));
       agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
     } else if (idle.action === 'finish') {
       const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
@@ -6242,7 +6242,7 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * A write that reaches Studio while a Test session is still closing is refused ("writes require Studio edit mode")
    * and provably did not run, so it waits for edit mode and goes again, up to about 12 seconds (owner's re-test,
-   * 2026-10-01: an upgrades request sent right after the keyboard's play check failed three times and told the user to
+   * 2026-10-01: an upgrades request sent right after a play check failed three times and told the user to
    * press Stop, while Studio was already stopping on its own).
    */
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000, run?: AgentState): Promise<OpResult> {

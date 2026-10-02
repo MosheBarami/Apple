@@ -15,7 +15,7 @@
 	Each key gives, per joint name, `rot` (degrees about the pivot's axes) and/or `move` (studs along them), and the
 	`ease` (Linear, Sine, Quad, Back, Bounce, Elastic) of the stretch that ends at it. `play` is "loop", "click"
 	(a ClickDetector), "prompt" (a ProximityPrompt; `prompt` gives its text), "touch", "once" (at start), or "key"
-	(the player presses the real keyboard key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
+	(the player presses the real key `key`, an Enum.KeyCode name such as "A" or "Space"; AppleAnimateClient
 	sends it; the key can also be clicked, or stepped on, which presses it with the player riding it down; a model with an
 	Owner attribute (its own or an ancestor's, a UserId) answers real keys only from that player). Every clip that plays is announced to every client on ReplicatedStorage.AppleAnimatePlayed (model,
 	clip name), so a screen can count presses or say something; a clip a player set off is also announced on the
@@ -91,7 +91,7 @@ end
 
 --[[ Pure: whether a player may set off something owned by `owner` (a UserId; nil means nobody owns it, so anyone may). ]]
 --[[ Pure: whether one more press in the last second still pays, given the times (os.clock) of the presses that paid.
-     Drops times older than a second from `recent`. A fast typist is about 10 a second; standing on a keyboard shrunk
+     Drops times older than a second from `recent`. A fast typist is about 10 a second; standing on a row of keys shrunk
      onto a plot tile touched dozens of keys at once and paid each (the owner's session reached 673K coins). ]]
 AppleAnimate.PAID_PER_SECOND = 12
 function AppleAnimate.paysPress(recent: { number }, now: number, cap: number?): boolean
@@ -147,7 +147,7 @@ function AppleAnimate.start()
 		if now - (mine[key] or 0) < 0.03 then return end
 		mine[key] = now
 		for _, entry in byKey[key] or {} do
-			-- A model somebody owns (a machine on their plot) answers only to its owner's keyboard.
+			-- A model somebody owns (a machine on their plot) answers only to its owner's keys.
 			if entry.model.Parent and AppleAnimate.mayPress(AppleAnimate.ownerOf(entry.model), player.UserId) then
 				entry.clip._play(player)
 			end
@@ -191,7 +191,7 @@ function AppleAnimate.start()
 		end
 	end
 
-	-- Stepped on (owner, 2026-10-01: "the keyboard is supposed to go down with the players on top of it"): a player
+	-- Stepped on (owner, 2026-10-01: "the keys are supposed to go down with the players on top of them"): a player
 	-- landing on a part pressed by a click or a key presses it too, and rides it down. Once per landing.
 	local function stepOn(target: Instance, model: Model, joints: any, rest: any, clip: any)
 		if not target:IsA("BasePart") then return end
@@ -221,7 +221,7 @@ function AppleAnimate.start()
 				play(model, joints, rest, clip, how == "loop")
 			elseif how == "click" then
 				local cd = target:FindFirstChildWhichIsA("ClickDetector") or Instance.new("ClickDetector")
-				-- 120, not Roblox's 32: an object built in front of the spawn sits ~34 studs away (test 2, the butter, 2026-10-01).
+				-- 120, not Roblox's 32: an object built in front of the spawn sits ~34 studs away (test 2, a long thin object, 2026-10-01).
 				cd.MaxActivationDistance = clip.reach or 120
 				cd.Parent = if target:IsA("BasePart") then target else (model.PrimaryPart or target)
 				cd.MouseClick:Connect(function(player) play(model, joints, rest, clip, false, player) end)

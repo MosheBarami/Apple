@@ -946,6 +946,12 @@ const TOOL_ARGS = {
   // stays in user-credentials.ts.
   find_library_model: { query: 'oak tree' },
   insert_library_model: { id: 'cs-18717544', position: [0, 10, 0] },
+  // Phase 1 (2026-10-02). Egress reviewed: preview_library_models stages the chosen library rows in ServerStorage through
+  // the same op-sender and library path as insert_library_model (no new fetch, no key beyond the user's own upload key),
+  // strips scripts, measures, and removes what it staged; dress_object only creates and edits instances in the user's own
+  // place through the op-sender. Neither reaches the network on its own.
+  preview_library_models: { ids: ['cs-18717544'] },
+  dress_object: { target: 'Workspace.Thing', counter: { name: 'Count' } },
   // D-UILIB-2 (b54e84d). Egress reviewed 2026-09-23 by the security lane: find_ui_asset searches
   // the index bundled from packages/asset-library/index.json — no fetch, no key. upload_ui_asset
   // resolves `asset` by EXACT lookup in that index (a made-up path is refused before any read),
@@ -2671,7 +2677,9 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   nothing else."), sent once when a run answers a built object without playing it. REVIEWED: a fixed string
   //   literal, no interpolation, so it carries nothing the model or a place wrote. The same change's upgrade line
   //   (objectUpgradeLine) goes into the system prompt and passes part names only as [A-Za-z0-9_] identifiers.
-  assert.equal(userPushes.length, 18, 'a user-role transcript injection was added or removed — review it for injection risk');
+  // EIGHTEENTH REMOVED 2026-10-02 (phase 1): the object play-check steer is gone: whether to check a built object in play is the
+  //   agent's decision, informed by the build result, not a user-role turn the harness injects. A removal only shrinks the channel.
+  assert.equal(userPushes.length, 17, 'a user-role transcript injection was added or removed — review it for injection risk');
   const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
   assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
     'the new user-role steer no longer comes from the reviewed source selector');

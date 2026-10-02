@@ -1,10 +1,10 @@
 --!strict
 --[[
-	AppleTycoon: a real tycoon (owner, 2026-10-02: "make me a laundry tycoon" came out as the keyboard's plot simulator
+	AppleTycoon: a real tycoon (owner, 2026-10-02: a request for one trade's tycoon came out as another game's plot simulator
 	with washing machines swapped in; "he doesn't focus on what the user asks"). Each player gets a base. Droppers drop
 	the game's item onto a conveyor, each machine over the belt turns it into the next thing and multiplies what it is
 	worth, the seller at the end pays the base's owner, and buy pads on the floor unlock the next dropper, machine or
-	speed-up, one after another. Nothing here is about laundry: the item, the machines and the words come from the config
+	speed-up, one after another. Nothing here is about any one trade: the item, the machines and the words come from the config
 	the composer wrote from the user's request.
 
 	Map (built by compose-tycoon.ts): Workspace.AppleMap.Tycoons.<n> (Model) with parts Spawn, Conveyor (anchored, the

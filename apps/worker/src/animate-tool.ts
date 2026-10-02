@@ -58,7 +58,7 @@ export function readClips(raw: unknown, discovered?: ReadonlySet<number>): { cli
     const v = (c ?? {}) as Record<string, unknown>;
     const play = String(v.play ?? 'once');
     if (!PLAYS.has(play)) return { error: `${name}.play must be loop, click, prompt, touch, key or once` };
-    if (play === 'key' && !(typeof v.key === 'string' && /^[A-Za-z][A-Za-z0-9]{0,19}$/.test(v.key))) return { error: `${name}.key must be a keyboard key name (Enum.KeyCode), e.g. "A", "Space", "Return"` };
+    if (play === 'key' && !(typeof v.key === 'string' && /^[A-Za-z][A-Za-z0-9]{0,19}$/.test(v.key))) return { error: `${name}.key must be an input key name (Enum.KeyCode), e.g. "A", "Space", "Return"` };
     const keysIn = Array.isArray(v.keys) ? v.keys : [];
     if (keysIn.length < 2 || keysIn.length > 120) return { error: `${name}.keys needs 2 to 120 keys` };
     const keys: Record<string, unknown>[] = [];

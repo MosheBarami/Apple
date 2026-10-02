@@ -79,61 +79,60 @@ export function stripComments(src, lang) {
     }
     return out;
   }
-  // ts
-  let lastSignificant = '';
+  // ts: a small recursive scanner. `code(i, inside)` copies code from i, stopping at the "}" that closes a template's ${ ... }
+  // when `inside` is true, so a template inside a template, a regex or a quote inside a ${ } are each read as what they are.
+  let pos = 0;
   const regexAllowedAfter = (s) => s === '' || /[(,=:[!&|?{};+\-*%<>~^]$/.test(s) || /\b(return|typeof|case|in|of|delete|void|throw|new)$/.test(s);
-  const template = (start) => {
-    // copies a template literal (with nested ${ ... } holding strings/templates) and returns the index after it
-    let j = start + 1, text = '`';
-    while (j < n) {
-      const c = src[j];
-      if (c === '\\') { text += src.slice(j, j + 2); j += 2; continue; }
-      if (c === '`') { text += c; return [text, j + 1]; }
-      if (c === '$' && src[j + 1] === '{') {
-        let depth = 1; let k = j + 2; let inner = '${';
-        while (k < n && depth) {
-          const d = src[k];
-          if (d === '`') { const [t, e] = template(k); inner += t; k = e; continue; }
-          if (d === '"' || d === "'") { let m = k + 1; while (m < n && src[m] !== d) m += src[m] === '\\' ? 2 : 1; inner += src.slice(k, m + 1); k = m + 1; continue; }
-          if (d === '{') depth++;
-          if (d === '}') depth--;
-          inner += d; k++;
-        }
-        text += inner; j = k; continue;
-      }
-      text += c; j++;
+  const template = () => {
+    // at a backtick: copies the whole template literal, scanning each ${ ... } as code
+    let text = '`'; pos++;
+    while (pos < n) {
+      const c = src[pos];
+      if (c === '\\') { text += src.slice(pos, pos + 2); pos += 2; continue; }
+      if (c === '`') { text += c; pos++; return text; }
+      if (c === '$' && src[pos + 1] === '{') { text += '${'; pos += 2; text += code(true); text += '}'; pos++; continue; }
+      text += c; pos++;
     }
-    return [text, n];
+    return text;
   };
-  while (i < n) {
-    const c = src[i], d = src[i + 1];
-    if (c === '/' && d === '/') { while (i < n && src[i] !== '\n') i++; continue; }
-    if (c === '/' && d === '*') { const end = src.indexOf('*/', i + 2); const stop = end < 0 ? n : end + 2; out += blank(src.slice(i, stop)); i = stop; continue; }
-    if (c === '"' || c === "'") {
-      let j = i + 1;
-      while (j < n && src[j] !== c && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
-      out += src.slice(i, j + 1); i = j + 1; lastSignificant += 'x'; lastSignificant = 'x'; continue;
-    }
-    if (c === '`') { const [t, e] = template(i); out += t; i = e; lastSignificant = 'x'; continue; }
-    if (c === '/' && regexAllowedAfter(lastSignificant)) {
-      let j = i + 1, inClass = false;
-      while (j < n && src[j] !== '\n') {
-        if (src[j] === '\\') { j += 2; continue; }
-        if (src[j] === '[') inClass = true;
-        else if (src[j] === ']') inClass = false;
-        else if (src[j] === '/' && !inClass) break;
-        j++;
+  const code = (inside) => {
+    let res = '', last = '', depth = 0;
+    while (pos < n) {
+      const c = src[pos], d = src[pos + 1];
+      if (c === '/' && d === '/') { while (pos < n && src[pos] !== '\n') pos++; continue; }
+      if (c === '/' && d === '*') { const end = src.indexOf('*/', pos + 2); const stop = end < 0 ? n : end + 2; res += blank(src.slice(pos, stop)); pos = stop; continue; }
+      if (c === '"' || c === "'") {
+        let j = pos + 1;
+        while (j < n && src[j] !== c && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
+        res += src.slice(pos, j + 1); pos = j + 1; last = 'x'; continue;
       }
-      if (src[j] === '/') { out += src.slice(i, j + 1); i = j + 1; lastSignificant = 'x'; continue; }
+      if (c === '`') { res += template(); last = 'x'; continue; }
+      if (c === '/' && regexAllowedAfter(last)) {
+        let j = pos + 1, inClass = false;
+        while (j < n && src[j] !== '\n') {
+          if (src[j] === '\\') { j += 2; continue; }
+          if (src[j] === '[') inClass = true;
+          else if (src[j] === ']') inClass = false;
+          else if (src[j] === '/' && !inClass) break;
+          j++;
+        }
+        if (src[j] === '/') { res += src.slice(pos, j + 1); pos = j + 1; last = 'x'; continue; }
+      }
+      if (inside) {
+        if (c === '{') depth++;
+        else if (c === '}') { if (depth === 0) return res; depth--; }
+      }
+      res += c; pos++;
+      if (!/\s/.test(c)) last = (/[A-Za-z0-9_$]/.test(c) ? (last.match(/[A-Za-z0-9_$]+$/)?.[0] ?? '') : '') + c;
     }
-    out += c; i++;
-    if (!/\s/.test(c)) lastSignificant = (/[A-Za-z0-9_$]/.test(c) ? (lastSignificant.match(/[A-Za-z0-9_$]+$/)?.[0] ?? '') : '') + c;
-  }
-  return out;
+    return res;
+  };
+  return code(false);
 }
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const BANNED_RES = BANNED.map((w) => [w, new RegExp(`(?<![A-Za-z0-9])${escapeRe(w)}(?![A-Za-z0-9])`, 'i')]);
+// A word inside an identifier is not the word (poly_pizza is a provider id, inputKeyboard a reference key): `_` is a word character.
+const BANNED_RES = BANNED.map((w) => [w, new RegExp(`(?<![A-Za-z0-9_])${escapeRe(w)}(?![A-Za-z0-9_])`, 'i')]);
 
 /** Banned literals in `src` (comments stripped by the caller). Returns [{ literal, line }]. */
 export function scanSubjects(src) {
@@ -194,15 +193,17 @@ const SOURCES = [
 ];
 
 const ALLOW = JSON.parse(readFileSync(join(HERE, 'no-subject-literals.allow.json'), 'utf8'));
-const allowed = (rel, literal) => ALLOW.entries.some((e) => e.path === rel && e.literal === literal);
+/** An exception names its file, its literal AND the text of the line it covers, so it cannot cover a new use of the word. */
+const allowed = (rel, literal, line) => ALLOW.entries.some((e) => e.path === rel && e.literal === literal && line.includes(e.lineContains));
 
 function findings() {
   const out = [];
   for (const { p, lang } of SOURCES) {
     const rel = relative(ROOT, p);
     const src = stripComments(readFileSync(p, 'utf8'), lang);
+    const lines = src.split('\n');
     for (const h of [...scanSubjects(src), ...(lang === 'ts' ? scanSubjectTables(src) : [])]) {
-      if (!allowed(rel, h.literal)) out.push(`${rel}:${h.line} ${h.literal}`);
+      if (!allowed(rel, h.literal, lines[h.line - 1] ?? '')) out.push(`${rel}:${h.line} ${h.literal}`);
     }
   }
   return out;
@@ -221,13 +222,21 @@ test('no benchmark subject, tier vocabulary, baked-in prompt line or subject tab
   assert.deepEqual(found, [], `${found.length} subject literal(s):\n${found.join('\n')}`);
 });
 
-test('the allowlist is a tripwire: it only shrinks', () => {
-  // It is meant to fire on ANY change. If it fires because an entry was added, write the review (path, literal, reason,
-  // the owner's approval date) and do not bump this number; if an entry was removed, lower it.
-  assert.equal(ALLOW.entries.length, 0);
+test('the allowlist is a tripwire: it only shrinks, every entry says why, and an entry without the owner\'s approval is counted as pending', () => {
+  // It is meant to fire on ANY change. If it fires because an entry was added, write the review (path, literal, the line it covers,
+  // the reason, the owner's approval date) and do not bump this number; if an entry was removed, lower it.
+  assert.equal(ALLOW.entries.length, 3);
   for (const e of ALLOW.entries) {
-    assert.ok(e.path && e.literal && e.reason && /^\d{4}-\d{2}-\d{2}$/.test(e.approvedOn), `incomplete allowlist entry ${JSON.stringify(e)}`);
+    assert.ok(e.path && e.literal && e.lineContains && e.reason, `incomplete allowlist entry ${JSON.stringify(e)}`);
+    assert.ok(e.approvedOn === null || /^\d{4}-\d{2}-\d{2}$/.test(e.approvedOn), `approvedOn is the owner's date, or null while pending: ${JSON.stringify(e)}`);
   }
+});
+
+test('an allowlist entry covers only its own line: the word anywhere else in the same file still fails', () => {
+  const e = ALLOW.entries[0];
+  assert.equal(allowed(e.path, e.literal, `x ${e.lineContains} y`), true);
+  assert.equal(allowed(e.path, e.literal, 'const asmr = make a keyboard;'), false);
+  assert.equal(allowed('apps/worker/src/other.ts', e.literal, e.lineContains), false);
 });
 
 // ----------------------------------------------------------------------------- 2. structural properties ---
@@ -288,7 +297,7 @@ test('scanner: a word inside a comment does not count, a word inside a string or
 });
 
 test('scanner: word boundaries (a duck is not a duckling-proof "conduct"; butterfly is not butter)', () => {
-  assert.deepEqual(scanSubjects('const a = "butterfly conduct crowned";'), []);
+  assert.deepEqual(scanSubjects('const a = "butterfly conduct crowned poly_pizza inputKeyboard";'), []);
   assert.equal(scanSubjects('const a = "Butter";').length, 1);
 });
 
