@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "deploy:api": "wrangler deploy --var BUILD_SHA:$(git rev-parse --short HEAD)"
+    "deploy:api": "wrangler deploy --var BUILD_SHA:$(git rev-parse --short HEAD)",
+    "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
     "@golem/design": "workspace:*",

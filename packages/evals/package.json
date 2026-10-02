@@ -14,7 +14,8 @@
     "report": "node src/report.mjs",
     "score": "node src/score.mjs",
     "acceptance": "node --test src/acceptance.test.mjs",
-    "metrics": "node src/success-metrics.mjs"
+    "metrics": "node src/success-metrics.mjs",
+    "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
     "@golem/design": "workspace:*"
