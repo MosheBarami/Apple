@@ -271,8 +271,12 @@ function latestPer<T extends { seq: number }>(facts: T[], key: (f: T) => string)
   return [...best.values()];
 }
 
+/**
+ * A measured colour in words. The FAMILY only, never the BrickColor name it was read as: the name is a string that came out of the
+ * place, and everything `because` says can reach the agent in a user-role message (see steerForFindings).
+ */
 function colourWhat(f: ColourFact): string {
-  return f.label ? `${f.label} (${f.family ?? 'unknown'})` : (f.family ?? 'an unknown colour');
+  return f.family ?? 'an unknown colour';
 }
 
 function lookSaysColour(claim: Claim, l: EvidenceLedger): Finding | null {
@@ -412,7 +416,14 @@ export function steerForFindings(result: AuditResult, can: Offered): string | nu
     can.play ? 'play_check plays as a real player' : '',
     can.look ? 'look looks at the place' : '',
   ].filter(Boolean).join('; ');
-  const lines = send.slice(0, 6).map((f) => `- "${f.claim.sentence}" — ${f.verdict === 'contradicted' ? 'CONTRADICTED' : 'not supported'}: ${f.because}.`);
+  // A user-role message: it carries the agent's own clause, words from closed vocabularies, numbers and fixed sentences — and
+  // nothing a place wrote or a model wrote ABOUT the place. A judge's finding (kind "other") is therefore sent back by its claim
+  // alone; its reason is model output derived from untrusted place text and stays out. See security.test.mjs A5.
+  const lines = send.slice(0, 6).map((f) => (
+    f.claim.kind === 'other'
+      ? `- "${f.claim.sentence}" — not supported by anything this run observed.`
+      : `- "${f.claim.sentence}" — ${f.verdict === 'contradicted' ? 'CONTRADICTED' : 'not supported'}: ${f.because}.`
+  ));
   return (
     'Before you answer: your reply makes claims that what this run observed does not support.\n' +
     `${lines.join('\n')}\n` +
@@ -431,6 +442,7 @@ function plainPhrase(f: Finding): string {
     case 'colour': return `that ${c.subject ? `the ${c.subject.replace(/^(?:the|a|an)\s+/i, '')}` : 'it'} is ${c.colour}${f.verdict === 'contradicted' ? ` (${trimTo(f.because, 80)})` : ''}`;
     case 'text': return c.visible ? `that "${c.text}" really shows on the screen${f.verdict === 'contradicted' ? ' (it was hidden when I checked)' : ''}` : `that the text really says "${c.text}"`;
     case 'count': return `that there are ${c.count} ${c.noun}s${f.verdict === 'contradicted' ? ` (${trimTo(f.because, 60)})` : ''}`;
+    case 'other': return `that this is true: "${trimTo(c.sentence, 90)}"`;
     default: return `that it works as I said: "${trimTo(c.sentence, 90)}"${clue}`;
   }
 }
