@@ -1,5 +1,12 @@
 # NEXT ACTION (V3)
 
+**2026-10-02 — owner direction: 3D objects come from the library first.** "For 3D models always search the Creator Store or the library, stud them if needed, procedural only rarely." Owner's answers: the user picks from 3 previews; keyboards from the library too; owner library + Roblox-owned Creator Store only (his linked ASMR Butter is a third-party Model with a script: the plugin refuses it and Roblox will not load it without third-party loading). Built (1dbfc4ce, not yet deployed): an object request stands up to three ready-made models in the place, numbered, with a Studio snapshot on a chat card; the pick is staged, studded, wobbles on a click with a sound, gets a counter, and is play-tested, all with no model call; "None of these" builds it procedurally. Also fixed: a run paused for Studio ends after 45 s when Studio is gone (62a6be5b; a run sat "running" 16 minutes).
+
+**Next, in order:**
+1. Deploy worker + web, then re-run test 2 ("make me a stick of butter") and test 3 ("make it 100x cooler") on the library flow, the same critique loop.
+2. Tests 4 and 5 (new silly requests), then frontier.
+3. Open: Studio's camera frames new things off-centre (plugin camera_focus does not set Focus); play_check cannot click a ClickDetector.
+
 **2026-10-01 late night — Frontier ≈67%: test 2 DONE (round 11), 2 of 5 silly tests green.** Test 2 ("make me a stick of butter"): 8 credits, 2 steps, ~20 s. Round 2 was an 8 x 2 x 2 box with its label buried inside, nothing to do and a reply that invented a wrapper; round 11 is a 15-stud stick lying across the view with dark "BUTTER" on top, its wrapper underneath, "Walk into it!" that works (the counter rose in the play test), and an answer said from what was built. Fixed on the way (all in apps/worker/src/object-tool.ts, deployed e1cfe032..caba7900): parts hidden inside others come out, small things grow, every object reacts to the player, long things lie across the view, shape words (stick, coin) set the shape, wrappers go under, bands wrap, hovering details settle, unreadable words are dropped, dark ink on light parts, and an object run ends on the tool's own description (one model call fewer).
 
 **Next, in order:**
