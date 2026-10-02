@@ -425,6 +425,18 @@
       "max": 13,
       "reason": "comments, test fixtures and labels that state the rename itself (the footer byline history, the retired Roblox asset named Golem, the design-history page labels, the one-operator test)",
       "removal": "delete the comment/page when its subject is deleted; the design-history page is a decision for the repo-organise workflow"
+    },
+    {
+      "id": "benchmark-code-alias",
+      "scope": "content",
+      "paths": [
+        "apps/benchmark/crystal-canyon/src/server/CodeTable.luau",
+        "apps/benchmark/crystal-canyon/tests/codes.spec.luau"
+      ],
+      "token": "GOLEM|GOLEM2|codes\\.GOLEM|save\\.codes\\.GOLEM|golem",
+      "max": 20,
+      "reason": "the Crystal Canyon promo code that was GOLEM and is now APPLE is ONE code with an alias: players who redeemed it under the old key hold codes.GOLEM = true in their DataStore saves, and without the alias a rename lets them redeem it again (+1000 coins) and shows old saves as unredeemed. The spec pins that behaviour.",
+      "removal": "when the owner decides saves written before the rename no longer need to load (nobody holds codes.GOLEM): delete the Aliases entry from CodeTable.luau, the alias fold in Profile.sanitize, and the spec cases; the old key then becomes an unknown code"
     }
   ]
 }
