@@ -428,7 +428,9 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
   // The rig: an invisible body around the whole model that every part is welded to, turned by one Motor6D on a root.
   const body: ObjectPart = { name: 'AppleBody', shape: 'block', size: [sx + 0.2, sy + 0.2, sz + 0.2], at: [0, 0, 0], color: '#ffffff', move: { as: 'wobble', on: 'click', sound: 'squish' } };
   const mk = (spec: InstanceSpecLite) => ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed(spec), parent: model }] }, 20_000);
-  const madeBody = await mk({ className: 'Part', name: 'AppleBody', props: { Size: body.size, Position: b.center, Anchored: true, CanCollide: false, CanTouch: false, CanQuery: true, Transparency: 1 } });
+  // Touchable: walking into it presses it too (AppleAnimate's step-on for a part's own click clip), which is also how
+  // the play check presses it, since a check cannot click.
+  const madeBody = await mk({ className: 'Part', name: 'AppleBody', props: { Size: body.size, Position: b.center, Anchored: true, CanCollide: false, CanTouch: true, CanQuery: true, Transparency: 1 } });
   let moves = false;
   if (madeBody.ok) {
     const welded = await ctx.execStudioOp({ op: 'rig_model', root: `${model}.AppleBody`, joint: 'weld' }, 60_000);
@@ -467,6 +469,18 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
     built: `a ready-made ${pick.name} from ${pick.source === 'owner' ? 'the owner library' : 'the Creator Store'}, scripts and sounds left out, on a stage${moves ? '; clicking it makes it wobble with a squish; a counter and a hint are on the player\'s screen' : ''}`,
     forUser,
   };
+}
+
+/**
+ * The number on an object's counter after a play check walked the player into it (its "${name}HUD" screen's Value),
+ * or undefined when the screen was not read. Pure.
+ */
+export function pressesSeen(detail: unknown, name: string): number | undefined {
+  const sees = (detail as { playerSees?: unknown } | null)?.playerSees;
+  if (typeof sees !== 'string') return undefined;
+  const screen = sees.split(' | ').find((line) => line.includes(`ScreenGui "${name}HUD" (enabled)`));
+  const value = screen ? /"(\d+)" \[Value\]/.exec(screen) : null;
+  return value ? Number(value[1]) : undefined;
 }
 
 /** What one play_check measured, said for the answer (shared with the session's tool loop). Pure. */

@@ -69,7 +69,7 @@ import {
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
 import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
-import { clearLineup, coolLibraryObject, offerLibraryObjects, placeChosenObject, playCheckReading, type PendingObjectChoice } from '../library-object';
+import { clearLineup, coolLibraryObject, offerLibraryObjects, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -1632,9 +1632,14 @@ export class SessionDO extends DurableObject<Env> {
       agent.objectBuilt = true;
       // Played once by the harness, not the model: no model call for the whole pick.
       const t1 = Date.now();
-      const out = await runTool(ctx, 'play_check', '{}');
+      // The player walks into it (a check cannot click), so the press, the wobble's trigger and the counter are proved.
+      const object = typeof placed.object === 'string' ? placed.object : '';
+      const out = await runTool(ctx, 'play_check', JSON.stringify(object ? { touch: [`${object}.AppleBody`] } : {}));
       row('play_check', out.ok, t1, out.summary, out.detail);
       const reading = out.ok ? playCheckReading(out.detail) : undefined;
+      const presses = out.ok && object ? pressesSeen(out.detail, object.replace(/^game\.Workspace\./, '')) : undefined;
+      if (reading && !reading.problem && presses === 0) reading.problem = 'its counter stayed at 0 when the player walked into it, so a press did not register';
+      if (reading && !reading.problem && presses !== undefined) reading.seen = `walking into it pressed it (the counter read ${presses}), and ${reading.seen}`;
       agent.playChecked = out.ok;
       agent.lastCheckProblem = reading?.problem;
       agent.lastCheckSeen = reading?.seen;

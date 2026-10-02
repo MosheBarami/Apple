@@ -174,3 +174,19 @@ test('a second object finds empty ground beside the first, never in it', () => {
   assert.ok(place.indexOf('freeLaneX(') > 0 && place.indexOf('freeLaneX(') < place.indexOf("op: 'place_copies'"), 'the pick looks for room before it moves');
   assert.ok(!/const at: V3 = \[0, 2, -26\]/.test(place), 'never the fixed middle');
 });
+
+// play_check cannot click (open since test 2). A library object's body is touchable, the check walks the player into
+// it, and the counter on the screen it reads afterwards proves the press (2026-10-02).
+test('the play check presses a picked object by walking into it and reads its counter', () => {
+  const sees = 'The player\'s screen: ScreenGui "StickOfButterHUD" (enabled): visible text "0" [Value], "Presses" [Caption] | ScreenGui "RubberDuckHUD" (enabled): visible text "3" [Value], "Presses" [Caption], "Click it!" [Text].';
+  assert.equal(L.pressesSeen({ playerSees: sees }, 'RubberDuck'), 3, 'its own screen, not the first object');
+  assert.equal(L.pressesSeen({ playerSees: sees }, 'StickOfButter'), 0);
+  assert.equal(L.pressesSeen({ playerSees: sees }, 'Pizza'), undefined, 'no screen, no reading');
+  assert.equal(L.pressesSeen({}, 'RubberDuck'), undefined);
+  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(src, /name: 'AppleBody', props: \{[^}]*CanTouch: true/, 'the body can be walked into');
+  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
+  const pick = session.slice(session.indexOf('const placed = await placeChosenObject'), session.indexOf("await this.finishRun(agent, 'done');", session.indexOf('const placed = await placeChosenObject')));
+  assert.match(pick, /runTool\(ctx, 'play_check', JSON\.stringify\(object \? \{ touch: \[`\$\{object\}\.AppleBody`\] \}/, 'the check walks into the body');
+  assert.match(pick, /presses === 0\) reading\.problem =/, 'a counter left at 0 is said as a problem');
+});
