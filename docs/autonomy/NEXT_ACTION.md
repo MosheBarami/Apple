@@ -1,5 +1,21 @@
 # NEXT ACTION (V3)
 
+**2026-10-02 morning: FRONTIER. 5 of 5 silly tests are green, every open critique item is closed.**
+
+- Owner: "remove entirely the 3 options and do an automatic as before". An object request now imports only the best clean
+  ready-made model and places it on its stage, studded, wobbling, with its counter, and play-tests it, in one run (8f218010).
+- Test 4, "make me a rubber duck": true-size library duck (file meshes become MeshParts), on free ground beside the butter;
+  walking into it counted 1 and nothing errored.
+- Test 5, "make me a giant pizza": placed beside the duck. Fixed on the way: size words are honoured (giant 2.5x, so 37
+  studs, not 15) and each counter names its object ("PIZZA PRESSES") (613db3f8). "Make it cooler" put a gold library crown on it.
+- Closed from the old open list: plot-simulator shop rows no longer carry tower-defence fields (e710752d); the camera Focus,
+  keycaps reading sideways, tiny machines, empty roads, plates under the hero and "rainbow keycaps" were fixed in earlier
+  commits; buttons are pressed by play_check_ui and objects by walking into them; the crown reads gold live.
+- "Studio disconnected after a restart" is by design: a pairing lasts until Studio closes, and the pill is the button that
+  pairs again. A new pairing after this morning's restart showed connected at once.
+
+**Next:** new silly requests from the owner, same loop.
+
 **2026-10-02 morning: Frontier ≈78%. Test 3 is DONE, so 3 of 5 silly tests are green. Test 4 ("make me a rubber duck") is mid-loop.**
 
 Test 3 ("make it 100x cooler" on the library butter) took 1 credit, 1 step and ~25 s. It adds a library crown welded to the body (it wobbles with it), sparkles, a glow outline, four neon orbs and a neon rim. Clicks count in Play (1 → 2). Fixed on the way:

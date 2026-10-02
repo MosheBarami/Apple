@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-10-02T01:40:23.319879+00:00",
-  "now": "מבחן 3 (\"תעשה את זה פי 100 יותר מגניב\") עבר: כתר מהספרייה שזז עם החמאה, ניצוצות, הילה, כדורי ניאון, והמונה עולה בלחיצה. 3 מתוך 5 מבחנים ירוקים. מבחן 4 (ברווז גומי) באמצע: עכשיו אובייקט שני עומד ליד הראשון ולא בתוכו, ולכל אובייקט מונה משלו על המסך. תיקנתי גם מודלים ישנים שנראו קטנים מדי — צריך להפעיל מחדש את Studio כדי שהתיקון ייטען.",
-  "nextStep": "ללחוץ \"Don't Save\" בחלון של Studio (אני לא יכול ללחוץ עליו), לפתוח את Studio מחדש, ואז להריץ שוב את מבחן הברווז ואת מבחן 5 (פיצה ענקית).",
+  "updatedAt": "2026-10-02T09:50:00+03:00",
+  "now": "פרונטיר: 5 מתוך 5 מבחנים ירוקים. ברווז גומי ופיצה ענקית נכנסים אוטומטית מהספרייה (בלי 3 אפשרויות), בגודל אמיתי, ליד מה שכבר יש, עם מונה משלהם. \"ענקית\" עכשיו באמת ענקית. כל התקלות הפתוחות נסגרו.",
+  "nextStep": "בקשות \"טיפשיות\" חדשות מהבעלים, באותה לולאת ביקורת.",
   "items": [
     {
       "id": "productScope",
