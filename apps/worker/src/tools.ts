@@ -84,6 +84,7 @@ import { sourcesIn as runSourcesIn } from './sources';
 import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
 import { addBehaviour } from './behaviour-tool';
+import { lintScriptWrite } from './behaviour-review';
 import { modelAnatomy } from './model-anatomy';
 import { buildStuddedUi } from './studded-ui-tool';
 import { addUpgrades } from './upgrades-tool';
@@ -2032,6 +2033,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       // G13/G14: no runtime dependence on Apple, no fabricated purchase ids.
       const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
       if (gameRule) return gameRule;
+      // M4 backstop for agent-written scripts (behaviour-review.ts): a loop that never yields is refused with the fix; the other
+      // findings (a missing child, an unguarded Touched, ingress and egress primitives) ride on the result for the agent to act on.
+      const existingClass = typeof (existing as { class?: unknown } | null)?.class === 'string' ? String((existing as { class: string }).class) : undefined;
+      const lint = await lintScriptWrite(ctx, {
+        path, source: after, parentPath: create?.parent, className: create?.className ?? existingClass, ingress: scanLuauForAssetIngress(after),
+      });
+      if (lint.refusal) return lint.refusal;
 
       const res = await op(ctx, {
         op: 'edit_script',
@@ -2069,6 +2077,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         removed: stat.removed,
         ...(sourceFile ? { sourceFile } : {}),
         ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
+        ...(lint.summary ? { lint: lint.summary } : {}),
       };
     },
   },
