@@ -75,7 +75,8 @@ await esbuild.build({
   }],
 });
 
-const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = await import(pathToFileURL(OUT).href);
+const SESSION_MOD = await import(pathToFileURL(OUT).href);
+const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = SESSION_MOD;
 // The registry, for the lists a fixture must DERIVE rather than write by hand: which tools change
 // the project, and which Studio operations each one needs.
 const REGISTRY_OUT = join(TMP, 'tools.mjs');
@@ -84,6 +85,9 @@ const W = await import(pathToFileURL(REGISTRY_OUT).href);
 const PB_OUT = join(TMP, 'prompt-budget.mjs');
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'prompt-budget.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: PB_OUT, logLevel: 'silent' });
 const PB = await import(pathToFileURL(PB_OUT).href);
+const RZ_OUT = join(TMP, 'reasoning.mjs');
+await esbuild.build({ entryPoints: [join(WORKER, 'src', 'reasoning.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: RZ_OUT, logLevel: 'silent' });
+const RZ = { ...(await import(pathToFileURL(RZ_OUT).href)), baseTokensFor: SESSION_MOD.baseTokensFor };
 test.after(() => rmSync(TMP, { recursive: true, force: true }));
 
 // ------------------------------------------------------------------------------------ harness ---
@@ -1262,5 +1266,50 @@ test('CREDITS control: one failure in four never trips the failure guard', async
     const joined = h.chatCalls.map(userText).join('\n');
     assert.doesNotMatch(joined, /failed the same way/, 'a run that mostly succeeds was steered as failing');
     assert.doesNotMatch(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /kept failing/);
+  } finally { h.stop(); }
+});
+
+// A step cut at the output ceiling is billed and its tool call is discarded (neuronsUsed is settled before the cut
+// branch). The scripted gateway has no ceiling of its own, so these cuts are scripted as finish_reason=length.
+const CUT = answer({ finishReason: 'length', neurons: 295 });
+
+test('CREDITS: consecutive output-ceiling cuts end the run at a bound, honestly', async () => {
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: Array.from({ length: 60 }, () => CUT) });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    for (let i = 0; i < 70 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), `the run never ended: ${h.chatCalls.length} paid steps, every one cut at the ceiling`);
+    assert.ok(h.chatCalls.length <= 5, `${h.chatCalls.length} cut steps were paid for before the run stopped`);
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('') + (assistantRow(h)?.content ?? '');
+    assert.match(text, /too big|too large|smaller/i, 'the ending must say why');
+    assert.doesNotMatch(text, TOOL_NAME, 'the note names a tool');
+  } finally { h.stop(); }
+});
+
+test('CREDITS control: a cut followed by a complete step does not count towards the bound', async () => {
+  const done = answer({ text: 'Built it.' });
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [CUT, CUT, calls(['get_project_tree', {}]), CUT, CUT, CUT, done, done, done] });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.chatCalls.length >= 7, `a run that recovers between cuts was ended as if the cuts were consecutive (${h.chatCalls.length} steps)`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('') + (assistantRow(h)?.content ?? '');
+    assert.doesNotMatch(text, /too big|too large/i);
+  } finally { h.stop(); }
+});
+
+test('CREDITS: the step after a cut is never given a smaller output ceiling than the full one', async () => {
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [CUT, CUT, CUT, answer({ text: 'Done.' })] });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    // The run has spent its high-effort steps, which is the state where the ceiling drops to the base budget.
+    h.store.set('agent', structuredClone({ ...h.store.get('agent'), highEffortUsed: 8 }));
+    for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
+    const full = RZ.tokensForEffort(RZ.baseTokensFor('agent'), 'high');
+    const asked = h.chatCalls.map((c) => c.req.maxTokens);
+    assert.ok(asked.length >= 4, 'the fixture checks nothing');
+    assert.equal(asked[0], RZ.baseTokensFor('agent'), 'the first step, not recovering, keeps the base budget');
+    for (const [i, n] of asked.slice(1, 4).entries()) assert.equal(n, full, `recovery step ${i + 1} was asked for ${n} tokens, below the full ${full}`);
   } finally { h.stop(); }
 });

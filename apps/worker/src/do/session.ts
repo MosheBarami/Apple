@@ -88,7 +88,7 @@ import { recoverToolCall } from '../tool-recovery';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
-import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
+import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
@@ -430,6 +430,8 @@ interface AgentState {
   priorStepFailed?: boolean;
   /** provider output cuts recovered inside this same run; diagnostic/escalation only, never a cap */
   lengthRecoveries?: number;
+  /** Output-ceiling cuts in a row (reasoning.ts MAX_CONSECUTIVE_CUTS); cleared by any step that is not cut. */
+  consecutiveCuts?: number;
   /** consecutive provider transport failures; reset after a successful model response */
   transientFailures?: number;
   /** the last visual critique failed its quality gate */
@@ -4320,7 +4322,7 @@ export class SessionDO extends DurableObject<Env> {
           : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' }
           : agent.upgradesFirst && !talkOnly && offeredAllowed.has('add_upgrades') ? { requiredTool: 'add_upgrades' } : {}),
         reasoningEffort: choice.effort,
-        maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
+        maxTokens: tokensAfterCuts(baseTokensFor(agent.mode), choice.effort, agent.consecutiveCuts ?? 0),
       },
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
@@ -4525,6 +4527,14 @@ export class SessionDO extends DurableObject<Env> {
       agent.priorStepFailed = true;
       const cuts = (agent.lengthRecoveries ?? 0) + 1;
       agent.lengthRecoveries = cuts;
+      agent.consecutiveCuts = (agent.consecutiveCuts ?? 0) + 1;
+      // Every cut step is billed and its call discarded: a run that cannot fit its next action in one step stops.
+      if (agent.consecutiveCuts >= MAX_CONSECUTIVE_CUTS) {
+        await this.finishRun(agent, 'incomplete', undefined, agent.mutated
+          ? `Apple stopped because the next step was too big for it to write in one go, even in smaller pieces. ${spaced(builtSummary(agent.made))}Ask for the rest one area at a time and it will carry on.`
+          : 'Apple stopped because the next step was too big for it to write in one go, even in smaller pieces, so nothing in your place was changed. Ask for a smaller part first and it will carry on.');
+        return;
+      }
       const batchHint =
         cuts >= 4
           ? 'Use exactly one small mutating tool call for the next piece, then continue in later steps.'
@@ -4543,6 +4553,7 @@ export class SessionDO extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
     }
+    agent.consecutiveCuts = 0; // this step was not cut (the cut branch above returns)
     if (!res.toolCalls.length && finishReason !== 'stop') {
       //[[ "EVERYTHING COMPLETED BEFORE THE CUTOFF IS SAVED" IS A CLAIM, AND IT NEEDS A SUBJECT.
       //
