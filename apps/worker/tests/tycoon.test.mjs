@@ -51,6 +51,8 @@ test('the steps build bases with a belt, droppers, machines, a seller and pads t
   assert.ok(unlocks.slice(1).every((u, i) => u.after === unlocks[i].id), 'each pad after the one before');
   assert.ok(unlocks.every((u, i) => i === 0 || u.price > unlocks[i - 1].price), 'each dearer');
   assert.ok(steps.some((s) => s.kind === 'place' && s.name === 'Look' && s.from.endsWith('TycoonMachine1')), 'the washing machine wears its library look');
+  const folders = steps[0].items.find((i) => i.name === 'AppleParts').children.map((c) => c.name);
+  for (const s of steps.filter((x) => x.kind === 'import')) assert.ok(folders.includes(s.key), `the import folder for ${s.key} is made first`);
   assert.match(T.tycoonForUser(recipe, { missing: [] }), /Dirty Laundry → Clean Laundry → Dry Laundry → Folded Laundry/);
 });
 

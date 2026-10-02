@@ -222,7 +222,9 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
   const steps: Step[] = [];
   const unlocks = tycoonUnlocks(theme);
   const looks = recipe.looks;
-  steps.push({ kind: 'create', parent: 'game.ServerStorage', items: [{ className: 'Folder', name: 'AppleParts' }, { className: 'Folder', name: 'AppleTycoonParts', children:
+  // Every library piece's import folder exists first (live 2026-10-02: "nothing at ...AppleParts.TycoonMachine1").
+  const staged = [...looks.machines.flatMap((r, i) => (r ? [`TycoonMachine${i + 1}`] : [])), ...(looks.seller ? ['TycoonSeller'] : [])];
+  steps.push({ kind: 'create', parent: 'game.ServerStorage', items: [{ className: 'Folder', name: 'AppleParts', children: staged.map((name) => ({ className: 'Folder', name })) }, { className: 'Folder', name: 'AppleTycoonParts', children:
     Array.from({ length: recipe.players }, (_, i) => ({ className: 'Folder', name: String(i + 1) })) }] });
   if (!recipe.hasComponents) steps.push({ kind: 'create', parent: 'game.ServerScriptService', items: [{ className: 'Folder', name: 'AppleComponents' }] });
   steps.push({ kind: 'create', parent: 'game.ReplicatedStorage', items: [{ className: 'Folder', name: 'AppleComponents' }] });
