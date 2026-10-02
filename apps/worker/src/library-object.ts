@@ -391,10 +391,27 @@ export function worldBox(tree: unknown): { center: V3; size: V3; bottomY: number
 }
 
 /** The target size: about three player heights along its longest side, height first for a tall thing. Pure. */
-export function libraryFit(size: V3): { length?: number; height?: number } {
+export function libraryFit(size: V3, request = ''): { length?: number; height?: number } {
   const across = Math.max(size[0], size[2]);
-  return size[1] > across * 1.2 ? { height: 3 * PLAYER_HEIGHT } : { length: 3 * PLAYER_HEIGHT };
+  const k = 3 * PLAYER_HEIGHT * sizeFactor(request);
+  return size[1] > across * 1.2 ? { height: k } : { length: k };
 }
+
+/**
+ * How much bigger or smaller the request asks for (test 5, 2026-10-02: "a giant pizza" came out 15 studs, the size of
+ * the duck beside it). Pure.
+ */
+export function sizeFactor(request: string): number {
+  const w = new Set(words(request));
+  if (['giant', 'huge', 'enormous', 'massive', 'gigantic', 'colossal', 'humongous', 'mega'].some((x) => w.has(x))) return 2.5;
+  if (['big', 'large', 'tall'].some((x) => w.has(x))) return 1.6;
+  if (['tiny', 'mini', 'miniature'].some((x) => w.has(x))) return 0.4;
+  if (['small', 'little'].some((x) => w.has(x))) return 0.6;
+  return 1;
+}
+
+/** "RubberDuck" -> "Rubber Duck". Pure. */
+const spaced = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 
 /**
  * The picked candidate becomes the object: moved onto a stage in front of the spawn and sized, the others removed,
@@ -412,7 +429,7 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
   const model = `game.Workspace.${name}`;
   const stageName = `game.Workspace.${name}Stage`;
   for (const path of [model, stageName]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
-  const fit = libraryFit(before.size);
+  const fit = libraryFit(before.size, pending.request);
   // Beside what is already there, never in it: the size it will have (its long side along x) on its stage, with a gap.
   const k = fit.length ? fit.length / Math.max(before.size[0], before.size[2], 0.1) : fit.height! / Math.max(before.size[1], 0.1);
   const wide = Math.max(before.size[0], before.size[2]) * k, deep = Math.min(before.size[0], before.size[2]) * k;
@@ -462,7 +479,7 @@ export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectCho
   } else problems.push(`body: ${String(madeBody.error ?? '').slice(0, 160)}`);
 
   if (moves) {
-    const hud = await writeObjectHud(ctx, name, { counter: 'Presses', hint: 'Click it!' });
+    const hud = await writeObjectHud(ctx, name, { counter: `${spaced(name)} presses`, hint: 'Click it!' });
     if (hud) problems.push(hud);
   }
   await ctx.execStudioOp({ op: 'camera_focus', path: model }, 10_000).catch(() => undefined);

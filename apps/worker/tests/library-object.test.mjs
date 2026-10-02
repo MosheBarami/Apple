@@ -59,6 +59,10 @@ test('only what IS the object: whole-word name, exact first, one per game, no ch
 test('a picked model is sized to about three player heights, by its height when it is tall', () => {
   assert.deepEqual(L.libraryFit([2, 1, 1]), { length: 15 });
   assert.deepEqual(L.libraryFit([2, 6, 2]), { height: 15 });
+  // Test 5, 2026-10-02: the size words in the request are honoured.
+  assert.deepEqual(L.libraryFit([2, 1, 1], 'make me a giant pizza'), { length: 37.5 });
+  assert.deepEqual(L.libraryFit([2, 6, 2], 'a tiny tower'), { height: 6 });
+  assert.equal(L.sizeFactor('make me a rubber duck'), 1);
 });
 
 test('the play check is said the same way by the tool loop and the library step', () => {
