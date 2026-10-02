@@ -1,11 +1,15 @@
 /**
  * THE COMPLETION GATE — a run that changed the place does not answer before one look at it.
  *
- * STRUCTURAL. The gate reads two things and nothing else: the evidence ledger (did the work change
- * since the last look) and what this run was offered (is Studio connected, is `look` available). It
- * never reads the request, never classifies it, never asks whether the work "is visual": whether a
- * thing looks right and fits is the agent's decision, and the harness's job here is only to make sure
- * the agent has SEEN the place before it says anything about it.
+ * STRUCTURAL. The gate reads two things and nothing else: the evidence ledger (did the work change,
+ * in a way the viewport can show, since the last look) and what this run was offered (is Studio
+ * connected, is `look` available). It never reads the request, never classifies it, never asks
+ * whether the work "is visual": whether a thing looks right and fits is the agent's decision, and
+ * the harness's job here is only to make sure the agent has SEEN the place before it says anything
+ * about it. "In a way the viewport can show" is about WHERE the change landed (the workspace and the
+ * lighting, or somewhere unknown), never about what it was for: a screen or a script is not in the
+ * picture, so a look at the viewport would not be a look at it, and the gate does not ask for one.
+ * Claims about what a player's screen shows are the audit's, and they need a player check.
  *
  * BOUNDED (self-check.ts SELF_CHECK_LIMITS):
  *   - one forced look: when the run changed things and never looked, the harness runs the look itself;
@@ -40,7 +44,7 @@ export function decideLookGate(i: GateInput): GateDecision {
   if (!i.lookAvailable) return { action: 'pass', why: 'the connected Studio does not offer a look' };
   if (!lookNeeded(l)) return { action: 'pass', why: 'nothing has changed since the last look' };
   if (l.lookCount >= SELF_CHECK_LIMITS.looksPerRun) return { action: 'pass', why: 'the look limit for this run is used' };
-  if (l.lastLookFailedAt === l.mutationSeq) return { action: 'pass', why: 'a look could not run on this work' };
+  if (l.lastLookFailedAt !== null && l.lastLookFailedAt >= l.viewChangedSeq) return { action: 'pass', why: 'a look could not run on this work' };
   if (l.forcedLooks < SELF_CHECK_LIMITS.forcedLooks && l.lookCount === 0) {
     return { action: 'force_look', why: 'the run changed the place and has not looked at it' };
   }

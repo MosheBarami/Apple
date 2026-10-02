@@ -425,7 +425,7 @@ test('PLANTED LIE 2 IN THE LOOP: the reply calls hidden text visible — sent ba
     responses: [
       calls(['set_properties', { path: 'game.StarterGui.Hud.Joke', props: { Text: { t: 'string', v: 'Knock knock' } } }]),
       calls(['play_check', {}]),
-      answer({ text: 'Players see "Knock knock" on screen.' }), // gate: forced look (the run changed the place)
+      // The change was a screen: a look at the viewport could not show it, so the gate does not force one (see the next test).
       answer({ text: 'Players see "Knock knock" on screen.' }), // audit round 1
       answer({ text: 'Players see "Knock knock" on screen.' }), // audit round 2
       answer({ text: 'Players see "Knock knock" on screen.' }), // out of rounds
@@ -434,11 +434,29 @@ test('PLANTED LIE 2 IN THE LOOP: the reply calls hidden text visible — sent ba
   try {
     await start(h, 'show a joke on the screen');
     await run(h);
+    assert.equal(h.visionCalls.length, 0, 'nothing in the viewport changed');
     const steers = h.chatCalls.flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /does not support/i.test(String(m.content)));
     assert.ok(steers.length >= 1);
     assert.match(String(steers[0].content), /hidden/i);
     assert.match(reply(h), /^Players see "Knock knock" on screen\./);
     assert.match(reply(h), /What I did not check: that "Knock knock" really shows on the screen/);
+  } finally { h.stop(); }
+});
+
+test('a run that only changed a screen and a script is not stopped for a look at a viewport that cannot show them', async () => {
+  const h = await makeSession({
+    responses: [
+      calls(['set_properties', { path: 'game.StarterGui.Hud.Joke', props: { Text: { t: 'string', v: 'Knock knock' } } }]),
+      answer({ text: 'The joke label now reads as you asked.' }),
+    ],
+  });
+  try {
+    await start(h, 'Change the joke label text.');
+    await run(h);
+    assert.equal(h.visionCalls.length, 0);
+    assert.equal(opsNamed(h, 'capture_studio_viewport').length, 0, 'no picture was taken');
+    assert.equal(stepCalls(h).length, 2);
+    assert.equal(reply(h), 'The joke label now reads as you asked.', 'and the line does not claim the viewport was left unchecked');
   } finally { h.stop(); }
 });
 

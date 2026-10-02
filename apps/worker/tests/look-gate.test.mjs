@@ -30,6 +30,23 @@ test('changed and never looked: the gate forces one look', () => {
   assert.match(d.why, /changed/i);
 });
 
+test('a run that only changed screens and scripts is not stopped for a look at a viewport that cannot show them', () => {
+  const l = newLedger();
+  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.StarterGui.Hud.Title', props: {} }, result: {}, ok: true });
+  recordToolCall(l, { tool: 'edit_script', kind: 'mutation', args: { path: 'game.ServerScriptService.Main' }, result: {}, ok: true });
+  const d = decideLookGate({ ledger: l, ...CAN });
+  assert.equal(d.action, 'pass');
+  assert.equal(lookExtra(l, { lookAvailable: true }), null, 'nothing about the viewport is unchecked, so the line does not claim it is');
+});
+
+test('a look that failed on the work in view is not forced again after a change that is out of view', () => {
+  const l = newLedger();
+  change(l);
+  failedLook(l);
+  recordToolCall(l, { tool: 'edit_script', kind: 'mutation', args: { path: 'game.ServerScriptService.Main' }, result: {}, ok: true });
+  assert.equal(decideLookGate({ ledger: l, ...CAN }).action, 'pass');
+});
+
 test('no Studio, or no look offered: the gate steps aside (it cannot demand what cannot be done)', () => {
   const l = newLedger();
   change(l);

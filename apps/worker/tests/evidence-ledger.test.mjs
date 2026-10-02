@@ -171,6 +171,38 @@ test('a look after the last change is "looked at"; any later change un-looks it'
   assert.equal(lookNeeded(l), true);
 });
 
+test('a change the viewport cannot show (a screen, a script, a service) does not make the work "unlooked"', () => {
+  const l = newLedger();
+  recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));
+  recordLook(l, { ok: true, source: 'studio_viewport', views: ['front'], observations: [], answers: [], issues: [] });
+  assert.equal(lookNeeded(l), false);
+  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.StarterGui.Hud.Title', props: { Text: { t: 'string', v: 'x' } } }, result: {}, ok: true });
+  recordToolCall(l, { tool: 'edit_script', kind: 'mutation', args: { path: 'game.ServerScriptService.Main', source: 'print(1)' }, result: {}, ok: true });
+  assert.equal(l.mutationSeq, 3, 'they are still changes');
+  assert.equal(lookNeeded(l), false, 'but a look at the viewport could not have shown them');
+  recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path: 'game.Lighting', props: { ClockTime: { t: 'number', v: 18 } } }, result: {}, ok: true });
+  assert.equal(lookNeeded(l), true, 'lighting is in the viewport');
+});
+
+test('a change whose paths are not known is assumed to be in view: the check never skips a look on a guess', () => {
+  const l = newLedger();
+  recordToolCall(l, { tool: 'edit_terrain', kind: 'mutation', args: { action: 'fill_block' }, result: { ok: true }, ok: true });
+  assert.equal(lookNeeded(l), true);
+});
+
+test('a change to something inside the workspace, or to the workspace itself, is in view', () => {
+  for (const path of ['game.Workspace', 'game.Workspace.Model.Part', 'game.Workspace["A Model"].Part', 'game.Lighting.Bloom']) {
+    const l = newLedger();
+    recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path, props: {} }, result: {}, ok: true });
+    assert.equal(lookNeeded(l), true, path);
+  }
+  for (const path of ['game.StarterGui.Hud', 'game.ServerScriptService.Main', 'game.ReplicatedStorage.Module', 'game.SoundService', 'game.WorkspaceFake.X']) {
+    const l = newLedger();
+    recordToolCall(l, { tool: 'set_properties', kind: 'mutation', args: { path, props: {} }, result: {}, ok: true });
+    assert.equal(lookNeeded(l), false, path);
+  }
+});
+
 test('a look that could not run does not count as looking, and is remembered as a failure', () => {
   const l = newLedger();
   recordToolCall(l, create([{ className: 'Part', name: 'A', parent: 'game.Workspace' }]));

@@ -61,6 +61,12 @@ export interface EvidenceLedger {
   seq: number;
   /** Successful changes so far. A count, never capped. */
   mutationSeq: number;
+  /**
+   * `mutationSeq` at the last change the viewport could show: one that touched the workspace or the lighting, or whose paths
+   * are unknown (assumed in view, so a look is never skipped on a guess). A look can only be owed for these: a screen or a
+   * script is not in the picture, and a look at it would be a look at something else.
+   */
+  viewChangedSeq: number;
   entries: LedgerEntry[];
   /** Paths the run changed, newest last. The default subject of a look. */
   touched: string[];
@@ -85,14 +91,24 @@ export interface EvidenceLedger {
 
 export function newLedger(): EvidenceLedger {
   return {
-    v: 1, seq: 0, mutationSeq: 0, entries: [], touched: [], colours: [], texts: [], names: [], looks: [], plays: [],
+    v: 1, seq: 0, mutationSeq: 0, viewChangedSeq: 0, entries: [], touched: [], colours: [], texts: [], names: [], looks: [], plays: [],
     lookIssues: [], lookCount: 0, lookFailures: 0, forcedLooks: 0, repairRounds: 0, auditRounds: 0, lastLookMutationSeq: null, lastLookFailedAt: null,
   };
 }
 
-/** Changed since the last look that looked. False for a run that has changed nothing. */
+/**
+ * Changed, in a way the viewport can show, since the last look that looked. False for a run that has changed nothing, and for one
+ * that only changed screens and scripts. STRUCTURAL: it reads where the change landed, never what the request was about.
+ */
 export function lookNeeded(l: EvidenceLedger): boolean {
-  return l.mutationSeq > (l.lastLookMutationSeq ?? 0);
+  return l.viewChangedSeq > (l.lastLookMutationSeq ?? 0);
+}
+
+/** The services a camera in edit mode draws: the workspace (terrain included) and the lighting that lights it. */
+const VIEWABLE = /^game\.(?:Workspace|Lighting)(?:$|[.[])/;
+
+function noteChange(l: EvidenceLedger, paths: string[]): void {
+  if (paths.length === 0 || paths.some((p) => VIEWABLE.test(p))) l.viewChangedSeq = l.mutationSeq;
 }
 
 // ------------------------------------------------------------------------------------ helpers ---
@@ -239,6 +255,7 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
     const gone: string[] = [];
     pathsIn(args, gone);
     for (const p of gone) forget(l, p);
+    noteChange(l, gone);
     return gone;
   }
   walkSpecs(rec, args.items, 'game.Workspace', paths);
@@ -256,6 +273,7 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
   }
   const unique = [...new Set(paths)];
   for (const p of unique) touch(l, p);
+  noteChange(l, unique);
   return unique;
 }
 
@@ -406,6 +424,7 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
       pathsIn(c.result, paths);
       touchedNow = [...new Set(paths)];
       for (const p of touchedNow) touch(l, p);
+      noteChange(l, touchedNow);
     }
     pushCapped(l.entries, { seq: l.seq, kind: c.kind, tool: c.tool, text: describe(c, touchedNow), ok: c.ok, mutationSeq: l.mutationSeq }, LEDGER_LIMITS.entries);
   } catch {
