@@ -88,7 +88,9 @@ test('the session finds the best ready-made model and places it in the same run,
   assert.match(step, /row\('insert_library_model', ok/, 'a "3D model of X" run owes an insert_library_model row');
   assert.match(session, /&& !agent\.objectOffered\) reason = 'incomplete'/, 'an offer awaiting the pick is not a missing model');
   assert.ok(!/storage\.delete\('pendingObjectChoice'\);\n/.test(session.slice(session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');"), session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');") + 120)), 'not consumed at admission');
-  assert.match(step, /coolLibraryObject\(ctx, spec\)/, 'a library object is made cooler around itself, never rebuilt');
+  // Owner, 2026-10-02: the agent decides what "cooler" is for this object; the harness only requires that tool first.
+  assert.match(step, /agent\.coolFirst = true/, 'a library object is made cooler around itself, never rebuilt');
+  assert.match(readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8'), /return coolLibraryObject\(ctx, spec, a\)/, 'with the agent\'s own pick');
   assert.ok(!/llmChat|this\.chat\(/.test(step), 'no model call in the library step');
   // Only the owner picks, and a pick names an option that was offered.
   assert.match(session, /mode === 'agent' && pendingObject && initiatedBy === bind\.ownerId \? ASSET_CHOICE_MESSAGE\.exec\(text\)/);
@@ -152,9 +154,10 @@ test('the cool kit twinkles without hiding the model', () => {
   const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
   const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
   assert.ok(!/vfxPlan\('level_up_aura'/.test(kit), 'no level-up aura left on (a few-second burst for a player)');
-  const m = kit.match(/vfxPlan\('sparkle_shimmer', [^)]*\{ scale: ([\d.]+), rate: ([\d.]+) \}/);
-  assert.ok(m, 'sparkles found');
-  assert.ok(Number(m[1]) <= 2 && Number(m[2]) <= 1, `sparkles stay small and few (scale ${m[1]}, rate ${m[2]})`);
+  // The effect is the agent's pick now (owner, 2026-10-02); whichever it is, it stays small and few.
+  const m = kit.match(/vfxPlan\(pick\.effect, [^)]*\{ scale: ([\d.]+), rate: [^}]*\? ([\d.]+) : ([\d.]+) \}/);
+  assert.ok(m, 'the effect found');
+  assert.ok(Number(m[1]) <= 2 && Number(m[2]) <= 1 && Number(m[3]) <= 1, `effects stay small and few (scale ${m[1]}, rates ${m[2]}/${m[3]})`);
   const bright = kit.match(/name: 'CoolLight'[^}]*Brightness: \{ t: 'number' as const, v: ([\d.]+) \}/);
   assert.ok(bright && Number(bright[1]) <= 1, 'a soft light');
 });
@@ -207,4 +210,10 @@ test('library pieces lose their leftover tags and prompts, scripts first', () =>
   }
   const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', 'Compose.luau'), 'utf8');
   assert.match(plugin, /local STRIPPABLE = \{[^}]*BillboardGui = true, ProximityPrompt = true, ClickDetector = true/, 'the plugin takes them');
+});
+
+test('"cooler" is what the agent picked for this object, with a crown only as the fallback', () => {
+  assert.deepEqual(L.coolChoice({ wear: 'chef hat', effect: 'fire' }), { queries: ['chef hat', 'hat'], effect: 'fire', own: true });
+  assert.deepEqual(L.coolChoice({ wear: 'sunglasses', effect: 'warp drive' }).effect, 'sparkle_shimmer', 'an unknown effect is not written');
+  assert.deepEqual(L.coolChoice(undefined), { queries: ['crown', 'golden crown'], effect: 'sparkle_shimmer', own: false });
 });

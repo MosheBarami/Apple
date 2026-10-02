@@ -69,7 +69,7 @@ import {
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
 import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
-import { clearLineup, coolLibraryObject, offerLibraryObjects, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
+import { clearLineup, offerLibraryObjects, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -271,6 +271,8 @@ interface AgentState {
   continuesGame?: boolean;
   /** A new idea the composer can build: compose_game is the first project change of this run (seen live: the model built by hand instead). */
   composeFirst?: boolean;
+  /** "Make it cooler" on a ready-made object: the agent's first call is cool_library_model, with its own pick. */
+  coolFirst?: boolean;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -1660,21 +1662,14 @@ export class SessionDO extends DurableObject<Env> {
       return true;
     }
     // "Make it cooler" on a ready-made object: the kit goes around the model that is there, never a rebuild.
+    // The agent decides what "cooler" is for this object (owner, 2026-10-02: the harness put the same crown and
+    // sparkles on everything; "he doesn't focus on what the user asks"): its first call is cool_library_model.
     if (agent.objectRun && agent.upgradingObject) {
       const spec = await ctx.objectMemory?.load().catch(() => undefined) as Record<string, unknown> | undefined;
       if (!spec?.library) return false;
-      const t0 = Date.now();
-      const cooled = await coolLibraryObject(ctx, spec) as Record<string, unknown>;
-      const ok = !('error' in cooled);
-      row('cool_library_model', ok, t0, ok ? '✓ made it cooler' : `✗ ${String(cooled.error).slice(0, 120)}`, cooled);
-      if (!ok) return false;
-      agent.mutated = true;
-      agent.made = addMade(agent.made, 'cool_library_model');
+      agent.coolFirst = true;
       agent.objectFirst = false;
-      agent.objectBuilt = true;
-      agent.finalText = String(cooled.forUser ?? '');
-      await this.finishRun(agent, 'done');
-      return true;
+      return false;
     }
     return false;
   }
@@ -4278,6 +4273,7 @@ export class SessionDO extends DurableObject<Env> {
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
         ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
           ? { requiredTool: sequenceStep.tool }
+          : agent.coolFirst && !talkOnly && offeredAllowed.has('cool_library_model') ? { requiredTool: 'cool_library_model' }
           : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' }
           : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' }
           : agent.upgradesFirst && !talkOnly && offeredAllowed.has('add_upgrades') ? { requiredTool: 'add_upgrades' } : {}),
@@ -4934,6 +4930,11 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
       if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
+      if (call.name === 'cool_library_model') {
+        agent.coolFirst = false;
+        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
+        if (out.ok && typeof said === 'string' && said.trim()) { agent.composedForUser = said.trim(); agent.endWithComposed = true; agent.objectBuilt = true; }
+      }
       if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && isPlotSimRequest(agent.request ?? '')) {
         agent.composedPlotSim = true;
         agent.objectBuilt = true;

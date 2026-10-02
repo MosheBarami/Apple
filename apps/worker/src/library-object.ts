@@ -532,14 +532,29 @@ export function playCheckReading(detail: unknown): { problem?: string; seen: str
  * build_object adds, put around the model that is there instead of rebuilding it — the library's sparkle shimmer and a
  * warm light on its body, four neon orbs circling above it on a spinning hub, and a lit stage rim. No model call.
  */
-export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; request?: unknown }) {
+/** Effects that can stay on an object (the bursts, the weather and the portal cannot). */
+export const COOL_EFFECTS = ['sparkle_shimmer', 'fire', 'smoke', 'fireflies', 'snow', 'heal'] as const;
+
+/**
+ * What "cooler" means for THIS object, as the agent chose it (owner, 2026-10-02: every object got the same crown and
+ * sparkles; "he doesn't focus on what the user asks"). Unknown or missing picks fall back to a crown and sparkles. Pure.
+ */
+export function coolChoice(choice: unknown): { queries: string[]; effect: (typeof COOL_EFFECTS)[number]; own: boolean } {
+  const c = (choice && typeof choice === 'object' ? choice : {}) as Record<string, unknown>;
+  const wear = String(c.wear ?? '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 3).join(' ');
+  const effect = (COOL_EFFECTS as readonly string[]).includes(String(c.effect)) ? String(c.effect) as (typeof COOL_EFFECTS)[number] : 'sparkle_shimmer';
+  return wear ? { queries: [wear, wear.split(' ').pop()!].filter((q, i, a) => a.indexOf(q) === i), effect, own: true } : { queries: ['crown', 'golden crown'], effect, own: false };
+}
+
+export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; request?: unknown }, choice?: unknown) {
+  const pick = coolChoice(choice);
   const name = String(spec.name ?? '');
   if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(name)) return { error: 'The object is not recorded.' };
   const model = `game.Workspace.${name}`;
   const body = `${model}.AppleBody`;
   // What an earlier "cooler" added goes first, then the object is measured by its own body: measured with an earlier
   // crown still on, the new crown stood on top of the old one, 3 studs over the butter (live 2026-10-02).
-  for (const path of [`${model}Cool`, `${model}.Crown`, `${body}.CrownRoot`, `${body}.SparkleShimmerFX`, `${body}.CoolLight`, `${body}.LevelUpAuraFX`, `${model}.Glow`]) {
+  for (const path of [`${model}Cool`, `${model}.Crown`, `${body}.CrownRoot`, `${body}.SparkleShimmerFX`, `${body}.FireFX`, `${body}.SmokeFX`, `${body}.FirefliesFX`, `${body}.SnowFX`, `${body}.HealFX`, `${body}.CoolLight`, `${body}.LevelUpAuraFX`, `${model}.Glow`]) {
     await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
   }
   const b = await bounds(ctx.execStudioOp, body) ?? await bounds(ctx.execStudioOp, model);
@@ -547,7 +562,7 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   const problems: string[] = [];
   // A few twinkles and a soft light, never a haze: at scale 2.5, rate 2 with the level-up aura on top, the butter turned
   // into a white blob a few seconds into Play (live 2026-10-02), and the model the user picked could not be seen.
-  const fx = vfxPlan('sparkle_shimmer', { path: body, className: 'Part' }, { scale: 1.5, rate: 0.5 });
+  const fx = vfxPlan(pick.effect, { path: body, className: 'Part' }, { scale: 1.5, rate: pick.effect === 'sparkle_shimmer' ? 0.5 : 1 });
   const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 1 }, Range: { t: 'number' as const, v: 12 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
   const sparkled = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in fx ? [] : fx.items), light] }, 60_000).catch(() => null);
   if (!sparkled?.ok) problems.push('sparkles');
@@ -585,8 +600,8 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   // also join the motor's root and break the rig). Scripts and sounds out, as for every library piece.
   let crowned = false;
   const crownPick = (await (async () => {
-    // "crown" first: the library's GoldenCrown (Fighters) reads silver and green; the plain Crown is a modelled one.
-    for (const q of ['crown', 'golden crown']) {
+    // The agent's pick for this object first; else "crown" (the library's GoldenCrown reads silver and green).
+    for (const q of pick.queries) {
       const hit = rankCatalog(await catalog(ctx, q), q, 1)[0];
       if (hit) return hit;
     }
@@ -632,8 +647,9 @@ export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; r
   await ctx.execStudioOp({ op: 'set_props', path: `game.Workspace.${name}Stage.Rim`, props: { Color: { t: 'Color3', v: [0.71, 0.3, 1] }, Material: { t: 'EnumItem', v: 'Enum.Material.Neon' } } }, 20_000).catch(() => undefined);
   await ctx.objectMemory?.save({ ...spec, cool: true }).catch(() => undefined);
   const what = objectWords(String(spec.request ?? '')).join(' ') || 'object';
-  const added = [crowned ? `it wears a crown from your library ("${crownPick!.name}"${crownPick!.game ? ` from ${crownPick!.game}` : ''})` : '',
-    sparkled?.ok ? 'it sparkles' : '', shone?.ok ? 'it glows' : '',
+  const fxWords: Record<string, string> = { sparkle_shimmer: 'it sparkles', fire: 'flames flicker on it', smoke: 'it smokes', fireflies: 'fireflies drift round it', snow: 'snow falls on it', heal: 'a soft green glow rises from it' };
+  const added = [crowned ? `it wears ${pick.own ? `a ${crownPick!.name}` : 'a crown'} from your library ("${crownPick!.name}"${crownPick!.game ? ` from ${crownPick!.game}` : ''})` : '',
+    sparkled?.ok ? fxWords[pick.effect] : '', shone?.ok ? 'it glows' : '',
     spins ? 'four neon orbs circle above it' : '', 'the rim of its stage lights up'].filter(Boolean);
   return {
     changed: true, projectMutated: true, object: model, ...(problems.length ? { problems } : {}),

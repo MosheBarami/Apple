@@ -1,5 +1,6 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
+import { COOL_EFFECTS, coolLibraryObject } from './library-object';
 import { renderShowsTerrain } from '@golem/shared';
 import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
@@ -4970,6 +4971,25 @@ export const TOOLS: Record<string, ToolImpl> = {
     run: async (ctx) => {
       ctx.widenTools?.();
       return { widened: true, note: 'Every tool is offered from the next step.' };
+    },
+  },
+  cool_library_model: {
+    def: {
+      name: 'cool_library_model',
+      description: "Makes the ready-made object in the place cooler, the way THIS object and THIS request call for (never the same kit for everything): wear = library words for ONE thing that sits on top of it and suits it (a chef hat on a pizza, sunglasses or a pirate hat on a duck, a crown on royalty, a halo on an angel); effect = the one effect that suits it. A glow, spinning neon orbs and a lit stage rim are added too.",
+      parameters: S({
+        wear: { type: 'string', description: 'library search words for the one thing on top, e.g. "chef hat"' },
+        effect: { type: 'string', enum: [...COOL_EFFECTS] },
+      }, ['wear', 'effect']),
+    },
+    studio: true,
+    studioOps: ['create_instances', 'delete_instances', 'set_props', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'place_copies', 'import_owner_library', 'strip_descendants', 'get_instance'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not make it cooler' : 'Made it cooler',
+    run: async (ctx, a) => {
+      const spec = await ctx.objectMemory?.load().catch(() => undefined) as Record<string, unknown> | undefined;
+      if (!spec?.library) return { error: 'There is no ready-made object in this place to make cooler; build_object makes one.' };
+      return coolLibraryObject(ctx, spec, a);
     },
   },
   build_object: {

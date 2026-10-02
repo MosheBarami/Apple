@@ -1053,6 +1053,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'add_upgrades':
     case 'animate_model':
     case 'build_object':
+    case 'cool_library_model':
     case 'insert_sound':
     case 'insert_vfx':
       return 'building';
@@ -2928,6 +2929,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'build_object',
     label: 'Build objects',
     why: 'Adds a whole object to Workspace: its parts, studs, a stage, motions, sounds and lighting.',
+    group: 'changes',
+  },
+  {
+    name: 'cool_library_model',
+    label: 'Make objects cooler',
+    why: 'Adds a library piece on top of a ready-made object, an effect, a glow and spinning orbs.',
     group: 'changes',
   },
   {

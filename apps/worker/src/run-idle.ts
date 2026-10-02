@@ -114,7 +114,7 @@ const MADE: Record<string, string | [string, string]> = {
   insert_sound: ['sound', 'sounds'], design_sound: 'the sound mix', assign_sounds: 'the sound mix',
   insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'], insert_owner_component: ['model', 'models'],
   generate_model: ['model', 'models'], generate_model_external: ['model', 'models'],
-  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts', add_upgrades: 'the upgrades', animate_model: 'the moving parts', build_object: 'new objects',
+  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts', add_upgrades: 'the upgrades', animate_model: 'the moving parts', build_object: 'new objects', cool_library_model: 'the object\'s new look',
   collision_groups: 'what things can pass through',
   create_rig: ['character', 'characters'],
 };
