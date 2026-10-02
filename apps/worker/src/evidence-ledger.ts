@@ -79,12 +79,14 @@ export interface EvidenceLedger {
   auditRounds: number;
   /** `mutationSeq` at the last look that actually looked; null before any. */
   lastLookMutationSeq: number | null;
+  /** `mutationSeq` when a look attempt last FAILED; the gate does not demand a look that just could not run. */
+  lastLookFailedAt: number | null;
 }
 
 export function newLedger(): EvidenceLedger {
   return {
     v: 1, seq: 0, mutationSeq: 0, entries: [], touched: [], colours: [], texts: [], names: [], looks: [], plays: [],
-    lookIssues: [], lookCount: 0, lookFailures: 0, forcedLooks: 0, repairRounds: 0, auditRounds: 0, lastLookMutationSeq: null,
+    lookIssues: [], lookCount: 0, lookFailures: 0, forcedLooks: 0, repairRounds: 0, auditRounds: 0, lastLookMutationSeq: null, lastLookFailedAt: null,
   };
 }
 
@@ -416,6 +418,7 @@ export function recordLook(l: EvidenceLedger, r: LookRecord): void {
       l.lookIssues = r.issues.slice(0, LEDGER_LIMITS.issues).map((s) => cut(s, LEDGER_LIMITS.noteChars));
     } else {
       l.lookFailures += 1;
+      l.lastLookFailedAt = l.mutationSeq;
     }
     const count = (v: LookVerdict) => r.observations.filter((o) => o.verdict === v).length;
     pushCapped(l.entries, {
