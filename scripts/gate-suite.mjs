@@ -95,7 +95,7 @@ const run = (cmd, args, opts = {}) => {
 };
 
 // A SUPERSET of root `pnpm test`, which is
-// `node scripts/check-workspace-coverage.mjs && pnpm -r test`. Running only the second half here
+// `node scripts/checks/check-workspace-coverage.mjs && pnpm -r test`. Running only the second half here
 // meant a gate could report SUITE GREEN while a workspace package had quietly dropped out of the
 // recursion — which is the exact defect check-workspace-coverage.mjs exists to catch, skipped by
 // the oracle that claims the suite passed.
@@ -123,10 +123,10 @@ const parts = [
   //   into reading correct code looking for a defect that was not in it.
   //
   //   It is the cheapest check here and it gates the meaning of every other one.
-  { label: 'check-module-resolution', ...run('node', ['scripts/check-module-resolution.mjs']) },
-  { label: 'check-workspace-coverage', ...run('node', ['scripts/check-workspace-coverage.mjs']) },
-  { label: 'check-escape-hatches', ...run('node', ['scripts/check-escape-hatches.mjs']) },
-  { label: 'check-deadends', ...run('node', ['scripts/check-deadends.mjs', '--gate']) },
+  { label: 'check-module-resolution', ...run('node', ['scripts/checks/check-module-resolution.mjs']) },
+  { label: 'check-workspace-coverage', ...run('node', ['scripts/checks/check-workspace-coverage.mjs']) },
+  { label: 'check-escape-hatches', ...run('node', ['scripts/checks/check-escape-hatches.mjs']) },
+  { label: 'check-deadends', ...run('node', ['scripts/checks/check-deadends.mjs', '--gate']) },
   //[[ THE RENAME. WRITTEN, CORRECT, AND NEVER ONCE RUN BY ANYTHING.
   //
   //   check-rebrand.mjs has exited 1 since the day it was written and no gate, no npm script and
@@ -139,15 +139,15 @@ const parts = [
   //   offline half is the DETERMINISTIC one and it is the half that catches source drift, which is
   //   what landed unobserved. Its success line says "IN SOURCE … THE DEPLOYED SITE WAS NOT CHECKED"
   //   rather than claiming the deployed site, so the narrower run cannot be misread as the wide one.
-  //   The deployed half belongs on the deploy path: `node scripts/check-rebrand.mjs --deployed`.
-  { label: 'check-rebrand', ...run('node', ['scripts/check-rebrand.mjs', '--offline']) },
+  //   The deployed half belongs on the deploy path: `node scripts/checks/check-rebrand.mjs --deployed`.
+  { label: 'check-rebrand', ...run('node', ['scripts/checks/check-rebrand.mjs', '--offline']) },
   // The competitor teardown. It was a script nobody ran, which is how it came to report
   // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
   // the four it never opened. A guard outside the suite is a guard that has already gone stale.
-  { label: 'check-copy', ...run('node', ['scripts/check-copy.mjs']) },
+  { label: 'check-copy', ...run('node', ['scripts/checks/check-copy.mjs']) },
   // The three numbers a visitor is invited to check. One of them was false on both halves
   // while a comment above it named a test that had never been written.
-  { label: 'check-proof-figures', ...run('node', ['scripts/check-proof-figures.mjs']) },
+  { label: 'check-proof-figures', ...run('node', ['scripts/checks/check-proof-figures.mjs']) },
   //[[ TWENTY-THREE TOOLS WERE POINTED AT THE PRE-RENAME WORKER.
   //   `.env` held API_BASE=golem.moshe-barami111.workers.dev, and platforms/cloudflare/verify/e2e.mjs, platforms/cloudflare/verify/smoke.mjs,
   //   platforms/cloudflare/verify/checkpoint-test.mjs, packages/evals/src/run.mjs and eighteen others read it — so the
@@ -156,14 +156,14 @@ const parts = [
   //   canonical origin and /api/* deliberately does not: the site looks current and the admin calls
   //   land somewhere else. It cost four deploys on 2026-09-20 chasing a 500 that only the old
   //   worker returned. ]]
-  { label: 'check-api-base', ...run('node', ['scripts/check-api-base.mjs']) },
+  { label: 'check-api-base', ...run('node', ['scripts/checks/check-api-base.mjs']) },
   //[[ CI CALLED A SCRIPT THAT HAD BEEN RENAMED, AND WAS RED FOR FIVE DAYS.
   //   04d3800 renamed check-spark-figures.mjs to check-credit-figures.mjs on 2026-09-15 and did not
   //   update .github/workflows. Every run on main failed from that day. Nobody saw it because a
   //   rename is the change that looks finished: grepping the OLD name comes back empty, which reads
   //   as "no references left" and is actually "none in the places I grepped". .github is outside
   //   apps/, packages/ and scripts/. A local suite cannot catch it by RUNNING; it has to read. ]]
-  { label: 'check-ci-references', ...run('node', ['scripts/check-ci-references.mjs']) },
+  { label: 'check-ci-references', ...run('node', ['scripts/checks/check-ci-references.mjs']) },
   //[[ check-harvest-licences WENT WITH ITS SUBJECT, and this note is what is left of it.
   //
   //   It predicted, in seconds, what fraction of an asset ingest `validateProvenance` was going to
@@ -186,14 +186,14 @@ const parts = [
   //   rather than the database it talks to. This catches the half that is reachable offline: a
   //   column the client asks for that no migration creates. It cannot tell whether a migration has
   //   been APPLIED, and says so.
-  { label: 'check-schema-drift', ...run('node', ['scripts/check-schema-drift.mjs']) },
+  { label: 'check-schema-drift', ...run('node', ['scripts/checks/check-schema-drift.mjs']) },
   //[[ FOUR PANELS SHIPPED WITH NO STYLESHEET AT ALL.
   //
   //   `grep -c 'rk__' styles.css` returned 0, and so did `gx-ev`. Both are built from <span>s, so
   //   with no rules every span stayed inline and the owner read
   //   "Read your assetsApple can look up things you already own" on his own settings page. A
   //   selector that matches nothing fails no typecheck, no test and no build.
-  { label: 'check-unstyled-classes', ...run('node', ['scripts/check-unstyled-classes.mjs']) },
+  { label: 'check-unstyled-classes', ...run('node', ['scripts/checks/check-unstyled-classes.mjs']) },
   //[[ THE BUILD IS A CHECK, AND NOTHING HERE WAS RUNNING IT.
   //
   //   `tsc --noEmit` passed over a settings.tsx carrying a JSX comment in expression position —

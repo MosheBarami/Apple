@@ -95,7 +95,7 @@ test('compose: the twist is built: every enemy is a body wearing a vegetable, an
 });
 
 test('compose: the bundled components are the current sources', () => {
-  execFileSync('node', [join(WORKER, '..', '..', 'scripts', 'gen-components.mjs'), '--check'], { stdio: 'pipe' });
+  execFileSync('node', [join(WORKER, '..', '..', 'scripts', 'generate', 'gen-components.mjs'), '--check'], { stdio: 'pipe' });
 });
 
 const outT = join(mkdtempSync(join(tmpdir(), 'compose-tool-')), 't.mjs');

@@ -31,7 +31,7 @@ Three reasons, in the order they actually decide it.
 1. **The owner's one standing instruction about type is to keep ours.** It is in the same sentence
    as the instruction to delete the rest of the visual language: *"…only keep the typeface."* A
    self-hosted display face is the one change that sentence forbids.
-2. **The payload has no room for it.** `node scripts/check-landing-budget.mjs` measured the landing
+2. **The payload has no room for it.** `node scripts/checks/check-landing-budget.mjs` measured the landing
    route at **21,042 B gzip against a 12,000 B budget** at commit `8b61c91`, before any of tonight's
    work — the budget was already exceeded by 75%. One variable display face at a usable subset is
    another request and another 20–40 KB, to replace a stack that resolves to SF on the owner's own
@@ -97,7 +97,7 @@ What ships today against that list:
 | high-quality fallbacks | reduced motion draws one finished frame; a refused context leaves an SVG still; no 2D context draws nothing and shows what is behind | all three |
 | pre-rendered cinematic sequence | **does not ship** | — |
 
-**Why not a WebGL context.** `scripts/check-landing-budget.mjs` carries a tripwire for a three.js
+**Why not a WebGL context.** `scripts/checks/check-landing-budget.mjs` carries a tripwire for a three.js
 chunk anywhere in `dist`, because the 3D mascot was cancelled by the owner and the tripwire is what
 stops it coming back. Reintroducing a 3D library to this page would trip a guard that exists to
 enforce a decision the owner has already made, and it would do it on the route that is already over

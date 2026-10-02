@@ -69,6 +69,6 @@ keys and section seams green at the same time. Measured, not guessed: six aliase
 The cheap version of this instruction is how a page ends up technically compliant and ugly, which is
 the outcome the owner has rejected more than once.
 
-**It is now observable, which it was not.** `scripts/check-pixels.mjs` captures all twenty routes at
+**It is now observable, which it was not.** `scripts/checks/check-pixels.mjs` captures all twenty routes at
 two viewports in *both* themes against a baseline from the live origin, so whoever takes this pass
 can see all eighty frames before and after instead of arguing about two.

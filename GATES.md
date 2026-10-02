@@ -266,7 +266,7 @@ test it gated.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/ev-G-ORACLE-4; path=c1b9265de6a1/55 entries; git-sha=3d56ff7; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=e976d0e1a90143abf4d209007d0ba3795f97284783f4e7a81d9adcaed86391d8; output-bytes=1106; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=5c7c6e7e0471c5b9fa328da4; at=2026-09-16T06:29:02.104Z
 
 - [x] G-BACKLOG-1: Every closed backlog row cites something a machine can run
-    CHECK: node scripts/check-backlog.mjs --summary --floor-cited 127
+    CHECK: node scripts/checks/check-backlog.mjs --summary --floor-cited 127
     EXPECT: BACKLOG HONEST
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=0cf10d874d5ebd238d449f54; at=2026-09-15T00:25:13.163Z
@@ -378,7 +378,7 @@ like it covers it.
 
 - [x] G-OFFER-1: Every plan charges more than it costs to serve, grants no more than the service can deliver, and lets a free user finish one build
     STATION: S1
-    CHECK: node scripts/check-offer.mjs
+    CHECK: node scripts/checks/check-offer.mjs
     EXPECT: OFFER COHERENT
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=29018b9; tree-clean=yes; break-sha=29018b9; EXPECT=unmatched; output-sha256=fcebe58a239c5b68fa57a47aec6dd3b5bc655e8207d73817bca996d5a3e1e599; output-bytes=596; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=3; deps-sha=648cbe8fc366b1efbb1cc5a6; at=2026-09-14T20:20:09.342Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=146e4614a670ec29ec1dbd2599679b12e7909d32b52979200c58f91148ade40d; output-bytes=451; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=9679969d1eedfc033dd7b6a5; inputs-sha=3bacd1ea788de80f6ca0807e; at=2026-09-15T00:25:13.113Z

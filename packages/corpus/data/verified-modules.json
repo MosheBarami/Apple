@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
  "note": "Luau modules this repository authored. Every one was RUN against its own exhaustive checks at build time; a module that failed is absent rather than shipped unverified.",
- "generatedBy": "scripts/build-verified-modules.mjs",
+ "generatedBy": "scripts/generate/build-verified-modules.mjs",
  "modules": [
   {
    "id": "purchase-transaction",

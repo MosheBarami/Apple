@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-credit-figures.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-credit-figures.mjs');
 
 const run = () => {
   const p = spawnSync('node', [CHECKER], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });

@@ -63,7 +63,7 @@ settles who does it, not when it may be published.
 ## Exact next action
 
 `node scripts/gate-check.mjs --reverify GATES.md` to completion, then §6.4
-`scripts/check-escape-hatches.mjs`, red-first.
+`scripts/checks/check-escape-hatches.mjs`, red-first.
 
 ## Second agent
 

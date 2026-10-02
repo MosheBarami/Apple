@@ -4,7 +4,7 @@ Asked of the five Roblox-published models the survey named. The answer for every
 **no, not today** — for different reasons, all of them checkable.
 
 Nothing here is remembered. Every number below is re-derived on each run of
-`node scripts/harvest-hf.mjs` from the live Hub API plus this repository's own files, and written
+`node scripts/harvest/harvest-hf.mjs` from the live Hub API plus this repository's own files, and written
 to `packages/training/data/hf/REJECTED.json` under `models[].serving`. If a fact in this document
 stops matching that file, the file is right.
 
@@ -110,7 +110,7 @@ and Meshy are cancelled. Cube changes none of that. It would still produce a mes
 ## How to re-check any of this
 
 ```sh
-node scripts/harvest-hf.mjs          # full run; re-derives every verdict from the live Hub
+node scripts/harvest/harvest-hf.mjs          # full run; re-derives every verdict from the live Hub
 # then read: packages/training/data/hf/REJECTED.json -> models[].serving
 ```
 
@@ -118,5 +118,5 @@ A capped run for review must name its own output directory, because a truncated 
 canonical path would be indistinguishable from the real one:
 
 ```sh
-node scripts/harvest-hf.mjs --limit 200 --out-eval /tmp/smoke/robloxqa --out-training /tmp/smoke/training
+node scripts/harvest/harvest-hf.mjs --limit 200 --out-eval /tmp/smoke/robloxqa --out-training /tmp/smoke/training
 ```

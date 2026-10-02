@@ -9,7 +9,7 @@
 //
 // So the evidence is a ledger: what the live Roblox details endpoint said about each pinned id, on
 // a date, checked in. One row per pin, not ten megabytes. Regenerate with:
-//   node scripts/probe-kit-pins.mjs
+//   node scripts/harvest/probe-kit-pins.mjs
 //
 // Run: node --test apps/worker/tests/genre-kit-pins.test.mjs
 import test from 'node:test';
@@ -43,7 +43,7 @@ test('the pins parsed out of genre-kits.ts are every pin the kits ship', () => {
 test('the ledger proving those ids are real is present and readable', () => {
   // A MISSING LEDGER IS NOT A PASS. This is the whole reason the file exists: the alternative
   // shape — skip when absent — turns "we could not check" into a green suite.
-  assert.ok(existsSync(LEDGER), `no pin ledger at ${LEDGER} — regenerate it with: node scripts/probe-kit-pins.mjs`);
+  assert.ok(existsSync(LEDGER), `no pin ledger at ${LEDGER} — regenerate it with: node scripts/harvest/probe-kit-pins.mjs`);
 });
 
 test('every pinned id resolves, live, to a free sound effect from a verified creator', () => {
@@ -52,7 +52,7 @@ test('every pinned id resolves, live, to a free sound effect from a verified cre
   let checked = 0;
   for (const pin of pins) {
     const row = byId.get(pin.assetId);
-    assert.ok(row, `kit pin ${pin.assetId} (${pin.name}) has no ledger row — re-run node scripts/probe-kit-pins.mjs`);
+    assert.ok(row, `kit pin ${pin.assetId} (${pin.name}) has no ledger row — re-run node scripts/harvest/probe-kit-pins.mjs`);
     assert.equal(row.exists, true, `asset ${pin.assetId} (${pin.name}) did not resolve at all when probed`);
     // typeId 3 is Audio. A pin that resolved to an Image would still "exist" and still be free.
     assert.equal(row.assetTypeId, 3, `asset ${pin.assetId} is typeId ${row.assetTypeId}, not Audio (3)`);

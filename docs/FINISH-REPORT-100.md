@@ -107,10 +107,10 @@ Four rows. Each was verified by me against the live origin in §1; the guard cou
 Two checkers that were red at session start and are now exit 0 under their own run (exit code captured on its own line, not through a pipe):
 
 ```
-node scripts/check-landing-budget.mjs → exit 0   JavaScript (raw, 7 inline block(s)) 32073 B / 36000
-node scripts/check-site-links.mjs     → exit 0   795 internal link(s) across 20 page(s), all resolve
-node scripts/check-copy.mjs           → exit 0
-node scripts/check-site-semantics.mjs → exit 0
+node scripts/checks/check-landing-budget.mjs → exit 0   JavaScript (raw, 7 inline block(s)) 32073 B / 36000
+node scripts/checks/check-site-links.mjs     → exit 0   795 internal link(s) across 20 page(s), all resolve
+node scripts/checks/check-copy.mjs           → exit 0
+node scripts/checks/check-site-semantics.mjs → exit 0
 ```
 
 `check-landing-budget` going green is **not** the same as the defect being fixed by measurement: the budget line was raised from 12,000 to 19,000 B and JavaScript was given its own 36,000 B line in `a135b68`. The blindness the design track found (the scanner matched `src="…js"` and Astro inlines its module script, so it printed `0 B` over ~32 KB) is genuinely fixed — the checker now names 7 inline blocks and 32,073 B. The number it enforces was moved at the same time.
@@ -259,7 +259,7 @@ ls .mcp.json → No such file or directory
 ### 3.13 `check-rebrand` is red on a file another lane holds
 
 ```
-node scripts/check-rebrand.mjs → exit 1
+node scripts/checks/check-rebrand.mjs → exit 1
 BROKEN: THE CAPTURED BUNDLE IS STALE — 2 asset(s) it holds are no longer served and 2 live asset(s)
 are not in it.  captured, no longer live: /app/assets/index-B53qzMTz.js
                 live, not captured:       /app/assets/index-B7TSilFq.js
@@ -268,7 +268,7 @@ REBRAND INCOMPLETE — 5 finding(s)
 
 The fix is `--deployed`, which rewrites `docs/evidence/probes/pass3/app-bundle.txt`. That file is dirty in another lane (` M docs/evidence/probes/pass3/app-bundle.txt`), so it is not mine to write.
 
-**Next:** whoever holds that file commits it, then runs `node scripts/check-rebrand.mjs --deployed`.
+**Next:** whoever holds that file commits it, then runs `node scripts/checks/check-rebrand.mjs --deployed`.
 
 ---
 
@@ -411,7 +411,7 @@ A lane found it and wrote it up honestly — `docs/backlog/CI-IS-BLOCKED-ON-GITH
 ### 6.2 Four ledger instructions aimed at work that was already done
 
 - Rows 22 / 31: "correct the two stale production-model paragraphs at the top of `docs/evals/FINDINGS.md`" — already corrected.
-- Row 32: `.github/workflows/ci.yml:142` → the line is now **171**, and already `run: node scripts/check-credit-figures.mjs` (verified: `grep -n 'check-credit-figures' .github/workflows/ci.yml` → `171:`).
+- Row 32: `.github/workflows/ci.yml:142` → the line is now **171**, and already `run: node scripts/checks/check-credit-figures.mjs` (verified: `grep -n 'check-credit-figures' .github/workflows/ci.yml` → `171:`).
 - Row 20: `apps/worker/src/embedding-retrieval.ts` committed at `4204ea0`.
 
 The next reader will re-walk the same hour.
@@ -488,8 +488,8 @@ In the same file, `RETIRED_FONT_FAMILIES` is exported and read by nothing in the
 I hit this in this session and caught it before writing anything from it:
 
 ```
-$ node scripts/check-proof-figures.mjs 2>&1 | tail -12   → EXIT=0     (that is tail's)
-$ out=$(node scripts/check-proof-figures.mjs 2>&1); code=$?  → REAL_EXIT=1
+$ node scripts/checks/check-proof-figures.mjs 2>&1 | tail -12   → EXIT=0     (that is tail's)
+$ out=$(node scripts/checks/check-proof-figures.mjs 2>&1); code=$?  → REAL_EXIT=1
 ```
 
 Same output, opposite verdict. Every exit code in this report was captured on its own, never through a pipe.

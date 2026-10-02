@@ -737,45 +737,45 @@
     },
     {
       "from": "scripts/build-chunk-witness.mjs",
-      "to": "scripts/build/build-chunk-witness.mjs",
+      "to": "scripts/generate/build-chunk-witness.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/build-module-embeddings.mjs",
-      "to": "scripts/build/build-module-embeddings.mjs",
+      "to": "scripts/generate/build-module-embeddings.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/build-ui-construction.mjs",
-      "to": "scripts/build/build-ui-construction.mjs",
+      "to": "scripts/generate/build-ui-construction.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/build-verified-modules.mjs",
-      "to": "scripts/build/build-verified-modules.mjs",
+      "to": "scripts/generate/build-verified-modules.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/rebuild-ui-embeddings-local.mjs",
-      "to": "scripts/build/rebuild-ui-embeddings-local.mjs",
+      "to": "scripts/generate/rebuild-ui-embeddings-local.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/gen-components.mjs",
-      "to": "scripts/build/gen-components.mjs",
+      "to": "scripts/generate/gen-components.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/curate-templates.mjs",
-      "to": "scripts/build/curate-templates.mjs",
+      "to": "scripts/generate/curate-templates.mjs",
       "phase": "P4",
-      "why": "generators of committed data"
+      "why": "generators of committed data (not scripts/build: .gitignore ignores build/)"
     },
     {
       "from": "scripts/harvest-hf.mjs",

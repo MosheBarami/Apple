@@ -1,6 +1,6 @@
 // THE LANDING BUDGET CAN FAIL, AND IN PARTICULAR ITS JAVASCRIPT LINE CAN FAIL.
 //
-// This file exists because of one number. `scripts/check-landing-budget.mjs` printed
+// This file exists because of one number. `scripts/checks/check-landing-budget.mjs` printed
 // `JavaScript (raw)  0 B` against `ALLOW_JS_BYTES = 0` on every run, and passed that line, while
 // the built landing page carried seven inline <script> blocks totalling 32,079 B. The scan behind
 // the zero matched `(href|src)="/….js"` and nothing else; Astro inlines this page's scripts, so
@@ -37,7 +37,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SCRIPT = join(ROOT, 'scripts', 'check-landing-budget.mjs');
+const SCRIPT = join(ROOT, 'scripts', 'checks', 'check-landing-budget.mjs');
 
 /** Unique words from a fixed seed. A gzip budget can only be moved by entropy: the first version
  *  of the markup case repeated one sentence 4,000 times, 180 KB that gzip folded to 1,079 B, and
@@ -156,7 +156,7 @@ test('ci.yml still runs this checker against a BUILT page, after building it', (
   assert.ok(existsSync(ci), `${ci} is gone — this checker may no longer run against a real page anywhere`);
   const yml = readFileSync(ci, 'utf8');
   const build = yml.indexOf('pnpm --filter @golem/site build');
-  const budget = yml.indexOf('node scripts/check-landing-budget.mjs');
+  const budget = yml.indexOf('node scripts/checks/check-landing-budget.mjs');
   assert.ok(build > -1, 'ci.yml no longer builds the marketing site');
   assert.ok(budget > -1, 'ci.yml no longer runs the landing payload budget');
   assert.ok(

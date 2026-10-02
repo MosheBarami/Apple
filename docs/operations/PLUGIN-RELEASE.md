@@ -108,7 +108,7 @@ node apps/apple-plugin/scripts/build.mjs
 
 `build.mjs` parses every source with `luau-analyze`, refuses a `require` of a module that is not
 bundled, runs `rojo build apps/apple-plugin/default.project.json`, hands the artifact to
-`scripts/inspect-plugin-build.py` (which decompresses every chunk before scanning), and ends with
+`scripts/checks/inspect-plugin-build.py` (which decompresses every chunk before scanning), and ends with
 `apps/apple-plugin/scripts/verify-artifact.py` over the built bytes. It must print:
 
 ```

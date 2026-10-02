@@ -103,7 +103,7 @@ export function loadGate({ dir = DATA } = {}) {
   const gatePath = join(dir, 'gate.jsonl');
   const exclPath = join(dir, 'excluded-gate-rows.json');
   if (!existsSync(gatePath)) {
-    throw new Error(`${gatePath} is absent. Run \`node scripts/harvest-hf.mjs\` first — a missing gate is not an empty gate.`);
+    throw new Error(`${gatePath} is absent. Run \`node scripts/harvest/harvest-hf.mjs\` first — a missing gate is not an empty gate.`);
   }
   if (!existsSync(exclPath)) {
     // Fail closed. Scoring the whole split because the exclusion list is missing is exactly the

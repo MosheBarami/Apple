@@ -30,7 +30,7 @@ reads Hebrew and reads neither `docs/` nor code.
 **Two names.** The product is **Apple**. The infrastructure is still **golem** — worker name, D1
 database, KV namespaces, wire literals (`golem.v1`, `X-Golem-`, `golem_session`, `@golem/`).
 That is deliberate: renaming a binding or a wire literal breaks live sessions and stored rows.
-Rename neither. `scripts/check-rebrand.mjs` polices the user-visible half only.
+Rename neither. `scripts/checks/check-rebrand.mjs` polices the user-visible half only.
 
 ---
 
@@ -169,7 +169,7 @@ geometry in their own Studio session, and `create_instances` for everything part
 **`packages/corpus/data/kit-pins.json`** — the one piece of the catalogue's evidence that outlived
 it: what Roblox's details endpoint said about the fifty audio ids the genre kits pin, on a recorded
 date. `apps/worker/tests/genre-kit-pins.test.mjs` checks every pin against it. It moved up one level
-when `data/library/` was deleted. Regenerate with `node scripts/probe-kit-pins.mjs`.
+when `data/library/` was deleted. Regenerate with `node scripts/harvest/probe-kit-pins.mjs`.
 
 The 511,208 rows are still sitting in the live `CORPUS` D1 database until somebody drops them. The
 product no longer reads or writes them.

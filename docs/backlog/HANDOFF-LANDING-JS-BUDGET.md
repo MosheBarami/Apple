@@ -1,6 +1,6 @@
 # Handoff — the landing's JavaScript budget has never measured any JavaScript
 
-Written 2026-09-21 by the design lane. `scripts/check-landing-budget.mjs` is another lane's file and
+Written 2026-09-21 by the design lane. `scripts/checks/check-landing-budget.mjs` is another lane's file and
 was edited earlier today (`1bc1e44`), so this is a report rather than an edit.
 
 ## The finding

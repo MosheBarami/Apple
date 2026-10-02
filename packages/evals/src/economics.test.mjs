@@ -506,7 +506,7 @@ test('report() renders and is labelled an internal model', () => {
 //   "the hard maximum is still $10.06/month", and docs/architecture/SCALE-V2.md and docs/architecture/BUDGET-SHARDING.md
 //   restated it. The safeguards allowed $24.80 and the owner had been told $10.06.
 //
-//   This is the same shape as scripts/check-credit-figures.mjs — a published figure checked
+//   This is the same shape as scripts/checks/check-credit-figures.mjs — a published figure checked
 //   against the constant it is derived from — applied to the owner's bill rather than the
 //   customer's. It is here rather than in a new script because this file already owns
 //   HARD_MAX_USD_PER_MONTH and is already cited as the asserter of it.

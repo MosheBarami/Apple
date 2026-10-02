@@ -74,7 +74,7 @@ suitable for an automated pixel-diff harness.
 **The values are deliberately not written here.** They were, until 2026-09-01, in
 this very table — which meant the document recording the leak was republishing it,
 in a file tracked in the same repository whose history is the exposure. Worse, it
-was invisible: `scripts/secret-scan.py` reports the working tree clean, because both
+was invisible: `scripts/checks/secret-scan.py` reports the working tree clean, because both
 of its credential rules require a `password`/`secret` keyword followed by `=` or `:`
 and then a QUOTED value, and a Markdown table cell has neither the assignment
 operator nor the quotes. The register and the scanner disagreed and nothing said so.
@@ -157,11 +157,11 @@ Afterwards, to confirm and to clear this blocker:
 
 ```bash
 node platforms/cloudflare/verify/e2e.mjs                      # must still pass with the NEW password
-python3 scripts/secret-scan.py          # must still exit 0
+python3 scripts/checks/secret-scan.py          # must still exit 0
 ```
 
 The old values stay in git history forever and that is fine once they authenticate
-nothing. `scripts/known-exposures.json` keeps them acknowledged so the scanner reports
+nothing. `scripts/checks/known-exposures.json` keeps them acknowledged so the scanner reports
 them without failing the build; the register is what makes a *new* leak fail instead.
 
 
@@ -176,7 +176,7 @@ removed the source, not the exposure.
 which requires the owner. History rewriting is not proposed: it would break every
 existing clone and the credentials would still exist in anyone's local copy.
 
-`scripts/secret-scan.py` does catch these — and emits `::warning::` with exit 0, so
+`scripts/checks/secret-scan.py` does catch these — and emits `::warning::` with exit 0, so
 CI reminds forever and never blocks.
 
 ## 3b. The world-building brief is over its own stated token budget
@@ -355,7 +355,7 @@ thing described beside the number.
 ### What this session did about it, and got wrong
 
 Earlier today I corrected the Plan figure from 1 credit to 2 and wired
-`scripts/check-credit-figures.mjs` into CI to enforce the table against COST-MODEL. That
+`scripts/checks/check-credit-figures.mjs` into CI to enforce the table against COST-MODEL. That
 guard now reports agreement — and in doing so **locks in the Agent figure**. The guard is
 faithful to its source; the source under-represents a real feature build by more than an
 order of magnitude. A check that says "these agree" is not a check that says "this is
@@ -482,7 +482,7 @@ charges `creditsForNeurons(n) = max(1, ceil(n / 30))`, and `docs/COST-MODEL.md` 
 Clay question at 37–43 neurons — so it is **2 credits and 30 requests a day**. Stone
 (111 → 4) and Rune (297 → 10) were both correct.
 
-Corrected on 2026-09-01, with `scripts/check-credit-figures.mjs` now checking the whole
+Corrected on 2026-09-01, with `scripts/checks/check-credit-figures.mjs` now checking the whole
 chain in CI. Nothing about what anyone is charged changed: the free tier is 60 credits a
 day at $0 and Pro remains an unpriced waitlist. What changed is a claim about consumption
 that the code contradicted, and the reason not to leave it is that a reader planning

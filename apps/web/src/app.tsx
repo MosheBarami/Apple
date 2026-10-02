@@ -10,7 +10,7 @@ import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
 import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
-// LAZY, on a measurement rather than a hunch. `scripts/check-app-bundle.mjs` budgets the entry
+// LAZY, on a measurement rather than a hunch. `scripts/checks/check-app-bundle.mjs` budgets the entry
 // graph at 70 kB gzipped, a figure measured when the entry WAS 54.2 kB. It then went unenforced —
 // the build job stopped at an earlier failure, so nobody saw the check — while the app grew, and
 // by the time it ran again the entry was 181 kB gzipped. Attributing the entry chunk through its

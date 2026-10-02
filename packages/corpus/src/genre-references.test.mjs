@@ -203,7 +203,7 @@ test('the chunk witness still matches the corpus it was taken from', (t) => {
   // the 60-odd documents apps/worker's CREATOR_SKILL_REFERENCES cites, and a check that re-derived
   // only these 25 would report a clean match over a third of the file.
   const fresh = rederiveWitness(witness);
-  assert.equal(fresh.sourceSha256, witness.sourceSha256, 'chunks.jsonl changed — regenerate with `node scripts/build-chunk-witness.mjs`');
+  assert.equal(fresh.sourceSha256, witness.sourceSha256, 'chunks.jsonl changed — regenerate with `node scripts/generate/build-chunk-witness.mjs`');
   assert.equal(fresh.sourceLines, witness.sourceLines);
   assert.equal(fresh.documentCount, witness.documentCount);
   assert.deepEqual(fresh.documents, witness.documents);

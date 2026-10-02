@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-09-21T11:23:37.008Z",
-  "harvester": "scripts/harvest-hf.mjs",
+  "harvester": "scripts/harvest/harvest-hf.mjs",
   "dataset": "TorpedoSoftware/RobloxQA-v2.0",
   "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
   "licence": "MIT",

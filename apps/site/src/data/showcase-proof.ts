@@ -39,7 +39,7 @@
  * files byte for byte, which is a stronger claim than the sha256-of-the-original-plus-a-crop-string
  * that the consent capture has to settle for, because that one genuinely is a crop.
  *
- * It is also cheaper. `scripts/check-landing-budget.mjs` counts image bytes RAW and caps them at
+ * It is also cheaper. `scripts/checks/check-landing-budget.mjs` counts image bytes RAW and caps them at
  * 40,000 for the whole page; the consent capture and the two icons already spend 18,388. This file
  * is 11,229 bytes raw and 1,815 gzipped on the wire, and it is sharp at any width. The best lossy
  * webp of the PNG that stayed legible was 19,282 bytes and would have left the budget at 94% with
@@ -161,7 +161,7 @@ export const BUILT_SCREEN = {
    * WHERE THE REST OF IT IS, and the two counts the door prints.
    *
    * `/showcase` is not an Astro route: it is an object in the worker's D1 static store, published
-   * by `platforms/cloudflare/deploy/deploy-showcase.mjs`. `scripts/check-site-links.mjs` is told about that by name, the
+   * by `platforms/cloudflare/deploy/deploy-showcase.mjs`. `scripts/checks/check-site-links.mjs` is told about that by name, the
    * same way it is told about `/app`. It was live for a day with nothing at all linking to it,
    * which is the failure this whole band is the second half of.
    *

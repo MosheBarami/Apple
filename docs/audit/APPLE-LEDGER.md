@@ -647,7 +647,7 @@ Renaming any of these breaks production, invalidates deployed state, or de-pairs
 | Identifier | Value | Why it is load-bearing |
 |---|---|---|
 | Worker name | `golem` (`wrangler.jsonc:2`) | Determines the `*.workers.dev` hostname. Renaming orphans the deployment and breaks every plugin's `DEFAULT_API`. |
-| Production URL | `https://golem.moshe-barami111.workers.dev` | Hardcoded in `apps/plugin/src/init.server.luau:14` — **every already-installed plugin points here**. Also `apps/site/astro.config.mjs:11`, `robots.txt:5`, `asset-library.ts:402`, `scripts/inspect-plugin-build.py:227,283`. |
+| Production URL | `https://golem.moshe-barami111.workers.dev` | Hardcoded in `apps/plugin/src/init.server.luau:14` — **every already-installed plugin points here**. Also `apps/site/astro.config.mjs:11`, `robots.txt:5`, `asset-library.ts:402`, `scripts/checks/inspect-plugin-build.py:227,283`. |
 | D1 database | name `golem-corpus`, id `32c9471e-a7d7-49ee-a8fe-0a7def2c68bd` | Holds the live 8,327-row corpus. The **id** is the binding; renaming the database is a migration. |
 | KV namespace id | `cc341a7db4d748139f161fdc292e6e84` | Opaque id; carries `config:models` and image keys. |
 | Vectorize index | `golem-docs` | Holds ~3,394 vectors. Index names are not renameable in place. |

@@ -1,7 +1,7 @@
 // A STALE EMBEDDING INDEX STILL LOADS, STILL RETURNS FIVE CONFIDENT ANSWERS, AND SAYS NOTHING.
 //
 // That is this repository's own failure shape — a thing PRESENT and never checked — and it is the
-// reason scripts/build-module-embeddings.mjs writes a SHA-256 of the exact strings it embedded into
+// reason scripts/generate/build-module-embeddings.mjs writes a SHA-256 of the exact strings it embedded into
 // the index. This file recomputes those hashes from the corpus on disk. When the corpus has moved
 // and the index has not, the vectors describe modules that no longer read the way they are indexed,
 // every score drifts by an unknown amount, and nothing anywhere would have said so.
@@ -37,9 +37,9 @@ const INDEX = JSON.parse(readFileSync(join(WORKER, 'src', 'generated', 'embeddin
 //   that drift does is make this test agree with itself while disagreeing with the index. Then the
 //   staleness guard reports on a string nobody ever embedded.
 const { moduleText, uiText, textHash } = await import(
-  `file://${join(REPO, 'scripts', 'build-module-embeddings.mjs')}`);
+  `file://${join(REPO, 'scripts', 'generate', 'build-module-embeddings.mjs')}`);
 
-const REBUILD = 'Run: node scripts/build-module-embeddings.mjs';
+const REBUILD = 'Run: node scripts/generate/build-module-embeddings.mjs';
 
 test('the verified-module corpus has not moved since the embedding index was built', () => {
   const modules = JSON.parse(

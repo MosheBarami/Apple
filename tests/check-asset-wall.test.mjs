@@ -29,7 +29,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-asset-wall.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-asset-wall.mjs');
 
 /* ------------------------------------------------------------------ the fixtures --- */
 
@@ -271,9 +271,9 @@ test('CI still runs the wall checker against the built page', () => {
   const yml = readFileSync(ci, 'utf8');
 
   const build = yml.indexOf('pnpm --filter @golem/site build');
-  const check = yml.indexOf('node scripts/check-asset-wall.mjs');
+  const check = yml.indexOf('node scripts/checks/check-asset-wall.mjs');
   assert.ok(check > -1,
-    'ci.yml no longer runs scripts/check-asset-wall.mjs. The tests above run on FIXTURES; without '
+    'ci.yml no longer runs scripts/checks/check-asset-wall.mjs. The tests above run on FIXTURES; without '
     + 'that step nothing checks the page a reader actually receives, and the header of this file is '
     + 'now telling the next person something false.');
   assert.ok(build > -1, 'ci.yml no longer builds the marketing site');

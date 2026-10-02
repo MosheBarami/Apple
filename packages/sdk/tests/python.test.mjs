@@ -1,6 +1,6 @@
 // The Python client's own suite, driven from `node --test` so `pnpm -r test` reaches it.
 //
-// WHY A BRIDGE AND NOT A SEPARATE COMMAND. `scripts/check-workspace-coverage.mjs` exists
+// WHY A BRIDGE AND NOT A SEPARATE COMMAND. `scripts/checks/check-workspace-coverage.mjs` exists
 // because a package pnpm could not see had 2,901 lines outside the suite for a whole
 // phase. A Python client whose tests only run when somebody remembers to type
 // `python3 -m unittest` is the same hole one level down: the package would report covered

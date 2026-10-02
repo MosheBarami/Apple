@@ -220,7 +220,7 @@ test('cancelling says nothing was charged', () => {
  *
  * Free grants 60 Credits a day and a quality-gated build costs 77, so buildsPerDay floors to zero
  * and the pricing page said "up to 0 builds a day". I verified this ladder in a browser and read
- * the layout rather than the figures; scripts/check-offer.mjs is what named it, and it is the same
+ * the layout rather than the figures; scripts/checks/check-offer.mjs is what named it, and it is the same
  * call usage-meter-model.ts already makes for the meter — "0 builds" reads as a fault in the
  * account rather than as a remainder smaller than one job.
  *

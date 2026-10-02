@@ -1,5 +1,5 @@
 {
-  "builtBy": "scripts/harvest-hf.mjs",
+  "builtBy": "scripts/harvest/harvest-hf.mjs",
   "dataset": "TorpedoSoftware/RobloxQA-v2.0",
   "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
   "algorithm": "sha256(lowercase, non-alphanumerics collapsed to single spaces, trimmed).slice(0,16)",

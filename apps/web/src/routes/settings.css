@@ -4,7 +4,7 @@
  * className in settings.tsx, matched against all 39 stylesheets. `theme-toggle`, `theme-btn`,
  * `theme-btn-active`, `sec-log`, `sec-event`, `sec-event-new`, `sec-event-title`, `sec-when`,
  * `mfa-qr`, `pill-good`, `pill-warn`, `settings-card`, `danger-card` and `page-narrow` matched
- * nothing. scripts/check-unstyled-classes.mjs did not catch them because it only examines BEM-ish
+ * nothing. scripts/checks/check-unstyled-classes.mjs did not catch them because it only examines BEM-ish
  * names (`foo__bar`), and every one of these is hyphenated — the same defect that check exists for,
  * hiding in the half of the naming convention it cannot see.
  *

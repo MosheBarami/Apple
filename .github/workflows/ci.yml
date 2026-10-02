@@ -102,7 +102,7 @@ jobs:
         # clean clone: without this step 47 of 272 fail; with it, 272 pass.
         #
         # Building here rather than excluding the package, because a package that quietly leaves
-        # `pnpm -r test` is what `scripts/check-workspace-coverage.mjs` exists to catch.
+        # `pnpm -r test` is what `scripts/checks/check-workspace-coverage.mjs` exists to catch.
         run: pnpm --filter @golem/site build
 
       - name: Install Chromium, because three of those tests use a real browser
@@ -161,20 +161,20 @@ jobs:
       - name: Internal links resolve
         # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
         # the build succeeds and the 404 ships. 577 links today.
-        run: node scripts/check-site-links.mjs
+        run: node scripts/checks/check-site-links.mjs
 
       - name: Published spark figures match what the worker charges
         # The pricing page stated Clay at 1 spark and 60 requests a free day. The worker
         # charges ceil(neurons / 30) and Clay measures 37-43, so it is 2 and 30. Stone
         # and Rune were right, which is what made it an arithmetic slip rather than a
         # different pricing model — and nothing connected the page to the arithmetic.
-        run: node scripts/check-credit-figures.mjs
+        run: node scripts/checks/check-credit-figures.mjs
 
       - name: Heading hierarchy and landmarks
         # Structure is invisible until someone navigates by it. The landing shipped with
         # its three claims inside a <footer> and their titles as <span>, which looks
         # identical in a screenshot and gives a screen reader one stop for the page.
-        run: node scripts/check-site-semantics.mjs
+        run: node scripts/checks/check-site-semantics.mjs
 
       - name: Backlog dispositions are earned, not pasted
         # FEATURES.json has 1,249 rows. The moment "every row dispositioned" becomes the goal, the
@@ -182,13 +182,13 @@ jobs:
         # This refuses a STRUCTURALLY-BLOCKED that cites something we own, a FACET-BOUND whose
         # parent is itself unproven, and — the one that matters — any disposition applied to more
         # than twenty rows in a pass where the citations repeat.
-        run: node scripts/check-dispositions.mjs
+        run: node scripts/checks/check-dispositions.mjs
 
       - name: Web app bundle budget
         # The landing had a budget and the app had none, so it drifted the way bundles
         # always do — by accumulating pages nobody visits. /ui-lab is a specimen book and
         # /admin renders only for is_admin, and both were downloaded by everyone.
-        run: node scripts/check-app-bundle.mjs
+        run: node scripts/checks/check-app-bundle.mjs
 
       - name: Landing payload budget
         # Three separately attributed lines — markup + stylesheets, JavaScript, images — each
@@ -196,7 +196,7 @@ jobs:
         # only counted `<script src>` and Astro inlines this page's scripts; it now also fails if
         # it finds a `<script` it cannot read, because a budget that cannot see an asset class is
         # not a loose budget, it is an instrument reporting on something it never looked at.
-        run: node scripts/check-landing-budget.mjs
+        run: node scripts/checks/check-landing-budget.mjs
 
       - name: Asset wall says what it shows
         # The library section names a count and then renders cards. Nothing connected the two, and
@@ -205,7 +205,7 @@ jobs:
         # real — and because every <img> on that wall has to resolve to a file that is actually an
         # image: the route ships no JavaScript, so a missing one renders as a broken-image glyph
         # with nothing able to swap it out.
-        run: node scripts/check-asset-wall.mjs
+        run: node scripts/checks/check-asset-wall.mjs
 
       - name: Upload built site
         uses: actions/upload-artifact@v4
@@ -266,7 +266,7 @@ jobs:
         # One command, the same one a person runs locally and the one docs/operations/PLUGIN-RELEASE.md names:
         # parse every source, refuse a require of a module that is not bundled, rojo build
         # apps/apple-plugin/default.project.json into release/apple-studio.rbxm, scan the artifact
-        # for secrets (scripts/inspect-plugin-build.py), then read the BUILT bytes for every
+        # for secrets (scripts/checks/inspect-plugin-build.py), then read the BUILT bytes for every
         # capability the source claims (apps/apple-plugin/scripts/verify-artifact.py). The last
         # step is the one that was never run in CI: every test reads the .luau, and the legacy
         # artifact once shipped with zero GenerateModelAsync while its source had generation.
@@ -319,7 +319,7 @@ jobs:
         # canonical test command could not see 2,901 lines of load-bearing Luau. A
         # package pnpm cannot see produces no output, so nothing went red. This
         # derives the check from pnpm-workspace.yaml rather than a second list.
-        run: node scripts/check-workspace-coverage.mjs
+        run: node scripts/checks/check-workspace-coverage.mjs
 
       - name: The product is called what it is called
         # THE REBRAND HAD NO ENFORCEMENT ANYWHERE UNTIL TONIGHT. check-rebrand.mjs was written,
@@ -333,14 +333,14 @@ jobs:
         # unobserved. Its success line says "IN SOURCE … THE DEPLOYED SITE WAS NOT CHECKED", so a
         # green here cannot be read as a statement about production; the deployed half belongs on
         # the deploy path.
-        run: node scripts/check-rebrand.mjs --offline
+        run: node scripts/checks/check-rebrand.mjs --offline
 
       - name: Every script CI invokes exists
         # This checker was written for the rename that missed .github and left main red for five
         # days (04d3800, runs 34934918501 / 35002022585 / 35474815515). It was reachable only from
         # scripts/gate-suite.mjs, which no workflow calls — so the guard against CI referencing a
         # file that is not there was itself not in CI. A guard that does not run is a comment.
-        run: node scripts/check-ci-references.mjs
+        run: node scripts/checks/check-ci-references.mjs
 
       - name: Formatting drift (report only)
         # PINNED. `prettier@3` resolves the newest 3.x from npm on every run, including
@@ -371,14 +371,14 @@ jobs:
           cache: pnpm
 
       - name: The secret scanner's own tests
-        # The scanner gained a suppression mechanism (scripts/known-fixtures.json) and had no
+        # The scanner gained a suppression mechanism (scripts/checks/known-fixtures.json) and had no
         # test of any kind. A suppression mechanism with no test is how a scanner becomes
         # decoration: the step below would still print a green tick with the register keyed by
         # path, which is the one design that lets a real key ride in beside a fixture.
-        run: python3 scripts/test_secret_scan.py
+        run: python3 scripts/checks/test_secret_scan.py
 
       - name: Scan full history for secrets
-        run: python3 scripts/secret-scan.py
+        run: python3 scripts/checks/secret-scan.py
 
       - name: Assert no environment files are tracked
         run: |

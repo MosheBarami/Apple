@@ -41,7 +41,7 @@
  *
  * `apps/experiences/lumen-isles/World.luau:2` calls it "an authored low-poly adventure", its
  * package description calls it "the first-party experience built for local visual review", and
- * `scripts/build-lumen-isles.mjs:1` says it "Builds the exact first-party experience for local
+ * `scripts/lumen-isles/build-lumen-isles.mjs:1` says it "Builds the exact first-party experience for local
  * visual review". It is four hand-written Luau files compiled into a place. Apple did not produce
  * it from a prompt. A visitor cannot be expected to read a caption that carefully; a game
  * screenshot on a marketing page is read as the thing the product makes. Publishing those two
@@ -72,7 +72,7 @@ export type ProofQuote = { text: string; from: typeof record | typeof plugin };
 export const CONSENT_PROOF = {
   /** The day the control pair was run, and the day the capture below was taken. */
   captured: '2026-09-19',
-  /* Rendered rather than typed into the page, because scripts/check-proof-figures.mjs forbids a
+  /* Rendered rather than typed into the page, because scripts/checks/check-proof-figures.mjs forbids a
      typed multi-digit number anywhere in the landing's visible prose and a year is four digits.
      The rule is right: a number on that page has to come from somewhere. This one comes from here,
      and the guard checks it against the name of the record file. */

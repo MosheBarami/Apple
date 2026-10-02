@@ -13,14 +13,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-backlog.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-backlog.mjs');
 
 /** A scratch repo holding only the two backlog files, so fixtures cannot touch the real ones. */
 function scratch(sections, mdBody) {
   const dir = mkdtempSync(join(tmpdir(), 'check-backlog-'));
   mkdirSync(join(dir, 'docs', 'backlog'), { recursive: true });
-  mkdirSync(join(dir, 'scripts'), { recursive: true });
-  writeFileSync(join(dir, 'scripts', 'check-backlog.mjs'), readFileSync(CHECKER, 'utf8'));
+  mkdirSync(join(dir, 'scripts', 'checks'), { recursive: true });
+  writeFileSync(join(dir, 'scripts', 'checks', 'check-backlog.mjs'), readFileSync(CHECKER, 'utf8'));
   const data = {
     capturedAt: '2026-01-01',
     source: 'fixture',
@@ -49,7 +49,7 @@ function scratch(sections, mdBody) {
 }
 
 function run(dir, ...args) {
-  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'check-backlog.mjs'), ...args], { cwd: dir, encoding: 'utf8', timeout: 60_000 });
+  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'checks', 'check-backlog.mjs'), ...args], { cwd: dir, encoding: 'utf8', timeout: 60_000 });
   return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
 }
 
@@ -179,7 +179,7 @@ test('the DENOMINATOR is printed, and names how many rows cite something runnabl
 
 test('an unrecognised flag is refused rather than ignored', () => {
   const dir = keep(scratch(CLEAN, bucket('A', 1)));
-  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'check-backlog.mjs'), '--force'], { cwd: dir, encoding: 'utf8' });
+  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'checks', 'check-backlog.mjs'), '--force'], { cwd: dir, encoding: 'utf8' });
   assert.equal(p.status, 2);
 });
 

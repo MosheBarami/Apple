@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-pixels.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-pixels.mjs');
 
 /** A server that answers every path with the same body, so the checker's route list drives it. */
 function serve(body) {

@@ -23,7 +23,7 @@ The authoritative list, with the reason for each, is the `Env` interface in `app
 
 `apps/worker/tests/billing*.test.mjs` (checkout, webhook authority, origin authority, reconcile, invoices,
 persistence, Stripe API shape). `docs/COST-MODEL.md` and `packages/evals/src/economics.test.mjs` hold the money
-figures; `node scripts/check-credit-figures.mjs` keeps the site copy in step.
+figures; `node scripts/checks/check-credit-figures.mjs` keeps the site copy in step.
 
 ## Go-live
 

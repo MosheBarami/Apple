@@ -237,7 +237,7 @@ test('§5 importing this module reaches no network — the refusal is not the on
 test('§6 THE REAL GATE LOADS, drops exactly what the committed evidence says, and keeps the rest', () => {
   if (!existsSync(join(DATA, 'gate.jsonl'))) {
     console.log('  !  gate.jsonl absent (derived, gitignored) — the real loadGate path did NOT run this time. ' +
-      'Run `node scripts/harvest-hf.mjs`. This is NOT a clean result.');
+      'Run `node scripts/harvest/harvest-hf.mjs`. This is NOT a clean result.');
     return;
   }
   const excluded = JSON.parse(readFileSync(join(DATA, 'excluded-gate-rows.json'), 'utf8')).rows.length;

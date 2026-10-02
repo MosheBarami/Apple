@@ -61,7 +61,7 @@ const LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`|\[\[[
 
 const files = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.astro', '*.luau'], {
   cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
-}).split('\n').filter(Boolean).filter((f) => f !== 'scripts/check-rebrand.mjs' && f !== 'scripts/rebrand-literals.mjs');
+}).split('\n').filter(Boolean).filter((f) => f !== 'scripts/checks/check-rebrand.mjs' && f !== 'scripts/rebrand-literals.mjs');
 
 /**
  * Rewrite one literal, with every exempt span protected.

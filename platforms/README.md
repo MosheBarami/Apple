@@ -28,7 +28,7 @@ node platforms/supabase/migrate.mjs --verify                    # migrations: ve
 
 Each README lists the environment variable and secret NAMES a platform needs. Values live in Cloudflare secrets,
 the git-ignored `.env`, `apps/worker/.dev.vars` and `apps/web/.env.local`. `.env.example` at the repo root is the
-template (names only). Never commit a value; `python3 scripts/secret-scan.py` scans the whole history.
+template (names only). Never commit a value; `python3 scripts/checks/secret-scan.py` scans the whole history.
 
 ## Naming note
 

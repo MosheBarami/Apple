@@ -37,7 +37,7 @@ const passThroughPurify = {
 
 /**
  * Bundle `entry` (TSX) and load it. The caller passes `resolveDir` (apps/web) and writes the entry's
- * specifiers from there (`./src/...`), so scripts/check-deadends.mjs — which resolves a virtual
+ * specifiers from there (`./src/...`), so scripts/checks/check-deadends.mjs — which resolves a virtual
  * module against its package root when the file declares a resolveDir — sees them as real edges.
  */
 export async function bundle(entry, { name = 'ui', resolveDir }) {

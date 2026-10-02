@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = 'scripts/check-escape-hatches.mjs';
+const CHECKER = 'scripts/checks/check-escape-hatches.mjs';
 
 /**
  * A throwaway git repo holding the repository's tracked files.

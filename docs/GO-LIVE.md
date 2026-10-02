@@ -297,7 +297,7 @@ that named a build four commits behind.
 ---
 ## 5. The secret scanner failed on its own test fixtures — designed and closed 2026-09-21
 
-**Was OPEN.** `python3 scripts/secret-scan.py` exited 1 with `RESULT: CREDENTIALS IN THE CURRENT
+**Was OPEN.** `python3 scripts/checks/secret-scan.py` exited 1 with `RESULT: CREDENTIALS IN THE CURRENT
 TREE`. The earlier version of this section said 32 hits in three files; re-measured with the exit
 code read from the scanner rather than from a `tail` at the end of a pipe, it was **34 hits across
 18 files** — sixteen test files, plus this document, which was quoting the fixture values back.
@@ -328,7 +328,7 @@ Three moves were available:
 
 ### The decision: option 3, keyed by value, at a path
 
-`scripts/known-fixtures.json` declares a fixture as **(path, sha256 of the matched value)**. It
+`scripts/checks/known-fixtures.json` declares a fixture as **(path, sha256 of the matched value)**. It
 holds no value bytes. The keying is the whole control, and it is what separates this from the path
 exemption in option 2:
 
@@ -349,11 +349,11 @@ elsewhere. That last one was found by a test, not by reading.
 commit can add a line blessing a real credential. The control is that the line is in the diff and
 the build blocks until someone writes it. The tool makes a new credential-shaped string a
 *reviewable event*; it cannot tell whether the review happened. The same caveat already applies to
-`scripts/known-exposures.json` and is stated in the scanner's docstring.
+`scripts/checks/known-exposures.json` and is stated in the scanner's docstring.
 
 ### The tests, which did not exist before
 
-`scripts/test_secret_scan.py` — 12 tests, each building a throwaway git repository and asserting
+`scripts/checks/test_secret_scan.py` — 12 tests, each building a throwaway git repository and asserting
 the exit code of the real scanner as a subprocess. Every one was watched going red on an aimed
 mutation and the source restored byte-identical. The two that carry the design are
 `test_new_secret_in_a_declared_file_still_fails` and `test_declaration_does_not_travel_to_another_path`;
@@ -366,8 +366,8 @@ would have been found by reading. The duplicated check is now one function.
 
 ### State
 
-**CLOSED.** `python3 scripts/secret-scan.py` exits 0; 34 declared fixtures in 18 files, and CI now
-runs `python3 scripts/test_secret_scan.py` before the scan, so the scanner's own control is tested
+**CLOSED.** `python3 scripts/checks/secret-scan.py` exits 0; 34 declared fixtures in 18 files, and CI now
+runs `python3 scripts/checks/test_secret_scan.py` before the scan, so the scanner's own control is tested
 before it is trusted.
 
 Nothing here was ever a live credential. No rotation is required.

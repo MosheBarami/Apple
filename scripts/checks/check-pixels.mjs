@@ -1,0 +1,584 @@
+#!/usr/bin/env node
+// What the deployed pages actually LOOK like, measured rather than described.
+//
+// WHY THIS EXISTS (§6.9). Every other checker in this repository reads source. A page can satisfy
+// all of them and still render as a blank rectangle, a wall of unstyled Times New Roman, or a
+// layout that only holds together at the one width somebody happened to look at. The suite cannot
+// see any of that, and neither can a reviewer reading a diff.
+//
+// It captures every route at two viewports in both colour schemes, writes the frames to
+// docs/evidence/pixels/<pass>/ so a human can look at them, and FAILS on four things that are
+// each invisible to source review:
+//
+//   1. a frame that is >92% one colour — the page did not render, or rendered empty
+//   2. a <body> font-family that is a bare system stack — the typography never loaded
+//   3. a route using none of the design system's tokens — styled by accident, not by system
+//   4. a frame differing from its committed baseline by >2% with no baseline update in the
+//      same commit — a visual regression nobody declared
+//
+// THE DECODER IS THE BROWSER. Comparing frames needs raw pixels, and decoding a PNG in Node means
+// either a dependency this repository does not declare or eighty lines of zlib and scanline
+// filters. The browser already decodes PNGs correctly, so the frames go back through a canvas.
+// No new dependency, and no decoder of mine to be wrong.
+//
+//   node scripts/checks/check-pixels.mjs --deployed
+//   node scripts/checks/check-pixels.mjs --base http://localhost:4322 --pass 9
+//   node scripts/checks/check-pixels.mjs --base ... --write-baseline
+// From @playwright/test, which is what this repository declares. Importing bare 'playwright'
+// resolves only when the standalone package happens to be hoisted, which is an accident of the
+// lockfile rather than a dependency.
+import { chromium } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { PRODUCT_ORIGIN } from '../lib/product-origin.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// THE ORIGIN IS READ, NOT TYPED. It used to be a copy of the LEGACY hostname, so this program
+// measured — and wrote into its evidence file as "origin" — a deployment nobody is sent to.
+const DEPLOYED = PRODUCT_ORIGIN;
+
+/* ------------------------------------------------------------------- flags --- */
+
+const argv = process.argv.slice(2);
+const flags = { base: null, pass: null, writeBaseline: false, deployed: false, routes: null, tokens: null, baseline: null };
+for (let i = 0; i < argv.length; i += 1) {
+  const a = argv[i];
+  if (a === '--deployed') { flags.deployed = true; continue; }
+  if (a === '--write-baseline') { flags.writeBaseline = true; continue; }
+  if (a === '--base') { flags.base = argv[i + 1]; i += 1; continue; }
+  if (a === '--pass') { flags.pass = argv[i + 1]; i += 1; continue; }
+  // `--routes /a,/b` narrows the sweep. It exists so this checker's own tests can exercise a rule
+  // against four frames instead of seventy-two, and so an operator can re-check one page without
+  // paying for the whole site. It NARROWS and can never widen, so it cannot be used to make a run
+  // look clean by pointing it somewhere friendly — the DENOMINATOR line prints what was actually
+  // swept, and a narrowed run says so in the same breath as its verdict.
+  // `--tokens <path>` points the vocabulary somewhere else. It exists so this checker's own tests
+  // can prove the missing-vocabulary GAP is reported — a case that became untestable the moment
+  // packages/design/src/tokens.mjs started existing, which is the good outcome making its own
+  // guard unobservable.
+  if (a === '--tokens') { flags.tokens = argv[i + 1]; i += 1; continue; }
+  // `--baseline <dir>` points the comparison at another baseline. Same reason as `--tokens`: the
+  // cross-build rule below is unreachable from a test otherwise, because the real baseline is a
+  // fixed path in this repository and a test cannot write into it. Pointing it at an empty
+  // directory does not buy a clean run — nothing is compared, and the CAPTURED line says
+  // "0 compared against a baseline" in the same breath as the verdict.
+  if (a === '--baseline') { flags.baseline = argv[i + 1]; i += 1; continue; }
+  if (a === '--routes') { flags.routes = (argv[i + 1] ?? '').split(',').map((r) => r.trim()).filter(Boolean); i += 1; continue; }
+  console.error(`check-pixels: unrecognised flag ${a}`);
+  console.error('check-pixels: known flags — --deployed --base <url> --pass <n> --write-baseline --routes <a,b> --tokens <path> --baseline <dir>');
+  process.exit(2);
+}
+if (!flags.deployed && !flags.base) {
+  console.error('check-pixels: pass --deployed, or --base <url> to capture something else');
+  process.exit(2);
+}
+const BASE = (flags.base ?? DEPLOYED).replace(/\/$/, '');
+
+/* ------------------------------------------------------- what gets captured --- */
+
+/**
+ * The routes, DERIVED from the pages that exist rather than listed here.
+ *
+ * A hard-coded list is a denominator that silently stops growing: the day someone adds a page,
+ * this checker reports clean over a route it has never seen. §6.3.
+ */
+function routes() {
+  const dir = join(ROOT, 'apps', 'site', 'src', 'pages');
+  const out = [];
+  const walk = (d, prefix) => {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      if (entry.isDirectory()) { walk(join(d, entry.name), `${prefix}${entry.name}/`); continue; }
+      if (!entry.name.endsWith('.astro')) continue;
+      const name = entry.name.replace(/\.astro$/, '');
+      // 404 is reached by being wrong, not by being linked; capturing it needs a bad URL.
+      if (name === '404') { out.push('/__not_found_probe__'); continue; }
+      out.push(name === 'index' ? (prefix || '/') : `${prefix}${name}`);
+    }
+  };
+  walk(dir, '/');
+  return [...new Set(out)].sort();
+}
+
+const VIEWPORTS = [
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'phone', width: 390, height: 844 },
+];
+const SCHEMES = ['light', 'dark'];
+
+/**
+ * The localStorage key the site's own pre-paint theme script reads, READ OUT OF THAT SCRIPT.
+ *
+ * A literal here would agree with itself and with nothing else, and the failure it would cause is
+ * the one this key exists to end: a sweep that sets a key nobody reads, renders the default theme
+ * for both schemes, and reports eighty frames of which forty are duplicates. So a rename in the
+ * layout turns this RED rather than quiet. Both layouts must agree, because a sweep that drives the
+ * landing's switch and not the chrome routes' would be half-blind in a new way.
+ */
+const THEME_KEY = (() => {
+  const layouts = ['Landing.astro', 'Base.astro'].map((f) => join(ROOT, 'apps', 'site', 'src', 'layouts', f));
+  const keys = layouts.map((p) => {
+    const src = existsSync(p) ? readFileSync(p, 'utf8') : '';
+    return (/localStorage\.getItem\(\s*['"]([^'"]+)['"]\s*\)/.exec(src) ?? [])[1] ?? null;
+  });
+  if (keys.some((k) => k === null) || new Set(keys).size !== 1) {
+    console.error('check-pixels: cannot read one agreed theme key out of Landing.astro and Base.astro');
+    console.error(`  found ${JSON.stringify(keys)} — the light half of every sweep would silently photograph the dark page`);
+    process.exit(1);
+  }
+  return keys[0];
+})();
+
+/* -------------------------------------------------------- the design system --- */
+
+/**
+ * The approved typography and token vocabulary.
+ *
+ * Read from `packages/design`, NOT from the site's own CSS. Reading it from the site would make
+ * rules 2 and 3 circular — the page would be checked against itself and could never fail.
+ */
+function designSystem() {
+  const p = flags.tokens ? resolve(flags.tokens) : join(ROOT, 'packages', 'design', 'src', 'tokens.mjs');
+  if (!existsSync(p)) return null;
+  return p;
+}
+
+const SYSTEM_STACKS = [
+  /^-?apple-system/i, /^system-ui/i, /^BlinkMacSystemFont/i,
+  /^Times/i, /^serif$/i, /^sans-serif$/i, /^Arial/i, /^Helvetica$/i,
+];
+
+/* ------------------------------------------------------------------- report --- */
+
+const findings = [];
+const fail = (what, where, why) => findings.push({ what, where, why });
+
+const PASS = flags.pass ?? 'unpassed';
+const OUT = join(ROOT, 'docs', 'evidence', 'pixels', String(PASS));
+const BASELINE = flags.baseline ?? join(ROOT, 'docs', 'evidence', 'pixels', 'baseline');
+
+//[[ A BASELINE THAT DOES NOT SAY WHERE IT CAME FROM CANNOT ANSWER THE QUESTION IT IS ASKED.
+//
+//   Run `--deployed` against a baseline captured from a local build and all 72 frames differ by
+//   76-99.9%, and every one is reported as "an undeclared regression". They are not. They are two
+//   different BUILDS being compared — the deployed site is months of work behind the repository —
+//   and a pixel diff cannot tell that apart from someone quietly changing the design.
+//
+//   Measured: that is exactly what pass 12 produced. 72 findings across 72 frames, while the three
+//   intrinsic rules above — one-colour, bare system font, no design token — fired on NONE of them.
+//   A rule that fires on 100% of frames is not measuring what its message claims.
+//
+//   So the baseline records its origin and sha, and a comparison across origins is reported as
+//   what it is. Not softened: it still fails, because a deployed site that does not look like the
+//   repository IS a finding. It stops being called the wrong finding. ]]
+const PROVENANCE = join(BASELINE, 'PROVENANCE.json');
+const baselineProvenance = (() => {
+  try { return JSON.parse(readFileSync(PROVENANCE, 'utf8')); } catch { return null; }
+})();
+// Unknown provenance is treated as cross-build, not as same-build. The baseline committed before
+// this field existed has none, and assuming it matches would be assuming the answer.
+const sameBuild = baselineProvenance !== null && baselineProvenance.origin === BASE;
+const crossBuild = [];
+
+const slug = (route, vp, scheme) =>
+  `${route.replace(/^\//, '').replace(/\/$/, '') || 'index'}`.replace(/\//g, '_') + `--${vp}--${scheme}.png`;
+
+/* ------------------------------------------------------------------ capture --- */
+
+const ALL_ROUTES = routes();
+
+/*
+ * The colour histogram for RULE 1, allocated ONCE. 2^24 entries covers every packed RGB exactly.
+ * `touched` records which entries a frame used so the array can be cleared in O(colours present)
+ * rather than by zeroing 16.7M slots between frames.
+ */
+const histogram = new Uint32Array(1 << 24);
+const touched = [];
+
+/** Mean luminance per `route|viewport|scheme`, for RULE 5. */
+const luminance = new Map();
+const ROUTES = flags.routes ? ALL_ROUTES.filter((r) => flags.routes.includes(r)) : ALL_ROUTES;
+if (flags.routes && !ROUTES.length) {
+  console.error(`check-pixels: --routes matched none of the ${ALL_ROUTES.length} routes that exist`);
+  process.exit(2);
+}
+console.log(
+  `DENOMINATOR ${ROUTES.length} route(s) x ${VIEWPORTS.length} viewport(s) x ${SCHEMES.length} scheme(s) ` +
+  `= ${ROUTES.length * VIEWPORTS.length * SCHEMES.length} frame(s); base=${BASE}` +
+  (flags.routes ? ` — NARROWED from ${ALL_ROUTES.length} routes by --routes` : ''),
+);
+
+mkdirSync(OUT, { recursive: true });
+if (flags.writeBaseline) mkdirSync(BASELINE, { recursive: true });
+
+const browser = await chromium.launch();
+let captured = 0;
+let compared = 0;
+
+/** Decode a PNG to {w,h,data} using the browser, which already has a correct decoder. */
+/*[[ THE PIXELS COME BACK AS BYTES, NOT AS A JSON ARRAY OF FOUR MILLION NUMBERS.
+ *
+ *   This returned `Array.from(d.data)`. `d.data` is a Uint8ClampedArray of width x height x 4 —
+ *   4,096,000 entries for one 1280x800 frame — and returning it from `page.evaluate` serialises
+ *   every entry as JSON over the CDP bridge, then rebuilds a plain JS Array of four million boxed
+ *   numbers on this side. That is tens of megabytes of protocol traffic and about a hundred seconds
+ *   PER FRAME.
+ *
+ *   It went unnoticed for as long as the sweep was small and the pages were flat. On 2026-09-20 the
+ *   four tests in tests/check-pixels.test.mjs that exercise this checker took 1,106,191ms,
+ *   1,057,355ms, 1,008,163ms and 977,133ms — seventeen minutes each — and timed out rather than
+ *   failed. The whole root suite stopped finishing, and the symptom read like a hang in a test
+ *   rather than like a transport cost in a helper.
+ *
+ *   Base64 of the raw RGBA buffer crosses the bridge as ONE string and decodes here in one call.
+ *   The returned shape is unchanged — `{ w, h, data }` with `data` indexable exactly as before — so
+ *   every rule above reads it the same way. Nothing about what is measured changes; only how the
+ *   bytes travel. ]]*/
+async function decode(page, buf) {
+  const { w, h, b64 } = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${src}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const d = ctx.getImageData(0, 0, c.width, c.height);
+    // Chunked so a 4MB buffer does not blow the argument limit of String.fromCharCode.
+    let s = '';
+    const CH = 0x8000;
+    for (let i = 0; i < d.data.length; i += CH) {
+      s += String.fromCharCode.apply(null, d.data.subarray(i, i + CH));
+    }
+    return { w: c.width, h: c.height, b64: btoa(s) };
+  }, buf.toString('base64'));
+  return { w, h, data: new Uint8Array(Buffer.from(b64, 'base64')) };
+}
+
+try {
+  const TOKENS = designSystem();
+  if (!TOKENS) {
+    fail(
+      'packages/design declares no token vocabulary',
+      'packages/design/src/tokens.mjs',
+      'rules 2 and 3 have no non-circular source of truth, so they are NOT being checked — this is a gap, not a pass',
+    );
+  }
+  // A STATIC SPECIFIER, guarded rather than computed.
+  //
+  // This was `await import(\`file://${TOKENS}\`)`, a template literal, which no static import graph
+  // can resolve — so check-deadends correctly reported packages/design/src/tokens.mjs as imported
+  // by nothing in the tree the moment it was created. The module was consumed; the consumption was
+  // invisible, which is the same thing as far as every reader and every checker is concerned.
+  //
+  // The guard above already proved the file exists, so the optionality survives: an absent
+  // vocabulary is still a reported gap rather than a crash.
+  // A static specifier for the default, so check-deadends can see this dependency — a template
+  // literal here made packages/design/src/tokens.mjs look imported by nothing the day it appeared.
+  // An overridden path is necessarily dynamic; that is the test seam, not the shipping path.
+  const vocabulary = !TOKENS ? null
+    : flags.tokens ? await import(pathToFileURL(TOKENS).href)
+    : await import('../../packages/design/src/tokens.mjs');
+
+  for (const vp of VIEWPORTS) {
+    for (const scheme of SCHEMES) {
+      /*[[ REDUCED MOTION, AND IT IS NOT A PERFORMANCE TWEAK — IT IS WHAT MAKES A BASELINE POSSIBLE.
+       *
+       *   On 2026-09-20 the landing gained a permanently-running canvas (Horizon.astro) and 27
+       *   keyframes, 72 of which are animating at any moment. A pixel baseline over an animated page
+       *   does not have a stable subject: every capture differs from every other capture, and the
+       *   four tests in tests/check-pixels.test.mjs that exercise this checker went from seconds to
+       *   SEVENTEEN MINUTES EACH — 1,106,191ms, 1,057,355ms, 1,008,163ms, 977,133ms — and timed out
+       *   rather than failed. The root suite went from minutes to unfinishable with them in it.
+       *
+       *   `reducedMotion: 'reduce'` is the honest fix rather than a wait-and-hope, because this
+       *   product's own components are built to answer it: Horizon.astro draws ONE still frame at a
+       *   fixed phase and never starts its loop, landing.css neutralises every keyframe, and the
+       *   reveal machinery shows its final frame. So what this checker photographs under reduction
+       *   is a real, complete, deterministic composition — the exact thing a visitor who asked for
+       *   less motion sees — rather than a frame frozen mid-flight.
+       *
+       *   `animations: 'disabled'` on the screenshot below covers the rest: Playwright fast-forwards
+       *   CSS animations and transitions to their end state, so anything the media query does not
+       *   reach still lands somewhere defined instead of somewhere random.
+       *
+       *   A consequence worth stating: this checker no longer sees the page as a visitor with motion
+       *   enabled sees it. That is a real narrowing and the right trade — a baseline that cannot be
+       *   reproduced catches nothing at all, and the alternative was a checker that never finishes. ]]*/
+      const ctx = await browser.newContext({
+        viewport: { width: vp.width, height: vp.height },
+        colorScheme: scheme,
+        reducedMotion: 'reduce',
+      });
+      /*[[ THE SITE'S OWN SWITCH, BECAUSE `colorScheme` ALONE PHOTOGRAPHED THE DARK PAGE TWICE.
+       *
+       *   This file's header has said "in both colour schemes" since it was written, and it has
+       *   never once captured the light one. Both layouts hard-code `data-theme="dark"` on <html>
+       *   and their pre-paint script changes it ONLY for a stored choice — `prefers-color-scheme` is
+       *   not read anywhere in the boot path — so a Playwright context with `colorScheme: 'light'`
+       *   renders the identical dark page. Forty of the eighty frames in every sweep this checker
+       *   has ever run were duplicates of the other forty, under filenames asserting otherwise.
+       *
+       *   IT WAS INVISIBLE BECAUSE NOTHING COMPARED THE HALVES. Found by swapping a committed
+       *   `--light` baseline frame for its `--dark` twin and re-running: the diff came back under
+       *   the 2% threshold, which is not a thing that can happen between a near-white page and a
+       *   near-black one. The four intrinsic rules all passed on both copies, because a dark page
+       *   IS a valid page — it was simply the wrong one, twice.
+       *
+       *   THE FIX DRIVES THE CONTROL A VISITOR DRIVES rather than changing the product to follow
+       *   the OS. Dark is this brand's default by decision and the toggle is the real choice, so
+       *   the honest capture is "a visitor who picked light", which is a value in localStorage the
+       *   inline script reads before first paint. `addInitScript` runs before page scripts on every
+       *   navigation, which is exactly the window that script occupies. `colorScheme` stays set as
+       *   well: it costs nothing and is correct on the day the boot path does read the query.
+       *
+       *   The key is read from the layout rather than typed here, so a rename cannot leave this
+       *   silently photographing dark twice again — which is the whole defect, repeating. ]]*/
+      await ctx.addInitScript((choice) => {
+        try { localStorage.setItem(choice.key, choice.scheme); } catch { /* private mode */ }
+      }, { key: THEME_KEY, scheme });
+      const page = await ctx.newPage();
+      const decoder = await ctx.newPage();
+      await decoder.setContent('<html><body></body></html>');
+
+      for (const route of ROUTES) {
+        const url = `${BASE}${route === '/__not_found_probe__' ? '/__not_found_probe__' : route}`;
+        let res;
+        try {
+          res = await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 });
+        } catch (err) {
+          fail(`${route} did not load`, url, String(err).slice(0, 120));
+          continue;
+        }
+        if (!res) { fail(`${route} returned no response`, url, 'navigation produced nothing'); continue; }
+
+        const buf = await page.screenshot({ fullPage: false, animations: 'disabled' });
+        const file = join(OUT, slug(route, vp.name, scheme));
+        writeFileSync(file, buf);
+        captured += 1;
+
+        const img = await decode(decoder, buf);
+
+        //[[ RULE 1 — a frame that is overwhelmingly one colour did not render.
+        //
+        //   THE COUNT IS EXACT AND THE STRUCTURE CHANGED, for a reason that is a lesson about this
+        //   checker rather than about this rule. It used to be `counts.set(k, (counts.get(k) ?? 0)
+        //   + 1)` once per pixel — a Map keyed by packed RGB, 1,024,000 `set` calls per frame at
+        //   1280x800. That was fast for years because the pages it photographed were nearly flat:
+        //   a handful of distinct colours meant a Map with a handful of entries.
+        //
+        //   On 2026-09-20 the landing gained a canvas drawing a horizon gradient with a glow band,
+        //   which is on the order of a MILLION distinct colours in one frame. The Map went from a
+        //   dozen entries to a million, per frame, and `Math.max(...counts.values())` then spread a
+        //   million-element iterator into a call. The four tests exercising this checker went to
+        //   SEVENTEEN MINUTES EACH and timed out, and the root suite stopped finishing at all.
+        //
+        //   Nothing was wrong with the rule. The data changed shape underneath a structure chosen
+        //   for the old shape — which is worth writing down, because the failure looked like a hang
+        //   and read like a broken test rather than like a page that got richer.
+        //
+        //   A flat Uint32Array indexed by the packed colour is O(1) per pixel with no hashing and
+        //   no allocation per distinct colour. It is 64MB, allocated ONCE for the whole run rather
+        //   than per frame, and only the entries actually touched are reset between frames — so the
+        //   cost is proportional to the colours present, not to the 16.7M the array can hold.
+        //   The count stays EXACT: no quantisation, no bucketing, so a page that is 92% of one
+        //   almost-uniform gradient is still not mistaken for a blank one. ]]
+        const total = img.w * img.h;
+        let top = 0;
+        // Mean luminance, accumulated in the pass rule 1 is already making. RULE 5 below is the
+        // only reader; it costs one add and one divide per frame and is what tells a light page
+        // from a dark one without a second decode.
+        let sum = 0;
+        touched.length = 0;
+        for (let i = 0; i < img.data.length; i += 4) {
+          const k = (img.data[i] << 16) | (img.data[i + 1] << 8) | img.data[i + 2];
+          sum += 0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2];
+          const n = histogram[k] + 1;
+          if (n === 1) touched.push(k);
+          histogram[k] = n;
+          if (n > top) top = n;
+        }
+        for (const k of touched) histogram[k] = 0;
+        luminance.set(`${route}|${vp.name}|${scheme}`, sum / total);
+        const share = top / total;
+        if (share > 0.92) {
+          fail(`${route} is ${(share * 100).toFixed(1)}% one colour at ${vp.name}/${scheme}`, file, 'the page did not render, or rendered empty');
+        }
+
+        // RULE 2 — the typography actually loaded.
+        if (vocabulary?.APPROVED_FONT_STACKS) {
+          const family = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
+          const first = family.split(',')[0].replace(/["']/g, '').trim();
+          const approved = vocabulary.APPROVED_FONT_STACKS.some((f) => first.toLowerCase() === f.toLowerCase());
+          if (!approved && SYSTEM_STACKS.some((re) => re.test(first))) {
+            fail(`${route} falls back to a bare system font at ${vp.name}/${scheme}`, file, `body font-family resolves to ${first}`);
+          }
+        }
+
+        // RULE 3 — the page is styled BY the system, not beside it.
+        if (vocabulary?.TOKEN_PREFIXES) {
+          const used = await page.evaluate((prefixes) => {
+            const sheets = [...document.styleSheets];
+            let hits = 0;
+            for (const s of sheets) {
+              let rules;
+              try { rules = [...s.cssRules]; } catch { continue; }  // cross-origin sheet
+              for (const r of rules) {
+                const t = r.cssText ?? '';
+                if (prefixes.some((p) => t.includes(p))) hits += 1;
+              }
+            }
+            return hits;
+          }, vocabulary.TOKEN_PREFIXES);
+          if (used === 0) {
+            fail(`${route} uses no design token at ${vp.name}/${scheme}`, file, `no rule mentions any of ${vocabulary.TOKEN_PREFIXES.join(', ')}`);
+          }
+        }
+
+        // RULE 4 — a regression nobody declared.
+        const baseFile = join(BASELINE, slug(route, vp.name, scheme));
+        if (flags.writeBaseline) {
+          writeFileSync(baseFile, buf);
+        } else if (existsSync(baseFile)) {
+          const before = await decode(decoder, readFileSync(baseFile));
+          if (before.w !== img.w || before.h !== img.h) {
+            fail(`${route} changed size at ${vp.name}/${scheme}`, file, `${before.w}x${before.h} -> ${img.w}x${img.h}`);
+          } else {
+            let diff = 0;
+            for (let i = 0; i < img.data.length; i += 4) {
+              if (Math.abs(img.data[i] - before.data[i]) > 8
+                || Math.abs(img.data[i + 1] - before.data[i + 1]) > 8
+                || Math.abs(img.data[i + 2] - before.data[i + 2]) > 8) diff += 1;
+            }
+            compared += 1;
+            const ratio = diff / total;
+            if (ratio > 0.02 && !baselineTouchedInHead(baseFile) && !sameBuild) {
+              // Recorded, not reported per frame. Seventy-two copies of the same sentence bury the
+              // one fact that matters, which is that the two sides are different builds.
+              crossBuild.push(`${route} ${vp.name}/${scheme} ${(ratio * 100).toFixed(1)}%`);
+            } else if (ratio > 0.02 && !baselineTouchedInHead(baseFile)) {
+              fail(
+                `${route} differs from its baseline by ${(ratio * 100).toFixed(1)}% at ${vp.name}/${scheme}`,
+                file,
+                'a visual change with no baseline update in the same commit is an undeclared regression',
+              );
+            }
+          }
+        }
+      }
+      await ctx.close();
+    }
+  }
+} finally {
+  await browser.close();
+}
+
+/** Whether this baseline was updated in HEAD — a declared change rather than a regression. */
+function baselineTouchedInHead(file) {
+  try {
+    const rel = file.slice(ROOT.length + 1);
+    return execFileSync('git', ['show', '--name-only', '--format=', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\n').map((l) => l.trim()).includes(rel);
+  } catch { return false; }
+}
+
+if (flags.writeBaseline) {
+  // Written AFTER the sweep, so a baseline that failed part-way through does not claim an origin
+  // for frames it never captured.
+  let sha = 'unknown';
+  try { sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { /* not a repo */ }
+
+  //[[ AND IT REFUSES TO CLAIM AN ORIGIN FOR FRAMES IT DID NOT TAKE.
+  //
+  //   A re-baseline against the deployed origin captured 68 of 72 frames — the other four failed
+  //   with `page.goto: Download is starting`, because /pricing was serving octet-stream — and then
+  //   wrote PROVENANCE saying 68 while leaving the four OLD frames from the previous, LOCAL build
+  //   sitting in the directory. Seventy-two files, provenance asserting a single origin, four of
+  //   them from a different build.
+  //
+  //   That is a cross-build comparison smuggled inside the baseline, which is the exact thing the
+  //   provenance field was added to prevent — so the field would have been certifying the mixture
+  //   it exists to detect. Found by rbxai-a3, who noticed the count on disk disagreed with the
+  //   count in the file and moved the four out by hand.
+  //
+  //   Refusing is the right direction rather than pruning: deleting frames a partial run did not
+  //   replace would silently shrink the baseline, and a baseline that quietly covers fewer routes
+  //   is the same failure wearing the opposite mask. ]]
+  const onDisk = readdirSync(BASELINE).filter((f) => f.endsWith('.png')).length;
+  if (onDisk !== captured) {
+    console.error(`  ${onDisk} frame(s) on disk but ${captured} captured this run — ${onDisk - captured} are left over from an earlier baseline`);
+    console.error('  A partial re-baseline leaves frames from a DIFFERENT build in place, and provenance naming one');
+    console.error('  origin would certify exactly the mixture it exists to detect. Remove the stale frames, or re-run');
+    console.error('  until every route captures.');
+    console.log('BASELINE NOT WRITTEN — the directory and this run disagree about how many frames there are');
+    process.exit(1);
+  }
+  writeFileSync(PROVENANCE, `${JSON.stringify({ origin: BASE, sha, frames: captured }, null, 2)}\n`);
+  console.log(`BASELINE PROVENANCE written — origin ${BASE}, sha ${sha.slice(0, 7)}, ${captured} frame(s)`);
+}
+
+//[[ RULE 5 — THE TWO SCHEMES ARE TWO PICTURES, AND NOTHING CHECKED THAT FOR AS LONG AS THIS FILE
+//   HAS EXISTED.
+//
+//   Every rule above is applied to a frame on its own, and a dark page passes all four. So when
+//   `colorScheme: 'light'` turned out to render the dark page — the site's boot path never reads
+//   the query — the sweep reported eighty clean frames of which forty were duplicates, and the
+//   filenames were the only thing claiming otherwise. Nothing in the output was false. It was
+//   simply an answer to a narrower question than the one being asked.
+//
+//   This is the cheapest possible cross-frame rule and it is the one that closes that hole: a page
+//   photographed in light and in dark must differ in MEAN LUMINANCE by more than a rounding error.
+//   The threshold is 12 of 255, which is far below the ~150 this site's two palettes are apart and
+//   far above the drift a canvas of randomly placed particles contributes.
+//
+//   IT FIRES ON THE SWEEP, NOT ON THE PAGE, and the message says so — the defect it catches is in
+//   the capture, and telling somebody their design regressed when their camera was pointed the
+//   wrong way is how a checker teaches people to ignore it. A route that genuinely has one palette
+//   in both schemes would be a real finding here too, which is correct: this site has a toggle on
+//   every route and a page that ignores it is a page whose toggle does nothing. ]]
+const SCHEME_LUMINANCE_FLOOR = 12;
+if (SCHEMES.includes('light') && SCHEMES.includes('dark')) {
+  const same = [];
+  for (const vp of VIEWPORTS) {
+    for (const route of ROUTES) {
+      const light = luminance.get(`${route}|${vp.name}|light`);
+      const dark = luminance.get(`${route}|${vp.name}|dark`);
+      if (light === undefined || dark === undefined) continue;
+      if (Math.abs(light - dark) < SCHEME_LUMINANCE_FLOOR) {
+        same.push(`${route} ${vp.name} (${light.toFixed(1)} vs ${dark.toFixed(1)})`);
+      }
+    }
+  }
+  if (same.length) {
+    fail(
+      `${same.length} route/viewport pair(s) look identical in light and dark`,
+      'check-pixels',
+      `mean luminance differs by less than ${SCHEME_LUMINANCE_FLOOR}/255 — the sweep is photographing one `
+      + `scheme twice, so half these frames are duplicates under filenames that say otherwise: ${same.slice(0, 4).join('; ')}`
+      + `${same.length > 4 ? ` and ${same.length - 4} more` : ''}`,
+    );
+  }
+}
+
+if (crossBuild.length) {
+  const from = baselineProvenance === null
+    ? 'a baseline that does not record its origin'
+    : `a baseline captured from ${baselineProvenance.origin} at ${String(baselineProvenance.sha).slice(0, 7)}`;
+  fail(
+    `${crossBuild.length} of ${compared} compared frame(s) differ from ${from}`,
+    'check-pixels',
+    `this capture is from ${BASE}. Comparing two BUILDS cannot distinguish a regression from a deploy that is behind the repository — deploy, or re-baseline with --write-baseline, before reading these as regressions`,
+  );
+}
+
+console.log(`CAPTURED ${captured} frame(s) into docs/evidence/pixels/${PASS}/; ${compared} compared against a baseline`);
+
+if (!findings.length) {
+  console.log(`PIXELS CLEAN — ${captured} frame(s), 0 findings`);
+  process.exit(0);
+}
+for (const f of findings) console.error(`  ${f.where}: ${f.what} — ${f.why}`);
+console.log(`PIXELS FAILED — ${findings.length} finding(s) across ${captured} frame(s)`);
+process.exit(1);

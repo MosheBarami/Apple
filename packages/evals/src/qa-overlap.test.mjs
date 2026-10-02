@@ -72,7 +72,7 @@ const rowsPresent = () => existsSync(gatePath) && existsSync(headPath);
 function announceRowsAbsent(what) {
   console.log(
     `  !  gate.jsonl/headroom.jsonl absent (derived, gitignored) — ${what} this run. ` +
-    'Run `node scripts/harvest-hf.mjs` to enable it. This is NOT a clean result.',
+    'Run `node scripts/harvest/harvest-hf.mjs` to enable it. This is NOT a clean result.',
   );
 }
 

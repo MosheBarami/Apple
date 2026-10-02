@@ -2,7 +2,7 @@
 
 **Measured 2026-09-21 by the infra lane. Not fixed. Handoff to whoever owns `apps/web`.**
 
-`node scripts/check-app-bundle.mjs`, after `pnpm --filter @golem/web build` from the current tree:
+`node scripts/checks/check-app-bundle.mjs`, after `pnpm --filter @golem/web build` from the current tree:
 
 ```
   entry chunk index-CMtGTYsw.js is 180939 B gzipped, over the 70000 B budget

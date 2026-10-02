@@ -17,7 +17,7 @@ Regenerated every pass. Last regenerated: **pass 2**.
 with his exact words in `docs/DECISIONS.md`. Free is now 231 Credits a day — three whole builds —
 and 2,310 a month.
 
-**Verified.** `node scripts/check-offer.mjs` prints `ok  free: 231 Credits/day affords 3 build(s)`.
+**Verified.** `node scripts/checks/check-offer.mjs` prints `ok  free: 231 Credits/day affords 3 build(s)`.
 
 **Measured this pass (2026-09-14, UTC):**
 
@@ -85,7 +85,7 @@ every test stays green.
 **The action.** Decide the maximum monthly AI spend you will accept, and set
 `BILLABLE_NEURONS_PER_DAY = (that number in dollars) / 0.011 × 1000 / 30.4`.
 
-**Approve-by test.** `node scripts/check-offer.mjs` stays coherent at any ceiling — this is not a
+**Approve-by test.** `node scripts/checks/check-offer.mjs` stays coherent at any ceiling — this is not a
 correctness question, it is a capacity one. The number to watch is how many customers you can
 serve, which is `DAILY_NEURON_CEILING / 30 / (a plan's creditsPerDay)`.
 

@@ -198,7 +198,7 @@ test('holds the composition: the sections the nav names, the shared header, a vi
   expect(display.family.split(',').pop()!.trim(), 'the generic at the end of the stack must be sans-serif').toBe('sans-serif');
   expect(display.weight, 'the headline is bold; nothing on this site is').toBeLessThan(600);
   expect(display.transform).toBe('none');
-  // CALM, not loud: scripts/check-copy.mjs caps display type at 56px.
+  // CALM, not loud: scripts/checks/check-copy.mjs caps display type at 56px.
   expect(display.size, `the headline is ${display.size}px — the hero is oversized again`).toBeLessThanOrEqual(56);
 });
 

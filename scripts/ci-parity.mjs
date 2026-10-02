@@ -113,15 +113,15 @@ const TEST_FILES_NEEDING_AN_INSTALL = new Map([
   // A browser binary is not node_modules. CI installs it in a step of its own
   // (`pnpm exec playwright install --with-deps chromium`), so --with-build does not bring this one
   // back: an install is not the thing it is missing.
-  ['tests/check-pixels.test.mjs', { needs: 'browser', why: 'runs scripts/check-pixels.mjs, which drives Chromium; nine of its tests report the module is not found' }],
+  ['tests/check-pixels.test.mjs', { needs: 'browser', why: 'runs scripts/checks/check-pixels.mjs, which drives Chromium; nine of its tests report the module is not found' }],
 ]);
 
 const SKIP_EXACT = new Map([
-  ['node scripts/check-site-links.mjs', 'needs apps/site/dist (bare clone: exit 1, "apps/site/dist is missing")'],
-  ['node scripts/check-site-semantics.mjs', 'needs the built site and its dependencies (bare clone: exit 1, a Node stack)'],
-  ['node scripts/check-app-bundle.mjs', 'needs apps/web/dist (bare clone: exit 1, "no build found")'],
-  ['node scripts/check-landing-budget.mjs', 'needs apps/site/dist (bare clone: exit 1, "no build found")'],
-  ['node scripts/check-asset-wall.mjs', 'needs the built site (bare clone: exit 2, "did not see one")'],
+  ['node scripts/checks/check-site-links.mjs', 'needs apps/site/dist (bare clone: exit 1, "apps/site/dist is missing")'],
+  ['node scripts/checks/check-site-semantics.mjs', 'needs the built site and its dependencies (bare clone: exit 1, a Node stack)'],
+  ['node scripts/checks/check-app-bundle.mjs', 'needs apps/web/dist (bare clone: exit 1, "no build found")'],
+  ['node scripts/checks/check-landing-budget.mjs', 'needs apps/site/dist (bare clone: exit 1, "no build found")'],
+  ['node scripts/checks/check-asset-wall.mjs', 'needs the built site (bare clone: exit 2, "did not see one")'],
 ]);
 
 /** Every `run:` command in the workflow, single-line and block alike, in file order. */

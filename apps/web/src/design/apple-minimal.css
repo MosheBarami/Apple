@@ -489,7 +489,7 @@ body {
   vertical-align:middle;
 }
 /* A section heading inside a popover. `display:block` matters: without it the span stays inline
-   and runs into the row above it, which is the exact defect scripts/check-unstyled-classes.mjs
+   and runs into the row above it, which is the exact defect scripts/checks/check-unstyled-classes.mjs
    exists to catch. */
 .gx-pop__section {
   display:block;

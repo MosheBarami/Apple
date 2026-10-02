@@ -1823,7 +1823,7 @@ export interface GatewayResponse {
  *
  * `typicalCredits` is different: the composer renders it, as "Typically N Credits". It is
  * derived from docs/COST-MODEL.md through `ceil(neurons / 30)`, the same arithmetic the
- * worker bills with, and `scripts/check-credit-figures.mjs` checks it against those
+ * worker bills with, and `scripts/checks/check-credit-figures.mjs` checks it against those
  * measurements.
  */
 /*
@@ -1870,7 +1870,7 @@ export const MODE_INFO: Record<
  *
  * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
  * price is written down. A second copy of a price is a second copy free to drift, which is the
- * defect scripts/check-credit-figures.mjs exists because of — that number had drifted in three
+ * defect scripts/checks/check-credit-figures.mjs exists because of — that number had drifted in three
  * places inside one component.
  *
  * Returns a RANGE even when the published figure is a single number ("2" -> 2-2). It never

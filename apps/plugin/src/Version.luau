@@ -31,7 +31,7 @@
 -- genuinely misbehave rather than merely lack a feature.
 
 return table.freeze({
-	-- Parsed by scripts/inspect-plugin-build.py and .github/workflows/plugin-release.yml.
+	-- Parsed by scripts/checks/inspect-plugin-build.py and .github/workflows/plugin-release.yml.
 	-- Keep the assignment on one line and quoted, or the release job will not find it.
 	VERSION = "0.2.0",
 	PROTOCOL = 1,

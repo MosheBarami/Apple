@@ -15,7 +15,7 @@
  *
  *   1. The range is DERIVED from the shared billing constants, never typed on a milestone. A
  *      second copy of a price is a second copy free to drift, and this repository has a guard
- *      (scripts/check-credit-figures.mjs) that exists because exactly that happened three times
+ *      (scripts/checks/check-credit-figures.mjs) that exists because exactly that happened three times
  *      inside one component.
  *   2. It is the SPEC's own `runs`, so a two-run milestone really does read double a one-run one.
  *   3. It is a RANGE and stays one. Collapsing 4-18 to a single number would be inventing a
@@ -98,7 +98,7 @@ test('a nonsense run count produces no figure rather than a wrong one', () => {
 
 test('the helper reads MODE_INFO rather than carrying its own copy of the prices', () => {
   // The guard that matters most: a second copy of a price is a second copy free to drift, which
-  // is the defect scripts/check-credit-figures.mjs was written for.
+  // is the defect scripts/checks/check-credit-figures.mjs was written for.
   const src = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   const fn = src.slice(src.indexOf('export function creditRangeForRuns'));
   const body = fn.slice(0, fn.indexOf('\n}\n'));

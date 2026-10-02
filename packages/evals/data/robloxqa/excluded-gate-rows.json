@@ -1,5 +1,5 @@
 {
-  "builtBy": "scripts/harvest-hf.mjs",
+  "builtBy": "scripts/harvest/harvest-hf.mjs",
   "dataset": "TorpedoSoftware/RobloxQA-v2.0",
   "revision": "3d983bf3a4702ef33719de4bb9fa8eaedbe626f1",
   "why": "each of these gate rows restates a headroom question at or above the idf-weighted Jaccard threshold. Headroom is offered as tuning material; a gate row that is also a headroom row would be scoring memorisation the day anyone uses it.",

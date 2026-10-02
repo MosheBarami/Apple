@@ -28,7 +28,7 @@ Anything dated before 2026-09-28 is history unless a newer document repeats it.
 | [`training/`](training/) | the archived training and corpus research (training itself is cancelled in V3; `packages/training` is not a workspace member) |
 | [`gauntlet/`](gauntlet/README.md) | the visual gauntlet: rubrics, rounds, reference libraries (large; the dashboard and langflow read it) |
 | [`audit/`](audit/) | the 2026-09-14 audits still cited by code: provider audit, safety models, training v1 report |
-| [`backlog/`](backlog/) | open handoffs and `DEADENDS.md` (read by `scripts/check-deadends.mjs`) |
+| [`backlog/`](backlog/) | open handoffs and `DEADENDS.md` (read by `scripts/checks/check-deadends.mjs`) |
 | [`evidence/`](evidence/README.md) | one file per experiment or run. Frozen history: never rewritten, only pruned when nothing cites it |
 | [`spec/`](spec/DONE.md) | the owner's definition of "finished" (2026-09-20); V3 supersedes its scope |
 | [`sgsd/`](sgsd/SGSD-ORCHESTRATOR.md) | the archived SGSD loop; read only when asked to run it |
@@ -38,7 +38,7 @@ Anything dated before 2026-09-28 is history unless a newer document repeats it.
 
 | File | Bound by |
 |---|---|
-| `COST-MODEL.md` | `economics.test.mjs`, `scripts/check-credit-figures.mjs` |
+| `COST-MODEL.md` | `economics.test.mjs`, `scripts/checks/check-credit-figures.mjs` |
 | `DECISIONS.md` | `success-metrics.test.mjs`, the owner dashboard |
 | `FAILURES.md` | `failures-linked.test.mjs`, `failure-coverage.test.mjs` |
 | `DISCORD-SETUP.md` | `discord-route.test.mjs` |

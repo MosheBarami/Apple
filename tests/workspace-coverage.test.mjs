@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-workspace-coverage.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-workspace-coverage.mjs');
 
 const WORKSPACE = "packages:\n  - 'apps/*'\n  - 'packages/*'\n";
 

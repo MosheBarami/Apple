@@ -1271,7 +1271,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Add `outputModalities: ('text'|'image'|'audio'|'embedding')[]` to ProviderModel in apps/worker/src/providers/types.ts:30; set it on every existing entry and on the image/speech/embedding entries added per item 1 (flux -> ['image'], melotts -> ['audio'], whisper -> ['text'], bge -> ['embedding']). Wh
 - [~] Estimated model cost display
       · A cost estimate IS displayed in two reachable places, but per MODE, not per model: apps/web/src/components/ws/composer.tsx:248 renders 'Typically N Credits' inside the mode menu and apps/web/src/routes/usage.tsx:324 renders the same figure 
-      → Wire scripts/check-credit-figures.mjs into the gate so the published estimate cannot drift silently: add it as a case in scripts/gate-suite.mjs and as a `check:credits` script in the root package.json. Then add the per-model price to the admin catalog panel from item 1 (columns for inputCostPer1M/ou
+      → Wire scripts/checks/check-credit-figures.mjs into the gate so the published estimate cannot drift silently: add it as a case in scripts/gate-suite.mjs and as a `check:credits` script in the root package.json. Then add the per-model price to the admin catalog panel from item 1 (columns for inputCostPer1M/ou
 - [~] Default model selection
       · Server-side defaults are real and enforced: DEFAULT_MODELS at apps/worker/src/gateway.ts:61-134 gives each key a default model id and chat() throws 'unknown model key' for anything else (gateway.ts:249-250), which apps/worker/tests/mode-ing
       → Add `defaultMode: ProductMode` to the Prefs interface at apps/web/src/lib/prefs.ts:108 and to DEFAULT_PREFS at :118 (default 'agent'), validate it in the parser at :202 the way sendKey is, add a <Choice> control for it in the Appearance or a new 'Building' section of apps/web/src/routes/settings.tsx
@@ -2361,7 +2361,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Route user-facing failures through the catalog once it exists: change apps/web/src/lib/error-taxonomy.ts so Explained carries message KEYS (title/safety/next) that the render site resolves with t(), and do the same for the strings in apps/web/src/lib/auth-flows.ts:85-110. Leave the worker's 400-leve
 - [☐] Translation completeness checks
       · There are no catalogs, so there is nothing to check, and no checker exists. The existing [~] mark cites apps/worker/src/public-api.ts — that is a keyword false positive: the word 'translation' there means OpenAI-compatible request/response 
-      → After catalogs exist, add scripts/check-translations.mjs modelled on scripts/check-copy.mjs that exits non-zero when a key in apps/web/src/lib/i18n/en.ts is absent from another locale file, when a locale file holds a key English does not, or when a translated string drops an interpolation placeholde
+      → After catalogs exist, add scripts/check-translations.mjs modelled on scripts/checks/check-copy.mjs that exits non-zero when a key in apps/web/src/lib/i18n/en.ts is absent from another locale file, when a locale file holds a key English does not, or when a translated string drops an interpolation placeholde
 - [~] Long-text and mixed-language layout testing
       · Long-text has one real, hard-won test; mixed-language has none. Long-text: apps/web/tests/topbar-layout.test.mjs:43-51 pins `flex: none` on .gx-pill and overflow:hidden/text-overflow:ellipsis on the label, both found by rendering the worksp
       → Add tests/e2e/bidi-layout.spec.ts (Playwright, so it actually renders — apps/web mounts nothing in node --test) that loads the dashboard and workspace with document.dir forced to 'rtl' and again to 'ltr', and for each asserts no horizontal document overflow and correct punctuation placement on three
@@ -2436,14 +2436,14 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Marketing site: DONE and proven. apps/site/src/layouts/Base.astro:81 and apps/site/src/pages/index.astro:209 each emit <a href="#main" class="skip-link">Skip to content</a>; I scanned every built page and all 18 of apps/site/dist/**/*.html 
       → In apps/web/src/components/layout.tsx:350 change className="gx-sr" to className="skip-link" so the link uses the reveal-on-focus rule that already exists at apps/web/src/styles.css:435-450 (verify --accent/--accent-ink and --r-sm resolve inside the .gx shell; if they do not, move the rule into apps/
 - [~] Accessible page landmarks
-      · Marketing site: enforced in CI. scripts/check-site-semantics.mjs:141-154 requires exactly one <main> per page and at most one page-level <footer> (correctly ignoring <footer> nested in article/section/aside/nav) and flags h1-h3 left outside
+      · Marketing site: enforced in CI. scripts/checks/check-site-semantics.mjs:141-154 requires exactly one <main> per page and at most one page-level <footer> (correctly ignoring <footer> nested in article/section/aside/nav) and flags h1-h3 left outside
       → In apps/web/src/components/layout.tsx:161, nest the conversation list inside the aside as <nav aria-label="Conversations"> (keep the <aside> as the rail container, or change the element to <nav> outright and drop the aside) so the app exposes a navigation landmark. Then generalise scripts/check-site
 - [~] Correct semantic headings
-      · Marketing site: enforced in CI over all 18 built pages by scripts/check-site-semantics.mjs — exactly one <h1> (:96), no empty heading (:99), no level skip h(n)->h(n+2) (:102-106), and a heuristic for titles written as <span> (:115); run at 
+      · Marketing site: enforced in CI over all 18 built pages by scripts/checks/check-site-semantics.mjs — exactly one <h1> (:96), no empty heading (:99), no level skip h(n)->h(n+2) (:102-106), and a heuristic for titles written as <span> (:115); run at 
       → Change apps/web/src/routes/not-found.tsx:10 from <h2>This apple is lost</h2> to <h1 className="page-title">This apple is lost</h1> (or add a page-level h1 above it), so the route has exactly one h1 like every other route. Then add apps/web/tests/headings.test.mjs that reads every file in apps/web/sr
 - [~] Form field labels
       · I scanned all 61 <input>/<textarea>/<select> in apps/web/src and found none without an accessible name. Three patterns, all valid: wrapping labels (apps/web/src/routes/auth-pages.tsx:191-202, 203-214, 306-330, 382-394, 516-539, 651-661 — <l
-      · REFUTED 2026-09-16: the proof printed beside this line is a one-off manual scan — 'I scanned all 61 <input>/<textarea>/<select> in apps/web/src' — which is a snapshot of a day, not a gate. Nothing enumerates them: the accessible-name assertions in apps/web/tests are all per-component (automations-panel.test.mjs:67, members-panel.test.mjs:79, rail-width.test.mjs:105, drawer-a11y.test.mjs:38) and scripts/check-site-semantics.mjs checks main/footer/headings only, over apps/site. The 62nd input can ship unlabelled and nothing in the repository says so. WHAT IS MISSING: a sweep over apps/web/src that fails on an input with no wrapping label, aria-label or aria-labelledby.
+      · REFUTED 2026-09-16: the proof printed beside this line is a one-off manual scan — 'I scanned all 61 <input>/<textarea>/<select> in apps/web/src' — which is a snapshot of a day, not a gate. Nothing enumerates them: the accessible-name assertions in apps/web/tests are all per-component (automations-panel.test.mjs:67, members-panel.test.mjs:79, rail-width.test.mjs:105, drawer-a11y.test.mjs:38) and scripts/checks/check-site-semantics.mjs checks main/footer/headings only, over apps/site. The 62nd input can ship unlabelled and nothing in the repository says so. WHAT IS MISSING: a sweep over apps/web/src that fails on an input with no wrapping label, aria-label or aria-labelledby.
 - [~] Accessible validation feedback
       · One panel does it properly: apps/web/src/components/roblox-key-panel.tsx:145-146 and :165-166 set aria-invalid and aria-describedby pointing at the per-field problem text (ids rk-key-problem / rk-id-problem). Elsewhere it stops short. apps/
       → In apps/web/src/routes/auth-pages.tsx, give FormError (:147) an id prop, render it as <p id={id} className="form-error" role="alert">, and on each input in LoginPage/SignupPage/ForgotPage/ResetPage set aria-invalid={!!error || undefined} and aria-describedby={error ? id : undefined}. Add role="alert
@@ -2587,8 +2587,8 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The MECHANISM is shared and correct: both surfaces write the same attribute and the same storage key, and both paint before first frame — apps/web/index.html:19-25 reads localStorage 'apple-theme' and sets data-theme on <html>, and apps/sit
       → Two steps. (1) Decide whether apps/web follows ADR-020 to blue-black/azure or ADR-020 is amended; then make apps/web/src/styles.css:64-155 and apps/web/src/styles/workspace.css:19-45 agree with each other and with apps/site/src/styles/global.css, ideally by both importing the shared token file. (2) 
 - [~] Visual regression coverage for shared components
-      · A real visual-regression checker exists and is itself tested: scripts/check-pixels.mjs captures every route at 1440x900 and 390x844 in light and dark (:102-106), fails a frame that is >92% one colour, a body font that fell back to a system 
-      → In scripts/check-pixels.mjs, extend routes() at :84-99 to accept a second source — the app's own routes, built and served from apps/web/dist — and include /ui-lab, /settings, /usage and /dashboard at both viewports and both schemes; capture the lab's specimen sections as their own clipped frames so 
+      · A real visual-regression checker exists and is itself tested: scripts/checks/check-pixels.mjs captures every route at 1440x900 and 390x844 in light and dark (:102-106), fails a frame that is >92% one colour, a body font that fell back to a system 
+      → In scripts/checks/check-pixels.mjs, extend routes() at :84-99 to accept a second source — the app's own routes, built and served from apps/web/dist — and include /ui-lab, /settings, /usage and /dashboard at both viewports and both schemes; capture the lab's specimen sections as their own clipped frames so 
 
 ## 46. SDK, CLI, AND DEVELOPER EXPERIENCE  —  53%   ✓4 ~13 ☐3
 
@@ -2872,7 +2872,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · It runs, but it cannot fail and cannot tell a clean scan from a scan that never happened. .github/workflows/ci.yml:295-298 — "Dependency audit": `pnpm audit --audit-level moderate || echo "::warning::pnpm audit reported advisories"`. The `|
       → In .github/workflows/ci.yml replace the one-line step at :298 with a script that distinguishes the three outcomes: run `pnpm audit --audit-level moderate --json > audit.json`, capture `$?` in a variable, and then — exit 0 means clean; exit 1 means advisories found, so emit ::warning:: and print the 
 - [✓] Secret scanning
-      · scripts/secret-scan.py scans every blob on every ref (not just the working tree) against 11 vendor-prefixed patterns, fails closed on anything not listed in scripts/known-exposures.json, and fails when a register entry stops matching anythi
+      · scripts/checks/secret-scan.py scans every blob on every ref (not just the working tree) against 11 vendor-prefixed patterns, fails closed on anything not listed in scripts/checks/known-exposures.json, and fails when a register entry stops matching anythi
 - [✓] Sensitive log redaction
       · One scanner, three consumers, all wired. apps/worker/src/redaction.ts defines 17 disclosure kinds with a per-rule confidence, compiled fresh per scan so a /g regex's lastIndex cannot make a second call miss. Consumers: the error log — apps/
 - [~] Encryption in transit
@@ -3111,7 +3111,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · No admin route grants or removes credits, with or without a reason. The only credit grant in the system is `https://do/grant-credits` (apps/worker/src/do/quota.ts:194), and its single caller is the Stripe webhook at apps/worker/src/index.ts
       → Add a `reason` parameter end to end. In apps/worker/src/do/quota.ts:194 extend the `/grant-credits` body to `{credits, eventId, reason, actor}` and pass reason through to `this.record(...)` at quota.ts:207 (which needs the new column from the 'Billing exception tracking' item). Then add `app.post('/
 - [~] Billing exception tracking
-      · THE EXISTING ✓ IS A FALSE POSITIVE: scripts/check-escape-hatches.mjs:1-20 is about ways a green test suite can be bought ('`|| true`, a `.skip`, a deleted test'), not about billing. WHAT ACTUALLY EXISTS: a change log. `billing_events(id, at
+      · THE EXISTING ✓ IS A FALSE POSITIVE: scripts/checks/check-escape-hatches.mjs:1-20 is about ways a green test suite can be bought ('`|| true`, a `.skip`, a deleted test'), not about billing. WHAT ACTUALLY EXISTS: a change log. `billing_events(id, at
       → Add `reason text` and `actor text` columns to the billing_events table definition at apps/worker/src/do/quota.ts:30 and to the `record()` signature at quota.ts:82, and map them in the `/billing` response at quota.ts:184-191 (the BillingChange shape). Have `/set-plan` (quota.ts:127) accept and store 
 - [✓] Administrative action confirmation
       · THE MECHANISM IS BUILT AND TESTED; NO ADMINISTRATIVE ACTION USES IT. Built: `confirmationFor()` / `confirmMatches()` / `canConfirm()` in apps/web/src/lib/confirm-model.ts, which grades ceremony from consequence ('none' | 'undo' | 'dialog' |
@@ -3191,7 +3191,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 ## 55. PERFORMANCE AND SCALING  —  50%   ✓4 ~12 ☐4
 
 - [~] Page load performance budgets
-      · Two enforced payload budgets, measured from real build output and failing CI on regression. scripts/check-landing-budget.mjs:19-20 sets BUDGET_GZIP_BYTES=12_000 and ALLOW_JS_BYTES=0 against apps/site/dist and also fails if a three.js chunk 
+      · Two enforced payload budgets, measured from real build output and failing CI on regression. scripts/checks/check-landing-budget.mjs:19-20 sets BUDGET_GZIP_BYTES=12_000 and ALLOW_JS_BYTES=0 against apps/site/dist and also fails if a three.js chunk 
       · REFUTED: The two scripts and the CI wiring exist roughly as cited (/Users/moshe/Desktop/RbxAI/scripts/check-landing-budget.mjs, BUDGET_GZIP_BYTES=12_000 at :18 and ALLOW_JS_BYTES=0 at :19 — cited 19-20, one line off; three.js gua
 - [☐] Application interaction performance budgets
       · Nothing budgets or measures in-app interaction latency. Searched apps/web/src and apps/web/tests for INP/interaction/frame-budget/latency/performance/rAF-timing: the only hits are accessibility motion rules (apps/web/tests/activity-motion.t
@@ -3219,7 +3219,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Make the two largest downloads stream rather than buffer. In apps/worker/src/static.ts:74-86, replace the concatenate-then-respond block with a ReadableStream that enqueues each row from the `select data from static_chunks ... order by idx` cursor, so a 10 MB asset never sits whole in the isolate. I
 - [~] Bounded database queries
       · Most reads are bounded and the clamp is a real convention — apps/worker/src/search.ts:282 (Math.min(MAX_SEARCH_LIMIT,…)), apps/worker/src/do/session.ts:957, apps/worker/src/notification-store.ts:245, apps/worker/src/do/admin.ts:121-122, app
-      → Add scripts/check-query-bounds.mjs modelled on scripts/check-app-bundle.mjs: walk apps/worker/src/**/*.ts, extract every template-literal SQL string containing `select` that does not also contain `count(`, `sum(`, `limit`, `sqlite_master`, or `.first<`, and fail with the file:line list; seed it with
+      → Add scripts/check-query-bounds.mjs modelled on scripts/checks/check-app-bundle.mjs: walk apps/worker/src/**/*.ts, extract every template-literal SQL string containing `select` that does not also contain `count(`, `sum(`, `limit`, `sqlite_master`, or `.first<`, and fail with the file:line list; seed it with
 - [~] Database connection management
       · There are no connections to pool on this platform (D1 and DO SQLite are bindings; Supabase is reached over HTTP), and the work that occupies that role is real and tested: apps/worker/src/schema-once.ts `oncePerIsolate` removed the per-reque
       → Add apps/worker/src/d1-retry.ts exporting `withD1Retry(fn)`: retry up to twice on an error whose message matches /overloaded|exceeded its CPU time limit|Requests queued for too long/ with 120 ms then 360 ms of jitter, rethrowing anything else unchanged (the classify-then-retry shape already exists a
@@ -3306,7 +3306,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Add a Production incidents section to docs/FAILURES.md with a fixed template — incident id, severity per docs/INCIDENT-SEVERITY.md, detected at / started at / resolved at, customer impact in plain language, how it was detected (and whether monitoring or a customer found it first), root cause, and co
 - [☐] Corrective action tracking
       · No artifact tracks a follow-up action to closure with a state and an owner. docs/FAILURES.md records fixes inline in prose with no open/closed field, no owner and no due date. docs/BLOCKERS.md tracks human-blocked items (each with a Status 
-      → Create docs/CORRECTIVE-ACTIONS.md as a single table with columns id, source incident, action, owner, opened, due, state (open/done/dropped-with-reason), and add a check to scripts/ (alongside scripts/check-backlog.mjs, which already validates docs/backlog/ shape) that fails the gate when any row is 
+      → Create docs/CORRECTIVE-ACTIONS.md as a single table with columns id, source incident, action, owner, opened, due, state (open/done/dropped-with-reason), and add a check to scripts/ (alongside scripts/checks/check-backlog.mjs, which already validates docs/backlog/ shape) that fails the gate when any row is 
 
 ## 56. DATA STORAGE, BACKUP, AND RESTORATION  —  55%   ✓8 ~6 ☐6
 
@@ -3431,7 +3431,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Separate production environments
       · Production is real, deployed and independently verified: I probed the live origin on 2026-09-15 and `GET https://golem.moshe-barami111.workers.dev/api/health` returned HTTP 200 with `{"ok":true,"version":"0.1.0","buildSha":"e66fac3","time":
 - [~] Environment-specific secrets
-      · Secret hygiene is real and enforced. .gitignore:6-13 excludes .env, .env.* and .dev.vars; .github/workflows/ci.yml:282-289 fails the security job if any of those three is tracked by git; ci.yml:279 runs scripts/secret-scan.py over the FULL 
+      · Secret hygiene is real and enforced. .gitignore:6-13 excludes .env, .env.* and .dev.vars; .github/workflows/ci.yml:282-289 fails the security job if any of those three is tracked by git; ci.yml:279 runs scripts/checks/secret-scan.py over the FULL 
       → Create docs/SECRETS.md listing every optional binding declared in apps/worker/src/env.ts against the environment it is set in (production / staging / local) and the command that sets it (`wrangler secret put NAME --env <env>`), and add a checker scripts/check-secret-inventory.mjs that parses the `En
 - [~] Reproducible builds
       · Build INPUTS are pinned hard: `pnpm install --frozen-lockfile` in all five CI jobs (.github/workflows/ci.yml:65, 124, 238, 293, 318), NODE_VERSION '22' and PNPM_VERSION '11.13.0' (ci.yml:41-43), LUAU_VERSION '0.663' and ROJO_VERSION '7.7.0'
@@ -3445,7 +3445,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · .github/workflows/ci.yml:83-84 runs `pnpm -r typecheck` on every push to main, EVERY pull request (the trigger was widened from `branches: [main]` deliberately, ci.yml:24-32) and workflow_dispatch. Seven workspace members define a typecheck
 - [~] Automated quality checks
       · The battery is unusually thorough — internal link resolution (ci.yml:135), heading/landmark semantics (:148), backlog disposition honesty (:156), web-app bundle budget (:162), landing payload budget (:168), workspace coverage (:248), full-h
-      → Change `.github/workflows/ci.yml:142` from `node scripts/check-spark-figures.mjs` to `node scripts/check-credit-figures.mjs`. Then prevent the class: add tests/ci-workflow.test.mjs that parses .github/workflows/*.yml, extracts every `run:` command matching `node scripts/<name>.mjs` or `python3 scrip
+      → Change `.github/workflows/ci.yml:142` from `node scripts/check-spark-figures.mjs` to `node scripts/checks/check-credit-figures.mjs`. Then prevent the class: add tests/ci-workflow.test.mjs that parses .github/workflows/*.yml, extracts every `run:` command matching `node scripts/<name>.mjs` or `python3 scrip
 - [~] Pre-deployment migration validation
       · The validator is built and genuinely well tested. platforms/supabase/migrate.mjs offers --status / --apply / --adopt / --verify, refuses to guess a database (no DATABASE_URL fallback) and requires --yes to write; the rules are pure functions in
       → Add a `migrate:verify` script to the root package.json running `node platforms/supabase/migrate.mjs --verify --url $DATABASE_URL`, and insert it as the FIRST step of the deploy runbook in README.md:47-52 and platforms/cloudflare/README.md:8-12, ahead of `wrangler deploy` — a schema drift must be refused bef

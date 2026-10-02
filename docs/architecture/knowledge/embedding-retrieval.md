@@ -44,7 +44,7 @@ node packages/training/src/measure-embedding-retrieval.mjs --model @cf/baai/bge-
 ```
 
 Sweep every model and every document variant with `--sweep`. Rebuild the index with
-`node scripts/build-module-embeddings.mjs`.
+`node scripts/generate/build-module-embeddings.mjs`.
 
 ---
 
@@ -252,12 +252,12 @@ point "trading" is a covered query and that inversion disappears.
 An index built from an older corpus still loads, still returns five confident candidates, and says
 nothing. That is this repository's own shape — present and never checked.
 
-So `scripts/build-module-embeddings.mjs` writes a SHA-256 of the exact strings it embedded into the
+So `scripts/generate/build-module-embeddings.mjs` writes a SHA-256 of the exact strings it embedded into the
 index, and `apps/worker/tests/embedding-retrieval.test.mjs` recomputes that hash from the corpus on
 disk and fails on a mismatch with the command to fix it. **The guard was falsified before it was
 trusted**: corrupting the stored hash turns the test red with
 `the verified-module corpus has changed since the embedding index was built. Run: node
-scripts/build-module-embeddings.mjs`, and restoring it turns it green.
+scripts/generate/build-module-embeddings.mjs`, and restoring it turns it green.
 
 This will fire soon and legitimately. Eight new screen reference files are on disk in
 `packages/corpus/data/ui-references/` and are not yet in `ui-construction.json`; when that workflow

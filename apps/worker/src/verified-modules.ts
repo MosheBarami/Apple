@@ -8,7 +8,7 @@
 // could have saved it. It has learned what these modules LOOK like and not what they COMPUTE.
 //
 // The right answer to that is not a bigger prompt. It is to stop asking. These eighty modules were
-// authored here, each carries exhaustive checks, and scripts/build-verified-modules.mjs RUNS every
+// authored here, each carries exhaustive checks, and scripts/generate/build-verified-modules.mjs RUNS every
 // one of them at build time and refuses to ship a module that fails. A reviewed module is
 // somebody's opinion; an executed one is a measurement.
 //

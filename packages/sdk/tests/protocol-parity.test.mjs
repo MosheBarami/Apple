@@ -165,7 +165,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
  * unactionable. The type is `ProductMode`, and it is on the wire and in the Durable Object's SQLite.
  *
  * This lives in the SDK suite because packages/shared is exempt from `pnpm -r test` by
- * scripts/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
+ * scripts/checks/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
  * exists to keep that file's text from drifting away from its declarations.
  */
 test('every backticked *Mode name in @golem/shared is a type that exists', () => {

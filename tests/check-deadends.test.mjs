@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-deadends.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-deadends.mjs');
 
 const run = (flags = []) => {
   const p = spawnSync('node', [CHECKER, ...flags], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
@@ -59,7 +59,7 @@ test('a workspace import counts as an import, and the count is what proves it', 
 
   //[[ THIS BOUND WAS `unresolved < 50` AGAINST A MEASURED 55, AND RAISING IT WAS THE WRONG FIX.
   //
-  //   `node scripts/check-deadends.mjs --list-unresolved` names every dropped specifier, and the
+  //   `node scripts/checks/check-deadends.mjs --list-unresolved` names every dropped specifier, and the
   //   fifty-five it named contained ZERO dead ends. Fifty-two pointed at files that exist and were
   //   dropped by four separate holes in the resolver, each measured by removing the fix again:
   //

@@ -4230,7 +4230,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   //   cannot see that, the build succeeds, and the number is quietly wrong forever.
   //
   //   These eighty modules were authored here and each is RUN against its own exhaustive checks at
-  //   build time by scripts/build-verified-modules.mjs; one that fails is absent rather than
+  //   build time by scripts/generate/build-verified-modules.mjs; one that fails is absent rather than
   //   shipped. So this tool is the difference between code somebody reviewed and code somebody
   //   watched pass.
   //

@@ -5476,7 +5476,7 @@
      "id": "f-d5461e1c",
      "name": "Secret scanning",
      "status": "done",
-     "evidence": "packages/evals/src/security.test.mjs — STATIC CHECK: the pairing token exists in exactly one place and only its hash is stored; no tool can put a credential, a JWT or a pairing token into tool_end.detail; raw provider error text reaches NO ONE. (scripts/secret-scan.py covers the working tree; this covers what can leave it.)"
+     "evidence": "packages/evals/src/security.test.mjs — STATIC CHECK: the pairing token exists in exactly one place and only its hash is stored; no tool can put a credential, a JWT or a pairing token into tool_end.detail; raw provider error text reaches NO ONE. (scripts/checks/secret-scan.py covers the working tree; this covers what can leave it.)"
     },
     {
      "id": "f-bdaeb6a7",
@@ -6354,7 +6354,7 @@
      "id": "f-f70cb101",
      "name": "SDKs",
      "status": "done",
-     "evidence": "packages/sdk is one package shipping three language clients plus a CLI against the documented REST + WebSocket wire shape: src/ (JS/TS), python/golem_sdk/, luau/AppleClient.luau, bin/apple.mjs. All four are reachable from one command (`cd packages/sdk && node --test`, 83 passing) and scripts/check-workspace-coverage.mjs now lists packages/sdk as reachable from `pnpm -r test`. tests/protocol-parity.test.mjs pins every runtime allowlist in the package to the declarations in packages/shared/src/index.ts and apps/worker/src/{auth.ts,do/session.ts} — proven by packages/sdk/tests/numbers.test.mjs, packages/sdk/tests/retry.test.mjs, packages/sdk/tests/http.test.mjs"
+     "evidence": "packages/sdk is one package shipping three language clients plus a CLI against the documented REST + WebSocket wire shape: src/ (JS/TS), python/golem_sdk/, luau/AppleClient.luau, bin/apple.mjs. All four are reachable from one command (`cd packages/sdk && node --test`, 83 passing) and scripts/checks/check-workspace-coverage.mjs now lists packages/sdk as reachable from `pnpm -r test`. tests/protocol-parity.test.mjs pins every runtime allowlist in the package to the declarations in packages/shared/src/index.ts and apps/worker/src/{auth.ts,do/session.ts} — proven by packages/sdk/tests/numbers.test.mjs, packages/sdk/tests/retry.test.mjs, packages/sdk/tests/http.test.mjs"
     },
     {
      "id": "f-6365296b",

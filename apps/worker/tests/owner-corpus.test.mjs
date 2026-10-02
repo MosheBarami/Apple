@@ -180,7 +180,7 @@ test('streaming uploader verifies and sequentially sends native files, with exac
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
-    const result=await promisify(execFile)(process.execPath,[join(root,'../../scripts/ingest-owner-corpus.mjs'),filename],{
+    const result=await promisify(execFile)(process.execPath,[join(root,'../../scripts/harvest/ingest-owner-corpus.mjs'),filename],{
       env:{...process.env,APPLE_OWNER_JWT:'local-test-token',APPLE_OWNER_ORIGIN:'http://127.0.0.1:'+server.address().port,
         APPLE_OWNER_BATCH_SIZE:'1',APPLE_OWNER_SKIP_COMPONENTS:'1'}});
     assert.equal(requests.length,4);assert.deepEqual(requests.map(r=>r.method),['POST','PUT','POST','PUT']);

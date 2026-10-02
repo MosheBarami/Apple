@@ -88,8 +88,8 @@ So every number below describes one tree.
 | git diff --check | `git diff --check` (+ `--cached --check`, + `HEAD --check`) | 0 / 0 / 0 | – | – | 0s | no whitespace errors; nothing staged |
 | **gate suite** | `node scripts/gate-suite.mjs` (root, run last) | **0** | **9059** | **0** | **122s** | `SUITE GREEN`; fingerprint unchanged |
 | **CI: ledger lint** | `node scripts/gate-check.mjs --lint` | **1** | – | **12 problems** | 0s | `LEDGER MALFORMED — 44 gates, 12 problem(s)`; see Failures |
-| CI: app bundle | `node scripts/check-app-bundle.mjs` | 0 | – | – | 0s | entry 141.4 kB gzipped; eager graph 283.2 kB across 4 files |
-| CI: landing budget | `node scripts/check-landing-budget.mjs` | 0 | – | – | 0s | markup + CSS 16535 B gz / 19000; JS 28520 / 36000; images 29617 / 40000 |
+| CI: app bundle | `node scripts/checks/check-app-bundle.mjs` | 0 | – | – | 0s | entry 141.4 kB gzipped; eager graph 283.2 kB across 4 files |
+| CI: landing budget | `node scripts/checks/check-landing-budget.mjs` | 0 | – | – | 0s | markup + CSS 16535 B gz / 19000; JS 28520 / 36000; images 29617 / 40000 |
 | CI: site links | `check-site-links.mjs` | 0 | – | – | 0s | 812 internal links across 20 pages, all resolve |
 | CI: credit figures | `check-credit-figures.mjs` | 0 | – | – | 0s | |
 | CI: dispositions | `check-dispositions.mjs` | 0 | – | – | 0s | `DISPOSITIONS SOUND — 33 examined, 0 findings` |

@@ -6,11 +6,11 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "node scripts/check-workspace-coverage.mjs && pnpm -r test",
+    "test": "node scripts/checks/check-workspace-coverage.mjs && pnpm -r test",
     "e2e": "playwright test",
-    "check:dispositions": "node scripts/check-dispositions.mjs",
-    "check:backlog": "node scripts/check-backlog.mjs",
-    "check:pixels": "node scripts/check-pixels.mjs",
+    "check:dispositions": "node scripts/checks/check-dispositions.mjs",
+    "check:backlog": "node scripts/checks/check-backlog.mjs",
+    "check:pixels": "node scripts/checks/check-pixels.mjs",
     "brand": "node scripts/make-brand-assets.mjs",
     "brand:check": "node scripts/make-brand-assets.mjs --check"
   },

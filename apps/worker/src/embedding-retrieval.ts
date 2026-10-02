@@ -23,7 +23,7 @@
 //
 // SAFETY, and it is the same argument verified-modules.ts makes. The index is STATICALLY imported
 // so esbuild embeds it in the bundle: no filesystem read at runtime, no fetch, no external code.
-// Every vector in it was produced by scripts/build-module-embeddings.mjs from text this repository
+// Every vector in it was produced by scripts/generate/build-module-embeddings.mjs from text this repository
 // already carries.
 import index from './generated/embedding-index.json';
 
@@ -60,7 +60,7 @@ export const EMBEDDING_QUERY_PREFIX = IX.queryPrefix ?? '';
 /**
  * The SHA-256 prefixes of the exact strings that were embedded, carried so a staleness check is
  * possible at all. apps/worker/tests/embedding-retrieval.test.mjs recomputes them from the corpus
- * on disk and fails when they have diverged — see the header of scripts/build-module-embeddings.mjs
+ * on disk and fails when they have diverged — see the header of scripts/generate/build-module-embeddings.mjs
  * for why a stale index is the dangerous case: it still loads, still returns five confident
  * answers, and says nothing.
  */

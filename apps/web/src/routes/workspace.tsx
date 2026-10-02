@@ -68,7 +68,7 @@ const CreditsPanel = lazy(() => import('../components/ws/credits-panel').then((m
 const SearchPanel = lazy(() => import('../components/ws/search-panel').then((m) => ({ default: m.SearchPanel })));
 // The memory drawer's two panels, on first open for the same reason as the credits panel: only the
 // person who opens the drawer needs them, and the composer's AI Elements parts needed the room in
-// the entry chunk (scripts/check-app-bundle.mjs).
+// the entry chunk (scripts/checks/check-app-bundle.mjs).
 const MemoryPanel = lazy(() => import('../components/ws/memory-panel').then((m) => ({ default: m.MemoryPanel })));
 const InstructionsPanel = lazy(() => import('../components/ws/instructions-panel').then((m) => ({ default: m.InstructionsPanel })));
 
@@ -1344,7 +1344,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {drawer === 'credits' && (
           // Loaded on first open, like the drawer's request: the panel and its model are needed only
           // by someone who asks, and they are not worth a place in the entry chunk
-          // (scripts/check-app-bundle.mjs). The fallback is the panel's own loading skeleton, so
+          // (scripts/checks/check-app-bundle.mjs). The fallback is the panel's own loading skeleton, so
           // opening it shows one waiting state, not two.
           <Suspense
             fallback={(

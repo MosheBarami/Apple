@@ -1,6 +1,6 @@
 // The rename has an enforcer. Does anything CALL it?
 //
-// scripts/check-rebrand.mjs exited 1 from the day it was written and no gate, no npm script and no
+// scripts/checks/check-rebrand.mjs exited 1 from the day it was written and no gate, no npm script and no
 // CI job invoked it. A checker nobody runs is not enforcement — it is a second opinion nobody asks
 // for — and drift landed on 2026-09-19 with every green light lit. The owner has asked for the old
 // name to be gone more times than he has asked for anything else in this repository.
@@ -39,18 +39,18 @@ test('the extractor ignores a mention that is only a comment', () => {
   // The aim, pinned on a fixture rather than on whatever the two files happen to say today. This
   // assertion is what makes the two below evidence instead of a coincidence.
   assert.equal(
-    executable('// we should run scripts/check-rebrand.mjs one day\nconst x = 1;\n', ['//']).includes('check-rebrand'),
+    executable('// we should run scripts/checks/check-rebrand.mjs one day\nconst x = 1;\n', ['//']).includes('check-rebrand'),
     false,
     'a commented-out invocation still counts as an invocation — the two tests below prove nothing',
   );
   assert.equal(
-    executable('        # run: node scripts/check-rebrand.mjs\n        run: node scripts/other.mjs\n', ['#']).includes('check-rebrand'),
+    executable('        # run: node scripts/checks/check-rebrand.mjs\n        run: node scripts/other.mjs\n', ['#']).includes('check-rebrand'),
     false,
   );
 });
 
 test('the gate suite runs the rebrand checker', () => {
-  assert.match(gateSuiteCode, /run\('node', \['scripts\/check-rebrand\.mjs', '--offline'\]\)/,
+  assert.match(gateSuiteCode, /run\('node', \['scripts\/checks\/check-rebrand\.mjs', '--offline'\]\)/,
     'scripts/gate-suite.mjs no longer invokes the rebrand checker, so SUITE GREEN says nothing about the name');
   // …and a part that fails still turns the suite red. An invocation whose exit code is discarded
   // is the same dead end one level in.
@@ -59,12 +59,12 @@ test('the gate suite runs the rebrand checker', () => {
 });
 
 test('CI runs the rebrand checker', () => {
-  assert.match(ciCode, /run: node scripts\/check-rebrand\.mjs --offline/,
+  assert.match(ciCode, /run: node scripts\/checks\/check-rebrand\.mjs --offline/,
     '.github/workflows/ci.yml no longer invokes the rebrand checker');
   // --offline, DELIBERATELY. The full run fetches the live origin to date its capture; a CI job
   // that needs the network goes red for reasons that are not about the code, and a flaky gate is
   // a gate that gets disabled. If someone widens this to the network, this is where they argue it.
-  assert.doesNotMatch(ciCode, /run: node scripts\/check-rebrand\.mjs --deployed/,
+  assert.doesNotMatch(ciCode, /run: node scripts\/checks\/check-rebrand\.mjs --deployed/,
     'CI now fetches the live origin — that makes a red mean "the network was down"');
 });
 
@@ -75,13 +75,13 @@ test('the mutation lands: removing either invocation reddens the two tests above
   // Each mutation is asserted against the SAME pattern the live test uses, not against the bare
   // word: gate-suite labels its part 'check-rebrand', so the name survives the invocation's
   // removal, and a mutation checked with /check-rebrand/ would look like it had failed to land.
-  const withoutGate = gateSuiteCode.replace(/run\('node', \['scripts\/check-rebrand\.mjs', '--offline'\]\)/, "run('node', ['scripts/check-copy.mjs'])");
+  const withoutGate = gateSuiteCode.replace(/run\('node', \['scripts\/checks\/check-rebrand\.mjs', '--offline'\]\)/, "run('node', ['scripts/checks/check-copy.mjs'])");
   assert.notEqual(withoutGate, gateSuiteCode, 'the gate-suite mutation did not land — re-aim it before trusting the test');
-  assert.doesNotMatch(withoutGate, /run\('node', \['scripts\/check-rebrand\.mjs', '--offline'\]\)/);
+  assert.doesNotMatch(withoutGate, /run\('node', \['scripts\/checks\/check-rebrand\.mjs', '--offline'\]\)/);
 
-  const withoutCi = ciCode.replace(/run: node scripts\/check-rebrand\.mjs --offline/, 'run: node scripts/check-copy.mjs');
+  const withoutCi = ciCode.replace(/run: node scripts\/checks\/check-rebrand\.mjs --offline/, 'run: node scripts/checks/check-copy.mjs');
   assert.notEqual(withoutCi, ciCode, 'the ci.yml mutation did not land — re-aim it before trusting the test');
-  assert.doesNotMatch(withoutCi, /run: node scripts\/check-rebrand\.mjs --offline/);
+  assert.doesNotMatch(withoutCi, /run: node scripts\/checks\/check-rebrand\.mjs --offline/);
 });
 
 /*
@@ -150,7 +150,7 @@ test('the shipped SDK clients are inside the denominator', () => {
     assert.ok(shipped.includes(rel), `${rel} is no longer matched by the shipped-client globs`);
   }
   const expected = new Set([...lsFiles(['*.ts', '*.tsx', '*.astro', '*.luau']), ...shipped]);
-  expected.delete('scripts/check-rebrand.mjs');
+  expected.delete('scripts/checks/check-rebrand.mjs');
   //[[ EVIDENCE IS EXCLUDED FROM THE DENOMINATOR, AND THIS MODELS THAT RATHER THAN IGNORING IT.
   //   docs/evidence/ui-showcase/*.luau is Luau the MODEL generated, captured for the owner to look
   //   at. The `*.luau` glob swept it in with the product and check-rebrand read a generated gacha
@@ -163,7 +163,7 @@ test('the shipped SDK clients are inside the denominator', () => {
   //   and asserted present, which is the part a count alone could never do. ]]
   for (const f of [...expected]) if (f.startsWith('docs/evidence/')) expected.delete(f);
 
-  const p = spawnSync('node', [join(ROOT, 'scripts/check-rebrand.mjs'), '--offline'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+  const p = spawnSync('node', [join(ROOT, 'scripts/checks/check-rebrand.mjs'), '--offline'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
   const out = `${p.stdout ?? ''}${p.stderr ?? ''}`;
   // NOT an assertion on the exit code. This test is about what the program LOOKS AT; whether the
   // tree is currently clean is the program's own business, and coupling the two would make this

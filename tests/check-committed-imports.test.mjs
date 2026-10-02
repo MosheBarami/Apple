@@ -1,15 +1,15 @@
 /**
- * TESTS FOR THE CHECKER THAT ASKS GIT, NOT THE TREE - scripts/check-committed-imports.mjs.
+ * TESTS FOR THE CHECKER THAT ASKS GIT, NOT THE TREE - scripts/checks/check-committed-imports.mjs.
  *
  * It exists because apps/worker/tests/embedding-retrieval.test.mjs shipped an
- * `await import(join(REPO, 'scripts', 'build-module-embeddings.mjs'))` while that builder was in
+ * `await import(join(REPO, 'scripts', 'generate', 'build-module-embeddings.mjs'))` while that builder was in
  * nobody's clone. Locally: nine green tests. From a clean extract of the same commit:
  * ERR_MODULE_NOT_FOUND, and the whole file does not load, so the nine do not come back red - they
  * do not come back at all.
  *
  * The checker was watched failing on that exact history before this file was written. A clone
  * pinned at f5335cb reports `COMMITTED IMPORTS BROKEN ... apps/worker/tests/
- * embedding-retrieval.test.mjs imports scripts/build-module-embeddings.mjs`, exit 1; the same
+ * embedding-retrieval.test.mjs imports scripts/generate/build-module-embeddings.mjs`, exit 1; the same
  * clone at 68e9b17, which adds the builder and changes nothing else, reports OK, exit 0. The tests
  * below plant the same shapes in throwaway repositories so the guard keeps a failure it can be
  * watched producing on demand, rather than one that happened once.
@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CHECKER = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'check-committed-imports.mjs');
+const CHECKER = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'checks', 'check-committed-imports.mjs');
 
 function repo({ git = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'committed-imports-'));
@@ -121,7 +121,7 @@ test('the same pattern written in a comment is prose, not a site', (t) => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   // This is not hypothetical. The checker's own header spells out the pattern it recognises, and
   // the first run after it was committed -- the first run in which git could see it at all --
-  // reported `scripts/check-committed-imports.mjs imports a/b.ext`, its own documentation.
+  // reported `scripts/checks/check-committed-imports.mjs imports a/b.ext`, its own documentation.
   writeFileSync(join(root, 'tests', 'a.test.mjs'),
     "import { join } from 'node:path';\nconst REPO = '.';\n"
     + "// the shape this catches is import(join(REPO, 'scripts', 'nowhere.mjs'))\n" + ASSEMBLED);

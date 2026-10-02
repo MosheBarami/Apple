@@ -263,15 +263,15 @@ export function findNearDuplicates(aTexts, bTexts, { threshold = NEAR_DUP_THRESH
 export function loadQuestions(path) {
   if (!existsSync(path)) {
     throw new Error(
-      `loadQuestions: ${path} is absent. Run \`node scripts/harvest-hf.mjs\` first. ` +
+      `loadQuestions: ${path} is absent. Run \`node scripts/harvest/harvest-hf.mjs\` first. ` +
       'A missing split is not an empty split.',
     );
   }
   return readFileSync(path, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
 }
 
-/** Read the committed key index written by scripts/harvest-hf.mjs. */
+/** Read the committed key index written by scripts/harvest/harvest-hf.mjs. */
 export function loadKeyIndex(path) {
-  if (!existsSync(path)) throw new Error(`loadKeyIndex: ${path} is absent. Run \`node scripts/harvest-hf.mjs\` first.`);
+  if (!existsSync(path)) throw new Error(`loadKeyIndex: ${path} is absent. Run \`node scripts/harvest/harvest-hf.mjs\` first.`);
   return JSON.parse(readFileSync(path, 'utf8'));
 }

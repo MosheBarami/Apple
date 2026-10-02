@@ -10,7 +10,7 @@ the whole time. The audit that noticed was prose nobody could run, and it sat th
 is wired now, and this file exists so the next one is found by a command rather than by an
 adversary.
 
-`scripts/check-deadends.mjs` REPORTS the list; it never fails the suite on its own. Failing on the
+`scripts/checks/check-deadends.mjs` REPORTS the list; it never fails the suite on its own. Failing on the
 list would train people to widen the exception list until it was empty. What fails is the
 disposition gate: every entry below needs **WIRE**, **DELETE** or **STRUCTURALLY-BLOCKED**.
 
@@ -412,7 +412,7 @@ version of: a module that DOES have an importer and must not be reported. The ch
 flag was added for precisely this, and its own comment says so; one test was moved across and this
 one was left behind.
 
-Recorded here rather than removed quietly, per the rule at the head of `scripts/check-deadends.mjs`:
+Recorded here rather than removed quietly, per the rule at the head of `scripts/checks/check-deadends.mjs`:
 the disposition for a module that should not exist is DELETE with a dated statement.
 
 ## apps/worker/src/training-trajectory.ts — STRUCTURALLY-BLOCKED, 2026-09-18

@@ -37,7 +37,7 @@ for (const [label, pattern] of [
 
 mkdirSync(release, { recursive: true });
 execFileSync('rojo', ['build', project, '--output', artifact], { stdio: 'inherit' });
-execFileSync('python3', [join(root, '..', '..', 'scripts', 'inspect-plugin-build.py'), artifact], { stdio: 'inherit' });
+execFileSync('python3', [join(root, '..', '..', 'scripts', 'checks', 'inspect-plugin-build.py'), artifact], { stdio: 'inherit' });
 
 const bytes = statSync(artifact).size;
 console.log(`Disposable Studio proof built and inspected: ${artifact} (${bytes} bytes)`);

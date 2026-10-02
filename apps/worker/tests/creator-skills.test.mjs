@@ -87,7 +87,7 @@ test('the chunk witness these addresses are checked against still matches the co
   }
   const fresh = rederiveWitness(corpusWitness);
   assert.equal(fresh.sourceSha256, corpusWitness.sourceSha256,
-    'chunks.jsonl changed — regenerate with `node scripts/build-chunk-witness.mjs`');
+    'chunks.jsonl changed — regenerate with `node scripts/generate/build-chunk-witness.mjs`');
   assert.equal(fresh.documentCount, corpusWitness.documentCount);
   assert.deepEqual(fresh.documents, corpusWitness.documents);
 });

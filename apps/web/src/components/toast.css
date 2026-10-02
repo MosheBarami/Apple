@@ -4,7 +4,7 @@
  * WHAT EXISTED. design/system.css draws `.toast-stack`, `.toast`, `.toast-close`, `.toast-action`
  * and `.toast-error`. `.toast-dot`, `.toast-msg`, `.toast-count` and two of the three kinds —
  * `toast-info` and `toast-success` — had no rule anywhere, and none of them is spelled `foo__bar`,
- * so scripts/check-unstyled-classes.mjs never looked: its matcher needs a `__` or a `--` in the
+ * so scripts/checks/check-unstyled-classes.mjs never looked: its matcher needs a `__` or a `--` in the
  * name. The dot was a bare <span> with no box, so it drew nothing at all, and every toast carried
  * an invisible first child and a 15px gap where its status mark was meant to be.
  *

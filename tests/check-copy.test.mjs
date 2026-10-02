@@ -17,7 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // credit-figure guard in CI, which sometimes read our temporary line instead of the real page.
 // Copy only the trees the checker walks; the mutation stays inside this test's private fixture.
 const FIXTURE = mkdtempSync(join(tmpdir(), 'check-copy-'));
-for (const path of ['scripts/check-copy.mjs', 'apps/site/src', 'apps/web/src', 'apps/web/index.html', 'apps/site/index.html']) {
+for (const path of ['scripts/checks/check-copy.mjs', 'apps/site/src', 'apps/web/src', 'apps/web/index.html', 'apps/site/index.html']) {
   const from = join(ROOT, path);
   if (!existsSync(from)) continue;
   const to = join(FIXTURE, path);
@@ -25,7 +25,7 @@ for (const path of ['scripts/check-copy.mjs', 'apps/site/src', 'apps/web/src', '
   cpSync(from, to, { recursive: true });
 }
 after(() => rmSync(FIXTURE, { recursive: true, force: true }));
-const SCRIPT = join(FIXTURE, 'scripts', 'check-copy.mjs');
+const SCRIPT = join(FIXTURE, 'scripts', 'checks', 'check-copy.mjs');
 const VICTIM = join(FIXTURE, 'apps', 'site', 'src', 'pages', 'pricing.astro');
 const SOURCE_VICTIM = join(ROOT, 'apps', 'site', 'src', 'pages', 'pricing.astro');
 

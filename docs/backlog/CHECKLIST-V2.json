@@ -5035,13 +5035,13 @@
      "id": "v2-19a60c6f",
      "name": "Accessible page landmarks",
      "status": "partial",
-     "evidence": "scripts/check-site-semantics.mjs"
+     "evidence": "scripts/checks/check-site-semantics.mjs"
     },
     {
      "id": "v2-f2fafded",
      "name": "Correct semantic headings",
      "status": "partial",
-     "evidence": "scripts/check-site-semantics.mjs"
+     "evidence": "scripts/checks/check-site-semantics.mjs"
     },
     {
      "id": "v2-0bbae390",
@@ -5654,7 +5654,7 @@
      "id": "v2-802e3955",
      "name": "JavaScript client library",
      "status": "partial",
-     "evidence": "scripts/check-landing-budget.mjs"
+     "evidence": "scripts/checks/check-landing-budget.mjs"
     },
     {
      "id": "v2-cc7455fe",

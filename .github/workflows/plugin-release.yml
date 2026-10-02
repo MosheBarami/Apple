@@ -181,7 +181,7 @@ jobs:
         # Run the scanner's own rules against known-positive and known-negative
         # fixtures BEFORE trusting its verdict on the artifact. A scanner whose
         # patterns have silently stopped matching reports every build as clean.
-        run: python3 scripts/inspect-plugin-build.py --self-test
+        run: python3 scripts/checks/inspect-plugin-build.py --self-test
 
       - name: Test the plugin, and the worker contract it speaks
         # The plugin and the worker agree on a protocol number and a version
@@ -224,7 +224,7 @@ jobs:
         env:
           EXPECT_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          python3 scripts/inspect-plugin-build.py apps/apple-plugin/release/apple-studio.rbxm \
+          python3 scripts/checks/inspect-plugin-build.py apps/apple-plugin/release/apple-studio.rbxm \
             --expect-version "$EXPECT_VERSION"
 
       # ------------------------------------------------------------ record --

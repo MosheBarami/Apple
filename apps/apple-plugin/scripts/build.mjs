@@ -41,7 +41,7 @@ for (const { abs, rel: name } of SOURCES) {
 mkdirSync(join(root, 'release'), { recursive: true });
 const artifact = join(root, 'release', 'apple-studio.rbxm');
 execFileSync('rojo', ['build', join(root, 'default.project.json'), '--output', artifact], { stdio: 'inherit' });
-execFileSync('python3', [join(root, '..', '..', 'scripts', 'inspect-plugin-build.py'), artifact], { stdio: 'inherit' });
+execFileSync('python3', [join(root, '..', '..', 'scripts', 'checks', 'inspect-plugin-build.py'), artifact], { stdio: 'inherit' });
 // The source having a capability and the SHIPPED BYTES having it are two claims, and this
 // repository has already paid for the difference: the legacy artifact reported VERSION 0.1.0 with
 // zero occurrences of GenerateModelAsync while its source was 0.2.0 and had generation, and every

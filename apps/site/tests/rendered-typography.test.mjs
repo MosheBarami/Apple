@@ -43,7 +43,7 @@ const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(SITE, 'dist');
 const ROOT = join(SITE, '..', '..');
 
-// Every route a reader can reach, which is the set scripts/check-site-links.mjs walks. A route
+// Every route a reader can reach, which is the set scripts/checks/check-site-links.mjs walks. A route
 // added to src/pages and not added here is measured nowhere, so the list is asserted against the
 // build below rather than trusted.
 const ROUTES = [

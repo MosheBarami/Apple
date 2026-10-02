@@ -48,7 +48,7 @@ a {
 }
 
 /* Calm, not loud: the room around the headline carries it, not the size of its glyphs.
-   scripts/check-copy.mjs caps display type at 56px; this tops out at 52. */
+   scripts/checks/check-copy.mjs caps display type at 56px; this tops out at 52. */
 .display {
   max-width: 17ch;
   margin: 0;

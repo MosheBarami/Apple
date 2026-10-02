@@ -1,7 +1,7 @@
 /**
  * The design system's vocabulary, declared where a checker can read it without circularity.
  *
- * `scripts/check-pixels.mjs` rules 2 and 3 ask two questions about a rendered route:
+ * `scripts/checks/check-pixels.mjs` rules 2 and 3 ask two questions about a rendered route:
  *
  *   2. did the typography actually load, or is this page in a system fallback?
  *   3. is this page styled BY the design system, or merely beside it?

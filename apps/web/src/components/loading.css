@@ -3,7 +3,7 @@
  * `loading.tsx` draws with eight class names — `forge`, `forge-mark`, `forge-label`, `forge-steps`,
  * `forge-step`, `forge-step-mark`, `forge-bar`, `loading-spinner` — and a grep for each of them across
  * every sheet in apps/web returned ZERO. None of them is written `foo__bar`, so
- * scripts/check-unstyled-classes.mjs never looked at them: its matcher requires a `__` or a `--` in
+ * scripts/checks/check-unstyled-classes.mjs never looked at them: its matcher requires a `__` or a `--` in
  * the name, and a single-hyphen family falls straight through the gap. The check reported CLASSES
  * OK on the morning this file was written.
  *

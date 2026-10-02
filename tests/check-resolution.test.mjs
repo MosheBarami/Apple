@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-resolution.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-resolution.mjs');
 const DIRS = [];
 
 /** A scratch checkout with the checker in it, so ROOT resolves to the scratch tree. */
@@ -25,12 +25,12 @@ function scratch() {
   mkdirSync(join(dir, 'packages', 'shared'), { recursive: true });
   mkdirSync(join(dir, '.claude', 'worktrees', 'wt', 'packages', 'shared'), { recursive: true });
   writeFileSync(join(dir, 'packages', 'shared', 'index.ts'), 'export const x = 1;\n');
-  cpSync(CHECKER, join(dir, 'scripts', 'check-resolution.mjs'));
+  cpSync(CHECKER, join(dir, 'scripts', 'checks', 'check-resolution.mjs'));
   return dir;
 }
 
 function run(dir) {
-  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'check-resolution.mjs')], {
+  const p = spawnSync(process.execPath, [join(dir, 'scripts', 'checks', 'check-resolution.mjs')], {
     cwd: dir, encoding: 'utf8', timeout: 120_000,
   });
   return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };

@@ -336,10 +336,10 @@ Credits ledger — `ClientMsg.chat` still carries `mode: GolemMode` — so no st
 meaning. Translation happens at the edge, through `PRODUCT_MODE_TO_SPECIALIST`.
 
 Internal documents keep the specialist names, and `docs/COST-MODEL.md` deliberately does: it
-measures specialists. `scripts/check-credit-figures.mjs` therefore reads a mode's neuron figure by
+measures specialists. `scripts/checks/check-credit-figures.mjs` therefore reads a mode's neuron figure by
 its internal name and checks the published figure by its public one.
 
-**Consequence.** `scripts/check-site-semantics.mjs` fails the build if Clay, Stone or Rune appears
+**Consequence.** `scripts/checks/check-site-semantics.mjs` fails the build if Clay, Stone or Rune appears
 in visible copy on any built page. The site was renamed on 2026-09-01; a mechanical substitution
 needed two follow-up passes for sentences it broke, since "Agent" is an ordinary word and "agent
 step" now reads as two things.
@@ -395,7 +395,7 @@ several — AI Gateway runs on Standard billing with uncapped overage, so it is 
 it is the single change in this repository that can cost real money while every test stays green.
 See OWNER-HANDOFF for what each tier would cost to actually fill.
 
-**Consequence.** `scripts/check-offer.mjs` reports OFFER COHERENT for the first time. The marketing
+**Consequence.** `scripts/checks/check-offer.mjs` reports OFFER COHERENT for the first time. The marketing
 site, the docs and the app now READ `PLAN_LIMITS` instead of restating it — pricing.astro,
 credits-and-limits.astro and CreditMeter.astro all had typed-in figures, and the site was still
 advertising a Pro waitlist at 400 Credits a day for a tier that no longer exists under that name or

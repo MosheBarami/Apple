@@ -100,7 +100,7 @@ showcase content, four hours later.
 | Instruction | State | Single next action |
 |---|---|---|
 | Deploy what is written | 35 commits undeployed | `cd apps/site && npx astro build && cd ../.. && node platforms/cloudflare/deploy/deploy-static.mjs --only site`, then `cd apps/worker && pnpm deploy:api`. Needs your Cloudflare login — see section 4. |
-| Rename: no Golem anywhere | Regressed | Re-generate or edit `docs/evidence/ui-showcase/screen-gacha--tycoon.luau` lines 101 and 244, then `node scripts/check-rebrand.mjs --offline`. |
+| Rename: no Golem anywhere | Regressed | Re-generate or edit `docs/evidence/ui-showcase/screen-gacha--tycoon.luau` lines 101 and 244, then `node scripts/checks/check-rebrand.mjs --offline`. |
 | Features as interactive demos | NOT-STARTED | Replace the `What it is good at` four-card grid with one live artefact per claim; the refusal log in the STUDIO·ACTIVITY block is the working precedent. |
 | Proof-first marketing | PARTIAL — the live landing has `<img>` 0, `<video>` 0, `<iframe>` 0 | Publish the 3 captures already in `docs/evidence/lumen-isles-2026-09-19/` as a before/after strip under the hero. |
 | Hero must demonstrate the product | PARTIAL — `index.astro` hero composer is `<div class="composer" aria-hidden="true">` | Make it a real `<textarea>` that posts its text into `/app/signup` as the first prompt. |
@@ -114,7 +114,7 @@ showcase content, four hours later.
 | Original visual identity with a wow | PARTIAL | The page is 5 sections and ends in a card grid. Treat length, not polish, as the remaining work. |
 | Projects page shows giant empty cubes (`הפרוייקטים בעמוד ]רוייקטים הם קוביות כלה ענקיות`) | NOT-STARTED | In `apps/web`, behind login. Needs the session in section 4. |
 | One consistent production truth | PARTIAL | `apps/worker/src/assets.ts:742` still tells the model an id may come from `the curated library`, which was deleted on 2026-09-20. Rewrite that string to name Creator Store provenance only, then run `apps/worker/tests/asset-provenance.test.mjs` after watching it go red on a mutation. |
-| 6 files with no disposition | New, from tonight | Add WIRE, DELETE or STRUCTURALLY-BLOCKED for each of the 6 in `docs/backlog/DEADENDS.md`, then `node scripts/check-deadends.mjs --gate`. |
+| 6 files with no disposition | New, from tonight | Add WIRE, DELETE or STRUCTURALLY-BLOCKED for each of the 6 in `docs/backlog/DEADENDS.md`, then `node scripts/checks/check-deadends.mjs --gate`. |
 | Pinned production settings drifted | New, from tonight | `packages/training/src/production-settings.test.mjs` pins `high: 1.25` and `5600`; the code now reads `high: 2` and `6500` after `600ab00` deliberately changed it. Re-aim the test at the property and record the reversal in a comment. Do not delete it. |
 | 14 of 21 landing e2e guards are red | Pre-existing | Re-aim them against the restructured landing. Details in section 6. |
 

@@ -27,7 +27,7 @@
 // the corpus at all. That is strictly more checking than the version that read the file directly,
 // which checked nothing anywhere the file was absent.
 //
-// Regenerate with:  node scripts/build-chunk-witness.mjs
+// Regenerate with:  node scripts/generate/build-chunk-witness.mjs
 //
 // The generator lives at the repository root because the witness now serves TWO readers with two
 // different slug lists — `genre-references.json` here, and `CREATOR_SKILL_REFERENCES` in

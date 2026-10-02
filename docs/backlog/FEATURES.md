@@ -983,7 +983,7 @@ decision" list that outlives the decision reads as a refusal the product never m
 - [x] API key rotation
 - [ ] Secret encryption
 - [x] Secret redaction
-- [x] Secret scanning — scripts/secret-scan.py — tree verified clean
+- [x] Secret scanning — scripts/checks/secret-scan.py — tree verified clean
 - [x] PII detection
 - [x] PII redaction
 - [x] Prompt injection defense — per-run fence id; tool output never trusted as instruction

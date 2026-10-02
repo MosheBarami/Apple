@@ -21,7 +21,7 @@ import { copyProblems, planProblems, termProblems } from '../scripts/lib/offer-r
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const run = () => {
-  const p = spawnSync('node', [join(ROOT, 'scripts', 'check-offer.mjs')], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+  const p = spawnSync('node', [join(ROOT, 'scripts', 'checks', 'check-offer.mjs')], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
   return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
 };
 
@@ -35,7 +35,7 @@ test('the checker reaches a verdict on the real repository', () => {
 });
 
 test('it prints a real denominator first', () => {
-  const p = spawnSync('node', [join(ROOT, 'scripts', 'check-offer.mjs')], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
+  const p = spawnSync('node', [join(ROOT, 'scripts', 'checks', 'check-offer.mjs')], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
   const first = p.stdout.split('\n')[0];
   assert.match(first, /^DENOMINATOR \d+ files; EXCEPTIONS \d+:/);
   assert.ok(Number(/DENOMINATOR (\d+)/.exec(first)[1]) > 50, 'a token denominator would let it report clean without looking');

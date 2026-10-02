@@ -34,7 +34,7 @@ const { askVerifiedModule, searchVerifiedModules, getVerifiedModule, VERIFIED_MO
 test('the bundle is not stale, and building it re-runs every module against its checks', () => {
   // --check rebuilds from the curriculum, which executes all 80. A module that stopped passing
   // would change the bundle and fail here rather than ship.
-  execFileSync('node', [join(ROOT, 'scripts', 'build-verified-modules.mjs'), '--check'], { stdio: 'pipe' });
+  execFileSync('node', [join(ROOT, 'scripts', 'generate', 'build-verified-modules.mjs'), '--check'], { stdio: 'pipe' });
 });
 
 test('the library is not empty and carries real Luau', () => {

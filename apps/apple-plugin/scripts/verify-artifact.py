@@ -11,7 +11,7 @@ feature. Every test was green. Nothing read the binary.
 
 So this reads the binary. `.rbxm` payloads are LZ4-block compressed and a string that is certainly
 in the build is only sometimes present in the raw bytes, which is why this reuses the decoder in
-`scripts/inspect-plugin-build.py` rather than grepping. If a chunk cannot be decoded this fails:
+`scripts/checks/inspect-plugin-build.py` rather than grepping. If a chunk cannot be decoded this fails:
 a check that could not look has not established anything.
 
 Usage:  verify-artifact.py BUILD.rbxm

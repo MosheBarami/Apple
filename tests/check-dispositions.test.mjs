@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CHECKER = join(ROOT, 'scripts', 'check-dispositions.mjs');
+const CHECKER = join(ROOT, 'scripts', 'checks', 'check-dispositions.mjs');
 
 /** A scratch ledger: rows go in one section unless they carry their own. */
 function ledger(items, decisions = '', extraSections = []) {

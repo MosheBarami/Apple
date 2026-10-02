@@ -200,7 +200,7 @@ one screen tall was the means; that is the end.
 - **Every figure is read, never typed.** Plan names, prices, Credit allowances and
   builds-per-month come from `PLAN_LIMITS` / `PLAN_COPY` in `packages/shared`;
   the install destination comes from `STUDIO_PLUGIN_INSTALL_HREF`.
-  `scripts/check-offer.mjs` and `scripts/check-credit-figures.mjs` enforce it.
+  `scripts/checks/check-offer.mjs` and `scripts/checks/check-credit-figures.mjs` enforce it.
 
 ### Three deliberate departures from the supplied design
 
@@ -232,7 +232,7 @@ the page said it once:
   asset is uploaded but not distributable, so the page may point at the store
   and may not claim the trip will work.
 - "$0 forever", "no card required, ever", "free forever" — contractual terms,
-  and `scripts/check-offer.mjs` fails the build on them.
+  and `scripts/checks/check-offer.mjs` fails the build on them.
 - Adoption claims. "Trusted by builders", "Loved by teams" and "Indie devs to
   studios" were on the bottom strip of the previous design, and Apple has no
   adoption to claim. The example prompts under the hero are labelled as examples

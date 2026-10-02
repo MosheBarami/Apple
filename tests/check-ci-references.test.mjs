@@ -1,5 +1,5 @@
 /**
- * TESTS FOR THE CHECKER THAT WATCHES .github — scripts/check-ci-references.mjs.
+ * TESTS FOR THE CHECKER THAT WATCHES .github — scripts/checks/check-ci-references.mjs.
  *
  * It was written because commit 04d3800 renamed a script and did not update the workflow, and
  * main was red for five days. It then had no test of its own, and it was not in any workflow, so
@@ -25,7 +25,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CHECKER = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'check-ci-references.mjs');
+const CHECKER = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'checks', 'check-ci-references.mjs');
 
 function repo({ git = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'ci-refs-'));

@@ -40,7 +40,7 @@ pnpm --filter @golem/web dev       # local Studio chat
 
 ## Test
 
-CI runs `pnpm -r test`, the root `tests/*.test.mjs`, the `scripts/check-*.mjs` checks, `scripts/secret-scan.py` and
+CI runs `pnpm -r test`, the root `tests/*.test.mjs`, the `scripts/check-*.mjs` checks, `scripts/checks/secret-scan.py` and
 the plugin build. `node scripts/ci-parity.mjs` runs what it can of the same steps against a clean clone of HEAD.
 After a test run, `node scripts/clean-test-tmp.mjs` removes leftover temp directories.
 

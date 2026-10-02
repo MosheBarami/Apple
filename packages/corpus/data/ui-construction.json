@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
  "note": "Project-authored construction observations distilled from shipped Roblox UI. No image, asset or third-party source is reproduced here.",
- "generatedBy": "scripts/build-ui-construction.mjs",
+ "generatedBy": "scripts/generate/build-ui-construction.mjs",
  "genres": [
   {
    "genre": "adventure",

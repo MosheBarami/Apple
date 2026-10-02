@@ -14,7 +14,7 @@ Every row below says which it is.
 
 | job | state | what changed |
 |---|---|---|
-| Secrets and dependencies | **success**, verified on the runner in run 35546303030 | `scripts/known-fixtures.json`; see GO-LIVE §5 |
+| Secrets and dependencies | **success**, verified on the runner in run 35546303030 | `scripts/checks/known-fixtures.json`; see GO-LIVE §5 |
 | Static checks | success | plus two new steps: the scanner's own tests, and `check-ci-references` |
 | Build Studio plugin | success | untouched |
 
@@ -112,7 +112,7 @@ Left for the corpus lane. I did not choose one, and I did not make it green.
 
 The first version of the GATES.md note under G90 asserted its short EVIDENCE line was hand-written
 and its own explanatory NOTE was "a rationalisation of it". **That was wrong, and I wrote it before
-reading `scripts/check-escape-hatches.mjs`**, which records that the line came from a genuine
+reading `scripts/checks/check-escape-hatches.mjs`**, which records that the line came from a genuine
 passing run on 2026-09-20, written by a second recorder — unlazy's `evidenceFor()` — that emits
 `exit / shell / cwd / path / EXPECT / output-sha256 / output-bytes` and nothing else.
 
@@ -153,19 +153,19 @@ CI PARITY — a clean clone of b6c274b, installed and built in the clone
   pass  exit  0  pnpm -r typecheck
   pass  exit  0  node --test tests/*.test.mjs
   pass  exit  0  node scripts/gate-check.mjs --lint
-  pass  exit  0  node scripts/check-site-links.mjs
-  pass  exit  0  node scripts/check-credit-figures.mjs
-  pass  exit  0  node scripts/check-site-semantics.mjs
-  pass  exit  0  node scripts/check-dispositions.mjs
-  pass  exit  0  node scripts/check-app-bundle.mjs
-  pass  exit  0  node scripts/check-landing-budget.mjs
-  pass  exit  0  node scripts/check-asset-wall.mjs
+  pass  exit  0  node scripts/checks/check-site-links.mjs
+  pass  exit  0  node scripts/checks/check-credit-figures.mjs
+  pass  exit  0  node scripts/checks/check-site-semantics.mjs
+  pass  exit  0  node scripts/checks/check-dispositions.mjs
+  pass  exit  0  node scripts/checks/check-app-bundle.mjs
+  pass  exit  0  node scripts/checks/check-landing-budget.mjs
+  pass  exit  0  node scripts/checks/check-asset-wall.mjs
   pass  exit  0  pnpm --filter @golem/evals check
-  pass  exit  0  node scripts/check-workspace-coverage.mjs
-  pass  exit  0  node scripts/check-rebrand.mjs --offline
-  pass  exit  0  node scripts/check-ci-references.mjs
-  pass  exit  0  python3 scripts/test_secret_scan.py
-  pass  exit  0  python3 scripts/secret-scan.py
+  pass  exit  0  node scripts/checks/check-workspace-coverage.mjs
+  pass  exit  0  node scripts/checks/check-rebrand.mjs --offline
+  pass  exit  0  node scripts/checks/check-ci-references.mjs
+  pass  exit  0  python3 scripts/checks/test_secret_scan.py
+  pass  exit  0  python3 scripts/checks/secret-scan.py
 ```
 
 `check-app-bundle`, `check-landing-budget` and `check-asset-wall` are the three this file called
@@ -180,7 +180,7 @@ list with a reason per line on every run, so it is not a thing to remember.
 ## The new one, which this pass introduced and fixed
 
 `e85fe18` added the Showcase nav entry — the only link to `/showcase` — and taught
-`apps/site/tests/links-resolve.test.mjs` about the page but not `scripts/check-site-links.mjs`,
+`apps/site/tests/links-resolve.test.mjs` about the page but not `scripts/checks/check-site-links.mjs`,
 which is what CI runs as "Internal links resolve". That step went to **20 broken internal links, one
 per page**. It was found by hand, after a site deploy happened to require a build first, because the
 parity tool did not build at that point and skipped it. Fixed in `658f75d`; `--with-build` exists

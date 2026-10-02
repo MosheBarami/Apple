@@ -150,7 +150,7 @@ export function loadTrainingInstructions(dir = TRAINING_DIR, { splits = TRAINING
 export function loadGateQuestions(dir = GATE_DIR) {
   const p = join(dir, 'gate.jsonl');
   if (!existsSync(p)) {
-    throw new Error(`loadGateQuestions: ${p} is absent. Run \`node scripts/harvest-hf.mjs\` first. A missing gate is not an empty gate.`);
+    throw new Error(`loadGateQuestions: ${p} is absent. Run \`node scripts/harvest/harvest-hf.mjs\` first. A missing gate is not an empty gate.`);
   }
   return readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).question);
 }
