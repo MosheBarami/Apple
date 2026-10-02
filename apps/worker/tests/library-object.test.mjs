@@ -67,16 +67,16 @@ test('the play check is said the same way by the tool loop and the library step'
   assert.equal(L.playCheckReading({ verdict: 'no_screen_gui', playerSees: 'nothing on screen' }).problem, 'nothing on screen');
 });
 
-test('the session offers ready-made models before any model call, and places the pick with none', () => {
+test('the session finds the best ready-made model and places it in the same run, before any model call', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   const hook = session.indexOf('if (await this.libraryObjectStep(agent)) return;');
   assert.ok(hook > 0, 'the library step is not called');
   assert.ok(hook < session.indexOf('const AFTER_OBJECT'), 'it runs before the step prepares a model call');
   const step = session.slice(session.indexOf('private async libraryObjectStep'), session.indexOf('private async pauseForStudio'));
-  assert.match(step, /offerLibraryObjects\(ctx, agent\.request/);
-  assert.match(step, /storage\.put\('pendingObjectChoice'/);
-  assert.match(step, /kind: 'asset_choices'/, 'the chat gets its card');
-  assert.match(step, /placeChosenObject\(ctx, pick\.pending, pick\.index\)/);
+  // Owner, 2026-10-02: no three options; the best candidate is placed automatically, with no card and no wait.
+  assert.match(step, /offerLibraryObjects\(ctx, agent\.request \?\? '', \{ auto: true \}\)/);
+  assert.ok(!/storage\.put\('pendingObjectChoice'|kind: 'asset_choices'/.test(step), 'no choice is offered any more');
+  assert.match(step, /placeChosenObject\(ctx, chosen\.pending, chosen\.index\)/);
   assert.match(step, /runTool\(ctx, 'play_check'/, 'played once by the harness');
   assert.match(step, /pick\.index === null\) \{ await clearLineup\(ctx\); await this\.ctx\.storage\.delete\('pendingObjectChoice'\); return false; \}/, '"none of these" builds it');
   // Review 2026-10-02: the user's permissions and a read-only request bind the harness; the offer is kept until settled.

@@ -256,7 +256,7 @@ export async function clearLineup(ctx: AgentCtx): Promise<void> {
  * Stands up to three candidates in the place, numbered, and returns what the chat card shows, or null when the
  * library has nothing that is the object (the run then builds it). Nothing here costs a model call.
  */
-export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promise<ObjectOffer | null> {
+export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: { auto?: boolean } = {}): Promise<ObjectOffer | null> {
   const candidates = await findObjectCandidates(ctx, request);
   if (!candidates.length) return null;
   // A safety copy first, as for every library import: Studio undo, or the checkpoint, takes the row back out.
@@ -278,6 +278,9 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
   const placed: (LibraryCandidate & { index: number })[] = [];
   const tags: InstanceSpecLite[] = [];
   for (const c of candidates) {
+    // Automatic (owner, 2026-10-02: "remove entirely the 3 options and do an automatic as before"): the best-ranked
+    // candidate that comes in clean is the one; the others are never imported.
+    if (opts.auto && placed.length) break;
     const index = placed.length + 1;
     const slot = slots[index - 1]!;
     const into = `${PARTS_FOLDER}.ApplePick${index}`;
@@ -318,6 +321,7 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string): Promi
   }
   if (madeFolder) await ctx.execStudioOp({ op: 'delete_instances', paths: [PARTS_FOLDER] }, 20_000).catch(() => undefined);
   if (!placed.length) { await clearLineup(ctx); return null; }
+  if (opts.auto) return { request, name: objectNameOf(request), options: placed, text: '' };
   await ctx.execStudioOp({ op: 'create_instances', items: tags.map((t) => ({ ...typed(t), parent: LINEUP })) }, 20_000).catch(() => undefined);
   // The snapshot for the card: the active Studio camera on the row. No snapshot is still a choice (the row is in Studio).
   let image: string | undefined;

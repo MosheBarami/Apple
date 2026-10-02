@@ -1618,9 +1618,21 @@ export class SessionDO extends DurableObject<Env> {
     const pick = agent.objectPick;
     if (!pick && agent.staleLineup) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); }
     if (pick && pick.index === null) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); return false; }
-    if (pick && pick.index !== null) {
+    // Automatic (owner, 2026-10-02: no more three options): the best ready-made model is found and placed in one run.
+    let chosen = pick && pick.index !== null ? { pending: pick.pending, index: pick.index } : null;
+    if (!chosen && agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
       const t0 = Date.now();
-      const placed = await placeChosenObject(ctx, pick.pending, pick.index) as Record<string, unknown>;
+      const offer = await offerLibraryObjects(ctx, agent.request ?? '', { auto: true });
+      if (!offer?.options[0]) return false;
+      const best = offer.options[0];
+      row('find_library_model', true, t0, `✓ found ${best.name}${best.game ? ` from ${best.game}` : ''}`, { name: best.name, ...(best.game ? { where: best.game } : {}), ...(best.assetId ? { assetId: best.assetId } : {}) });
+      agent.mutated = true;
+      agent.made = addMade(agent.made, 'find_library_model');
+      chosen = { pending: { request: offer.request, name: offer.name, options: offer.options }, index: best.index };
+    }
+    if (chosen) {
+      const t0 = Date.now();
+      const placed = await placeChosenObject(ctx, chosen.pending, chosen.index) as Record<string, unknown>;
       const ok = !('error' in placed);
       // Named for what it is, a library insert (a "make a 3D model of X" run owes one).
       row('insert_library_model', ok, t0, ok ? `✓ placed ${String((placed.library as { name?: unknown } | undefined)?.name ?? 'the model')}` : `✗ ${String(placed.error).slice(0, 120)}`, placed);
@@ -1661,23 +1673,6 @@ export class SessionDO extends DurableObject<Env> {
       agent.objectFirst = false;
       agent.objectBuilt = true;
       agent.finalText = String(cooled.forUser ?? '');
-      await this.finishRun(agent, 'done');
-      return true;
-    }
-    if (agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
-      const t0 = Date.now();
-      const offer = await offerLibraryObjects(ctx, agent.request ?? '');
-      if (!offer) return false;
-      await this.ctx.storage.put('pendingObjectChoice', { request: offer.request, name: offer.name, options: offer.options } satisfies PendingObjectChoice);
-      row('find_library_model', true, t0, `✓ ${offer.options.length} ready-made model${offer.options.length === 1 ? '' : 's'} to choose from`, {
-        kind: 'asset_choices',
-        options: offer.options.map((o) => ({ index: o.index, name: o.name, ...(o.game ? { where: o.game } : {}), ...(o.assetId ? { assetId: o.assetId } : {}) })),
-        ...(offer.image ? { image: offer.image } : {}),
-      });
-      agent.mutated = true;
-      agent.made = addMade(agent.made, 'find_library_model');
-      agent.objectOffered = true;
-      agent.finalText = offer.text;
       await this.finishRun(agent, 'done');
       return true;
     }
