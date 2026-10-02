@@ -883,19 +883,33 @@ function AppleBehave.start()
 	workspace.DescendantAdded:Connect(consider)
 
 	RunService.Heartbeat:Connect(function(dt: number)
-		for _, update in updaters do update(dt) end
+		-- One behaviour failing (a part destroyed under it) must not stop the rest: it is dropped with a warning and the others go on.
+		for i = #updaters, 1, -1 do
+			local ok, err = pcall(updaters[i], dt)
+			if not ok then
+				warn("AppleBehave: a behaviour stopped: " .. tostring(err))
+				table.remove(updaters, i)
+			end
+		end
 		applyPoses()
 		sinceNear += dt
 		if sinceNear >= 0.2 then
 			sinceNear = 0
-			for _, n in nears do
-				local c = n.center()
-				if c then
-					local inside = playersNear(c, n.reach)
-					if inside ~= n.inside then
-						n.inside = inside
-						n.handler(if inside then "enter" else "leave", nil, nil)
+			for i = #nears, 1, -1 do
+				local n = nears[i]
+				local ok, err = pcall(function()
+					local c = n.center()
+					if c then
+						local inside = playersNear(c, n.reach)
+						if inside ~= n.inside then
+							n.inside = inside
+							n.handler(if inside then "enter" else "leave", nil, nil)
+						end
 					end
+				end)
+				if not ok then
+					warn("AppleBehave: a proximity trigger stopped: " .. tostring(err))
+					table.remove(nears, i)
 				end
 			end
 		end
