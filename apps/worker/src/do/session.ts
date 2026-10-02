@@ -69,7 +69,7 @@ import {
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
 import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
-import { clearLineup, offerLibraryObjects, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
+import { clearLineup, offerLibraryObjects, pickPrompt, pickedIndex, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
@@ -1624,9 +1624,16 @@ export class SessionDO extends DurableObject<Env> {
     let chosen = pick && pick.index !== null ? { pending: pick.pending, index: pick.index } : null;
     if (!chosen && agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
       const t0 = Date.now();
-      const offer = await offerLibraryObjects(ctx, agent.request ?? '', { auto: true });
+      // Up to three candidates stand in a row out of sight of the answer; the AGENT picks the one that is the request
+      // (live 2026-10-02: "a rubber duck" took the first hit, a brown hunting duck). One short model call.
+      const offer = await offerLibraryObjects(ctx, agent.request ?? '', { quiet: true });
       if (!offer?.options[0]) return false;
-      const best = offer.options[0];
+      let best = offer.options[0];
+      if (offer.options.length > 1) {
+        const said = await llmChat(this.env, { model: gatewayModelFor(agent.mode), messages: [{ role: 'user', content: pickPrompt(agent.request ?? '', offer.options) }], maxTokens: 400 }, { kind: 'agent' }).catch(() => null);
+        const n = said ? pickedIndex(said.text, offer.options) : undefined;
+        best = offer.options.find((o) => o.index === n) ?? best;
+      }
       row('find_library_model', true, t0, `✓ found ${best.name}${best.game ? ` from ${best.game}` : ''}`, { name: best.name, ...(best.game ? { where: best.game } : {}), ...(best.assetId ? { assetId: best.assetId } : {}) });
       agent.mutated = true;
       agent.made = addMade(agent.made, 'find_library_model');

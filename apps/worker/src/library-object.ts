@@ -186,7 +186,7 @@ const PICK_LENGTH = 12;
 export interface ObjectOffer {
   request: string;
   name: string;
-  options: (LibraryCandidate & { index: number })[];
+  options: (LibraryCandidate & { index: number; colour?: string; size?: V3; parts?: number })[];
   image?: string;
   text: string;
 }
@@ -256,7 +256,7 @@ export async function clearLineup(ctx: AgentCtx): Promise<void> {
  * Stands up to three candidates in the place, numbered, and returns what the chat card shows, or null when the
  * library has nothing that is the object (the run then builds it). Nothing here costs a model call.
  */
-export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: { auto?: boolean } = {}): Promise<ObjectOffer | null> {
+export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: { auto?: boolean; quiet?: boolean } = {}): Promise<ObjectOffer | null> {
   const candidates = await findObjectCandidates(ctx, request);
   if (!candidates.length) return null;
   // A safety copy first, as for every library import: Studio undo, or the checkpoint, takes the row back out.
@@ -275,7 +275,7 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: 
   // A folder made here is taken away again at the end: a later compose_game makes its own AppleParts.
   const madeFolder = !folder?.ok;
   if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
-  const placed: (LibraryCandidate & { index: number })[] = [];
+  const placed: ObjectOffer['options'] = [];
   const tags: InstanceSpecLite[] = [];
   for (const c of candidates) {
     // Automatic (owner, 2026-10-02: "remove entirely the 3 options and do an automatic as before"): the best-ranked
@@ -317,11 +317,24 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: 
       }
     }
     tags.push(numberTag(index, [slot[0], (b ? b.bottomY + b.size[1] : 8) + 3, slot[2]]));
-    placed.push({ ...c, index });
+    // What it looks like, in words the agent can choose by ("a rubber duck" is the yellow one, live 2026-10-02: the
+    // first hit was a brown hunting duck).
+    let colour: string | undefined, parts: number | undefined;
+    if (!opts.auto) {
+      const tree = await ctx.execStudioOp({ op: 'get_tree', root: `${LINEUP}.Pick${index}`, maxDepth: 8, maxNodes: 300 }, 30_000).catch(() => null);
+      if (tree?.ok) {
+        const root = (tree.data as { root?: unknown }).root;
+        colour = mainColourOf(root);
+        let n = 0; const count = (x: { children?: unknown[] }) => { n++; for (const c of x.children ?? []) count(c as typeof x); };
+        if (root && typeof root === 'object') count(root as { children?: unknown[] });
+        parts = n;
+      }
+    }
+    placed.push({ ...c, index, ...(colour ? { colour } : {}), ...(b ? { size: b.size } : {}), ...(parts ? { parts } : {}) });
   }
   if (madeFolder) await ctx.execStudioOp({ op: 'delete_instances', paths: [PARTS_FOLDER] }, 20_000).catch(() => undefined);
   if (!placed.length) { await clearLineup(ctx); return null; }
-  if (opts.auto) return { request, name: objectNameOf(request), options: placed, text: '' };
+  if (opts.auto || opts.quiet) return { request, name: objectNameOf(request), options: placed, text: '' };
   await ctx.execStudioOp({ op: 'create_instances', items: tags.map((t) => ({ ...typed(t), parent: LINEUP })) }, 20_000).catch(() => undefined);
   // The snapshot for the card: the active Studio camera on the row. No snapshot is still a choice (the row is in Studio).
   let image: string | undefined;
@@ -340,6 +353,32 @@ export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: 
   const text = `I found ${placed.length === 1 ? 'a ready-made model' : `${placed.length} ready-made models`} for your ${what} and stood ${placed.length === 1 ? 'it' : 'them'} in your place, numbered: ${listed}. `
     + `Pick the one you want and I will put it on a stage, make it react when clicked and add a counter. If none of them is right, choose "None of these" and I will build one.`;
   return { request, name: objectNameOf(request), options: placed, ...(image ? { image } : {}), text };
+}
+
+const NAMED: [string, [number, number, number]][] = [['yellow', [245, 205, 48]], ['orange', [240, 140, 40]], ['red', [200, 40, 40]], ['pink', [240, 130, 180]],
+  ['purple', [140, 70, 190]], ['blue', [50, 110, 220]], ['light blue', [140, 200, 240]], ['green', [60, 160, 70]], ['brown', [120, 80, 45]],
+  ['tan', [200, 165, 120]], ['white', [240, 240, 240]], ['grey', [140, 140, 140]], ['black', [25, 25, 25]]];
+
+/** The nearest plain colour word for a #rrggbb. Pure. */
+export function colourName(hex: string | undefined): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex ?? '');
+  if (!m) return 'unknown colour';
+  const c = [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
+  return NAMED.map(([n, v]) => [n, v.reduce((a, x, i) => a + (x - c[i]!) ** 2, 0)] as const).sort((a, b) => a[1] - b[1])[0]![0];
+}
+
+/** The question the agent answers to pick the candidate that IS the request, one line per candidate. Pure. */
+export function pickPrompt(request: string, options: ObjectOffer['options']): string {
+  const lines = options.map((o) => `${o.index}. "${o.name}"${o.game ? ` from the game ${o.game}` : ' (Roblox)'}, mostly ${colourName(o.colour)}${o.size ? `, ${Math.round(Math.max(...o.size))} studs at its longest` : ''}${o.parts ? `, ${o.parts} parts` : ''}`);
+  return `The user asked: "${request}". These ready-made models were found:\n${lines.join('\n')}\nWhich one is most clearly what the user asked for (think of what it really looks like: its colour, the game it comes from)? Answer with its number only.`;
+}
+
+/** The number the agent answered, if it names an option. Pure. */
+export function pickedIndex(text: string, options: { index: number }[]): number | undefined {
+  // The last number said: a reply that thinks aloud ("1 is brown, 2 is yellow... 2") ends on its answer.
+  const all = [...text.matchAll(/\b(\d)\b/g)];
+  const n = Number(all[all.length - 1]?.[1]);
+  return options.some((o) => o.index === n) ? n : undefined;
 }
 
 /** What the session keeps between the offer and the pick. */

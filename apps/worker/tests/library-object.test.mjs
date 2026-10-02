@@ -71,14 +71,16 @@ test('the play check is said the same way by the tool loop and the library step'
   assert.equal(L.playCheckReading({ verdict: 'no_screen_gui', playerSees: 'nothing on screen' }).problem, 'nothing on screen');
 });
 
-test('the session finds the best ready-made model and places it in the same run, before any model call', () => {
+test('the session finds ready-made models, the agent picks one, and it is placed in the same run', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   const hook = session.indexOf('if (await this.libraryObjectStep(agent)) return;');
   assert.ok(hook > 0, 'the library step is not called');
   assert.ok(hook < session.indexOf('const AFTER_OBJECT'), 'it runs before the step prepares a model call');
   const step = session.slice(session.indexOf('private async libraryObjectStep'), session.indexOf('private async pauseForStudio'));
   // Owner, 2026-10-02: no three options; the best candidate is placed automatically, with no card and no wait.
-  assert.match(step, /offerLibraryObjects\(ctx, agent\.request \?\? '', \{ auto: true \}\)/);
+  // Live 2026-10-02: the first hit for "a rubber duck" was a brown hunting duck; the agent now picks by look.
+  assert.match(step, /offerLibraryObjects\(ctx, agent\.request \?\? '', \{ quiet: true \}\)/);
+  assert.match(step, /pickPrompt\(agent\.request/, 'the agent chooses which candidate is the request');
   assert.ok(!/storage\.put\('pendingObjectChoice'|kind: 'asset_choices'/.test(step), 'no choice is offered any more');
   assert.match(step, /placeChosenObject\(ctx, chosen\.pending, chosen\.index\)/);
   assert.match(step, /runTool\(ctx, 'play_check'/, 'played once by the harness');
@@ -91,7 +93,9 @@ test('the session finds the best ready-made model and places it in the same run,
   // Owner, 2026-10-02: the agent decides what "cooler" is for this object; the harness only requires that tool first.
   assert.match(step, /agent\.coolFirst = true/, 'a library object is made cooler around itself, never rebuilt');
   assert.match(readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8'), /return coolLibraryObject\(ctx, spec, a\)/, 'with the agent\'s own pick');
-  assert.ok(!/llmChat|this\.chat\(/.test(step), 'no model call in the library step');
+  // Owner, 2026-10-02: the agent, not the harness, decides which candidate is the request: one short call, the pick.
+  assert.equal((step.match(/llmChat\(/g) ?? []).length, 1, 'one model call in the library step');
+  assert.match(step, /llmChat\(this\.env, \{[^}]*pickPrompt\([^}]*\}\], maxTokens: \d{3} \}/, 'and it is the pick, kept short');
   // Only the owner picks, and a pick names an option that was offered.
   assert.match(session, /mode === 'agent' && pendingObject && initiatedBy === bind\.ownerId \? ASSET_CHOICE_MESSAGE\.exec\(text\)/);
   assert.match(session, /pendingObject\.options\.some\(\(o\) => o\.index === Number\(objectPickIndex\)\)/);
@@ -216,4 +220,16 @@ test('"cooler" is what the agent picked for this object, with a crown only as th
   assert.deepEqual(L.coolChoice({ wear: 'chef hat', effect: 'fire' }), { queries: ['chef hat', 'hat'], effect: 'fire', own: true });
   assert.deepEqual(L.coolChoice({ wear: 'sunglasses', effect: 'warp drive' }).effect, 'sparkle_shimmer', 'an unknown effect is not written');
   assert.deepEqual(L.coolChoice(undefined), { queries: ['crown', 'golden crown'], effect: 'sparkle_shimmer', own: false });
+});
+
+test('the agent picks the candidate that looks like the request', () => {
+  assert.equal(L.colourName('#f5cd30'), 'yellow');
+  assert.equal(L.colourName('#7a5030'), 'brown');
+  const opts = [{ index: 1, name: 'Duck', game: "Hunter's Life", colour: '#7a5030', size: [6, 5, 3], parts: 40 }, { index: 2, name: 'Duck', game: 'Twisted Murderer', colour: '#f5cd30', size: [5, 5, 4], parts: 12 }];
+  const q = L.pickPrompt('make me a rubber duck', opts);
+  assert.match(q, /1\. "Duck" from the game Hunter's Life, mostly brown/);
+  assert.match(q, /2\. "Duck" from the game Twisted Murderer, mostly yellow/);
+  assert.equal(L.pickedIndex('2', opts), 2);
+  assert.equal(L.pickedIndex('A rubber duck is yellow, so 1 is wrong. Answer: 2', opts), 2);
+  assert.equal(L.pickedIndex('7', opts), undefined, 'a number that is not an option is not a pick');
 });
