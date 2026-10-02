@@ -1,8 +1,8 @@
 {
   "what": "The owner's vision (D-VISION-1) as a status ledger for the owner dashboard (scripts/owner-dashboard). Hebrew is owner-facing. status: done | partial | progress | blocked | todo. blockedBy names an OWNER_QUEUE item or an outside party. Update this file whenever an item moves; the dashboard reads it every minute.",
-  "updatedAt": "2026-10-02T09:50:00+03:00",
-  "now": "פרונטיר: 5 מתוך 5 מבחנים ירוקים. ברווז גומי ופיצה ענקית נכנסים אוטומטית מהספרייה (בלי 3 אפשרויות), בגודל אמיתי, ליד מה שכבר יש, עם מונה משלהם. \"ענקית\" עכשיו באמת ענקית. כל התקלות הפתוחות נסגרו.",
-  "nextStep": "בקשות \"טיפשיות\" חדשות מהבעלים, באותה לולאת ביקורת.",
+  "updatedAt": "2026-10-02T17:20:00+03:00",
+  "now": "לא פרונטיר. הטענה של הבוקר (\"5 מתוך 5 ירוקים\") בוטלה. נמדד בסיס על 30 הבקשות הקבועות: 26 נמדדו, ממוצע 7.27 מתוך 18, מד 27.8%. התיקונים ברמת המסגרת נמצאים בענף האינטגרציה ועוד לא עלו לאוויר.",
+  "nextStep": "לסיים את מיזוג כל הענפים לענף האינטגרציה עם כל הבדיקות ירוקות, להעלות לאוויר, להריץ שוב את 30 הבקשות ואת סט ההכללה, ולפתוח את ה-PR הענק ל-ultrareview.",
   "items": [
     {
       "id": "productScope",
