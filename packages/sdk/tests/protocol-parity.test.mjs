@@ -82,7 +82,7 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
   // constants it is meant to be checking, which is a tautology wearing an assertion's clothes.
   //
   // These two literals are on the never-rename list for the reason this test exists: a client
-  // that sends 'apple.v1' to a worker expecting 'golem.v1' does not fail loudly, it fails as a
+  // that sends 'apple.v1' to a worker expecting 'apple.v1' does not fail loudly, it fails as a
   // handshake that never completes. Compare the SDK's constants to the worker's, so a rename on
   // EITHER side reddens.
   // RESTATED (the wire rename): the worker no longer carries its own literals. It reads the bearer token and
@@ -140,7 +140,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
   assert.equal(luauDefault[1], canonical);
 
   // (4) And nothing shipped by this package may name the legacy host at all. The wire literals
-  //     `golem.v1` / `golem.jwt.` / `X-Golem-` are a different question and are pinned above.
+  //     `apple.v1` / `apple.jwt.` / `X-Apple-` are a different question and are pinned above.
   for (const rel of [
     'packages/sdk/src/wire.mjs',
     'packages/sdk/src/client.mjs',

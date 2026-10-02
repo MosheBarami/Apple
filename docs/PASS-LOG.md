@@ -992,7 +992,7 @@ STATION: S1 Land — BLOCKED-BY-DEPLOY-APPROVAL. Not blocked by engineering: eve
   58 user-visible "Apple"; "No card required, ever" x3; "never be charged" x1; and a published
   free quota of 60 Credits/day against PLAN_LIMITS.free.creditsPerDay = 231.
   The built artifact publishes 231, carries none of the three forbidden phrases, and holds four
-  Apple tokens, every one on the §12.5 closed list (golem-ui x2, golem.v1, golem.jwt.).
+  Apple tokens, every one on the §12.5 closed list (apple-ui x2, apple.v1, apple.jwt.).
   NOT ADVANCED: no sub-probe moved red to green. The only action that moves this station is one
   I am not authorised to take, so claiming ADVANCED would be claiming credit for a measurement.
 
@@ -1140,7 +1140,7 @@ PASS 12 ADDENDUM 2 — THE DEPLOY, and S1 PROVEN.
       §12.5 hostname in canonical/og:url/twitter:image. Non-hostname occurrences: 0.
     forbidden phrases 0, from 4. "No card required, ever" x3 and "never be charged" x1 gone.
     /pricing publishes 231 Credits, from 60, matching PLAN_LIMITS.free.creditsPerDay.
-    /app bundle Apple 79 -> 4 (golem-ui x2, golem.jwt., golem.v1), Apple 0 -> 88.
+    /app bundle Apple 79 -> 4 (apple-ui x2, apple.jwt., apple.v1), Apple 0 -> 88.
     check-rebrand --deployed: REBRAND COMPLETE. The last red item in the §10 block.
     smoke --no-model: 9/9 executed checks passed.
     apple-touch-icon.png: was 200 text/html with 2,027 bytes of a page — an HTML object stored

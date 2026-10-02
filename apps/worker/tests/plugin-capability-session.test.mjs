@@ -22,7 +22,7 @@ const state = {
 };
 
 const capabilityReport = (reason = 'arbitrary plugin-context code is unavailable') => ({
-  schema: 'golem.studio-ops.v1',
+  schema: 'apple.studio-ops.v1',
   operations: [
     { op: 'get_tree', status: 'supported' },
     { op: 'run_code', status: 'unsupported', reason },
@@ -55,9 +55,9 @@ async function poll(h, token, body) {
   const res = await h.session.fetch(new Request('https://do/plugin/poll', {
     method: 'POST',
     headers: {
-      'X-Golem-Token': token,
-      'X-Golem-Plugin-Version': '1.0.0',
-      'X-Golem-Plugin-Protocol': '1',
+      'X-Apple-Token': token,
+      'X-Apple-Plugin-Version': '1.0.0',
+      'X-Apple-Plugin-Protocol': '1',
     },
     body: JSON.stringify({ state, ...body }),
   }));
@@ -141,7 +141,7 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   // PRESENT malformed data is unknown, matching the helper's compatibility semantics. Omission
   // preserves; malformed explicit replacement clears the known report.
   await poll(restarted, token2, {
-    capabilities: { schema: 'golem.studio-ops.v1', operations: [{ op: 'run_code', status: 'unsupported' }] },
+    capabilities: { schema: 'apple.studio-ops.v1', operations: [{ op: 'run_code', status: 'unsupported' }] },
   });
   assert.equal(effective(restarted).allowed.has('run_luau'), true);
   assert.equal(restarted.store.has(`pluginCapabilities:${hash2}`), false);
@@ -309,7 +309,7 @@ test('a capability-blocked generate_model remains a failed artifact attempt and 
   await register(h, token);
   await poll(h, token, {
     capabilities: {
-      schema: 'golem.studio-ops.v1',
+      schema: 'apple.studio-ops.v1',
       operations: [{ op: 'generate_model', status: 'unsupported', reason: 'native generation adapter unavailable' }],
     },
   });

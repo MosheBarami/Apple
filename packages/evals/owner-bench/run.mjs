@@ -141,7 +141,7 @@ export async function whenIdle(call, { sleep, now, idleWaitMs = IDLE_WAIT_MS, po
 export async function turn({ text, WebSocketImpl, base, projectId, getToken, now, turnMs = TURN_MS }) {
   const jwt = await getToken();
   return new Promise((resolve) => {
-    const ws = new WebSocketImpl(`${base.replace(/^http/, 'ws')}/api/projects/${projectId}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
+    const ws = new WebSocketImpl(`${base.replace(/^http/, 'ws')}/api/projects/${projectId}/ws`, ['apple.v1', 'apple.jwt.' + jwt]);
     let reply = '', creditsSpent, finished = false;
     const tools = [];
     const started = now();

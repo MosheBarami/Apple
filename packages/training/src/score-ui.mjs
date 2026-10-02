@@ -141,7 +141,7 @@ export function legacyApis(source) {
  * MEASURED 2026-09-21, on the showcase page the owner reads. The fps_arena HUD failed and the
  * card printed, verbatim:
  *
- *   /var/folders/hw/0ybpmzsn.../T/golem-ui-N8G66L/build.luau(825,37): SyntaxError: ...
+ *   /var/folders/hw/0ybpmzsn.../T/apple-ui-N8G66L/build.luau(825,37): SyntaxError: ...
  *
  * The model's file — `screen-hud--fps_arena.luau`, the one sitting beside the manifest and the
  * only file anybody can open — is 438 lines long. Line 825 is in the 616-line harness this module
@@ -183,7 +183,7 @@ if __ok then emit("ok", "")
 elseif tostring(__err):find(LOOP_MARKER, 1, true) then emit("loop", "reached its update loop")
 else emit("error", tostring(__err)) end
 `;
-  const dir = mkdtempSync(join(tmpdir(), 'golem-ui-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-ui-'));
   try {
     const file = join(dir, 'build.luau');
     writeFileSync(file, program);

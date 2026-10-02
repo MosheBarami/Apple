@@ -26,7 +26,7 @@ const { access_token: jwt } = await (await fetch(`${SUPA}/auth/v1/token?grant_ty
   body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),
 })).json();
 const projectId = 'b0766f21-7028-47cc-b9ab-e19198b144d2';
-const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${projectId}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
+const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${projectId}/ws`, ['apple.v1', 'apple.jwt.' + jwt]);
 let finalText = '';
 const t0 = Date.now();
 const stamp = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';

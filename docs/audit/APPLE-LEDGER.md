@@ -155,7 +155,7 @@ contract (see D2). *Unblocks:* any use of the visual loop in the product at all.
 **D2. The entire generative-UI registry is unreachable in production.**
 Missing link: `adapters.ts:284-299` accepts exactly three shapes — a `{v:1,blocks}` document, a render result,
 or a critique with `defects[]` + `summary`. No worker code ever emits `{v:1,blocks}` (zero matches in
-`apps/worker/src`); no prompt instructs the model to emit the ```golem-ui fence (it exists only in
+`apps/worker/src`); no prompt instructs the model to emit the ```apple-ui fence (it exists only in
 `validate.ts:965-971` and one test); `inspect_visually` returns `{text,score,passed}` (`tools.ts:1065`) and
 `check_composition` returns `{structure,passed,failures,guidance}` (`tools.ts:1032-1041`) — neither satisfies
 `looksLikeCritique`. Net: 2,843 LOC and 17 of 19 block types render only in `/ui-lab` fixtures.
@@ -657,11 +657,11 @@ Renaming any of these breaks production, invalidates deployed state, or de-pairs
 | Env vars | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ENVIRONMENT`, `AI_GATEWAY_ID`, `ADMIN_KEY`, `ROBLOX_API_KEY`, `VEC_ASSETS`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `DEEPSEEK_API_KEY` | Set in `wrangler.jsonc` vars + Cloudflare secrets; renaming requires re-setting every secret. |
 | AI Gateway id | `golem` (`wrangler.jsonc:27`) | Names an existing gateway that carries log history and (possibly) prepaid credits. |
 | **Plugin wire headers** | `X-Golem-Token`, `X-Golem-Plugin-Version`, `X-Golem-Plugin-Protocol` (`init.server.luau:77-79`) | Read by `index.ts:376-380`. **Installed plugins send the old names forever** — any rename needs both accepted for at least one release. |
-| **WebSocket subprotocols** | `golem.v1`, `golem.jwt.<token>` (`use-project-socket.ts:618`, `auth.ts:36-40`) | Bumping `golem.v1` breaks every open client mid-session. |
+| **WebSocket subprotocols** | `apple.v1`, `apple.jwt.<token>` (`use-project-socket.ts:618`, `auth.ts:36-40`) | Bumping `apple.v1` breaks every open client mid-session. |
 | **Plugin setting key** | `golem_session` (`init.server.luau:34, 256, 355`) | Renaming logs out every paired Studio and forces re-pairing. |
 | Plugin Roblox asset id | `packages/shared/src/index.ts:832` | The one literal; the store asset id cannot change. |
 | Supabase project ref | `npqvyijsvzkuwddyhtpm` | Holds `projects`, `profiles`, the RLS policies, and `auth.users` FKs. |
-| ```golem-ui fence | `validate.ts:965-971` | Currently unused (D2), but if D2 is fixed by teaching the model to emit it, pick the final name **before** it reaches a prompt. |
+| ```apple-ui fence | `validate.ts:965-971` | Currently unused (D2), but if D2 is fixed by teaching the model to emit it, pick the final name **before** it reaches a prompt. |
 
 ### 4.3 Renameable with care (mechanical, one commit, no runtime state)
 
@@ -867,8 +867,8 @@ one source path.
 **E4.** Rename npm packages (§4.3) in one commit + `pnpm install`. *Acceptance:* `pnpm -r test` and
 `pnpm -r typecheck` green.
 **E5.** Leave every §4.2 identifier untouched. *Acceptance:* a CI guard asserting `wrangler.jsonc` `name`,
-`database_id`, KV id, `index_name`, DO class names, and the three `X-Golem-*` headers are unchanged.
-*(Note: the plugin wire headers and `golem_session` key keep their names permanently; accept both if ever
+`database_id`, KV id, `index_name`, DO class names, and the three `X-Apple-*` headers are unchanged.
+*(Note: the plugin wire headers and `apple_session` key keep their names permanently; accept both if ever
 changed.)*
 
 ### Phase F — training (independent track; can run in parallel with A–D)

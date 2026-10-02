@@ -2,7 +2,7 @@
  * WHICH PLACE IS THIS PROJECT'S PLACE?
  *
  * THE DEFECT THIS EXISTS FOR. The plugin's session is a plugin-wide Studio setting
- * (`plugin:GetSetting('golem_session')`), not a per-place one. Open a different place in the same
+ * (`plugin:GetSetting('apple_session')`), not a per-place one. Open a different place in the same
  * Studio and the session comes with it: the plugin keeps polling, the worker keeps serving, and
  * this project's ops are applied to a place that has nothing to do with it. `placeId` and `gameId`
  * had been arriving on every state event since the plugin was written and were compared to

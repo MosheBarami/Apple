@@ -143,7 +143,7 @@ local function makeBridge()
     local capabilityCalls = 0
     local stateValue = state()
     local capabilityValue = {
-        schema = "golem.studio-ops.v1",
+        schema = "apple.studio-ops.v1",
         operations = {{ op = "run_code", status = "unsupported", reason = "fixture refusal text" }},
     }
     local executeResult = nil
@@ -197,9 +197,9 @@ do
     assert(#requests == 1 and requests[1].url == "https://apple.moshe-barami111.workers.dev/api/studio/claim")
     assert(requests[1].method == "POST")
     assert(requests[1].headers["Content-Type"] == "application/json")
-    assert(requests[1].headers["X-Golem-Token"] == "")
-    assert(requests[1].headers["X-Golem-Plugin-Version"] == "${DECLARED_VERSION}")
-    assert(requests[1].headers["X-Golem-Plugin-Protocol"] == "1")
+    assert(requests[1].headers["X-Apple-Token"] == "")
+    assert(requests[1].headers["X-Apple-Plugin-Version"] == "${DECLARED_VERSION}")
+    assert(requests[1].headers["X-Apple-Plugin-Protocol"] == "1")
     assert(requests[1].body.code == "ABC123")
     assert(requests[1].body.place.placeId == 77 and requests[1].body.place.gameId == 88)
     assert(stateCalls() == 1, "claim observes the place once")
@@ -212,9 +212,9 @@ do
     assert(tick(), "the poll coroutine must run")
     assert(stateCalls() == 2, "state is sent on every poll, including an idle poll")
     assert(requests[2].url == "https://apple.moshe-barami111.workers.dev/api/studio/poll")
-    assert(requests[2].headers["X-Golem-Token"] == "project.secret")
+    assert(requests[2].headers["X-Apple-Token"] == "project.secret")
     assert(requests[2].body.state.kind == "state")
-    assert(requests[2].body.capabilities.schema == "golem.studio-ops.v1")
+    assert(requests[2].body.capabilities.schema == "apple.studio-ops.v1")
     assert(requests[2].body.capabilities.operations[1].reason == "fixture refusal text")
     assert(#requests[2].body.events == 2, "one log and the latest selection should be sent")
     assert(requests[2].body.events[2].items[1].path == "game.Workspace.New")
@@ -234,7 +234,7 @@ do
     assert(capabilityCalls() == 2, "a reconnect samples a fresh per-pairing report")
     queueResponse({ ops = {}, waitMs = 20 })
     assert(tick())
-    assert(requests[#requests].body.capabilities.schema == "golem.studio-ops.v1", "a new pairing reports capabilities again")
+    assert(requests[#requests].body.capabilities.schema == "apple.studio-ops.v1", "a new pairing reports capabilities again")
     bridge:disconnect()
     assert(tick())
 end
@@ -588,10 +588,10 @@ test('Apple Bridge transport executes its protocol and safety contract under Lua
 test('Bridge source is independent, memory-only, and fixed to the Apple HTTPS origin', () => {
   assert.ok(SOURCE.length > 1000);
   assert.match(SOURCE, /https:\/\/apple\.moshe-barami111\.workers\.dev/);
-  assert.match(SOURCE, /X-Golem-Token/);
-  assert.match(SOURCE, /X-Golem-Plugin-Version/);
+  assert.match(SOURCE, /X-Apple-Token/);
+  assert.match(SOURCE, /X-Apple-Plugin-Version/);
   assert.ok(DECLARED_VERSION, 'Bridge.luau no longer declares PLUGIN_VERSION as a quoted literal');
-  assert.match(SOURCE, /X-Golem-Plugin-Protocol/);
+  assert.match(SOURCE, /X-Apple-Plugin-Protocol/);
   assert.doesNotMatch(SOURCE, /GetSetting|SetSetting|apple_session|LoadAsset|loadstring|HttpGet/);
   assert.doesNotMatch(SOURCE, /apiBase|baseUrl/i);
 });

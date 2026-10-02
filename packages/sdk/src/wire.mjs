@@ -6,12 +6,12 @@
 // strings the client sends — a test that rebuilt the path itself would agree with a broken
 // client forever.
 //
-// THE LITERALS BELOW ARE CLOSED. `golem.v1`, `golem.jwt.` and the `X-Golem-` header family
+// THE LITERALS BELOW ARE CLOSED. `apple.v1`, `apple.jwt.` and the `X-Apple-` header family
 // are the wire identity of this product; renaming one breaks every client mid-session and
 // every already-installed Studio plugin, which updates only when a user clicks Update.
 
 /** WebSocket subprotocol the worker echoes back on a successful upgrade. */
-export const WS_SUBPROTOCOL = 'golem.v1';
+export const WS_SUBPROTOCOL = 'apple.v1';
 
 /**
  * Prefix for the credential-carrying subprotocol.
@@ -20,14 +20,14 @@ export const WS_SUBPROTOCOL = 'golem.v1';
  * bearer token out of `Sec-WebSocket-Protocol` (apps/worker/src/auth.ts `bearerToken`).
  * That is the ONLY reason this exists; every non-socket call uses the header.
  */
-export const WS_JWT_PREFIX = 'golem.jwt.';
+export const WS_JWT_PREFIX = 'apple.jwt.';
 
 export const HEADERS = Object.freeze({
   auth: 'Authorization',
   adminKey: 'X-Admin-Key',
-  studioToken: 'X-Golem-Token',
-  pluginVersion: 'X-Golem-Plugin-Version',
-  pluginProtocol: 'X-Golem-Plugin-Protocol',
+  studioToken: 'X-Apple-Token',
+  pluginVersion: 'X-Apple-Plugin-Version',
+  pluginProtocol: 'X-Apple-Plugin-Protocol',
 });
 
 /**
@@ -110,7 +110,7 @@ export function socketUrl(baseUrl, projectId) {
 /**
  * The two subprotocols a session socket opens with, in order.
  *
- * `golem.v1` first because the worker echoes exactly that one back, and browsers abort the
+ * `apple.v1` first because the worker echoes exactly that one back, and browsers abort the
  * handshake when the echoed value is not among the requested ones.
  */
 export function socketProtocols(token) {

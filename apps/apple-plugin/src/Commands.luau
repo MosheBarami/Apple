@@ -5328,7 +5328,7 @@ end
 -- operation contract, not a plugin-version contract: an older/newer version string says nothing
 -- about whether one command exists.  Keep this export at the bottom so the implementation tables
 -- above remain the single source of truth.
-local CAPABILITY_SCHEMA = "golem.studio-ops.v1"
+local CAPABILITY_SCHEMA = "apple.studio-ops.v1"
 
 local function capabilityReason(value: any, fallback: string): string
 	local text = if type(value) == "string" and #value > 0 then value else fallback

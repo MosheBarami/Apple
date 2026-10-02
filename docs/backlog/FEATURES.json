@@ -6444,13 +6444,13 @@
      "id": "f-6ebc4d3e",
      "name": "Sandbox API",
      "status": "done",
-     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'apple-sandbox', an X-Golem-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "sandboxCompletion in public-api.ts plus the test-mode branches in handleCompletion and POST /v1/projects/:id/runs in index.ts: a test key exercises the whole request path (auth, scopes, validation, headers, streaming, idempotency) against a deterministic answer, labelled by system_fingerprint 'apple-sandbox', an X-Apple-Sandbox header and its own text; writes are SIMULATED (status 'simulated', sandbox: true) and the SessionDO is never called. Tests: 'the sandbox completion is deterministic and labels itself', 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-26b18f55",
      "name": "Test API keys",
      "status": "done",
-     "evidence": "gk_test_ keys in apps/worker/src/api-keys.ts, minted through POST /api/keys with mode 'test'; they authenticate identically but never run a model, never spend Credits, never start a run, carry X-Golem-Sandbox: true and a tighter rate limit. Tests: 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so', 'test keys are rate-limited more tightly than live keys' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "gk_test_ keys in apps/worker/src/api-keys.ts, minted through POST /api/keys with mode 'test'; they authenticate identically but never run a model, never spend Credits, never start a run, carry X-Apple-Sandbox: true and a tighter rate limit. Tests: 'a test key is served by the sandbox: no model, no Credits, and it says so', 'a test key cannot start a real run — the sandbox simulates it and says so', 'test keys are rate-limited more tightly than live keys' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-43f4f307",
@@ -6480,7 +6480,7 @@
      "id": "f-1fcb1460",
      "name": "Usage headers",
      "status": "done",
-     "evidence": "usageHeaders in public-api.ts emits X-Golem-Usage-Input-Tokens / -Output-Tokens / X-Golem-Usage-Credits and X-Golem-Credits-Remaining, set in handleCompletion in index.ts from the real gateway usage and the QuotaDO spend result; unknown headroom is OMITTED rather than reported as 0. Tests: 'a live key returns an OpenAI-shaped completion with usage and rate-limit headers', 'usage headers omit headroom rather than inventing it' — proven by apps/worker/tests/public-api.test.mjs"
+     "evidence": "usageHeaders in public-api.ts emits X-Apple-Usage-Input-Tokens / -Output-Tokens / X-Apple-Usage-Credits and X-Apple-Credits-Remaining, set in handleCompletion in index.ts from the real gateway usage and the QuotaDO spend result; unknown headroom is OMITTED rather than reported as 0. Tests: 'a live key returns an OpenAI-shaped completion with usage and rate-limit headers', 'usage headers omit headroom rather than inventing it' — proven by apps/worker/tests/public-api.test.mjs"
     },
     {
      "id": "f-1a081f3f",

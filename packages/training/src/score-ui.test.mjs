@@ -585,7 +585,7 @@ test('every task declares at least one geometric check, not only class-presence 
  * THE LINE NUMBER ON A FAILURE CARD HAS TO POINT AT THE FILE THE READER HAS.
  *
  * MEASURED ON THE LIVE SHOWCASE, 2026-09-21. The failed fps_arena HUD card printed
- * `/var/folders/.../golem-ui-N8G66L/build.luau(825,37): SyntaxError: ...` while the file beside
+ * `/var/folders/.../apple-ui-N8G66L/build.luau(825,37): SyntaxError: ...` while the file beside
  * it, `screen-hud--fps_arena.luau`, is 438 lines long. 825 was a line in the harness this module
  * prepends. The single actionable number on the card addressed a file nobody has, at a line the
  * file they do have does not reach — a reader who checked would have concluded the report was

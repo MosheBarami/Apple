@@ -87,7 +87,7 @@ async function session(seed = {}, { duplicateOplogFailureColumn = false } = {}) 
   await new Promise((r) => setTimeout(r, 0));
   const call = async (path, { method = 'POST', body, token } = {}) => {
     const headers = new Headers({ 'Content-Type': 'application/json' });
-    if (token) headers.set('X-Golem-Token', token);
+    if (token) headers.set('X-Apple-Token', token);
     const res = await o.fetch(new Request('https://do' + path, {
       method,
       headers,
@@ -424,7 +424,7 @@ test('the oplog gains its failure column, and a second boot survives the duplica
 const DAY = 24 * 3600 * 1000;
 
 test('A PAIRING IDLE PAST 30 DAYS IS REFUSED, in the words the plugin already acts on', async () => {
-  // apps/plugin/src/init.server.luau reads this exact `error` to decide to clear `golem_session`,
+  // apps/plugin/src/init.server.luau reads this exact `error` to decide to clear `apple_session`,
   // so both fields are load-bearing and both are asserted.
   const s = await paired({ pluginTokenIssuedAt: Date.now() - 31 * DAY });
   const r = await s.call('/plugin/poll', { token: TOKEN, body: { state: state() } });

@@ -793,7 +793,7 @@ export function idempotencyVerdict(stored: IdempotencyRecord | null, fingerprint
  * test suite.
  *
  * It is labelled everywhere it can be: `system_fingerprint: "apple-sandbox"`, an
- * `X-Golem-Sandbox: true` response header, and text that says so. A sandbox answer that could be
+ * `X-Apple-Sandbox: true` response header, and text that says so. A sandbox answer that could be
  * mistaken for a model answer is a trap, not a feature.
  */
 export const SANDBOX_FINGERPRINT = 'apple-sandbox';
