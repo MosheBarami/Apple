@@ -84,7 +84,10 @@ test('the disclosure motion: Reasoning, Task and ChainOfThought content animate 
 // with the home-made component — said here rather than hidden.
 test('the shimmer is AI Elements’ own: a band that sweeps across the words, clipped to them', () => {
   const src = read('components/ai-elements/shimmer.tsx');
-  assert.match(src, /from "motion\/react"/);
+  // The animation library is swapped for a 40-line CSS stand-in (lib/motion-lite.tsx, a recorded patch
+  // in the NOTICE row): `motion` was 124 kB of raw script in the entry chunk and nothing else used it.
+  assert.match(src, /from "@\/lib\/motion-lite"/);
+  assert.doesNotMatch(src, /from "motion\/react"/);
   assert.match(src, /bg-clip-text text-transparent/);
   assert.match(src, /backgroundPosition: "0% center"/);
   assert.match(read('components/loading.tsx'), /<Shimmer as="span"/);

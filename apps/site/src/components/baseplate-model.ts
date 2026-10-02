@@ -68,6 +68,65 @@ export function listColors(colors: readonly Color[]): string {
   return `${colors.slice(0, -1).join(', ')} and ${colors[colors.length - 1]}`;
 }
 
+/* ------------------------------------------------------------------ stamps */
+
+/**
+ * STAMPS: three shapes a visitor can press instead of placing every brick by hand. A stamp is the
+ * visitor's own action, exactly like a click: it happens when they press its button, it places only
+ * bricks the rules above allow, and the board it leaves is described by the same sentence.
+ *
+ *   row     four studs in a line
+ *   square  a two by two block
+ *   stairs  three studs in a line, one, two and three bricks high
+ */
+export const STAMPS = ['row', 'square', 'stairs'] as const;
+export type Stamp = (typeof STAMPS)[number];
+
+/** Each stamp's footprint: studs across, studs down, and the bricks it puts on each stud (left to right, then down). */
+const SHAPES: Record<Stamp, { cols: number; rows: number; stacks: number[] }> = {
+  row: { cols: 4, rows: 1, stacks: [1, 1, 1, 1] },
+  square: { cols: 2, rows: 2, stacks: [1, 1, 1, 1] },
+  stairs: { cols: 3, rows: 1, stacks: [1, 2, 3] },
+};
+
+export const STAMP_LABEL: Record<Stamp, string> = { row: 'Row', square: 'Square', stairs: 'Stairs' };
+
+/**
+ * Press a stamp with its top-left stud at (row, col). The footprint is slid back inside the visible
+ * window when it would hang over an edge, so a stamp is never cut short by where the visitor last
+ * touched. Studs that are already full simply take fewer bricks. Returns the studs that gained at
+ * least one brick, with how many, in the order they were laid, which is the order they drop in.
+ */
+export function stamp(
+  board: Board,
+  kind: Stamp,
+  row: number,
+  col: number,
+  color: Color,
+  view: View = { cols: MAX_COLS, rows: MAX_ROWS },
+): { row: number; col: number; added: number }[] {
+  const shape = SHAPES[kind];
+  const cols = Math.min(view.cols, MAX_COLS);
+  const rows = Math.min(view.rows, MAX_ROWS);
+  if (!shape || shape.cols > cols || shape.rows > rows) return [];
+  const r0 = Math.max(0, Math.min(Math.trunc(row), rows - shape.rows));
+  const c0 = Math.max(0, Math.min(Math.trunc(col), cols - shape.cols));
+  const laid: { row: number; col: number; added: number }[] = [];
+  shape.stacks.forEach((count, i) => {
+    const r = r0 + Math.floor(i / shape.cols);
+    const c = c0 + (i % shape.cols);
+    let added = 0;
+    for (let n = 0; n < count; n += 1) if (place(board, r, c, color).ok) added += 1;
+    if (added) laid.push({ row: r, col: c, added });
+  });
+  return laid;
+}
+
+export function announceStamp(kind: Stamp, bricks: number): string {
+  if (bricks === 0) return `${STAMP_LABEL[kind]}: every stud there is already full`;
+  return `${STAMP_LABEL[kind]} stamp placed, ${bricks} ${bricks === 1 ? 'brick' : 'bricks'}`;
+}
+
 /** What a screen reader hears when a brick lands, e.g. "Red brick placed at column 3, row 1". */
 export function announcePlaced(color: Color, row: number, col: number): string {
   return `${cap(color)} brick placed at column ${col + 1}, row ${row + 1}`;

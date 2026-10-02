@@ -14,7 +14,9 @@ import {
   useState,
 } from "react";
 import type { TProps as JsxParserProps } from "react-jsx-parser";
-import JsxParser from "react-jsx-parser";
+import { Suspense, lazy } from "react";
+const LazyJsxParser = lazy(() => import("react-jsx-parser").then((m) => ({ default: m.default as unknown as React.ComponentType<JsxParserProps> })));
+const JsxParser = (props: JsxParserProps) => <Suspense fallback={null}><LazyJsxParser {...props} /></Suspense>;
 
 interface JSXPreviewContextValue {
   jsx: string;

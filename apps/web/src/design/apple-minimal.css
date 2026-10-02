@@ -93,6 +93,13 @@
   --ease-snap:linear(0,.55 18%,1.12 42%,.98 62%,1);
   --ease-out:cubic-bezier(.2,.8,.2,1);
   --t-fast:90ms; --t-base:160ms; --t-slow:260ms;
+  /* The shared motion scale: identical to the public site's apple-minimal.css (apps/site/tests/
+     motion-system.test.mjs compares the two). */
+  --dur-1:90ms; --dur-2:160ms; --dur-3:260ms; --dur-4:420ms;
+  --ease-in-out:cubic-bezier(.65,0,.35,1);
+  --ease-enter:cubic-bezier(.16,1,.3,1);
+  --rise:8px;
+  --stagger:40ms;
 }
 
 :root[data-theme='light'] {
@@ -650,11 +657,51 @@ body {
   .start-sheet h1 { font-size:36px; }
 }
 
+/* AI Elements' Shimmer sweep, as a CSS animation (lib/motion-lite.tsx stands in for the `motion`
+   library, which was 124 kB of raw script for this one effect). */
+@keyframes motion-lite-bg {
+  from { background-position:var(--ml-from,100% center); }
+  to { background-position:var(--ml-to,0% center); }
+}
+.motion-lite-bg { animation:motion-lite-bg var(--ml-dur,2s) linear infinite; }
+
+/* THE SKELETON, shared with the public site: a flat block sized by its caller to the thing it stands
+   for, so the real content lands without moving anything. It holds still under reduced motion. */
+@keyframes skeleton-breathe {
+  from { opacity:.55; }
+}
+.skeleton {
+  border-radius:var(--r-sm);
+  background:var(--surface-2);
+  animation:skeleton-breathe 1.2s var(--ease-in-out) infinite alternate;
+}
+
 @media (prefers-reduced-motion:reduce) {
+  .motion-lite-bg,
+  .skeleton {
+    animation:none !important;
+  }
   .gx-turn {
     animation:none !important;
   }
   .st--spin {
     animation:none !important;
   }
+}
+
+/* SAME-DOCUMENT VIEW TRANSITIONS: the router's `viewTransition` links (the dock, the project cards)
+   cross-fade the routes for a beat while the dock stays where it is. The pseudo-elements below are
+   the browser's; where the API is missing the link simply navigates. Under reduced motion every
+   transition animation is off, because the browser's own default is a 250ms cross-fade. */
+@keyframes vt-out { to { opacity:0; } }
+@keyframes vt-in { from { opacity:0; } }
+@media (prefers-reduced-motion:no-preference) {
+  ::view-transition-old(root) { animation:vt-out var(--dur-1) var(--ease-out) both; }
+  ::view-transition-new(root) { animation:vt-in var(--dur-2) var(--ease-out) both; }
+  .studio-dock { view-transition-name:studio-dock; }
+}
+@media (prefers-reduced-motion:reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation:none !important; }
 }

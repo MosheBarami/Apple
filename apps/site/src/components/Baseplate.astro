@@ -15,13 +15,18 @@
  *   - It sends nothing anywhere. The layout may be kept in sessionStorage for this tab only.
  *   - It is optional: a "Skip the baseplate" link comes first, and it is never the page's main content.
  *
- * Built from DOM and CSS only (about 3 KB of script), no canvas, no WebGL, no dependency. The
+ * THE PLATE. The studs are filled and raised, a brick has a lit top face, a front face and a stud, and the
+ * plate has a side face under it: depth from flat fills and hard 2px and 6px edges, never a gradient,
+ * a blur or a shadow with a soft edge. One Ember ring marks the stud to start on until the first brick.
+ *
+ * Built from DOM and CSS only (a few KB of script), no canvas, no WebGL, no dependency. The
  * studs are drawn by baseplate.ts so the markup here stays tiny; with no scripting the whole toy is
  * hidden, because a toy that cannot be played is a picture of one.
  *
  * Rules and sentence: baseplate-model.ts. Drawing: baseplate.ts. Looks: baseplate.css.
  */
 import './baseplate.css';
+import { STAMPS, STAMP_LABEL } from './baseplate-model';
 
 const tools = [
   { id: 'red', label: 'Red brick' },
@@ -29,23 +34,31 @@ const tools = [
   { id: 'green', label: 'Green brick' },
   { id: 'yellow', label: 'Yellow brick' },
 ] as const;
+const stamps = STAMPS;
 ---
 
-<div class="toy" role="group" aria-label="Toy baseplate" data-baseplate>
+<div class="toy" role="group" aria-label="Toy baseplate" data-baseplate data-color="red">
   <a class="toy-skip" href="#toy-end">Skip the baseplate</a>
   <p class="toy-caption">A toy baseplate. Place bricks with your hands. Apple builds in Studio from words.</p>
 
-  <div class="toy-tray" role="group" aria-label="Brick colour">
-    {tools.map((t) => (
-      <button type="button" class="swatch-btn" data-tool={t.id} aria-pressed={t.id === 'red' ? 'true' : 'false'} aria-label={t.label}>
-        <span class={`swatch swatch--${t.id}`} aria-hidden="true"></span>
-      </button>
-    ))}
-    <button type="button" class="toy-erase" data-tool="erase" aria-pressed="false">Remove</button>
+  <div class="toy-bar">
+    <div class="toy-tray" role="group" aria-label="Brick colour">
+      {tools.map((t) => (
+        <button type="button" class="swatch-btn" data-tool={t.id} aria-pressed={t.id === 'red' ? 'true' : 'false'} aria-label={t.label}>
+          <span class={`swatch swatch--${t.id}`} aria-hidden="true"></span>
+        </button>
+      ))}
+      <button type="button" class="toy-erase" data-tool="erase" aria-pressed="false">Remove</button>
+    </div>
+    <div class="toy-stamps" role="group" aria-label="Stamps: place a shape of bricks">
+      {stamps.map((st) => (
+        <button type="button" class="stamp-btn" data-stamp={st}>{STAMP_LABEL[st]}</button>
+      ))}
+    </div>
   </div>
 
   <div class="toy-plate">
-    <div class="toy-grid" role="grid" data-grid aria-label="Baseplate"></div>
+    <div class="toy-grid skeleton" role="grid" data-grid aria-label="Baseplate"></div>
   </div>
 
   <p class="toy-hint">Keys: arrows move, Space places, Delete removes, 1 to 4 pick a colour.</p>

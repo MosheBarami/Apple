@@ -131,6 +131,52 @@ test('the view keeps every stud at least 44px wide', () => {
   assert.equal(model.viewFor(1064).cols, 12);
 });
 
+/* ---------------------------------------------------------------------- stamps */
+
+test('a stamp lays its shape from the anchor stud, and only what the rules allow', () => {
+  const b = model.emptyBoard();
+  const row = model.stamp(b, 'row', 1, 2, 'red');
+  assert.deepEqual(row.map((l) => [l.row, l.col, l.added]), [[1, 2, 1], [1, 3, 1], [1, 4, 1], [1, 5, 1]]);
+  assert.equal(model.countBricks(b), 4);
+
+  const sq = model.emptyBoard();
+  model.stamp(sq, 'square', 0, 0, 'blue');
+  assert.deepEqual([sq[0][0].length, sq[0][1].length, sq[1][0].length, sq[1][1].length], [1, 1, 1, 1]);
+
+  const st = model.emptyBoard();
+  model.stamp(st, 'stairs', 2, 3, 'green');
+  assert.deepEqual([st[2][3].length, st[2][4].length, st[2][5].length], [1, 2, 3]);
+});
+
+test('a stamp that would hang over an edge slides back inside the visible window, and never loses bricks', () => {
+  const b = model.emptyBoard();
+  const view = { cols: 7, rows: 4 };
+  model.stamp(b, 'row', 3, 6, 'red', view);
+  assert.deepEqual([b[3][3].length, b[3][4].length, b[3][5].length, b[3][6].length], [1, 1, 1, 1]);
+  model.stamp(b, 'square', 9, 9, 'red', view);
+  assert.equal(b[3][6].length + b[2][6].length + b[3][5].length + b[2][5].length, 2 + 2 + 1 + 1, 'the square landed outside the window');
+  assert.equal(model.countBricks(b, { cols: 12, rows: 5 }), 8);
+});
+
+test('a stamp never builds a fourth brick, and says when every stud it meets is full', () => {
+  const b = model.emptyBoard();
+  for (let i = 0; i < 3; i += 1) model.stamp(b, 'row', 0, 0, 'red');
+  assert.equal(model.countBricks(b), 12);
+  const fourth = model.stamp(b, 'row', 0, 0, 'blue');
+  assert.deepEqual(fourth, []);
+  assert.equal(model.countBricks(b), 12);
+  assert.equal(model.announceStamp('row', 0), 'Row: every stud there is already full');
+  assert.equal(model.announceStamp('stairs', 6), 'Stairs stamp placed, 6 bricks');
+  assert.deepEqual(model.stamp(model.emptyBoard(), 'nope', 0, 0, 'red'), []);
+  assert.deepEqual(model.stamp(model.emptyBoard(), 'row', 0, 0, 'red', { cols: 3, rows: 4 }), [], 'a stamp wider than the window must place nothing');
+});
+
+test('a stamped board is described by the same sentence as a hand-built one', () => {
+  const b = model.emptyBoard();
+  model.stamp(b, 'stairs', 0, 0, 'yellow');
+  assert.equal(model.describeBoard(b), 'A build 3 studs wide and up to 3 bricks high, 6 bricks in yellow.');
+});
+
 /* ====================================================================== 2. the built page, in a browser === */
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.xml': 'application/xml' };
@@ -397,5 +443,105 @@ test('the page ships no canvas and the toy puts nothing in the tab order but one
   assert.equal(await page.locator('canvas').count(), 0);
   assert.equal(await page.locator('[data-grid] [tabindex="0"]').count(), 1);
   assert.equal(await page.locator('[data-grid]').getAttribute('role'), 'grid');
+  await ctx.close();
+});
+
+test('a stamp button places bricks for the visitor, announces them, and nothing is placed before it is pressed', async () => {
+  const { ctx, page, problems } = await open();
+  assert.equal(await page.locator('.brick').count(), 0);
+  await page.locator('[data-stamp="stairs"]').click();
+  await page.waitForTimeout(300);
+  assert.equal(await page.locator('.brick').count(), 6);
+  assert.equal(await live(page), 'Stairs stamp placed, 6 bricks');
+  assert.equal(await page.locator('[data-bridge]').isVisible(), true);
+  assert.match(await page.locator('#hero-start').inputValue(), /^$/, 'a stamp wrote into the composer by itself');
+  assert.deepEqual(problems, []);
+  await ctx.close();
+});
+
+test('the stamps are buttons with names, at least 44px, and each lays at the stud last touched', async () => {
+  const { ctx, page } = await open();
+  const sizes = await page.evaluate(() => [...document.querySelectorAll('[data-stamp]')].map((b) => [b.textContent, b.getBoundingClientRect().height, b.getBoundingClientRect().width]));
+  assert.deepEqual(sizes.map((s) => s[0]), ['Row', 'Square', 'Stairs']);
+  assert.ok(sizes.every((s) => s[1] >= 43.5 && s[2] >= 43.5), JSON.stringify(sizes));
+  await page.locator('.cell[data-row="3"][data-col="1"]').click();
+  await page.locator('[data-stamp="row"]').click();
+  await page.waitForTimeout(250);
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.cell')].filter((c) => c.dataset.height !== '0' && c.dataset.height).map((c) => `${c.dataset.row}:${c.dataset.col}`));
+  assert.deepEqual(rows, ['3:1', '3:2', '3:3', '3:4']);
+  await ctx.close();
+});
+
+test('the studs are round at every width: each cell is square', async () => {
+  for (const width of [375, 768, 1280]) {
+    const { ctx, page } = await open({ width, height: 900 });
+    const bad = await page.evaluate(() => [...document.querySelectorAll('.cell')].map((c) => c.getBoundingClientRect()).filter((r) => Math.abs(r.width - r.height) > 1).length);
+    assert.equal(bad, 0, `${bad} studs are not square at ${width}px`);
+    await ctx.close();
+  }
+});
+
+test('one Ember cue ring marks the stud to start on, and it goes with the first brick', async () => {
+  const { ctx, page } = await open();
+  assert.equal(await page.locator('.cell.is-cue').count(), 1);
+  const ring = await page.locator('.cell.is-cue').evaluate((el) => getComputedStyle(el, '::before').outlineColor);
+  assert.notEqual(ring, 'rgba(0, 0, 0, 0)');
+  await page.locator('.cell').nth(8).click();
+  assert.equal(await page.locator('.cell.is-cue').count(), 0);
+  await page.locator('[data-clear]').click();
+  assert.equal(await page.locator('.cell.is-cue').count(), 1, 'the cue did not come back on an empty plate');
+  await ctx.close();
+});
+
+test('the plate is drawn before it is interactive: the grid reserves its height and drops its skeleton on build', async () => {
+  const { ctx, page } = await open();
+  assert.equal(await page.locator('[data-grid]').getAttribute('data-ready'), '');
+  assert.equal(await page.locator('[data-grid].skeleton').count(), 0);
+  const h = await page.locator('[data-grid]').evaluate((el) => el.getBoundingClientRect().height);
+  assert.ok(h >= 200, `the plate is only ${h}px tall`);
+  await ctx.close();
+});
+
+test('the closing band shows the visitor their own plate back, only once they have built one', async () => {
+  const { ctx, page } = await open();
+  assert.equal(await page.locator('[data-carry]').isVisible(), false);
+  await page.locator('[data-stamp="square"]').click();
+  await page.locator('[data-carry]').scrollIntoViewIfNeeded();
+  assert.equal(await page.locator('[data-carry]').isVisible(), true);
+  assert.equal(await page.locator('[data-carry-text]').textContent(), 'A flat layout of 4 bricks, 2 studs wide, in red.');
+  assert.ok((await page.locator('.carry-plate .mini').count()) > 20);
+  await page.locator('[data-carry-link]').click();
+  assert.equal(await page.locator('#hero-start').inputValue(), 'A flat layout of 4 bricks, 2 studs wide, in red.');
+  assert.equal(new URL(page.url()).pathname, '/', 'the carried bridge navigated away: it must never submit');
+  await ctx.close();
+});
+
+test('a brick sits above the row behind it: later rows paint over earlier ones', async () => {
+  const { ctx, page } = await open();
+  await page.locator('.cell[data-row="0"][data-col="0"]').click();
+  await page.locator('.cell[data-row="0"][data-col="0"]').click();
+  await page.locator('.cell[data-row="1"][data-col="0"]').click();
+  const z = await page.evaluate(() => [...document.querySelectorAll('.brick')].map((b) => Number(getComputedStyle(b).zIndex)));
+  assert.equal(z.length, 3);
+  assert.ok(z[2] > z[1] && z[1] > z[0], `z-order is ${z}`);
+  await ctx.close();
+});
+
+test('stamp bricks are simply there under reduced motion, and the stud wake and cue are off', async () => {
+  const { ctx, page } = await open({ reduced: true });
+  await page.locator('[data-stamp="row"]').click();
+  const names = await page.evaluate(() => [...document.querySelectorAll('.brick')].map((b) => getComputedStyle(b).animationName));
+  assert.ok(names.length === 4 && names.every((n) => n === 'none'), names.join());
+  const wake = await page.locator('.cell').nth(30).evaluate((el) => getComputedStyle(el, '::before').animationName);
+  assert.equal(wake, 'none');
+  await ctx.close();
+});
+
+test('the studs wake once in a wave when the plate is drawn, and then rest', async () => {
+  const { ctx, page } = await open();
+  const name = await page.locator('.cell').nth(30).evaluate((el) => getComputedStyle(el, '::before').animationName);
+  assert.ok(name.includes('stud-wake'), name);
+  const count = await page.locator('.cell').nth(30).evaluate((el) => getComputedStyle(el, '::before').animationIterationCount);
+  assert.equal(count, '1', 'the wake loops');
   await ctx.close();
 });

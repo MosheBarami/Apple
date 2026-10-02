@@ -132,11 +132,17 @@ FILE components/ai-elements/jsx-preview.tsx
   sha256: 0701c0610bd651fbe1d8f2cf35ec3598571381d2641b5da6daac9c677eac5d8d
   patch: const [fullMatch, tagName, attributes, selfClosing] = match;
       -> const [fullMatch, tagName = "", attributes = "", selfClosing] = match;
+  patch: import JsxParser from "react-jsx-parser";
+      -> import { Suspense, lazy } from "react";
+const LazyJsxParser = lazy(() => import("react-jsx-parser").then((m) => ({ default: m.default as unknown as React.ComponentType<JsxParserProps> })));
+const JsxParser = (props: JsxParserProps) => <Suspense fallback={null}><LazyJsxParser {...props} /></Suspense>;
 END
 
 FILE components/ai-elements/message.tsx
   upstream: packages/elements/src/message.tsx
   sha256: 19c7755740e116f221e4247f7b6d4f20b57a44e4c4fcf66d2db5e1f111476509
+  patch: import { mermaid } from "@streamdown/mermaid";
+      -> import { mermaid } from "@/lib/lazy-mermaid";
 END
 
 FILE components/ai-elements/node.tsx
@@ -162,6 +168,8 @@ END
 FILE components/ai-elements/reasoning.tsx
   upstream: packages/elements/src/reasoning.tsx
   sha256: f138cddde35854f73632ff51d48230f8d6e16e0a49a74b44a93b51993a65550e
+  patch: import { mermaid } from "@streamdown/mermaid";
+      -> import { mermaid } from "@/lib/lazy-mermaid";
 END
 
 FILE components/ai-elements/sandbox.tsx
@@ -177,6 +185,10 @@ END
 FILE components/ai-elements/shimmer.tsx
   upstream: packages/elements/src/shimmer.tsx
   sha256: 89d2284ee165aa57fec960e17c6c71078d22ad3fb3798ca683d7e3d850919a46
+  patch: import type { MotionProps } from "motion/react";
+      -> import type { MotionProps } from "@/lib/motion-lite";
+  patch: import { motion } from "motion/react";
+      -> import { motion } from "@/lib/motion-lite";
 END
 
 FILE components/ai-elements/snippet.tsx

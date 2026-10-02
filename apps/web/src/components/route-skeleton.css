@@ -1,0 +1,15 @@
+/* The silhouettes in route-skeleton.tsx. Sizes follow the pages they stand for: the page title and
+   description are `.page-title` and `.page-desc`, a card is the dashboard's project card. */
+.route-skeleton { display:grid; gap:14px; align-content:start; }
+.route-skeleton__title { display:block; width:min(320px,60%); height:44px; }
+.route-skeleton__desc { display:block; width:min(520px,90%); height:20px; margin-bottom:22px; }
+.route-skeleton__grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+.route-skeleton__card { display:block; height:148px; border-radius:var(--r-md); }
+
+.route-skeleton--workspace { min-height:100dvh; padding-block:84px 24px; grid-template-rows:minmax(0,1fr) auto; }
+.route-skeleton__thread { display:grid; gap:14px; align-content:start; width:min(720px,100%); margin-inline:auto; }
+.route-skeleton__line { display:block; height:40px; width:min(360px,70%); }
+.route-skeleton__line--user { justify-self:end; }
+.route-skeleton__block { display:block; height:96px; width:100%; border-radius:var(--r-md); }
+.route-skeleton__block--tall { height:160px; }
+.route-skeleton__composer { display:block; width:min(720px,100%); height:96px; margin-inline:auto; border-radius:var(--r-xl); }

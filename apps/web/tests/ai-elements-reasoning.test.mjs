@@ -32,7 +32,9 @@ const ui = await bundle(`
 const render = (el) => renderWith(ui.renderToStaticMarkup, el);
 
 test('the Reasoning is the genuine upstream file, from the revision the NOTICE names', () => {
-  assert.match(NOTICE, /FILE components\/ai-elements\/reasoning\.tsx\n\s+upstream: packages\/elements\/src\/reasoning\.tsx\n\s+sha256: [0-9a-f]{64}\nEND/);
+  assert.match(NOTICE, /FILE components\/ai-elements\/reasoning\.tsx\n\s+upstream: packages\/elements\/src\/reasoning\.tsx\n\s+sha256: [0-9a-f]{64}(?:\n\s+patch: .*\n\s+-> .*)*\nEND/);
+  // The only patch it may carry is the lazy mermaid import (apps/web/scripts/vendor-ai-elements.mjs): the
+  // package's own plugin pulled the 2.4 MB library into every workspace download.
   assert.match(NOTICE, /6a9d5b1822ffb10bba4bd97175f01edd7d8651cd/);
   assert.match(LICENSE, /Copyright 2023 Vercel, Inc\./);
   assert.match(LICENSE, /Apache License, Version 2\.0/);

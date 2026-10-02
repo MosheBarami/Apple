@@ -308,51 +308,9 @@ tr:last-child th {
 
 /* ------------------------------------------------------------------ reveal */
 
-/* Scroll reveals for the docs, changelog and pricing routes. Every path ends visible: without
-   scripting (.no-js), under reduced motion (declared after the hidden state so it wins on order),
-   and through the layout script's failsafe. apps/site/tests/reveal-cannot-hide-content.test.mjs. */
-.no-js [data-reveal],
-.no-js .kinetic {
-  opacity: 1;
-  transform: none;
-}
-
-/* A friendly entrance: up, a touch small, settling with a little give. */
-html:not(.no-js) [data-reveal],
-html:not(.no-js) .kinetic {
-  opacity: 0;
-  transform: translateY(18px) scale(0.985);
-  transition:
-    opacity var(--t-slow) var(--ease-out),
-    transform 700ms var(--ease-spring),
-    translate var(--t-slow) var(--ease-spring);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-html:not(.no-js) [data-reveal].is-in,
-html:not(.no-js) .kinetic.is-in {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html:not(.no-js) [data-reveal],
-  html:not(.no-js) .kinetic {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Printing, or any capture that does not scroll, gets every section rather than only the ones the
-   observer has reached. */
-@media print {
-  html:not(.no-js) [data-reveal],
-  html:not(.no-js) .kinetic {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
+/* The reveal for the docs, changelog and pricing routes is the shared scroll-driven primitive in
+   apple-minimal.css: content is visible by default and nothing waits for a script
+   (apps/site/tests/reveal-cannot-hide-content.test.mjs). */
 
 @media (max-width: 820px) {
   .section {

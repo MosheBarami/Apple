@@ -85,8 +85,7 @@ const ogImage = new URL('/og.png', site);
     <meta name="theme-color" id="theme-color" content="#0a0c10" />
 
     <script is:inline>
-      // Runs before first paint: no flash of the wrong theme, and reveals can
-      // safely start hidden because we know scripting is alive.
+      // Runs before first paint: no flash of the wrong theme.
       (function () {
         var d = document.documentElement;
         d.classList.remove('no-js');
@@ -113,13 +112,12 @@ const ogImage = new URL('/og.png', site);
 
     <script>
       // ---------------------------------------------------------------
-      // Scroll reveals. Under prefers-reduced-motion the CSS neutralises
-      // the transform, so adding the class is harmless and nothing can
-      // ever stay invisible.
+      // Scroll reveals are CSS now (apple-minimal.css: scroll-driven, visible by default), so there is
+      // no observer, no hidden state and no failsafe to wait for. All that is left to do here is mark
+      // the panels and headings BELOW the first screen so the same entrance reaches them without every
+      // page tagging them (D-GLASS-1). Only below it: tagging something already on screen would blink
+      // it out.
       // ---------------------------------------------------------------
-      // Panels and section headings BELOW the first screen get the same
-      // entrance without every page marking them (D-GLASS-1). Only below
-      // it: tagging something already on screen would blink it out.
       document
         .querySelectorAll<HTMLElement>('main :is(.slab, .card, .callout, .table-scroll, .prose > h2)')
         .forEach((el) => {
@@ -127,49 +125,6 @@ const ogImage = new URL('/og.png', site);
             el.setAttribute('data-reveal', '');
           }
         });
-      const reveals = Array.from(
-        document.querySelectorAll<HTMLElement>('[data-reveal], .kinetic')
-      );
-
-      if (reveals.length) {
-        if ('IntersectionObserver' in window) {
-          const io = new IntersectionObserver(
-            (entries) => {
-              for (const entry of entries) {
-                if (!entry.isIntersecting) continue;
-                const el = entry.target as HTMLElement;
-                const delay = el.dataset.revealDelay;
-                if (delay) el.style.setProperty('--reveal-delay', `${delay}ms`);
-                el.classList.add('is-in');
-                io.unobserve(el);
-              }
-            },
-            { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }
-          );
-          reveals.forEach((el) => io.observe(el));
-
-          /* THE FAILSAFE, AND WHY IT IS HERE NOW.
-             These routes — docs, changelog, pricing — hide their content at opacity 0 and wait for
-             a class. The branch above covers a browser with no IntersectionObserver. NOTHING
-             covered an observer that is PRESENT and never fires, and in that case the copy is gone
-             permanently rather than late: a changelog that renders its releases to nobody.
-             Measured on the deployed /changelog on 2026-09-20: two of its three reveal targets sat
-             at opacity 0. That reading was taken in a background tab, where the observer legitimately
-             waits, so it is not by itself proof of a defect for a normal visitor — but it is proof
-             that "nothing has revealed yet" is a state this page really reaches, and the only thing
-             standing between that state and a permanent one was an observer firing.
-             The landing layout has carried this guarantee since earlier the same day, after a hero
-             effect shipped to production whose script never executed at all. Same guarantee, same
-             shape, and apps/site/tests/reveal-cannot-hide-content.test.mjs now asserts it for both
-             layouts rather than for whichever one somebody remembered. */
-          setTimeout(() => {
-            io.disconnect();
-            reveals.forEach((el) => el.classList.add('is-in'));
-          }, 2600);
-        } else {
-          reveals.forEach((el) => el.classList.add('is-in'));
-        }
-      }
 
       // ---------------------------------------------------------------
       // Theme. Explicit choice wins and persists; otherwise the OS decides.

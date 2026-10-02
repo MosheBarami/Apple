@@ -12,6 +12,8 @@ import Baseplate from '../components/Baseplate.astro';
 import ArrowLink from '../components/picks/ArrowLink.astro';
 /* The site's one set of Roblox object glyphs, drawn for it (its header has the rules). */
 import ObjectIcon from '../components/ObjectIcon.astro';
+/* The brick mark, for the engine panel. */
+import AppleMark from '../components/AppleMark.astro';
 import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
@@ -65,7 +67,7 @@ const critique = { score: 6, outOf: 10 };
    writes and the MeshPart generation returns. */
 const capabilities = [
   { icon: 'Workspace', title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.' },
-  { icon: 'Camera', title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.' },
+  { icon: 'Camera', title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a\u00a0verdict.' },
   { icon: 'Script', title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.' },
   { icon: 'MeshPart', title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.' },
 ] as const;
@@ -262,7 +264,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
         components/ConsentProof.astro and data/consent-proof.ts. */}
     <ConsentProof />
 
-    <section class="band" id="inside" aria-labelledby="sequence-title">
+    <section class="band band--split" id="inside" aria-labelledby="sequence-title">
       <div class="shell">
         <div class="band-head" data-reveal>
           <p class="eyebrow"><span class="ledger">{ledger(2)}</span>The loop</p>
@@ -270,6 +272,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
           <p class="section-sub">Four steps, in order. Nothing is written before the plan, and the check comes before it says it is done.</p>
         </div>
 
+        <div class="band-body">
         <figure class="cycle" data-cycle data-reveal>
           <figcaption class="cycle-label">
             <span class="tag">Illustration</span>
@@ -288,19 +291,20 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
         </figure>
 
         <ul class="notes" role="list">
-          <li class="note" data-reveal>
+          <li class="note lift" data-reveal>
             <h3>Pair one place</h3>
             <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
           </li>
-          <li class="note" data-reveal data-reveal-delay="40">
+          <li class="note lift" data-reveal style="--i:1">
             <h3>Take a run back</h3>
             <p>Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
           </li>
         </ul>
+        </div>
       </div>
     </section>
 
-    <section class="band" id="capabilities" aria-labelledby="cap-title">
+    <section class="band band--split" id="capabilities" aria-labelledby="cap-title">
       <div class="shell">
         <div class="band-head" data-reveal>
           <p class="eyebrow"><span class="ledger">{ledger(3)}</span>Capabilities</p>
@@ -308,9 +312,10 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
 
+        <div class="band-body">
         <ul class="capabilities" role="list">
           {capabilities.map((c, i) => (
-            <li class="capability" data-reveal data-reveal-delay={String(i * 40)}>
+            <li class="capability lift" data-reveal style={`--i:${i % 2}`}>
               <span class="cap-icon"><ObjectIcon name={c.icon} size={20} /></span>
               <h3>{c.title}</h3>
               <p>{c.body}</p>
@@ -413,40 +418,65 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
             ))}
           </div>
         </div>
+        </div>
       </div>
     </section>
 
     {/* AFTER the stages: they say what it does, and this says what came out. */}
     <BuiltScreen />
 
-    <section class="band" id="models" aria-labelledby="plans-title">
+    <section class="band band--split" id="models" aria-labelledby="plans-title">
       <div class="shell">
         <div class="band-head" data-reveal>
           <p class="eyebrow"><span class="ledger">{ledger(4)}</span>Engine</p>
           <h2 id="plans-title" class="section-title">One engine</h2>
-          <p class="section-sub">Describe the game; Apple shows a short plan and builds it. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
+          <p class="section-sub">Describe the game; Apple shows a short plan and builds it. Apple answers every request, on every plan.</p>
         </div>
 
-        <div class="choice-group" data-reveal>
-          <h3 class="eyebrow choice-label">Engine</h3>
-          <ul class="model-grid" role="list">
-            {PRODUCT_MODELS.map((model) => (
-              <li class="model-card">
-                <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
-                <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
-                <p class="eyebrow model-plans">Included with every plan, Free too</p>
-              </li>
-            ))}
-          </ul>
+        <div class="band-body">
+          <div class="model-grid">
+          {PRODUCT_MODELS.map((model) => (
+            <div class="engine" data-reveal>
+              <div class="engine-head">
+                <span class="engine-mark"><AppleMark size={28} /></span>
+                <div>
+                  <h3 class="model-name">{PRODUCT_MODEL_INFO[model].name}</h3>
+                  <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
+                </div>
+              </div>
+              <ul class="engine-facts" role="list">
+                <li class="engine-fact"><span class="eyebrow">Plans</span><span class="engine-val">Every plan, Free too</span></li>
+                <li class="engine-fact"><span class="eyebrow">Billing</span><span class="engine-val">Apple Credits, per request</span></li>
+                <li class="engine-fact"><span class="eyebrow">Before it writes</span><span class="engine-val">Reads your place, then takes a&nbsp;checkpoint</span></li>
+              </ul>
+              <p class="engine-links">
+                <ArrowLink href="/models">About the engine</ArrowLink>
+                <ArrowLink href="/pricing">Plans and Credits</ArrowLink>
+              </p>
+            </div>
+          ))}
+          </div>
         </div>
       </div>
     </section>
 
     <section class="closing" id="begin" aria-labelledby="closing-title" data-reveal>
-      <div class="shell">
-        <p class="eyebrow"><span class="ledger">{ledger(5)}</span>Begin</p>
-        <h2 id="closing-title" class="statement">Start with one place and one idea.</h2>
-        <a class="btn btn-primary btn-closing" href="/app/signup">Create a free account</a>
+      <div class="shell closing-inner">
+        <div>
+          <p class="eyebrow"><span class="ledger">{ledger(5)}</span>Begin</p>
+          <h2 id="closing-title" class="statement">Start with one place and one idea.</h2>
+          <a class="btn btn-primary btn-closing" href="/app/signup">Create a free account</a>
+        </div>
+
+        {/* THE PLATE, CARRIED DOWN. Hidden until the visitor has placed a brick; then it shows their own
+            plate back, small and read-only, with the sentence it is described by. The button is the
+            bridge under the hero, pressed from here: it fills the composer and never submits. */}
+        <div class="carry" data-carry hidden>
+          <p class="eyebrow">Your plate, still here</p>
+          <div class="carry-plate" data-carry-plate aria-hidden="true"></div>
+          <p class="carry-text" data-carry-text></p>
+          <button type="button" class="btn" data-carry-link>Describe this to Apple</button>
+        </div>
       </div>
     </section>
   </main>

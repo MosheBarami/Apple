@@ -1140,7 +1140,7 @@ export function DashboardPage() {
               style={{ '--card-i': i } as CSSProperties}
               onPointerMove={trackPointer}
             >
-              <Link to={`/projects/${p.id}`} className="project-card__link">
+              <Link viewTransition to={`/projects/${p.id}`} className="project-card__link">
                 <ProjectSignature id={p.id} />
                 <div className="project-card-top">
                   {p.pinned_at && (

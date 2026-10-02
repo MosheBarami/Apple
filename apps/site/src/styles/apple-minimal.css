@@ -95,6 +95,13 @@
   --brick-green-edge: #1c5835;
   --brick-yellow-edge: #73571a;
 
+  /* The Plate (components/Baseplate.astro): the top face, the side face under it, an empty stud and
+     the 2px edge under that stud. Flat fills, hard edges, no blur: depth is a darker step below. */
+  --plate-top: #1b2029;
+  --plate-side: #0b0d12;
+  --stud: #2a3240;
+  --stud-edge: #0d1015;
+
   /* Legacy surface names, flattened. Pages that were drawn as frosted glass now read as flat
      panels without any of their own rules changing: a fill from the surface ramp, a hairline, no
      shadow, no blur. */
@@ -144,6 +151,11 @@
   --warn: #7a4f00;
   --bad: #a81f35;
   --composer-fill: color-mix(in srgb, var(--surface) 92%, transparent);
+
+  --plate-top: #e4e8ef;
+  --plate-side: #b4bccb;
+  --stud: #f8f9fc;
+  --stud-edge: #a3acbd;
 }
 
 /* Theme-independent tokens. */
@@ -174,6 +186,7 @@
   --dur-1: 90ms;
   --dur-2: 160ms;
   --dur-3: 260ms;
+  --dur-4: 420ms;
   --t-fast: var(--dur-1);
   --t-base: var(--dur-2);
   --t-slow: var(--dur-3);
@@ -181,6 +194,10 @@
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-snap: linear(0, 0.55 18%, 1.12 42%, 0.98 62%, 1);
   --ease-spring: var(--ease-snap);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  /* The shared entrance: 8px up and a fade, one beat apart per sibling, capped by the caller. */
+  --rise: 8px;
+  --stagger: 40ms;
 
   --z-rail: 5;
   --z-bar: 20;
@@ -189,7 +206,6 @@
   --content: 1120px;
   --gutter: 16px;
   --nav-h: 56px;
-  --reveal-delay: 0ms;
 }
 
 @media (min-width: 640px) {
@@ -294,11 +310,14 @@ output {
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
-  transform: translateY(-160%);
+  white-space: nowrap;
+  /* Hidden by clipping, not by sitting above the viewport: a translated-away box still paints in any
+     capture that is taller than the window (a full-page screenshot showed it mid-page). */
+  clip-path: inset(50%);
 }
 
 .skip-link:focus {
-  transform: none;
+  clip-path: none;
 }
 
 .visually-hidden {
@@ -359,11 +378,17 @@ output {
   transition:
     background-color var(--dur-1) var(--ease-out),
     border-color var(--dur-1) var(--ease-out),
-    color var(--dur-1) var(--ease-out);
+    color var(--dur-1) var(--ease-out),
+    transform var(--dur-1) var(--ease-out);
 }
 
 .btn:hover {
   background: var(--surface-3);
+}
+
+/* Every button answers a press, not just the primary: down one pixel, released with a snap. */
+.btn:not(.btn-primary):active:not(:disabled, [aria-disabled='true']) {
+  transform: translateY(1px);
 }
 
 .btn-primary {
@@ -422,6 +447,95 @@ output {
 .glass {
   border: 1px solid var(--hairline);
   background: var(--surface);
+}
+
+/* ------------------------------------------------------------------ motion primitives */
+
+/* THE SHARED REVEAL. Content is VISIBLE BY DEFAULT: nothing here hides it, nothing waits for a
+   script, and a browser without scroll-driven animations simply shows the page. Where they exist,
+   an element eases in (a fade and 8px) while it crosses the bottom edge of the window, driven by
+   the scroll position itself, so a fast scroll cannot outrun it and a capture that is taller than the
+   window sees every section. `forwards` and never `both`: before the element reaches the edge the
+   animation has no effect, so what is below the fold is already drawn. It animates `opacity` and
+   `translate` only, leaving `transform` to hover and press states. `--i` staggers siblings. */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--rise);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: reveal-in linear forwards;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 6%) entry calc(32% + var(--i, 0) * 6%);
+    }
+  }
+}
+
+/* CROSS-DOCUMENT VIEW TRANSITIONS: a page change is a short cross-fade of the content while the
+   sticky header stays where it is. Browsers without the feature navigate as they always did. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  ::view-transition-old(root) {
+    animation: vt-out var(--dur-1) var(--ease-out) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in var(--dur-2) var(--ease-out) both;
+  }
+}
+
+@keyframes vt-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A raised card: on hover it lifts 2px and shows the plate edge under it, on press it seats. */
+.lift {
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+    box-shadow: 0 2px 0 var(--line);
+  }
+}
+
+.lift:active {
+  transform: none;
+  box-shadow: none;
+}
+
+/* THE SKELETON: a flat block that breathes, sized by the caller to the thing it stands for so the
+   real content lands without moving anything. Under reduced motion it holds still. */
+@keyframes skeleton-breathe {
+  from {
+    opacity: 0.55;
+  }
+}
+
+.skeleton {
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  animation: skeleton-breathe 1.2s var(--ease-in-out) infinite alternate;
 }
 
 /* ------------------------------------------------------------------ reduced motion */

@@ -1,300 +1,61 @@
 /**
- * THE FRONT PAGE CANNOT END UP INVISIBLE.
+ * NO PAGE CAN END UP BLANK BECAUSE A REVEAL NEVER FIRED.
  *
- * The landing now hides its sections at opacity 0 and waits for a class before showing them. That
- * buys motion as the page is read, and it buys one catastrophic failure mode with it: if the class
- * never arrives, the front page renders its copy to nobody.
+ * HISTORY. Until 2026-10-02 the landing, /docs, /changelog and /pricing hid their sections at opacity
+ * 0 and waited for an IntersectionObserver to add a class, with a 2.6 second failsafe. That was
+ * defended four separate ways (no-js, reduced motion, no observer, a silent observer) and it still
+ * produced the defect the owner saw: a full-page capture, a fast scroll and a slow device all showed
+ * long near-empty bands, because "hidden until a timer or an observer says otherwise" is a state those
+ * cases really reach. A failsafe makes the failure shorter; it does not make it impossible.
  *
- * That is not a theoretical worry in this repository. On the same day this was written, a hero
- * effect shipped to production whose script never executed at all — the element was in the served
- * HTML, the bundle was in the served HTML, and the code inside it never ran, because
- * `document.currentScript` is null in a module script. Every reading of the shipped page said the
- * feature was there. So "the script did not run" is the assumed case here, not the unlucky one.
+ * THE CONTRACT NOW. Nothing hides content. Every `[data-reveal]` block is VISIBLE BY DEFAULT, and where
+ * the browser has scroll-driven animations the shared rule in apple-minimal.css eases it in as it
+ * crosses the bottom edge of the window, driven by the scroll position itself, with `forwards` fill
+ * only (never `both`, which would paint the first frame, opacity 0, on everything below the fold).
+ * There is no class to wait for, no observer, no timer, so there is no failsafe to be late.
  *
- * landing.css and Landing.astro guarantee the visible final frame FOUR separate ways, and this file
- * exercises each one on its own, by running the real shipped script in a sandbox rather than by
- * reading it:
- *
- *   1. no scripting at all      -> the `.no-js` class is never removed, and the CSS shows everything
- *   2. prefers-reduced-motion   -> the CSS neutralises the hidden state, AFTER the rule that sets it
- *   3. no IntersectionObserver  -> the script reveals everything immediately
- *   4. an observer that never fires -> the failsafe timer reveals everything anyway
- *
- * Any one of the four is sufficient. The tests below assert them separately so that losing one does
- * not quietly leave the page depending on another.
+ * Two halves. The first reads the stylesheets and layouts for the mechanisms that used to hide copy.
+ * The second drives the BUILT site in Chromium and asks the only question that matters: what is the
+ * computed opacity of everything below the fold with nothing scrolled, with scripting off, with
+ * reduced motion, and straight after a jump to the bottom.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
-import { readFileSync, readdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8');
-const CSS = readFileSync(join(SITE, 'src', 'styles', 'landing.css'), 'utf8');
-const PAGE = readFileSync(join(SITE, 'src', 'pages', 'index.astro'), 'utf8');
-
-/**
- * EVERY layout that hides content behind a class, not just the one somebody remembered.
- *
- * This file was written for Landing.astro. Base.astro — which serves /docs, /changelog and
- * /pricing — hides its content exactly the same way through global.css, and had NO failsafe: the
- * branch for a missing IntersectionObserver was there, and nothing covered an observer that is
- * present and simply never fires. That was found by reading the deployed /changelog, where two of
- * three reveal targets sat at opacity 0, and not by this test, because this test was only ever
- * looking at one file.
- *
- * So the layouts are discovered from the directory rather than named. A third layout added later
- * that hides content this way is covered on the day it lands.
- */
+const ROOT = join(SITE, '..', '..');
+const DIST = join(SITE, 'dist');
+const STYLES = join(SITE, 'src', 'styles');
 const LAYOUT_DIR = join(SITE, 'src', 'layouts');
-const LAYOUTS = readdirSync(LAYOUT_DIR)
-  .filter((f) => f.endsWith('.astro'))
-  .map((f) => ({ name: f, source: readFileSync(join(LAYOUT_DIR, f), 'utf8') }))
-  .filter((l) => /data-reveal|\.kinetic/.test(l.source) && /classList/.test(l.source));
 
-/**
- * The reveal script as it will be served, for one layout.
- *
- * Astro lets a component's <script> be TypeScript and compiles it on the way out, and Base.astro's
- * uses that — `querySelectorAll<HTMLElement>(...)` and `entry.target as HTMLElement`. Running the
- * raw text throws `Unexpected identifier 'as'`, which is a fact about the harness rather than the
- * page, so the types are stripped with the same esbuild binary the rest of this repository's tests
- * already use. What is executed below is the code the browser will run, not a paraphrase of it.
- */
-function revealScript(source, name) {
-  const blocks = [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  const hit = blocks.filter((b) => /data-reveal|\.kinetic/.test(b) && /classList/.test(b));
-  assert.equal(hit.length, 1, `expected exactly one reveal script in ${name}, found ${hit.length}`);
-  return stripTypes(hit[0], name);
+const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+const read = (...p) => readFileSync(join(SITE, 'src', ...p), 'utf8');
+const SHARED = strip(readFileSync(join(STYLES, 'apple-minimal.css'), 'utf8'));
+const PAGE = read('pages', 'index.astro');
+
+/** Every stylesheet and every component-scoped <style> the site ships, comments removed. */
+function allCss() {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.css')) out.push({ name: full, css: strip(readFileSync(full, 'utf8')) });
+      else if (e.name.endsWith('.astro')) {
+        for (const m of readFileSync(full, 'utf8').matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)) out.push({ name: full, css: strip(m[1]) });
+      }
+    }
+  };
+  walk(join(SITE, 'src'));
+  return out;
 }
 
-const ESBUILD = join(SITE, '..', 'worker', 'node_modules', '.bin', 'esbuild');
-function stripTypes(code, name) {
-  if (!/:\s*(?:HTMLElement|Element|string|number)\b|\bas\s+HTML|<HTMLElement>/.test(code)) return code;
-  const dir = mkdtempSync(join(tmpdir(), 'reveal-'));
-  const src = join(dir, 'reveal.ts');
-  writeFileSync(src, code);
-  try {
-    return execFileSync(ESBUILD, [src, '--loader:.ts=ts', '--format=esm', '--target=es2022'],
-      { stdio: ['ignore', 'pipe', 'pipe'] }).toString();
-  } catch (err) {
-    assert.fail(`could not strip types from ${name}'s reveal script: ${err.message}`);
-  }
-}
-
-/** Run the real script against a DOM stub, with the environment dialled per branch. */
-function run({ observer = true, fireEntries = true, nodes = 6, script } = {}) {
-  const made = [];
-  for (let i = 0; i < nodes; i++) {
-    const classes = new Set();
-    const attrs = { 'data-reveal': '', ...(i === 2 ? { 'data-reveal-delay': '140' } : {}) };
-    // BOTH SPELLINGS, because the two layouts read the delay differently and both are correct:
-    // Landing.astro uses getAttribute('data-reveal-delay'), Base.astro uses dataset.revealDelay.
-    // A node offering only one of them would fail the layout that uses the other, and the failure
-    // would look like a missing feature rather than a missing stub.
-    made.push({
-      classList: { add: (c) => classes.add(c), contains: (c) => classes.has(c) },
-      getAttribute: (k) => (k in attrs ? attrs[k] : null),
-      dataset: { revealDelay: attrs['data-reveal-delay'] },
-      style: { props: {}, setProperty(k, v) { this.props[k] = v; } },
-      _classes: classes,
-    });
-  }
-
-  let observed = [];
-  let disconnected = false;
-  let timerFn = null;
-  let timerMs = null;
-
-    const src = script ?? revealScript(LAYOUT, 'Landing.astro');
-
-  /*
-   * Base.astro's single <script> carries the theme wiring and a sound toggle alongside the reveals,
-   * so running it needs more of a browser than Landing's does. Everything below exists only to let
-   * the REAL script run to completion. None of it is under test: if a stub is missing the script
-   * throws and the reveal assertions fail loudly, which is the behaviour to want — a harness that
-   * swallowed the error would report a failsafe as present on a script that never reached it.
-   */
-  const noopEl = {
-    classList: { add() {}, remove() {}, contains: () => false, toggle() {} },
-    setAttribute() {}, getAttribute: () => null, addEventListener() {}, removeEventListener() {},
-    style: { setProperty() {} }, dataset: {}, querySelectorAll: () => [], querySelector: () => null,
-    closest: () => null, focus() {}, click() {}, appendChild() {}, remove() {},
-  };
-
-  const sandbox = {
-    console,
-    document: {
-      querySelectorAll: (sel) => (/\[data-reveal\]|\.kinetic/.test(sel) ? made : []),
-      querySelector: () => noopEl,
-      getElementById: () => noopEl,
-      createElement: () => noopEl,
-      documentElement: noopEl,
-      body: noopEl,
-      hidden: false,
-      addEventListener() {}, removeEventListener() {},
-    },
-    setTimeout: (fn, ms) => { timerFn = fn; timerMs = ms; return 1; },
-    clearTimeout: () => {},
-    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {} }),
-    getComputedStyle: () => ({ getPropertyValue: () => '' }),
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    requestAnimationFrame: (fn) => { fn(0); return 1; },
-    cancelAnimationFrame: () => {},
-    addEventListener() {}, removeEventListener() {},
-    AudioContext: function AudioContext() {
-      return {
-        createOscillator: () => ({ connect() {}, start() {}, stop() {}, frequency: { value: 0, setValueAtTime() {} }, type: '' }),
-        createGain: () => ({ connect() {}, gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} } }),
-        destination: {}, currentTime: 0, resume() {}, state: 'running',
-      };
-    },
-  };
-  if (observer) {
-    sandbox.IntersectionObserver = class {
-      constructor(cb) { this.cb = cb; }
-      observe(el) { observed.push(el); }
-      unobserve(el) { observed = observed.filter((o) => o !== el); }
-      disconnect() { disconnected = true; }
-      /** Drive it the way a browser would when the section scrolls into view. */
-      fire(els) { this.cb(els.map((target) => ({ isIntersecting: true, target })), this); }
-    };
-  }
-  sandbox.window = sandbox;
-  sandbox.globalThis = sandbox;
-
-  vm.createContext(sandbox);
-  let instance = null;
-  if (observer) {
-    const Base = sandbox.IntersectionObserver;
-    sandbox.IntersectionObserver = class extends Base {
-      constructor(cb, opts) { super(cb, opts); instance = this; }
-    };
-  }
-  vm.runInContext(src, sandbox, { timeout: 5000, filename: 'layout' });
-
-  if (observer && fireEntries && instance) instance.fire(made);
-
-  return {
-    nodes: made,
-    shown: () => made.filter((n) => n._classes.has('is-in')).length,
-    hidden: () => made.filter((n) => !n._classes.has('is-in')).length,
-    delayed: made.find((n) => n.getAttribute('data-reveal-delay')),
-    runFailsafe: () => { assert.ok(timerFn, 'no failsafe timer was scheduled'); timerFn(); },
-    failsafeMs: () => timerMs,
-    disconnected: () => disconnected,
-    observedCount: () => observed.length,
-  };
-}
-
-test('the ordinary path: sections reveal as they scroll into view', () => {
-  const r = run({ observer: true, fireEntries: true });
-  assert.equal(r.hidden(), 0, `${r.hidden()} sections never revealed on the ordinary path`);
-  assert.equal(r.observedCount(), 0, 'revealed elements are still being observed; the observer leaks');
-});
-
-test('an element carrying a stagger delay has it applied as a custom property', () => {
-  const r = run();
-  assert.ok(r.delayed, 'the harness built no delayed element to check');
-  assert.equal(r.delayed.style.props['--reveal-delay'], '140ms',
-    'data-reveal-delay is not translated into the custom property the stylesheet reads');
-});
-
-test('GUARANTEE 3 — with no IntersectionObserver, everything is shown at once', () => {
-  const r = run({ observer: false });
-  assert.equal(r.hidden(), 0,
-    'on a browser without IntersectionObserver the landing renders its copy invisible');
-});
-
-test('GUARANTEE 4 — an observer that never fires still cannot hide the page', () => {
-  const r = run({ observer: true, fireEntries: false });
-  assert.equal(r.shown(), 0, 'the harness is not actually withholding the observer callback');
-
-  assert.ok(r.failsafeMs() > 0 && r.failsafeMs() <= 5000,
-    `the failsafe fires after ${r.failsafeMs()}ms — too late to be a failsafe`);
-  r.runFailsafe();
-
-  assert.equal(r.hidden(), 0,
-    'the failsafe did not reveal every section, so a silent observer leaves copy invisible forever');
-  assert.ok(r.disconnected(), 'the failsafe leaves the observer connected and still firing');
-});
-
-test('GUARANTEE 1 — without scripting the copy is visible, because .no-js says so', () => {
-  assert.match(LAYOUT, /<html[^>]*class="[^"]*\bno-js\b/,
-    'the server-rendered <html> has no no-js class, so the CSS fallback below can never apply');
-  assert.match(CSS, /\.no-js\s+\[data-reveal\]\s*\{[^}]*opacity:\s*1/,
-    'landing.css has no .no-js fallback that shows [data-reveal] content');
-  // And the class must be removed by something that runs BEFORE paint, or every visitor sees the
-  // no-js frame flash. It is removed in an inline head script, not a hoisted module.
-  assert.match(LAYOUT, /<script is:inline>[\s\S]*classList\.remove\('no-js'\)/,
-    'no-js is not removed by an inline script, so it is removed after first paint or not at all');
-});
-
-test('GUARANTEE 2 — reduced motion shows the content, and wins on cascade order', () => {
-  const hide = CSS.search(/html:not\(\.no-js\)\s+\[data-reveal\]\s*\{/);
-  assert.ok(hide > -1, 'landing.css does not hide [data-reveal] at all — this check would be vacuous');
-
-  // Find the reduced-motion block that re-shows it, and require it to come LATER in the file.
-  const reduced = [...CSS.matchAll(/@media\s*\([^)]*prefers-reduced-motion[^)]*\)\s*\{/gi)]
-    .map((m) => ({ at: m.index, body: blockAt(CSS, m.index + m[0].length - 1) }))
-    .filter((b) => /\[data-reveal\]/.test(b.body) && /opacity:\s*1/.test(b.body));
-
-  assert.ok(reduced.length > 0,
-    'no prefers-reduced-motion rule re-shows [data-reveal]. The landing stops all transitions under '
-    + 'reduced motion, and a stopped transition on an element left at opacity 0 is a blank page.');
-  assert.ok(reduced.some((b) => b.at > hide),
-    'the reduced-motion rule that re-shows [data-reveal] is declared BEFORE the rule that hides it, '
-    + 'so the hidden state wins on cascade order and reduced-motion visitors get an empty page');
-});
-
-test('the reveal is actually used by the page, so none of the above is theatre', () => {
-  const marks = PAGE.match(/data-reveal(?![-\w])/g) ?? [];
-  assert.ok(marks.length >= 6,
-    `only ${marks.length} elements on the landing are marked for reveal; the mechanism is unused`);
-  assert.match(PAGE, /data-reveal-delay/,
-    'nothing on the landing staggers, so collections arrive as one block');
-});
-
-test('nothing carries both a reveal and a scroll-driven animation over the same property', () => {
-  // WHY: `.step` was marked for reveal and ALREADY had `animation: step-focus` on a `view()`
-  // timeline animating opacity from 0.5 to 1. A CSS animation beats a normal declaration, so the
-  // reveal's `opacity: 1` lost and three cards sat live at half opacity — visible, wrong, and
-  // invisible to a test that only asks "is anything hidden". Two mechanisms must never own one
-  // property on one element.
-  const timeline = [...CSS.matchAll(/([^{}]+)\{([^{}]*animation-timeline\s*:[^{}]*)\}/g)]
-    .flatMap(([, sel]) => sel.split(',').map((s) => s.trim()))
-    .map((s) => s.replace(/^.*\s/, ''))
-    .filter((s) => /^\.[-\w]+$/.test(s))
-    .map((s) => s.slice(1));
-
-  //[[ RESTATED 2026-09-22. This required a scroll-driven animation to exist, as its vacuity guard.
-  //   The calm redesign removed the only one (`step-focus` on `.step`), so the clash this test looks
-  //   for is now impossible by construction rather than by care — and that is asserted directly:
-  //   with no timeline rule in the sheet there must be no `animation-timeline` anywhere in it, so a
-  //   rule the class-extraction above cannot parse cannot slip one back in unchecked. ]]
-  if (timeline.length === 0) {
-    assert.doesNotMatch(CSS.replace(/\/\*[\s\S]*?\*\//g, ' '), /animation-timeline\s*:/,
-      'landing.css has an animation-timeline this check could not attribute to a class — re-aim the extraction');
-    return;
-  }
-
-  const clash = [];
-  for (const cls of timeline) {
-    const re = new RegExp(`class="[^"]*\\b${cls}\\b[^"]*"[^>]*\\bdata-reveal\\b`);
-    const re2 = new RegExp(`data-reveal\\b[^>]*class="[^"]*\\b${cls}\\b`);
-    if (re.test(PAGE) || re2.test(PAGE)) clash.push(cls);
-  }
-  assert.deepEqual(clash, [],
-    `these carry both a scroll-driven animation and data-reveal, so two rules fight over one `
-    + `opacity and the animation silently wins: ${clash.join(', ')}`);
-});
-
-/** Read a brace-balanced block starting at the `{` at `open`. */
+/** The brace-balanced body starting at the `{` at `open`. */
 function blockAt(text, open) {
   let depth = 0;
   for (let i = open; i < text.length; i++) {
@@ -304,43 +65,144 @@ function blockAt(text, open) {
   return '';
 }
 
-/* ===========================================================================================
- * AND NOW FOR EVERY LAYOUT, because the guarantee belongs to the mechanism rather than to one file.
- * =========================================================================================== */
+/* ====================================================================== 1. the sources === */
 
-test('every layout that hides content this way was found, so the loop below is not empty', () => {
-  assert.ok(LAYOUTS.length >= 2,
-    `only ${LAYOUTS.length} layout(s) drive [data-reveal]. Landing.astro and Base.astro both do, so `
-    + 'the discovery has drifted and the per-layout checks would silently cover less than they say.');
-  assert.ok(LAYOUTS.some((l) => l.name === 'Base.astro'),
-    'Base.astro was not discovered — it serves /docs, /changelog and /pricing, all of which hide '
-    + 'their content at opacity 0');
+test('no stylesheet hides [data-reveal] at rest, and nothing waits for an `is-in` class', () => {
+  for (const { name, css } of allCss()) {
+    assert.doesNotMatch(css, /\.is-in\b[^{]*\{[^}]*opacity/, `${name} still styles a revealed state by class`);
+    assert.doesNotMatch(css, /html:not\(\.no-js\)\s+\[data-reveal\]/, `${name} hides [data-reveal] behind a class again`);
+    for (const m of css.matchAll(/([^{}]*\[data-reveal\][^{}]*)\{([^{}]*)\}/g)) {
+      assert.doesNotMatch(m[2], /opacity\s*:\s*0\b/, `${name}: "${m[1].trim()}" sets opacity: 0 at rest`);
+      assert.doesNotMatch(m[2], /visibility\s*:\s*hidden/, `${name}: "${m[1].trim()}" hides at rest`);
+    }
+  }
 });
 
-for (const layout of LAYOUTS) {
-  test(`${layout.name}: an observer that never fires cannot hide the page`, () => {
-    const script = revealScript(layout.source, layout.name);
-    const r = run({ observer: true, fireEntries: false, script });
-    assert.equal(r.shown(), 0, 'the harness is not actually withholding the observer callback');
-    assert.ok(r.failsafeMs() > 0 && r.failsafeMs() <= 5000,
-      `${layout.name} schedules its failsafe at ${r.failsafeMs()}ms — too late to be one`);
-    r.runFailsafe();
-    assert.equal(r.hidden(), 0,
-      `${layout.name} leaves copy invisible when its observer stays silent. On /changelog that is a `
-      + 'release history rendered to nobody.');
-    assert.ok(r.disconnected(), `${layout.name} leaves the observer connected after the failsafe`);
-  });
+test('the one reveal rule is scroll-driven, behind @supports and no-preference, and fills forwards only', () => {
+  const sup = SHARED.search(/@supports\s*\(animation-timeline:\s*view\(\)\)\s*\{/);
+  assert.ok(sup > -1, 'apple-minimal.css has no @supports (animation-timeline: view()) reveal');
+  const body = blockAt(SHARED, SHARED.indexOf('{', sup));
+  assert.match(body, /@media\s*\(prefers-reduced-motion:\s*no-preference\)/, 'the reveal is not limited to no-preference');
+  const rule = /\[data-reveal\]\s*\{([^{}]*)\}/.exec(body);
+  assert.ok(rule, 'the [data-reveal] rule is not inside the @supports block');
+  assert.match(rule[1], /animation-timeline:\s*view\(\)/);
+  assert.match(rule[1], /animation:\s*reveal-in\s+linear\s+forwards\s*;/,
+    'the reveal must fill FORWARDS only: `both` or `backwards` paints opacity 0 on everything below the fold');
+  assert.doesNotMatch(rule[1], /\b(?:both|backwards)\b/);
+  // Opacity and the `translate` property only: `transform` belongs to hover and press states, and an
+  // animation would beat them on the cascade.
+  const frames = /@keyframes\s+reveal-in\s*\{([\s\S]*?)\n\}/.exec(SHARED);
+  assert.ok(frames, 'no reveal-in keyframes');
+  assert.doesNotMatch(frames[1], /\btransform\s*:/, 'the reveal animates `transform`, which hover states need');
+  assert.doesNotMatch(frames[1], /\bto\s*\{/, 'a `to` frame would pin the end state; leave it implicit');
+});
 
-  test(`${layout.name}: with no IntersectionObserver everything is shown at once`, () => {
-    const script = revealScript(layout.source, layout.name);
-    const r = run({ observer: false, script });
-    assert.equal(r.hidden(), 0, `${layout.name} renders its copy invisible without IntersectionObserver`);
-  });
+test('animation-timeline appears only on the shared reveal', () => {
+  for (const { name, css } of allCss()) {
+    if (name.endsWith('apple-minimal.css')) continue;
+    assert.doesNotMatch(css, /animation-timeline\s*:/,
+      `${name} declares an animation-timeline: two mechanisms would own one element's opacity`);
+  }
+});
 
-  test(`${layout.name}: the ordinary path reveals and stops observing`, () => {
-    const script = revealScript(layout.source, layout.name);
-    const r = run({ observer: true, fireEntries: true, script });
-    assert.equal(r.hidden(), 0, `${layout.name} left sections hidden on the ordinary path`);
-    assert.equal(r.observedCount(), 0, `${layout.name} keeps observing elements it already revealed`);
+test('no layout carries an observer, a timer or a class-adding reveal script any more', () => {
+  for (const f of readdirSync(LAYOUT_DIR).filter((n) => n.endsWith('.astro'))) {
+    const src = readFileSync(join(LAYOUT_DIR, f), 'utf8');
+    const scripts = [...src.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join('\n');
+    assert.doesNotMatch(strip(scripts.replace(/\/\/.*$/gm, '')), /classList\.add\(['"]is-in['"]\)/, `${f} adds an is-in class`);
+    assert.doesNotMatch(scripts.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, ''), /IntersectionObserver[\s\S]*data-reveal|data-reveal[\s\S]*IntersectionObserver/,
+      `${f} drives [data-reveal] from an observer again`);
+  }
+});
+
+test('the landing uses the reveal, so none of the above is theatre', () => {
+  const marks = PAGE.match(/data-reveal(?![-\w])/g) ?? [];
+  assert.ok(marks.length >= 6, `only ${marks.length} elements on the landing are marked for reveal`);
+  assert.match(PAGE, /style="--i:|style=\{`--i:/, 'nothing on the landing staggers its siblings with --i');
+});
+
+test('nothing on the landing is hidden to the browser until it is near the screen', () => {
+  const landing = strip(readFileSync(join(STYLES, 'landing.css'), 'utf8'));
+  assert.doesNotMatch(landing, /content-visibility\s*:\s*auto/,
+    '`content-visibility: auto` leaves a band blank in a capture that is taller than the window (#models and .closing did)');
+});
+
+/* ====================================================================== 2. the built site, in a browser === */
+
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.xml': 'application/xml' };
+
+function serveDist() {
+  const server = createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    let file = normalize(join(DIST, decodeURIComponent(url.pathname)));
+    if (!file.startsWith(DIST + sep) && file !== DIST) { res.writeHead(403).end(); return; }
+    if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
+    if (!existsSync(file)) { res.writeHead(404).end('not found'); return; }
+    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+    res.end(readFileSync(file));
+  });
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port })));
+}
+
+assert.ok(existsSync(join(DIST, 'index.html')), 'apps/site/dist is missing: run `npx astro build` in apps/site first');
+const { chromium } = createRequire(join(ROOT, 'package.json'))('@playwright/test');
+const { server, port } = await serveDist();
+const browser = await chromium.launch();
+const BASE = `http://127.0.0.1:${port}`;
+test.after(async () => { await browser.close(); server.close(); });
+
+const PAGES = ['/', '/pricing', '/changelog', '/status', '/docs/faq'];
+
+/** Opacity of every [data-reveal] block that starts below the first screen, plus how many there are. */
+const below = (page) => page.evaluate(() => {
+  const els = [...document.querySelectorAll('[data-reveal]')].filter((e) => e.getBoundingClientRect().top > innerHeight + 4);
+  return { n: els.length, hidden: els.filter((e) => Number(getComputedStyle(e).opacity) < 0.99).map((e) => `${e.tagName}.${String(e.className).slice(0, 30)}`) };
+});
+
+for (const { label, opts } of [
+  { label: 'with scripting and motion on', opts: {} },
+  { label: 'with reduced motion', opts: { reducedMotion: 'reduce' } },
+  { label: 'with JavaScript switched off', opts: { javaScriptEnabled: false } },
+]) {
+  test(`${label}: everything below the fold is already fully visible, with nothing scrolled`, async () => {
+    for (const path of PAGES) {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...opts });
+      const page = await ctx.newPage();
+      await page.goto(`${BASE}${path}`, { waitUntil: 'load' });
+      await page.waitForTimeout(150);
+      const r = await below(page);
+      if (path === '/') assert.ok(r.n >= 6 || opts.javaScriptEnabled === false, `${path}: only ${r.n} reveal blocks below the fold, the check would be vacuous`);
+      assert.deepEqual(r.hidden, [], `${path} (${label}): ${r.hidden.length} blocks below the fold are not fully opaque`);
+      await ctx.close();
+    }
   });
 }
+
+test('a full-page capture taken with nothing scrolled has no blank band', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/`, { waitUntil: 'load' });
+  await page.waitForTimeout(700);
+  // The same thing a screenshot tool does: it does not scroll. Every section must hold its content.
+  const empty = await page.evaluate(() => [...document.querySelectorAll('main section')]
+    .filter((s) => s.getBoundingClientRect().height > 120 && s.innerText.trim().length < 20).map((s) => s.id || s.className));
+  assert.deepEqual(empty, [], 'sections with no readable text');
+  const faded = await page.evaluate(() => [...document.querySelectorAll('main section *')]
+    .filter((e) => e.children.length === 0 && e.textContent.trim() && e.getBoundingClientRect().top > innerHeight && Number(getComputedStyle(e).opacity) < 0.99).length);
+  assert.equal(faded, 0, `${faded} text nodes below the fold are not fully opaque`);
+  await ctx.close();
+});
+
+test('after a jump straight to the bottom every block has finished revealing', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/`, { waitUntil: 'load' });
+  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; window.scrollTo(0, document.documentElement.scrollHeight); });
+  await page.waitForTimeout(250);
+  const partial = await page.evaluate(() => [...document.querySelectorAll('[data-reveal]')].filter((e) => {
+    const r = e.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight && Number(getComputedStyle(e).opacity) < 0.99;
+  }).length);
+  assert.equal(partial, 0, `${partial} blocks on screen are still part-way through a fade after a fast scroll`);
+  await ctx.close();
+});

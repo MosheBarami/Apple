@@ -86,6 +86,8 @@ const isCurrent = (href: string) =>
     position: sticky;
     top: 0;
     z-index: var(--z-bar);
+    /* Named so a page change (a cross-document view transition) leaves the header where it is. */
+    view-transition-name: site-nav;
     border-block-end: 1px solid var(--hairline);
     background: color-mix(in srgb, var(--paper) 86%, transparent);
     -webkit-backdrop-filter: blur(12px);

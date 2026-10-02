@@ -11,6 +11,14 @@
  *             Escape hands focus back to the page.
  *   AT        every stud has a real aria-label, and a polite live region says what each action did.
  *
+ * STAMPS (Row, Square, Stairs) are buttons that place a shape of bricks on the stud the visitor last
+ * touched; they are the visitor's own action and the model still decides what is allowed.
+ *
+ * HOW A PLACEMENT FEELS. The brick drops 6px and settles with --ease-snap (baseplate.css), the logo's
+ * right-hand stud clicks on the same beat (Web Animations, skipped under reduced motion), and a
+ * touch screen gets an 8ms vibration where the browser has one. Nothing is audible: there is no
+ * sound at all, so there is nothing to opt out of.
+ *
  * Hover feedback is a CSS :hover/:focus highlight on the stud. Nothing follows the pointer (the
  * site bans pointer-following overlays and hidden cursors: cursor-never-blinds.test.mjs).
  */
@@ -28,9 +36,12 @@ import {
   place,
   removeTop,
   serialize,
+  stamp,
+  announceStamp,
   viewFor,
   type Board,
   type Color,
+  type Stamp,
 } from './baseplate-model';
 
 const STORE = 'apple.baseplate.v1';
@@ -41,6 +52,8 @@ export function mountBaseplate(root: HTMLElement): void {
   const bridge = root.querySelector<HTMLButtonElement>('[data-bridge]');
   const clear = root.querySelector<HTMLButtonElement>('[data-clear]');
   const swatches = [...root.querySelectorAll<HTMLButtonElement>('[data-tool]')];
+  const stamps = [...root.querySelectorAll<HTMLButtonElement>('[data-stamp]')];
+  const carry = document.querySelector<HTMLElement>('[data-carry]');
   if (!grid || !live || !bridge || !clear || !swatches.length) return;
   const box = grid;
 
@@ -52,8 +65,27 @@ export function mountBaseplate(root: HTMLElement): void {
   }
 
   let tool: Color | 'erase' = 'red';
+  /** The last real colour chosen: a stamp lays this even while the eraser is selected. */
+  let color: Color = 'red';
   let view = viewFor(box.clientWidth || 600);
   let focusAt = { row: 0, col: 0 };
+  /** Where a stamp lands: the stud the visitor last touched. Before they touch one, the middle-left. */
+  let anchor = { row: 2, col: 1 };
+  const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** The logo's right-hand stud clicks down on the same beat as a brick. A picture of nothing: it only reacts. */
+  const snapLogo = () => {
+    if (reduceMotion()) return;
+    for (const stud of document.querySelectorAll<SVGElement>('#site-nav .stud--snap')) {
+      stud.animate?.(
+        [{ transform: 'translateY(-3px)' }, { transform: 'translateY(0)' }],
+        { duration: 160, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+      );
+    }
+  };
+  const buzz = () => {
+    if (window.matchMedia('(pointer: coarse)').matches) navigator.vibrate?.(8);
+  };
 
   const say = (text: string) => {
     live.textContent = '';
@@ -69,7 +101,7 @@ export function mountBaseplate(root: HTMLElement): void {
     grid.querySelector<HTMLElement>(`[data-row="${row}"][data-col="${col}"]`);
 
   /** Draw one stud's bricks and label. Only the studs that changed are touched. */
-  function paint(row: number, col: number, fresh = false): void {
+  function paint(row: number, col: number, fresh = false, delay = 0, freshCount = 1): void {
     const el = cellAt(row, col);
     if (!el) return;
     const stack = board[row][col];
@@ -81,7 +113,10 @@ export function mountBaseplate(root: HTMLElement): void {
       const brick = document.createElement('span');
       brick.className = `brick brick--${color}`;
       brick.style.setProperty('--level', String(level));
-      if (fresh && level === stack.length - 1) brick.classList.add('is-new');
+      if (fresh && level >= stack.length - Math.max(1, freshCount)) {
+        brick.classList.add('is-new');
+        if (delay) brick.style.animationDelay = `${delay + (level - (stack.length - Math.max(1, freshCount))) * 60}ms`;
+      }
       el.appendChild(brick);
     });
   }
@@ -93,6 +128,32 @@ export function mountBaseplate(root: HTMLElement): void {
 
   function refreshBridge(): void {
     bridge!.hidden = countBricks(board, view) === 0;
+    refreshCarry();
+  }
+
+  /** The closing band's offer: a small read-only copy of the plate and the sentence, only once there is something on it. */
+  function refreshCarry(): void {
+    if (!carry) return;
+    const sentence = describeBoard(board, view);
+    carry.hidden = !sentence;
+    if (!sentence) return;
+    const mini = carry.querySelector<HTMLElement>('[data-carry-plate]');
+    const text = carry.querySelector<HTMLElement>('[data-carry-text]');
+    if (text) text.textContent = sentence;
+    if (!mini) return;
+    mini.style.setProperty('--cols', String(view.cols));
+    mini.textContent = '';
+    for (let r = 0; r < view.rows; r += 1) {
+      for (let c = 0; c < view.cols; c += 1) {
+        const top = board[r][c][board[r][c].length - 1];
+        const dot = document.createElement('span');
+        if (top) {
+          dot.className = `mini mini--${top}`;
+          dot.dataset.height = String(board[r][c].length);
+        } else dot.className = 'mini';
+        mini.appendChild(dot);
+      }
+    }
   }
 
   /** Build the grid for the current view. A change of width re-runs this, bricks are kept. */
@@ -114,17 +175,32 @@ export function mountBaseplate(root: HTMLElement): void {
         cell.setAttribute('role', 'gridcell');
         cell.dataset.row = String(r);
         cell.dataset.col = String(c);
+        cell.style.setProperty('--row', String(r));
+        cell.style.setProperty('--col', String(c));
         cell.tabIndex = r === focusAt.row && c === focusAt.col ? 0 : -1;
         rowEl.appendChild(cell);
       }
       grid!.appendChild(rowEl);
     }
     paintAll();
+    markCue();
+    grid!.setAttribute('data-ready', '');
+    grid!.classList.remove('skeleton');
+  }
+
+  /** The one Ember ring on the stud to start with, only while nothing has been placed. It goes at the first brick or key press. */
+  function markCue(): void {
+    for (const old of grid!.querySelectorAll('.is-cue')) old.classList.remove('is-cue');
+    if (countBricks(board, view) > 0) return;
+    cellAt(Math.min(anchor.row, view.rows - 1), Math.min(anchor.col, view.cols - 1))?.classList.add('is-cue');
   }
 
   function setTool(next: Color | 'erase', announce = true): void {
     tool = next;
+    if (next !== 'erase') color = next;
+    root.dataset.color = color;
     for (const s of swatches) s.setAttribute('aria-pressed', String(s.dataset.tool === next));
+    root.dataset.erasing = String(next === 'erase');
     if (announce) say(next === 'erase' ? 'Eraser selected' : `${next[0].toUpperCase()}${next.slice(1)} selected`);
   }
 
@@ -143,9 +219,13 @@ export function mountBaseplate(root: HTMLElement): void {
       }
       paint(row, col, true);
       say(announcePlaced(tool, row, col));
+      snapLogo();
+      buzz();
     }
+    anchor = { row, col };
     save();
     refreshBridge();
+    markCue();
     return true;
   }
 
@@ -154,6 +234,7 @@ export function mountBaseplate(root: HTMLElement): void {
     if (!next) return;
     cellAt(focusAt.row, focusAt.col)?.setAttribute('tabindex', '-1');
     focusAt = { row, col };
+    anchor = { row, col };
     next.setAttribute('tabindex', '0');
     next.focus();
   }
@@ -248,7 +329,7 @@ export function mountBaseplate(root: HTMLElement): void {
       case 'Backspace': {
         e.preventDefault();
         const gone = removeTop(board, row, col);
-        if (gone) { paint(row, col); save(); refreshBridge(); say(announceRemoved(gone, row, col)); }
+        if (gone) { paint(row, col); save(); refreshBridge(); markCue(); say(announceRemoved(gone, row, col)); }
         else say('Nothing to remove here');
         return;
       }
@@ -276,12 +357,33 @@ export function mountBaseplate(root: HTMLElement): void {
     s.addEventListener('click', () => setTool((s.dataset.tool as Color | 'erase') ?? 'red'));
   }
 
+  for (const s of stamps) {
+    s.addEventListener('click', () => {
+      const kind = s.dataset.stamp as Stamp;
+      const laid = stamp(board, kind, anchor.row, anchor.col, color, view);
+      laid.forEach((l, i) => paint(l.row, l.col, true, i * 28, l.added));
+      const total = laid.reduce((n, l) => n + l.added, 0);
+      if (total) {
+        snapLogo();
+        buzz();
+        save();
+        refreshBridge();
+        markCue();
+      }
+      say(announceStamp(kind, total));
+    });
+  }
+
   clear.addEventListener('click', () => {
     clearBoard(board);
     save();
     paintAll();
+    markCue();
     say('Baseplate cleared');
   });
+
+  // The closing band's button is the same bridge, pressed from further down the page.
+  carry?.querySelector('[data-carry-link]')?.addEventListener('click', () => bridge.click());
 
   bridge.addEventListener('click', () => {
     const field = document.getElementById('hero-start') as HTMLTextAreaElement | null;

@@ -21,6 +21,14 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       output: {
+        // THE WORKSPACE CHUNK KEEPS ITS OWN NAME. Rollup names a chunk after the first module that
+        // gave it a name, and the workspace's was taken from a streamdown file, so the 466 kB chunk
+        // the route lazy-loads was called `mermaid-*.js` and scripts/check-app-bundle.mjs, which looks
+        // for a chunk called workspace-*, reported the route as folded into the entry. It was not.
+        chunkFileNames: (chunk) =>
+          chunk.moduleIds.some((id) => id.endsWith('/src/routes/workspace.tsx'))
+            ? 'assets/workspace-[hash].js'
+            : 'assets/[name]-[hash].js',
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
           supabase: ['@supabase/supabase-js'],

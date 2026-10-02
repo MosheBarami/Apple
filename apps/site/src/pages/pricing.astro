@@ -387,7 +387,7 @@ const limitFaq = [
               class={`plan slab slab--seam${promoted === id ? ' is-promoted' : ' is-planned'}`}
               aria-labelledby={`plan-${id}`}
               data-reveal
-              data-reveal-delay={110 + i * 60}
+              style={`--i:${i}`}
               data-spotlight
             >
               {promoted === id && <BeamBorder />}
@@ -690,7 +690,7 @@ const limitFaq = [
         <p class="eyebrow" data-reveal>The honest part</p>
         <h2 id="limits-title" data-reveal class="carved">Limits, plainly stated</h2>
       </header>
-      <div data-reveal data-reveal-delay="90">
+      <div data-reveal style="--i:1">
         <Accordion items={limitFaq} />
       </div>
     </div>

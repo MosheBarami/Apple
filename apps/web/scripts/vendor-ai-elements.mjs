@@ -46,8 +46,23 @@ export const UI = [
  * so the default never applies and behaviour is upstream's.
  */
 export const PATCHES = {
+  // 2026-10-02, apps/web bundle: the entry chunk was 182.8 kB gzipped against a 150 kB budget and the
+  // workspace chunk 690 kB. Shimmer's `motion` import (124 kB raw, used by nothing else) and the
+  // `@streamdown/mermaid` and `react-jsx-parser` imports (the two heaviest libraries the workspace
+  // carries) are each replaced by an import of a lazy or lighter equivalent. Nothing else changes.
+  'components/ai-elements/shimmer.tsx': [
+    ['import type { MotionProps } from "motion/react";', 'import type { MotionProps } from "@/lib/motion-lite";'],
+    ['import { motion } from "motion/react";', 'import { motion } from "@/lib/motion-lite";'],
+  ],
+  'components/ai-elements/message.tsx': [
+    ['import { mermaid } from "@streamdown/mermaid";', 'import { mermaid } from "@/lib/lazy-mermaid";'],
+  ],
+  'components/ai-elements/reasoning.tsx': [
+    ['import { mermaid } from "@streamdown/mermaid";', 'import { mermaid } from "@/lib/lazy-mermaid";'],
+  ],
   'components/ai-elements/jsx-preview.tsx': [
     ['const [fullMatch, tagName, attributes, selfClosing] = match;', 'const [fullMatch, tagName = "", attributes = "", selfClosing] = match;'],
+    ['import JsxParser from "react-jsx-parser";', 'import { Suspense, lazy } from "react";\nconst LazyJsxParser = lazy(() => import("react-jsx-parser").then((m) => ({ default: m.default as unknown as React.ComponentType<JsxParserProps> })));\nconst JsxParser = (props: JsxParserProps) => <Suspense fallback={null}><LazyJsxParser {...props} /></Suspense>;'],
   ],
 };
 

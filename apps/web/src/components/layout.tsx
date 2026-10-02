@@ -616,7 +616,7 @@ function Shell() {
         <nav className="studio-dock" aria-label="Workspace navigation" ref={dockRef}>
           {/* Where you are, and where the pointer is: two beds that slide between the rows. */}
           <DockHighlights dock={dockRef} route={location.pathname} />
-          <Link to="/" className="studio-dock__brand" aria-label="Apple — projects">
+          <Link viewTransition to="/" className="studio-dock__brand" aria-label="Apple — projects">
             <ModelMark variant="apple" snap={studioLink === 'disconnected' ? 'lifted' : 'seated'} />
             <span className="studio-dock__wordmark">Apple</span>
           </Link>
@@ -643,7 +643,7 @@ function Shell() {
                 <kbd className="studio-dock__kbd" dir="ltr" aria-hidden="true">{shortcutLabel(SHORTCUTS.newProject)}</kbd>
               </button>
 
-              <NavLink to="/" end className="studio-dock__row" aria-label="Projects" title="Projects">
+              <NavLink viewTransition to="/" end className="studio-dock__row" aria-label="Projects" title="Projects">
                 <AnimatedIcon motion="pop"><Icon d={PATH.projects} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">Projects</span>
               </NavLink>
@@ -666,7 +666,7 @@ function Shell() {
           <div className="studio-dock__foot" role="group" aria-label="Account">
             <p className="studio-dock__group-label" aria-hidden="true">Account</p>
 
-            <NavLink to="/usage" className="studio-dock__row" aria-label="Usage and Credits" title="Usage and Credits">
+            <NavLink viewTransition to="/usage" className="studio-dock__row" aria-label="Usage and Credits" title="Usage and Credits">
               <AnimatedIcon motion="swing"><Icon d={PATH.gauge} size={16} /></AnimatedIcon>
               <span className="studio-dock__label">Usage and Credits</span>
             </NavLink>
@@ -675,7 +675,7 @@ function Shell() {
                 accessible name is "Settings" and its visible label has to say the same thing, so
                 who-you-are is the second line rather than the first. Nothing is invented to fill
                 it — with no profile name and no address the line is simply absent. */}
-            <NavLink to="/settings" className="studio-dock__row studio-dock__account" aria-label="Settings" title="Settings">
+            <NavLink viewTransition to="/settings" className="studio-dock__row studio-dock__account" aria-label="Settings" title="Settings">
               <span className="studio-dock__avatar" aria-hidden="true">{(who[0] ?? '?').toUpperCase()}</span>
               <span className="studio-dock__stack">
                 <span className="studio-dock__label">Settings</span>

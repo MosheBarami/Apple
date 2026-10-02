@@ -84,6 +84,7 @@ const UiLabPage = import.meta.env.DEV
 const StudioPreviewPage = import.meta.env.DEV ? lazy(() => import('./routes/studio-preview').then((m) => ({ default: m.StudioPreviewPage }))) : () => null;
 import { JoinPage } from './routes/join';
 import { NotFoundPage } from './routes/not-found';
+import { RouteSkeleton } from './components/route-skeleton';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -166,7 +167,7 @@ export function App() {
                     <Route
                       path="/projects/:id"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton shape="workspace" />}>
                           <WorkspacePage />
                         </Suspense>
                       }
@@ -176,7 +177,7 @@ export function App() {
                     <Route
                       path="/projects/:id/roadmap"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton />}>
                           <RoadmapPage />
                         </Suspense>
                       }
@@ -186,7 +187,7 @@ export function App() {
                     <Route
                       path="/projects/:id/branding"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton />}>
                           <BrandingPage />
                         </Suspense>
                       }
@@ -198,7 +199,7 @@ export function App() {
                     <Route
                       path="/usage"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton />}>
                           <UsagePage />
                         </Suspense>
                       }
@@ -206,7 +207,7 @@ export function App() {
                     <Route
                       path="/settings"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton />}>
                           <SettingsPage />
                         </Suspense>
                       }
@@ -214,7 +215,7 @@ export function App() {
                     <Route
                       path="/admin"
                       element={
-                        <Suspense fallback={<div className="page" aria-busy="true" />}>
+                        <Suspense fallback={<RouteSkeleton />}>
                           <AdminPage />
                         </Suspense>
                       }
@@ -239,7 +240,7 @@ export function App() {
                       <Route
                         path="/ui-lab"
                         element={
-                          <Suspense fallback={<div className="page" aria-busy="true" />}>
+                          <Suspense fallback={<RouteSkeleton />}>
                             <UiLabPage />
                           </Suspense>
                         }

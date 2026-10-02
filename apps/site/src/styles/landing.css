@@ -14,7 +14,7 @@
  * the page is read, and below 900px it folds into the 2px bar on the bottom edge of the top bar.
  *
  * MOTION IN THIS SHEET: one entrance (`rise`, the composer and what follows it, once, 260ms), the
- * scroll reveal ([data-reveal], transitions only) and the four lights of the loop illustration. All
+ * scroll reveal ([data-reveal], the shared scroll-driven primitive) and the four lights of the loop illustration. All
  * of it is OFF under prefers-reduced-motion, not shortened. Nothing loops: this sheet declares no
  * infinite animation. The Baseplate toy keeps its own sheet beside its component.
  */
@@ -217,8 +217,8 @@ a {
 }
 
 .rise {
-  animation: rise var(--dur-3) var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 40ms);
+  animation: rise var(--dur-3) var(--ease-enter) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
 }
 
 /* THE COMPOSER: a level-2 panel with a visible control boundary. It is the product's own control,
@@ -400,7 +400,7 @@ a {
 
 @media (min-width: 1000px) {
   .hero-inner {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     align-items: start;
     column-gap: var(--s-7);
   }
@@ -409,13 +409,37 @@ a {
 /* ------------------------------------------------------------------ bands */
 
 .band {
-  padding: clamp(64px, 9vw, 112px) 0;
+  padding: clamp(40px, 6vw, 72px) 0;
   border-top: 1px solid var(--hairline);
 }
 
 .band-head {
   max-width: 640px;
-  margin-bottom: var(--s-7);
+  margin-bottom: var(--s-6);
+}
+
+/* THE SPLIT BAND: from 1100px the head sits in a narrow column on the inline start and the thing
+   itself takes the rest, so a band is as tall as its content and not as tall as head plus content.
+   The head stays under the top bar while its body scrolls past. */
+.band-body {
+  display: grid;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .band--split > .shell {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+    gap: var(--s-7);
+    align-items: start;
+  }
+
+  .band--split .band-head {
+    position: sticky;
+    inset-block-start: calc(var(--nav-h) + var(--s-5));
+    margin-bottom: 0;
+  }
 }
 
 .section-title {
@@ -445,13 +469,6 @@ a {
 
 .section-sub a:hover {
   text-decoration-color: var(--accent);
-}
-
-/* Below the fold: the browser may skip drawing these until they are near the screen. */
-#models,
-.closing {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 480px;
 }
 
 /* ------------------------------------------------------------------ proof (components/ConsentProof.astro) */
@@ -779,7 +796,7 @@ a {
 
 /* THE STAGE PANEL: one flat surface, one row of tabs, one stage at a time. It says what it is. */
 .demos-panel {
-  margin-block-start: var(--s-7);
+  margin: 0;
 }
 
 .demos {
@@ -1139,45 +1156,120 @@ a {
 
 /* ------------------------------------------------------------------ models */
 
-.choice-label {
-  margin: 0 0 var(--s-1);
-}
-
+/* THE ENGINE PANEL: the name and what it is on one row, then three facts in cells, then the way on.
+   Every fact is one the page already states elsewhere (the pricing and engine pages carry them). */
 .model-grid {
   display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--s-4);
 }
 
-.model-card {
-  padding: var(--s-5) 0;
-  border-block-end: 1px solid var(--hairline);
+.engine {
+  display: grid;
+  gap: var(--s-5);
+  padding: var(--s-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.engine-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+
+.engine-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
 }
 
 .model-name {
   margin: 0;
   color: var(--ink);
-  font-size: 1.0625rem;
+  font-size: 1.25rem;
   font-weight: 600;
+  line-height: 1.3;
 }
 
 .model-blurb {
-  margin: var(--s-2) 0 0;
+  margin: var(--s-1) 0 0;
   color: var(--muted);
   font-size: 0.9375rem;
   line-height: 1.6;
 }
 
-.model-plans {
-  margin: var(--s-3) 0 0;
+.engine-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-block-start: 1px solid var(--hairline);
+  list-style: none;
+}
+
+.engine-fact {
+  display: grid;
+  align-content: start;
+  gap: var(--s-1);
+  padding: var(--s-4) var(--s-4) 0 0;
+}
+
+.engine-fact + .engine-fact {
+  padding-inline-start: var(--s-4);
+  border-inline-start: 1px solid var(--hairline);
+}
+
+.engine-val {
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.engine-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 640px) {
+  .engine-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .engine-fact,
+  .engine-fact + .engine-fact {
+    padding: var(--s-3) 0;
+    border-inline-start: 0;
+    border-block-end: 1px solid var(--hairline);
+  }
 }
 
 /* ------------------------------------------------------------------ closing */
 
 .closing {
-  padding: clamp(80px, 11vw, 136px) 0;
+  padding: clamp(56px, 8vw, 96px) 0;
   border-block-start: 1px solid var(--hairline);
+}
+
+.closing-inner {
+  display: grid;
+  gap: var(--s-6);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .closing-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--s-7);
+  }
 }
 
 .statement {
@@ -1195,38 +1287,42 @@ a {
   margin-block-start: var(--s-5);
 }
 
+/* THE PLATE, CARRIED DOWN: once a visitor has built something the last band shows it back to them, small
+   and read-only, with the sentence it is described by and the same bridge as the one under the hero. */
+.carry {
+  display: grid;
+  gap: var(--s-3);
+  max-width: 360px;
+  padding: var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.carry[hidden] {
+  display: none;
+}
+
+.carry-text {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.carry-plate {
+  justify-self: start;
+}
+
 /* ------------------------------------------------------------------ reveal */
 
-/* EVERY BRANCH ENDS WITH THE CONTENT VISIBLE (apps/site/tests/reveal-cannot-hide-content.test.mjs):
-   without scripting (.no-js, removed by an inline script before first paint), with no
-   IntersectionObserver and through the layout's failsafe (Landing.astro), and under reduced
-   motion, declared AFTER the hidden state so it wins on cascade order. Blocks rise 8px and fade in
-   over 260ms, staggered by their own `data-reveal-delay`. */
-.no-js [data-reveal] {
-  opacity: 1;
-  transform: none;
-}
-
-html:not(.no-js) [data-reveal] {
-  opacity: 0;
-  transform: translateY(8px);
-  transition:
-    opacity var(--dur-3) var(--ease-out),
-    transform var(--dur-3) var(--ease-out);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-html:not(.no-js) [data-reveal].is-in {
-  opacity: 1;
-  transform: none;
-}
+/* THE REVEAL IS NOT HERE ANY MORE. It is the shared, scroll-driven primitive in apple-minimal.css:
+   every `[data-reveal]` block is visible by default, and where the browser has scroll-driven
+   animations it eases in as it crosses the bottom edge. Nothing on this page waits for a script or a
+   class, so a capture taller than the window, a fast scroll, a blocked script and reduced motion all
+   show the whole page (apps/site/tests/reveal-cannot-hide-content.test.mjs). */
 
 @media (prefers-reduced-motion: reduce) {
-  html:not(.no-js) [data-reveal] {
-    opacity: 1;
-    transform: none;
-  }
-
   /* The Rail is drawn fully filled, and the loop's four nodes rest on their final state. */
   .rail-list::after {
     transform: none;
@@ -1239,15 +1335,7 @@ html:not(.no-js) [data-reveal].is-in {
   }
 }
 
-/* A printed page, or anything that captures the document without scrolling it, gets every section
-   rather than the bands the observer has not reached yet. */
 @media print {
-  html:not(.no-js) [data-reveal] {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-
   .rail {
     display: none;
   }
