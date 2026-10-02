@@ -198,7 +198,7 @@ PASS 3  2026-09-14T17:30:29Z  HEAD 7214e6c  prompt-sha=6428cb9e38a43e198554a5934
 
 STATION: S1 ADVANCED(2 of 4 sub-probes green, was 0). The deployed origin was probed for
   the first time this mission. / and /pricing return 200 and the two unauthorised
-  contractual terms are gone from source — but the DEPLOYED site still says Golem, so S1
+  contractual terms are gone from source — but the DEPLOYED site still says Apple, so S1
   is NOT proven and is not claimed.
 
 DERIVED OPEN: gates 2 met / 33 open of 35 | worklist 6
@@ -240,7 +240,7 @@ DEPLOYED, MEASURED FOR THE FIRST TIME:
                           §10.2 drift invariant cannot be run as written. The version the
                           health route does return is the package version, which never moves.
   GET / /app /pricing  200
-  bundle 808,238 bytes: Apple 2, Golem 86. Local build: Apple 98, Golem 4 (all exempt).
+  bundle 808,238 bytes: Apple 2, Apple 86. Local build: Apple 98, Apple 4 (all exempt).
   THE REBRAND HAS NEVER BEEN DEPLOYED. A stranger sees "Golem builds it."
 
   A MEASUREMENT I GOT WRONG AND CORRECTED: my first bundle fetch used /assets/... and the
@@ -279,7 +279,7 @@ NOT DONE:
   §9.5 self-refuter | carried from pass 1 and pass 2 | SCHEDULED pass 4
 
 NUMBERS CORRECTED:
-  my own first deployed-bundle count (Apple 0 / Golem 140) -> Apple 2 / Golem 86; the first
+  my own first deployed-bundle count (Apple 0 / Apple 140) -> Apple 2 / Apple 86; the first
     was five 404 pages fetched from a wrong path
   suite 2206 -> 2216
   escape-hatch detectors: 22 claimed tested -> 14 actually tested -> 32 now
@@ -989,10 +989,10 @@ PASS 12  2026-09-15T00:32:50Z  HEAD e2f019f  tree-clean=yes  prompt-sha=6428cb9e
 STATION: S1 Land — BLOCKED-BY-DEPLOY-APPROVAL. Not blocked by engineering: every defect S1
   names is already absent from the built artifact.
   Probed against the deployed origin this pass. `/` and `/pricing` return 200. Between them:
-  58 user-visible "Golem"; "No card required, ever" x3; "never be charged" x1; and a published
+  58 user-visible "Apple"; "No card required, ever" x3; "never be charged" x1; and a published
   free quota of 60 Credits/day against PLAN_LIMITS.free.creditsPerDay = 231.
   The built artifact publishes 231, carries none of the three forbidden phrases, and holds four
-  Golem tokens, every one on the §12.5 closed list (golem-ui x2, golem.v1, golem.jwt.).
+  Apple tokens, every one on the §12.5 closed list (golem-ui x2, golem.v1, golem.jwt.).
   NOT ADVANCED: no sub-probe moved red to green. The only action that moves this station is one
   I am not authorised to take, so claiming ADVANCED would be claiming credit for a measurement.
 
@@ -1056,7 +1056,7 @@ VERIFICATION (HEAD e2f019f, frozen tree, no editing during the run):
   neurons spent this pass: 0
 
 DEPLOYED: stale. /api/health returns no buildSha, so the worker predates the health change.
-  Deployed /app bundle: Apple 0 / Golem 79. Built artifact: Apple 101 / Golem 4, all closed-list.
+  Deployed /app bundle: Apple 0 / Apple 79. Built artifact: Apple 101 / Apple 4, all closed-list.
   deploy: NONE.
 
 NOT DONE:
@@ -1136,11 +1136,11 @@ PASS 12 ADDENDUM 2 — THE DEPLOY, and S1 PROVEN.
   live path, sha256 identical either side. An undo nobody has watched work is not an undo.
 
   MEASURED ON THE ORIGIN, cache-busted:
-    / /pricing /terms /privacy /status /changelog /docs — golem=4 on each, all four the closed
+    / /pricing /terms /privacy /status /changelog /docs — apple=4 on each, all four the closed
       §12.5 hostname in canonical/og:url/twitter:image. Non-hostname occurrences: 0.
     forbidden phrases 0, from 4. "No card required, ever" x3 and "never be charged" x1 gone.
     /pricing publishes 231 Credits, from 60, matching PLAN_LIMITS.free.creditsPerDay.
-    /app bundle Golem 79 -> 4 (golem-ui x2, golem.jwt., golem.v1), Apple 0 -> 88.
+    /app bundle Apple 79 -> 4 (golem-ui x2, golem.jwt., golem.v1), Apple 0 -> 88.
     check-rebrand --deployed: REBRAND COMPLETE. The last red item in the §10 block.
     smoke --no-model: 9/9 executed checks passed.
     apple-touch-icon.png: was 200 text/html with 2,027 bytes of a page — an HTML object stored

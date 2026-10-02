@@ -1,6 +1,6 @@
 # Meshy 3D Assets on a High-End Marketing Site (Build-Time Pipeline) — 2026 Best Practice
 
-Research date: 2026-08-30. Context: "Golem" landing page — stylized clay/stone/rune golem characters generated in Meshy, used as build-time static assets (no runtime Meshy API calls), rendered with three.js / react-three-fiber, hosted cheaply (Cloudflare Workers static assets / R2). Target: **< 2–3 MB total 3D payload** for the hero.
+Research date: 2026-08-30. Context: "Apple" landing page — stylized clay/stone/rune legacy characters generated in Meshy, used as build-time static assets (no runtime Meshy API calls), rendered with three.js / react-three-fiber, hosted cheaply (Cloudflare Workers static assets / R2). Target: **< 2–3 MB total 3D payload** for the hero.
 
 ---
 
@@ -20,7 +20,7 @@ Research date: 2026-08-30. Context: "Golem" landing page — stylized clay/stone
 - `target_polycount`: **100–300,000 faces** (standard remesh) or **100–15,000 faces** with `smart-topology` model type.
 - `should_remesh: true/false`; `decimation_mode` 1–4 (ultra/high/medium/low adaptive decimation).
 
-**Recommended Meshy settings for a landing-hero golem:**
+**Recommended Meshy settings for a landing-hero apple:**
 - GLB + `enable_pbr: true`, `texture_resolution: "2k"` (2K is plenty after KTX2 compression; 4K/8K only bloats and gets downscaled anyway).
 - `topology: "triangle"`, `target_polycount` ≈ **15,000–30,000** per character. A hero character does not need more; you will simplify further in the pipeline if needed.
 - Local Meshy MCP note: this machine has a Meshy MCP server; per its cost table, text-to-3d costs 5–20 credits, refine 10 (15 at 8K), remesh 5, convert 1 — relevant only at build time, zero runtime cost.
@@ -36,23 +36,23 @@ Two equivalent toolchains; pick one (both verified):
 ### Option A — `@gltf-transform/cli` (v4.4.2, `npm i -g @gltf-transform/cli`) — most control
 ```bash
 # One-shot:
-gltf-transform optimize golem-raw.glb golem.glb \
+gltf-transform optimize apple-raw.glb apple.glb \
   --compress meshopt \
   --texture-compress ktx2 \
   --texture-size 1024
 
 # Or staged, with per-texture-type codecs (best quality/size):
-gltf-transform resize golem-raw.glb tmp.glb --width 1024 --height 1024
+gltf-transform resize apple-raw.glb tmp.glb --width 1024 --height 1024
 gltf-transform etc1s tmp.glb tmp.glb --slots "baseColorTexture"      # color data → ETC1S (small)
 gltf-transform uastc tmp.glb tmp.glb --slots "{normalTexture,metallicRoughnessTexture,occlusionTexture}"  # data maps → UASTC (quality)
 gltf-transform simplify tmp.glb tmp.glb --ratio 0.75 --error 0.001   # optional polycount trim
-gltf-transform meshopt tmp.glb golem.glb                              # EXT_meshopt_compression
+gltf-transform meshopt tmp.glb apple.glb                              # EXT_meshopt_compression
 ```
 Key rule (verified via glTF-Transform discussions + Khronos KHR_texture_basisu docs): **ETC1S for base color, UASTC for normal/ORM maps** — ETC1S visibly degrades normal maps.
 
 ### Option B — `gltfpack` (npm package `gltfpack`, from meshoptimizer) — fastest single command
 ```bash
-gltfpack -i golem-raw.glb -o golem.glb -cc -tc -si 0.75
+gltfpack -i apple-raw.glb -o apple.glb -cc -tc -si 0.75
 ```
 - `-c` / `-cc` → `EXT_meshopt_compression` (cc = extra compression); quantization via `KHR_mesh_quantization` is on by default.
 - `-tc` → KTX2/BasisU textures (`KHR_texture_basisu`); `-tw` → WebP textures instead.
@@ -67,12 +67,12 @@ gltfpack -i golem-raw.glb -o golem.glb -cc -tc -si 0.75
 ### Realistic size budget for the hero (<2–3 MB total 3D payload)
 | Item | Budget |
 |---|---|
-| Golem GLB (20–30k tris, meshopt + KTX2, 1K textures) | 0.6–1.5 MB |
+| Apple GLB (20–30k tris, meshopt + KTX2, 1K textures) | 0.6–1.5 MB |
 | HDRI environment (1K .hdr, or gainmap .webp) | 0.3–0.8 MB (gainmap webp ≈ 100–300 KB) |
 | Basis/KTX2 transcoder (wasm+js, lazy-loaded) | ~0.5 MB (UNVERIFIED exact; lazy-load it) |
 | meshopt decoder | tens of KB (small; UNVERIFIED exact) |
 | three.js core (tree-shaken, gzipped) | ~150–170 KB gz (UNVERIFIED exact for r18x) |
-Verify every build with `gltf-transform inspect golem.glb` and a CI size gate (fail the build if `golem.glb` > 1.5 MB).
+Verify every build with `gltf-transform inspect apple.glb` and a CI size gate (fail the build if `apple.glb` > 1.5 MB).
 
 ---
 
@@ -95,15 +95,15 @@ loader.setMeshoptDecoder(MeshoptDecoder);
 Self-host the decoder folders (`examples/jsm/libs/draco/`, `examples/jsm/libs/basis/`) — don't rely on unpkg/gstatic CDNs in production.
 
 **react-three-fiber / drei:**
-- `const { nodes, materials } = useGLTF('/golem.glb')` — drei auto-wires DRACOLoader (defaults to `https://www.gstatic.com/draco/v1/decoders/` CDN; override with `useGLTF.setDecoderPath('/draco/')`) and supports meshopt out of the box. For KTX2, use the `extendLoader` callback: `useGLTF(url, true, true, (l) => l.setKTX2Loader(ktx2.detectSupport(gl)))`.
-- `useGLTF.preload('/golem.glb')` at module scope to start the fetch before the component mounts.
+- `const { nodes, materials } = useGLTF('/apple.glb')` — drei auto-wires DRACOLoader (defaults to `https://www.gstatic.com/draco/v1/decoders/` CDN; override with `useGLTF.setDecoderPath('/draco/')`) and supports meshopt out of the box. For KTX2, use the `extendLoader` callback: `useGLTF(url, true, true, (l) => l.setKTX2Loader(ktx2.detectSupport(gl)))`.
+- `useGLTF.preload('/apple.glb')` at module scope to start the fetch before the component mounts.
 - `useLoader`/`useGLTF` results are cached automatically per-URL.
 
 **Suspense + lazy pattern (the 2026 idiom):**
 ```jsx
-const Scene = lazy(() => import('./GolemScene'));   // code-split three.js itself
+const Scene = lazy(() => import('./AppleScene'));   // code-split three.js itself
 ...
-<Suspense fallback={<PosterImage />}>              {/* static webp/avif render of the golem */}
+<Suspense fallback={<PosterImage />}>              {/* static webp/avif render of the apple */}
   <Scene />
 </Suspense>
 ```
@@ -111,7 +111,7 @@ Inside the Canvas, wrap the model in `<Suspense fallback={null}>` and show a DOM
 
 ---
 
-## 4. Lighting/environment (HDRI) for stylized clay/stone/rune golems
+## 4. Lighting/environment (HDRI) for stylized clay/stone/rune apples
 
 - Use **image-based lighting**: drei `<Environment files="/env-1k.hdr" />` (props verified: `files` accepts `.hdr`, `.exr`, gainmap `.jpg`/`.webp`; `environmentIntensity`, `background`, `resolution`). **Do not use `preset="studio"` etc. in production** — drei docs explicitly warn presets rely on CDNs and may fail; self-host via `@pmndrs/assets` or your own 1K HDRI (Poly Haven, CC0).
 - Gainmap `.webp`/`.jpg` environments are the 2026 size win: HDR-quality env lighting at ~10–20% of `.hdr` size.
@@ -136,7 +136,7 @@ Inside the Canvas, wrap the model in `<Suspense fallback={null}>` and show a DOM
 
 - Astro islands ship **zero JS by default**; hydrate the hero with a `client:*` directive (verified): `client:load` (immediately), `client:idle` (browser idle), `client:visible` (enters viewport), plus `client:media` and `client:only`.
 - For an above-the-fold 3D hero: **`client:only="react"` + `client:idle`-like deferral is the usual choice** — three.js components can't meaningfully SSR, so `client:only="react"` skips server render; pair with the static poster in the `.astro` file for instant paint. For a below-the-fold 3D section, `client:visible` is strictly better.
-- Options ranked for Golem:
+- Options ranked for Apple:
   1. **React island with @react-three/fiber + drei** (`@astrojs/react`) — best DX, use `client:only="react"`. Only the island pays the React+three cost.
   2. **Vanilla three.js in a `<script>` module** — smallest possible JS (no React in the island), ideal if the hero is one model + orbit/idle rotation. Dynamic-`import('three')` inside an IntersectionObserver/idle callback.
   3. `<model-viewer>` web component — trivial GLB display with built-in lazy load/AR, but generic-looking; not "award-level."
@@ -149,17 +149,17 @@ Inside the Canvas, wrap the model in `<Suspense fallback={null}>` and show a DOM
 Stack observed across Awwwards SOTD writeups: **Lenis (smooth scroll) + GSAP ScrollTrigger (scroll choreography) + three.js (WebGL hero) + Motion for component-level animation**; WebGL heroes are now table stakes on premium projects, and CSS `view-timeline`/scroll-driven animations handle simple cases without JS.
 
 Four concrete reference techniques:
-1. **Scroll choreography / scrollytelling**: pin the hero (`ScrollTrigger` pin + scrub) and drive the golem's rotation/camera dolly and staggered text reveals from scroll progress — map `scrollProgress` → camera position + `material.emissiveIntensity` (runes ignite as you scroll). Lenis provides the inertial scroll feel that reads as "expensive."
-2. **Shader/mesh gradients + grain**: animated GLSL mesh-gradient background (or a tiny fragment-shader plane behind the golem) + a film-grain/noise overlay at ~3–5% opacity — kills flat-gradient banding and is the single cheapest "premium" signal.
+1. **Scroll choreography / scrollytelling**: pin the hero (`ScrollTrigger` pin + scrub) and drive the apple's rotation/camera dolly and staggered text reveals from scroll progress — map `scrollProgress` → camera position + `material.emissiveIntensity` (runes ignite as you scroll). Lenis provides the inertial scroll feel that reads as "expensive."
+2. **Shader/mesh gradients + grain**: animated GLSL mesh-gradient background (or a tiny fragment-shader plane behind the apple) + a film-grain/noise overlay at ~3–5% opacity — kills flat-gradient banding and is the single cheapest "premium" signal.
 3. **Choreographed entrance sequences**: multi-element staggered reveals — split text (per-line mask reveals with `clip-path`/overflow clip), the 3D model easing in with slight overshoot, custom easing curves (`expo.out`, ~0.8–1.2 s) — everything on one timeline, nothing animating independently.
-4. **Micro-interaction depth**: cursor-parallax on the golem (pointer → subtle model tilt, lerped), magnetic buttons, hover-state light response (pointer moves a point light so the stone reacts). Bound by `prefers-reduced-motion`.
+4. **Micro-interaction depth**: cursor-parallax on the apple (pointer → subtle model tilt, lerped), magnetic buttons, hover-state light response (pointer moves a point light so the stone reacts). Bound by `prefers-reduced-motion`.
 
 ---
 
-## Recommended pipeline for Golem (summary)
+## Recommended pipeline for Apple (summary)
 
 1. Meshy text-to-3d (`meshy-7`/`latest`) → refine with `enable_pbr: true`, `texture_resolution: "2k"`, `topology: "triangle"`, `target_polycount: ~20000`, `target_formats: ["glb"]`.
-2. Build script: `gltfpack -i raw.glb -o public/models/golem.glb -cc -tc` (or gltf-transform staged ETC1S/UASTC). CI gate: fail if > 1.5 MB.
+2. Build script: `gltfpack -i raw.glb -o public/models/apple.glb -cc -tc` (or gltf-transform staged ETC1S/UASTC). CI gate: fail if > 1.5 MB.
 3. Render a static poster (webp/avif) of the final lit model for LCP + fallback.
 4. Astro page: static HTML + poster; React island `client:only="react"`, gated on reduced-motion/WebGL2/core-count; `<Canvas frameloop="demand" dpr={[1,2]}>`, `useGLTF` with self-hosted meshopt+KTX2 decoders, `<Environment files>` with self-hosted 1K gainmap env, ContactShadows, one key light + rim.
 5. Lenis + GSAP ScrollTrigger scroll choreography, grain overlay, shader gradient backdrop; all motion behind `gsap.matchMedia()` reduced-motion guards.

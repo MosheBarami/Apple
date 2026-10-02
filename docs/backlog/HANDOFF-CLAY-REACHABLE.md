@@ -26,7 +26,7 @@ function asProductModel(x: unknown): ProductModel | undefined | null {
   return x === 'apple' || x === 'apple-max' ? x : null;
 }
 
-export function gatewayModelFor(mode: GolemMode, productModel?: ProductModel): string {
+export function gatewayModelFor(mode: AppleMode, productModel?: ProductModel): string {
   if (productModel === 'apple') return 'stone';
   if (productModel === 'apple-max') return mode === 'clay' ? 'stone' : mode;
   return mode;                                                // <- undefined falls through to the mode
@@ -37,7 +37,7 @@ and a third that disagrees with the second:
 
 ```ts
 /** Legacy specialist requests keep their old meaning; new requests carry this model explicitly. */
-function effectiveProductModel(mode: GolemMode, requested?: ProductModel): ProductModel {
+function effectiveProductModel(mode: AppleMode, requested?: ProductModel): ProductModel {
   return requested ?? (mode === 'clay' ? 'apple' : 'apple-max');
 }
 ```

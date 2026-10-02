@@ -1,13 +1,13 @@
-# Golem — Architecture Decision Record (living)
+# Apple — Architecture Decision Record (living)
 
 Mission: public, production-quality AI SaaS that takes a Roblox game from idea to working experience.
 Constraints: ~$5/mo recurring, server-side inference only, independent commercially-usable open-weight AI core,
 no paid-per-token API dependency, no dependency on the dev Mac, tens of concurrent users at launch.
 
-## ADR-001 — Brand: "Golem"
-The golem is a builder animated by words — exactly what the product is. Friendly to young creators
+## ADR-001 — Brand: "Apple"
+The apple is a builder animated by words — exactly what the product is. Friendly to young creators
 (Minecraft golem association), serious enough for professionals. Company handle: Golem Labs.
-Tagline: "Describe it. Golem builds it in Studio."
+Tagline: "Describe it. Apple builds it in Studio."
 AI modes: **Clay** (fast conversational edits), **Stone** (standard builder agent), **Rune** (deep
 agent: plan → build → verify → fix). Modes map internally to model+routing+tool policies, not to
 single models. *(These were user-facing names; superseded by ADR-018 — they are now internal
@@ -33,7 +33,7 @@ projects, sessions, messages, checkpoints metadata, usage ledger, feedback. Priv
 never used for training; a separate explicit opt-in table gates any future contribution program.
 
 ## ADR-004 — Studio integration: real plugin, typed op protocol
-Luau plugin ("Golem for Studio"), developed with Rojo, built to .rbxm. Pairing: user gets short-lived
+Luau plugin ("Apple for Studio"), developed with Rojo, built to .rbxm. Pairing: user gets short-lived
 code in web app → plugin exchanges it for a scoped session token. Plugin long-polls the project DO,
 executes typed ops (read/search scripts, edit scripts via ScriptEditorService, create/modify instances
 + properties, DataModel tree snapshots, selection, terrain ops, playtest hooks, log capture,
@@ -97,14 +97,14 @@ refusal in the agent loop, and a steer injected when several steps pass with not
 
 ## ADR-011 — The one paid decision, deliberately not taken unilaterally
 Workers AI's free allocation is 10,000 neurons/day (~100k input + 100k output tokens) shared across
-ALL users of the service. Golem exhausted it during testing on day one. The product now handles this
+ALL users of the service. Apple exhausted it during testing on day one. The product now handles this
 gracefully (a plain-language "at capacity, resets at midnight UTC" message; project state untouched),
 but the free tier cannot support real users. Workers Paid is $5/month and is exactly the stated
 budget. It is presented to the owner for approval rather than purchased.
 
 ## ADR-012 — The agent must see its own work
 
-**Context.** Golem scored 98.9% on a 56-task eval suite and produced a scene the owner rejected on
+**Context.** Apple scored 98.9% on a 56-task eval suite and produced a scene the owner rejected on
 sight: a flat grey slab, four primitive poles, a trophy made of three stacked boxes. The eval suite
 measures coding competence and is structurally blind to how anything looks. Worse, the root cause
 was in our own prompt — `prompts.ts` told the model "a convincing trophy, tree, car or sword is a
@@ -157,7 +157,7 @@ inertia.
 ## ADR-014 — Meshy is a build-time probe, not an asset source
 
 **Context.** The owner confirmed Meshy Premium (assets owned outright, no attribution) with 2,180
-credits, approved for build-time creative work, and named the Golem character as the top priority.
+credits, approved for build-time creative work, and named the Apple character as the top priority.
 
 **Decision.** Spend was stopped at **70 credits (3.2%)** after three generations, and **no generated
 asset ships**. The credits bought findings rather than assets, which is the better trade.
@@ -169,7 +169,7 @@ asset ships**. The credits bought findings rather than assets, which is the bett
   as the 600-character limit allows ("NO FACE… no eyes, no mouth… no fingers… no toes"), produced an
   anatomically muscular human male. **Text-to-3D does not honour negative prompts and pulls hard
   toward human anatomy**, so stylised blocky characters are out of reach. The site keeps its
-  hand-built procedural three.js golem, which is on-brand, weighs nothing and animates.
+  hand-built procedural three.js apple, which is on-brand, weighs nothing and animates.
 - A barrel probe produced correct form but crude execution — at a Roblox-appropriate 2.9k triangles
   the stave gaps became jagged spikes, plus a detached fragment. **For simple rotationally symmetric
   props, procedural geometry beats generation.**
@@ -270,7 +270,7 @@ to flip the switch.
 **Liveness is measurable, and only one signal works.** Measured 2026-08-31 against two known-listed
 controls:
 
-| probe | Rojo `6415005344` | Moon Animator `4725618216` | Golem |
+| probe | Rojo `6415005344` | Moon Animator `4725618216` | Apple |
 |---|---|---|---|
 | `economy/v2/assets/{id}/details` | 200 | 200 | **200** |
 | `develop/v1/plugins?pluginIds={id}` | 200 | 200 | **200** |
@@ -331,8 +331,8 @@ Everything except the documentation site, which went on teaching Clay, Stone and
 changelog and the FAQ. A reader learned "Clay", opened the app, and found no such thing.
 
 **Decision.** The public vocabulary is Plan, Agent and Super Agent. The specialist axis
-(`GolemMode`: clay/stone/rune) is preserved exactly as it is on the wire, in storage and in the
-Credits ledger — `ClientMsg.chat` still carries `mode: GolemMode` — so no stored session changes
+(`AppleMode`: clay/stone/rune) is preserved exactly as it is on the wire, in storage and in the
+Credits ledger — `ClientMsg.chat` still carries `mode: AppleMode` — so no stored session changes
 meaning. Translation happens at the edge, through `PRODUCT_MODE_TO_SPECIALIST`.
 
 Internal documents keep the specialist names, and `docs/COST-MODEL.md` deliberately does: it
@@ -424,7 +424,7 @@ that number.
 the direction on file was minimal cinematic charcoal stone, warm `#0b0a09` with an ember accent. I
 wrote that from memory and did not open the stylesheet. `apps/site/src/styles/landing.css:38-40`
 says the opposite in as many words: *"The previous warm palette (#0b0a09 ground, #c98a3c amber)
-belonged to Golem and is gone; do not reintroduce warm tones here."* The landing already grounds at
+belonged to Apple and is gone; do not reintroduce warm tones here."* The landing already grounds at
 `#07080f` with an azure accent sampled from the product mark. That reversal happened before this
 change; I nearly recorded it twice.
 
@@ -469,7 +469,7 @@ would have been a capability claim with no capability under it:
    against the wrong number.
 
 **Consequence.** `docs/DESIGN-SPEC.md` §0 and §1 are rewritten. They had been describing the warm
-Golem palette, Inter, and one non-scrolling screen — none of which was on the page, and two
+Apple palette, Inter, and one non-scrolling screen — none of which was on the page, and two
 separate changes had left them behind. That file opens by claiming precedence over "an older
 written description", so a stale copy of it is not merely unhelpful: anyone following it faithfully
 would have reverted two decisions on purpose.
@@ -639,7 +639,7 @@ neglect — which is exactly how the owner read it.
 
 **Context.** The owner, repeatedly and in his own words:
 
-> אני פשוט לא מאמין שכאשר אמרנו למחוק את golem מאה פעם השארת את השמות הקודמים שלו שהם stone clay
+> אני פשוט לא מאמין שכאשר אמרנו למחוק את apple מאה פעם השארת את השמות הקודמים שלו שהם stone clay
 > וכל השטויות האלה זה ממזמן בולשיט לא עדכני
 
 ("I simply don't believe that when we said to delete Golem a hundred times, you left its old names,
@@ -657,7 +657,7 @@ mock fixture and two CSS class names (`rune-spinner`, `rune-pulse`), not mode la
 | where | count | kind |
 |---|---|---|
 | `apps/worker/src` | 92 | routing tables, step/token limits, model selection |
-| `packages/shared/src` | 12 | the `GolemMode` union and the frames that carry it |
+| `packages/shared/src` | 12 | the `AppleMode` union and the frames that carry it |
 | `infra` | 11 | harnesses |
 | `apps/web/src` | 8 | a roadmap mock and two CSS class names |
 | `apps/apple-plugin/src` | 0 | the Studio plugin never learns the mode |
@@ -697,7 +697,7 @@ the way this repository is least willing to be wrong: it was a claim about somet
 looked at. The product DID say them, to the one reader guaranteed to repeat them. `MODE_RULES` in
 `apps/worker/src/prompts.ts` opened the Agent prompt with `Mode: Stone (builder).` and the Super
 Agent prompt with `Mode: Rune (deep builder).` — measured over the real `systemPrompt`, matching
-`/\b(Stone|Clay|Rune|Golem)\b/` across the whole ~15,000-character prompt: `clay` 0 hits (it already
+`/\b(Stone|Clay|Rune|Apple)\b/` across the whole ~15,000-character prompt: `clay` 0 hits (it already
 said "Mode: Plan."), `stone` 1, `rune` 1, with and without the art-direction brief. The system prompt
 is the model's account of itself; a model told it is "Stone" writes "Stone" into the reply the owner
 reads.

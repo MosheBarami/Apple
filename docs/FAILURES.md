@@ -1,6 +1,6 @@
 # Failures
 
-Mission §V: the internal knowledge base must carry *every confirmed Golem failure*,
+Mission §V: the internal knowledge base must carry *every confirmed Apple failure*,
 every accepted and rejected experiment. Mission §AK: a plausible metric can be
 useless or actively misleading, so the falsifications matter as much as the fixes.
 
@@ -361,7 +361,7 @@ Two clauses of §12.5 were being broken by the command the owner's own §10 bloc
   and nothing in the script knows the ceiling exists.
 - **`never against /api/admin/*`.** Line 103 POSTs `/api/admin/studio-op/<id>` with `X-Admin-Key`,
   guarded by `if (ADMIN)` — and lines 16-18 load `.env` into `process.env`, where
-  `GOLEM_ADMIN_KEY` lives because `deploy-static.mjs` requires it. The guard is always true. It
+  `APPLE_ADMIN_KEY` lives because `deploy-static.mjs` requires it. The guard is always true. It
   never guarded anything.
 
 **Cost of the error:** nothing, by luck. No gate runs smoke — GATES.md names it zero times — so it
@@ -1349,7 +1349,7 @@ classification got that right where a presence test would have called it legacy.
 
 ### F-45 · A playbook that taught the mouse-only path a comment had already ruled out
 
-Building L3 meant writing down, for each task class, the procedure and the Golem primitive each
+Building L3 meant writing down, for each task class, the procedure and the Apple primitive each
 step should reach for. The `button.interactive` playbook's `press` step named
 `MouseButton1Down` as the primitive and `Activated` as the hand-rolled fallback.
 

@@ -144,7 +144,7 @@ output (G08), G02 pre-launch account gate, Q21 critique-loop removal, Stop aband
    wejim95fb); G12 evidence renderers (workflow wp4lz7sb4) then one integration into `ws/turn.tsx`.
    Commit each piece separately after worker + web tests and tsc pass.
 2. **Deploy.** `node infra/deploy-worker.mjs apple`, then `node infra/deploy-static.mjs` (needs
-   `API_BASE`/`GOLEM_ADMIN_KEY` from the repo `.env`, read by the script only). Set secrets
+   `API_BASE`/`APPLE_ADMIN_KEY` from the repo `.env`, read by the script only). Set secrets
    `LIBRARY_APPROVED_USER_IDS` (and optionally `RELEASE_LIBRARY_OWNER_ID`). Verify `/api/health`
    `buildSha` equals `main` and one real GLM request (G01 evidence).
 3. **Library publish (G06).** `packages/owner-corpus/publish_native_readiness.py --live` with the owner's

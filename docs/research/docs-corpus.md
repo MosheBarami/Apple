@@ -12,7 +12,7 @@ Research date: 2026-08-30. All repo stats, licenses, and endpoints below were ve
 - **Dual-licensed.** Per the repo README and LICENSE:
   - **Prose (all documentation text): CC-BY-4.0** (Creative Commons Attribution 4.0 International). GitHub's license detector reports SPDX `CC-BY-4.0` for the repo.
   - **Code samples: MIT.**
-- CC-BY-4.0 obligations: retain creator identification, copyright notice, license notice, link to source where practicable, and indicate modifications. Attribution may be satisfied "in any reasonable manner based on the medium" — a NOTICE file + per-chunk `source_url` metadata in Golem's RAG store satisfies this cleanly.
+- CC-BY-4.0 obligations: retain creator identification, copyright notice, license notice, link to source where practicable, and indicate modifications. Attribution may be satisfied "in any reasonable manner based on the medium" — a NOTICE file + per-chunk `source_url` metadata in Apple's RAG store satisfies this cleanly.
 
 ### Repo stats (verified 2026-08-30 via GitHub API)
 - Size: **29,584 KB (~29.6 MB)**, default branch `main`, 819 stars, 4,048 forks, last pushed **2026-08-29** (actively maintained, near-daily updates).
@@ -98,7 +98,7 @@ Copyleft-adjacent (fine to read/retrieve with attribution, keep out of any train
 | **TorpedoSoftware/roblox-info-dump** | MIT-tagged, **gated**; card states "Roblox maintains the copyright on all content" (it is scraped create.roblox.com/docs + luau.org) | 10K–100K rows | Convenient but redundant — build from creator-docs directly for cleaner CC-BY-4.0 attribution. |
 | **TorpedoSoftware/Roblox-Luau-Reasoning-v1.0** | **MIT** | 10K–100K rows, parquet; prompt → CoT + code + explanation | Synthetic reasoning data derived from luau_corpus; good SFT material. |
 | **TorpedoSoftware/LuauLeetcode** | **Apache-2.0** | 1K–10K rows, parquet | LeetCode problems AST-translated to Luau + Jest-Lua tests — usable as an eval/RL harness. |
-| **TorpedoSoftware/RobloxQA-v1.0** | **MIT** | 1K–10K rows | MCQ eval built from Roblox docs — use as Golem's regression eval, not training. |
+| **TorpedoSoftware/RobloxQA-v1.0** | **MIT** | 1K–10K rows | MCQ eval built from Roblox docs — use as Apple's regression eval, not training. |
 | 8BitStudio/Roblox-luau-coding_L1 | Apache-2.0 | 10K–100K JSON, instruction-tuning | Community synthetic; spot-check before use (UNVERIFIED quality). |
 | khtsly/luau-stack-hq | license:**other** | 10K–100K parquet | Curated GitHub Luau incl. roblox-ts; license "other" → treat cautiously. |
 | kefir090/luau_github | license:**other** ("individual files retain original licenses") | 100K–1M rows | Bulk GitHub scrape, no per-row license filtering guarantees → avoid for training. |
@@ -108,7 +108,7 @@ Proof these work in practice: TorpedoSoftware's Luau-Devstral-24B v0.1/v0.2, R1-
 
 ---
 
-## 6. Recommended corpus build plan for Golem
+## 6. Recommended corpus build plan for Apple
 
 ### What to clone/fetch (all commands verified patterns)
 ```bash
@@ -134,7 +134,7 @@ for r in dphfox/Fusion Sleitnick/RbxUtil Sleitnick/Knit evaera/roblox-lua-promis
 
 ### What to extract
 - **From creator-docs:** all 1,010 `content/en-us/**/*.md` (strip frontmatter, drop `assets/` refs) + all 1,217 `reference/engine/**/*.yaml`. Skip `includes/` partials or inline-resolve them.
-- **From the API dump:** per-class type/signature/tag table (security levels, deprecation, defaults) — merge into the YAML-derived class chunks as a machine-authoritative "signature block", and use it at generation time to *validate* Golem's emitted property/method names.
+- **From the API dump:** per-class type/signature/tag table (security levels, deprecation, defaults) — merge into the YAML-derived class chunks as a machine-authoritative "signature block", and use it at generation time to *validate* Apple's emitted property/method names.
 - **From frameworks:** README + `docs/` folders as guide chunks; source files as code-example chunks (tag with repo + license + commit SHA).
 
 ### Chunking strategy
@@ -151,8 +151,8 @@ for r in dphfox/Fusion Sleitnick/RbxUtil Sleitnick/Knit evaera/roblox-lua-promis
 **Scale estimate:** ~640 class chunks + ~8.4K member chunks + ~520 enum chunks + ~3–5K guide chunks + ~2–4K framework chunks ≈ **15K–20K chunks**, comfortably inside Cloudflare Vectorize free/paid tiers at 768–1024-dim embeddings.
 
 ### License hygiene (do this once)
-1. Ship a `NOTICES.md` in Golem listing: creator-docs (CC-BY-4.0 prose / MIT samples, © Roblox), luau-lang (MIT), each framework repo + license.
-2. Keep `source_url` + `license` per chunk; surface "Sources" links in the Golem UI when doc chunks ground an answer (satisfies CC-BY attribution elegantly and builds trust).
+1. Ship a `NOTICES.md` in Apple listing: creator-docs (CC-BY-4.0 prose / MIT samples, © Roblox), luau-lang (MIT), each framework repo + license.
+2. Keep `source_url` + `license` per chunk; surface "Sources" links in the Apple UI when doc chunks ground an answer (satisfies CC-BY attribution elegantly and builds trust).
 3. Exclude: Roblox-Client-Tracker redistribution (no license), `license:other` HF scrapes, MPL repos from any *training* set.
 4. The API dump has no explicit license (UNVERIFIED) — use it server-side for validation/grounding, don't redistribute it verbatim as a product artifact.
 

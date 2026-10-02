@@ -1,4 +1,4 @@
-# Cloudflare AI Gateway + Workers AI **binding** — Golem research
+# Cloudflare AI Gateway + Workers AI **binding** — Apple research
 
 Researched **2026-08-30** against live `developers.cloudflare.com`. Worker: `golem`.
 Account: `e9b8acf2e89a1de289a1ee4abb0f3f8d`.
@@ -91,7 +91,7 @@ export default {
 > Note: the older `/ai-gateway/usage/providers/workersai/` page lists only `id`, `skipCache`,
 > `cacheTtl`. The Workers Bindings API reference page is the fuller, more current list and
 > includes `cacheKey`, `collectLog`, `metadata`. **`metadata` is the one that matters for
-> Golem** — spend limits can be scoped by custom metadata dimensions (per-user budgets).
+> Apple** — spend limits can be scoped by custom metadata dimensions (per-user budgets).
 
 ### Wrangler binding
 
@@ -250,7 +250,7 @@ Form fields: budget amount (dollar value), time window (rolling or fixed), dimen
 - **Does a spend limit cap Workers AI (`@cf/…`) calls on a Standard-billing gateway?** The doc
   scopes the feature to "Unified Billing requests and BYOK requests." Workers AI under *Standard*
   billing is neither. The page "contains no references to Workers AI or standard billing tiers."
-  **This is the single most important open question for Golem.** Test empirically, or set the
+  **This is the single most important open question for Apple.** Test empirically, or set the
   gateway to Unified billing where the doc explicitly confirms credits deduct in real time.
 - Exact API endpoint + JSON body for creating a spend limit rule — no API example is published on
   the page. (Note: a legacy `POST /accounts/{account_id}/ai-gateway/billing/spending-limit` exists
@@ -289,7 +289,7 @@ Different feature from spend limits — caps **request count**, not dollars.
 The exact error response **body / JSON payload** for a rate-limit rejection is **UNVERIFIED** — the
 docs do not publish it.
 
-> Caution (from AI Search docs, relevant if Golem ever shares a gateway with AI Search): "avoid
+> Caution (from AI Search docs, relevant if Apple ever shares a gateway with AI Search): "avoid
 > setting rate limiting on this gateway. Rate limits apply to AI Search's own model calls,
 > including the many embedding requests made while indexing, and can interrupt indexing and
 > querying."
@@ -309,7 +309,7 @@ docs do not publish it.
 > - Provider authentication header (e.g. `Authorization` bearer token)
 > - Full request body
 
-Consequence for Golem: **only byte-identical request bodies hit cache.** Any per-request variation
+Consequence for Apple: **only byte-identical request bodies hit cache.** Any per-request variation
 (timestamps, user IDs, randomized system prompts, non-zero temperature echoed into the body)
 destroys the hit rate.
 
@@ -397,7 +397,7 @@ Workers Paid plan" — `@cf/moonshotai/kimi-k2.6`, `@cf/moonshotai/kimi-k2.7-cod
 `@cf/zai-org/glm-5.2` — at "50 requests per minute per account, per model when billed with AI
 Gateway credits, compared to 20 requests per minute through standard Workers AI billing."
 
-> This is directly relevant to Golem: **prepaid credits can substitute for the Workers Paid plan**
+> This is directly relevant to Apple: **prepaid credits can substitute for the Workers Paid plan**
 > for those frontier models. Whether they substitute for Workers Paid for *general* Workers AI
 > usage beyond the 10,000 free daily Neurons is **UNVERIFIED**.
 
@@ -556,7 +556,7 @@ provider, status code, cost, and duration."
 Ordered by how much they actually constrain spend. Layer them; none is sufficient alone.
 
 1. **Create a named gateway explicitly** (not `default`) — the auto-created default has caching
-   off, rate limiting off, Standard billing. Use `gateway: { id: "golem-prod" }`.
+   off, rate limiting off, Standard billing. Use `gateway: { id: "apple-prod" }`.
 2. **Set Workers AI Billing = Unified billing** on that gateway. This is the only mechanism where
    the docs explicitly confirm Workers AI requests "deduct from your credit balance in real time,"
    which converts spend into a prepaid, finite pool.

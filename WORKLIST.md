@@ -27,7 +27,7 @@ current-browser, Studio, billing, public-distribution or whole-product acceptanc
 `docs/evidence/customer-files-focus-continuation-2026-09-19.md`. Broad goal remains open.
 
 2026-09-18 partial production rollout, verified20:43UTC: existing distinct outbox
-tokens passed4/4 matching/swapped readiness checks. Golem deployed via the official
+tokens passed4/4 matching/swapped readiness checks. Apple deployed via the official
 script to100% version0adfa419-ba2a-4a46-a85a-feaff76ed213 with outbox/Sentry bindings;
 source aggregate d6562221c939ee672572f24f15af6401879ca24e53a5f16fb5383b83d23572a6
 was unchanged. Apple deployment was explicitly blocked by the platform safety check

@@ -718,7 +718,7 @@ stop being askable because the UI stopped drawing chips.
 **What it is:** a CLI, the remote twin of `generate_eval.py`. It produces the same output shape
 from the SERVED models through `/api/admin/model-test`, so `score-eval.mjs` scores it unchanged.
 Bases that do not fit on this Mac can only be measured this way. It is run by hand with
-`GOLEM_ADMIN_KEY`, like `score-eval.mjs` above.
+`APPLE_ADMIN_KEY`, like `score-eval.mjs` above.
 
 **Caller being added:** a `scripts` entry in `packages/training/package.json`, which is what makes
 it a declared entry point for this checker. That manifest belongs to the knowledge lane, so the

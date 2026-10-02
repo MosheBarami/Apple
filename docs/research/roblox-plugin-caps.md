@@ -1,13 +1,13 @@
 # Roblox Studio Plugin Capabilities for an AI Agent Integration
 
-Research findings for Golem (AI SaaS that builds Roblox games: web app + Studio plugin).
+Research findings for Apple (AI SaaS that builds Roblox games: web app + Studio plugin).
 Researched 2026-08-30 against official Roblox creator docs (create.roblox.com/docs), the
 Roblox/creator-docs GitHub source, and official Roblox DevForum announcements. Anything
 not confirmed against an official source is marked **UNVERIFIED**.
 
 ---
 
-## TL;DR for Golem's architecture
+## TL;DR for Apple's architecture
 
 - A local `.rbxm`/`.lua` plugin can do essentially everything the agent loop needs *inside* the DataModel: create/modify any Instance, properties, attributes, terrain, read+rewrite script source (`ScriptEditorService:UpdateSourceAsync`), wrap edits in undo/redo recordings (`ChangeHistoryService:TryBeginRecording`/`FinishRecording`), control the selection, and start/pause/stop **Run-mode** simulation (`RunService:Run/Pause/Stop`, PluginSecurity).
 - Plugin HTTP is **independent of the game's `HttpEnabled` setting** — plugins use a per-plugin, per-domain permission prompt model, and **local plugins bypass the prompts entirely**. Rate limit is 500 req/min (community-reported 2,000/min for localhost). Long polling works (Roblox's own official Studio MCP server is literally a plugin long-polling a local web server), but each request is capped by the non-configurable default timeout (~30 s, UNVERIFIED exact value), so use ≤25 s poll cycles.
@@ -21,7 +21,7 @@ not confirmed against an official source is marked **UNVERIFIED**.
 
 **Enabling / `HttpEnabled`:**
 - The experience-level `HttpService.HttpEnabled` setting ("Allow HTTP Requests") applies **only in-game**. Since the Plugin HTTP Permissions change, Studio plugins ignore it: "All previously existing Studio plugins will now use the new model and ignore the game's Allow HTTP Requests setting—that setting now applies only in game." (official DevForum announcement "Introducing Plugin HTTP Permissions").
-- Instead, per-plugin/per-domain permission prompts govern plugin HTTP (see section (i)). **"Local plugins will bypass permissions"** — a plugin installed in the local Plugins folder makes HTTP requests with no prompt at all. This is ideal for Golem's locally installed plugin.
+- Instead, per-plugin/per-domain permission prompts govern plugin HTTP (see section (i)). **"Local plugins will bypass permissions"** — a plugin installed in the local Plugins folder makes HTTP requests with no prompt at all. This is ideal for Apple's locally installed plugin.
 
 **API surface:**
 - `HttpService:RequestAsync(options: Dictionary): Dictionary` — options: `Url`, `Method`, `Headers`, `Body`, plus a documented optional `Timeout` field: "An optional timeout value in seconds to make requests time out more quickly. Values must be greater than zero and no greater than the default request timeout." The default timeout's numeric value is not documented (community consensus ≈30 s for connection, hangs up to ~2 min in failure cases — **UNVERIFIED exact number**). Returns `Success`, `StatusCode`, `StatusMessage`, `Body`, `Headers`.
@@ -51,7 +51,7 @@ All members are **PluginSecurity** (plugin-only). Key APIs (exact signatures fro
 
 - Recording pattern (current, recommended):
   ```lua
-  local rec = ChangeHistoryService:TryBeginRecording("Golem: build lobby")  -- returns id or nil
+  local rec = ChangeHistoryService:TryBeginRecording("Apple: build lobby")  -- returns id or nil
   if rec then
       -- ... make DataModel changes ...
       ChangeHistoryService:FinishRecording(rec, Enum.FinishRecordingOperation.Commit)
@@ -77,7 +77,7 @@ All members are **PluginSecurity** (plugin-only). Key APIs (exact signatures fro
 **There is no supported way for a Studio plugin to capture the 3D viewport as image data it can read or upload.** Details:
 
 - `ThumbnailGenerator` (the internal class Studio uses to render thumbnails) is **not accessible to plugins** (RobloxScriptSecurity/internal). An open DevForum feature request ("Include ThumbnailService into Roblox Studio with PluginSecurity...") exists precisely because it's unavailable.
-- `CaptureService` is designed for **in-experience client captures** (screenshots the *player* takes). `CaptureScreenshot(onCaptureReady)` returns a temporary `contentId` usable only to display in an ImageLabel / save to the user's gallery / share — **not raw pixel bytes** a plugin could POST to a server. In Studio it's additionally unreliable: an open Studio bug reports `CaptureScreenshot()` callbacks that never fire depending on viewport contents. Other members: `TakeScreenshotCaptureAsync(onCaptureReady, captureParams)` (returns `Enum.ScreenshotCaptureResult` + capture object), `PromptSaveCapturesToGallery`, `PromptShareCapture`. **Treat CaptureService as unusable for Golem's edit-mode feedback loop.**
+- `CaptureService` is designed for **in-experience client captures** (screenshots the *player* takes). `CaptureScreenshot(onCaptureReady)` returns a temporary `contentId` usable only to display in an ImageLabel / save to the user's gallery / share — **not raw pixel bytes** a plugin could POST to a server. In Studio it's additionally unreliable: an open Studio bug reports `CaptureScreenshot()` callbacks that never fire depending on viewport contents. Other members: `TakeScreenshotCaptureAsync(onCaptureReady, captureParams)` (returns `Enum.ScreenshotCaptureResult` + capture object), `PromptSaveCapturesToGallery`, `PromptShareCapture`. **Treat CaptureService as unusable for Apple's edit-mode feedback loop.**
 - `ViewportFrame` renders 3D instances into a GUI but has **no pixel readback/export**; `EditableImage` cannot read from a ViewportFrame or a capture in a way that yields exportable bytes from a plugin (**UNVERIFIED that no EditableImage path exists at all, but no documented route was found**).
 - There is a live DevForum feature request explicitly titled "Plugin Access to Screenshot Button functionality/Viewport Image for AI Integration/Automation" (2025/2026) confirming AI-plugin builders cannot make the model "see" the viewport today.
 - **Practical alternatives:** (1) a companion desktop process taking OS-level screenshots of the Studio window (this is what existing Studio-MCP ecosystems do, e.g. `screen_capture` tools); (2) structural feedback instead of pixels — have the plugin serialize scene graph, bounding boxes, camera raycasts; (3) Open Cloud Luau Execution for headless validation logic (no rendering, so still no images).
@@ -99,18 +99,18 @@ All members are **PluginSecurity** (plugin-only). Key APIs (exact signatures fro
 ## (g) Selection and StudioService
 
 - `Selection` (all PluginSecurity): `Get(): Instances`, `Set(selection)`, `Add(instances)`, `Remove(instances)`, event `SelectionChanged`.
-- `StudioService` (PluginSecurity): `ActiveScript` (read-only — script currently open in editor), `GetUserId(): number` (logged-in Studio user — useful to bind the plugin session to a Golem account), `GetClassIcon(className)`, `PromptImportFileAsync(fileTypeFilter)` / `PromptImportFilesAsync(...)` (native file pickers returning `File` instances), `GridSize`, `UseLocalSpace`, `ShowConstraintDetails`, `DraggerSolveConstraints`.
+- `StudioService` (PluginSecurity): `ActiveScript` (read-only — script currently open in editor), `GetUserId(): number` (logged-in Studio user — useful to bind the plugin session to an Apple account), `GetClassIcon(className)`, `PromptImportFileAsync(fileTypeFilter)` / `PromptImportFilesAsync(...)` (native file pickers returning `File` instances), `GridSize`, `UseLocalSpace`, `ShowConstraintDetails`, `DraggerSolveConstraints`.
 
 ## (h) Plugin distribution
 
-**Local install (recommended for Golem):**
+**Local install (recommended for Apple):**
 - Studio: Plugins menu → **"Save as Local Plugin"** writes the plugin into the local Plugins folder. Any `.rbxm`/`.rbxmx`/`.lua` file dropped in that folder is loaded as a plugin at Studio boot.
 - Folder paths (docs point to the folder-icon in the **Manage Plugins** window; exact paths community-documented):
   - Windows: `%LOCALAPPDATA%\Roblox\Plugins`
   - macOS: `~/Documents/Roblox/Plugins`
   - The path is configurable via Studio's `PluginsDir` setting (**UNVERIFIED edge case**).
 - Dev loop: work in `PluginDebugService` (enable "Plugin Debugging Enabled" in Studio settings); right-click → "Save and Reload Plugin" or Ctrl/⌘+Shift+L.
-- **Key advantage:** local plugins **bypass the per-domain HTTP permission prompts** and the script-injection permission prompt (script-modification permission "will work for published plugins only"). Golem's installer can just copy the `.rbxm` into this folder — zero permission friction. (Counterpoint: users may reasonably prefer the audited Store flow.)
+- **Key advantage:** local plugins **bypass the per-domain HTTP permission prompts** and the script-injection permission prompt (script-modification permission "will work for published plugins only"). Apple's installer can just copy the `.rbxm` into this folder — zero permission friction. (Counterpoint: users may reasonably prefer the audited Store flow.)
 
 **Creator Store publishing:**
 - Studio: Plugins menu → "Publish as Plugin" (name, description, creator), then in Creator Hub/asset config toggle **"Distribute on Creator Store"**.
@@ -122,7 +122,7 @@ All members are **PluginSecurity** (plugin-only). Key APIs (exact signatures fro
 
 Two separate permission systems, both managed in **Plugins → Manage Plugins (Plugin Management page)**, both applying to **installed (Store) plugins only — local plugins bypass both**:
 
-1. **Plugin HTTP permissions** (per plugin × per domain): "Whenever a plugin makes a web request to a new domain, you will see a pop-up dialog requesting you to approve or deny access." Accept/Deny are remembered; Cancel rejects the current request without saving. "All sub-domains will need to be granted explicit permission" — no wildcards, so keep Golem's API on a single stable hostname.
+1. **Plugin HTTP permissions** (per plugin × per domain): "Whenever a plugin makes a web request to a new domain, you will see a pop-up dialog requesting you to approve or deny access." Accept/Deny are remembered; Cancel rejects the current request without saving. "All sub-domains will need to be granted explicit permission" — no wildcards, so keep Apple's API on a single stable hostname.
 2. **Plugin script injection/modification permission** (per plugin): triggered the first time a plugin creates or modifies `Script`/`LocalScript`/`ModuleScript` objects in the DataModel (Source or Parent writes, or `Instance.new` of a script type parented into the DataModel). One dialog; deny blocks script management and errors surface in Output. "This feature will work for published plugins only."
 
 No permission prompt exists for non-script Instance edits, Terrain, Selection, or RunService control.
@@ -146,15 +146,15 @@ No permission prompt exists for non-script Instance edits, Terrain, Selection, o
 - Poll: `GET .../luau-execution-sessions/{sessionId}/tasks/{taskId}`; logs: `GET .../tasks/{taskId}/logs`.
 - Scope: `luau-execution-sessions:write` (+ read).
 - Behavior: server loads the place and runs your script headlessly with **full DataModel access** at GameScript permission level; initial cloud-service blocks (DataStores, HttpService) were later lifted per official updates; physics is not simulated. Limits (per official announcement + docs summary): **up to 5 minutes per task, 10 concurrent tasks per place** (launched as 30 s / 2 tasks, since raised). **Changes to the place are NOT saved** — "the API runs your code on a separate server"; persistence is a stated long-term goal. Script return values + structured logs are retrievable.
-- Golem use cases: headless validation/tests of generated code against the real engine, procedural checks, CI — but not as a write path (pair it with the place-publishing API: build `.rbxl` server-side, publish, then execute Luau against the new version to validate).
+- Apple use cases: headless validation/tests of generated code against the real engine, procedural checks, CI — but not as a write path (pair it with the place-publishing API: build `.rbxl` server-side, publish, then execute Luau against the new version to validate).
 
 **Open Cloud rate limits:** applied per API-key owner (user or group) across all their keys; per-endpoint limits exist but the docs state "additional, undocumented limits may apply." HttpService-originated Open Cloud calls: 2,500/min per server.
 
 ---
 
-## Architecture implications for Golem
+## Architecture implications for Apple
 
-1. **Transport:** local `.rbxm` plugin ⟶ long-poll `https://api.golem.app` (single hostname; Cloudflare Worker). Local install avoids all prompts; if shipping via Creator Store later, expect two one-time prompts (domain + script injection) and ID-verification publishing requirements.
+1. **Transport:** local `.rbxm` plugin ⟶ long-poll `https://api.apple.app` (single hostname; Cloudflare Worker). Local install avoids all prompts; if shipping via Creator Store later, expect two one-time prompts (domain + script injection) and ID-verification publishing requirements.
 2. **Edit loop:** every agent action = `TryBeginRecording` → apply Instance/Terrain/`UpdateSourceAsync` edits → `FinishRecording(Commit)`. Free undo/redo UX.
 3. **Feedback loop:** no viewport pixels from inside Studio. Use scene-graph serialization + raycast probes + `LogService` streams; optionally an OS-level screenshot companion later.
 4. **Testing:** `RunService:Run()` for physics/script smoke tests with log streaming from the run-mode plugin instance; Open Cloud Luau Execution for headless cloud-side validation. Real Play Solo remains a human action.

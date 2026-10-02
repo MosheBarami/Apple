@@ -62,8 +62,8 @@ main token reads fine, so despite its name it is not a read-all token.
 
 ## The one operational finding
 
-`golem` still owns six live Durable Object namespaces: `golem_SessionDO`, `golem_AdminDO`,
-`golem_PairingDO`, `golem_QuotaDO`, `golem_BudgetDO`, `golem_DiscordDO`. **Deleting that worker
+`golem` still owns six live Durable Object namespaces: `apple_SessionDO`, `apple_AdminDO`,
+`apple_PairingDO`, `apple_QuotaDO`, `apple_BudgetDO`, `apple_DiscordDO`. **Deleting that worker
 would take their storage with it.** That is an argument the `two-live-workers` decision did not have
 in front of it when it chose "redirect, do not delete" — and it makes the choice more clearly right
 than the reasoning recorded at the time. Probed the same day: `golem`'s page routes 308 to `apple`
