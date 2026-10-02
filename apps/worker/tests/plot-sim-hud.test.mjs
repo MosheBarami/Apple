@@ -51,11 +51,17 @@ test('plot sim HUD: every name AppleGameUI looks up for money, the menu, the toa
   const paths = [...gameUi.matchAll(/find\("([A-Za-z_.]+)"\)/g)].map((m) => m[1]);
   assert.ok(paths.length >= 8, `read the paths AppleGameUI looks up (${paths.length})`);
   // the ones a plot simulator has (it has no wave and no base health, and its upgrades are AppleUpgradesClient's)
-  const mine = ['Coins.Value', 'Coins.Plus', 'Coins', 'Menu.Shop', 'Toast', 'ShopPanel', 'ShopPanel.Body.Grid'];
+  const mine = ['Menu.Shop', 'Toast', 'ShopPanel', 'ShopPanel.Body.Grid'];
   for (const p of mine) {
     assert.ok(paths.includes(p), `AppleGameUI no longer looks up ${p}: the HUD may be wired to something stale`);
     assert.ok(at(hud(), p), `the HUD has no ${p}`);
   }
+  // The money counter is named for the currency (phase 1): AppleGameUI finds it by the client config's `counter`, and the HUD
+  // names it the same, so a renamed currency is found. Both sides are checked here, not typed twice.
+  assert.match(gameUi, /local counterName: string = cfg\.counter or "Coins"/);
+  for (const part of ['.Value', '.Plus']) assert.match(gameUi, new RegExp(`find\\(counterName \\.\\. "\\${part}"\\)`), `AppleGameUI looks up the counter${part}`);
+  assert.match(gameUi, /find\(counterName\)/);
+  for (const p of [`${WORDS.currency}.Value`, `${WORDS.currency}.Plus`, WORDS.currency]) assert.ok(at(hud(), p), `the HUD has ${p}`);
   assert.match(gameUi, /for _, name in \{ "ShopPanel", "UpgradePanel" \}/, 'AppleGameUI closes the panels it knows by these names');
   // the pieces AppleGameUI asks of a shop card, by the names it uses
   for (const child of ['Icon', 'ItemName', 'Info', 'Buy', 'Lock']) assert.match(gameUi, new RegExp(`card:FindFirstChild\\("${child}"\\)`), `AppleGameUI reads card.${child}`);
@@ -73,14 +79,15 @@ test('plot sim HUD: one shop card per machine, with the children AppleGameUI wir
     assert.equal(child('ItemName').props.Text, it.name);
     assert.match(child('Info').props.Text, /^\+[\d.]+[KMB]?\/s$/, `${card.name}: Info says what it earns`);
     assert.equal(child('Buy').className, 'ImageButton', `${card.name}: Buy is a button`);
-    assert.match(child('Buy').children.find((c) => c.name === 'Label').props.Text, /^\$\d/, `${card.name}: the price is on the button`);
+    assert.match(child('Buy').children.find((c) => c.name === 'Label').props.Text, /^\d/, `${card.name}: the price is on the button, with no built-in dollar sign`);
     assert.equal(child('Lock').props.Visible, false, `${card.name}: Lock starts hidden`);
     assert.ok(child('IconBubble'), `${card.name}: the icon bubble`);
     assert.equal(card.props.LayoutOrder, i);
   });
   assert.equal(at(hud(), 'ShopPanel.Body.Grid.Item_Press.Info').props.Text, '+1/s');
   assert.equal(at(hud(), 'ShopPanel.Body.Grid.Item_Mint.Info').props.Text, '+4.2K/s');
-  assert.equal(at(hud(), 'ShopPanel.Body.Grid.Item_Mint.Buy.Label').props.Text, '$2.5M');
+  assert.equal(at(hud(), 'ShopPanel.Body.Grid.Item_Mint.Buy.Label').props.Text, '2.5M');
+  assert.equal(at(U.plotSimHud(ITEMS, UPGRADES, { ...WORDS, symbol: '$' }), 'ShopPanel.Body.Grid.Item_Mint.Buy.Label').props.Text, '$2.5M', 'a symbol only when the agent gave one');
   assert.equal(at(hud(), 'ShopPanel.Body.Grid.Item_Press.IconBubble.Icon').props.Text, '⚙');
 });
 
@@ -106,23 +113,25 @@ test('plot sim HUD: the upgrades panel, button, badge and cards are the ones App
     const card = deep(panel, u.id);
     assert.ok(card, `a card named ${u.id}`);
     assert.equal(card.children.find((c) => c.name === 'Level').children.find((c) => c.name === 'Text').props.Text, 'Lv 0');
-    assert.match(card.children.find((c) => c.name === 'Buy').children.find((c) => c.name === 'Label').props.Text, /^\$ \d/);
+    assert.match(card.children.find((c) => c.name === 'Buy').children.find((c) => c.name === 'Label').props.Text, /^\d/);
     assert.ok(card.children.some((c) => c.name === 'IconBubble'));
     assert.equal(card.children.find((c) => c.name === 'ItemName').props.Text, u.label);
   }
   assert.equal(deep(panel, 'faster').children.find((c) => c.name === 'Blurb').props.Text, '+10% speed');
   assert.equal(at(deep(panel, 'faster'), 'IconBubble.Icon').props.Text, '⚡');
-  // the counter the client rolls: named like the currency's config (Coins here), with a Value
+  // the counter the client rolls: named like the currency's config (Cash here), with a Value
   assert.match(upClient, /find\(screen, config\.counter or currency\)/);
-  assert.equal(at(screen, 'Coins.Value').className, 'TextLabel');
+  assert.equal(at(screen, `${WORDS.currency}.Value`).className, 'TextLabel');
 });
 
 test('plot sim HUD: money counter with its caption and per-second label; Shop, Upgrades and Rebirth buttons', () => {
   const s = hud();
-  assert.equal(at(s, 'Coins.Caption').props.Text, 'CASH');
-  assert.equal(at(s, 'Coins.PerSecond').props.Text, '+0/s');
-  assert.equal(at(s, 'Coins.Value').props.Text, '0');
-  assert.equal(at(s, 'Coins.Plus').className, 'ImageButton');
+  assert.equal(at(s, 'Cash.Caption').props.Text, 'CASH');
+  assert.equal(at(s, 'Cash.PerSecond').props.Text, '+0/s');
+  assert.equal(at(s, 'Cash.Value').props.Text, '0');
+  assert.equal(at(s, 'Cash.Plus').className, 'ImageButton');
+  assert.equal(at(s, 'Cash.Icon.Sign').props.Text, 'C', 'the coin shows the currency\'s first letter, never a built-in "$"');
+  assert.equal(at(s, 'Coins'), undefined);
   const menu = at(s, 'Menu');
   assert.deepEqual(menu.children.filter((c) => c.className === 'ImageButton').map((c) => c.name), ['Shop', 'Upgrades', 'Rebirth']);
   for (const name of ['Shop', 'Upgrades', 'Rebirth']) {
@@ -170,8 +179,12 @@ test('plot sim HUD: studded like the rest (stud tile, outline, gradient) and no 
 
 test('plot sim HUD: words come from the game; it copes with no machines and a lot of them', () => {
   const plain = U.plotSimHud([], [], { currency: 'Gems' });
-  assert.equal(at(plain, 'Coins.Caption').props.Text, 'GEMS');
-  assert.equal(at(plain, 'Coins.PerSecond').props.Text, '+0/s');
+  assert.equal(at(plain, 'Gems.Caption').props.Text, 'GEMS');
+  assert.equal(at(plain, 'Gems.PerSecond').props.Text, '+0/s');
+  const hebrew = U.plotSimHud([], [], { currency: 'מטבעות' });
+  assert.ok(at(hebrew, 'מטבעות.Value'), 'a counter named in any language');
+  assert.equal(at(hebrew, 'מטבעות.Icon.Sign').props.Text, 'מ');
+  assert.ok(at(U.plotSimHud([], [], { currency: 'a.b c' }), 'abc.Value'), 'dots and spaces are not part of a name the Luau looks up');
   assert.equal(at(plain, 'Menu.Shop.Label').props.Text, 'SHOP');
   assert.equal(at(plain, 'ShopPanel.Body.Grid').children.filter((c) => /^Item_/.test(c.name)).length, 0);
   const many = U.plotSimHud(Array.from({ length: 12 }, (_, i) => ({ id: `m${i}`, name: `M${i}`, price: 10 + i, income: 1 + i })), [], { currency: 'Cash', perSecond: ' per sec' });

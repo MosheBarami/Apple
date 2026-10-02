@@ -59,7 +59,9 @@ export const JUDGE_GAME_DEF: GatewayToolDef = {
   parameters: {
     type: 'object',
     properties: {
-      request: { type: 'string', description: 'What the user asked for, in plain English, in their words (e.g. "an original brainrot game with a lobby and plots"). Decides which features are unrequested.' },
+      request: { type: 'string', description: 'What the user asked for, in plain English, in their words. Decides which features are unrequested.' },
+      design: { type: 'object', description: 'Composed game: enemies [{ name, is }] you meant to build.' },
+      planId: { type: 'string', description: 'From plan_game.' },
       ownProductIds: { type: 'array', items: { type: 'number' }, maxItems: 50, description: 'Robux product / game pass ids that belong to the game owner; any other id written in a script is reported.' },
       sessions: { type: 'number', description: '0-3, default 3: how many play sessions to run (each ~10-40 s).' },
     },

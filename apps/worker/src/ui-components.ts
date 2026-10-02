@@ -628,8 +628,8 @@ export function compileComponent(a: Args, idOf: (asset: string) => string = () =
 
 export type ResolveIds = (assets: string[]) => Promise<{ ids: Record<string, string>; missing: { asset: string; why: string }[] }>;
 
-/** Shared table, Creator Store, then the user's cache. No automatic uploads. */
-export function uiImageResolver(env: Env, userId: string | undefined, _deps: UploadDeps = {}): ResolveIds {
+/** Shared table, then Creator Store images. No cache of its own and no automatic uploads. */
+export function uiImageResolver(_env: Env, _userId: string | undefined, _deps: UploadDeps = {}): ResolveIds {
   return async (assets) => {
     const ids: Record<string, string> = {};
     const missing: { asset: string; why: string }[] = [];
@@ -638,9 +638,7 @@ export function uiImageResolver(env: Env, userId: string | undefined, _deps: Upl
       // A Creator Store image is on Roblox already: its id is set as it is, never uploaded.
       const store = uiStoreImage(asset);
       if (store) { ids[asset] = String(store.imageId); return; }
-      const key = userId ? `ui-image:${userId}:${asset}` : null;
-      const cached = key ? await env.KV?.get(key).catch(() => null) : null;
-      if (cached && /^\d+$/.test(cached)) { ids[asset] = cached; return; }
+      // No cache read: nothing writes a per-user image id, so a value under such a key could only be another run's leftover.
       missing.push({ asset, why: 'no existing Roblox id' });
     }));
     return { ids, missing };

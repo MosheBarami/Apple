@@ -105,8 +105,16 @@ function importOf(op) {
   return {};
 }
 const designRoute = (over = {}) => () => ({ ok: true, data: { ...design(), ...over } });
-const studio = (over = {}) => fakeStudio({ route: { design: designRoute() }, importOf, ...over });
-async function run(f, name, args) { const out = await T.runTool(f.ctx, name, JSON.stringify(args)); return { out, data: JSON.parse(out.resultForLlm) }; }
+// A plan is kept per project: the fixture's context has one (a context with neither a project nor a store keeps nothing).
+const studio = (over = {}) => { const f = fakeStudio({ route: { design: designRoute() }, importOf, ...over }); f.ctx.projectId ??= 'project-1'; return f; };
+// A plan belongs to the call that names its id (phase 1): like the agent, the helper passes back the planId plan_game returned.
+async function run(f, name, args) {
+  const given = name === 'build_game' || name === 'judge_game' ? { planId: f.planId, ...args } : args;
+  const out = await T.runTool(f.ctx, name, JSON.stringify(given));
+  const data = JSON.parse(out.resultForLlm);
+  if (name === 'plan_game' && data.planId) f.planId = data.planId;
+  return { out, data };
+}
 /** The design's own imports, not the surface-look look-ups that follow a game whose design did not import them. */
 const imports = (f) => f.ops('import_owner_library').filter((o) => !(o.path === '/MaterialService' && o.gameId !== CORE));
 const plan = (f, args = {}) => run(f, 'plan_game', { request: REQUEST, seed: 7, ...args });
@@ -567,6 +575,7 @@ test('build_game: a second build adds nothing twice (what the design removes is 
   const f = studio();
   await built(f);
   const before = f.world.nodes.size;
+  await plan(f); // the first plan was spent by the build: a second build needs a plan of its own
   await run(f, 'build_game', {});
   assert.deepEqual(f.world.kids('game.StarterGui').map((n) => n.name).sort(), ['HUD', 'Loading', 'Shop']);
   assert.equal(f.world.kids('game.ServerScriptService').length, 1);
@@ -578,23 +587,53 @@ test('build_game: when everything in the plan is already in the place it says so
   d.screens.remove = []; d.cleanup = []; d.world.add = [];
   const f = studio({ route: { design: () => ({ ok: true, data: d }) } });
   await built(f);
+  await plan(f);
   const again = await run(f, 'build_game', {});
   assert.equal(again.out.ok, true); assert.equal(again.data.changed, false); assert.equal(again.out.mutatedProject, undefined);
   assert.match(again.data.forUser, /Candy Grove was already in your game, so nothing changed/);
 });
 
-test('build_game: without a saved plan it says so; a whole design is accepted; an old plan is not', async () => {
+test('build_game: a plan is used only by the call that names its planId; a whole design is accepted; an old or spent plan is not', async () => {
   const fresh = studio();
   const G2 = await import(pathToFileURL(join(dir, 'plan.mjs')).href + '?fresh');   // another module instance: its own memory
   const none = await G2.buildGame(fresh.ctx, {});
-  assert.match(none.error, /no saved plan yet/);
+  assert.match(none.error, /no saved plan under that planId/);
   const whole = await G2.buildGame(fresh.ctx, { design: design() });
   assert.equal(whole.built, true);
   const half = await G2.buildGame(studio().ctx, { design: { core: { gameId: 'x' } } });
   assert.match(half.error, /Call plan_game again/);
   const store = studio();
-  store.ctx.plannedGame = { load: async () => ({ design: G.readDesign(design()), request: REQUEST, seed: 1, at: Date.now() - 4 * 3600_000 }), save: async () => {} };
-  assert.match((await G.buildGame(store.ctx, {})).error, /no saved plan yet/, 'a plan from hours ago is another conversation\'s');
+  store.ctx.plannedGame = { load: async () => ({ design: G.readDesign(design()), request: REQUEST, seed: 1, at: Date.now() - 4 * 3600_000, planId: 'old1' }), save: async () => {} };
+  assert.match((await G.buildGame(store.ctx, { planId: 'old1' })).error, /no saved plan under that planId/, 'a plan from hours ago is another conversation\'s');
+  // A plan nobody names is nobody's: the saved plan is not used by a build that does not pass its id, nor by one that passes another.
+  const named = studio();
+  const planned = await plan(named);
+  assert.ok(/^[0-9a-f]{8}$/.test(planned.data.planId), 'plan_game returns the id to build with');
+  const asked = (args) => run(named, 'build_game', { planId: undefined, ...args }).then((r) => r.data);
+  assert.match((await asked({})).error, /no saved plan under that planId/);
+  assert.match((await asked({ planId: 'wrong' })).error, /no saved plan under that planId/);
+  assert.equal((await asked({ planId: planned.data.planId })).built, true);
+  // Spent: a successful build clears it, so the same id cannot rebuild from it.
+  assert.match((await asked({ planId: planned.data.planId })).error, /no saved plan under that planId/);
+});
+
+test('plan_game: there is no shared slot: a context with neither a project nor a store keeps nothing and says so; two projects do not see each other\'s plan', async () => {
+  const nowhere = studio();
+  delete nowhere.ctx.projectId;
+  assert.match((await plan(nowhere)).data.error, /no project to keep the plan in/);
+  const a = studio(), b = studio();
+  b.ctx.projectId = 'project-2';
+  const pa = await plan(a);
+  assert.match((await run(b, 'build_game', { planId: pa.data.planId })).data.error, /no saved plan under that planId/, 'project 2 cannot build from project 1\'s plan, even with its id');
+  const code = readFileSync('src/game-plan.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/\?\? '-'/.test(code), false, 'the shared "-" key is gone');
+});
+
+test('plan_game: the plan is cleared when the place is restored (the session deletes plannedGame with the ledger)', () => {
+  const session = readFileSync('src/do/session.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const restore = session.slice(session.indexOf('async restoreCheckpoint('));
+  assert.ok(restore.indexOf("storage.delete('plannedGame')") > restore.indexOf("op: 'restore'"));
+  assert.match(session, /clear: \(\) => this\.ctx\.storage\.delete\('plannedGame'\)/);
 });
 
 test('build_game: the plan is kept in the session\'s store when there is one (the run rebuilds its context every step)', async () => {
@@ -635,7 +674,7 @@ test('the flow: plan_game, build_game and judge_game are the agent\'s tools; ass
   assert.match(defs.build_game.description, /at most three rounds/);
   assert.match(defs.plan_game.description, /build_game/);
   assert.match(defs.plan_game.description, /compose_game/, 'a new idea goes to the composer');
-  assert.match(defs.compose_game.description, /never copies a saved game/);
+  assert.match(defs.compose_game.description, /Builds a NEW game from components/);
   const prompts = readFileSync('src/prompts.ts', 'utf8');
   assert.match(prompts, /compose_game \{request\}[\s\S]{0,400}judge_game \{request\}[\s\S]{0,120}at most three rounds/);
   assert.equal(/assemble_owner_game/.test(prompts), false);

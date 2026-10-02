@@ -5,8 +5,9 @@ import { benchClean, benchEvaluate } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
 import { lastUserText } from '../user-request';
-import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
-import { isPlotSimRequest } from '../compose-plotsim';
+import { afterReady, saysReady } from '../run-flow';
+import { LEDGER_KEY, ledgerBlock, ledgerEntryFor, liveEntries, withEntry, type LedgerEntry } from '../build-ledger';
+import { RESET_KEYS } from '../project-state';
 import { withoutToolTalk } from '../plain-reply';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
@@ -264,8 +265,6 @@ interface AgentState {
   builtGame?: boolean;
   /** judge_game said the game is ready in this run: project changes are refused and the answer is next (run-flow.ts). */
   judgedReady?: boolean;
-  /** An earlier run's build_game made this project's game: this run continues it and is refused a rebuild (run-flow.ts). */
-  continuesGame?: boolean;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -1561,6 +1560,45 @@ export class SessionDO extends DurableObject<Env> {
    * G03: pause the run because the paired place went away. Queued ops of this run are withdrawn
    * so a reconnect cannot deliver them behind the user's back; the run waits for `continue`.
    */
+  /**
+   * Everything the project's work left in durable storage goes (project-state.ts says which keys), and the in-memory
+   * mirrors of those keys with it. The pairing and the project's identity stay. Used by /bench-reset; what a "start over" calls.
+   */
+  private async resetProjectState(): Promise<void> {
+    for (const key of RESET_KEYS) await this.ctx.storage.delete(key);
+    this.opQueue = [];
+    this.assetSourcesAsked = null;
+    this.pluginSelection = null as never;
+  }
+
+  /**
+   * The ledger entries whose paths still stand in the live place. With Studio away nothing can be verified, so nothing is
+   * said (an entry that may be dead is not offered as information). Dead entries are dropped from storage.
+   */
+  private async liveLedger(studioConnected: boolean): Promise<LedgerEntry[]> {
+    const ledger = (await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? [];
+    if (!ledger.length || !studioConnected) return [];
+    const exists = (path: string) => this.execStudioOp({ op: 'get_instance', path }, 10_000).then((r) => r.ok).catch(() => false);
+    // The newest dozen, and the first three paths of each: enough to know it is still there.
+    const recent = ledger.slice(-12).map((e) => ({ ...e, rootPaths: e.rootPaths.slice(0, 3) }));
+    const { live } = await liveEntries(recent, exists);
+    const keep = ledger.filter((e) => live.some((l) => l.id === e.id));
+    if (keep.length !== ledger.length) await this.ctx.storage.put(LEDGER_KEY, keep);
+    return keep;
+  }
+
+  /** Writes what a successful project-changing tool call left standing to the ledger. */
+  private async recordBuild(agent: AgentState, tool: string, rawArgs: string, out: { detail?: unknown; resultForLlm: string }): Promise<void> {
+    let args: unknown = {};
+    try { args = JSON.parse(rawArgs || '{}'); } catch { /* the tool already refused bad JSON */ }
+    let result: unknown = out.detail;
+    if (!result || typeof result !== 'object') { try { result = JSON.parse(out.resultForLlm); } catch { result = null; } }
+    const entry = ledgerEntryFor(tool, args, result, agent.request ?? lastUserText(agent.llm) ?? '', Date.now(), crypto.randomUUID().slice(0, 6));
+    if (!entry) return;
+    const ledger = (await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? [];
+    await this.ctx.storage.put(LEDGER_KEY, withEntry(ledger, entry));
+  }
+
   private async pauseForStudio(agent: AgentState, reason: StudioPauseReason): Promise<void> {
     agent.pausedForStudio = { at: Date.now(), reason };
     await this.dropOpsForRun(agent.msgId);
@@ -2540,9 +2578,7 @@ export class SessionDO extends DurableObject<Env> {
     if (path === '/bench-reset' && req.method === 'POST') {
       const running = await this.ctx.storage.get<AgentState>('agent');
       if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
-      for (const key of ['agent', 'memory', 'memoryEditedAt', 'pendingAssetChoice', 'builtObject', 'builtGame',
-        'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'opQueue']) await this.ctx.storage.delete(key);
-      this.opQueue = [];
+      await this.resetProjectState();
       this.sql.exec('delete from message_models');
       this.sql.exec('delete from message_revisions');
       this.sql.exec('delete from messages');
@@ -3538,8 +3574,9 @@ export class SessionDO extends DurableObject<Env> {
 
     const skills = skillCardsForRun(effectiveRequest, mode === 'agent');
     const msgId = crypto.randomUUID();
-    // "make it a full game with plots" grows the game that is there, so it is composed, not refused as a rebuild (owner, 2026-10-01).
-    const continueLine = mode === 'agent' && !isPlotSimRequest(text) ? continueGameLine(await this.ctx.storage.get<BuiltGameRecord>('builtGame'), text) : undefined;
+    // What earlier runs of THIS project built that still stands in the place: information, labelled as possibly unrelated.
+    // Nothing here refuses or forces anything (a rebuild is never refused; the agent decides what the message is about).
+    const ledgerLine = mode === 'agent' ? ledgerBlock(await this.liveLedger(studioConnected)) : undefined;
     const agent: AgentState = {
       status: 'running',
       mode,
@@ -3550,8 +3587,7 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       // The UI theme is per request, so it rides in this run's context and not in the system prompt
       // builder. UI-only: the world direction is unchanged by it.
-      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
-      ...(continueLine ? { continuesGame: true } : {}),
+      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), ledgerLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
       // No tool is forced: the run starts with the model, which searches, previews, builds or composes as the request
       // calls for (owner, 2026-10-02: the harness never decides what fits).
       focused: true,
@@ -4653,13 +4689,13 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
-      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name)
+      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames()))
         ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
           ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
       if (readyRefusal) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : agent.continuesGame ? 'this project already has its game' : 'not run'})` });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : 'not run'})` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${readyRefusal}`, toolCallId: call.id, name: call.name });
         continue;
       }
@@ -4809,9 +4845,9 @@ export class SessionDO extends DurableObject<Env> {
       }
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
-        // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).
-        await this.ctx.storage.put('builtGame', { at: Date.now(), request: (agent.request ?? lastUserText(agent.llm) ?? '').slice(0, 300) } satisfies BuiltGameRecord);
       }
+      // What this call left standing is written to the project's ledger (build-ledger.ts), for the next run to be told, as information.
+      if (out.mutatedProject === true) await this.recordBuild(agent, call.name, call.arguments, out);
       if (out.ok && saysReady(call.name, out.resultForLlm)) agent.judgedReady = true;
       // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
       if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
@@ -5926,12 +5962,10 @@ export class SessionDO extends DurableObject<Env> {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
       // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
-      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored) } } : {}),
+      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored), clear: () => this.ctx.storage.delete('plannedGame') } } : {}),
       ...(agent ? { userRequest: () => lastUserText(agent.llm) } : {}),
-      ...(agent ? { objectMemory: {
-        load: async () => (await this.ctx.storage.get<{ spec?: unknown }>('builtObject'))?.spec,
-        save: (spec: unknown) => this.ctx.storage.put('builtObject', { spec, at: Date.now() }),
-        upgrading: false,
+      ...(agent ? { buildLedger: {
+        find: async (id: string) => ((await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? []).find((e) => e.id === id),
       } } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
@@ -7092,6 +7126,9 @@ export class SessionDO extends DurableObject<Env> {
       say('failed', { error: applied.error });
       return { ok: false, error: applied.error };
     }
+    // The place was put back: what the ledger says stands there, and a plan made for that place, no longer describe it.
+    await this.ctx.storage.delete(LEDGER_KEY);
+    await this.ctx.storage.delete('plannedGame');
     say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —

@@ -272,7 +272,7 @@ test('dress_object adds only what is asked for: a stage alone makes no click res
   const r = await L.dressObject(ctx, { target: 'game.Workspace.Chest', stage: { color: '#4f8cff', height: 2 } });
   assert.equal(r.changed, true);
   assert.match(r.added[0], /stage 2 studs high under it/);
-  assert.match(r.notAdded, /click, counter, attach, light, effect/);
+  assert.match(r.notAdded, /click, counter, attach/);
   const text = allText(writes(ops));
   for (const banned of ['AppleBody', 'AppleAnimations', 'StarterGui', 'Click it', 'wobble', 'squish', 'Baseplate', 'Lighting']) assert.equal(text.includes(banned), false, `a stage-only call wrote ${banned}`);
   assert.deepEqual(ops.find((o) => o.op === 'transform_instances').move, [0, 2, 0], 'the object is raised to stand on it');
@@ -309,15 +309,12 @@ test('a counter needs the click it counts, and is drawn only when asked for, in 
   assert.match(hudScript.path, /חזהHUDScript/);
 });
 
-test('light and effect go where the agent says; an unknown effect is an error that lists the choices, not a substitute', async () => {
-  const { ctx, ops } = studio({ exists: ['game.Workspace.Chest', 'game.Workspace.Chest.Lid'] });
-  const noWhere = await L.dressObject(ctx, { target: 'game.Workspace.Chest', light: {} });
-  assert.match(noWhere.error, /name the part it goes on/);
-  const r = await L.dressObject(ctx, { target: 'game.Workspace.Chest', light: { on: 'game.Workspace.Chest.Lid', color: '#ffcc00' }, effect: { preset: 'no_such_preset', on: 'game.Workspace.Chest.Lid' } });
-  assert.match(r.added[0], /light on Chest\.Lid/);
-  assert.match(r.problems.find((p) => /^effect/.test(p)), /unknown preset "no_such_preset"\. Choose one of/);
-  assert.equal(allText(ops).includes('sparkle_shimmer'), false, 'no silent replacement');
-  assert.equal(allText(ops).includes('CoolOrb'), false);
+test('dress_object does not decorate with a light or an effect of its own: those are insert_vfx and create_instances on any part', () => {
+  const props = L.TOOLS.dress_object.def.parameters.properties;
+  assert.deepEqual(Object.keys(props).sort(), ['attach', 'click', 'counter', 'stage', 'target']);
+  assert.match(L.TOOLS.dress_object.def.description, /insert_vfx or create_instances/);
+  const code = src('dress-object.ts');
+  for (const gone of ['sparkle', 'CoolOrb', 'CoolLight', 'egg_glow', 'crown', 'vfxPlan']) assert.equal(code.includes(gone), false, `${gone} is back`);
 });
 
 test('dress_object is registered with its own label, phase and MCP note, and cool_library_model is gone everywhere', () => {

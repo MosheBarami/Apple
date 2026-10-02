@@ -286,15 +286,14 @@ export interface AgentCtx {
    * to hand back through the model, so the session keeps it. Absent outside a run (the eval harness, tests): game-plan.ts then keeps
    * the last design in memory.
    */
-  plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void> };
+  plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void>; clear?(): Promise<unknown> };
   /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
   userRequest?: () => string | undefined;
   /**
-   * The last object build_object made in this project (its whole spec), kept by the session so "make it 100x cooler"
-   * upgrades THAT object (test 3, 2026-10-01: an unguided run spent 266 credits sprinkling 14 effects and inserting a
-   * whole library place as an orbiting pat). `upgrading` is true on a run that asked for it to be made cooler.
+   * What earlier runs of this project built (build-ledger.ts), for `build_object { extend: <id> }`: the entry with its spec,
+   * or undefined when the id is not in this project's ledger.
    */
-  objectMemory?: { load(): Promise<unknown>; save(spec: unknown): Promise<void>; upgrading: boolean };
+  buildLedger?: { find(id: string): Promise<{ id: string; tool: string; spec?: Record<string, unknown>; rootPaths: string[] } | undefined> };
   /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused). */
   widenTools?: () => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */
@@ -3078,8 +3077,8 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['get_tree', 'query_instances', 'spatial_query', 'dump_scripts', 'ui_layout_check', 'play_check_ui', 'read_script'],
     plainSummary: judgeSummary,
     // A game compose_game made is judged on what the owner asked for (composed-judge.ts); anything else as before.
-    run: async (ctx, a) => (typeof a.request === 'string' && a.request.trim() ? await judgeComposed(studioCall(ctx), a.request.trim().slice(0, 1200)) : null)
-      ?? judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx).catch(() => undefined) }),
+    run: async (ctx, a) => (typeof a.request === 'string' && a.request.trim() ? await judgeComposed(studioCall(ctx), a.request.trim().slice(0, 1200), a.design) : null)
+      ?? judgeGame(studioCall(ctx), a, { knownLoop: await plannedLoop(ctx, a.planId).catch(() => undefined) }),
   },
   get_output_logs: {
     def: { name: 'get_output_logs', description: 'Read recent Studio output/console logs (errors, warnings, prints).', parameters: S({}) },
@@ -4782,14 +4781,14 @@ export const TOOLS: Record<string, ToolImpl> = {
         "Search the owner corpus (through the paired plugin) first, then script-free Roblox Creator Store models, for a ready-made prop, building, plant, vehicle, character, pet, weapon or kit; call it before building a detailed object. Use your own plain words, as many queries as you need; genre and kind narrow it. Only Roblox-owned models by default; includeThirdParty=true adds free third-party ones (marked requiresThirdPartyLoading; Studio may refuse them). Whether one looks right or fits is unverified until you preview it (preview_library_models). In Agent mode Apple may show the owner up to three thumbnails to pick from. Nothing is inserted by this call.",
       parameters: S(
         {
-          sourceSHA: {type:'string',description:'Optional original source SHA from query_owner_catalog; scopes the full local index.'},
-          after: {type:'string',description:'Local owner search nextAfter cursor; keep the same query.'},
-          className: {type:'string',description:'Optional exact Roblox class filter for the local corpus.'},
-          query: { type: 'string', description: 'Plain words for the object, e.g. "wooden crate" or "pine tree".' },
-          genre: { type: 'string', enum: [...LIBRARY_GENRES], description: 'Optional game genre; owner corpus matches the query across all genres.' },
-          kind: { type: 'string', enum: [...LIBRARY_KINDS], description: 'Optional kind of object.' },
-          includeThirdParty: { type: 'boolean', description: 'Optional, default false. Also search trusted free third-party models; Roblox may refuse insertion unless this experience already permits third-party loading.' },
-          limit: { type: 'number', description: 'How many results, 1 to 40. Default 10.' },
+          sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
+          after: {type:'string',description:'nextAfter cursor; keep the same query.'},
+          className: {type:'string',description:'Exact Roblox class filter.'},
+          query: { type: 'string', description: 'Plain words for the object.' },
+          genre: { type: 'string', enum: [...LIBRARY_GENRES] },
+          kind: { type: 'string', enum: [...LIBRARY_KINDS] },
+          includeThirdParty: { type: 'boolean', description: 'Also search free third-party models (default false).' },
+          limit: { type: 'number', description: '1 to 40, default 10.' },
         },
         [],
       ),
@@ -4934,7 +4933,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'build_game',
       description: "Only after plan_game: builds that saved game's copy (one checkpoint). Then run judge_game {request}, fix what it lists (at most three rounds) and answer from forUser.",
-      parameters: S({design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
+      parameters: S({planId:{type:'string',description:'The planId plan_game returned.'},design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
     },
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
@@ -4945,17 +4944,15 @@ export const TOOLS: Record<string, ToolImpl> = {
   compose_game: {
     def: {
       name: 'compose_game',
-      description: "Builds a NEW game for the idea from components on a map made for it; never copies a saved game. Then judge_game {request}, fix what it lists, answer from forUser.",
+      description: "Builds a NEW game from components on a map made for it. YOU choose the template and supply what makes this game what it is (names, chain, economy, the library pieces you chose); a missing field is reported by name. With no template it lists what each makes and cannot make; if none fits, build it another way. Then judge_game and answer from forUser.",
       parameters: S({
-        request: { type: 'string', description: "The user's idea, in their words." },
-        // The agent reads the request; the template does not (owner, 2026-10-02: "he doesn't focus on what the user asks").
-        tycoon: { type: 'object', description: "For a tycoon: what THIS request's game is made of, in its own words. item = what drops (e.g. 'Dirty Laundry'), dropper = what drops it, machines = 2-4 steps in order on the belt, each { name, search (library words for its look), becomes (what the item is after it), color '#rrggbb' }, seller = { name, search } at the end, currency.", properties: {
-          item: { type: 'object', properties: { name: { type: 'string' }, color: { type: 'string' } } },
-          dropper: { type: 'string' },
-          machines: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, search: { type: 'string' }, becomes: { type: 'string' }, color: { type: 'string' } } } },
-          seller: { type: 'object', properties: { name: { type: 'string' }, search: { type: 'string' } } },
-          currency: { type: 'string' },
-        } },
+        request: { type: 'string' },
+        template: { type: 'string', enum: ['tycoon', 'plot-sim', 'lane-defense'] },
+        tycoon: { type: 'object', description: 'title, currency, item { name, color }, dropper, machines[1-4] { name, becomes, color, look? }, seller { name }; optional players, prices, symbol.' },
+        plotSim: { type: 'object', description: 'title, subject, currency, machines[1-6] { name, price, income, look or from }, upgrades[1-9]; optional players, rebirth, symbol, scenery[], hero.' },
+        laneDefense: { type: 'object', description: 'title, currency, enemies[], defenders[], base, waves { list }; every piece is { gameId, path } you found.' },
+        existing: { type: 'string', enum: ['extend', 'replace'], description: 'Needed when a composed game is already there.' },
+        clearDefaultGround: { type: 'boolean', description: 'Remove the default Baseplate and SpawnLocation.' },
       }, ['request']),
     },
     studio: true,
@@ -4979,7 +4976,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   preview_library_models: {
     def: {
       name: 'preview_library_models',
-      description: "Look at ready-made models before choosing. Pass 1-6 candidates you found ({ id } from find_library_model, { gameId, path } from browse_owner_library). Each is staged off the place and measured (name, game, parts, size against a player, dominant colour, anything that blocks it); nothing is placed or chosen for you. snapshot: true also shows the user one picture of them in a row, then removes the row. If none fits, build it another way or ask.",
+      description: "Look at ready-made models before choosing. Pass 1-6 candidates you found ({ id } from find_library_model, { gameId, path } from browse_owner_library). Each is staged off the place and measured (size against a player, colour, parts, anything that blocks it); nothing is placed or chosen for you. snapshot: true also shows the user one picture of them, then removes it.",
       parameters: S({
         models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, name: { type: 'string' }, game: { type: 'string' } } } },
         snapshot: { type: 'boolean' },
@@ -4993,15 +4990,13 @@ export const TOOLS: Record<string, ToolImpl> = {
   dress_object: {
     def: {
       name: 'dress_object',
-      description: "Optional extras for an object already in the place; nothing is added unless you ask, and an empty call is an error. target = game.Workspace.<Name>. stage: a slab under it (it is raised onto it). click { motion, sound? }: the whole object moves when clicked or walked into. counter { label, hint? }: counts those moves (needs click). attach: other ready-made pieces fixed to it. light, effect: on the part in `on` (default: the click body). Ground, spawn, lighting and camera are never touched.",
+      description: "Optional extras for an object already in the place; nothing is added unless you ask, an empty call is an error. target = game.Workspace.<Name>. stage: a slab it is raised onto. click { motion, sound? }: the whole object moves when clicked or walked into. counter { label, hint? }: counts those moves (needs click). attach: other ready-made pieces fixed to it. Ground, spawn, lighting and camera are never touched (use insert_vfx or create_instances for lights and effects).",
       parameters: S({
         target: { type: 'string' },
         stage: { type: 'object', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
         click: { type: 'object', properties: { motion: { type: 'string', enum: ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] }, sound: { type: 'string' }, amount: { type: 'number' } } },
         counter: { type: 'object', properties: { label: { type: 'string' }, hint: { type: 'string' } } },
         attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
-        light: { type: 'object', properties: { on: { type: 'string' }, color: { type: 'string' }, brightness: { type: 'number' }, range: { type: 'number' } } },
-        effect: { type: 'object', properties: { preset: { type: 'string' }, on: { type: 'string' }, scale: { type: 'number' }, rate: { type: 'number' } } },
       }, ['target']),
     },
     studio: true,
@@ -5013,24 +5008,25 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_object: {
     def: {
       name: 'build_object',
-      description: "Build ONE object from parts in one call. Each part is named, sized [x,y,z] studs (a player is 5 tall) and centred at `at` (y up from the ground), on the outside of what it decorates. Words go in a part's text; a part moves only if it has a move; rows lays out labelled cells. Nothing is added unasked (no stage, counter, lighting, ground change, or resizing by part name); stage, screen and focus are opt-in. The result has measured `checks` (hidden or floating parts, covered or low-contrast words, proportions, nothing moving): information, not a verdict. A taken name is an error; replace: true puts the new one there.",
+      description: "Build ONE object from named parts: size [x,y,z] studs (a player is 5), centred at `at`, y up; details on the outside of what they decorate. Words go in a part's text; a part moves only with a move; rows lays out labelled cells. Nothing unasked is added (stage, screen, focus are opt-in). The result has measured `checks`: information, not a verdict. A taken name is an error; replace: true overwrites.",
       parameters: S({
         name: { type: 'string', description: 'Any language.' },
         scale: { type: 'number' },
         at: { type: 'array', items: { type: 'number' }, description: 'Footprint centre on the ground. Default: beside what is there.' },
         replace: { type: 'boolean' },
+        extend: { type: 'string', description: 'An id from "Earlier in this project": add these parts to that object.' },
         parts: { type: 'array', items: { type: 'object', properties: {
           name: { type: 'string' }, shape: { type: 'string', enum: ['block', 'ball', 'cylinder', 'wedge'] },
           size: { type: 'array', items: { type: 'number' } }, at: { type: 'array', items: { type: 'number' } }, rot: { type: 'array', items: { type: 'number' } },
           color: { type: 'string', description: '#rrggbb' }, material: { type: 'string', enum: ['Plastic', 'Neon'] }, transparency: { type: 'number' }, surface: { type: 'string', enum: ['smooth'] },
-          text: { description: 'A string, or { value, face, color, font, glow }.' }, key: { type: 'string', description: 'Enum.KeyCode name for move.on "key".' }, rides: { type: 'string', description: 'A part it moves with.' },
+          text: { description: 'A string, or { value, face, color, font, glow }.' }, key: { type: 'string', description: 'Enum.KeyCode, for move.on key.' }, rides: { type: 'string' },
           repeat: { type: 'object', properties: { grid: { type: 'array', items: { type: 'number' } }, step: { type: 'array', items: { type: 'number' } }, names: { type: 'array', items: { type: 'string' } }, texts: { type: 'array', items: { type: 'string' } }, keys: { type: 'array', items: { type: 'string' } } } },
-          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Labelled cells row by row, instead of one part. Also unit, gap, height, widths {label: cells}, color(s), textColor, case, align, keys, move.' },
-          move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, hinge: { type: 'string', enum: ['bottom', 'top', 'back', 'front', 'left', 'right', 'center'] }, amount: { type: 'number' }, sound: { type: 'string', description: 'Sound id or words.' } } },
+          rows: { type: 'array', items: { type: 'array', items: { type: 'string' } }, description: 'Labelled cells instead of one part. Also unit, gap, height, widths, color(s), textColor, case, align, keys, move.' },
+          move: { type: 'object', properties: { as: { type: 'string', enum: ['press', 'spin', 'bob', 'open', 'wobble', 'pop'] }, on: { type: 'string', enum: ['key', 'click', 'touch', 'prompt', 'loop', 'once'] }, hinge: { type: 'string' }, amount: { type: 'number' }, sound: { type: 'string', description: 'Sound id or words.' } } },
         }, required: ['name'] } },
-        stage: { type: 'object', description: 'Slab under it. Absent: none.', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
-        screen: { type: 'object', description: "Counter and hint on the player's screen. Absent: none.", properties: { counter: { type: 'string' }, hint: { type: 'string' } } },
-        focus: { type: 'boolean', description: 'Turn the Studio camera to it.' },
+        stage: { type: 'object', description: 'Slab under it; absent: none.', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
+        screen: { type: 'object', description: 'Counter/hint on the screen; absent: none.', properties: { counter: { type: 'string' }, hint: { type: 'string' } } },
+        focus: { type: 'boolean' },
       }, ['name', 'parts']),
     },
     studio: true,
@@ -5066,8 +5062,8 @@ export const TOOLS: Record<string, ToolImpl> = {
   add_upgrades: {
     def: {
       name: 'add_upgrades',
-      description: 'Working upgrades in ONE call: money per press and per second, an Upgrades button and panel on the screen (nothing on it changes), server-checked buys, saved. Use for any upgrade request.',
-      parameters: S({ screen: { type: 'string' }, currency: { type: 'string' }, upgrades: { type: 'array', items: { type: 'object' }, description: '[{label, kind perPress|perSecond|multiplier, amount, cost}] or omit for a good default' } }, []),
+      description: 'Working upgrades in ONE call: money per press and per second, an Upgrades button and panel on the screen (nothing on it changes), server-checked buys, saved. You design the upgrades for THIS game.',
+      parameters: S({ screen: { type: 'string' }, currency: { type: 'string' }, upgrades: { type: 'array', minItems: 1, maxItems: 9, items: { type: 'object' }, description: '[{label, kind perPress|perSecond|multiplier, amount, cost, growth?, max?, icon?}]' } }, ['upgrades']),
     },
     studio: true,
     studioOps: ['get_tree', 'create_instances', 'delete_instances', 'edit_script'],
@@ -5079,14 +5075,14 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Place ONE ready-made model you chose, as a script-free copy, and report its measured size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side, studs), height or scale; nothing else is added (dress_object adds extras on request). name = what it is called (any language); a taken name is an error (another name, or replace: true). Third-party Store rows need the experience's third-party loading setting; a refusal leaves the place unchanged; downloaded file rows are not insertable. Every insertion is scanned in the place and scripts are removed. For copies, insert one and clone_instances it.",
+        "Place ONE ready-made model you chose, as a script-free copy, and report its measured size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side), height or scale; nothing else is added (dress_object adds extras). name = what it is called, any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; downloaded file rows are not insertable. Scripts are removed.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
-          gameId: { type: 'string', description: 'With path: an owner-library piece instead of a Store row.' },
+          gameId: { type: 'string', description: 'With path: an owner-library piece.' },
           path: { type: 'string' },
           name: { type: 'string' },
-          position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Bottom-centre. Default [0,0,0] (Store row), beside what is there (owner piece).' },
+          position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Bottom-centre.' },
           size: { type: 'number', description: 'Longest side in studs.' },
           height: { type: 'number', description: 'Target height in studs.' },
           scale: { type: 'number', minimum: 0.001, maximum: 1000 },

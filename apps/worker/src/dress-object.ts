@@ -8,8 +8,6 @@
  *   click    the whole object moves when clicked or walked into, with a library sound if the agent names one
  *   counter  a number on the player's screen that counts those moves (needs click)
  *   attach   another ready-made piece fixed to it, where the agent says (the agent chose the piece from its own search)
- *   light    a point light on a part the agent names (or on the click body)
- *   effect   one library effect preset on a part the agent names (or on the click body)
  *
  * It never deletes a path it did not create, never touches the ground, the spawn, the lighting or the camera, and says in
  * its result what it added and what it did not.
@@ -17,7 +15,7 @@
 import type { AgentCtx } from './tools';
 import { luau } from './compose';
 import { typed } from './compose-run';
-import { findSounds, soundAssetId, vfxPlan } from './fx-library';
+import { findSounds, soundAssetId } from './fx-library';
 import { installAnimationPlayer } from './animate-tool';
 import { contrastStage, motionClip, writeObjectHud, type ObjectPart } from './object-tool';
 import { bounds, candidateOf, colourName, mainColourOf, safeObjectName, worldBox, type LibraryCandidate } from './library-object';
@@ -26,10 +24,9 @@ import { LIBRARY_IMPORT_MS, libraryMaterials } from './local-owner-corpus';
 type V3 = [number, number, number];
 const MOTIONS = ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] as const;
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const OPTIONS = ['stage', 'click', 'counter', 'attach', 'light', 'effect'] as const;
+const OPTIONS = ['stage', 'click', 'counter', 'attach'] as const;
 const clip = (s: unknown) => String(s ?? '').slice(0, 160);
 const num = (v: unknown, d: number, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
-const rgb = (hex: string): [number, number, number] => { const n = parseInt(hex.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
 
 /** The model's own name from its path, when it stands directly in Workspace. Pure. */
 export function targetName(path: unknown): string | null {
@@ -146,24 +143,6 @@ export async function dressObject(ctx: AgentCtx, a: Record<string, unknown>) {
       if ('error' in c) { problems.push(`attach ${n}: ${c.error}`); continue; }
       const done = await attachPiece(ctx, model, name, c, item, { cx, cz, topY: bottomY + sy, bottomY, sx, sz, hasBody });
       if (typeof done === 'string') problems.push(`attach ${n} (${c.name}): ${done}`); else { added.push(`${c.name} fixed ${done.where}${hasBody ? ', moving with it' : ''}`); mutated = true; }
-    }
-  }
-
-  // light and effect: on a part the agent names, or on the click body.
-  for (const kind of ['light', 'effect'] as const) {
-    if (!a[kind]) continue;
-    const o = (typeof a[kind] === 'object' ? a[kind] : {}) as Record<string, unknown>;
-    const on = typeof o.on === 'string' && o.on ? o.on : hasBody ? `${model}.AppleBody` : '';
-    if (!on) { problems.push(`${kind}: name the part it goes on (on: a path), or add click first`); continue; }
-    if (kind === 'light') {
-      const color = HEX.test(String(o.color ?? '')) ? String(o.color) : '#ffffff';
-      const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'PointLight', name: 'AppleLight', parent: on, props: { Brightness: { t: 'number', v: num(o.brightness, 1, 0, 10) }, Range: { t: 'number', v: num(o.range, 12, 1, 60) }, Color: { t: 'Color3', v: rgb(color) } } }] }, 20_000).catch(() => null);
-      if (made?.ok) { added.push(`a ${colourName(color)} light on ${on.replace(/^game\.Workspace\./, '')}`); mutated = true; } else problems.push(`light: ${clip(made?.error)}`);
-    } else {
-      const plan = vfxPlan(String(o.preset ?? ''), { path: on, className: 'Part' }, { ...(o.scale !== undefined ? { scale: num(o.scale, 1, 0.25, 4) } : {}), ...(o.rate !== undefined ? { rate: num(o.rate, 1, 0.1, 4) } : {}) });
-      if ('error' in plan) { problems.push(`effect: ${plan.error}`); continue; }
-      const made = await ctx.execStudioOp({ op: 'create_instances', items: plan.items }, 60_000).catch(() => null);
-      if (made?.ok) { added.push(`the ${String(o.preset)} effect on ${on.replace(/^game\.Workspace\./, '')}`); mutated = true; } else problems.push(`effect: ${clip(made?.error)}`);
     }
   }
 

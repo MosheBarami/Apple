@@ -2,27 +2,30 @@
  * THE PLOT SIMULATOR (owner, 2026-10-01: "make it actually a full game with maps, different keyboards, more gui, a shop,
  * machines and plots for 4 players — if you find assets it's better than generating one from parts").
  *
- * compose_game had one template (orchard lane defense); every other idea fell through to "build it yourself", and the
- * model built plots and screens out of single parts. This is the second template, and the general one for "turn this
- * into a game": a hub with N claimable plots around it (hub-layout.ts, studded-map.ts), a shop of machines that earn
- * every second on the player's own plot (AppleShop + AppleMachines), presses on your own machines pay, upgrades
- * (AppleUpgrades), rebirth, and the studded simulator HUD (stud-ui.ts plotSimHud).
+ * A hub with N claimable plots around it (hub-layout.ts, studded-map.ts), a shop of machines that earn every second on
+ * the player's own plot (AppleShop + AppleMachines), presses on your own machines pay, upgrades (AppleUpgrades), rebirth,
+ * and the studded simulator HUD (stud-ui.ts plotSimHud).
  *
- * Library first: the machines are the player's own object when the place has one (build_object's model, recoloured
- * per tier and fitted to a plot tile) plus models of the same subject found in the owner library; the hub's props are
- * library pieces. Pure: plotSimSteps turns a recipe into composer steps (tests/plot-sim.test.mjs).
+ * WHAT the game is about is the AGENT's, argument by argument (compose_game's `plotSim`): the machines (their names, what
+ * each earns and costs, which model backs each one), the upgrades, the currency and its symbol, the rebirth numbers, the
+ * scenery it chose from the library. The harness holds no ladder of its own: it used to recolour the hero in "Classic /
+ * Neon / Ice / Gold / Lava / Galaxy" tiers with a keyboard emoji, name library models "Mega / Ultra / Royal ...", and
+ * default to "Coins" and a set of tapping upgrades, so every simulator came out as the first one anyone asked for. What
+ * it checks is the economy's arithmetic (prices rise, a payback exists) and reports a short ladder as short. Pure:
+ * plotSimSteps turns a recipe into composer steps (tests/plot-sim.test.mjs).
  */
 import { COMPONENTS } from './components.generated';
 import { luau, rng, LANE_WIDTH, plotTiles, type LibRef, type Step } from './compose';
 import { hubLayout } from './hub-layout';
-import { studdedMap, studLighting, STUD_PALETTE } from './studded-map';
+import { studdedMap, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
-import { DEFAULT_UPGRADES, KIND_ICON, upgradeBlurb, type UpgradeSpec } from './upgrades-tool';
+import { KIND_ICON, readUpgrades, upgradeBlurb, type UpgradeSpec } from './upgrades-tool';
+import { cleanText } from './compose-tycoon';
 
-/** A machine the shop sells: the player's own object recoloured (from), or a library model (ref). */
+/** A machine the shop sells: a library model (ref), or a model already in the place (from), recoloured when a hue is given. */
 export interface MachineSpec {
   id: string; name: string; price: number; income: number; perPress?: number; icon?: string; colour?: StudColour;
-  from?: string;      // a path already in the place, e.g. "Workspace.ASMRKeyboard"
+  from?: string;      // a path already in the place, e.g. "Workspace.<Model>"
   hue?: number;       // the colour family of a recoloured copy (0..1 turn)
   ref?: LibRef;       // a library model
 }
@@ -30,99 +33,100 @@ export interface MachineSpec {
 export interface PlotSimRecipe {
   kind: 'plot-sim';
   title: string; subject: string; seed: number; players: number;
-  currency: 'Coins';                      // AppleGameUI's money counter is named Coins
-  hero?: string;                          // the object already in the place (Workspace.<hero>), the hub's centrepiece
+  /** The money's name, in the user's language; the HUD's counter is named for it and every config carries it. */
+  currency: string;
+  /** Printed before a price; none unless the agent gave one. */
+  symbol: string;
+  /** The object already in the place that the agent named as the hub's centrepiece (Workspace.<hero>). */
+  hero?: string;
   machines: MachineSpec[];
   hubProps: { key: string; ref: LibRef; at: 'shop' | 'sell' | 'hub'; height: number }[];
-  /** Library scenery (trees, rocks) scattered over the island off the roads and plots: a map, not a flat square. */
+  /** Library scenery the agent chose, scattered over the island off the roads and plots. */
   decor?: { key: string; ref: LibRef; height: number; count: number }[];
-  /** A library street light set along both sides of every road, every ROAD_LAMP_STEP studs. */
+  /** A library piece the agent chose, set along both sides of every road, every ROAD_LAMP_STEP studs. */
   roadside?: { key: string; ref: LibRef; height: number };
-  /** The hero's footprint on its stage [width, depth]: the hub is made to hold it. */
+  /** The hero's footprint [width, depth]: the hub is made to hold it. */
   heroSize?: [number, number];
   upgrades: UpgradeSpec[];
   rebirth: { cost: number; growth: number; multiplier: number };
   hasComponents?: boolean;                // ServerScriptService.AppleComponents already holds the game's economy
   surface?: 'studs' | 'keep';
+  /** The agent asked for the default Baseplate and SpawnLocation to go (the map has its own ground and spawn). */
+  clearDefaultGround?: boolean;
 }
 
-const SIM = /\b(simulator|sim|tycoon|idle|clicker|incremental|plots?|machines?|factory|rebirths?)\b/i;
-const FULL_GAME = /\b(make|turn) (it|this|that)( actually| into)?( a| an)? (full|fully|real|whole|proper)?\s*(game|simulator|tycoon)\b/i;
+/** Rebirth numbers used when the agent gives none; reported in the result. */
+export const DEFAULT_REBIRTH = { cost: 50_000, growth: 3, multiplier: 0.5 };
 
-/** "a keyboard simulator with plots", "make it actually a full game with ... plots for 4 players". Pure. */
-export function isPlotSimRequest(text: string | undefined): boolean {
-  const t = String(text ?? '');
-  return SIM.test(t) || FULL_GAME.test(t);
-}
-
-/** "for 4 players", "6 plots"; 4 when unsaid, 2..8. Pure. */
-export function playersIn(text: string | undefined): number {
-  const m = /\b(\d{1,2})\s*(players?|plots?)\b/i.exec(String(text ?? ''));
-  const n = m ? Number(m[1]) : 4;
-  return Math.max(2, Math.min(8, Number.isFinite(n) ? n : 4));
-}
-
-/** What the game is about: the hero's own words ("ASMRKeyboard" -> "keyboard"), else the noun before "simulator". Pure. */
-export function subjectOf(text: string | undefined, hero?: string): string {
-  if (hero) {
-    const words = hero.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').split(/[^A-Za-z]+/).filter(Boolean);
-    const last = words[words.length - 1];
-    if (last) return last.toLowerCase();
-  }
-  const m = /\b([a-z]+)\s+(simulator|tycoon|factory|clicker)\b/i.exec(String(text ?? ''));
-  return m ? m[1]!.toLowerCase() : 'machine';
-}
-
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** The kind of game the request names: "a laundry tycoon" is a Tycoon, not a Simulator (owner's test, 2026-10-02). Pure. */
-export function genreWord(text: string | undefined): string {
-  const m = /\b(tycoon|factory|clicker|simulator)\b/i.exec(String(text ?? ''));
-  return m ? cap(m[1]!.toLowerCase()) : 'Simulator';
-}
-
-/** A library piece's own name, read: "WashingMachine" -> "Washing Machine", "HH washing machine" -> "Washing Machine". Pure. */
-export function pieceName(path: string): string {
-  return (path.split('/').pop() ?? '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[^A-Za-z ]+/g, ' ').trim().split(/\s+/)
-    .filter((w, i, all) => !(i === 0 && all.length > 1 && w.length <= 2 && w === w.toUpperCase())).filter(Boolean).slice(0, 3).map(cap).join(' ');
-}
-const TIER_NAMES = ['Classic', 'Neon', 'Ice', 'Gold', 'Lava', 'Galaxy'];
-const TIER_HUES = [0, 0.83, 0.55, 0.13, 0.02, 0.72];
-const TIER_COLOURS: StudColour[] = ['blue', 'pink', 'blue', 'yellow', 'red', 'purple'];
+const STUD_COLOURS = ['blue', 'pink', 'yellow', 'red', 'purple', 'green', 'orange', 'cyan'];
+const LIB = /^[0-9a-f]{8,64}$/;
+const asRef = (v: unknown): LibRef | undefined => {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return typeof o.gameId === 'string' && LIB.test(o.gameId) && typeof o.path === 'string' && o.path.startsWith('/') ? { game: o.gameId, path: o.path } : undefined;
+};
 
 /**
- * The machines: up to four tiers of the hero recoloured, then the library's own models of the subject, each tier
- * dearer and earning more. Prices grow about 4.5x a tier and income about 3.5x, so every tier is worth buying. Pure.
+ * The machines the agent proposed, checked for what only arithmetic can say: each has a name, a price, an income and a
+ * model (a library `look` or a model `from` already in the place); prices rise strictly with each tier (otherwise the
+ * cheaper one is never worth buying after the dearer one) and incomes are positive. Anything else about the ladder (how
+ * many tiers, what they are called, how fast they pay back) is the agent's design; payback times are returned as
+ * information, and a short ladder is reported as short. Pure.
  */
-export function machineLadder(subject: string, hero: string | undefined, library: LibRef[]): MachineSpec[] {
+export interface MachineEconomy { name: string; price: number; income: number; paybackSeconds: number }
+export function readMachines(raw: unknown): { machines: MachineSpec[]; economy: MachineEconomy[]; notes: string[] } | { error: string; missing: string[] } {
+  const list = Array.isArray(raw) ? raw : [];
+  if (list.length < 1 || list.length > 6) return { error: 'machines is required: 1 to 6 machines, each { name, price, income, look { gameId, path } or from "Workspace.<Model>" }', missing: ['machines (1 to 6)'] };
+  const missing: string[] = [];
   const out: MachineSpec[] = [];
-  const tier = (i: number) => ({ price: Math.round(25 * 4.5 ** i), income: Math.max(1, Math.round(1 * 3.5 ** i)) });
-  // Different models first (owner, 2026-10-01: "different keyboards"; four of six were the hero recoloured): the
-  // hero's own Classic opens the ladder, the library's models fill the middle, and the hero in gold tops it. Recoloured
-  // tiers only make up what the library could not.
-  const heroTiers = hero ? Math.min(4, Math.max(2, 6 - library.length)) : 0;
-  const heroTier = (i: number) => {
-    out.push({ id: `${cap(subject)}${TIER_NAMES[i]}`, name: `${TIER_NAMES[i]} ${cap(subject)}`, ...tier(out.length), perPress: 1 + out.length,
-      from: `Workspace.${hero}`, ...(TIER_HUES[i] ? { hue: TIER_HUES[i] } : {}), icon: '⌨️', colour: TIER_COLOURS[i] });
-  };
-  const middle = heroTiers > 2 ? [1, 2].slice(0, heroTiers - 2) : [];
-  if (hero) { heroTier(0); for (const i of middle) heroTier(i); }
-  library.slice(0, 6 - heroTiers).forEach((ref, k) => {
-    // Named for what it is (owner's play test, 2026-10-01: a grand piano was sold as "Royal Keyboard").
-    const own = pieceName(ref.path);
-    out.push({ id: `${cap(subject)}Lib${k + 1}`, name: `${['Mega', 'Ultra', 'Royal', 'Mythic', 'Cosmic', 'Titan'][k]} ${own.length >= 3 && own.length <= 20 ? own : cap(subject)}`, ...tier(out.length),
-      ref, icon: '✨', colour: TIER_COLOURS[(out.length) % TIER_COLOURS.length] });
+  const notes: string[] = [];
+  list.forEach((m, i) => {
+    const o = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>;
+    const name = cleanText(o.name, 30);
+    const price = Number(o.price), income = Number(o.income);
+    const ref = asRef(o.look);
+    const from = typeof o.from === 'string' && /^Workspace\.[^.\[\]]{1,40}$/.test(o.from) ? o.from : undefined;
+    if (!name.text) missing.push(`machines[${i}].name`);
+    else if (name.cut) notes.push(`machines[${i}].name was cut to 30 characters`);
+    if (!(price >= 1 && price <= 1e12)) missing.push(`machines[${i}].price (a number from 1)`);
+    if (!(income > 0 && income <= 1e9)) missing.push(`machines[${i}].income (a number above 0, per second)`);
+    if (!ref && !from) missing.push(`machines[${i}].look { gameId, path } or machines[${i}].from "Workspace.<Model>" (what stands on the plot)`);
+    const hue = typeof o.hue === 'number' && o.hue >= 0 && o.hue <= 1 ? o.hue : undefined;
+    const colour = STUD_COLOURS.includes(String(o.colour)) ? String(o.colour) as StudColour : undefined;
+    out.push({
+      id: `M${i + 1}`, name: name.text, price: Math.round(price), income, ...(Number(o.perPress) > 0 ? { perPress: Number(o.perPress) } : {}),
+      ...(typeof o.icon === 'string' && o.icon.trim() ? { icon: Array.from(o.icon.trim()).slice(0, 2).join('') } : {}),
+      ...(colour ? { colour } : {}), ...(ref ? { ref } : {}), ...(from ? { from } : {}), ...(hue !== undefined ? { hue } : {}),
+    });
   });
-  if (hero) heroTier(3);
-  // A short ladder is a shop with one thing in it (owner's test, 2026-10-02: a laundry tycoon sold one faucet): with no
-  // hero, the best library model comes again in tier colours until there are four.
-  const first = out.find((m) => m.ref);
-  for (let i = 1; !hero && first && out.length < 4 && i < TIER_NAMES.length; i++) {
-    const own = pieceName(first.ref!.path);
-    out.push({ id: `${cap(subject)}${TIER_NAMES[i]}`, name: `${TIER_NAMES[i]} ${own.length >= 3 && own.length <= 20 ? own : cap(subject)}`, ...tier(out.length),
-      perPress: 1 + out.length, from: `ServerStorage.AppleParts.Machine_${first.id}`, hue: TIER_HUES[i], icon: '✨', colour: TIER_COLOURS[i] });
+  if (missing.length) return { error: `The machines are missing: ${missing.join('; ')}. Fill them in and call compose_game again.`, missing };
+  for (let i = 1; i < out.length; i++) {
+    if (!(out[i]!.price > out[i - 1]!.price)) return { error: `machines[${i}].price (${out[i]!.price}) must be higher than machines[${i - 1}].price (${out[i - 1]!.price}): tiers rise in price, or the cheaper one is never worth buying after the dearer one`, missing: [`machines[${i}].price`] };
   }
-  return out;
+  const economy = out.map((m) => ({ name: m.name, price: m.price, income: m.income, paybackSeconds: Math.round(m.price / m.income) }));
+  if (out.length < 3) notes.push(`a short ladder: ${out.length} machine${out.length === 1 ? '' : 's'}, so the shop sells ${out.length === 1 ? 'one thing' : 'two things'} (the agent may add tiers)`);
+  for (const e of economy) {
+    if (e.paybackSeconds > 1800) notes.push(`${e.name} pays itself back in about ${Math.round(e.paybackSeconds / 60)} minutes: a very slow tier`);
+    if (e.paybackSeconds < 2) notes.push(`${e.name} pays itself back in under 2 seconds: the tier is free in practice`);
+  }
+  return { machines: out, economy, notes };
+}
+
+/** The scenery the agent chose, as the recipe holds it. Pure. */
+export function readScenery(raw: unknown): { hubProps: PlotSimRecipe['hubProps']; decor: NonNullable<PlotSimRecipe['decor']>; roadside?: PlotSimRecipe['roadside']; notes: string[] } {
+  const hubProps: PlotSimRecipe['hubProps'] = [], decor: NonNullable<PlotSimRecipe['decor']> = [];
+  let roadside: PlotSimRecipe['roadside'];
+  const notes: string[] = [];
+  (Array.isArray(raw) ? raw : []).slice(0, 8).forEach((s, i) => {
+    const o = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
+    const ref = asRef(o.look);
+    if (!ref) { notes.push(`scenery[${i}] has no look { gameId, path }: skipped`); return; }
+    const height = Math.min(80, Math.max(0.5, Number(o.height) || 8));
+    const kind = String(o.kind);
+    if (kind === 'roadside') roadside ??= { key: 'RoadSide', ref, height };
+    else if (kind === 'shop' || kind === 'hub') hubProps.push({ key: `HubProp_${i + 1}`, ref, at: kind, height });
+    else decor.push({ key: `Decor_${i + 1}`, ref, height, count: Math.min(30, Math.max(1, Math.round(Number(o.count) || 8))) });
+  });
+  return { hubProps, decor, ...(roadside ? { roadside } : {}), notes };
 }
 
 /** The library pieces a plot simulator imports, each with its staging key. */
@@ -137,8 +141,7 @@ export function plotSimPieces(recipe: PlotSimRecipe): { key: string; ref: LibRef
 
 /** Tiles on a side of a plot: 4x4 is a base with room for a ladder of machines, not a 3x3 doormat. */
 export const PLOT_TILES = 4;
-/** Studs between a plot's tile centres: a machine is a tile wide, and at the lane-defense 6 a 76-stud keyboard was a
- *  5.4-stud mat (owner's critique, 2026-10-01). */
+/** Studs between a plot's tile centres: a machine is a tile wide. */
 export const PLOT_TILE = 9;
 /** Studs between two lamps on one side of a road. */
 export const ROAD_LAMP_STEP = 16;
@@ -167,10 +170,9 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     seed: rng(recipe.seed ^ 0x51ed), words: { plot: 'Plot', shop: 'SHOP', sell: 'REBIRTH' }, // a plot simulator sells nothing: the second pad opens Rebirth (AppleMachinesClient)
   }, STUD_PALETTE);
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
-  steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
-  const light = studLighting();
-  steps.push({ kind: 'set', path: 'game.Lighting', props: light.props });
-  steps.push({ kind: 'create', parent: 'game.Lighting', items: light.effects });
+  // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
+  // Lighting is not touched: set_mood is the agent's own call.
+  if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
 
   // 4. The hub's library props beside their pads.
   let n = 0;
@@ -180,7 +182,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${p.key}`, parent: 'Workspace.AppleMap.Props', name: `HubProp${++n}`,
       at: [at[0] + off[0]!, 0, at[1] + off[1]!], yaw: Math.round((Math.atan2(-at[0], -at[1]) * 180) / Math.PI), height: p.height });
   }
-  // Lamps along the roads, alternating sides, facing the road (owner's critique, 2026-10-01: the roads were bare).
+  // Pieces along the roads, alternating sides, facing the road.
   if (recipe.roadside) {
     let k = 0;
     for (const spoke of hub.spokes) {
@@ -191,7 +193,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
       for (let d = ROAD_LAMP_STEP / 2, side = 1; d < len - 2; d += ROAD_LAMP_STEP, side = -side) {
         const off = side * (LANE_WIDTH / 2 + 2);
         const x = a[0] + ux * d - uz * off, z = a[1] + uz * d + ux * off;
-        steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${recipe.roadside.key}`, parent: 'Workspace.AppleMap.Props', name: `RoadLamp${++k}`,
+        steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${recipe.roadside.key}`, parent: 'Workspace.AppleMap.Props', name: `RoadSide${++k}`,
           at: [Math.round(x * 10) / 10, 0, Math.round(z * 10) / 10], yaw: Math.round((Math.atan2(uz * side, -ux * side) * 180) / Math.PI), height: recipe.roadside.height });
       }
     }
@@ -202,7 +204,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   for (const d of recipe.decor ?? []) {
     for (let k = 0; k < d.count && spot < layout.scatter.length; k++, spot++) {
       const [x, z] = layout.scatter[spot]!;
-      steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${d.key}`, parent: 'Workspace.AppleMap.Props', name: `${d.key}${k + 1}`,
+      steps.push({ kind: 'place', from: `ServerStorage.AppleParts.${d.key}`, parent: 'Workspace.AppleMap.Props', name: `${d.key}_${k + 1}`,
         at: [x, 0, z], yaw: Math.round(turn() * 360), height: Math.round(d.height * (0.8 + turn() * 0.4)) });
     }
   }
@@ -216,7 +218,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   }
 
   // 6. The config the systems read. Machines are staged by AppleBoot into ServerStorage.AppleDefenders, where the shop
-  //    finds what it sells: the hero recoloured per tier and fitted to a plot tile, library models fitted the same way.
+  //    finds what it sells: a model already in the place (recoloured when a hue is given) or a library model, fitted to a plot tile.
   const stage = recipe.machines.map((m) => ({
     from: m.from ?? `ServerStorage.AppleParts.Machine_${m.id}`, to: 'ServerStorage.AppleDefenders', name: m.id, width: PLOT_TILE - 0.6,
     ...(m.hue !== undefined ? { hue: m.hue } : {}),
@@ -230,35 +232,32 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
       refund: 0.5,
       // Every player's plot starts with the cheapest machine already earning (AppleShop giveStarter).
       ...(recipe.machines[0] ? { starter: recipe.machines[0].id } : {}),
-      // A machine is not a tower: no range, damage or rate in its shop row (critique, 2026-10-01: tower-defence names in a
-      // plot simulator's config). AppleShop's defaults stand in, and nothing here starts AppleDefenders to read them.
+      // A machine is not a tower: no range, damage or rate in its shop row. AppleShop's defaults stand in.
       items: recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, unlock: 0, blurb: `+${m.income}/s` })),
     },
     machines: Object.fromEntries(recipe.machines.map((m) => [m.id, { income: m.income, ...(m.perPress ? { perPress: m.perPress } : {}) }])),
     rebirth: recipe.rebirth,
   };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
-    source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
+    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, words: { shop: 'Shop', plot: 'Plot' } })}\n` });
-  // The upgrades screen is the simulator HUD's own Upgrades panel (AppleUpgradesClient reads these names).
-  const upgradesConfig = { currency: recipe.currency, screen: 'AppleHUD', counter: 'Coins', button: 'Upgrades', panel: 'UpgradesPanel', perPress: 1, upgrades: recipe.upgrades };
+    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, counter: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: { shop: 'Shop', plot: 'Plot' } })}\n` });
+  // The upgrades screen is the simulator HUD's own Upgrades panel (AppleUpgradesClient reads these names); the money counter
+  // is named for the currency, so a renamed currency is found by name everywhere.
+  const upgradesConfig = { currency: recipe.currency, screen: 'AppleHUD', counter: recipe.currency, button: 'Upgrades', panel: 'UpgradesPanel', perPress: 1, upgrades: recipe.upgrades,
+    ...(recipe.symbol ? { symbol: recipe.symbol } : {}) };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage', name: 'AppleUpgradesConfig',
     source: `-- The game's upgrades (AppleUpgrades). Written by Apple's composer; edit freely.\nreturn ${luau(upgradesConfig)}\n` });
 
-  // 7. Studs on the map and on every library piece (the hero keeps its own smooth keycaps: it is not under these).
+  // 7. Studs on the map and on every library piece.
   if ((recipe.surface ?? 'studs') === 'studs') steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleParts'] });
 
-  // 8. The simulator HUD, then the hero's own small screen goes (its counter and upgrades are part of this one now).
-  //    The new screen comes first: live 2026-10-01 the old one was deleted, the new one was refused, and there was none.
+  // 8. The simulator HUD.
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [plotSimHud(
     recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, income: m.income, icon: m.icon, colour: m.colour })),
     recipe.upgrades.map((u) => ({ id: u.id, label: u.label, cost: u.cost, icon: u.icon ?? KIND_ICON[u.kind], blurb: upgradeBlurb(u, recipe.currency) })),
-    { currency: recipe.currency, shop: 'Shop', upgrades: 'Upgrades', rebirth: 'Rebirth' },
+    { currency: recipe.currency, symbol: recipe.symbol, shop: 'Shop', upgrades: 'Upgrades', rebirth: 'Rebirth' },
   )] });
-  if (recipe.hero) {
-    steps.push({ kind: 'delete', paths: [`game.StarterGui.${recipe.hero}HUD`, `game.StarterPlayer.StarterPlayerScripts.${recipe.hero}HUDScript`] });
-  }
   return steps;
 }
 
@@ -267,16 +266,39 @@ export function heroSpot(recipe: PlotSimRecipe): [number, number] {
   return hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) }).hub!.heroSpot;
 }
 
-/** The recipe for an idea, given what the place and the library hold. Pure. */
-export function plotSimRecipe(idea: string, seed: number, found: { hero?: string; library: LibRef[]; hubProps: PlotSimRecipe['hubProps']; hasComponents: boolean }): PlotSimRecipe {
-  const subject = subjectOf(idea, found.hero);
+/** What compose_game's `plotSim` argument holds, read and checked, or what is missing. Pure. */
+export function readPlotSim(given: unknown, seed: number, hasComponents: boolean): { recipe: PlotSimRecipe; economy: MachineEconomy[]; notes: string[]; defaults: string[] } | { error: string; missing: string[] } {
+  const g = (given && typeof given === 'object' ? given : {}) as Record<string, unknown>;
+  const missing: string[] = [];
+  const notes: string[] = [];
+  const text = (v: unknown, path: string, max: number): string => { const c = cleanText(v, max); if (!c.text) missing.push(path); else if (c.cut) notes.push(`${path} was cut to ${max} characters`); return c.text; };
+  const title = text(g.title, 'title', 40);
+  const subject = text(g.subject, 'subject', 30);
+  const currency = text(g.currency, 'currency', 12).replace(/[\s.\[\]]/g, '');
+  if (!currency && !missing.includes('currency')) missing.push('currency');
+  const machines = readMachines(g.machines);
+  if ('error' in machines) missing.push(...machines.missing);
+  const upgrades = readUpgrades(g.upgrades);
+  if ('error' in upgrades) missing.push('upgrades (1 to 9: { label, kind, amount, cost })');
+  if (missing.length || 'error' in machines || 'error' in upgrades) {
+    const why = 'error' in machines && !missing.some((m) => !machines.missing.includes(m)) ? machines.error : `The plot simulator is missing: ${missing.join('; ')}. Fill them from the user's request and call compose_game again.`;
+    return { error: why, missing };
+  }
+  const defaults: string[] = [];
+  const rb = (g.rebirth && typeof g.rebirth === 'object' ? g.rebirth : {}) as Record<string, unknown>;
+  const num = (v: unknown, d: number, lo: number, hi: number, label: string) => { if (typeof v === 'number' && v >= lo && v <= hi) return v; defaults.push(`rebirth.${label} = ${d}`); return d; };
+  const rebirth = { cost: num(rb.cost, DEFAULT_REBIRTH.cost, 1, 1e15, 'cost'), growth: num(rb.growth, DEFAULT_REBIRTH.growth, 1, 100, 'growth'), multiplier: num(rb.multiplier, DEFAULT_REBIRTH.multiplier, 0.01, 100, 'multiplier') };
+  const scenery = readScenery(g.scenery);
+  const players = Math.max(2, Math.min(8, Math.round(Number(g.players) || 4)));
+  if (g.players === undefined) defaults.push('players = 4');
+  const hero = typeof g.hero === 'string' && /^[^.\[\]\\"]{1,40}$/.test(g.hero.replace(/^game\.Workspace\./, '')) ? g.hero.replace(/^game\.Workspace\./, '') : undefined;
   return {
-    kind: 'plot-sim', title: `${cap(subject)} ${genreWord(idea)}`, subject, seed, players: playersIn(idea), currency: 'Coins',
-    ...(found.hero ? { hero: found.hero } : {}),
-    machines: machineLadder(subject, found.hero, found.library),
-    hubProps: found.hubProps,
-    upgrades: DEFAULT_UPGRADES,
-    rebirth: { cost: 50_000, growth: 3, multiplier: 0.5 },
-    hasComponents: found.hasComponents,
+    recipe: {
+      kind: 'plot-sim', title, subject, seed, players, currency, symbol: cleanText(g.symbol, 3).text,
+      ...(hero ? { hero } : {}),
+      machines: machines.machines, hubProps: scenery.hubProps, ...(scenery.decor.length ? { decor: scenery.decor } : {}), ...(scenery.roadside ? { roadside: scenery.roadside } : {}),
+      upgrades, rebirth, hasComponents, ...(g.clearDefaultGround === true ? { clearDefaultGround: true } : {}),
+    },
+    economy: machines.economy, notes: [...notes, ...machines.notes, ...scenery.notes], defaults,
   };
 }

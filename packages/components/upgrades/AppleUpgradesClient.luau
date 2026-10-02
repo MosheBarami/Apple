@@ -15,6 +15,8 @@ local player = Players.LocalPlayer
 local config = require(ReplicatedStorage:WaitForChild("AppleUpgradesConfig")) :: any
 local buy = ReplicatedStorage:WaitForChild("AppleUpgradeBuy") :: RemoteFunction
 local currency = config.currency or "Coins"
+-- What is printed before a price: the game's own symbol (none unless the config gives one).
+local symbolPrefix = if type(config.symbol) == "string" and config.symbol ~= "" then config.symbol .. " " else ""
 
 local function cost(u: any, level: number): number
 	return math.floor(u.cost * (u.growth or 1.5) ^ level + 0.5)
@@ -182,7 +184,7 @@ local function wire(screen: ScreenGui)
 			local level = player:GetAttribute("Upgrade_" .. u.id) or 0
 			if badgeText and badgeText:IsA("TextLabel") then badgeText.Text = "Lv " .. level end
 			if price and price:IsA("TextLabel") then
-				price.Text = if level >= (u.max or 100) then "MAX" else "$ " .. short(cost(u, level))
+				price.Text = if level >= (u.max or 100) then "MAX" else symbolPrefix .. short(cost(u, level))
 			end
 		end
 		refresh()

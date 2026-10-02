@@ -28,16 +28,13 @@ export function upgradeBlurb(u: UpgradeSpec, currency: string): string {
   return `+${amount} per press`;
 }
 
-/** A first set that suits any game where the player presses or clicks things. */
-export const DEFAULT_UPGRADES: UpgradeSpec[] = [
-  { id: 'Power', label: 'Stronger Taps', kind: 'perPress', amount: 1, cost: 15, growth: 1.5, max: 100 },
-  { id: 'Auto', label: 'Auto Tapper', kind: 'perSecond', amount: 1, cost: 60, growth: 1.6, max: 100 },
-  { id: 'Golden', label: 'Golden Touch', kind: 'multiplier', amount: 2, cost: 500, growth: 4, max: 10 },
-];
-
-/** The upgrades the model gave, checked, or the defaults. Pure (tests/upgrades.test.mjs). */
+/**
+ * The upgrades the agent gave, checked and bounded. They are required: which upgrades suit THIS game (their names, what each
+ * does, what it costs) is the agent's design, and the harness holds no first set of its own (it used to hold "Stronger Taps",
+ * "Auto Tapper" and "Golden Touch", and every game got them). Pure (tests/upgrades.test.mjs).
+ */
 export function readUpgrades(raw: unknown): UpgradeSpec[] | { error: string } {
-  if (raw === undefined || (Array.isArray(raw) && raw.length === 0)) return DEFAULT_UPGRADES;
+  if (raw === undefined || (Array.isArray(raw) && raw.length === 0)) return { error: 'upgrades is required: list 1 to 9 upgrades for THIS game, each { label, kind perPress|perSecond|multiplier, amount, cost }' };
   if (!Array.isArray(raw) || raw.length > 9) return { error: 'upgrades must list 1 to 9 upgrades' };
   const out: UpgradeSpec[] = [];
   const seen = new Set<string>();

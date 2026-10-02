@@ -25,6 +25,7 @@ import { studdedScreen } from './stud-ui';
 import { writeScreen } from './studded-ui-tool';
 import { installAnimationPlayer } from './animate-tool';
 import { PLAYER_HEIGHT, allocateName, freeLaneX, safeObjectName } from './library-object';
+import { extendSpec } from './build-ledger';
 
 export { PLAYER_HEIGHT };
 
@@ -556,7 +557,16 @@ end)
   return sc.ok ? null : `hud script: ${clipText(sc.error)}`;
 }
 
-export async function buildObject(ctx: AgentCtx, a: Record<string, unknown>) {
+export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) {
+  // `extend: <id>` (an id from "Earlier in this project"): the earlier object's spec with these parts added, a part of the same
+  // name replaced, built again in its place. The agent decides that this message is about that object; nothing infers it.
+  let a = sent;
+  if (typeof sent.extend === 'string' && sent.extend) {
+    const prev = await ctx.buildLedger?.find(sent.extend);
+    if (!prev?.spec || prev.tool !== 'build_object') return { error: `extend: ${sent.extend} is not a build_object build in this project's ledger (it may have been removed, or be older than the ledger keeps a spec for). Build the whole object, with a new name or replace: true.` };
+    a = { ...extendSpec(prev.spec, sent), replace: true };
+    delete a.extend;
+  }
   const plan = expandObject(a);
   if ('error' in plan) return { error: plan.error };
   const wantsStuds = !userWantsOwnSurface(ctx.userRequest?.());

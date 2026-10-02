@@ -40,12 +40,18 @@ function AppleTycoon.passGate(value: number, times: number, alreadyPassed: boole
 	return math.floor(value * times + 0.5)
 end
 
---[[ Pure: a price as a pad shows it: 1500 -> "$1.5K". ]]
-function AppleTycoon.short(n: number): string
+--[[ Pure: a price as a pad shows it, in the game's own currency: 1500, "Cash" -> "1.5K Cash"; with a symbol "$": "$1.5K"; no currency: "1.5K". ]]
+function AppleTycoon.short(n: number, currency: string?, symbol: string?): string
+	local text = tostring(math.floor(n))
 	for _, s in { { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } } do
-		if n >= s[1] then return "$" .. (string.format("%.1f", n / s[1]):gsub("%.0$", "")) .. s[2] end
+		if n >= s[1] then
+			text = (string.format("%.1f", n / s[1]):gsub("%.0$", "")) .. s[2]
+			break
+		end
 	end
-	return "$" .. tostring(math.floor(n))
+	if symbol and symbol ~= "" then return symbol .. text end
+	if currency and currency ~= "" then return text .. " " .. currency end
+	return text
 end
 
 local MAX_LIVE = 30
@@ -57,6 +63,9 @@ function AppleTycoon.start(config: any, economy: any)
 	local RunService = game:GetService("RunService")
 
 	local cfg = config.tycoon or {}
+	-- The game's own money name and symbol, for what a pad says it costs (never a built-in "$").
+	local currencyName: string? = if type(config.economy) == "table" then config.economy.currency else nil
+	local symbol: string? = config.symbol
 	local item = cfg.item or {}
 	local unlocks: { Unlock } = cfg.unlocks or {}
 	local byId: { [string]: Unlock } = {}
@@ -158,7 +167,7 @@ function AppleTycoon.start(config: any, economy: any)
 					showPads(state)
 				elseif label and label:IsA("TextLabel") then
 					local was = label.Text
-					label.Text = "Need " .. AppleTycoon.short(u.price)
+					label.Text = "Need " .. AppleTycoon.short(u.price, currencyName, symbol)
 					task.delay(1.2, function() label.Text = was end)
 				end
 				task.delay(0.6, function() busy = false end)
@@ -225,8 +234,16 @@ function AppleTycoon.start(config: any, economy: any)
 			d = itemTemplate:Clone()
 		else
 			local p = Instance.new("Part")
-			p.Size = Vector3.new(2.2, 1.4, 2.2) -- big enough to see riding the belt (round 2: the laundry was invisible)
-			p.Material = Enum.Material.Fabric
+			-- The item's look is the config's: a size, a shape and a material the agent chose. With none it is a plain 2-stud
+			-- plastic block: no material is guessed from what the item is.
+			p.Size = if type(item.size) == "table" and #item.size == 3 then Vector3.new(item.size[1], item.size[2], item.size[3]) else Vector3.new(2, 2, 2)
+			local material = Enum.Material.Plastic
+			if type(item.material) == "string" then
+				local okMat, found = pcall(function() return (Enum.Material :: any)[item.material] end)
+				if okMat and found then material = found end
+			end
+			p.Material = material
+			if item.shape == "Ball" then p.Shape = Enum.PartType.Ball elseif item.shape == "Cylinder" then p.Shape = Enum.PartType.Cylinder end
 			p.Color = itemColor
 			d = p
 		end

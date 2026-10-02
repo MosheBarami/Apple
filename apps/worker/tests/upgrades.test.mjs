@@ -15,9 +15,16 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'upg-')), 'u.mjs');
 const ENTRY = `export { screenWrites } from './src/studded-ui-tool';
 export { studdedScreen } from './src/stud-ui';
-export { readUpgrades, isUpgradesRequest, DEFAULT_UPGRADES, KIND_ICON, upgradeBlurb, pickScreen } from './src/upgrades-tool';`;
+export { readUpgrades, KIND_ICON, upgradeBlurb, pickScreen } from './src/upgrades-tool';`;
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), ['--bundle', '--format=esm', '--platform=neutral', '--main-fields=module,main', '--loader=ts', '--outfile=' + out], { cwd: WORKER, input: ENTRY, stdio: ['pipe', 'pipe', 'pipe'] });
 const U = await import(`file://${out}`);
+
+// The agent designs the upgrades; these are a fixture, not a default the harness holds.
+const SAMPLE = [
+  { id: 'Power', label: 'Stronger', kind: 'perPress', amount: 1, cost: 15, growth: 1.5, max: 100 },
+  { id: 'Auto', label: 'Automatic', kind: 'perSecond', amount: 1, cost: 60, growth: 1.6, max: 100 },
+  { id: 'Golden', label: 'Doubler', kind: 'multiplier', amount: 2, cost: 500, growth: 4, max: 10 },
+];
 
 // The keyboard's screen as the object builder made it: a counter top-left and a hint at the bottom.
 const THERE = { name: 'AsmrKeyboardHUD', class: 'ScreenGui', children: [
@@ -51,13 +58,15 @@ test('a piece of the same name is replaced on its own; a new design replaces the
   assert.deepEqual(redo.deletes, ['game.StarterGui.AsmrKeyboardHUD']);
 });
 
-test('upgrades: a good default, and what the model gives is checked and bounded', () => {
-  assert.equal(U.readUpgrades(undefined), U.DEFAULT_UPGRADES);
-  assert.deepEqual(new Set(U.DEFAULT_UPGRADES.map((u) => u.kind)), new Set(['perPress', 'perSecond', 'multiplier']));
+test('upgrades are the agent\'s: required (no default set), and what it gives is checked and bounded', () => {
+  assert.match(U.readUpgrades(undefined).error, /upgrades is required/);
+  assert.match(U.readUpgrades([]).error, /upgrades is required/);
+  assert.equal(U.DEFAULT_UPGRADES, undefined, 'the harness holds no first set');
   const read = U.readUpgrades([{ label: 'Faster Keys!', cost: '40' }, { id: 'Gold', kind: 'multiplier', amount: 999999, cost: -5 }]);
   assert.equal(read[0].id, 'FasterKeys'); assert.equal(read[0].kind, 'perPress'); assert.equal(read[0].cost, 40);
   assert.equal(read[1].amount, 1000); assert.equal(read[1].cost, 1);
   assert.match(U.readUpgrades([{ id: 'A' }, { id: 'A' }]).error, /unique/);
+  assert.match(U.readUpgrades(new Array(10).fill({ id: 'X' })).error, /1 to 9/);
 });
 
 test('add_upgrades is offered like any tool and never forced by the request\'s words; nothing narrows the toolset after it', () => {
@@ -84,11 +93,11 @@ test('the money the screen shows is the money the economy keeps', () => {
 
 // Owner, 2026-10-01: "the upgrades gui does not have any icons in it" and it felt mid.
 test('every upgrade card has an icon, a level badge, what it does and a priced button', () => {
-  const screen = U.studdedScreen({ name: 'HUD', pieces: [{ kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: U.DEFAULT_UPGRADES.map((u) => ({
+  const screen = U.studdedScreen({ name: 'HUD', pieces: [{ kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: SAMPLE.map((u) => ({
     name: u.id, label: u.label, price: `$ ${u.cost}`, icon: U.KIND_ICON[u.kind], blurb: U.upgradeBlurb(u, 'Coins'), level: 'Lv 0' })) }] });
   const json = JSON.stringify(screen);
   for (const part of ['"IconBubble"', '"Icon"', '"Level"', '"Blurb"', '"Buy"']) assert.ok((json.match(new RegExp(part, 'g')) ?? []).length >= 3, `${part} missing from a card`);
-  assert.deepEqual(U.DEFAULT_UPGRADES.map((u) => U.upgradeBlurb(u, 'Coins')), ['+1 per press', '+1 Coins a second', 'x2 everything']);
+  assert.deepEqual(SAMPLE.map((u) => U.upgradeBlurb(u, 'Coins')), ['+1 per press', '+1 Coins a second', 'x2 everything']);
   assert.equal(new Set(Object.values(U.KIND_ICON)).size, 3, 'each kind has its own icon');
 });
 
@@ -117,7 +126,7 @@ test('the GUI: one captioned counter pill, a glossy Upgrades button with a hidde
   const screen = U.studdedScreen({ name: 'HUD', pieces: [
     { kind: 'counter', name: 'Counter', text: '0', icon: '#', at: 'top-left', caption: 'Keys pressed', plus: false },
     { kind: 'button', name: 'Upgrades', text: 'Upgrades', icon: '⬆', at: 'left', badge: true },
-    { kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: U.DEFAULT_UPGRADES.map((u) => ({ name: u.id, label: u.label, price: '$ 1' })) },
+    { kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', cards: SAMPLE.map((u) => ({ name: u.id, label: u.label, price: '$ 1' })) },
   ] });
   const json = JSON.stringify(screen);
   const counter = JSON.stringify(screen.children[0].children.find((c) => c.name === 'Counter'));

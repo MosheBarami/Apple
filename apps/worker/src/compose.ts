@@ -10,7 +10,7 @@
  * Nothing here decides the idea; `recipes.ts` does. Everything here is pure and tested (tests/compose.test.mjs).
  */
 import { COMPONENTS } from './components.generated';
-import { studdedMap, studLighting, STUD_PALETTE, type StudPalette } from './studded-map';
+import { studdedMap, STUD_PALETTE, type StudPalette } from './studded-map';
 import { waveDefenseHud } from './stud-ui';
 
 /** A piece of the owner library: its game (a unique hash prefix) and path, as library_extract and import_owner_library take them. */
@@ -47,6 +47,10 @@ export interface Recipe {
   waves: { first: number; between: number; baseHealth: number; clearBonus?: number; list: { enemy: string; count: number; every: number }[][] };
   /** 'studs' (the default) gives everything the game is made of classic studs; 'keep' when the user asked for their own surfaces. */
   surface?: 'studs' | 'keep';
+  /** Printed before a price; none unless the agent gave one. */
+  symbol?: string;
+  /** The agent asked for the default Baseplate and SpawnLocation to go (the map has its own ground and spawn). */
+  clearDefaultGround?: boolean;
   seed: number;
 }
 
@@ -250,10 +254,9 @@ export function composeSteps(recipe: Recipe): Step[] {
     words: { gate: recipe.words.gate, base: recipe.words.base, plot: recipe.words.plot },
   }, { ...STUD_PALETTE, ...recipe.palette });
   steps.push({ kind: 'create', parent: 'game.Workspace', items: [{ className: 'Folder', name: 'AppleMap', children: [...mapItems, { className: 'Folder', name: 'Props' }] }] });
-  steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
-  const light = studLighting();
-  steps.push({ kind: 'set', path: 'game.Lighting', props: light.props });
-  steps.push({ kind: 'create', parent: 'game.Lighting', items: light.effects });
+  // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
+  // Lighting is not touched: set_mood is the agent's own call.
+  if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
 
   // 4. Props, placed on the new map (the base at the lane's end, the rest on free spots).
   const r = rng(recipe.seed ^ 0x9e3779b9);
@@ -327,7 +330,7 @@ export function composeSteps(recipe: Recipe): Step[] {
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
     source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, words: recipe.words })}\n` });
+    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: recipe.words })}\n` });
 
   // 7. Studs on everything the game is made of: the map, the props, every library piece (bodies, costumes, trees,
   //    projectiles) before the boot script copies them into creatures and defenders, so all of it shares one surface.

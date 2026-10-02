@@ -431,10 +431,10 @@ test('the build_object description and schema hold no subject word, document the
   const text = JSON.stringify(def);
   assert.ok(def.description.length > 300);
   for (const w of ['butter', 'keyboard', 'piano', 'donut', 'pizza', 'asmr', 'crown', 'stick', 'coin', 'cookie', 'pencil', 'sword']) assert.equal(new RegExp(`\\b${w}\\b`, 'i').test(text), false, `the tool text names ${w}`);
-  assert.match(def.description, /Nothing is added unasked/);
+  assert.match(def.description, /Nothing unasked is added \(stage, screen, focus are opt-in\)/);
   for (const opt of ['stage', 'screen', 'focus', 'at', 'replace', 'scale']) assert.ok(opt in def.parameters.properties, `${opt} is documented`);
-  assert.match(def.parameters.properties.stage.description, /Absent: none/);
-  assert.match(def.parameters.properties.screen.description, /Absent: none/);
+  assert.match(def.parameters.properties.stage.description, /absent: none/);
+  assert.match(def.parameters.properties.screen.description, /absent: none/);
   assert.deepEqual(def.parameters.properties.parts.items.required, ['name']);
   assert.deepEqual(def.parameters.required, ['name', 'parts']);
 });
