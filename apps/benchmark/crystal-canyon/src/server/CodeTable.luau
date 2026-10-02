@@ -36,6 +36,10 @@
 export type CodeEntry = {
 	Reward: { coins: number? },
 	Message: string,
+	--[[ Earlier spellings of the same code. An alias is NOT a second code: typing one redeems
+		 this entry, and a save that recorded an alias as redeemed counts as having redeemed
+		 this entry (`Profile.sanitize` folds it in). One redemption, however it was typed. ]]
+	Aliases: { string }?,
 }
 
 --[[ Retiring a code forgets who redeemed it, so re-adding a retired code re-grants it to
@@ -44,7 +48,11 @@ export type CodeEntry = {
 local CodeTable: { [string]: CodeEntry } = {
 	WELCOME = { Reward = { coins = 250 }, Message = "Welcome to the canyon!" },
 	CANYON = { Reward = { coins = 500 }, Message = "The canyon rewards you." },
-	APPLE = { Reward = { coins = 1000 }, Message = "Built by Apple." },
+	--[[ This code was GOLEM until the product was renamed. People redeemed it under that name and
+		 their saves hold `codes.GOLEM = true`; without the alias a rename would have let each of
+		 them redeem it a second time under the new name (+1000 coins) and shown old saves as
+		 unredeemed. The alias is kept for as long as saves from before the rename can load. ]]
+	APPLE = { Reward = { coins = 1000 }, Message = "Built by Apple.", Aliases = { "GOLEM" } },
 }
 
 return CodeTable
