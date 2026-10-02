@@ -13,7 +13,7 @@
     "@golem/design": "workspace:*",
     "@golem/evals": "workspace:*",
     "@golem/shared": "workspace:*",
-    "hono": "^4.6.0",
+    "hono": "^4.13.7",
     "jose": "^5.9.0"
   },
   "devDependencies": {
