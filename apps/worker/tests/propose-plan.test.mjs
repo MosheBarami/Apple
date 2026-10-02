@@ -279,3 +279,16 @@ test('the workspace announces PLANNING while it runs, not building', async () =>
   const { phaseForTool } = await import('@golem/shared');
   assert.equal(phaseForTool('propose_plan'), 'planning');
 });
+
+test('CREDITS: the plan prompt lets the plan share a step with the first read or build call', () => {
+  const prompt = systemPrompt({ ...BASE, mode: 'agent' });
+  assert.match(prompt, /FIRST call is propose_plan/, 'the plan is still the first call');
+  assert.match(prompt, /same\s+step\s+as\s+your\s+first\s+(read|call)/, 'the prompt makes the plan a full priced step of its own');
+});
+
+test('CREDITS: the prompt no longer asks for an undo waypoint the run already takes without a model call', () => {
+  const offered = new Set(['get_project_tree', 'read_script']);
+  for (const prompt of [systemPrompt({ ...BASE, mode: 'agent' }), systemPrompt({ ...BASE, mode: 'agent', offeredTools: offered })]) {
+    assert.doesNotMatch(prompt, /undo\s+waypoint/i, 'a "before Apple changes" checkpoint is taken before the first model call; asking the model for another costs steps');
+  }
+});

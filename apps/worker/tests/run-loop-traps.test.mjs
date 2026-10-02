@@ -1313,3 +1313,20 @@ test('CREDITS: the step after a cut is never given a smaller output ceiling than
     for (const [i, n] of asked.slice(1, 4).entries()) assert.equal(n, full, `recovery step ${i + 1} was asked for ${n} tokens, below the full ${full}`);
   } finally { h.stop(); }
 });
+
+test('CREDITS: propose_plan may share the first step with the first read, so the plan costs no step of its own', async () => {
+  const plan = { steps: [{ title: 'Look at the place', tool: 'get_project_tree' }, { title: 'Build it', tool: 'create_instances' }, { title: 'Check it', tool: 'audit_build' }] };
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [calls(['propose_plan', plan], ['get_project_tree', {}]), answer({ text: 'Looked.' })],
+  });
+  try {
+    await start(h, { text: 'what is in my place' });
+    await h.session.alarm();
+    const agent = h.store.get('agent');
+    assert.equal(h.chatCalls.length, 1, 'the plan and the read took more than one model step');
+    assert.ok(agent.plan, 'the plan was not stored when it shared a step with a read');
+    assert.ok(h.ops.some((o) => o.op === 'get_tree'), 'the read sharing the step did not reach Studio');
+  } finally { h.stop(); }
+});
