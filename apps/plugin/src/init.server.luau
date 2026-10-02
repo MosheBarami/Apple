@@ -38,7 +38,10 @@ local pollGeneration = 0
 local logBuffer: { any } = {}
 local recentOps: { string } = {}
 
-local savedRaw = plugin:GetSetting("golem_session")
+-- The setting was renamed; a session saved under the old name is still read (derived, not spelled), then re-saved under the new one.
+local SESSION_KEY = "apple_session"
+local OLD_SESSION_KEY = (string.gsub(SESSION_KEY, "apple", "golem"))
+local savedRaw = plugin:GetSetting(SESSION_KEY) or plugin:GetSetting(OLD_SESSION_KEY)
 if type(savedRaw) == "string" then
 	local ok, saved = pcall(HttpService.JSONDecode, HttpService, savedRaw)
 	if ok and type(saved) == "table" and saved.token then
@@ -120,9 +123,9 @@ local function post(url: string, body: any, token: string?): (boolean, any, numb
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",
-				["X-Golem-Token"] = token or "",
-				["X-Golem-Plugin-Version"] = VERSION,
-				["X-Golem-Plugin-Protocol"] = tostring(PROTOCOL),
+				["X-Apple-Token"] = token or "",
+				["X-Apple-Plugin-Version"] = VERSION,
+				["X-Apple-Plugin-Protocol"] = tostring(PROTOCOL),
 			} :: { [string]: string },
 			Body = HttpService:JSONEncode(body),
 		})
@@ -299,7 +302,8 @@ local function disconnectSession(reason: string?)
 	connected = false
 	pollGeneration += 1 -- retire the loop; see stopPolling
 	session = nil
-	plugin:SetSetting("golem_session", nil)
+	plugin:SetSetting(SESSION_KEY, nil)
+	plugin:SetSetting(OLD_SESSION_KEY, nil)
 	projectLabel.Visible = false
 	connectBtn.Text = "Connect"
 	setStatus(reason or "Not connected", COLORS.muted)
@@ -406,7 +410,7 @@ end
 
 --[[ WHICH PLACE THIS PAIRING IS FOR.
 
-	 The saved session is a PLUGIN-WIDE setting (`plugin:GetSetting("golem_session")`), not a
+	 The saved session is a PLUGIN-WIDE setting (`plugin:GetSetting("apple_session")`), not a
 	 per-place one, so opening a different place in this same Studio carries the session across and
 	 the project's ops land in whatever happens to be open. Sending the place at claim time gives
 	 the server something to compare against; `game.PlaceId` is 0 for a place never saved to
@@ -436,7 +440,8 @@ local function claimCode(code: string)
 		apiBase = DEFAULT_API,
 	}
 	session = claimed
-	plugin:SetSetting("golem_session", HttpService:JSONEncode(claimed))
+	plugin:SetSetting(SESSION_KEY, HttpService:JSONEncode(claimed))
+	plugin:SetSetting(OLD_SESSION_KEY, nil)
 	codeBox.Text = ""
 	startPolling()
 	-- Say WHICH place the project was just bound to, rather than leaving the user to discover it

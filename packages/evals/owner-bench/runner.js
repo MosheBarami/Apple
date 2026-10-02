@@ -36,7 +36,7 @@
 
   /** One chat turn over the project socket; resolves on msg_end with the reply text. */
   const turn = (text) => new Promise((resolve) => {
-    const ws = new WebSocket(`${location.origin.replace('http', 'ws')}/api/projects/${projectId}/ws`, ['golem.v1', 'golem.jwt.' + token()]);
+    const ws = new WebSocket(`${location.origin.replace('http', 'ws')}/api/projects/${projectId}/ws`, ['apple.v1', 'apple.jwt.' + token()]);
     let reply = '', started = Date.now(), tools = [];
     const done = (stopReason, error) => { clearTimeout(timer); try { ws.close(); } catch {} resolve({ reply, stopReason, error, ms: Date.now() - started, tools }); };
     const timer = setTimeout(() => done('timeout'), TURN_MS);

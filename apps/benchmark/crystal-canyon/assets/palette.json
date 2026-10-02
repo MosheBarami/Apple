@@ -379,7 +379,7 @@
     "service": "Roblox GenerationService (Cube)",
     "method": "generate_mesh via run_as_job \u2014 asynchronous; a synchronous call exceeds the tool timeout and looks like a failure",
     "generatedAt": "2026-08-31",
-    "provenanceClass": "golem_original",
+    "provenanceClass": "apple_original",
     "licence": "Generated for this project via Roblox GenerationService; not third-party licensed content",
     "attributionRequired": false,
     "accepted": [

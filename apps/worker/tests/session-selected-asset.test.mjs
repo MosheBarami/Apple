@@ -255,7 +255,7 @@ async function chosen(h) {
     options: [selected],
   });
   h.session.pluginConnected = async () => true;
-  h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: SUPPORTED_OPS };
+  h.session.pluginCapabilityReport = { schema: 'apple.studio-ops.v1', operations: SUPPORTED_OPS };
   h.session.createCheckpoint = async () => ({ id: 'checkpoint-test' });
   const executed = [];
   h.session.env.__testRunTool = async (ctx, name, args) => {
@@ -282,7 +282,7 @@ test('unrelated searches and primitive construction cannot precede the selected 
     // Reload the DO from the same durable store to exercise eviction, not an in-memory flag.
     h.session = new SessionDO(h.session.ctx, h.session.env);
     h.session.pluginConnected = async () => true;
-    h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: SUPPORTED_OPS };
+    h.session.pluginCapabilityReport = { schema: 'apple.studio-ops.v1', operations: SUPPORTED_OPS };
     await h.session.alarm();
     assert.deepEqual(executed.map(x => x.name), ['insert_library_model'], name);
     assert.deepEqual(executed[0].args, { id: selected.id });
@@ -421,7 +421,7 @@ test('explicit tool denial and late capability withdrawal never become insertion
       h.store.set('agent', structuredClone(agent));
     } else {
       h.session.env.__testChat = async () => {
-        h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: [
+        h.session.pluginCapabilityReport = { schema: 'apple.studio-ops.v1', operations: [
           { op: 'spatial_query', status: 'unsupported', reason: 'operation withdrawn during inference' },
         ] };
         return gatewayResponse({ text: 'Done.' });

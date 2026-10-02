@@ -96,8 +96,8 @@ test('one item follows the browser runner protocol, in order, and the row has th
   assert.deepEqual(w.calls.map((c) => `${c.method} ${c.path}`), ['GET /checkpoints', 'POST /bench/reset', 'POST /restore', 'POST /bench/evaluate', 'GET /images/' + UUID, 'GET /messages?limit=100']);
   assert.equal(w.calls[2].body.checkpointId, 'cp-base', 'the bench-baseline checkpoint, not the first one');
   assert.equal(w.sockets.length, 2, 'one socket per turn');
-  assert.deepEqual(w.sockets[0].protocols[0], 'golem.v1');
-  assert.ok(w.sockets[0].protocols[1].startsWith('golem.jwt.'));
+  assert.deepEqual(w.sockets[0].protocols[0], 'apple.v1');
+  assert.ok(w.sockets[0].protocols[1].startsWith('apple.jwt.'));
   assert.equal(w.sockets[0].url, 'wss://api.test/api/projects/aaaaaaaa-0000-4000-8000-000000000001/ws');
   assert.deepEqual(w.sockets[0].sent, [{ type: 'chat', text: 'make a game', mode: 'agent' }]);
   assert.equal(w.calls[3].body.request, 'make a game → then: make it harder');

@@ -275,8 +275,8 @@ class TestStudio(ServerCase):
         client = StudioClient(base_url=base, version="0.2.0", protocol=1)
         client.claim("GLM-7F3K2Q")
         self.assertEqual(client.token, TOKEN)
-        self.assertEqual(h.requests[-1]["headers"]["X-Golem-Plugin-Version"], "0.2.0")
-        self.assertEqual(h.requests[-1]["headers"]["X-Golem-Plugin-Protocol"], "1")
+        self.assertEqual(h.requests[-1]["headers"]["X-Apple-Plugin-Version"], "0.2.0")
+        self.assertEqual(h.requests[-1]["headers"]["X-Apple-Plugin-Protocol"], "1")
 
     def test_polling_before_pairing_sends_nothing(self):
         base, h = self.serve({"POST /api/studio/poll": lambda req, n: {"body": {"ops": []}}})

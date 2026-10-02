@@ -949,7 +949,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · UPDATED 2026-09-16: the browser half landed. apps/web/src/lib/studio-connection.ts:146 reads hello.studioPlace, :154 studio_status.place and :155 placeMismatch, with asPlace/asMismatch refusing junk, and the workspace pill reads studio.state?.placeName ?? studio.link.place?.placeName. Gated by apps/web/tests/studio-link-wiring.test.mjs:140 ('the pill names the place even when `state` never arrived'), :147 ('A MISMATCH OFFERS THE ONE BUTTON THAT ENDS IT'), :65 ('A MISMATCH THAT IS RESOLVED IS CLEARED, not remembered') and :77 ('a place binding the worker has cleared is cleared here too').
 - [~] Active Studio session identification
       · There is no identifier for a Studio session or instance anywhere. What exists is a description of whichever Studio is currently attached: apps/worker/src/do/session.ts:707-719 (`linkSummary` → paired, connected, lastSeenAt, queuedOps, plugi
-      → Mint a per-Studio installation id in the plugin (a GUID stored under `plugin:SetSetting('apple_install_id', ...)` in apps/plugin/src/init.server.luau alongside `golem_session`) and send it on the existing `X-Golem-Plugin-*` header set in the `post` helper at apps/plugin/src/init.server.luau:107-125.
+      → Mint a per-Studio installation id in the plugin (a GUID stored under `plugin:SetSetting('apple_install_id', ...)` in apps/plugin/src/init.server.luau alongside `apple_session`) and send it on the existing `X-Apple-Plugin-*` header set in the `post` helper at apps/plugin/src/init.server.luau:107-125.
 - [☐] Multiple Studio session inventory
       · The data model holds exactly one Studio per project and cannot represent a second: apps/worker/src/do/session.ts:851-856 stores a single `pluginTokenHash` and moves the previous one to `pluginSuperseded`, and apps/worker/src/index.ts:1398 s
       → This needs the per-install id from 'Active Studio session identification' first. Then change apps/worker/src/do/session.ts to keep a map of `pluginTokens` keyed by install id (replacing the single `pluginTokenHash` at :851-856 and the lookup at :881-908), each with its own lastSeen, place and client
@@ -1047,7 +1047,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 ## 15. STUDIO OPERATION EXECUTION  —  68%   ✓10 ~7 ☐3
 
 - [~] Studio capability discovery
-      · BUILD discovery exists and is wired: the plugin puts X-Golem-Plugin-Version/Protocol on every request (apps/plugin/src/init.server.luau:113-117), the DO reads and records them and refuses an under-floor protocol with ops:[] (apps/worker/src
+      · BUILD discovery exists and is wired: the plugin puts X-Apple-Plugin-Version/Protocol on every request (apps/plugin/src/init.server.luau:113-117), the DO reads and records them and refuses an under-floor protocol with ops:[] (apps/worker/src
       → Have the plugin declare what it can do rather than only what version it is: in apps/plugin/src/init.server.luau add a `supportedOps` array to the claim and poll bodies, derived from the keys of the `handlers` table in apps/plugin/src/Ops.luau (export it as Ops.kinds()). Store it in SessionDO beside 
 - [✓] Supported operation registry
       · The wire registry is the StudioOp union at packages/shared/src/index.ts:37-108; the execution registry is the `handlers` table in apps/plugin/src/Ops.luau:153 dispatched at :1212. The two are kept in step by a real test in BOTH directions: 
@@ -2004,7 +2004,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → In apps/worker/src/index.ts:1179-1184 add a Content-Length header to the export Response (the body string's byte length is already known there). Then in apps/web/src/lib/api.ts:479 change downloadExport to read res.body.getReader() in a loop, accumulate chunks, and invoke an optional onProgress(rece
 - [~] Export integrity verification
       · Completeness is verified; integrity of the bytes is not. The export declares what it contains: apps/worker/src/do/session.ts:1099-1113 returns messageCount, totalMessages and `truncated` rather than silently clipping, and apps/worker/src/ex
-      → Two changes. (1) In apps/worker/src/index.ts:1179-1184, compute `await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))` and emit it as an X-Golem-Export-SHA256 header alongside a Content-Length, and for format=json include the same hex digest as a top-level `sha256` field computed ov
+      → Two changes. (1) In apps/worker/src/index.ts:1179-1184, compute `await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body))` and emit it as an X-Apple-Export-SHA256 header alongside a Content-Length, and for format=json include the same hex digest as a top-level `sha256` field computed ov
 
 ## 37. SUBSCRIPTION LIFECYCLE  —  32%   ✓0 ~12 ☐7 ⊘1
 
@@ -2410,7 +2410,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] Rate-limit headers
       · rateLimitHeaders (apps/worker/src/public-api.ts:612) emits X-RateLimit-Limit/-Remaining/-Reset always and Retry-After only on refusal, and the response middleware attaches them to successes as well as 429s (apps/worker/src/index.ts:3036-303
 - [✓] Usage response metadata
-      · Both in the body and on the headers. The OpenAI usage block is built from the gateway's counts (apps/worker/src/public-api.ts:413 usageBlock, used by chatCompletionBody :417 and legacyCompletionBody :430) and X-Golem-Usage-Input-Tokens/-Out
+      · Both in the body and on the headers. The OpenAI usage block is built from the gateway's counts (apps/worker/src/public-api.ts:413 usageBlock, used by chatCompletionBody :417 and legacyCompletionBody :430) and X-Apple-Usage-Input-Tokens/-Out
 - [✓] Request correlation identifiers
       · Every /v1 response carries X-Request-Id, and the same id is carried inward to the Durable Objects. The middleware adopts a caller's id only if it matches a character allowlist — otherwise it mints one, which closes the header-injection and 
 - [✓] Streaming response support

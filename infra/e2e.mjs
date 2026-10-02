@@ -112,7 +112,7 @@ async function pluginLoop() {
     results = [];
     const res = await fetch(`${BASE}/api/studio/poll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Golem-Token': claim.token },
+      headers: { 'Content-Type': 'application/json', 'X-Apple-Token': claim.token },
       body: JSON.stringify(body),
     });
     if (!res.ok) { log('   plugin poll error', res.status); break; }
@@ -138,7 +138,7 @@ async function pluginLoop() {
 // ---- websocket chat ---------------------------------------------------------
 function wsChat(text, mode, { expectTools, productModel } = {}) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
+    const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, ['apple.v1', 'apple.jwt.' + jwt]);
     const events = [];
     let finalText = '';
     const timer = setTimeout(() => { ws.close(); reject(new Error('chat timeout after 150s; events: ' + events.map((e) => e.type).join(','))); }, 150_000);

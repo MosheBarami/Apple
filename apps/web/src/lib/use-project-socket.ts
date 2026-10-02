@@ -1066,7 +1066,7 @@ export function useProjectSocket(
     const url = `${proto}://${location.host}/api/shared/${encodeURIComponent(projectId)}/ws`;
     let ws: WebSocket;
     try {
-      ws = new WebSocket(url, ['golem.v1', `golem.jwt.${token}`]);
+      ws = new WebSocket(url, ['apple.v1', `apple.jwt.${token}`]);
     } catch {
       if (!requestFenceRef.current.isSelected(socketProjectId)) return;
       setConn('offline');

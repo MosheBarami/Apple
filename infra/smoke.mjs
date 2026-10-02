@@ -216,8 +216,8 @@ let finalText = '';
 const runOnce = () =>
   new Promise((resolve) => {
     const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, [
-      'golem.v1',
-      'golem.jwt.' + jwt,
+      'apple.v1',
+      'apple.jwt.' + jwt,
     ]);
     const timer = setTimeout(() => {
       try { ws.close(); } catch {}
@@ -307,7 +307,7 @@ if (NO_MODEL) {
 // handler answers at all, which it did not before this phase.
 const replay = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, [
-    'golem.v1', 'golem.jwt.' + jwt,
+    'apple.v1', 'apple.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve(undefined); }, 20_000);
   ws.onmessage = (ev) => {
