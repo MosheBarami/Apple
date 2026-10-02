@@ -338,8 +338,9 @@ test('the Rail: five stops on a wide screen, each naming a real section; a progr
   assert.equal(stops.length, 5);
   assert.ok(stops.every((s) => s.exists && s.visible), JSON.stringify(stops));
   assert.equal(await wide.page.locator('nav[aria-label="On this page"]').count(), 1);
+  // The page scrolls smoothly, so wait for the observer to catch up rather than for a fixed time.
   await wide.page.evaluate(() => document.getElementById('capabilities').scrollIntoView());
-  await wide.page.waitForTimeout(500);
+  await wide.page.waitForFunction(() => document.querySelectorAll('.rail-node.is-passed').length >= 3, null, { timeout: 8000 });
   const passed = await wide.page.locator('.rail-node.is-passed').count();
   assert.ok(passed >= 3, `only ${passed} nodes are marked passed at the third section`);
   assert.equal(await wide.page.locator('.rail-node[aria-current="location"]').count(), 1);
@@ -349,7 +350,7 @@ test('the Rail: five stops on a wide screen, each naming a real section; a progr
   const phone = await open({ width: 375, height: 800 });
   assert.equal(await phone.page.locator('.rail').isVisible(), false);
   await phone.page.evaluate(() => window.scrollTo(0, 1200));
-  await phone.page.waitForTimeout(300);
+  await phone.page.waitForFunction(() => Number(document.documentElement.style.getPropertyValue('--read')) > 0, null, { timeout: 8000 });
   assert.equal(await phone.page.locator('.nav__progress').isVisible(), true);
   const read = await phone.page.evaluate(() => Number(document.documentElement.style.getPropertyValue('--read')));
   assert.ok(read > 0 && read < 1, `--read is ${read} part-way down the page`);
