@@ -28,6 +28,14 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
   /**
+   * THE SELF-CHECK BEFORE ANSWERING (M1 of docs/autonomy/PHASE-3-4-PLAN.md): `off` | `on` | `full`. A plain Worker var, not a
+   * secret. `off` is the run exactly as it was (the `look` tool is not even offered); `on` adds the evidence ledger, the look,
+   * the completion gate and the deterministic claim audit; `full` also runs the one cheap text judge over the final reply.
+   * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` until the owner turns it on (the Q21 line is owed).
+   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.jsonc "vars"). See self-check.ts.
+   */
+  SELF_CHECK?: string;
+  /**
    * Purpose-scoped secret used only to claim and acknowledge membership-access outbox rows. The
    * raw value is a Worker secret; Supabase stores its SHA-256 digest (migration 0009). Without it,
    * membership mutations still enqueue atomically and the immediate local push still runs, but a

@@ -17,10 +17,12 @@
  *
  * THE SWITCH: `SELF_CHECK` (a Worker var; `wrangler secret put` is not needed, it is not a secret).
  *
- *   off   no ledger, no gate, no audit. The `look` tool is still offered, so the agent may use it.
- *   on    ledger + completion gate + deterministic claim audit. No extra model call except `look`'s
- *         one vision call (and a look only ever happens once something was changed).
- *   full  `on` plus the cheap text judge over the final reply (claim-audit-judge.ts).
+ *   off   the run as it was before the check existed: no ledger, no gate, no audit, and the `look` tool
+ *         is not even offered (it would cost every step a tool definition for nothing).
+ *   on    ledger + `look` + completion gate + deterministic claim audit. The only added model call is
+ *         `look`'s one vision call, and a look only ever happens once something was changed.
+ *   full  `on` plus the cheap text judge over the final reply (claim-audit-judge.ts), at most once per
+ *         answer that could be the last.
  *
  * DEFAULT WITH NO VALUE: `on` everywhere except `ENVIRONMENT=production`, where it is `off`. The
  * deployed worker therefore behaves exactly as before until the owner decides. The decision he owes is
