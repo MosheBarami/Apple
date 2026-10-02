@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newLedger, recordToolCall, recordLook } from '../src/evidence-ledger.ts';
-import { checkAtAnswer, forcedLookMessage, askLookMessage } from '../src/self-check-run.ts';
+import { checkAtAnswer, forcedLookMessage, askLookMessage, judgeWorthIt } from '../src/self-check-run.ts';
 import { SELF_CHECK_LIMITS } from '../src/self-check.ts';
 
 const red = { t: 'Color3', v: [1, 0, 0] };
@@ -124,4 +124,19 @@ test('the messages the loop hands the agent are plain, short and name what to do
   assert.match(m, /<observations>x<\/observations>/);
   assert.match(m, /fix it now/i);
   assert.ok(m.length < 1500);
+});
+
+test('the judge is worth a call only when the answer could actually go through: gate open, something done in Studio, audit rounds left', () => {
+  const input = (l) => ({ ledger: l, reply: 'Done. The lamp turns on at night.', lookAvailable: true, studioConnected: true, can: CAN });
+  const never = newLedger();
+  assert.equal(judgeWorthIt(input(never)), false, 'nothing was done in Studio');
+  const unlooked = newLedger();
+  change(unlooked);
+  assert.equal(judgeWorthIt(input(unlooked)), false, 'the gate would force a look first; the reply is not final yet');
+  const ready = newLedger();
+  change(ready);
+  looked(ready);
+  assert.equal(judgeWorthIt(input(ready)), true);
+  ready.auditRounds = SELF_CHECK_LIMITS.auditRounds;
+  assert.equal(judgeWorthIt(input(ready)), false, 'no round left to send a finding back in');
 });

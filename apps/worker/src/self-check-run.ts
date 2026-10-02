@@ -66,6 +66,17 @@ export function checkAtAnswer(i: AnswerInput): AnswerCheck {
   return note ? { action: 'finish', note } : { action: 'finish' };
 }
 
+/**
+ * Whether the optional judge is worth a model call right now: the gate would let the answer through (a reply the agent
+ * is about to be sent back to look for is not final), the run did something in Studio, and an audit round is left to
+ * send a finding back in. The judge is only ever asked about a reply that could be the last.
+ */
+export function judgeWorthIt(i: Omit<AnswerInput, 'extra'>): boolean {
+  const l = i.ledger;
+  if (l.seq === 0 || l.auditRounds >= SELF_CHECK_LIMITS.auditRounds) return false;
+  return decideLookGate({ ledger: l, lookAvailable: i.lookAvailable, studioConnected: i.studioConnected }).action === 'pass';
+}
+
 /** After a forced look: the observations, handed to the agent as data it must act on. `body` is already fenced. */
 export function forcedLookMessage(body: string): string {
   return (

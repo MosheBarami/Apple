@@ -129,7 +129,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const LOOK_OBSERVATIONS = { observations: [{ about: 'the door', verdict: 'seen', note: 'a door in the wall' }], answers: [], issues: [] };
 
-async function makeSession({ responses = [], studio = fakeStudio(), env: envExtra = {}, capabilities = null, look = LOOK_OBSERVATIONS, lookNeurons = 120 } = {}) {
+async function makeSession({ responses = [], studio = fakeStudio(), env: envExtra = {}, capabilities = null, look = LOOK_OBSERVATIONS, lookNeurons = 120, judge = { unsupported: [] }, judgeNeurons = 33 } = {}) {
   const store = new Map([['bind', { projectId: 'project-1', projectName: 'Check Place', ownerId: 'owner-1' }]]);
   store.set('pluginLastSeen', Date.now());
   const sql = new SqlMemory();
@@ -138,6 +138,7 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
   const refunds = [];
   const chatCalls = [];
   const visionCalls = [];
+  const judgeCalls = [];
   const alarms = [];
   const ops = [];
   let attachment = { userId: 'owner-1', role: 'owner', connectionId: 'connection-1', activity: 'viewing', lastSeenMs: Date.now() };
@@ -187,6 +188,11 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
     CORPUS: { async exec() {}, prepare() { return { bind() { return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } }; } },
     ...envExtra,
     __testChat: async (req, opts) => {
+      if (opts?.kind === 'selfcheck:judge') {
+        judgeCalls.push({ req, opts });
+        if (judge instanceof Error) throw judge;
+        return { text: JSON.stringify(judge), neurons: judgeNeurons };
+      }
       if (opts?.kind === 'visual:look') {
         visionCalls.push({ req, opts });
         if (look instanceof Error) throw look;
@@ -212,7 +218,7 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
       waiter({ id: op.id, ...studio.answer(op.studioOp) });
     }
   }, 1);
-  return { session, store, sql, sent, spends, refunds, chatCalls, visionCalls, alarms, ops, studio, stop: () => clearInterval(answerer), queue };
+  return { session, store, sql, sent, spends, refunds, chatCalls, visionCalls, judgeCalls, alarms, ops, studio, stop: () => clearInterval(answerer), queue };
 }
 
 const answer = ({ text = '', toolCalls = [], neurons = 40 } = {}) => ({
@@ -536,5 +542,80 @@ test('every model-visible instruction the check adds is plain text the agent can
       assert.ok(t.length < 2500, `${t.length} chars`);
       assert.doesNotMatch(t, /game\.Workspace\.Camera|rgbBase64|iVBOR/);
     }
+  } finally { h.stop(); }
+});
+
+// ===================================================================== SELF_CHECK=full: the judge ===
+
+test('FULL: the cheap judge reads a reply the deterministic audit cannot, and what it finds goes back to the agent', async () => {
+  const h = await makeSession({
+    env: { SELF_CHECK: 'full' },
+    judge: { unsupported: [{ claim: 'The lamp comes on at dusk.', why: 'nothing observed any lamp' }] },
+    responses: [
+      paint([1, 0, 0]), calls(['look', {}]),
+      answer({ text: 'Done. The lamp comes on at dusk.' }), // judge flags it
+      answer({ text: 'Done. I did not check how the lamp behaves at dusk.' }),
+    ],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.judgeCalls.length >= 1, true, 'the judge was never asked');
+    assert.equal(h.judgeCalls[0].opts.kind, 'selfcheck:judge');
+    const steer = userMessages(h).find((t) => /does not support/i.test(t));
+    assert.ok(steer, 'the judge\'s finding never went back to the agent');
+    assert.match(steer, /lamp comes on at dusk/);
+    assert.equal(reply(h), 'Done. I did not check how the lamp behaves at dusk.');
+  } finally { h.stop(); }
+});
+
+test('FULL: the judge\'s cost reaches the run\'s compute and is settled even though the run ends on the answer', async () => {
+  const h = await makeSession({
+    env: { SELF_CHECK: 'full' }, judgeNeurons: 4000,
+    responses: [paint([1, 0, 0]), calls(['look', {}]), answer({ text: 'Done. The door is in the wall, as you asked.' })],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.ok(h.store.get('agent').neuronsUsed >= 4000, `neuronsUsed ${h.store.get('agent').neuronsUsed}`);
+    assert.ok(h.spends.reduce((n, v) => n + v, 0) >= 3, 'the judge\'s compute reached the Credits');
+  } finally { h.stop(); }
+});
+
+test('FULL: a judge that fails changes nothing — the reply goes out exactly as it would without one', async () => {
+  const h = await makeSession({
+    env: { SELF_CHECK: 'full' }, judge: new Error('the judge model is down'),
+    responses: [paint([1, 0, 0]), calls(['look', {}]), answer({ text: 'Done. The door is in the wall, as you asked.' })],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(reply(h), 'Done. The door is in the wall, as you asked.');
+  } finally { h.stop(); }
+});
+
+test('ON (the default) never calls the judge: no extra model call is made for the deterministic check', async () => {
+  const h = await makeSession({
+    judge: { unsupported: [{ claim: 'The lamp comes on at dusk.', why: 'x' }] },
+    responses: [paint([1, 0, 0]), calls(['look', {}]), answer({ text: 'Done. The lamp comes on at dusk.' })],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.judgeCalls.length, 0);
+    assert.equal(reply(h), 'Done. The lamp comes on at dusk.');
+  } finally { h.stop(); }
+});
+
+test('FULL: the judge is not asked about a reply the gate is about to send back for a look', async () => {
+  const h = await makeSession({
+    env: { SELF_CHECK: 'full' },
+    responses: [paint([1, 0, 0]), answer({ text: 'Done. The door is in the wall, as you asked.' }), answer({ text: 'Done. The door is in the wall, as you asked.' })],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.visionCalls.length, 1);
+    assert.equal(h.judgeCalls.length, 1, 'once, on the reply that could be final — not on the one the look interrupted');
   } finally { h.stop(); }
 });

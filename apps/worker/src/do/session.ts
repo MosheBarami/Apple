@@ -107,7 +107,9 @@ import { persistWithShedding } from '../persist';
 // moment of answering, and the optional text judge. See self-check.ts for what each part is and why it exists.
 import { selfCheckMode } from '../self-check';
 import { newLedger, type EvidenceLedger } from '../evidence-ledger';
-import { checkAtAnswer, forcedLookMessage } from '../self-check-run';
+import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-run';
+import { auditReply, type Finding } from '../claim-audit';
+import { judgeReply } from '../claim-audit-judge';
 import { LOOK_TOOL } from '../look-tool';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -5479,30 +5481,6 @@ export class SessionDO extends DurableObject<Env> {
     return true;
   }
 
-  /**
-   * Carry asset provenance from the step that discovered it onto the run that will use it.
-   *
-   * `agentCtx()` rebuilds its object every step, so without this a `find_verified_asset` in step N
-   * and the `insert_asset` in step N+1 never meet: the second arrives with empty sets, provenance
-   * degrades to `user_supplied`, and the curated-library waiver silently stops applying.
-   *
-   * Bounded, because this is unbounded model-supplied input in all but name: a run that searched
-   * in a loop would otherwise grow the persisted state without limit. The newest ids are kept,
-   * since those are the ones an insert in the next step is actually about.
-   */
-  /**
-   * The run's fence id, minted if a run persisted by an older deploy arrives without one.
-   *
-   * NEVER a constant. The `?? ''` that stood here gave every such run the SAME marker, and the
-   * untrusted-content rule stakes everything on the marker being unguessable: content that knows
-   * the id can close the fence and open a fresh one the model has been instructed to trust. An
-   * empty id is not a weaker secret, it is a shared one.
-   *
-   * A minted id will not match the system prompt a legacy run is already carrying, and that is the
-   * FAIL-CLOSED direction on purpose — the prompt tells the model that a closing tag without the
-   * exact id was written by the content, and that everything after it is still inside the fence.
-   * Unrecognised beats forgeable.
-   */
   // ------------------------------------------------------------------------------ the self-check ---
 
   /** The run's ledger: the stored one when it belongs to THIS run, otherwise a fresh one. */
@@ -5526,54 +5504,67 @@ export class SessionDO extends DurableObject<Env> {
     allowed: ReadonlySet<string>,
     studioConnected: boolean,
   ): Promise<boolean> {
-    const decision = checkAtAnswer({
+    const input = {
       ledger,
       reply: agent.finalText ?? '',
       lookAvailable: allowed.has(LOOK_TOOL),
       studioConnected,
       can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
-    });
-    if (decision.action === 'finish') {
-      if (decision.note) {
-        // The same way every other product note is added: after the agent's own words, never in place of them.
-        const prior = agent.streamedText ?? '';
-        agent.finalText = agent.finalText ? `${agent.finalText}\n\n${decision.note}` : decision.note;
-        agent.streamedText = prior ? `${prior}\n\n${decision.note}` : decision.note;
-        this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${decision.note}` : decision.note });
+    };
+    let decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
+    if (decision.action === 'force_look') {
+      // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
+      const out = await this.runSelfCheckLook(agent, ledger, ctx);
+      if (out.ok) {
+        agent.llm.push({ role: 'user', content: forcedLookMessage(this.fencedToolOutput(agent, LOOK_TOOL, out.resultForLlm).text) });
+        return this.takeAnotherStep(agent, ledger);
       }
-      await this.saveLedger(agent, ledger);
-      return false;
+      // A look that could not run gives the agent nothing to act on, so no extra model step is spent on it: decide again
+      // without it (the gate now steps aside) and let the final line say the work was not looked at.
+      decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
     }
     if (decision.action === 'steer') {
       agent.llm.push({ role: 'user', content: decision.message });
-    } else {
-      // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
-      const out = await this.runSelfCheckLook(agent, ledger, ctx);
-      if (!out.ok) {
-        // A look that could not run gives the agent nothing to act on: no extra model step, and the final line says so.
-        const after = checkAtAnswer({
-          ledger, reply: agent.finalText ?? '', lookAvailable: allowed.has(LOOK_TOOL), studioConnected,
-          can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
-        });
-        if (after.action === 'finish') {
-          if (after.note) {
-            const prior = agent.streamedText ?? '';
-            agent.finalText = agent.finalText ? `${agent.finalText}\n\n${after.note}` : after.note;
-            agent.streamedText = prior ? `${prior}\n\n${after.note}` : after.note;
-            this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${after.note}` : after.note });
-          }
-          await this.saveLedger(agent, ledger);
-          return false;
-        }
-        if (after.action === 'steer') agent.llm.push({ role: 'user', content: after.message });
-      } else {
-        agent.llm.push({ role: 'user', content: forcedLookMessage(this.fencedToolOutput(agent, LOOK_TOOL, out.resultForLlm).text) });
-      }
+      return this.takeAnotherStep(agent, ledger);
     }
+    if (decision.action === 'finish' && decision.note) {
+      // The same way every other product note is added: after the agent's own words, never in place of them.
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${decision.note}` : decision.note;
+      agent.streamedText = prior ? `${prior}\n\n${decision.note}` : decision.note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${decision.note}` : decision.note });
+    }
+    await this.saveLedger(agent, ledger);
+    return false;
+  }
+
+  /** End the step here and take another: the check handed the agent something to act on. */
+  private async takeAnotherStep(agent: AgentState, ledger: EvidenceLedger): Promise<true> {
     await this.saveLedger(agent, ledger);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
     return true;
+  }
+
+  /**
+   * SELF_CHECK=full: the one cheap text call that reads the reply for claims the deterministic audit does not (claim-audit-judge.ts).
+   * Only for a reply that could be the last, and only ever adds findings. Its compute is counted into the run and settled now,
+   * because an answer that ends the run has no later step to settle it.
+   */
+  private async judgeFindings(agent: AgentState, input: Parameters<typeof checkAtAnswer>[0]): Promise<Finding[] | undefined> {
+    if (selfCheckMode(this.env) !== 'full' || !judgeWorthIt(input)) return undefined;
+    const existing = auditReply(input.reply, input.ledger).findings;
+    const judged = await judgeReply({ reply: input.reply, ledger: input.ledger, existing }, (req, opts) => llmChat(this.env, req as never, opts));
+    if (judged.neurons > 0) {
+      agent.neuronsUsed = (agent.neuronsUsed ?? 0) + judged.neurons;
+      const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
+      if (owed > 0) {
+        const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
+        if (settle.ok) agent.creditsSpent += owed;
+        this.recordSpendSplit(agent, settle);
+      }
+    }
+    return judged.findings;
   }
 
   /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
@@ -5601,6 +5592,30 @@ export class SessionDO extends DurableObject<Env> {
     return fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool, body });
   }
 
+  /**
+   * Carry asset provenance from the step that discovered it onto the run that will use it.
+   *
+   * `agentCtx()` rebuilds its object every step, so without this a `find_verified_asset` in step N
+   * and the `insert_asset` in step N+1 never meet: the second arrives with empty sets, provenance
+   * degrades to `user_supplied`, and the curated-library waiver silently stops applying.
+   *
+   * Bounded, because this is unbounded model-supplied input in all but name: a run that searched
+   * in a loop would otherwise grow the persisted state without limit. The newest ids are kept,
+   * since those are the ones an insert in the next step is actually about.
+   */
+  /**
+   * The run's fence id, minted if a run persisted by an older deploy arrives without one.
+   *
+   * NEVER a constant. The `?? ''` that stood here gave every such run the SAME marker, and the
+   * untrusted-content rule stakes everything on the marker being unguessable: content that knows
+   * the id can close the fence and open a fresh one the model has been instructed to trust. An
+   * empty id is not a weaker secret, it is a shared one.
+   *
+   * A minted id will not match the system prompt a legacy run is already carrying, and that is the
+   * FAIL-CLOSED direction on purpose — the prompt tells the model that a closing tag without the
+   * exact id was written by the content, and that everything after it is still inside the fence.
+   * Unrecognised beats forgeable.
+   */
   private fenceIdFor(agent: AgentState): string {
     if (!agent.fenceId) agent.fenceId = crypto.randomUUID().slice(0, 8);
     return agent.fenceId;
