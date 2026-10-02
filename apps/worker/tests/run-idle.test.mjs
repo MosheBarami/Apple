@@ -150,7 +150,8 @@ test('the same target changed again and again is told to stop tuning, then ended
 });
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
-  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{aim\(call\.arguments\)\}`\);/);
+  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;/);
+  assert.match(SESSION, /afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
   assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
   assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
 });
@@ -299,4 +300,53 @@ test('an owner game recreate or StarterGui import brings its own HUD, so no gene
   assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/Workspace/Farm"}'), false);
   assert.equal(buildsHud('insert_ui_component', '{}'), true);
   assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
+});
+
+test('CREDITS: failures are counted per tool across ANY arguments; one success of that tool clears them', async () => {
+  const { afterToolOutcome, FAIL_STEER_AT, FAIL_END_AT } = await import('../src/run-idle.ts');
+  let s = {};
+  const actions = [];
+  for (let i = 0; i < FAIL_END_AT; i++) { const r = afterToolOutcome(s, 'create_instances', false); s = r.streaks; actions.push(r.action); }
+  assert.deepEqual(actions.map((a, i) => (a === 'none' ? null : i + 1)).filter(Boolean), [FAIL_STEER_AT, FAIL_STEER_AT * 2, FAIL_END_AT], 'steer at 3 and 6, end at 8');
+  assert.equal(actions.at(-1), 'finish');
+  // One failure in four never reaches the first steer.
+  let t = {};
+  for (let i = 0; i < 40; i++) { const r = afterToolOutcome(t, 'set_properties', i % 4 !== 0); t = r.streaks; assert.equal(r.action, 'none', `a mostly-successful tool was steered at call ${i}`); }
+  // Another tool's failures are its own count, and its success clears only its own.
+  let u = afterToolOutcome({}, 'a', false).streaks;
+  u = afterToolOutcome(u, 'b', false).streaks;
+  u = afterToolOutcome(u, 'b', true).streaks;
+  assert.deepEqual(u, { a: 1 });
+});
+
+test('CREDITS: the run loop feeds the failure count only with calls that ran', () => {
+  assert.match(SESSION, /if \(allowed\.has\(call\.name\)\) \{[\s\S]{0,900}afterToolOutcome\(agent\.failStreaks, call\.name, out\.ok\)/);
+});
+
+test('CREDITS: a change window catches alternation between two targets, nudges first, ends on the second nudge', async () => {
+  const { afterChangeWindow, CHANGE_WINDOW, WINDOW_NUDGE } = await import('../src/run-idle.ts');
+  let state; const actions = [];
+  for (let i = 0; i < 100; i++) { const r = afterChangeWindow(state, i % 2 ? 'set_props B' : 'set_props A'); state = r.state; actions.push(r.action); if (r.action === 'finish') break; }
+  const nudgeAt = actions.indexOf('nudge') + 1;
+  assert.equal(nudgeAt, 2 * WINDOW_NUDGE - 1, 'the 12th change to one of two alternating targets is the first to reach 12 in the window');
+  assert.equal(actions.filter((a) => a === 'nudge').length, 1, 'told once');
+  assert.equal(actions.at(-1), 'finish', 'and ended when it carries on');
+  assert.ok(actions.length <= 3 * CHANGE_WINDOW, `${actions.length} changes before the end`);
+  // Work spread over many targets, or a script that is only one change in six, is never counted.
+  let spread; for (let i = 0; i < 200; i++) { const r = afterChangeWindow(spread, `create_instances Tree${i}`); spread = r.state; assert.equal(r.action, 'none'); }
+  let mixed; for (let i = 0; i < 200; i++) { const r = afterChangeWindow(mixed, i % 6 === 0 ? 'edit_script Client' : `create_instances Part${i}`); mixed = r.state; assert.equal(r.action, 'none'); }
+  assert.ok(state.keys.length <= CHANGE_WINDOW, 'only the window is remembered');
+});
+
+test('CREDITS: the run loop does not count a change that was aimed at nothing', () => {
+  assert.match(SESSION, /const target = aim\(call\.arguments\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
+});
+
+test('CREDITS: the visual inspection tool no longer says to repeat it "until it passes"', () => {
+  const tools = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const at = tools.indexOf("name: 'inspect_visually'");
+  assert.ok(at > 0, 'inspect_visually was not found — this test would check nothing');
+  const description = tools.slice(at, at + 1500);
+  assert.doesNotMatch(description, /until it passes/, 'a repeat-until-pass instruction has no progress test, and each inspection renders and calls a vision model');
+  assert.match(description, /do not score better, stop and say so/);
 });

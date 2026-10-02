@@ -2671,7 +2671,21 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //   nothing else."), sent once when a run answers a built object without playing it. REVIEWED: a fixed string
   //   literal, no interpolation, so it carries nothing the model or a place wrote. The same change's upgrade line
   //   (objectUpgradeLine) goes into the system prompt and passes part names only as [A-Za-z0-9_] identifiers.
-  assert.equal(userPushes.length, 18, 'a user-role transcript injection was added or removed — review it for injection risk');
+  //[[ NINETEEN SINCE 2026-10-02: the failing-tool steer (run-idle.ts failureSteer, "Your last N calls to <tool> failed the
+  //   same way…"). REVIEWED: it carries an integer from the run's own counter and a tool name that the run loop only counts
+  //   when the call was in this step's offered set (`allowed.has(call.name)`), so it is a registry name. The error text is
+  //   deliberately NOT quoted into it: a Studio error can carry place content (an instance name), and it already reaches the
+  //   model fenced as untrusted tool output. Held below: the helper's only interpolations are those two. ]]
+  //[[ TWENTY SINCE 2026-10-02: the back-and-forth steer ("Over your last 24 changes, 12 or more went to the same thing…",
+  //   run-idle.ts afterChangeWindow). REVIEWED: a fixed string literal with no interpolation, pushed once per 12 changes by the
+  //   run's own counter; nothing the model, the user or a tool wrote reaches it (the keys it counts are never quoted back). ]]
+  assert.equal(userPushes.length, 20, 'a user-role transcript injection was added or removed — review it for injection risk');
+  const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
+  assert.ok(failSteer.length > 100, 'failureSteer was not found — this test would check nothing');
+  assert.deepEqual([...failSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['failures', 'tool'],
+    'the failing-tool steer interpolates something other than a count and a tool name');
+  assert.match(session, /if \(allowed\.has\(call\.name\)\) \{[\s\S]{0,1500}failThisStep = \{ action: outcome\.action, tool: call\.name \}/,
+    'the failing-tool steer is no longer limited to calls from the offered set');
   const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
   assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
     'the new user-role steer no longer comes from the reviewed source selector');
