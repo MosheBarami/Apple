@@ -247,6 +247,19 @@ test('an unenumerable hierarchy is rejected — unknown contents are never treat
   assert.ok(scan.findings.some((f) => f.code === 'unreadable'));
 });
 
+test('a tree the scan could list only in part is refused for its SIZE, and is not reported as a script finding', () => {
+  const cut = scanInsertedHierarchy({ rootPath: 'game.Workspace.Big', scripts: [], treeTruncated: true, treeCaps: { nodes: 1200, depth: 12 } });
+  assert.equal(cut.verdict, 'reject', 'unknown contents must still never count as clean');
+  assert.match(cut.reasons[0], /larger than the scan can list \(more than 1200 nodes or 12 levels\)/);
+  assert.match(cut.reasons[0], /size limit, not a script finding/);
+  assert.equal(cut.reasons.some((r) => /critical finding/.test(r)), false, 'a size limit was reported as a critical finding');
+  assert.equal(new Set(cut.reasons).size, cut.reasons.length, 'a reason is repeated');
+  // A read that FAILED is a different fact and says so; and a real critical script finding keeps its own sentence.
+  assert.match(scanInsertedHierarchy({ rootPath: 'x', scripts: [], enumerationFailed: true }).reasons[0], /could not be enumerated/);
+  const script = scanInsertedHierarchy({ rootPath: 'x', scripts: [{ path: 'x.S', className: 'Script', source: 'require(3163717554)' }], treeTruncated: true });
+  assert.match(script.reasons[0], /critical finding is not fixed by deleting a script/, 'a script finding lost its own reason behind the size one');
+});
+
 test('more scripts than the scan cap is refused on count alone, not partially cleared', () => {
   const scripts = Array.from({ length: SCAN_LIMITS.maxScripts + 5 }, (_, i) => ({ path: `game.Workspace.M.S${i}`, className: 'Script', source: PLAIN_SCRIPT }));
   const scan = scanInsertedHierarchy({ rootPath: 'game.Workspace.M', scripts });
@@ -1050,6 +1063,13 @@ function toolCtx(studio, {
   };
 }
 
+/**
+ * What the place lost, NOT counting the run-unique holder Folder (`Apple_Insert_<n>_<id>`) every insert creates first and
+ * removes last (tools.ts insertAndProveClean). The holder is bookkeeping that makes the inserted model's path unambiguous;
+ * the assertions below are about the asset and its scripts, so a delete of the holder is not what they are counting.
+ */
+const gone = (studio) => studio.state.deleted.filter((path) => !/\.Apple_Insert_\d+_[a-z0-9]+$/.test(path));
+
 const insert = async (ctx, assetId, parent = 'game.Workspace') => {
   const out = await T.runTool(ctx, 'insert_asset', JSON.stringify({ assetId, parent }));
   return { ...out, result: JSON.parse(out.resultForLlm) };
@@ -1067,7 +1087,7 @@ test('A BACKDOORED ASSET THAT REACHES insert_asset IS REMOVED WHOLE AND THE TOOL
   assert.equal(out.ok, false, 'a backdoored asset must be a tool failure, not a warning');
   assert.match(out.result.error, /refused and removed/);
   assert.deepEqual(out.result.removedWholeAsset, ['game.Workspace.Crate'], 'the whole asset goes, not just the script');
-  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+  assert.deepEqual(gone(studio), ['game.Workspace.Crate']);
   // The order is the security property: the place is read only after the insert, and the delete
   // only after the read.
   const calls = studio.state.calls;
@@ -1093,7 +1113,7 @@ test('A PLAIN-SCRIPT ASSET IS STRIPPED AND THEN PROVEN CLEAN BY RE-LISTING THE P
   assert.equal(out.result.stripped.length, 1);
   assert.equal(out.result.stripped[0].path, 'game.Workspace.Crate.Spin');
   assert.match(out.result.stripped[0].why, /script_present/);
-  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate.Spin'], 'only the script goes — nothing malicious happened');
+  assert.deepEqual(gone(studio), ['game.Workspace.Crate.Spin'], 'only the script goes — nothing malicious happened');
   // PROOF, not bookkeeping: the second listing is a real re-read of a place the fake actually
   // mutated, so removing the delete from the fake would fail this test.
   assert.equal(studio.state.calls.filter((c) => c === 'list_scripts').length, 2);
@@ -1107,7 +1127,7 @@ test('the clean case still runs the whole sequence — a clean asset is PROVEN c
   assert.equal(out.ok, true, out.resultForLlm);
   assert.equal(out.result.scan, 'clean');
   assert.deepEqual(out.result.stripped, []);
-  assert.deepEqual(studio.state.deleted, []);
+  assert.deepEqual(gone(studio), []);
   for (const required of ['insert_asset', 'get_tree', 'list_scripts']) {
     assert.ok(studio.state.calls.includes(required), `${required} must run even for a clean asset`);
   }
@@ -1245,7 +1265,7 @@ test('a script that survives removal is a refusal — the re-list is trusted ove
   const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
   assert.equal(out.ok, false);
   assert.match(out.result.error, /survived removal/);
-  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate'], 'the whole asset goes when it cannot be proven clean');
+  assert.deepEqual(gone(studio), ['game.Workspace.Crate'], 'the whole asset goes when it cannot be proven clean');
 });
 
 test('an unenumerable subtree is discarded — a tree that cannot be walked is not an empty one', async () => {
@@ -1253,7 +1273,7 @@ test('an unenumerable subtree is discarded — a tree that cannot be walked is n
   const studio = fakeStudio({ failOn: 'get_tree' });
   const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
   assert.equal(out.ok, false);
-  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+  assert.deepEqual(gone(studio), ['game.Workspace.Crate']);
 });
 
 test('more scripts than the scan cap is refused on count alone, at the tool boundary too', async () => {
@@ -1263,7 +1283,7 @@ test('more scripts than the scan cap is refused on count alone, at the tool boun
   const out = await insert(toolCtx(studio, { discovered: [101] }), 101);
   assert.equal(out.ok, false);
   assert.match(out.result.error, /scan cap/);
-  assert.deepEqual(studio.state.deleted, ['game.Workspace.Crate']);
+  assert.deepEqual(gone(studio), ['game.Workspace.Crate']);
   assert.equal(studio.state.calls.filter((c) => c === 'read_script').length, 0, 'refused on count before a single source was read');
 });
 

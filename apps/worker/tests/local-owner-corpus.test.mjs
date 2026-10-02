@@ -23,7 +23,7 @@ test('complete local library is searched first through paired plugin without a c
 test('ready receipt precedes checkpoint then exact native import; bytes remain local',async()=>{
  const calls=[];const ctx=context(async op=>{calls.push(op);if(op.op==='query_owner_local')return {ok:true,data:{status:'ready',jobId,nodeId:raw,name:'Waterfall',nativeSha256:sha,nativeBytes:88,nativeInstances:9,policy:'owner-loopback-scriptfree-v1',nativeScripts:0}};return {ok:true,data:{inserted:['game.Workspace.Waterfall'],scriptsExecuted:0}};},{createCheckpoint:async()=>{calls.push('checkpoint');return {id:'cp'};}});
  const {out}=await run(ctx,'insert_library_model',{id,parent:'game.Workspace'});
- assert.equal(out.ok,true);assert.equal(out.mutatedProject,true);assert.deepEqual(calls.map(c=>typeof c==='string'?c:c.op),['query_owner_local','checkpoint','import_owner_local']);
+ assert.equal(out.ok,true);assert.equal(out.mutatedProject,true);assert.deepEqual(calls.map(c=>typeof c==='string'?c:c.op),['query_owner_local','checkpoint','import_owner_local','get_tree']);
  assert.equal(calls[2].nodeId,raw);assert.equal(calls[2].jobId,jobId);assert.equal(calls[2].nativeSha256,sha);assert.equal(calls[2].parent,'game.Workspace');
  assert.ok(!JSON.stringify(calls).match(/127\.0\.0\.1|Bearer|base64|keyFile|rbxmBase64/));
 });

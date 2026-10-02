@@ -78,7 +78,7 @@ test('approved account: find -> checkpointed grant -> content route serves the e
   const read=JSON.parse((await T.runTool(context,'read_owner_component',JSON.stringify({id:c.id}))).resultForLlm);
   assert.equal(read.component.id,c.id);assert.equal(read.codeAvailable,false);
   const inserted=await T.runTool(context,'insert_library_model',JSON.stringify({id:c.id}));
-  assert.equal(inserted.ok,true,inserted.resultForLlm);assert.equal(ops.length,1);assert.equal(ops[0].op,'import_owner_component');
+  assert.equal(inserted.ok,true,inserted.resultForLlm);assert.deepEqual(ops.map((o)=>o.op),['import_owner_component','get_tree'],'the import, then one read of the wrapper for the inner model path');
   const res=await R.ownerCorpusRoutes.fetch(new Request('https://t/content/'+ops[0].contentToken),e);
   assert.equal(res.status,200);
   const body=await res.json();

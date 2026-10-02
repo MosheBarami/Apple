@@ -22,6 +22,7 @@ import {
   findVerifiedAssets,
   scanInsertedHierarchy,
   summariseTree,
+  appendStudioPath,
   SCAN_LIMITS,
   type AssetNeed,
   type AssetProvenanceSource,
@@ -76,9 +77,9 @@ import { orderApplies, refuseGeneratedModel, refuseHandMadeModel, refuseHandMade
 import { noteInsert, noteSearch, type LibraryRun } from './library-run';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findLibraryModels, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
-import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
+import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, librarySafetyCopy, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
 import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './game-plan';
 import { sourcesIn as runSourcesIn } from './sources';
@@ -1215,7 +1216,8 @@ function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown
   const failed = typeof r.error === 'string';
   // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
   if (failed && r.stage === 'policy') return result;
-  noteInsert(libraryRunOf(ctx), id, row.assetId, !failed);
+  // A timeout may be tried once more, so its id is not written off; a load or scan failure is.
+  noteInsert(libraryRunOf(ctx), id, row.assetId, !failed, { remember: r.retry !== true });
   return result;
 }
 
@@ -1289,43 +1291,182 @@ export function strictDetailsFetch(seen: DetailsIntegrity, base?: FetchLike): Fe
   };
 }
 
+/** Where a library insert failed. `policy` means it was refused before Roblox or Studio was reached. */
+type InsertStage = 'policy' | 'roblox_load' | 'scan' | 'place' | 'timeout';
+
+const NO_MORE_CANDIDATES = 'no more candidates; continue per the asset order';
+
+/** The library ids worth trying next: the run's last search, minus the one that just failed and every id that failed here. */
+function nextLibraryIds(ctx: AgentCtx, exceptId?: string): string[] {
+  const run = libraryRunOf(ctx);
+  const failed = new Set(run.failedIds ?? []);
+  return (run.candidates ?? []).filter((id) => id !== exceptId && !failed.has(libraryModel(id)?.assetId ?? -1)).slice(0, 3);
+}
+
+/**
+ * EVERY insert error says where it failed, why, whether trying again can help, and what to try next. The live benchmark
+ * (2026-10-02) showed the model hearing "Did not work" and retrying the same insert; a failure that names its stage and the
+ * next candidate ids is something it can act on without another search.
+ */
+function insertFailure(
+  ctx: AgentCtx,
+  f: { stage: InsertStage; reason: string; retry: boolean; error?: string; libraryId?: string; extra?: Record<string, unknown> },
+): Record<string, unknown> {
+  const next = nextLibraryIds(ctx, f.libraryId);
+  return { error: f.error ?? f.reason, stage: f.stage, reason: f.reason, retry: f.retry, next: next.length ? next : NO_MORE_CANDIDATES, ...(f.extra ?? {}) };
+}
+
+/** What a failed insert_asset op means, from its failure KIND where the plugin sent one, and its own words for the rest. */
+function insertStage(res: { error?: string; failure?: string }): { stage: InsertStage; reason: string; retry: boolean } {
+  const err = res.error ?? 'insert_asset failed';
+  if (res.failure === 'timeout' || /timed out|did not answer/i.test(err)) {
+    return { stage: 'timeout', reason: 'Studio did not answer in time; the model may have landed: read the tree under the parent before retrying once', retry: true };
+  }
+  if (/would not load asset/i.test(err)) return { stage: 'roblox_load', reason: 'Roblox would not load this id (it is not loadable for this place); try the next id and do not retry this one', retry: false };
+  if (/carries \d+ script/i.test(err)) return { stage: 'scan', reason: 'this asset carries scripts and was not inserted; try the next id', retry: false };
+  if (/contained nothing|inserted nothing/i.test(err)) return { stage: 'roblox_load', reason: 'this asset held nothing to insert; try the next id', retry: false };
+  if (res.failure === 'invalid' || /outside Apple's place scope|allowlist|ambiguous|no such|not found|path/i.test(err)) return { stage: 'policy', reason: err, retry: false };
+  return { stage: 'roblox_load', reason: err, retry: false };
+}
+
+/** The parent as the plugin reads it: rooted at `game`. */
+function rootedPath(path: string): string {
+  return path === 'game' || path.startsWith('game.') || path.startsWith('game[') ? path : `game.${path.replace(/^workspace(?=$|[.[])/, 'Workspace')}`;
+}
+
+/** The last segment of a studio path, for either spelling (`.Name` or `["Odd Name"]`). */
+function lastSegment(path: string): string | null {
+  return /\["([^"\\]+)"\]$/.exec(path)?.[1] ?? /\.([A-Za-z_][A-Za-z0-9_]*)$/.exec(path)?.[1] ?? null;
+}
+
+/** The tree read the scan runs on: the plugin's own ceiling first, and the old one for a plugin that refuses the larger ask. */
+const SCAN_TREE_CAPS = [{ nodes: 1200, depth: 12 }, { nodes: 400, depth: 12 }] as const;
+
+/**
+ * Take the proven-clean roots out of their run-unique holder Folder: give each a name unique under the real parent, move it
+ * there, and delete the empty holder. Any step that fails leaves the model INSIDE the holder, where its path is still
+ * unambiguous, and says so; nothing here can lose the model.
+ */
+async function settleOutOfHolder(ctx: AgentCtx, holder: string, paths: string[], parentRoot: string): Promise<{ paths: string[]; warning?: string }> {
+  const siblings = await ctx.execStudioOp({ op: 'get_tree', root: parentRoot, maxDepth: 1, maxNodes: 1200 }, 20_000);
+  const used = new Set<string>();
+  let complete = false;
+  if (siblings.ok) {
+    const root = rec(rec(siblings.data).root);
+    for (const k of Array.isArray(root.children) ? root.children : []) {
+      const name = strOrNull(rec(k).name);
+      if (name) used.add(name);
+    }
+    // A child at the depth cap says `moreChildren` by design; only the node budget running out makes the sibling list incomplete.
+    complete = rec(siblings.data).truncated !== true && root.truncated !== true;
+  }
+  const moves: { path: string; newParent: string }[] = [];
+  const finals: string[] = [];
+  for (const p of paths) {
+    const base = lastSegment(p);
+    if (!base) return { paths, warning: `left inside ${holder}: could not read the name of ${p}` };
+    // An unread or cut sibling list cannot prove a name free, so it gets a suffix nothing else has.
+    let name = base;
+    if (!complete) name = `${base}_${Math.random().toString(36).slice(2, 6)}`;
+    else for (let n = 2; used.has(name); n++) name = `${base}_${n}`;
+    used.add(name);
+    let at = p;
+    if (name !== base) {
+      const renamed = await ctx.execStudioOp({ op: 'rename_instance', path: p, name }, 20_000);
+      at = appendStudioPath(holder, name) ?? p;
+      if (!renamed.ok) return { paths, warning: `left inside ${holder}: renaming ${base} to a unique name failed (${renamed.error ?? 'rename failed'})` };
+    }
+    moves.push({ path: at, newParent: parentRoot });
+    finals.push(appendStudioPath(parentRoot, name) ?? at);
+  }
+  const moved = await ctx.execStudioOp({ op: 'move_instances', moves }, 20_000);
+  if (!moved.ok) return { paths: moves.map((m) => m.path), warning: `left inside ${holder}: moving it under ${parentRoot} failed (${moved.error ?? 'move failed'})` };
+  const gone = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+  return gone.ok ? { paths: finals } : { paths: finals, warning: `the empty folder ${holder} could not be removed (${gone.error ?? 'delete failed'}); delete it` };
+}
+
 /**
  * Insert one verified id and prove the place clean afterwards, or leave the place as it was found.
  *
  * Returns a tool result: small, and free of any line of the source it removed. An attacker's Luau
  * belongs in the audit trail, not in the model's transcript where it becomes an instruction.
+ *
+ * THE ASSET LANDS INSIDE A RUN-UNIQUE FOLDER, not directly under the parent. Roblox keeps the model's own name, so a
+ * second insert of the same id left two same-named siblings and every path-addressed op on either ("path is ambiguous")
+ * failed. Inside `Apple_Insert_<n>` the path is unambiguous for the whole scan; once the roots are proven clean they are
+ * given a name unique under the real parent and moved there. If the holder cannot be made the insert goes straight to the
+ * parent, as it always did.
  */
-async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string): Promise<unknown> {
-  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent }, 45_000);
-  if (!inserted.ok) return { error: inserted.error ?? 'insert_asset failed' };
+async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: string, libraryId?: string): Promise<unknown> {
+  const run = libraryRunOf(ctx);
+  const seq = (run.inserts = (run.inserts ?? 0) + 1);
+  const parentRoot = rootedPath(parent);
+  const holderName = `Apple_Insert_${seq}_${Math.random().toString(36).slice(2, 6)}`;
+  let holder: string | null = null;
+  const holderPath = appendStudioPath(parentRoot, holderName);
+  if (holderPath) {
+    const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'Folder', name: holderName, parent: parentRoot }] }, 20_000);
+    if (made.ok) holder = holderPath;
+  }
+
+  const inserted = await ctx.execStudioOp({ op: 'insert_asset', assetId, parent: holder ?? parent }, 45_000);
+  if (!inserted.ok) {
+    let leftover: Record<string, unknown> = {};
+    if (holder) {
+      const del = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+      if (!del.ok) leftover = { projectMutated: true, manualCleanupRequired: [holder] };
+    }
+    const why = insertStage(inserted);
+    return insertFailure(ctx, { ...why, libraryId, error: inserted.error ?? 'insert_asset failed', extra: leftover });
+  }
   const raw = rec(inserted.data).inserted;
   const paths = (Array.isArray(raw) ? raw : []).filter((p): p is string => typeof p === 'string');
-  if (!paths.length) return { error: `asset ${assetId} inserted nothing — nothing was added to the place` };
+  if (!paths.length) {
+    if (holder) await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+    return insertFailure(ctx, { stage: 'roblox_load', reason: 'this asset held nothing to insert; try the next id', retry: false, libraryId, error: `asset ${assetId} inserted nothing — nothing was added to the place` });
+  }
 
-  /** Remove the whole asset and refuse. Never leaves the place in the state the scan objected to. */
+  /**
+   * Remove the whole asset and refuse. Never leaves the place in the state the scan objected to, and never says "removed" when
+   * it was not. The asset's own roots are deleted by path, exactly as before the holder existed; the holder Folder goes after
+   * them, and is the fallback that takes the roots with it when deleting them by path fails.
+   */
   const discard = async (why: string): Promise<unknown> => {
-    const del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
-    return {
-      error: `asset ${assetId} was inserted, refused and removed: ${why}`,
-      ...(del.ok
-        ? { removedWholeAsset: paths }
-        : { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths, projectMutated: true }),
-    };
+    let del = await ctx.execStudioOp({ op: 'delete_instances', paths }, 20_000);
+    if (holder) {
+      const folder = await ctx.execStudioOp({ op: 'delete_instances', paths: [holder] }, 20_000);
+      // The holder holds whatever the first delete could not reach, so removing it can finish the job.
+      if (folder.ok) del = { ...del, ok: true };
+    }
+    if (del.ok) {
+      return insertFailure(ctx, { stage: 'scan', reason: why, retry: false, libraryId, error: `asset ${assetId} was inserted, refused and removed: ${why}`, extra: { removedWholeAsset: paths } });
+    }
+    return insertFailure(ctx, {
+      stage: 'scan', reason: why, retry: false, libraryId,
+      error: `asset ${assetId} was inserted at ${paths.join(', ')} and refused (${why}); removal also failed (${del.error ?? 'delete failed'}): delete ${paths.join(', ')} yourself`,
+      extra: { removeFailed: del.error ?? 'delete failed', manualCleanupRequired: paths, projectMutated: true },
+    });
   };
 
   // 1. Enumerate. A subtree that cannot be walked is a subtree whose contents are unknown, and
-  //    unknown is never scored as empty.
+  //    unknown is never scored as empty. A read that WORKED but was cut at its cap is a different fact and is reported as one.
   const classes: string[] = [];
   let enumerationFailed = false;
+  let treeTruncated = false;
+  let caps: { nodes: number; depth: number } = SCAN_TREE_CAPS[0];
   for (const p of paths) {
-    const tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: 12, maxNodes: 400 }, 20_000);
+    let tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: SCAN_TREE_CAPS[0].depth, maxNodes: SCAN_TREE_CAPS[0].nodes }, 20_000);
+    if (!tree.ok && tree.failure === 'invalid') {
+      caps = SCAN_TREE_CAPS[1];
+      tree = await ctx.execStudioOp({ op: 'get_tree', root: p, maxDepth: SCAN_TREE_CAPS[1].depth, maxNodes: SCAN_TREE_CAPS[1].nodes }, 20_000);
+    }
     if (!tree.ok) {
       enumerationFailed = true;
       continue;
     }
     const sum = summariseTree(tree.data);
     classes.push(...sum.classes);
-    if (sum.truncated) enumerationFailed = true;
+    if (sum.truncated) treeTruncated = true;
   }
 
   // 2. Read the Luau back OUT OF THE PLACE. This is the whole point: the metadata said there was
@@ -1350,7 +1491,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   }
 
   // 3. Judge.
-  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed });
+  const scan = scanInsertedHierarchy({ rootPath: paths[0] as string, scripts, instanceClasses: classes, enumerationFailed, treeTruncated, treeCaps: caps });
   if (scan.verdict === 'reject') return discard(scan.reasons[0] ?? 'the safety scan rejected this asset');
 
   // 4. Strip what the scan condemned. A failed delete is a discard, not a warning.
@@ -1369,9 +1510,18 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   }
   if (leftover.length) return discard(`${leftover.length} script(s) survived removal: ${leftover.slice(0, 6).join(', ')}`);
 
+  // 6. Out of the holder, under names nobody else has.
+  let finalPaths = paths;
+  let warning: string | undefined;
+  if (holder) {
+    const settled = await settleOutOfHolder(ctx, holder, paths, parentRoot);
+    finalPaths = settled.paths;
+    warning = settled.warning;
+  }
+
   return {
     assetId,
-    inserted: paths,
+    inserted: finalPaths,
     scan: scan.verdict,
     // Codes and one-line reasons only. An excerpt of the removed Luau would put the attacker's text
     // into the transcript, where the model reads it as prose.
@@ -1379,7 +1529,8 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
       .filter((s) => s.action === 'remove')
       .map((s) => ({ path: s.path, class: s.className, severity: s.severity, why: [...new Set(s.findings.map((f) => f.code))].join(', ') })),
     ...(scan.findings.length ? { notes: scan.findings.slice(0, 6).map((f) => `${f.severity} ${f.code}: ${f.message}`) } : {}),
-    proven: `re-listed after removal: zero scripts remain under ${paths.join(', ')}`,
+    proven: `re-listed after removal: zero scripts remain under ${finalPaths.join(', ')}`,
+    ...(warning ? { placementWarning: warning } : {}),
   };
 }
 
@@ -1873,38 +2024,50 @@ async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): 
 
 /** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
 async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
-  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx,a);
+  const refuse = (reason: string, extra?: Record<string, unknown>) => insertFailure(ctx, { stage: 'policy', reason, retry: false, ...(extra ? { extra } : {}) });
+  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx, { ...a, parent: a.parent ?? 'game.Workspace' });
   if (String(a.id ?? '').startsWith('owner:')) {
-    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return { error: 'Native owner import is unavailable for this run: check permissions and update the paired plugin.' };
-    if (!ctx.userId) return { error: 'Owner corpus insertion requires the authenticated project owner.' };
+    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return refuse('Native owner import is unavailable for this run: check permissions and update the paired plugin.');
+    if (!ctx.userId) return refuse('Owner corpus insertion requires the authenticated project owner.');
     const library = libraryNamespace(ctx.env, ctx.userId);
     const component = await ownerComponent(ctx.env, library, String(a.id));
-    if (!component) return { error: 'This component has no verified bytes in this owner corpus. Ingest its complete native export first.' };
-    if (a.position !== undefined || a.height !== undefined || a.scale !== undefined) return { error: 'Owner imports preserve authored transforms. Insert first, then use transform_instances on the returned path.' };
-    const checkpoint = await ctx.createCheckpoint('before owner component import', 'auto');
-    if ('error' in checkpoint) return { error: `Owner import refused: checkpoint failed (${checkpoint.error}).` };
+    if (!component) return refuse('This component has no verified bytes in this owner corpus. Ingest its complete native export first.');
+    const pos = a.position === undefined ? undefined : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
+    if (pos && !Array.isArray(pos)) return refuse(pos.error);
+    const scale = a.scale === undefined ? undefined : Number(a.scale);
+    if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
+    const height = a.height === undefined ? undefined : Number(a.height);
+    if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
+    // Imports only add objects and Studio's undo takes them back, so an oversize place does not refuse them (librarySafetyCopy).
+    const copy = await librarySafetyCopy(ctx, 'before owner component import');
+    if ('error' in copy) return refuse(`Owner import refused: ${copy.error}`);
     const token = await ownerComponentGrant(ctx.env, library, component);
     const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
       componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
-      parent: String(a.parent ?? 'game.ServerStorage'), name: component.name.slice(0,96) }, 120_000);
-    return imported.ok ? { ...rec(imported.data), library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
-      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' }
-      : { error: imported.error ?? 'Native owner import failed', library: component.id };
+      parent: String(a.parent ?? 'game.Workspace'), name: component.name.slice(0,96) }, 120_000);
+    if (!imported.ok) return insertFailure(ctx, { ...insertStage(imported), error: imported.error ?? 'Native owner import failed', extra: { library: component.id } });
+    const landed = await placeImportedOwner((o, t) => ctx.execStudioOp(o as StudioOp, t), imported.data, { position: Array.isArray(pos) ? pos : undefined, scale, height });
+    return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
+      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
   }
   const pick = libraryModel(String(a.id ?? ''));
-  if (!pick) return { error: `${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.` };
-  if (pick.assetId === undefined) return { error: 'This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.' };
+  if (!pick) return refuse(`${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.`);
+  if (pick.assetId === undefined) return refuse('This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.');
   const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
-  if (refused) return { error: refused };
+  if (refused) return refuse(refused);
+  if ((libraryRunOf(ctx).failedIds ?? []).includes(pick.assetId)) {
+    return insertFailure(ctx, { stage: 'policy', reason: 'this id already failed in this run, so it was not sent to Studio again; take the next candidate', retry: false, libraryId: pick.id,
+      error: `${pick.id} (asset ${pick.assetId}) already failed earlier in this run and was not tried again. Nothing was sent to Studio.` });
+  }
   const pos = a.position === undefined ? [0, 0, 0] : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
-  if (!Array.isArray(pos)) return pos;
+  if (!Array.isArray(pos)) return refuse(pos.error);
   const scale = a.scale === undefined ? undefined : Number(a.scale);
-  if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return { error: `scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}` };
+  if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
   const height = a.height === undefined ? undefined : Number(a.height);
-  if (height !== undefined && !(height > 0 && height <= 2000)) return { error: 'height must be between 0 and 2000 studs' };
+  if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
 
   const assetId = pick.assetId;
-  const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace')));
+  const placed = rec(await insertAndProveClean(ctx, assetId, String(a.parent ?? 'game.Workspace'), pick.id));
   if ('error' in placed) return { ...placed, library: pick.id };
   let paths = (Array.isArray(placed.inserted) ? placed.inserted : []).filter((p): p is string => typeof p === 'string');
   if (paths.length > 1) {
@@ -4984,7 +5147,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
     run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
-      ? TOOLS.insert_library_model!.run(ctx,a)
+      ? TOOLS.insert_library_model!.run(ctx,{...a, parent: a.parent ?? 'game.ServerStorage'})
       : {error:'insert_owner_component requires an exact owner: component id'},
   },
   // THE OWNER'S UPLOADED GAMES, FIRST SOURCE FOR EVERY BUILD. Whole games with their original scripts, read from the

@@ -24,8 +24,10 @@ export interface LibraryRun {
   gated?: number;
   /** Ids returned by the latest search and not yet tried, in rank order (library ids, unchanged). */
   candidates?: string[];
-  /** Roblox asset ids this run saw fail to load, so the same id is not tried twice. */
+  /** Roblox asset ids this run saw fail to load or scan, so the same id is not tried twice. */
   failedIds?: number[];
+  /** Library inserts started this run: names each run-unique holder Folder (tools.ts insertAndProveClean). */
+  inserts?: number;
 }
 
 /** A step that ended the library question: the model may go on to the next step in the order. */
@@ -39,12 +41,12 @@ export function noteSearch(run: LibraryRun, ids: readonly string[]): void {
   run.outcome = ids.length ? (run.outcome === 'inserted' ? 'inserted' : 'hits') : run.outcome === 'inserted' ? 'inserted' : 'no_hit';
 }
 
-export function noteInsert(run: LibraryRun, id: string, assetId: number | undefined, ok: boolean): void {
+export function noteInsert(run: LibraryRun, id: string, assetId: number | undefined, ok: boolean, opts: { remember?: boolean } = {}): void {
   run.candidates = (run.candidates ?? []).filter((c) => c !== id);
   if (ok) {
     run.outcome = 'inserted';
     return;
   }
   run.outcome = run.outcome === 'inserted' ? 'inserted' : 'insert_failed';
-  if (assetId !== undefined && !(run.failedIds ?? []).includes(assetId)) run.failedIds = [...(run.failedIds ?? []), assetId].slice(-50);
+  if (opts.remember !== false && assetId !== undefined && !(run.failedIds ?? []).includes(assetId)) run.failedIds = [...(run.failedIds ?? []), assetId].slice(-50);
 }

@@ -211,7 +211,8 @@ const twoParts = (name, cls = 'Model') => ({
     { className: 'Part', name: 'B', props: { Size: { t: 'Vector3', v: [1, 1, 1] } } },
   ],
 });
-const created = (ops) => ops.filter((o) => o.op === 'create_instances').length;
+// The run-unique holder Folder an insert creates is not a build (tools.ts insertAndProveClean).
+const created = (ops) => ops.filter((o) => o.op === 'create_instances' && !/^Apple_Insert_/.test(String(o.items?.[0]?.name ?? ''))).length;
 
 test('create_instances holds a part-built Model back until the library was tried, and sends nothing', async () => {
   const s = sample(() => true);
