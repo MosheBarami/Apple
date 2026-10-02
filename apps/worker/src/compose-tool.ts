@@ -197,8 +197,13 @@ async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts =
 /** One library look for a thing: the piece must be the thing itself ("Dryer Chair" is a chair), small pieces allowed. */
 async function lookFor(ctx: AgentCtx, search: string | undefined): Promise<LibRef | undefined> {
   if (!search) return undefined;
-  const last = search.toLowerCase().split(' ').pop();
-  for (const r of await libraryModels(ctx, search, 6, 6)) if (pieceName(r.path).toLowerCase().split(' ').pop() === last) return r;
+  const words = search.toLowerCase().split(' ').filter(Boolean);
+  const last = words[words.length - 1];
+  // The whole name first, then its last word alone ("clothes dryer" finds the library's "Dryer"), the piece still
+  // having to BE that thing.
+  for (const q of words.length > 1 && last && last.length >= 5 ? [search, last] : [search]) {
+    for (const r of await libraryModels(ctx, q, 6, 6)) if (pieceName(r.path).toLowerCase().split(' ').pop() === last) return r;
+  }
   return undefined;
 }
 

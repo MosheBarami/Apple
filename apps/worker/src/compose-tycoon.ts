@@ -47,7 +47,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
  * A name a sign can hold: the thing itself, not a sentence about it, cut at a whole word (live 2026-10-02: the agent
  * wrote "Laundry Hamper that drops piles..." and the sign read "Laundry Hamper That Drops Pi"). Pure.
  */
-export function clean(v: unknown, max = 24): string {
+export function clean(v: unknown, max = 30): string {
   const text = String(v ?? '').replace(/[^A-Za-z0-9 '\-]+/g, ' ').replace(/\s+/g, ' ').trim();
   const words = text.split(/\b(?:that|which|who|where|with|for|to|so)\b/i)[0]!.trim().split(' ').filter(Boolean).slice(0, 4);
   while (words.length > 1 && words.join(' ').length > max) words.pop();
