@@ -145,6 +145,11 @@ needs an equal cut elsewhere (measure with esbuild, see `docs/handoff/2026-10-02
 | `integration/caps` (worktree `/Users/moshe/Developer/RbxAI-caps`, clean at `4b52b029`) | where the three approved tracks were being merged | merge aborted cleanly; redo per prompt 02 |
 | `credits-waste-cut` / `design-ember-rail` | draft PRs [MosheBarami/Apple#11](https://github.com/MosheBarami/Apple/pull/11), [MosheBarami/Apple#12](https://github.com/MosheBarami/Apple/pull/12) (ultrareviewed; superseded by integration) | close as superseded when the giant PR opens |
 
+**Backups on GitHub** (all pushed at handoff): `integration/giant`, `design/round-2`, `golem-rename-a-b1`
+(= `worktree-wf_1cadd7fe-3c0-6`), `golem-rename-b2`, `repo-organize` (= `worktree-wf_73a32ca7-af0-6`), `cap-self-check`
+(= `-0cd-2`), `cap-dup-names` (= `-0cd-3`), `cap-behaviour` (= `-0cd-4`). If a local worktree is missing, `git fetch` and
+use these. Phase 1, phase 2, world-building, credits and website round 1 live inside `integration/giant`.
+
 ### 3.5 Other things done today
 - **Repo chat tool** `tools/repo-chat` (committed `e853a090` on main): local read-only AI chat about the repo, Next.js + AI SDK
   + all AI Elements, model `stealth/space-bunny-alpha` via OpenRouter (free, verified). Key in `tools/repo-chat/.env.local`
