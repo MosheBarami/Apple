@@ -65,7 +65,7 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
   const byId = Object.fromEntries(list.map((u) => [u.id, u]));
   const userRows = list.slice(0, 100).map((u) => ({ k: u.id.slice(0, 8), email: maskEmail(u.email), created: iso(u.created_at), lastSignIn: iso(u.last_sign_in_at),
-    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|^e2e|load-?test/i.test(u.email || ''),
+    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|@apple\.internal$|^e2e|load-?test/i.test(u.email || ''),
     worker: accounts[u.id] || null }));
   const workerPlans = Object.entries(accounts).map(([id, x]) => ({ k: id.slice(0, 8), email: maskEmail(byId[id]?.email) || null, ...x }));
 

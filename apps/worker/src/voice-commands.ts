@@ -116,7 +116,7 @@ export const VOICE_COMMAND_IDS = VOICE_COMMANDS.map((c) => c.id);
  * urgently reaching for. The negation guard is unaffected: it works on the NEGATORS tokens below,
  * so "no, don't stop" still comes back negated — the "no" is stripped and the "dont" is not.
  *
- * THE WAKE WORD IS THE PRODUCT'S NAME, and only the current one. "golem" was removed with the
+ * THE WAKE WORD IS THE PRODUCT'S NAME, and only the current one. The old name was removed with the
  * rebrand rather than kept as a second spelling: it is an input token, not a persisted value or a
  * wire contract, so it has no claim on the exempt list, and a name the product no longer answers to
  * is not a name anyone should be taught to keep saying. The cost is real and small — someone who

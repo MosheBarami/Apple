@@ -32,6 +32,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LEGACY_NAME } from '../../../scripts/lib/legacy-name.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(SITE, '..', '..');
@@ -94,7 +95,7 @@ test('the page states the product name it is published under, and no old one', (
   // say the old name in their own prose; nothing lifted out of them may.
   const shipped = readFileSync(DATA, 'utf8') + (existsSync(PAGE) ? readFileSync(PAGE, 'utf8') : '');
   for (const q of quotes) {
-    assert.doesNotMatch(q.text, /golem/i, `a quote carries the withdrawn product name: ${q.text}`);
+    assert.doesNotMatch(q.text, LEGACY_NAME, `a quote carries the withdrawn product name: ${q.text}`);
   }
   assert.ok(shipped.length > 0, 'nothing to check');
 });

@@ -2622,7 +2622,7 @@ app.post('/api/billing/webhook', async (c) => {
   }
 
   // A request Host is not a billing role. Only Apple's deployment may resolve provider state;
-  // legacy is an explicitly bound replica, not a second independent Stripe authority. Check both
+  // the legacy worker is an explicitly bound replica, not a second independent Stripe authority. Check both
   // prerequisites before an authority call can commit an otherwise undeliverable purchase.
   if (c.env.BILLING_WORKER_NAME !== BILLING_AUTHORITY_WORKER || !c.env.LEGACY_QUOTA_DO) {
     recordEvent({

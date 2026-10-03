@@ -592,6 +592,6 @@ test('Bridge source is independent, memory-only, and fixed to the Apple HTTPS or
   assert.match(SOURCE, /X-Golem-Plugin-Version/);
   assert.ok(DECLARED_VERSION, 'Bridge.luau no longer declares PLUGIN_VERSION as a quoted literal');
   assert.match(SOURCE, /X-Golem-Plugin-Protocol/);
-  assert.doesNotMatch(SOURCE, /GetSetting|SetSetting|golem_session|LoadAsset|loadstring|HttpGet/);
+  assert.doesNotMatch(SOURCE, /GetSetting|SetSetting|apple_session|LoadAsset|loadstring|HttpGet/);
   assert.doesNotMatch(SOURCE, /apiBase|baseUrl/i);
 });

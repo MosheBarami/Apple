@@ -18,7 +18,7 @@ export interface Env {
   QUOTA_DO: DurableObjectNamespace;
   /** Explicit deployment identity; a request host must never choose the billing authority. */
   BILLING_WORKER_NAME?: 'apple' | 'golem';
-  /** Apple-only external binding to legacy's existing QuotaDO namespace during migration. */
+  /** Apple-only external binding to the legacy worker's existing QuotaDO namespace during migration. */
   LEGACY_QUOTA_DO?: DurableObjectNamespace;
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;

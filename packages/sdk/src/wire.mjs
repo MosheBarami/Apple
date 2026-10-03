@@ -62,7 +62,7 @@ export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building
 /**
  * The public base URL of the production worker.
  *
- * `apple`, NOT `golem`. The old default was not merely off-brand — the legacy host serves /api/*
+ * `apple`, NOT the retired host. The old default was not merely off-brand — the legacy host serves /api/*
  * from a SEPARATE, OLDER deployment. Measured 2026-09-20: /api/health reported buildSha
  * 44d9ded-dirty there and e30b7f9-dirty on the canonical origin, 31 commits apart. And the page
  * redirect that moves a BROWSER to the canonical origin deliberately exempts /api/* — see

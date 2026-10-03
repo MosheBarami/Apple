@@ -344,7 +344,7 @@ test('auth: a token near expiry is refreshed with the refresh token; a 401 force
 });
 
 test('auth: no sign-in source is an error that names variables, never values; a failed grant says only the status', async () => {
-  assert.throws(() => createAuth({ fetch: async () => {}, env: {}, anonKey: 'a' }), /GOLEM_BENCH_JWT.*GOLEM_E2E_EMAIL/);
+  assert.throws(() => createAuth({ fetch: async () => {}, env: {}, anonKey: 'a' }), /APPLE_BENCH_JWT.*APPLE_E2E_EMAIL/);
   const w = world({ auth: () => ({ ok: false, status: 400, json: async () => ({ error_description: 'S3CRETPASSWORD is wrong' }) }) });
   const getToken = createAuth({ fetch: w.fetch, env: { APPLE_E2E_EMAIL: 'a@b.c', APPLE_E2E_PASSWORD: 'S3CRETPASSWORD' }, now: w.now, anonKey: 'anon' });
   await assert.rejects(getToken(), (e) => /HTTP 400/.test(e.message) && !e.message.includes('S3CRETPASSWORD'));
