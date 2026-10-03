@@ -140,6 +140,13 @@ Test protocol for every gate:
   - Whether system and ui categories may skip the forced look.
   - Approval of the credit uplift.
   - Plugin release is not required for this milestone (native capture is optional). Customers on the old build get the box fallback.
+- **Built (2026-10-02, not deployed, not measured live; tests and the planted lies only):**
+  - The switch is `SELF_CHECK` = `off` | `on` | `full` (`apps/worker/src/self-check.ts`, `env.ts`). Unset means `on` everywhere except `ENVIRONMENT=production`, where it means `off`, so the deployed worker is unchanged until the owner turns it on (`wrangler deploy --var SELF_CHECK:on`). `off`: nothing runs and `look` is not offered. `on`: ledger, `look`, gate, deterministic audit. `full`: also the one cheap text judge over the final reply.
+  - Files: `evidence-ledger.ts`, `colour-family.ts`, `claim-audit.ts`, `claim-audit-judge.ts`, `look-gate.ts`, `look-observe.ts`, `studio-look.ts`, `look-tool.ts`, `self-check-run.ts`, `self-check.ts`; thin call sites in `tools.ts`, `do/session.ts`, `prompts.ts`, `mcp.ts`, `packages/shared`.
+  - Bounds (frozen, pinned): 1 forced look, 2 repair rounds, 2 audit rounds, 6 looks per run. The gate is structural and refined by where a change landed: a change to the workspace, the lighting or an unknown place owes a look; a change that only touched screens, scripts or other services does not (a viewport look could not show it). This answers the owner question about system and ui runs by what the camera can see, not by category; the owner can still decide otherwise.
+  - Not built from this list: `place-census.ts`, the web "what I checked" strip, the `inspect_visually` multi-angle drop (the old tool is untouched), the K1 and K3 spikes.
+  - Plugin facts it relies on (no plugin source changed, so no release is needed): `set_props` on `game.Workspace.Camera` aims the camera and `camera_focus` is the fallback; both are pinned in `apps/apple-plugin/tests/commands.test.mjs`. Measured in the plugin's Studio mock only: two undo entries per camera write, so one look is about eight entries. Not verified in a real Studio (K1). The follow-up that would remove the cost is a read-only camera-pose operation in the next plugin release.
+  - Cost found while building: the `look` definition is 793 characters and every character of a tool definition comes out of the transcript budget; a test holds that budget above 60,000 characters and it now has about 300 characters of room, so the next added tool will trip it.
 
 ### M2. Verification substrate: `play_check` probes and playable audio (Plugin release A)
 

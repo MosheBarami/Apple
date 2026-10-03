@@ -165,6 +165,30 @@ spec("selection, camera and viewport use the companion consent boundary without 
     c:destroy()
 end)
 
+-- WHAT THE WORKER'S look (self-check, M1) RELIES ON, pinned so a plugin change cannot silently take it away. It aims the
+-- user's camera with set_props on game.Workspace.Camera, captures, and puts the camera back the same way; no plugin release was
+-- needed for it because the operation already existed. The undo count below is MEASURED here and is a known cost, not a goal:
+-- set_props is a recorded write, so each aim leaves ChangeHistory entries (camera_focus, above, records none). A read-only
+-- camera-pose operation would remove that cost and is listed as a plugin-release follow-up in docs/autonomy/PHASE-3-4-PLAN.md.
+spec("the camera can be aimed and put back with set_props (the worker's look), at a measured undo cost", function()
+    local camera = workspace.CurrentCamera
+    local c = newCommands()
+    local was = { camera.CFrame:GetComponents() }
+    local before = #history.log
+    local aim = run(c, "aim-camera", { op = "set_props", path = "game.Workspace.Camera", props = { CFrame = { t = "CFrame", v = { 7, 8, 9, 1, 0, 0, 0, 1, 0, 0, 0, 1 } } } }, true)
+    eq(aim.ok, true, tostring(aim.error))
+    eq(camera.CFrame.Position.X, 7, "the camera moved where it was aimed")
+    eq(camera.CFrame.Position.Z, 9)
+    local back = run(c, "restore-camera", { op = "set_props", path = "game.Workspace.Camera", props = { CFrame = { t = "CFrame", v = was } } }, true)
+    eq(back.ok, true, tostring(back.error))
+    eq(camera.CFrame.Position.Y, was[2], "and is where it was")
+    local entries = #history.log - before
+    -- MEASURED 2026-10-02 on this mock: two entries per write (the recording opens and closes), so a look of three views plus the
+    -- restore is four writes and about eight undo entries in the user's history. Tripwire: if it grows, review the look's cost.
+    eq(entries, 4, "two camera writes were measured at two undo entries each")
+    c:destroy()
+end)
+
 spec("writes need explicit consent and edit mode", function()
     local c = newCommands()
     local denied = run(c, "denied", { op = "create_instances", items = {{ className = "Part", name = "Denied", parent = "game.Workspace" }} }, false)

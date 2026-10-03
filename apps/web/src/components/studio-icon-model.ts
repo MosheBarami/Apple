@@ -92,6 +92,7 @@ export const TOOL_CLASS: Partial<Record<ToolName, StudioIconClass>> = {
   focus_camera: 'Camera',
   viewport_info: 'Camera',
   inspect_visually: 'Camera',
+  look: 'Camera',
   check_composition: 'Camera',
   edit_terrain: 'Terrain',
   shape_terrain: 'Terrain',

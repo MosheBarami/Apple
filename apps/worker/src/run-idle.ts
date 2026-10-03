@@ -9,6 +9,13 @@
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
 import { fenceForQuote } from './run-parts.ts';
+/**
+ * Tools that are CHECKS without being verifiers. A plan's verification step is the agent's own choice among the verifiers in
+ * verifiers.ts, and the self-check's `look` is not one of them (it answers "what does it look like", never "is it good"). But a
+ * successful look after a change IS the run having checked that change, so reading afterwards is the idle this file bounds.
+ * Registered here, beside the bound it feeds; tests/run-idle.test.mjs derives that each is a real tool that changes nothing.
+ */
+export const EXTRA_CHECK_TOOLS: ReadonlySet<string> = new Set(['look']);
 
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;

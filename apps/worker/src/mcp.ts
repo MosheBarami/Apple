@@ -347,6 +347,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   spatial_query: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   read_terrain: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   capture_studio_viewport: 'Read-only, excluded for the same reason as search_instances: native viewport capture is an opt-in plugin operation and MCP does not check the connected plugin supports it.',
+  look: 'Moves the Studio viewport camera (and puts it back) and makes a paid vision call. An outside program is not the person watching, so it does not get a tool that moves their camera and spends their Credits.',
   inspect_attachment_image: 'Reads a private attachment and spends a vision-model call on it. Spending belongs to a watched agent run, and a key holder would be using this surface as a metered image-analysis service.',
   // ---- the owner's private library (read through the owner's paired gateway) ---------------
   query_owner_catalog: 'Pages the owner\'s private library through the owner\'s own paired Studio. That library is not a public catalogue, and a project-scoped key is not a grant to read it.',

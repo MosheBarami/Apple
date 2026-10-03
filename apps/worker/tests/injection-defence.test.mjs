@@ -210,9 +210,14 @@ test('the session tool loop builds its fence here and nowhere else', () => {
     false,
     'no hand-built fence may remain — that is the path that interpolated the tool name',
   );
-  const call = /const fenced = fenceToolOutput\(\{ fenceId: ([^,]+), tool: ([^,]+), body: ([^}]+) \}\);/.exec(SESSION);
-  assert.ok(call, 'the tool loop must build the fence from the minted id, the call name and the result');
-  assert.match(call[1], /this\.fenceIdFor\(agent\)/);
-  assert.match(call[2], /call\.name/);
-  assert.match(call[3], /out\.resultForLlm/);
+  // The ONE construction lives in a helper that two readers share (the tool loop, and the self-check's look observations,
+  // which are model output about an image and are fenced the same way). The property is unchanged: the id is the run's
+  // minted one, and the loop hands the helper the call's name and the tool's result, nothing else.
+  const builder = /fenceToolOutput\(\{ fenceId: ([^,]+), tool, body \}\)/.exec(SESSION);
+  assert.ok(builder, 'the one construction must build the fence from the minted id, the tool name and the body it is given');
+  assert.match(builder[1], /this\.fenceIdFor\(agent\)/);
+  const loop = /const fenced = this\.fencedToolOutput\(agent, ([^,]+), ([^)]+)\);/.exec(SESSION);
+  assert.ok(loop, 'the tool loop must fence through the shared helper');
+  assert.match(loop[1], /call\.name/);
+  assert.match(loop[2], /out\.resultForLlm/);
 });

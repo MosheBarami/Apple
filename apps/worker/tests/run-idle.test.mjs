@@ -390,3 +390,33 @@ test('review 2026-10-02: an A, A, B loop still ends, and a changeless tool (set_
   assert.match(session, /aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\)/, 'targetless changes other than run_luau must count');
   assert.ok(session.includes(`Over your last ${R.CHANGE_WINDOW} changes, ${R.WINDOW_NUDGE} or more`), 'the steer states numbers other than the guard uses');
 });
+
+test('the self-check\'s look counts as a check after a change, so reading after it is the idle this file bounds', async () => {
+  const { EXTRA_CHECK_TOOLS, afterStep, IDLE_AFTER_VERIFY_NUDGE } = await import('../src/run-idle.ts');
+  assert.ok(EXTRA_CHECK_TOOLS.has('look'));
+  // Derived from the registry, not asserted by hand: every extra check is a real tool and changes nothing (a check that changes the
+  // place would be a change, and a change clears the check).
+  const esbuild = await import('esbuild');
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { pathToFileURL } = await import('node:url');
+  const dir = mkdtempSync(join(tmpdir(), 'run-idle-checks-'));
+  try {
+    await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
+      alias: { '@golem/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+    const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
+    for (const name of EXTRA_CHECK_TOOLS) {
+      assert.ok(T.toolNames().includes(name), `${name} is not a registered tool`);
+      assert.ok(!T.projectMutatingToolNames().includes(name), `${name} changes the place, so it cannot be a check`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  // And it behaves as a check: after a change and a check, only reading is counted toward the nudge.
+  let state = {};
+  state = afterStep(state, { mutated: true, verified: false, calls: 1 });
+  state = afterStep(state, { mutated: false, verified: true, calls: 1 });
+  for (let i = 0; i < IDLE_AFTER_VERIFY_NUDGE; i++) state = afterStep(state, { mutated: false, verified: false, calls: 1 });
+  assert.equal(state.action, 'nudge');
+});

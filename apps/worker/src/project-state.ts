@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   playtestRun: 'reset',
   assetSourcesAwaitingRun: 'reset',
   assetSourcesAsked: 'reset',
+  selfCheckLedger: 'reset',
   steerQueue: 'reset',
   placeMirrored: 'reset',
   pluginSelection: 'reset',

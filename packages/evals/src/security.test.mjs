@@ -856,6 +856,10 @@ const TOOL_ARGS = {
   //   their egress is reviewed by the same loop as every other tool: no credential, JWT, pairing token or bearer
   //   header may appear in what they return. ]]
   add_upgrades: {},
+  // ADDED 2026-10-02 WITH THE SELF-CHECK (M1). `look` frames the place from several camera angles through plugin operations that
+  // already exist and sends the pixels to the vision role. Its egress is reviewed here like every other tool's: the result the model
+  // reads is observations (seen / not seen / cannot tell, bounded strings), never pixels, and nothing in it is a credential.
+  look: {},
   animate_model: { model: 'game.Workspace.Door', clips: { open: { play: 'click', keys: [{ t: 0, Door: { rot: [0, 0, 0] } }, { t: 1, Door: { rot: [0, 90, 0] } }] } } },
   browse_owner_library: { q: 'tree' },
   build_game: {},
@@ -863,7 +867,6 @@ const TOOL_ARGS = {
   build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
   capture_studio_viewport: {},
   compose_game: { request: 'a tower defense game' },
-  cool_library_model: { wear: 'chef hat', effect: 'sparkle_shimmer' },
   import_owner_library: { gameId: 'g1', path: 'Workspace.Tree', mode: 'copy' },
   insert_owner_component: { id: 'owner:c1' },
   inspect_attachment_image: { attachmentId: 'a1' },
@@ -2561,16 +2564,20 @@ test('A5 STATIC CHECK — every tool result entering the transcript is fenced as
   assert.equal(carrying.length, 1, 'exactly one site should carry real tool output into the transcript');
 
   // 3. That value is produced by fenceToolOutput, from the tool result, with a per-run id.
+  // The ONE construction of the fence is a helper two readers share (the tool loop, and the self-check's look observations, which are
+  // model output about screenshots and are fenced the same way). The property is unchanged and asserted in both halves: the loop's
+  // fenced value is built from the tool result through the helper, and the helper builds it with fenceToolOutput and a per-run id.
   assert.match(
     session,
-    /const fenced = fenceToolOutput\(\{[^}]*body: out\.resultForLlm[^}]*\}\)/,
-    'the fenced value must be built from the tool result by fenceToolOutput',
+    /const fenced = this\.fencedToolOutput\(agent, call\.name, out\.resultForLlm\);/,
+    'the fenced value must be built from the tool result by the fence helper',
   );
   assert.match(
     session,
-    /fenceId: this\.fenceIdFor\(agent\)/,
+    /fenceToolOutput\(\{ fenceId: this\.fenceIdFor\(agent\), tool, body \}\)/,
     'the fence id must be minted per run, never a constant',
   );
+  assert.equal(session.split('fenceToolOutput({').length - 1, 1, 'one construction of the fence, not two policies');
 
   // 4. And fenceToolOutput must actually fence. Asserting only that it is CALLED would pass
   //    against a helper that returns the body untouched.
@@ -2639,7 +2646,9 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // branch + 2 (the failing-tool steer and the back-and-forth steer, both from the credits branch, now pushed through
   // pushHarness so they are marked as the harness) - 1 (phase 1 removed the object play-check steer) = 18. The reviews of
   // those two steers are the TWENTY comments below; the total of user-role turns stays the 19 pinned further down.
-  assert.equal(harnessPushes.length, 18, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
+  // REVIEWED at the 2026-10-03 merge of the self-check (M1): + 2 = 20, the check steer (decision.message) and the forced
+  // look's fenced observations, both now through pushHarness; their reviews are the TWENTY-ONE comment below. 21 user-role turns.
+  assert.equal(harnessPushes.length, 20, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
   const userPushes = [...rawUserPushes, ...harnessPushes];
   {
     const idleSrc = readCode('run-idle.ts');
@@ -2736,13 +2745,30 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //[[ TWENTY SINCE 2026-10-02: the back-and-forth steer ("Over your last 24 changes, 12 or more went to the same thing…",
   //   run-idle.ts afterChangeWindow). REVIEWED: a fixed string literal with no interpolation, pushed once per 12 changes by the
   //   run's own counter; nothing the model, the user or a tool wrote reaches it (the keys it counts are never quoted back). ]]
-  assert.equal(userPushes.length, 19, 'a user-role transcript injection was added or removed — review it for injection risk');
+  assert.equal(userPushes.length, 21, 'a user-role transcript injection was added or removed — review it for injection risk');
   const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
   assert.ok(failSteer.length > 100, 'failureSteer was not found — this test would check nothing');
   assert.deepEqual([...failSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['failures', 'tool'],
     'the failing-tool steer interpolates something other than a count and a tool name');
   assert.match(session, /if \(allowed\.has\(call\.name\)\) \{[\s\S]{0,1500}failThisStep = \{ action: outcome\.action, tool: call\.name \}/,
     'the failing-tool steer is no longer limited to calls from the offered set');
+  //[[ TWENTY-ONE SINCE 2026-10-03 (the self-check, M1, merged after the two credit steers). Its two sites, written up on its branch as NINETEEN and TWENTY, are REVIEWED — the number moved because two sites were
+  //   added, and each is written up here, not bumped.
+  //   NINETEEN — `pushHarness(agent.llm, decision.message)`: what the check sends back to the agent when the
+  //     work changed after its last look (askLookMessage: a fixed literal) or when its reply makes claims the run's evidence does
+  //     not support (steerForFindings, claim-audit.ts). WHAT CAN REACH IT: the agent's OWN clause of its reply (an assistant turn
+  //     already in the transcript — nothing new), words from closed vocabularies (a colour FAMILY: the BrickColor name a place
+  //     returned is deliberately reduced to its family and never quoted), verdict words, numbers, and fixed sentences. A model's
+  //     reason for a judged claim (SELF_CHECK=full) is model output derived from untrusted place text, so a judged finding is sent
+  //     back by its claim ALONE. Held behaviourally in apps/worker/tests/claim-audit.test.mjs ("the steer carries no text a place
+  //     wrote", "no reason a model wrote"), not by the absence of a `${`.
+  //   TWENTY — `pushHarness(agent.llm, forcedLookMessage(this.fencedToolOutput(…)))`: the observations of the look
+  //     the gate ran on the agent's behalf. The wrapper is a fixed literal; the observations are vision-model output about screenshots
+  //     (which can contain any text a scene shows), so they enter ONLY through the shared fence helper, as untrusted data under the
+  //     run's own unguessable id — the same helper the tool loop uses. Asserted below. ]]
+  assert.match(session, /pushHarness\(agent\.llm, decision\.message\)/, 'the check steer moved; review its new transcript path');
+  assert.match(session, /pushHarness\(agent\.llm, forcedLookMessage\(this\.fencedToolOutput\(agent, LOOK_TOOL, out\.resultForLlm\)\.text\)\)/,
+    'the look observations must enter the transcript only through the fence helper');
   const answerSteerSite = session.slice(session.indexOf("storage.get<string>('assetSourcesAwaitingRun')"), session.indexOf("storage.get<string>('assetSourcesAwaitingRun')") + 400);
   assert.match(answerSteerSite, /const steer = assetSourceAnswerSteer\(this\.pinnedPrefs\?\.asset_sources\)/,
     'the new user-role steer no longer comes from the reviewed source selector');
@@ -2766,10 +2792,12 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const bare = userPushes.map((p) => /content:\s*([A-Za-z_][\w.]*)\s*\}$/.exec(p.replace(/\s+/g, ' ').replace(/,?\s*\}$/, ' }'))?.[1]).filter(Boolean);
   // REVIEWED 2026-10-01: AUTONOMOUS_IDLE_STEER (2a884997) is a module constant in run-idle.ts made only of string
   // literals — no interpolation, no argument — so it carries no user, tool or model text. Held to that below.
+  // REVIEWED 2026-10-02: `decision.message` (the self-check's steer, NINETEEN above) comes from checkAtAnswer in self-check-run.ts —
+  // askLookMessage() or steerForFindings() — and is held to its property in the next block, not to an absence of interpolation.
   // REVIEWED 2026-10-02: `text` is the once-per-run "Nothing has changed yet" note, `buildNudge(agent.trace, …)` in
   // run-idle.ts. It carries trace text, so it is held below to the same rule as a plan title: tool names only from
   // the registry, error text only through fenceForQuote, inside its own quotation.
-  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'partNext', 'skillSteer.message', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
+  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'decision.message', 'partNext', 'skillSteer.message', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
   assert.match(session, /const text = buildNudge\(agent\.trace, [^;]*\);/, 'the build note no longer comes from buildNudge — review its new source');
   {
     const nudge = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function buildNudge('));
@@ -2789,10 +2817,14 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
     assert.match(nudge, /c\.props\.map\(\(p\) => fenceForQuote\(p\)\)/, 'retuneNudge puts raw property names into a user-role turn');
     assert.match(session, /retuneNudge\(last, \(name\) => Object\.prototype\.hasOwnProperty\.call\(TOOLS, name\)/, 'the retune nudge no longer holds its tool name to the registry');
   }
+  assert.match(session, /let decision = checkAtAnswer\(|const decision = checkAtAnswer\(/, 'the self-check steer no longer comes from checkAtAnswer — review its source');
+  const runCheck = readCode('self-check-run.ts');
+  assert.match(runCheck, /message: askLookMessage\(\)/, 'the look steer is no longer the fixed literal');
+  assert.match(runCheck, /const message = steerForFindings\(result, i\.can\)/, 'the audit steer no longer comes from steerForFindings');
   const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
   assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
   assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');
-  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text')) {
+  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text' && n !== 'decision.message')) {
     assert.match(session, new RegExp(`const ${name.replace('.', '\\.')} =[^;]*\\bsteerToPart\\(agent\\)`),
       `user-role push of \`${name}\` no longer comes from steerToPart — review its source`);
   }

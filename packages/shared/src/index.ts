@@ -1067,6 +1067,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'compose_thumbnail':
     // The plugin rasterises the live Studio viewport; nothing in the place changes.
     case 'capture_studio_viewport':
+    // The self-check's look aims the viewport camera at what was changed, captures it from several angles and
+    // puts the camera back. Nothing in the place changes, so it announces the same phase as the capture.
+    case 'look':
       return 'rendering';
     case 'check_composition':
     case 'inspect_visually':
