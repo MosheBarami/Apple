@@ -1,6 +1,7 @@
 // Sends one chat to a project over WS and prints the full agent transcript.
 // Usage: node infra/real-chat.mjs <mode> "<message>"
 import { readFileSync } from 'node:fs';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -11,8 +12,8 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 // They used to be inline literals in four scripts, which put a real Supabase
 // password in git history. Set GOLEM_E2E_EMAIL and GOLEM_E2E_PASSWORD in .env
 // (gitignored) — see docs/DECISIONS.md.
-const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
-const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
   throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }

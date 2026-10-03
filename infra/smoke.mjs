@@ -24,6 +24,7 @@
 //             at startup and GOLEM_ADMIN_KEY lives there. A guard on a value the script itself
 //             guarantees is not a guard.
 import { readFileSync } from 'node:fs';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
@@ -31,14 +32,14 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
 
-const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
-const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
   throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env');
 }
 
 const BASE = process.env.API_BASE;
-const ADMIN = process.env.GOLEM_ADMIN_KEY;
+const ADMIN = envCompat('APPLE_ADMIN_KEY');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
 const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,

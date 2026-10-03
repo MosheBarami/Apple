@@ -5,6 +5,7 @@ import { resolve, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { TASKS } from './missions-cartoon-v2.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const ORIGIN = 'https://apple.moshe-barami111.workers.dev';
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -89,7 +90,7 @@ export async function main(args) {
   if (mode !== 'observe') throw Error('Use init or observe');
   const manifest = JSON.parse(readFileSync(path, 'utf8'));
   if (manifest.origin !== ORIGIN || !UUID.test(manifest.projectId ?? '')) throw Error('Unapproved credential destination');
-  const key = process.env.GOLEM_ADMIN_KEY;
+  const key = envCompat('APPLE_ADMIN_KEY');
   if (!key) throw Error('GOLEM_ADMIN_KEY required');
   const get = route => observationGet(key, route);
   const [info, messages, logs] = await Promise.all([

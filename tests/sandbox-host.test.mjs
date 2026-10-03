@@ -34,6 +34,7 @@ import {
   MEMORY_POLL_MS,
 } from '../scripts/lib/sandbox-host.mjs';
 import { SANDBOX_CEILINGS, BACKEND_ENFORCEMENT } from '../apps/worker/src/sandbox.ts';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 /** Absent toolchains SKIP with a reason. A green run that tested nothing is the thing to avoid. */
 const HAVE = {
@@ -202,7 +203,7 @@ test('the environment handed to a program is four variables, none of them this m
   try {
     const env = sandboxEnv('/tmp/scratch');
     assert.deepEqual(Object.keys(env).sort(), ['HOME', 'LANG', 'PATH', 'TMPDIR']);
-    assert.equal(env.GOLEM_SANDBOX_SENTINEL, undefined);
+    assert.equal(envCompat('APPLE_SANDBOX_SENTINEL', env), undefined);
     assert.equal(env.HOME, '/tmp/scratch', 'HOME must point at the scratch dir, not the real one');
     assert.ok(env.PATH, 'without PATH nothing can be spawned at all');
   } finally {

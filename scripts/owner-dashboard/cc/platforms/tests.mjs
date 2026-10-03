@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fetchJson, cached, section, run as exec, REPO } from '../http.mjs';
 import { WORKER_URL } from './cloudflare.mjs';
+import { envCompat } from '../../../lib/env-compat.mjs';
 
 const LABEL = 'Apple';
 const VISUAL = 'docs/gauntlet/visual';
@@ -267,10 +268,10 @@ async function readDocs() {
 }
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
-const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': process.env.GOLEM_ADMIN_KEY } });
+const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
 
 async function readWorker(vocab, verbs) {
-  if (!process.env.GOLEM_ADMIN_KEY) throw Object.assign(new Error('no key'), { reason: 'חסר GOLEM_ADMIN_KEY בקובץ ‎.env, אז אין נתוני ריצה מה-worker' });
+  if (!envCompat('APPLE_ADMIN_KEY')) throw Object.assign(new Error('no key'), { reason: 'חסר GOLEM_ADMIN_KEY בקובץ ‎.env, אז אין נתוני ריצה מה-worker' });
   const [builds, calls] = await Promise.all([
     get('/api/admin/logs?kind=build&days=30&limit=2000', 'יומן הבנייה'),
     get('/api/admin/logs?kind=model_call&days=30&limit=2000', 'יומן הקריאות למודל'),

@@ -2,6 +2,7 @@
 // Phases: auth -> project create -> WS connect -> concurrent inference -> isolation probes.
 // Usage: node infra/loadtest.mjs [userCount] [inferenceCount]
 import { readFileSync } from 'node:fs';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
@@ -11,11 +12,11 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // See the note in infra/real-chat.mjs and docs/DECISIONS.md.
-const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
-const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 // The synthetic load accounts share one password. Same rule as the E2E account:
 // it lives in .env, never in the tree.
-const LOAD_PASSWORD = process.env.GOLEM_LOAD_PASSWORD;
+const LOAD_PASSWORD = envCompat('APPLE_LOAD_PASSWORD');
 if (!LOAD_PASSWORD) {
   throw new Error('GOLEM_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
 }

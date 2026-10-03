@@ -48,6 +48,7 @@ import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { loadEnv, embedAll, embedBatch, normalise, dot, REPO } from './workers-ai-embed.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -60,7 +61,7 @@ const CACHE_DIR = process.env.EMBED_CACHE_DIR || join(tmpdir(), 'golem-embed-cac
 const WORKER_BASE = (process.env.API_BASE_PRODUCTION || 'https://apple.moshe-barami111.workers.dev').replace(/\/+$/, '');
 // Read LAZILY: loadEnv() populates process.env from .env further down this file, so capturing the
 // admin key at module scope here would capture undefined and silently skip the in-Worker timing.
-const adminKey = () => process.env.GOLEM_ADMIN_KEY;
+const adminKey = () => envCompat('APPLE_ADMIN_KEY');
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);

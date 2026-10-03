@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyExample } from './build-game-logic.mjs';
 import { loadEvalGuard, detectContextDependencies } from './audit-dataset.mjs';
 import { shingles } from './build-dataset.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, '../data/game-logic-synth-v1');
@@ -165,7 +166,7 @@ export function judge(example, guard, verify = verifyExample) {
 }
 
 async function main() {
-  const key = process.env.GOLEM_ADMIN_KEY;
+  const key = envCompat('APPLE_ADMIN_KEY');
   if (!key && !TEACHER_URL) { console.error('GOLEM_ADMIN_KEY or TEACHER_URL is required'); process.exit(2); }
   const variants = Number(arg('variants', '3'));
   const concurrency = Number(arg('concurrency', '4'));

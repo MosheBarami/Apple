@@ -30,6 +30,7 @@ import { tmpdir } from 'node:os';
 import { buildUiTree, indexTree, descendants, fencedLuau } from './score-ui.mjs';
 import { collectParts, renderMapPlan } from './render-map-plan.mjs';
 import { mergeResults } from './showcase-manifest.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '../../..');
@@ -43,7 +44,7 @@ const arg = (name, fallback = null) => {
 };
 
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
-const ADMIN = process.env.GOLEM_ADMIN_KEY;
+const ADMIN = envCompat('APPLE_ADMIN_KEY');
 
 async function loadGenreLibrary() {
   const requireFromWorker = createRequire(join(WORKER_SRC, 'index.ts'));

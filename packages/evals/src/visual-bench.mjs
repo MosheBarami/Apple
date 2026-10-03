@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
@@ -32,7 +33,7 @@ function loadEnv() {
   }
   return {
     apiBase: process.env.API_BASE ?? out.API_BASE,
-    adminKey: process.env.ADMIN_KEY ?? process.env.GOLEM_ADMIN_KEY ?? out.GOLEM_ADMIN_KEY,
+    adminKey: process.env.ADMIN_KEY ?? envCompat('APPLE_ADMIN_KEY') ?? out.GOLEM_ADMIN_KEY,
   };
 }
 

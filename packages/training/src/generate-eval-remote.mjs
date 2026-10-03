@@ -19,6 +19,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const BASE_URL = 'https://apple.moshe-barami111.workers.dev';
 export const MAX_REQUESTS = 120;
@@ -66,7 +67,7 @@ async function ask(side, row, key, maxTokens) {
 
 async function main() {
   const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []));
-  const key = process.env.GOLEM_ADMIN_KEY;
+  const key = envCompat('APPLE_ADMIN_KEY');
   if (!key) throw new Error('GOLEM_ADMIN_KEY is required');
   if (!args.data || !args.out || !args.base || !args.adapter) throw new Error('usage: --data F --base KEY[:LORA] --adapter KEY[:LORA] --out F [--kind K] [--max-tokens N]');
   const rows = heldOutRows(readFileSync(args.data, 'utf8'), args.kind);
