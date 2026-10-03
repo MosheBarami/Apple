@@ -157,3 +157,15 @@ test('created-paths: a delete is covered only when every path is one the run cre
   const many = C.addCreated(undefined, Array.from({ length: 400 }, (_, i) => `game.Workspace.P${i}`));
   assert.equal(many.length, 150, 'the persisted list must stay bounded');
 });
+
+// Benchmark 2026-10-04, item o05: create_instances with className Script went to Studio and came back "class Script is not in
+// Apple's create allowlist", which named no way forward. A script class (at any depth) is answered before Studio, naming the tool.
+test('a script class is answered before Studio, naming edit_script', async () => {
+  const { ctx, ops } = ctxWith(ok);
+  const r = await run(ctx, 'create_instances', { items: [{ className: 'Model', name: 'Jukebox', parent: 'game.Workspace', children: [{ className: 'Script', name: 'Play' }] }] });
+  assert.match(String(r.data.error), /edit_script/);
+  assert.match(String(r.data.error), /create_class/);
+  assert.equal(ops.length, 0, 'nothing was sent to Studio');
+  const plain = await run(ctxWith(ok).ctx, 'create_instances', { items: [post(1)] });
+  assert.equal(plain.data.error, undefined, 'a part is still created');
+});

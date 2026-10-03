@@ -389,6 +389,18 @@ export interface PlaytestBus {
 }
 
 // An empty `required` is the JSON Schema default; leaving it out saves its characters on every model step.
+/** The first script class in a create_instances item list (children included), named for the refusal; or null. */
+function findScriptClass(items: unknown, depth = 0): string | null {
+  if (!Array.isArray(items) || depth > 12) return null;
+  for (const it of items) {
+    const rec = it && typeof it === 'object' ? (it as Record<string, unknown>) : {};
+    if (typeof rec.className === 'string' && /^(Script|LocalScript|ModuleScript)$/.test(rec.className)) return `${rec.className} "${String(rec.name ?? '')}"`;
+    const inner = findScriptClass(rec.children, depth + 1);
+    if (inner) return inner;
+  }
+  return null;
+}
+
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
   type: 'object',
   properties: props,
@@ -3000,6 +3012,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
+      // A script class is not on the plugin's create allowlist, and its refusal named no way forward (benchmark o05, 2026-10-04).
+      const scriptItem = findScriptClass(a.items);
+      if (scriptItem) return Promise.resolve({ error: `${scriptItem} is created with edit_script, not create_instances: set create_class (Script, LocalScript or ModuleScript), create_parent and source. Nothing was sent.` });
       for (const src of sourcesIn(a.items)) {
         const gameRule = refuseGameScript(luauScanVariants(src));
         if (gameRule) return Promise.resolve(gameRule);
