@@ -205,6 +205,41 @@
       "path": "scripts/owner-dashboard/control/pages/clerk.js",
       "pattern": "Password literal",
       "value_sha256": "2c7f41e60a3ce428f3ee963a33195b5cbbb83c32e70aa033457a3ab7dfb7cab8"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "AWS access key id",
+      "value_sha256": "1a5d44a2dca19669d72edf4c4f1c27c4c1ca4b4408fbb17f6ce4ad452d78ddb3"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "8f6fefd8d253031522155fa4deb9dcf07a0746f8a5a1e918bbb9f43971d76996"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "b260d1ccd7540ad9c0872f46fa9f8eed015cdd2f458cd1520d63aa04b888c61d"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "fb258e3db0af91cd97006d590b18c2f89a787384dec11b4e2471c4592887092f"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "JWT",
+      "value_sha256": "76063ea328e351e4aee6899303adb27c18e1739753108bac98aa5c6b46175205"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "OpenAI key",
+      "value_sha256": "0ea5bf4258ec1ccbdc0b73db00a35f394a9bfa889dda3676b528b7874b2fa4a7"
+    },
+    {
+      "path": "tools/repo-chat/tests/safety.test.ts",
+      "pattern": "OpenAI key",
+      "value_sha256": "82be8a4d9cdebab78235e6d0618fdea34065fcb6f498073283ff4ec7376e551a"
     }
   ]
 }
