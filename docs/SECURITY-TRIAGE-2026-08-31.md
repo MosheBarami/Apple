@@ -3,7 +3,7 @@
 Triaged 2026-08-31 against `main`. **7 high, 15 medium, 5 low.**
 
 The headline result is an inversion: **none of the seven high findings can reach
-production Golem, and the one finding that genuinely could was rated medium.**
+production Apple, and the one finding that genuinely could was rated medium.**
 That one is fixed; the highs are deferred with reasons.
 
 ## What actually runs in production
@@ -65,7 +65,7 @@ the sink is reachable:
 navigate(from, { replace: true });
 ```
 
-A link to `https://app.golem/\evil.com` matches `*`, hits `AuthGuard`, is stored
+A link to `https://app.apple/\evil.com` matches `*`, hits `AuthGuard`, is stored
 as `from`, and on a vulnerable router `navigate('/\evil.com')` resolves
 protocol-relative and leaves the origin — **at the exact moment the user has just
 authenticated**, which is when they are most inclined to trust the screen.

@@ -5,7 +5,7 @@
  * union all get classic studs on every face. The plugin's Surface family (apps/apple-plugin/src/ops/Surface.luau) does
  * the work; the image ids live here because the shipped plugin holds none.
  */
-import type { StudioOp, SurfaceMaps } from '@golem/shared';
+import type { StudioOp, SurfaceMaps } from '@apple/shared';
 
 /** Resurface's surface maps (src/Assets/MaterialVariants.luau), public images by cxmeel. */
 export const SURFACE_MAPS = {

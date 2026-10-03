@@ -10,7 +10,7 @@ echo "python $(python3 --version 2>&1)"
 echo "luau   $(luau --version 2>&1 | head -1 || true)"
 echo "rojo   $(rojo --version 2>&1 | head -1 || true)"
 
-# A path filter, not a package name, so this survives the @golem -> @apple rename.
+# A path filter, not a package name, so this survives the package-scope rename.
 if pnpm --filter ./packages/shared typecheck; then
   echo "SMOKE OK: packages/shared typechecks."
 else

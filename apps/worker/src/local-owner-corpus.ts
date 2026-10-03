@@ -1,5 +1,5 @@
 import type { AgentCtx } from './tools';
-import type { StudioOp } from '@golem/shared';
+import type { StudioOp } from '@apple/shared';
 import { plainName } from './run-idle';
 import { placeImportedOwner } from './model-library';
 import { screenRoots, wireScreens, type WireResult } from './menu-binder';

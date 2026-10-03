@@ -1,9 +1,9 @@
 {
-  "name": "@golem/corpus",
+  "name": "@apple/corpus",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Builds Golem's RAG corpus from license-compatible Roblox/Luau sources.",
+  "description": "Builds Apple's RAG corpus from license-compatible Roblox/Luau sources.",
   "scripts": {
     "fetch": "node src/fetch.mjs",
     "chunk": "node src/chunk.mjs",

@@ -24,14 +24,14 @@
  *     source's API vocabulary, `list_scripts` reports the class and the container, and only the
  *     two together can say that a LocalScript in ServerScriptService will never run.
  */
-import { parseLuau } from '@golem/evals/src/luau-ast.mjs';
-import { analyzeFile, analyzePlace } from '@golem/evals/src/luau-intel.mjs';
-import type { FileAnalysis, LuauFinding, PlaceAnalysis } from '@golem/evals/src/luau-intel.mjs';
-import { buildSymbolTable, crossReference, searchSymbols } from '@golem/evals/src/luau-symbols.mjs';
-import { buildDependencyGraph, indexPlace, requireOrder } from '@golem/evals/src/luau-graph.mjs';
-import type { DependencyGraph } from '@golem/evals/src/luau-graph.mjs';
-import { formatLuau, tokenDrift } from '@golem/evals/src/luau-format.mjs';
-import { inferContext, stripComments } from '@golem/evals/src/roblox-antipatterns.mjs';
+import { parseLuau } from '@apple/evals/src/luau-ast.mjs';
+import { analyzeFile, analyzePlace } from '@apple/evals/src/luau-intel.mjs';
+import type { FileAnalysis, LuauFinding, PlaceAnalysis } from '@apple/evals/src/luau-intel.mjs';
+import { buildSymbolTable, crossReference, searchSymbols } from '@apple/evals/src/luau-symbols.mjs';
+import { buildDependencyGraph, indexPlace, requireOrder } from '@apple/evals/src/luau-graph.mjs';
+import type { DependencyGraph } from '@apple/evals/src/luau-graph.mjs';
+import { formatLuau, tokenDrift } from '@apple/evals/src/luau-format.mjs';
+import { inferContext, stripComments } from '@apple/evals/src/roblox-antipatterns.mjs';
 import { parseInstancePath } from './effects.ts';
 
 export type { FileAnalysis, LuauFinding, PlaceAnalysis };

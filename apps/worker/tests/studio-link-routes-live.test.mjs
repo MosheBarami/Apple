@@ -27,7 +27,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-studio-link-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-studio-link-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -41,7 +41,7 @@ const OTHER_ID = '88888888-8888-4888-8888-888888888888';
 const PROJECT_ID = '11111111-2222-4333-8444-555555555555';
 
 async function tokenFor(sub) {
-  return new jose.SignJWT({ email: `${sub}@golem.test`, role: 'authenticated' })
+  return new jose.SignJWT({ email: `${sub}@apple.test`, role: 'authenticated' })
     .setProtectedHeader({ alg: 'ES256', kid: 'studio-test' })
     .setIssuer(`${SUPABASE_URL}/auth/v1`)
     .setAudience('authenticated')
@@ -125,7 +125,7 @@ async function call(path, { method = 'GET', jwt = JWT, body, headers = {} } = {}
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
   );
   const text = await res.text();

@@ -13,7 +13,7 @@
 // user's own cache (KV). Component insertion never initiates a permanent asset upload.
 import lib from '../../../packages/asset-library/ui-components.json';
 import shared from '../../../packages/asset-library/roblox-ids.json';
-import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@golem/shared';
+import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@apple/shared';
 import type { Env } from './env';
 import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';

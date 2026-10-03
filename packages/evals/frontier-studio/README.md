@@ -162,7 +162,7 @@ owner's visual rejection remains a product failure, not an unmeasured success.
 
 `node observe-run.mjs init <private-manifest.json> <project-UUID> <fresh-baseline>`
 records the unchanged cartoon garden-r1 brief, baseline bytes/hash and monitoring bounds.
-`GOLEM_ADMIN_KEY` must be provided privately to `node observe-run.mjs observe <manifest>`;
+`APPLE_ADMIN_KEY` must be provided privately to `node observe-run.mjs observe <manifest>`;
 never put the key in a command argument, artifact or commit. Reads use the approved Apple origin
 and refuse redirects. This observer does not submit prompts, pair Studio, mutate a game or stop it.
 It cannot enforce a server spending cap. Completed-turn Credits and retained provider neurons are

@@ -1,10 +1,10 @@
-# Cloudflare Workers AI — Model Catalog & Economics (for Golem)
+# Cloudflare Workers AI — Model Catalog & Economics (for Apple)
 
 Research date: 2026-08-30. All data fetched from official Cloudflare docs pages on this date (URLs in Sources). Prices and catalogs change frequently — re-verify before hard-coding.
 
 ---
 
-## TL;DR for Golem
+## TL;DR for Apple
 
 - Both Workers Free and Workers Paid ($5/mo) include **10,000 neurons/day free** (resets 00:00 UTC). That is $0.11/day ≈ **$3.35/month of free inference**. Free plan hard-blocks after the allocation; Paid bills overage at **$0.011 per 1,000 neurons**.
 - Best default coding/agent model on value: **`@cf/openai/gpt-oss-120b`** ($0.35 in / $0.75 out per M, 128k context, function calling + reasoning). The free daily allocation buys **exactly 100k input + 100k output tokens/day** on it.
@@ -77,7 +77,7 @@ Embeddings ($/M input tokens):
 
 Reranker: `@cf/baai/bge-reranker-base` (text classification section).
 
-Vision-language: `@cf/meta/llama-3.2-11b-vision-instruct` ($0.049/$0.676, LoRA), `llava-1.5-7b-hf`, `moondream3.1-9B-A2B`, `uform-gen2-qwen-500m`, plus the multimodal text models above (`llama-4-scout`, `gemma-4-26b-a4b-it`, `glm-5.3-flash`, `kimi-k2.5/2.6/2.7-code`, `qwen3.8-27b`). For Golem screenshot-understanding (Studio viewport checks), `gemma-4-26b-a4b-it` at $0.10/$0.30 with 256k context is the value pick.
+Vision-language: `@cf/meta/llama-3.2-11b-vision-instruct` ($0.049/$0.676, LoRA), `llava-1.5-7b-hf`, `moondream3.1-9B-A2B`, `uform-gen2-qwen-500m`, plus the multimodal text models above (`llama-4-scout`, `gemma-4-26b-a4b-it`, `glm-5.3-flash`, `kimi-k2.5/2.6/2.7-code`, `qwen3.8-27b`). For Apple screenshot-understanding (Studio viewport checks), `gemma-4-26b-a4b-it` at $0.10/$0.30 with 256k context is the value pick.
 
 ## (d) Pricing and the neurons system
 
@@ -94,7 +94,7 @@ Vision-language: `@cf/meta/llama-3.2-11b-vision-instruct` ($0.049/$0.676, LoRA),
 - **Constraints**: adapter file **< 300MB**; trained with rank **r ≤ 8** (docs also mention support for larger ranks up to 32 — page wording is ambiguous; verify per base model); exactly two files: `adapter_model.safetensors` + `adapter_config.json` (must include `model_type`: `mistral`, `gemma`, or `llama`); up to **100 LoRA adapters per account**. Only non-quantized base models qualify.
 - **Serving**: upload via `npx wrangler ai finetune create` (or REST API); at inference pass the finetune name/ID in the `lora` parameter; use `raw: true` to bypass the default chat template.
 - **LoRA-capable base models** (catalog filter `?capabilities=LoRA`): `@cf/qwen/qwen2.5-coder-32b-instruct`, `@cf/qwen/qwq-32b`, `@cf/google/gemma-3-12b-it`, `@cf/google/gemma-2b-it-lora`, `@cf/google/gemma-7b-it-lora`, `@cf/meta/llama-3.2-11b-vision-instruct`, `@cf/meta/llama-guard-3-8b`, `@cf/meta/llama-2-7b-chat-hf-lora`, `@cf/mistral/mistral-7b-instruct-v0.1`, `@cf/mistral/mistral-7b-instruct-v0.2(-lora)`.
-- Golem angle: a Luau-tuned LoRA on `qwen2.5-coder-32b-instruct` is feasible (train elsewhere, e.g. RunPod; serve on Workers AI at base-model token prices — no LoRA serving surcharge documented).
+- Apple angle: a Luau-tuned LoRA on `qwen2.5-coder-32b-instruct` is feasible (train elsewhere, e.g. RunPod; serve on Workers AI at base-model token prices — no LoRA serving surcharge documented).
 
 ## (f) Context windows (per CF model pages)
 
@@ -137,9 +137,9 @@ Vision-language: `@cf/meta/llama-3.2-11b-vision-instruct` ($0.049/$0.676, LoRA),
 | `glm-5.3-flash` | 733,333 | 220,000 | ~463,200 total (≈347k in + 116k out) — only if the free allocation applies to paid-only models (UNVERIFIED) |
 | `gpt-oss-20b` | 550,000 | 366,667 | ~488,900 total |
 
-**Golem monthly sketch:** on Workers Paid ($5/mo base), staying under ~10k neurons/day means $5/mo total AI spend. A heavier day of e.g. 2M in + 0.4M out on gpt-oss-120b = 90,909 neurons ≈ $1.00 minus the free $0.11 ≈ $0.89 overage. Prompt-caching discounts (up to 30× cheaper cached input on deepseek-v4-flash: $0.014/M) make the paid-only long-context models attractive for repeated large system prompts / codebase context.
+**Apple monthly sketch:** on Workers Paid ($5/mo base), staying under ~10k neurons/day means $5/mo total AI spend. A heavier day of e.g. 2M in + 0.4M out on gpt-oss-120b = 90,909 neurons ≈ $1.00 minus the free $0.11 ≈ $0.89 overage. Prompt-caching discounts (up to 30× cheaper cached input on deepseek-v4-flash: $0.014/M) make the paid-only long-context models attractive for repeated large system prompts / codebase context.
 
-## Recommendations for Golem
+## Recommendations for Apple
 
 1. **Default agent model: `@cf/openai/gpt-oss-120b`** — best price/capability with function calling, 128k context, and free-tier friendliness (100k+100k tokens/day free).
 2. **Cheap high-volume lane: `@cf/qwen/qwen3-30b-a3b-fp8`** ($0.051/$0.335, FC) for classification/routing/short edits; `gemma-4-26b-a4b-it` for vision checks.

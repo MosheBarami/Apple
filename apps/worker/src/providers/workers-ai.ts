@@ -1,4 +1,4 @@
-// Cloudflare Workers AI adapter — the ONLY provider Golem actually runs.
+// Cloudflare Workers AI adapter — the ONLY provider Apple actually runs.
 //
 // This is a lift of the code that lived inline in gateway.ts, moved behind the adapter interface
 // WITHOUT changing a byte of its arithmetic:
@@ -11,7 +11,7 @@
 // Workers AI is reached through a BINDING, not HTTP: there is no key and no base URL, which is
 // why its availability is "does env.AI exist", not "is a secret set".
 import type { Env } from '../env';
-import { registryModel } from '@golem/shared';
+import { registryModel } from '@apple/shared';
 import { routeForModelId } from '../pricing';
 import {
   contentChars,
@@ -31,7 +31,7 @@ import {
 
 /**
  * THE ONE PRODUCT ENGINE (V3 gate G01): Apple runs GLM 5.3 Flash, read from the registry in
- * @golem/shared so this id cannot go stale beside it again (it once still named Qwen3).
+ * @apple/shared so this id cannot go stale beside it again (it once still named Qwen3).
  *
  * The visual critic is the same model. The product run routes and `vision` keep their own
  * maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely resolve to the same weights.
@@ -133,7 +133,7 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
  * SESSION AFFINITY IS WHY cached_tokens WAS ALWAYS 0. Workers AI does prefix caching — it reuses
  * the prefill tensors for the shared prefix of consecutive requests and bills those tokens at a
  * discounted cached rate — but only when consecutive requests land on the same model instance, and
- * that requires the `x-session-affinity` header. Golem sent none, so every step re-prefilled an
+ * that requires the `x-session-affinity` header. Apple sent none, so every step re-prefilled an
  * identical ~5,200-token prefix of system prompt plus tool definitions from cold.
  * https://developers.cloudflare.com/changelog/product/workers-ai/ ("Prefix caching and session
  * affinity") describes exactly this workload: "When an agent sends a new prompt, it resends all

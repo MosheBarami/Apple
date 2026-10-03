@@ -38,7 +38,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS = join(HERE, '..', 'migrations');
-const NAME = `golem-rls-${process.pid}`;
+const NAME = `apple-rls-${process.pid}`;
 const IMAGE = 'postgres:16-alpine';
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

@@ -69,7 +69,7 @@ export const CLASS_BY_SPDX = Object.freeze({
  * Class → reuse verdict. COPYLEFT reads `forbidden` and that is not a slur on
  * it: §3 is explicit that copyleft is excellent reference material which simply
  * may not be reproduced into a user's commercial game. `forbidden` here means
- * "Golem must not emit derived code", never "this source is dangerous" — the
+ * "Apple must not emit derived code", never "this source is dangerous" — the
  * `security` verdict is a separate field on a separate axis.
  */
 const REUSE_BY_CLASS = Object.freeze({
@@ -358,7 +358,7 @@ const REASON_BY_CLASS = {
   ATTRIBUTION_REQUIRED: (spdx, where) =>
     `${spdx} (proven by ${where}) allows reuse only while the credit survives into the user's shipped project, and a credit line cannot survive into model weights, so training is forbidden.`,
   COPYLEFT: (spdx, where) =>
-    `${spdx} (proven by ${where}) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe.`,
+    `${spdx} (proven by ${where}) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe.`,
   REFERENCE_ONLY: (spdx, where) =>
     `${spdx} (proven by ${where}) grants neither reuse nor training rights; the source may be read and cited at retrieval time only.`,
 };

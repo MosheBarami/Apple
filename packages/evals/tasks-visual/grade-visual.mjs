@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Visual-quality grader for Golem built scenes.
+// Visual-quality grader for Apple built scenes.
 //
 // The coding eval suite (packages/evals) measures whether the model writes correct
 // Luau. It scores 98.9% and is completely blind to the fact that the scenes it
@@ -371,7 +371,7 @@ function round(n, dp) {
 
 /**
  * Structural + critique conditions that cap the score no matter how the dimensions
- * were scored. These encode the failure modes Golem currently exhibits; each one is
+ * were scored. These encode the failure modes Apple currently exhibits; each one is
  * evidence-backed so the report can say WHY, not just that it fired.
  *
  * @returns {Array<{id, name, evidence}>}

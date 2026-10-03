@@ -58,7 +58,7 @@ const FULL = flag('--full');
 const NO_PRUNE = flag('--no-prune');
 const DRY = flag('--dry');
 
-if (!API_BASE) fail('API_BASE env var is not set. Example: API_BASE=https://golem-worker.example.workers.dev ADMIN_KEY=... node src/upload.mjs');
+if (!API_BASE) fail('API_BASE env var is not set. Example: API_BASE=https://apple-worker.example.workers.dev ADMIN_KEY=... node src/upload.mjs');
 if (!ADMIN_KEY) fail('ADMIN_KEY env var is not set. It must match the worker ADMIN_KEY secret.');
 if (!existsSync(CHUNKS_PATH)) fail(`${CHUNKS_PATH} not found — run "pnpm chunk" first.`);
 

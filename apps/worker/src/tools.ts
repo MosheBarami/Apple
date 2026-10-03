@@ -2,7 +2,7 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { annotateModels, candidateOf, placeLibraryPiece, placeSizeOf, previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
-import { renderShowsTerrain } from '@golem/shared';
+import { renderShowsTerrain } from '@apple/shared';
 import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -13,8 +13,8 @@ import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { planCopyRounds } from './dup-names';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps, describeRefusals, createLimitIssues, planCreateBatches, normaliseStudioPaths } from './studio-props';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@golem/shared';
-import { RENDER_VIEWS, phaseForTool } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@apple/shared';
+import { RENDER_VIEWS, phaseForTool } from '@apple/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
@@ -335,7 +335,7 @@ export interface AgentCtx {
   /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused), or only the named tools. */
   widenTools?: (tools?: string[]) => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */
-  addSources?: (fresh: import('@golem/shared').RunSource[]) => number[];
+  addSources?: (fresh: import('@apple/shared').RunSource[]) => number[];
 }
 
 /**
@@ -1634,7 +1634,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
 //     is the whole reason computed indexing of `game` is refused outright);
 //   * `edit_script` writing a game Script that calls `GetObjects`, then `run_and_check` running it.
 //     That is a deliberate product capability — the user asked for a game — and is out of scope
-//     here; it is bounded by the user owning and reading the scripts Golem writes.
+//     here; it is bounded by the user owning and reading the scripts Apple writes.
 //   * ASSIGNING A COMPUTED ASSET URI TO A CONTENT PROPERTY. `Paths.setProp` in the plugin refuses an
 //     unverified `MeshId` / `Texture` / `SoundId`, which closes this for `create_instances` and
 //     `set_properties` — but `run_code` executes Luau straight against the engine and never goes
@@ -6699,7 +6699,7 @@ export async function runTool(
 }
 
 /**
- * Strip anything that names the engine behind Golem.
+ * Strip anything that names the engine behind Apple.
  *
  * Deliberately a denylist of shapes rather than an allowlist of safe text. An
  * allowlist would also drop the actionable half of an error — "Studio

@@ -1,6 +1,6 @@
 // Speech in and speech out, behind an interface, on a budget.
 //
-// Two jobs and one shared discipline. The jobs are transcription (a user speaks to Golem instead
+// Two jobs and one shared discipline. The jobs are transcription (a user speaks to Apple instead
 // of typing) and synthesis (a line of NPC dialogue comes back as audio). The discipline is that
 // BOTH are billed per AUDIO MINUTE rather than per token, which breaks the assumption every other
 // spend path in this worker rests on:

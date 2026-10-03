@@ -1,5 +1,5 @@
-// GET /api/cc/design-history: how the site and the web app looked, from the first commit (when the
-// product was Golem) to today. Three real sources: the commits that touched a style sheet, layout,
+// GET /api/cc/design-history: how the site and the web app looked, from the first commit (before the
+// product was renamed to Apple) to today. Three real sources: the commits that touched a style sheet, layout,
 // design token, brand file or design doc (from the commits page's background walk, so no second
 // pass over the history); every design screenshot on disk, placed at the commit that first added
 // it; and the design entries of the two decision logs.
@@ -37,7 +37,7 @@ function listImages(dir, flat, match) {
 
 const dateInPath = (p) => /(20\d\d-\d\d-\d\d)/.exec(p)?.[1] || null;
 
-// "## ADR-001 — Brand: "Golem"" / "## D-UI-GREEN-1 — ... (2026-09-23, ...)": the entries whose title
+// "## ADR-001 — Brand: "Apple"" / "## D-UI-GREEN-1 — ... (2026-09-23, ...)": the entries whose title
 // is about the look of the product.
 const DESIGN_TITLE = /\b(brand|design|visual direction|palette|colou?r|font|typeface|typography|logo|landing|layout|theme|mascot|green means|look)\b|עיצוב|מותג/i;
 function decisions(file) {
@@ -79,7 +79,7 @@ export async function designHistory() {
   const list = (await cm.commits(new URLSearchParams('per=10&page=999999'))).items; // the oldest page: the first commit
   const first = list.at(-1) || null;
   const rename = (await cm.commits(new URLSearchParams('q=rename the product to apple&per=10'))).items.at(-1) || null;
-  const eraOf = (at) => (rename && at < rename.at ? 'golem' : 'apple');
+  const eraOf = (at) => (rename && at < rename.at ? 'legacy' : 'apple');
 
   const timeline = commits.map((c) => {
     const kinds = {};
@@ -106,7 +106,7 @@ export async function designHistory() {
 
   return {
     era: {
-      golem: first ? { from: first.at, to: rename?.at ?? null, firstCommit: { sha: first.sha, subject: first.subject } } : null,
+      legacy: first ? { from: first.at, to: rename?.at ?? null, firstCommit: { sha: first.sha, subject: first.subject } } : null,
       apple: rename ? { from: rename.at, commit: { sha: rename.sha, subject: rename.subject } } : null,
     },
     progress: { scanned, total, complete: scanned >= total },

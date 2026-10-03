@@ -20,7 +20,7 @@ So every number below describes one tree.
 
 ### Safety checks before running (measured)
 - **Paid-provider flags: none.**
-  - Across all offline test files, the only env vars read are `GOLEM_SANDBOX_SENTINEL`, `LUAU_BIN` and `NODE_V8_COVERAGE`. Found by grepping `process.env.*` over the `*.test.mjs` files plus `selftest.mjs`.
+  - Across all offline test files, the only env vars read are `APPLE_SANDBOX_SENTINEL`, `LUAU_BIN` and `NODE_V8_COVERAGE`. Found by grepping `process.env.*` over the `*.test.mjs` files plus `selftest.mjs`.
   - The worker's one `process.env.CLOUDFLARE_API_TOKEN` hit is a string literal in a fixture, not a read (`apps/worker/tests/sandbox-contract.test.mjs:275`).
   - The shell has no provider, spend or live variable set. The only related names are the harness's own `ANTHROPIC_BASE_URL`, `API_TIMEOUT_MS` and `CLAUDE_CODE_MESSAGING_TOKEN`.
   - `packages/evals/src/selftest.mjs:1-4` describes itself as "Offline self-test ... No network".
@@ -56,7 +56,7 @@ So every number below describes one tree.
   - `gate-check.mjs --lint` (line 133)
   - `check-site-links` (164), `check-credit-figures` (171), `check-site-semantics` (177), `check-dispositions` (185)
   - `check-app-bundle` (191), `check-landing-budget` (199), `check-asset-wall` (208)
-  - `pnpm --filter @golem/evals check` (281)
+  - `pnpm --filter @apple/evals check` (281)
   - I ran all of these separately, below.
 
 ### Results table
@@ -147,7 +147,7 @@ Where it comes from:
   - It has been idle at 0% CPU for about 30 hours.
   - It listens on 127.0.0.1:65529, a port the OS assigned (`demo-stages-fit.test.mjs:72` uses `listen(0)`), so it cannot collide with other runs.
   - It is not mine and I left it alone. Inference: it hung after launching Chromium or its server.
-- **There are 34 Finder-style duplicate directories named `* 2` inside `node_modules`.** Examples: `apps/web/node_modules/react 2`, `apps/worker/node_modules/@golem 2`, `apps/worker/node_modules/.bin 2`, `apps/site/node_modules/@astrojs/check 2`. Node resolves exact names, and `check-module-resolution` passed inside the gate. My guess is file-sync or copy conflict copies on ~/Desktop; I did not verify the cause.
+- **There are 34 Finder-style duplicate directories named `* 2` inside `node_modules`.** Examples: `apps/web/node_modules/react 2`, `apps/worker/node_modules/@apple 2`, `apps/worker/node_modules/.bin 2`, `apps/site/node_modules/@astrojs/check 2`. Node resolves exact names, and `check-module-resolution` passed inside the gate. My guess is file-sync or copy conflict copies on ~/Desktop; I did not verify the cause.
 
 ### Measured versus inferred
 - **Measured:** every exit code, count and duration in the table (tee'd logs), the fingerprint and status invariance, the HEAD-copy lint, the node v26 `diff: 'simple'` behaviour, and the orphan process with its socket.
@@ -172,7 +172,7 @@ Where it comes from:
 - AGENTS.md:81-82 test totals are stale, and every suite grew: worker 3,184 → 3706, web 1,799 → 2072, evals 1,328 → 1415, site 34 → 246.
 - GATES.md G90 is ticked [x] at HEAD line 357 and working-tree line 372 while its note says 'STILL UNTICKED'. The note's stated reasons (bundle budgets, check-proof-figures) no longer hold; its evidence-shape lint failure does.
 - An orphaned apps/site 'node --test tests/demo-stages-fit.test.mjs' (PID 68740, PPID 1, started 2026-09-21 14:46) is still alive, idle, on an OS-assigned port. It is harmless to results and was left untouched.
-- 34 Finder-style '* 2' duplicate directories exist under workspace node_modules (e.g. apps/web/node_modules/react 2, apps/worker/node_modules/@golem 2). check-module-resolution still passes.
+- 34 Finder-style '* 2' duplicate directories exist under workspace node_modules (e.g. apps/web/node_modules/react 2, apps/worker/node_modules/@apple 2). check-module-resolution still passes.
 
 ## OPEN QUESTIONS
 - Which apps/web test was Tommy's historic diff: 'simple' failure? No local transcript or repo text records it beyond cf17dc7, which describes a root-tests incident rather than apps/web.

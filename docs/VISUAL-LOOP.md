@@ -1,6 +1,6 @@
 # The visual intelligence loop
 
-Golem used to decide a scene was finished by reading object properties. That is how it built a flat
+Apple used to decide a scene was finished by reading object properties. That is how it built a flat
 grey slab with four primitive poles and a three-cylinder "trophy", verified that every requested
 object existed, and reported success. Properties cannot tell you a scene is ugly.
 

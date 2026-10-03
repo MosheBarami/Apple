@@ -16,7 +16,7 @@
  */
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
+import { type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
 import {
   SOURCE_EXPLANATIONS,
   availableChoices,

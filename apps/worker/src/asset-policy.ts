@@ -7,7 +7,7 @@
 // PURE ON PURPOSE. No env, no D1, no DO. The policy is resolved once where the user is known and
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
-import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
+import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
 import { ASSET_SOURCES, type AssetSource, type AssetProvenanceSource } from './assets';
 
 // Re-exported so a test in this module's own suite can walk the real engine-source list rather

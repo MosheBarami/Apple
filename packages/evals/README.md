@@ -1,4 +1,4 @@
-# @golem/evals
+# @apple/evals
 
 Roblox-specific eval harness (ADR-005: measure, don't vibe). Sends each task to
 candidate models through the deployed worker's admin gateway and grades the
@@ -147,9 +147,9 @@ section **60. END-TO-END RELEASE ACCEPTANCE** and twenty measures in section **5
 ANALYTICS**. Both are implemented here, and both are offline — no model call, no network, no spend.
 
 ```sh
-pnpm --filter @golem/evals acceptance    # the twenty scenarios, as tests (also runs in `pnpm -r test`)
-pnpm --filter @golem/evals metrics       # the report: scenarios, completion figure, the 20 measures
-pnpm --filter @golem/evals metrics -- --json
+pnpm --filter @apple/evals acceptance    # the twenty scenarios, as tests (also runs in `pnpm -r test`)
+pnpm --filter @apple/evals metrics       # the report: scenarios, completion figure, the 20 measures
+pnpm --filter @apple/evals metrics -- --json
 ```
 
 `src/acceptance.mjs` holds the scenarios. Each drives the real production code — the worker's

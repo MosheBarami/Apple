@@ -93,7 +93,7 @@ test('a remembered fact is CAPPED — one poisoned fact cannot become a document
 
 test('the memory summary is capped too', () => {
   const sys = systemPrompt({ ...base, memorySummary: 'Y'.repeat(9000) });
-  // Same trap, and this one actually fired: "You are Golem" put a lone Y ahead of the run.
+  // Same trap, and this one actually fired: "You are Apple" put a lone Y ahead of the run.
   const run = (sys.match(/Y+/g) ?? []).reduce((a, b) => (b.length > a.length ? b : a), '');
   assert.equal(run.length, MEMORY_SUMMARY_MAX_CHARS);
 });

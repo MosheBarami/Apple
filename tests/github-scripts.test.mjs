@@ -17,12 +17,12 @@ const ruleset = JSON.parse(readFileSync(join(ROOT, '.github/rulesets/main.json')
 const ci = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8');
 
 test('scope is the lower-cased repository owner and the base name survives a rename', () => {
-  assert.equal(baseName('@golem/sdk'), 'sdk');
   assert.equal(baseName('@apple/sdk'), 'sdk');
-  assert.equal(scopedName('@golem/sdk', 'MosheBarami'), '@moshebarami/sdk');
+  assert.equal(baseName('@apple/sdk'), 'sdk');
+  assert.equal(scopedName('@apple/sdk', 'MosheBarami'), '@moshebarami/sdk');
   assert.equal(scopedName('@apple/sdk', '@MosheBarami'), '@moshebarami/sdk');
-  assert.throws(() => scopedName('@golem/sdk', ''), /usable GitHub owner/);
-  assert.throws(() => scopedName('@golem/sdk', 'bad owner'), /usable GitHub owner/);
+  assert.throws(() => scopedName('@apple/sdk', ''), /usable GitHub owner/);
+  assert.throws(() => scopedName('@apple/sdk', 'bad owner'), /usable GitHub owner/);
 });
 
 test('publishable packages are exactly those that opt in, and the worker is not one of them', () => {
@@ -45,7 +45,7 @@ test('validate refuses what cannot be published and accepts what can', () => {
 
 test('the staged manifest is renamed, public, linked to the repo and has no lifecycle scripts', () => {
   const out = stagedManifest(
-    { name: '@golem/sdk', version: '1.0.0', private: true, scripts: { prepublishOnly: 'x' }, bin: { apple: './bin/apple.mjs' } },
+    { name: '@apple/sdk', version: '1.0.0', private: true, scripts: { prepublishOnly: 'x' }, bin: { apple: './bin/apple.mjs' } },
     { owner: 'MosheBarami', repo: 'MosheBarami/Apple', directory: 'packages/sdk' },
   );
   assert.equal(out.name, '@moshebarami/sdk');

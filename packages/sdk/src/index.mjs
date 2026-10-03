@@ -1,4 +1,4 @@
-// @golem/sdk — clients for the Apple REST + streaming API.
+// @apple/sdk — clients for the Apple REST + streaming API.
 //
 // The JavaScript entry point. Plain ESM with no build step, so a browser, a Worker, Node
 // and the `apple` CLI all load the same bytes; the TypeScript surface is the hand-written

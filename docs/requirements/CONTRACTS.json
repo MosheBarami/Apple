@@ -399,7 +399,7 @@
     {
       "id": "R56",
       "title": "סמכות billing, replay וסדר אירועים",
-      "execution_contract": "במקור המאוחר כבר נבנה מסלול canonical Apple authority עם replica של Golem. יש בו serialization, user pinning, monotonic sequence, authority replay ואישור mutation מדויק לפני החזרת webhook200. שמור אותו והעבר אותו בשלמותו בהגירת השם/namespace. אי אפשר להניח shared dedup ב־KV פותר אירועים בשתי DO namespaces; הוא עלול למנוע את העדכון הדרוש לשנייה. [S05]\n\nבדוק raw signature verification לפני parsing, timestamp tolerance, same event replay, different event out-of-order, duplicate delivery, lost replica acknowledgement, error body שגוי, wrong user/amount, cancellation event arriving late ו־resubscribe. webhook200 מתקבל רק לאחר שהחוזה המוגדר הושלם או לאחר no-op חוקי ומאומת. fixture חתום ב־HMAC אינו actual Stripe lifecycle; צריך את שניהם.",
+      "execution_contract": "במקור המאוחר כבר נבנה מסלול canonical Apple authority עם replica של Apple. יש בו serialization, user pinning, monotonic sequence, authority replay ואישור mutation מדויק לפני החזרת webhook200. שמור אותו והעבר אותו בשלמותו בהגירת השם/namespace. אי אפשר להניח shared dedup ב־KV פותר אירועים בשתי DO namespaces; הוא עלול למנוע את העדכון הדרוש לשנייה. [S05]\n\nבדוק raw signature verification לפני parsing, timestamp tolerance, same event replay, different event out-of-order, duplicate delivery, lost replica acknowledgement, error body שגוי, wrong user/amount, cancellation event arriving late ו־resubscribe. webhook200 מתקבל רק לאחר שהחוזה המוגדר הושלם או לאחר no-op חוקי ומאומת. fixture חתום ב־HMAC אינו actual Stripe lifecycle; צריך את שניהם.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -532,7 +532,7 @@
     {
       "id": "R75",
       "title": "public API, SDK ו־CLI",
-      "execution_contract": "פרסם חוזה resource model עקבי עם product/conversation/run/artifact, authentication, scopes, idempotency, pagination, deterministic ordering, errors, streaming ו־versioning. existing SDK שמדבר `/api` עם JWT אישי אינו בהכרח public API client מתאים. OpenAPI צריך schemas, דוגמאות ניתנות להרצה ו־compatibility policy, לא רק רשימת paths. [S02; קטעי הצ'קליסט]\n\nבדוק client JS/TS/Python/Luau/CLI לפי scope שנשאר, עם install/version/help/examples, timeout/retry/pagination/streaming וסוד שמגיע ממקום בטוח. אין להשאיר שמות `@golem` במוצר הפעיל לאחר הגירה. compatibility של clients ישנים דורשת חלון מעבר ותיעוד, לא endpoint פומבי בעל הרשאות רחבות. פרסום חבילה אינו public Git repository.",
+      "execution_contract": "פרסם חוזה resource model עקבי עם product/conversation/run/artifact, authentication, scopes, idempotency, pagination, deterministic ordering, errors, streaming ו־versioning. existing SDK שמדבר `/api` עם JWT אישי אינו בהכרח public API client מתאים. OpenAPI צריך schemas, דוגמאות ניתנות להרצה ו־compatibility policy, לא רק רשימת paths. [S02; קטעי הצ'קליסט]\n\nבדוק client JS/TS/Python/Luau/CLI לפי scope שנשאר, עם install/version/help/examples, timeout/retry/pagination/streaming וסוד שמגיע ממקום בטוח. אין להשאיר שמות `@apple` במוצר הפעיל לאחר הגירה. compatibility של clients ישנים דורשת חלון מעבר ותיעוד, לא endpoint פומבי בעל הרשאות רחבות. פרסום חבילה אינו public Git repository.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },

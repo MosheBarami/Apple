@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Is the product called what it is called?
 //
-// The rebrand from Golem to Apple covers PROSE, COPY AND USER-VISIBLE STRINGS ONLY. It does not
-// cover identifiers: the worker hostname, the D1 and Vectorize names, the Durable Object binding
-// and class names, the Supabase project ref, and a short list of wire and storage literals. Those
-// carry persisted values and live contracts, and renaming one breaks something a user is depending
-// on right now. That exception list is CLOSED — adding to it requires a one-line proof, in the same
-// commit, that renaming the identifier breaks a persisted value or a wire contract.
+// The product is Apple, and (owner decision 2026-10-02) the old name is wiped out of every aspect:
+// the rebrand now covers identifiers, wire literals and storage names too, with backward
+// compatibility for what is already in the wild. This program reads the STRING LITERALS of the
+// tracked source and the deployed bundle. What it may leave alone is no longer written here: the
+// exceptions are derived from scripts/golem-allowlist.json, the single list the CI guard
+// (scripts/check-no-golem.mjs) also enforces, each with a reason, a removal condition and an exact
+// count. This program only masks what that file names, in the files it names.
 //
 // THE DENOMINATOR IS NOT AUTHORED BY THIS PROGRAM. It is every string literal in the tracked
 // source, plus the DEPLOYED bundle, because the repository and the deployed artifact disagree and
@@ -61,83 +62,44 @@ const git = (a) => {
   catch { return ''; }
 };
 
-/* ------------------------------------------------------- the CLOSED exceptions --- */
+/* ------------------------------------------------------- the allowlisted exceptions --- */
 //
-// Exactly the §12.5 identifier list. Each is here because renaming it breaks a persisted value or
-// a live wire contract — not because it was inconvenient to change.
+// Derived, never hand-written: an exception that lived here AND in the guard's allowlist would be
+// two lists that drift. Each content entry of scripts/golem-allowlist.json becomes one scoped
+// exemption: its token (as a substring pattern) masked, in the files its paths name. A wildcard
+// entry (recorded history, migrations) is a path this program never reads, so it needs no mask.
 
-const EXEMPT = [
-  { pattern: /golem\.moshe-barami111\.workers\.dev/gi, why: 'the deployed worker hostname; renaming it breaks every client and the plugin' },
-  { pattern: /golem-corpus/gi, why: 'the D1 database name; the binding resolves by name' },
-  { pattern: /golem-docs/gi, why: 'the Vectorize index name; same' },
-  { pattern: /golem\.v1/gi, why: 'a wire protocol version literal the plugin also sends' },
-  { pattern: /golem\.jwt\./gi, why: 'a storage key prefix; renaming it signs every live session out' },
-  { pattern: /X-Golem-/gi, why: 'a request header the plugin sends; renaming it breaks pairing' },
-  { pattern: /golem_session/gi, why: 'a persisted session key' },
-  { pattern: /golem-ui/gi, why: 'a persisted UI namespace' },
-  { pattern: /golem_original/gi, why: 'an attribute written into places already built' },
-  { pattern: /golem-authored/gi, why: 'same — it marks instances in a live user place' },
-  { pattern: /@golem\//g, why: 'the npm workspace scope; renaming it rewrites every import in the monorepo' },
-  { pattern: /golem-theme/gi, why: 'a persisted localStorage key for the theme choice' },
-  { pattern: /golem\.rail\.collapsed/gi, why: 'a persisted localStorage key for the sidebar state' },
-  { pattern: /\bgolem\b(?=\{|,|\.[a-z-]+\{)/gi, why: 'a generated CSS class name; it is not read by a human' },
-  // `golem-plugin` WAS HERE, with the reason "the built artifact filename the owner uploads". That
-  // is an argument for renaming it, not for exempting it: the filename a person drags into their
-  // Plugins folder is the most user-visible string the product has, and it is neither a persisted
-  // value nor a wire contract — rojo's `--output` names the file, and the Instance inside it is
-  // named by `default.project.json`'s `name`, which is a separate string. Nothing resolves the
-  // artifact by its old filename, so the rename costs a build flag and a line of documentation.
-  { pattern: /MosheBarami\/golem/gi, why: 'the git remote' },
-  // PROOF, per §6.10's requirement for any addition: `GolemPalette` is the NAME of a ServerStorage
-  // folder inside places that have ALREADY been built, and Build.luau resolves it by name at
-  // runtime (`PALETTE_ROOT_NAME = "GolemPalette"`). Renaming it orphans the palette in every
-  // existing place and the meshes silently stop being found — a persisted value, which is the bar
-  // §12.5 sets.
-  { pattern: /GolemPalette/g, why: 'an instance name inside places already built; resolved by name at runtime' },
-  // PROOF: `GolemBaseVolume` is an ATTRIBUTE that sound-design.ts's generated Luau writes onto Sound
-  // instances in the user's own place, and reads back on the next pass to recover the volume the
-  // sound had before any trim (`if node:GetAttribute("GolemBaseVolume") == nil then ...`). Rename it
-  // and a place that already carries the old attribute re-baselines off its ALREADY-TRIMMED volume,
-  // so a second pass is -24 dB instead of -12 dB. That is a persisted value silently changing
-  // meaning, which is the bar §12.5 sets. The `-- Golem …` comments in the same generated chunk are
-  // pure branding and are NOT covered by this: they were renamed.
-  { pattern: /GolemBaseVolume/g, why: 'an attribute written onto Sounds in places already built; read back to recover the pre-trim volume' },
-  // PROOF: `golem.memory.v1` is the format stamp written INTO memory export files that users
-  // already hold on disk, and `parseImport` refuses an envelope whose `format` is anything else.
-  // The stamp NEW exports carry is now `apple.memory.v1`; this literal survives only in
-  // LEGACY_EXPORT_FORMATS, the list that keeps an already-downloaded bundle importable. Drop it and
-  // every export taken before the rename becomes unreadable — a persisted value, exactly as with
-  // `golem.v1` two entries up.
-  { pattern: /golem\.memory\.v1/gi, why: 'the format stamp inside memory exports users already hold; accepted on import for compatibility' },
-  // PROOF: `golem.studio-ops.v1` is a WIRE VALUE the installed plugin sends and the worker compares
-  // by equality. apps/apple-plugin/src/Commands.luau:3686 sets `CAPABILITY_SCHEMA` and puts it in
-  // every poll body; apps/worker/src/plugin-capabilities.ts:65 answers
-  // `if (top.schema !== PLUGIN_CAPABILITY_SCHEMA) return null` — and `null` is documented on the
-  // line above as COMPATIBILITY MODE, meaning the worker keeps offering every tool because it has
-  // no report. Rename one side and every plugin already in somebody's Plugins folder silently
-  // stops negotiating capabilities until they reinstall; rename both and the same happens for one
-  // release cycle. It is also persisted: the DO stores the parsed report under
-  // `pluginCapabilities:<hash>` with the schema string inside it. Identical in kind to `golem.v1`
-  // three entries up, which is exempt for the same reason.
-  { pattern: /golem\.studio-ops\.v1/gi, why: 'a wire schema value the installed plugin sends and the worker compares by equality' },
-  // PROOF: this `'golem'` is the legacy worker's DEPLOYMENT NAME, not copy. apps/worker/wrangler.jsonc:55
-  // ships `"BILLING_WORKER_NAME": "golem"` and wrangler.apple.jsonc:117 ships `"apple"`; index.ts:2564
-  // compares the running worker's var against BILLING_AUTHORITY_WORKER to decide which deployment
-  // may resolve Stripe state, and index.ts:2592 addresses the other one by this exact string when
-  // replicating the mutation into the legacy QuotaDO namespace. Changing the constant without
-  // redeploying the legacy worker's var makes the authority stop replicating — entitlement diverges
-  // between the two deployments, silently. Same class as the hostname at the top of this list.
-  //
-  // It is SCOPED to the two files that declare the deployment identity. An unqualified `'golem'`
-  // exemption would blank the word wherever it appeared alone, including in copy, which is the
-  // failure this program exists to catch.
-  {
-    pattern: /golem/gi,
-    file: /^apps\/worker\/src\/(billing-origin-authority|env)\.ts$/,
-    line: /BILLING_REPLICA_WORKER|BILLING_WORKER_NAME/,
-    why: "the legacy worker's deployment name, set in wrangler.jsonc and used to address it",
-  },
-];
+function globToRegExp(g) {
+  let out = '^';
+  for (let i = 0; i < g.length; i += 1) {
+    const c = g[i];
+    if (c === '*' && g[i + 1] === '*') { out += '.*'; i += 1; if (g[i + 1] === '/') i += 1; }
+    else if (c === '*') out += '[^/]*';
+    else out += c.replace(/[.+^${}()|[\]\\?]/g, '\\$&');
+  }
+  return new RegExp(`${out}$`);
+}
+
+/** The exemptions an allowlist document yields. Exported shape: [{ pattern, file, why }]. */
+function exemptionsFrom(doc) {
+  const out = [];
+  for (const e of doc.entries ?? []) {
+    if (e.scope !== 'content' || e.token === '*') continue;
+    out.push({
+      pattern: new RegExp(e.token, [...new Set([...(e.flags ?? ''), 'g', 'i'])].join('')),
+      file: new RegExp(`(?:${(e.paths ?? []).map((g) => globToRegExp(g).source).join('|')})`),
+      why: `${e.reason} (removal: ${e.removal})`,
+    });
+  }
+  return out;
+}
+
+const ALLOWLIST_PATH = join(ROOT, 'scripts/golem-allowlist.json');
+if (!existsSync(ALLOWLIST_PATH)) {
+  console.error('check-rebrand: scripts/golem-allowlist.json is missing — there is nothing to derive the exceptions from');
+  process.exit(2);
+}
+const EXEMPT = exemptionsFrom(JSON.parse(readFileSync(ALLOWLIST_PATH, 'utf8')));
 
 /**
  * The string literals in a source file, and nothing else.
@@ -376,9 +338,9 @@ function stringLiterals(src, rel) {
 }
 
 /** Blank every exempt identifier, so only the ones that are genuinely COPY remain. */
-function maskExempt(text, ctx = {}) {
+function maskExempt(text, ctx = {}, entries = EXEMPT) {
   let out = text;
-  for (const e of EXEMPT) {
+  for (const e of entries) {
     // A SCOPED entry only applies where its proof applies. `file` and `line` exist because some
     // identifiers are indistinguishable from copy when you look at the literal alone: `'golem'` in
     // `BILLING_WORKER_NAME?: 'apple' | 'golem'` is a deployment name, and `'golem'` in a toast is a
@@ -538,22 +500,21 @@ function selftest() {
   }
   // 9. Comments are still excluded, which is the property the blanking existed for.
   check('line comment is not a literal', !texts("// Golem was here\nconst a = 1;\n", 'a.ts').some((t) => /Golem/.test(t)));
-  // 10. The exception list still masks, and still only masks what it names.
-  check('exempt masks golem.v1', !/golem/i.test(maskExempt("'golem.v1'")));
-  check('exempt does not mask prose', /golem/i.test(maskExempt("'Built with Golem'")));
-  // 10b. A SCOPED entry must stay scoped. `'golem'` is a deployment name on two lines of two files
-  //      and a defect everywhere else; if this ever passes unscoped the program has gone blind to
-  //      the bare word.
-  check('scoped exempt does not fire without context', /golem/i.test(maskExempt("'golem'")));
-  check('scoped exempt does not fire on the wrong file',
-    /golem/i.test(maskExempt("'golem'", { rel: 'apps/web/src/app.tsx', line: "const BILLING_WORKER_NAME = 'golem'" })));
-  check('scoped exempt does not fire on the wrong line',
-    /golem/i.test(maskExempt("'golem'", { rel: 'apps/worker/src/env.ts', line: "const toast = 'golem'" })));
-  check('scoped exempt fires where its proof holds',
-    !/golem/i.test(maskExempt("'golem'", { rel: 'apps/worker/src/env.ts', line: "  BILLING_WORKER_NAME?: 'apple' | 'golem';" })));
-  // 10c. The deployed bundle has no file path, so a scoped entry must not apply to it.
-  check('scoped exempt never applies to the deployed bundle',
-    /golem/i.test(maskExempt('window.brand="golem"')));
+  // 10. An exemption masks what it names, in the file it names, and nothing else.
+  const fixture = exemptionsFrom({ entries: [
+    { scope: 'content', paths: ['apps/shim/legacy.ts'], token: 'x-golem-token', flags: 'i', reason: 'fixture', removal: 'never' },
+    { scope: 'content', paths: ['docs/evidence/**'], token: '*', max: null, reason: 'history', removal: 'never' },
+  ] });
+  check('the fixture yields one scoped exemption and ignores the wildcard', fixture.length === 1);
+  check('exempt masks its token in its file',
+    !/golem/i.test(maskExempt("'X-Golem-Token'", { rel: 'apps/shim/legacy.ts', line: '' }, fixture)));
+  check('exempt does not mask prose in the same file',
+    /golem/i.test(maskExempt("'Built with Golem'", { rel: 'apps/shim/legacy.ts', line: '' }, fixture)));
+  check('exempt does not mask its token in another file',
+    /golem/i.test(maskExempt("'X-Golem-Token'", { rel: 'apps/web/src/app.tsx', line: '' }, fixture)));
+  check('exempt never applies where there is no file, as in the deployed bundle',
+    /golem/i.test(maskExempt('window.h="X-Golem-Token"', {}, fixture)));
+  check('the real exemptions are derived from the allowlist and are not empty', EXEMPT.length > 0);
 
   if (fails.length) {
     for (const f of fails) console.error(`  SELFTEST FAIL ${f}`);
@@ -745,7 +706,7 @@ console.log(
   `DENOMINATOR ${sources.length} files + ${OFFLINE
     ? 'NO DEPLOYED HALF (--offline)'
     : deployed ? `${deployed.length} bytes of deployed capture (${capturedRoutes} rendered route(s))` : 'NO DEPLOYED BUNDLE'}; ` +
-  `EXCEPTIONS ${EXEMPT.length}: the closed §12.5 identifier list; SELFTEST ${selftestCases} properties`,
+  `EXCEPTIONS ${EXEMPT.length}: derived from scripts/golem-allowlist.json; SELFTEST ${selftestCases} properties`,
 );
 
 /* ------------------------------------------------------------------ the check --- */

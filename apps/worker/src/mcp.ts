@@ -2,7 +2,7 @@
 // calls them with. Pure — nothing here touches a binding, so every decision below can be tested
 // against its own inputs rather than against a database someone had to arrange first.
 //
-// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things GOLEM
+// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things APPLE
 // may do while a person is watching it work: it edits scripts, creates parts, runs Luau, inserts
 // assets, starts playtests. An MCP client is not that person and is not watching. It is some other
 // program — Claude, Cursor, a framework nobody here reviewed — holding a long-lived credential.
@@ -26,7 +26,7 @@
 // which means the change passes the gates the agent passes. There is deliberately no way to reach
 // a writing tool directly.
 import type { ApiScope } from './api-keys';
-import type { GatewayToolDef } from '@golem/shared';
+import type { GatewayToolDef } from '@apple/shared';
 
 // ---------------------------------------------------------------------------
 // protocol versions

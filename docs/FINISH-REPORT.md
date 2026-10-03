@@ -86,11 +86,11 @@ commits, deletion lines inside any test or spec file: 0.
 
 **One item the ledger called DONE and I am moving back to OPEN: the rename.**
 
-The half a customer sees is clean and I verified it: `grep -c -i golem` returns **0** on the live landing
+The half a customer sees is clean and I verified it: `grep -c -i apple` returns **0** on the live landing
 HTML and **0** on the live `/pricing` HTML. The half inside the repository regressed tonight:
 `check-rebrand` is red on `docs/evidence/ui-showcase/screen-gacha--tycoon.luau`, committed at 00:11:50,
-which prints `Ember Golem` to a player twice. Your message of 2026-09-20T00:19:02 was
-`כאשר אמרנו למחוק את golem מאה פעם השארת את השמות הקודמים שלו`. It happened again, in generated
+which prints `Ember Apple` to a player twice. Your message of 2026-09-20T00:19:02 was
+`כאשר אמרנו למחוק את apple מאה פעם השארת את השמות הקודמים שלו`. It happened again, in generated
 showcase content, four hours later.
 
 ---
@@ -104,7 +104,7 @@ showcase content, four hours later.
 | Features as interactive demos | NOT-STARTED | Replace the `What it is good at` four-card grid with one live artefact per claim; the refusal log in the STUDIO·ACTIVITY block is the working precedent. |
 | Proof-first marketing | PARTIAL — the live landing has `<img>` 0, `<video>` 0, `<iframe>` 0 | Publish the 3 captures already in `docs/evidence/lumen-isles-2026-09-19/` as a before/after strip under the hero. |
 | Hero must demonstrate the product | PARTIAL — `index.astro` hero composer is `<div class="composer" aria-hidden="true">` | Make it a real `<textarea>` that posts its text into `/app/signup` as the first prompt. |
-| Typography system | NOT-STARTED — deployed CSS has `@font-face` count 0 | Decide in writing whether the OS stack is final and update `golem-visual-direction.md`, or ship one self-hosted variable face. The memory file and the stylesheet currently disagree. |
+| Typography system | NOT-STARTED — deployed CSS has `@font-face` count 0 | Decide in writing whether the OS stack is final and update `apple-visual-direction.md`, or ship one self-hosted variable face. The memory file and the stylesheet currently disagree. |
 | Custom cursor | NOT-STARTED — `cursor:none` count 0; `data-cursor` count 0 in deployed CSS and HTML | Either build the renderer for the existing `data-cursor` attributes in `Nav.astro:29` and `CreditMeter.astro:45-46`, or delete those attributes. |
 | Dead code left behind by the background work | Reported, not deleted | `apps/site/src/components/FlowField.astro` is now orphaned — `Horizon.astro` replaced it, `index.astro` imports only Horizon, and no `.astro` file renders FlowField. Decide WIRE or DELETE. Not deleted here: the rule in this repository is that a lane removes only its own mess. |
 | Copy rosebud in green | PARTIAL — the green and the sound are rosebud's; the hero/nav geometry was measured from tesana.ai | Take the rosebud HAR you asked for and re-measure hero/nav against rosebud, or write down that tesana was chosen instead and why. |

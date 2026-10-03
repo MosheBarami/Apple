@@ -639,7 +639,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · REFUTED: REFUTED on deployment. The table is real in source (pricing.astro:177-245 driven by PLAN_FEATURES at packages/shared/src/index.ts:1469-1530, with the visually-hidden caption and Included/Not included text, exactly as des
 - [~] Usage and credit explanation
       · The explanation is built and mostly derived: apps/site/src/pages/docs/credits-and-limits.astro reads PLAN_LIMITS (lines 2-6) for the numbers, explains metering, the midnight-UTC reset and what happens at zero; apps/site/src/pages/pricing.as
-      → In apps/site/src/pages/docs/getting-started.astro, import PLAN_LIMITS from '@golem/shared' and replace the two hardcoded '60 Credits' strings (lines 19 and 88) with {PLAN_LIMITS.free.creditsPerDay}, the way apps/site/src/pages/docs/credits-and-limits.astro already does. Delete or rewrite the 'When d
+      → In apps/site/src/pages/docs/getting-started.astro, import PLAN_LIMITS from '@apple/shared' and replace the two hardcoded '60 Credits' strings (lines 19 and 88) with {PLAN_LIMITS.free.creditsPerDay}, the way apps/site/src/pages/docs/credits-and-limits.astro already does. Delete or rewrite the 'When d
 - [✓] Frequently asked questions
       · apps/site/src/pages/docs/faq.astro holds ten questions (plugin source, the retired .rbxm, scripting knowledge, Studio versions, publishing, Team Create, closing Studio mid-build, undoing a change, API availability, reporting bugs) rendered 
 - [~] Searchable documentation entry point
@@ -673,7 +673,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · apps/site/src/pages/docs/faq.astro:19-21 — 'Which Roblox Studio versions are supported?' answers 'Current production Roblox Studio on Windows and macOS… the plugin uses only stable, documented Studio APIs'. Served at /docs/faq, linked from 
 - [~] Plugin version display
       · Studio half is real and asserted: apps/plugin/src/init.server.luau:235 renders 'Apple v0.2.0 · protocol 1' in the dock, and packages/evals/src/plugin-version.test.mjs:160 fails if that label disappears. Web half is absent: the worker alread
-      → Add `fetchStudioLink(projectId)` to apps/web/src/lib/api.ts calling GET /api/projects/${id}/studio/link (returns StudioLinkSummary from @golem/shared), and render `pluginVersion` — with 'unknown' when null, never a blank — in the Studio pill/title at apps/web/src/routes/workspace.tsx:576-586. If you
+      → Add `fetchStudioLink(projectId)` to apps/web/src/lib/api.ts calling GET /api/projects/${id}/studio/link (returns StudioLinkSummary from @apple/shared), and render `pluginVersion` — with 'unknown' when null, never a blank — in the Studio pill/title at apps/web/src/routes/workspace.tsx:576-586. If you
 - [✓] Plugin update availability
       · apps/worker/src/plugin-version.ts:174 clientNotice() is called on every poll at apps/worker/src/do/session.ts:2954 and returned as `client` in the poll response; the plugin renders it at apps/plugin/src/init.server.luau:267 applyClientNotic
 - [✓] Plugin compatibility validation
@@ -1193,7 +1193,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · `run_spec` at apps/worker/src/tools.ts:1984 runs per-case Luau assertions in Studio and emits a `test_report` uiDetail block at tools.ts:2044-2065 with per-case name, status, message and duration. Rendered at apps/web/src/lib/generative-ui/
 - [~] Verified script rollback
       · The restore path counts what it actually wrote and refuses to claim success otherwise. apps/plugin/src/Serializer.luau:164 restore writes each snapshot script's Source under pcall and increments scriptsWritten (Serializer.luau:213-214), the
-      · REFUTED: REFUTED on deployment — the exact defect the claim says was removed is what a user gets today. I decompiled apps/plugin/release/golem-plugin.rbxm and the shipped Serializer.restore ends: `return { restored = true, instan
+      · REFUTED: REFUTED on deployment — the exact defect the claim says was removed is what a user gets today. I decompiled apps/plugin/release/apple-plugin.rbxm and the shipped Serializer.restore ends: `return { restored = true, instan
 
 ## 20. CONTEXT AND KNOWLEDGE RETRIEVAL  —  63%   ✓6 ~13 ☐1
 
@@ -2390,7 +2390,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · The server path is complete and proven end to end; there is no button. revokeApiKey scopes the UPDATE by owner in one statement (apps/worker/src/api-keys.ts:508), DELETE /api/keys/:id is wired with a securityNotice (apps/worker/src/index.ts
       → Add a 'Revoke' action per key in the settings API-keys panel (see 'Project-scoped API credentials') that DELETEs /api/keys/{id} behind a confirm dialog, then refetches the list and shows the key greyed with its revoked_at date from publicKeyShape (apps/worker/src/api-keys.ts:534).
 - [✓] Versioned endpoints
-      · Two-axis versioning, implemented and enforced: the /v1 prefix is the compatibility promise and a dated `Golem-Version` header is the change ledger (apps/worker/src/public-api.ts:30 API_VERSIONS, :44 resolveApiVersion). The middleware resolv
+      · Two-axis versioning, implemented and enforced: the /v1 prefix is the compatibility promise and a dated `Apple-Version` header is the change ledger (apps/worker/src/public-api.ts:30 API_VERSIONS, :44 resolveApiVersion). The middleware resolv
 - [✓] Consistent error responses
       · One envelope for the whole surface: errorBody (apps/worker/src/public-api.ts:687) emits `{error:{message,type,code,param}, request_id}` with the type derived from the status by errorTypeFor (public-api.ts:676), and it is what every /v1 refu
 - [~] Pagination
@@ -2607,13 +2607,13 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
 - [✓] TypeScript type definitions
       · packages/sdk/types/index.d.ts, 349 lines, hand-written and pinned to the runtime two ways by packages/sdk/tests/types.test.mjs:35 — every runtime export of src/index.mjs is declared and no declared value is absent at runtime (asserts >20 ex
 - [~] Python client library
-      · packages/sdk/python/golem_sdk/ — client.py (287 lines, AppleClient at :67 with request/request_full, retry and a 30s timeout), errors.py (ApiError at :18, should_retry at :45), numbers.py, studio.py. Proven by packages/sdk/tests/python.test
-      · REFUTED: The evidence is all literally true and the test is as rigorous as claimed — python/golem_sdk/client.py has AppleClient at :68 (claim said :67, off by one), errors.py has ApiError at :18 and should_retry at :45 exactly, a
+      · packages/sdk/python/apple_sdk/ — client.py (287 lines, AppleClient at :67 with request/request_full, retry and a 30s timeout), errors.py (ApiError at :18, should_retry at :45), numbers.py, studio.py. Proven by packages/sdk/tests/python.test
+      · REFUTED: The evidence is all literally true and the test is as rigorous as claimed — python/apple_sdk/client.py has AppleClient at :68 (claim said :67, off by one), errors.py has ApiError at :18 and should_retry at :45 exactly, a
 - [~] Supported Luau integration examples
       · The Luau CLIENT is real and tested: packages/sdk/luau/AppleClient.luau (307 lines; claim() at :253, poll() at :271, injectable HttpService), with packages/sdk/luau/tests/client.spec.luau run from packages/sdk/tests/luau.test.mjs:35, which a
       → Create packages/sdk/luau/examples/ with at least two runnable files: a command-bar snippet that requires AppleClient, calls :claim(code) and prints the project name, and a minimal Studio plugin (init.server.luau plus a default.project.json for Rojo) that pairs and then polls :poll() in a loop. Refer
 - [~] Command-line authentication
-      · Authentication works: packages/sdk/bin/apple.mjs:54 resolves the credential from `--token`, then APPLE_TOKEN, then GOLEM_TOKEN, and packages/sdk/tests/cli.test.mjs:102 spawns the real binary and asserts the fake server saw `authorization: B
+      · Authentication works: packages/sdk/bin/apple.mjs:54 resolves the credential from `--token`, then APPLE_TOKEN, then APPLE_TOKEN, and packages/sdk/tests/cli.test.mjs:102 spawns the real binary and asserts the fake server saw `authorization: B
       → Add a `login` command to COMMANDS in packages/sdk/src/cli-args.mjs:17 and a branch in packages/sdk/bin/apple.mjs. Simplest correct version: `apple login --key gk_live_…` validates the key with `GET /v1` (apps/worker/src/index.ts:3100) and writes it to ~/.config/apple/credentials.json at mode 0600; `
 - [~] Command-line project management
       · Per-project commands exist and every one is exercised end-to-end: packages/sdk/src/cli-args.mjs:17 declares memory, checkpoints, checkpoint, restore, pair, roadmap, attribution, export, search, messages and purge, and packages/sdk/tests/cli
@@ -2628,7 +2628,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · `apple export <projectId> --format json|md --out <file>` at packages/sdk/bin/apple.mjs:106, backed by AppleClient.exportTranscript() (packages/sdk/src/client.mjs:161), which takes the filename from the server's Content-Disposition rather th
       · REFUTED: The command is real and the test is honestly end-to-end: bin/apple.mjs:106 is exactly `case 'export': {`, tests/cli.test.mjs:144 spawns the real binary, asserts the written file's exact bytes and JSON.parse(stdout).writt
 - [~] SDK timeout configuration
-      · The Python client has it: packages/sdk/python/golem_sdk/client.py:81 takes `timeout: float = 30.0` and applies it at client.py:169 (`self._open(req, timeout=self.timeout)`). The JavaScript client does not. TransportOptions at packages/sdk/t
+      · The Python client has it: packages/sdk/python/apple_sdk/client.py:81 takes `timeout: float = 30.0` and applies it at client.py:169 (`self._open(req, timeout=self.timeout)`). The JavaScript client does not. TransportOptions at packages/sdk/t
       → Add `timeoutMs` to createTransport's options in packages/sdk/src/http.mjs:36 (default 30000, admitted through finiteInt like maxAttempts at http.mjs:45). In raw(), build an AbortController per attempt, start a timer, pass the signal to fetchImpl at http.mjs:84, and clear the timer in a finally. An a
 - [✓] SDK retry configuration
       · Configurable on three axes and tested on all of them. packages/sdk/src/http.mjs:45 admits `maxAttempts` through finiteInt (default 3, clamped 1-10, so a NaN cannot turn the cap into no cap); `retryNonIdempotent` is per-request at http.mjs:9
@@ -2641,7 +2641,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · packages/sdk/src/errors.mjs:13 `export class ApiError extends Error` carrying status (0 meaning transport, distinct from every HTTP status), body, retryAfter, attempts and an `isTransport` getter, with every numeric field admitted through f
 - [☐] Versioned example applications
       · No examples anywhere. `find . -type d -name 'example*'` outside node_modules and .git matches only vendored third-party corpora under packages/corpus/raw/ and a file inside packages/training/.venv — nothing authored here. packages/sdk ships
-      → Create packages/sdk/examples/ with at least two self-contained apps, each with its own package.json declaring a version and a `@golem/sdk` dependency pinned to an exact version: (1) node-transcript-export — authenticates, lists messages with pagination and writes a markdown transcript; (2) node-run-
+      → Create packages/sdk/examples/ with at least two self-contained apps, each with its own package.json declaring a version and a `@apple/sdk` dependency pinned to an exact version: (1) node-transcript-export — authenticates, lists messages with pagination and writes a markdown transcript; (2) node-run-
 - [~] Developer changelog
       · A product changelog exists and is unusually well-enforced: docs/RELEASES.json is the ledger, scripts/release.mjs --check regenerates and verifies CHANGELOG.md and docs/releases/v0.1.0.md and v0.2.0.md against it (rules as pure functions in 
       → Add an `api` section to each entry in docs/RELEASES.json (or a parallel `apiReleases` array keyed by the dated versions in apps/worker/src/public-api.ts:30), extend scripts/lib/release-rules.mjs with a rule that every value in API_VERSIONS has a ledger entry and every route carrying a `deprecated` b
@@ -2672,7 +2672,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Define the event payload shapes in apps/worker/src/public-api.ts beside projectEvents (line 516) as named schemas, reference them from openApiOperation (public-api.ts:483) under `text/event-stream` so /v1/openapi.json stops describing the stream as an untyped body, and put the API version inside eac
 - [~] Signed webhook payloads
       · INBOUND is done and well tested; OUTBOUND does not exist. verifyStripeSignature (apps/worker/src/billing.ts:213-246) does HMAC-SHA256 over `timestamp.rawBody`, compares in constant time (billing.ts:194) and rejects outside a 300s window; wi
-      → Add a signOutboundEvent(body, secret, timestampSeconds) helper to apps/worker/src/billing.ts's neighbour (new apps/worker/src/webhook-sign.ts) using the same crypto.subtle HMAC-SHA256 construction as billing.ts:236-244, emit it as `Golem-Signature: t=<epoch>,v1=<hex>` on every delivery, and publish 
+      → Add a signOutboundEvent(body, secret, timestampSeconds) helper to apps/worker/src/billing.ts's neighbour (new apps/worker/src/webhook-sign.ts) using the same crypto.subtle HMAC-SHA256 construction as billing.ts:236-244, emit it as `Apple-Signature: t=<epoch>,v1=<hex>` on every delivery, and publish 
 - [☐] Signing secret rotation
       · There is exactly one signing secret in the product and it cannot be rotated without a verification gap. STRIPE_WEBHOOK_SECRET is a single optional string (apps/worker/src/env.ts:32), read once per request (apps/worker/src/index.ts:1769) and
       → Two changes. (1) In apps/worker/src/billing.ts:220-231 collect ALL v1 values from the Stripe-Signature header and accept if any matches, and let apps/worker/src/env.ts:32 hold a comma-separated STRIPE_WEBHOOK_SECRET so a Stripe roll has an overlap window instead of a cutover. (2) For outbound webhoo
@@ -2740,7 +2740,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · THE CLASSIC SHAPE THIS AUDIT IS LOOKING FOR — fully built, fully tested, wired to nothing. apps/web/src/lib/studio-connection.ts:104-163 implements lastSeenLabel, latencyLabel, queueLabel and linkDetail (place mismatch, last poll, round-tri
       → In apps/web/src/lib/use-project-socket.ts:401-410 keep msg.lastSeenAt, msg.queuedOps, msg.place and msg.placeMismatch on the studio state object, and at line 727 replace `case 'pong': break;` with `setStudio(s => ({...s, rttMs: Date.now() - msg.t}))` using the echoed `t`. Then call linkDetail(state,
 - [~] Credential expiration visibility
-      · For Golem's own API keys the expiry is captured and served but never displayed: apps/worker/src/api-keys.ts:523-535 (publicKeyShape) returns expires_at, last_used_at and revoked_at as ISO strings, GET /api/keys serves them at apps/worker/sr
+      · For Apple's own API keys the expiry is captured and served but never displayed: apps/worker/src/api-keys.ts:523-535 (publicKeyShape) returns expires_at, last_used_at and revoked_at as ISO strings, GET /api/keys serves them at apps/worker/sr
       → Add an `expires_at` column to the user_credentials table in apps/worker/src/user-credentials.ts:158-170, an optional date field to the connect form in apps/web/src/components/roblox-key-panel.tsx (Roblox shows the expiry when the key is created), and surface it in describeStored at apps/web/src/lib/
 - [~] Credential refresh handling
       · The existing ✓ is a keyword false positive: packages/corpus/src/intake/security.test.mjs:299 ('.ROBLOSECURITY handling is credential theft') is a Luau malware scanner asserting that a cookie-stealing script is classified as credential-theft
@@ -2752,7 +2752,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Both credentials rotate. Integration key: apps/web/src/components/roblox-key-panel.tsx:225 renders 'Replace key' when one is already connected, PUT /api/me/roblox-key (apps/worker/src/index.ts:2376) upserts, and the upsert's own clause rese
       · REFUTED: Both halves fail the reachability test. (a) Roblox key: 'Replace key' at roblox-key-panel.tsx:225 only renders when `credential` is non-null, and the replacing PUT goes through the same putRobloxCredential that cannot st
 - [~] Credential revocation
-      · Two halves, each missing a different piece. Golem API keys: revocation is complete and enforced — apps/worker/src/api-keys.ts:508 (revokeApiKey), DELETE /api/keys/:id at apps/worker/src/index.ts:3004, refused at apps/worker/src/api-keys.ts:
+      · Two halves, each missing a different piece. Apple API keys: revocation is complete and enforced — apps/worker/src/api-keys.ts:508 (revokeApiKey), DELETE /api/keys/:id at apps/worker/src/index.ts:3004, refused at apps/worker/src/api-keys.ts:
       → Build the missing screen: add apps/web/src/components/api-keys-panel.tsx listing GET /api/keys (id, name, mode, scopes, projects, created, expires, last used) with a Revoke button calling DELETE /api/keys/:id and a Rotate button calling POST /api/keys/:id/rotate, mount it as a new <Row id="api-keys"
 - [~] Integration disconnect
       · apps/web/src/components/roblox-key-panel.tsx:116-123 renders a Disconnect button, wired through deleteRobloxKey in apps/web/src/lib/api.ts:862-863 to DELETE /api/me/roblox-key at apps/worker/src/index.ts:2398, which calls deleteRobloxCreden
@@ -2990,7 +2990,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · REFUTED 2026-09-16: enforced, and gated by nothing. The three cited artifacts exist (line numbers drifted): RUN_WALL_MS at apps/worker/src/do/session.ts:315, runDurationVerdict at :346, and the enforcement at :2306-2311, correctly above the step-limit branch. But all six tests in apps/worker/tests/run-duration.test.mjs call the bundled PURE FUNCTION (S.runDurationVerdict at :47, :55, :56, :63, :82, :93) and none reads the call site; `grep -rn 'RUN_WALL|runDurationVerdict|duration\.over' apps/worker/tests apps/web/tests packages/evals/src tests scripts` returns nothing outside that one file. Delete the enforcement branch and all six stay green — built-and-not-wired, the shape this file exists to name. WHAT IS MISSING: the static assertion the spend gate already has one section away (packages/evals/src/security.test.mjs:2106, 'A6 STATIC CHECK — the gateway has exactly one adapter invocation and it is inside the spend gate').
 - [~] Per-run spending caps
       · There is no ceiling on what ONE RUN may spend. What is enforced is a per-INFERENCE-CALL cap — apps/worker/src/pricing.ts:93 MAX_NEURONS_PER_REQUEST = 1_200, refused in BudgetDO at apps/worker/src/do/budget.ts:274 with reason 'request_too_la
-      → Two changes. (1) apps/worker/src/do/session.ts — add `const RUN_NEURON_CAP: Record<GolemMode, number>` beside STEP_LIMITS at line 208 (a sane start: clay 1,800 / stone 6,000 / rune 9,000, all under the 10,000 free daily allocation), and after `agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neuro
+      → Two changes. (1) apps/worker/src/do/session.ts — add `const RUN_NEURON_CAP: Record<AppleMode, number>` beside STEP_LIMITS at line 208 (a sane start: clay 1,800 / stone 6,000 / rune 9,000, all under the 10,000 free daily allocation), and after `agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neuro
 - [✓] Daily spending caps
       · Two independent daily ceilings, both enforced. PER USER: apps/worker/src/quota-math.ts:62 quotaState() computes dailyLeft from PLAN_LIMITS[plan].creditsPerDay (packages/shared/src/index.ts:1300, free = 231/day) against a UTC-day-keyed ledge
 - [✓] Monthly spending caps
@@ -3302,7 +3302,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · Nothing records an incident anywhere in the tree (see 'Incident severity classification' and 'Public incident status updates'), so there is nothing whose resolution could be confirmed. The nearest capability is scoped to one remediation, no
       → Once the incidents table from 'Public incident status updates' exists, make closing an incident require evidence rather than a click: in apps/worker/src/index.ts, have POST /api/admin/incidents/:id/resolve re-run the probe set from infra/healthcheck.mjs against the origin and refuse to set resolvedA
 - [~] Post-incident review
-      · A genuine, maintained review log exists: docs/FAILURES.md, required by the mission spec (file header: 'the internal knowledge base must carry every confirmed Golem failure'), newest-first, each entry stating 'what was believed, what was tru
+      · A genuine, maintained review log exists: docs/FAILURES.md, required by the mission spec (file header: 'the internal knowledge base must carry every confirmed Apple failure'), newest-first, each entry stating 'what was believed, what was tru
       → Add a Production incidents section to docs/FAILURES.md with a fixed template — incident id, severity per docs/INCIDENT-SEVERITY.md, detected at / started at / resolved at, customer impact in plain language, how it was detected (and whether monitoring or a customer found it first), root cause, and co
 - [☐] Corrective action tracking
       · No artifact tracks a follow-up action to closure with a state and an owner. docs/FAILURES.md records fixes inline in prose with no open/closed field, no owner and no due date. docs/BLOCKERS.md tracks human-blocked items (each with a Status 
@@ -3427,7 +3427,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Add an `env.dev` block to apps/worker/wrangler.jsonc setting ENVIRONMENT:"development" and pointing SUPABASE_URL/SUPABASE_ANON_KEY at a separate Supabase project, and commit apps/worker/.dev.vars.example listing every optional secret in apps/worker/src/env.ts with placeholder values. Then give ENVIR
 - [☐] Separate staging environments
       · Searched `staging` case-insensitively across apps/, packages/, scripts/, infra/, tests/, .github/ and docs/ — every hit is inside vendored third-party data (packages/corpus/data/sources.json, template-seeds.json, library/iconify.json). No `
-      → Create a staging tier in apps/worker/wrangler.jsonc as an `env.staging` block: a distinct worker name (`golem-staging`), its own D1 database_id, KV namespace id and Vectorize index (staging must not share the production data plane the way wrangler.apple.jsonc does), ENVIRONMENT:"staging", and a stag
+      → Create a staging tier in apps/worker/wrangler.jsonc as an `env.staging` block: a distinct worker name (`apple-staging`), its own D1 database_id, KV namespace id and Vectorize index (staging must not share the production data plane the way wrangler.apple.jsonc does), ENVIRONMENT:"staging", and a stag
 - [✓] Separate production environments
       · Production is real, deployed and independently verified: I probed the live origin on 2026-09-15 and `GET https://golem.moshe-barami111.workers.dev/api/health` returned HTTP 200 with `{"ok":true,"version":"0.1.0","buildSha":"e66fac3","time":
 - [~] Environment-specific secrets
@@ -3435,7 +3435,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Create docs/SECRETS.md listing every optional binding declared in apps/worker/src/env.ts against the environment it is set in (production / staging / local) and the command that sets it (`wrangler secret put NAME --env <env>`), and add a checker scripts/check-secret-inventory.mjs that parses the `En
 - [~] Reproducible builds
       · Build INPUTS are pinned hard: `pnpm install --frozen-lockfile` in all five CI jobs (.github/workflows/ci.yml:65, 124, 238, 293, 318), NODE_VERSION '22' and PNPM_VERSION '11.13.0' (ci.yml:41-43), LUAU_VERSION '0.663' and ROJO_VERSION '7.7.0'
-      → Add a `reproducible` job to .github/workflows/ci.yml that builds twice from a clean checkout and compares: run `pnpm --filter @golem/site build && pnpm --filter @golem/web build`, record `find apps/site/dist apps/web/dist -type f -exec sha256sum {} +` sorted into a manifest, `rm -rf` both dist direc
+      → Add a `reproducible` job to .github/workflows/ci.yml that builds twice from a clean checkout and compares: run `pnpm --filter @apple/site build && pnpm --filter @apple/web build`, record `find apps/site/dist apps/web/dist -type f -exec sha256sum {} +` sorted into a manifest, `rm -rf` both dist direc
 - [✓] Dependency lockfile enforcement
       · pnpm-lock.yaml is committed (lockfileVersion '9.0') and complete — all eleven workspace members declared in pnpm-workspace.yaml appear as importers (apps/benchmark/crystal-canyon, apps/plugin, apps/site, apps/web, apps/worker, packages/corp
 - [~] Build artifact versioning

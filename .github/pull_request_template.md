@@ -17,7 +17,7 @@
 
 **Safety**
 - [ ] No secret, token, `.env` value, cookie or API key is in the diff, the description or the screenshots (this repository is public).
-- [ ] No change to a wire literal or an infrastructure name (`golem.v1`, `X-Golem-`, worker, D1 or KV names) unless that is the point of the PR.
+- [ ] No wire literal or infrastructure name (`apple.v1`, `X-Apple-`, worker, D1 or KV names) is changed without backward compatibility (accept both spellings first, switch clients later) unless that is the point of the PR.
 
 ## Evidence
 

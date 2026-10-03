@@ -3,7 +3,7 @@
 // There is no per-project settings store on the web side (drafts and view state each keep their own
 // localStorage key), so this follows draft.ts: keyed by project id, never throws, and falls back to
 // the in-memory copy when storage is blocked so the choice still applies for the session.
-import { asUiTheme, DEFAULT_UI_THEME, type UiTheme } from '@golem/shared';
+import { asUiTheme, DEFAULT_UI_THEME, type UiTheme } from '@apple/shared';
 
 const PREFIX = 'apple.uiTheme.';
 const memory = new Map<string, UiTheme>();

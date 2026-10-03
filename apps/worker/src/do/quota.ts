@@ -2,7 +2,7 @@
 // Keeps worst-case inference spend inside the free neuron allocation.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
-import type { QuotaState } from '@golem/shared';
+import type { QuotaState } from '@apple/shared';
 import { isPlanId, type PlanId } from '../pricing';
 import { entitlementFor, NO_BILLING_DETAILS, readBillingDetails, type BillingDetails, type Subscription } from '../billing';
 import {

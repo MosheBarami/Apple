@@ -54,7 +54,7 @@ test('missing photos are downloaded with a signed-in fetch and saved where the s
     got.push({ url, auth: init.headers?.Authorization });
     return { ok: true, status: 200, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
   };
-  const env = { GOLEM_E2E_EMAIL: 'a@b.c', GOLEM_E2E_PASSWORD: 'pw-aaaaaaaa', API_BASE: 'https://api.test' };
+  const env = { APPLE_E2E_EMAIL: 'a@b.c', APPLE_E2E_PASSWORD: 'pw-aaaaaaaa', API_BASE: 'https://api.test' };
   const { sheet } = await main(['sheet', file], { log: () => {}, fetch: fetchStub, env, anonKey: 'anon' });
   assert.deepEqual(got.map((g) => g.url), [`https://api.test/api/projects/${PROJ}/images/${IMG}`], 'only the missing photo (top) is fetched');
   assert.equal(got[0].auth, 'Bearer tok-aaaaaaaa.bbbbbbbb.cccccccc');
@@ -67,7 +67,7 @@ test('missing photos are downloaded with a signed-in fetch and saved where the s
 test('an expired photo is listed as missing with its HTTP status, not a crash', async () => {
   const { file } = setup([row()]);
   const fetchStub = async (url) => (url.includes('supabase') ? { ok: true, status: 200, json: async () => ({ access_token: 'tok-aaaaaaaa.bbbbbbbb.cccccccc', expires_in: 3600 }) } : { ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) });
-  const { sheet } = await main(['sheet', file], { log: () => {}, fetch: fetchStub, env: { GOLEM_E2E_EMAIL: 'a@b.c', GOLEM_E2E_PASSWORD: 'pw-aaaaaaaa' }, anonKey: 'anon' });
+  const { sheet } = await main(['sheet', file], { log: () => {}, fetch: fetchStub, env: { APPLE_E2E_EMAIL: 'a@b.c', APPLE_E2E_PASSWORD: 'pw-aaaaaaaa' }, anonKey: 'anon' });
   assert.match(sheet, /- front: MISSING \(HTTP 404\)/);
 });
 

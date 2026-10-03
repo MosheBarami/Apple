@@ -56,7 +56,7 @@ test('the two former copies now consume the shared module rather than redefining
   // "deduplicated" from "removed".
   for (const rel of ['apps/worker/src/composition.ts', 'packages/evals/src/props.mjs']) {
     const src = readFileSync(join(ROOT, rel), 'utf8');
-    assert.match(src, /from '@golem\/design\/pixels'/, `${rel} must import the shared primitives`);
+    assert.match(src, /from '@apple\/design\/pixels'/, `${rel} must import the shared primitives`);
     assert.match(src, /geometryMask\(/, `${rel} must still actually USE the mask`);
   }
 });
@@ -65,7 +65,7 @@ test('the ambient declaration the worker typechecks against matches the module i
   // The .d.ts is hand-written and is the one seam the dedup did not remove. If it drifts, the
   // worker typechecks against a shape the module does not have — which is OH-6 again, one layer
   // down and harder to see.
-  const dts = readFileSync(join(ROOT, 'apps/worker/src/types/golem-pixels.d.ts'), 'utf8');
+  const dts = readFileSync(join(ROOT, 'apps/worker/src/types/apple-pixels.d.ts'), 'utf8');
   const mod = readFileSync(join(ROOT, SHARED), 'utf8');
   for (const name of ['geometryMask', 'SKY_RGB', 'GROUND_RGB']) {
     assert.ok(dts.includes(name), `the declaration omits ${name}`);

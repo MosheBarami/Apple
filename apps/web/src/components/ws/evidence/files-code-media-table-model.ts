@@ -4,7 +4,7 @@
  * list of Studio paths); anything that is not there yields null, and the renderer draws nothing.
  * Types only are imported so `node --test` can bundle this without a DOM.
  */
-import type { StudioFrame } from '@golem/shared';
+import type { StudioFrame } from '@apple/shared';
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.length > 0 ? v : undefined);
 const rec = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' ? (v as Record<string, unknown>) : null);

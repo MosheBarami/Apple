@@ -22,7 +22,8 @@
 //                                   moderation gate and cannot reference something that is not there.
 //   generate_sound / speak_line   — make audio. It reaches the USER, not the place.
 import type { AgentCtx } from './tools';
-import type { GatewayToolDef, StudioOp, InstanceSpec, PropValue } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, InstanceSpec, PropValue } from '@apple/shared';
+import { BASE_VOLUME_ATTRIBUTE, baseVolumeOf } from '@apple/shared';
 import { encodePng, bytesToBase64 } from './png';
 import { encodeWav, isAudioFault, waveformPeaks, waveformPixels, type PcmAudio } from './audio';
 import { SFX, SFX_NAMES, renderSfx, sfxCatalogue } from './sfx';
@@ -342,7 +343,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
         const props = detail.props && typeof detail.props === 'object' ? detail.props as Record<string, unknown> : {};
         const attributes = detail.attributes && typeof detail.attributes === 'object' ? detail.attributes as Record<string, unknown> : {};
         const currentVolume = Number(decoded(props.Volume));
-        const remembered = decoded(attributes.GolemBaseVolume);
+        const remembered = decoded(baseVolumeOf(attributes));
         const baseVolume = typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : currentVolume;
         if (!Number.isFinite(baseVolume)) return assigned > 0
           ? { error: `${assignment.path}: Studio did not return a readable Volume`, projectMutated: true }
@@ -363,7 +364,9 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
           op: 'set_props',
           path: assignment.path,
           props: outProps,
-          ...(remembered === undefined || remembered === null ? { attributes: { GolemBaseVolume: { t: 'number', v: baseVolume } } } : {}),
+          // written under the NEW name whenever the new attribute is absent, including when the volume was
+          // recovered from the old one, so a place converges to the new attribute after one pass
+          ...(decoded(attributes[BASE_VOLUME_ATTRIBUTE]) === undefined || decoded(attributes[BASE_VOLUME_ATTRIBUTE]) === null ? { attributes: { [BASE_VOLUME_ATTRIBUTE]: { t: 'number', v: baseVolume } } } : {}),
         });
         if (failed(changed)) return afterMutation(changed, assigned > 0);
         assigned += 1;

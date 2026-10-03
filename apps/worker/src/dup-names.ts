@@ -17,7 +17,7 @@
  *
  * Nothing here knows what a thing is called or what it is for. It reads names, counts and references.
  */
-import type { StudioOp } from '@golem/shared';
+import type { StudioOp } from '@apple/shared';
 
 /** The most clones one clone_instances call may make: the same ceiling every direct edit has. */
 export const COPIES_LIMIT = 120;

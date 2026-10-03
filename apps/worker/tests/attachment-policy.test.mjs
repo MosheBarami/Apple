@@ -7,7 +7,7 @@
  * answer to the question the type field implies: what happens when the bytes say one thing and
  * the Content-Type header says another.
  *
- * The rules live in @golem/shared because both ends enforce them, and both ends enforcing two
+ * The rules live in @apple/shared because both ends enforce them, and both ends enforcing two
  * different copies of a limit is how a browser accepts a file the server then refuses without
  * saying why. The same single-source rule MESSAGE_MAX_CHARS already carries.
  *
@@ -45,7 +45,7 @@ import {
   foldAttachmentsIntoPrompt,
   sniffAttachmentFormat,
   validateAttachment,
-} from '@golem/shared';
+} from '@apple/shared';
 
 const enc = new TextEncoder();
 const bytes = (s) => enc.encode(s);

@@ -270,7 +270,7 @@ test('CI still runs the wall checker against the built page', () => {
   assert.ok(existsSync(ci), `${ci} is gone — this guard may no longer run against a real page anywhere`);
   const yml = readFileSync(ci, 'utf8');
 
-  const build = yml.indexOf('pnpm --filter @golem/site build');
+  const build = yml.indexOf('pnpm --filter @apple/site build');
   const check = yml.indexOf('node scripts/check-asset-wall.mjs');
   assert.ok(check > -1,
     'ci.yml no longer runs scripts/check-asset-wall.mjs. The tests above run on FIXTURES; without '

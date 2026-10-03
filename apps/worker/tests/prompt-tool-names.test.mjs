@@ -26,7 +26,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@golem/shared';
+import { STUDIO_PLUGIN_STORE_LIVE, STUDIO_PLUGIN_URL } from '@apple/shared';
 import { systemPrompt, pluginInstallGuidance } from '../src/prompts.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -255,7 +255,7 @@ test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET',
   //   both branches are now asserted through the exported composer, whichever way the flag points
   //   today, and the built prompt is checked against the branch the flag selects.
   const source = readFileSync(join(WORKER, 'src', 'prompts.ts'), 'utf8');
-  const importLine = source.match(/import \{([^}]*)\} from '@golem\/shared'/g) ?? [];
+  const importLine = source.match(/import \{([^}]*)\} from '@apple\/shared'/g) ?? [];
   const imported = importLine.join(' ');
   assert.match(imported, /\bSTUDIO_PLUGIN_STORE_LIVE\b/,
     'the availability fact must be imported, so it cannot drift from the UI that shows it');

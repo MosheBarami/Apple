@@ -1,4 +1,4 @@
-# Golem Visual Quality Benchmark — design spec
+# Apple Visual Quality Benchmark — design spec
 
 Status: design, not yet implemented. Author: research pass 2026-08-30.
 Companion artifact: `packages/evals/tasks-visual/tasks.json` (12 starter tasks).
@@ -7,8 +7,8 @@ Companion artifact: `packages/evals/tasks-visual/tasks.json` (12 starter tasks).
 
 ## 0. Why this exists
 
-`packages/evals` measures whether Golem writes *correct* Luau. It scores 98.9 overall on
-GLM-5.3-flash. The owner has rejected the product anyway, because the thing Golem builds looks
+`packages/evals` measures whether Apple writes *correct* Luau. It scores 98.9 overall on
+GLM-5.3-flash. The owner has rejected the product anyway, because the thing Apple builds looks
 like this:
 
 > a flat platform, four grey poles with yellow cubes on top, a "trophy" that is three stacked
@@ -36,7 +36,7 @@ That last claim is **false as of 2026-03-19**. Roblox shipped `insert_from_creat
 *and* inserts), `generate_mesh` (textured meshes from a text prompt) and `generate_material`
 (MaterialVariants from a text description) as native Studio MCP tools, alongside
 `GenerationService:GenerateModelAsync` / `GenerateMeshAsync` in the engine API.[^mcp][^gen]
-Golem is instructed to hand-roll primitives because the prompt believes the alternative does not
+Apple is instructed to hand-roll primitives because the prompt believes the alternative does not
 exist. The benchmark below will score that policy at ~1.2/4 and will score an asset-and-material
 policy far higher — which is the point. **The benchmark must be able to see the difference before
 the prompt is changed, or the change cannot be defended with numbers.**
@@ -63,7 +63,7 @@ bias[^infobias]).
 
 ## 1. Scope and units
 
-- **Unit of evaluation:** one built scene, produced by one Golem run from one prompt, in a Studio
+- **Unit of evaluation:** one built scene, produced by one Apple run from one prompt, in a Studio
   session starting from a defined fixture.
 - **Score:** 20 dimensions, each 0–4 integer, aggregated to one 0–4 overall (§5).
 - **Not in scope:** script correctness (covered by `packages/evals`), gameplay balance, monetisation.
@@ -78,7 +78,7 @@ bias[^infobias]).
 | 2.8 – 3.3 | ships after touch-up; recognisably designed |
 | 2.2 – 2.7 | prototype; a developer would rebuild the art |
 | 1.5 – 2.1 | greybox with paint |
-| 0.0 – 1.4 | **primitive slop** — current Golem output lives here |
+| 0.0 – 1.4 | **primitive slop** — current Apple output lives here |
 
 The owner-rejected scene must land in the bottom band. §5.3 proves it does, arithmetically.
 
@@ -146,14 +146,14 @@ That was true when written. It is no longer the only option. Two paths now exist
 
 - **Preferred — Studio MCP `screen_capture`.** Shipped 2026-03-19, "captures the current Studio
   viewport in play mode and returns the image data".[^mcp] The eval harness drives Studio through
-  the MCP server rather than through Golem's own plugin socket, so the capture path is independent
+  the MCP server rather than through Apple's own plugin socket, so the capture path is independent
   of the thing being tested — which is the correct separation for a benchmark anyway.
 - **Fallback — `CaptureService:CaptureScreenshot(onCaptureReady)` from a LocalScript in play
   mode.**[^capture] Client-side, needs Play mode, returns a temporary content id. Usable, more
   moving parts.
 
 Whichever path, the eval harness — not the model under test — sets the camera, so framing is
-identical across models. Golem's `camera_focus` op must **not** be used for capture, because a
+identical across models. Apple's `camera_focus` op must **not** be used for capture, because a
 model that frames its own work well would score higher for camera work rather than building.
 
 **Canonical shots.** Let `C` = centroid and `R` = half-diagonal of the union bounding box of all
@@ -184,7 +184,7 @@ Every task names a fixture so runs are comparable:
 - `baseplate` — the stock Baseplate template. Lighting at template defaults.
 - `flat-ground-256` — a 256×256 stud anchored `Part`, `Material = Grass`, no other content.
 - `ugly-<name>.rbxl` — a checked-in *deliberately bad* scene for redesign tasks (§8.12). These are
-  produced by running today's Golem and freezing the output, so the redesign task measures exactly
+  produced by running today's Apple and freezing the output, so the redesign task measures exactly
   the gap the owner is complaining about.
 
 ---
@@ -396,7 +396,7 @@ capped at 2 (value structure is doing no work).
 **Roblox meaning.** As of the Unified Lighting rollout (fully live 2025-07-23), `Lighting.Technology`
 is deprecated and replaced by `LightingStyle` (`Realistic` | `Soft`) plus `PrioritizeLightingQuality`
 — **both RobloxScriptSecurity, so a normal script cannot set them**; only Studio UI or an elevated
-plugin context can.[^unified] What Golem *can* script: `Ambient`, `OutdoorAmbient`, `Brightness`,
+plugin context can.[^unified] What Apple *can* script: `Ambient`, `OutdoorAmbient`, `Brightness`,
 `ClockTime`/`TimeOfDay`, `GeographicLatitude`, `ColorShift_Top`/`_Bottom`, `ExposureCompensation`,
 `EnvironmentDiffuseScale`/`EnvironmentSpecularScale`, `ShadowSoftness`, `GlobalShadows`, fog; plus
 child instances `Atmosphere`, `Sky`, `Clouds`, `BloomEffect`, `ColorCorrectionEffect`,
@@ -515,7 +515,7 @@ conceptual object is evidence of ≤2 *and* a performance flag.
 ### 4.14 Asset quality
 **Roblox meaning.** What the objects actually *are*, on the ladder: raw `Part` primitive → unioned
 solid → imported/generated `MeshPart` → `MeshPart` + `SurfaceAppearance` → Creator Store asset from
-a competent creator. As of 2026-03-19 Golem has three native routes off the bottom rung —
+a competent creator. As of 2026-03-19 Apple has three native routes off the bottom rung —
 `insert_from_creator_store` (search + insert), `generate_mesh`, `generate_material`[^mcp] — plus
 `GenerationService:GenerateModelAsync`, which returns a multi-part grouped `Model` with basic
 physical properties.[^gen]
@@ -806,7 +806,7 @@ ladder, and have the judge place the candidate by pairwise comparison — then r
 packages/evals/tasks-visual/anchors/<taskType>/L0.png … L4.png
 ```
 
-Ladders are built once, by hand, from: (L0) today's Golem output, (L1–L2) intermediate Studio
+Ladders are built once, by hand, from: (L0) today's Apple output, (L1–L2) intermediate Studio
 builds, (L3–L4) reference environments — Roblox's own laser-tag environmental-art project is the
 natural L4 source for the architectural task types, since its exact stud dimensions, MaterialVariant
 names and RGB palette are published.[^construct]
@@ -1050,11 +1050,11 @@ Each type exists to make a *specific* failure mode unavoidable. Full definitions
 | 9 | `vis-09-monument` | monument / trophy | **the exact rejected object.** Proportion, silhouette, detail density on one hero form |
 | 10 | `vis-10-ui-scene` | UI-heavy scene | 2D hierarchy, cross-device scale, colour harmony between UI and world |
 | 11 | `vis-11-lighting-redesign` | lighting redesign | isolates lighting: geometry is a fixed fixture, only lighting may change |
-| 12 | `vis-12-ugly-redesign` | ugly → professional redesign | **the money task.** Fixture is frozen current-Golem output; measures the exact gap |
+| 12 | `vis-12-ugly-redesign` | ugly → professional redesign | **the money task.** Fixture is frozen current-Apple output; measures the exact gap |
 
 ### 8.1 Note on task 11 and 12 fixtures
 `vis-11` and `vis-12` load `.rbxl` fixtures. `vis-12`'s fixture is generated by running today's
-Golem on a plaza prompt and freezing the result — so its L0 anchor and its input fixture are the
+Apple on a plaza prompt and freezing the result — so its L0 anchor and its input fixture are the
 same scene, and the task's score *is* the improvement delta. `vis-11` forbids geometry changes: the
 grader diffs `snapshot.json` and zeroes the task if any BasePart `Size`/`CFrame`/`Color`/`Material`
 changed, so lighting cannot be faked by rebuilding the scene.
@@ -1068,7 +1068,7 @@ until:
 
 ### 9.1 Human-anchored calibration set
 60 scenes — 5 per task type — scored independently by 2 humans on all 20 dimensions.
-Composition: 12 from current Golem, 24 from mid-tier Roblox community builds, 12 from Roblox's own
+Composition: 12 from current Apple, 24 from mid-tier Roblox community builds, 12 from Roblox's own
 reference projects, 12 deliberately adversarial (see 9.3).
 
 ### 9.2 Acceptance criteria
@@ -1116,10 +1116,10 @@ Ordered by what blocks what.
 | 5 | `grade-visual.mjs` — two-pass judge, caps, aggregation | new; mirrors `grade.mjs` structure | verdicts |
 | 6 | Extend `validateTask` for the visual task schema (§11) | `tasks.mjs:9-42` — current `CHECK_TYPES` would reject every visual task | loading tasks |
 | 7 | Anchor ladders, 5 images × 12 task types | `tasks-visual/anchors/` | §6.2 |
-| 8 | `.rbxl` fixtures incl. frozen current-Golem output | `tasks-visual/fixtures/` | tasks 11, 12 |
+| 8 | `.rbxl` fixtures incl. frozen current-Apple output | `tasks-visual/fixtures/` | tasks 11, 12 |
 | 9 | Human calibration set + κ measurement | `tasks-visual/calibration/` | trusting any number |
 
-Items 1–3 are prerequisites in Golem's own plugin, and are worth doing regardless: a Golem that
+Items 1–3 are prerequisites in Apple's own plugin, and are worth doing regardless: an Apple that
 cannot see its own scene or read back a `SurfaceAppearance` also cannot *iterate* on visual
 quality at runtime. The benchmark and the product need the same missing capability.
 

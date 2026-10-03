@@ -152,7 +152,7 @@ export function toProvenanceRecord(api, { host = 'github.com', discoveredAt = to
  * turns a bounded CI run into an unbounded one, and the caller is better placed to decide whether
  * waiting eleven minutes for a reset is worth it.
  */
-async function request(url, { fetchImpl, token = null, userAgent = 'golem-corpus-intake' }) {
+async function request(url, { fetchImpl, token = null, userAgent = 'apple-corpus-intake' }) {
   if (typeof fetchImpl !== 'function') throw new Error('forks: fetchImpl is required — this module never opens its own connections');
   const headers = { accept: 'application/vnd.github+json', 'user-agent': userAgent };
   if (token) headers.authorization = `Bearer ${token}`;

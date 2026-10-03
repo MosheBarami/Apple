@@ -193,9 +193,17 @@ function Profile.sanitize(raw: any): ProfileData
 	-- new code id instead of resurrecting an old one.
 	local rawCodes = asTable(src.codes)
 	local codes: { [string]: boolean } = {}
-	for code in CodeTable do
+	for code, entry in CodeTable do
 		if rawCodes[code] == true then
 			codes[code] = true
+		end
+		-- A save written under an earlier spelling of this code counts as redeemed under the
+		-- current one. The alias key itself is not kept: it is not a code, and the next save
+		-- carries only the canonical id.
+		for _, alias in entry.Aliases or {} do
+			if rawCodes[alias] == true then
+				codes[code] = true
+			end
 		end
 	end
 

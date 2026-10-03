@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // =============================================================================
-// Golem plan-economics simulator  —  INTERNAL MODEL ONLY.
+// Apple plan-economics simulator  —  INTERNAL MODEL ONLY.
 //
 // THIS FILE DOES NOT SET, CHANGE, OR PUBLISH PRICING.
 // The public plan (Free = 60 Credits/day, 900/month) and the shipped worker
@@ -638,7 +638,7 @@ function heading(t) {
 export function report() {
   const out = [];
 
-  out.push('GOLEM PLAN-ECONOMICS SIMULATOR — INTERNAL MODEL ONLY');
+  out.push('APPLE PLAN-ECONOMICS SIMULATOR — INTERNAL MODEL ONLY');
   out.push('Not public pricing. Does not change any plan, allowance, or spend gate.');
   out.push(
     `Free = the published plan (${PLANS.free.creditsPerDay} Credits/day, ${num(PLANS.free.creditsPerMonth)}/month). Pro and Max are hypothetical.`,

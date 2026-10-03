@@ -1,11 +1,11 @@
 // Types for the Luau intelligence cluster in `packages/evals/src`, declared HERE.
 //
-// Same seam, and the same reasoning, as golem-design.d.ts: that package is plain ESM with JSDoc
+// Same seam, and the same reasoning, as apple-design.d.ts: that package is plain ESM with JSDoc
 // and no build step, the worker is TypeScript, and the consumer that needs types is the honest
 // place to write them. These declarations are deliberately NARROWER than the modules — they cover
 // only what `luau-review.ts` uses, so a field appearing here is one the product actually reads.
 
-declare module '@golem/evals/src/luau-ast.mjs' {
+declare module '@apple/evals/src/luau-ast.mjs' {
   export interface LuauParseError {
     message: string;
     line: number;
@@ -21,7 +21,7 @@ declare module '@golem/evals/src/luau-ast.mjs' {
   export function parseLuau(source: string, opts?: { path?: string }): LuauParse;
 }
 
-declare module '@golem/evals/src/luau-symbols.mjs' {
+declare module '@apple/evals/src/luau-symbols.mjs' {
   export interface LuauSymbol {
     id: number;
     name: string;
@@ -50,7 +50,7 @@ declare module '@golem/evals/src/luau-symbols.mjs' {
   export function crossReference(table: SymbolTable, line: number, column: number): CrossReference | null;
 }
 
-declare module '@golem/evals/src/luau-graph.mjs' {
+declare module '@apple/evals/src/luau-graph.mjs' {
   export interface DependencyGraph {
     nodes: { path: string; requires: string[]; ok: boolean }[];
     edges: { from: string; to: string; line: number }[];
@@ -74,7 +74,7 @@ declare module '@golem/evals/src/luau-graph.mjs' {
   export function indexPlace(files: { path: string; source: string }[]): PlaceDefinition[];
 }
 
-declare module '@golem/evals/src/luau-format.mjs' {
+declare module '@apple/evals/src/luau-format.mjs' {
   export function formatLuau(
     source: string,
     opts?: { indent?: string; maxBlankLines?: number },
@@ -85,7 +85,7 @@ declare module '@golem/evals/src/luau-format.mjs' {
   ): { index: number; before: unknown; after: unknown; reason: string } | null;
 }
 
-declare module '@golem/evals/src/luau-intel.mjs' {
+declare module '@apple/evals/src/luau-intel.mjs' {
   export interface LuauFinding {
     rule: string;
     severity: 'error' | 'warn' | 'info' | string;
@@ -106,8 +106,8 @@ declare module '@golem/evals/src/luau-intel.mjs' {
   }
   export interface PlaceAnalysis {
     files: FileAnalysis[];
-    dependencies: import('@golem/evals/src/luau-graph.mjs').DependencyGraph;
-    symbols: import('@golem/evals/src/luau-graph.mjs').PlaceDefinition[];
+    dependencies: import('@apple/evals/src/luau-graph.mjs').DependencyGraph;
+    symbols: import('@apple/evals/src/luau-graph.mjs').PlaceDefinition[];
     findings: (LuauFinding & { path: string })[];
     totals: {
       scripts: number;
@@ -127,7 +127,7 @@ declare module '@golem/evals/src/luau-intel.mjs' {
   ): PlaceAnalysis;
 }
 
-declare module '@golem/evals/src/roblox-antipatterns.mjs' {
+declare module '@apple/evals/src/roblox-antipatterns.mjs' {
   export function inferContext(source: string): string;
   export function stripComments(source: string): string;
 }

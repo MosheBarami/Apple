@@ -93,7 +93,7 @@ export function runUnderHarness(source, probe, shape, setup, { binary = 'luau', 
     return { ran: false, reason: `harness unreadable: ${e.message}` };
   }
   const program = buildProgram(harness, source, probe, shape, setup);
-  const dir = mkdtempSync(join(tmpdir(), 'golem-frontier-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-frontier-'));
   try {
     const file = join(dir, 'item.luau');
     writeFileSync(file, program);

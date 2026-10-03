@@ -11,13 +11,14 @@
  *          [--from <id>] [--only <id>] [--ids a,b,c] [--max-credits N] [--redo] [--dry-run] [--base <url>]
  *
  * Sign-in comes from the environment (or the repo's .env, loaded without overriding), never from flags, never printed:
- *   GOLEM_BENCH_JWT (+ GOLEM_BENCH_REFRESH_TOKEN to refresh it), or GOLEM_E2E_EMAIL + GOLEM_E2E_PASSWORD.
+ *   APPLE_BENCH_JWT (+ APPLE_BENCH_REFRESH_TOKEN to refresh it), or APPLE_E2E_EMAIL + APPLE_E2E_PASSWORD.
  * The account must OWN the project (other accounts get 404). A refresh token is rotated by Supabase on use: do not
  * share the owner's browser session with this runner; use a dedicated sign-in.
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -74,12 +75,12 @@ function jwtExpiry(token) {
  * forces a new one (after a 401). Failures say the HTTP status only, never a response body.
  */
 export function createAuth({ fetch: fetchFn, env, now = Date.now, supabaseUrl = DEFAULT_SUPABASE, anonKey }) {
-  let token = env.GOLEM_BENCH_JWT || null;
-  let refresh = env.GOLEM_BENCH_REFRESH_TOKEN || null;
+  let token = envCompat('APPLE_BENCH_JWT', env) || null;
+  let refresh = envCompat('APPLE_BENCH_REFRESH_TOKEN', env) || null;
   let exp = token ? jwtExpiry(token) : null;
-  const email = env.GOLEM_E2E_EMAIL, password = env.GOLEM_E2E_PASSWORD;
+  const email = envCompat('APPLE_E2E_EMAIL', env), password = envCompat('APPLE_E2E_PASSWORD', env);
   if (!token && !refresh && !(email && password)) {
-    throw new Error('no sign-in: set GOLEM_BENCH_JWT (and GOLEM_BENCH_REFRESH_TOKEN), or GOLEM_E2E_EMAIL and GOLEM_E2E_PASSWORD');
+    throw new Error('no sign-in: set APPLE_BENCH_JWT (and APPLE_BENCH_REFRESH_TOKEN), or APPLE_E2E_EMAIL and APPLE_E2E_PASSWORD');
   }
   const grant = async (type, body) => {
     const r = await fetchFn(`${supabaseUrl}/auth/v1/token?grant_type=${type}`, { method: 'POST', headers: { apikey: anonKey, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -387,7 +388,7 @@ export async function main(argv, deps = {}) {
   const now = deps.now ?? Date.now;
   const getToken = createAuth({ fetch: fetchFn, env, now, supabaseUrl, anonKey });
   const api = createApi({ fetch: fetchFn, base, projectId: o.project, getToken });
-  const secrets = [env.GOLEM_BENCH_JWT, env.GOLEM_BENCH_REFRESH_TOKEN, env.GOLEM_E2E_PASSWORD, env.GOLEM_ADMIN_KEY, anonKey];
+  const secrets = [envCompat('APPLE_BENCH_JWT', env), envCompat('APPLE_BENCH_REFRESH_TOKEN', env), envCompat('APPLE_E2E_PASSWORD', env), envCompat('APPLE_ADMIN_KEY', env), anonKey];
   log(`run "${name}" on project ${o.project}: ${plan.filter((p) => p.action === 'run').length} to run${o.maxCredits ? `, budget ${o.maxCredits} credits (${spent} already spent)` : ', no credit budget'}`);
   const res = await runBench({
     items, file, photosDir: join(resultsDir, name), api, getToken, base, projectId: o.project,

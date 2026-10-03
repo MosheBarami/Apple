@@ -11,7 +11,7 @@
 // worker and every other DO. Adding a table to it is a `create table if not exists` in a
 // constructor that already runs one.
 import type { Env } from './env';
-import { drainEvents, normalizeEvent, pendingEventCount, type GolemEvent, type RejectReason } from './analytics';
+import { drainEvents, normalizeEvent, pendingEventCount, type AppleEvent, type RejectReason } from './analytics';
 import { writeProductEvents } from './analytics-engine';
 
 /** Buffered events that trigger a flush. One DO write per request would cost more than the data. */
@@ -64,7 +64,7 @@ export function maybeFlush(env: Env, waitUntil?: (p: Promise<unknown>) => void):
 }
 
 export interface StoredEvents {
-  events: GolemEvent[];
+  events: AppleEvent[];
   /** the window is missing events: either the row cap cut it, or pruning evicted its start */
   truncated: boolean;
   retained: number;
@@ -95,7 +95,7 @@ export async function fetchStoredEvents(
     unreadable_timestamp: 0,
     missing_required_field: 0,
   };
-  const events: GolemEvent[] = [];
+  const events: AppleEvent[] = [];
   for (const row of body.events ?? []) {
     const n = normalizeEvent(row);
     if (n.ok) events.push(n.event);

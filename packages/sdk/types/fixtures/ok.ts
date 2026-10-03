@@ -11,7 +11,7 @@ import {
   type Memory,
   type Run,
 } from '../index';
-import type { MessageDto } from '@golem/shared';
+import type { MessageDto } from '@apple/shared';
 
 const client = new AppleClient({ baseUrl: 'https://api.test', token: 'jwt' });
 

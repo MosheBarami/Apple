@@ -1,4 +1,4 @@
-import { TERRAIN_BLIND_NOTE } from '@golem/shared';
+import { TERRAIN_BLIND_NOTE } from '@apple/shared';
 // ADVERSARIAL VISUAL CRITIC — a panel of prosecutors, not a panel of reviewers.
 //
 // THE FAILURE THIS REPLACES.
@@ -142,7 +142,7 @@ export interface CriticInput {
   };
   /** Elements named in the request. `missing` evidence must name one of these. */
   requestedElements?: string[];
-  /** True when the renderer drew no Terrain (see renderShowsTerrain in @golem/shared). */
+  /** True when the renderer drew no Terrain (see renderShowsTerrain in @apple/shared). */
   terrainInvisible?: boolean;
 }
 

@@ -113,7 +113,7 @@ and in the parser at line ~497, next to `finishReason`:
   runFailure: isRunFailure(o['runFailure']) ? o['runFailure'] : null,
 ```
 
-`isRunFailure` is already exported from `@golem/shared` (index.ts:2647). Use it
+`isRunFailure` is already exported from `@apple/shared` (index.ts:2647). Use it
 rather than a second copy of the list — the four codes must have exactly one
 declaration.
 

@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visibleText } from './lib/visible-copy.mjs';
+import { LEGACY_IDENTIFIER } from '../../../scripts/lib/legacy-name.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SITE = join(HERE, '..');
@@ -28,7 +29,7 @@ function productModes() {
 
 test('autonomy stays outside the ProductMode union', () => {
   assert.ok(!productModes().includes('autonomous'), 'Autonomous became a ProductMode');
-  assert.doesNotMatch(shared, /GolemMode/, 'the retired mode alias has returned');
+  assert.doesNotMatch(shared, LEGACY_IDENTIFIER, 'the retired mode alias (or any identifier carrying the old name) has returned');
 });
 
 test('every run has exactly the requested 1000-step ceiling and no wall-clock cutoff', () => {

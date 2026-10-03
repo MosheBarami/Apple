@@ -13,7 +13,7 @@ const SENTINEL = 'SECRET_SENTINEL';
 Object.assign(process.env, {
   CLOUDFLARE_API_TOKEN: `${SENTINEL}_123`, CLOUDFLARE_ACCOUNT_ID: 'acct-test', SUPABASE_ACCESS_TOKEN: `${SENTINEL}_SUPA`,
   HF_TOKEN: `${SENTINEL}_HF`, SENTRY_AUTH_TOKEN: `${SENTINEL}_SENTRY`, SENTRY_ORG: 'test-org', SENTRY_BASE: 'https://sentry.test',
-  GOLEM_ADMIN_KEY: `${SENTINEL}_GOLEM`,
+  APPLE_ADMIN_KEY: `${SENTINEL}_APPLE`,
 });
 
 const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gh-'));

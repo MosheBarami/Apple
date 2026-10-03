@@ -1,4 +1,4 @@
-# Golem concurrency & isolation test — 2026-08-30
+# Apple concurrency & isolation test — 2026-08-30
 
 Run against **production** (`https://golem.moshe-barami111.workers.dev`) with 30 real Supabase
 accounts. Reproduce: `node infra/loadtest.mjs 30 12`.

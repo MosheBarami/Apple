@@ -17,7 +17,7 @@
 //     route that has been running for months, and `new Date(undefined)` renders "Invalid Date" —
 //     a sentence nobody can act on, produced by a formatter that looked fine.
 //   * THE FORM REFUSES WHAT THE SERVER REFUSES, in the words of the field, before the round trip.
-import { API_SCOPES, type ApiKeyMode, type ApiScope } from '@golem/shared';
+import { API_SCOPES, type ApiKeyMode, type ApiScope } from '@apple/shared';
 
 /** Exactly `publicKeyShape` from apps/worker/src/api-keys.ts. Never carries the secret. */
 export interface ApiKeyView {

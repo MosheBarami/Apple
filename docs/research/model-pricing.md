@@ -1,4 +1,4 @@
-# Workers AI Model Pricing — Cost Model for Golem
+# Workers AI Model Pricing — Cost Model for Apple
 
 Research date: **2026-08-30**. Source pricing page last updated by Cloudflare: **Aug 28, 2026** (2 days before this research).
 Account: `e9b8acf2e89a1de289a1ee4abb0f3f8d`, worker `golem`, calling Workers AI via the `env.AI` binding.
@@ -46,7 +46,7 @@ Whether any Cloudflare-side hard spend cap exists is **UNVERIFIED** — it is no
 and the [limits page](https://developers.cloudflare.com/workers-ai/platform/limits/) covers only
 per-minute *rate* limits (requests/min by task type), not spend or neurons. Since the owner's
 precondition is "uncontrolled AI billing is impossible," the cap must be assumed to be
-**Golem's own responsibility in application code** unless a separate investigation proves otherwise.
+**Apple's own responsibility in application code** unless a separate investigation proves otherwise.
 
 One alternative the pricing page *does* document: **prepaid AI Gateway credits**. Setting a gateway's
 Workers AI billing to *Unified billing* and routing the `AI` binding through it pays inference from a
@@ -55,7 +55,7 @@ billing-containment mechanism, but its exhaustion behavior is **UNVERIFIED** her
 
 ---
 
-## 2. Per-model pricing — the models Golem uses or could use
+## 2. Per-model pricing — the models Apple uses or could use
 
 Prices are **per 1M tokens**. Neuron columns are Cloudflare's own equivalents (the docs state:
 *"The Price in Tokens column is equivalent to the Price in Neurons column"*).
@@ -80,7 +80,7 @@ Prices are **per 1M tokens**. Neuron columns are Cloudflare's own equivalents (t
   to pick Gemma-3 over Gemma-4 on price.
 - **`@cf/qwen/qwen2.5-coder-32b-instruct` does NOT support function calling.** Its catalog page lists
   `Context Window: 32,768`, `LoRA: Yes`, `Unit Pricing` — and **no** `Function calling` row. It is also
-  the second most expensive model in this set. If Golem needs tool use on a coding task, this model
+  the second most expensive model in this set. If Apple needs tool use on a coding task, this model
   cannot do it.
 - **`@cf/meta/llama-3.3-70b-instruct-fp8-fast` has only a 24,000-token context window** — by far the
   smallest of the chat models here, smaller than gpt-oss (128k), Gemma-4 (256k), and even
@@ -101,7 +101,7 @@ Prices are **per 1M tokens**. Neuron columns are Cloudflare's own equivalents (t
 ## 3. Cheaper small models with function calling (routing / classification)
 
 **Yes — there are two materially cheaper options than anything in the list above, and one is ~3x
-cheaper than the cheapest model Golem was considering.**
+cheaper than the cheapest model Apple was considering.**
 
 Function-calling support is a per-model property in the catalog; the
 [function-calling docs](https://developers.cloudflare.com/workers-ai/features/function-calling/)
@@ -125,7 +125,7 @@ Against `@cf/qwen/qwen3-30b-a3b-fp8` it is **3x cheaper on input and 3x cheaper 
 4x the context window.
 
 `@cf/zai-org/glm-4.7-flash` is the runner-up — more expensive than granite but explicitly tuned for
-*"multi-turn tool calling across 100+ languages"*, which matters if Golem's routing must handle
+*"multi-turn tool calling across 100+ languages"*, which matters if Apple's routing must handle
 non-English input.
 
 ### Cheap models that do NOT support function calling (do not use for routing)
@@ -212,7 +212,7 @@ check  : 323.85 × $0.000011 = $0.003562  ✓
 
 ### What this means at the $5/mo budget
 
-The right-hand column is the number that matters most for Golem. The 10,000-Neuron daily free
+The right-hand column is the number that matters most for Apple. The 10,000-Neuron daily free
 allocation is **small**: at this request shape it is only **40 requests/day** on gpt-oss-120b, but
 **575/day** on granite-4.0-h-micro — a 14x difference from model choice alone.
 
@@ -234,7 +234,7 @@ Workers AI neurons is **UNVERIFIED** — the Workers AI pricing page does not me
 
 ---
 
-## 5. Practical conclusions for Golem's cost model
+## 5. Practical conclusions for Apple's cost model
 
 1. **Route on `@cf/ibm-granite/granite-4.0-h-micro`.** Cheapest function-calling model in the catalog,
    131k context, ~$0.000192 per 6k+800 request. 575 free requests/day.
@@ -249,7 +249,7 @@ Workers AI neurons is **UNVERIFIED** — the Workers AI pricing page does not me
 6. **Watch output tokens, not just input.** Output is priced 1.5x–7.7x higher than input across these
    models. Capping `max_tokens` is the single highest-leverage cost control in the request path.
 7. **The free tier alone is not a billing guard.** 10,000 neurons/day is consumed by 23–575 requests
-   depending on model. Golem must enforce its own per-user/per-day neuron budget before Workers Paid
+   depending on model. Apple must enforce its own per-user/per-day neuron budget before Workers Paid
    is enabled.
 
 ---

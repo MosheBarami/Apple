@@ -358,12 +358,23 @@ test('a null critique score (tooling unavailable) is preserved, not coerced to z
 // 8. Fence extraction
 // ---------------------------------------------------------------------------
 
-test('a golem-ui fence is extracted and removed from the prose', () => {
-  const md = 'Here is the plan.\n\n```golem-ui\n{"v":1,"blocks":[]}\n```\n\nTell me if that works.';
+test('an apple-ui fence is extracted and removed from the prose', () => {
+  const md = 'Here is the plan.\n\n```apple-ui\n{"v":1,"blocks":[]}\n```\n\nTell me if that works.';
   const { json, rest } = extractUIFence(md);
   assert.equal(json.trim(), '{"v":1,"blocks":[]}');
-  assert.ok(!rest.includes('golem-ui'));
+  assert.ok(!rest.includes('apple-ui'));
   assert.ok(rest.startsWith('Here is the plan.'));
+});
+
+test('STORAGE FALLBACK: a fence written under the OLD tag (stored chat history) is read exactly like the new one', () => {
+  const body = '{"v":1,"blocks":[]}';
+  const fenced = (tag) => `Here is the plan.\n\n\`\`\`${tag}\n${body}\n\`\`\`\n\nTell me if that works.`;
+  const oldWay = extractUIFence(fenced('golem-ui'));
+  const newWay = extractUIFence(fenced('apple-ui'));
+  assert.equal(oldWay.json.trim(), body);
+  assert.deepEqual(oldWay, newWay, 'the same JSON and the same remaining prose, whichever tag was written');
+  assert.ok(!oldWay.rest.includes('golem-ui'));
+  assert.equal(extractUIFence(fenced('other-ui')).json, null, 'only the two known tags are fences');
 });
 
 test('markdown without a fence is returned untouched', () => {

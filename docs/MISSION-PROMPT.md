@@ -38,7 +38,7 @@ Nothing is done until a committed machine says so. A unit of work is finished on
 3.3 SESSION ORIGIN. Every station probe must originate from a session created THIS PASS by the public signup flow with a fresh address at a real, externally-readable inbox, using only requests a browser makes. No seeded account, no locally minted JWT, no service-role key, no test-only auth path, no bypass header, no direct database insert. If confirmation mail does not arrive within 10 minutes, S2 is BLOCKED and S3, S4, S10, S11, S12 are BLOCKED WITH IT — a funnel whose first step fails for a stranger has no proven steps after it. Record the address, the inbox fetch, and timestamps.
 
 3.4 Stations. Each is PROVEN only by a probe of the DEPLOYED origin, captured to a file and fingerprinted.
-- **S1 Land** — site and `/pricing` return 200, zero user-visible "Golem", zero "$0 forever" / "No card required, ever" / "never be charged", published free quota equals `PLAN_LIMITS.free.creditsPerDay` in `apps/worker/src/pricing.ts`.
+- **S1 Land** — site and `/pricing` return 200, zero user-visible "Apple", zero "$0 forever" / "No card required, ever" / "never be charged", published free quota equals `PLAN_LIMITS.free.creditsPerDay` in `apps/worker/src/pricing.ts`.
 - **S2 Sign up** — a brand-new email reaches a usable session.
 - **S3 Create** — a project created from the deployed `/app` survives a full reload and a new browser session.
 - **S4 Chat** — a message from the deployed workspace yields a streamed reply, a per-run cost, and a live Credit balance rendered IN the workspace.
@@ -165,7 +165,7 @@ node infra/smoke.mjs --no-model                    # once per pass, never agains
 ```
 10.1 A gate that passed in an earlier pass is not evidence now, with one exception: a deployed-origin station probe is valid for the HEAD sha it was recorded against, and is re-probed when HEAD changes the code path it exercises, proven by a path diff. A pass may not end with a dirty tree.
 
-10.2 DRIFT INVARIANT, head and tail of every pass: fetch the deployed `/app` bundle and count Apple vs Golem; `GET /api/health`; `GET /api/version` and compare the deployed build sha to HEAD. **Never probe deploy-freshness by POSTing to a mutating endpoint** — once billing is deployed, its drift probe is a signed webhook replay against a dedicated test customer id in Stripe test mode, at most once per pass. Drift is a station-blocking defect, not a footnote. Deploying the worker and re-uploading the D1-served site are YOUR actions, never an OWNER-BLOCKED row.
+10.2 DRIFT INVARIANT, head and tail of every pass: fetch the deployed `/app` bundle and count the old product name against Apple (the old name must be 0); `GET /api/health`; `GET /api/version` and compare the deployed build sha to HEAD. **Never probe deploy-freshness by POSTing to a mutating endpoint** — once billing is deployed, its drift probe is a signed webhook replay against a dedicated test customer id in Stripe test mode, at most once per pass. Drift is a station-blocking defect, not a footnote. Deploying the worker and re-uploading the D1-served site are YOUR actions, never an OWNER-BLOCKED row.
 
 # 11. PASS BOUND, NULL PASSES, STALLS
 
@@ -187,7 +187,7 @@ node infra/smoke.mjs --no-model                    # once per pass, never agains
 
 12.5 **HARD PROHIBITIONS.**
 - **Spend.** No gate, checker, CI job, probe, smoke run or action of yours may spend money beyond a hard ceiling of **500 neurons and $0 of non-Workers-AI spend per pass**. Before the first probe of every pass, read the BudgetDO ledger and record day-spent; if day-spent exceeds 40% of the compiled daily ceiling, every model-invoking deployed probe is SKIPPED that pass and the station records `BUDGET-DEFERRED <measured number>` — which is not a disposition and closes nothing. Never run any harness that drives production inference in a loop. `infra/smoke.mjs` at most once per pass, never against `/api/admin/*`. `.github/workflows/ci.yml` holds no secrets and keeps `permissions: contents:read`.
-- **Identifiers.** Never rename: the worker hostname `golem.moshe-barami111.workers.dev`, D1 `golem-corpus`, Vectorize `golem-docs`, KV and Durable Object binding and class names, the Supabase project ref, and the literals `golem.v1`, `golem.jwt.`, `X-Golem-`, `golem_session`, `golem-ui`, `golem_original`, `golem-authored`, `@golem/`. This list is CLOSED (§6.10). The rebrand covers prose, copy and user-visible strings ONLY.
+- **Identifiers.** The product and all its names are Apple (owner decision 2026-10-02). The word `golem` must not appear in tracked files except where `scripts/golem-allowlist.json` lists it, which is only compatibility shims that read old wire and storage values, history records and third-party data. Do not add entries without a removal condition. A binding, a storage key or a wire literal is renamed WITH backward compatibility (read both, write the new one), never flipped in one step: `docs/operations/GOLEM-REMOVAL-RUNBOOK.md` says what is left in the cloud and in what order it is removed. `node scripts/check-no-golem.mjs` enforces this.
 - **Live infrastructure.** No destructive D1/KV/Vectorize/Supabase operations, no deleted deployments, no rotated or printed credentials, no admin route that erases a spend ledger.
 - **Commerce.** Plan price points, plan entitlements, free allowance size, refund and terms copy are the owner's. Build checkout, portal, entitlement read, plan-conditional paths and UI against placeholder constants in `apps/worker/src/pricing.ts`, gated behind `PLANS_PUBLISHED=false`, fully tested. **Never publish to a live origin any page stating a price, a plan entitlement, or contractual terms without a dated owner statement in `docs/DECISIONS.md` quoting the exact numbers.** Never charge for a capability that does not exist.
 - **Secrets and supervision.** Never commit a secret (`.env` and `.dev.vars` stay untracked; `secret-scan.py` reads committed blobs only, so an untracked `.env` is invisible to it). Never edit `~/.claude` skills or hooks. Commit messages end with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`; branch off main, never force-push, never rewrite published history.
@@ -236,7 +236,7 @@ DISPOSITIONS: CLOSED <n> | BOOKKEEPING-FLIP <n> | MERGE <n> | FACET <n> | STRUCT
 REFUTERS: dispatched <n> | status-changes <n> | UPHELD <n> | UPHELD-BEHIND-HANDOFF <n> | REFUTED <n> — each refutation and what it forced
 ORACLES: checkers added <n> | falsification records <n> | quarantined gates <n> | gate count <n> (was <n>)
 VERIFICATION: each §10 command with exit code and output sha256 | neurons spent <n>
-DEPLOYED: <sha> · bundle Apple <n> / Golem <n> · drift <none|described> · deploy <shipped|ROLLED-BACK|none>
+DEPLOYED: <sha> · bundle Apple <n> / Apple <n> · drift <none|described> · deploy <shipped|ROLLED-BACK|none>
 PIXELS: <n> routes captured · <n> meet the bar, <n> do not, naming the failing element
 NOT DONE: <row-id> | <real reason, not the diplomatic one> | SCHEDULED pass <n+1>
   (a row-id in two consecutive records is auto-promoted to the front of the next selection and may not be

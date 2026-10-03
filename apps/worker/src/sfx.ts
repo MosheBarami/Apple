@@ -1,4 +1,4 @@
-// Sound effects Golem SYNTHESISES, because the ones it could reference do not exist.
+// Sound effects Apple SYNTHESISES, because the ones it could reference do not exist.
 //
 // READ effects.ts's header first — this file is the other half of the argument it makes. That file
 // ships particle and light presets and refuses to ship a sound library, for a reason worth
@@ -12,7 +12,7 @@
 // consequences worth stating plainly:
 //   * It costs zero neurons and calls no provider. A footstep is arithmetic.
 //   * Its provenance is unambiguous: `procedural` in asset-library.ts's vocabulary maps to
-//     `golem_original`, which is the only originality class Golem may present as its own work.
+//     `apple_original`, which is the only originality class Apple may present as its own work.
 //   * It is DETERMINISTIC. The same preset and seed produce the same bytes on every machine, so a
 //     regression in a filter is a diff rather than an opinion, and a user who liked take 7 can
 //     have take 7 again.

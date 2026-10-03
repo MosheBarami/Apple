@@ -21,7 +21,7 @@ import type {
   StudioEventSelection,
   StudioEventState,
   StudioFrame,
-} from '@golem/shared';
+} from '@apple/shared';
 import type { MeResponse, StudioDiagnosticsResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';

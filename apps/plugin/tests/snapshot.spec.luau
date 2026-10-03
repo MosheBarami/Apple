@@ -11,7 +11,7 @@
 	halves agreeing on the wrong thing.
 
 	`tree` is the other reader: it is what `get_project_tree` returns, and therefore the
-	first thing Golem sees of a project it has never met.
+	first thing Apple sees of a project it has never met.
 ]]
 
 local ws = game:GetService("Workspace")

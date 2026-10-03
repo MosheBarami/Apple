@@ -1,5 +1,5 @@
 {
-  "name": "@golem/sdk",
+  "name": "@apple/sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "Clients for the Apple REST + streaming API \u2014 JavaScript/TypeScript, Python and Luau \u2014 plus the `apple` CLI.",

@@ -11,7 +11,7 @@ Make the repo's GitHub Actions CI green on the integration branch of the Apple (
 WHERE
 - Work ONLY in the worktree /Users/moshe/Developer/RbxAI-integration (branch `integration/giant`). Its node_modules:
   apps/worker, apps/web, packages/evals, apps/site have node_modules DIRECTORIES whose entries are symlinks into the
-  main checkout (/Users/moshe/Developer/RbxAI/<pkg>/node_modules/*), with @golem/* pointing at this worktree's packages;
+  main checkout (/Users/moshe/Developer/RbxAI/<pkg>/node_modules/*), with @apple/* pointing at this worktree's packages;
   other packages symlink their node_modules to the main checkout. NEVER run pnpm install/add here or in the main checkout.
   Never push, never deploy, never touch Studio/Chrome/live APIs. Commit with `git commit -q -F <msgfile> -- <paths>`;
   never git add -A. End commit messages with: Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

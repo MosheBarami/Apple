@@ -29,7 +29,7 @@ const GUARD = readFileSync(join(HERE, '..', 'src', 'lib', 'auth.tsx'), 'utf8');
 // `app.tsx`, in lower case, which is the name the file actually has. This read said `App.tsx`,
 // and on macOS — where it was written — the filesystem is case-insensitive and it opened. On the
 // Linux runner it is ENOENT: the whole file threw before its first assertion, `pnpm -r test` bailed
-// at @golem/web, and @golem/worker and @golem/evals never ran behind it. A test that cannot run on
+// at @apple/web, and @apple/worker and @apple/evals never ran behind it. A test that cannot run on
 // the runner reports nothing, and reporting nothing is indistinguishable in a log from a pass.
 const APP = readFileSync(join(HERE, '..', 'src', 'app.tsx'), 'utf8');
 

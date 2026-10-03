@@ -15,7 +15,7 @@
 // cannot be null, so every measured value travels with a 0/1 "known" double beside it, and the read
 // path divides by the count of KNOWN samples, reporting `null` when there were none.
 import type { Env } from './env';
-import type { GolemEvent } from './analytics';
+import type { AppleEvent } from './analytics';
 import { NEURONS_PER_CREDIT } from './pricing';
 
 export const AE_DATASET = 'apple_product_events';
@@ -33,7 +33,7 @@ function known(v: number | null | undefined): [number, number] {
 
 const cap = (s: string | null | undefined) => (s ?? '').slice(0, 96);
 
-export function dataPointFor(e: GolemEvent): AnalyticsEngineDataPoint {
+export function dataPointFor(e: AppleEvent): AnalyticsEngineDataPoint {
   let label = '';
   let outcome = '';
   let via = '';
@@ -95,7 +95,7 @@ export function dataPointFor(e: GolemEvent): AnalyticsEngineDataPoint {
 }
 
 /** Write a batch. Never throws: a metrics write must not take down the thing it measures. */
-export function writeProductEvents(env: Pick<Env, 'PRODUCT_EVENTS'>, events: readonly GolemEvent[]): number {
+export function writeProductEvents(env: Pick<Env, 'PRODUCT_EVENTS'>, events: readonly AppleEvent[]): number {
   const ds = env.PRODUCT_EVENTS;
   if (!ds) return 0;
   let written = 0;

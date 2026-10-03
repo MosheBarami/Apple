@@ -1,6 +1,6 @@
 # Cloudflare Developer Platform — Free-Tier Limits (verified 2026-08-30)
 
-Research for **Golem** (AI SaaS building Roblox games; web app + Studio plugin) targeting ~$5/month total cost on Cloudflare Workers + Workers AI + Supabase.
+Research for **Apple** (AI SaaS building Roblox games; web app + Studio plugin) targeting ~$5/month total cost on Cloudflare Workers + Workers AI + Supabase.
 
 All numbers below were fetched from official Cloudflare docs pages on 2026-08-30. Free-plan limits are **hard caps** — operations fail (429s) when exceeded; there is no overage billing on the Free plan.
 
@@ -28,7 +28,7 @@ All numbers below were fetched from official Cloudflare docs pages on 2026-08-30
 - **Requests to static assets are free and unlimited on ALL plans** — they do NOT count against the 100k/day request cap ("Requests to static assets are free and unlimited"). Storage of assets is also free.
 - Caveat: routes configured with `run_worker_first` invoke the Worker script and DO count against the request cap.
 - File limits per Worker version: **20,000 files (Free) / 100,000 (Paid), 25 MiB max per file** (both plans).
-- Practical implication: Golem's web-app frontend can be served entirely free; only API/DO traffic burns the 100k/day.
+- Practical implication: Apple's web-app frontend can be served entirely free; only API/DO traffic burns the 100k/day.
 
 ## 3. Durable Objects — available on Free plan (SQLite backend only)
 
@@ -144,9 +144,9 @@ Both plans: max **1536 dimensions per vector** (fp32), 20M vectors/index max, 10
 - Workers AI beyond 10k neurons/day; certain premium models (Kimi/GLM/DeepSeek) even below it.
 - Higher cron CPU (30 s vs 10 ms) and 250 cron triggers.
 
-## Golem-specific read
+## Apple-specific read
 
-1. The **10 ms CPU cap** is the real free-plan wall for an AI orchestration backend — network wait on Workers AI/Supabase doesn't count, but JSON parsing of large Luau codegen payloads does. The $5 Paid plan (30 s CPU, 10M req, 30M CPU-ms) is almost certainly where Golem lands, and it fits the $5/mo budget exactly.
+1. The **10 ms CPU cap** is the real free-plan wall for an AI orchestration backend — network wait on Workers AI/Supabase doesn't count, but JSON parsing of large Luau codegen payloads does. The $5 Paid plan (30 s CPU, 10M req, 30M CPU-ms) is almost certainly where Apple lands, and it fits the $5/mo budget exactly.
 2. On Paid, everything else (DO for plugin WebSocket sessions with hibernation, D1 or Supabase for data, R2 for asset storage with free egress, Vectorize for RAG over Roblox docs, Turnstile free, Queues, Logs) stays within included allocations at early-stage scale — realistic marginal cost $0.
 3. Use **DO WebSocket Hibernation** for the Studio plugin connection or the 13k GB-s/day duration budget dies with ~1 always-resident DO.
 4. Supabase free tier covers Postgres/auth independently of all the above.

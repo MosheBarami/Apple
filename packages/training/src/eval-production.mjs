@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { ALL_GAME_LOGIC_CURRICULUM } from './build-game-logic.mjs';
 import { scoreGameLogic } from './score-eval.mjs';
 import { resolveSettings } from './production-settings.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -37,8 +38,8 @@ const arg = (name, fallback) => {
 const flag = (name) => process.argv.includes(`--${name}`);
 
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
-const KEY = process.env.GOLEM_ADMIN_KEY;
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+const KEY = envCompat('APPLE_ADMIN_KEY');
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 const DEFAULT_SYSTEM =
   'You write standalone Luau modules for Roblox. Reply with ONE fenced luau code block and nothing else. '

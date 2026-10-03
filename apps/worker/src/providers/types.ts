@@ -7,7 +7,7 @@
 // This file is the ONLY place a shared type is introduced for the provider layer; the rest of the
 // worker imports it from `./providers`.
 import type { Env } from '../env';
-import type { GatewayContentPart, GatewayMessage, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import type { GatewayContentPart, GatewayMessage, GatewayToolCall, GatewayToolDef } from '@apple/shared';
 
 export type { GatewayContentPart, GatewayMessage, GatewayToolCall, GatewayToolDef };
 

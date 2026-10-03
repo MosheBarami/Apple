@@ -47,6 +47,7 @@ import { detectContextDependencies } from './audit-dataset.mjs';
 import { runSpecCase } from './tool-trajectory-verify.mjs';
 import { CUSTOMER_QUERIES } from './customer-queries.mjs';
 import { GATEWAY_MODEL_ID, resolveSettings } from './production-settings.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -61,7 +62,7 @@ const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev'
 //[[ The credential is checked in main(), not at import. A module that kills the process when it is
 //   merely IMPORTED cannot be unit-tested, and the tests below are the only part of this file that
 //   runs without spending anything.
-const KEY = () => process.env.GOLEM_ADMIN_KEY;
+const KEY = () => envCompat('APPLE_ADMIN_KEY');
 
 //[[ THE SETTINGS ARE COPIED FROM eval-production.mjs AND THEN CHECKED AGAINST A RECORDED RUN.
 //
@@ -439,7 +440,7 @@ const ARMS = {
 
 // ---------------------------------------------------------------------------------------------
 async function main() {
-  if (!KEY()) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+  if (!KEY()) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
   const armName = arg('arm', 'baseline');
   const armFn = ARMS[armName];
   if (!armFn) { console.error(`unknown arm "${armName}" — one of ${Object.keys(ARMS).join(', ')}`); process.exit(2); }

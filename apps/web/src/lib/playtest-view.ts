@@ -32,8 +32,8 @@
  * they are not. The playtest card applies this rule to both native Studio captures and
  * software-render fallbacks.
  */
-import type { PlaytestRun, StudioFrame } from '@golem/shared';
-import { PLAYTEST_DEAD_MS, PLAYTEST_STALE_MS } from '@golem/shared';
+import type { PlaytestRun, StudioFrame } from '@apple/shared';
+import { PLAYTEST_DEAD_MS, PLAYTEST_STALE_MS } from '@apple/shared';
 
 /**
  * How current the displayed frame is.

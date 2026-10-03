@@ -9,7 +9,7 @@
 // genuinely benefits — a render, a sound — and those come from the typed component registry, never
 // from free-form model output.
 import { Suspense, lazy, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import type { PlaytestRun, StudioFrame } from '@golem/shared';
+import type { PlaytestRun, StudioFrame } from '@apple/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
