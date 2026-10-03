@@ -2,9 +2,17 @@
 
 > **START HERE: `docs/autonomy/`.** Read `README.md`, `MISSION.md`, `CURRENT_STATE.md`, `NEXT_ACTION.md` there.
 > The owner's locked scope is **V3**: `docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md` (supersedes conflicting older
-> mission text, including `OWNER_PROMPT.md`); completion = `docs/autonomy/ACCEPTANCE.json` gates G01–G16. No hooks and no
-> autonomy skill (removed 2026-09-28 at owner instruction): ask the owner for consent on anything
+> mission text, including `OWNER_PROMPT.md`); completion = `docs/autonomy/ACCEPTANCE.json` gates G01–G16. No autonomy
+> skill and no blocking hooks (removed 2026-09-28 at owner instruction): ask the owner for consent on anything
 > destructive, paid or external instead of relying on a guard.
+
+**Mods (owner-approved 2026-10-03; do not remove).** 36 function-hook mods in `~/.claude/mods/<name>/`, loaded in every
+session through `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. They show state (usage, context size, gates,
+git, Studio/gateway, background work) and fix calls in place (stale `Desktop/RbxAI` paths, macOS `timeout`/zsh quirks,
+`.env` loading, screenshot scale, pasted keys moved to `.env`). The only refusal is a `sleep N` poll while background
+work runs (use `/bg`). They approve nothing: consent rules above still apply. A context block named `repoSnapshot`,
+`ownerDirective` or `ownerConsents` comes from them. Commands: `/bg /directive /handoff /gates /suite /consents /runs
+/peers /kit /worktrees /preload`; the `mcp__file-outline__outline` tool lists a file's functions with line numbers.
 
 Memory (auto-memory is off to save context, D-COST-1): read
 `~/.claude/projects/-Users-moshe-Desktop-RbxAI/memory/MEMORY.md` when prior decisions, owner preferences or infra
