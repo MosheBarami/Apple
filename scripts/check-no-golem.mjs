@@ -60,6 +60,9 @@ const WORD_CHARS = /[A-Za-z0-9_@./:\-]/;
  */
 const WILDCARD_OK = [
   /^docs\/evidence\//,
+  // The restore kit: agent prompts, workflow results and archived workflow scripts of the 2026-10-02 handoff. Recorded
+  // output and the programs that produced it; rewriting them falsifies what was said and run (docs/evidence's reasoning).
+  /^docs\/handoff\//,
   /^infra\/supabase\/migrations\/00(0[1-9]|1[0-3])_/,
   // The tools whose whole job is the old name: this guard and its allowlist, the codemod that
   // removed it, and their tests. They name the word on purpose, in the open.

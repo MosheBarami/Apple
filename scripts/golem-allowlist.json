@@ -60,12 +60,14 @@
       "scope": "content",
       "paths": [
         "docs/evidence/**",
+        "docs/handoff/**",
         "infra/supabase/migrations/0009_membership_access_outbox.sql"
       ],
       "token": "*",
       "max": null,
-      "reason": "recorded runs (docs/evidence) and an applied, checksummed migration: rewriting them falsifies the record",
-      "removal": "never: a recorded run or an applied migration is never rewritten"
+      "reason": "recorded runs (docs/evidence), the 2026-10-02 restore kit (docs/handoff: agent prompts, workflow results and the archived workflow scripts that produced them) and an applied, checksummed migration: rewriting them falsifies the record",
+      "removal": "never: a recorded run or an applied migration is never rewritten",
+      "codemod": "skip"
     },
     {
       "id": "tools",
@@ -89,10 +91,24 @@
       "removal": "phase D deletes the codemod and runbook; the guard and detectors stay while the old name is checked for"
     },
     {
+      "id": "repo-chat-rename-skill",
+      "scope": "content",
+      "paths": [
+        "tools/repo-chat/skills/golem-rename-status.md"
+      ],
+      "token": "golem|Golem|golem-rename-status|golem-to-Apple",
+      "max": 0,
+      "codemod": "skip",
+      "reason": "a repo-chat skill whose whole job is to report how far the rename of the old name has got; it has to name what it searches for",
+      "removal": "deleted with the last phase D step, together with the runbook and the codemod (and its name in tools/repo-chat/README.md)"
+    },
+    {
       "id": "history-paths",
       "scope": "path",
       "paths": [
         "docs/evidence/deploy-golem-resume-2026-09-18.json",
+        "docs/handoff/2026-10-02/workflow-results/wipe-golem.json",
+        "docs/handoff/2026-10-02/workflow-scripts/wipe-golem-wf_1cadd7fe-3c0.js",
         "docs/operations/GOLEM-REMOVAL-RUNBOOK.md",
         "scripts/check-no-golem.mjs",
         "scripts/check-rebrand.mjs",
@@ -103,11 +119,12 @@
         "tests/no-golem-guard.test.mjs",
         "tests/probe-s1.test.mjs",
         "tests/rebrand-enforced.test.mjs",
-        "tests/rename-golem.test.mjs"
+        "tests/rename-golem.test.mjs",
+        "tools/repo-chat/skills/golem-rename-status.md"
       ],
       "token": "*",
       "max": null,
-      "reason": "file names that carry the old name on purpose: the guard, its allowlist, the codemod, their tests, the removal runbook, and one recorded run",
+      "reason": "file names that carry the old name on purpose: the guard, its allowlist, the codemod, their tests, the removal runbook, the repo-chat skill that reports the rename status, and recorded runs (the wipe workflow of the handoff kit)",
       "removal": "never for the recorded run; the rest are deleted with the last phase D step"
     },
     {
@@ -145,6 +162,20 @@
       "codemod": "skip",
       "reason": "legacyOf derives the old wire spellings (subprotocol, X-<brand>-* headers, capability schema, UI fence, attribute) that the published Studio plugin and open browser tabs still send",
       "removal": "phase D: after plugin 1.1.0 is adopted and the legacy-wire counters read zero for the agreed window"
+    },
+    {
+      "id": "shim-sdk-env",
+      "scope": "content",
+      "paths": [
+        "packages/sdk/bin/apple.mjs",
+        "packages/sdk/tests/cli.test.mjs",
+        "packages/sdk/src/cli-args.mjs"
+      ],
+      "token": "GOLEM_TOKEN|GOLEM_API_URL|golem|Golem",
+      "max": 0,
+      "codemod": "skip",
+      "reason": "the published SDK CLI reads the pre-rename variables GOLEM_TOKEN and GOLEM_API_URL after APPLE_TOKEN and APPLE_API_URL, so a shell that exported them since before the rename keeps working; the SDK is a package that is published and cannot import scripts/lib/env-compat.mjs, so the two-name read is its own. cli.test.mjs pins the fallback and that the help text never prints the old name.",
+      "removal": "phase D: delete the fallback (and the test that pins it) once the owner no longer has shells or CI exporting GOLEM_TOKEN / GOLEM_API_URL"
     },
     {
       "id": "compat-tests-worker",
