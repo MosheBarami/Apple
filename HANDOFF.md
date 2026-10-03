@@ -254,7 +254,7 @@ worktree's own packages (see how `/Users/moshe/Developer/RbxAI-integration/apps/
    `.claude/worktrees/*` once merged; GitHub branch cleanup) under the owner's standing consent.
 5. **Apple A + B1**: bring the hand-written files from `worktree-wf_1cadd7fe-3c0-6` (guard, codemod, compat shims, runbook,
    dashboard + crystal-canyon fixes), then `node scripts/rename-golem.mjs --phase A` and `--phase B1` (dry-run first) on the
-   final tree; `check-no-golem.mjs` CLEAN; `@apple/*` → `@apple/*` needs one `pnpm install` → do it in step 6's fresh clone.
+   final tree; `check-no-golem.mjs` CLEAN; the package-scope rename needs one `pnpm install` → do it in step 6's fresh clone.
 6. **Dependencies** (64 Dependabot alerts, 2 critical Astro): in a FRESH CLONE (`git clone` the integration branch to a new
    folder with its own node_modules), `pnpm install`, upgrade astro/sharp/undici/devalue/fast-uri etc., run all suites, commit
    the lockfile; this also settles the `@apple/*` rename install.

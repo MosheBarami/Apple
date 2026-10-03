@@ -9,7 +9,7 @@
 //
 // WHICH PACKAGES. A workspace package is publishable if, and only if, its package.json carries
 //   "publishConfig": { "registry": "https://npm.pkg.github.com" }
-// Nothing here names a package, so the @apple/* -> @apple/* rename needs no edit to this file.
+// Nothing here names a package, so a package-scope rename needs no edit to this file.
 //
 // THE SCOPE PROBLEM. GitHub Packages only accepts an npm package whose scope equals the OWNER of
 // the repository it is published for (owner MosheBarami => `@mosheberami/...`). The packages in this

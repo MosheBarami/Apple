@@ -51,7 +51,7 @@
         "packages/training/src/score-ui.test.mjs"
       ],
       "token": "X\\-Golem|X\\-Golem\\-Credits\\-Remaining|X\\-Golem\\-Export\\-SHA256|X\\-Golem\\-Plugin|X\\-Golem\\-Plugin\\-Protocol|X\\-Golem\\-Plugin\\-Version|X\\-Golem\\-Plugin\\-Version\\/Protocol|X\\-Golem\\-Role|X\\-Golem\\-Sandbox|X\\-Golem\\-Token|X\\-Golem\\-Usage\\-Credits|X\\-Golem\\-Usage\\-Input\\-Tokens|X\\-Golem\\-Usage\\-Input\\-Tokens\\/\\-Out|X\\-Golem\\-Usage\\-Output\\-Tokens|golem\\-ui|golem\\.jwt|golem\\.studio\\-ops\\.v1|golem\\.v1|golem_original|golem_session|var\\/folders\\/\\.\\.\\.\\/golem\\-ui\\-N8G66L\\/build\\.luau|var\\/folders\\/hw\\/0ybpmzsn\\.\\.\\.\\/T\\/golem\\-ui\\-N8G66L\\/build\\.luau|x\\-golem\\-plugin\\-protocol|x\\-golem\\-plugin\\-version|x\\-golem\\-token",
-      "max": 143,
+      "max": 144,
       "reason": "this branch carries phases A and B1 only: the CLIENTS (web socket, SDKs, plugin sources, infra scripts, the owner-bench runner) and the docs that describe them still send and name the OLD wire spellings, which the worker accepts (B1, deployed first). B2 (branch golem-rename-b2) switches them to the new spellings.",
       "removal": "merge golem-rename-b2 after B1 is deployed and /api/health reports compat wire-both: that merge deletes this entry, and the guard fails if it is left behind (an entry that matches nothing is stale). The same merge restores the pins of legacy-fixture-plugin (2) and wire-names-in-history-docs (14), which this branch had to move to 1 and 29 for the same reason."
     },
@@ -96,11 +96,34 @@
       "paths": [
         "tools/repo-chat/skills/golem-rename-status.md"
       ],
-      "token": "golem|Golem|golem-rename-status|golem-to-Apple",
-      "max": 0,
+      "token": "golem|Golem|golem-rename-status|golem-to-Apple|X\\-Golem|golem\\.v1|golem/rename|golem_session",
+      "max": 14,
       "codemod": "skip",
       "reason": "a repo-chat skill whose whole job is to report how far the rename of the old name has got; it has to name what it searches for",
       "removal": "deleted with the last phase D step, together with the runbook and the codemod (and its name in tools/repo-chat/README.md)"
+    },
+    {
+      "id": "repo-chat-rename-skill-path",
+      "scope": "path",
+      "paths": [
+        "tools/repo-chat/skills/golem-rename-status.md"
+      ],
+      "token": "tools/repo-chat/skills/golem\\-rename\\-status\\.md",
+      "max": 1,
+      "reason": "the file name of the repo-chat skill whose whole job is to report the status of the rename of the old name (tools/repo-chat/README.md lists the skill by this name)",
+      "removal": "deleted with the last phase D step, together with the runbook and the codemod"
+    },
+    {
+      "id": "repo-chat-rename-skill-name",
+      "scope": "content",
+      "paths": [
+        "tools/repo-chat/README.md",
+        "tools/repo-chat/skills/architecture-overview.md"
+      ],
+      "token": "golem\\-rename\\-status",
+      "max": 2,
+      "reason": "these two repo-chat files list the rename-status skill by its file name",
+      "removal": "deleted with the skill, in the last phase D step"
     },
     {
       "id": "history-paths",
@@ -119,12 +142,11 @@
         "tests/no-golem-guard.test.mjs",
         "tests/probe-s1.test.mjs",
         "tests/rebrand-enforced.test.mjs",
-        "tests/rename-golem.test.mjs",
-        "tools/repo-chat/skills/golem-rename-status.md"
+        "tests/rename-golem.test.mjs"
       ],
       "token": "*",
       "max": null,
-      "reason": "file names that carry the old name on purpose: the guard, its allowlist, the codemod, their tests, the removal runbook, the repo-chat skill that reports the rename status, and recorded runs (the wipe workflow of the handoff kit)",
+      "reason": "file names that carry the old name on purpose: the guard, its allowlist, the codemod, their tests, the removal runbook, and recorded runs (including the wipe workflow of the handoff kit)",
       "removal": "never for the recorded run; the rest are deleted with the last phase D step"
     },
     {
@@ -171,8 +193,8 @@
         "packages/sdk/tests/cli.test.mjs",
         "packages/sdk/src/cli-args.mjs"
       ],
-      "token": "GOLEM_TOKEN|GOLEM_API_URL|golem|Golem",
-      "max": 0,
+      "token": "GOLEM_TOKEN|GOLEM_API_URL|golem|Golem|env\\.GOLEM_API_URL|env\\.GOLEM_TOKEN",
+      "max": 5,
       "codemod": "skip",
       "reason": "the published SDK CLI reads the pre-rename variables GOLEM_TOKEN and GOLEM_API_URL after APPLE_TOKEN and APPLE_API_URL, so a shell that exported them since before the rename keeps working; the SDK is a package that is published and cannot import scripts/lib/env-compat.mjs, so the two-name read is its own. cli.test.mjs pins the fallback and that the help text never prints the old name.",
       "removal": "phase D: delete the fallback (and the test that pins it) once the owner no longer has shells or CI exporting GOLEM_TOKEN / GOLEM_API_URL"
@@ -184,10 +206,13 @@
         "apps/worker/tests/audio-tools.test.mjs",
         "apps/worker/tests/auth.test.mjs",
         "apps/worker/tests/legacy-wire.test.mjs",
-        "apps/worker/tests/sound-design.test.mjs"
+        "apps/worker/tests/sound-design.test.mjs",
+        "apps/worker/tests/benchmark-replay.test.mjs",
+        "apps/worker/tests/look-tool.test.mjs",
+        "apps/worker/tests/self-check-session.test.mjs"
       ],
       "token": "GolemBaseVolume|X\\-Golem\\-Credits\\-Remaining|X\\-Golem\\-Export\\-SHA256|X\\-Golem\\-Grant\\-Expires\\-At|X\\-Golem\\-Plugin\\-Protocol|X\\-Golem\\-Plugin\\-Version|X\\-Golem\\-Role|X\\-Golem\\-Sandbox|X\\-Golem\\-Token|X\\-Golem\\-Usage\\-Credits|X\\-Golem\\-Usage\\-Input\\-Tokens|X\\-Golem\\-Usage\\-Output\\-Tokens|golem\\-ui|golem\\.jwt|golem\\.jwt\\.abc\\.def\\.ghi|golem\\.jwt\\.from\\-proto|golem\\.jwt\\.old|golem\\.jwt\\.tok|golem\\.studio\\-ops\\.v1|golem\\.studio\\-ops\\.v2|golem\\.v1|golemAttr|scripts/golem\\-allowlist\\.json|scripts/rename\\-golem\\.mjs",
-      "max": 78,
+      "max": 82,
       "codemod": "skip",
       "reason": "tests that pin the OLD wire spellings as a contract (header and subprotocol literals, the Sound attribute): they must keep saying the old literal",
       "removal": "phase D: removed with the compatibility they pin"
@@ -215,10 +240,12 @@
         "apps/worker/src/public-api.ts",
         "docs/MISSION-PROMPT.md",
         "packages/evals/src/security.test.mjs",
-        "scripts/gate-suite.mjs"
+        "scripts/gate-suite.mjs",
+        "CLAUDE.md",
+        "HANDOFF.md"
       ],
-      "token": "check\\-no\\-golem|docs/operations/GOLEM\\-REMOVAL\\-RUNBOOK\\.md|golem\\-chat|golem\\-plan|scripts/check\\-no\\-golem\\.mjs|scripts/golem\\-allowlist\\.json|scripts/rename\\-golem\\.mjs|tests/no\\-golem\\-guard\\.test\\.mjs",
-      "max": 18,
+      "token": "check\\-no\\-golem|docs/operations/GOLEM\\-REMOVAL\\-RUNBOOK\\.md|golem\\-chat|golem\\-plan|scripts/check\\-no\\-golem\\.mjs|scripts/golem\\-allowlist\\.json|scripts/rename\\-golem\\.mjs|tests/no\\-golem\\-guard\\.test\\.mjs|golem\\-rename\\-a\\-b1|golem\\-rename\\-b2|GOLEM_|check\\-no\\-golem\\.mjs",
+      "max": 31,
       "reason": "prose and tests that NAME the guard, its allowlist, the codemod and the runbook by file name, or the retired public model aliases the API was renamed from",
       "removal": "the references go when the files they name go (phase D); the retired aliases are history and stay"
     },
@@ -421,7 +448,7 @@
         "packages/**/*.md"
       ],
       "token": "Golem|golem",
-      "max": 52,
+      "max": 56,
       "reason": "prose ABOUT the rename or the old product: \"formerly Golem\", \"renamed from Golem to Apple\", the Roblox asset that was named Golem and was removed, decision-log quotes",
       "removal": "never: rewriting them would make them false (\"formerly Apple\")"
     },

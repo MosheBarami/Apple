@@ -53,7 +53,7 @@ copy, apply that with `--file`, and add them back (re-run the script; it updates
 
 ### Names change if jobs are renamed
 
-`ci.yml` job names are the contract. After the `@apple/*` to `@apple/*` rename lands, update `.github/` and
+`ci.yml` job names are the contract. When a package-scope rename lands, update `.github/` and
 the scripts in the same change (`scripts/check-ci-references.mjs` guards missing script paths). The new
 workflow does not mention a package name: it uses path filters (`--filter ./packages/shared`).
 
