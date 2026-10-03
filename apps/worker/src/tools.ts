@@ -5852,7 +5852,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   add_behaviour: {
     def: {
       name: 'add_behaviour',
-      description: "Give a placed model behaviour from reviewed verbs (swing, slide, spin, bob, fade, light, sound, emit, bounce) done to parts on a trigger (click, prompt, touch, near, auto). Library models arrive with scripts and sounds stripped; this puts the asked-for behaviour back. Call with just model to list the verbs and what each takes. Read creation skill props-add-behaviour first.",
+      description: "Give a placed model behaviour from reviewed verbs (swing, slide, spin, bob, fade, light, sound, emit, bounce) done to parts on a trigger (click, prompt, touch, near, auto). Library models arrive with scripts and sounds stripped; this gives them behaviour again. Call with just model to list the verbs and what each takes. Read creation skill props-add-behaviour first.",
       parameters: S({ model: { type: 'string' }, behaviours: { type: 'array', items: { type: 'object' } }, remove: { type: 'array', items: { type: 'string' } }, replace: { type: 'boolean' } }, ['model']),
     },
     studio: true,
