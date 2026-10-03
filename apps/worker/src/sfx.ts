@@ -106,7 +106,7 @@ export const SFX: Record<string, SfxPreset> = {
   footstep_grass: {
     family: 'footstep',
     summary: 'A soft, dry rustle with almost no body.',
-    use: 'Lawns, meadows, jungle floor. The quietest surface in the set — grass absorbs the thud.',
+    use: 'Lawns, meadows, jungle floor. The quietest surface.',
     seconds: 0.22,
     layers: [
       { wave: 'sine', startHz: 90, endHz: 62, level: 0.22, attackMs: 1, decayMs: 55 },
@@ -116,7 +116,7 @@ export const SFX: Record<string, SfxPreset> = {
   footstep_stone: {
     family: 'footstep',
     summary: 'A hard, bright tap with a short slap of room.',
-    use: 'Flagstone, marble, concrete, castle floors. Reads as indoors and heavy.',
+    use: 'Flagstone, marble, concrete, castle floors. Indoors and heavy.',
     seconds: 0.26,
     layers: [
       { wave: 'sine', startHz: 128, endHz: 74, level: 0.4, attackMs: 1, decayMs: 70 },
@@ -126,7 +126,7 @@ export const SFX: Record<string, SfxPreset> = {
   footstep_wood: {
     family: 'footstep',
     summary: 'A hollow knock with a woody ring under it.',
-    use: 'Decks, floorboards, docks, treehouses. The ring is what separates wood from stone.',
+    use: 'Decks, floorboards, docks, treehouses. The ring tells it from stone.',
     seconds: 0.28,
     layers: [
       { wave: 'sine', startHz: 168, endHz: 96, level: 0.42, attackMs: 1, decayMs: 110 },
@@ -137,7 +137,7 @@ export const SFX: Record<string, SfxPreset> = {
   footstep_gravel: {
     family: 'footstep',
     summary: 'A loose, scattered crunch that keeps moving after the step lands.',
-    use: 'Paths, quarries, riverbanks, rubble. The long bright tail is the giveaway.',
+    use: 'Paths, quarries, riverbanks, rubble. A long bright tail.',
     seconds: 0.34,
     layers: [
       { wave: 'sine', startHz: 104, endHz: 66, level: 0.25, attackMs: 1, decayMs: 60 },
@@ -159,7 +159,7 @@ export const SFX: Record<string, SfxPreset> = {
   footstep_snow: {
     family: 'footstep',
     summary: 'A muffled squeak with the top end rolled off.',
-    use: 'Snow, deep sand, thick carpet. Everything above 3 kHz is gone, which is the effect.',
+    use: 'Snow, deep sand, thick carpet. Nothing above 3 kHz.',
     seconds: 0.26,
     layers: [
       { wave: 'sine', startHz: 84, endHz: 56, level: 0.24, attackMs: 2, decayMs: 80 },
@@ -181,7 +181,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_click: {
     family: 'ui',
     summary: 'A single dry tick.',
-    use: 'Every ordinary button. Deliberately the least interesting sound in the set.',
+    use: 'Every ordinary button. The plainest sound in the set.',
     seconds: 0.07,
     layers: [
       { wave: 'triangle', startHz: 1400, endHz: 900, level: 0.45, attackMs: 1, decayMs: 45 },
@@ -191,7 +191,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_confirm: {
     family: 'ui',
     summary: 'Two rising notes. Reads as "yes, that worked".',
-    use: 'Save, accept, claim, equip. Never for navigation — it is too positive to hear constantly.',
+    use: 'Save, accept, claim, equip. Never navigation: too positive to hear constantly.',
     seconds: 0.26,
     layers: [
       { wave: 'sine', startHz: 660, endHz: 660, level: 0.34, attackMs: 3, decayMs: 110 },
@@ -201,7 +201,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_error: {
     family: 'ui',
     summary: 'A low, flat two-tone buzz falling away.',
-    use: 'Refused, not enough coins, locked. Blunt without being harsh.',
+    use: 'Refused, not enough coins, locked. Blunt, not harsh.',
     seconds: 0.3,
     layers: [
       { wave: 'square', startHz: 220, endHz: 150, level: 0.24, attackMs: 2, decayMs: 190, lowPassHz: 2200 },
@@ -221,7 +221,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_close: {
     family: 'ui',
     summary: 'The same sweep, downward.',
-    use: 'Closing whatever `ui_open` opened. The pair is what makes the UI feel physical.',
+    use: 'Closing what `ui_open` opened; the pair makes the UI feel physical.',
     seconds: 0.2,
     layers: [
       { wave: 'triangle', startHz: 1250, endHz: 420, level: 0.3, attackMs: 3, decayMs: 150 },
@@ -231,7 +231,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_coin: {
     family: 'ui',
     summary: 'A bright two-note chime with a metallic edge.',
-    use: 'Picking up currency. Short enough to fire ten times a second without turning to mush.',
+    use: 'Picking up currency. Fires ten times a second without turning to mush.',
     seconds: 0.3,
     layers: [
       { wave: 'sine', startHz: 1320, endHz: 1320, level: 0.3, attackMs: 1, decayMs: 90 },
@@ -242,7 +242,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_purchase: {
     family: 'ui',
     summary: 'A three-note rising flourish.',
-    use: 'A real purchase or a tier unlock — something that happens rarely enough to earn 0.6s.',
+    use: 'A real purchase or a tier unlock: rare enough to earn 0.6s.',
     seconds: 0.6,
     layers: [
       { wave: 'sine', startHz: 523, endHz: 523, level: 0.3, attackMs: 4, decayMs: 200 },
@@ -253,7 +253,7 @@ export const SFX: Record<string, SfxPreset> = {
   ui_notify: {
     family: 'ui',
     summary: 'One soft bell.',
-    use: 'A quest update or a message arriving. Quieter than everything else in the family, on purpose.',
+    use: 'A quest update or a message arriving. The quietest UI sound.',
     seconds: 0.45,
     layers: [
       { wave: 'sine', startHz: 880, endHz: 880, level: 0.24, attackMs: 6, decayMs: 380 },
@@ -265,7 +265,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_swing: {
     family: 'combat',
     summary: 'A whoosh that passes the listener.',
-    use: 'A melee swing that misses, a thrown object, a dodge. The filter sweep IS the movement.',
+    use: 'A missed melee swing, a thrown object, a dodge. The filter sweep is the movement.',
     seconds: 0.34,
     layers: [
       { wave: 'noise', level: 0.5, attackMs: 40, decayMs: 200, highPassHz: 400, lowPassHz: 900, lowPassEndHz: 6000 },
@@ -275,7 +275,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_impact_soft: {
     family: 'combat',
     summary: 'A dull body hit with no ring.',
-    use: 'Landing a punch, a club, a hit on something alive. Low and short — nothing metallic.',
+    use: 'Landing a punch, a club, a hit on something alive. Low, short, not metallic.',
     seconds: 0.26,
     layers: [
       { wave: 'sine', startHz: 150, endHz: 55, level: 0.5, attackMs: 1, decayMs: 130 },
@@ -285,7 +285,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_impact_metal: {
     family: 'combat',
     summary: 'A hard strike on plate, with a ring that outlasts the hit.',
-    use: 'Sword on shield, hammer on armour, anything struck that is meant to sound expensive.',
+    use: 'Sword on shield, hammer on armour, anything meant to sound expensive.',
     seconds: 0.55,
     layers: [
       { wave: 'sine', startHz: 220, endHz: 120, level: 0.34, attackMs: 1, decayMs: 70 },
@@ -297,7 +297,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_block: {
     family: 'combat',
     summary: 'A short, clamped thud with the ring cut off.',
-    use: 'A blocked or parried hit. It is `combat_impact_metal` with the ring taken away, which is what "blocked" sounds like.',
+    use: 'A blocked or parried hit: `combat_impact_metal` with the ring removed.',
     seconds: 0.24,
     layers: [
       { wave: 'sine', startHz: 260, endHz: 130, level: 0.42, attackMs: 1, decayMs: 90 },
@@ -307,7 +307,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_bow: {
     family: 'combat',
     summary: 'A string release and the arrow leaving.',
-    use: 'Bows, crossbows, slings. The tail is the departure, so do not shorten it.',
+    use: 'Bows, crossbows, slings. The tail is the departure; do not shorten it.',
     seconds: 0.4,
     layers: [
       { wave: 'triangle', startHz: 420, endHz: 190, level: 0.3, attackMs: 1, decayMs: 90 },
@@ -317,7 +317,7 @@ export const SFX: Record<string, SfxPreset> = {
   combat_explosion: {
     family: 'combat',
     summary: 'A small explosion: crack, body, and a long rumbling tail.',
-    use: 'Barrels, grenades, collapsing structures. The longest one-shot in the set.',
+    use: 'Barrels, grenades, collapsing structures. The longest one-shot.',
     seconds: 1.3,
     layers: [
       { wave: 'noise', level: 0.55, attackMs: 0, decayMs: 160, highPassHz: 1200, lowPassHz: 14000, lowPassEndHz: 3000 },
@@ -332,7 +332,7 @@ export const SFX: Record<string, SfxPreset> = {
   ambience_wind: {
     family: 'ambience',
     summary: 'An open, moving wind bed.',
-    use: 'Cliffs, plains, rooftops, anywhere exposed. Layer under everything at a low volume.',
+    use: 'Cliffs, plains, rooftops, anywhere exposed. Layer it low under everything.',
     seconds: 6,
     loop: true,
     layers: [
@@ -343,7 +343,7 @@ export const SFX: Record<string, SfxPreset> = {
   ambience_rain: {
     family: 'ambience',
     summary: 'Steady rain with no thunder.',
-    use: 'Storm weather, a wet city, a jungle. Deliberately even — a rain loop with an event in it announces its own length.',
+    use: 'Storm weather, a wet city, a jungle. Even on purpose: an event in a rain loop gives away its length.',
     seconds: 6,
     loop: true,
     layers: [
@@ -365,7 +365,7 @@ export const SFX: Record<string, SfxPreset> = {
   ambience_machine: {
     family: 'ambience',
     summary: 'A low hum with a slow pulse — something large that is running.',
-    use: 'Engine rooms, generators, spaceships, factories. Tonal, so keep it quiet or it fights the music.',
+    use: 'Engine rooms, generators, spaceships, factories. Tonal: keep it quiet or it fights the music.',
     seconds: 6,
     loop: true,
     layers: [
@@ -377,7 +377,7 @@ export const SFX: Record<string, SfxPreset> = {
   ambience_room: {
     family: 'ambience',
     summary: 'Barely-there room tone.',
-    use: 'Interiors that would otherwise be digitally silent. Digital silence reads as a bug; this reads as a room.',
+    use: 'Interiors that would otherwise be digitally silent, which reads as a bug.',
     seconds: 6,
     loop: true,
     layers: [

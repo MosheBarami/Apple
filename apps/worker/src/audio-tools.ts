@@ -59,7 +59,7 @@ interface AudioToolImpl {
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
   type: 'object',
   properties: props,
-  required,
+  ...(required.length ? { required } : {}),
 });
 
 async function studioOp(ctx: AgentCtx, op: StudioOp, timeoutMs = 30_000): Promise<unknown> {
@@ -172,8 +172,8 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'design_sound',
       description:
-        'Give the place its acoustics and a working mixer: environment reverb, how fast sound falls away with distance, and five SoundGroups (Music, Ambience, SFX, UI, Voice) with sensible starting volumes and bus compression. This references NO assets — it is pure engine configuration, so it costs nothing and cannot fail a licence or moderation gate. Run it once per place, early; re-running retunes rather than duplicating. It adds no audio (with no Sound instances the place is a very well-designed silence). Roblox\'s default falloff, 10 to 10,000 studs, is why so many places sound like everything happens next to the player\'s head; this is the fix.\n\nEnvironments:\n' +
-        environmentCatalogue().map((e) => `  ${e.name} — ${e.summary} ${e.use}`).join('\n'),
+        'Give the place its acoustics and a working mixer: environment reverb, distance falloff, and five SoundGroups (Music, Ambience, SFX, UI, Voice) with starting volumes and bus compression. References NO assets (pure engine configuration: free, cannot fail a licence or moderation gate). Run it once per place, early; re-running retunes, never duplicates. It does not add any audio (with no Sound instances the place stays silent). Roblox\'s default falloff, 10 to 10,000 studs, makes everything sound next to the player\'s head; this fixes it.\n\nEnvironments:\n' +
+        environmentCatalogue().map((e) => `${e.name} — ${e.summary} ${e.use}`).join('\n'),
       parameters: S(
         {
           environment: { type: 'string', enum: ENVIRONMENT_NAMES, description: 'Which acoustic environment the place is in.' },
@@ -280,7 +280,7 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'assign_sounds',
       description:
-        'Route Sound instances that ALREADY EXIST in the place onto the mixer buses and give them a believable 3D falloff. Roblox\'s defaults (audible from 10 to 10,000 studs) are why un-configured audio sounds like it is happening inside the player\'s head. The volume change is a TRIM in dB recorded against the Sound\'s original volume, so running this twice does not compound. It never writes a SoundId: this worker cannot upload audio and will not guess an id, because an unresolved id plays silently and nothing would report it. Sounds that are not there come back in `missing` rather than being counted as done. Run design_sound first, or the buses will not exist yet.',
+        'Route Sound instances that ALREADY EXIST in the place onto the mixer buses with a believable 3D falloff (Roblox\'s default, audible from 10 to 10,000 studs, sounds like it is inside the player\'s head). Volume is a TRIM in dB against the Sound\'s original volume, so a second run does not compound. It never writes a SoundId: this worker cannot upload audio and will not guess an id (an unresolved id plays silently, unreported). Sounds that are not there come back in `missing`, not counted as done. Run design_sound first, or the buses do not exist yet.',
       parameters: S(
         {
           assignments: {
@@ -376,8 +376,9 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'generate_sound',
       description:
-        'Synthesise an original sound effect from a recipe in the catalogue below (oscillators and filtered noise: free, original, the same seed gives the same take). NO text-to-audio: a description instead of a recipe is refused. The user hears it in the workspace and can download it for an hour. IT IS NOT IN THEIR GAME: nothing here uploads audio to Roblox, so never say it was placed; they upload it themselves before a Sound can use it.\n\nCatalogue:\n' +
-        sfxCatalogue().map((s) => `  ${s.name} (${s.family}${s.loop ? ', loops' : ''}) — ${s.summary} ${s.use}`).join('\n'),
+        'Synthesise an original sound effect from a catalogue recipe (oscillators and filtered noise: free, original; same seed, same take). NO text-to-audio: a description instead of a recipe is refused. The user hears it in the workspace and can download it for an hour. NOT IN THEIR GAME: nothing uploads audio to Roblox, so never say it was placed; they upload it before a Sound can use it.\n\nCatalogue:\n' +
+        // The family is the name's own prefix (footstep_, ui_, combat_, ambience_), so only looping is said.
+        sfxCatalogue().map((s) => `${s.name}${s.loop ? ' (loops)' : ''} — ${s.summary} ${s.use}`).join('\n'),
       parameters: S(
         {
           preset: { type: 'string', enum: SFX_NAMES, description: 'Which effect to render.' },
@@ -440,8 +441,8 @@ export const AUDIO_TOOLS: Record<string, AudioToolImpl> = {
     def: {
       name: 'speak_line',
       description:
-        'Speak one line of dialogue or narration aloud. Use it for an NPC line, a tutorial voice-over or an announcement — one line per call, not a whole script. The preset selects the LANGUAGE and the pacing of the delivery; it does NOT select a voice, because the speech engine available here exposes no voice, gender or emotion control, and the result says so rather than implying a choice was made. The text must already be in the target language: a preset does not translate. As with generated sound effects, the audio is played to the user and is NOT in their game.\n\nPresets:\n' +
-        voicePresetCatalogue().map((p) => `  ${p.name} (${p.lang}) — ${p.summary} ${p.use}`).join('\n'),
+        'Speak one line of dialogue or narration aloud: an NPC line, a tutorial voice-over or an announcement, one line per call. The preset selects the LANGUAGE and the pacing; it does NOT select a voice: this speech engine has no voice, gender or emotion control, and the result says so. The text must already be in the target language: a preset does not translate. Like generated sounds, the audio plays to the user and is NOT in their game.\n\nPresets:\n' +
+        voicePresetCatalogue().map((p) => `${p.name} (${p.lang}) — ${p.summary} ${p.use}`).join('\n'),
       parameters: S(
         {
           text: { type: 'string', description: 'The line to speak, already in the target language. One line, up to 1000 characters.' },

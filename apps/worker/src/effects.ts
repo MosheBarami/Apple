@@ -96,7 +96,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   embers: {
     summary: 'Sparse glowing motes drifting upward.',
-    use: 'Over a fire or a forge, around lava, or anywhere a scene needs to feel hot. Reads well layered on top of `fire`.',
+    use: 'Over a fire or forge, around lava, anywhere that should feel hot. Layers well on `fire`.',
     parts: [
       {
         className: 'ParticleEmitter',
@@ -120,7 +120,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   smoke: {
     summary: 'Slow, heavy grey smoke that widens as it rises.',
-    use: 'Chimneys, wreckage, extinguished fires, industrial vents. Low rate on purpose — smoke reads by size, not by count.',
+    use: 'Chimneys, wreckage, extinguished fires, industrial vents. Low rate on purpose: smoke reads by size, not count.',
     parts: [
       {
         className: 'ParticleEmitter',
@@ -170,7 +170,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   dust: {
     summary: 'Fine motes hanging in the air, barely moving.',
-    use: 'Sunbeams through a window, attics, ruins, disused interiors. This is the cheapest way to make an interior stop feeling sterile.',
+    use: 'Sunbeams through a window, attics, ruins, disused interiors. The cheapest cure for a sterile interior.',
     parts: [
       {
         className: 'ParticleEmitter',
@@ -220,7 +220,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   waterfall_mist: {
     summary: 'Churned white spray thrown up from moving water.',
-    use: 'The BASE of a waterfall or a fountain, never the top. Water reads as water because of what happens where it lands.',
+    use: 'The BASE of a waterfall or fountain, never the top: water reads as water where it lands.',
     parts: [
       {
         className: 'ParticleEmitter',
@@ -244,7 +244,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   creditle: {
     summary: 'Tight, bright, fast glints.',
-    use: 'Pickups, treasure, enchanted objects, quest markers. Short lifetime is what makes it read as a glint instead of a cloud.',
+    use: 'Pickups, treasure, enchanted objects, quest markers. The short lifetime makes it a glint, not a cloud.',
     parts: [
       {
         className: 'ParticleEmitter',
@@ -300,7 +300,7 @@ export const EFFECTS: Record<string, EffectPreset> = {
 
   torchlight: {
     summary: 'Warm light only — no particles.',
-    use: 'Lamps, sconces and windows that should glow at night without a visible flame. Cheapest possible way to make a night scene readable.',
+    use: 'Lamps, sconces and windows that glow at night without a flame. The cheapest way to make a night scene readable.',
     parts: [
       {
         className: 'PointLight',

@@ -490,8 +490,8 @@ export const insertVfx = {
     description:
       'The ONLY way to put particles, beams or trails in the place (D-FXLIB-1): builds one library effect preset on target. ' +
       `preset: one of the enum (find_vfx describes each). target: the part it plays on (a player's HumanoidRootPart for auras, the object a highlight outlines); area effects (snow, rain, fireflies) take a big part or game.Workspace. ` +
-      'One-shot presets (coin_burst, explosion, magic_hit, water_splash, confetti, pet_hatch, hit_sparks) are placed switched off; a script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")). mode "loop" keeps a one-shot running so it can be seen in Studio. ' +
-      'color [r,g,b] 0-255 recolours it, scale 0.25-4 resizes, rate 0.1-4 thins or thickens a looping one. Re-inserting the same preset on the same target replaces it. Creating a ParticleEmitter, Beam, Trail, Fire, Smoke or Sparkles any other way is refused.',
+      'One-shot presets (coin_burst, explosion, magic_hit, water_splash, confetti, pet_hatch, hit_sparks) are placed off; a script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")). mode "loop" keeps a one-shot running to see it in Studio. ' +
+      'color [r,g,b] 0-255 recolours, scale 0.25-4 resizes, rate 0.1-4 thins or thickens a loop. The same preset on the same target replaces it. A ParticleEmitter, Beam, Trail, Fire, Smoke or Sparkles made any other way is refused.',
     parameters: {
       type: 'object',
       properties: {

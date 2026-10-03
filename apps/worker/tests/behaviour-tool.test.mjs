@@ -552,10 +552,9 @@ test('through the real registry: model_anatomy then add_behaviour on one model, 
 // ------------------------------------------------------------------------------------------------ generality
 
 test('no subject is named in the behaviour code: the words the repo treats as subjects do not appear outside a short, justified list', () => {
-  // Derived from the repo's own list of subject words (model-rule.ts PROP_WORDS), not typed here.
-  const rule = readFileSync(join(WORKER, 'src', 'model-rule.ts'), 'utf8');
-  const list = rule.slice(rule.indexOf('const PROP_WORDS'), rule.indexOf(']);', rule.indexOf('const PROP_WORDS')));
-  const subjects = new Set([...list.matchAll(/'([a-z]+)'/g)].map((m) => m[1]));
+  // Derived from the repo's own list of subject words, not typed here. RESTATED 2026-10-03 at the merge into integration:
+  // world-building (288aba9b) removed PROP_WORDS from model-rule.ts, so the list it had is kept as a fixture.
+  const subjects = new Set(JSON.parse(readFileSync(join(WORKER, 'tests', 'fixtures', 'subject-words.json'), 'utf8')).words);
   assert.ok(subjects.size > 100, 'the subject list was found');
   // Ordinary English that is also a verb or noun the behaviour vocabulary needs. A subject word NOT in this list fails the test.
   const generic = new Set([

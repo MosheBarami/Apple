@@ -308,14 +308,14 @@ export const VOICE_PRESETS: Readonly<Record<string, VoicePreset>> = {
   },
   spanish_narrator: {
     summary: 'The narrator delivery, spoken in Spanish.',
-    use: 'A Spanish-language build. The TEXT must already be Spanish — this selects the voice, it does not translate.',
+    use: 'A Spanish-language build; the text must already be Spanish.',
     lang: 'es',
     wordsPerMinute: 140,
     shape: (t) => breakLongSentences(slowDown(t), 14),
   },
   french_narrator: {
     summary: 'The narrator delivery, spoken in French.',
-    use: 'A French-language build. The TEXT must already be French — this selects the voice, it does not translate.',
+    use: 'A French-language build; the text must already be French.',
     lang: 'fr',
     wordsPerMinute: 140,
     shape: (t) => breakLongSentences(slowDown(t), 14),

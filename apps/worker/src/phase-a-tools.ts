@@ -18,7 +18,7 @@ export type OpCall = (op: StudioOp, timeoutMs?: number) => Promise<unknown>;
 type Args = Record<string, unknown>;
 type Refusal = { error: string };
 
-const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({ type: 'object', properties: props, required });
+const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({ type: 'object', properties: props, ...(required.length ? { required } : {}) });
 const VEC3 = { type: 'array', items: { type: 'number' }, minItems: 3, maxItems: 3 };
 const REGION = { type: 'object', properties: { min: VEC3, max: VEC3 }, required: ['min', 'max'] };
 const WORLD_LIMIT = 1_000_000;

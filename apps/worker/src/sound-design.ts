@@ -198,7 +198,7 @@ export interface SoundEnvironment {
 export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   open_world: {
     summary: 'Outdoors and unbounded: fields, rooftops, open water.',
-    use: 'The default for any exterior. Sound carries, so the rolloff is gentle.',
+    use: 'The default exterior. Sound carries: gentle rolloff.',
     reverb: 'Plain',
     rolloffScale: 0.8,
     distanceFactor: 3.33,
@@ -206,7 +206,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   forest: {
     summary: 'Outdoors with cover: trees, dense foliage, canopy.',
-    use: 'Woods and jungle. Slightly faster falloff than open ground, because leaves absorb.',
+    use: 'Woods and jungle. Leaves absorb, so falloff is a little faster than open ground.',
     reverb: 'Forest',
     rolloffScale: 1,
     distanceFactor: 3.33,
@@ -215,7 +215,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   mountains: {
     summary: 'Big, far, reflective.',
-    use: 'Cliffs, peaks, canyons. The long reverb is what sells the scale.',
+    use: 'Cliffs, peaks, canyons. The long reverb sells the scale.',
     reverb: 'Mountains',
     rolloffScale: 0.7,
     distanceFactor: 4,
@@ -223,7 +223,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   city: {
     summary: 'Hard surfaces at a distance, open above.',
-    use: 'Streets and plazas. Pairs with an ambience bed; without one a city reads as a diorama.',
+    use: 'Streets and plazas. Pair with an ambience bed, or a city reads as a diorama.',
     reverb: 'City',
     rolloffScale: 1,
     distanceFactor: 3.33,
@@ -231,7 +231,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   cave: {
     summary: 'Enclosed, stone, long tail.',
-    use: 'Caverns, mines, anything underground. The most obviously different preset in the set.',
+    use: 'Caverns, mines, anything underground. The most distinct preset.',
     reverb: 'Cave',
     rolloffScale: 1.4,
     distanceFactor: 3,
@@ -248,7 +248,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   small_room: {
     summary: 'A domestic interior with soft furnishings.',
-    use: 'Houses, shops, offices. Short tail, fast falloff — it should feel small.',
+    use: 'Houses, shops, offices. Short tail, fast falloff: small.',
     reverb: 'LivingRoom',
     rolloffScale: 1.6,
     distanceFactor: 2.5,
@@ -282,7 +282,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   underwater: {
     summary: 'Submerged: dull, close, no high end.',
-    use: 'Swimming sections. Trim the UI bus too — interface clicks should not sound wet.',
+    use: 'Swimming sections. Trim the UI bus too: clicks should not sound wet.',
     reverb: 'UnderWater',
     rolloffScale: 1.8,
     distanceFactor: 2,
@@ -291,7 +291,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   sewer: {
     summary: 'Wet, enclosed, pipe-like.',
-    use: 'Tunnels, drains, sewers. Distinct from `cave` — tighter and more metallic.',
+    use: 'Tunnels, drains, sewers. Tighter and more metallic than `cave`.',
     reverb: 'SewerPipe',
     rolloffScale: 1.5,
     distanceFactor: 2.5,
@@ -299,7 +299,7 @@ export const SOUND_ENVIRONMENTS: Record<string, SoundEnvironment> = {
   },
   dry: {
     summary: 'No reverb at all.',
-    use: 'Menus, lobbies, cutscenes, and any place whose own audio already carries its space. Also the honest choice when unsure — no reverb reads as neutral, the wrong reverb reads as broken.',
+    use: 'Menus, lobbies, cutscenes, any place whose audio already carries its space. Also the choice when unsure: no reverb reads neutral, the wrong reverb reads broken.',
     reverb: 'NoReverb',
     rolloffScale: 1,
     distanceFactor: 3.33,
