@@ -1529,7 +1529,7 @@ spec("history refusal and destroy are visible", function()
 end)
 
 
-spec("read references distinguish duplicate siblings without renaming or authorizing writes", function()
+spec("read references distinguish duplicate siblings without renaming them, and write only inside the same scope as a path", function()
     local folder = Instance.new("Folder"); folder.Name = "ReadRefPack"; folder.Parent = services.Workspace
     local a = Instance.new("Part"); a.Name = "Rock"; a.Anchored = false; a.Position = v3(1,2,3); a.Parent = folder
     local b = Instance.new("Part"); b.Name = "Rock"; b.Position = v3(8,9,10); b.Parent = folder
@@ -1544,8 +1544,13 @@ spec("read references distinguish duplicate siblings without renaming or authori
     eq(first.ok,true); eq(first.data.props.Position.v[1],1)
     a.Parent = nil; a.Parent = folder -- reorder the same objects, never select by sibling ordinal
     eq(run(c,"refs-after-reorder",{op="get_instance",path=ra},false).data.props.Position.v[1],1)
+    -- A reference names the instance, so a write through it lands on that instance and no other (the
+    -- scope and consent rules are the ones a path gets: tests/duplicate-names.test.mjs). Without
+    -- consent it is refused like any write.
+    local noConsent = run(c,"refs-write-no-consent",{op="set_props",path=ra,props={Anchored={t="bool",v=true}}},false)
+    eq(noConsent.ok,false); eq(a.Anchored,false,"no consent, no write")
     local write = run(c,"refs-write",{op="set_props",path=ra,props={Anchored={t="bool",v=true}}},true)
-    eq(write.ok,false); eq(a.Anchored,false,"read reference must not authorize a write")
+    eq(write.ok,true); eq(a.Anchored,true); eq(b.Anchored ~= true,true,"the same-named sibling is untouched")
     eq(a.Name,"Rock"); eq(b.Name,"Rock")
     local other = newCommands()
     eq(run(other,"refs-other-engine",{op="get_instance",path=ra},false).ok,false)

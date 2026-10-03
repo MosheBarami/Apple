@@ -158,7 +158,7 @@ function Ui.build(api)
 	end
 
 	local function handleLayoutCheck(self, op)
-		local screen, screenPath, err, kind = api.resolvePath(self.game, self.options.services, op.screen, false)
+		local screen, screenPath, err, kind = api.resolvePath(self.game, self.options.services, op.screen, false, self)
 		if not screen then return nil, kind or "not_found", err end
 		if api.classNameOf(screen) ~= "ScreenGui" then return nil, "invalid", "screen must be a ScreenGui (for example game.StarterGui.ShopGui)" end
 		local devices = op.devices or { "phone_landscape", "desktop" }

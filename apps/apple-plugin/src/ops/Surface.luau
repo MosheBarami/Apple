@@ -131,7 +131,7 @@ function Surface.build(api)
 		if type(op.paths) ~= "table" or #op.paths == 0 or #op.paths > 50 then return nil, "invalid", "paths must list 1 to 50 places" end
 		local roots = {}
 		for _, path in op.paths do
-			local target = api.resolvePath(self.game, self.options.services, path, false)
+			local target = api.resolvePath(self.game, self.options.services, path, false, self)
 			if not target then return nil, "not_found", "nothing at " .. tostring(path) end
 			if not api.writableTarget(self.game, target) then return nil, "refused", "that place is not one Apple edits" end
 			table.insert(roots, target)

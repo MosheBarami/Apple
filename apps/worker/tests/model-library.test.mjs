@@ -339,6 +339,24 @@ test('a Creator Store row is inserted by its own id, scanned, then stood on the 
   assert.equal(ops.filter((o) => o.op === 'transform_instances' && o.scale).length, 0, 'a Creator Store row keeps its own scale unless asked');
 });
 
+test('an insert the plugin had to rename says so, so the agent does not look for the asset under its old name', async () => {
+  const s = sample((r) => typeof r[5] === 'number');
+  const want = M.libraryModel(s.id);
+  const { ctx } = ctxWith((op) => {
+    if (op.op === 'insert_asset') return { ok: true, data: { inserted: ['game.Workspace["Thing (2)"]'], renamed: ['Thing -> Thing (2)'] } };
+    if (op.op === 'get_tree') return { ok: true, data: { root: { class: 'Model', name: 'Thing (2)', children: [{ class: 'MeshPart', name: 'Mesh' }] } } };
+    if (op.op === 'list_scripts') return { ok: true, data: { scripts: [] } };
+    if (op.op === 'spatial_query') return { ok: true, data: { center: [0, 3, 0], size: [4, 6, 4], bottomY: 0 } };
+    if (op.op === 'transform_instances') return { ok: true, data: {} };
+    return { ok: false, error: `unexpected ${op.op}` };
+  });
+  ctx.approvedLibraryAssetId = want.assetId;
+  const res = await run(ctx, 'insert_library_model', { id: s.id, position: [0, 0, 20] });
+  assert.equal(res.error, undefined, res.error);
+  assert.deepEqual(res.renamed, ['Thing -> Thing (2)']);
+  assert.deepEqual(res.inserted, ['game.Workspace["Thing (2)"]']);
+});
+
 test('Q19: the agent inserts a library model it chose without waiting for a preview approval', async () => {
   const s = sample((r) => typeof r[5] === 'number');
   const { ctx } = ctxWith();

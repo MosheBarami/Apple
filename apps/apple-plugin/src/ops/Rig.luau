@@ -38,7 +38,7 @@ function Rig.build(api)
 			position = op.position
 		end
 		local parentPath = op.parent or "game.Workspace"
-		local parent, canonicalParent, pErr, pKind, pRemedy = api.resolvePath(self.game, self.options.services, parentPath, true)
+		local parent, canonicalParent, pErr, pKind, pRemedy = api.resolvePath(self.game, self.options.services, parentPath, true, self)
 		if not parent then return nil, pKind or "not_found", pErr, pRemedy end
 		local refused, refusedRemedy = api.destinationRefusal(self.game, parent, canonicalParent, "Model")
 		if refused then return nil, "refused", refused, refusedRemedy end

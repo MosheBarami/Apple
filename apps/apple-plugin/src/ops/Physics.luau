@@ -86,7 +86,7 @@ function Physics.build(api)
 			end
 			local parts = {}
 			for _, path in op.paths do
-				local inst, canonical, resolveErr, kind, remedy = api.resolvePath(self.game, self.options.services, path, true)
+				local inst, canonical, resolveErr, kind, remedy = api.resolvePath(self.game, self.options.services, path, true, self)
 				if not inst then return nil, kind or "not_found", resolveErr, remedy end
 				if not api.writableTarget(self.game, inst) then return nil, "refused", canonical .. " is outside Apple's place scope", "choose_allowed_target" end
 				local found, partsErr = api.partsUnder(inst)

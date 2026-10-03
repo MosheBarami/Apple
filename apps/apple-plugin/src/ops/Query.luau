@@ -122,7 +122,7 @@ function Query.build(api)
 			table.sort(out, function(a, b) return api.nameOf(a) < api.nameOf(b) end)
 			return out
 		end
-		local inst, _, err, kind = api.resolvePath(self.game, self.options.services, root, false)
+		local inst, _, err, kind = api.resolvePath(self.game, self.options.services, root, false, self)
 		if not inst then return nil, err, kind end
 		return { inst }
 	end
@@ -183,7 +183,7 @@ function Query.build(api)
 			local seen = {}
 			for index, raw in op.targets do
 				if type(index) ~= "number" then return nil, "invalid", "targets must be a list" end
-				local inst, canonical, err, kind, remedy = api.resolvePath(self.game, self.options.services, raw, true)
+				local inst, canonical, err, kind, remedy = api.resolvePath(self.game, self.options.services, raw, true, self)
 				if not inst then return nil, kind or "not_found", err, remedy end
 				if not seen[inst] then seen[inst] = true; table.insert(targets, { inst = inst, path = canonical }) end
 			end
@@ -309,7 +309,7 @@ function Query.build(api)
 		if raw == nil then return out end
 		if type(raw) ~= "table" or #raw > 20 then return nil, "exclude must be a list of at most 20 paths" end
 		for _, path in raw do
-			local inst, _, err = api.resolvePath(self.game, self.options.services, path, false)
+			local inst, _, err = api.resolvePath(self.game, self.options.services, path, false, self)
 			if not inst then return nil, err end
 			table.insert(out, inst)
 		end
@@ -389,7 +389,7 @@ function Query.build(api)
 			if record.hit then record.dropFromPosition = position.Y - record.position[2] end
 			return { action = action, result = record }
 		elseif action == "bounds" or action == "check_placement" then
-			local inst, canonical, err, kind = api.resolvePath(self.game, self.options.services, op.path, false)
+			local inst, canonical, err, kind = api.resolvePath(self.game, self.options.services, op.path, false, self)
 			if not inst then return nil, kind or "not_found", err end
 			local cframe, size, boundsErr = api.boundsOf(inst)
 			if not cframe then return nil, "invalid", boundsErr end
@@ -506,7 +506,7 @@ function Query.build(api)
 	end
 
 	local function handleScatter(self, op)
-		local template, templatePath, tErr, tKind = api.resolvePath(self.game, self.options.services, op.template, false)
+		local template, templatePath, tErr, tKind = api.resolvePath(self.game, self.options.services, op.template, false, self)
 		if not template then return nil, tKind or "not_found", tErr end
 		if not api.isA(template, "BasePart") and not api.isA(template, "Model") then return nil, "invalid", "template must be a BasePart or a Model" end
 		local descendants = api.descendantsOf(template) or {}
@@ -546,7 +546,7 @@ function Query.build(api)
 		local seed = if op.seed == nil then 1 elseif api.integer(op.seed) then op.seed else nil
 		if seed == nil then return nil, "invalid", "seed must be an integer" end
 		local parentPath = op.parent or "game.Workspace"
-		local parent, canonicalParent, pErr, pKind, pRemedy = api.resolvePath(self.game, self.options.services, parentPath, true)
+		local parent, canonicalParent, pErr, pKind, pRemedy = api.resolvePath(self.game, self.options.services, parentPath, true, self)
 		if not parent then return nil, pKind or "not_found", pErr, pRemedy end
 		local refused, refusedRemedy = api.destinationRefusal(self.game, parent, canonicalParent, api.classNameOf(template))
 		if refused then return nil, "refused", refused, refusedRemedy end

@@ -323,7 +323,7 @@ function LocalOwnerCorpus.build(api)
 		if not config then return nil,"refused",err end
 		if not nodeId(op.nodeId) or not sha(op.jobId) or not sha(op.nativeSha256) or not api.integer(op.byteLength) or op.byteLength < 1 or op.byteLength > MAX_BYTES
 			or not api.integer(op.nativeInstances) or op.nativeInstances < 1 or op.nativeInstances > MAX_NODES then return nil,"invalid","local import identity or byte/node cap invalid" end
-		local parent,canonical,parentErr,parentKind,remedy = api.resolvePath(self.game,self.options.services,op.parent,true)
+		local parent,canonical,parentErr,parentKind,remedy = api.resolvePath(self.game,self.options.services,op.parent,true, self)
 		if not parent then return nil,parentKind or "not_found",parentErr,remedy end
 		local refused,refusedRemedy = api.destinationRefusal(self.game,parent,canonical,"Folder")
 		if refused then return nil,"refused",refused,refusedRemedy end
@@ -540,7 +540,7 @@ function LocalOwnerCorpus.build(api)
 		if not libraryId(op.gameId) or not libraryText(op.path, 1024) or string.sub(op.path, 1, 1) ~= "/" or (op.mode ~= "self" and op.mode ~= "children")
 			or not libraryText(op.parent, 512) then return nil, "invalid", "gameId, absolute library path, mode self|children and parent required" end
 		local parentPath = if string.sub(op.parent, 1, 4) == "game" then op.parent else "game." .. op.parent
-		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true)
+		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true, self)
 		if not parent then return nil, parentKind or "not_found", parentErr, remedy end
 		-- Terrain is engine-owned, but a game's scripts expect its original children (Clouds, effect attachments) under it.
 		local refused, refusedRemedy
