@@ -17,7 +17,6 @@
 //      command that does not do what its own title says. The dashboard lends the
 //      shell an opener; off the dashboard the shell navigates there first and
 //      the opener fires when it mounts.
-import type { StudioConnection } from './studio-connection';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 const COLLAPSE_KEY = 'apple.rail.collapsed';
@@ -45,13 +44,6 @@ export interface Shell {
   /** True when a route asked for the dialog before one existed to open. */
   newProjectPending: boolean;
   clearNewProjectPending: () => void;
-  /**
-   * The Studio link as the open project knows it, or null when no project is mounted. The logo's
-   * Snap reads it: the stud lifts while Studio is disconnected and clicks down when it is connected
-   * again. Nothing else in the shell depends on it.
-   */
-  studioLink: StudioConnection | null;
-  registerStudioLink: (state: StudioConnection | null) => void;
 }
 
 const ShellContext = createContext<Shell | null>(null);
@@ -71,8 +63,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [openCheckpoints, setOpenCheckpoints] = useState<(() => void) | null>(null);
   const [openNewProject, setOpenNewProject] = useState<(() => void) | null>(null);
   const [newProjectPending, setNewProjectPending] = useState(false);
-  const [studioLink, setStudioLink] = useState<StudioConnection | null>(null);
-  const registerStudioLink = useCallback((state: StudioConnection | null) => setStudioLink(state), []);
 
   // These have to keep a stable identity: consumers put them in effect
   // dependency arrays (closing the rail on navigation, for one), and a fresh
@@ -130,8 +120,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       registerNewProject,
       newProjectPending,
       clearNewProjectPending,
-      studioLink,
-      registerStudioLink,
     }),
     [
       railOpen,
@@ -146,8 +134,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       registerNewProject,
       newProjectPending,
       clearNewProjectPending,
-      studioLink,
-      registerStudioLink,
     ],
   );
 
@@ -192,17 +178,4 @@ export function useProvideNewProject(open: (() => void) | null) {
     clearNewProjectPending();
     open();
   }, [newProjectPending, open, clearNewProjectPending]);
-}
-
-/**
- * Tell the shell what the open project's Studio link is, for as long as the calling route is mounted.
- * The logo's Snap is the only reader. Cleared on unmount so a stale "disconnected" never outlives the
- * project it was true of.
- */
-export function useProvideStudioLink(state: StudioConnection) {
-  const { registerStudioLink } = useShell();
-  useEffect(() => {
-    registerStudioLink(state);
-    return () => registerStudioLink(null);
-  }, [registerStudioLink, state]);
 }

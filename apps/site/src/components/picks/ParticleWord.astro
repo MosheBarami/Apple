@@ -1,0 +1,21 @@
+---
+/**
+ * The footer's closing wordmark, made of small bricks that scatter away from the pointer and
+ * settle back. Pick: Componentry "Particle Typography" (MIT, adapted — see ./particle-word.ts).
+ *
+ * It is decoration and says so: aria-hidden, no pointer cursor, no focus stop. The brand's name is
+ * already the footer's first line of real text. Under reduced motion the word is drawn and stays
+ * still; with scripting off the box is empty and the footer reads as it always did.
+ */
+import './particle-word.css';
+
+interface Props { word?: string; }
+const { word = 'Apple' } = Astro.props;
+---
+
+<div class="pw" data-particle-word={word} aria-hidden="true"><canvas></canvas></div>
+
+<script>
+  import { mountParticleWords } from './particle-word';
+  mountParticleWords();
+</script>

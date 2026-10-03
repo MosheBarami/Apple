@@ -1,139 +1,79 @@
 /*
- * Apple product system: "EMBER RAIL" (phase 6, 2026-10-02).
+ * Apple minimal product system.
  *
- * THE SAME TOKENS AS THE PUBLIC SITE. apps/site/src/styles/apple-minimal.css is the twin of this
- * file and carries identical values for every shared name (apps/site/tests/living-background.test.mjs
- * compares the two in both themes, so a divergence fails a test rather than drifting). A visitor who
- * signs up should not be able to tell where the marketing site ends and the product begins.
- *
- * THE LANGUAGE. An instrument, not a toy box: dark by default (V3 UI contract: a clean, near-black
- * agent surface), flat, hairline-bordered, one signal colour. Ember marks the primary action, the
- * active or live step and the focus ring, and nothing else. Elevation comes from surface steps, not
- * shadows: the only shadow is the single soft one under a menu, a dialog or a toast. Blur belongs to
- * the top bar and the composer alone. There is no aurora, no glass, no gradient and no glow. The one
- * graft from the building-toy direction is the plate edge: a 2px solid darker shade under the primary
- * button that presses flat.
- *
- * CONTRAST (WCAG 2.1 AA), recomputed with the relative-luminance formula over the five surfaces:
- * dark ink 14.2 to 17.9, muted 6.1 to 7.7, faint 4.88 to 6.15, Ember text 6.66 to 8.38; light ink 15.7
- * to 19.0, muted 5.6 to 6.8, faint 5.05 to 6.14, Ember text 5.17 to 6.29. `--line-strong` carries
- * every control boundary and clears 3:1 on all five surfaces in both themes; `--hairline` and
- * `--line` are decorative and never carry a boundary. tests/app-ink-ramp.test.mjs and
- * tests/contrast.test.mjs hold the numbers.
- *
- * Legacy names (--accent-light, --accent-deep, --accent-glow, --accent-fill, --shadow-primary ...) are
- * kept so the 100-odd component sheets that spend them need no edit: they now resolve into Ember, the
- * glow into nothing, and the primary button's shadow into the plate edge.
+ * The interaction bar was measured directly in the browser against the reference product:
+ * black page, #0a0a0a card, #2e2e2e border, #fafafa foreground, #a6a6a6 muted text, 24px
+ * composer radius, 24px backdrop blur and a soft 25/50 shadow. We reuse the grammar, not its
+ * code/assets/copy. Apple keeps blue for normal action; violet is not spent on any control.
  */
 
 :root {
   color-scheme:dark;
-  --paper:#0a0c10;
-  --paper-2:#0e1116;
-  --surface:#12151b;
-  --surface-2:#181c24;
-  --surface-3:#1f242e;
-  --ink:#f3f5f8;
-  --ink-2:#c3c9d4;
-  --muted:#9aa3b2;
-  /* The site's value, held equal by tests: it carries real text (the time under a turn, a code block's
-     language, the Edit control) and clears 4.5:1 on every surface. */
-  --faint:#8791a1;
-  --hairline:#232833;
-  --line:#3a4150;
-  --line-strong:#6b7587;
-  --control-fill:color-mix(in srgb,var(--ink) 4%,transparent);
-  --control-line:var(--line-strong);
-  --quiet-line:var(--line);
-  --quiet-ink:var(--faint);
-  /* Ember. */
-  --accent:#ff8a4c;
-  --accent-text:#ff8a4c;
-  --accent-hover:#ff9d68;
-  --on-accent:#1a0d05;
-  --plate:#b4521d;
-  --ring:#ff8a4c;
-  --accent-soft:color-mix(in srgb,var(--accent) 14%,var(--surface));
-  --accent-ring:color-mix(in srgb,var(--accent) 32%,transparent);
-  --accent-light:var(--accent-hover);
-  --accent-deep:var(--accent);
-  --accent-glow:transparent;
-  --accent-fill:var(--accent);
-  --accent-on-fill:var(--on-accent);
-  --accent-line:var(--accent);
-  /* Status: always an icon and a word beside it. Warn is gold and bad is rose so they stay apart from Ember. */
-  --good:#5fd39a;
-  --warn:#f0c75e;
-  --bad:#ff7d8c;
-  --danger-fill:#b3261e;
-  --on-danger:#ffffff;
-  --scrim:rgb(0 0 0 / .6);
-  --r-xs:4px;
-  --r-sm:6px;
-  --r-md:10px;
-  --r-lg:14px;
-  --r-xl:20px;
-  --shadow-pop:0 8px 24px rgb(0 0 0 / .35);
-  --shadow-modal:0 8px 24px rgb(0 0 0 / .35);
-  --shadow-primary:0 2px 0 var(--plate);
-  --glow:none;
-  /* Bricks: decoration only, never the sole carrier of meaning. */
-  --brick-red:#ff6b57;
-  --brick-blue:#4f8cff;
-  --brick-green:#3fc476;
-  --brick-yellow:#ffc23a;
-  --brick-red-edge:#733027;
-  --brick-blue-edge:#243f73;
-  --brick-green-edge:#1c5835;
-  --brick-yellow-edge:#73571a;
-  --font-sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,Arial,sans-serif;
-  --font-body:var(--font-sans);
-  --font-display:var(--font-sans);
-  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-  --ease-snap:linear(0,.55 18%,1.12 42%,.98 62%,1);
-  --ease-out:cubic-bezier(.2,.8,.2,1);
-  --t-fast:90ms; --t-base:160ms; --t-slow:260ms;
+  --paper:#000;
+  --paper-2:#05070b;
+  --surface:#0a0a0a;
+  --surface-2:#111217;
+  --surface-3:#181a22;
+  --ink:#fafafa;
+  --muted:#a6a6a6;
+  /* Raised from #70737d (4.44:1 on paper, 3.95:1 on surface-2): --faint carries real text — the
+     time under a turn, a code block's language, the Edit control — and text clears 4.5:1 here.
+     The value is the public site's (apps/site/src/styles/apple-minimal.css), so the two stay one
+     product; tests/app-ink-ramp.test.mjs measures it against every surface in both themes. */
+  --faint:#8a8d96;
+  --line:#2e2e2e;
+  --line-strong:#3b3d46;
+  --control-fill:rgba(255,255,255,.035);
+  --control-line:rgba(255,255,255,.11);
+  --quiet-line:rgba(255,255,255,.07);
+  --quiet-ink:rgba(250,250,250,.36);
+  --accent:#5b7cfa;
+  --accent-light:#8ca4ff;
+  --accent-deep:#4264e8;
+  --accent-soft:rgba(91,124,250,.10);
+  --accent-ring:rgba(91,124,250,.32);
+  --accent-glow:rgba(91,124,250,.12);
+  --r-xs:8px;
+  --r-sm:10px;
+  --r-md:12px;
+  --r-lg:16px;
+  --r-xl:24px;
+  --shadow-pop:0 18px 52px rgba(0,0,0,.34);
+  --shadow-modal:0 28px 88px rgba(0,0,0,.48);
+  --shadow-primary:0 10px 26px rgba(25,46,120,.22);
 }
 
 :root[data-theme='light'] {
   color-scheme:light;
-  --paper:#f7f8fa;
-  --paper-2:#f1f3f6;
+  --paper:#f6f7fa;
+  --paper-2:#eef1f6;
   --surface:#fff;
-  --surface-2:#eef0f4;
-  --surface-3:#e6e9ef;
-  --ink:#0d1017;
-  --ink-2:#3a4150;
-  --muted:#515b6e;
-  --faint:#586275;
-  --hairline:#dfe3ea;
-  --line:#c8cdd8;
-  --line-strong:#7c8597;
-  --control-fill:color-mix(in srgb,var(--ink) 4%,transparent);
-  --accent:#a63f0a;
-  --accent-text:#a63f0a;
-  --accent-hover:#8f3508;
-  --on-accent:#fff;
-  --plate:#5f2204;
-  --ring:#a63f0a;
-  --accent-soft:color-mix(in srgb,var(--accent) 14%,var(--surface));
-  --accent-ring:color-mix(in srgb,var(--accent) 32%,transparent);
-  --accent-light:var(--accent);
-  --accent-deep:var(--accent);
-  --accent-glow:transparent;
-  --good:#0f6e52;
-  --warn:#7a4f00;
-  --bad:#a81f35;
-  --scrim:rgb(13 16 23 / .5);
-  --shadow-pop:0 8px 24px rgb(13 16 23 / .12);
-  --shadow-modal:0 8px 24px rgb(13 16 23 / .12);
+  --surface-2:#f5f6f9;
+  --surface-3:#eceff4;
+  --ink:#101217;
+  --muted:#5d626d;
+  --faint:#646973;
+  --line:#d9dce3;
+  --line-strong:#c7cbd4;
+  --control-fill:rgba(16,18,23,.035);
+  --control-line:rgba(16,18,23,.10);
+  --quiet-line:rgba(16,18,23,.07);
+  --quiet-ink:rgba(16,18,23,.40);
+  --accent:#4568e8;
+  --accent-light:#3155d4;
+  --accent-deep:#3155d4;
+  --accent-soft:rgba(69,104,232,.09);
+  --accent-ring:rgba(69,104,232,.25);
+  --accent-glow:rgba(69,104,232,.10);
+  --shadow-pop:0 16px 44px rgba(31,41,55,.11);
+  --shadow-modal:0 28px 70px rgba(31,41,55,.16);
 }
 
 html,body,#root { min-height:100%; background:var(--paper); }
 body {
   color:var(--ink);
   background:var(--paper);
-  font-family:var(--font-body);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
 }
 
 /* --------------------------------------------------------------- app shell */
@@ -226,8 +166,10 @@ body {
 
 .gx-rail {
   border:1px solid var(--line);
-  background:var(--surface-2);
+  background:rgba(10,10,10,.94);
   box-shadow:var(--shadow-modal);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
 }
 
 /* --------------------------------------------------------------- workspace */
@@ -252,15 +194,16 @@ body {
   gap:12px;
   border:0;
   border-bottom:1px solid var(--line);
-  background:color-mix(in srgb,var(--paper) 86%,transparent);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
+  background:rgba(0,0,0,.74);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
   /* The blur makes this bar its own stacking context, and the conversation below painted over it —
      measured 2026-09-23 on /app/projects/:id: every row of the open project menu hit-tested to the
      thread, so no menu item could be clicked. Lifted above the thread; its menus float over it. */
   position:relative;
   z-index:20;
 }
+:root[data-theme='light'] .apple-workspace__topbar { background:rgba(246,247,250,.82); }
 .apple-workspace__identity {
   min-width:0;
   flex:0 1 auto;
@@ -338,9 +281,11 @@ body {
   gap:2px;
   border:1px solid var(--line);
   border-radius:12px;
-  background:var(--surface-2);
+  background:rgba(10,10,10,.96);
   box-shadow:var(--shadow-pop);
+  backdrop-filter:blur(24px);
 }
+:root[data-theme='light'] .studio-project-menu[open] > .gx-top__actions { background:rgba(255,255,255,.96); }
 /* Below 860px system.css drops the words from the top bar's Roadmap and Checkpoints buttons to save
    room. Inside this menu the room is there and the word is the only label: measured 2026-09-23 at
    500px, the two rows showed an icon each and nothing else (F-027). */
@@ -400,7 +345,7 @@ body {
 .gx-user {
   padding:11px 15px;
   border:1px solid var(--line);
-  border-radius:var(--r-md);
+  border-radius:18px 18px 5px 18px;
   background:var(--surface-2);
   color:var(--ink);
   font-size:14.5px;
@@ -424,8 +369,8 @@ body {
   height:30px;
   display:grid;
   place-items:center;
-  border:1px solid var(--hairline);
-  border-radius:var(--r-sm);
+  border:1px solid var(--line);
+  border-radius:9px;
   background:var(--surface);
   color:var(--ink);
 }
@@ -519,9 +464,11 @@ body {
 .gx-pop {
   border:1px solid var(--line);
   border-radius:12px;
-  background:var(--surface-2);
+  background:rgba(10,10,10,.97);
   box-shadow:var(--shadow-pop);
+  backdrop-filter:blur(24px);
 }
+:root[data-theme='light'] .gx-pop { background:rgba(255,255,255,.97); }
 .gx-pop__item {
   min-height:38px;
   border-radius:8px;
@@ -580,8 +527,8 @@ body {
 
 @keyframes minimal-spin { to { transform:rotate(360deg); } }
 @keyframes minimal-pulse {
-  0%,100% { opacity:1; }
-  50% { opacity:.55; }
+  0%,100% { box-shadow:0 0 0 3px rgba(91,124,250,.06); }
+  50% { box-shadow:0 0 0 5px rgba(91,124,250,.12); }
 }
 @keyframes minimal-turn-in {
   from { opacity:0; transform:translateY(4px); }
@@ -607,8 +554,9 @@ body {
     padding:0;
     border:1px solid var(--line);
     border-radius:12px;
-    background:var(--surface-2);
+    background:rgba(10,10,10,.92);
     box-shadow:var(--shadow-pop);
+    backdrop-filter:blur(18px);
     overflow:hidden;
   }
   .gx-shell .studio-dock .studio-dock__brand,

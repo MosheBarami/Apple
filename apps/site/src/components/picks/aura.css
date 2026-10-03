@@ -1,0 +1,69 @@
+/* The aura (Aura.astro). Fixed behind the page; only `transform` moves, so it never shifts layout
+   and stays on the compositor. */
+.aura {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aura__wash {
+  position: absolute;
+  width: 62vmax;
+  height: 62vmax;
+  border-radius: 50%;
+  filter: blur(72px);
+  will-change: transform;
+  animation: aura-float 32s var(--ease-in-out) infinite alternate;
+}
+
+.aura__wash--1 {
+  top: -28vmax;
+  left: -14vmax;
+  background: var(--aura-1);
+}
+
+.aura__wash--2 {
+  top: 18vh;
+  right: -30vmax;
+  background: var(--aura-2);
+  animation-duration: 38s;
+  animation-direction: alternate-reverse;
+}
+
+.aura__wash--3 {
+  bottom: -34vmax;
+  left: 12vw;
+  background: var(--aura-3);
+  animation-duration: 44s;
+}
+
+@keyframes aura-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(8vmax, 6vmax, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-6vmax, 10vmax, 0) scale(0.94);
+  }
+}
+
+/* The tab is hidden: nothing to draw for. */
+.aura[data-still] .aura__wash {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura__wash {
+    animation: none;
+  }
+}
+
+@media print {
+  .aura {
+    display: none;
+  }
+}

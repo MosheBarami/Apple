@@ -337,13 +337,8 @@ test('EVERY PAGE TITLE IS SET THE SAME WAY, and none falls back to the browser\'
       const sizes = documentTitles.map((x) => x.size);
       const median = [...sizes].sort((a, b) => a - b)[Math.floor(sizes.length / 2)];
       for (const x of seen) {
-        //[[ RESTATED 2026-10-02 (phase 6, "Ember Rail"). The bar was `>= 600`, written when the type
-        //   system topped out at 500. The new language sets display and page titles at 600 (docs/
-        //   DESIGN-TYPE.md), so 600 is now the system and no longer a sign of a missing class. What
-        //   this exists to catch is unchanged: an <h1> with no style gets the browser's bold 2em at
-        //   weight 700, so 700 is where the line is drawn. ]]
-        if (x.weight >= 700) {
-          odd.push(`${width}px ${x.route} title is weight ${x.weight} — that is the browser's unstyled bold`);
+        if (x.weight >= 600) {
+          odd.push(`${width}px ${x.route} title is weight ${x.weight} — nothing else on this site is bold`);
         }
         // A fifth off the median is far wider than the clamp's own spread (51.2 to 56 at 1280px)
         // and far narrower than the gap the unstyled fallback opened (32 against 51.2).

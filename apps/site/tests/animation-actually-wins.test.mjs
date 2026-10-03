@@ -247,13 +247,9 @@ test('the landing chrome stays calm: few keyframes, and nothing in landing.css l
   const looping = RULES.filter((r) => /\binfinite\b/.test(r.body));
   assert.deepEqual(looping.map((r) => r.selector), [],
     'the page chrome animates forever; a loop belongs in a pick component that stops for reduced motion and off screen');
-  //[[ RESTATED 2026-10-02 (phase 6, "Ember Rail"). The typed ghost in the composer (`.composer-line`)
-  //   was retired with the rest of the decorative motion: the field now holds a plain placeholder and
-  //   the examples are real buttons that fill it. The page's one entrance is `rise`, applied by the
-  //   `.rise` class to the composer and what follows it. The assertion keeps its purpose, a guard over
-  //   an empty rule list proves nothing, and now names the animation that is really there. ]]
-  assert.ok(RULES.some((r) => /\.rise\b/.test(r.selector) && /\brise\b/.test(r.body)),
-    'no animation rule applies the entrance to .rise; the parse no longer sees the page\'s motion');
+  // The ghost itself is still animated — a guard over an empty rule list proves nothing.
+  assert.ok(RULES.some((r) => /\.composer-line\b/.test(r.selector)),
+    'no animation rule targets .composer-line; the parse no longer sees the ghost');
 });
 
 /** The bodies of every `@media (prefers-reduced-motion: reduce)` block in a sheet. */
@@ -276,13 +272,9 @@ function reducedBlocks(css) {
 const lastClass = (sel) => (sel.trim().split(/\s+/).at(-1).match(/\.([\w-]+)/g) ?? []).at(-1);
 
 test('whatever loops on the front page stops under reduced motion, pauses off screen, and never moves the layout', () => {
-  //[[ WIDENED 2026-10-02 (phase 6). The canvas-and-ticker pick sheets this scanned were retired; the
-  //   toy's brick sheet (components/baseplate.css) is where an animation now lives besides
-  //   landing.css, so both component folders are read. The rule is unchanged: anything that loops
-  //   stops under reduced motion, pauses off screen, and animates no layout property. ]]
-  const dirs = [join(SITE, 'src', 'components', 'picks'), join(SITE, 'src', 'components')];
-  const sheets = dirs.flatMap((dir) => readdirSync(dir).filter((f) => f.endsWith('.css'))
-    .map((f) => [f, stripComments(readFileSync(join(dir, f), 'utf8'))]));
+  const dir = join(SITE, 'src', 'components', 'picks');
+  const sheets = readdirSync(dir).filter((f) => f.endsWith('.css'))
+    .map((f) => [f, stripComments(readFileSync(join(dir, f), 'utf8'))]);
   assert.ok(sheets.length >= 1, 'no pick sheets were read');
   let animated = 0;
   for (const [file, css] of sheets) {

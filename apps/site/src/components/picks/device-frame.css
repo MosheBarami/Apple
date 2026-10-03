@@ -1,0 +1,73 @@
+/* The tablet frame (DeviceFrame.astro). */
+:root,
+:root[data-theme='dark'] {
+  --device-bezel: #050506;
+  --device-rim: #2c2d33;
+}
+
+:root[data-theme='light'] {
+  --device-bezel: #ffffff;
+  --device-rim: #d3d6de;
+}
+
+.device {
+  perspective: 1400px;
+}
+
+.device__body {
+  position: relative;
+  padding: clamp(12px, 1.8vw, 20px);
+  border: 1px solid var(--device-rim);
+  border-radius: clamp(22px, 3vw, 34px);
+  background: var(--device-bezel);
+  transform-origin: 50% 0;
+  will-change: transform;
+}
+
+/* The camera, centred on the top edge of the bezel. */
+.device__camera {
+  position: absolute;
+  top: clamp(4px, 0.7vw, 8px);
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+/* The two buttons on the top rim, as on the pick. */
+.device__button {
+  position: absolute;
+  top: -3px;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--device-rim);
+}
+
+.device__button--a {
+  left: 9%;
+  width: 34px;
+}
+
+.device__button--b {
+  left: calc(9% + 42px);
+  width: 34px;
+}
+
+.device__screen {
+  overflow: hidden;
+  border-radius: clamp(10px, 1.4vw, 14px);
+}
+
+/* Whatever sits on the screen fills it: its own outer margin and rounding give way to the bezel. */
+.device .device__screen > * {
+  margin: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 640px) {
+  .device__button {
+    display: none;
+  }
+}

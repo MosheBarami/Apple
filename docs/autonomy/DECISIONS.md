@@ -369,3 +369,13 @@ A decision is not a fact. Customer-strangers and fresh reviewers must not be giv
   focus). **Not yet rebuilt:** see the phase 6 report.
 - **Reverse:** restore `apps/web/src/design/glass.css` from history and the picks kit from commit
   `76c30935`; the old tokens are in the same history.
+
+## D-EMBER-2 (2026-10-04): Ember Rail is withdrawn; the next design language is picked by the owner from rendered options
+- Owner, 2026-10-04, shown the round-1 landing and workspace: "i dont like that either and the problem is that you are never
+  making something new in the actual design language like how the dashboard and pages and the [chat] looks". He also rejected
+  the earlier calm blue look (D-GLASS-1 era). A recolour is not a new direction.
+- Consequence: the Ember Rail merge (6210accf) and its review fixes (9ae501cc) are reverted on the integration branch, so the
+  rejected look is neither deployed nor folded into the giant PR. The site and app stay as on main until a direction is chosen.
+- Next: several genuinely different design languages (layout system, type, shape, components, motion, original assets) rendered
+  on the real surfaces (landing, projects dashboard, chat workspace) are put in front of the owner to pick; only the picked one
+  is built, across every page.

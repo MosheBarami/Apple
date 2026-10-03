@@ -5,6 +5,7 @@ import '../styles/apple-minimal.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
+import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -82,7 +83,7 @@ const ogImage = new URL('/og.png', site);
         :root and rewritten on every toggle, so there is one definition per theme and it lives in the
         stylesheet with the rest of the ramp. The server-rendered value is the dark ground, matching
         this element's default `data-theme="dark"`. */}
-    <meta name="theme-color" id="theme-color" content="#0a0c10" />
+    <meta name="theme-color" id="theme-color" content="#000000" />
 
     <script is:inline>
       // Runs before first paint: no flash of the wrong theme, and reveals can
@@ -100,6 +101,7 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
+    <Aura />
     <a href="#main" class="skip-link">Skip to content</a>
 
     {!bare && <Nav />}

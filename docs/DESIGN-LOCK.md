@@ -1,14 +1,5 @@
 # The locked design system
 
-> **SUPERSEDED IN PART, 2026-10-02 (phase 6, D-EMBER-1).** The owner's 2026-10-02 brief rebuilt the web
-> design from zero ("Ember Rail": flat, hairline, one Ember signal colour, a new logo, no aurora, no glass,
-> no ambient canvas). Where this file disagrees (graphite-plus-green, a frosted glass shell, "nothing above
-> weight 400", a 4px focus offset, the cinematic canvas grounds) the newer brief wins. The tokens now live in
-> `apps/site/src/styles/apple-minimal.css` and `apps/web/src/design/apple-minimal.css`, and the rules the
-> shell keeps are held by `apps/web/tests/ember-shell.test.mjs` and `apps/site/tests/ember-landing.test.mjs`.
-> What this file still governs: one product, one language across site and app; a light and a dark theme;
-> restrained copy; no clutter.
-
 **Locked 2026-09-20.** The owner supplied seven references and asked for one direction carried
 through the entire product with near pixel-level fidelity: *cinematic black/graphite surfaces,
 restrained teal/green/blue light, premium glass/depth, exceptional typography and spacing,

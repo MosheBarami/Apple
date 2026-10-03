@@ -6,10 +6,23 @@ import ConsentProof from '../components/ConsentProof.astro';
 /* The one piece of MODEL OUTPUT on this page: a screen the deployed model built, shipped
    byte-identical from docs/evidence. Its own header carries the reasons. */
 import BuiltScreen from '../components/BuiltScreen.astro';
-/* The playable toy under the hero composer (its header carries the honesty rules). */
-import Baseplate from '../components/Baseplate.astro';
-/* The text links that lead somewhere. */
+/* THE OWNER'S PICKED COMPONENTS (2026-09-23), each in the place it does a job. Every one is a
+   component of its own, with its reasons and its licence in its header:
+     NoiseField   the quiet moving ground under the hero, the capabilities and the closing line
+     PointerRim   the composer's rim turning toward the pointer
+     Marquee      the rows of ideas under the composer; pressing one types it into the field
+     BeamFlow     what a run reads and what it can make, as beams through a hub
+     DeviceFrame  the "try it" panel on a tablet that settles flat as it scrolls in
+     ArrowLink    the text links that lead somewhere
+     CtaButton    the one primary button
+   tests/picks-landing.test.mjs fails if any of them stops being mounted. */
+import NoiseField from '../components/picks/NoiseField.astro';
+import PointerRim from '../components/picks/PointerRim.astro';
+import Marquee from '../components/Marquee.astro';
+import BeamFlow from '../components/picks/BeamFlow.astro';
+import DeviceFrame from '../components/picks/DeviceFrame.astro';
 import ArrowLink from '../components/picks/ArrowLink.astro';
+import CtaButton from '../components/picks/CtaButton.astro';
 /* The site's one set of Roblox object glyphs, drawn for it (its header has the rules). */
 import ObjectIcon from '../components/ObjectIcon.astro';
 import {
@@ -19,34 +32,41 @@ import {
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /*
- * THE FRONT PAGE, REBUILT FROM ZERO (phase 6, 2026-10-02): "Ember Rail".
+ * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
  *
- * Dark and flat, hairlines instead of shadows, one signal colour. The Rail runs down the inline-start
- * margin with a node per section. Every section is the same three things in the same order: a
- * ledger label, a title and one muted line, then the thing itself. The header and footer are the
+ * Near-black and matte, one type family, hairlines instead of shadows, blue only for an ordinary
+ * active state. Every section is the same three things in
+ * the same order: a title, one muted line, then the thing itself. The header and footer are the
  * shared components every other route renders, so the site has one header design.
  *
- * WHAT THIS PAGE MAY SHOW. Every claim below is one this repository has evidence for; every number
- * is an expression, never typed (scripts/check-proof-figures.mjs); the install line asks the shared
- * constant. Anything that is a picture of a behaviour and not live data carries the word
- * "Illustration" on screen. The Baseplate toy reacts only to the visitor's own hands.
+ * WHAT WENT, AND WHY. The glowing custom cursor, the floating sound dock and the spinning
+ * wireframe mesh were decoration: none of them told a reader anything about the product. The
+ * interactive stages that DO say something — the read order, the critique, the Luau refusal —
+ * stay, as one quiet tabbed panel rather than four boxed cards.
  *
- * WHAT WENT. The moving grounds, the particle wordmark, the beams, the pointer rim, the tilting
- * tablet, the ticker and the typed ghost were decoration: none told a reader anything about the
- * product, and each cost bytes and main-thread time on a page whose first job is to load fast.
+ * Every claim below is one this repository has evidence for; every number is an expression, never
+ * typed (scripts/check-proof-figures.mjs); and the install line asks the shared constant.
  */
 
 /* The composer's chip names the engine that would answer, read from the same constants the app's
    own composer reads, so the picture cannot disagree with the product. */
 const composerModel = PRODUCT_MODEL_INFO[PRODUCT_MODELS[0]].name;
 
-/* THE THREE EXAMPLES UNDER THE COMPOSER. Requests a reader might TYPE, never results: the only
-   content that can sit near that box without becoming a claim. Each is a real button that fills
-   the field when pressed; nothing types by itself. */
+/* THE THREE SENTENCES THE EMPTY FIELD CYCLES THROUGH. Examples of what a reader would TYPE — the
+   only content that can sit in that box without becoming a claim. Each is `white-space: nowrap`
+   and must hold ONE line at 320px; re-measure before editing a word. */
 const composerExamples = [
   'Make a twelve-stage obby',
   'Add a shop that saves what I buy',
   'Build a lobby with a round timer',
+];
+
+/* MORE THINGS TO ASK FOR, one tap away under the composer (components/Marquee.astro). Like the
+   three above they are requests a reader might type, never results; each is short enough to sit
+   on one chip. */
+const promptIdeas = [
+  ['Make the coins spin', 'Add a lava floor', 'Give players a double jump', 'Add a day and night cycle', 'Make a shop with three swords', 'Add a timer to each stage'],
+  ['Spawn a pet that follows me', 'Add a leaderboard', 'Build a tycoon with droppers', 'Add rain', 'Make a racing track', 'Add a checkpoint every ten stages'],
 ];
 
 /* THE CRITIQUE HAS ONE HOME. The score and the defect count are read by the activity figure and by
@@ -143,31 +163,6 @@ const asks = [
   },
 ];
 
-/* THE LOOP. Four steps, in order. Every sentence is one this page already carried, cut at a full
-   stop: the plan and the checkpoint (the old "Say what you want" step), the write through Studio's
-   own editor APIs and the render check (two of the capability cards), and where the result lives
-   (the old "Look at what it did" step). The picture lights them once and says it is an illustration. */
-const loop = [
-  { n: '01', icon: 'Workspace', title: 'Plan', body: 'Apple reads the tree, plans the change, and takes a checkpoint before it writes.' },
-  { n: '02', icon: 'Script', title: 'Change in Studio', body: 'Scripts land in your place through Studio’s own editor APIs.' },
-  { n: '03', icon: 'Camera', title: 'Check', body: 'It renders the scene from inside Studio and scores the picture against a visual gate.' },
-  { n: '04', icon: 'Part', title: 'Done', body: 'The result stays in your place, in Studio, where you can run it.' },
-] as const;
-
-/* The ledger label before each section's eyebrow ("01", "02" ...). It is an expression and not typed
-   text because scripts/check-proof-figures.mjs treats every typed number on this page as a claim,
-   and a section's position is not one. */
-const ledger = (n: number) => String(n).padStart(2, '0');
-
-/* The stops of the Rail, by the id of the section each one reads. */
-const railStops = [
-  { id: 'start', label: 'Start' },
-  { id: 'inside', label: 'How a run goes' },
-  { id: 'capabilities', label: 'What it is good at' },
-  { id: 'models', label: 'One engine' },
-  { id: 'begin', label: 'Begin' },
-] as const;
-
 /* The install line. When the listing is live the shared href IS the store URL, and it leaves the
    site, so it opens in a new tab without handing Roblox a window reference. */
 const installExternal = STUDIO_PLUGIN_STORE_LIVE;
@@ -181,80 +176,64 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
 
   <Nav />
 
-  <main id="main" class="railed">
-    {/* THE RAIL: real navigation down the inline-start margin, one node per section, from 900px up.
-        Below that it is the 2px bar on the top bar (Nav.astro). Each stop names a section id the
-        page really has (links-resolve checks them). */}
-    <nav class="rail" aria-label="On this page">
-      <ul class="rail-list">
-        {railStops.map((stop) => (
-          <li>
-            <a class="rail-node" href={`#${stop.id}`} data-rail={stop.id}>
-              <span class="rail-label">{stop.label}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-
-    <section class="hero" id="start" aria-labelledby="hero-title">
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title" data-field-host>
+      <NoiseField mode="lines" />
       <div class="shell hero-inner">
-        <div class="hero-copy">
-          <p class="eyebrow hero-eyebrow"><span class="ledger">{ledger(1)}</span>Inside Roblox Studio</p>
-          <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
-          <p class="lead">Describe a colorful cartoon Roblox game. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
+        <p class="eyebrow hero-eyebrow">Inside Roblox Studio</p>
+        <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
+        <p class="lead">Describe a colorful cartoon Roblox game. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
 
-          {/* THE COMPOSER IS THE PRODUCT'S OWN CONTROL, NOT A PICTURE OF ONE: a real <form> with a
-              real <textarea> and a real submit, going where the page's primary action goes. What was
-              typed travels as `?start=`. Nothing in the app reads it yet — docs/backlog/
-              HANDOFF-HERO-START.md names that hop — so the page promises no prefill. */}
-          <form class="composer rise" style="--i:0" action="/app/signup" method="get">
-            <div class="composer-field">
-              <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
-              <textarea
-                id="hero-start"
-                name="start"
-                class="composer-input"
-                rows="3"
-                maxlength="280"
-                placeholder="Describe a game, a system or a fix"
-                autocomplete="off"
-                spellcheck="false"
-              ></textarea>
-            </div>
-            <div class="composer-bar">
-              <div class="composer-chips">
-                <span class="chip chip-model">{composerModel}</span>
-              </div>
-              <button class="composer-send" type="submit">Build</button>
-            </div>
-          </form>
-
-          <p class="pairs rise" style="--i:1">Pairs with Roblox Studio through a plugin.</p>
-
-          {/* The offer line sits straight under the composer, above the examples. */}
-          <p class="availability rise" style="--i:2">
-            Free to start, no card.{' '}
-            {installExternal ? (
-              <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio from the Creator Store <span aria-hidden="true">↗</span></a>
-            ) : (
-              <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
-            )}
-          </p>
-
-          <div class="examples rise" style="--i:3">
-            <p class="eyebrow examples-label" id="examples-label">Try an example</p>
-            <ul class="examples-list" role="list" aria-labelledby="examples-label">
-              {composerExamples.map((example) => (
-                <li><button type="button" class="example" data-example={example}>{example}</button></li>
+        {/* THE COMPOSER IS THE PRODUCT'S OWN CONTROL, NOT A PICTURE OF ONE: a real <form> with a
+            real <textarea> and a real submit, going where the page's primary action goes. What was
+            typed travels as `?start=`. Nothing in the app reads it yet — docs/backlog/
+            HANDOFF-HERO-START.md names that hop — so the page promises no prefill. The three
+            example sentences are the empty state, a ghost CSS hides the moment the field is
+            focused or holds a character. */}
+        <form class="composer" action="/app/signup" method="get" data-rim>
+          <PointerRim />
+          <div class="composer-field">
+            <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
+            {/* `placeholder=" "` makes `:placeholder-shown` true while the field is empty, which is
+                what lets CSS alone hide the ghost below. */}
+            <textarea
+              id="hero-start"
+              name="start"
+              class="composer-input"
+              rows="2"
+              maxlength="280"
+              placeholder=" "
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+            <span class="composer-typed" aria-hidden="true">
+              {/* The first sentence is its own element: it is the one the single pass ends on. */}
+              <span class="composer-line composer-home" style="--turn:0">{composerExamples[0]}</span>
+              {composerExamples.slice(1).map((example, i) => (
+                <span class="composer-line" style={`--turn:${i + 1}`}>{example}</span>
               ))}
-            </ul>
+            </span>
           </div>
-        </div>
+          <div class="composer-bar">
+            <div class="composer-chips">
+              <span class="chip chip-model">{composerModel}</span>
+            </div>
+            <button class="composer-send" type="submit">Build</button>
+          </div>
+        </form>
 
-        <div class="hero-toy rise" style="--i:4">
-          <Baseplate />
-        </div>
+        {/* The offer line sits straight under the composer, ABOVE the ideas: with the two rows of
+            ideas between them it ended 24px below the fold at 1366x768 on Linux's fallback font. */}
+        <p class="availability">
+          Free to start, no card.{' '}
+          {installExternal ? (
+            <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio from the Creator Store <span aria-hidden="true">↗</span></a>
+          ) : (
+            <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
+          )}
+        </p>
+
+        <Marquee rows={promptIdeas} fills="hero-start" label="Ideas to try — pressing one writes it into the box above" caption="Or tap an idea" />
       </div>
     </section>
 
@@ -265,52 +244,47 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
     <section class="band" id="inside" aria-labelledby="sequence-title">
       <div class="shell">
         <div class="band-head" data-reveal>
-          <p class="eyebrow"><span class="ledger">{ledger(2)}</span>The loop</p>
           <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
-          <p class="section-sub">Four steps, in order. Nothing is written before the plan, and the check comes before it says it is done.</p>
+          <p class="section-sub">Three steps, in order, with the third one being the point.</p>
         </div>
-
-        <figure class="cycle" data-cycle data-reveal>
-          <figcaption class="cycle-label">
-            <span class="tag">Illustration</span>
-            <span>The order of a run, lit once as you reach it. It shows no output and no timings.</span>
-          </figcaption>
-          <ul class="cycle-steps" role="list">
-            {loop.map((step) => (
-              <li class="cycle-step">
-                <span class="cycle-node" aria-hidden="true"></span>
-                <span class="cycle-no"><span>{step.n}</span><ObjectIcon name={step.icon} size={16} class="cycle-icon" /></span>
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
-              </li>
-            ))}
-          </ul>
-        </figure>
-
-        <ul class="notes" role="list">
-          <li class="note" data-reveal>
-            <h3>Pair one place</h3>
-            <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
-          </li>
-          <li class="note" data-reveal data-reveal-delay="40">
-            <h3>Take a run back</h3>
-            <p>Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
-          </li>
-        </ul>
+        <BeamFlow />
+        <div class="sequence">
+          <figure class="sequence-figure" data-reveal>
+            <figcaption class="figure-head micro">Studio · while Apple works</figcaption>
+            <div class="activity" role="status" aria-live="off">
+              <span class="activity-orb" aria-hidden="true"></span>
+              <span class="activity-current" data-activity-current>Checking your place</span>
+            </div>
+          </figure>
+          <div class="steps">
+            <article class="step" data-reveal>
+              <h3>Pair one place</h3>
+              <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
+            </article>
+            <article class="step" data-reveal data-reveal-delay="60">
+              <h3>Say what you want</h3>
+              <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
+            </article>
+            <article class="step" data-reveal data-reveal-delay="120">
+              <h3>Look at what it did</h3>
+              <p>See what Apple is doing now as one clear step that gives way to the next. The result stays in your place, in Studio, where you can run it.</p>
+            </article>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="band" id="capabilities" aria-labelledby="cap-title">
+    <section class="band" id="capabilities" aria-labelledby="cap-title" data-field-host>
+      <NoiseField mode="bricks" />
       <div class="shell">
         <div class="band-head" data-reveal>
-          <p class="eyebrow"><span class="ledger">{ledger(3)}</span>Capabilities</p>
           <h2 id="cap-title" class="section-title">What it is good at</h2>
           <p class="section-sub">Four things it does end to end today.</p>
         </div>
 
         <ul class="capabilities" role="list">
           {capabilities.map((c, i) => (
-            <li class="capability" data-reveal data-reveal-delay={String(i * 40)}>
+            <li class="capability" data-reveal data-reveal-delay={String(i * 60)}>
               <span class="cap-icon"><ObjectIcon name={c.icon} size={20} /></span>
               <h3>{c.title}</h3>
               <p>{c.body}</p>
@@ -320,31 +294,27 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
 
         {/* ONE PANEL, THREE STAGES. Every control is a <button>; the state lives in aria-pressed or
             aria-selected rather than a class, and each readout is a live region so a change is
-            announced rather than only drawn. The panel says what it is: these run in this page and
-            talk to nothing. */}
-        <div class="demos-panel">
+            announced rather than only drawn. */}
+        <DeviceFrame class="demos-device">
           <div class="demos">
-            <div class="demos-bar">
-              <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
-                {stages.map((s, i) => (
-                  <button
-                    type="button"
-                    class="stage-tab"
-                    role="tab"
-                    id={`tab-${s.demo}`}
-                    aria-controls={`stage-${s.demo}`}
-                    aria-selected={i === 0 ? 'true' : 'false'}
-                    tabindex={i === 0 ? '0' : '-1'}
-                    data-tab={s.demo}
-                  >{s.tab}</button>
-                ))}
-              </div>
-              <p class="demos-note"><span class="tag">Illustration</span> Runs in this page. Connected to nothing.</p>
+            <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
+              {stages.map((s, i) => (
+                <button
+                  type="button"
+                  class="stage-tab"
+                  role="tab"
+                  id={`tab-${s.demo}`}
+                  aria-controls={`stage-${s.demo}`}
+                  aria-selected={i === 0 ? 'true' : 'false'}
+                  tabindex={i === 0 ? '0' : '-1'}
+                  data-tab={s.demo}
+                >{s.tab}</button>
+              ))}
             </div>
 
             {stages.map((s) => (
               <div class="demo-stage" role="tabpanel" id={`stage-${s.demo}`} aria-labelledby={`tab-${s.demo}`} data-demo={s.demo}>
-                <p class="eyebrow demo-head">{s.head}</p>
+                <p class="micro demo-head">{s.head}</p>
 
                 {s.demo === 'tree' && (
                   <div class="rd">
@@ -412,7 +382,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
               </div>
             ))}
           </div>
-        </div>
+        </DeviceFrame>
       </div>
     </section>
 
@@ -422,19 +392,18 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
     <section class="band" id="models" aria-labelledby="plans-title">
       <div class="shell">
         <div class="band-head" data-reveal>
-          <p class="eyebrow"><span class="ledger">{ledger(4)}</span>Engine</p>
           <h2 id="plans-title" class="section-title">One engine</h2>
           <p class="section-sub">Describe the game; Apple shows a short plan and builds it. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
         </div>
 
         <div class="choice-group" data-reveal>
-          <h3 class="eyebrow choice-label">Engine</h3>
+          <h3 class="micro choice-label">Engine</h3>
           <ul class="model-grid" role="list">
             {PRODUCT_MODELS.map((model) => (
               <li class="model-card">
                 <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
                 <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
-                <p class="eyebrow model-plans">Included with every plan, Free too</p>
+                <p class="micro model-plans">Included with every plan, Free too</p>
               </li>
             ))}
           </ul>
@@ -442,11 +411,11 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
       </div>
     </section>
 
-    <section class="closing" id="begin" aria-labelledby="closing-title" data-reveal>
+    <section class="closing" data-reveal data-field-host>
+      <NoiseField mode="contours" />
       <div class="shell">
-        <p class="eyebrow"><span class="ledger">{ledger(5)}</span>Begin</p>
-        <h2 id="closing-title" class="statement">Start with one place and one idea.</h2>
-        <a class="btn btn-primary btn-closing" href="/app/signup">Create a free account</a>
+        <h2 class="statement">Start with one place and one idea.</h2>
+        <CtaButton class="btn-closing" href="/app/signup">Create a free account</CtaButton>
       </div>
     </section>
   </main>
@@ -471,6 +440,33 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
   const safely = (name = '', fn = () => {}) => {
     try { fn(); } catch (err) { console.error('landing stage failed: ' + name, err); }
   };
+
+  /* One calm phrase replaces the previous one. This is a demo, so it does not announce
+     every decorative change to a screen reader and it stays still under reduced motion. */
+  safely('activity', () => {
+    const line = document.querySelector('[data-activity-current]');
+    if (!line || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const phrases = ['Checking your place', 'Planning the next step', 'Placing your scene', 'Checking the result'];
+    let current = 0;
+    let timer = 0;
+    const advance = () => {
+      line.classList.add('is-changing');
+      window.setTimeout(() => {
+        current = (current + 1) % phrases.length;
+        line.textContent = phrases[current];
+        line.classList.remove('is-changing');
+      }, 220);
+    };
+    const start = () => { if (!timer && !document.hidden) timer = window.setInterval(advance, 3200); };
+    const stop = () => { if (timer) window.clearInterval(timer); timer = 0; };
+    let onscreen = false;
+    const observer = new IntersectionObserver(([entry]) => {
+      onscreen = entry.isIntersecting;
+      if (onscreen) start(); else stop();
+    }, { threshold: 0.1 });
+    observer.observe(line);
+    document.addEventListener('visibilitychange', () => { if (onscreen) { if (document.hidden) stop(); else start(); } });
+  });
 
   /* --------------------------------------------------------------------------- the tabs --- */
 
@@ -589,11 +585,6 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
       });
     }
   });
-</script>
-
-<script>
-  import { mountLanding } from '../components/landing-motion';
-  mountLanding();
 </script>
 
 </Landing>

@@ -1,16 +1,18 @@
 ---
 import AppleMark from './AppleMark.astro';
+/* The call to action is the site's one merged primary button (picks/CtaButton.astro). */
+import CtaButton from './picks/CtaButton.astro';
 
-//[[ ONE NAVIGATION FOR THE WHOLE SITE, THE FRONT PAGE INCLUDED. REBUILT 2026-10-02 (phase 6).
+//[[ ONE NAVIGATION FOR THE WHOLE SITE, THE FRONT PAGE INCLUDED.
 //
-//   A sticky 56px bar with a hairline under it. Blur is allowed on exactly two surfaces in this
-//   design, the top bar and the composer, so this is one of them. Logo lockup at the inline start,
-//   the five links in the middle, the theme toggle and the two doors at the inline end. Below 900px
-//   the links fold into a menu and the Rail (the page's reading line) becomes the 2px progress bar
-//   that sits on the bottom edge of this bar.
+//   The landing used to carry its own inline header. The two drifted: different links, different
+//   heights, and on a 390px phone the landing's one wrapped onto three rows (151px) while every
+//   other route showed this 64px bar. There is now one header component and every route renders it.
 //
-//   The hrefs are ROOT-RELATIVE (`/#inside`, not `#inside`) so one list works from every page.
-//   apps/site/tests/links-resolve.test.mjs checks every fragment names an id the landing really has.
+//   The hrefs are ROOT-RELATIVE (`/#inside`, not `#inside`) so one list works from every page. On
+//   the landing a same-document fragment scrolls without a navigation; from /pricing it loads the
+//   landing and lands on the section. apps/site/tests/links-resolve.test.mjs checks every fragment
+//   names an id the landing really has.
 //
 //   SHOWCASE IS NOT AN ASTRO ROUTE. `/showcase` is published into the Worker's static store by
 //   infra/deploy-showcase.mjs; links-resolve knows it by name and checks that publisher exists.
@@ -28,8 +30,9 @@ const isCurrent = (href: string) =>
 
 <header class="nav" id="site-nav">
   <div class="wrap nav__inner">
-    <a href="/" class="brand" aria-label="Apple, home">
-      <AppleMark size={28} lockup />
+    <a href="/" class="brand" aria-label="Apple — home">
+      <AppleMark size={22} />
+      <span class="brand__word">Apple</span>
     </a>
 
     <nav aria-label="Primary" class="nav__links" id="primary-nav">
@@ -38,7 +41,7 @@ const isCurrent = (href: string) =>
           links.map((l) => (
             <li>
               <a href={l.href} aria-current={isCurrent(l.href)}>
-                {l.label}
+                <span data-scramble>{l.label}</span>
               </a>
             </li>
           ))
@@ -47,21 +50,21 @@ const isCurrent = (href: string) =>
 
       <div class="nav__tools">
         <button class="iconbtn" data-theme-toggle type="button" aria-pressed="true" aria-label="Switch to light theme">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="icon-sun">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="icon-sun">
             <circle cx="12" cy="12" r="4.2" fill="currentColor"></circle>
             <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
               <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"></path>
             </g>
           </svg>
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="icon-moon">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" class="icon-moon">
             <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4Z" fill="currentColor"></path>
           </svg>
         </button>
 
-        {/* Two doors, named for what is behind them: a signed-out visitor needs the account, a
-            returning one needs sign-in. */}
+        {/* Two doors, named for what is behind them: a signed-out visitor — most of this page's
+            traffic — needs the account, a returning one needs sign-in. */}
         <a href="/app/login" class="btn btn-ghost nav__signin">Sign in</a>
-        <a href="/app/signup" class="btn btn-primary nav__cta">Create an account</a>
+        <CtaButton href="/app/signup" size="sm" class="nav__cta">Create an account</CtaButton>
       </div>
     </nav>
 
@@ -77,50 +80,70 @@ const isCurrent = (href: string) =>
       <span></span>
     </button>
   </div>
-  {/* The Rail below 900px: a 2px bar of how far down the page you are. */}
-  <div class="nav__progress" aria-hidden="true"></div>
 </header>
 
 <style>
+  /* A floating frosted pill (D-GLASS-1). The bar itself is transparent; the pill inside it is the
+     glass, so the page and the aura show around it. Total height stays --nav-h. */
   .nav {
     position: sticky;
     top: 0;
-    z-index: var(--z-bar);
-    border-block-end: 1px solid var(--hairline);
-    background: color-mix(in srgb, var(--paper) 86%, transparent);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    z-index: 500;
+    padding-top: 8px;
   }
 
   .nav__inner {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex;
     align-items: center;
-    gap: var(--s-5);
-    height: var(--nav-h);
+    justify-content: space-between;
+    gap: 24px;
+    height: calc(var(--nav-h) - 8px);
+    padding-inline: 14px 8px;
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r-pill);
+    background: var(--glass-fill);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    transition:
+      background-color var(--t-base) var(--ease-out),
+      box-shadow var(--t-base) var(--ease-out);
+  }
+
+  /* Once the page moves under it, the pill thickens so the words behind never compete. */
+  :global(html.scrolled) .nav__inner {
+    background: var(--glass-fill-strong);
+    box-shadow: var(--glass-shadow-lift);
   }
 
   .brand {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    gap: 9px;
     color: var(--ink);
     text-decoration: none;
   }
 
+  .brand__word {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
   .nav__links {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
+    flex: 1;
     align-items: center;
-    gap: var(--s-4);
+    justify-content: space-between;
+    gap: 24px;
   }
 
   .nav__links ul {
     display: flex;
     align-items: center;
-    gap: var(--s-1);
-    grid-column: 2;
-    margin: 0;
+    gap: 4px;
+    margin: 0 auto;
     padding: 0;
     list-style: none;
   }
@@ -128,69 +151,102 @@ const isCurrent = (href: string) =>
   .nav__links ul a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
-    padding-inline: var(--s-3);
-    border-radius: var(--r-sm);
-    color: var(--ink-2);
-    font-size: 0.875rem;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: var(--r-pill);
+    color: var(--muted);
+    font-size: 14px;
     font-weight: 500;
     text-decoration: none;
     transition:
-      color var(--dur-1) var(--ease-out),
-      background-color var(--dur-1) var(--ease-out);
+      color var(--t-fast) var(--ease-out),
+      background-color var(--t-fast) var(--ease-out),
+      transform var(--t-base) var(--ease-spring);
   }
 
   .nav__links ul a:hover {
     color: var(--ink);
-    background: var(--surface-2);
+    background: var(--control-fill);
+    transform: translateY(-1px);
   }
 
-  /* The current page is told by shape as well as by colour: an underline bar, not a tint. */
+  .nav__links ul a:active {
+    transform: scale(0.96);
+  }
+
+  /* The current page: an ordinary active state, so it is the restrained blue. */
   .nav__links ul a[aria-current='page'] {
     color: var(--ink);
-    box-shadow: inset 0 -2px 0 var(--accent);
-    border-radius: var(--r-sm) var(--r-sm) 0 0;
+    background: var(--accent-soft);
   }
 
   .nav__tools {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: var(--s-2);
-    grid-column: 3;
+    gap: 6px;
+  }
+
+  /* THE LINKS SIT ON THE PAGE'S CENTRE LINE (2026-09-22). `margin: 0 auto` centred them in the space
+     left between the wordmark and the tools, which are different widths, so at 1440 the group's
+     centre was x=622 under a hero centred on 720. On a wide bar the list is taken out of the flow and
+     centred on the bar itself. Below 1120px the two sides would come close enough to touch it, so it
+     falls back to sitting between them. */
+  @media (min-width: 1120px) {
+    .nav__inner {
+      position: relative;
+    }
+
+    .nav__links ul {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      margin: 0;
+      transform: translate(-50%, -50%);
+    }
+
+    .nav__tools {
+      margin-left: auto;
+    }
   }
 
   .iconbtn {
-    position: relative;
     display: inline-grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     border: 1px solid transparent;
-    border-radius: var(--r-sm);
+    border-radius: var(--r-pill);
     background: transparent;
-    color: var(--ink-2);
+    color: var(--muted);
     cursor: pointer;
     transition:
-      color var(--dur-1) var(--ease-out),
-      background-color var(--dur-1) var(--ease-out);
+      color var(--t-fast) var(--ease-out),
+      background-color var(--t-fast) var(--ease-out),
+      transform var(--t-slow) var(--ease-spring);
   }
 
   .iconbtn:hover {
     color: var(--ink);
-    background: var(--surface-2);
+    background: var(--control-fill);
+    transform: rotate(20deg);
   }
 
-  /* The two glyphs swap over 140ms. The toggle shows the icon of the theme you would switch TO. */
-  .iconbtn svg {
-    grid-area: 1 / 1;
-    transition: opacity 140ms var(--ease-out);
+  /* The theme toggle shows the icon of the theme you would switch TO. */
+  .iconbtn .icon-moon {
+    display: none;
   }
 
-  .iconbtn[aria-pressed='true'] .icon-moon,
+  .iconbtn[aria-pressed='true'] .icon-sun {
+    display: block;
+  }
+
   .iconbtn[aria-pressed='false'] .icon-sun {
-    opacity: 0;
+    display: none;
+  }
+
+  .iconbtn[aria-pressed='false'] .icon-moon {
+    display: block;
   }
 
   .nav__burger {
@@ -198,116 +254,90 @@ const isCurrent = (href: string) =>
     flex-direction: column;
     justify-content: center;
     gap: 5px;
-    width: 44px;
-    height: 44px;
-    padding: 0 12px;
-    margin-inline-start: auto;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--r-sm);
+    width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r-pill);
     background: transparent;
     cursor: pointer;
   }
 
   .nav__burger span {
     display: block;
-    height: 2px;
-    border-radius: 1px;
+    height: 1.5px;
+    border-radius: 2px;
     background: var(--ink);
-    transition: transform var(--dur-2) var(--ease-out);
+    transition: transform var(--t-base) var(--ease-out);
   }
 
   .nav__burger[aria-expanded='true'] span:first-child {
-    transform: translateY(3.5px) rotate(45deg);
+    transform: translateY(3.25px) rotate(45deg);
   }
 
   .nav__burger[aria-expanded='true'] span:last-child {
-    transform: translateY(-3.5px) rotate(-45deg);
+    transform: translateY(-3.25px) rotate(-45deg);
   }
 
-  /* The reading line, folded flat for phones. It scales from the inline start. */
-  .nav__progress {
-    display: none;
-    position: absolute;
-    inset-inline: 0;
-    inset-block-end: -1px;
-    height: 2px;
-    background: var(--accent);
-    transform-origin: 0 50%;
-    transform: scaleX(var(--read, 0));
-  }
-
-  [dir='rtl'] .nav__progress {
-    transform-origin: 100% 50%;
-  }
-
-  /* Under reduced motion the Rail is drawn full and the progress bar is not shown. */
-  @media (prefers-reduced-motion: reduce) {
-    .nav__progress {
-      display: none !important;
-    }
-  }
-
-  @media (max-width: 899.98px) {
-    .nav__progress {
-      display: block;
-    }
-
-    .nav__inner {
-      grid-template-columns: 1fr auto;
-    }
-
+  @media (max-width: 940px) {
     .nav__burger {
       display: flex;
     }
 
     .nav__links {
       position: absolute;
-      inset-inline: 0;
-      inset-block-start: 100%;
+      top: calc(var(--nav-h) + 6px);
+      left: var(--gutter);
+      right: var(--gutter);
       display: none;
-      grid-template-columns: 1fr;
-      gap: var(--s-4);
-      padding: var(--s-3) var(--gutter) var(--s-5);
-      border-block-end: 1px solid var(--hairline);
-      background: var(--surface-2);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: 8px 16px 18px;
+      border: 1px solid var(--glass-line);
+      border-radius: var(--r-xl);
+      background: var(--glass-fill-strong);
+      box-shadow: var(--glass-shadow-lift);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
     }
 
     .nav__links.is-open {
-      display: grid;
-      animation: menu-drop var(--dur-2) var(--ease-out);
+      display: flex;
+      animation: menu-drop var(--t-base) var(--ease-spring);
     }
 
     @keyframes menu-drop {
       from {
         opacity: 0;
-        transform: translateY(-6px);
+        transform: translateY(-6px) scale(0.98);
       }
     }
 
     .nav__links ul {
-      grid-column: 1;
       flex-direction: column;
       align-items: stretch;
       gap: 0;
+      margin: 0;
     }
 
     .nav__links ul a {
+      display: flex;
       min-height: 48px;
-      padding-inline: 0;
+      padding: 0 4px;
       border-radius: 0;
-      border-block-end: 1px solid var(--hairline);
-      font-size: 1rem;
+      border-bottom: 1px solid var(--hairline);
+      font-size: 16px;
     }
 
     .nav__links ul a[aria-current='page'] {
-      box-shadow: inset 3px 0 0 var(--accent);
-      padding-inline-start: var(--s-3);
-      border-radius: 0;
+      background: transparent;
+      box-shadow: inset 2px 0 0 var(--accent);
+      padding-left: 12px;
     }
 
     .nav__tools {
-      grid-column: 1;
-      justify-content: stretch;
+      margin-top: 16px;
     }
 
     .nav__tools :global(.nav__cta) {
@@ -317,6 +347,10 @@ const isCurrent = (href: string) =>
 </style>
 
 <script>
+  /* The labels scramble and resolve on hover or keyboard focus (picks/scramble.ts). */
+  import { scrambleOnHover } from './picks/scramble';
+  scrambleOnHover(document.querySelectorAll<HTMLElement>('#primary-nav ul a'));
+
   const burger = document.getElementById('menu-toggle');
   const menu = document.getElementById('primary-nav');
 
@@ -345,17 +379,13 @@ const isCurrent = (href: string) =>
     });
   }
 
-  /* The reading line: how far down the page you are, as a number between 0 and 1 on <html>. The
-     Rail on wide screens and the 2px bar on phones both draw from it. Passive and rAF-throttled;
-     under reduced motion the bar is simply not shown and the Rail is drawn full (landing.css). */
+  // The hairline under the bar appears only once the page has moved.
   let ticking = false;
-  const root = document.documentElement;
   const onScroll = () => {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
-      const room = root.scrollHeight - window.innerHeight;
-      root.style.setProperty('--read', String(room > 0 ? Math.min(1, Math.max(0, window.scrollY / room)) : 0));
+      document.documentElement.classList.toggle('scrolled', window.scrollY > 8);
       ticking = false;
     });
   };

@@ -1,22 +1,23 @@
 /*
- * THE FRONT PAGE: structure only. "EMBER RAIL" (phase 6, 2026-10-02).
+ * THE FRONT PAGE — structure only.
  *
- * Every colour, type, radius and motion value is a token from apple-minimal.css, which Landing.astro
- * imports before this file. Nothing here redeclares a token and nothing here needs `!important`.
+ * Every colour, type, radius and motion value is a token from apple-minimal.css, which
+ * Landing.astro imports before this file. Nothing here redeclares a token and nothing here needs
+ * `!important`: the two sheets no longer fight, so the cascade settles on source order alone.
  *
- * THE DIRECTION. An instrument, not a toy box: dark, flat, hairline-bordered, one signal colour.
- * Hierarchy is size, weight and space. Panels are a surface step and a hairline; nothing casts a
- * shadow, nothing is frosted except the sticky top bar and the composer, nothing is a gradient.
- * Ember marks the primary action, the live step and the focus ring.
+ * THE DIRECTION: near-black and matte, calm, a lot of room. Hierarchy is size, weight and space —
+ * not colour, not glow. Panels are a surface step and a hairline; nothing casts a shadow except the
+ * composer, which floats. Blue marks an ordinary active state (focus, a selected tab, a pressed
+ * control). Violet is spent only by an Autonomous control while it is on.
  *
- * THE RAIL. A 1px line down the inline-start margin with one square node per section (components of
- * the page that have an id). It is real navigation (`<nav aria-label="On this page">`), it fills as
- * the page is read, and below 900px it folds into the 2px bar on the bottom edge of the top bar.
+ * MOTION IN THIS SHEET is two small things: the composer's example sentences cross-fading ONCE in
+ * an empty field and then resting on the first, and a short fade as a section scrolls in. Both are
+ * off under prefers-reduced-motion.
  *
- * MOTION IN THIS SHEET: one entrance (`rise`, the composer and what follows it, once, 260ms), the
- * scroll reveal ([data-reveal], transitions only) and the four lights of the loop illustration. All
- * of it is OFF under prefers-reduced-motion, not shortened. Nothing loops: this sheet declares no
- * infinite animation. The Baseplate toy keeps its own sheet beside its component.
+ * THE OWNER'S PICKED COMPONENTS (2026-09-23) carry the rest of the page's motion, and each keeps
+ * its own sheet beside it under components/picks/ — the ideas ticker, the beams, the tablet, the
+ * maker tiles, the moving grounds, the call to action. They share one contract
+ * (components/picks/motion.ts): still under reduced motion, idle off screen, drawn in these tokens.
  */
 
 /* The mono token reaches every technical surface; the body face comes from apple-minimal.css. */
@@ -28,322 +29,216 @@ a {
   text-decoration: none;
 }
 
-/* ------------------------------------------------------------------ the Rail */
-
-.rail {
-  display: none;
-}
-
-.railed {
-  position: relative;
-}
-
-@media (min-width: 900px) {
-  .railed {
-    padding-inline-start: 56px;
-  }
-
-  .rail {
-    position: fixed;
-    z-index: var(--z-rail);
-    inset-block: 0;
-    inset-inline-start: 0;
-    display: grid;
-    align-items: center;
-    justify-items: center;
-    width: 56px;
-    pointer-events: none;
-  }
-}
-
-.rail-list {
-  position: relative;
-  display: grid;
-  gap: 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  pointer-events: auto;
-}
-
-/* The line, and the same line again in Ember, scaled by how far down the page you are. */
-.rail-list::before,
-.rail-list::after {
-  content: '';
-  position: absolute;
-  inset-block: 8px;
-  inset-inline-start: 50%;
-  width: 1px;
-  margin-inline-start: -0.5px;
-  background: var(--line);
-}
-
-.rail-list::after {
-  background: var(--accent);
-  transform-origin: 50% 0;
-  transform: scaleY(var(--read, 0));
-}
-
-.rail-node {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  color: var(--ink);
-}
-
-/* The node: a small square. Passed nodes are filled, so progress is shape and colour together. */
-.rail-node::before {
-  content: '';
-  position: relative;
-  z-index: 1;
-  width: 11px;
-  height: 11px;
-  border: 1px solid var(--line-strong);
-  border-radius: 2px;
-  background: var(--paper);
-  transition:
-    background-color var(--dur-2) var(--ease-out),
-    border-color var(--dur-2) var(--ease-out);
-}
-
-.rail-node.is-passed::before {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.rail-node[aria-current='location']::before {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* The name of the stop, for a pointer or a keyboard. It is always in the accessibility tree. */
-.rail-label {
-  position: absolute;
-  inset-inline-start: calc(100% + 4px);
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xs);
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-1) var(--ease-out);
-}
-
-.rail-node:hover .rail-label,
-.rail-node:focus-visible .rail-label {
-  opacity: 1;
-}
-
-/* ------------------------------------------------------------------ the ledger label */
-
-.ledger {
-  margin-inline-end: 0.75em;
-  color: var(--accent-text);
-  font-variant-numeric: tabular-nums;
-}
-
-/* An "Illustration" label stays on screen next to anything that is a picture of a behaviour and not
-   live data. It is a word and a box, never colour alone. */
-.tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-xs);
-  color: var(--ink-2);
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
 /* ------------------------------------------------------------------ hero */
 
 .hero {
-  padding: clamp(48px, 9vw, 96px) 0 clamp(56px, 8vw, 96px);
+  padding: clamp(88px, 13vh, 144px) 0 clamp(72px, 10vh, 112px);
+  text-align: center;
 }
 
 .hero-inner {
-  display: grid;
-  gap: var(--s-5);
-}
-
-.hero-copy {
-  display: grid;
-  align-content: start;
-  gap: var(--s-4);
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .hero-eyebrow {
-  margin: 0;
+  margin: 0 0 20px;
   color: var(--ink-2);
 }
 
-/* scripts/check-copy.mjs caps display type at 3.5rem (56px); the clamp tops out exactly there. */
+/* Calm, not loud: the room around the headline carries it, not the size of its glyphs.
+   scripts/check-copy.mjs caps display type at 56px; this tops out at 52. */
 .display {
-  max-width: 18ch;
+  max-width: 17ch;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(2.25rem, 6vw + 0.5rem, 3.5rem);
-  font-weight: 600;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-size: clamp(2.25rem, 4.6vw, 3.25rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
 }
 
 .lead {
-  max-width: 44ch;
-  margin: 0;
+  max-width: 640px;
+  margin: 22px 0 0;
   color: var(--muted);
-  font-size: 1.125rem;
+  font-size: clamp(1rem, 1.4vw, 1.125rem);
   line-height: 1.6;
 }
 
-/* THE ENTRANCE. The composer and everything under it rise 8px and fade in once, 40ms apart. The
-   headline is left alone: it is the largest text on the page and must paint at once. Under reduced
-   motion the rule is switched off and the elements simply sit where they end. */
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-.rise {
-  animation: rise var(--dur-3) var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 40ms);
-}
-
-/* THE COMPOSER: a level-2 panel with a visible control boundary. It is the product's own control,
-   a real form with a real textarea and a real submit (apps/site/tests/counted-copy.test.mjs). */
+/* THE COMPOSER — the one object on the page that floats, so it is the one that casts. Its values
+   are the app's composer (apps/web/src/design/apple-minimal.css `.gx-composer__inner`). */
 .composer {
-  width: min(100%, 640px);
+  width: min(100%, 680px);
+  margin-top: 44px;
   border: 1px solid var(--composer-line);
   border-radius: var(--r-xl);
   background: var(--composer-fill);
   box-shadow: var(--composer-shadow);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  text-align: left;
+  transition: border-color var(--t-base) var(--ease-out);
 }
 
-/* THE FOCUS RING MOVES TO THE COMPOSER while the field has focus: the textarea inside is borderless,
-   so the panel the reader sees as "the field" takes the site's one ring. The Build button draws its
-   own ring when it has focus and nothing else does. */
+/* THE FOCUS RING MOVES TO THE COMPOSER. The field inside it is a borderless textarea; a ring drawn
+   round the textarea alone would sit inside the composer's own rim. So the textarea drops its ring
+   and the composer — the object the reader sees as "the field" — takes the site's one ring:
+   2px of the accent at a 4px offset.
+
+   ONE RING, NOT TWO (2026-09-22). This was `:focus-within` plus a blue border: a focused field drew
+   two concentric rings, and tabbing on to Build kept the composer's ring lit around the button's
+   own, so two nested blue rings. The composer now rings only while the TEXT FIELD has focus, and
+   its rim stays the resting hairline; the Build button draws its own ring and nothing else does. */
 .composer:has(.composer-input:focus) {
-  outline: 2px solid var(--ring);
-  outline-offset: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .composer-field {
-  display: grid;
+  position: relative;
+  min-height: 92px;
 }
 
 .composer-input {
   display: block;
   width: 100%;
-  min-height: 96px;
+  min-height: 92px;
   margin: 0;
-  padding: var(--s-4) var(--s-4) var(--s-2);
+  padding: 18px 20px 8px;
   border: 0;
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.01em;
   resize: none;
-}
-
-.composer-input::placeholder {
-  color: var(--faint);
-  opacity: 1;
 }
 
 .composer-input:focus-visible {
   outline: none;
 }
 
+/* The ghost: three example sentences, stacked, shown once each while the field is empty, ending on
+   the first. Hidden by CSS the moment the field is focused or holds a character (`placeholder=" "`
+   makes that detectable).
+
+   IT PLAYS ONCE AND STOPS (2026-09-22). It used to cycle forever, with a blinking fake caret, which
+   is decorative motion on a page whose direction is calm. Each later sentence now fades in and out
+   a single time on its own turn, and the first comes back at the end and stays. No caret: a caret
+   in a field nobody is typing in is a picture of a control, not the control. */
+.composer-typed {
+  position: absolute;
+  inset: 18px 20px auto;
+  height: 24px;
+  pointer-events: none;
+}
+
+.composer-input:focus ~ .composer-typed,
+.composer-input:not(:placeholder-shown) ~ .composer-typed {
+  opacity: 0;
+}
+
+.composer-line {
+  position: absolute;
+  inset: 0 auto auto 0;
+  color: var(--faint);
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+  opacity: 0;
+  animation: example-turn 4s var(--ease-in-out) 1 both;
+  animation-delay: calc(var(--turn) * 4s);
+}
+
+/* The still state, which is also what reduced motion shows and where the one pass ends: the first
+   sentence, fully visible. Its pass is the whole sequence long, so it returns after the last one. */
+.composer-home {
+  opacity: 1;
+  animation: example-home 12.6s var(--ease-in-out) 1 both;
+  animation-delay: 0s;
+}
+
+@keyframes example-turn {
+  0% { opacity: 0; transform: translateY(4px); }
+  10%, 85% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes example-home {
+  0%, 27% { opacity: 1; transform: none; }
+  31%, 95% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: none; }
+}
+
 .composer-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s-3);
-  padding: var(--s-2) var(--s-3) var(--s-3) var(--s-4);
+  gap: 12px;
+  padding: 8px 10px 10px 14px;
 }
 
 .composer-chips {
   display: flex;
   align-items: center;
-  gap: var(--s-1);
+  gap: 4px;
   min-width: 0;
 }
 
-/* A label, not a control: it names the engine a request would get. */
+/* LABELS, NOT CONTROLS (2026-09-22). This names the engine a request would get. It was drawn as a
+   pill — with a rim and a fill, exactly like the app's picker — and clicking it did nothing, so the
+   hero invited a dead click. On this page it is text: no rim, no fill, no pointer. The one control
+   in the composer is Build. */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--s-2);
   min-height: 28px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  padding: 0 4px;
+  color: var(--faint);
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
   cursor: default;
 }
 
-/* The stud-shaped status mark: a small rounded rectangle, the first of three appearances of the
-   stud on this screen (the logo and the Baseplate are the others). */
-.chip-model::before {
-  content: '';
-  width: 10px;
-  height: 7px;
-  border-radius: 2px;
-  background: var(--accent);
+.chip-model {
+  color: var(--muted);
 }
 
-/* Build is the page's primary action: the Ember fill with the plate edge, pressing flat. */
 .composer-send {
   flex: none;
-  min-height: 44px;
-  padding: 0 var(--s-5);
-  border: 1px solid var(--primary);
-  border-radius: var(--r-sm);
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
   background: var(--primary);
-  box-shadow: 0 2px 0 var(--plate);
   color: var(--on-primary);
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition:
-    background-color var(--dur-1) var(--ease-out),
-    transform var(--dur-1) var(--ease-out),
-    box-shadow var(--dur-1) var(--ease-out);
+  transition: background-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-spring);
 }
 
 .composer-send:hover {
-  border-color: var(--primary-hover);
   background: var(--primary-hover);
+  transform: translateY(-1px) scale(1.04);
 }
 
 .composer-send:active {
-  transform: translateY(2px);
-  box-shadow: 0 0 0 var(--plate);
+  transform: scale(0.95);
 }
 
-.pairs,
 .availability {
-  margin: 0;
+  margin: 22px 0 0;
   color: var(--ink-2);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 20px;
+  text-wrap: balance;
 }
 
 .availability a {
@@ -351,88 +246,39 @@ a {
   text-decoration: underline;
   text-decoration-color: var(--line-strong);
   text-underline-offset: 3px;
+  transition: text-decoration-color var(--t-fast) var(--ease-out);
 }
 
 .availability a:hover {
   text-decoration-color: var(--accent);
 }
 
-/* TRY AN EXAMPLE: real buttons that fill the field when pressed. Nothing types by itself. */
-.examples {
-  display: grid;
-  gap: var(--s-2);
-}
-
-.examples-label {
-  margin: 0;
-}
-
-.examples-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.example {
-  min-height: 44px;
-  padding: 0 var(--s-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.875rem;
-  text-align: start;
-  cursor: pointer;
-  transition: background-color var(--dur-1) var(--ease-out);
-}
-
-.example:hover {
-  background: var(--surface-3);
-}
-
-.hero-toy {
-  min-width: 0;
-}
-
-@media (min-width: 1000px) {
-  .hero-inner {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    align-items: start;
-    column-gap: var(--s-7);
-  }
-}
-
 /* ------------------------------------------------------------------ bands */
 
 .band {
-  padding: clamp(64px, 9vw, 112px) 0;
+  padding: clamp(80px, 10vw, 128px) 0;
   border-top: 1px solid var(--hairline);
 }
 
 .band-head {
   max-width: 640px;
-  margin-bottom: var(--s-7);
+  margin-bottom: 44px;
 }
 
 .section-title {
-  margin: var(--s-2) 0 0;
+  margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 2.4vw + 0.5rem, 1.75rem);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.028em;
 }
 
 .section-sub {
-  max-width: 64ch;
-  margin: var(--s-3) 0 0;
+  margin: 14px 0 0;
   color: var(--muted);
-  font-size: 1rem;
+  font-size: 16px;
   line-height: 1.6;
 }
 
@@ -447,30 +293,13 @@ a {
   text-decoration-color: var(--accent);
 }
 
-/* Below the fold: the browser may skip drawing these until they are near the screen. */
-#models,
-.closing {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 480px;
-}
-
 /* ------------------------------------------------------------------ proof (components/ConsentProof.astro) */
 
 .proof {
   display: grid;
   grid-template-columns: 318px minmax(0, 1fr);
-  gap: var(--s-7);
+  gap: 40px;
   align-items: start;
-}
-
-.proof-shot,
-.demos,
-.capability,
-.cycle,
-.note {
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-md);
-  background: var(--surface);
 }
 
 .proof-shot {
@@ -485,35 +314,38 @@ a {
 }
 
 .proof-caption {
-  padding: var(--s-3) var(--s-4);
-  border-block-start: 1px solid var(--hairline);
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
 }
 
 .proof-pair {
   display: grid;
-  gap: var(--s-4);
+  gap: 16px;
   align-content: start;
 }
 
+/* FEWER BOXES (2026-09-22). The request and the two runs were three more bordered panels beside a
+   framed screenshot. They are now text on the page, divided by hairlines: the picture is the one
+   framed object in this band. */
 .proof-ask {
   margin: 0;
-  padding: 0 0 var(--s-4);
-  border-block-end: 1px solid var(--hairline);
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--hairline);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 22px;
 }
 
 .proof-ask-label {
   display: block;
-  margin-block-end: 6px;
+  margin-bottom: 6px;
 }
 
 .proof-runs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-6);
+  gap: 32px;
   align-items: start;
 }
 
@@ -522,8 +354,8 @@ a {
 }
 
 .proof-run + .proof-run {
-  padding-inline-start: var(--s-6);
-  border-inline-start: 1px solid var(--hairline);
+  padding-left: 32px;
+  border-left: 1px solid var(--hairline);
 }
 
 .proof-state {
@@ -532,197 +364,128 @@ a {
 }
 
 .proof-answer {
-  margin: var(--s-3) 0 0;
+  margin: 10px 0 0;
   color: var(--ink);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 21px;
 }
 
 .proof-log,
 .proof-outcome {
-  margin: var(--s-3) 0 0;
+  margin: 10px 0 0;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 22px;
 }
 
 .proof-tree {
-  margin: var(--s-3) 0 0;
+  margin: 10px 0 0;
   overflow-x: auto;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 22px;
   white-space: pre;
 }
 
 .proof-disclosure {
   margin: 0;
   color: var(--muted);
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .proof-source {
-  margin: var(--s-5) 0 0;
-  font-size: 0.8125rem;
+  margin: 24px 0 0;
+  font-size: 12px;
   font-weight: 400;
-  line-height: 1.5;
-  letter-spacing: 0;
+  line-height: 19px;
+  letter-spacing: 0.02em;
+  text-transform: none;
   overflow-wrap: anywhere;
 }
 
-/* ------------------------------------------------------------------ how a run goes: the loop */
+/* ------------------------------------------------------------------ how a run goes */
 
-.cycle {
-  margin: 0;
-  padding: var(--s-5);
-}
-
-.cycle-label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s-2) var(--s-3);
-  margin-block-end: var(--s-5);
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.cycle-steps {
-  position: relative;
+.sequence {
   display: grid;
-  gap: var(--s-5);
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 56px;
+  align-items: start;
+}
+
+.sequence-figure {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  overflow: hidden;
 }
 
-.cycle-step {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: var(--s-2);
-  padding-inline-start: var(--s-6);
-}
-
-.cycle-step h3 {
+.figure-head {
   margin: 0;
-  color: var(--ink);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.3;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--hairline);
 }
 
-.cycle-step p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9375rem;
-  line-height: 1.6;
-}
-
-.cycle-no {
+.activity {
+  min-height: 94px;
+  padding: 24px;
   display: flex;
   align-items: center;
-  gap: var(--s-2);
-  color: var(--faint);
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  gap: 16px;
+  overflow: hidden;
 }
 
-.cycle-icon {
-  color: var(--ink-2);
-}
-
-/* Each step's node sits on the loop's own rail: a vertical line on a phone, a horizontal one from
-   900px. A node is a square like the page Rail's; lit means filled with Ember. The four light once,
-   600ms apart, and rest on the last. */
-.cycle-node {
-  position: absolute;
-  inset-block-start: 4px;
-  inset-inline-start: 0;
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--line-strong);
-  border-radius: 2px;
-  background: var(--surface);
-  transition:
-    background-color var(--dur-3) var(--ease-snap),
-    border-color var(--dur-3) var(--ease-snap);
-}
-
-.cycle-step::before {
-  content: '';
-  position: absolute;
-  inset-block: 20px calc(-1 * var(--s-5) + 4px);
-  inset-inline-start: 6px;
-  width: 1px;
-  background: var(--line);
-}
-
-.cycle-step:last-child::before {
-  display: none;
-}
-
-.cycle-step.is-lit .cycle-node,
-.no-js .cycle-node {
-  border-color: var(--accent);
+.activity-orb {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 0 0 6px var(--accent-soft);
 }
 
-.notes {
+.activity-current {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.3vw, 1.25rem);
+  font-weight: 550;
+  line-height: 1.4;
+  transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+}
+
+.activity-current.is-changing {
+  opacity: 0;
+  transform: translateY(-7px);
+  filter: blur(4px);
+}
+
+.steps {
   display: grid;
-  gap: var(--s-4);
-  margin: var(--s-5) 0 0;
-  padding: 0;
-  list-style: none;
 }
 
-.note {
-  padding: var(--s-5);
+.step {
+  padding: 22px 0;
+  border-top: 1px solid var(--hairline);
 }
 
-.note h3 {
+.step:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.step h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
-.note p {
-  margin: var(--s-2) 0 0;
+.step p {
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.9375rem;
+  font-size: 15px;
   line-height: 1.6;
-}
-
-@media (min-width: 900px) {
-  .cycle-steps {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--s-5);
-  }
-
-  .cycle-step {
-    padding-inline-start: 0;
-    padding-block-start: var(--s-6);
-  }
-
-  .cycle-node {
-    inset-block-start: 0;
-  }
-
-  .cycle-step::before {
-    inset-block: 6px auto;
-    inset-inline: 20px calc(-1 * var(--s-5) + 4px);
-    width: auto;
-    height: 1px;
-  }
-
-  .notes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* ------------------------------------------------------------------ capabilities */
@@ -730,81 +493,142 @@ a {
 .capabilities {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--s-4);
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .capability {
-  padding: var(--s-5);
+  padding: 22px;
+}
+
+/* FROSTED MATTE GLASS (owner, 2026-09-24, D-GLASS-1): every panel on the page is the same
+   translucent sheet over the aura, and a capability card lifts a little under the pointer. */
+.proof-shot,
+.sequence-figure,
+.demos,
+.capability {
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r-xl);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.capability {
+  transition: translate var(--t-slow) var(--ease-spring), box-shadow var(--t-base) var(--ease-out);
+}
+
+.capability:hover {
+  translate: 0 -4px;
+  box-shadow: var(--glass-shadow-lift);
 }
 
 .capability h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .capability p {
-  margin: var(--s-2) 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.9375rem;
+  font-size: 14px;
   line-height: 1.6;
 }
 
-/* THE OBJECT EACH CAPABILITY WORKS ON (components/ObjectIcon.astro). A flat tile with a hairline;
-   the stroke turns Ember under the pointer. */
+/* THE OBJECT EACH CAPABILITY WORKS ON (components/ObjectIcon.astro). It arrives a beat after its
+   card — the card's own reveal delay plus a little — and turns blue and lifts under the pointer.
+   The entrance moves `scale` and `rotate`, the hover moves `translate`: separate properties, so the
+   hover is never held back by the entrance delay. Every path ends visible: without scripting the
+   hidden state never applies, the layout's failsafe adds .is-in, and reduced motion drops it. */
 .cap-icon {
   display: inline-grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-block-end: var(--s-4);
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
+  border-radius: var(--r-md);
+  background: var(--glass-fill-strong);
   color: var(--ink-2);
+  transition:
+    opacity var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    scale var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    rotate var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
+    translate var(--t-base) var(--ease-out),
+    border-color var(--t-base) var(--ease-out);
 }
 
+/* Blue is set on the STROKE, not on `color`: the glyph is a graphic (3:1 is its bar, and --accent
+   clears it), and `color: var(--accent)` would register --accent as a text colour with
+   tests/contrast.test.mjs, which it is not anywhere on the site. */
 .cap-icon .obj-icon {
-  transition: stroke var(--dur-2) var(--ease-out);
+  transition: stroke var(--t-base) var(--ease-out);
+}
+
+html:not(.no-js) [data-reveal] .cap-icon {
+  opacity: 0;
+  scale: 0.8;
+  rotate: -8deg;
+}
+
+html:not(.no-js) [data-reveal].is-in .cap-icon {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+.capability:hover .cap-icon {
+  translate: 0 -2px;
+  border-color: var(--accent-ring);
 }
 
 .capability:hover .cap-icon .obj-icon {
   stroke: var(--accent);
 }
 
-/* THE STAGE PANEL: one flat surface, one row of tabs, one stage at a time. It says what it is. */
-.demos-panel {
-  margin-block-start: var(--s-7);
+@media (prefers-reduced-motion: reduce) {
+  .activity-current { transition: none; }
+  html:not(.no-js) [data-reveal] .cap-icon {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+
+  .capability:hover,
+  .capability:hover .cap-icon {
+    translate: none;
+  }
 }
 
+@media print {
+  html:not(.no-js) [data-reveal] .cap-icon {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+
+/* The panel sits on the tablet's screen (components/picks/DeviceFrame.astro). */
+.demos-device {
+  margin-top: 56px;
+}
+
+/* THE STAGE PANEL: one surface, one row of small tabs, one stage at a time. */
 .demos {
   overflow: hidden;
 }
 
-.demos-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2) var(--s-4);
-  padding: var(--s-2) var(--s-3);
-  border-block-end: 1px solid var(--hairline);
-}
-
-.demos-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8125rem;
-}
-
 .stage-tabs {
   display: flex;
-  gap: var(--s-1);
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--hairline);
   overflow-x: auto;
 }
 
@@ -814,34 +638,33 @@ a {
 
 .stage-tab {
   flex: none;
-  min-height: 44px;
-  padding: 0 var(--s-4);
+  min-height: 32px;
+  padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition:
-    color var(--dur-1) var(--ease-out),
-    background-color var(--dur-1) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
 }
 
 .stage-tab:hover {
   color: var(--ink);
-  background: var(--surface-2);
+  background: var(--control-fill);
 }
 
 .stage-tab[aria-selected='true'] {
   color: var(--ink);
-  background: var(--surface-3);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  background: var(--accent-soft);
 }
 
 .demo-stage {
-  padding: var(--s-5);
+  padding: 24px;
 }
 
 .demo-stage[hidden] {
@@ -849,18 +672,18 @@ a {
 }
 
 .no-js .demo-stage + .demo-stage {
-  border-block-start: 1px solid var(--hairline);
+  border-top: 1px solid var(--hairline);
 }
 
 .demo-head {
-  margin: 0 0 var(--s-4);
+  margin: 0 0 18px;
 }
 
 /* Read order. */
 .rd {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--s-5);
+  gap: 24px;
   align-items: start;
 }
 
@@ -873,30 +696,30 @@ a {
 }
 
 .rd-row {
-  padding-inline-start: calc(var(--depth) * 18px);
+  padding-left: calc(var(--depth) * 18px);
 }
 
 .rd-node {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  padding: 0 var(--s-3);
+  min-height: 32px;
+  padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 13px;
   cursor: pointer;
   transition:
-    color var(--dur-1) var(--ease-out),
-    background-color var(--dur-1) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
 }
 
 .rd-node:hover {
   color: var(--ink);
-  background: var(--surface-2);
+  background: var(--control-fill);
 }
 
 .rd-node[aria-pressed='true'] {
@@ -904,11 +727,11 @@ a {
 }
 
 .rd-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   flex: none;
   border: 1px solid var(--line-strong);
-  border-radius: 2px;
+  border-radius: 50%;
 }
 
 .rd-node[aria-pressed='true'] .rd-dot {
@@ -916,9 +739,11 @@ a {
   background: var(--accent);
 }
 
+/* The node's class, as Studio's Explorer shows one beside every name. It takes the row's colour,
+   and its stroke turns blue with the dot once the node is read. */
 .rd-node .rd-icon {
-  margin-inline-end: -2px;
-  transition: stroke var(--dur-1) var(--ease-out);
+  margin-right: -2px;
+  transition: stroke var(--t-fast) var(--ease-out);
 }
 
 .rd-node[aria-pressed='true'] .rd-icon {
@@ -927,8 +752,8 @@ a {
 
 .rd-side {
   display: grid;
-  gap: var(--s-3);
-  padding: var(--s-4);
+  gap: 12px;
+  padding: 16px 18px;
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
   background: var(--paper-2);
@@ -938,15 +763,15 @@ a {
   margin: 0;
   color: var(--ink-2);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 21px;
   overflow-wrap: anywhere;
 }
 
 .rd-gate {
   margin: 0;
   color: var(--faint);
-  font-size: 0.8125rem;
+  font-size: 13px;
 }
 
 .rd-gate[data-read='3'] {
@@ -957,7 +782,7 @@ a {
 .cw {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: var(--s-5);
+  gap: 24px;
   align-items: start;
 }
 
@@ -993,9 +818,9 @@ a {
 
 .cw-mark {
   position: absolute;
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -1006,10 +831,10 @@ a {
 .cw-mark::after {
   content: '';
   position: absolute;
-  inset: 12px;
-  border: 2px solid var(--ink-2);
+  inset: 6px;
+  border: 1.5px solid var(--muted);
   border-radius: 50%;
-  transition: border-color var(--dur-1) var(--ease-out);
+  transition: border-color var(--t-fast) var(--ease-out);
 }
 
 .cw-mark.is-on::after {
@@ -1019,7 +844,7 @@ a {
 
 .cw-side {
   display: grid;
-  gap: var(--s-3);
+  gap: 12px;
 }
 
 .cw-score {
@@ -1028,22 +853,22 @@ a {
 }
 
 .cw-score-n {
-  font-size: 2.5rem;
-  font-weight: 600;
+  font-size: 40px;
+  font-weight: 500;
   line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
 .cw-score-d {
-  margin-inline-start: 2px;
+  margin-left: 2px;
   color: var(--faint);
-  font-size: 1rem;
+  font-size: 15px;
 }
 
 .cw-defects {
   display: grid;
-  gap: var(--s-1);
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1051,75 +876,75 @@ a {
 
 .cw-defect {
   width: 100%;
-  min-height: 44px;
-  padding: var(--s-2) var(--s-3);
+  min-height: 32px;
+  padding: 6px 10px;
   border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  text-align: start;
+  font-size: 13px;
+  line-height: 19px;
+  text-align: left;
   cursor: pointer;
   transition:
-    color var(--dur-1) var(--ease-out),
-    background-color var(--dur-1) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
 }
 
 .cw-defect:hover {
   color: var(--ink);
-  background: var(--surface-2);
+  background: var(--control-fill);
 }
 
 .cw-defect[aria-pressed='true'] {
   color: var(--ink);
-  background: var(--surface-3);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
 }
 
 /* Luau. */
 .lu {
   display: grid;
-  gap: var(--s-4);
+  gap: 16px;
 }
 
 .lu-asks {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--s-2);
+  gap: 6px;
 }
 
 .lu-ask {
-  min-height: 44px;
-  padding: 0 var(--s-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--muted);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 13px;
   cursor: pointer;
   transition:
-    color var(--dur-1) var(--ease-out),
-    background-color var(--dur-1) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
 }
 
 .lu-ask:hover {
   color: var(--ink);
-  background: var(--surface-2);
+  border-color: var(--line-strong);
 }
 
 .lu-ask[aria-pressed='true'] {
-  background: var(--surface-3);
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
   color: var(--ink);
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .lu-out {
   min-height: 250px;
   margin: 0;
-  padding: var(--s-4) var(--s-5);
+  padding: 16px 18px;
   overflow-x: auto;
   border: 1px solid var(--hairline);
   border-radius: var(--r-md);
@@ -1129,8 +954,8 @@ a {
 .lu-out code {
   color: var(--ink-2);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.6;
+  font-size: 12.5px;
+  line-height: 20px;
 }
 
 .lu-out.refused {
@@ -1140,7 +965,7 @@ a {
 /* ------------------------------------------------------------------ models */
 
 .choice-label {
-  margin: 0 0 var(--s-1);
+  margin: 0 0 4px;
 }
 
 .model-grid {
@@ -1151,48 +976,49 @@ a {
 }
 
 .model-card {
-  padding: var(--s-5) 0;
-  border-block-end: 1px solid var(--hairline);
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .model-name {
   margin: 0;
   color: var(--ink);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .model-blurb {
-  margin: var(--s-2) 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 0.9375rem;
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .model-plans {
-  margin: var(--s-3) 0 0;
+  margin: 10px 0 0;
 }
 
 /* ------------------------------------------------------------------ closing */
 
 .closing {
-  padding: clamp(80px, 11vw, 136px) 0;
-  border-block-start: 1px solid var(--hairline);
+  padding: clamp(96px, 12vw, 152px) 0;
+  border-top: 1px solid var(--hairline);
+  text-align: center;
 }
 
 .statement {
-  max-width: 24ch;
-  margin: 0;
+  margin: 0 auto;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(1.75rem, 3vw + 0.5rem, 2.25rem);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .btn-closing {
-  margin-block-start: var(--s-5);
+  margin-top: 28px;
 }
 
 /* ------------------------------------------------------------------ reveal */
@@ -1200,8 +1026,7 @@ a {
 /* EVERY BRANCH ENDS WITH THE CONTENT VISIBLE (apps/site/tests/reveal-cannot-hide-content.test.mjs):
    without scripting (.no-js, removed by an inline script before first paint), with no
    IntersectionObserver and through the layout's failsafe (Landing.astro), and under reduced
-   motion, declared AFTER the hidden state so it wins on cascade order. Blocks rise 8px and fade in
-   over 260ms, staggered by their own `data-reveal-delay`. */
+   motion — declared AFTER the hidden state so it wins on cascade order. */
 .no-js [data-reveal] {
   opacity: 1;
   transform: none;
@@ -1209,10 +1034,11 @@ a {
 
 html:not(.no-js) [data-reveal] {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(18px) scale(0.985);
   transition:
-    opacity var(--dur-3) var(--ease-out),
-    transform var(--dur-3) var(--ease-out);
+    opacity var(--t-slow) var(--ease-out),
+    transform 700ms var(--ease-spring),
+    translate var(--t-slow) var(--ease-spring);
   transition-delay: var(--reveal-delay, 0ms);
 }
 
@@ -1227,15 +1053,8 @@ html:not(.no-js) [data-reveal].is-in {
     transform: none;
   }
 
-  /* The Rail is drawn fully filled, and the loop's four nodes rest on their final state. */
-  .rail-list::after {
-    transform: none;
-  }
-
-  .rail-node::before,
-  .cycle-node {
-    border-color: var(--accent);
-    background: var(--accent);
+  .composer-line {
+    animation: none;
   }
 }
 
@@ -1247,10 +1066,6 @@ html:not(.no-js) [data-reveal].is-in {
     transform: none;
     transition: none;
   }
-
-  .rail {
-    display: none;
-  }
 }
 
 /* ------------------------------------------------------------------ narrower */
@@ -1258,11 +1073,16 @@ html:not(.no-js) [data-reveal].is-in {
 @media (max-width: 1023px) {
   .proof {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--s-5);
+    gap: 24px;
   }
 
   .proof-shot {
     max-width: 318px;
+  }
+
+  .sequence {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
   }
 
   .capabilities {
@@ -1277,27 +1097,44 @@ html:not(.no-js) [data-reveal].is-in {
   }
 
   .demo-stage {
-    padding: var(--s-4);
+    padding: 18px;
   }
 }
 
 @media (max-width: 640px) {
+  .hero {
+    padding: 64px 0 72px;
+  }
+
+  .lead {
+    max-width: 34ch;
+  }
+
+  .composer {
+    margin-top: 32px;
+  }
+
   .proof-runs,
   .capabilities {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .proof-runs {
-    gap: var(--s-5);
+    gap: 20px;
   }
 
   .proof-run + .proof-run {
-    padding: var(--s-5) 0 0;
-    border-inline-start: 0;
-    border-block-start: 1px solid var(--hairline);
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
   }
 
-  .composer-bar {
-    padding-inline-start: var(--s-3);
+  .activity {
+    min-height: 80px;
+    padding: 18px;
+  }
+
+  .capabilities {
+    gap: 24px;
   }
 }

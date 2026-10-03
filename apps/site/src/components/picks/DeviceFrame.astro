@@ -1,0 +1,37 @@
+---
+/**
+ * A tablet around whatever it is given, which tips up from the page and settles flat as it
+ * scrolls into view.
+ *
+ *   Eldora UI "iPad" (MIT): the device — a dark bezel with rounded corners, the camera on the top
+ *            edge, two buttons on the rim. Redrawn in CSS rather than as the pick's fixed-size SVG,
+ *            so the screen is live content at any width instead of a picture of one.
+ *   Motion "ScreenshotScrollReveal" (LicenseRef-Motion-Plus, code not used): the device starts
+ *            tilted back (rotateX 28°), a little small and half-faded, and reaches flat, full size
+ *            and fully opaque as its top travels from the bottom of the viewport to 20% down it.
+ *            Re-implemented in ./device-frame.ts on a passive scroll listener.
+ *
+ * WHAT IS ON THE SCREEN is the landing's own "try it" panel, unchanged — every control in it still
+ * works, tilted or flat. The resting state is FLAT: without scripting, under reduced motion, and
+ * once scrolled past, the frame is exactly a flat frame, so the tilt can never be where the panel
+ * is stuck.
+ */
+import './device-frame.css';
+
+interface Props { class?: string; }
+const { class: extra } = Astro.props;
+---
+
+<div class:list={['device', extra]} data-device>
+  <div class="device__body">
+    <span class="device__camera" aria-hidden="true"></span>
+    <span class="device__button device__button--a" aria-hidden="true"></span>
+    <span class="device__button device__button--b" aria-hidden="true"></span>
+    <div class="device__screen"><slot /></div>
+  </div>
+</div>
+
+<script>
+  import { mountDevices } from './device-frame';
+  mountDevices();
+</script>

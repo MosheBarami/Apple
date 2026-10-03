@@ -3,7 +3,7 @@
  * Render the brand assets that cannot be authored by hand.
  *
  * Today that is one file: `apps/site/public/og.png`, the Open Graph share card, rasterised from
- * `apps/site/brand/og.html` (self-contained: system type, no network, since phase 6).
+ * `apps/site/brand/og.html` so it can use the real Archivo variable font at font-stretch 118%.
  *
  * WHY THIS IS A SCRIPT AND NOT A COMMITTED BINARY SOMEONE MADE ONCE. A PNG is opaque to review: a
  * diff shows "binary files differ" and nothing about what changed, so the moment the palette moves
@@ -62,8 +62,8 @@ const ASSETS = [
     // deviceScaleFactor 1: the card is displayed at roughly this size, and a 2x render triples the
     // bytes for detail nobody sees in a chat preview.
     scale: 1,
-    /** None since 2026-10-02: the card is self-contained and set in the system stack. */
-    fonts: [],
+    /** Families the card's design depends on. A substitute here is invisible and total. */
+    fonts: ['Archivo', 'Figtree', 'Geist Mono'],
   },
 ];
 
@@ -73,12 +73,12 @@ if (existsSync(FAVICON)) {
   for (const icon of ICONS) {
     // `contain` and a centred flex box: the artwork keeps its aspect ratio whatever the viewBox
     // says, so a future mark that is not square cannot be silently stretched.
-    const inner = icon.square ? svg.replace(/ rx="7"/, '') : svg;
+    const inner = icon.square ? svg.replace(/ rx="11"/, '') : svg;
     ASSETS.push({
       name: icon.name,
       inlineHtml:
         `<meta charset="utf-8"><style>html,body{margin:0;width:${icon.size}px;height:${icon.size}px;` +
-        `overflow:hidden;background:#0A0C10}svg{display:block;width:100%;height:100%}</style>` + inner,
+        `overflow:hidden;background:#080A0F}svg{display:block;width:100%;height:100%}</style>` + inner,
       out: `apps/site/public/${icon.name}`,
       origin: 'apps/site/public/favicon.svg',
       width: icon.size,
@@ -166,15 +166,12 @@ for (const asset of ASSETS) {
 
   // 2. THE WIDTH AXIS IS APPLIED. Archivo can load and still render at the default 100% if the
   //    declaration is lost, which is the whole design gone with nothing visibly broken.
-  //    Only for an asset that declares a `stretch`; the Ember Rail card uses none.
-  if (asset.stretch) {
-    const stretch = await page.evaluate(() => {
-      const h1 = document.querySelector('h1');
-      return h1 ? getComputedStyle(h1).fontStretch : null;
-    });
-    if (stretch !== asset.stretch) {
-      problems.push(`${asset.name}: h1 font-stretch is ${stretch}, expected ${asset.stretch}`);
-    }
+  const stretch = await page.evaluate(() => {
+    const h1 = document.querySelector('h1');
+    return h1 ? getComputedStyle(h1).fontStretch : null;
+  });
+  if (stretch !== null && stretch !== '118%') {
+    problems.push(`${asset.name}: h1 font-stretch is ${stretch}, expected 118%`);
   }
 
   // 3. NOTHING IS CLIPPED. A headline one word too long silently runs off a fixed-size card.
