@@ -8227,7 +8227,7 @@
         "spdx": "GPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -8255,7 +8255,7 @@
           "spdx": "GPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -8387,7 +8387,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -8415,7 +8415,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -10203,7 +10203,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.txt",
-        "reason": "MPL-2.0 (proven by LICENSE.txt) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.txt) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -10231,7 +10231,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.txt",
-          "reason": "MPL-2.0 (proven by LICENSE.txt) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.txt) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -10872,7 +10872,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -10900,7 +10900,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -11517,7 +11517,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -11545,7 +11545,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -13783,7 +13783,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -13811,7 +13811,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -14029,7 +14029,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -14057,7 +14057,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -14817,7 +14817,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -14845,7 +14845,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -16626,7 +16626,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -16654,7 +16654,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -22539,7 +22539,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -22567,7 +22567,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -22971,7 +22971,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -22999,7 +22999,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23051,7 +23051,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23079,7 +23079,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23168,7 +23168,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23196,7 +23196,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23286,7 +23286,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23314,7 +23314,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23440,7 +23440,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23468,7 +23468,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23557,7 +23557,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23585,7 +23585,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23748,7 +23748,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23776,7 +23776,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23902,7 +23902,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -23930,7 +23930,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -23982,7 +23982,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -24010,7 +24010,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -24062,7 +24062,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -24090,7 +24090,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -24143,7 +24143,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -24171,7 +24171,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -24224,7 +24224,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -24252,7 +24252,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -24304,7 +24304,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -24332,7 +24332,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -25105,7 +25105,7 @@
         "spdx": "AGPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -25133,7 +25133,7 @@
           "spdx": "AGPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -25345,7 +25345,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -25373,7 +25373,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -33765,7 +33765,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -33793,7 +33793,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -33845,7 +33845,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -33873,7 +33873,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -33925,7 +33925,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -33953,7 +33953,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -36357,7 +36357,7 @@
         "spdx": "CC-BY-SA-4.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -36385,7 +36385,7 @@
           "spdx": "CC-BY-SA-4.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -53248,7 +53248,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -53276,7 +53276,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -53686,7 +53686,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -53714,7 +53714,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -56973,7 +56973,7 @@
         "spdx": "CC-BY-SA-4.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -57001,7 +57001,7 @@
           "spdx": "CC-BY-SA-4.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "CC-BY-SA-4.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -58851,7 +58851,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -58879,7 +58879,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -59369,7 +59369,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -59397,7 +59397,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -60091,7 +60091,7 @@
         "spdx": "AGPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -60119,7 +60119,7 @@
           "spdx": "AGPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -60251,7 +60251,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -60279,7 +60279,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -60332,7 +60332,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -60360,7 +60360,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -65919,7 +65919,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -65947,7 +65947,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -67280,7 +67280,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -67308,7 +67308,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -67601,7 +67601,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -67629,7 +67629,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69271,7 +69271,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69299,7 +69299,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69388,7 +69388,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69416,7 +69416,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69505,7 +69505,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69533,7 +69533,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69585,7 +69585,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69613,7 +69613,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69665,7 +69665,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69693,7 +69693,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69745,7 +69745,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69773,7 +69773,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69825,7 +69825,7 @@
         "spdx": "GPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69853,7 +69853,7 @@
           "spdx": "GPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "GPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -69905,7 +69905,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -69933,7 +69933,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -79607,7 +79607,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -79635,7 +79635,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90334,7 +90334,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90362,7 +90362,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90414,7 +90414,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90442,7 +90442,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90494,7 +90494,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90522,7 +90522,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90574,7 +90574,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90602,7 +90602,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90654,7 +90654,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90682,7 +90682,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90734,7 +90734,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90762,7 +90762,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90814,7 +90814,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90842,7 +90842,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90894,7 +90894,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -90922,7 +90922,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -90974,7 +90974,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -91002,7 +91002,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -91054,7 +91054,7 @@
         "spdx": "MPL-2.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE.md",
-        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -91082,7 +91082,7 @@
           "spdx": "MPL-2.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE.md",
-          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "MPL-2.0 (proven by LICENSE.md) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,
@@ -92834,7 +92834,7 @@
         "spdx": "AGPL-3.0",
         "evidence": "license-file",
         "evidencePath": "LICENSE",
-        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+        "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
       },
       "security": {
         "safe": false,
@@ -92862,7 +92862,7 @@
           "spdx": "AGPL-3.0",
           "evidence": "license-file",
           "evidencePath": "LICENSE",
-          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Golem may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
+          "reason": "AGPL-3.0 (proven by LICENSE) is copyleft: reuse would impose its obligations on the user's own game, so Apple may read and cite this but must not emit derived code — legitimate reference material, not unsafe."
         },
         "security": {
           "safe": false,

@@ -1,4 +1,4 @@
-// Art direction for the builder. Golem's failure mode is not correctness, it is taste:
+// Art direction for the builder. Apple's failure mode is not correctness, it is taste:
 // the engine happily renders a flat grey slab, four poles and three stacked cylinders.
 // Nothing errors; the scene is simply ugly. This module holds the canonical numbers
 // (proportions, palettes, lighting moods) and emits the compact rules block injected

@@ -122,14 +122,14 @@ test('models: registry, RAG and skills; the retired training views are gone', as
   for (const k of ['lora', 'evals', 'production', 'frontier']) assert.equal(d[k], undefined, `${k} is a retired training view`);
 });
 
-test('design-history: design commits since Golem, dated screenshots, decisions', { timeout: 120000 }, async () => {
+test('design-history: design commits since Apple, dated screenshots, decisions', { timeout: 120000 }, async () => {
   const d = await json('/api/cc/design-history');
   assert.equal(d.ok, true);
   assert.ok(d.timeline.length > 0);
   assert.ok(d.shots.length > 0);
   assert.ok(d.shots.every((s) => s.url.startsWith('/api/cc/media?p=')));
   assert.ok(d.decisions.length > 0);
-  assert.ok(d.era.golem.from < d.era.apple.from);
+  assert.ok(d.era.legacy.from < d.era.apple.from);
   const shot = await get(d.shots[0].url);
   assert.equal(shot.status, 200, 'the gallery points at the media route and it serves');
 });

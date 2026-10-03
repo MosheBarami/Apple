@@ -52,7 +52,7 @@ import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
-const CACHE_DIR = process.env.EMBED_CACHE_DIR || join(tmpdir(), 'golem-embed-cache');
+const CACHE_DIR = process.env.EMBED_CACHE_DIR || join(tmpdir(), 'apple-embed-cache');
 
 //[[ THE CANONICAL ORIGIN, copied from measure-knowledge-reach.mjs rather than reinvented.
 //   golem.moshe-barami111.workers.dev also answers /api/* and is a DIFFERENT BUILD. Timing that one

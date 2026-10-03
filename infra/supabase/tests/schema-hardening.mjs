@@ -68,7 +68,7 @@ assert.ok(
   'and nothing numbered below the migration under test leaked into the above-the-boundary set',
 );
 
-const NAME = `golem-schema-hardening-${process.pid}`;
+const NAME = `apple-schema-hardening-${process.pid}`;
 const IMAGE = process.env.POSTGRES_IMAGE || 'postgres:16-alpine';
 const DATABASES = ['clean_fixture', 'legacy_fixture', 'conflict_fixture', 'unknown_fixture'];
 const OUT_OF_ORDER_DATABASE = 'out_of_order_fixture';

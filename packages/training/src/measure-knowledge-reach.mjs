@@ -438,7 +438,7 @@ if (flag('show-settings')) {
   process.exit(0);
 }
 
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 // The deployed build and the live model table, recorded WITH the result. A number whose build is
 // unknown cannot be compared to the next one.

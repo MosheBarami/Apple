@@ -440,7 +440,7 @@ const ARMS = {
 
 // ---------------------------------------------------------------------------------------------
 async function main() {
-  if (!KEY()) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+  if (!KEY()) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
   const armName = arg('arm', 'baseline');
   const armFn = ARMS[armName];
   if (!armFn) { console.error(`unknown arm "${armName}" — one of ${Object.keys(ARMS).join(', ')}`); process.exit(2); }

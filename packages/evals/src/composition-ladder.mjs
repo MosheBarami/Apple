@@ -11,7 +11,7 @@
 //
 // So most of this ladder is not authored. It is DERIVED, by applying named composition
 // transformations to one real scene — the 219-part plaza a production agent actually built
-// (regression/golem-plaza-improved/scene.json, independently scored 5/10 by the live critic). Each
+// (regression/apple-plaza-improved/scene.json, independently scored 5/10 by the live critic). Each
 // transformation changes ONE compositional property and holds part count, material count and colour
 // count as close to constant as the operation allows. A metric that claims to measure composition
 // must move when composition moves and stay put when it does not. A metric that is really tracking
@@ -243,8 +243,8 @@ function hierarchise(scene) {
  * `failure` names the compositional defect the fixture is meant to embody.
  */
 export function buildLadder() {
-  const improved = loadScene('golem-plaza-improved');
-  const baseline = loadScene('golem-plaza-baseline');
+  const improved = loadScene('apple-plaza-improved');
+  const baseline = loadScene('apple-plaza-baseline');
 
   return [
     { id: 'grey-plate', label: 1, source: 'derived', failure: 'one flat untextured slab; nothing to read', scene: greyPlate(improved) },

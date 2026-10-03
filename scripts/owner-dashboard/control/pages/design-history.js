@@ -25,15 +25,15 @@ const shotItem = (s) => ({
 });
 
 function eraBanner(d) {
-  const g = d.era?.golem; const a = d.era?.apple;
+  const g = d.era?.legacy; const a = d.era?.apple;
   if (!g || !a) return html`<section class="card">${nd('לא נמצא קומיט שינוי השם')}</section>`;
   const now = new Date(d.fetchedAt);
   const gd = Math.max(1, (new Date(g.to) - new Date(g.from)) / 864e5); const ad = Math.max(1, (now - new Date(a.from)) / 864e5);
   const n = (era) => ({ c: d.timeline.filter((x) => x.era === era).length, s: d.shots.filter((x) => x.era === era).length });
-  const gn = n('golem'); const an = n('apple');
+  const gn = n('legacy'); const an = n('apple');
   return html`<section class="card dh-era">
     <div class="dh-era-bar">
-      <div class="dh-e golem" style="flex:${gd.toFixed(1)}"><b>Golem</b><span>${day(g.from)} עד ${day(g.to)}</span><small>${num(gn.c)} שינויי עיצוב · ${num(gn.s)} צילומים</small></div>
+      <div class="dh-e legacy" style="flex:${gd.toFixed(1)}"><b>Apple</b><span>${day(g.from)} עד ${day(g.to)}</span><small>${num(gn.c)} שינויי עיצוב · ${num(gn.s)} צילומים</small></div>
       <div class="dh-e apple" style="flex:${ad.toFixed(1)}"><b>Apple</b><span>מ-${day(a.from)} ועד היום</span><small>${num(an.c)} שינויי עיצוב · ${num(an.s)} צילומים</small></div>
     </div>
     <dl class="dh-era-kv">
@@ -50,7 +50,7 @@ function chips(label, key, opts) {
 function filters(d) {
   const cnt = (f) => d.timeline.filter(f).length;
   return html`<section class="card dh-filters">
-    ${chips('תקופה', 'era', [['', 'הכול'], ['golem', 'Golem', cnt((c) => c.era === 'golem')], ['apple', 'Apple', cnt((c) => c.era === 'apple')]])}
+    ${chips('תקופה', 'era', [['', 'הכול'], ['legacy', 'Apple', cnt((c) => c.era === 'legacy')], ['apple', 'Apple', cnt((c) => c.era === 'apple')]])}
     ${chips('איפה', 'app', [['', 'הכול'], ...['web', 'site', 'docs'].map((a) => [a, APP_HE[a], cnt((c) => c.apps.includes(a))])])}
     ${chips('סוג השינוי', 'kind', [['', 'הכול'], ...Object.keys(KIND_HE).map((k) => [k, KIND_HE[k], k === 'shot' ? d.shots.length : cnt((c) => c.kinds[k])])])}
   </section>`;
@@ -78,7 +78,7 @@ function timeline(d) {
   let passed = false;
   return html`<ol class="dh-tl">${keys.map((k, di) => {
     const x = days.get(k); x.c.sort((a, b) => a.at.localeCompare(b.at)); x.s.sort((a, b) => String(a.at).localeCompare(String(b.at)));
-    const open = st.open.has(k); const era = k < rename ? 'golem' : 'apple';
+    const open = st.open.has(k); const era = k < rename ? 'legacy' : 'apple';
     const cs = open ? x.c : x.c.slice(0, FOLD); const ss = open ? x.s : x.s.slice(0, FOLD_SHOTS);
     sets[k] = x.s.map(shotItem);
     const hidden = (x.c.length - cs.length) + (x.s.length - ss.length);
@@ -106,7 +106,7 @@ export default {
   title: 'היסטוריית עיצוב',
   nav: 'היסטוריית עיצוב',
   glyph: 'palette',
-  eyebrow: 'ריפו וידע · מ-Golem ועד Apple',
+  eyebrow: 'ריפו וידע · מ-Apple ועד Apple',
   sub: 'כל שינוי בקבצי העיצוב והמבנה, כל צילום מסך במקום שלו בזמן, וההחלטות שהובילו לשם. מהיום הראשון ועד היום.',
   endpoint: '/api/cc/design-history',
   render(d) {

@@ -1,4 +1,4 @@
-// Golem API keys: the credential the PUBLIC HTTP surface authenticates with, and the per-key
+// Apple API keys: the credential the PUBLIC HTTP surface authenticates with, and the per-key
 // scoping that decides what a given key may reach.
 //
 // WHY A SECOND CREDENTIAL AT ALL. Everything under `/api/*` authenticates with the user's Supabase

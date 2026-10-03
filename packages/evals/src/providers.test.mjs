@@ -42,7 +42,7 @@ const WORKER = join(ROOT, 'apps', 'worker');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 function bundle(entry, label) {
-  const dest = join(tmpdir(), `golem-${label}-${process.pid}.mjs`);
+  const dest = join(tmpdir(), `apple-${label}-${process.pid}.mjs`);
   execFileSync(ESBUILD, [entry, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: WORKER,
@@ -75,7 +75,7 @@ rmSync(gatewayFile, { force: true });
 //
 // Staged under node_modules so `tsc --noEmit` never sees it; relative imports are rewritten to
 // point back at the real src/ so it compiles against the same env and pricing modules.
-const BASELINE_DIR = join(WORKER, 'node_modules', '.golem-baseline');
+const BASELINE_DIR = join(WORKER, 'node_modules', '.apple-baseline');
 let BASELINE = null;
 let BASELINE_REV = null;
 try {
@@ -193,7 +193,7 @@ const REQUESTS = [
     req: {
       model: 'agent',
       messages: [
-        { role: 'system', content: 'You are Golem.' },
+        { role: 'system', content: 'You are Apple.' },
         { role: 'user', content: 'Build a market stall.' },
       ],
       tools: [
@@ -207,7 +207,7 @@ const REQUESTS = [
     req: {
       model: 'plan',
       messages: [
-        { role: 'system', content: 'You are Golem.' },
+        { role: 'system', content: 'You are Apple.' },
         { role: 'user', content: 'Fix the door.', pinned: true },
         { role: 'assistant', content: '', toolCalls: [{ id: 'call_0', name: 'run_luau', arguments: '{"source":"x"}' }] },
         { role: 'tool', content: '{"ok":true}', toolCallId: 'call_0', name: 'run_luau' },

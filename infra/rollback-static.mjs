@@ -135,7 +135,7 @@ const KEY = envCompat('APPLE_ADMIN_KEY') ?? (() => {
     return m === null ? null : m[1];
   } catch { return null; }
 })();
-if (!KEY) { console.error('rollback-static: GOLEM_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
+if (!KEY) { console.error('rollback-static: APPLE_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
 
 const failures = [];
 let uploaded = 0;
@@ -150,7 +150,7 @@ for (const f of plan.restore) {
       stdio: ['ignore', 'pipe', 'pipe'],
       // The child reads .env only for values the environment does not already carry, so these two
       // win. That is what keeps a rollback aimed at the origin `--base` names and nowhere else.
-      env: { ...process.env, API_BASE: BASE, GOLEM_ADMIN_KEY: KEY },
+      env: { ...process.env, API_BASE: BASE, APPLE_ADMIN_KEY: KEY },
     });
     uploaded += 1;
   } catch (e) {

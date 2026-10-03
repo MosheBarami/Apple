@@ -31,7 +31,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-collab-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-collab-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -58,7 +58,7 @@ const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extracta
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'collab-test', alg: 'ES256', use: 'sig' };
 const JWKS_BODY = JSON.stringify({ keys: [jwk] });
 const mint = (sub) =>
-  new jose.SignJWT({ email: `${sub}@golem.test`, role: 'authenticated' })
+  new jose.SignJWT({ email: `${sub}@apple.test`, role: 'authenticated' })
     .setProtectedHeader({ alg: 'ES256', kid: 'collab-test' })
     .setIssuer(`${SUPABASE_URL}/auth/v1`)
     .setAudience('authenticated')
@@ -332,7 +332,7 @@ async function call(path, { method = 'GET', jwt, body, headers = {} } = {}) {
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
     // A REAL ExecutionContext. The worker defers its notifications onto `waitUntil`, and a harness
     // that supplies none makes every one of those branches unreachable — `c.executionCtx` THROWS

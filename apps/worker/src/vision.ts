@@ -1,4 +1,4 @@
-// Visual critique: the loop that makes Golem LOOK at what it built.
+// Visual critique: the loop that makes Apple LOOK at what it built.
 //
 // The failure this exists to stop: an agent inspects object properties, sees that every requested
 // part exists, and reports success — while the scene is a grey slab with coloured poles on it.

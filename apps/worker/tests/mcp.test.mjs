@@ -42,7 +42,7 @@ const WORKER = join(HERE, '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 const SRC = (...p) => join(WORKER, 'src', ...p);
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-mcp-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-mcp-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 
 const CF_SHIM = join(TMP, 'cf-shim.mjs');
@@ -153,7 +153,7 @@ function makeEnv(opts = {}) {
   const trace = opts.trace ?? { addressed: [], calls: [] };
   const kv = new Map();
   const env = {
-    SUPABASE_URL: 'https://supa.golem.test',
+    SUPABASE_URL: 'https://supa.apple.test',
     SUPABASE_ANON_KEY: 'anon-test',
     ENVIRONMENT: 'test',
     BUILD_SHA: 'testsha',
@@ -197,7 +197,7 @@ async function rpc(body, { key, env, version = M.MCP_LATEST_VERSION, method = 'P
   if (key) h.Authorization = `Bearer ${key}`;
   if (version !== null) h['MCP-Protocol-Version'] = version;
   const res = await APP.fetch(
-    new Request('https://golem.test/v1/mcp', {
+    new Request('https://apple.test/v1/mcp', {
       method,
       headers: h,
       ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) }),
@@ -403,7 +403,7 @@ test('a well-formed key that was never issued is refused, and the session is nev
 
 test('a malformed credential and a revoked key are both refused', async () => {
   const b = makeEnv();
-  const bad = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: META() } }, { env: b.env, key: 'not-a-golem-key' });
+  const bad = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: META() } }, { env: b.env, key: 'not-a-apple-key' });
   assert.equal(bad.status, 401);
 
   const revoked = await seedKey(b, { revoked: true });
@@ -774,6 +774,6 @@ test('the per-tool scope check is not optional — tools/call runs authorizeKey'
 });
 
 test('nothing in this file ever contacted a network', () => {
-  const offNetwork = everFetched.filter((u) => !u.includes('golem.test') && !u.includes('supa.golem.test'));
+  const offNetwork = everFetched.filter((u) => !u.includes('apple.test') && !u.includes('supa.apple.test'));
   assert.deepEqual(offNetwork, [], `the MCP surface reached out: ${offNetwork.join(', ')}`);
 });

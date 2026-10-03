@@ -236,7 +236,7 @@ async function main() {
     console.log('\n--- %d modules, 1 call each, model=%s maxTokens=%d', modules.length, MODEL, MAX_TOKENS);
     return;
   }
-  if (!KEY) { console.error('GOLEM_ADMIN_KEY missing'); process.exit(2); }
+  if (!KEY) { console.error('APPLE_ADMIN_KEY missing'); process.exit(2); }
 
   const entries = { ...(prior?.modules ?? {}) };
   const failures = [];

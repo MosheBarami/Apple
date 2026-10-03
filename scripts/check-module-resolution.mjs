@@ -42,7 +42,7 @@ const outside = [];
 let checked = 0;
 
 for (const host of HOSTS) {
-  const scope = join(host, 'node_modules', '@golem');
+  const scope = join(host, 'node_modules', '@apple');
   if (!existsSync(scope)) continue;
   for (const name of readdirSync(scope)) {
     const link = join(scope, name);
@@ -97,7 +97,7 @@ if (outside.length) {
 console.error('\nRepair, from the repository root:');
 const hosts = [...new Set([...bad, ...outside].map((x) => x.link.split('/node_modules/')[0]))];
 for (const h of hosts) {
-  console.error(`    for n in $(ls ${h}/node_modules/@golem); do \\`);
+  console.error(`    for n in $(ls ${h}/node_modules/@apple); do \\`);
   console.error(`      ln -sfn "${'../'.repeat(h.split('/').length + 2)}packages/$n" "${h}/node_modules/@apple/$n"; done`);
 }
 console.error('\nNever run pnpm install inside an in-repo worktree. scripts/verify-worktree.mjs builds');

@@ -40,7 +40,7 @@ const WORKER = join(HERE, '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 const SRC = (...p) => join(WORKER, 'src', ...p);
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-public-api-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-public-api-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 
 const CF_SHIM = join(TMP, 'cf-shim.mjs');
@@ -70,15 +70,15 @@ const INDEX_SRC = readFileSync(SRC('index.ts'), 'utf8');
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 
-const SUPABASE_URL = 'https://supa.golem.test';
+const SUPABASE_URL = 'https://supa.apple.test';
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const OTHER_PROJECT_ID = 'ffffffff-eeee-4ddd-8ccc-bbbbbbbbbbbb';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
-const JWKS_BODY = JSON.stringify({ keys: [{ ...(await jose.exportJWK(publicKey)), kid: 'golem-test', alg: 'ES256', use: 'sig' }] });
-const OWNER_JWT = await new jose.SignJWT({ email: 'owner@golem.test', role: 'authenticated' })
-  .setProtectedHeader({ alg: 'ES256', kid: 'golem-test' })
+const JWKS_BODY = JSON.stringify({ keys: [{ ...(await jose.exportJWK(publicKey)), kid: 'apple-test', alg: 'ES256', use: 'sig' }] });
+const OWNER_JWT = await new jose.SignJWT({ email: 'owner@apple.test', role: 'authenticated' })
+  .setProtectedHeader({ alg: 'ES256', kid: 'apple-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
   .setSubject(OWNER_ID)
@@ -255,7 +255,7 @@ async function call(path, { method = 'GET', key, jwt, headers = {}, body, env, r
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined && h['Content-Type'] === undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, {
+    new Request(`https://apple.test${path}`, {
       method,
       headers: h,
       ...(body !== undefined ? { body: typeof body === 'string' ? body : JSON.stringify(body) } : {}),
@@ -1473,7 +1473,7 @@ test('the discovery document and the OpenAPI schema are served at the caller\'s 
   const schema = await call('/v1/openapi.json', { key: key.key, env: bundle.env });
   assert.equal(schema.status, 200);
   assert.equal(schema.json.openapi, '3.1.0');
-  assert.equal(schema.json.servers[0].url, 'https://golem.test');
+  assert.equal(schema.json.servers[0].url, 'https://apple.test');
   assert.ok(schema.json.paths['/v1/chat/completions'].post);
   assert.ok(schema.json.paths['/v1/projects/{id}/messages'].get);
 });

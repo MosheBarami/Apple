@@ -1634,7 +1634,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
 //     is the whole reason computed indexing of `game` is refused outright);
 //   * `edit_script` writing a game Script that calls `GetObjects`, then `run_and_check` running it.
 //     That is a deliberate product capability — the user asked for a game — and is out of scope
-//     here; it is bounded by the user owning and reading the scripts Golem writes.
+//     here; it is bounded by the user owning and reading the scripts Apple writes.
 //   * ASSIGNING A COMPUTED ASSET URI TO A CONTENT PROPERTY. `Paths.setProp` in the plugin refuses an
 //     unverified `MeshId` / `Texture` / `SoundId`, which closes this for `create_instances` and
 //     `set_properties` — but `run_code` executes Luau straight against the engine and never goes
@@ -6699,7 +6699,7 @@ export async function runTool(
 }
 
 /**
- * Strip anything that names the engine behind Golem.
+ * Strip anything that names the engine behind Apple.
  *
  * Deliberately a denylist of shapes rather than an allowlist of safe text. An
  * allowlist would also drop the actionable half of an error — "Studio

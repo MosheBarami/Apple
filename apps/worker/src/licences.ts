@@ -26,7 +26,7 @@ export interface LicenceRule {
  * wording.
  *
  * v1 policy is **CC0 only**. CC-BY is legally usable but attribution has to survive into whatever
- * Golem builds, which is a product feature nobody has built yet; it is allowed in the table but
+ * Apple builds, which is a product feature nobody has built yet; it is allowed in the table but
  * flagged. CC-BY-SA and GPL are excluded outright — share-alike and source-distribution
  * obligations cannot be discharged coherently inside a Roblox place.
  */

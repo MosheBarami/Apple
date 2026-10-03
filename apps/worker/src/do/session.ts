@@ -6063,7 +6063,7 @@ export class SessionDO extends DurableObject<Env> {
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
     // A look the self-check ran on the agent's behalf is not substantive work: it must not tip a small run into distillation.
     if (agent.trace.filter((t) => t.tool !== LOOK_TOOL).length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
-      // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
+      // Distillation is Apple's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
       if (budgetLeft.creditsRemaining <= 0) return;

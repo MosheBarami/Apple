@@ -12,7 +12,7 @@ const library = join(here, '..');
 const rows = readFileSync(join(here, 'sources/opengameart-cc0-ui.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
 const base = process.env.API_BASE;
 const key = envCompat('APPLE_ADMIN_KEY');
-if (!base || !key) throw new Error('API_BASE and GOLEM_ADMIN_KEY are required');
+if (!base || !key) throw new Error('API_BASE and APPLE_ADMIN_KEY are required');
 const listed = await fetch(`${base}/api/admin/static-list`, { headers: { 'X-Admin-Key': key } });
 if (!listed.ok) throw new Error(`static-list answered ${listed.status}`);
 const have = new Set((await listed.json()).map((r) => r.path));

@@ -171,7 +171,7 @@ async function runGenre({ genreId, model, maxTokens, genreMod, outDir, size }) {
 
 async function main() {
   if (!ADMIN) {
-    console.error('GOLEM_ADMIN_KEY is not set. `set -a && . ./.env && set +a` first.');
+    console.error('APPLE_ADMIN_KEY is not set. `set -a && . ./.env && set +a` first.');
     process.exit(2);
   }
   const { mod: genreMod, cleanup } = await loadGenreLibrary();

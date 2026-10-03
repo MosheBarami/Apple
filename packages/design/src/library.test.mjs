@@ -133,8 +133,8 @@ test('a validated rule outranks an identical unvalidated one', () => {
     id: 'z', component: 'panel', styleFamilies: ['cartoon-simulator'], platforms: ['desktop'],
     rule: 'x'.repeat(30), because: 'y'.repeat(30), prevents: 'z'.repeat(30),
   };
-  const validated = { ...base, id: 'a', provenance: { kind: 'golem-authored', source: 's', validated: 'rendered' } };
-  const written = { ...base, id: 'b', provenance: { kind: 'golem-authored', source: 's', validated: 'not yet built' } };
+  const validated = { ...base, id: 'a', provenance: { kind: 'apple-authored', source: 's', validated: 'rendered' } };
+  const written = { ...base, id: 'b', provenance: { kind: 'apple-authored', source: 's', validated: 'not yet built' } };
   const q = { component: 'panel' };
   assert.ok(score(validated, q).points > score(written, q).points, 'seen-to-work must beat written-down');
 });

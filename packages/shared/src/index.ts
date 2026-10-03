@@ -2046,7 +2046,7 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED 2026-09-22 ~21:03 IDT, on three facts rather than the probe alone:
  *   1. re-probed at 18:02:59Z — ours 200 with the same shape as Rojo 7 (visibilityStatus 1,
  *      isAssetHashApproved, fiatProduct published + free), Moon Animator 2 200, the retired
- *      Golem id 404, an id that cannot exist 404;
+ *      Apple id 404, an id that cannot exist 404;
  *   2. the store page, rendered signed out, shows "Apple Studio - Creator Store" with a
  *      "Get Plugin" button, and Creator Store search for "Apple Studio" returns exactly this id;
  *   3. the owner reports the new plugin approved.
@@ -2062,7 +2062,7 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED AGAIN 2026-09-24 ~02:35 IDT: the appeal on the final build (3Jj4h4hPWRTA3QPDRlNRmejqPrP,
  * sent 2026-09-23 14:02 IDT) was upheld. Re-probed 2026-09-23T23:34:48Z: ours 200 (visibilityStatus 1,
  * isAssetHashApproved, published + free, updatedUtc 2026-09-23T11:00:54Z, 7 scripts — the final
- * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Golem id 404. The
+ * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Apple id 404. The
  * signed-out store page renders "Apple Studio - Creator Store" with a "Get Plugin" button, and the
  * Configure page no longer shows the violation notice. Evidence:
  * docs/autonomy/evidence/20260924T0000Z-store-listed-again/README.md.

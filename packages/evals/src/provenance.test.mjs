@@ -1,11 +1,11 @@
 // Tests for what a project owes and whether it can be published: the attribution export and the
 // commercial-use gate in apps/worker/src/provenance.ts.
 //
-// These are the rules that decide whether Golem can honestly say "here is everything in your game
+// These are the rules that decide whether Apple can honestly say "here is everything in your game
 // and where it came from", so they are pinned rather than left to inspection. The four cases the
 // module exists for each get a test by name: a CC0 asset that obliges nothing, a CC-BY asset that
 // obliges a credit line, a non-commercial asset that must block a commercial publish, and an
-// original Golem build that must never be filed alongside somebody else's work.
+// original Apple build that must never be filed alongside somebody else's work.
 //
 // Pure functions throughout — no D1, no network. The one storage test drives a fake D1 that
 // returns rows, because the row→record mapping is real logic and its failure mode (silently
@@ -28,7 +28,7 @@ import { join } from 'node:path';
 // package it does not declare being downloadable is a test that reports the network.
 const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
 
-const dir = mkdtempSync(join(tmpdir(), 'golem-provenance-'));
+const dir = mkdtempSync(join(tmpdir(), 'apple-provenance-'));
 const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.url).pathname;
 
 const out = join(dir, 'provenance.mjs');
@@ -186,7 +186,7 @@ test('GenerationService output is the user’s, filed under neither ours nor a t
   });
   const report = attributionReport(PROJECT, [used(theirs)], NOW);
   assert.equal(report.userGenerated.length, 1);
-  assert.equal(report.original.length, 0, 'Golem does not own what the customer generated in their own session');
+  assert.equal(report.original.length, 0, 'Apple does not own what the customer generated in their own session');
   assert.equal(report.courtesy.length, 0);
   assert.match(renderAttribution(report), /yours, not ours/);
 });
@@ -390,7 +390,7 @@ test('a mixed project separates our work, their work and the obligations attache
   assert.equal(report.generatedAt, NOW.toISOString());
 
   const text = renderAttribution(report);
-  // the headings are what stop the credits reading as though Golem made all of it
+  // the headings are what stop the credits reading as though Apple made all of it
   assert.ok(text.indexOf('Original work') < text.indexOf('attribution required'), 'our work is listed separately and first');
   assert.match(text, /Rock 05/);
   assert.match(text, /Road Section/);

@@ -83,7 +83,7 @@ function world(opts = {}) {
 const base = 'https://api.test';
 function rig(w, over = {}) {
   const file = fresh();
-  const getToken = createAuth({ fetch: w.fetch, env: { GOLEM_BENCH_JWT: jwt('first', w.clock.t / 1000 + 3600), ...over.env }, now: w.now, anonKey: 'anon' });
+  const getToken = createAuth({ fetch: w.fetch, env: { APPLE_BENCH_JWT: jwt('first', w.clock.t / 1000 + 3600), ...over.env }, now: w.now, anonKey: 'anon' });
   const api = createApi({ fetch: w.fetch, base, projectId: 'aaaaaaaa-0000-4000-8000-000000000001', getToken });
   const args = { items: bank.items, file, photosDir: file.replace(/\.json$/, ''), api, getToken, base, projectId: 'aaaaaaaa-0000-4000-8000-000000000001', WebSocketImpl: w.WebSocketImpl, fetch: w.fetch, sleep: w.sleep, now: w.now, log: w.logger, turnMs: 60, ...over.args };
   return { file, args, run: () => runBench(args) };
@@ -306,7 +306,7 @@ test('main runs end to end on a fake server, writes results/<run>.json, and no s
   const bankFile = join(tmp, 'bank2.json');
   writeFileSync(bankFile, JSON.stringify({ version: 't-v1', items: [bank.items[0]] }));
   const w = world({ evaluate: () => ({ status: 500, body: { ok: false, error: `leaked ${'S3CRETPASSWORD'}` } }) });
-  const env = { GOLEM_E2E_EMAIL: 'bench@example.com', GOLEM_E2E_PASSWORD: 'S3CRETPASSWORD', API_BASE: base };
+  const env = { APPLE_E2E_EMAIL: 'bench@example.com', APPLE_E2E_PASSWORD: 'S3CRETPASSWORD', API_BASE: base };
   const res = await main(['--bank', bankFile, '--run', 'e2e', '--project', 'aaaaaaaa-0000-4000-8000-000000000001'], { log: w.logger, fetch: w.fetch, WebSocketImpl: w.WebSocketImpl, sleep: w.sleep, now: w.now, resultsDir: dir, env, anonKey: 'anon', turnMs: 60 });
   assert.equal(res.ran, 1);
   const text = readFileSync(join(dir, 'e2e.json'), 'utf8');
@@ -320,7 +320,7 @@ test('main runs end to end on a fake server, writes results/<run>.json, and no s
 test('auth: a token near expiry is refreshed with the refresh token; a 401 forces one refresh and retries', async () => {
   const w = world();
   const soon = jwt('old', w.clock.t / 1000 + 60);
-  const getToken = createAuth({ fetch: w.fetch, env: { GOLEM_BENCH_JWT: soon, GOLEM_BENCH_REFRESH_TOKEN: 'rt-1-abcdefgh' }, now: w.now, anonKey: 'anon' });
+  const getToken = createAuth({ fetch: w.fetch, env: { APPLE_BENCH_JWT: soon, APPLE_BENCH_REFRESH_TOKEN: 'rt-1-abcdefgh' }, now: w.now, anonKey: 'anon' });
   const t1 = await getToken();
   assert.notEqual(t1, soon, 'within two minutes of expiry: refreshed');
   assert.deepEqual(w.calls[0], { method: 'POST', path: 'auth:refresh_token', body: { refresh_token: 'rt-1-abcdefgh' } });
@@ -333,7 +333,7 @@ test('auth: a token near expiry is refreshed with the refresh token; a 401 force
 
   const w2 = world({ unauthorizedOnce: true });
   const old = jwt('first', w2.clock.t / 1000 + 3600);
-  const gt = createAuth({ fetch: w2.fetch, env: { GOLEM_BENCH_JWT: old, GOLEM_BENCH_REFRESH_TOKEN: 'rt-1-abcdefgh' }, now: w2.now, anonKey: 'anon' });
+  const gt = createAuth({ fetch: w2.fetch, env: { APPLE_BENCH_JWT: old, APPLE_BENCH_REFRESH_TOKEN: 'rt-1-abcdefgh' }, now: w2.now, anonKey: 'anon' });
   const api = createApi({ fetch: w2.fetch, base, projectId: 'aaaaaaaa-0000-4000-8000-000000000001', getToken: gt });
   const r = await api('/checkpoints', null, 'GET');
   assert.equal(r.status, 200, 'retried after a 401');
@@ -346,7 +346,7 @@ test('auth: a token near expiry is refreshed with the refresh token; a 401 force
 test('auth: no sign-in source is an error that names variables, never values; a failed grant says only the status', async () => {
   assert.throws(() => createAuth({ fetch: async () => {}, env: {}, anonKey: 'a' }), /GOLEM_BENCH_JWT.*GOLEM_E2E_EMAIL/);
   const w = world({ auth: () => ({ ok: false, status: 400, json: async () => ({ error_description: 'S3CRETPASSWORD is wrong' }) }) });
-  const getToken = createAuth({ fetch: w.fetch, env: { GOLEM_E2E_EMAIL: 'a@b.c', GOLEM_E2E_PASSWORD: 'S3CRETPASSWORD' }, now: w.now, anonKey: 'anon' });
+  const getToken = createAuth({ fetch: w.fetch, env: { APPLE_E2E_EMAIL: 'a@b.c', APPLE_E2E_PASSWORD: 'S3CRETPASSWORD' }, now: w.now, anonKey: 'anon' });
   await assert.rejects(getToken(), (e) => /HTTP 400/.test(e.message) && !e.message.includes('S3CRETPASSWORD'));
   assert.equal(scrub('bad S3CRETPASSWORD here', ['S3CRETPASSWORD', undefined, 'short']), 'bad [redacted] here');
 });

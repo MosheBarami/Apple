@@ -920,7 +920,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             <Icon d={PATH.people} />
           </button>
           {/* The way into the files Apple keeps for this project — notes, plans and generated
-              data, which are Golem's own storage and not the Roblox place. Beside memory because
+              data, which are Apple's own storage and not the Roblox place. Beside memory because
               it is the same kind of thing: something that persists between turns and is read
               occasionally rather than worked in. */}
           <button

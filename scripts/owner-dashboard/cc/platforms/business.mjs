@@ -110,8 +110,8 @@ export function business() {
     const [users, ap, bl, au, st, ins, ck] = await Promise.all([
       process.env.SUPABASE_ACCESS_TOKEN ? section(sbUsers) : { error: 'חסר SUPABASE_ACCESS_TOKEN' },
       apple().catch(() => null),
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר GOLEM_ADMIN_KEY' },
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר GOLEM_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר APPLE_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר APPLE_ADMIN_KEY' },
       sentry().catch(() => null), insights().catch(() => null),
       import('./clerk.mjs').then((m) => m.clerk()).catch(() => null)]);
     if (users.error && !ap?.ok) return fail(users.error, { errors: { supabase: users.error, apple: ap?.reason ?? null } });

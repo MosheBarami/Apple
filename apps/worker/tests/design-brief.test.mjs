@@ -1,7 +1,7 @@
 /**
- * THE UI GRAMMAR BRIEF: what Golem is told before it writes a GUI.
+ * THE UI GRAMMAR BRIEF: what Apple is told before it writes a GUI.
  *
- * §G says Golem must stop inventing every interface from a blank canvas. The design
+ * §G says Apple must stop inventing every interface from a blank canvas. The design
  * library holds the grammar; this is the path that puts it in front of the model. The
  * assertions worth having are about RESTRAINT, because the failure modes here are not
  * "the brief is missing" — they are:

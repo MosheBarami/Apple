@@ -481,7 +481,7 @@ export interface CreditEntry {
 export interface AttributionReport {
   projectId: string;
   generatedAt: string;
-  /** Golem's own work. Separated so §42's line is visible in the output, not just in policy. */
+  /** Apple's own work. Separated so §42's line is visible in the output, not just in policy. */
   original: CreditEntry[];
   /** Made by GenerationService in the customer's own Studio session — theirs, not ours. */
   userGenerated: CreditEntry[];
@@ -564,7 +564,7 @@ function line(e: CreditEntry): string {
  * GUI. Plain text on purpose: it has to survive being pasted into a Roblox TextLabel.
  *
  * The section headings do the §42 work. "Original work" and "Third-party assets" are separate
- * headings so the finished credits cannot read as though Golem made everything in the list.
+ * headings so the finished credits cannot read as though Apple made everything in the list.
  */
 export function renderAttribution(report: AttributionReport): string {
   const out: string[] = ['Credits', '======='];

@@ -57,7 +57,7 @@ export const ACTIVITY = {
   // — telling a user "Searching the Roblox docs" while the agent reads a GitHub issue is a wrong
   // sentence, and the whole reason this table exists is that wrong sentences shipped.
   browsing: { canonical: null, label: 'Reading the web' },
-  // The project's scratch files, which are Golem's storage and not the Roblox place. C08 is
+  // The project's scratch files, which are Apple's storage and not the Roblox place. C08 is
   // "Editing project", and using it here would claim the agent touched the user's game.
   filing: { canonical: null, label: 'Working with project files' },
   // The honest fallback for a tool this build has never heard of.

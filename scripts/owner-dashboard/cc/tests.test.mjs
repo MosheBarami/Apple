@@ -148,7 +148,7 @@ test('cards: one per round and test, newest first, each against the last round o
 test('tests() reads only Gauntlet projects, never leaks the key, and re-run is a dry-run plan only', async () => {
   const seen = [];
   const P5 = '0416b631-da5f-4ab2-8f1d-855c95febd61'; const PX = '11111111-2222-3333-4444-555555555555';
-  process.env.GOLEM_ADMIN_KEY = KEY; process.env.API_BASE = 'https://worker.test';
+  process.env.APPLE_ADMIN_KEY = KEY; process.env.API_BASE = 'https://worker.test';
   globalThis.fetch = async (url, init) => {
     seen.push({ url: String(url), method: init?.method || 'GET', key: init?.headers?.['x-admin-key'] });
     const u = new URL(url); const json = (x) => new Response(JSON.stringify(x), { status: 200 });

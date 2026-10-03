@@ -39,7 +39,7 @@ const flag = (name) => process.argv.includes(`--${name}`);
 
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
 const KEY = envCompat('APPLE_ADMIN_KEY');
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 const DEFAULT_SYSTEM =
   'You write standalone Luau modules for Roblox. Reply with ONE fenced luau code block and nothing else. '

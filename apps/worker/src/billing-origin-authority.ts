@@ -74,7 +74,7 @@ export interface CreditsMutation {
  * decision can be falsified in a unit test rather than against a deployment.
  *
  * `mutationWouldApplyToBoth` is the question the migration actually turns on: a subscription
- * bought today has to land in the canonical QuotaDO *and* in golem's, or one of the two stores is
+ * bought today has to land in the canonical QuotaDO *and* in legacy's, or one of the two stores is
  * silently wrong about what the customer paid for.
  *
  * WHAT IT IS COMPUTED FROM, STATED EXACTLY, because this comment used to say "the same four

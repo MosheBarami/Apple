@@ -1,11 +1,11 @@
-// End-to-end validation against the CREATOR STORE-INSTALLED Golem plugin.
+// End-to-end validation against the CREATOR STORE-INSTALLED Apple plugin.
 //
 // This is not a unit test and not a mock. It drives the real deployed worker,
 // which dispatches real ops to the real plugin running in the operator's open
 // Studio, and asserts on what actually comes back.
 //
 // SAFETY. Everything this script builds goes inside one clearly-named folder,
-// Workspace/GolemStoreValidation, and is deleted at the end whether the run
+// Workspace/AppleStoreValidation, and is deleted at the end whether the run
 // passes or fails. The playtest step goes through `run_and_check`, which is the
 // protected path: it censuses the place, takes a checkpoint, runs, censuses
 // again, and auto-restores if the run destroyed anything. That protection is
@@ -30,7 +30,7 @@ const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,
 )[1];
 const PID = 'b0766f21-7028-47cc-b9ab-e19198b144d2';
-const FOLDER = 'GolemStoreValidation';
+const FOLDER = 'AppleStoreValidation';
 
 const H = { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' };
 const checks = [];

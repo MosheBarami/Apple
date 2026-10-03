@@ -85,7 +85,7 @@ function baseDocument() {
   return {
     format: 'apple.account-export.v1',
     exportedAt: '2026-09-20T09:48:04.000Z',
-    user: { id: USER_ID, email: 'e2e-test@golem.internal' },
+    user: { id: USER_ID, email: 'e2e-test@apple.internal' },
     complete: false,
     incomplete: ['messages', 'checkpoints', 'usage_events', 'studio_pairings'],
     tables: {

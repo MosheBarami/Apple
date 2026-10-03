@@ -2,7 +2,7 @@
 //
 // The GLM migration set every path to `reasoning: low`. Uniform `low` is the wrong policy: it
 // spends the same on "what does this script do" as on "design and build a plaza", and thin
-// thinking on design work is how Golem shipped a grey slab with coloured poles and called it done.
+// thinking on design work is how Apple shipped a grey slab with coloured poles and called it done.
 //
 // The tiers are `low` and `high`. `medium` is DELIBERATELY UNUSED, and that is a measurement, not
 // a preference. Against the live service on 2026-08-30, GLM-5.3-flash, two samples per cell:

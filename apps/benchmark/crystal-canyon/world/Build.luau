@@ -578,7 +578,7 @@ pools.cliff_rock = pools.rock
 tintablePools.cliff_rock = tintablePools.rock
 
 -- =========================================================================
--- THE CUBE FAMILIES — GOLEM-ORIGINATED, NOT CREATOR STORE
+-- THE CUBE FAMILIES — APPLE-ORIGINATED, NOT CREATOR STORE
 -- =========================================================================
 --[[ GolemPalette also carries GENERATED meshes (Roblox Cube). Six of nine were rejected,
 	 three of them only once they stood in the world, because a Cube mesh arrives TEXTURED and a

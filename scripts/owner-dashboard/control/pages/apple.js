@@ -132,7 +132,7 @@ export default {
   render(d) {
     const a = d.apple || {};
     if (a.configured === false) {
-      return html`${notConnected('apple', a.need, { blurb: 'נתיבי האדמין של העובד', how: 'GOLEM_ADMIN_KEY הוא הסוד ADMIN_KEY של העובד (wrangler secret). הדף שולח אותו רק ככותרת X-Admin-Key לנתיבי GET.' })}${notExposed(a.notExposed)}`;
+      return html`${notConnected('apple', a.need, { blurb: 'נתיבי האדמין של העובד', how: 'APPLE_ADMIN_KEY הוא הסוד ADMIN_KEY של העובד (wrangler secret). הדף שולח אותו רק ככותרת X-Admin-Key לנתיבי GET.' })}${notExposed(a.notExposed)}`;
     }
     const errs = Object.entries(a.errors || {});
     return html`

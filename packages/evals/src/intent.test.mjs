@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', '..', 'apps', 'worker');
-const dest = join(tmpdir(), `golem-intent-${process.pid}.mjs`);
+const dest = join(tmpdir(), `apple-intent-${process.pid}.mjs`);
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'semantic.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`],

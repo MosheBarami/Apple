@@ -435,7 +435,7 @@ async function runTarget({ target, genreId, model, maxTokens, lib, outDir, viewp
 
 async function main() {
   if (!ADMIN) {
-    console.error('GOLEM_ADMIN_KEY is not set. `set -a && . ./.env && set +a` first.');
+    console.error('APPLE_ADMIN_KEY is not set. `set -a && . ./.env && set +a` first.');
     process.exit(2);
   }
   const lib = await loadWorkerLibrary();
