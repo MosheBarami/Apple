@@ -27,7 +27,7 @@ const SUGGESTIONS = [
   "Which phase are we in and what is left?",
   "What changed in the last few days?",
   "Why was the Creator Store chosen over the .rbxm download?",
-  "How far has the golem rename got?",
+  "How far has the rename to Apple got?",
 ];
 
 type Branches = Record<string, UIMessage[]>;
