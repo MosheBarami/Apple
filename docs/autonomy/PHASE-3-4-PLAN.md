@@ -182,6 +182,12 @@ Test protocol for every gate:
 
 ### M4. Behaviour re-adding and inspection (flag `BEHAVIOUR_V2`)
 
+- **Build status (2026-10-02, branch `worktree-wf_90b4b7a1-0cd-4`, not merged, not deployed):** built, and measured by unit tests only. Nothing has run in Studio and nothing has been run on the benchmark. Where the build differs from the design below:
+  - The reader is `model_anatomy`, not a merged `inspect_model`: `inspect_model` already exists as a plugin-backed asset QC tool, so it was left alone. `model_anatomy` is built on the existing `get_tree` and `read_script` ops, so it needs no plugin release.
+  - Behaviours are one component, `packages/components/behave` (`AppleBehave`), driven by data in a ModuleScript `AppleBehaviours` written by `add_behaviour`. `AppleAnimate` v2, `AppleAudio`, `bounce_pad` and `animate_creature` are not part of this build. `AppleBehave` publishes `Model:SetAttribute("AppleBehave_<id>", on)`, which an M2 probe can read.
+  - `refuseLuauIngress` on direct `edit_script` source is unchanged. `behaviour-review.ts` reports those primitives on the result instead, and enforces one rule only (a loop that never yields).
+  - Not built: the numbered-label image (needs M1's `look`), the generalization test (live runs), `animate_model` v2.
+  - Unverified in Studio, to settle in one spike when the benchmark is idle (the glue was exercised only against a mock written for this build): a `ClickDetector` parented to a Model answers clicks on its parts; `ProximityPrompt` on the biggest part with line of sight off; `AssemblyLinearVelocity` set from the server on a player's root part launches it (network ownership); `JointInstance.Enabled = false` on a weld between a moving and a still part stops it fighting a CFrame move; `Sound:Clone()` of a library sound plays from a part; `workspace.DescendantAdded` wires a model cloned in at runtime; `Model:GetBoundingBox()` agrees with the part boxes `model_anatomy` read.
 - **Capability:**
   - `inspect_model` (the merge): part and joint graph, size, CFrame relative to the pivot, material, colour, hinge candidates, original script/Sound/prompt manifest, and an optional numbered-label image built on `look` (temporary labels deleted afterwards).
   - `animate_model` v2: `play: toggle | pingpong`, `then` chaining, property tracks via TweenService (see `docs/reference/engine/classes/TweenService`), events `sound`, `emit` and `setAttribute`, parametric primitives (swing, slide, spin, bob, squash, pulse), and the object-tool vocabulary lifted out of `ObjectPart`.

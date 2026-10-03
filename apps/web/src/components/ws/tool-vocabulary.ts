@@ -97,6 +97,7 @@ export const TOOL = {
   // C02 — reading the world.
   get_project_tree: { kind: 'inspecting', label: 'Read the project tree', live: 'Looking around your game' },
   inspect_model: { kind: 'inspecting', label: 'Inspected a model', live: 'Taking a closer look' },
+  model_anatomy: { kind: 'inspecting', label: 'Looked the model over', live: 'Looking the model over' },
 
   // C06 — reading the code. Distinct from C02: a project's scripts and its
   // instance tree answer different questions and fail in different ways.
@@ -217,6 +218,7 @@ export const TOOL = {
   build_ui: { kind: 'building', label: 'Built a screen', live: 'Designing a screen' },
   insert_ui_component: { kind: 'building', label: 'Added a UI piece', live: 'Adding a button or panel' },
   animate_model: { kind: 'building', label: 'Made it move', live: 'Making it move' },
+  add_behaviour: { kind: 'building', label: 'Made it do something', live: 'Making it do something' },
   build_studded_ui: { kind: 'building', label: 'Drew the game screens', live: 'Drawing the game screens' },
   add_upgrades: { kind: 'building', label: 'Added working upgrades', live: 'Adding the upgrades' },
   insert_sound: { kind: 'building', label: 'Added a sound', live: 'Adding a sound' },

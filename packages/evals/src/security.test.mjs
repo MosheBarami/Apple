@@ -855,6 +855,7 @@ const TOOL_ARGS = {
   //   enumeration check below was red). Each fixture reaches the tool's body with the smallest valid arguments;
   //   their egress is reviewed by the same loop as every other tool: no credential, JWT, pairing token or bearer
   //   header may appear in what they return. ]]
+  add_behaviour: { model: 'game.Workspace.Thing' },
   add_upgrades: {},
   // ADDED 2026-10-02 WITH THE SELF-CHECK (M1). `look` frames the place from several camera angles through plugin operations that
   // already exist and sends the pixels to the vision role. Its egress is reviewed here like every other tool's: the result the model
@@ -1043,6 +1044,7 @@ const TOOL_ARGS = {
   insert_asset: { assetId: 424242, parent: 'game.Workspace' },
   generate_model: { prompt: 'a lamp post', intent: 'lamp post' },
   inspect_model: { path: 'game.Workspace.Lamp', intent: 'lamp post' },
+  model_anatomy: { model: 'game.Workspace.Thing' },
   generate_image: { subject: 'a gold coin', target: 'ui_icon', palette: ['currency_soft'] },
   generate_ui_image_hf: { subject: 'a gold coin', target: 'ui_icon' },
   generate_model_external: { prompt: 'a wooden barrel' },

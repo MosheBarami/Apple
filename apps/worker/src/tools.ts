@@ -90,6 +90,9 @@ import { planGame, buildGame, planSummary, buildSummary, plannedLoop } from './g
 import { sourcesIn as runSourcesIn } from './sources';
 import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
+import { addBehaviour } from './behaviour-tool';
+import { lintScriptWrite } from './behaviour-review';
+import { modelAnatomy } from './model-anatomy';
 import { buildStuddedUi } from './studded-ui-tool';
 import { addUpgrades } from './upgrades-tool';
 import { composeGame, composeSummary } from './compose-tool';
@@ -2734,6 +2737,13 @@ export const TOOLS: Record<string, ToolImpl> = {
       // G13/G14: no runtime dependence on Apple, no fabricated purchase ids.
       const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
       if (gameRule) return gameRule;
+      // M4 backstop for agent-written scripts (behaviour-review.ts): a loop that never yields is refused with the fix; the other
+      // findings (a missing child, an unguarded Touched, ingress and egress primitives) ride on the result for the agent to act on.
+      const existingClass = typeof (existing as { class?: unknown } | null)?.class === 'string' ? String((existing as { class: string }).class) : undefined;
+      const lint = await lintScriptWrite(ctx, {
+        path, source: after, parentPath: create?.parent, className: create?.className ?? existingClass, ingress: scanLuauForAssetIngress(after),
+      });
+      if (lint.refusal) return lint.refusal;
 
       const res = await op(ctx, {
         op: 'edit_script',
@@ -2771,6 +2781,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         removed: stat.removed,
         ...(sourceFile ? { sourceFile } : {}),
         ...(warnings.length ? { warnings: warnings.map((f) => `line ${f.line}: ${f.rule} — ${f.detail}`) } : {}),
+        ...(lint.summary ? { lint: lint.summary } : {}),
       };
     },
   },
@@ -5810,6 +5821,29 @@ export const TOOLS: Record<string, ToolImpl> = {
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not animate it' : 'Made it move',
     run: animateModel,
+  },
+  model_anatomy: {
+    def: {
+      name: 'model_anatomy',
+      description: "Read a placed model: its parts, joints, hinge candidates and which way a positive angle turns a part, what is already clickable, lit or playing. Use before add_behaviour. Pass part for one part's detail.",
+      parameters: S({ model: { type: 'string' }, part: { type: 'string' }, maxParts: { type: 'number' } }, ['model']),
+    },
+    studio: true,
+    studioOps: ['get_tree', 'read_script'],
+    plainSummary: (_a, _r, failed) => failed ? 'Could not look it over' : 'Looked the model over',
+    run: modelAnatomy,
+  },
+  add_behaviour: {
+    def: {
+      name: 'add_behaviour',
+      description: "Give a placed model behaviour from reviewed verbs (swing, slide, spin, bob, fade, light, sound, emit, bounce) done to parts on a trigger (click, prompt, touch, near, auto). Library models arrive with scripts and sounds stripped; this puts the asked-for behaviour back. Call with just model to list the verbs and what each takes. Read creation skill props-add-behaviour first.",
+      parameters: S({ model: { type: 'string' }, behaviours: { type: 'array', items: { type: 'object' } }, remove: { type: 'array', items: { type: 'string' } }, replace: { type: 'boolean' } }, ['model']),
+    },
+    studio: true,
+    studioOps: ['get_tree', 'read_script', 'edit_script', 'delete_instances', 'get_instance'],
+    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
+    plainSummary: (_a, _r, failed) => failed ? 'Could not add the behaviour' : 'Made it do something',
+    run: addBehaviour,
   },
   build_studded_ui: {
     def: {
