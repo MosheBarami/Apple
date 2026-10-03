@@ -274,7 +274,7 @@ const MODE_RULES: Record<ProductMode, (offered: ReadonlySet<string>) => string> 
 function agentRules(offered: ReadonlySet<string>): string {
   const head = `You are the builder. Implement the requested feature end to end: inspect the project, make the
 edits (scripts, instances, properties), then do a quick sanity check (read back what you changed, check
-output logs). Create an undo waypoint before your first change. Report what you changed and how to try it.`;
+output logs). Report what you changed and how to try it.`;
   const verifiers = VERIFIER_TOOLS.filter((v) => offered.has(v));
   if (offered.has(PLANNER_TOOL)) {
     const check = verifiers.length
@@ -285,7 +285,8 @@ output logs). Create an undo waypoint before your first change. Report what you 
 Your FIRST call is ${PLANNER_TOOL}. The user is watching a checklist appear before anything in their
 project moves, and that checklist is the only thing that tells them what is about to happen — prose
 about what you are about to do is a second, worse copy of it. Name the tool each step will use, using
-only tools offered in this run, and ${check}. Then carry the plan out; do not call ${PLANNER_TOOL} again.`;
+only tools offered in this run, and ${check}. Send it listed first in the same step as your first read or build
+call, so it costs no step of its own. Then carry the plan out; do not call ${PLANNER_TOOL} again.`;
   }
   const check = verifiers.length
     ? `Check your work with ${verifiers.join(' or ')} before you report it.`

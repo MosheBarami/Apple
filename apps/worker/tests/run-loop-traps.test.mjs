@@ -75,7 +75,8 @@ await esbuild.build({
   }],
 });
 
-const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = await import(pathToFileURL(OUT).href);
+const SESSION_MOD = await import(pathToFileURL(OUT).href);
+const { SessionDO, PROVIDER_OUTAGE_MAX_MS } = SESSION_MOD;
 // The registry, for the lists a fixture must DERIVE rather than write by hand: which tools change
 // the project, and which Studio operations each one needs.
 const REGISTRY_OUT = join(TMP, 'tools.mjs');
@@ -84,6 +85,9 @@ const W = await import(pathToFileURL(REGISTRY_OUT).href);
 const PB_OUT = join(TMP, 'prompt-budget.mjs');
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'prompt-budget.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: PB_OUT, logLevel: 'silent' });
 const PB = await import(pathToFileURL(PB_OUT).href);
+const RZ_OUT = join(TMP, 'reasoning.mjs');
+await esbuild.build({ entryPoints: [join(WORKER, 'src', 'reasoning.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: RZ_OUT, logLevel: 'silent' });
+const RZ = { ...(await import(pathToFileURL(RZ_OUT).href)), baseTokensFor: SESSION_MOD.baseTokensFor };
 test.after(() => rmSync(TMP, { recursive: true, force: true }));
 
 // ------------------------------------------------------------------------------------ harness ---
@@ -189,7 +193,8 @@ async function makeSession({ responses = [], connected = false, capabilities = n
       },
     },
     __testChat: async (req, opts) => {
-      chatCalls.push({ req, opts });
+      // `wire` is a snapshot: `req.messages` is the live transcript and keeps growing after the call.
+      chatCalls.push({ req, opts, wire: { tools: JSON.stringify(req.tools ?? []), messages: JSON.stringify(req.messages) } });
       assert.ok(queue.length > 0, 'the scripted provider was called more times than the fixture supplied');
       return structuredClone(queue.shift());
     },
@@ -1207,5 +1212,224 @@ test('RESUMED WORKFLOW PROMPT ADVANCES TO EDIT WITHOUT REPLAYING READ', async ()
     assert.match(systems, /Next required action: edit_script/);
     assert.doesNotMatch(systems, /Next required action: read_script/);
     assert.equal(lastEnd(h)?.stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
+
+// ================================================ 9. credits: a run that cannot make progress stops paying ===
+//
+// Owner benchmark 2026-10-02: map runs retried failing calls "dozens of times". A model that hand-computes
+// coordinates changes the arguments on every retry, so the identical-call guard (MAX_SAME_FAILURES) never
+// sees a repeat and every failed step is billed. These drive the real run loop with failures whose
+// arguments differ each time.
+
+const failingWrite = (i) => calls(['set_properties', { path: `game.Workspace.Part${i}`, props: { Position: { t: 'Vector3', v: [i, 5, i * 2] } } }]);
+const userText = (call) => call.req.messages.filter((m) => m.role === 'user').map((m) => m.content).join('\n');
+
+test('CREDITS: a tool failing again and again with DIFFERENT arguments is steered at 3 and ended at 8', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'set_props' ? { ok: false, error: 'No instance at that path', failure: 'refused' } : { ok: true, data: {} }),
+    responses: [...Array.from({ length: 100 }, (_, i) => failingWrite(i)), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'build me a big hilly map with a river' });
+    for (let i = 0; i < 120 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended: every retry changed its arguments, so no guard saw a repeat');
+    const writes = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(writes >= 3, `only ${writes} writes reached Studio: the fixture checks nothing`);
+    assert.ok(writes <= 8, `${writes} failed writes ran before the run stopped (${h.chatCalls.length} paid model steps)`);
+    // The steer arrives at the third failure, in the model's own transcript, carrying the shared error. (The
+    // harness keeps the request objects by reference, so the last one holds the whole transcript.)
+    const seen = h.chatCalls.at(-1).req.messages;
+    const steerAt = seen.findIndex((m) => m.role === 'user' && /failed the same way/.test(m.content));
+    assert.ok(steerAt > 0, 'the third failure was not answered with a steer');
+    assert.match(seen[steerAt].content, /set_properties/, 'the steer must name the tool that kept failing');
+    assert.doesNotMatch(seen[steerAt].content, /No instance at that path/, 'tool error text must not be quoted into a user-role turn');
+    assert.ok(seen.some((m) => m.role === 'tool' && /No instance at that path/.test(m.content)), 'the error stays in the fenced tool results');
+    assert.equal(seen.slice(0, steerAt).filter((m) => m.role === 'tool').length, 3, 'the steer must come after exactly the third failure');
+    // No capability is cut: the tool is still offered on the step after the steer.
+    assert.ok(h.chatCalls.every((c) => c.req.tools.some((t) => t.name === 'set_properties')), 'the failing tool was withheld; that changes the offered set and the cached prefix');
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
+
+test('CREDITS control: one failure in four never trips the failure guard', async () => {
+  let n = 0;
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => (op.op === 'set_props' && n++ % 4 === 0 ? { ok: false, error: 'No instance at that path', failure: 'refused' } : { ok: true, data: {} }),
+    responses: [...Array.from({ length: 40 }, (_, i) => failingWrite(i)), answer({ text: 'Built it.' })],
+  });
+  try {
+    await start(h, { text: 'tune the parts' });
+    for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.ops.filter((op) => op.op === 'set_props').length >= 20, 'the fixture checks nothing: the writes did not run');
+    const joined = h.chatCalls.map(userText).join('\n');
+    assert.doesNotMatch(joined, /failed the same way/, 'a run that mostly succeeds was steered as failing');
+    assert.doesNotMatch(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /kept failing/);
+  } finally { h.stop(); }
+});
+
+// A step cut at the output ceiling is billed and its tool call is discarded (neuronsUsed is settled before the cut
+// branch). The scripted gateway has no ceiling of its own, so these cuts are scripted as finish_reason=length.
+const CUT = answer({ finishReason: 'length', neurons: 295 });
+
+test('CREDITS: consecutive output-ceiling cuts end the run at a bound, honestly', async () => {
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: Array.from({ length: 60 }, () => CUT) });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    for (let i = 0; i < 70 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), `the run never ended: ${h.chatCalls.length} paid steps, every one cut at the ceiling`);
+    assert.ok(h.chatCalls.length <= 5, `${h.chatCalls.length} cut steps were paid for before the run stopped`);
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('') + (assistantRow(h)?.content ?? '');
+    assert.match(text, /too big|too large|smaller/i, 'the ending must say why');
+    assert.doesNotMatch(text, TOOL_NAME, 'the note names a tool');
+  } finally { h.stop(); }
+});
+
+test('CREDITS control: a cut followed by a complete step does not count towards the bound', async () => {
+  const done = answer({ text: 'Built it.' });
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [CUT, CUT, calls(['get_project_tree', {}]), CUT, CUT, CUT, done, done, done] });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    for (let i = 0; i < 12 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(h.chatCalls.length >= 7, `a run that recovers between cuts was ended as if the cuts were consecutive (${h.chatCalls.length} steps)`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('') + (assistantRow(h)?.content ?? '');
+    assert.doesNotMatch(text, /too big|too large/i);
+  } finally { h.stop(); }
+});
+
+test('CREDITS: the step after a cut is never given a smaller output ceiling than the full one', async () => {
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [CUT, CUT, CUT, answer({ text: 'Done.' })] });
+  try {
+    await start(h, { text: 'build me a big map with 75 trees' });
+    // The run has spent its high-effort steps, which is the state where the ceiling drops to the base budget.
+    h.store.set('agent', structuredClone({ ...h.store.get('agent'), highEffortUsed: 8 }));
+    for (let i = 0; i < 6 && !lastEnd(h); i++) await h.session.alarm();
+    const full = RZ.tokensForEffort(RZ.baseTokensFor('agent'), 'high');
+    const asked = h.chatCalls.map((c) => c.req.maxTokens);
+    assert.ok(asked.length >= 4, 'the fixture checks nothing');
+    assert.equal(asked[0], RZ.baseTokensFor('agent'), 'the first step, not recovering, keeps the base budget');
+    for (const [i, n] of asked.slice(1, 4).entries()) assert.equal(n, full, `recovery step ${i + 1} was asked for ${n} tokens, below the full ${full}`);
+  } finally { h.stop(); }
+});
+
+test('CREDITS: propose_plan may share the first step with the first read, so the plan costs no step of its own', async () => {
+  const plan = { steps: [{ title: 'Look at the place', tool: 'get_project_tree' }, { title: 'Build it', tool: 'create_instances' }, { title: 'Check it', tool: 'audit_build' }] };
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [calls(['propose_plan', plan], ['get_project_tree', {}]), answer({ text: 'Looked.' })],
+  });
+  try {
+    await start(h, { text: 'what is in my place' });
+    await h.session.alarm();
+    const agent = h.store.get('agent');
+    assert.equal(h.chatCalls.length, 1, 'the plan and the read took more than one model step');
+    assert.ok(agent.plan, 'the plan was not stored when it shared a step with a read');
+    assert.ok(h.ops.some((o) => o.op === 'get_tree'), 'the read sharing the step did not reach Studio');
+  } finally { h.stop(); }
+});
+
+const defChars = (names) => JSON.stringify(W.toolDefs(true, new Set(names))).length;
+
+test('CREDITS: more_tools {names} unlocks only what was asked for, and no argument still unlocks everything', async () => {
+  const tree = ['more_tools', { why: 'the river needs terrain', names: ['edit_terrain'] }];
+  const h = await makeSession({ connected: true, answerOp: () => ({ ok: true, data: {} }), responses: [calls(tree), calls(['more_tools', { why: 'anything' }]), answer({ text: 'ok' })] });
+  try {
+    await start(h, { text: 'build me a hilly map with a river' });
+    await h.session.alarm();
+    await h.session.alarm();
+    await h.session.alarm();
+    const offered = (i) => new Set(h.chatCalls[i].req.tools.map((t) => t.name));
+    const first = offered(0);
+    const second = offered(1);
+    assert.ok(!first.has('edit_terrain'), 'control: the terrain tool is deferred before more_tools');
+    assert.ok(second.has('edit_terrain'), 'the named tool was not unlocked');
+    assert.ok(!second.has('generate_sound') && !second.has('web_search'), 'asking for one tool unlocked every deferred tool');
+    // The size of what rides on every later step: the named tool, not all thirty.
+    const added = [...second].filter((n) => !first.has(n));
+    const grew = defChars([...second]) - defChars([...first]);
+    const full = defChars([...W.DEFERRED_TOOLS]);
+    assert.ok(added.every((n) => n === 'edit_terrain'), `unlocked more than asked: ${added.join(', ')}`);
+    assert.ok(grew < full / 4, `unlocking one tool grew the definitions by ${grew} chars of the ${full} the full lift costs`);
+    // Without a name the behaviour is today's: every deferred tool, so no capability is cut.
+    const third = offered(2);
+    // (Some deferred tools stay absent here for reasons of their own: this plugin reports no terrain-read op, and the studded UI theme withholds the old UI builders.)
+    for (const name of ['edit_terrain', 'generate_sound', 'web_search', 'workspace_write']) assert.ok(third.has(name), `${name} was not unlocked by the argument-less more_tools`);
+  } finally { h.stop(); }
+});
+
+test('CREDITS: twelve different run_luau scripts in a row are building, not retuning one target', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => ({ ok: true, data: op.op === 'run_code' ? { output: 'ok', returned: null } : {} }),
+    responses: [...Array.from({ length: 16 }, (_, i) => calls(['run_luau', { code: `for _, p in workspace:GetChildren() do if p:IsA("BasePart") then p.Transparency = ${i / 40} end end` }])), answer({ text: 'Built the map.' })],
+  });
+  try {
+    await start(h, { text: 'tune the map with a script' });
+    for (let i = 0; i < 30 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended');
+    const runs = h.ops.filter((op) => op.op === 'run_code').length;
+    assert.ok(runs >= 14, `only ${runs} run_luau calls reached Studio: the run was stopped, or the fixture checks nothing`);
+    const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
+    assert.doesNotMatch(text, /kept changing the same thing/, 'successful script-built work was ended as one target changed over and over');
+  } finally { h.stop(); }
+});
+
+test('CREDITS: alternating between two targets for dozens of changes is told once, then ended', async () => {
+  const set = (path, i) => calls(['set_properties', { path, props: { Transparency: i / 200 } }]);
+  const h = await makeSession({
+    connected: true,
+    answerOp: () => ({ ok: true, data: {} }),
+    responses: [...Array.from({ length: 100 }, (_, i) => set(i % 2 ? 'game.Workspace.WallA' : 'game.Workspace.WallB', i)), answer({ text: 'Done.' })],
+  });
+  try {
+    await start(h, { text: 'adjust the transparency of WallA and WallB until it looks right' });
+    for (let i = 0; i < 120 && !lastEnd(h); i++) await h.session.alarm();
+    assert.ok(lastEnd(h), 'the run never ended: alternating two targets is invisible to a count that resets on every other target');
+    const sets = h.ops.filter((op) => op.op === 'set_props').length;
+    assert.ok(sets <= 40, `${sets} changes were made before the alternation was stopped`);
+    const seen = h.chatCalls.at(-1).req.messages;
+    assert.ok(seen.some((m) => m.role === 'user' && /last 24 changes/.test(m.content)), 'the model was never told it was alternating before the run was ended');
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
+  } finally { h.stop(); }
+});
+
+// PREFIX STABILITY. A provider caches the longest identical prefix of what it is sent, and the tool definitions come
+// before the conversation. Changing the offered set between steps voids all of it for that step. This measures the
+// part that is local and repeatable: how much of the previous step's request the next step repeats, and whether the
+// tool definitions are byte-identical.
+const sharedPrefix = (a, b) => { let i = 0; const n = Math.min(a.length, b.length); while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i++; return i; };
+
+test('CREDITS: the tool definitions are byte-identical between ordinary steps, and each step repeats the whole previous transcript', async () => {
+  const h = await makeSession({
+    connected: true,
+    answerOp: (op) => ({ ok: true, data: op.op === 'get_tree' ? { tree: 'Workspace' } : {} }),
+    responses: [
+      calls(['get_project_tree', {}]),
+      calls(['create_instances', { parent: 'game.Workspace', items: [{ className: 'Part', name: 'Floor', properties: {} }] }]),
+      calls(['get_output_logs', {}]),
+      answer({ text: 'Built a floor.' }),
+    ],
+  });
+  try {
+    await start(h, { text: 'add a floor to my place' });
+    for (let i = 0; i < 8 && !lastEnd(h); i++) await h.session.alarm();
+    // The run's own steps. (The run ends with a separate memory-summary call that sends no tools by design.)
+    const steps = h.chatCalls.filter((c) => !/You maintain long-term memory/.test(c.req.messages[0]?.content ?? ''));
+    assert.ok(steps.length >= 4, 'the fixture checks nothing');
+    const rows = [];
+    for (let i = 1; i < steps.length; i++) {
+      const prev = steps[i - 1].wire;
+      const cur = steps[i].wire;
+      assert.equal(cur.tools, prev.tools, `step ${i + 1} sent different tool definitions than step ${i}: the cached prefix is void`);
+      rows.push(sharedPrefix(prev.messages, cur.messages) / prev.messages.length);
+    }
+    console.log(`prefix kept per step (share of the previous request's transcript): ${rows.map((r) => `${(r * 100).toFixed(1)}%`).join(' ')}`);
+    for (const r of rows) assert.ok(r > 0.97, `a step repeated only ${(r * 100).toFixed(1)}% of the previous transcript`);
   } finally { h.stop(); }
 });

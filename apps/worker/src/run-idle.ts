@@ -96,6 +96,69 @@ export function afterChange(counts: Record<string, number> | undefined, key: str
 
 
 /**
+ * Changing two things back and forth. afterChange forgets everything when the target changes, so tweak A, read, tweak B,
+ * read never reaches its limit (scripted S3 and S3b: 400 steps, 1,107 Credits). This keeps the last CHANGE_WINDOW
+ * changes. When one target holds WINDOW_NUDGE of them the model is told, once per WINDOW_NUDGE changes; the second
+ * time the window is still dominated, the run ends on what it built. Work spread over many targets never counts, and a
+ * target that is one change in a few is building, not retuning. A change aimed at nothing (a script's own code names its
+ * target inside the code) is not counted at all: twelve different run_luau scripts in a row ended successful
+ * script-built maps through afterChange, which is the capability this window must not cut.
+ */
+export const CHANGE_WINDOW = 24;
+export const WINDOW_NUDGE = 12;
+export const WINDOW_FINISH_AT_NUDGES = 2;
+
+export interface ChangeWindow { keys: string[]; since: number; nudges: number }
+
+export function afterChangeWindow(state: ChangeWindow | undefined, key: string): { state: ChangeWindow; action: RetuneAction } {
+  const keys = [...(state?.keys ?? []), key].slice(-CHANGE_WINDOW);
+  const since = (state?.since ?? WINDOW_NUDGE) + 1; // changes since the last nudge
+  const dominated = keys.filter((k) => k === key).length >= WINDOW_NUDGE;
+  if (!dominated || since < WINDOW_NUDGE) return { state: { keys, since, nudges: state?.nudges ?? 0 }, action: 'none' };
+  const nudges = (state?.nudges ?? 0) + 1;
+  return { state: { keys, since: 0, nudges }, action: nudges >= WINDOW_FINISH_AT_NUDGES ? 'finish' : 'nudge' };
+}
+
+
+/**
+ * A tool that keeps failing, whatever it is sent. Measured 2026-10-02 (owner benchmark, map runs of 434 and
+ * 584 Credits): the model hand-computed coordinates for ~75 parts and retried failed calls dozens of times.
+ * Each retry changed its numbers, so the identical-call guard (MAX_SAME_FAILURES, which is keyed on tool +
+ * arguments) never saw a repeat, and every failed step was billed. This counts consecutive failures per TOOL
+ * across any arguments; one success of that tool clears its count. At FAIL_STEER_AT (and again at twice that)
+ * the model is told the calls failed the same way and to read state or change approach; at FAIL_END_AT the
+ * run ends on what it built. The tool is never withheld: that would change the offered tools and void the
+ * cached prefix, and the agent decides what to try next.
+ */
+export const FAIL_STEER_AT = 3;
+export const FAIL_END_AT = 8;
+
+export type FailureAction = 'none' | 'steer' | 'finish';
+
+/**
+ * The steer for a tool that keeps failing. It carries a count and a REGISTERED tool name (the run loop only counts calls
+ * that were in the offered set) and nothing else: the error text stays in the tool results, where it is fenced as
+ * untrusted output, and is not quoted into a user-role turn (packages/evals security.test.mjs A5 reviews this push).
+ */
+export function failureSteer(tool: string, failures: number): string {
+  return `Your last ${failures} calls to ${tool} failed the same way, with different arguments each time (the errors are in the results above). ` +
+    'Another variation of the same call will most likely fail too: read the current state to see what is really there, or change your approach ' +
+    '(a different tool, or smaller steps), instead of retrying with new numbers.';
+}
+
+export function afterToolOutcome(streaks: Record<string, number> | undefined, tool: string, ok: boolean): { streaks: Record<string, number>; action: FailureAction } {
+  const next = { ...streaks };
+  if (ok) { delete next[tool]; return { streaks: next, action: 'none' }; }
+  // Bounded like addMade: a tool name is a registry name, so this only guards a corrupted persisted record.
+  if (!Object.prototype.hasOwnProperty.call(next, tool) && Object.keys(next).length >= 40) return { streaks: next, action: 'none' };
+  const n = (next[tool] ?? 0) + 1;
+  next[tool] = n;
+  const action: FailureAction = n >= FAIL_END_AT ? 'finish' : n === FAIL_STEER_AT || n === FAIL_STEER_AT * 2 ? 'steer' : 'none';
+  return { streaks: next, action };
+}
+
+
+/**
  * WHAT A CHANGE GAVE THE USER, in the words a young creator uses. A pair is a countable thing ("a sound", "3 sounds");
  * a string is a phrase that never takes a number. A tool that is not listed reads as "other changes", never as its own
  * name (tests/run-idle.test.mjs makes every project-changing tool answer for itself).

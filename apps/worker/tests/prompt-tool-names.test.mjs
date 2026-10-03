@@ -231,7 +231,10 @@ test('an unpaired prompt SAYS the building tools are unavailable', () => {
   assert.match(unpaired, /unavailable/i, 'and that the building tools are gone');
   assert.match(unpaired, /plan|discuss|search docs/i, 'and what the model can still do instead');
   assert.doesNotMatch(paired, /Studio is NOT connected/, 'and a paired session must not be told otherwise');
-  assert.ok(unpaired.length > paired.length, 'the unpaired prompt ADDS the notice rather than trimming guidance');
+  // The property is "adds the notice rather than trimming guidance", not a comparison of lengths: the paired prompt
+  // also carries the planner paragraph, so which is longer is an accident of wording (credits, 2026-10-02).
+  assert.match(unpaired, /You are the builder/, 'the unpaired prompt dropped the build guidance');
+  assert.match(unpaired, /Prefer one create_instances call with a full nested Model/, 'the unpaired prompt dropped the build guidance');
 });
 
 test('AN UNPAIRED PROMPT DOES NOT SEND THE USER AFTER A PLUGIN THEY CANNOT GET', () => {

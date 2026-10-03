@@ -88,13 +88,13 @@ import { recoverToolCall } from '../tool-recovery';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
-import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
+import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
 import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
 import type { RunFailure } from '@golem/shared';
 import { aim, trimTranscriptReport } from '../transcript';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
@@ -280,6 +280,8 @@ interface AgentState {
    * more_tools lifts it for the rest of the run.
    */
   focused?: boolean;
+  /** Deferred tools more_tools unlocked by name while the run is still focused (tools.ts DEFERRED_GROUPS). */
+  unlockedTools?: string[];
   /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
   objectFirst?: boolean;
   /** This run answers a one-object request (it stays true after build_object); only such a run is fenced after it. */
@@ -389,6 +391,10 @@ interface AgentState {
    * that keeps failing the same way is stopped at MAX_SAME_FAILURES. Bounded like `retryableCalls`.
    */
   failedCalls?: { sig: string; error: string; count: number }[];
+  /** Consecutive failures per tool whatever the arguments (run-idle.ts afterToolOutcome); one success of the tool clears it. */
+  failStreaks?: Record<string, number>;
+  /** The last changes by target, for the back-and-forth guard (run-idle.ts afterChangeWindow). */
+  changeWindow?: { keys: string[]; since: number; nudges: number };
   /**
    * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
    * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
@@ -428,6 +434,8 @@ interface AgentState {
   priorStepFailed?: boolean;
   /** provider output cuts recovered inside this same run; diagnostic/escalation only, never a cap */
   lengthRecoveries?: number;
+  /** Output-ceiling cuts in a row (reasoning.ts MAX_CONSECUTIVE_CUTS); cleared by any step that is not cut. */
+  consecutiveCuts?: number;
   /** consecutive provider transport failures; reset after a successful model response */
   transientFailures?: number;
   /** the last visual critique failed its quality gate */
@@ -4194,7 +4202,7 @@ export class SessionDO extends DurableObject<Env> {
       // One rebuild to fix what the check found, never a third build (test 3 round 6, 2026-10-01: three builds in a run).
       : [...((agent.trace?.filter((t) => t.tool === 'build_object' && t.ok).length ?? 0) >= 2 ? [] : ['build_object']), 'play_check', 'get_output_logs', 'get_project_tree']);
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
-      agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
+      agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool, agent.unlockedTools) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
       ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
       : focusedAllowed;
@@ -4318,7 +4326,7 @@ export class SessionDO extends DurableObject<Env> {
           : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' }
           : agent.upgradesFirst && !talkOnly && offeredAllowed.has('add_upgrades') ? { requiredTool: 'add_upgrades' } : {}),
         reasoningEffort: choice.effort,
-        maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
+        maxTokens: tokensAfterCuts(baseTokensFor(agent.mode), choice.effort, agent.consecutiveCuts ?? 0),
       },
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
@@ -4523,6 +4531,14 @@ export class SessionDO extends DurableObject<Env> {
       agent.priorStepFailed = true;
       const cuts = (agent.lengthRecoveries ?? 0) + 1;
       agent.lengthRecoveries = cuts;
+      agent.consecutiveCuts = (agent.consecutiveCuts ?? 0) + 1;
+      // Every cut step is billed and its call discarded: a run that cannot fit its next action in one step stops.
+      if (agent.consecutiveCuts >= MAX_CONSECUTIVE_CUTS) {
+        await this.finishRun(agent, 'incomplete', undefined, agent.mutated
+          ? `Apple stopped because the next step was too big for it to write in one go, even in smaller pieces. ${spaced(builtSummary(agent.made))}Ask for the rest one area at a time and it will carry on.`
+          : 'Apple stopped because the next step was too big for it to write in one go, even in smaller pieces, so nothing in your place was changed. Ask for a smaller part first and it will carry on.');
+        return;
+      }
       const batchHint =
         cuts >= 4
           ? 'Use exactly one small mutating tool call for the next piece, then continue in later steps.'
@@ -4541,6 +4557,7 @@ export class SessionDO extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
     }
+    agent.consecutiveCuts = 0; // this step was not cut (the cut branch above returns)
     if (!res.toolCalls.length && finishReason !== 'stop') {
       //[[ "EVERYTHING COMPLETED BEFORE THE CUTOFF IS SAVED" IS A CLAIM, AND IT NEEDS A SUBJECT.
       //
@@ -4763,6 +4780,8 @@ export class SessionDO extends DurableObject<Env> {
     let duplicatesThisStep = 0;
     let mutatedThisStep = false;
     let retuneThisStep: RetuneAction = 'none';
+    let windowNudge = false;
+    let failThisStep: { action: FailureAction; tool: string } | undefined;
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
     for (const call of res.toolCalls.slice(0, 4)) {
@@ -4953,10 +4972,19 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
-        const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
-        agent.changesByTarget = retune.counts;
+        // A change aimed at nothing (a script's target is inside its code) is not "the same target" as the last one.
+        const target = aim(call.arguments);
+        if (target) {
+          const retune = afterChange(agent.changesByTarget, `${call.name} ${target}`);
+          agent.changesByTarget = retune.counts;
+          if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
+          // Back and forth between two things never repeats one target in a row (run-idle.ts afterChangeWindow).
+          const window = afterChangeWindow(agent.changeWindow, `${call.name} ${target}`);
+          agent.changeWindow = window.state;
+          if (window.action === 'finish') retuneThisStep = 'finish';
+          else if (window.action === 'nudge') windowNudge = true;
+        }
         agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
-        if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
       }
       if (out.ok && call.name === 'build_scene') {
         let kitArgs: Record<string, unknown> = {};
@@ -5056,6 +5084,12 @@ export class SessionDO extends DurableObject<Env> {
           failed.push({ sig: failSig, error, count: prior && prior.error === error ? prior.count + 1 : 1 });
         }
         agent.failedCalls = failed.slice(-8);
+        // The same TOOL failing again with different arguments each time is invisible to the signature above.
+        const outcome = afterToolOutcome(agent.failStreaks, call.name, out.ok);
+        agent.failStreaks = outcome.streaks;
+        if (outcome.action === 'finish' || (outcome.action === 'steer' && failThisStep?.action !== 'finish')) {
+          failThisStep = { action: outcome.action, tool: call.name };
+        }
       }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
@@ -5285,6 +5319,22 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'incomplete');
       return;
     }
+    // A tool that keeps failing, whatever it is sent (owner benchmark 2026-10-02: dozens of billed retries on a map).
+    if (failThisStep?.action === 'finish') {
+      const note = agent.mutated
+        ? `Apple stopped because the same kind of step kept failing. ${spaced(builtSummary(agent.made))}Tell it what to try next and it will carry on from there.`
+        : 'Apple stopped because the same kind of step kept failing, and nothing in your place was changed. Send your message again, or say what to try differently.';
+      agent.terminalNote = note;
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, 'incomplete');
+      return;
+    }
+    if (failThisStep?.action === 'steer') {
+      agent.llm.push({ role: 'user', content: failureSteer(failThisStep.tool, agent.failStreaks?.[failThisStep.tool] ?? FAIL_STEER_AT) });
+    }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
       const note = `Apple stopped because it kept changing the same thing over and over. ${spaced(builtSummary(agent.made))}Tell it what should look different and it will carry on from there.`;
@@ -5302,6 +5352,15 @@ export class SessionDO extends DurableObject<Env> {
         content:
           'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
           'finish anything else the request still needs, and then reply to the user.',
+      });
+    }
+    if (windowNudge && retuneThisStep !== 'nudge') {
+      agent.llm.push({
+        role: 'user',
+        content:
+          'Over your last 24 changes, 12 or more went to the same thing, with other changes in between. If you are going back and forth ' +
+          'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
+          'If each change really adds something new, carry on.',
       });
     }
     if (idle.action === 'build') {
@@ -6162,7 +6221,11 @@ export class SessionDO extends DurableObject<Env> {
       localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
-      widenTools: () => { if (agent) agent.focused = false; },
+      widenTools: (tools) => {
+        if (!agent) return;
+        if (!tools?.length) agent.focused = false;
+        else agent.unlockedTools = [...new Set([...(agent.unlockedTools ?? []), ...tools])];
+      },
       addSources: (fresh) => { if (!agent) return []; agent.sources ??= []; return addSources(agent.sources, fresh); },
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
       // response, and a flag captured when the context was constructed would miss the conflict.

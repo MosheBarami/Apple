@@ -289,6 +289,26 @@ export function tokensForEffort(base: number, effort: Effort): number {
   return Math.round(base * scale);
 }
 
+/**
+ * How many output-ceiling cuts in a row a run may be billed for before it ends. A cut step is paid for
+ * (its neurons are settled before the cut is noticed) and its tool call is discarded, and the run used to
+ * allow any number of them. The "split it smaller" nudge reaches its strongest wording at the fourth cut,
+ * so the fifth ends the run.
+ */
+export const MAX_CONSECUTIVE_CUTS = 5;
+
+/**
+ * The output budget for a step, given how many steps in a row were just cut at their ceiling. A step whose
+ * previous attempt was cut is never given less than the full budget `high` gets: after the run spent its
+ * high-effort steps the budget fell to the base (4,400), and a 75-part create_instances payload of about
+ * 5.4k tokens cannot fit under that, so the recovery step was cut again. Asking past the gateway's
+ * ceiling is free (it clamps before it reserves), and an unused budget costs nothing.
+ */
+export function tokensAfterCuts(base: number, effort: Effort, cutsInARow: number): number {
+  const asked = tokensForEffort(base, effort);
+  return cutsInARow > 0 ? Math.max(asked, tokensForEffort(base, 'high')) : asked;
+}
+
 export function higher(a: Effort, b: Effort): Effort {
   return BY_RANK[Math.max(RANK[a], RANK[b])]!;
 }
