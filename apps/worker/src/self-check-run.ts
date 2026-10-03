@@ -17,7 +17,7 @@
  */
 import type { EvidenceLedger } from './evidence-ledger.ts';
 import { decideLookGate, lookExtra, noteGate } from './look-gate.ts';
-import { actionable, auditReply, notCheckedLine, resultOf, steerForFindings, type Finding, type Offered } from './claim-audit.ts';
+import { actionable, ALREADY_SHOWN, auditReply, notCheckedLine, resultOf, steerForFindings, type Finding, type Offered } from './claim-audit.ts';
 import { SELF_CHECK_LIMITS } from './self-check.ts';
 
 export type AnswerCheck =
@@ -84,14 +84,16 @@ export function forcedLookMessage(body: string): string {
     'These are observations, not a score; you decide what they mean.\n' +
     `${body}\n` +
     'If something you were asked for is not seen, or something looks wrong, fix it now with a tool call. ' +
-    'Then answer again, briefly: say only what the observations and your own checks support, and say plainly what you could not check.'
+    'Then answer again, briefly: say only what the observations and your own checks support, and say plainly what you could not check. ' +
+    ALREADY_SHOWN
   );
 }
 
 export function askLookMessage(): string {
   return (
     'You changed the place after your last look, so what you are about to say has not been looked at. ' +
-    'Call look now (with `expect` naming what the request should show), fix anything it reports, then answer again.'
+    'Call look now (with `expect` naming what the request should show), fix anything it reports, then answer again. ' +
+    ALREADY_SHOWN
   );
 }
 

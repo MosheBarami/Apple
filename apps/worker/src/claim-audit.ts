@@ -415,6 +415,12 @@ export function actionable(result: AuditResult, can: Offered): boolean {
 }
 
 /** The message that sends unsupported claims back. For the agent, so it may name its own tools. Null when there is nothing to send. */
+/**
+ * Said in every message the self-check sends back. The answer it interrupts has already streamed to the user, so a next answer
+ * that restates it shows them the same paragraph again (benchmark o01, 2026-10-04): it carries only what is new or corrected.
+ */
+export const ALREADY_SHOWN = 'The user has already read your previous answer: do not repeat it; write only what is new or corrected, in one or two sentences.';
+
 export function steerForFindings(result: AuditResult, can: Offered): string | null {
   const send = [
     ...result.contradicted,
@@ -438,7 +444,7 @@ export function steerForFindings(result: AuditResult, can: Offered): string | nu
     'Before you answer: your reply makes claims that what this run observed does not support.\n' +
     `${lines.join('\n')}\n` +
     `Settle each one now${how ? ` (${how})` : ''} and correct what is wrong. If you cannot check a claim, take it out of your answer or say that you did not check it. ` +
-    'Do not repeat a claim you have not seen. Then answer again, briefly.'
+    `Do not repeat a claim you have not seen. Then answer again, briefly. ${ALREADY_SHOWN}`
   );
 }
 

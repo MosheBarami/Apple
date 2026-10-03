@@ -140,3 +140,18 @@ test('the judge is worth a call only when the answer could actually go through: 
   ready.auditRounds = SELF_CHECK_LIMITS.auditRounds;
   assert.equal(judgeWorthIt(input(ready)), false, 'no round left to send a finding back in');
 });
+
+// Benchmark 2026-10-04, item o01 with SELF_CHECK on: the agent's first answer had already streamed to the user when the check
+// sent it back, and its next answer restated the first; the user read the same paragraph three times. Every message the check
+// sends back says the earlier answer was already read, so the next one carries only what is new or corrected.
+test('every message the self-check sends back says the earlier answer was already read', async () => {
+  const R = await import('../src/self-check-run.ts');
+  const A = await import('../src/claim-audit.ts');
+  const shown = /already read your previous answer/i;
+  assert.match(R.askLookMessage(), shown);
+  assert.match(R.forcedLookMessage('front: seen'), shown);
+  const steer = A.steerForFindings(A.auditReply('The chest opens when you click it.', newLedger()), { read: true, play: true, look: true });
+  assert.ok(steer, 'an unsupported claim produces a steer — this check would be vacuous otherwise');
+  assert.match(steer, shown);
+  assert.ok(A.ALREADY_SHOWN && shown.test(A.ALREADY_SHOWN), 'one shared sentence, not three copies');
+});
