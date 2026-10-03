@@ -6,16 +6,11 @@ import { join } from 'node:path';
 // and the shared package drifting apart.
 import {
   MODEL_REGISTRY,
-  PLAN_COPY,
-  PLAN_IDS,
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-  PRODUCT_MODES,
-  PRODUCT_MODE_INFO,
   STUDIO_PLUGIN_INSTALL_HREF,
   STUDIO_PLUGIN_STORE_LIVE,
   STUDIO_PLUGIN_URL,
-  canUseProductModel,
 } from '../../packages/shared/src/index';
 import { strayCanvases } from './owner-picks';
 
@@ -51,7 +46,9 @@ import { strayCanvases } from './owner-picks';
  * ONE ASSERTION IS INVERTED: "claims no second model" forbade the words "apple max". Apple MAX is a
  * real model today (PRODUCT_MODELS), so the property it protected — no capability claim without a
  * capability — is asserted directly: the page names exactly the shared models, and says which plans
- * include each by asking canUseProductModel.
+ * include each. RESTATED 2026-10-03 (V3 G01/G16, 38efea2e, c839d7af): one engine on every plan and no
+ * modes, so canUseProductModel, PRODUCT_MODES and /docs/modes are gone; each card says "every plan"
+ * and the section carries no mode rows.
  */
 
 /** Routes this site links to that Astro does not build, and what publishes each. */
@@ -185,8 +182,8 @@ test('holds the composition: the sections the nav names, the shared header, a vi
   expect(mark.padding, 'the header mark is padded into nothing').toBe(0);
   expect(mark.drawnW * mark.drawnH, 'the header mark draws no pixels').toBeGreaterThan(100);
 
-  // Modes from PRODUCT_MODES, models from PRODUCT_MODELS — derived, so a third cannot hide.
-  await expect(page.locator('#models .mode-row')).toHaveCount(PRODUCT_MODES.length);
+  // Models from PRODUCT_MODELS — derived, so a second cannot hide. No mode rows: V3 G16 removed modes.
+  await expect(page.locator('#models .mode-row')).toHaveCount(0);
   await expect(page.locator('#models .model-card')).toHaveCount(PRODUCT_MODELS.length);
 
   // The type: the shared system stack, never bold, sentence case.
@@ -251,7 +248,8 @@ test('every nav destination resolves', async ({ page }) => {
 
   expect(bad, `dead nav destinations:\n${bad.join('\n')}`).toEqual([]);
 
-  for (const route of ['/docs/getting-started', '/docs/modes', '/docs/plugin', '/docs/connect', '/docs']) {
+  // RESTATED 2026-10-03: /docs/modes went with the modes (V3 G16, c839d7af).
+  for (const route of ['/docs/getting-started', '/docs/plugin', '/docs/connect', '/docs']) {
     const res = await page.request.get(route);
     expect(res.status(), `${route} should resolve`).toBe(200);
   }
@@ -277,23 +275,20 @@ test('names no model maker the product does not offer, and never what Apple itse
 });
 
 test('names exactly the models the product has, and the plans that include each', async ({ page }) => {
-  // INVERTED from "claims no second model". Apple MAX is real (PRODUCT_MODELS); what must not happen
-  // is a model named here that the product does not have, or Apple MAX promised to a plan that
-  // canUseProductModel refuses — or Apple MAX described as a plan ("the subscription tier").
+  // INVERTED from "claims no second model": what must not happen is a model named here that the
+  // product does not have, or a model described as a plan ("the subscription tier").
+  // RESTATED 2026-10-03 (V3 G01): one engine, on every plan, so each card says "every plan".
   await page.goto('/');
   const models = page.locator('#models .model-card');
   for (const [i, model] of PRODUCT_MODELS.entries()) {
     const card = models.nth(i);
     await expect(card).toContainText(PRODUCT_MODEL_INFO[model].name.replace(' MAX', ''));
-    const plans = PLAN_IDS.filter((id) => canUseProductModel(model, id)).map((id) => PLAN_COPY[id].name);
-    const text = (await card.textContent()) ?? '';
-    if (plans.length < PLAN_IDS.length) for (const p of plans) expect(text, `${model} does not name ${p}`).toContain(p);
-    else expect(text.toLowerCase()).toContain('every plan');
+    expect(((await card.textContent()) ?? '').toLowerCase(), `${model} does not say it is on every plan`).toContain('every plan');
   }
   const body = ((await page.locator('body').textContent()) ?? '').toLowerCase();
   expect(body).not.toContain('subscription tier');
-  for (const mode of PRODUCT_MODES) await expect(page.locator('#models')).toContainText(PRODUCT_MODE_INFO[mode].name);
-  await expect(page.locator('#models')).toContainText('Autonomous');
+  await expect(page.locator('#models .model-card'), 'a model card the product does not have').toHaveCount(PRODUCT_MODELS.length);
+  await expect(page.locator('#models'), 'a mode name survived V3 G16').not.toContainText(/\b(Plan|Agent|Autonomous) mode\b/);
 });
 
 test('counts in Credits, capitalised', async ({ page }) => {

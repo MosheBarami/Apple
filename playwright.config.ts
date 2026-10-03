@@ -35,7 +35,10 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: `pnpm --filter @golem/site exec astro preview --port ${PORT}`,
+    // --ignore-lock: Astro 7's preview detaches into a background daemon when it detects an AI agent
+    // (and refuses to start beside a running one), so Playwright saw "exited early". Playwright owns
+    // this server's lifetime; the flag keeps it in the foreground. CI detects no agent either way.
+    command: `pnpm --filter @golem/site exec astro preview --port ${PORT} --ignore-lock`,
     url: `http://localhost:${PORT}`,
     /**
      * NEVER REUSE. This was `!process.env.CI`, which meant that outside CI Playwright attached to
