@@ -2351,6 +2351,11 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // Stop button, and nothing else. It can end a run; it cannot read, start or change one, which
       // is strictly less than agent-run above already grants the same key.
       'POST /api/admin/agent-stop/:id',
+      // Reviewed 2026-10-03: the one entry that DESTROYS tenant data. It deletes the project's conversation, memory,
+      // op log and every checkpoint but the baseline, and empties the place (the owner benchmark's fresh chat). It
+      // refuses during a run, and it refuses any project without a `bench-baseline` checkpoint, so the key cannot
+      // wipe a customer's project with it (apps/worker/tests/bench-reset-scope.test.mjs).
+      'POST /api/admin/bench-reset/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',
