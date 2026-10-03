@@ -460,3 +460,12 @@ test('the session no longer decides what an object request is, answers for it, o
     assert.equal(tool.includes(gone), false, `${gone} is back in object-tool.ts`);
   }
 });
+
+// Benchmark 2026-10-04, item s07: a part's text with face "front" failed the whole build ("Enum.NormalId has no item front").
+// A face name in any case is the NormalId item it means; a face that is not one still fails as before.
+test('a text face in any case is the NormalId item it means', () => {
+  assert.equal(O.normalFace('front'), 'Front');
+  assert.equal(O.normalFace('TOP'), 'Top');
+  assert.equal(O.normalFace('Enum.NormalId.back'), 'Back');
+  assert.equal(O.normalFace('sideways'), null);
+});

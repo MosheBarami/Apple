@@ -144,6 +144,12 @@ const v3 = (v: unknown): V3 | null => {
 const vol = (p: ObjectPart) => p.size[0] * p.size[1] * p.size[2];
 const holds = (q: ObjectPart, at: V3, margin = 0.05) => [0, 1, 2].every((i) => Math.abs(at[i]! - q.at[i]!) < q.size[i]! / 2 - margin);
 
+/** A face name in any case ("front", "TOP") as the Enum.NormalId item it means, or null. Benchmark s07 (2026-10-04): "front" failed the build. */
+export function normalFace(face: unknown): string | null {
+  const name = String(face ?? '').trim().replace(/^Enum\.NormalId\./i, '').toLowerCase();
+  return ['Front', 'Back', 'Left', 'Right', 'Top', 'Bottom'].find((f) => f.toLowerCase() === name) ?? null;
+}
+
 /** The face a part's words go on when none is given: Top for a flat part, else the thin side the default view sees. Pure. */
 export function thinFace(size: V3): string {
   const thin = size.indexOf(Math.min(...size));
@@ -283,7 +289,7 @@ export function expandObject(a: Record<string, unknown>): ObjectPlan | { error: 
     const textObj = (textIn && typeof textIn === 'object' ? textIn : {}) as Record<string, unknown>;
     const textOf = (value: unknown) => value === undefined || value === '' ? undefined : {
       // No face given: the side the part is thinnest on.
-      value: String(value).slice(0, 24), face: typeof textObj.face === 'string' ? String(textObj.face) : thinFace(size),
+      value: String(value).slice(0, 24), face: typeof textObj.face === 'string' ? (normalFace(textObj.face) ?? String(textObj.face)) : thinFace(size),
       // The ink is the spec's own colour; white when it gave none. Low contrast is reported (checks), never repaired.
       color: HEX.test(String(textObj.color ?? '')) ? String(textObj.color) : '#ffffff',
       ...(/^[A-Za-z]{3,30}$/.test(String(textObj.font ?? '')) ? { font: String(textObj.font) } : {}),
