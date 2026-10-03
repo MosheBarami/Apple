@@ -585,3 +585,17 @@ test('no subject is named in the behaviour code: the words the repo treats as su
   const unexpected = [...found].filter(([w]) => !generic.has(w) && !generic.has(w.replace(/s$/, ''))).map(([w, fs]) => `${w} (${[...fs].join(', ')})`);
   assert.deepEqual(unexpected, [], 'a subject word is in code that is supposed to know no subjects');
 });
+
+// Benchmark 2026-10-04, item o05 (jukebox): insert_library_model returned game.Workspace["Rolitzer Jukebox"], and add_behaviour
+// refused that path three times as "not a Model in Workspace" because it checked a text prefix. Any path form the tools return is
+// accepted by both tools; a path outside Workspace still is not.
+test('add_behaviour and model_anatomy accept the bracket path form for names with spaces', async () => {
+  const bracket = 'game.Workspace["Rolitzer Jukebox"]';
+  const { studio: ctx } = place();
+  for (const tool of ['add_behaviour', 'model_anatomy']) {
+    const out = await T.runTool(ctx, tool, JSON.stringify({ model: bracket }));
+    assert.doesNotMatch(out.resultForLlm, /must be the path of a Model/, `${tool} refused the bracket form`);
+    const outside = await T.runTool(ctx, tool, JSON.stringify({ model: 'game.ReplicatedStorage["A B"]' }));
+    assert.match(outside.resultForLlm, /must be the path of a Model/, `${tool} accepted a path outside Workspace`);
+  }
+});

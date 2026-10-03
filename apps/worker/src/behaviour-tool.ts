@@ -25,7 +25,7 @@ import { COMPONENTS } from './components.generated';
 import { refuseSoundId } from './fx-library';
 import { parseInstancePath } from './effects';
 import { BEHAVIOUR_MODULE, parseConfigSource, renderConfigSource, type BehaviourRecord } from './behaviour-config';
-import { analyse, findNode, isLightClass, isPartClass, parseTree, type ModelTree, type Seg, type TNode } from './model-anatomy';
+import { analyse, findNode, inWorkspace, isLightClass, isPartClass, parseTree, type ModelTree, type Seg, type TNode } from './model-anatomy';
 import { sourceHash } from './luau-review';
 
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
@@ -424,7 +424,7 @@ const MAX_BEHAVIOURS = 40;
 export async function addBehaviour(ctx: AgentCtx, a: Record<string, unknown>) {
   if (!behaviourEnabled(ctx.env)) return { error: 'add_behaviour is switched off on this deployment (BEHAVIOUR_V2=off)' };
   const model = String(a.model ?? '');
-  if (!model.startsWith('game.Workspace.')) return { error: 'model must be the path of a Model (or a part) in Workspace, e.g. game.Workspace.MyModel' };
+  if (!inWorkspace(model)) return { error: 'model must be the path of a Model (or a part) in Workspace, e.g. game.Workspace.MyModel' };
   for (const key of Object.keys(a)) if (!['model', 'behaviours', 'remove', 'replace'].includes(key)) return { error: `add_behaviour does not take "${key}" (model, behaviours, remove, replace)` };
   if (a.behaviours !== undefined && (!Array.isArray(a.behaviours) || a.behaviours.length === 0 || a.behaviours.length > MAX_BEHAVIOURS)) return { error: `behaviours must be a list of 1 to ${MAX_BEHAVIOURS}` };
   if (a.remove !== undefined && (!Array.isArray(a.remove) || a.remove.some((x) => typeof x !== 'string'))) return { error: 'remove must be a list of behaviour ids' };

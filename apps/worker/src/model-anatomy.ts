@@ -580,12 +580,18 @@ export function fitReport(out: AnatomyReport, budget: number): AnatomyReport {
 
 // ------------------------------------------------------------------------------------------------------------- tool
 
+/** A path into Workspace in any form the tools return (`game.Workspace.A.B` or `game.Workspace["A B"]`), parsed, never prefix-matched. */
+export function inWorkspace(path: string): boolean {
+  const segs = parseInstancePath(path);
+  return !!segs && segs.length >= 2 && segs[0] === 'Workspace';
+}
+
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
 
 /** The tool: read the model from the place and report it (no write). */
 export async function modelAnatomy(ctx: AgentCtx, a: Record<string, unknown>) {
   const model = String(a.model ?? '');
-  if (!model.startsWith('game.Workspace.')) return { error: 'model must be the path of a Model (or a part) in Workspace, e.g. game.Workspace.MyModel' };
+  if (!inWorkspace(model)) return { error: 'model must be the path of a Model (or a part) in Workspace, e.g. game.Workspace.MyModel' };
   const got = await ctx.execStudioOp({ op: 'get_tree', root: model, maxDepth: 12, maxNodes: 1200 }, 30_000);
   if (!got.ok) return { error: `could not read ${model}: ${clip(got.error)}` };
   const tree = parseTree(got.data);
