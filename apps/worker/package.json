@@ -13,13 +13,13 @@
     "@golem/design": "workspace:*",
     "@golem/evals": "workspace:*",
     "@golem/shared": "workspace:*",
-    "hono": "^4.6.0",
+    "hono": "^4.13.12",
     "jose": "^5.9.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260830.1",
     "esbuild": "^0.25.0",
     "typescript": "^5.6.0",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.147.0"
   }
 }

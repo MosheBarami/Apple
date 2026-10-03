@@ -6,6 +6,12 @@ packages:
   # Training and LoRA are cancelled (V3 §2). packages/training stays in the tree as the
   # historical archive; it is not a workspace member, so `pnpm -r` never builds or tests it.
   - '!packages/training'
+overrides:
+  # Dependabot 2026-10-03: transitive copies (ajv's fast-uri, mermaid's dompurify, astro's devalue, unifont's undici 8) held to patched releases.
+  fast-uri: '>=3.1.8 <4'
+  dompurify: '>=3.4.16 <4'
+  devalue: '>=5.9.3 <6'
+  undici@8: '>=8.10.2 <9'
 allowBuilds:
   esbuild: true
   workerd: true
