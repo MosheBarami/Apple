@@ -105,6 +105,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    // The browser's address-bar band is the page's own ground: read off --paper, never typed twice.
+    const band = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+    if (band) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', band);
   }, [theme]);
 
   // A class rather than an attribute, so a stylesheet can say `.motion-reduced .thing` without

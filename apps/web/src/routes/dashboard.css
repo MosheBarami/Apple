@@ -141,8 +141,8 @@
    derived it, where --sh-accent-light must be DARKER than the page rather than lighter or an
    accented control loses its edge against white. */
 :root[data-theme='light'] .page.shelf {
-  --sh-accent-light: #285fb5;
-  --sh-accent-deep: #154394;
+  --sh-accent-light: var(--accent);
+  --sh-accent-deep: var(--accent);
   --sh-accent-ring: color-mix(in srgb, var(--sh-accent) 45%, transparent);
   --sh-accent-glow: color-mix(in srgb, var(--sh-accent) 12%, transparent);
 
@@ -150,7 +150,7 @@
      hover step goes DOWN — the same relationship, inverted, which is how every pair in this ramp
      works. The separation is carried by the hairline, which is why it is stronger here. */
   --sh-card: #ffffff;
-  --sh-card-hi: #f2f6f3;
+  --sh-card-hi: var(--paper-2);
 
   --sh-ink-2: color-mix(in srgb, var(--ink) 85%, transparent);
   --sh-ink-3: color-mix(in srgb, var(--ink) 68%, transparent);

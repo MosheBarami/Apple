@@ -48,7 +48,10 @@ test('the hero is product UI rather than a decorative scene', () => {
   assert.ok(start >= 0 && end > start, 'the landing hero could not be found');
   const hero = source.slice(start, end + 10);
 
-  assert.match(hero, /<form\s+class="composer"/,
+  // RESTATED 2026-10-02 (phase 6): the form now also carries `rise`, its entrance, so the pin was on
+  // the spelling `class="composer"`. The property is that the hero holds a real form whose class
+  // list includes `composer`.
+  assert.match(hero, /<form\s+class="[^"]*\bcomposer\b[^"]*"/,
     'the hero lost the real composer that is its primary interaction');
   assert.match(hero, /<textarea\b[^>]*class="composer-input"/s,
     'the composer is no longer an operable text field');
@@ -177,7 +180,11 @@ test('no rule spends the violet tokens, and nothing glows or grades', () => {
   const tokens = withoutComments(minimal);
   // The Autonomous violet left with the Autonomous switch (V3 G01): no violet token is declared.
   assert.doesNotMatch(tokens, /--autonomous/i, 'a violet token outlived the Autonomous switch');
-  assert.match(tokens, /--accent:\s*#5b7cfa;/i, 'the dark accent is not the app blue');
+  // RESTATED 2026-10-02 (phase 6, "Ember Rail"): the accent is Ember, #ff8a4c in the dark theme.
+  // This used to pin the app blue #5b7cfa. What is held is that the DARK accent is exactly the one
+  // value this design names, and that the site and the app agree on it (the first test in this file).
+  assert.match(tokens, /--accent:\s*#ff8a4c;/i, 'the dark accent is not Ember'); 
+  assert.doesNotMatch(tokens, /#5b7cfa|#4568e8/i, 'the retired blue accent is still declared');
   assert.doesNotMatch(withoutComments(page), /#8b5cf6|#7550de|#7657ff|#4f7cff/i,
     'a violet or retired accent colour was hard-coded into page markup');
 });

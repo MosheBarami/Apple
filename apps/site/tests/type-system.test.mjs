@@ -157,8 +157,10 @@ test('the mono token reaches technical surfaces while friendly activity uses the
     const rule = new RegExp(`${hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*font-family\\s*:\\s*var\\(--font-mono\\)`);
     assert.match(css, rule, `${hook} does not take the mono token, so a technical surface is set in the body face`);
   }
-  assert.match(css, /\.activity-current\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
-    'the friendly activity phrase does not use the body face');
+  // RESTATED 2026-10-02 (phase 6): the cycling "activity" phrase (`.activity-current`) was a looping
+  // picture of a run with no run behind it, and was retired with the Illustration rebuild of the
+  // loop. The friendly-text half of this test now rests on the body rule below and on the tokens
+  // test above; the mono half above is unchanged.
   assert.match(css, /body\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
     'the landing body does not take the body token');
 });
