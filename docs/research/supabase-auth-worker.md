@@ -1,6 +1,6 @@
 # Supabase Free Tier (2026) + Verifying Supabase Auth JWTs in a Cloudflare Worker
 
-Research for **Golem** (AI SaaS that builds Roblox games; Cloudflare Workers + Workers AI + Supabase; ~$5/month target).
+Research for **Apple** (AI SaaS that builds Roblox games; Cloudflare Workers + Workers AI + Supabase; ~$5/month target).
 Researched 2026-08-30 against official Supabase docs and pricing pages. Anything not confirmed on an official page is marked **UNVERIFIED**.
 
 ---
@@ -37,9 +37,9 @@ Official page: https://supabase.com/docs/guides/platform/free-project-pausing
 - Restore: one click ("Resume project") from the dashboard. **1-year window to restore**; after that you can only download backups/Storage objects and restore into a new project. Paused free projects are restored onto the latest minor Postgres version.
 - Paid (Pro) projects **cannot be paused**.
 
-### Mitigation for Golem
+### Mitigation for Apple
 1. Cheapest reliable fix: a **Cloudflare Worker Cron Trigger** (free — cron triggers are included on the Workers free plan) that hits Supabase daily, e.g. a `select 1`-style read through PostgREST (`GET /rest/v1/<table>?select=id&limit=1` with the publishable/anon key) or an insert into a tiny `heartbeat` table. Any real DB query resets the 7-day timer. Community patterns confirm a scheduled ping (GitHub Actions / cron / uptime monitor) keeps the timer from reaching zero.
-2. Real user traffic counts — once Golem has daily users, the DB queries their sessions generate are themselves the activity.
+2. Real user traffic counts — once Apple has daily users, the DB queries their sessions generate are themselves the activity.
 3. The only guaranteed fix is Pro ($25/mo), which breaks the $5/mo budget — so ship the cron ping from day one and keep the warning-email address monitored.
 4. Note the knock-on risk: if the project ever pauses, **auth, DB, storage, and edge functions all go down** until manually resumed — there is no auto-resume on incoming traffic.
 
@@ -55,7 +55,7 @@ Official pages: https://supabase.com/docs/guides/auth/auth-smtp, https://supabas
 - With **custom SMTP** configured: emails go to all addresses; an initial default rate limit of **30 emails per hour** applies and is adjustable in the dashboard (Auth → Rate Limits).
 
 ### Does email+password signup work without custom SMTP?
-- **Yes, if you disable "Confirm email"** in Auth settings — users sign up and get a session immediately, no email is ever sent. This is the practical Free-tier path for Golem.
+- **Yes, if you disable "Confirm email"** in Auth settings — users sign up and get a session immediately, no email is ever sent. This is the practical Free-tier path for Apple.
 - **Effectively no, if email confirmation is on** — confirmation mail only reaches team-member addresses and is capped at 2/hour.
 - Password reset ("forgot password") always needs email, so without custom SMTP it only works for team members. Plan to add custom SMTP before real users need resets. Free SMTP options that fit a $5 budget: Resend / Brevo / Mailtrap free tiers (**UNVERIFIED** current free quotas — check before wiring one up).
 
@@ -118,7 +118,7 @@ export async function requireUser(req: Request) {
 
 ### JWT claims (access token)
 Always present: `iss` (`https://<ref>.supabase.co/auth/v1`), `aud` (`"authenticated"` for user tokens, `"anon"` for the publishable/anon key token), `sub` (user UUID), `role` (`"authenticated"` / `"anon"` / `"service_role"`), `exp`, `iat`, `session_id`, `email`, `phone`, `is_anonymous` (boolean), `aal` (`"aal1"`/`"aal2"`). Optional: `app_metadata`, `user_metadata`, `amr`, `jti`, `nbf`, `ref`.
-Authorization tip: put entitlements (e.g. Golem plan tier) in `app_metadata` (user-immutable), never in `user_metadata` (user-editable).
+Authorization tip: put entitlements (e.g. Apple plan tier) in `app_metadata` (user-immutable), never in `user_metadata` (user-editable).
 
 ### Token lifetimes and SPA refresh flow
 - **Access token (JWT): default 1 hour** expiry. Docs recommend keeping the default; below 5 minutes (especially <2 min) is discouraged (server load + clock skew).
@@ -130,7 +130,7 @@ Authorization tip: put entitlements (e.g. Golem plan tier) in `app_metadata` (us
 ### Anonymous sign-in
 - Available as a dashboard toggle (Auth → Providers → Anonymous); the docs gate it by configuration, **not by plan** — it works on Free. Rate limit **30/hour per IP** by default.
 - Anonymous users get `role: "authenticated"` with `is_anonymous: true`, count toward the 50K MAU, and can be converted to permanent users via `updateUser()` (email+password) or `linkIdentity()` (OAuth).
-- Good fit for Golem's "try before signup" flow, but write **restrictive RLS policies** on `is_anonymous` so anonymous users can't reach paid features.
+- Good fit for Apple's "try before signup" flow, but write **restrictive RLS policies** on `is_anonymous` so anonymous users can't reach paid features.
 
 ---
 
@@ -162,12 +162,12 @@ create policy "team access" on public.projects
 for select to authenticated
 using ( id in (select private.user_project_ids()) );
 ```
-5. Golem tenancy model: every table carries `user_id uuid not null default auth.uid() references auth.users(id)`, RLS enabled on all public tables, policies per operation (select/insert/update/delete), and the Worker uses the **publishable (anon) key + the user's JWT** for user-scoped queries — reserve the secret/service-role key for admin jobs only (it bypasses RLS).
+5. Apple tenancy model: every table carries `user_id uuid not null default auth.uid() references auth.users(id)`, RLS enabled on all public tables, policies per operation (select/insert/update/delete), and the Worker uses the **publishable (anon) key + the user's JWT** for user-scoped queries — reserve the secret/service-role key for admin jobs only (it bypasses RLS).
 6. For anonymous users, add **restrictive** policies checking `(auth.jwt()->>'is_anonymous')::boolean is false` on anything gated to permanent accounts.
 
 ---
 
-## 6. Golem-specific verdict
+## 6. Apple-specific verdict
 
 - Free tier fits an MVP: 50K MAU and 500K edge invocations are generous; the real ceilings are **500 MB database**, **5 GB egress**, and **the 7-day pause** — schedule a Cloudflare cron ping immediately.
 - **Disable email confirmation** at launch (or ship custom SMTP) — the default mailer's 2/hour + team-members-only restriction makes confirmed email signup unusable for the public.

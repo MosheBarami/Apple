@@ -107,7 +107,7 @@ collection, selling, four code paths, seven purchase paths, a 40-call burst,
 wrong-typed arguments and two refused unlocks.
 
 The only console errors belong to unrelated third-party Studio plugins
-(`Workspace.GolemPlugin`, `AgileBootstrap`) that were already in the place.
+(`Workspace.ApplePlugin`, `AgileBootstrap`) that were already in the place.
 
 Per §24 a clean log is not on its own a pass — but gameplay was independently
 verified above by reading state back, so the clean log is meaningful here rather

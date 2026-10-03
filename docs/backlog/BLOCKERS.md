@@ -14,7 +14,7 @@ Sources: `docs/audit/APPLE-LEDGER.md` (24 P0 findings), `docs/backlog/FEATURES.j
 (`packages/shared/src/index.ts:869`), so both install buttons point at a docs page instead of an
 installable asset. **No user can install the plugin today.**
 
-**Fix:** Creator Dashboard → Development Items → the Golem plugin → Configure → Distribution →
+**Fix:** Creator Dashboard → Development Items → the Apple plugin → Configure → Distribution →
 *Distribute on Creator Store*. Then set `STUDIO_PLUGIN_STORE_LIVE = true` and redeploy.
 
 **Approve by:** opening the store URL in a logged-out browser and installing it.
@@ -24,7 +24,7 @@ installable asset. **No user can install the plugin today.**
 ### A2. Republish the plugin from Studio
 **Blocks:** every capability added since version 0.1.0 — including all 3D generation.
 
-The checked-in artifact `apps/plugin/release/golem-plugin.rbxm` reports `VERSION = "0.1.0"` while
+The checked-in artifact `apps/plugin/release/apple-plugin.rbxm` reports `VERSION = "0.1.0"` while
 source is `0.2.0`, and contains **zero** occurrences of `GenerateModelAsync`. It predates the
 generation feature entirely and has no asset-policy gate. Independently corroborated in-repo:
 `apps/worker/src/tools.ts:1015` records "the plugin installed in the owner's Studio returns

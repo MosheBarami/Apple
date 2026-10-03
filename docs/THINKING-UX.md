@@ -1,6 +1,6 @@
-# Thinking UX — what the chat may say Golem is doing
+# Thinking UX — what the chat may say Apple is doing
 
-The Golem chat should feel alive, friendly and creative rather than like a debug
+The Apple chat should feel alive, friendly and creative rather than like a debug
 console. It must do that **without ever showing private chain of thought**, and
 without inventing a state to fill a gap.
 

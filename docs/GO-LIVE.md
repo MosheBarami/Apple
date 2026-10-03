@@ -113,10 +113,10 @@ golem's QuotaDO still carried the pre-rename `ledger` schema: a `sparks` column 
 one, so `state()` threw `no such column: credits` and every admin call to it answered 500. The
 migration written for the authority had only been deployed to `apple`.
 
-Deployed to golem and verified, same command against both hosts:
+Deployed to legacy and verified, same command against both hosts:
 
 ```
-golem  ledgerColumns ["id","day","kind","sparks","created_at","credits"]  200   (was 500)
+apple  ledgerColumns ["id","day","kind","sparks","created_at","credits"]  200   (was 500)
 apple  ledgerColumns ["id","day","kind","credits","created_at"]           200
 ```
 

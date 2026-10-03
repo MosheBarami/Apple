@@ -1,10 +1,10 @@
 # Corpus Provenance
 
-Golem's RAG corpus is built exclusively from license-compatible public sources.
+Apple's RAG corpus is built exclusively from license-compatible public sources.
 `src/fetch.mjs` records the exact commit SHA of every source in `raw/manifest.json`
 on each fetch; `data/chunks.jsonl` carries a `url` per chunk that links back to the
 canonical published page, satisfying attribution requirements at retrieval time
-(chunk sources are surfaced as links in the Golem UI).
+(chunk sources are surfaced as links in the Apple UI).
 
 Initial fetch date: **2026-08-30**. Re-fetch by running `pnpm fetch` (shallow
 update; the SHA in `raw/manifest.json` is refreshed).
@@ -65,7 +65,7 @@ prints a note — nothing with an unverified license enters the corpus.
 
 ## Storage
 
-Chunks are uploaded to the Golem worker (`/api/admin/embed-batch`): text into
+Chunks are uploaded to the Apple worker (`/api/admin/embed-batch`): text into
 D1 (`chunks` + `chunks_fts` FTS5) for keyword search, and Workers AI embeddings
 into Vectorize for the `embed=true` subset. `raw/` and `data/` are gitignored;
 nothing from the corpus is committed to this repository.

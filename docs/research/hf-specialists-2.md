@@ -1,4 +1,4 @@
-# Golem Specialist-AI Strategy — Decision Document
+# Apple Specialist-AI Strategy — Decision Document
 
 **Date:** 2026-08-31
 **Supersedes / extends:** [`docs/research/hf-specialists.md`](./hf-specialists.md) (2026-08-30)
@@ -28,13 +28,13 @@ each. The owner's four-part test is applied below, and the result is not close.
 
 | # | Test | Result | Why |
 |---|---|---|---|
-| 1 | **Is there a measurable weakness?** | **PARTIAL — real, but under-instrumented** | The visual defect is genuine and has now been scored twice by the live service: `golem-plaza-baseline` **2/10**, `golem-plaza-improved` **5/10** (`packages/evals/tasks-visual/regression/RESULTS.md`, both fail the ≥6 gate). But that is *n = 2*, and RESULTS.md itself says two fixtures is not a calibration set. The 12-task visual suite exists and **has never run** (§3.2). |
+| 1 | **Is there a measurable weakness?** | **PARTIAL — real, but under-instrumented** | The visual defect is genuine and has now been scored twice by the live service: `apple-plaza-baseline` **2/10**, `apple-plaza-improved` **5/10** (`packages/evals/tasks-visual/regression/RESULTS.md`, both fail the ≥6 gate). But that is *n = 2*, and RESULTS.md itself says two fixtures is not a calibration set. The 12-task visual suite exists and **has never run** (§3.2). |
 | 2 | **Is there a legal dataset — real or synthetic — that addresses it?** | **NO** | Nine domains, zero clean in-domain corpora. The Roblox visual gap is total (one repo: `Shashashasha/Roblox_Images_Dataset`, <1K unlabelled JPEGs, no licence). Every adjacent corpus is either non-commercial at source (3D-FRONT, KonIQ-10k, ScanNet++, nuScenes, Waymo, Matterport3D, ShapeNet), tag-vs-provenance split (IL3D, 3D-SynthPlace, HouseLayout3D, OS-Atlas-data, Q-Tool), or licence-absent (BLINK, ShowUI-desktop-8K, Who_and_When, RICO). |
 | 3 | **Does a suitable model exist?** | **NO — on reachability, before quality** | Cloudflare Workers AI is a fixed catalogue. It has **no** image-embedding model, **no** IQA/aesthetic scorer, **no** reward model or PRM, **no** GUI-grounding model, and **no** 3D task category at all. Nothing in this document can be served from the $10/mo path. BYO-LoRA does not rescue it (§5.3). |
 | 4 | **Is there an eval that can measure the improvement?** | **NO, today** | The 56-task coding eval is saturated at 98.9% with 1.5 pt run-to-run variance. The visual grader (`packages/evals/tasks-visual/grade-visual.mjs`) is written, tested and **blocked**: `validateMetrics()` demands `metrics.ground`, `metrics.lighting`, `metrics.parts.smallPropCount`, and nothing in the plugin emits them. The only `metrics.json` on disk is the empty `_template`. |
 
 **Two of four gates fail outright; the fourth fails today.** Under the owner's own rule — *"do not
-fine-tune merely to say Golem has a custom model"* — the question is closed.
+fine-tune merely to say Apple has a custom model"* — the question is closed.
 
 ### 1.2 The three structural reasons, in order of finality
 
@@ -63,9 +63,9 @@ off-the-shelf coder, Qwen3-Coder-30B-A3B, scores **52.49%**.
 
 **(c) Distillation is economically inverted here.** How2Judge (arXiv:2602.08808) distilled 73K GPT-5
 judge annotations into Qwen3-8B and reached 90.5% agreement with the *teacher*. Distillation's whole
-payoff is cheaper-than-teacher inference. Golem's teacher is `@cf/zai-org/glm-5.3-flash` at
+payoff is cheaper-than-teacher inference. Apple's teacher is `@cf/zai-org/glm-5.3-flash` at
 $0.15/M in, $0.03/M cached, $0.50/M out — a measured **63–72 neurons ($0.0007–0.0008) per critique**.
-A distilled student would cost **more**, because Golem has nowhere free to serve it. And the ceiling
+A distilled student would cost **more**, because Apple has nowhere free to serve it. And the ceiling
 is set by the teacher: on 3D embodied scenes LEGO-Eval (arXiv:2511.03001) measured a naked VLM judge
 at Holistic F1 0.40 / Cohen's κ **0.05** — chance. Distilling a κ=0.05 teacher reproduces noise
 faster. The measured jump to F1 0.81 / κ 0.63 came entirely from **21 structural inspection tools**,
@@ -130,7 +130,7 @@ no file; default copyright, i.e. all rights reserved.
 | `chaofengc/IQA-PyTorch-Weights` | `cc-by-nc-sa-4.0` VERBATIM; library code **"PolyForm Noncommercial License 1.0.0"** VERBATIM | **no** | **Reject — hard.** This one repo is how MUSIQ, MANIQA, CLIP-IQA, TOPIQ, NIMA, LIQE, HyperIQA, DBCNN, BRISQUE and NIQE are practically consumed. Both weights and library are non-commercial. |
 | `harpreetsahota/CLIP-IQA` | `license_name: s-lab-license-1.0` — *"Redistribution and use for non-commercial purpose"* VERBATIM | **no** | **Reject.** *Correction:* ships a single 409 MB `iter_80000.pth`, not the "17KB–474KB head" the survey claimed. |
 | `shunk031/aesthetics-predictor-v2-sac-logos-ava1-l14-linearMSE` | **NO LICENCE** — and a verdict found **no README.md at all** | **no** | **Reject.** *Correction:* 1.22 GB, not "~600 MB fp32". AVA-trained: scores photographic aesthetics, not 3D construction. |
-| `fsw/aesthetic-predictor-v2-5_onnx` / `discus0434/aesthetic-predictor-v2-5` | **AGPL-3.0** (verified via GitHub licence API) | restricted | **Reject** for a hosted SaaS. *Correction honoured:* AGPL §13 obliges offering the **AGPL work's** corresponding source, not automatically Golem's entire source unless combined into one work — the survey's "source-disclosure event" overstated scope. Same for `cafeai/cafe_aesthetic`. |
+| `fsw/aesthetic-predictor-v2-5_onnx` / `discus0434/aesthetic-predictor-v2-5` | **AGPL-3.0** (verified via GitHub licence API) | restricted | **Reject** for a hosted SaaS. *Correction honoured:* AGPL §13 obliges offering the **AGPL work's** corresponding source, not automatically Apple's entire source unless combined into one work — the survey's "source-disclosure event" overstated scope. Same for `cafeai/cafe_aesthetic`. |
 | `xswu/HPSv2` | apache-2.0; GitHub `tgxs002/HPSv2` Apache-2.0; data `ymhao/HPDv2` apache-2.0 — full chain | **yes** | **Reject on fit.** Cleanest chain in the survey. Ranks diffusion outputs, not 3D renders. Reference point only. |
 | `zai-org/ImageReward` | apache-2.0; `THUDM/ImageReward` LICENSE fetched = Apache 2.0; `ImageRewardDB` apache-2.0 | **yes** | **Reject on fit.** Second clean chain. Grades diffusion-image preference. |
 | `yuvalkirstain/PickScore_v1` | **NO LICENCE** on the weights (GitHub code is MIT; code licence ≠ weight licence) | **unverified** | **Reject.** 15.4M downloads with no grant of any kind. Download count is social proof, not a licence. |
@@ -157,7 +157,7 @@ no file; default copyright, i.e. all rights reserved.
 
 | Repo id | Licence | Commercial | Accept / reject |
 |---|---|---|---|
-| `LEGO-Eval/LEGO_Bench` | apache-2.0 (README front-matter) — **TAG-ONLY**, no LICENSE file | yes (schema) | **Reject the data, take the method.** 130 instructions × ~9.6 atomic constraints. Methods aren't copyrightable, so the decomposition idea is free. *Correction:* the survey's claim "Golem's renderer + metrics ARE that tool layer" is **wrong** — LEGO-Eval's 21 tools include 10 per-object/per-relation scene-graph queries (`get_object_info`, `get_spatial_relation`); Golem's metrics are scene-**global** aggregates and cannot adjudicate "red chair left of desk". That layer is unbuilt work. |
+| `LEGO-Eval/LEGO_Bench` | apache-2.0 (README front-matter) — **TAG-ONLY**, no LICENSE file | yes (schema) | **Reject the data, take the method.** 130 instructions × ~9.6 atomic constraints. Methods aren't copyrightable, so the decomposition idea is free. *Correction:* the survey's claim "Apple's renderer + metrics ARE that tool layer" is **wrong** — LEGO-Eval's 21 tools include 10 per-object/per-relation scene-graph queries (`get_object_info`, `get_spatial_relation`); Apple's metrics are scene-**global** aggregates and cannot adjudicate "red chair left of desk". That layer is unbuilt work. |
 | `BLINK-Benchmark/BLINK` | **NO LICENSE FILE.** README disclaims provenance: images come *"from existing image datasets"*; forensics images *"manually collected… from online search"*; copyright owners invited to complain | **no / unverified** | **Reject.** Apache-2.0 covers annotations, not third-party images. |
 | `nyu-visionx/VSI-Bench` | apache-2.0 covers **QA text only**; video is redistributed ScanNet / ScanNet++ / ARKitScenes. ScanNet++ ToU VERBATIM: *"only for non-commercial research and educational purposes. Commercial use is strictly prohibited."* ARKitScenes is Apple NC | **no** | **Reject.** Both verdicts independently. Parquet is text-only (8 cols, 85–175 KB, **no pixels**) — the annotations are useless without frames you cannot license. |
 | `RunsenXu/MMSI-Bench` | `cc-by-4.0` tag contradicted by its own README Acknowledgment: nuScenes (**CC BY-NC-SA 4.0**), Waymo (NC), Matterport3D / Ego4D (signed agreements). Images embedded in a 704 MB parquet | **no** | **Reject.** NC-SA cannot be relicensed CC-BY. |
@@ -165,8 +165,8 @@ no file; default copyright, i.e. all rights reserved.
 | `Shashashasha/Roblox_Images_Dataset` | **NO LICENCE** | **no** | **Reject.** The *only* Roblox image dataset on the Hub: <1K unlabelled JPEGs, no captions, no ratings. Almost certainly scraped, so third-party copyright is live. Concrete proof the gap is total. |
 | `badigadiii/game_screenshots_11k` | **NO LICENCE** | **no** | **Reject.** 11,078 rows of `{image, text}` where `text` is a title, not a rating. No supervision signal. |
 | `klima7/minecraft-segmentation` | `mit` | yes | **Reject on fit.** The only permissively-licensed game-render dataset located anywhere. Wrong engine, wrong task, wrong art direction. |
-| `Voxel51/GQA-Scene-Graph` | **NO LICENCE** | unverified | **Reject.** Representative of all SGG data: photographs from Visual Genome/GQA. Golem already holds exact geometry from Studio — pixel-derived structure is strictly noisier. |
-| `manycore-research/SpatialLM1.1-Qwen-0.5B` | `cc-by-nc-4.0` | **no** | **Reject.** Architecturally the most Golem-shaped model found (emits structured 3D layout as text). Killed three times: NC, point-cloud input, and it re-derives facts Golem knows exactly. |
+| `Voxel51/GQA-Scene-Graph` | **NO LICENCE** | unverified | **Reject.** Representative of all SGG data: photographs from Visual Genome/GQA. Apple already holds exact geometry from Studio — pixel-derived structure is strictly noisier. |
+| `manycore-research/SpatialLM1.1-Qwen-0.5B` | `cc-by-nc-4.0` | **no** | **Reject.** Architecturally the most Apple-shaped model found (emits structured 3D layout as text). Killed three times: NC, point-cloud input, and it re-derives facts Apple knows exactly. |
 | `manycore-research/SpatialLM-Llama-1B` | `llama3.2` | restricted | **Reject.** The commercially-usable v1 is superseded; the 1.1 line went **NC** — a licence downgrade worth recording. |
 | `a8cheng/SpatialRGPT-VILA1.5-8B` · `a8cheng/SpatialRGPT-Bench` | **NO LICENCE** (tags are only `safetensors llava_llama region:us`; bench README is `dataset_info` only) | **no** | **Reject.** Base VILA-1.5 is NVIDIA non-commercial and Llama-3-derived. Undeclared licence is a hard no. |
 | `shyamsn97/Mario-GPT2-700-context-length` | **NO LICENCE** | unverified | **Reject.** Representative of all PCG-ML: output space is a tile grid, not an engine object hierarchy. |
@@ -198,10 +198,10 @@ no file; default copyright, i.e. all rights reserved.
 
 | Repo id | Licence | Commercial | Accept / reject |
 |---|---|---|---|
-| `TorpedoSoftware/LuauLeetcode` | `apache-2.0` **TAG-ONLY** — no LICENSE file; upstream `newfacade/LeetCodeDataset` also tag-only, and `problem_description` carries LeetCode's copyrighted statements | **unverified** | **Reject for now.** *Corrections:* test split is **208 rows**, not 226 (the 226 figure was copied from a model card describing the pre-2025-10-14 split). And `Luau-Devstral-24B-Instruct-v0.2` lists this dataset as its **GRPO training data**, so it cannot fairly compare Golem to that model. Needs Studio + Jest-Lua; measures LeetCode algorithmics, not the scene defect. |
+| `TorpedoSoftware/LuauLeetcode` | `apache-2.0` **TAG-ONLY** — no LICENSE file; upstream `newfacade/LeetCodeDataset` also tag-only, and `problem_description` carries LeetCode's copyrighted statements | **unverified** | **Reject for now.** *Corrections:* test split is **208 rows**, not 226 (the 226 figure was copied from a model card describing the pre-2025-10-14 split). And `Luau-Devstral-24B-Instruct-v0.2` lists this dataset as its **GRPO training data**, so it cannot fairly compare Apple to that model. Needs Studio + Jest-Lua; measures LeetCode algorithmics, not the scene defect. |
 | `TorpedoSoftware/RobloxQA-v2.0` | MIT (full text reproduced in card body) | **yes** | **Accept — cheapest real win in this domain, but low priority.** 3,000 held-out MCQs; dedup **before** split; independent verifier re-derived answers; option-length bias measured at 29.8% vs 25%. Ships in ~a day: shuffle options, string-match, no execution. ~$0.19 per full run; subsample ~300 (~$0.02) per commit. **It measures the saturated axis.** |
 | `TorpedoSoftware/Luau-Devstral-24B-Instruct-v0.2` | apache-2.0 (card) — but **inherits the `roblox-info-dump` restriction** via v0.1's training data and v0.2's imatrix | restricted | **Reject.** Unservable (24B, no Workers AI route, r=128, merged BF16 + GGUF only). Its *value* is the benchmark row in §1.2. |
-| `TorpedoSoftware/Luau-Qwen3-4B-FIM-v0.1` | apache-2.0 | yes | **Reject on shape.** Fill-in-the-middle autocomplete. Golem writes whole scripts via tool calls; it does not do IDE autocomplete. |
+| `TorpedoSoftware/Luau-Qwen3-4B-FIM-v0.1` | apache-2.0 | yes | **Reject on shape.** Fill-in-the-middle autocomplete. Apple writes whole scripts via tool calls; it does not do IDE autocomplete. |
 | `Roblox/luau_corpus` | MIT (first-party, opt-in Data Sharing programme) | **yes** | **Keep as a provenance anchor.** Still the only unambiguously clean Luau corpus. Still last modified Nov 2023 — predates the current API surface. |
 | `TorpedoSoftware/Roblox-Luau-Reasoning-v1.0` | MIT | yes | **Reject (no training).** Derived from `Roblox/luau_corpus`, inherits both the clean provenance and the staleness. |
 | `Pinkstack/luau-pretrain-corpus-filtered` | ODC-BY | yes | **Reject (no training).** Cleanest training corpus found: The Stack v3 filtered to detected-permissive licences with per-file `license_type` / `detected_licenses` columns. Attribution obligations. |
@@ -231,7 +231,7 @@ no file; default copyright, i.e. all rights reserved.
 | `zai-org/cogagent-9b-20241220` | "The CogAgent License": free for academic research; *"Users wishing to use the model for commercial purposes must complete registration"*; mandates *"Built with CogAgent"* and a `CogAgent` name prefix on derivatives | restricted | **Reject on GPU cost alone.** *Correction:* registration is **free**, not a fee — the survey implied cost was a factor. Repo id note: THUDM was renamed to `zai-org`, so `THUDM/cogagent-9b` will not resolve. Same vendor as Golem's MIT production model — licence is **per-repo, never per-vendor**. |
 | `microsoft/OmniParser-v2.0` | Repo tagged `mit`; **README states verbatim**: *"icon_detect model is under AGPL license, and icon_caption is under MIT license"* (`icon_detect/LICENSE` is 34.5 KB of full AGPL text) | restricted | **Reject — painful near-miss.** The only architecturally affordable candidate (0.6 s/frame A100). `icon_detect` is a finetuned YOLOv8 (Ultralytics AGPL-3.0). Only the `icon_caption` half (Florence-2-base, MIT) is safely reusable. |
 | `likaixin/ScreenSpot-Pro` | Tagged `mit`; contents are screenshots of Photoshop, Premiere, Illustrator, AutoCAD, Unreal Engine, DaVinci Resolve, Blender, VS Code | restricted | **Reject.** An MIT tag cannot grant rights over Adobe's or Autodesk's copyrighted interfaces. Consult as a leaderboard; never train on it. |
-| `Hcompany/WebClick` | apache-2.0 (tag + card) | **yes** | **Reject on fit.** Cleanest dataset in that survey. Measures click-target accuracy, not visual quality — it cannot test whether the Golem web app *looks* right. |
+| `Hcompany/WebClick` | apache-2.0 (tag + card) | **yes** | **Reject on fit.** Cleanest dataset in that survey. Measures click-target accuracy, not visual quality — it cannot test whether the Apple web app *looks* right. |
 | `showlab/ShowUI-desktop-8K` | **NO LICENCE**; annotations augmented with **GPT-4o**; also derived from `Writer/omniact` | **no** | **Reject.** *Correction:* the survey wrote the id as `ShowUI-desktop` and named only the missing tag; the OpenAI-terms layer and the omniact derivation are additional. |
 | `bevaya/RICO-Screen2Words` / RICO itself | `cc-by-4.0` covers Google's **captions**; `creative-graphic-design/Rico` tags RICO `license:unknown` | unverified | **Reject.** RICO underpins Screen2Words, UIBert, RICOSCA, Widget Captioning and much of OS-Atlas-data. Unresolved provenance contaminates a large fraction of the field. |
 
@@ -243,10 +243,10 @@ no file; default copyright, i.e. all rights reserved.
 | **`@cf/baai/bge-m3`** | `mit` (upstream front-matter) | **yes** | **ACCEPT as the A/B arm — a candidate both the survey and one verdict initially missed.** Same $0.012/M / 1,075 neurons as qwen3-embedding, but natively emits dense + sparse + ColBERT multi-vector, which matches D4's hybrid dense+FTS5+RRF design. Better second arm than qwen3. |
 | `@cf/qwen/qwen3-embedding-0.6b` | Apache-2.0 upstream | yes | **REJECT — cost-inverted, both verdicts independently.** The survey recommended it as "cheaper AND higher-capacity". Vectorize bills **(queries + stored vectors) × dimensions**. At 100k queries / 5k assets: 384d = 40.3M (inside the 50M included, **$0**); 1024d = 107.5M → **$0.58/mo**. Token saving from $0.020→$0.012/M on ~15-token queries is **$0.008–0.012/mo**. Net ~70× worse. The survey checked only the stored axis (5.12M vs the 10M stored allowance — that sub-claim is right; the queried axis was missed). If run at all, run it on **quality**, never on cost. |
 | `@cf/baai/bge-small-en-v1.5` | MIT | **yes** | **KEEP — incumbent.** 384d is the cheapest in Vectorize dimension terms even though it is not cheapest per token. Its 512-token window is ample for one-sentence asset descriptions. |
-| `@cf/google/gemma-4-26b-a4b-it` | Gemma Terms of Use + Prohibited Use Policy (not OSI) | restricted | **Conditional accept for ingest-time captioning only.** $0.10/$0.30, 256k, vision. It is the captioner in Cloudflare's own AI Search image pipeline (paired with `detr-resnet-50`). Untested by Golem on a 288×180 software render. |
+| `@cf/google/gemma-4-26b-a4b-it` | Gemma Terms of Use + Prohibited Use Policy (not OSI) | restricted | **Conditional accept for ingest-time captioning only.** $0.10/$0.30, 256k, vision. It is the captioner in Cloudflare's own AI Search image pipeline (paired with `detr-resnet-50`). Untested by Apple on a 288×180 software render. |
 | `@cf/google/embeddinggemma-300m` | Gemma Terms; Hub repo is **GATED** | restricted | **Reject.** *Correction:* the survey called it "the third embedding option on Workers AI" — the pricing page lists at least six (bge-small/base/large, bge-m3, plamo-embedding-1b, qwen3-embedding-0.6b). Its price genuinely is unpublished. |
 | `Qwen/Qwen3-Reranker-0.6B` · `BAAI/bge-reranker-v2-m3` · `mixedbread-ai/mxbai-rerank-base-v2` | apache-2.0 | yes | **Reject on serving.** Upgrade targets only if reranking ever proves to be the bottleneck **and** a serving budget appears. Exhaust `@cf/baai/bge-reranker-base` first. |
-| `BAAI/Uni3D` · `OpenShape/*` | **NO README, NO LICENSE, NO TAG** on the weights. Code repos MIT / Apache-2.0 — which does not licence weights | **no** | **Reject.** Both partly trained on ShapeNet (non-commercial research). Closed on licence, compute **and** input shape: Golem holds no point clouds and could not legally redistribute them. `ULIP`/`ULIP-2` have no Hub presence. |
+| `BAAI/Uni3D` · `OpenShape/*` | **NO README, NO LICENSE, NO TAG** on the weights. Code repos MIT / Apache-2.0 — which does not licence weights | **no** | **Reject.** Both partly trained on ShapeNet (non-commercial research). Closed on licence, compute **and** input shape: Apple holds no point clouds and could not legally redistribute them. `ULIP`/`ULIP-2` have no Hub presence. |
 
 ### 2.7 Failure classification / judges / PRMs
 
@@ -273,20 +273,20 @@ no file; default copyright, i.e. all rights reserved.
 
 | Repo id | Licence | Commercial | Accept / reject |
 |---|---|---|---|
-| `TencentARC/Pixal3D` | **MIT** — real LICENSE file, *"MIT License / Copyright (c) 2026 Tencent"*; NOTICE lists only dinov2 (Apache-2.0), TRELLIS.2 (MIT), Direct3D-S2 (MIT), MoGe (MIT) | **yes** | **Reject as an action; keep as the standing best option.** The only candidate in that survey with a real LICENSE file. **Cannot run here:** the owner's machine is an Apple M2 Pro (arm64, Metal only, no `nvidia-smi`/`nvcc`), and Pixal3D requires the TRELLIS.2 CUDA 12.4 env plus `NATTEN_CUDA_ARCH=… pip install natten==0.21.0`. Also: its output **cannot reach Golem's library automatically** — `ASSET-PIPELINE.md` §1 rule 1 keys the library on *Mesh and Image/Decal ids, never Model ids*, and Open Cloud's Mesh type accepts *"Only content downloaded from Asset delivery API"*, so a GLB uploads only as a Model. Every asset becomes a manual 3D-Importer step. *Corrections:* the "24 GB VRAM floor" contradicts its own documented `--low_vram`; `Comfy-Org/Pixal3D` ships int8 at 5.58 GB and `Aero-Ex/Pixal3D-GGUF` ships Q4_K_M stages at ~758–784 MB. `extra_gated_eu_disallowed: true` is a **HF distribution control**, not a licence term — the MIT text has no territorial clause. |
+| `TencentARC/Pixal3D` | **MIT** — real LICENSE file, *"MIT License / Copyright (c) 2026 Tencent"*; NOTICE lists only dinov2 (Apache-2.0), TRELLIS.2 (MIT), Direct3D-S2 (MIT), MoGe (MIT) | **yes** | **Reject as an action; keep as the standing best option.** The only candidate in that survey with a real LICENSE file. **Cannot run here:** the owner's machine is an Apple M2 Pro (arm64, Metal only, no `nvidia-smi`/`nvcc`), and Pixal3D requires the TRELLIS.2 CUDA 12.4 env plus `NATTEN_CUDA_ARCH=… pip install natten==0.21.0`. Also: its output **cannot reach Apple's library automatically** — `ASSET-PIPELINE.md` §1 rule 1 keys the library on *Mesh and Image/Decal ids, never Model ids*, and Open Cloud's Mesh type accepts *"Only content downloaded from Asset delivery API"*, so a GLB uploads only as a Model. Every asset becomes a manual 3D-Importer step. *Corrections:* the "24 GB VRAM floor" contradicts its own documented `--low_vram`; `Comfy-Org/Pixal3D` ships int8 at 5.58 GB and `Aero-Ex/Pixal3D-GGUF` ships Q4_K_M stages at ~758–784 MB. `extra_gated_eu_disallowed: true` is a **HF distribution control**, not a licence term — the MIT text has no territorial clause. |
 | `microsoft/TRELLIS.2-4B` | `license: mit` front-matter + card body *"released under the MIT License"*; **no LICENSE file on the Hub** | yes (TAG+CARD) | **Reject.** fal verbatim: *"0.25 $ for 512p resolution, 0.3 $ for 1024p resolution and 0.35 $ for 1536p resolution."* $15/mo buys **43–60 generations total, service-wide**. Card: Linux only, *"at least 24GB"* VRAM, CUDA 12.4. Official export example decimates to **1,000,000 triangles** against Roblox's cap. |
 | `microsoft/TRELLIS-image-large` | `mit` **TAG-ONLY** (no LICENSE on the Hub) | yes | **Reject.** The 2024 model at 1/15th the price (fal: *"$0.02 per generation"*). Quality visibly below TRELLIS.2. Still needs decimation and retopo. |
 | `stepfun-ai/Step1X-3D` | GitHub LICENSE is plain Apache-2.0; **HF repo ships no LICENSE**, only the tag | unverified | **Reject.** Biggest unresolved licence question in that survey: the card describes *"an SD-XL-based texture synthesis module"*, and SDXL base is CreativeML Open RAIL++-M. Whether those use-restrictions propagate into the released texture weights is **unverified**. |
 | `VAST-AI/TripoSG` | `mit` **TAG-ONLY** | yes | **Reject.** Card states *"CUDA-capable GPU (>8GB VRAM)"* — the only credible sub-24 GB option. **Geometry only, no texture**, so a bolted-on texturing stage reintroduces the saving. |
 | `wushuang98/Direct3D-S2` | `mit` (card body) | yes | **Reject.** Its *"training at 1024³ with just 8 GPUs"* claim is about **training**, not inference VRAM — do not read it as a cheap-inference signal. Geometry only. Ships the only `remesh=True` flag in the survey. |
-| `tencent/Hunyuan3D-2.1` (and -2, -2mini, -2mv, -Omni) | Line 3 VERBATIM: *"THIS LICENSE AGREEMENT DOES NOT APPLY IN THE EUROPEAN UNION, UNITED KINGDOM AND SOUTH KOREA…"*; §1.l defines Territory as worldwide **excluding** those three; §4 adds a >1,000,000 MAU trigger | **no** | **Reject.** Best PBR textures in the survey; unusable because Golem's users are worldwide. Only 2.1's LICENSE was read verbatim; the siblings are `license: other` and **assumed** same-family. |
+| `tencent/Hunyuan3D-2.1` (and -2, -2mini, -2mv, -Omni) | Line 3 VERBATIM: *"THIS LICENSE AGREEMENT DOES NOT APPLY IN THE EUROPEAN UNION, UNITED KINGDOM AND SOUTH KOREA…"*; §1.l defines Territory as worldwide **excluding** those three; §4 adds a >1,000,000 MAU trigger | **no** | **Reject.** Best PBR textures in the survey; unusable because Apple's users are worldwide. Only 2.1's LICENSE was read verbatim; the siblings are `license: other` and **assumed** same-family. |
 | `tencent/Hunyuan3D-Part` | **LICENSE.txt EXISTS** (17,015 bytes) = TENCENT HUNYUAN 3D-PART COMMUNITY LICENSE AGREEMENT, same restricted family | **no** | **Reject — but for the right reason.** *Correction:* the survey said, twice, that this repo has *"NO LICENCE AT ALL"* and therefore *"no grant, no rights"*. That is **false**. The README simply omits a `license:` key, so no tag renders. Exclusion stands on the restrictive terms, not on absence. |
 | `stabilityai/stable-fast-3d` | STABILITY AI COMMUNITY LICENSE (read from the **GitHub mirror**; the Hub repo is gated and `LICENSE.md` was unreadable): rights terminate above *"USD $1,000,000 in annual revenue… regardless of whether that revenue is generated directly or indirectly"*; commercial use *"must register with Stability AI"* | restricted | **Reject.** A revenue tripwire plus a registration duty — the worst shape of cost risk for a company intending to grow. Hub copy **unverified**. |
 | `Roblox/cube3d-v0.5` | Actual LICENSE title: **"CUBE3D RESEARCH-ONLY RAIL-MS LICENSE"**; *"Permitted Purpose" means "for academic or research purposes only"*. Hub tag still says `license:openrail` | **no** | **Reject.** The tag-vs-text trap is **still unfixed a year on**. This is the precedent that governs this entire document. |
 | `TencentARC/InstantMesh` | Apache-2.0 | yes | **Reject on quality.** Genuinely unrestricted, 2.8M downloads, but a generation or two behind. Powers `ThomasSimonini/Roblox-3D-Assets-Generator-v1`, the only Roblox-targeted 3D Space found. |
 | `ashawkey/LGM` | MIT | yes | **Reject on format.** 415M params — smallest here — but outputs **Gaussian splats**, which Roblox cannot render. Splat→mesh conversion degrades exactly the quality you paid for. |
 | `VAST-AI/TripoSplat` | `mit` **TAG-ONLY** (no LICENSE on the Hub) | yes | **Reject on format.** Same splat blocker. Sibling MIT repos `VAST-AI/AniGen` and `VAST-AI/UniRig` do auto-rigging, which Roblox NPCs need and no generator here provides. |
-| `craftsman3d/craftsman` | `creativeml-openrail-m` | restricted | **Reject.** OpenRAIL-M Attachment A use-restrictions must be passed to every downstream user — unworkable for a self-serve SaaS whose users generate assets Golem cannot police. Effectively abandoned (Nov 2024). |
+| `craftsman3d/craftsman` | `creativeml-openrail-m` | restricted | **Reject.** OpenRAIL-M Attachment A use-restrictions must be passed to every downstream user — unworkable for a self-serve SaaS whose users generate assets Apple cannot police. Effectively abandoned (Nov 2024). |
 | `facebook/sam-3d-objects` | "SAM License" — read via summarisation only, **not verbatim end to end**; AUP unread | unverified | **Reject pending a read.** Gated; access requires disclosing full legal name and org to Meta. Probable-yes. |
 
 ### 2.9 Synthetic data / training bases
@@ -334,12 +334,12 @@ re-litigated from vibes:
 >    (Contested — §6.3.)
 > 2. **The Llama 3.2 Community Licence withholds the multimodal grant from EU-domiciled
 >    individuals and EU-headquartered companies**, and compels a `Llama` name prefix on distributed
->    derivatives. That is a materially worse legal position than the MIT Golem holds today.
+>    derivatives. That is a materially worse legal position than the MIT Apple holds today.
 > 3. **No labels exist.** A judging pass is ~109 neurons ≈ $0.0012, so the free 10,000 neurons/day
 >    buys ~92 labelled samples/day — a 10,000-sample set is ~109 days of spending the *entire* daily
 >    AI budget, or ~$12 up front. **Generating the scenes to label is far worse**: an agentic build
 >    run is ≈$0.01/scene ≈ **$100 per 10k scenes ≈ 20 months of the whole AI budget.**
-> 4. **The labels would be circular.** Every degradation Golem can programmatically inject
+> 4. **The labels would be circular.** Every degradation Apple can programmatically inject
 >    (materials→Plastic, randomise colours, delete the lighting pass, unanchor) is one the
 >    plugin's *measured* metrics already detect in closed form. You would spend GPU hours training a
 >    neural approximation of a rule writable in ten lines of Luau.
@@ -386,7 +386,7 @@ Compute over the RGB buffer that `png.ts` already holds in memory, per view:
 | Sobel edge density | bare untextured surfaces, missing trim | ditto |
 
 This is **the exact inverse of NR-IQA**. The baseline render
-(`regression/golem-plaza-baseline/views/hero.png`) is sharp, noiseless and evenly exposed — a
+(`regression/apple-plaza-baseline/views/hero.png`) is sharp, noiseless and evenly exposed — a
 verdict confirmed this against the real artifact — so every NR-IQA distortion axis reads *clean*.
 The failure lives in colorfulness, edge density and value structure, which is precisely what these
 four numbers measure. They make `value_structure` and `palette_discipline` **measured** rather than
@@ -397,7 +397,7 @@ service, model or licence.
 
 > **Honest limit, per the survey's own gap list:** nobody has published an evaluation of *any*
 > perceptual metric on low-resolution synthetic 3D renders. These four statistics are standard and
-> cheap, but their thresholds must be **calibrated on Golem's own fixtures**, not imported. The
+> cheap, but their thresholds must be **calibrated on Apple's own fixtures**, not imported. The
 > prediction that they separate baseline from improved is well-reasoned and **untested** — testing
 > it is step 1 below, and it costs nothing.
 
@@ -424,13 +424,13 @@ and rotations already exist in `scene.parts`, so it is pure JS.
 
 | Question | Answer |
 |---|---|
-| **What data?** | Golem's own. The plugin already produces `(scene, 5 × 288×180 renders, measured metrics, Lighting)` with **exact** Studio ground truth. Licence-free by construction, in-domain, unlimited. No third-party download, so none of §5.1 applies. |
+| **What data?** | Apple's own. The plugin already produces `(scene, 5 × 288×180 renders, measured metrics, Lighting)` with **exact** Studio ground truth. Licence-free by construction, in-domain, unlimited. No third-party download, so none of §5.1 applies. |
 | **What model?** | **None.** Parts A–C are deterministic arithmetic. `@cf/zai-org/glm-5.3-flash` stays the sole in-service critic, unchanged. |
 | **What training?** | **None.** |
 | **What eval?** | The existing `packages/evals/tasks-visual` suite: 12 tasks × 12 constraints, `rubric.json`'s 7 hard-fails and cap ladder, graded by `grade-visual.mjs`. Unit-test Parts A and C offline against the two stored fixtures via `packages/evals/src/render-scene.mjs`, which is the same rasteriser in Node with **no Studio attached**. |
 | **What does it cost in money?** | **$0.00.** Zero neurons — no model call is added. Worker CPU is billed at $0.02/M CPU-ms with 30M CPU-ms included monthly; ~50 ms × ~1,140 builds/month ≈ 57,000 CPU-ms ≈ **0.2% of the included allowance**. Say *"inside the included allowance"*, not "free" — this project tracks its ceiling to the cent. |
 | **What does it cost in wall-clock?** | **Part A** ~2 h (write + unit-test against both fixtures). **Part C** ~150 lines of JS in `grade-visual.mjs` + ~10 in `MEASURE_LUAU`, ~3 h. **Part B** ~80 lines Luau + wiring + reconciling the `small` predicate, ~half a day, and it is the only part needing a live Studio session. **Total ≈ 1–1.5 focused days.** |
-| **Stopping rule** | If Part A's four statistics do **not** separate `golem-plaza-baseline` (2/10) from `golem-plaza-improved` (5/10), stop and say so. That is a real negative result and it costs one afternoon to obtain. |
+| **Stopping rule** | If Part A's four statistics do **not** separate `apple-plaza-baseline` (2/10) from `apple-plaza-improved` (5/10), stop and say so. That is a real negative result and it costs one afternoon to obtain. |
 
 #### Why this and not the alternatives
 
@@ -471,7 +471,7 @@ The luau survey proposed a Selene + StyLua + `luau-analyze --mode=strict` post-g
   its own header: valid Roblox code exits 1 with `TypeError: Unknown global 'game'` when no
   definitions are loaded, which is why the existing checker keys on the string `SyntaxError` rather
   than the exit code.
-- **Golem already has a stronger gate, deployed and free.** `apps/plugin/src/Ops.luau:262-289`
+- **Apple already has a stronger gate, deployed and free.** `apps/plugin/src/Ops.luau:262-289`
   (`run_code`) wraps generated source in a ModuleScript and `pcall(require)`s it — the **real** Luau
   compiler, real globals, real DataModel. The proposal buys a weaker version of shipped code.
 
@@ -550,7 +550,7 @@ Committing the judge to its own answer before seeing the candidate collapsed fal
 **71.9% → 1.2%** in arXiv:2607.05904.
 
 > **Two corrections, both honoured.** (i) That result is on **text-only GSM8K**, against a
-> reference-free judge **already reward-hacked by self-play**. Golem's critic is not trained against
+> reference-free judge **already reward-hacked by self-play**. Apple's critic is not trained against
 > its own approval. The effect is real; the magnitude will be far smaller, and assuming it transfers
 > is the same maths-to-domain leap the same survey correctly forbids for PRMs. (ii) The survey
 > called all its changes *"all free"* — **false**. De-anchoring splits one call into two, and
@@ -570,7 +570,7 @@ empty string.**
 ### Rank 7 — Cap the correction loop at 2–3 iterations, gated on a *measured* metric moving
 
 Same-model refine loops reward-hack: arXiv:2407.04549 shows evaluator ratings rising while true
-quality stagnates, heightened when generator and evaluator share a base — which is exactly Golem's
+quality stagnates, heightened when generator and evaluator share a base — which is exactly Apple's
 loop (GLM builds, GLM judges, GLM fixes). arXiv:2607.05904 drove acceptance 72%→94% on GSM8K while
 true accuracy stayed ~20%. And Feedback Friction (arXiv:2506.11930) found that even with a feedback
 generator holding near-complete ground truth, solvers *"consistently show resistance to feedback"*.
@@ -589,7 +589,7 @@ not a source of headroom.
   alternative the UI survey missed (its catalogue entry advertises *"object detection, pointing, OCR,
   and structured output"* — pointing **is** the grounding primitive). It should replace ShowUI-2B as
   the "if ever revisited" entry, since it costs zero new spend. But the capability objection stands:
-  **grounding is not quality judgement**, and Golem already holds its own Instance tree.
+  **grounding is not quality judgement**, and Apple already holds its own Instance tree.
 - **Playwright screenshot-diffing + axe-core for web-app QA.** Still the right call *eventually*, but
   the survey asserted it was *"already in this workspace"* and **both verdicts independently
   refuted that**: zero hits across every `package.json`, `pnpm-lock.yaml` and `node_modules`; the
@@ -646,10 +646,10 @@ Read the file tree, not just the card.
 | **Agent-trace failure attribution as a feature** | Who&When: best method **53.5%** agent-level, **14.2%** decisive-step; some below random. TRAIL: best model (Gemini-2.5-Pro) **11%** overall — 18.3% on GAIA, **5.0%** on SWE-Bench; Llama-4-Maverick and Scout **0%** on both. Do not ship "tell me what went wrong in this run". |
 | **One-shot VLM scoring of 3D scenes** | LEGO-Eval: F1 **0.40**, κ **0.05** (chance) alone; F1 0.81, κ 0.63 with 21 inspection tools. Independently rediscovered by `zibuyu-02/IQA-T1` (ECCV 2026) and `guanq/Tool-IQA-8B`. Tools, not training. |
 | **PRMs outside maths** | VersaPRM (ICML'25): Math-Shepherd and Qwen2.5-Math-PRM show *"only marginal improvements over baseline in Law, Philosophy, and Biology."* |
-| **NR-IQA on Golem's renders** | Wrong signal by construction: the rejected scene is sharp, noise-free and correctly exposed. *But hold the claim loosely* — a verdict correctly noted "it would score WELL" is an **untested prediction** stated as fact, and that the Q-Align family does aesthetics (AVA SRCC 0.797) as well as distortion, so "NR-IQA scores photographic distortion" is not true of the whole family. The domain-mismatch argument survives; the directional prediction should be measured, not asserted. |
-| **Trusting the 0–10 critic score as a fine-grained signal** | arXiv:2604.25235: VLM judges rank reliably and score badly. *Two corrections:* (i) the paper's abstract says intervals cover ~40% of the range for **aesthetics** and natural images, widening to ~70% for charts and maths — **aesthetics is its best case, not its worst**; (ii) Golem's own "three lamp builds all scored 5" evidence is stale — the comment at `vision.ts:157-171` diagnoses it as a **prop-vs-scene rubric mismatch already fixed** by `SubjectKind`/`inferSubject`/`SUBJECT_RULES` in that same file. |
+| **NR-IQA on Apple's renders** | Wrong signal by construction: the rejected scene is sharp, noise-free and correctly exposed. *But hold the claim loosely* — a verdict correctly noted "it would score WELL" is an **untested prediction** stated as fact, and that the Q-Align family does aesthetics (AVA SRCC 0.797) as well as distortion, so "NR-IQA scores photographic distortion" is not true of the whole family. The domain-mismatch argument survives; the directional prediction should be measured, not asserted. |
+| **Trusting the 0–10 critic score as a fine-grained signal** | arXiv:2604.25235: VLM judges rank reliably and score badly. *Two corrections:* (i) the paper's abstract says intervals cover ~40% of the range for **aesthetics** and natural images, widening to ~70% for charts and maths — **aesthetics is its best case, not its worst**; (ii) Apple's own "three lamp builds all scored 5" evidence is stale — the comment at `vision.ts:157-171` diagnoses it as a **prop-vs-scene rubric mismatch already fixed** by `SubjectKind`/`inferSubject`/`SUBJECT_RULES` in that same file. |
 | **"Make `hardFailChecks` authoritative"** | **Already shipped.** `vision.ts:301`: `score = hardFails.length ? Math.min(raw, 3) : raw`; `:305`: `passed: score >= threshold && hardFails.length === 0`. Verified. Nothing to change. |
-| **"Replace free-text defects with a TRAIL/MAST enum"** | Wrong twice. (i) Defects are **already enum-typed** — `CRITIQUE_SCHEMA` fixes `dimension` to 8 values and `severity` to 3; only `observed`/`fix` are free text, and `fix` (*"add a 0.4-stud trim"*) is the payload the agent acts on. Enum leaves would **delete** the actionable output. (ii) TRAIL taxonomises agent-execution failures and has no category for "the column does not taper". If a stable enum is wanted, use Golem's **own 20 dimensions** in `visual-eval-design.md` §4. |
+| **"Replace free-text defects with a TRAIL/MAST enum"** | Wrong twice. (i) Defects are **already enum-typed** — `CRITIQUE_SCHEMA` fixes `dimension` to 8 values and `severity` to 3; only `observed`/`fix` are free text, and `fix` (*"add a 0.4-stud trim"*) is the payload the agent acts on. Enum leaves would **delete** the actionable output. (ii) TRAIL taxonomises agent-execution failures and has no category for "the column does not taper". If a stable enum is wanted, use Apple's **own 20 dimensions** in `visual-eval-design.md` §4. |
 | **Lowering render resolution to save tokens** | Already calibrated **in-domain**: at 176×112 the critic reported *"no benches, no planters"* for a scene containing six benches and four planters, and hallucinated three grey box buildings. At 288×180 that stopped (`RESULTS.md`). Do not let an out-of-domain photographic benchmark override this. |
 | **Fault injection as a novel idea** | It is not. **Who&When Pro** (arXiv:2607.09996) already *"injects a failure only after exactly replaying a successful prefix"* — 12,326 labelled trajectories. Its **data is CC BY-NC-SA 4.0** (do not ingest); its **method is reimplementable**. Cite as prior art. |
 
@@ -667,7 +667,7 @@ Read the file tree, not just the card.
   All comparative Luau numbers are self-reported by TorpedoSoftware on their own benchmark, with no
   independent replication.
 - **Benchmark contamination.** `Luau-Devstral-24B-Instruct-v0.2` lists `LuauLeetcode` as its **GRPO
-  training data**. It cannot be fairly compared to Golem on that benchmark.
+  training data**. It cannot be fairly compared to Apple on that benchmark.
 - **dtype mislabelling.** `UI-TARS-1.5-7B`'s 33 GB is **fp32**; the same 8.29B params at bf16 is
   ~16.6 GB (as `Holo1-7B` is correctly listed). Two dtypes, both labelled "bf16", in one table.
 - **Repo ids that do not resolve.** `trojblib/...` (correct: `trojblue/`), `THUDM/cogagent-9b`
@@ -720,7 +720,7 @@ uploadability, gates 2–5 in §3.1 still close the training path — but the do
 
 No published evaluation exists of **any** NR-IQA, aesthetic predictor, spatial-reasoning benchmark or
 perceptual metric on game-engine output, and none at 288×180. Every reported SRCC/PLCC in §2.1 is on
-photographs. That these models would misfire on Golem's renders is well-reasoned from what they were
+photographs. That these models would misfire on Apple's renders is well-reasoned from what they were
 trained to detect — it is an **inference, not a measurement**. The same caveat applies to §3.2's
 four proposed statistics: standard, cheap, and **uncalibrated on this distribution**.
 
@@ -748,7 +748,7 @@ competing-model development (`llava-critic-113k`). No court has tested either.
 
 ### 6.7 Things this document deliberately does not claim
 
-- That Golem's **layout** is weak. The owner's rejection was about fidelity and materials
+- That Apple's **layout** is weak. The owner's rejection was about fidelity and materials
   (untextured primitives, arbitrary colours, a trophy of three stacked blocks) — a *different axis*
   from spatial arrangement. `RESULTS.md`'s own diagnosis gives materials 0 and spacing 2. Build the
   instrument, confirm layout is weak, **then** consider a planner.
@@ -757,7 +757,7 @@ competing-model development (`llava-critic-113k`). No court has tested either.
 - That the 0–10 score is meaningless. It is uncalibrated against human ranking at scale
   (`VISUAL-LOOP.md`), which is a different and weaker statement.
 - That the reward-function-instead-of-the-model idea is dead. It is right in principle; it is just
-  not `$0, no hosting` in a Worker, and Golem already owns a stronger version of the syntax half.
+  not `$0, no hosting` in a Worker, and Apple already owns a stronger version of the syntax half.
 
 ---
 
@@ -770,10 +770,10 @@ scorer, no reward model, no GUI grounder and no 3D category, and the in-Worker f
 a 10 MB bundle limit that ORT-Web's WASM alone exceeds. Where a specialist *could* be served, the
 evidence runs the wrong way: the best open Luau model bought ~1.2 points over its own base for 103
 A100-hours and still lost to a generic coder by 11.3; the best published attempt at self-improving a
-VLM judge merely matched a frontier model after eight-GPU training; distilling Golem's own critic
+VLM judge merely matched a frontier model after eight-GPU training; distilling Apple's own critic
 would cost more than the critic and would reproduce a κ=0.05 signal faster. The entire measured
-headroom in the one paper closest to Golem's problem (LEGO-Eval, κ 0.05 → 0.63) came from
-**structural inspection tools, not from training**. Golem's renderer already produces the pixels and
+headroom in the one paper closest to Apple's problem (LEGO-Eval, κ 0.05 → 0.63) came from
+**structural inspection tools, not from training**. Apple's renderer already produces the pixels and
 Studio already produces the ground truth; what is missing is the ~30 lines that turn those pixels
 into numbers and the ~80 lines of Luau that feed the grader already written and waiting.
 **Build the instrument. It costs $0 and about a day. Revisit training only if it shows a weakness

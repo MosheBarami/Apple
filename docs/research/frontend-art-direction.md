@@ -1,4 +1,4 @@
-# Golem — Art Direction Bible
+# Apple — Art Direction Bible
 
 **Cinematic marketing-site rebuild. Version 1.0 — 2026-08-30.**
 
@@ -18,8 +18,8 @@ listed in §3, all checked on 2026-08-30.
 > **The page is a build session.**
 
 Not a features list with a 3D decoration on top. The visitor scrolls through one
-complete Golem build — the ask, the plan, the work, the verification — and an animated
-golem performs it beside them. Every claim on the page is demonstrated by the artifact
+complete Apple build — the ask, the plan, the work, the verification — and an animated
+apple performs it beside them. Every claim on the page is demonstrated by the artifact
 that would exist if the claim were true.
 
 This resolves the owner's two constraints at once:
@@ -53,8 +53,8 @@ there is no depth, no character presence, no direction, and no proof.
 
 | Asset | Where | Why keep it |
 |---|---|---|
-| The voice | `index.astro` copy | "Pick the smallest golem that can carry the job." "Ten thousand lines of existing Luau is a normal Tuesday." This writing is genuinely good. It is 40% of the brand. Do not let a redesign flatten it into SaaS-speak. |
-| `Describe it. Golem builds it.` | hero H1 | Six words, a complete value proposition, a rhythm. Keep verbatim. |
+| The voice | `index.astro` copy | "Pick the smallest apple that can carry the job." "Ten thousand lines of existing Luau is a normal Tuesday." This writing is genuinely good. It is 40% of the brand. Do not let a redesign flatten it into SaaS-speak. |
+| `Describe it. Apple builds it.` | hero H1 | Six words, a complete value proposition, a rhythm. Keep verbatim. |
 | Clay / Stone / Rune | modes | A real, memorable, non-generic tier taxonomy tied to the character. Keep the names and the colour assignments. |
 | Rune Amber `#FFB454` | tokens | The brand heart. Carried forward unchanged as `--ember-400`. |
 | Arcane Violet `#7C5CFF` | tokens | Kept, but **demoted** from co-primary to a section accent (see §4). |
@@ -81,13 +81,13 @@ These are not opinions; each was verified.
    **1200×630 PNG**.
 
 3. **Canonical and OG URLs point at the wrong origin.**
-   `astro.config.mjs` sets `site: 'https://golemworks.pages.dev'`; the live deployment is
+   `astro.config.mjs` sets `site: 'https://appleworks.pages.dev'`; the live deployment is
    `golem.moshe-barami111.workers.dev`. `Base.astro` derives `canonical`, `og:url` and
    `og:image` from `Astro.site`, and `@astrojs/sitemap` derives the whole sitemap from it.
    All of them are currently wrong.
 
 4. **The 3D hero is dead code.** `HeroVisual.astro` HEAD-probes
-   `/assets/hero/golem.glb` before lazy-loading three.js. There is no `public/assets/`
+   `/assets/hero/apple.glb` before lazy-loading three.js. There is no `public/assets/`
    directory. The probe always 404s, the SVG fallback always renders, and every visitor
    pays for a wasted request. Ship the asset or delete the probe.
 
@@ -106,7 +106,7 @@ These are not opinions; each was verified.
    control. Users who want calm motion but haven't set an OS preference — which is most
    of them — have no recourse. See the three-tier strategy in §8.
 
-8. **No depth, no character presence, no direction.** The golem exists as a static SVG
+8. **No depth, no character presence, no direction.** The apple exists as a static SVG
    in a card; it never reacts, never looks at you, never does anything. The brand heart
    is currently a sticker. This is the actual problem the rebuild exists to solve.
 
@@ -119,7 +119,7 @@ Studied for *technique*, not to copy. Each entry names the specific transferable
 | Reference | What to take | What to leave |
 |---|---|---|
 | **Lando Norris** (OFF+BRAND) — Awwwards **Site of the Year 2025** + Developer Award | Scroll as a directed camera: the page has *acts*, and the camera move between them is the transition. Also: restraint in the quiet sections, so the loud ones land. | Sports-hero scale and licensed footage; we have neither. |
-| **Igloo Inc** (abeto) — Awwwards **Site of the Year 2024** | A single hero object that *is* the metaphor, revealed by descent, lit by HDRI rather than by lamps. Our golem is the iceberg. | Web3 void aesthetic; iridescence. We are opaque stone. |
+| **Igloo Inc** (abeto) — Awwwards **Site of the Year 2024** | A single hero object that *is* the metaphor, revealed by descent, lit by HDRI rather than by lamps. Our apple is the iceberg. | Web3 void aesthetic; iridescence. We are opaque stone. |
 | **Messenger** (abeto) — Site of the Year 2025 co-winner | Product-first cinema: the interface itself is the visual, shot cinematically. Directly applicable to Acts II–IV. | — |
 | **Lusion v3** — SotY 2023 | Selective bloom discipline: only genuinely emissive surfaces bloom, at a high threshold. This is what separates "cinematic" from "everything is glowing." | Full-screen post stacks. |
 | **Awwwards WebGL collection** generally | The 2026 house style has settled on *fewer, better-lit objects* rather than particle soup. Follow it. | Ambient page-wide dust. Banned in §11. |
@@ -144,7 +144,7 @@ Load-bearing facts. Build decisions in §12 depend on them.
 | **WebGL 2** | **Baseline: Widely available since 2024-03-20.** Chrome 56, Firefox 51, Safari 15, Edge 79. | **This is our render target.** Not a fallback — the target. |
 | **WebGPU** | **Not Baseline.** Baseline availability *blocked by Firefox since January 2026*. Firefox stable does not support it. Safari 26 (2025-09-15) and Chromium do. | Do **not** ship `three/webgpu` as the primary path. It ships a larger bundle to buy a feature a whole browser can't use. Revisit when Firefox ships. |
 | **CSS scroll-driven animations** (`animation-timeline: scroll()/view()`) | **Not Baseline.** Baseline availability *blocked by Firefox since September 2025*. Chrome/Edge 115 (2023-07), Safari 26 (2025-09-15). Firefox stable: not supported. | **Progressive enhancement only**, behind `@supports (animation-timeline: view())`. The authored baseline is IntersectionObserver + GSAP ScrollTrigger. |
-| **Cross-document View Transitions** (`@view-transition`) | **Not Baseline** — MDN: "limited availability… does not work in some of the most widely-used browsers." Chromium only. | Use Astro's `<ClientRouter />` (same-document) which has a JS fallback everywhere. Put `view-transition-name: golem` on the character so it persists across routes where supported. |
+| **Cross-document View Transitions** (`@view-transition`) | **Not Baseline** — MDN: "limited availability… does not work in some of the most widely-used browsers." Chromium only. | Use Astro's `<ClientRouter />` (same-document) which has a JS fallback everywhere. Put `view-transition-name: apple` on the character so it persists across routes where supported. |
 | **Same-document View Transitions** | Chrome/Edge 111+, Firefox 133+, Safari 18+; `:active-view-transition` Baseline newly available 2026-01-13. | Safe to use for in-page state swaps. |
 | **Core Web Vitals thresholds** | Unchanged: **LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1**, at the 75th percentile over 28 days. INP is the most-failed vital in 2026. | Budgets in §13. We hold CLS to **0.05**, stricter than the bar. |
 | **WCAG 2.5.8 Target Size (Minimum), AA** | ≥ **24×24 CSS px**, with offset/inline-text exceptions. Apple HIG suggests 44×44; Material 48×48. | Our floor is **44×44**. The 24px minimum is a legal floor, not a design target. |
@@ -207,7 +207,7 @@ The 14-step ramp. All contrast figures are against `--basalt-050`, the page grou
 
 ### 4.3 Ember — the brand accent
 
-`--ember-400` is the existing `#FFB454`, unchanged. This is the golem's light.
+`--ember-400` is the existing `#FFB454`, unchanged. This is the apple's light.
 
 | Token | Hex | Use |
 |---|---|---|
@@ -226,11 +226,11 @@ large display.
 ### 4.4 Section accents — the thermal arc
 
 This is where "scroll-as-direction" becomes a *colour* decision and not just a camera
-decision. The page runs a thermal narrative: the golem wakes cool, heats through the
+decision. The page runs a thermal narrative: the apple wakes cool, heats through the
 work, flashes at the proof, then cools to calm authority.
 
 Each section sets `--accent` on its root element. That single variable drives the
-eyebrow, the section rule, the card top-rule, the WebGL rim-light colour, and the golem's
+eyebrow, the section rule, the card top-rule, the WebGL rim-light colour, and the apple's
 seam tint. **One variable, one temperature, whole-section coherence.**
 
 | # | Section | Accent name | Hex | Contrast vs ground | Meaning |
@@ -617,7 +617,7 @@ scoped applications instead of one global one:
 |---|---|---|---|
 | `--ease-carve` | `cubic-bezier(0.16, 1, 0.3, 1)` | fast out, long settle | **The signature.** Reveals, entrances, panel opens |
 | `--ease-chisel` | `cubic-bezier(0.65, 0, 0.35, 1)` | symmetric | State morphs, layout changes, colour changes |
-| `--ease-strike` | `cubic-bezier(0.22, 1.2, 0.36, 1)` | slight overshoot | Golem reactions, button release, success pops |
+| `--ease-strike` | `cubic-bezier(0.22, 1.2, 0.36, 1)` | slight overshoot | Apple reactions, button release, success pops |
 | `--ease-settle` | `cubic-bezier(0.33, 1, 0.68, 1)` | cubic out | Default for hovers and small transitions |
 | `--ease-molten` | `cubic-bezier(0.4, 0, 0.2, 1)` | standard | Long ambient loops, scrubbed timelines |
 | `--ease-exit` | `cubic-bezier(0.4, 0, 1, 1)` | accelerate away | Dismissals, exits |
@@ -633,7 +633,7 @@ break the "premium" half of the brief.
 | `--dur-1` | 90 | Micro: colour/opacity on small targets |
 | `--dur-2` | 140 | Control feedback: button background, icon swap |
 | `--dur-3` | 220 | **Standard UI**: card hover, tooltip, chip |
-| `--dur-4` | 320 | Panel/menu open, tab switch, golem pose cross-fade |
+| `--dur-4` | 320 | Panel/menu open, tab switch, apple pose cross-fade |
 | `--dur-5` | 480 | Section element reveal |
 | `--dur-6` | 720 | Hero reveal, headline carve-in, canvas fade-in |
 | `--dur-7` | 1100 | Act transition, camera move, `waking` |
@@ -654,7 +654,7 @@ reviewable in code review.
    or the motion reads as the wrong weight.
 4. **Direction law.** Entrances arrive *from* the direction of narrative flow. Content
    below the fold rises (+Y). Horizontally-revealed content comes from the scroll
-   direction. **The golem always enters from the reader's left** — it moves with the
+   direction. **The apple always enters from the reader's left** — it moves with the
    reading direction, never against it.
 5. **Exit is 0.6 × entry**, always with `--ease-exit`. Things leave faster than they
    arrive; the reverse feels sticky.
@@ -681,7 +681,7 @@ in-page control can win in both directions — a user who wants full motion desp
 setting gets it, and vice versa.
 
 ```js
-const stored = localStorage.getItem('golem.motion');
+const stored = localStorage.getItem('apple.motion');
 const seed = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'calm' : 'full';
 document.documentElement.dataset.motion = stored ?? seed;
 ```
@@ -695,7 +695,7 @@ removal, to avoid a flash of the wrong motion mode.
 |---|---|
 | Scroll-scrubbed camera | Cuts to each section's end state. No interpolation. |
 | Entrance transforms | Opacity-only cross-fade at `--dur-3`. No translation. |
-| Golem state machine | **Still runs.** Poses snap at 0 ms with a 120 ms opacity cross-fade. It still communicates state; it just doesn't travel. |
+| Apple state machine | **Still runs.** Poses snap at 0 ms with a 120 ms opacity cross-fade. It still communicates state; it just doesn't travel. |
 | WebGL | Keeps rendering, but `setAnimationLoop` → **render-on-demand**: one frame per scroll settle, one per state change. `uTime` frozen. No parallax, no idle breath. |
 | Custom cursor | Disabled. Native cursor restored. |
 | Particles | Count → 0. |
@@ -713,7 +713,7 @@ the WebGL canvas entirely (rung 4, §12.4), disables the cursor, freezes every l
 
 ---
 
-## 9. The Golem
+## 9. The Apple
 
 The brand heart. Currently a static sticker. This section makes it a character.
 
@@ -721,7 +721,7 @@ The brand heart. Currently a static sticker. This section makes it a character.
 
 | Surface | Implementation | Why |
 |---|---|---|
-| **Hero + Acts I–V (desktop)** | **Real-time 3D**, three.js r185, WebGL2 | The product builds 3D worlds. A 3D golem *is* the proof. Lighting, parallax and material response are not reproducible in SVG. |
+| **Hero + Acts I–V (desktop)** | **Real-time 3D**, three.js r185, WebGL2 | The product builds 3D worlds. A 3D apple *is* the proof. Lighting, parallax and material response are not reproducible in SVG. |
 | **Mode cards, empty states, error states, favicon, the app** | **SVG rig** | 8–14 KB, crisp at any size, server-rendered by Astro, works with zero JS, themeable, and free under reduced motion. |
 | **Mobile hero** | Pre-rendered video loop (§12.3) | Same cinema at 1/20th the cost. |
 
@@ -729,7 +729,7 @@ The brand heart. Currently a static sticker. This section makes it a character.
 each other. The pipeline is one-directional:
 
 ```
-Blender: one low-poly golem  →  glTF (hero, real-time)
+Blender: one low-poly apple  →  glTF (hero, real-time)
                              →  orthographic ¾ render  →  hand-traced 9-slab SVG rig
                              →  pose JSON (shared by BOTH renderers)
 ```
@@ -744,7 +744,7 @@ When a pose is retuned, both update. This is the mechanism that keeps them one c
 2 shoulder pauldrons, 2 forearms, pelvis block — plus **six free-floating shards** that
 orbit. Plus a plinth of scattered rubble (`InstancedMesh`, 24 chunks × ~200 tris).
 
-**There are no legs and no skeleton.** The golem is a levitating torso-and-head colossus
+**There are no legs and no skeleton.** The apple is a levitating torso-and-head colossus
 above a rubble plinth. This is a deliberate design decision that pays three times:
 
 1. It removes the single hardest animation problem on the web (a convincing biped walk
@@ -766,7 +766,7 @@ above a rubble plinth. This is a deliberate design decision that pays three time
 | Roughness | 0.72 base, 0.35–0.90 via map. Weathered stone. **No plastic sheen.** |
 | Metalness | **0.0.** Stone is not metal. The seams glow via emissive, not via specular. |
 
-Target **≤ 12 draw calls for the golem**; use `InstancedMesh` wherever slabs share
+Target **≤ 12 draw calls for the apple**; use `InstancedMesh` wherever slabs share
 geometry.
 
 **The one uniform that carries the whole performance:**
@@ -823,21 +823,21 @@ arrays over **320 ms `--ease-chisel`**, except `success` / `error`, which use
   mass* rather than a colour swap.
 - **Illegal transitions** (assert in dev): `dormant → building` (must pass through
   `waking` then `idle`); `error → success` without ≥ 600 ms of intervening `idle`.
-- The machine exposes `golem.setState(name, { force })` and dispatches
-  `golemstatechange` on `window`, so the WebGL instance and every SVG instance stay in
+- The machine exposes `apple.setState(name, { force })` and dispatches
+  `applestatechange` on `window`, so the WebGL instance and every SVG instance stay in
   sync from one source. The Rune mode card's SVG, for example, enters `thinking` on
   hover by listening to the same event bus.
 
 ### 9.4 Per-section reaction map
 
-| Section | Golem state | Camera |
+| Section | Apple state | Camera |
 |---|---|---|
 | Hero | `waking` → `idle`; `greeting` on pointer; eye-aim live | dolly z 7.2 → 5.4 across hero scroll |
-| Act I — The Ask | `listening` | yaw −14°; golem shifts to the right third |
+| Act I — The Ask | `listening` | yaw −14°; apple shifts to the right third |
 | Act II — The Plan | `thinking` | push in on the head, z 4.1, shallow DOF |
 | Act III — The Build | `building` | pull back to z 6.8, pitch +9° (looking down at the work) |
 | Act IV — The Proof | `verifying` → `success` | slow rise, z 6.0, level |
-| Modes | SVG rigs only; WebGL golem parked `idle` off-canvas | — |
+| Modes | SVG rigs only; WebGL apple parked `idle` off-canvas | — |
 | Trust | `idle`, `uSeamHeat` floored to **0.5** (calm), particles off | static |
 | Pricing | `idle`; `uSeamHeat` maps to the credits slider value | static |
 | Final CTA | `greeting` on approach; `success` on CTA hover | z 4.8, centred, full frame |
@@ -886,10 +886,10 @@ separate rAF per layer.
 | Over a slider / draggable | — | stretches to 64×28 with a ↔ glyph | — |
 | **Over selectable text** | 2px | → 0 | **Native I-beam restored.** Reading must never fight the cursor. |
 | Pressed | 10px | scale 0.88 | 90 ms `--ease-settle` |
-| Golem in `building` | emits 1 credit per 120px travelled, max 8 live | — | desktop only |
+| Apple in `building` | emits 1 credit per 120px travelled, max 8 live | — | desktop only |
 
 Do **not** use `mix-blend-mode: difference` on the ring over the 3D scene. It is the
-default choice and it looks cheap over lit geometry — it inverts the golem's ember
+default choice and it looks cheap over lit geometry — it inverts the apple's ember
 highlights into sickly blue. Use an ember tint instead.
 
 ---
@@ -935,12 +935,12 @@ WebGPU in stable.
 
 | Real-time | Pre-rendered |
 |---|---|
-| The golem: 9 slabs + 6 shards | Environment map (256×128 RGBE, ≤ 24 KB) |
+| The apple: 9 slabs + 6 shards | Environment map (256×128 RGBE, ≤ 24 KB) |
 | Rubble plinth (`InstancedMesh`, 24 × ~200 tris) | Contact shadow (baked alpha plane) |
 | Seam / rune emissive shader | Ambient occlusion (baked into the ORM map — **no SSAO pass**) |
 | Ground "molten crack" plane (1 quad, SDF crack shader, 2 texture samples) | Mobile hero video loop (§12.3) |
 | Selective bloom (emissive channel only) | OG image — 1200×630 **PNG** render |
-| Final composite: vignette + grain + edge chromatic aberration, **one pass** | Mode-card golem poses (SVG, build-time) |
+| Final composite: vignette + grain + edge chromatic aberration, **one pass** | Mode-card apple poses (SVG, build-time) |
 
 **Bloom discipline.** Selective bloom on the emissive channel only, via
 `postprocessing`'s `SelectiveBloomEffect`: quarter-res mip chain, **5 mips**, threshold
@@ -982,7 +982,7 @@ otherwise ..................................... → rung 1 (with a frame-time wa
 
 | Rung | Name | Contents |
 |---|---|---|
-| **1** | **Full** | WebGL2, `DPR = min(devicePixelRatio, 2)`, full golem, 24 rubble instances, 5-mip selective bloom, 400 particles, eye-aim, scroll-scrubbed camera |
+| **1** | **Full** | WebGL2, `DPR = min(devicePixelRatio, 2)`, full apple, 24 rubble instances, 5-mip selective bloom, 400 particles, eye-aim, scroll-scrubbed camera |
 | **2** | **Reduced** (auto-demote) | DPR → 1.5; bloom mips 5 → 3; particles 400 → 120; rubble 24 → 8; shadow plane off. **Trigger:** rolling median frame time over 90 frames > 20 ms. Demotion is one-way per session — never oscillate. |
 | **3** | **Lite** | The pre-rendered video loop replaces WebGL entirely. **No canvas is created.** The state machine still runs, driving the overlaid **SVG rig** for eye and seam colour only. |
 | **4** | **Still** | WebP poster + the SVG rig in `idle`, poses snapping, no loops. |
@@ -1015,12 +1015,12 @@ frame-time harness.
 
 ### 12.6 Load order
 
-1. HTML + inlined critical CSS (≤ 14 KB) + **the SVG golem inline in the markup**.
+1. HTML + inlined critical CSS (≤ 14 KB) + **the SVG apple inline in the markup**.
    → LCP element is the H1 text. Not the canvas.
 2. `preload` the two subset woff2 (Sora, Inter latin) with `font-display: swap` and the
    metric-matched fallbacks from §5.2. CLS contribution: 0.
 3. After `load` **and** `requestIdleCallback`: run the capability probe, then dynamic
-   `import('./golem-scene')`.
+   `import('./apple-scene')`.
 4. The canvas fades in over the SVG at `--dur-6`. The SVG becomes
    `visibility: hidden` — **kept in the layout** so nothing shifts — and is removed after
    the transition completes.
@@ -1033,7 +1033,7 @@ frame-time harness.
 control. Autoplay-with-sound is blocked by browsers regardless, and would be hostile.
 
 - **Control:** a single persistent toggle in the nav. 44×44, `aria-pressed`, accessible
-  label "Enable sound". Persisted at `localStorage['golem.sound']`, default `off`.
+  label "Enable sound". Persisted at `localStorage['apple.sound']`, default `off`.
 - **Palette: 8 samples, ≤ 140 KB total, one sprite file** (Opus `.webm` + `.m4a`
   fallback), decoded once into a single `AudioBuffer`.
 
@@ -1065,20 +1065,20 @@ Breakpoints are content-driven: **480 / 768 / 1024 / 1280 / 1600**.
 ### 0 · Nav
 
 64px tall; collapses to 52px and tightens on scroll past 120px. Glass (recipe 1, §7.3).
-Contents: golem glyph + wordmark, `How / Modes / Docs / Pricing`, sound toggle, motion
-control (in the overflow), `Open Golem` primary CTA.
+Contents: apple glyph + wordmark, `How / Modes / Docs / Pricing`, sound toggle, motion
+control (in the overflow), `Open Apple` primary CTA.
 
 **Proof element:** a live `●` status dot fed from `/status`. If the service is up, the
 site says so, in real time, at 200 bytes. That is a proof, not a claim.
 
 ### 1 · Hero — "Awakening"
-**Accent** Rune Amber · **Golem** `waking` → `idle`, eye-aim live
+**Accent** Rune Amber · **Apple** `waking` → `idle`, eye-aim live
 
 - **Proves:** this thing is alive, and it makes 3D worlds.
-- **Layout:** asymmetric **7 / 5** split at ≥1280. The golem **overlaps the H1's right
+- **Layout:** asymmetric **7 / 5** split at ≥1280. The apple **overlaps the H1's right
   edge by 40px** — the character breaks the text plane. This is the cheapest single move
   that makes a page read as *composed* rather than *templated*.
-- **H1:** `Describe it. Golem builds it.` — verbatim. `--t-display-1`, per-char carve-in
+- **H1:** `Describe it. Apple builds it.` — verbatim. `--t-display-1`, per-char carve-in
   (kinetic #1).
 - **Sub-line:** mono verb roller — `it writes the Luau ▸ wires the instances ▸ presses Play`
   (kinetic #2).
@@ -1092,24 +1092,24 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 - **Height cap:** `min(88svh, 860px)`.
 
 ### 2 · Act I — "The Ask"
-**Accent** Rune Amber (cooled) · **Golem** `listening`
+**Accent** Rune Amber (cooled) · **Apple** `listening`
 
 - **Proves:** you talk to it in plain language, about a project you already have.
 - **Demonstration:** a **real, typeable prompt field**. Not a screenshot. The visitor
   types, or picks a chip (`a lava obby with checkpoints` / `a shop that sells trails` /
   `fix the door that won't open`), and the page shows the actual project-tree context
-  Golem would read — script names, instance counts — from a small canned fixture keyed
+  Apple would read — script names, instance counts — from a small canned fixture keyed
   to the chip.
 - **The move:** on submit it deep-links to `/app?prompt=…`, so the visitor's first real
   session opens with **what they just typed**. The marketing page and the product share
   the same first step. This is the strongest available proof and it is roughly ten lines
   of code.
-- **Motion:** on focus the golem enters `listening`, the camera yaws −14°, and the
+- **Motion:** on focus the apple enters `listening`, the camera yaws −14°, and the
   surrounding UI dims to 40% — one `filter: brightness()` on a wrapper, not thirty
   opacity animations.
 
 ### 3 · Act II — "The Plan"
-**Accent** Arcane Violet · **Golem** `thinking`
+**Accent** Arcane Violet · **Apple** `thinking`
 
 - **Proves:** it decomposes the problem; it does not guess.
 - **Demonstration:** the plan writes itself out as a numbered list, one step at a time,
@@ -1120,7 +1120,7 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
 - **Avoid:** "AI thinking" dots. Show content, never a spinner.
 
 ### 4 · Act III — "The Build"
-**Accent** Molten Orange · **Golem** `building`
+**Accent** Molten Orange · **Apple** `building`
 
 - **Proves:** it edits real Luau and real instances, inside Studio, undoably.
 - **Demonstration:** a split **diff + Explorer tree** that plays as you scroll. Left: a
@@ -1135,34 +1135,34 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
   `clip-path`. No runtime syntax highlighter ships. Ever.
 
 ### 5 · Act IV — "The Proof"
-**Accent** Verdant · **Golem** `verifying` → `success`
+**Accent** Verdant · **Apple** `verifying` → `success`
 
 - **Proves:** it verifies by actually running the game.
 - **Demonstration:** a replay of a real Studio Output pane — timestamps, the run
-  starting, **an error appearing**, the golem reading it, a second edit, then a clean run.
+  starting, **an error appearing**, the apple reading it, a second edit, then a clean run.
 - **Include the failure.** A demo where the first attempt fails and is repaired is more
   credible than one that succeeds instantly, and it is what actually happens. This is the
   most persuasive twenty seconds on the page.
 - Then three counters roll up (kinetic #5, `tabular-nums`): scripts touched, instances
   created, seconds to green. **These numbers come from a real recorded session. If they
   cannot be sourced honestly, cut the counters.** Never fabricate a metric.
-- **Motion:** the golem's scan-line sweep is synchronised to the output pane's scroll.
+- **Motion:** the apple's scan-line sweep is synchronised to the output pane's scroll.
 
 ### 6 · Modes — Clay / Stone / Rune
-**Accents** Clay `#E2A16F` · Stone `#A8B4C4` · Rune `#9B82FF` · **Golem** SVG rigs
+**Accents** Clay `#E2A16F` · Stone `#A8B4C4` · Rune `#9B82FF` · **Apple** SVG rigs
 
 - **Proves:** the cost model is honest and legible.
-- **Demonstration:** three cards, each with the SVG golem in a distinct pose, each with an
+- **Demonstration:** three cards, each with the SVG apple in a distinct pose, each with an
   interactive **credit meter** — drag a "how big is your ask" slider and each card shows
   what that costs in its mode. Cost becomes something you *experience*, not something you
   read.
 - **Treatment:** this is where carved stone beats glass. `.stone` + `.stone--seam` with a
   2px top rule in the mode accent, plus the tiled grain. **No `backdrop-filter`.**
-- **Hover:** the card's SVG golem plays one state beat — Clay → `greeting`, Stone → one
+- **Hover:** the card's SVG apple plays one state beat — Clay → `greeting`, Stone → one
   `building` strike, Rune → `thinking`.
 
 ### 7 · Trust — "Real Studio. Your project. Never trained on."
-**Accent** Cold Iron · **Golem** `idle`, `uSeamHeat` floored to 0.5
+**Accent** Cold Iron · **Apple** `idle`, `uSeamHeat` floored to 0.5
 
 - **This is deliberately the quietest section on the page.** No glow, no particles, no
   parallax; hairline borders; higher-contrast text; generous whitespace.
@@ -1178,7 +1178,7 @@ site says so, in real time, at 200 bytes. That is a proof, not a claim.
   slider, showing what the free tier actually covers — **including where it runs out.**
   The free tier is the product's strongest asset; showing its edge honestly is more
   persuasive than hiding it.
-- The golem's `uSeamHeat` maps to the slider value: drag it high and the golem visibly
+- The apple's `uSeamHeat` maps to the slider value: drag it high and the apple visibly
   burns brighter. Credits become energy you can see.
 
 ### 9 · FAQ
@@ -1189,15 +1189,15 @@ Native `<details>` / `<summary>` with a custom marker. Open animation via
 instant elsewhere. **Do not rebuild this with divs** — the keyboard and screen-reader
 behaviour is free and you will get it wrong by hand.
 
-### 10 · Act V — Final CTA — "The golem is waiting for its words."
-**Accent** Molten Orange · **Golem** full-frame, `greeting`, `success` on CTA hover
+### 10 · Act V — Final CTA — "The apple is waiting for its words."
+**Accent** Molten Orange · **Apple** full-frame, `greeting`, `success` on CTA hover
 
-The one moment the page is permitted to be loud. Golem at maximum seam heat, centred,
+The one moment the page is permitted to be loud. Apple at maximum seam heat, centred,
 H2 at `--t-display-1`. **One primary CTA, one secondary, nothing else.** No footer links
 bleeding in, no newsletter box, no logo wall.
 
 ### 11 · Footer
-Motion control, sound toggle, live status dot, docs, legal. Golem `sleeping`; the scene
+Motion control, sound toggle, live status dot, docs, legal. Apple `sleeping`; the scene
 unmounts at the footer boundary.
 
 ---
@@ -1245,7 +1245,7 @@ unmounts at the footer boundary.
 | Scroll timelines | **GSAP 3.15.0 + ScrollTrigger** | Free for commercial use since April 2025 (Webflow). All former Club plugins included. |
 | Text splitting | **Build-time Astro component** | Not GSAP SplitText at runtime — zero CLS, zero critical-path JS. Use SplitText only if the copy becomes dynamic. |
 | Scroll-driven CSS | **Progressive enhancement only** | Behind `@supports (animation-timeline: view())`. Authored baseline is IntersectionObserver + ScrollTrigger. Not Baseline; blocked by Firefox since Sept 2025 (§3). |
-| Route transitions | **Astro `<ClientRouter />`** | Same-document view transitions with a JS fallback everywhere. `view-transition-name: golem` on the character. Cross-document `@view-transition` is not Baseline (§3). |
+| Route transitions | **Astro `<ClientRouter />`** | Same-document view transitions with a JS fallback everywhere. `view-transition-name: apple` on the character. Cross-document `@view-transition` is not Baseline (§3). |
 | Smooth scroll | **Lenis 1.3.26 — optional, gated, not in v1** | Scroll hijacking is a genuine usability and accessibility risk. If added later: disable under coarse pointer, under `data-motion` ≠ `full`, and under `prefers-reduced-motion`. |
 | Fonts | **Self-hosted variable subsets** | Google Fonts CDN acceptable for v1; self-host before launch. |
 
@@ -1259,20 +1259,20 @@ src/
     stone.css           ← the .stone material system
   lib/
     motion.ts           ← data-motion resolution, the shared rAF loop
-    golem-state.ts      ← the §9.3 state machine + event bus (no three.js import)
+    apple-state.ts      ← the §9.3 state machine + event bus (no three.js import)
     capability.ts       ← the §12.4 rung probe
-  golem/
+  apple/
     poses.json          ← 11 states × 15 transforms — SHARED by 3D and SVG
     scene.ts            ← three.js island; dynamically imported
     shaders/seam.glsl
-    GolemSVG.astro      ← the 9-slab rig, build-time rendered
+    AppleSVG.astro      ← the 9-slab rig, build-time rendered
   components/
     Cursor.astro        ← §10
     Sound.astro         ← §13
     MotionControl.astro ← §8.4 Tier C
 ```
 
-`golem-state.ts` deliberately does **not** import three.js — that is what lets the SVG
+`apple-state.ts` deliberately does **not** import three.js — that is what lets the SVG
 rig, the mode cards and the app all consume the same state machine without pulling in the
 3D bundle.
 
@@ -1316,7 +1316,7 @@ The rebuild is not done until every one of these passes.
 - [ ] Kinetic type appears exactly six times, never in body copy.
 - [ ] No navy in the neutral ramp; no amber→violet gradient on any headline or button.
 - [ ] Every section's claims are attached to a working artifact.
-- [ ] The golem's eyes track the pointer in the hero, and the state changes are legible
+- [ ] The apple's eyes track the pointer in the hero, and the state changes are legible
       to someone who never reads a word of copy.
 
 ---
