@@ -163,6 +163,9 @@ export const TOOL = {
   // call, named by its own `name`; `more_tools` widens the run's toolset when nothing offered fits.
   build_object: { kind: 'building', label: 'Built an object', live: 'Building it', on: 'Building the {}' },
   more_tools: { kind: 'planning', label: 'Reached for more abilities', live: 'Reaching for more abilities' },
+  // "Make it cooler" (ac2021d4): dresses the ready-made object already in the place; worded as the
+  // worker's own plainSummary words it.
+  cool_library_model: { kind: 'building', label: 'Made it cooler', live: 'Making it cooler' },
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau', live: 'Making changes to your game' },

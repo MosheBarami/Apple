@@ -1797,6 +1797,15 @@ export class SessionDO extends DurableObject<Env> {
    * the widest sleep we ever issue, which errs towards "still connected" for a few seconds rather
    * than towards a spurious "Studio is not connected" on the first op after a restart.
    */
+  /**
+   * Whether this is a benchmark project: it carries the benchmark's `bench-baseline` checkpoint. `/bench-reset`
+   * deletes the conversation, memory and checkpoints for good and the admin key reaches any project by id, so the
+   * reset is scoped to the projects the benchmark made (security.test.mjs A4).
+   */
+  private isBenchProject(): boolean {
+    return this.sql.exec(`select 1 from checkpoints where label = 'bench-baseline' limit 1`).toArray().length > 0;
+  }
+
   private async pluginConnected(): Promise<boolean> {
     const stored = (await this.ctx.storage.get<number>('pluginLastSeen')) ?? 0;
     return this.connectedGiven(Math.max(stored, this.lastSeenWrittenAt, this.pluginLastSeenMs));
@@ -2624,6 +2633,7 @@ export class SessionDO extends DurableObject<Env> {
     if (path === '/bench-reset' && req.method === 'POST') {
       const running = await this.ctx.storage.get<AgentState>('agent');
       if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
+      if (!this.isBenchProject()) return json({ ok: false, error: 'not a benchmark project: no bench-baseline checkpoint' }, 409);
       await this.resetProjectState();
       this.sql.exec('delete from message_models');
       this.sql.exec('delete from message_revisions');

@@ -863,6 +863,7 @@ const TOOL_ARGS = {
   build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
   capture_studio_viewport: {},
   compose_game: { request: 'a tower defense game' },
+  cool_library_model: { wear: 'chef hat', effect: 'sparkle_shimmer' },
   import_owner_library: { gameId: 'g1', path: 'Workspace.Tree', mode: 'copy' },
   insert_owner_component: { id: 'owner:c1' },
   inspect_attachment_image: { attachmentId: 'a1' },
@@ -2373,11 +2374,10 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // Stop button, and nothing else. It can end a run; it cannot read, start or change one, which
       // is strictly less than agent-run above already grants the same key.
       'POST /api/admin/agent-stop/:id',
-      // Reviewed 2026-10-02: clears a project's conversation, memory and run state (d63ea3f1, the owner's "every
-      // benchmark request runs in a new clean chat") and keeps the Studio pairing and the checkpoints. It refuses
-      // with 409 while a run is in progress, builds nothing and reads nothing back. That is a write the same key
-      // already has through agent-run and run-tool, and the owner-authenticated twin (POST
-      // /api/projects/:id/bench/reset) goes through withOwnedProject; this one is the service key's.
+      // Reviewed 2026-10-03: the one entry that DESTROYS tenant data. It deletes the project's conversation, memory,
+      // op log and every checkpoint but the baseline, and empties the place (the owner benchmark's fresh chat). It
+      // refuses during a run, and it refuses any project without a `bench-baseline` checkpoint, so the key cannot
+      // wipe a customer's project with it (apps/worker/tests/bench-reset-scope.test.mjs).
       'POST /api/admin/bench-reset/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
