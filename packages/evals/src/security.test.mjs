@@ -846,6 +846,7 @@ const TOOL_ARGS = {
   build_studded_ui: { pieces: [{ kind: 'counter', name: 'Coins', text: '0', at: 'top-left' }] },
   capture_studio_viewport: {},
   compose_game: { request: 'a tower defense game' },
+  cool_library_model: { wear: 'chef hat', effect: 'sparkle_shimmer' },
   import_owner_library: { gameId: 'g1', path: 'Workspace.Tree', mode: 'copy' },
   insert_owner_component: { id: 'owner:c1' },
   inspect_attachment_image: { attachmentId: 'a1' },
