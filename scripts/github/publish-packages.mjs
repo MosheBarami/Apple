@@ -9,16 +9,16 @@
 //
 // WHICH PACKAGES. A workspace package is publishable if, and only if, its package.json carries
 //   "publishConfig": { "registry": "https://npm.pkg.github.com" }
-// Nothing here names a package, so the @golem/* -> @apple/* rename needs no edit to this file.
+// Nothing here names a package, so the @apple/* -> @apple/* rename needs no edit to this file.
 //
 // THE SCOPE PROBLEM. GitHub Packages only accepts an npm package whose scope equals the OWNER of
 // the repository it is published for (owner MosheBarami => `@mosheberami/...`). The packages in this
-// tree are named @golem/* (soon @apple/*), so publishing them under their in-repo name is refused by
+// tree are named @apple/* (soon @apple/*), so publishing them under their in-repo name is refused by
 // the registry. The in-repo name is load-bearing (every `workspace:*` dependency and `--filter`
 // uses it), so this script never edits the source package.json. It STAGES a copy under a temp
 // directory whose manifest has the name rewritten to `@<owner>/<basename>`, `private` removed and a
 // `repository` field added (that field is what links the package to this repo on GitHub), then
-// runs `npm publish` there. The base name is kept: @golem/sdk -> @mosheberami/sdk.
+// runs `npm publish` there. The base name is kept: @apple/sdk -> @mosheberami/sdk.
 //
 // IT REFUSES, rather than papers over:
 //   - a publishable package with a `workspace:` / `file:` / `link:` dependency (it would be
@@ -38,7 +38,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCAN_PARENTS = ['apps', 'packages'];
 const LOCAL_DEP = /^(workspace|file|link|portal):/;
 
-/** `@golem/sdk` -> `sdk`. An unscoped name is returned as is. */
+/** `@apple/sdk` -> `sdk`. An unscoped name is returned as is. */
 export function baseName(name) {
   return name.includes('/') ? name.split('/').pop() : name;
 }

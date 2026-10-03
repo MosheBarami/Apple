@@ -12,7 +12,7 @@ precondition this file named: *"unblocked the moment the Nav lane commits"*.
 ```
 git status --porcelain apps/site      -> empty
 git rev-parse --short HEAD            -> 5b415d9
-pnpm --filter @golem/site build       -> 20 pages, exit 0
+pnpm --filter @apple/site build       -> 20 pages, exit 0
 ```
 
 Built from the working tree, which the original text permits **only** when `apps/site` is clean —

@@ -8,8 +8,8 @@
 // is a grader whose scores do not predict the product, which is the whole reason it exists.
 //
 // WHY IT LIVES IN THE DESIGN PACKAGE. The worker and the eval harness are the only two consumers,
-// they already depend on `@golem/design`, and this package is the one place both can reach without
-// new workspace wiring. A dedicated `@golem/pixels` package would be a cleaner name; that choice is
+// they already depend on `@apple/design`, and this package is the one place both can reach without
+// new workspace wiring. A dedicated `@apple/pixels` package would be a cleaner name; that choice is
 // reversible and recorded as such — moving the module later is an import rewrite in two files.
 //
 // These constants are the renderer's backdrop, not a preference. They must match what the plugin

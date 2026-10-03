@@ -6366,7 +6366,7 @@
      "id": "f-bf158c44",
      "name": "TypeScript SDK",
      "status": "done",
-     "evidence": "packages/sdk/types/index.d.ts (347 lines) types the whole surface and imports the wire types from @golem/shared rather than restating them. tests/types.test.mjs proves both halves: the declared value names equal the runtime exports (no-compiler check, always runs), and tsc over types/fixtures/ compiles ok.ts clean while every `// ERROR:`-marked line of bad.ts fails — verified by falsification (loosening one signature to `any` turned the test red) — proven by packages/sdk/tests/numbers.test.mjs, packages/sdk/tests/retry.test.mjs, packages/sdk/tests/http.test.mjs"
+     "evidence": "packages/sdk/types/index.d.ts (347 lines) types the whole surface and imports the wire types from @apple/shared rather than restating them. tests/types.test.mjs proves both halves: the declared value names equal the runtime exports (no-compiler check, always runs), and tsc over types/fixtures/ compiles ok.ts clean while every `// ERROR:`-marked line of bad.ts fails — verified by falsification (loosening one signature to `any` turned the test red) — proven by packages/sdk/tests/numbers.test.mjs, packages/sdk/tests/retry.test.mjs, packages/sdk/tests/http.test.mjs"
     },
     {
      "id": "f-9a9427e3",

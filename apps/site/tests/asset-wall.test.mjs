@@ -138,7 +138,7 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
 });
 
 test('the landing derives visible model choices from the shared list, not a stale asset count', () => {
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@golem\/shared['"]/;
+  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@apple\/shared['"]/;
   assert.match(PAGE, modelImport,
     'the landing no longer reads the shared product model list');
   assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,

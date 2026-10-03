@@ -1,4 +1,4 @@
-import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } from '@golem/shared';
+import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } from '@apple/shared';
 
 /**
  * Explicit Studio-operation capability report sent by a plugin poll.

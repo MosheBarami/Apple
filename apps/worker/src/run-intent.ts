@@ -36,7 +36,7 @@
  * ever pads a short one.
  */
 import { intentCheck } from './semantic';
-import type { RunIntent } from '@golem/shared';
+import type { RunIntent } from '@apple/shared';
 
 const MAX_INTENT_CHECKLIST = 16;
 const MAX_INTENT_QUESTIONS = 6;

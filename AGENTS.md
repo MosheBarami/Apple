@@ -28,7 +28,7 @@ Live at `https://apple.moshe-barami111.workers.dev`. The owner is one person, no
 reads Hebrew and reads neither `docs/` nor code.
 
 **Two names.** The product is **Apple**. The infrastructure is still **golem** — worker name, D1
-database, KV namespaces, wire literals (`golem.v1`, `X-Golem-`, `golem_session`, `@golem/`).
+database, KV namespaces, wire literals (`golem.v1`, `X-Golem-`, `golem_session`, `@apple/`).
 That is deliberate: renaming a binding or a wire literal breaks live sessions and stored rows.
 Rename neither. `scripts/check-rebrand.mjs` polices the user-visible half only.
 

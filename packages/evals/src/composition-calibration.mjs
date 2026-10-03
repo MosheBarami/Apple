@@ -40,7 +40,7 @@ const OUT = join(HERE, '..', 'tasks-visual', 'composition');
 /**
  * Bundle the production TypeScript metrics module and import it. One implementation, no mirror.
  * Bundled rather than merely transpiled because composition.ts imports verticalElementHeights from
- * @golem/shared, and a bare transpile would emit an import a temp file cannot resolve.
+ * @apple/shared, and a bare transpile would emit an import a temp file cannot resolve.
  */
 export async function loadCompositionModule() {
   const src = join(REPO, 'apps', 'worker', 'src', 'composition.ts');

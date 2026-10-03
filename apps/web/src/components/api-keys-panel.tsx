@@ -26,7 +26,7 @@
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_SCOPES, API_KEY_MODES, type ApiKeyMode, type ApiScope } from '@golem/shared';
+import { API_SCOPES, API_KEY_MODES, type ApiKeyMode, type ApiScope } from '@apple/shared';
 import { createApiKey, fetchApiKeys, revokeApiKey, rotateApiKey } from '../lib/api';
 import {
   describeKey,

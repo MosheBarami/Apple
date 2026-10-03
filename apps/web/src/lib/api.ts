@@ -1,8 +1,8 @@
 // Typed fetch helpers for the Apple worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@golem/shared';
-import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@golem/shared';
-import type { ApiKeyMode, ApiScope } from '@golem/shared';
+import { PRICE_CURRENCY, type RobloxScope, type AssetSourcePolicy } from '@apple/shared';
+import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@apple/shared';
+import type { ApiKeyMode, ApiScope } from '@apple/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';

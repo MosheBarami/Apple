@@ -15,7 +15,7 @@ test.after(() => rmSync(dir,{recursive:true,force:true}));
 async function bundle(name) {
   const out = join(dir,name+'.mjs');
   await esbuild.build({entryPoints:[join(root,'src',name+'.ts')],bundle:true,format:'esm',platform:'node',outfile:out,
-    alias:{'@golem/shared':join(root,'../../packages/shared/src/index.ts')}});
+    alias:{'@apple/shared':join(root,'../../packages/shared/src/index.ts')}});
   return import(pathToFileURL(out).href);
 }
 const C = await bundle('owner-corpus');

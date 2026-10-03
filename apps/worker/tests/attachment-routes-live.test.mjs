@@ -43,7 +43,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { d1 } from './stubs/d1.mjs';
-import { MAX_ATTACHMENT_BYTES } from '@golem/shared';
+import { MAX_ATTACHMENT_BYTES } from '@apple/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');

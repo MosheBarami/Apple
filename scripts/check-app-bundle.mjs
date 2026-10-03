@@ -90,7 +90,7 @@ const MUST_BE_SPLIT = ['admin', 'settings', 'usage', 'roadmap', 'workspace'];
 const MUST_BE_ABSENT = ['ui-lab'];
 
 if (!existsSync(DIST)) {
-  console.error(`no build found at ${DIST} — run \`pnpm --filter @golem/web build\` first`);
+  console.error(`no build found at ${DIST} — run \`pnpm --filter @apple/web build\` first`);
   process.exit(1);
 }
 

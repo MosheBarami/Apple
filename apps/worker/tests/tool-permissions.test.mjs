@@ -5,7 +5,7 @@
  * right behaviour, and the one that turns a drifted UI list into a silent failure rather than a
  * loud one: the switch flicks, the save returns 200, the rejection is reported as a key nobody
  * recognises, and the tool stays allowed. So the settings panel may not hold its own opinion about
- * what tools exist. GOVERNED_TOOLS lives in @golem/shared and this file is what keeps it true.
+ * what tools exist. GOVERNED_TOOLS lives in @apple/shared and this file is what keeps it true.
  *
  * The second claim is the one that makes the control worth rendering at all: a permission the
  * panel can set has to survive all the way to the toolset the model is offered. That is asserted
@@ -83,7 +83,7 @@ test('the vocabulary is ONE literal, not two that agree today', () => {
   // against correct code and pass against nothing. Reading the file is the only measurement that
   // sees the thing being claimed.
   const src = readFileSync(join(WORKER, 'src', 'preferences.ts'), 'utf8');
-  assert.match(src, /import \{[^}]*TOOL_PERMISSIONS[^}]*\} from '@golem\/shared'/s, 'preferences.ts does not take the vocabulary from @golem/shared');
+  assert.match(src, /import \{[^}]*TOOL_PERMISSIONS[^}]*\} from '@apple\/shared'/s, 'preferences.ts does not take the vocabulary from @apple/shared');
   assert.doesNotMatch(src, /\[\s*'allow',\s*'ask',\s*'deny'\s*\]/, 'preferences.ts still holds its own copy of the list');
   assert.deepEqual([...P.TOOL_PERMISSIONS], [...S.TOOL_PERMISSIONS]);
 });

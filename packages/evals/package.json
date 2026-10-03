@@ -1,5 +1,5 @@
 {
-  "name": "@golem/evals",
+  "name": "@apple/evals",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,6 +18,6 @@
     "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
-    "@golem/design": "workspace:*"
+    "@apple/design": "workspace:*"
   }
 }

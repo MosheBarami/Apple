@@ -467,7 +467,7 @@ like it covers it.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=a24e96ebf42e216f24b6a8156c34e4ccfc9fd4bbbabd2e6589cc8769d9da1900; output-bytes=31; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=0df903344301a299821dbcb4; at=2026-09-15T00:25:13.083Z
 
 - [x] G92: The landing and site E2E pass in every viewport
-    CHECK: pnpm --filter @golem/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=dot
+    CHECK: pnpm --filter @apple/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=dot
     EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3a825c0; tree-clean=yes; break-sha=3a825c0; EXPECT=unmatched; output-sha256=c84fc0b7a479215ac47948e34621caeb9e0737ae5c5ff8e41b55429d44f602d8; output-bytes=5408; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=186d6090e4971af90e4e14fb; at=2026-09-14T20:44:21.540Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0a11c719657228ae440a6bcdb24537f2feb8866775b134991c2d60c50bceed80; output-bytes=189; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=3b6612f08424780a06bbe32c; at=2026-09-15T00:25:13.069Z

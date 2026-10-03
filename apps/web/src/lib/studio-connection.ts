@@ -86,7 +86,7 @@ export function studioConnection(
 // wearing the clothes of an observation, and 0 ms is also the single most reassuring value it
 // could possibly show.
 
-import type { ServerMsg, StudioPlace } from '@golem/shared';
+import type { ServerMsg, StudioPlace } from '@apple/shared';
 
 export interface StudioLinkFacts {
   /** When the plugin last polled, in server time. Null means it never has. */

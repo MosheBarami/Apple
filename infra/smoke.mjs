@@ -73,7 +73,7 @@ for (let i = 2; i < process.argv.length; i += 1) {
 // that ceiling at the upper end of its measured range; Plan fits. The figures remain derived below.
 //
 // Both numbers are DERIVED from the files the product actually bills with — `typicalCredits` in
-// @golem/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
+// @apple/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
 // a ceiling check that keeps its own copy of the prices stops agreeing with them and then permits
 // exactly what it was written to refuse. An unreadable source is a hard error, never a default:
 // failing open on a spend guard is the one direction that costs money.
@@ -84,7 +84,7 @@ if (!NO_MODEL) {
   //[[ THE CONSTANT MOVED AND THIS HARNESS DIED WITHOUT SAYING SO.
   //
   //   This read NEURONS_PER_CREDIT out of apps/worker/src/pricing.ts. pricing.ts no longer declares
-  //   it — it re-exports it from @golem/shared (`export { NEURONS_PER_CREDIT } from '@golem/shared'`)
+  //   it — it re-exports it from @apple/shared (`export { NEURONS_PER_CREDIT } from '@apple/shared'`)
   //   — so the regex matched nothing, perCredit was NaN, and the guard below refused every run.
   //
   //   The refusal is correct and stays: failing open on a spend guard is the one direction that

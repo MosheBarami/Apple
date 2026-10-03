@@ -11,7 +11,7 @@
 // Workers AI is reached through a BINDING, not HTTP: there is no key and no base URL, which is
 // why its availability is "does env.AI exist", not "is a secret set".
 import type { Env } from '../env';
-import { registryModel } from '@golem/shared';
+import { registryModel } from '@apple/shared';
 import { routeForModelId } from '../pricing';
 import {
   contentChars,
@@ -31,7 +31,7 @@ import {
 
 /**
  * THE ONE PRODUCT ENGINE (V3 gate G01): Apple runs GLM 5.3 Flash, read from the registry in
- * @golem/shared so this id cannot go stale beside it again (it once still named Qwen3).
+ * @apple/shared so this id cannot go stale beside it again (it once still named Qwen3).
  *
  * The visual critic is the same model. The product run routes and `vision` keep their own
  * maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely resolve to the same weights.

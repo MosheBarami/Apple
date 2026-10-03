@@ -49,9 +49,9 @@ jobs:
     name: Typecheck and tests
     runs-on: ubuntu-latest
     # 12 until 2026-09-21. This job now also builds the site and downloads Chromium, because
-    # `pnpm -r test` runs @golem/site's 272 tests and 47 of them are about the built site — see the
+    # `pnpm -r test` runs @apple/site's 272 tests and 47 of them are about the built site — see the
     # two steps below. Measured on the runner before those steps existed: install 40s, luau 9s,
-    # typecheck 63s, and the tests reached @golem/web at 1:13 into the step. The new steps add
+    # typecheck 63s, and the tests reached @apple/web at 1:13 into the step. The new steps add
     # roughly 15s and 60s. 20 leaves room without hiding a hang, and a timeout is not a verdict:
     # if this job is ever killed by the clock, nothing was measured and it must not be read as a
     # failing test.
@@ -91,19 +91,19 @@ jobs:
         run: pnpm -r typecheck
 
       - name: Build the site, because `pnpm -r test` runs the site's tests
-        # `@golem/site` is a workspace member, so `pnpm -r test` runs its 272 tests — and 47 of
+        # `@apple/site` is a workspace member, so `pnpm -r test` runs its 272 tests — and 47 of
         # them are about the BUILT site. `built-screen-pixels.test.mjs` opens `dist/index.html`
         # and says so itself: "apps/site/dist/index.html is missing — run `npx astro build` in
         # apps/site first. A picture nobody rendered is not a picture nobody found a defect on."
         #
         # They were right to fail. They were failing in the wrong place: this job had no site
-        # build, so the tests could not measure and said so, `pnpm -r test` bailed at @golem/site,
-        # and @golem/web, @golem/worker and @golem/evals never ran at all behind it. Measured in a
+        # build, so the tests could not measure and said so, `pnpm -r test` bailed at @apple/site,
+        # and @apple/web, @apple/worker and @apple/evals never ran at all behind it. Measured in a
         # clean clone: without this step 47 of 272 fail; with it, 272 pass.
         #
         # Building here rather than excluding the package, because a package that quietly leaves
         # `pnpm -r test` is what `scripts/check-workspace-coverage.mjs` exists to catch.
-        run: pnpm --filter @golem/site build
+        run: pnpm --filter @apple/site build
 
       - name: Install Chromium, because three of those tests use a real browser
         # built-screen-pixels, demo-stages-fit and rendered-typography decode actual pixels out of
@@ -153,10 +153,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build marketing site
-        run: pnpm --filter @golem/site build
+        run: pnpm --filter @apple/site build
 
       - name: Build web app
-        run: pnpm --filter @golem/web build
+        run: pnpm --filter @apple/web build
 
       - name: Internal links resolve
         # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
@@ -312,7 +312,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Syntax-check eval scripts
-        run: pnpm --filter @golem/evals check
+        run: pnpm --filter @apple/evals check
 
       - name: Every package is reachable from `pnpm -r test`
         # apps/plugin shipped for the whole of Phase IV with no package.json, so the
@@ -432,7 +432,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Build site
-        run: pnpm --filter @golem/site build
+        run: pnpm --filter @apple/site build
 
       - name: Smoke tests
         # Static preview of the built output. No worker, no Supabase, no

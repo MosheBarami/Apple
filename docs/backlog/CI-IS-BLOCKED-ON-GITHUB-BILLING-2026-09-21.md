@@ -71,6 +71,6 @@ sequence. Cancelled runs still consume the minutes they used before cancellation
 
 Two steps were also added to `Typecheck and tests` tonight (a site build and a Chromium download),
 which is roughly 75 extra seconds per run. They are there because `pnpm -r test` runs
-`@golem/site`'s 272 tests and 47 of them read the built site; the alternative was a package quietly
+`@apple/site`'s 272 tests and 47 of them read the built site; the alternative was a package quietly
 leaving the recursive test run, which `check-workspace-coverage.mjs` exists to prevent. Worth
 revisiting only with the minute figures in front of whoever decides, not as a guess.

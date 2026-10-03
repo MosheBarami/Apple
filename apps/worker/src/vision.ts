@@ -7,8 +7,8 @@
 // Flow: plugin rasterises the scene -> packed RGB over the op bridge -> PNG here -> GLM-5.3-flash
 // vision -> structured critique with named defects -> the agent edits and renders again.
 import type { Env } from './env';
-import type { RenderViewResult, RenderedView } from '@golem/shared';
-import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@golem/shared';
+import type { RenderViewResult, RenderedView } from '@apple/shared';
+import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@apple/shared';
 import { chat } from './gateway';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';

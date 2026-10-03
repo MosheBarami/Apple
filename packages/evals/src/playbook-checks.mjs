@@ -14,7 +14,7 @@
 // done WITHOUT the Golem primitive is reported but does not fail the task, because
 // hand-rolling is sometimes right and `no_design_violation` still reads the result.
 
-import { gradePlaybook, PLAYBOOK_IDS } from '@golem/design/playbooks';
+import { gradePlaybook, PLAYBOOK_IDS } from '@apple/design/playbooks';
 
 /**
  * @param {string} code   the model's fenced Luau

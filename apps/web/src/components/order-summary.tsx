@@ -11,7 +11,7 @@
 import { Modal } from './modal';
 import { orderSummary } from '../lib/order-summary';
 import { formatNumber } from '../lib/format';
-import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, formatMoney, type PlanId } from '@golem/shared';
+import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, formatMoney, type PlanId } from '@apple/shared';
 
 export function OrderSummaryDialog({
   plan,

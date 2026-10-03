@@ -4,7 +4,7 @@
 // of the same message (lib/run-trace.ts). Each run of adjacent markers is drawn as one AI Elements
 // InlineCitation — the badge with the source's site, and a hover card naming the source and linking
 // to it. A marker with no matching source stays plain text, so nothing points nowhere.
-import type { RunSource } from '@golem/shared';
+import type { RunSource } from '@apple/shared';
 import { useMemo, type ComponentProps } from 'react';
 import {
   InlineCitation,

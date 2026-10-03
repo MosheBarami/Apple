@@ -639,7 +639,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · REFUTED: REFUTED on deployment. The table is real in source (pricing.astro:177-245 driven by PLAN_FEATURES at packages/shared/src/index.ts:1469-1530, with the visually-hidden caption and Included/Not included text, exactly as des
 - [~] Usage and credit explanation
       · The explanation is built and mostly derived: apps/site/src/pages/docs/credits-and-limits.astro reads PLAN_LIMITS (lines 2-6) for the numbers, explains metering, the midnight-UTC reset and what happens at zero; apps/site/src/pages/pricing.as
-      → In apps/site/src/pages/docs/getting-started.astro, import PLAN_LIMITS from '@golem/shared' and replace the two hardcoded '60 Credits' strings (lines 19 and 88) with {PLAN_LIMITS.free.creditsPerDay}, the way apps/site/src/pages/docs/credits-and-limits.astro already does. Delete or rewrite the 'When d
+      → In apps/site/src/pages/docs/getting-started.astro, import PLAN_LIMITS from '@apple/shared' and replace the two hardcoded '60 Credits' strings (lines 19 and 88) with {PLAN_LIMITS.free.creditsPerDay}, the way apps/site/src/pages/docs/credits-and-limits.astro already does. Delete or rewrite the 'When d
 - [✓] Frequently asked questions
       · apps/site/src/pages/docs/faq.astro holds ten questions (plugin source, the retired .rbxm, scripting knowledge, Studio versions, publishing, Team Create, closing Studio mid-build, undoing a change, API availability, reporting bugs) rendered 
 - [~] Searchable documentation entry point
@@ -673,7 +673,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · apps/site/src/pages/docs/faq.astro:19-21 — 'Which Roblox Studio versions are supported?' answers 'Current production Roblox Studio on Windows and macOS… the plugin uses only stable, documented Studio APIs'. Served at /docs/faq, linked from 
 - [~] Plugin version display
       · Studio half is real and asserted: apps/plugin/src/init.server.luau:235 renders 'Apple v0.2.0 · protocol 1' in the dock, and packages/evals/src/plugin-version.test.mjs:160 fails if that label disappears. Web half is absent: the worker alread
-      → Add `fetchStudioLink(projectId)` to apps/web/src/lib/api.ts calling GET /api/projects/${id}/studio/link (returns StudioLinkSummary from @golem/shared), and render `pluginVersion` — with 'unknown' when null, never a blank — in the Studio pill/title at apps/web/src/routes/workspace.tsx:576-586. If you
+      → Add `fetchStudioLink(projectId)` to apps/web/src/lib/api.ts calling GET /api/projects/${id}/studio/link (returns StudioLinkSummary from @apple/shared), and render `pluginVersion` — with 'unknown' when null, never a blank — in the Studio pill/title at apps/web/src/routes/workspace.tsx:576-586. If you
 - [✓] Plugin update availability
       · apps/worker/src/plugin-version.ts:174 clientNotice() is called on every poll at apps/worker/src/do/session.ts:2954 and returned as `client` in the poll response; the plugin renders it at apps/plugin/src/init.server.luau:267 applyClientNotic
 - [✓] Plugin compatibility validation
@@ -2641,7 +2641,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       · packages/sdk/src/errors.mjs:13 `export class ApiError extends Error` carrying status (0 meaning transport, distinct from every HTTP status), body, retryAfter, attempts and an `isTransport` getter, with every numeric field admitted through f
 - [☐] Versioned example applications
       · No examples anywhere. `find . -type d -name 'example*'` outside node_modules and .git matches only vendored third-party corpora under packages/corpus/raw/ and a file inside packages/training/.venv — nothing authored here. packages/sdk ships
-      → Create packages/sdk/examples/ with at least two self-contained apps, each with its own package.json declaring a version and a `@golem/sdk` dependency pinned to an exact version: (1) node-transcript-export — authenticates, lists messages with pagination and writes a markdown transcript; (2) node-run-
+      → Create packages/sdk/examples/ with at least two self-contained apps, each with its own package.json declaring a version and a `@apple/sdk` dependency pinned to an exact version: (1) node-transcript-export — authenticates, lists messages with pagination and writes a markdown transcript; (2) node-run-
 - [~] Developer changelog
       · A product changelog exists and is unusually well-enforced: docs/RELEASES.json is the ledger, scripts/release.mjs --check regenerates and verifies CHANGELOG.md and docs/releases/v0.1.0.md and v0.2.0.md against it (rules as pure functions in 
       → Add an `api` section to each entry in docs/RELEASES.json (or a parallel `apiReleases` array keyed by the dated versions in apps/worker/src/public-api.ts:30), extend scripts/lib/release-rules.mjs with a rule that every value in API_VERSIONS has a ledger entry and every route carrying a `deprecated` b
@@ -3435,7 +3435,7 @@ survive that round and were downgraded here. A ✓ in this file has been attacke
       → Create docs/SECRETS.md listing every optional binding declared in apps/worker/src/env.ts against the environment it is set in (production / staging / local) and the command that sets it (`wrangler secret put NAME --env <env>`), and add a checker scripts/check-secret-inventory.mjs that parses the `En
 - [~] Reproducible builds
       · Build INPUTS are pinned hard: `pnpm install --frozen-lockfile` in all five CI jobs (.github/workflows/ci.yml:65, 124, 238, 293, 318), NODE_VERSION '22' and PNPM_VERSION '11.13.0' (ci.yml:41-43), LUAU_VERSION '0.663' and ROJO_VERSION '7.7.0'
-      → Add a `reproducible` job to .github/workflows/ci.yml that builds twice from a clean checkout and compares: run `pnpm --filter @golem/site build && pnpm --filter @golem/web build`, record `find apps/site/dist apps/web/dist -type f -exec sha256sum {} +` sorted into a manifest, `rm -rf` both dist direc
+      → Add a `reproducible` job to .github/workflows/ci.yml that builds twice from a clean checkout and compares: run `pnpm --filter @apple/site build && pnpm --filter @apple/web build`, record `find apps/site/dist apps/web/dist -type f -exec sha256sum {} +` sorted into a manifest, `rm -rf` both dist direc
 - [✓] Dependency lockfile enforcement
       · pnpm-lock.yaml is committed (lockfileVersion '9.0') and complete — all eleven workspace members declared in pnpm-workspace.yaml appear as importers (apps/benchmark/crystal-canyon, apps/plugin, apps/site, apps/web, apps/worker, packages/corp
 - [~] Build artifact versioning

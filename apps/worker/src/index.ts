@@ -304,10 +304,10 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
-import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
-import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
+import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@apple/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@apple/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@apple/shared';
+import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@apple/shared';
 
 /**
  * The refusals that mean "this kind of file will never work here", as opposed to "this particular
@@ -1046,7 +1046,7 @@ app.post('/api/voice/transcribe', (c) => handleVoiceTranscribe(c.req.raw, c.env,
  *
  * This route is the reason the composer's paperclip was `disabled` with the title "Attachments
  * aren’t supported yet": there was nothing to post to. `ChatAttachment` had been declared in
- * @golem/shared since the protocol was written, and no code anywhere had ever set one of its
+ * @apple/shared since the protocol was written, and no code anywhere had ever set one of its
  * fields.
  *
  * `'build'` rather than `'read'`. Reading an attachment is part of reading the conversation, and

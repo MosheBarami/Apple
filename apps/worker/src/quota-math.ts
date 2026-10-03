@@ -13,7 +13,7 @@
 // design than a scheduled reset — there is no job to miss, no server that has to be awake — and it
 // has one consequence worth stating: a clock that moves BACKWARDS re-exposes a day already spent.
 // Cloudflare's clock does not, and `dayKey` would need a monotonic floor if that ever changed.
-import type { QuotaState } from '@golem/shared';
+import type { QuotaState } from '@apple/shared';
 import { PLAN_LIMITS, type PlanId } from './pricing';
 
 /** The ledger's UTC day key. Slicing an ISO string is the same thing the DO's SQL compares against. */

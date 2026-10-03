@@ -53,7 +53,7 @@ copy, apply that with `--file`, and add them back (re-run the script; it updates
 
 ### Names change if jobs are renamed
 
-`ci.yml` job names are the contract. After the `@golem/*` to `@apple/*` rename lands, update `.github/` and
+`ci.yml` job names are the contract. After the `@apple/*` to `@apple/*` rename lands, update `.github/` and
 the scripts in the same change (`scripts/check-ci-references.mjs` guards missing script paths). The new
 workflow does not mention a package name: it uses path filters (`--filter ./packages/shared`).
 
@@ -93,8 +93,8 @@ Only packages that opt in by carrying `"publishConfig": { "registry": "https://n
   Worker). Nothing else is publishable.
 
 **GitHub Packages only accepts a package whose npm scope equals the repository owner.** The owner is
-`MosheBarami`, so the published names are lower-case: `@golem/sdk` is published as **`@moshebarami/sdk`** and
-`@golem/shared` as **`@moshebarami/shared`** (after the rename, `@apple/sdk` also becomes `@moshebarami/sdk`; the
+`MosheBarami`, so the published names are lower-case: `@apple/sdk` is published as **`@moshebarami/sdk`** and
+`@apple/shared` as **`@moshebarami/shared`** (after the rename, `@apple/sdk` also becomes `@moshebarami/sdk`; the
 base name is kept). The in-repo names are not changed, because every `workspace:*` dependency and `--filter` uses
 them. `publish-packages.mjs` stages a copy in a temp directory: it rewrites the name, removes `private` and
 `scripts`, adds the `repository` field GitHub uses to link the package to this repo, and normalizes `bin`

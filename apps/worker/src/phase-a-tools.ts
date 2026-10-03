@@ -8,7 +8,7 @@
 //
 // The bodies live here and the tools are registered ONE BY ONE in tools.ts, because three guards
 // find the tool table by parsing that literal (see the web-tools comment there).
-import type { GatewayToolDef, StudioOp, UiLayoutDevice } from '@golem/shared';
+import type { GatewayToolDef, StudioOp, UiLayoutDevice } from '@apple/shared';
 import { normaliseProps } from './studio-props';
 import { compileUi, UI_NODE_KINDS, UI_ANCHORS } from './ui-builder';
 import { APPLE_UI_THEME_IDS } from './ui-kit-themes';

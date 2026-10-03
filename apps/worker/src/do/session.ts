@@ -37,10 +37,10 @@ import type {
   StudioLinkSummary,
   ProductModel,
   PluginCapabilityReportV1,
-} from '@golem/shared';
-import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
-import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
-import { asUiTheme, uiThemeContextLine, type UiTheme } from '@golem/shared';
+} from '@apple/shared';
+import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@apple/shared';
+import { isRefusalRemedyCode, type RefusalRemedyCode } from '@apple/shared';
+import { asUiTheme, uiThemeContextLine, type UiTheme } from '@apple/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -87,8 +87,8 @@ import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
-import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
-import type { RunFailure } from '@golem/shared';
+import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@apple/shared';
+import type { RunFailure } from '@apple/shared';
 import { aim, changedProps, trimTranscriptReport } from '../transcript';
 import type { LibraryRun } from '../library-run';
 import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
@@ -316,7 +316,7 @@ interface AgentState {
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
-  sources?: import('@golem/shared').RunSource[];
+  sources?: import('@apple/shared').RunSource[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -3300,7 +3300,7 @@ export class SessionDO extends DurableObject<Env> {
           //   Regenerate, which resend the prompt VERBATIM so that re-running has one definition.
           //   Storing those would tell someone who regenerated four times that their message has
           //   four earlier versions, all identical to the one in front of them. The rule lives in
-          //   @golem/shared because the web app increments its own count optimistically and the
+          //   @apple/shared because the web app increments its own count optimistically and the
           //   two must agree. ]]
           await this.startRun(
             bind,
@@ -5613,7 +5613,7 @@ export class SessionDO extends DurableObject<Env> {
     reason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete',
     /**
      * A CODE, never prose. It is broadcast to the browser on `msg_end`, and the app owns the
-     * sentence — see RUN_FAILURES in @golem/shared. Typing it as the closed set is what makes
+     * sentence — see RUN_FAILURES in @apple/shared. Typing it as the closed set is what makes
      * "just pass the message through" a compile error rather than a leak nobody notices.
      */
     error?: RunFailure,
@@ -5631,7 +5631,7 @@ export class SessionDO extends DurableObject<Env> {
      *
      * A run killed by the step cap and a run killed by the wall clock both end with `reason:
      * 'done'`, because `done` is what the browser's `msg_end.stopReason` union can carry: that
-     * union lives in @golem/shared and is rendered by apps/web, and widening it is a change to a
+     * union lives in @apple/shared and is rendered by apps/web, and widening it is a change to a
      * contract this file does not own. But the ANALYTICS vocabulary is this file's to widen, and
      * filing "stopped three steps in, unfinished, and paid for" under the same label as "it worked"
      * is what made every failure-rate number wrong in our own favour.

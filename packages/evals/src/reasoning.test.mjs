@@ -24,7 +24,7 @@ const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import
 const SRC = new URL('../../../apps/worker/src/reasoning.ts', import.meta.url).pathname;
 const out = join(mkdtempSync(join(tmpdir(), 'golem-reasoning-')), 'reasoning.mjs');
 // `--bundle` and the explicit `--main-fields`: reasoning.ts gained its first VALUE import from
-// @golem/shared (the product-mode display names, so the effort explanation shown to a person stops
+// @apple/shared (the product-mode display names, so the effort explanation shown to a person stops
 // saying "clay"). Transpile-only left that import unresolved at run time. `--platform=neutral`
 // defaults mainFields to EMPTY, so a workspace package whose entry comes from `main` cannot be
 // resolved without naming them — the same trap the comment above records.

@@ -168,7 +168,7 @@ main `pnpm-workspace.yaml` as its nearest workspace root, and **rewrites the MAI
 `node_modules` symlinks to point into the worktree's own store.** Observed in the main tree, by two
 sessions independently:
 
-    apps/worker/node_modules/@golem/shared -> ../../../../.claude/worktrees/probe-9423f2c/packages/shared
+    apps/worker/node_modules/@apple/shared -> ../../../../.claude/worktrees/probe-9423f2c/packages/shared
     apps/worker/node_modules/esbuild       -> ../../../.claude/worktrees/probe-9423f2c/node_modules/.pnpm/esbuild@0.25.12/...
 
 Fifteen links across `apps/web`, `apps/site` and `apps/worker`. **Nobody knows whose install did
@@ -179,16 +179,16 @@ install inside ANY in-repo worktree does this, so it is not a habit one session 
 **The workspace globs are not the cause** — `apps/*`, `apps/benchmark/*`, `packages/*` match nothing under `.claude/`. The direction
 is the opposite of the obvious one: not the main workspace reaching into the worktree, but an
 install inside the worktree reaching out to the main workspace root it happens to be nested under.
-**Cost of the error:** every typecheck, test and build in the main checkout resolved `@golem/shared`
-and `@golem/design` from a FROZEN commit rather than the live tree — a right answer about the wrong
+**Cost of the error:** every typecheck, test and build in the main checkout resolved `@apple/shared`
+and `@apple/design` from a FROZEN commit rather than the live tree — a right answer about the wrong
 tree, in the checkout where nobody expects an indirection. It surfaced as
-`'@golem/shared' has no exported member 'StudioEventSelection'` against a type that is plainly
+`'@apple/shared' has no exported member 'StudioEventSelection'` against a type that is plainly
 exported on line 271. When the worktree was later deleted the links dangled and
 `node_modules/.bin/esbuild` stopped existing, which takes down every test that bundles through it.
 **Caught by:** the contradiction between what `grep` saw in the source and what `tsc` reported —
 two tools disagreeing about one file is only possible if they are reading two files.
 **A THIRD CHECK, from rbxai-04, and it is the only one that sees this class:** after removing a
-worktree, `readlink` a couple of the main tree's `@golem/*` links before the next measurement. Every
+worktree, `readlink` a couple of the main tree's `@apple/*` links before the next measurement. Every
 instinct built today — check the count, prove the parser, capture once — inspects the MEASUREMENT.
 None of them inspects the RESOLUTION. `tsc` read a different file than `grep` did and both were
 correct.
@@ -202,8 +202,8 @@ it, because a fix derived from a correct diagnosis can still be wrong:
     git worktree add --detach /tmp/g90-verify HEAD
     cd /tmp/g90-verify && pnpm install --frozen-lockfile     # 5.9s, 12 packages
 
-    main tree BEFORE   apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
-    main tree AFTER    apps/worker/node_modules/@golem/shared -> ../../../../packages/shared
+    main tree BEFORE   apps/worker/node_modules/@apple/shared -> ../../../../packages/shared
+    main tree AFTER    apps/worker/node_modules/@apple/shared -> ../../../../packages/shared
     esbuild in main    0.25.12, resolves
 
 Zero effect on the checkout. `/tmp` has no `pnpm-workspace.yaml` above it, so the install resolves

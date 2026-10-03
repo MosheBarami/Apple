@@ -1,4 +1,4 @@
-import type { PropValue } from '@golem/shared';
+import type { PropValue } from '@apple/shared';
 import type { AgentCtx } from './tools';
 import {
   GAME_ID, connectMenus, libraryDefaultParent, libraryFolders, libraryImportRaw, libraryMaterials, libraryReady, librarySafetyCopy, MENUS_CONNECTED,

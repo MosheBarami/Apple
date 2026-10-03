@@ -665,8 +665,8 @@ Renaming any of these breaks production, invalidates deployed state, or de-pairs
 
 ### 4.3 Renameable with care (mechanical, one commit, no runtime state)
 
-npm package names — root `golem`, then `@golem/{plugin,site,web,worker,shared,corpus,design,evals}` and
-`@golem/crystal-canyon` **[verified]** — plus every `import … from '@golem/shared'` (≈30 files in `apps/web`
+npm package names — root `golem`, then `@apple/{plugin,site,web,worker,shared,corpus,design,evals}` and
+`@apple/crystal-canyon` **[verified]** — plus every `import … from '@apple/shared'` (≈30 files in `apps/web`
 alone). Private workspace packages; a single rename + `pnpm install` is sufficient. Do this **after** the
 functional P0 work, not during it.
 
@@ -863,7 +863,7 @@ a visual pass over all 8 routes at 400 px and desktop width.
 **E2.** Unify the brand mark; regenerate both favicons and `og.svg` from one SVG. *Acceptance:* three files,
 one source path.
 **E3.** Replace user-visible strings per §4.1, in this order: web app → site → docs prose.
-*Acceptance:* `git grep -i golem -- apps/web/src apps/site/src` returns only `@golem/*` import specifiers.
+*Acceptance:* `git grep -i golem -- apps/web/src apps/site/src` returns only `@apple/*` import specifiers.
 **E4.** Rename npm packages (§4.3) in one commit + `pnpm install`. *Acceptance:* `pnpm -r test` and
 `pnpm -r typecheck` green.
 **E5.** Leave every §4.2 identifier untouched. *Acceptance:* a CI guard asserting `wrangler.jsonc` `name`,

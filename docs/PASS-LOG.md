@@ -7,14 +7,14 @@ row it might implement. Recorded BEFORE the rescue commit.
 
   ?? apps/web/src/components/plans.tsx
        -> WORKLIST.md w12 "Plans and credits surfaced in the product, not only in the
-          webhook". Mid-flight: renders PLAN_COPY/PLAN_LIMITS from @golem/shared. NOT yet
+          webhook". Mid-flight: renders PLAN_COPY/PLAN_LIMITS from @apple/shared. NOT yet
           imported by any route, so by §2.3 it is a DEAD END until wired.
   ?? docs/MISSION-PROMPT.md
        -> no ledger row; this is §14.3 step 0 itself.
    M GATES.md
        -> gate id collision repair (a second G25 had been introduced); renumbered to G26.
    M apps/worker/src/pricing.ts
-       -> w12. PLAN_LIMITS/PLAN_IDS/isPlanId/CREDITS_PER_BUILD moved to @golem/shared and
+       -> w12. PLAN_LIMITS/PLAN_IDS/isPlanId/CREDITS_PER_BUILD moved to @apple/shared and
           re-exported, so the plan page and the QuotaDO ledger read one table.
    M packages/shared/src/index.ts
        -> w12. PLAN_LIMITS + PLAN_COPY + buildsPerMonth/buildsPerDay added.
@@ -485,7 +485,7 @@ A TEST OF MINE WAS INERT, and the falsification is what found it.
   too. Green, and measuring nothing.
 
   What actually moves is the edge count: 546 resolved / 31 unresolved becomes 496 / 81 —
-  fifty @golem/* specifiers stop being followed while every finding stays identical. A
+  fifty @apple/* specifiers stop being followed while every finding stays identical. A
   resolver that drops a class of specifier does not report an error; it reports FEWER
   EDGES. So the graph now publishes its own completeness and the test asserts that.
 
@@ -498,7 +498,7 @@ CHECK-DEADENDS found three real dead ends, one of them mine:
   apps/web/src/components/plans.tsx — WIRE — written mid-flight this session for w12 and
     never given an importer. The exact shape the checker exists to find, produced by the
     agent that wrote the checker.
-  packages/design/src/index.mjs — WIRE — nothing imports @golem/design at all.
+  packages/design/src/index.mjs — WIRE — nothing imports @apple/design at all.
   packages/corpus/src/discover.mjs — STRUCTURALLY-BLOCKED — enumerates repositories from
     the GitHub API; no product path should call it at request time.
 

@@ -8,7 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { ProductModel } from '@golem/shared';
+import type { ProductModel } from '@apple/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { formatSettings, shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -43,7 +43,7 @@ import {
 } from '../lib/api';
 import { FilesPanel } from '../components/ws/files-panel';
 import { ACCESS_LOADING, allows, normaliseAccess, whyNot, type AccessState } from '../lib/capabilities';
-import type { ChatAttachment } from '@golem/shared';
+import type { ChatAttachment } from '@apple/shared';
 import { jumpLabel, unseenCount } from '../lib/follow-latest';
 import { Conversation, ConversationContent, ConversationScrollButton } from '../components/ai-elements/conversation';
 import { useStickToBottomContext, type StickToBottomContext } from 'use-stick-to-bottom';

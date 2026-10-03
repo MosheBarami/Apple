@@ -14,7 +14,7 @@
 // unreadable — the point of comparison is what is on screen now, so it has to be in the list, at
 // the end, where it belongs in time.
 import { useEffect, useState } from 'react';
-import type { MessageRevisionDto } from '@golem/shared';
+import type { MessageRevisionDto } from '@apple/shared';
 import { Modal } from '../modal';
 import { fetchMessageRevisions, ApiError } from '../../lib/api';
 import { clockTime } from '../../lib/format';

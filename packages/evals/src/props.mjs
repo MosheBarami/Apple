@@ -54,8 +54,8 @@ export const FIXTURES_DIR = join(PROPS_DIR, 'fixtures');
 
 /** Background constants of the software rasteriser. Must match src/render-scene.mjs; a test
  *  renders a known scene and asserts the mask recovers, so drift is caught rather than assumed. */
-export { SKY_RGB, GROUND_RGB, geometryMask } from '@golem/design/pixels';
-import { SKY_RGB, GROUND_RGB, geometryMask } from '@golem/design/pixels';
+export { SKY_RGB, GROUND_RGB, geometryMask } from '@apple/design/pixels';
+import { SKY_RGB, GROUND_RGB, geometryMask } from '@apple/design/pixels';
 
 /** Roblox's out-of-the-box Part. Medium stone grey, Plastic. The thing "just grey Parts" means. */
 export const FACTORY_PART = { material: 'Plastic', color: [163, 162, 165] };

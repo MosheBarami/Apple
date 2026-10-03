@@ -1,11 +1,11 @@
-// Types for @golem/design, declared HERE rather than in that package.
+// Types for @apple/design, declared HERE rather than in that package.
 //
 // The design library is plain ESM with JSDoc and no build step, which is right for it —
 // it is data plus two pure functions and adding a compile step would be the tail wagging
 // the dog. The worker is TypeScript, so it needs a declaration, and this is the honest
 // place for it: the worker is the consumer that requires types, and a `.d.ts` written by
 // the consumer cannot silently drift into being treated as the source of truth.
-declare module '@golem/design' {
+declare module '@apple/design' {
   export interface DesignRule {
     id: string;
     component: string;

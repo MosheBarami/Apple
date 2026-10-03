@@ -37,7 +37,7 @@ import {
   implementedScopes,
   stateOf,
 } from '../src/lib/roblox-key.ts';
-import { ROBLOX_SCOPES } from '@golem/shared';
+import { ROBLOX_SCOPES } from '@apple/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PANEL = readFileSync(join(WEB, 'src', 'components', 'roblox-key-panel.tsx'), 'utf8');
@@ -217,7 +217,7 @@ test('the panel renders the mapped explanation, not a bare e.message toast', () 
 });
 
 test('every scope the panel offers is one the worker will accept', () => {
-  // The vocabulary lives in @golem/shared precisely so this cannot drift; asserted because a
+  // The vocabulary lives in @apple/shared precisely so this cannot drift; asserted because a
   // scope offered and refused is a tickbox that fails at save time.
   for (const e of SCOPE_EXPLANATIONS) {
     assert.ok(ROBLOX_SCOPES.includes(e.scope), `${e.scope} is not a Roblox Open Cloud scope`);

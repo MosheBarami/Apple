@@ -34,7 +34,7 @@ const { planChangePreviewLine } = await import(`file://${out}`);
 const DATE = '3 October 2026';
 const opts = {
   planName: 'Studio',
-  // Real money formatting is tested in @golem/shared. Here it is a stand-in whose output is
+  // Real money formatting is tested in @apple/shared. Here it is a stand-in whose output is
   // recognisable in the sentence, so the sentence is what gets asserted.
   formatMoney: (amount, currency) => `${currency} ${amount.toFixed(2)}`,
   formatDate: () => DATE,

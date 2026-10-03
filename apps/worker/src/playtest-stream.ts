@@ -22,8 +22,8 @@
  * staleness is computed here, from the worker's own timestamps, and travels to
  * the browser as data rather than being left for the UI to infer.
  */
-import type { PlaytestPhase, PlaytestRun, StudioEventLog } from '@golem/shared';
-import { PLAYTEST_DEAD_MS, PLAYTEST_STALE_MS } from '@golem/shared';
+import type { PlaytestPhase, PlaytestRun, StudioEventLog } from '@apple/shared';
+import { PLAYTEST_DEAD_MS, PLAYTEST_STALE_MS } from '@apple/shared';
 
 /** Phases from which no further transition is legal. */
 const TERMINAL: ReadonlySet<PlaytestPhase> = new Set<PlaytestPhase>(['finished', 'failed']);

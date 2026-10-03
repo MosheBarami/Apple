@@ -14,7 +14,7 @@
 //     would be a rounding error the user cannot see and the agent cannot correct.
 //   * Only paths we actually hold are NAMED. The rest are acknowledged as a number. "and 43 more"
 //     is a fact; a made-up path is a instruction to edit something that may not exist.
-import type { StudioEventSelection } from '@golem/shared';
+import type { StudioEventSelection } from '@apple/shared';
 
 /**
  * How many paths a reference names before it starts counting instead.

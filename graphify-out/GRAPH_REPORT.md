@@ -701,7 +701,7 @@ Nodes (29): PlaytestCardProps, MeResponse, ProjectSocket, OpPartition, partition
 
 ### Community 28 - "web/package.json"
 Cohesion: 0.06
-Nodes (36): dependencies, dompurify, @golem/shared, marked, react, react-dom, react-router-dom, @supabase/supabase-js (+28 more)
+Nodes (36): dependencies, dompurify, @apple/shared, marked, react, react-dom, react-router-dom, @supabase/supabase-js (+28 more)
 
 ### Community 29 - "security.mjs"
 Cohesion: 0.10
@@ -829,7 +829,7 @@ Nodes (26): (a) Do account-level / per-product billing caps, spend alerts, or bu
 
 ### Community 60 - "worker/package.json"
 Cohesion: 0.06
-Nodes (32): dependencies, @golem/design, @golem/shared, hono, jose, devDependencies, @cloudflare/workers-types, esbuild (+24 more)
+Nodes (32): dependencies, @apple/design, @apple/shared, hono, jose, devDependencies, @cloudflare/workers-types, esbuild (+24 more)
 
 ### Community 61 - "Golem scripting curriculum"
 Cohesion: 0.08
@@ -917,7 +917,7 @@ Nodes (19): Client contracts, Codes, Collect, Crystal Canyon — architecture co
 
 ### Community 82 - "site/package.json"
 Cohesion: 0.09
-Nodes (20): dependencies, astro, @astrojs/check, @astrojs/sitemap, @golem/shared, typescript, @golem/shared, typescript (+12 more)
+Nodes (20): dependencies, astro, @astrojs/check, @astrojs/sitemap, @apple/shared, typescript, @apple/shared, typescript (+12 more)
 
 ### Community 83 - "Apple v1 — training report"
 Cohesion: 0.10
@@ -1061,7 +1061,7 @@ Nodes (15): counts, checkouts, classified, fetchableInCorpus, licenceConflicts, 
 
 ### Community 118 - "evals/package.json"
 Cohesion: 0.12
-Nodes (15): dependencies, @golem/design, description, @golem/design, name, private, scripts, check (+7 more)
+Nodes (15): dependencies, @apple/design, description, @apple/design, name, private, scripts, check (+7 more)
 
 ### Community 119 - "activity.tsx"
 Cohesion: 0.10
@@ -1989,7 +1989,7 @@ Nodes (5): fetching, HERE, ROUTES, SRC, tsxUnder()
 
 ### Community 358 - "golem-design.d.ts"
 Cohesion: 0.50
-Nodes (3): DesignBriefInput, DesignRule, @golem/design
+Nodes (3): DesignBriefInput, DesignRule, @apple/design
 
 ### Community 359 - "asset-library-availability.test.mjs"
 Cohesion: 0.50
