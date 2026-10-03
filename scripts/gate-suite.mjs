@@ -141,6 +141,8 @@ const parts = [
   //   rather than claiming the deployed site, so the narrower run cannot be misread as the wide one.
   //   The deployed half belongs on the deploy path: `node scripts/check-rebrand.mjs --deployed`.
   { label: 'check-rebrand', ...run('node', ['scripts/check-rebrand.mjs', '--offline']) },
+  // The old product name must not come back (owner decision 2026-10-02); exact-count allowlist, see the script.
+  { label: 'check-no-golem', ...run('node', ['scripts/check-no-golem.mjs']) },
   // The competitor teardown. It was a script nobody ran, which is how it came to report
   // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
   // the four it never opened. A guard outside the suite is a guard that has already gone stale.

@@ -335,6 +335,15 @@ jobs:
         # the deploy path.
         run: node scripts/check-rebrand.mjs --offline
 
+      - name: The old product name does not come back
+        # Owner decision 2026-10-02: the old name is wiped out of every aspect of the product. This is the guard
+        # (scripts/check-no-golem.mjs): every tracked file's contents, binary bytes and path names, against an
+        # exact-count allowlist (scripts/golem-allowlist.json) in which every entry has a reason and a removal
+        # condition. A new use fails; so does an entry that matches nothing or whose count is no longer exact.
+        # It needs only git and node, so it is deterministic and offline. tests/no-golem-guard.test.mjs proves it
+        # can fail.
+        run: node scripts/check-no-golem.mjs
+
       - name: Every script CI invokes exists
         # This checker was written for the rename that missed .github and left main red for five
         # days (04d3800, runs 34934918501 / 35002022585 / 35474815515). It was reachable only from
