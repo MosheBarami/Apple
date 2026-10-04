@@ -443,11 +443,12 @@
       "scope": "content",
       "paths": [
         "packages/corpus/research/10-from-scratch-playbook.md",
+        "packages/corpus/research/13-genre-tycoon-building.md",
         "packages/corpus/research/15-genre-defense-strategy.md"
       ],
-      "token": "FriendlyStoneGolem|Golem",
-      "max": 2,
-      "reason": "third-party data in Apple research notes: a DevForum author's username cited as a source, and an enemy named 'Molten Golem' in a tower-defense game's published stats",
+      "token": "FriendlyStoneGolem|Golem|Sangolemango",
+      "max": 3,
+      "reason": "third-party data in Apple research notes: DevForum authors' usernames cited as sources, and an enemy named 'Molten Golem' in a tower-defense game's published stats",
       "removal": "remove a path when that source or stat is dropped from its note"
     },
     {
