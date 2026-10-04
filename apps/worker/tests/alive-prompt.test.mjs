@@ -38,3 +38,13 @@ test('the prompt says a build is scaled for whoever it is for (benchmark s10: a 
   const subjects = JSON.parse(readFileSync(join(WORKER, 'tests', 'fixtures', 'subject-words.json'), 'utf8')).words;
   assert.deepEqual(subjects.filter((w) => new RegExp(`\\b${w}s?\\b`, 'i').test(rule)), [], 'the rule names a subject');
 });
+
+test('the prompt carries the researched game principles and lets the agent look up current knowledge (Phase R, 2026-10-04)', () => {
+  const at = prompts.indexOf('A game is a loop before it is a scene');
+  assert.ok(at > 0, 'the loop principle is missing');
+  const rule = prompts.slice(at, prompts.indexOf('- ASSET ORDER', at));
+  for (const re of [/reward inside 30 seconds/, /server owns every value/, /phones/, /sound and a visual/, /odds shown/]) assert.match(rule, re);
+  const subjects = JSON.parse(readFileSync(join(WORKER, 'tests', 'fixtures', 'subject-words.json'), 'utf8')).words;
+  assert.deepEqual(subjects.filter((w) => new RegExp(`\\b${w}s?\\b`, 'i').test(rule)), [], 'the rule names a subject');
+  assert.match(prompts, /search_docs also holds researched, cited Roblox knowledge/);
+});

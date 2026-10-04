@@ -17,7 +17,8 @@
     "hash": "node src/hash.mjs",
     "enumerate": "node src/enumerate.mjs --emit-seeds",
     "tag": "node src/tag.mjs",
-    "bootstrap": "node src/bootstrap.mjs"
+    "bootstrap": "node src/bootstrap.mjs",
+    "research-upload": "node src/research-upload.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1"
