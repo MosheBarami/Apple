@@ -224,7 +224,10 @@ test('a run that has not finished reads as running, not as an outcome it does no
 test('a run whose cost was never recorded reads as unrecorded, not as zero credits', () => {
   // The same distinction `automationSpend` makes. Drawing a null as "0 Credits" is how a spending
   // report understates, and this row is the one place a person looks for what a fire cost.
-  assert.equal(web.creditLabel(12), '12 Credits');
+  // A recorded cost is the run's charge in LEDGER units (150 to a credit); a person reads credits.
+  assert.equal(web.creditLabel(150), '1.00 Credits');
+  assert.equal(web.creditLabel(12), '0.08 Credits');
+  assert.doesNotMatch(web.creditLabel(150), /\b150\b/, 'the ledger-unit count is never printed');
   assert.equal(web.creditLabel(null), 'cost not recorded');
 });
 

@@ -306,7 +306,7 @@ import {
   type RateLimitVerdict,
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@studpilot/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
 import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@studpilot/shared';
 import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@studpilot/shared';
@@ -2350,7 +2350,7 @@ app.post('/api/projects/:id/branding/generate', async (c) => {
     spend: async () => {
       const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
         method: 'POST',
-        body: JSON.stringify({ credits: 1, kind: 'branding_copy' }),
+        body: JSON.stringify({ credits: BRANDING_COST_UNITS, kind: 'branding_copy' }),
       });
       return ((await res.json()) as { ok: boolean }).ok === true;
     },

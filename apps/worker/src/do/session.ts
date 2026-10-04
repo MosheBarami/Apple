@@ -38,7 +38,7 @@ import type {
   ProductModel,
   PluginCapabilityReportV1,
 } from '@studpilot/shared';
-import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
+import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@studpilot/shared';
 import { asUiTheme, uiThemeContextLine, type UiTheme } from '@studpilot/shared';
 import { WIRE_HEADERS, echoSubprotocol, readWire } from '@studpilot/shared';
@@ -6168,7 +6168,7 @@ export class SessionDO extends DurableObject<Env> {
         title: failed ? `That build did not finish` : `Your build finished`,
         body: failed
           ? (error ?? 'The run ended before it could make the change you asked for.')
-          : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${agent.creditsSpent} Credit(s).`,
+          : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${creditsText(agent.creditsSpent)} Credits.`,
         at: Date.now(),
       }).then(() => undefined);
       //[[ OFF THE CRITICAL PATH, AND ACTUALLY STARTED. This was `waitUntil(outcome)`, which drops
@@ -6204,8 +6204,8 @@ export class SessionDO extends DurableObject<Env> {
           title: band === 'exhausted' ? 'Your Credits for today are used up' : 'You are running low on Credits',
           body:
             band === 'exhausted'
-              ? `They refill at ${state.resetsAtIso}. Credits, or a bigger plan, cover the gap.`
-              : `${state.creditsRemaining} of ${state.creditsDaily} left today. They refill at ${state.resetsAtIso}.`,
+              ? `They refill at ${state.resetsAtIso}.`
+              : `${creditsText(state.creditsRemaining)} of ${creditsText(state.creditsDaily)} Credits left today. They refill at ${state.resetsAtIso}.`,
           at: Date.now(),
         }).then(() => undefined);
         void usage.catch(() => {});

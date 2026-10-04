@@ -16,6 +16,7 @@
 //
 // Nothing here reads a clock, a database or an environment. It is the decision and the wording,
 // separated from the Durable Object that has to carry them out, so both can be tested by argument.
+import { creditsText } from '@studpilot/shared';
 import type { BuildOutcome } from './analytics';
 
 /** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @studpilot/shared. */
@@ -145,12 +146,12 @@ export function refundVerdict(i: RefundInputs): RefundVerdict {
   return { refund: true, credits: i.creditsSpent, why: 'no_usable_output' };
 }
 
-const plural = (n: number): string => (n === 1 ? 'Credit' : 'Credits');
-
 /**
  * THE USER-VISIBLE SENTENCE, written from what the ledger ACTUALLY returned.
  *
- * `asked` is what the verdict wanted back; `returned` is what QuotaDO managed to put back. They
+ * `asked` and `returned` are LEDGER UNITS, the unit the run charged in, and the sentence prints
+ * them as the credits a person reads (creditsText: "0.02 Credits"). `asked` is what the verdict
+ * wanted back; `returned` is what QuotaDO managed to put back. They
  * differ in exactly one situation and it is worth stating rather than papering over: the allowance
  * is keyed by UTC day, so a run that began before midnight and ended after it is asking today's
  * ledger to reverse a charge that belongs to yesterday's. The ledger refuses to push a day's spend
@@ -162,17 +163,18 @@ const plural = (n: number): string => (n === 1 ? 'Credit' : 'Credits');
  */
 export function refundSentence(asked: number, returned: number): string | null {
   if (asked <= 0) return null;
+  const askedText = creditsText(asked);
   if (returned >= asked) {
-    return `You have not been charged for this run: the ${asked} ${plural(asked)} it used ${asked === 1 ? 'has' : 'have'} been put back.`;
+    return `You have not been charged for this run: the ${askedText} Credits it used have been put back.`;
   }
   if (returned > 0) {
     return (
-      `${returned} of the ${asked} ${plural(asked)} this run used ${returned === 1 ? 'has' : 'have'} been put back. ` +
+      `${creditsText(returned)} of the ${askedText} Credits this run used have been put back. ` +
       `The rest was charged against yesterday's allowance, which has already reset, so it could not be returned.`
     );
   }
   return (
-    `This run produced nothing, so its ${asked} ${plural(asked)} should not stand — but ${asked === 1 ? 'it was' : 'they were'} ` +
-    `charged against yesterday's allowance, which has already reset, so ${asked === 1 ? 'it' : 'they'} could not be returned automatically.`
+    `This run produced nothing, so its ${askedText} Credits should not stand — but they were ` +
+    `charged against yesterday's allowance, which has already reset, so they could not be returned automatically.`
   );
 }

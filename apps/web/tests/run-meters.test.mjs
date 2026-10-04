@@ -181,7 +181,9 @@ test('the cost is kept on the MESSAGE, because msg_end destroys the status that 
 
 test('the finished turn renders it, and never renders a zero', () => {
   assert.match(TURN_CODE, /item\.creditsSpent != null && item\.creditsSpent > 0/, 'absent and zero must both render nothing');
-  assert.match(TURN_CODE, /item\.creditsSpent === 1 \? 'Credit' : 'Credits'/, 'singular and plural are both shown verbatim');
+  // The figure is the worker's LEDGER units and a person reads credits: it goes through creditsText
+  // (the rendered footer is held in credits-in-credits.test.mjs, which renders the real Turn).
+  assert.match(TURN_CODE, /creditsText\(item\.creditsSpent\)/, 'the footer must print the settled cost in credits, not ledger units');
 });
 
 test('the finished turn does not price anything itself either', () => {

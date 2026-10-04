@@ -48,15 +48,16 @@ const LINK = {
   linkedAt: 1,
 };
 
+// In LEDGER units, as QuotaDO reports them: 525 of them are 3.50 credits (INTERNAL_PER_CREDIT = 150).
 const QUOTA = {
-  creditsRemaining: 140,
+  creditsRemaining: 525,
   creditsDaily: 200,
   creditsMonthly: 4000,
   creditsUsedToday: 60,
   creditsUsedThisMonth: 900,
   resetsAtIso: new Date(Date.now() + 5 * 3600_000).toISOString(),
   plan: 'builder',
-  allowanceRemaining: 140,
+  allowanceRemaining: 525,
   credits: 0,
 };
 
@@ -150,7 +151,13 @@ test('/credits reports the balance, ephemerally', async () => {
   const out = await handleInteraction(cmd('credits'), ports());
   assert.equal(out.status, 200);
   assertMessage(out.body);
-  assert.match(out.body.data.content, /140 Credits/);
+  assert.match(out.body.data.content, /\*\*3\.50 Credits\*\* left — 3\.50 from today's Pro allowance\./, 'credits with two decimals and the plan by its name, not "builder"');
+  assert.doesNotMatch(out.body.data.content, /\b525\b|builder/, 'a ledger-unit count or a stored plan id reached the person');
+});
+
+test('/credits adds the purchased balance in credits too', async () => {
+  const out = await handleInteraction(cmd('credits'), ports({ quota: async () => ({ ...QUOTA, credits: 300 }) }));
+  assert.match(out.body.data.content, /plus 2\.00 purchased/);
 });
 
 test('/status reports the live run using the same words the web app uses', async () => {
@@ -450,7 +457,8 @@ test('/status reports the balance as well as the run', async () => {
   const p = ports();
   const out = await handleInteraction(cmd('status'), p);
   assertMessage(out.body);
-  assert.match(out.body.data.content, /140 Credits/, '/status must say what is left');
+  assert.match(out.body.data.content, /3\.50 Credits/, '/status must say what is left, in credits');
+  assert.doesNotMatch(out.body.data.content, /\b525\b/);
   assert.ok(p.calls.some((c) => c[0] === 'quota' && c[1] === LINK.appleUserId), 'and read it for the LINKED account');
 });
 

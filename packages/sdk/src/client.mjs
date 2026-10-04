@@ -59,7 +59,7 @@ export class StudPilotClient {
     return this.transport.request('/api/me/usage');
   }
 
-  /** Semantic search over the ingested Roblox documentation. Metered: costs one Credit. */
+  /** Semantic search over the ingested Roblox documentation. Metered: costs one ledger unit (1/150 of a credit as the app shows it). */
   searchDocs(query) {
     return this.transport.request('/api/docs/search', { query: { q: String(query ?? '') } });
   }

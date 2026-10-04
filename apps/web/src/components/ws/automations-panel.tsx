@@ -17,6 +17,7 @@
 // gives lands on the field that caused it.
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { creditsText } from '@studpilot/shared';
 import { Failure } from '../failure';
 import { EmptyState } from '../empty-state';
 import { useToast } from '../toast';
@@ -105,7 +106,7 @@ function RunHistory({ automationId }: { automationId: string }) {
     <div className="au-history">
       {spend.data && (
         <p className="mem__note">
-          {spend.data.runs} {spend.data.runs === 1 ? 'run' : 'runs'} in the last 30 days · {spend.data.credits} Credits recorded
+          {spend.data.runs} {spend.data.runs === 1 ? 'run' : 'runs'} in the last 30 days · {creditsText(spend.data.credits)} Credits recorded
           {/* A fire whose cost was never recorded is counted separately, never added as a zero —
               the same distinction automationSpend makes, for the same reason. */}
           {spend.data.unreadable > 0 ? ` · ${spend.data.unreadable} with no cost recorded` : ''}

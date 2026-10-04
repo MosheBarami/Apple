@@ -13,7 +13,7 @@
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
 import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@studpilot/shared';
-import { WIRE_HEADERS, bothWire } from '@studpilot/shared';
+import { INTERNAL_PER_CREDIT, WIRE_HEADERS, bothWire } from '@studpilot/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -679,6 +679,11 @@ export function rateLimitHeaders(v: RateLimitVerdict): Record<string, string> {
   return h;
 }
 
+/** The unit of the two usage headers, as published in the OpenAPI description. See usageHeaders. */
+export const API_USAGE_UNIT_NOTE =
+  `The usage headers X-StudPilot-Usage-Credits and X-StudPilot-Credits-Remaining count in ledger units, ` +
+  `${INTERNAL_PER_CREDIT} to one credit as shown in the StudPilot app (a header value of ${INTERNAL_PER_CREDIT} is 1.00 credit).`;
+
 export interface UsageFacts {
   inputTokens: number;
   outputTokens: number;
@@ -693,6 +698,13 @@ export interface UsageFacts {
  * one spent — and a number that arrives after the fact cannot be used to stop before the limit.
  * `creditsRemaining` is omitted rather than guessed when the quota answer is unavailable: a
  * fabricated headroom figure is worse than none, because a client will act on it.
+ *
+ * THE UNIT. `X-StudPilot-Usage-Credits` and `X-StudPilot-Credits-Remaining` (and their older
+ * spellings) are PUBLISHED, so their value and meaning are unchanged: whole numbers of LEDGER UNITS,
+ * the unit QuotaDO counts in. They are not the credits the app shows. The app divides ledger units by
+ * INTERNAL_PER_CREDIT (150) and prints two decimals, so a header of 150 is one credit in the app.
+ * They are not converted here, because an SDK client that reads them today would silently break;
+ * `API_USAGE_UNIT_NOTE` states the unit in the published OpenAPI description.
  */
 export function usageHeaders(u: UsageFacts): Record<string, string> {
   // Every spelling, because an API client written before either rename reads an old one and a new one
@@ -894,7 +906,7 @@ export function openApiDocument(origin: string): Record<string, unknown> {
     info: {
       title: 'StudPilot API',
       version: CURRENT_API_VERSION,
-      description: 'The public HTTP surface of StudPilot. OpenAI-compatible chat completions, plus project and run resources.',
+      description: `The public HTTP surface of StudPilot. OpenAI-compatible chat completions, plus project and run resources. ${API_USAGE_UNIT_NOTE}`,
     },
     servers: [{ url: origin }],
     components: {

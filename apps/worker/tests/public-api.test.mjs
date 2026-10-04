@@ -783,6 +783,19 @@ test('usage headers omit headroom rather than inventing it', () => {
   }
 });
 
+test('the usage headers are a PUBLISHED CONTRACT: ledger units, unconverted, with the unit documented', () => {
+  // An SDK client reads these today. They stay whole numbers of ledger units (150 to one credit as
+  // the app shows it); what changed is only that the unit is now written down where a client reads.
+  const h = P.usageHeaders({ inputTokens: 10, outputTokens: 4, creditsSpent: 150, creditsRemaining: 1500 });
+  assert.equal(h['X-StudPilot-Usage-Credits'], '150', 'the value is not converted to the app\'s credits');
+  assert.equal(h['X-StudPilot-Credits-Remaining'], '1500');
+  const note = P.openApiDocument('https://studpilot.test').info.description;
+  assert.match(note, /X-StudPilot-Usage-Credits/);
+  assert.match(note, /X-StudPilot-Credits-Remaining/);
+  assert.match(note, /ledger units, 150 to one credit/);
+  assert.equal(P.API_USAGE_UNIT_NOTE.includes('150'), true);
+});
+
 test('the sandbox completion is deterministic and labels itself', () => {
   const req = P.parseChatCompletionRequest({ model: 'studpilot-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
   const a = P.sandboxCompletion(req);

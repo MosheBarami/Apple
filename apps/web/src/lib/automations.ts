@@ -27,6 +27,8 @@
 //
 // The daily cap IS offered, because `startVerdict` refuses `daily_cap` against `firesSince` and
 // the live route test drives it. That is the difference between a setting and a control.
+import { creditsText } from '@studpilot/shared';
+
 /**
  * The limits the counters are drawn against.
  *
@@ -272,8 +274,9 @@ export function outcomeLabel(outcome: string | null): { label: string; tone: Out
  * billed inside the session after the fire returns, so this layer genuinely does not know, and
  * printing a zero is how a spending report understates by the whole cost of every automated build.
  */
-export function creditLabel(credits: number | null): string {
-  return credits === null ? 'cost not recorded' : `${credits} Credits`;
+export function creditLabel(ledgerUnits: number | null): string {
+  // The recorded cost is the run's charge in ledger units; a person reads credits (creditsText).
+  return ledgerUnits === null ? 'cost not recorded' : `${creditsText(ledgerUnits)} Credits`;
 }
 
 /** How long a fire took, or null while it is still going. Never guessed from `Date.now()`. */

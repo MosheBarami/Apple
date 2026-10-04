@@ -20,14 +20,16 @@ const render = (el) => renderWith(ui.renderToStaticMarkup, el);
 const CP = { id: 'cp1', label: 'Before door build', createdAt: 1000, kind: 'pre_agent', scriptCount: 12, instanceCount: 340, sizeBytes: 5000 };
 
 test('Context shows the sent budget and credits, and says unavailable for the unknown half', () => {
-  const html = render(h(ui.RunContext, { context: { usedChars: 12000, maxChars: 24000, dropped: { groups: 2, chars: 900 } }, creditsSpent: 6 }));
+  // `creditsSpent` is the worker's LEDGER units (150 to a credit): 600 of them are 4.00 credits.
+  const html = render(h(ui.RunContext, { context: { usedChars: 12000, maxChars: 24000, dropped: { groups: 2, chars: 900 } }, creditsSpent: 600 }));
   assert.match(text(html), /Context 12,000 of 24,000 characters/);
   assert.match(text(html), /2 earlier turns were left out/);
-  assert.match(text(html), /6 Credits spent/);
+  assert.match(text(html), /4\.00 Credits spent/);
+  assert.doesNotMatch(text(html), /\b600\b/, 'a ledger-unit count reached the person');
   assert.match(html, /aria-valuenow="50"/);
-  const partial = text(render(h(ui.RunContext, { creditsSpent: 1 })));
+  const partial = text(render(h(ui.RunContext, { creditsSpent: 150 })));
   assert.match(partial, /Context unavailable/);
-  assert.match(partial, /1 Credit spent/);
+  assert.match(partial, /1\.00 Credits spent/);
   assert.match(text(render(h(ui.RunContext, { context: { usedChars: 1, maxChars: 10 } }))), /Credits unavailable/);
   assert.equal(render(h(ui.RunContext, {})), '');
   assert.equal(render(h(ui.RunContext, { context: { usedChars: 1, maxChars: 0 } })), '', 'an incoherent budget is not a measurement');

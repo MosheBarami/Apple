@@ -1,7 +1,8 @@
 /**
- * The roadmap's data model and layout, with no React and no imports.
+ * The roadmap's data model and layout, with no React and one runtime import: the pure unit
+ * conversion in @studpilot/shared (`creditsText`), for the cost chip.
  *
- * Kept free of dependencies for two reasons. It is loaded directly by
+ * Kept free of other dependencies for two reasons. It is loaded directly by
  * `node --test` (native type stripping, the same arrangement as
  * `components/ws/thinking-model.ts`), and it is the module `lib/api.ts`
  * type-imports for the wire shapes — a type-only import, so the fetch layer
@@ -12,6 +13,8 @@
  * date, an estimate or a percentage. `deriveReadiness` is the one derived
  * quantity, and it is derived from declared dependencies alone.
  */
+
+import { creditsText } from '@studpilot/shared';
 
 /* ------------------------------------------------------------------ wire -- */
 
@@ -505,6 +508,11 @@ export function effortLabel(effort: string | null | undefined): string {
  *     and printing "2–2 Credits" would invent a spread the measurement does not have.
  *
  * An en dash, not a hyphen: this is a range, and it is read by a person.
+ *
+ * THE UNIT. The worker's `creditsLow` and `creditsHigh` are `runs x MODE_INFO.typicalCredits`, which
+ * is in LEDGER UNITS (INTERNAL_PER_CREDIT to a credit), so they are converted here, once, and printed
+ * as the credits a person reads: two decimals ("0.03–0.12 Credits"). The milestone card and the
+ * suggestions both print through this function, so there is no second place to forget it.
  */
 export function creditRangeLabel(
   low: number | null | undefined,
@@ -513,8 +521,7 @@ export function creditRangeLabel(
   if (typeof low !== 'number' || typeof high !== 'number') return '';
   if (!Number.isFinite(low) || !Number.isFinite(high)) return '';
   if (low <= 0 || high < low) return '';
-  const unit = high === 1 ? 'Credit' : 'Credits';
-  return low === high ? `${low} ${unit}` : `${low}–${high} ${unit}`;
+  return low === high ? `${creditsText(low)} Credits` : `${creditsText(low)}–${creditsText(high)} Credits`;
 }
 
 /**

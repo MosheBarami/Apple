@@ -20,6 +20,7 @@ import {
   PRICE_CURRENCY,
   buildsPerDay,
   buildsPerMonth,
+  CREDIT_PURCHASE_LIVE,
   formatCredits,
   formatMoney,
   type ListedPlanId,
@@ -110,9 +111,13 @@ export function PlanLadder({
             </p>
 
             <ul className="plan__list">
-              {copy.highlights.map((h) => (
-                <li key={h}>{h}</li>
-              ))}
+              {/* A highlight that sells buying Credits is withheld while they cannot be bought
+                  (CREDIT_PURCHASE_LIVE), the same filter the pricing page applies to the same copy. */}
+              {copy.highlights
+                .filter((h) => CREDIT_PURCHASE_LIVE || !/\bbuy\b.*\bcredits?\b/i.test(h))
+                .map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
             </ul>
 
             {/* Three of the four tiers said nothing at all about support, which a reader cannot

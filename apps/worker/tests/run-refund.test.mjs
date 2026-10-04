@@ -125,11 +125,18 @@ test('runDeliveredSomething is the single answer both the verdict and the wordin
   assert.equal(runDeliveredSomething(barren({ mutated: true })), true);
 });
 
-test('THE SENTENCE SAYS WHAT THE LEDGER RETURNED, never what was asked for', () => {
-  assert.match(refundSentence(2, 2), /not been charged/);
-  assert.match(refundSentence(1, 1), /the 1 Credit it used has been put back/);
-  assert.match(refundSentence(3, 1), /1 of the 3 Credits/);
-  assert.match(refundSentence(3, 0), /could not be returned automatically/);
+test('THE SENTENCE SAYS WHAT THE LEDGER RETURNED, never what was asked for, in credits and not in ledger units', () => {
+  // `asked` and `returned` are LEDGER units (INTERNAL_PER_CREDIT = 150 to a credit); a person reads
+  // credits with two decimals. 300 units is 2.00 Credits, and the sentence must not print "300".
+  assert.match(refundSentence(300, 300), /not been charged/);
+  assert.match(refundSentence(300, 300), /the 2\.00 Credits it used have been put back/);
+  assert.match(refundSentence(1, 1), /the 0\.01 Credits it used have been put back/);
+  assert.match(refundSentence(450, 150), /1\.00 of the 3\.00 Credits/);
+  assert.match(refundSentence(450, 0), /its 3\.00 Credits should not stand/);
+  assert.match(refundSentence(450, 0), /could not be returned automatically/);
+  for (const [asked, returned] of [[300, 300], [450, 150], [450, 0]]) {
+    assert.doesNotMatch(refundSentence(asked, returned), /\b(300|450|150)\b/, `a ledger-unit count leaked into the sentence for ${asked}/${returned}`);
+  }
   assert.equal(refundSentence(0, 0), null, 'nothing to say means nothing appended');
 });
 
@@ -470,20 +477,27 @@ function makeSession({ responses = [], book = ledger() } = {}) {
     acceptWebSocket: () => {},
   };
   const queue = [...responses];
+  // Every statement the session sends to D1 with the values bound to it, so a test can read the
+  // notification rows a run wrote.
+  const corpus = [];
   const env = {
     QUOTA_DO: namespace('QUOTA_DO'),
     BUDGET_DO: namespace('BUDGET_DO'),
     ADMIN_DO: namespace('ADMIN_DO'),
     CORPUS: {
       async exec() {},
-      prepare() { return { bind() { return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } }; },
+      prepare(sqlText) {
+        const rec = { sql: sqlText, args: [] };
+        corpus.push(rec);
+        return { bind(...a) { rec.args = a; return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } };
+      },
     },
     __testChat: async () => {
       assert.ok(queue.length > 0, 'the test gateway ran more times than the fixture supplied');
       return structuredClone(queue.shift());
     },
   };
-  return { session: new SessionDO(ctx, env), store, sql, sent, book, ws };
+  return { session: new SessionDO(ctx, env), store, sql, sent, book, ws, corpus };
 }
 
 const start = async (h, text = 'build a small tower', mode = 'agent') => {
@@ -508,6 +522,8 @@ test('END TO END: a terminal provider failure with nothing applied gives the Cre
   const row = assistantRow(h);
   assert.match(row.content, /I was about to create the first platform/, 'the partial text is still shown');
   assert.match(row.content, /not been charged for this run/, 'and the user is told, in the reply they are already reading');
+  assert.match(row.content, /the 0\.01 Credits it used have been put back/, 'in credits: the two ledger units refunded are 0.01 Credits, not "2 Credits"');
+  assert.doesNotMatch(row.content, /the 2 Credits/);
   assert.equal(row.credits_spent, 0, 'the transcript records what the run actually cost');
   assert.equal(lastEnd(h).creditsSpent, 0, 'and msg_end carries the same number as the row');
 
@@ -641,6 +657,43 @@ test('THE FREE ALLOWANCE CANNOT BE FARMED: a request that overruns it takes what
   assert.equal(refusal?.code, 'quota', 'the second request is refused at the door');
   assert.equal(second.sent.some((m) => m.type === 'msg_end'), false, 'no run, so no free inference');
   assert.equal((await q.state()).allowanceRemaining, 0);
+});
+
+/** The notification rows a run wrote: { kind, title, body } from the bound values of the inbox insert. */
+const notificationsWritten = (h) =>
+  h.corpus.filter((c) => /^insert into notifications\(/.test(c.sql.trim())).map((c) => ({ kind: c.args[2], title: c.args[4], body: c.args[5] }));
+
+test('THE RUN-FINISHED NOTIFICATION NAMES CREDITS, not the ledger units the run was charged in', async () => {
+  // 3000 neurons = 100 ledger units = 0.67 credits. The body used to say "100 Credit(s)".
+  const h = makeSession({ book: ledger(1000), responses: [gatewayResponse({ finishReason: 'stop', text: 'Here you go.', neurons: 3000 })] });
+  await start(h, 'explain what this project does', 'plan');
+  await h.session.alarm();
+  const done = notificationsWritten(h).find((n) => n.kind === 'run_complete');
+  assert.ok(done, 'the run wrote no run_complete notification, so this test would measure nothing');
+  assert.match(done.body, /applied for 0\.67 Credits\.$/);
+  assert.doesNotMatch(done.body, /\b100\b|Credit\(s\)/);
+});
+
+test('THE LOW-CREDITS NOTIFICATION IS IN CREDITS TOO, and the empty one promises nothing it cannot sell', async () => {
+  // 1000 units a day is 6.67 credits. 900 units spent leaves 100 = 0.67, which is the 'low' band.
+  const low = makeSession({ book: ledger(1000), responses: [gatewayResponse({ finishReason: 'stop', text: 'Done.', neurons: 27_000 })] });
+  await start(low, 'explain what this project does', 'plan');
+  await low.session.alarm();
+  const warn = notificationsWritten(low).find((n) => n.kind === 'usage_threshold');
+  assert.ok(warn, 'no usage_threshold notification was written');
+  assert.match(warn.body, /^0\.67 of 6\.67 Credits left today\. They refill at /);
+  assert.doesNotMatch(warn.body, /\b(100|1000)\b/);
+
+  // 100 units all spent: exhausted. Credits cannot be bought (CREDIT_PURCHASE_LIVE is false) and a
+  // bigger plan cannot be taken yet either, so the body says when the allowance refills and no more.
+  const empty = makeSession({ book: ledger(100), responses: [gatewayResponse({ finishReason: 'stop', text: 'Done.', neurons: 3000 })] });
+  await start(empty, 'explain what this project does', 'plan');
+  await empty.session.alarm();
+  const out = notificationsWritten(empty).find((n) => n.kind === 'usage_threshold');
+  assert.ok(out, 'no usage_threshold notification was written for an empty balance');
+  assert.match(out.title, /used up/);
+  assert.match(out.body, /^They refill at \S+\.$/);
+  assert.doesNotMatch(out.body, /bigger plan|cover the gap/i);
 });
 
 test('A LEDGER THAT DID NOT ANSWER IS NOT A REFUND THAT FAILED — and the reply claims neither', async () => {

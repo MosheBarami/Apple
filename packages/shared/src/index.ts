@@ -1837,14 +1837,26 @@ export interface GatewayResponse {
  * measurements. IT IS IN LEDGER UNITS (INTERNAL_PER_CREDIT of them to a credit), so a surface that
  * shows it to a person converts it with `internalToCredits` first.
  */
+/*
+ * AND `entryUnit`, WHICH IS THE PIECE OF WORK THE LOW END OF `typicalCredits` WAS MEASURED ON.
+ *
+ * `typicalCredits` is what one REQUEST costs, and a request is a single targeted edit that is read
+ * back and verified, not a build. A whole build is several of them and costs about
+ * TYPICAL_BUILD_CREDITS (BUILD_COSTS). A surface that prints the per-request figure without saying
+ * what a request is reads as a price for a build, and a reader divides and finds the product 19x
+ * apart from itself on the one question that matters: what will this cost me. The words come from
+ * the COST-MODEL row the low figure is derived from, so there is one measurement and one sentence
+ * about it. The usage page prints it beside the figure.
+ */
 export const MODE_INFO: Record<
   ProductMode,
-  { name: string; blurb: string; typicalCredits: string }
+  { name: string; blurb: string; typicalCredits: string; entryUnit: string }
 > = {
   agent: {
     name: 'Agent',
     blurb: 'Builds features across your project',
     typicalCredits: '4-18',
+    entryUnit: 'one targeted edit, read back and verified',
   },
 };
 
@@ -2258,6 +2270,24 @@ export function formatCredits(credits: number): string {
   if (typeof credits !== 'number' || !Number.isFinite(credits)) return '';
   return credits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+/**
+ * A LEDGER-UNIT figure as the credits a person reads: two decimals ("3.54"). Everything a person
+ * reads that names an amount of Credits (the app, a notification, a Discord reply, a refund
+ * sentence) is written through this, because the figures QuotaDO and the run charge carry are
+ * ledger units, INTERNAL_PER_CREDIT to a credit, and a raw one printed beside the word "Credits" is
+ * 150 times too big.
+ */
+export function creditsText(ledgerUnits: number): string {
+  return formatCredits(internalToCredits(ledgerUnits));
+}
+
+/**
+ * What a branding generation charges, in ledger units. One model pass, taken from the same ledger
+ * as a run. The worker spends it and the app prints it through creditsText, so the copy cannot say
+ * a different amount than the charge.
+ */
+export const BRANDING_COST_UNITS = 1;
 
 export interface PlanCopy {
   id: PlanId;

@@ -9,7 +9,7 @@
 // genuinely benefits — a render, a sound — and those come from the typed component registry, never
 // from free-form model output.
 import { Suspense, lazy, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import type { PlaytestRun, StudioFrame } from '@studpilot/shared';
+import { creditsText, type PlaytestRun, type StudioFrame } from '@studpilot/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
@@ -475,8 +475,9 @@ export function Turn({
           <Stamp at={item.createdAt} />
           {item.creditsSpent != null && item.creditsSpent > 0 && (
             <span className="border-border border-s ps-3 tabular-nums">
-              {/* The settled figure rolls in on a turn that was watched arriving (picks/chat/rolling-number). */}
-              <strong className="font-normal text-foreground/80"><RollingNumber value={item.creditsSpent} rollIn={arrivedLive} /></strong> {item.creditsSpent === 1 ? 'Credit' : 'Credits'}
+              {/* The settled figure rolls in on a turn that was watched arriving (picks/chat/rolling-number).
+                  `creditsSpent` is in ledger units, the worker's unit; a person reads credits with two decimals. */}
+              <strong className="font-normal text-foreground/80"><RollingNumber value={creditsText(item.creditsSpent)} rollIn={arrivedLive} /></strong> Credits
             </span>
           )}
         </p>

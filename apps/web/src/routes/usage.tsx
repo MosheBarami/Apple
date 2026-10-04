@@ -16,6 +16,7 @@ import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
   MODE_INFO,
+  TYPICAL_BUILD_CREDITS,
   formatCredits,
   formatMoney,
   internalToCredits,
@@ -837,6 +838,13 @@ export function UsagePage() {
                     {' \u2014 '}
                     {requestsLeftLine(view.allowanceRemaining + view.credits, REQUEST_COST.low, REQUEST_COST.high, view.period)}
                   </span>
+                </p>
+                {/* WHAT A REQUEST IS. The figure above is per request, and a request is one small edit, not
+                    a build; a whole build is several and costs about a Credit and a half (BUILD_COSTS). A
+                    figure with no unit beside it reads as the price of a build and sends a reader to divide. */}
+                <p className="muted">
+                  A request here is {MODE_INFO.agent.entryUnit}, not a whole build. A typical build takes several and
+                  uses about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits.
                 </p>
               </>
             )}

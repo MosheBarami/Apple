@@ -18,22 +18,23 @@ export function RollingNumber({
   className,
   rollIn = false,
 }: {
-  value: number;
+  /** A count, or an already formatted figure ("0.07"): a credit amount keeps its two decimals. */
+  value: number | string;
   className?: string;
   /** Start the reels at zero and roll up to `value` — for a figure that has just arrived. */
   rollIn?: boolean;
 }) {
-  const [shown, setShown] = useState(rollIn ? 0 : value);
-  useEffect(() => {
-    if (typeof requestAnimationFrame === 'undefined') return setShown(value);
-    // One frame at the old value first, so the transition has somewhere to start from.
-    const id = requestAnimationFrame(() => setShown(value));
-    return () => cancelAnimationFrame(id);
-  }, [value]);
-
   const text = String(value);
+  const [shown, setShown] = useState(rollIn ? text.replace(/\d/g, '0') : text);
+  useEffect(() => {
+    if (typeof requestAnimationFrame === 'undefined') return setShown(text);
+    // One frame at the old value first, so the transition has somewhere to start from.
+    const id = requestAnimationFrame(() => setShown(text));
+    return () => cancelAnimationFrame(id);
+  }, [text]);
+
   // Padded to the target's width so a new leading digit rolls in from 0 instead of popping in.
-  const face = String(shown).padStart(text.length, '0');
+  const face = shown.padStart(text.length, '0');
   return (
     <span className={`pk-roll${className ? ` ${className}` : ''}`}>
       <span className="gx-sr">{text}</span>

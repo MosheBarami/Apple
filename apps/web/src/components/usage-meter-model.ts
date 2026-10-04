@@ -45,15 +45,15 @@
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
 import {
-  PLAN_LIMITS, PLAN_COPY, TYPICAL_BUILD_CREDITS, formatCredits, internalToCredits, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE,
+  PLAN_LIMITS, PLAN_COPY, TYPICAL_BUILD_CREDITS, creditsText, internalToCredits, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE,
 } from '@studpilot/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
 /** Which limit is currently the binding one. The copy and the reset both hang off this. */
 export type MeterPeriod = 'day' | 'month';
-/** A ledger-unit figure as the credits a person reads: two decimals, always. */
-export const creditsText = (ledgerUnits: number): string => formatCredits(internalToCredits(ledgerUnits));
+/** A ledger-unit figure as the credits a person reads: two decimals, always. The one definition is in shared. */
+export { creditsText };
 
 export interface MeterView {
   tone: MeterTone;
