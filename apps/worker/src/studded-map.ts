@@ -265,15 +265,41 @@ export const HUB_COLOURS = { plaza: '#f0dcae', inlay: '#fff1cf', shop: '#3ddc5f'
 const PAD_SIZE = 10;
 
 /**
+ * THE PADS' NAMES MUST NOT LAND ON EACH OTHER. Round 3 (2026-10-04): the two billboards were a fixed 240x70 PIXELS, the same size
+ * at any distance, and sat at one height, so from the hub's edge "SHOP" and "REBIRTH" printed as "SHOPREBIRTH". Now a label is a
+ * fixed size in STUDS (it shrinks with distance like the pad it names), the two stand at different heights, and each is shown only
+ * within a range shorter than the gap between the pads, so a camera that can read one label and is lined up through it with the
+ * other pad cannot see the other label at all. tests/pad-labels.test.mjs projects both labels from every point of the plaza and
+ * asserts no two rectangles meet; the numbers here are the ones that held.
+ */
+export const PAD_LABEL = Object.freeze({ width: 12, height: 3.5, shopRise: 6, sellRise: 13, minRange: 20, maxRange: 60 });
+
+/** How far a pad's name shows: less than the studs between the pads (so the two are never both read along one line), within bounds. */
+export function padLabelRange(padGap: number): number {
+  return Math.max(PAD_LABEL.minRange, Math.min(PAD_LABEL.maxRange, Math.floor(padGap) - 2));
+}
+
+/** The two pads' names as the map writes them: where, how high above the pad, how big, how far they show. Pure, for the test. */
+export function padLabels(hub: Pick<NonNullable<Layout['hub']>, 'shopPad' | 'sellPad'>): { name: 'ShopPad' | 'SellPad'; at: P2; rise: number; range: number; width: number; height: number }[] {
+  const range = padLabelRange(Math.hypot(hub.shopPad[0] - hub.sellPad[0], hub.shopPad[1] - hub.sellPad[1]));
+  const { width, height } = PAD_LABEL;
+  return [
+    { name: 'ShopPad', at: hub.shopPad, rise: PAD_LABEL.shopRise, range, width, height },
+    { name: 'SellPad', at: hub.sellPad, rise: PAD_LABEL.sellRise, range, width, height },
+  ];
+}
+
+/**
  * A flat pad on the hub with its name over it: stepping on it is how the game opens the shop or rebirth. The words are a
  * BillboardGui above the pad, not a decal on its floor: a floor label reads along one fixed direction (owner's recording,
  * 2026-10-04: SHOP lay sideways and mirrored from the way the player walked up), a billboard always faces the player.
  */
-function pad(name: string, at: P2, colour: string, text: string): InstanceSpecLite {
+function pad(name: string, at: P2, colour: string, text: string, label: { rise: number; range: number; width: number; height: number }): InstanceSpecLite {
   return brick(name, [PAD_SIZE, 0.6, PAD_SIZE], [at[0], 1.1, at[1]], colour, {
     collide: false, children: [{
       className: 'BillboardGui', name: 'Sign',
-      props: { Size: { t: 'UDim2', v: [0, 240, 0, 70] }, StudsOffset: { t: 'Vector3', v: [0, 6, 0] }, MaxDistance: 140, LightInfluence: 0 },
+      // Scale is studs on a BillboardGui (offset would be pixels), so the label has a size in the world.
+      props: { Size: { t: 'UDim2', v: [label.width, 0, label.height, 0] }, StudsOffset: { t: 'Vector3', v: [0, label.rise, 0] }, MaxDistance: label.range, LightInfluence: 0 },
       children: [{
         className: 'TextLabel', name: 'Words',
         props: { Size: { t: 'UDim2', v: [1, 0, 1, 0] }, BackgroundTransparency: 1, Text: text.toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
@@ -291,6 +317,7 @@ function pad(name: string, at: P2, colour: string, text: string): InstanceSpecLi
 function hubItems(hub: NonNullable<Layout['hub']>, laneWidth: number, words: MapInput['words'], pal: StudPalette): InstanceSpecLite[] {
   const [cx, cz] = hub.center;
   const side = hub.radius * 2;
+  const labels = padLabels(hub);
   return [
     {
       className: 'Model', name: 'Hub', children: [
@@ -300,9 +327,9 @@ function hubItems(hub: NonNullable<Layout['hub']>, laneWidth: number, words: Map
       ],
     },
     { className: 'Model', name: 'Road', children: spokePieces(hub.spokes, laneWidth, pal) },
-    pad('ShopPad', hub.shopPad, HUB_COLOURS.shop, words.shop ?? 'Shop'),
+    pad('ShopPad', hub.shopPad, HUB_COLOURS.shop, words.shop ?? 'Shop', labels[0]!),
     // The REBIRTH pad wears the Rebirth button's purple.
-    pad('SellPad', hub.sellPad, /rebirth/i.test(words.sell ?? '') ? HUB_COLOURS.rebirth : HUB_COLOURS.sell, words.sell ?? 'Sell'),
+    pad('SellPad', hub.sellPad, /rebirth/i.test(words.sell ?? '') ? HUB_COLOURS.rebirth : HUB_COLOURS.sell, words.sell ?? 'Sell', labels[1]!),
   ];
 }
 
