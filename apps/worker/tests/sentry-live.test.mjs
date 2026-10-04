@@ -121,7 +121,7 @@ test('an unhandled error in the real middleware chain reaches Sentry', async () 
   assert.equal(event.exception.values[0].value, 'the credential check exploded');
   assert.equal(event.tags.capture, 'unhandled');
   assert.equal(event.tags.method, 'POST');
-  assert.equal(event.release, 'cafe123', 'the build sha did not travel with the error');
+  assert.equal(event.release, 'studpilot@cafe123', 'the build sha did not travel with the error');
   assert.equal(event.environment, 'production');
   // The route is LABELLED by the same function the analytics event uses.
   assert.equal(event.transaction, '/api/projects/:id/ws');

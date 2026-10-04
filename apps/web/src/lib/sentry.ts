@@ -384,6 +384,15 @@ export interface SentryConfig {
   environment?: string | undefined;
 }
 
+/**
+ * The release name for a build sha: `studpilot@<sha>`, which is what the worker reports too. No sha
+ * is `undefined`, so `installSentry` says `unknown` rather than `studpilot@unknown`.
+ */
+export function sentryRelease(sha: string | undefined): string | undefined {
+  const trimmed = sha?.trim();
+  return trimmed ? `studpilot@${trimmed}` : undefined;
+}
+
 export interface SentryDeps {
   now: () => number;
   eventId: () => string;

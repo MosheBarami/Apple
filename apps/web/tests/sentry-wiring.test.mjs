@@ -45,7 +45,7 @@ const WORKER_ANALYTICS = await bundle(join(WEB, '..', 'worker', 'src', 'analytic
 
 test('main.tsx installs the reporter before React mounts, and it is the only reader of the DSN', () => {
   const MAIN = read('main.tsx');
-  assert.match(MAIN, /import \{ installSentry \}/, 'main.tsx no longer imports installSentry');
+  assert.match(MAIN, /import \{[^}]*\binstallSentry\b[^}]*\} from '\.\/lib\/sentry\.ts'/, 'main.tsx no longer imports installSentry');
   assert.match(MAIN, /installSentry\(\{[\s\S]*?dsn: import\.meta\.env\.VITE_SENTRY_DSN/, 'main.tsx no longer passes the DSN');
   // BEFORE render. Installing afterwards leaves every error thrown during the first mount — which
   // is where the interesting ones live — outside the handlers.

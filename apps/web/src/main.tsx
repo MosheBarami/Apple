@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './app';
 import { initDirection } from './lib/direction.ts';
-import { installSentry } from './lib/sentry.ts';
+import { installSentry, sentryRelease } from './lib/sentry.ts';
 import './design/system.css';
 import './design/studpilot-minimal.css';
 // The glass shell (D-GLASS-1): loaded last so it is the layer that paints.
@@ -25,7 +25,7 @@ initDirection();
 // the ability to send this project events.
 installSentry({
   dsn: import.meta.env.VITE_SENTRY_DSN,
-  release: import.meta.env.VITE_BUILD_SHA,
+  release: sentryRelease(import.meta.env.VITE_BUILD_SHA),
   environment: import.meta.env.MODE,
 });
 

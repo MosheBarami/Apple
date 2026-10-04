@@ -162,7 +162,7 @@ test('the event carries the build sha, the environment and the request context',
     deps,
   );
   const event = JSON.parse(bodyOf(calls).trim().split('\n')[2]);
-  assert.equal(event.release, 'deadbee');
+  assert.equal(event.release, 'studpilot@deadbee', 'the release is named for the product, then the build sha');
   assert.equal(event.environment, 'production');
   assert.equal(event.transaction, '/api/projects/:id/ws');
   assert.equal(event.tags.route, '/api/projects/:id/ws');
