@@ -449,6 +449,12 @@ interface ToolImpl {
    */
   mutatesProject?: boolean | ((result: unknown) => boolean);
   /**
+   * This tool builds in the world (a composer, a model or object placement, terrain, lighting): a successful call changes what
+   * the viewport shows whatever paths its result reports, so the evidence ledger owes a look for it (evidence-ledger.ts noteChange).
+   * Tools addressed by a path (set_properties, delete_instances, a script, a screen) leave it off: the path says where.
+   */
+  touchesWorld?: boolean;
+  /**
    * The one line the activity feed shows for this tool, in words a young player reads (no tool name, path or count).
    * Absent: the generic "✓ tool_name · target" line.
    */
@@ -3095,6 +3101,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['create_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     //[[ THE PROPS ARE READ BEFORE THEY LEAVE, and the reason is in the operation log of the
     //   owner's own project. The one time this product tried to build in it, `create_instances`
@@ -3273,6 +3280,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['terrain_edit'],
+    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => runTerrainEdits(ctx, a),
   },
@@ -3292,6 +3300,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     // set_mood below still reads/replaces Lighting effects through these Studio operations.
     studioOps: ['terrain_edit', 'create_instances', 'get_tree', 'delete_instances', 'set_props', 'set_visible'],
+    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       if (a.kit !== 'floating_island') return { error: 'kit must be "floating_island"' };
@@ -3424,6 +3433,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['clone_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       const paths = boundedPaths(a.paths, 'paths', true);
@@ -3466,6 +3476,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['group_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => {
       const paths = boundedPaths(a.paths);
@@ -4185,6 +4196,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'set_props', 'create_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       let projectMutated = false;
@@ -4305,6 +4317,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'create_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       let projectMutated = false;
@@ -5335,6 +5348,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
+    touchesWorld: true,
     mutatesProject: true,
     run: async (ctx, a) => {
       const assetId = Number(a.assetId);
@@ -5443,6 +5457,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['generate_model'],
+    touchesWorld: true,
     mutatesProject: true,
     // D-MODELLIB-2: the plugin op stays; the agent is refused and sent to the library.
     run: () => Promise.resolve(refuseGeneratedModel('generate_model')),
@@ -5765,6 +5780,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studio: true,
     studioOps: ['snapshot','query_owner_local','import_owner_local','import_owner_component'],
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
+    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
     run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
       ? TOOLS.insert_library_model!.run(ctx,{...a, parent: a.parent ?? 'game.ServerStorage'})
@@ -5796,6 +5812,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['snapshot','import_owner_library'],
+    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
     plainSummary: importSummary,
     run: importOwnerLibrary,
@@ -5808,6 +5825,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
     plainSummary: recreateSummary,
     run: recreateOwnerGame,
@@ -5820,6 +5838,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
     plainSummary: installSummary,
     run: installOwnerSystem,
@@ -5843,6 +5862,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['snapshot','query_owner_library','import_owner_library'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
     plainSummary: buildSummary,
     run: buildGame,
@@ -5850,19 +5870,20 @@ export const TOOLS: Record<string, ToolImpl> = {
   compose_game: {
     def: {
       name: 'compose_game',
-      description: "Builds a NEW game from components on a map made for it. YOU choose the template and supply what makes this game what it is (names, chain, economy, the library pieces you chose); a missing field is reported by name. With no template it lists what each makes and cannot make; if none fits, build it another way. Then judge_game and answer from forUser.",
+      description: "The BASE of a NEW game (map, economy, screens, scripts), not the whole game: its world, objects and look are yours to build after. YOU pick the template and fill what makes this game itself (names, chain, economy, pieces you chose). No template: lists what each makes and cannot; none fits: build another way. Then build the rest, judge_game, answer.",
       parameters: S({
         request: { type: 'string' },
         template: { type: 'string', enum: ['tycoon', 'plot-sim', 'lane-defense'] },
-        tycoon: { type: 'object', description: 'title, currency, item { name, color }, dropper, machines[1-4] { name, becomes, color, look? }, seller { name }; optional players, prices, symbol.' },
-        plotSim: { type: 'object', description: 'title, subject, currency, machines[1-6] { name, price, income, look or from }, upgrades[1-9]; optional players, rebirth, symbol, scenery[], hero.' },
-        laneDefense: { type: 'object', description: 'title, currency, enemies[], defenders[], base, waves { list }; every piece is { gameId, path } you found.' },
-        existing: { type: 'string', enum: ['extend', 'replace'], description: 'Needed when a composed game is already there.' },
-        clearDefaultGround: { type: 'boolean', description: 'Remove the default Baseplate and SpawnLocation.' },
+        tycoon: { type: 'object', description: 'title, currency, item { name, color }, dropper, machines[1-4] { name, becomes, color, look? }, seller { name }; optional players, prices, symbol' },
+        plotSim: { type: 'object', description: 'title, subject, currency, machines[1-6] { name, price, income, look or from: a model you inserted }, upgrades[1-9]; optional players, rebirth, symbol, scenery[], hero: a model you inserted.' },
+        laneDefense: { type: 'object', description: 'title, currency, enemies[], defenders[], base, waves { list }; pieces are { gameId, path }' },
+        existing: { type: 'string', enum: ['extend', 'replace'], description: 'When a composed game is there.' },
+        clearDefaultGround: { type: 'boolean', description: 'Remove the default Baseplate, SpawnLocation.' },
       }, ['request']),
     },
     studio: true,
     studioOps: ['snapshot', 'import_owner_library', 'get_instance', 'create_instances', 'edit_script', 'delete_instances', 'set_visible', 'place_copies', 'strip_descendants', 'set_props', 'apply_surface', 'set_surface_default'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: composeSummary,
     run: composeGame,
@@ -5914,6 +5935,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'import_owner_library', 'strip_descendants'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not dress the object' : 'Dressed the object',
     run: dressObject,
@@ -5944,6 +5966,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['create_instances', 'delete_instances', 'get_instance', 'set_props', 'apply_surface', 'rig_model', 'set_joint_pivot', 'edit_script', 'get_tree', 'camera_focus', 'spatial_query'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not build it' : 'Built it',
     run: buildObject,
@@ -5956,6 +5979,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['rig_model', 'set_joint_pivot', 'edit_script', 'delete_instances'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not animate it' : 'Made it move',
     run: animateModel,
@@ -6003,6 +6027,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: true,
     studioOps: ['get_tree', 'create_instances', 'delete_instances', 'edit_script'],
+    touchesWorld: true,
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not add the upgrades' : 'Added working upgrades',
     run: addUpgrades,
@@ -6032,6 +6057,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     studioOps: ['snapshot', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
     studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
     // A refusal changed nothing in the place.
+    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => recordInsert(ctx, a, await insertLibraryModelCall(ctx, a)),
   },
@@ -6053,6 +6079,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     // insertAndProveClean's ops, as on insert_asset.
     studioOps: ['insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances'],
     // A still-processing upload is a success that changed nothing in the place.
+    touchesWorld: true,
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'pending' in r),
     // D-MODELLIB-2: the agent is sent to the library; hf-3d-pipeline.ts stays for the owner's tooling.
     run: () => Promise.resolve(refuseGeneratedModel('generate_model_external')),
@@ -6319,6 +6346,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: scatterInstances.def,
     studio: true,
     studioOps: ['scatter'],
+    touchesWorld: true,
     mutatesProject: (result) => positiveCount(result, 'placed'),
     run: (ctx, a) => scatterInstances.run(studioCall(ctx), a),
   },
@@ -6333,6 +6361,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: shapeTerrain.def,
     studio: true,
     studioOps: ['terrain_shape'],
+    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => shapeTerrain.run(studioCall(ctx), a),
   },
@@ -6346,6 +6375,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: createRig.def,
     studio: true,
     studioOps: ['create_rig'],
+    touchesWorld: true,
     mutatesProject: true,
     run: (ctx, a) => createRig.run(studioCall(ctx), a),
   },
@@ -6393,6 +6423,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: insertVfx.def,
     studio: true,
     studioOps: ['get_tree', 'delete_instances', 'create_instances', 'set_props'],
+    touchesWorld: true,
     mutatesProject: (result) => (!!result && typeof result === 'object' && typeof (result as Record<string, unknown>).inserted === 'string') || (result as Record<string, unknown> | null)?.projectMutated === true,
     run: (ctx, a) => insertVfx.run(studioCall(ctx), a),
   },
@@ -6800,6 +6831,7 @@ export async function runTool(
         recordToolCall(ctx.evidence, {
           tool: name, kind, args, result: visibleResult, ok: !failed,
           ...(partialMutation ? { partial: true } : {}),
+          ...(impl.touchesWorld ? { world: true } : {}),
           extra: ctx.evidenceRaw !== undefined ? ctx.evidenceRaw : kind === 'read' ? ctx.uiDetail : undefined,
         });
       }

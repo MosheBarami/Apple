@@ -22,6 +22,7 @@
  * Pure: the only import is a type-free table of colour words.
  */
 import { familyOfLabel, familyOfRgb, type ColourFamily } from './colour-family.ts';
+import { rootStudioPath } from './studio-props.ts';
 
 export const LEDGER_LIMITS = Object.freeze({
   entries: 60,
@@ -85,6 +86,8 @@ export interface EvidenceLedger {
   auditRounds: number;
   /** Blind critiques run (blind-critique.ts). Optional so a ledger stored before it existed reads as zero. */
   criticRounds?: number;
+  /** Paths of models this run placed (a mutation whose result lists `inserted` paths), newest last: what a composer can be told to use. */
+  inserted?: string[];
   /** `mutationSeq` at the last look that actually looked; null before any. */
   lastLookMutationSeq: number | null;
   /** `mutationSeq` when a look attempt last FAILED; the gate does not demand a look that just could not run. */
@@ -109,8 +112,16 @@ export function lookNeeded(l: EvidenceLedger): boolean {
 /** The services a camera in edit mode draws: the workspace (terrain included) and the lighting that lights it. */
 const VIEWABLE = /^game\.(?:Workspace|Lighting)(?:$|[.[])/;
 
-function noteChange(l: EvidenceLedger, paths: string[]): void {
-  if (paths.length === 0 || paths.some((p) => VIEWABLE.test(p))) l.viewChangedSeq = l.mutationSeq;
+/**
+ * A change the viewport could show moves `viewChangedSeq`. Three things make it so, and the first two cannot be argued with:
+ *   - the tool is one that builds in the world (`world`: a composer, an object or model placement, terrain), whatever paths it
+ *     happens to report: composites report few paths, in other shapes, or none (round 2 of game 1: compose_game reported none);
+ *   - the paths are unknown (assumed in view, so a look is never skipped on a guess);
+ *   - any path is in the workspace or the lighting (paths are normalised first: `Workspace.X` is `game.Workspace.X`).
+ * Only a change whose every reported path is a screen, a script or a service stays out of the picture.
+ */
+function noteChange(l: EvidenceLedger, paths: string[], world = false): void {
+  if (world || paths.length === 0 || paths.some((p) => VIEWABLE.test(p))) l.viewChangedSeq = l.mutationSeq;
 }
 
 // ------------------------------------------------------------------------------------ helpers ---
@@ -118,7 +129,12 @@ function noteChange(l: EvidenceLedger, paths: string[]): void {
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.length > 0 ? v : undefined);
 const cut = (s: string, n: number): string => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const isPath = (v: unknown): v is string => typeof v === 'string' && /^game(\.|\[|$)/.test(v) && v.length <= 400;
+/** A Studio path in any spelling a tool or a result uses (`Workspace.X`, `workspace.X`, `game.Workspace.X`), rooted at `game`; undefined for anything else. */
+const asPath = (v: unknown): string | undefined => {
+  if (typeof v !== 'string' || v.length > 400) return undefined;
+  const p = rootStudioPath(v.trim());
+  return /^game(\.|\[|$)/.test(p) ? p : undefined;
+};
 
 function pushCapped<T>(list: T[], item: T, cap: number): void {
   list.push(item);
@@ -224,7 +240,7 @@ function walkSpecs(rec: Recorder, items: unknown, parent: string, out: string[],
   for (const raw of items.slice(0, 200)) {
     if (!isObj(raw)) continue;
     const name = str(raw.name);
-    const parentPath = isPath(raw.parent) ? raw.parent : parent;
+    const parentPath = asPath(raw.parent) ?? parent;
     const path = name ? joinPath(parentPath, name) : undefined;
     if (path) {
       out.push(path);
@@ -240,16 +256,16 @@ const PATH_LIST_KEYS = ['paths', 'targets', 'created', 'inserted', 'placed', 'mo
 
 function pathsIn(value: unknown, out: string[]): void {
   if (!isObj(value)) return;
-  for (const k of PATH_KEYS) if (isPath(value[k])) out.push(value[k] as string);
+  for (const k of PATH_KEYS) { const p = asPath(value[k]); if (p) out.push(p); }
   for (const k of PATH_LIST_KEYS) {
     const list = value[k];
-    if (Array.isArray(list)) for (const p of list.slice(0, 100)) if (isPath(p)) out.push(p);
+    if (Array.isArray(list)) for (const raw of list.slice(0, 100)) { const p = asPath(raw); if (p) out.push(p); }
   }
-  if (Array.isArray(value.moves)) for (const m of value.moves.slice(0, 100)) if (isObj(m) && isPath(m.path)) out.push(m.path);
+  if (Array.isArray(value.moves)) for (const m of value.moves.slice(0, 100)) { const p = isObj(m) ? asPath(m.path) : undefined; if (p) out.push(p); }
 }
 
 /** Record a successful change; returns the paths it touched, for the entry's one-line description. */
-function recordMutation(rec: Recorder, tool: string, args: Record<string, unknown>, result: unknown): string[] {
+function recordMutation(rec: Recorder, tool: string, args: Record<string, unknown>, result: unknown, world: boolean): string[] {
   const { l } = rec;
   l.mutationSeq += 1;
   const paths: string[] = [];
@@ -257,7 +273,7 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
     const gone: string[] = [];
     pathsIn(args, gone);
     for (const p of gone) forget(l, p);
-    noteChange(l, gone);
+    noteChange(l, gone, world);
     return gone;
   }
   walkSpecs(rec, args.items, 'game.Workspace', paths);
@@ -265,17 +281,23 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
   pathsIn(result, paths);
   // set_properties, set_properties_bulk and friends: props written to a path or a list of them.
   if (isObj(args.props)) {
-    const targets = [str(args.path), ...(Array.isArray(args.targets) ? args.targets : []), ...(Array.isArray(args.paths) ? args.paths : [])]
-      .filter((p): p is string => isPath(p));
+    const targets = [args.path, ...(Array.isArray(args.targets) ? args.targets : []), ...(Array.isArray(args.paths) ? args.paths : [])]
+      .map(asPath).filter((p): p is string => !!p);
     for (const p of targets.slice(0, 50)) rec.props(args.props, p, lastSegment(p), 'write');
   }
   if (isObj(result)) for (const k of ['created', 'inserted']) {
     const list = result[k];
-    if (Array.isArray(list)) for (const p of list.slice(0, 100)) if (isPath(p) && !l.names.some((n) => n.path === p)) rec.name(p, lastSegment(p), undefined, 'write');
+    if (Array.isArray(list)) for (const raw of list.slice(0, 100)) { const p = asPath(raw); if (p && !l.names.some((n) => n.path === p)) rec.name(p, lastSegment(p), undefined, 'write'); }
+  }
+  if (isObj(result) && Array.isArray(result.inserted)) {
+    for (const raw of result.inserted.slice(0, 20)) {
+      const p = asPath(raw);
+      if (p && !(l.inserted ?? []).includes(p)) pushCapped((l.inserted ??= []), p, LEDGER_LIMITS.touched);
+    }
   }
   const unique = [...new Set(paths)];
   for (const p of unique) touch(l, p);
-  noteChange(l, unique);
+  noteChange(l, unique, world);
   return unique;
 }
 
@@ -289,11 +311,13 @@ function walkRead(rec: Recorder, node: unknown, ctxPath: string | undefined, bud
     return;
   }
   if (!isObj(node)) return;
-  const path = isPath(node.path) ? node.path : ctxPath;
+  const own = asPath(node.path);
+  const path = own ?? ctxPath;
   const name = str(node.name) ?? lastSegment(path);
   if (isObj(node.props) && path) rec.props(node.props, path, name, 'read');
-  if (isPath(node.path) && str(node.name)) rec.name(node.path, node.name as string, str(node.class) ?? str(node.className), 'read');
-  if (typeof node.outline === 'string' && isPath(node.root)) namesFromOutline(rec, node.root, node.outline);
+  if (own && str(node.name)) rec.name(own, node.name as string, str(node.class) ?? str(node.className), 'read');
+  const root = asPath(node.root);
+  if (typeof node.outline === 'string' && root) namesFromOutline(rec, root, node.outline);
   for (const [key, value] of Object.entries(node)) {
     if (key === 'props' || key === 'outline') continue;
     if (typeof value === 'object' && value !== null) walkRead(rec, value, key === 'children' ? path : ctxPath, budget, depth + 1);
@@ -391,6 +415,8 @@ export interface ToolRecord {
    * change counter moves and the paths are remembered; what it wrote is not trusted, so no colour or text is.
    */
   partial?: boolean;
+  /** The tool builds in the world (a composer, a model or object placement, terrain): its change is in the picture whatever paths it reports. */
+  world?: boolean;
 }
 
 function describe(c: ToolRecord, touchedNow: string[]): string {
@@ -409,7 +435,7 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
     const args = isObj(c.args) ? c.args : {};
     let touchedNow: string[] = [];
     if (c.ok) {
-      if (c.kind === 'mutation') touchedNow = recordMutation(rec, c.tool, args, c.result);
+      if (c.kind === 'mutation') touchedNow = recordMutation(rec, c.tool, args, c.result, c.world === true);
       else if (c.kind === 'read') {
         const budget = { n: 1500 };
         walkRead(rec, c.result, undefined, budget);
@@ -426,7 +452,7 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
       pathsIn(c.result, paths);
       touchedNow = [...new Set(paths)];
       for (const p of touchedNow) touch(l, p);
-      noteChange(l, touchedNow);
+      noteChange(l, touchedNow, c.world === true);
     }
     pushCapped(l.entries, { seq: l.seq, kind: c.kind, tool: c.tool, text: describe(c, touchedNow), ok: c.ok, mutationSeq: l.mutationSeq }, LEDGER_LIMITS.entries);
   } catch {

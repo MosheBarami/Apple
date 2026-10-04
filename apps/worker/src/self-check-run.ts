@@ -13,6 +13,11 @@
  *   3. THE LINE. What is still unsettled is said to the user in one plain line AFTER the agent's own
  *      words. The agent's words are never rewritten.
  *
+ * Two things the run OWES come before all three, and are decided by the caller from the run's own state (world-pass.ts: a
+ * composer built a base and nothing was built on it; judge-gate.ts: its latest judge said "not ready"): `owed` is the steer
+ * to send, `admit` are the plain lines that say what is still not done once those bounds are used. They are inputs, so the
+ * order and the bounds stay testable here and no new place pushes into the transcript.
+ *
  * Every path terminates: the three counters live on the ledger and only ever go up.
  */
 import type { EvidenceLedger } from './evidence-ledger.ts';
@@ -22,7 +27,7 @@ import { SELF_CHECK_LIMITS } from './self-check.ts';
 
 export type AnswerCheck =
   | { action: 'force_look' }
-  | { action: 'steer'; kind: 'look' | 'audit'; message: string }
+  | { action: 'steer'; kind: 'look' | 'audit' | 'world' | 'judge'; message: string }
   | { action: 'finish'; note?: string };
 
 export interface AnswerInput {
@@ -35,10 +40,20 @@ export interface AnswerInput {
   can: Offered;
   /** Findings from the optional judge. They are added to the audit's; they never remove one. */
   extra?: Finding[];
+  /** Work the run still owes (the base of a composed game not built on; a "not ready" verdict not answered): sent back before anything else. */
+  owed?: { kind: 'world' | 'judge'; message: string };
+  /** What is still not done after the bounds on `owed` were used, as plain lines for the final note. */
+  admit?: string[];
 }
 
 export function checkAtAnswer(i: AnswerInput): AnswerCheck {
   const l = i.ledger;
+  if (i.owed) return { action: 'steer', kind: i.owed.kind, message: i.owed.message };
+  const admit = (i.admit ?? []).filter(Boolean);
+  const finish = (note: string | null): AnswerCheck => {
+    const text = [note, ...admit].filter((s): s is string => !!s).join('\n\n');
+    return text ? { action: 'finish', note: text } : { action: 'finish' };
+  };
   const gate = decideLookGate({ ledger: l, lookAvailable: i.lookAvailable, studioConnected: i.studioConnected });
   if (gate.action === 'force_look') {
     noteGate(l, gate);
@@ -50,7 +65,7 @@ export function checkAtAnswer(i: AnswerInput): AnswerCheck {
   }
 
   // A run that never touched Studio has nothing a claim could be checked against.
-  if (l.seq === 0) return { action: 'finish' };
+  if (l.seq === 0) return finish(null);
 
   const base = auditReply(i.reply, l);
   const result = i.extra?.length ? resultOf(base.claims, [...base.findings, ...i.extra]) : base;
@@ -62,8 +77,7 @@ export function checkAtAnswer(i: AnswerInput): AnswerCheck {
     }
   }
   const extras = [lookExtra(l, { lookAvailable: i.lookAvailable })].filter((s): s is string => !!s);
-  const note = notCheckedLine(result, extras);
-  return note ? { action: 'finish', note } : { action: 'finish' };
+  return finish(notCheckedLine(result, extras));
 }
 
 /**

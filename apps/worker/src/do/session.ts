@@ -112,7 +112,9 @@ import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-ru
 import { auditReply, type Finding } from '../claim-audit';
 import { judgeReply } from '../claim-audit-judge';
 import { LOOK_TOOL, runBlindCritique } from '../look-tool';
-import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, type ReportKind } from '../blind-critique';
+import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
+import { decideJudgeGate, judgeFixMessage, readJudge, type JudgeVerdict } from '../judge-gate';
+import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, type WorldBase } from '../world-pass';
 import { readSceneFlags } from '../scene-flags-run';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -300,6 +302,14 @@ interface AgentState {
   builtGame?: boolean;
   /** judge_game said the game is ready in this run: project changes are refused and the answer is next (run-flow.ts). */
   judgedReady?: boolean;
+  /** The latest judge_game verdict of this run (judge-gate.ts): an answer over a "not ready" one is sent back, twice at most. */
+  lastJudge?: JudgeVerdict;
+  /** Times the run was sent back for the judge's findings. */
+  judgeFixPasses?: number;
+  /** A composer built a base and what the run has built on it since (world-pass.ts); undefined before any composer. */
+  worldBase?: WorldBase;
+  /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary). */
+  critiqueSevere?: FlawArea[];
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -4135,7 +4145,9 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'incomplete');
       return;
     }
-    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
+    // Only with the self-check off: with it on, the answer goes through the gates (world pass, judge, look, critique) like any other,
+    // and this ending skipped all of them (t1 round 2: compose_game, judge_game "not ready", then the run ended here, never looked at).
+    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem && selfCheckMode(this.env) === 'off') {
       // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
       agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
       await this.finishRun(agent, 'done');
@@ -4677,8 +4689,9 @@ export class SessionDO extends DurableObject<Env> {
       // THE SELF-CHECK AT THE MOMENT OF ANSWERING (self-check-run.ts): look at the work before saying anything about it,
       // send the reply's unsupported claims back, and say what is still unchecked in one plain line after the agent's words.
       // Not for an answer the product composes itself (it is built from the build, not from the model's retelling).
-      if (!owesWork && agent.mode === 'agent' && !agent.judgedReady && !agent.composedForUser) {
-        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected)) return;
+      // Also for an answer after a composer or a ready judge: a composed base is not the game, and "ready" says how it plays, not how it looks.
+      if (!owesWork && agent.mode === 'agent') {
+        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected, canBuild)) return;
       }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
@@ -4975,6 +4988,16 @@ export class SessionDO extends DurableObject<Env> {
       // What this call left standing is written to the project's ledger (build-ledger.ts), for the next run to be told, as information.
       if (out.mutatedProject === true) await this.recordBuild(agent, call.name, call.arguments, out);
       if (out.ok && saysReady(call.name, out.resultForLlm)) agent.judgedReady = true;
+      // The verdict itself, kept so an answer over a "not ready" one can be sent back (judge-gate.ts). The newest verdict wins.
+      if (out.ok && call.name === 'judge_game') {
+        const verdict = readJudge(out.resultForLlm);
+        if (verdict) agent.lastJudge = verdict;
+      }
+      // A composer built the BASE of a game; what the run builds on it after is counted (world-pass.ts).
+      if (out.ok && out.mutatedProject === true) {
+        if (COMPOSER_TOOLS.includes(call.name)) agent.worldBase = noteComposer(agent.worldBase);
+        else noteWorldTool(agent.worldBase, call.name);
+      }
       // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
       if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
@@ -5483,15 +5506,22 @@ export class SessionDO extends DurableObject<Env> {
     ctx: AgentCtx,
     allowed: ReadonlySet<string>,
     studioConnected: boolean,
+    canBuild: boolean,
   ): Promise<boolean> {
+    // What the run still owes before it may answer, and what it must admit once the bounds on that are used.
+    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected);
     const input = {
       ledger,
       reply: agent.finalText ?? '',
       lookAvailable: allowed.has(LOOK_TOOL),
       studioConnected,
       can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
+      ...(owed ? { owed } : {}),
+      admit,
     };
-    let decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
+    let decision = checkAtAnswer({ ...input, extra: owed ? undefined : await this.judgeFindings(agent, input) });
+    if (decision.action === 'steer' && decision.kind === 'world' && agent.worldBase) agent.worldBase.steers += 1;
+    if (decision.action === 'steer' && decision.kind === 'judge') agent.judgeFixPasses = (agent.judgeFixPasses ?? 0) + 1;
     if (decision.action === 'force_look') {
       // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
       const out = await this.runSelfCheckLook(agent, ledger, ctx);
@@ -5523,8 +5553,30 @@ export class SessionDO extends DurableObject<Env> {
     return false;
   }
 
+  /**
+   * What the run owes before it may answer, from its own state: the world the request describes when a composer built only a base
+   * (world-pass.ts), then the findings of its own latest "not ready" judge (judge-gate.ts). `owed` is the one steer to send now (the
+   * judge's findings go in fenced: they quote names from the place); `admit` are the plain lines for the final note once a bound
+   * is used, plus the critique's severe areas (a fixed vocabulary, never its words). `canFix` is false when nothing could be changed.
+   */
+  private owedAtAnswer(agent: AgentState, canFix: boolean): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
+    const admit: string[] = [];
+    let owed: { kind: 'world' | 'judge'; message: string } | undefined;
+    const world = decideWorldPass(agent.worldBase, { canBuild: canFix });
+    if (world.action === 'steer') owed = { kind: 'world', message: world.message };
+    else if (world.action === 'admit') admit.push(world.line);
+    const judge = decideJudgeGate(agent.lastJudge, agent.judgeFixPasses ?? 0, { canBuild: canFix });
+    if (judge.action === 'steer' && !owed) owed = { kind: 'judge', message: judgeFixMessage(this.fencedToolOutput(agent, 'judge_game', judge.body).text) };
+    else if (judge.action === 'admit') admit.push(judge.line);
+    const severe = (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a));
+    if (severe.length) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.join(', ')}); I made one fix pass and it was not reviewed again, so some may remain.`);
+    return { ...(owed ? { owed } : {}), admit };
+  }
+
   /** End the step here and take another: the check handed the agent something to act on. */
   private async takeAnotherStep(agent: AgentState, ledger: EvidenceLedger): Promise<true> {
+    // A ready verdict ends the changes (afterReady) and offers no tools; a check that sends the run back to fix something outranks it.
+    agent.judgedReady = false;
     await this.saveLedger(agent, ledger);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -5561,6 +5613,7 @@ export class SessionDO extends DurableObject<Env> {
     agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: verdict.ok, summary, durationMs: Date.now() - t0 });
     if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
 
+    if (severe && verdict.ok) agent.critiqueSevere = [...new Set(verdict.critique.flaws.filter((f) => f.severity === 'severe').map((f) => f.area))];
     const flags = await this.newLayoutFlags(agent, ctx);
     if (!severe && flags.length === 0) return false;
     const body = [

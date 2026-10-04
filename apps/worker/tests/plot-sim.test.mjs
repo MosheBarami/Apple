@@ -305,12 +305,16 @@ test('every plot starts with the cheapest machine, and the composer says so', ()
 });
 
 // Round 7 of test 1 (2026-10-01): the model's answer kept saying "you spawn in a hub"; every player starts on their plot.
-test('a checked plot simulator is answered with what the composer built and what the check measured', () => {
+// RESTATED 2026-10-04 (t1 round 2, deliberate behaviour change): this ending used to end the run unconditionally, and with it the
+// run skipped the look, the blind critique, the judge's verdict and the claim audit (compose_game, judge_game "not ready (79/100)",
+// then the run ended here with 0 vision calls). It now applies only with the self-check off; with it on the answer goes through the
+// gates (composed-answer-gates.test.mjs replays round 2 through the real run loop). The ending itself is unchanged.
+test('a checked plot simulator is answered with what the composer built and what the check measured, when the self-check is off', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   const at = session.search(/if \(\(?agent\.composedPlotSim[^\n]*agent\.composedForUser && agent\.playChecked/);
   assert.ok(at > 0, 'the composed ending exists');
-  const end = session.slice(at, at + 600);
-  assert.match(end, /!agent\.lastCheckProblem\)/, 'only when the check passed');
+  const end = session.slice(at, at + 900);
+  assert.match(end, /!agent\.lastCheckProblem && selfCheckMode\(this\.env\) === 'off'\) \{/, 'only when the check passed, and only with the self-check off');
   assert.match(end, /agent\.finalText = `\$\{agent\.composedForUser\}\\n\\nI play-tested it: \$\{agent\.lastCheckSeen/);
   assert.match(end, /await this\.finishRun\(agent, 'done'\);\s*return;/, 'no further model call');
   assert.ok(at < session.indexOf('const focusedAllowed'), 'before the next model step is prepared');
