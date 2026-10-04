@@ -32,7 +32,7 @@ This file is the build order. The plan says *why*; this says *what, where, in wh
    - Never run `pnpm install` inside an in-repo worktree.
 3. **Secrets:**
    - Never print, commit or paste secret values.
-   - Read names from `.env` only through the loaders in `infra/*.mjs`.
+   - **Owner decision (2026-10-04, after M0):** Claude Code and other agents have full read and write access to `.env`. The `.env` deny entries were removed from `.claude/settings.json` at his request; do not re-add them. Values must still never be printed, pasted into chat or logs, or committed.
    - The repo is **public**.
 4. **One agent:** Codex is paused (owner task X1). If you see recent commits from another agent on your branch, stop and write `STALLED.md`.
 5. **Budget:**
@@ -53,7 +53,7 @@ This file is the build order. The plan says *why*; this says *what, where, in wh
 | ID | Action | When |
 |---|---|---|
 | X1 | Pause Codex (close its app and sessions on this Mac) | Before task 0.1 |
-| X2 | Install the video plugin in Claude Code: `/plugin marketplace add bradautomates/claude-video` then `/plugin install watch@claude-video` | Before task 4.1 |
+| X2 | Install the video plugin in Claude Code: `/plugin marketplace add bradautomates/claude-video` then `/plugin install watch@claude-video` | Before task 5.1 (the owner's settings already show `watch@claude-video` enabled) |
 | X3 | Approve the spend caps proposed in task 0.5 (or give other figures) | During M0 |
 | X4 | Regenerate the Roblox OAuth client secret (Creator Dashboard → OAuth apps → StudPilot) and put the new one in `.env` | Before public launch (M7) |
 | X5 | Find an adult Stripe account holder | Before charging |
@@ -91,14 +91,14 @@ This file is the build order. The plan says *why*; this says *what, where, in wh
 
 **0.4 Secrets hygiene.**
 - `chmod 600 .env`.
-- Restore the `permissions.deny` entries in `.claude/settings.json` for `Read(**/.env)`, `Read(**/.dev.vars)` and `Edit(**/.env)`. This is the owner's file: change only those three entries and say so in the summary.
+- ~~Restore the `.env` deny entries in `.claude/settings.json`.~~ Superseded 2026-10-04: the owner granted agents full read and write access to `.env`, and the `.env` deny entries were removed. Only `Read(**/.dev.vars)` remains denied.
 - Move `.backups/` out of the repo folder, to `~/StudPilot-backups/`.
 - **Verify:** `stat -f %Sp .env` → `-rw-------`. `scripts/secret-scan.py` passes.
 
 **0.5 Restore spend caps.**
 - In `apps/worker/src/pricing.ts`, replace the never-binding values. Planner defaults, pending owner task X3:
-  - `BILLABLE_NEURONS_PER_MONTH = 2_270_000_000` (≈ $25/month);
-  - `BILLABLE_NEURONS_PER_DAY = 150_000_000` (≈ $1.65/day).
+  - `BILLABLE_NEURONS_PER_MONTH = 2_270_000` (≈ $25/month; corrected, the first version said 2_270_000_000, 1,000× too high);
+  - `BILLABLE_NEURONS_PER_DAY = 150_000` (≈ $1.65/day; corrected from 150_000_000).
 - Add a test: monthly cap × $0.011/1000 ≤ $25.
 - **Verify:** `pnpm --filter ./apps/worker test` green. `/api/admin/spend` shows the new caps after deploy.
 
@@ -179,7 +179,7 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 
 **1.5 Domain follow-through (task O0 in `roblox-oauth-setup.md`).**
 - Check CORS and allowed origins, cookie domain, the Supabase redirect, and the plugin's API base URL. Set the plugin's API base to `https://studpilot.app` and keep the old base as a fallback for one release.
-- **Verify:** all 4 sign-in methods work on `studpilot.app`. Roblox comes in M4c.
+- **Verify:** Google, Discord and email sign-in work on `studpilot.app`. Roblox sign-in comes in M2.
 
 **1.6 Local folders (last).**
 - Ask the owner in `STALLED.md` before renaming `~/Developer/RbxAI` → `~/Developer/StudPilot`. The Claude Code project paths and memory folders change with it.
@@ -189,14 +189,60 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 
 ---
 
-## M2: Evaluation harness and baseline (no fixes in this milestone)
+## M2: Web app, site and brand (moved up by the owner on 2026-10-04: right after M1)
 
-**2.1 Write `planning/critic-rubric.md`.**
+**Why it moved, and the rules that follow from it:**
+- The owner wants the new design language before the agent work. The site and app therefore ship **before** any piece has passed the bar.
+- **No fake output.** Do not show any build result that did not really happen. The landing hero and the catalog use real product UI (the web app and the plugin in Studio). They also explain the four piece types, with no example results yet.
+- Pieces that pass the critic in M5 are added to the catalog and hero in M7.
+- **Pricing page:** shows the decided plans from `planning/pricing-2026-10-04.md`, marked "Free while in beta. Paid plans start later". Checkout stays off.
+- **Copy:** must not claim anything the product does not yet do. Use the honest promise wording from plan §1, marked as beta.
+- **Roblox sign-in moves here:** do OAuth tasks O0–O3 and O5 from `planning/roblox-oauth-setup.md` in this milestone. Upload task O4 stays in M5c.
+
+
+**2.1 Design system (new design language).**
+- Dark professional base with **one bright accent colour**. Propose 3 accents, render them on the landing hero, and pick the one the blind critic rates highest.
+- New logo and favicon. Delete the 3 old logos.
+- Tokens go in `packages/design`.
+
+**2.2 Rebuild the site in `apps/site` (Astro).**
+- Pages: landing, how it works, catalog (in M2: the four piece types with real product UI. Pieces that passed in M5 are added at M7), pricing (beta label), docs, blog index, privacy, terms.
+- Do not reuse old layouts. Save old vs. new screenshots side by side in `planning/proof/M2/`.
+
+**2.3 Rebuild the app in `apps/web` (React).**
+- Sign-in: Google, Discord, email, and Roblox.
+- 13+ birth-date gate at sign-up.
+- Projects: one-click create, no description.
+- Chat: live step list plus screenshots.
+- Piece history.
+- Per-piece settings panel. In M2 the UI is built against a stub. It is wired to block params in M5, where it edits a block's params and re-runs only that block.
+- Usage and credits.
+- Account connections.
+- Growth features: share button, referral (credits), optional "Made with StudPilot" badge block.
+
+**2.4 Rewrite the privacy and terms pages.**
+- Cover the Roblox OAuth data held, no AI training on Roblox data, anonymised opt-out improvement data, deletion, and 13+.
+- Fix the old training-opt-in contradiction (`apps/site/tests/privacy-claims.test.mjs` must reflect it).
+
+**2.5 Deploy.**
+- Run `node infra/deploy-static.mjs`.
+- **Verify:**
+  - Lighthouse ≥90 on landing and pricing;
+  - WCAG AA contrast;
+  - the critic scores the landing ≥8 on "looks like a top-tier product".
+
+**M2 acceptance:** plan §9 M2.
+
+---
+
+## M3: Evaluation harness and baseline (no fixes in this milestone)
+
+**3.1 Write `planning/critic-rubric.md`.**
 - The 6 areas and the pass rule come from plan §4.3.
 - For each area, describe in words what 2, 5, 8 and 10 look like. Use the Phase T critiques as calibration (`research/roblox/phase-t/t1-round*/critique.md`): the round-2 shop UI is a "4–5" example.
 - Define a severe flaw. Examples: the main subject is missing; a broken or obviously placeholder element; text that is unreadable or overlapping; the wrong scale for the avatar; a dead mechanic.
 
-**2.2 Build the capture runner: `scripts/eval/run-piece.mjs <request-id>`.**
+**3.2 Build the capture runner: `scripts/eval/run-piece.mjs <request-id>`.**
 1. Reset a test place to Baseplate.
 2. Send the request through the real web API, as a test user on the free plan with an admin credit grant.
 3. Wait for done.
@@ -204,30 +250,30 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 5. Run the play test (`start_stop_play`) and read the console (`get_console_output`).
 6. Save the request, reply, credits, steps, time, screenshots and logs to `planning/proof/<M>/<id>/`.
 
-**2.3 Build the critic runner.**
+**3.3 Build the critic runner.**
 - It launches **2 fresh subagents** per piece. Each gets only the request, the screenshots and `critic-rubric.md`.
 - It writes `critic-a.json`, `critic-b.json` and `verdict.json` (pass/fail, the lower score per area).
 - Use the Agent tool with a prompt that contains nothing else.
 
-**2.4 Baseline.**
+**3.4 Baseline.**
 - Run all 60 dev requests (`planning/STUDPILOT-TEST-SET-DEV.md`) on the current agent.
-- Write `planning/proof/M2/baseline.md`: pass rate, the mean of the lower score per area per category, credits per piece (mean and max) and minutes per piece.
-- **Do not fix anything in M2.**
+- Write `planning/proof/M3/baseline.md`: pass rate, the mean of the lower score per area per category, credits per piece (mean and max) and minutes per piece.
+- **Do not fix anything in M3.**
 - **Verify:** 60 folders exist, each with a verdict. Spend is logged.
 
-**M2 acceptance:** plan §9 M2.
+**M3 acceptance:** plan §9 M3.
 
 ---
 
-## M3: Brain diet, no vision, and the new decision rule
+## M4: Brain diet, no vision, and the new decision rule
 
-**3.1 Remove vision.**
+**4.1 Remove vision.**
 - Delete `look`, `inspect_visually`, `judge_game`, `blind-critique.ts`, `client-judge*.ts`, `world-pass.ts`, `world-steps.ts`, the `look-gate.ts` vision parts, and the `vision` role in `gateway.ts` `DEFAULT_MODELS`.
 - Remove `SELF_CHECK_CRITIC` and the look limits.
 - Keep `evidence-ledger.ts`, `claim-audit.ts`, `scene-flags.ts`, `audit_build`, `check_ui_layout`, `check_composition`, `play_check` and `play_check_ui`.
 - **Verify:** `git grep -n "vision" apps/worker/src` shows only allowlisted lines.
 
-**3.2 Remove the owner library.**
+**4.2 Remove the owner library.**
 - Delete these tools, their code, and their prompt text:
   - `browse_owner_library`, `import_owner_library`, `install_owner_system`, `recreate_owner_game`, `plan_game`, `build_game`;
   - `query_owner_catalog`, `query_owner_assembly`, `read_owner_component`, `read_owner_media`, `list_owner_original_strings`, `read_owner_original_string`, `insert_owner_component`;
@@ -236,11 +282,11 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 - The plugin's `LocalOwnerCorpus` and `OwnerCorpus` ops are removed in the next plugin build.
 - The LaunchAgent `com.moshe.apple.owner-gateway` stays on the owner's Mac. Tell him he can unload it.
 
-**3.3 Remove the whole-game path.**
+**4.3 Remove the whole-game path.**
 - Delete the `compose_game` tool, `compose-tool.ts`, `compose-run.ts`, `composed-judge.ts`, `build_scene` and the `BASE_NOTE` world pass.
-- **Keep** `packages/components/*`, `compose-tycoon.ts` and `compose-plotsim.ts` geometry helpers, and `compose-lane.ts`. They become source material for blocks in M4.
+- **Keep** `packages/components/*`, `compose-tycoon.ts` and `compose-plotsim.ts` geometry helpers, and `compose-lane.ts`. They become source material for blocks in M5.
 
-**3.4 Prompt diet.**
+**4.4 Prompt diet.**
 - Rewrite `apps/worker/src/prompts.ts` to ≤ **10,000 characters** in total, covering:
   - identity (StudPilot, a co-pilot that builds pieces);
   - the untrusted-content fence;
@@ -252,29 +298,29 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 - Delete the briefs (`worldbuilding.ts` brief, `design-brief.ts`), the owner-corpus paragraphs and the incident ledger.
 - Add a test: `systemPrompt().length <= 10000`.
 
-**3.5 Tool diet.**
+**4.5 Tool diet.**
 - Offer ≤ **25** tools per run (test). Everything removed above is gone from `tools.ts`, `packages/shared/src/index.ts`, `mcp.ts` and `run-idle.ts`.
 - Each tool must still be registered in these places, or `phase-coverage.test.mjs` fails.
 
-**3.6 Rewrite the method tests to the new rule.**
+**4.6 Rewrite the method tests to the new rule.**
 - In `no-subject-literals.test.mjs`, replace the "no forced tool / no harness pre-step" checks with: **"the harness may execute only a block the model selected in this run; no code path selects a block from request words."**
 - Keep the subject-word scan for prompts, blocks, hints and tool definitions. Blocks are keyed by structure.
 - Rewrite source-text-pinning tests that break so they assert behaviour.
 
-**3.7 Knowledge diet.**
-- Stop pushing creator skills and cards into every step (`skill-push.ts`, `skill-cards.ts` → removed or reduced to the block hint cards in M4).
+**4.7 Knowledge diet.**
+- Stop pushing creator skills and cards into every step (`skill-push.ts`, `skill-cards.ts` → removed or reduced to the block hint cards in M5).
 - `search_docs` stays as a tool. The 519 skills stay in `packages/corpus` as reference for block authors.
 
-**3.8 Smoke test.**
-- Run 5 dev requests (U01, S01, P01, Z01, U07). They must not score worse than the M2 baseline on any area.
+**4.8 Smoke test.**
+- Run 5 dev requests (U01, S01, P01, Z01, U07). They must not score worse than the M3 baseline on any area.
 
-**M3 acceptance:** plan §9 M3.
+**M4 acceptance:** plan §9 M4.
 
 ---
 
-## M4: The block engine and the four block families
+## M5: The block engine and the four block families
 
-**4.0 Engine.**
+**5.0 Engine.**
 - Create `packages/blocks/` with the folder format from plan §3.3, plus `scripts/gen-blocks.mjs` → `apps/worker/src/blocks.generated.ts` (follow the pattern of `gen-components.mjs`, including `--check`).
 - New worker modules:
   - `intake.ts`: model call 1. Takes the request plus a compact block menu of id and one-line summary, and returns `{blocks:[ids], custom:boolean, question?:string}`.
@@ -285,19 +331,19 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 - The plugin allowlist (`apps/<plugin>/src/Commands.luau`) must contain every class and property a block writes. A test derives the list from the blocks, so nobody hand-writes it.
 - **Verify:** unit tests for schema validation, interpreter ordering, retry, check-failure reporting and the "only selected blocks run" rule.
 
-**4.1 Video knowledge (needs owner task X2).**
+**5.1 Video knowledge (needs owner task X2).**
 - Re-watch the 8 videos in `planning/knowledge/video-tutorials-2026-10-04.md` with frames, using the `watch` plugin.
 - Fill every `[frames]` item (hex colours, asset IDs, the tag script's timings) into that note.
 - Commit only the distilled note.
 
-**M4a: UI blocks.**
+**M5a: UI blocks.**
 - Build the UI blocks from plan §3.3.
 - `panel`/`button` must implement the clean-stud recipe: Header + darker Shadow layer, Inner bright stroke ≈5, outer black strokes ≈5, `LineJoinMode=Bevel` on text strokes, studs only on headers and buttons, dark-blue translucent body, green price buttons with a currency icon, `AutoButtonColor=false`.
 - `ui-fx` is a tag runtime (`UI_Click`, `UI_Shine`, `UI_Rotate`).
 - The layout engine targets PC first, plus 1280×720. `check_ui_layout` must be clean.
 - **Acceptance:** U01–U15 reach a 100% critic pass.
 
-**M4b: System blocks.**
+**M5b: System blocks.**
 - Build the system blocks from §3.3 out of `packages/components/*` (economy, shop, machines, upgrades, tycoon, waves, defenders) and the `install_module` and verified-module material.
 - Each has scripted functional checks:
   - save → leave → rejoin → value kept;
@@ -307,8 +353,8 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
   - cooldowns are enforced.
 - **Acceptance:** S01–S15 reach a 100% critic pass, and every functional check passes.
 
-**M4c: Props, assets and uploads.**
-1. Do tasks O0–O5 in `planning/roblox-oauth-setup.md`:
+**M5c: Props, assets and uploads.**
+1. Roblox sign-in was done in M2. Now do upload task O4 in `planning/roblox-oauth-setup.md` (the full O0–O5 details, kept for reference):
    - secrets via `wrangler secret put ROBLOX_OAUTH_CLIENT_ID`, `ROBLOX_OAUTH_CLIENT_SECRET`;
    - routes `/auth/roblox/start` and `/auth/roblox/callback` with PKCE;
    - encrypted, rotating refresh tokens, and revoke;
@@ -321,23 +367,23 @@ Source of truth: `planning/rename-inventory.md`. Also read `docs/operations/GOLE
 3. Build the curated asset pack: `packages/blocks/assets/pack.json`, IDs plus measured size, vetted by the existing fail-closed Creator Store checks.
 - **Acceptance:** P01–P15 reach a 100% critic pass. At least one uploaded image and one uploaded animation work in-game on the test user's account.
 
-**M4d: Zone blocks.**
+**M5d: Zone blocks.**
 - Build the zone blocks from §3.3. Lighting presets come from the video note.
 - Layout flags must be clean.
 - **Acceptance:** Z01–Z15 reach a 100% critic pass.
 
-**Every M4 sub-milestone:** run its 15 requests, fix only through blocks and the engine (never hand-edit a built place), and re-run.
+**Every M5 sub-milestone:** run its 15 requests, fix only through blocks and the engine (never hand-edit a built place), and re-run.
 - After 3 cycles below 100%, write `STALLED.md` with the failing areas, screenshots and options. One option must be a measured test of a stronger model for the plan-fill step only, with its cost.
 
 ---
 
-## M5: Cost and pricing live
+## M6: Cost and pricing live
 
 Source: `planning/pricing-2026-10-04.md`.
 
-**5.1 Measure.** Record credits per piece over the dev set (from M4 runs) in `planning/proof/M5/cost.md`. Re-check the 1-credit = $0.05 assumption against the real figures.
+**6.1 Measure.** Record credits per piece over the dev set (from M5 runs) in `planning/proof/M6/cost.md`. Re-check the 1-credit = $0.05 assumption against the real figures.
 
-**5.2 Put the new plans in config.**
+**6.2 Put the new plans in config.**
 - New plan config in `packages/shared` (the old `PLAN_LIMITS` rows are superseded):
   - Free: 5 a day, max 30 a month;
   - Pro: $9.99 for 100 a month;
@@ -347,49 +393,12 @@ Source: `planning/pricing-2026-10-04.md`.
 - Add the global free-spend pool. Its size is an owner-approved figure; until approved, use a $10/month default.
 - Add a test that fails if any plan's worst-case profit, after a 2.9% + $0.30 card fee, is below $0.
 
-**5.3 Build the user-facing credit flow.**
+**6.3 Build the user-facing credit flow.**
 - Show an estimate before the build and the exact charge after it.
 - Warn before continuing if a build is going over its estimate by more than 50%.
 - Rewrite the pricing page copy from these numbers. Remove "~163 builds/month".
 
-**5.4 Keep checkout off.** Stripe stays dark until owner task X5. Test mode only.
-
-**M5 acceptance:** plan §9 M5.
-
----
-
-## M6: Web app, site and brand
-
-**6.1 Design system (new design language).**
-- Dark professional base with **one bright accent colour**. Propose 3 accents, render them on the landing hero, and pick the one the blind critic rates highest.
-- New logo and favicon. Delete the 3 old logos.
-- Tokens go in `packages/design`.
-
-**6.2 Rebuild the site in `apps/site` (Astro).**
-- Pages: landing, how it works, catalog (real pieces from `planning/proof/M4*/` that passed), pricing, docs, blog index, privacy, terms.
-- Do not reuse old layouts. Save old vs. new screenshots side by side in `planning/proof/M6/`.
-
-**6.3 Rebuild the app in `apps/web` (React).**
-- Sign-in: Google, Discord, email, and Roblox.
-- 13+ birth-date gate at sign-up.
-- Projects: one-click create, no description.
-- Chat: live step list plus screenshots.
-- Piece history.
-- Per-piece settings panel that edits a block's params and re-runs only that block.
-- Usage and credits.
-- Account connections.
-- Growth features: share button, referral (credits), optional "Made with StudPilot" badge block.
-
-**6.4 Rewrite the privacy and terms pages.**
-- Cover the Roblox OAuth data held, no AI training on Roblox data, anonymised opt-out improvement data, deletion, and 13+.
-- Fix the old training-opt-in contradiction (`apps/site/tests/privacy-claims.test.mjs` must reflect it).
-
-**6.5 Deploy.**
-- Run `node infra/deploy-static.mjs`.
-- **Verify:**
-  - Lighthouse ≥90 on landing and pricing;
-  - WCAG AA contrast;
-  - the critic scores the landing ≥8 on "looks like a top-tier product".
+**6.4 Keep checkout off.** Stripe stays dark until owner task X5. Test mode only.
 
 **M6 acceptance:** plan §9 M6.
 
@@ -424,6 +433,11 @@ Source: `planning/pricing-2026-10-04.md`.
 - Global free-spend pool figure approved.
 - Sentry alerts on.
 - Discord announcement drafted. Claude prepares it; the owner posts it.
+
+**7.6 Fill the site with proof.**
+- Add pieces that passed in M5 (with their real screenshots) to the site catalog and the landing hero.
+- Remove the beta wording that no longer applies.
+- Re-run the M2 site checks: Lighthouse, contrast and the critic.
 
 **M7 acceptance:** plan §9 M7.
 

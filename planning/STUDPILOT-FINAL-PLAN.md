@@ -10,6 +10,8 @@
 
 **Who executes it:** Claude Code, using `STUDPILOT-HANDOFF.md`.
 
+**Order change (owner, 2026-10-04):** the website, app and brand rebuild moved up to **M2**, right after the rename. Old M2–M5 became M3–M6; M7 is unchanged.
+
 **Status of the numbers:** "measured" means read from a file or a live system on 2026-10-04. "est." means the planner's arithmetic. Everything else is a decision or a design.
 
 ---
@@ -268,17 +270,17 @@ All proof goes to `planning/proof/<milestone>/`. The owner checks in only at the
 |---|---|---|
 | **M0** | Safety and one repo | (1) `2ffd22db` (or its successor) is on GitHub `main`; health `buildSha` == `main` HEAD with no `-dirty`. (2) `GOAL.md` replaced by a pointer to this plan; `research/` and `planning/` committed. (3) Spend caps restored; a test asserts the monthly cap ≤ the owner-approved figure. (4) `.env` mode 600; deny list restored. (5) CI green. |
 | **M1** | Rename and domain | Every check in `rename-inventory.md` "Acceptance test", including data counts before and after, and `studpilot.app` serving sign-in, chat, pairing and history. |
-| **M2** | Evaluation harness and baseline | (1) `critic-rubric.md` exists. (2) The capture and critic pipeline runs end to end on 5 dev requests. (3) A baseline over the full dev set with the *current* agent is recorded, with per-area scores and credits per piece. No fixes are allowed in M2. |
-| **M3** | Brain diet and no vision | (1) Prompt ≤10,000 characters (test). (2) ≤25 tools offered (test). (3) Owner-library, vision and whole-game code removed; `git grep` proves it. (4) Tests rewritten to the new rule; full suite green. (5) 5-request smoke test is not worse than the M2 baseline on any area. |
-| **M4a** | Block engine and UI blocks | (1) Block schema, generator, recipe interpreter and per-step checks, with unit tests. (2) The 15 UI dev requests reach a **100% critic pass**, with `check_ui_layout` clean at 1920×1080 and 1280×720. |
-| **M4b** | System blocks | The 15 system dev requests reach 100% pass. Every scripted functional check passes, including save → rejoin → value kept, server authority (a client-fired remote cannot grant), and odds shown on eggs. |
-| **M4c** | Prop blocks and uploads | (1) The OAuth tasks O0–O5 are done. (2) The 15 prop dev requests reach 100% pass. (3) At least one piece uses an image and one an animation uploaded to the test user's account, and both play in-game. |
-| **M4d** | Zone blocks | The 15 zone dev requests reach 100% pass. Layout flags show no `repeated_grid`, `open_flat_map` or `dark_lighting` issues. |
-| **M5** | Cost and pricing live | (1) Credits per piece measured over the dev set; the credit value is re-checked. (2) A plan-profit test passes. (3) The credit estimate is shown before the build and the exact credits after. (4) The free 5/day, 30/month limits and the global cap are enforced (tests). |
-| **M6** | Web app and site | Every bar in §6, plus the screenshots of the old vs. new layouts in `planning/proof/M6/`. |
+| **M2** | Web app, site and brand (moved up: right after M1) | Every bar in §6, plus old vs. new layout screenshots in `planning/proof/M2/`. No fake build output shown; beta labels on the promise and pricing. Roblox sign-in (O0–O3, O5) works on `studpilot.app`. |
+| **M3** | Evaluation harness and baseline | (1) `critic-rubric.md` exists. (2) The capture and critic pipeline runs end to end on 5 dev requests. (3) A baseline over the full dev set with the *current* agent is recorded, with per-area scores and credits per piece. No fixes are allowed in M3. |
+| **M4** | Brain diet and no vision | (1) Prompt ≤10,000 characters (test). (2) ≤25 tools offered (test). (3) Owner-library, vision and whole-game code removed; `git grep` proves it. (4) Tests rewritten to the new rule; full suite green. (5) 5-request smoke test is not worse than the M3 baseline on any area. |
+| **M5a** | Block engine and UI blocks | (1) Block schema, generator, recipe interpreter and per-step checks, with unit tests. (2) The 15 UI dev requests reach a **100% critic pass**, with `check_ui_layout` clean at 1920×1080 and 1280×720. |
+| **M5b** | System blocks | The 15 system dev requests reach 100% pass. Every scripted functional check passes, including save → rejoin → value kept, server authority (a client-fired remote cannot grant), and odds shown on eggs. |
+| **M5c** | Prop blocks and uploads | (1) The OAuth upload task O4 is done (sign-in was done in M2). (2) The 15 prop dev requests reach 100% pass. (3) At least one piece uses an image and one an animation uploaded to the test user's account, and both play in-game. |
+| **M5d** | Zone blocks | The 15 zone dev requests reach 100% pass. Layout flags show no `repeated_grid`, `open_flat_map` or `dark_lighting` issues. |
+| **M6** | Cost and pricing live | (1) Credits per piece measured over the dev set; the credit value is re-checked. (2) A plan-profit test passes. (3) The credit estimate is shown before the build and the exact credits after. (4) The free 5/day, 30/month limits and the global cap are enforced (tests). |
 | **M7** | Final proof and launch readiness | (1) The owner gives the hidden set; **100% pass** on dev + hidden. (2) A proof bundle of screenshots, scores, logs and credits per piece. (3) A launch checklist: OAuth review submitted with the <1 min demo, trademark check done, privacy updated, OAuth secret rotated, plugin publish decision brought to the owner, Stripe holder status. |
 
-**What I can't promise:** that M4 reaches 100% with a small model. The plan makes that as likely as it can: quality is built into the blocks, and the model only chooses and fills them in. If a sub-milestone stalls below 100% after 3 honest fix cycles, Claude Code stops and writes `planning/proof/<M>/STALLED.md`. It lists the failing areas with screenshots, plus options, and one of them is a measured test of a stronger model for the Plan step only. The owner decides.
+**What I can't promise:** that M5 reaches 100% with a small model. The plan makes that as likely as it can: quality is built into the blocks, and the model only chooses and fills them in. If a sub-milestone stalls below 100% after 3 honest fix cycles, Claude Code stops and writes `planning/proof/<M>/STALLED.md`. It lists the failing areas with screenshots, plus options, and one of them is a measured test of a stronger model for the Plan step only. The owner decides.
 
 ## 10. What is dropped or deferred
 - **Dropped:** whole-game promise; templates as games; in-product vision; owner library; old bench, meter and 38 mods (the mods stay installed but are no longer the progress measure); v4 site and app branches; LoRA training; Langflow; `apps/plugin` (legacy); `apps/benchmark`; `apps/experiences`.

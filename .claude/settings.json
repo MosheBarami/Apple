@@ -1,4 +1,10 @@
 {
+  "skillListingMaxDescChars": 120,
+  "skillListingBudgetFraction": 0.01,
+  "env": {
+    "BASH_MAX_OUTPUT_LENGTH": "10000000000"
+  },
+  "includeGitInstructions": true,
   "permissions": {
     "allow": [
       "Read",
@@ -15,180 +21,9 @@
       "mcp__apple-studio"
     ],
     "deny": [
-      "Read(**/.env)",
-      "Read(**/.env.*)",
-      "Read(**/.dev.vars)",
-      "Read(~/.ssh/**)",
-      "Read(~/Library/Keychains/**)",
-      "Read(~/.mcp-auth/**)",
-      "Edit(**/.env)",
-      "Edit(~/.ssh/**)",
-      "Edit(~/Library/Keychains/**)",
-      "Artifact",
-      "ScheduleWakeup",
-      "ReportFindings",
-      "ListAgents",
-      "SuggestSkills",
-      "mcp__playwright",
-      "mcp__meshy-mcp-server",
-      "mcp__hf-mcp-server",
-      "mcp__MCP_DOCKER",
-      "mcp__github",
-      "mcp__claude_ai_Resend",
-      "mcp__claude_ai_Figma",
-      "mcp__claude_ai_Openrouter",
-      "mcp__claude_ai_Hugging_Face",
-      "mcp__claude_ai_Claude_Docs",
-      "mcp__claude_ai_Clerk",
-      "mcp__claude_ai_PostHog",
-      "mcp__claude_ai_Netlify",
-      "mcp__claude_ai_Vercel",
-      "mcp__claude_ai_visualize",
-      "mcp__claude_ai_Context7",
-      "mcp__claude_ai_Firecrawl",
-      "mcp__plugin_cloudflare_cloudflare-docs",
-      "mcp__plugin_cloudflare_cloudflare-bindings",
-      "mcp__plugin_cloudflare_cloudflare-api",
-      "mcp__plugin_cloudflare_cloudflare-builds",
-      "mcp__plugin_cloudflare_cloudflare-observability",
-      "mcp__claude_ai_Cloudflare_Developer_Platform",
-      "mcp__Claude_Browser",
-      "mcp__Claude_Code_iOS_Simulator",
-      "mcp__visualize",
-      "mcp__mcp-registry",
-      "mcp__scheduled-tasks",
-      "CronCreate",
-      "CronDelete",
-      "CronList",
-      "DesignSync",
-      "RemoteTrigger",
-      "ListMcpResourcesTool",
-      "ReadMcpResourceTool",
-      "ReadMcpResourceDirTool"
+      "Read(**/.dev.vars)"
     ]
   },
-  "enabledPlugins": {
-    "ralph-loop@claude-plugins-official": true,
-    "chrome-devtools-mcp@chrome-devtools-plugins": false,
-    "vercel@vercel-plugins": false,
-    "design@knowledge-work-plugins": false,
-    "design@lovstudio": false,
-    "ui-ux-pro-max@ui-ux-pro-max-skill": false,
-    "hf-cli@huggingface-skills": false,
-    "superpowers@claude-plugins-official": false,
-    "data@knowledge-work-plugins": false,
-    "mcp-builder@mcp-use": false,
-    "cloudflare@cloudflare": false,
-    "supabase@claude-plugins-official": false
-  },
-  "env": {
-    "BASH_MAX_OUTPUT_LENGTH": "12000"
-  },
-  "effortLevel": "high",
-  "deniedMcpServers": [
-    {
-      "serverName": "github"
-    },
-    {
-      "serverName": "hf-mcp-server"
-    },
-    {
-      "serverName": "meshy-mcp-server"
-    },
-    {
-      "serverName": "MCP_DOCKER"
-    },
-    {
-      "serverName": "playwright"
-    },
-    {
-      "serverName": "claude.ai Resend"
-    },
-    {
-      "serverName": "claude.ai Figma"
-    },
-    {
-      "serverName": "claude.ai Openrouter"
-    },
-    {
-      "serverName": "claude.ai Hugging Face"
-    },
-    {
-      "serverName": "claude.ai Claude Docs"
-    },
-    {
-      "serverName": "claude.ai Clerk"
-    },
-    {
-      "serverName": "claude.ai PostHog"
-    },
-    {
-      "serverName": "claude.ai Netlify"
-    },
-    {
-      "serverName": "claude.ai Vercel"
-    },
-    {
-      "serverName": "claude.ai visualize"
-    },
-    {
-      "serverName": "claude.ai Context7"
-    },
-    {
-      "serverName": "claude.ai Firecrawl"
-    },
-    {
-      "serverName": "claude.ai Cloudflare Developer Platform"
-    },
-    {
-      "serverName": "plugin:data:amplitude"
-    },
-    {
-      "serverName": "plugin:data:amplitude-eu"
-    },
-    {
-      "serverName": "plugin:data:bigquery"
-    },
-    {
-      "serverName": "plugin:data:definite"
-    },
-    {
-      "serverName": "plugin:data:hex"
-    },
-    {
-      "serverName": "plugin:data:atlassian"
-    },
-    {
-      "serverName": "plugin:design:asana"
-    },
-    {
-      "serverName": "plugin:design:atlassian"
-    },
-    {
-      "serverName": "plugin:design:figma"
-    },
-    {
-      "serverName": "plugin:design:intercom"
-    },
-    {
-      "serverName": "plugin:design:linear"
-    },
-    {
-      "serverName": "plugin:design:notion"
-    },
-    {
-      "serverName": "plugin:design:slack"
-    },
-    {
-      "serverName": "plugin:cloudflare:cloudflare-api"
-    },
-    {
-      "serverName": "plugin:cloudflare:cloudflare-builds"
-    },
-    {
-      "serverName": "plugin:cloudflare:cloudflare-observability"
-    }
-  ],
   "skillOverrides": {
     "acestep": "off",
     "agent-browser": "off",
@@ -307,12 +142,26 @@
     "roblox-user-interfaces": "name-only",
     "roblox-vfx": "name-only"
   },
+  "disableBundledSkills": false,
+  "deniedMcpServers": [],
+  "enabledPlugins": {
+    "ralph-loop@claude-plugins-official": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": true,
+    "vercel@vercel-plugins": false,
+    "design@knowledge-work-plugins": false,
+    "design@lovstudio": false,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
+    "hf-cli@huggingface-skills": true,
+    "superpowers@claude-plugins-official": false,
+    "data@knowledge-work-plugins": false,
+    "mcp-builder@mcp-use": true,
+    "cloudflare@cloudflare": true,
+    "supabase@claude-plugins-official": true,
+    "watch@claude-video": true
+  },
+  "effortLevel": "high",
+  "autoMemoryEnabled": false,
   "claudeMdExcludes": [
     "/Users/moshe/.claude/rules/context7.md"
-  ],
-  "autoMemoryEnabled": false,
-  "includeGitInstructions": false,
-  "disableBundledSkills": true,
-  "skillListingMaxDescChars": 120,
-  "skillListingBudgetFraction": 0.003
+  ]
 }
