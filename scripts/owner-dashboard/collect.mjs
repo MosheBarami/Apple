@@ -25,7 +25,7 @@ const MEDIA_SKIP = [/^evidence\/pixels\//, /^site\/assets\/wall\//, /^library\/p
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 
 const HF_AUTHOR = 'moshebarami';
-const HEALTH_URL = 'https://apple.moshe-barami111.workers.dev/api/health';
+const HEALTH_URL = 'https://studpilot.app/api/health';
 const LANGFLOW = 'http://localhost:7860';
 
 const sh = (cmd, args, opts = {}) => new Promise((resolve) => {

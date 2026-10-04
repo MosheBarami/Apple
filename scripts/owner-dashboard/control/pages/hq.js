@@ -67,7 +67,7 @@ function vitals(v, d, plats) {
 
 // ---------------------------------------------------------------- the architecture map
 // Nodes are the systems the product runs on (bindings read from apps/worker/wrangler.studpilot.jsonc:
-// D1 golem-corpus, R2 apple-media, Vectorize golem-docs, Workers AI; the rest are the connected
+// D1 studpilot-corpus, R2 studpilot-media, Vectorize studpilot-docs, Workers AI; the rest are the connected
 // platforms). Positions are a fixed drawing; health and traffic are live.
 const W = 124, H = 36;
 const NODES = [

@@ -1,0 +1,4 @@
+// The stand-in on the former host golem.<sub>.workers.dev (handoff 1.3), deployed over the old golem
+// Worker once its Durable Objects have been transferred into studpilot. Delete after 2027-01-02.
+{ "name": "golem", "main": "index.js", "compatibility_date": "2026-09-01", "workers_dev": true, "triggers": { "crons": [] },
+  "services": [{ "binding": "STUDPILOT", "service": "studpilot" }] }

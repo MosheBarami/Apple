@@ -20,7 +20,7 @@ if (!E2E_EMAIL || !E2E_PASSWORD) {
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
-const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)[1];
+const ANON = readFileSync(root + '/apps/worker/wrangler.studpilot.jsonc', 'utf8').match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)[1];
 
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const fail = (msg) => { console.error('E2E FAIL:', msg); process.exit(1); };

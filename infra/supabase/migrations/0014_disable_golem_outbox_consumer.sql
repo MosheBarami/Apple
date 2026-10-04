@@ -1,0 +1,11 @@
+-- 0014: stop fanning membership changes out to the former `golem` Worker (handoff step 1.3).
+--
+-- `golem` becomes a proxy with no cron, so nothing would ever claim a row addressed to it, and 0009
+-- retries forever by design. 0009 is never edited (the runner checksums applied migrations).
+--
+-- The `apple` consumer stays enabled: it is the stored id the `studpilot` Worker drains as, and
+-- enqueue raises 55000 when no consumer is enabled, which would roll back every project_members write.
+--
+-- Deleting the `golem` rows and its consumer row is a data deletion, so it waits for the 7-day hold
+-- (planning/proof/M1/deletions.md). Measured before writing this: 0 pending rows for either consumer.
+update public.membership_outbox_consumers set enabled = false where consumer = 'golem';

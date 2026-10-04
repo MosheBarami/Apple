@@ -339,6 +339,7 @@ export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
 import { readResetScope, SPEND_RESET_USAGE } from './do/budget';
 export { DiscordDO } from './do/discord';
+export { ArchiveSessionDO, ArchiveQuotaDO, ArchivePairingDO, ArchiveAdminDO, ArchiveBudgetDO, ArchiveDiscordDO } from './do/archive';
 export { ModelUploadWorkflow } from './model-upload-workflow';
 
 type Vars = {

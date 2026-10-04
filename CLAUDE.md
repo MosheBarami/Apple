@@ -59,7 +59,7 @@ pnpm -r typecheck && pnpm -r test                          # every workspace (CI
 node apps/studpilot-plugin/scripts/build.mjs               # build + verify the Studio plugin (never publishes)
 node scripts/gen-components.mjs                            # packages/components/*/*.luau -> apps/worker/src/components.generated.ts
 node scripts/check-old-names.mjs                           # old-name guard: exit 1 on a hit not in planning/rename-allowlist.txt
-node infra/deploy-worker.mjs apple                         # deploy; the target is still named 'apple' until handoff step 1.3
+node infra/deploy-worker.mjs studpilot                     # deploy; then check buildSha at studpilot.app/api/health
                                                            # then check buildSha at /api/health equals the main HEAD
 node infra/deploy-static.mjs                               # site + SPA into the D1 static store
 ```

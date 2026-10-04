@@ -6,8 +6,8 @@ import { fetchJson, cached, uncache, ok, fail, section, redact } from '../http.m
 
 const API = 'https://api.cloudflare.com/client/v4';
 const LABEL = 'Cloudflare';
-export const WORKER = 'apple';
-export const WORKER_URL = 'https://apple.moshe-barami111.workers.dev';
+export const WORKER = 'studpilot';
+export const WORKER_URL = 'https://studpilot.app';
 const MISSING = 'חסרים CLOUDFLARE_API_TOKEN או CLOUDFLARE_ACCOUNT_ID בקובץ ‎.env';
 
 const auth = () => ({ authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` });

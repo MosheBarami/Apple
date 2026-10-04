@@ -9,7 +9,7 @@
  * still there, under three published retention windows that read like they were being enforced.
  *
  * A window with no sweep is the same defect as a comment asserting an invariant nothing enforces,
- * and this repository has a name for that. So: a cron trigger in wrangler.jsonc, a `scheduled`
+ * and this repository has a name for that. So: a cron trigger in wrangler.studpilot.jsonc, a `scheduled`
  * export on the worker, and this file, which drives that export against a real (in-memory) SQL
  * database and counts rows before and after.
  *
@@ -105,10 +105,12 @@ const event = () => ({ scheduledTime: NOW, cron: '0 3 * * *' });
 // ------------------------------------------------------------------ it is wired ---
 
 test('the worker declares a cron trigger, or nothing ever calls the sweep', () => {
-  const wrangler = readFileSync(join(WORKER, 'wrangler.jsonc'), 'utf8');
+  const wrangler = readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8');
   const config = JSON.parse(wrangler.replace(/^\s*\/\/[^\n]*$/gm, ''));
-  assert.ok(config.triggers, 'wrangler.jsonc declares no triggers block');
+  assert.ok(config.triggers, 'wrangler.studpilot.jsonc declares no triggers block');
   assert.ok(Array.isArray(config.triggers.crons) && config.triggers.crons.length > 0, 'no cron is declared');
+  // Any cron other than the minute's runs the sweep (index.ts runScheduled), so one must be declared.
+  assert.ok(config.triggers.crons.some((c) => c !== '* * * * *'), 'only the outbox minute is declared; the sweep never runs');
   for (const cron of config.triggers.crons) {
     assert.equal(cron.trim().split(/\s+/).length, 5, `"${cron}" is not a five-field cron expression`);
   }

@@ -26,7 +26,7 @@ const ADMIN = envCompat('STUDPILOT_ADMIN_KEY');
 const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
 const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
-const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
+const ANON = readFileSync(root + '/apps/worker/wrangler.studpilot.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,
 )[1];
 const PID = 'b0766f21-7028-47cc-b9ab-e19198b144d2';

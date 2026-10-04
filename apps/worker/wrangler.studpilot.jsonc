@@ -1,11 +1,12 @@
-// Second worker, same data plane.
-// Identical bindings to wrangler.jsonc — D1/KV bind by ID, Vectorize by index name — so
-// `apple` reads and writes the SAME corpus, KV and index as `golem`. Only the Durable Object
-// namespace is new, which is why golem stays deployed: BudgetDO keeps its ledger in DO storage
-// and does not travel. Delete neither worker until traffic has actually moved.
+// The StudPilot Worker, the product's only backend (`infra/deploy-worker.mjs studpilot`).
+// It was the `apple` Worker, renamed in place in handoff step 1.3, which kept its Durable Objects,
+// secrets and id. The former `apple` and `golem` hosts are proxies now (infra/legacy-proxy).
 {
-  "name": "apple",
+  "name": "studpilot",
   "main": "src/index.ts",
+  // Explicit, because declaring `routes` below makes Wrangler turn the workers.dev host off by default.
+  // studpilot.<sub>.workers.dev stays up as a second way in if the custom domain misbehaves.
+  "workers_dev": true,
   "compatibility_date": "2026-08-01",
   "compatibility_flags": [
     "nodejs_compat"
@@ -21,9 +22,9 @@
         "class_name": "QuotaDO"
       },
       {
+        // golem's QuotaDO, moved into this Worker by migration v4 with its data (do/archive.ts).
         "name": "LEGACY_QUOTA_DO",
-        "class_name": "QuotaDO",
-        "script_name": "golem"
+        "class_name": "ArchiveQuotaDO"
       },
       {
         "name": "PAIRING_DO",
@@ -64,6 +65,19 @@
       "new_sqlite_classes": [
         "DiscordDO"
       ]
+    },
+    {
+      // Handoff 1.3: every Durable Object of the former `golem` Worker, with its storage, so that
+      // Worker can become a proxy without deleting anything. Only ArchiveQuotaDO is served.
+      "tag": "v4",
+      "transferred_classes": [
+        { "from": "SessionDO", "from_script": "golem", "to": "ArchiveSessionDO" },
+        { "from": "QuotaDO", "from_script": "golem", "to": "ArchiveQuotaDO" },
+        { "from": "PairingDO", "from_script": "golem", "to": "ArchivePairingDO" },
+        { "from": "AdminDO", "from_script": "golem", "to": "ArchiveAdminDO" },
+        { "from": "BudgetDO", "from_script": "golem", "to": "ArchiveBudgetDO" },
+        { "from": "DiscordDO", "from_script": "golem", "to": "ArchiveDiscordDO" }
+      ]
     }
   ],
   "ai": {
@@ -89,9 +103,7 @@
   //   TWO THINGS MUST TRAVEL WITH THE FIRST WRITE, not after it. R2 has no expiry, so an object
   //   lifecycle rule has to bound growth; and erasure.ts deletes a user's data by listing KV BY
   //   PREFIX, so it has to learn R2 or account deletion silently stops covering every image, audio
-  //   file and attachment. That second one is a legal hole, not a bug.
-  //
-  //   Identical in both wrangler files on purpose — the contract at the top of this file. ]]
+  //   file and attachment. That second one is a legal hole, not a bug. ]]
   "r2_buckets": [
     {
       "binding": "MEDIA",
@@ -110,9 +122,7 @@
       "index_name": "golem-docs"
     }
   ],
-  //[[ THE REST OF CLOUDFLARE (D-VISION-1). StudPilot-only on purpose: a queue has exactly one consumer
-  //   worker, so these cannot be mirrored into golem's config the way the data bindings above are,
-  //   and every one is optional in env.ts — golem runs the pre-existing path without them.
+  //[[ THE REST OF CLOUDFLARE (D-VISION-1). Every one is optional in env.ts.
   //   PRODUCT_EVENTS: product events, 3 months, no person in them (analytics-engine.ts).
   //   NOTIFY_QUEUE: notifications written by a consumer with retries (notify-queue.ts).
   //   MODEL_UPLOAD_WORKFLOW: finishes a slow 3D upload and tells the user (model-upload.ts).
@@ -166,10 +176,15 @@
     "BUILD_SHA": "616d84b"
   },
   "triggers": {
+    // The minute drains the membership outbox; 03:00 runs the retention sweeps (index.ts runScheduled).
     "crons": [
-      "* * * * *"
+      "* * * * *",
+      "0 3 * * *"
     ]
   },
+  "routes": [
+    { "pattern": "studpilot.app", "custom_domain": true }
+  ],
   //[[ TRACES ON, SAMPLED, BEFORE THE METER STARTS.
   //
   //   Logs were already enabled and already billed; nothing read them, because SENTRY_DSN was set on

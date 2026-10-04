@@ -60,7 +60,6 @@ const COMPAT_FILES = new Set([
   'apps/worker/tests/membership-access-outbox.test.mjs',
   'apps/worker/tests/membership-access-outbox-migration.test.mjs',
   'infra/supabase/tests/membership-access-outbox.mjs',
-  'apps/worker/wrangler.jsonc',
   'packages/shared/src/index.ts',
   'packages/evals/src/plugin-version.test.mjs',
   'packages/evals/frontier-studio/score.test.mjs',
@@ -131,6 +130,7 @@ const CLASSES = [
   { id: 'owner-local', paths: '**', token: T('Application Support/Apple|Support/Apple|com\\.moshe\\.apple|Apple-OS|mcp__apple-studio'), reason: 'the owner\'s on-disk state on his Mac (library folders, launchd label, MCP server name): renamed only with a fallback, with him present', removal: 'with the local folder rename (handoff 1.6)' },
   { id: 'wire-compat', paths: '**', token: T('golem\\.v1|golem\\.jwt|apple\\.v1|apple\\.jwt|X-Golem-|X-Apple-|golem\\.studio-ops|apple\\.studio-ops|golem-ui|apple-ui|GolemBaseVolume|GOLEM_[A-Z]|APPLE_[A-Z]'), reason: 'the former wire spellings and env names that compatibility code and its tests name on purpose (published plugins send X-Golem-*; the owner\'s .env carries GOLEM_ keys)', removal: 'phase D: when the legacy counters stay at zero after the renamed plugin is published, and .env carries only STUDPILOT_ names' },
   // Files whose job is the old names: shims, guards and their tests. Any old-name word, but ONLY in these files.
+  { id: 'legacy-hosts', files: new Set(['infra/legacy-proxy/index.js', 'infra/legacy-proxy/wrangler.apple.jsonc', 'infra/legacy-proxy/wrangler.golem.jsonc', 'tests/legacy-proxy.test.mjs']), token: '.*', reason: 'the stand-in Workers that keep the former hosts answering published plugins (handoff 1.3), and their test', removal: '2027-01-02, when the stand-ins are deleted' },
   { id: 'compat-file', files: COMPAT_FILES, token: '.*', reason: 'a compatibility shim, a guard that names the old words in order to forbid them, or a test that pins an old spelling the code must still accept', removal: 'phase D (with the legacy spellings), or with the guard' },
 ];
 

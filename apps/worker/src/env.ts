@@ -32,7 +32,7 @@ export interface Env {
    * secret. `off` is the run exactly as it was (the `look` tool is not even offered); `on` adds the evidence ledger, the look,
    * the completion gate and the deterministic claim audit; `full` also runs the one cheap text judge over the final reply.
    * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` until the owner turns it on (the Q21 line is owed).
-   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.jsonc "vars"). See self-check.ts.
+   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.studpilot.jsonc "vars"). See self-check.ts.
    */
   SELF_CHECK?: string;
   /** The blind critique before answering (blind-critique.ts): on unless `off`, `0`, `false` or `no`. Only effective while SELF_CHECK is on. */

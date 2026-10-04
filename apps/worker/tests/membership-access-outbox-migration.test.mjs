@@ -8,7 +8,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -98,14 +98,19 @@ test('every SECURITY DEFINER function pins an empty search_path', () => {
   }
 });
 
-test('both Worker configs schedule their own consumer and only golem retains the nightly sweep', () => {
-  const parse = (name) => JSON.parse(readFileSync(join(ROOT, 'apps', 'worker', name), 'utf8').replace(/^\s*\/\/[^\n]*$/gm, ''));
-  const golem = parse('wrangler.jsonc');
-  const studpilot = parse('wrangler.studpilot.jsonc');
-  assert.equal(golem.vars.MEMBERSHIP_OUTBOX_CONSUMER, 'golem');
+test('the one Worker config drains its own outbox consumer and runs the nightly sweep', () => {
+  const studpilot = JSON.parse(readFileSync(join(ROOT, 'apps', 'worker', 'wrangler.studpilot.jsonc'), 'utf8').replace(/^\s*\/\/[^\n]*$/gm, ''));
+  // 'apple' is the consumer row seeded by 0009 (a stored id); 0014 disables the former 'golem' consumer.
   assert.equal(studpilot.vars.MEMBERSHIP_OUTBOX_CONSUMER, 'apple');
-  assert.ok(golem.triggers.crons.includes('* * * * *'));
-  assert.ok(studpilot.triggers.crons.includes('* * * * *'));
-  assert.ok(golem.triggers.crons.includes('0 3 * * *'));
-  assert.equal(studpilot.triggers.crons.includes('0 3 * * *'), false, 'two workers must not race the shared D1 retention sweep');
+  assert.ok(studpilot.triggers.crons.includes('* * * * *'), 'nothing drains the membership outbox');
+  assert.ok(studpilot.triggers.crons.includes('0 3 * * *'), 'nothing runs the retention sweep');
+  assert.equal(existsSync(join(ROOT, 'apps', 'worker', 'wrangler.jsonc')), false, 'a second Worker config would race the shared D1 sweep');
+});
+
+test('0014 disables the former golem consumer and touches nothing else', () => {
+  // Disabling `apple` instead would leave no enabled consumer, and enqueue then raises 55000, which rolls
+  // back every project_members write.
+  const sql = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0014_disable_golem_outbox_consumer.sql'), 'utf8')
+    .replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+  assert.equal(sql, "update public.membership_outbox_consumers set enabled = false where consumer = 'golem';");
 });

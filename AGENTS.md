@@ -86,13 +86,13 @@ client may still send the old one.
 
 ### 2.2 Cloud and platform names
 
-Until handoff step 1.3 the Cloudflare names are the left column. After it, they are the right column. The log
-`planning/proof/M1/LOG.md` says which step has run; do not guess from this file.
+This tree uses the right column. The cutover (handoff step 1.3) is recorded step by step in
+`planning/proof/M1/LOG.md`; read it to know whether production has caught up with the tree.
 
-| Resource | Name until step 1.3 | Name after |
+| Resource | Name before step 1.3 | Name after |
 |---|---|---|
-| Production Worker | `apple` (config `wrangler.studpilot.jsonc` in `apps/worker/`, whose `name` is still `apple`) | `studpilot`, renamed in place in step 1.3f, so Durable Objects, secrets and the `studpilot.app` domain stay |
-| Legacy Worker | `golem` (still deployed; `LEGACY_QUOTA_DO` points at it) | a small proxy that keeps old plugins working for 90 days (step 1.3h) |
+| Production Worker | `apple` | `studpilot` (config `apps/worker/wrangler.studpilot.jsonc`), renamed in place, so its Durable Objects, secrets and the `studpilot.app` domain stay |
+| Legacy Worker | `golem` | a proxy (`infra/legacy-proxy`); its Durable Objects moved into `studpilot` as `Archive*` classes (migration v4) |
 | D1 | `golem-corpus` | `studpilot-corpus` |
 | Vectorize | `golem-docs` | `studpilot-docs` |
 | KV | `golem-kv` | `studpilot-kv` (title only; same id) |
@@ -101,7 +101,7 @@ Until handoff step 1.3 the Cloudflare names are the left column. After it, they 
 | Workflow | `apple-model-upload` | `studpilot-model-upload` |
 | Analytics Engine dataset | `apple_product_events` | `studpilot_product_events` |
 | AI Gateway id | `golem` | `studpilot` |
-| Durable Object namespaces | `apple_SessionDO` and the other `apple_*` and `golem_*` names | unchanged: Cloudflare has no rename for them |
+| Durable Object namespaces | `apple_SessionDO` and the other `apple_*` and `golem_*` names | the `apple_*` names are unchanged (Cloudflare has no rename for them); the `golem_*` ones belong to `studpilot` now |
 | Old hosts | `apple.moshe-barami111.workers.dev` and the `golem` host | proxy API calls and 301 page loads for 90 days (the `apple` host to 2027-01-02) |
 | Supabase project | `AppleAI` (the URL never changes) | `StudPilot` (step 1.4) |
 | GitHub | `MosheBarami/Apple` | `MosheBarami/StudPilot` (step 1.4) |
@@ -212,14 +212,16 @@ looking for something and finding gigabytes, you are in a training adapter, an a
 
 ## 4. The live system
 
-**Two Workers, one database.** `apple` is production and serves `studpilot.app`. `golem` is the older Worker; it is
-still deployed and `LEGACY_QUOTA_DO` still points at it. They share the D1 database. The static site and the SPA
+**One Worker.** `studpilot` is production and serves `studpilot.app`. The former hosts (`apple` and `golem` on
+workers.dev) are proxies until 2027-01-02: API calls pass through to `studpilot`, page loads get a 301. The static site and the SPA
 live in D1 tables `static_assets` and `static_chunks` and are served by the worker; there is no CDN origin to deploy
 to. Section 2.2 says what changes in step 1.3.
 
 **Durable Objects**, one class each: `SessionDO` (one per project: WebSocket to the browser, long-poll queue for
 the plugin, the agent run loop), `QuotaDO`, `BudgetDO`, `PairingDO`, `AdminDO` (analytics sink), `DiscordDO`. The
-Workflow class is `ModelUploadWorkflow`.
+Workflow class is `ModelUploadWorkflow`. The former `golem` Worker's objects live on, with their storage, as
+`ArchiveSessionDO`, `ArchiveQuotaDO`, `ArchivePairingDO`, `ArchiveAdminDO`, `ArchiveBudgetDO` and `ArchiveDiscordDO`
+(`src/do/archive.ts`). Nothing serves them except `ArchiveQuotaDO`, the billing replica behind `LEGACY_QUOTA_DO`.
 
 **Bindings:** `AI` (Workers AI through AI Gateway), `CORPUS` (D1), `KV`, `VEC` (Vectorize), `MEDIA` (R2: generated
 images, generated audio and chat attachments, keyed `<kind>/<projectId>/<id>`, so a project's bytes are one
@@ -241,7 +243,7 @@ $1.65 and $24.97), restored in M0 and asserted by `apps/worker/tests/spend-caps.
 owner's approval (X3). Workers AI spend for testing stays at or below $20 a month; read `/api/admin/spend` before
 and after a test batch and log it to `planning/proof/ops/spend.md`.
 
-**Deploy** only through `infra/deploy-worker.mjs` (the target is still named `apple` until step 1.3) from a clean
+**Deploy** only through `infra/deploy-worker.mjs studpilot` from a clean
 tree, so `/api/health` reports a `buildSha` equal to the `main` HEAD with no `-dirty`.
 
 ---

@@ -20,7 +20,8 @@
  * The token is NEVER printed. If you lose it between step 2 and step 3, run this again: it is a
  * purpose token with one consumer, so replacing it costs nothing but the two writes.
  *
- *   node infra/provision-outbox-token.mjs [--consumer studpilot] [--worker studpilot]
+ *   node infra/provision-outbox-token.mjs [--consumer apple] [--worker studpilot]
+ *   (`apple` is the consumer id seeded by migration 0009, a stored id; `studpilot` is the Worker)
  *
  * Run the printed SQL FIRST, then answer yes to the wrangler step. In that order the database
  * accepts a token the Worker does not yet hold, which fails closed; the other order leaves the
@@ -38,7 +39,7 @@ const flag = (name, fallback) => {
   return i === -1 ? fallback : args[i + 1];
 };
 const consumer = flag('consumer', 'apple');
-const worker = flag('worker', 'apple');
+const worker = flag('worker', 'studpilot');
 if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(consumer)) {
   console.error(`consumer "${consumer}" does not match the shape 0009 requires`);
   process.exit(1);

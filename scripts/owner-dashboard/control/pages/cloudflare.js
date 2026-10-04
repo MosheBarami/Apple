@@ -14,7 +14,7 @@ const TABS = [['home', 'Account home'], ['workers', 'Workers & Pages'], ['storag
 const HE = { home: 'סקירת החשבון', workers: 'Workers ו-Pages', storage: 'אחסון ומסדי נתונים', ai: 'בינה מלאכותית', analytics: 'תנועה', security: 'אבטחה' };
 const AI_FREE = 10000;
 const st = {
-  tab: 'home', worker: 'apple',
+  tab: 'home', worker: 'studpilot',
   d1: { db: '', sql: 'PRAGMA table_list', busy: false, res: null, err: null },
   kv: { ns: '', prefix: '', busy: false, res: null, err: null, back: [] },
   r2: { bucket: '', prefix: '', busy: false, res: null, err: null },

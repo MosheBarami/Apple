@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --config wrangler.studpilot.jsonc",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "deploy:api": "wrangler deploy --var BUILD_SHA:$(git rev-parse --short HEAD)",
+    "deploy:api": "node ../../infra/deploy-worker.mjs studpilot",
     "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {

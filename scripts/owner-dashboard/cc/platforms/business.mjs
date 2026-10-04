@@ -33,10 +33,10 @@ const sbUsers = () => fetchJson(`https://api.supabase.com/v1/projects/${REF}/dat
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
 const admin = (p, what) => fetchJson(`${base()}${p}`, { label: 'StudPilot', what, headers: { 'x-admin-key': envCompat('STUDPILOT_ADMIN_KEY') } });
 
-// The worker's deployed flags that are plain config (wrangler.jsonc "vars"), not secrets.
+// The worker's deployed flags that are plain config (wrangler.studpilot.jsonc "vars"), not secrets.
 function workerVars() {
   try {
-    const t = fs.readFileSync(path.join(REPO, 'apps/worker/wrangler.jsonc'), 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1');
+    const t = fs.readFileSync(path.join(REPO, 'apps/worker/wrangler.studpilot.jsonc'), 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/,(\s*[}\]])/g, '$1');
     const v = JSON.parse(t).vars || {};
     return ['ENVIRONMENT', 'AI_GATEWAY_ID', 'BILLING_WORKER_NAME', 'MEMBERSHIP_OUTBOX_CONSUMER'].filter((k) => v[k] != null).map((k) => ({ k, v: String(v[k]) }));
   } catch { return []; }
