@@ -40,9 +40,10 @@ permissions:
   contents: read
 
 env:
-  # 26, the version the suites are run on locally. The old-names guard compiles allowlist tokens with
-  # regex modifiers (`(?i:...)`), which Node 22 does not support.
-  NODE_VERSION: '26'
+  # 24 (LTS). The old-names guard compiles allowlist tokens with regex modifiers (`(?i:...)`), which
+  # Node 22 does not support. On 26 the checker spawned by tests/check-escape-hatches.test.mjs hung
+  # past its 300 s budget once in each of two CI runs (a different test each time), so not 26 yet.
+  NODE_VERSION: '24'
   PNPM_VERSION: '11.13.0'
 
 jobs:

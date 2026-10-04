@@ -45,7 +45,7 @@ read it only when asked to run SGSD.
 
 ## Commands
 
-Node 26 runs the `.ts` sources directly, so tests need no build step (CI pins Node 22). `AGENTS.md` is the full map
+Node 26 runs the `.ts` sources directly, so tests need no build step (CI runs Node 24). `AGENTS.md` is the full map
 (layout, names, live bindings, data, the documents worth reading); read it before a first edit.
 
 ```bash
