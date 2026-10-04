@@ -324,6 +324,86 @@ spec("the engine gates third-party loading even when its setting cannot be read"
     services.InsertService = nil; services.AssetService = nil
 end)
 
+-- THE LOADER THAT WORKS FOR A FREE PUBLIC MODEL (measured in Studio 2026-10-04: LoadAsset and LoadAssetAsync both
+-- answered "User is not authorized to access Asset." for a free asset by a verified creator that GetObjects loaded whole).
+-- Whatever loader produced the tree, it is the same DETACHED tree that is scanned before anything is parented.
+spec("a free public model loads through GetObjects when both owned-asset loaders refuse it", function()
+    local urls = {}
+    local reply
+    services.InsertService = { LoadAsset = function() error("User is not authorized to access Asset.") end }
+    services.AssetService = { LoadAssetAsync = function() error("User is not authorized to access Asset.") end }
+    rawset(game, "GetObjects", function(_, url)
+        table.insert(urls, url)
+        if type(reply) == "function" then return reply() end
+        error("GetObjects was not expected")
+    end)
+    local c = newCommands()
+    local before = #workspace:GetChildren()
+    local function insert(id, assetId) return run(c, id, { op = "insert_asset", assetId = assetId, parent = "game.Workspace" }, true) end
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "CrystalCluster"
+        for _, name in { "Spire", "Shard" } do local part = Instance.new("MeshPart"); part.Name = name; part.Parent = model end
+        return { model }
+    end
+    local ok = insert("getobjects-ok", 136381958798606)
+    eq(ok.ok, true, "the detached loader must insert a clean model: " .. tostring(ok.error))
+    eq(ok.data.count, 1); eq(urls[1], "rbxassetid://136381958798606", "a 15-digit id must reach the loader exact")
+    local landed = workspace:FindFirstChild("CrystalCluster")
+    assert(landed ~= nil and #landed:GetChildren() == 2, "the model landed whole")
+    eq(landed.Parent, workspace)
+    landed:Destroy()
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "WithCode"
+        local part = Instance.new("Part"); part.Name = "Body"; part.Parent = model
+        local code = Instance.new("Script"); code.Name = "Payload"; code.Parent = part
+        return { model }
+    end
+    local scripted = insert("getobjects-scripted", 1235)
+    eq(scripted.ok, false); eq(scripted.remedy, "choose_scriptless_asset"); has(scripted.error, "carries 1 script")
+    eq(workspace:FindFirstChild("WithCode"), nil, "a scripted asset must never reach the place")
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "Linked"
+        local part = Instance.new("Part"); part.Name = "Body"; part.Parent = model
+        local link = Instance.new("PackageLink"); link.Name = "PackageLink"; link.Parent = model
+        return { model }
+    end
+    local linked = insert("getobjects-link", 1236)
+    eq(linked.ok, true, tostring(linked.error)); eq(linked.data.packageLinksRemoved, 1)
+    local linkedModel = workspace:FindFirstChild("Linked")
+    local links = 0
+    for _, d in linkedModel:GetDescendants() do if d.ClassName == "PackageLink" then links += 1 end end
+    eq(links, 0, "a PackageLink can pull other content in later and is removed")
+    linkedModel:Destroy()
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "Spam"
+        local part = Instance.new("Part"); part.Name = string.rep("x", 400); part.Parent = model
+        return { model }
+    end
+    local longName = insert("getobjects-name", 1237)
+    eq(longName.ok, false); has(longName.error, "named with more than")
+    eq(workspace:FindFirstChild("Spam"), nil)
+
+    reply = function() return {} end
+    local empty = insert("getobjects-empty", 1238)
+    eq(empty.ok, false); has(empty.error, "contained nothing")
+
+    reply = function() error("HTTP 403 (HTTP 403, InsertService got there first)") end
+    local refused = insert("getobjects-refused", 1239)
+    eq(refused.ok, false); eq(refused.remedy, "take_asset_first")
+    has(refused.error, "Roblox would not load asset 1239"); has(refused.error, "User is not authorized")
+    eq(#workspace:GetChildren(), before, "every refusal left the place as it was")
+
+    rawset(game, "GetObjects", nil)
+    local absent = insert("getobjects-absent", 1240)
+    eq(absent.ok, false, "a Studio without GetObjects refuses instead of failing in the engine")
+    c:destroy()
+    services.InsertService = nil; services.AssetService = nil
+end)
+
 spec("typed creation and set_props commit a recording", function()
     local c = newCommands()
     local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)

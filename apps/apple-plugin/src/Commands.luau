@@ -3411,6 +3411,35 @@ local function handleCreate(self: any, op: any): (any?, string?, string?, string
 	return { created = paths, count = #paths, refs = if #refs > 0 then refs else nil }, nil
 end
 
+--[[ THE ONE PLACE A FREE PUBLIC ASSET IS LOADED BY ID WITHOUT OWNING IT.
+
+	`DataModel:GetObjects` has plugin security and returns the asset's roots DETACHED (Parent is nil),
+	so nothing it returns runs or touches the place until handleInsertAsset has scanned it. Measured
+	in Studio on 2026-10-04 for one free asset by a verified creator: `InsertService:LoadAsset` and
+	`AssetService:LoadAssetAsync` both failed with "User is not authorized to access Asset." while
+	GetObjects returned the model whole. The URL is built here from an id handleInsertAsset has already
+	proved a positive whole number, never from received text, and `%d` keeps a 15-digit id exact.
+
+	This is the ONLY GetObjects call in the plugin, and the build refuses any other shape
+	(scripts/verify-artifact.py, tests/worker-capability-contract.test.mjs). The roots are collected
+	into a detached Model so the caller scans one tree whichever loader produced it.
+]]
+local MAX_INSERTED_INSTANCES = 5000
+local MAX_INSERTED_NAME_LENGTH = 200
+
+local function loadFreeAssetDetached(gameRef: any, assetId: number): (boolean, any)
+	local okObjects, roots = pcall(function()
+		return gameRef:GetObjects("rbxassetid://" .. string.format("%d", assetId))
+	end)
+	if not okObjects or type(roots) ~= "table" then return false, roots end
+	local container = Instance.new("Model")
+	container.Name = "AppleLoadedAsset"
+	for _, root in roots do
+		if typeof(root) == "Instance" then root.Parent = container end
+	end
+	return true, container
+end
+
 --[[ INSERT A ROBLOX-HOSTED ASSET, AND NEVER ITS CODE.
 
 	This was refused — "no remote asset loader is exposed through the command bridge" — and
@@ -3469,6 +3498,14 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		end
 	end
 	if not okLoad or typeof(loaded) ~= "Instance" then
+		-- The loader the Studio Toolbox itself uses for a free public model. It needs no ownership and
+		-- no experience setting, so a model from the live Creator Store loads where both loaders above
+		-- answered "User is not authorized to access Asset" (measured in Studio 2026-10-04).
+		local failure = loaded
+		okLoad, loaded = loadFreeAssetDetached(self.game, assetId)
+		if not okLoad then loaded = tostring(loaded) .. " (after: " .. tostring(failure) .. ")" end
+	end
+	if not okLoad or typeof(loaded) ~= "Instance" then
 		-- Roblox can refuse either loader for ownership, moderation, deletion or a transient error.
 		-- The remedy offers another model as well as taking this one into inventory; it does not
 		-- claim to know which Roblox-side cause fired or suggest changing a security setting.
@@ -3484,6 +3521,27 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 		-- The one refusal in this file where the user's next move is a different asset rather than a
 		-- setting, so it says so instead of leaving the model to guess that the asset was the problem.
 		return nil, "refused", "asset " .. tostring(assetId) .. " carries " .. tostring(#scripts) .. " script(s) and was not inserted; Apple inserts geometry, not code", "choose_scriptless_asset"
+	end
+
+	-- Shapes from the Creator Store malware reports (research note 09) that need no script to hurt:
+	-- a tree built to crash Studio (hundreds of nested children with enormous names), and a
+	-- PackageLink, which lets a model pull in different content than the one inspected on a later
+	-- package update. Both are decided on the detached tree, before anything is parented.
+	local descendants = loaded:GetDescendants()
+	if #descendants > MAX_INSERTED_INSTANCES then
+		destroyInstance(loaded)
+		return nil, "refused", "asset " .. tostring(assetId) .. " holds " .. tostring(#descendants) .. " instances (limit " .. tostring(MAX_INSERTED_INSTANCES) .. ") and was not inserted", "choose_scriptless_asset"
+	end
+	local droppedLinks = 0
+	for _, descendant in descendants do
+		if #nameOf(descendant) > MAX_INSERTED_NAME_LENGTH then
+			destroyInstance(loaded)
+			return nil, "refused", "asset " .. tostring(assetId) .. " has an instance named with more than " .. tostring(MAX_INSERTED_NAME_LENGTH) .. " characters and was not inserted", "choose_scriptless_asset"
+		end
+		if classNameOf(descendant) == "PackageLink" then
+			destroyInstance(descendant)
+			droppedLinks += 1
+		end
 	end
 
 	local children = loaded:GetChildren()
@@ -3530,6 +3588,7 @@ local function handleInsertAsset(self: any, op: any): (any?, string?, string?, s
 	return {
 		assetId = assetId, inserted = inserted, count = #inserted, parent = parentPath,
 		renamed = if #renamed > 0 then renamed else nil, refs = if #refs > 0 then refs else nil,
+		packageLinksRemoved = if droppedLinks > 0 then droppedLinks else nil,
 	}, nil
 end
 

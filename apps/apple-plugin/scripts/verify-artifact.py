@@ -73,6 +73,7 @@ REQUIRED = {
     # by a plugin that inserts nothing, whereas "no insertion without the code refusal" cannot be
     # satisfied by deleting the guard, because deleting it fails this check.
     "LuaSourceContainer": "the scan that refuses an asset carrying code, before anything is parented",
+    "packageLinksRemoved": "the PackageLink strip on the detached tree: a link can pull other content into a model later",
     "Apple inserts geometry, not code": "the refusal message; its absence means the scan was removed or defanged",
     # A REFUSAL THAT NAMES NO REMEDY GETS ONE INVENTED FOR IT.
     #
@@ -90,10 +91,17 @@ REQUIRED = {
 # Patterns that must NOT be in the shipped bytes. These are call shapes, never mentions: Commands
 # carries a refusal LIST naming loadstring and InsertService, and matching the word would report
 # the guard as the defect.
+ALLOWED_GETOBJECTS_ARGS = b'"rbxassetid://" .. string.format("%d", assetId))'
+ALLOWED_GETOBJECTS = b"gameRef:GetObjects(" + ALLOWED_GETOBJECTS_ARGS
 FORBIDDEN = [
     (rb"loadstring\s*\(", "dynamic source compilation"),
     (rb"pcall\s*\(\s*require\s*,", "requiring a constructed ModuleScript — the legacy run_code pattern"),
-    (rb":\s*GetObjects\s*\(", "remote object loading"),
+    # GetObjects is refused in every shape but ONE: the id-only loader in Commands.luau
+    # (loadFreeAssetDetached). A plugin can load a free public model it does not own only through
+    # DataModel:GetObjects (LoadAsset and LoadAssetAsync both answer "User is not authorized to access
+    # Asset." - measured in Studio on 2026-10-04), so that single call, built from a validated whole
+    # number and followed by the detached-tree script scan, is allowed and counted below.
+    (rb":\s*GetObjects\s*\((?!" + re.escape(ALLOWED_GETOBJECTS_ARGS) + rb")", "remote object loading other than the one id-only loader"),
     (rb"CreateAssetAsync\s*\(", "asset upload"),
 ]
 
@@ -135,6 +143,10 @@ def main() -> int:
         print(f"  {'present' if count else 'MISSING'}  {needle}  x{count}   {why}")
         if not count:
             failures.append(f"{needle} is not in the shipped bytes: {why}")
+
+    loaders = len(re.findall(re.escape(ALLOWED_GETOBJECTS), blob))
+    if loaders != 1:
+        failures.append(f"the build holds {loaders} copies of the id-only GetObjects loader; it must hold exactly 1")
 
     for pattern, why in FORBIDDEN:
         hit = re.search(pattern, blob)
