@@ -76,7 +76,7 @@ import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, scrubEngineIdentity, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
@@ -176,6 +176,7 @@ import {
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
+import { toolTraceEntry } from '../trace-entry';
 
 /** Say, on the last persisted trace row, why the run was stopped (the owner reads the trace; the person reads the note). Bounded. */
 function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): void {
@@ -619,14 +620,6 @@ const MAX_DUPLICATE_STREAK = 3;
 const MAX_SAME_FAILURES = MAX_IDENTICAL_RETRIES + 1;
 /** G10: how long the HTTP Stop waits for the run to actually end before answering "still stopping". */
 const STOP_ACK_WAIT_MS = 8_000;
-/** A failed step's own error, from the result the model saw, capped for the stored trace. */
-function failureText(resultForLlm: string | undefined): string {
-  try {
-    const parsed = JSON.parse(resultForLlm ?? '') as { error?: unknown };
-    return String(parsed.error ?? resultForLlm ?? '').slice(0, 400);
-  } catch { return String(resultForLlm ?? '').slice(0, 400); }
-}
-
 /** G10: messages sent while a run works, held under their own key until the next step boundary. */
 const STEER_KEY = 'steerQueue';
 type QueuedSteer = { id: string; text: string; at: number };
@@ -4727,7 +4720,7 @@ export class SessionDO extends DurableObject<Env> {
         const summary = `${call.name}: the owner's ${limit}-search limit was reached; this search was not run`;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary });
-        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0 });
+        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0, error: summary });
         await this.finishRun(agent, 'incomplete', undefined,
           `You asked for at most ${limit} search${limit === 1 ? '' : 'es'}, and that is used up. I stopped without searching again; have a look at the options already found.`);
         return;
@@ -4885,17 +4878,10 @@ export class SessionDO extends DurableObject<Env> {
             detail: undefined,
           };
       if (ledger && ledger.seq !== ledgerSeq) await this.saveLedger(agent, ledger);
-      const entry: ToolTraceEntry = {
-        tool: call.name,
-        summary: out.summary,
-        ok: out.ok,
-        durationMs: Date.now() - t0,
-        // `runTool` has already capped this payload for the live tool_end event; keep that same
-        // untrusted document in history, where the browser validates it before rendering. Without
-        // it, a refreshed transcript reduces a generated image to a text-only row.
-        detail: out.detail,
-        ...(out.ok ? {} : { error: failureText(out.resultForLlm) }),
-      };
+      // `detail` is what `runTool` already capped for the live tool_end event: keep that same untrusted document in
+      // history, where the browser validates it before rendering (without it, a refreshed transcript reduces a generated
+      // image to a text-only row). A FAILED row also carries `error`, always (trace-entry.ts).
+      const entry: ToolTraceEntry = toolTraceEntry({ tool: call.name, summary: out.summary, ok: out.ok, resultForLlm: out.resultForLlm, detail: out.detail }, Date.now() - t0, scrubEngineIdentity);
       agent.trace.push(entry);
       executedThisStep += 1;
       // Did this call actually run? A Studio tool that sent no op was refused by the worker first: that is not "already made".
@@ -5549,10 +5535,7 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, tool: LOOK_TOOL });
     this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
     const out = await runTool(ctx, LOOK_TOOL, '{}');
-    agent.trace.push({
-      tool: LOOK_TOOL, summary: out.summary, ok: out.ok, durationMs: Date.now() - t0, detail: out.detail,
-      ...(out.ok ? {} : { error: failureText(out.resultForLlm) }),
-    });
+    agent.trace.push(toolTraceEntry({ tool: LOOK_TOOL, summary: out.summary, ok: out.ok, resultForLlm: out.resultForLlm, detail: out.detail }, Date.now() - t0, scrubEngineIdentity));
     this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
     agent.uiTools = agent.uiTools ?? [];
     agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: out.ok, summary: out.summary, durationMs: Date.now() - t0, detail: out.detail });
