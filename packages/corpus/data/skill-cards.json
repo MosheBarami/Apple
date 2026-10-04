@@ -734,6 +734,254 @@
           "vecId": "api-enum-sandboxedinstancemode-1"
         }
       ]
+    },
+    {
+      "id": "game-architecture-data",
+      "title": "Structure game code: server authority, validated remotes, safe saving",
+      "domain": "systems",
+      "tools": [
+        "edit_script",
+        "play_check",
+        "search_docs"
+      ],
+      "triggers": [
+        "script",
+        "scripts",
+        "code",
+        "system",
+        "systems",
+        "save",
+        "saving",
+        "data",
+        "datastore",
+        "leaderstats",
+        "remote",
+        "remotes",
+        "server",
+        "multiplayer",
+        "exploit",
+        "exploiters",
+        "cheat",
+        "secure",
+        "progress",
+        "inventory",
+        "currency",
+        "economy"
+      ],
+      "recipe": [
+        "Two entry scripts: ServerScriptService/Main and StarterPlayerScripts/ClientMain, each requiring ModuleScripts (one service per concern). Behaviour shared by many objects = CollectionService tag + one script, not a script per object.",
+        "Prices, drop tables, rewards and cooldowns live in server modules; ReplicatedStorage holds only display data. Create every RemoteEvent on the server at boot in ReplicatedStorage/Remotes.",
+        "Every remote argument is hostile: check type, finite numbers, clamp ranges, positive integer quantities, string length; an Instance must be real, inside an allowed folder and in range. Send an item id, never a price or amount. Token-bucket rate limit per player (about 10/s for actions, 2/s for purchases).",
+        "Player data: session-locked profile per player (ProfileStore pattern), in-memory copy, autosave about every 300 s, save on leave and BindToClose, UpdateAsync for read-modify-write, pcall with backoff and jitter. Never write on every pickup.",
+        "Use task.wait/task.spawn (never wait/spawn), store connections and disconnect on leave, tween UI and effects on the client, anchor static parts and turn off CanTouch/CanQuery on decoration."
+      ],
+      "avoid": [
+        "Currency, damage or rewards decided on the client.",
+        "A RemoteFunction from server to client, or remotes fired every frame.",
+        "Hard-coded DataStore budgets: read GetRequestBudgetForRequestType."
+      ],
+      "check": "play_check with several clients: data survives a rejoin, Output is clean, and a client cannot change a server value by sending a crafted remote.",
+      "docs": [
+        {
+          "title": "Remote events and callbacks",
+          "url": "https://create.roblox.com/docs/scripting/events/remote",
+          "vecId": "g-cc1c16be-1"
+        },
+        {
+          "title": "Securing the client-server boundary",
+          "url": "https://create.roblox.com/docs/scripting/security/client-server-boundary",
+          "vecId": "g-192d0501-1"
+        },
+        {
+          "title": "Save player data",
+          "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/data-storage/save-player-data",
+          "vecId": "g-4655fc81-1"
+        }
+      ]
+    },
+    {
+      "id": "sound-design-pass",
+      "title": "Give the game a sound design: music, ambience, action feedback, mix",
+      "domain": "fx",
+      "tools": [
+        "insert_sound",
+        "edit_script",
+        "search_docs"
+      ],
+      "triggers": [
+        "sound",
+        "sounds",
+        "audio",
+        "music",
+        "sfx",
+        "ambience",
+        "ambient",
+        "noise",
+        "soundtrack",
+        "song",
+        "volume",
+        "quiet",
+        "silent",
+        "alive",
+        "atmosphere",
+        "feedback",
+        "polish"
+      ],
+      "recipe": [
+        "Every game gets: one music loop, one ambience bed for each area, and a sound on every core action (press, pickup, hit, success, failure, level up, purchase). Silence on a reward reads as broken.",
+        "Starting mix (tune by ear): music 0.3-0.5, ambience 0.2-0.4, UI 0.4-0.6, effects 0.6-1.0. Route by bus (music, ambience, UI, effects) so one settings slider changes each.",
+        "Repeated effects get 3-5 variants or a random PlaybackSpeed 0.92-1.08 so they do not grate.",
+        "3D sounds sit on the thing that makes them, with an explicit rolloff (a fire about 6-60 studs, a waterfall about 20-200).",
+        "New Audio API (AudioPlayer.Asset, Wire, AudioEmitter, AudioListener, AudioDeviceOutput, AudioFader, AudioCompressor for ducking) is built in a script; keep Sound for simple one-shots placed with insert_sound. An AudioEmitter under a Folder or Script is silent.",
+        "Only Creator Store, original or licensed audio; never asset ids from memory."
+      ],
+      "avoid": [
+        "Copyrighted music.",
+        "Every sound at volume 1.",
+        "A reward, purchase or level-up with no sound."
+      ],
+      "check": "Play: every core action is heard, music and ambience loop without a gap, nothing clips or drowns the effects.",
+      "docs": [
+        {
+          "title": "Audio objects",
+          "url": "https://create.roblox.com/docs/audio/objects",
+          "vecId": "g-612f62ca-1"
+        },
+        {
+          "title": "Audio",
+          "url": "https://create.roblox.com/docs/audio",
+          "vecId": "g-591c8e83-1"
+        },
+        {
+          "title": "Add 3D audio",
+          "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/audio/add-3D-audio",
+          "vecId": "g-f1728ab4-1"
+        }
+      ]
+    },
+    {
+      "id": "vfx-game-feel",
+      "title": "Add effects and game feel: particles, trails, highlights, juice",
+      "domain": "fx",
+      "tools": [
+        "add_effect",
+        "add_behaviour",
+        "edit_script",
+        "play_check"
+      ],
+      "triggers": [
+        "effect",
+        "effects",
+        "vfx",
+        "particle",
+        "particles",
+        "sparkle",
+        "sparkles",
+        "glow",
+        "trail",
+        "explosion",
+        "magic",
+        "fire",
+        "smoke",
+        "juice",
+        "feel",
+        "feedback",
+        "impact",
+        "hit",
+        "polish",
+        "satisfying"
+      ],
+      "recipe": [
+        "Feedback within one frame on every important action: a sound, a particle burst, a 0.1-0.2 s scale pop on the changed counter, and where it fits a small camera nudge.",
+        "ParticleEmitter under an Attachment; set Texture, Color, Size and a Transparency sequence ending at 1, Lifetime, Speed, Rate, LightEmission and LightInfluence explicitly. LightEmission 1 + LightInfluence 0 for fire, sparkles, magic; 0 and 0.6-1 for smoke, dust, rain.",
+        "Bursts: Enabled false, Rate 0, Emit(count): about 8-24 for a pickup, 20-45 for an explosion. Keep one effect under about 150 live particles (Rate x Lifetime); hard caps Rate 400/s (100 on mobile), Lifetime 20 s.",
+        "Trails only while the action lasts; one reused Highlight for hover or selection (change Adornee); a PointLight (Brightness 1.5-3, Range 12-18) beside fire or magic.",
+        "Juice: shake from trauma (0.2-0.3 per hit, decays about 1.5/s), FOV +6-10 over 0.15 s on a dash, hit-stop 0.04-0.10 s, squash and stretch 1.2/0.8 back over 0.2-0.35 s. Start small: over-shaking reads choppy.",
+        "Default Explosion kills and breaks joints: set BlastPressure 0, DestroyJointRadiusPercent 0, or use particles and handle damage yourself."
+      ],
+      "avoid": [
+        "Emitters left at default settings.",
+        "Effects created on the server for one player's feedback (play them on the client)."
+      ],
+      "check": "Play: each core action shows a visible response; effects fade out cleanly; frame rate holds with several effects at once.",
+      "docs": [
+        {
+          "title": "Work with particle emitters",
+          "url": "https://create.roblox.com/docs/tutorials/curriculums/artist/work-with-particle-emitters",
+          "vecId": "g-98a1bb28-7"
+        },
+        {
+          "title": "TweenService",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/TweenService",
+          "vecId": "api-tweenservice-1"
+        },
+        {
+          "title": "Camera",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/Camera",
+          "vecId": "api-camera-1"
+        }
+      ]
+    },
+    {
+      "id": "mobile-first-ui-rules",
+      "title": "Make every screen work on a phone first: insets, touch sizes, readable text",
+      "domain": "ui",
+      "tools": [
+        "insert_ui_component",
+        "check_ui_layout",
+        "inspect_visually"
+      ],
+      "triggers": [
+        "mobile",
+        "phone",
+        "phones",
+        "tablet",
+        "touch",
+        "screen",
+        "screens",
+        "ui",
+        "gui",
+        "hud",
+        "menu",
+        "menus",
+        "button",
+        "buttons",
+        "readable",
+        "layout",
+        "console",
+        "gamepad"
+      ],
+      "recipe": [
+        "Most Roblox players are on phones: design the phone layout first, then check desktop and gamepad.",
+        "Leave the screen container's ScreenInsets at CoreUISafeInsets (or TopbarSafeInsets for top-bar rows) and never hard-code the top bar height; read GuiService.TopbarInset if you must align to it.",
+        "Touch targets at least 44x44 px; main action buttons larger; keep the thumb zones (bottom corners) for frequent actions and the centre of the screen clear.",
+        "Size and position with Scale, plus UIAspectRatioConstraint so pieces keep shape; text never below the minimum readable size, and remember the player's Text Size setting enlarges non-TextScaled text.",
+        "Respect GuiService.ReducedMotionEnabled (skip big UI tweens) and PreferredTransparency; do not rely on colour alone to show state.",
+        "Gamepad: every button reachable with selection; give windows a close button and an Escape/B path."
+      ],
+      "avoid": [
+        "Fonts removed in 2024 (Gotham, Arial render as substitutes).",
+        "UI covering the joystick or jump button areas.",
+        "Tiny offset-sized buttons."
+      ],
+      "check": "check_ui_layout at phone and desktop sizes: nothing overlaps the Roblox controls or each other, every button is at least 44 px, text is readable.",
+      "docs": [
+        {
+          "title": "Adaptive design guidelines",
+          "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+          "vecId": "g-cee0af5c-1"
+        },
+        {
+          "title": "Position and size UI objects",
+          "url": "https://create.roblox.com/docs/ui/position-and-size",
+          "vecId": "g-caac7ebb-8"
+        },
+        {
+          "title": "Mobile input",
+          "url": "https://create.roblox.com/docs/input/mobile",
+          "vecId": "g-18d9949a-1"
+        }
+      ]
     }
   ]
 }

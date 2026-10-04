@@ -46,7 +46,9 @@ test('a map request gets the layered-composition card', () => {
 });
 
 test('an unrelated request, or a run that cannot build, gets nothing', () => {
-  assert.deepEqual(mod.skillCardsForRun('My datastore does not save player data when they leave, fix the script', true), { block: null, ids: [] });
+  // A data-saving request now has its own card (game-architecture-data, researched 2026-10-04), so the unrelated
+  // request here is one no craft card is about.
+  assert.deepEqual(mod.skillCardsForRun('Rename my project to Alpha and tell me what changed yesterday', true), { block: null, ids: [] });
   assert.deepEqual(mod.skillCardsForRun('Make the shop menu look colorful with cartoon buttons', false), { block: null, ids: [] });
 });
 
@@ -69,7 +71,9 @@ test('the next plan step pulls its card once, never a card already shown, and st
   const full = mod.SKILL_CARDS.map((c) => c.id).slice(0, mod.MAX_CARDS_PER_RUN);
   assert.equal(mod.skillSteerForStep(plan, [{ tool: 'shape_terrain', ok: true }], full), null, 'run cap reached');
   assert.equal(mod.skillSteerForStep(undefined, [], []), null, 'no plan, no steer');
-  assert.equal(mod.skillSteerForStep(planOf(['Write the datastore save script', 'write_script']), [], []), null);
+  // A data-saving step now pulls game-architecture-data (researched 2026-10-04); a step no card is about pulls nothing.
+  assert.deepEqual(mod.skillSteerForStep(planOf(['Write the datastore save script', 'edit_script']), [], [])?.ids, ['game-architecture-data']);
+  assert.equal(mod.skillSteerForStep(planOf(['Summarise the changes for the user', 'none']), [], []), null);
 });
 
 test('every card is complete and every cited Creator Docs chunk exists in the corpus', (t) => {
