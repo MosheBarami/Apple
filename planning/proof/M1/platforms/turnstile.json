@@ -1,0 +1,5 @@
+{
+ "at": "2026-10-04",
+ "widget": "0x4AAAAA\u2026",
+ "result": "success False | None | None | None | [{'code': 10000, 'message': 'Authentication error', 'documentation_url': 'https://developers.cloudflare.com/api/resources/turnstile/subresources/widgets/methods/update'}]"
+}

@@ -97,3 +97,116 @@
   valid.
 - **Location-dependent test:** two `tests/check-pixels.test.mjs` cases fail in any clone under the session
   scratchpad, including one of `2f77a1f4` (M0), and pass in `~/Developer/RbxAI-ci` and in CI.
+
+## 1.2 deployed (2026-10-04, 18:35–18:45 UTC)
+- PR #25 merged as `d45da5da` (merge commit). CI was green except "Workers Builds: apple", which also fails on
+  main.
+  - CI runs on Node 24: Node 22 cannot compile the guard's `(?i:...)` tokens, and on Node 26 the escape-hatch
+    checker hung past 300 s once in each of two runs.
+- Worker deployed with `node infra/deploy-worker.mjs apple` from a clean clone at `d45da5da` (version
+  `c07b6b33`). `studpilot.app/api/health`: `"buildSha":"d45da5da","compat":"wire-all"`.
+- With an invalid token, a published plugin's request with `X-Golem-Token`, the new `X-StudPilot-Token` and a
+  `golem.v1` WebSocket upgrade each answer 401, as before.
+- Site and SPA rebuilt and uploaded (`infra/deploy-static.mjs`, 853 files). It verified that every page serves
+  the uploaded bytes; a rollback of 73 paths was captured first.
+- `node scripts/check-rebrand.mjs --deployed`: "REBRAND COMPLETE — 850 source files, the deployed bundle and 21
+  rendered route(s) carry no user-visible former name".
+
+## 1.3f0–1.3h done (2026-10-04, 18:45–19:05 UTC)
+- **0014 applied** through the Management API, with its ledger row in `public.schema_migrations` (sha256
+  `f9969f97…`, the file's own hash, the same rule as 0013's row): `golem` enabled false, `apple` enabled true, 0
+  pending rows each.
+- **Object-id sets frozen** (`do-ids-before-cutover.json` in the scratchpad: count, count with data, and the
+  SHA-256 of the sorted ids, per namespace).
+- **1.3f rename.** `PATCH /workers/workers/efccd939…` `{"name":"studpilot"}` took 1.6 s and kept the id. The
+  `apple` stand-in was deployed 8.5 s later. The apple host answered a plugin poll the same way again (401)
+  11.5 s after the rename began; that was the whole gap.
+  - Checked on the renamed Worker: the custom domain `studpilot.app`, the `apple-notifications` consumer, the
+    minute cron and the `apple-model-upload` Workflow all name `studpilot`.
+  - All three hosts serve `d45da5da`. The apple host gives a 301 for pages and a 308 for plain HTTP.
+- **1.3g-A** (`865300f4`, version `09ce3dbc`): `studpilot.app` serves `865300f4`, with the custom domain, both
+  crons and the workers.dev host up.
+  - **Every object survived, compared by id set, not by count.** golem's five namespaces that hold objects are
+    now `studpilot_Archive*` with identical id-set hashes (77/77, 1/1, 1/1, 32/32, 1/1; Discord 0). Every
+    `apple_*` namespace's id set is unchanged (SessionDO 211/209, QuotaDO 35/35, Admin, Budget, Pairing,
+    Discord).
+  - `/api/admin/billing-wiring`: `isAuthority: true`, `replicaBound: true`.
+- **1.3h:** the stand-in was deployed over `golem` (version `afebfc14`). The golem host: health via studpilot
+  (`865300f4`), plugin poll 401, page load 301 to `studpilot.app`, no cron schedules. golem's four leftover
+  secrets (`ADMIN_KEY`, `MEMBERSHIP_OUTBOX_TOKEN`, `ROBLOX_API_KEY`, `SENTRY_DSN`) were deleted; `studpilot`
+  keeps all 12 of its own.
+- **Before B:**
+  - R2 `/r2/sync`: 38 = 38, nothing to do.
+  - Vectorize: 9527 = 9527, and the old index's last processed write is at 08:07 UTC, before the copy.
+  - AI Gateway `studpilot` set identical to `golem`: rate limit 200/60 s sliding, logs on, cache TTL 0, and
+    now `cache_invalidate_on_update` too.
+
+## 1.3i and 1.3g-B: the final reconcile and the switch to the copies (2026-10-04, 19:12–19:40 UTC)
+- **Final D1 reconcile** (19:12–19:37 UTC, row by row). Every table was already equal except the two the 18:40
+  static deploy had written to the old database:
+  - `static_assets`: 93 missing, 661 changed, fixed;
+  - `static_chunks`: 858 missing, 762 extra, fixed.
+  - Result: "ALL 25 TABLES EQUAL ROW FOR ROW". Comparing old-table digests with the first pass (18:03), only
+    those two tables had changed.
+  - The first attempt stopped on an HTTP 500 from `/fix`: D1 binds at most 100 parameters per statement and the
+    fix asked for 200. Batches are now 90 rows, or 10 for heavy chunks with a one-row fallback.
+- **Deploy B** (`8fc5e840`, version `4a90efbe`, 19:38 UTC); `studpilot.app` serves `8fc5e840`.
+  - Bindings as read back from Cloudflare: D1 `4534b1cf…` (studpilot-corpus), R2 `studpilot-media`, Vectorize
+    `studpilot-docs`, queue `studpilot-notifications` (producer and consumer `studpilot`), Workflow
+    `studpilot-model-upload`, Analytics Engine `studpilot_product_events`, `AI_GATEWAY_ID` `studpilot`,
+    `LEGACY_QUOTA_DO` → `ArchiveQuotaDO`.
+  - The old `apple-notifications` queue keeps `studpilot` as its consumer and has no producer, so anything left in
+    it drains.
+- **Retrieval** (`/api/admin/rag-test`, two queries, before and after B): the same 5 passages in the same order;
+  scores within 0.0001 (the query is embedded afresh each call).
+- **Static store from the new D1:** `/`, `/pricing`, `/privacy`, `/app` and the app's main asset are
+  byte-identical (SHA-256) to the build that was deployed.
+- **A chat run completes on the new stores:** `/api/admin/agent-run` on a test-account project, "In one short
+  sentence: what does a RemoteEvent do…".
+  - Answered in 12 s; the session went back to idle with 4 messages.
+  - Cost: 152 billable neurons (month $3.9203 → $3.9219).
+  - The new gateway's logs show the GLM call and both embedding calls.
+- **Old projects keep their history:** the corrected fingerprint over all 201 projects.
+  - 200 have exactly the same message count as before; the test project has +2 (the run above); none has fewer.
+  - Total messages 980 → 982. Corrected split: 178 initialized, 23 empty (the objects the first probe created).
+- **The plugin pairs: not verified end to end** (BLOCKED B6: minting a code needs a signed-in account). The
+  pairing and poll routes answer the published plugin's requests on the old host as the origin does.
+- **`counts-after.json`:** all 12 Durable Object namespaces hold the identical object-id sets. D1, Vectorize, R2,
+  KV and Supabase match, and each difference is explained there (the static deploy, 1 new notification written
+  to the new D1 after the switch, 1 new sign-up, the 0014 ledger row).
+- **1.3e KV:** title `golem-kv` → `studpilot-kv`, same id `cc341a7d…`, 9 keys before and after with the same
+  prefixes.
+
+## 1.4 Platforms (2026-10-04, 19:24–19:26 UTC; API output in `platforms/`)
+- **Sentry:** `apple-worker` → `studpilot-worker` and `apple-web` → `studpilot-web` (ids unchanged, so the DSNs
+  are unchanged). The org is the owner's personal `moshe` and carries no former name.
+- **Discord:**
+  - The interactions endpoint is now `https://studpilot.app/api/discord/interactions`; Discord accepted it after
+    its signed PING.
+  - The bot username is now "StudPilot".
+  - The application name stays "AppleAI": the API ignores `name` (BLOCKED B1).
+- **Supabase:**
+  - The project is renamed "StudPilot".
+  - The Auth site URL is now `https://studpilot.app/app`, and the allow-list gained `studpilot.app/app/**`,
+    `/app` and `/**`, with the old entries kept for 90 days.
+  - Only email sign-in is enabled (BLOCKED B2). No custom SMTP, so no sender name (BLOCKED B3).
+- **Turnstile:** the widget lacks `studpilot.app` and the token cannot edit it (BLOCKED B10).
+- **Stripe:** owner-only (BLOCKED B4). **GitHub repo rename:** after the cutover PR merges.
+
+## Owner decisions D-1 to D-9 applied (2026-10-04, `planning/proof/OWNER-DECISIONS.md`)
+- **D-1, D-2:** the whole golem archive (the 5 inert `Archive*` classes and `ArchiveQuotaDO`) is deleted after
+  the 7-day hold, which closes the erasure gap; the owner's 4 old histories are not imported. The steps and the
+  earliest date (2026-10-11) are in `deletions.md`. The local export in
+  `~/Developer/RbxAI-archive/golem-sessions-2026-10-04/` stays as the backup.
+- **D-3:** `ROBLOX_CREATOR_USER_ID` is never set. It is absent from `wrangler.studpilot.jsonc` and from the
+  Worker's secrets (measured after deploy B). Uploads will go to each user's own account through Roblox OAuth.
+- **D-4:** the spend caps deployed in M0 are approved (owner action X3 closed): 150,000 billable neurons a day
+  and 2,270,000 a month, about $1.65/day and $25/month.
+- **D-5:** the free-user pool of $5/month is an M6 task, noted there.
+- **D-6:** the local folder is renamed to `~/Developer/StudPilot` as the last step of M1.
+- **D-7:** the unused `.env` keys (Clerk, Vercel, Resend) stay.
+- **D-8:** no Supabase custom auth domain.
+- **D-9:** agents have full `.env` access, and values are never printed or committed.
+- **`CF_ANALYTICS_TOKEN`:** I tried to create it through the API first. The main token has no token-management
+  permission (403, code 9109), and `CLOUDFLARE_API_TOKEN_WRITE_ALL` is rejected as invalid by both the user and
+  the account verify endpoints (code 1000). It is listed in `BLOCKED.md` with steps.
