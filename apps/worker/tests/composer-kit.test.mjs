@@ -141,6 +141,45 @@ test('the default SpawnLocation is retired, not deleted: its decal goes, it is s
   assert.match(readFileSync(join(WORKER, 'src', 'compose-tool.ts'), 'utf8'), /default SpawnLocation was switched off and its decal removed/);
 });
 
+// The plugin's delete_instances is all-or-nothing (Commands.luau handleDelete: resolveTargets fails on the first path that is not
+// there and nothing is deleted). Round 3 (2026-10-04): the retire step listed `SpawnLocation.Decal` AND `SpawnLocation.Texture`; a
+// default spawn has only the Decal, so the call was refused whole, the star stayed on the hub, and only the Transparency write (a
+// separate step) took effect: an invisible pad with its star hanging in the air. This fake place behaves like the plugin.
+test('the default spawn\'s star decal is really deleted when the spawn has a Decal and no Texture (round 3), and the other deletes still run', async () => {
+  const R = await bundle('compose-run.ts', 'run-spawn');
+  const place = new Map([
+    ['game.Workspace.SpawnLocation', { Transparency: 0, Enabled: true }],
+    ['game.Workspace.SpawnLocation.Decal', {}],
+    ['game.Workspace.Baseplate', {}],
+  ]);
+  const ops = [];
+  const ctx = { execStudioOp: async (op) => {
+    ops.push(op);
+    if (op.op === 'delete_instances') {
+      const missing = op.paths.find((p) => !place.has(p));
+      if (missing) return { ok: false, error: `${missing} was not found`, failure: 'not_found' };
+      for (const p of op.paths) for (const k of [...place.keys()]) if (k === p || k.startsWith(p + '.')) place.delete(k);
+      return { ok: true, data: { deleted: op.paths } };
+    }
+    if (op.op === 'set_props') {
+      if (!place.has(op.path)) return { ok: false, error: 'not found', failure: 'not_found' };
+      Object.assign(place.get(op.path), Object.fromEntries(Object.entries(op.props).map(([k, v]) => [k, v.v])));
+      return { ok: true, data: {} };
+    }
+    return { ok: true, data: {} };
+  } };
+  const report = await R.runSteps(ctx, C.retireDefaultSpawn());
+  assert.equal(place.has('game.Workspace.SpawnLocation.Decal'), false, 'the star decal is gone');
+  assert.equal(place.get('game.Workspace.SpawnLocation').Transparency, 1, 'and the spawn is retired');
+  assert.equal(place.get('game.Workspace.SpawnLocation').Enabled, false);
+  assert.deepEqual(report.problems, []);
+  // The same all-or-nothing trap for clearDefaultGround: a place with a Baseplate and no SpawnLocation still loses its Baseplate.
+  place.delete('game.Workspace.SpawnLocation');
+  await R.runSteps(ctx, [{ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] }]);
+  assert.equal(place.has('game.Workspace.Baseplate'), false, 'one absent path does not keep the others');
+  assert.ok(ops.filter((o) => o.op === 'delete_instances').every((o) => o.paths.length === 1), 'one path per op');
+});
+
 // -------------------------------------------------------------------------------- the active action ---
 
 test('a machine on a plot can be pressed: the server counts the press, the machine answers, a visitor\'s press does nothing', () => {

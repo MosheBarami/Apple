@@ -140,8 +140,12 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
     } else if (s.kind === 'delete') {
       // The screen a game had stays when its new one was not made: an old screen beats none.
       if (report.critical.some((c) => c.startsWith("the game's screen")) && s.paths.some((p) => p.startsWith('game.StarterGui.'))) continue;
-      const out = await op({ op: 'delete_instances', paths: s.paths });
-      if (out.ok) count('delete'); // an absent Baseplate is not a problem
+      // ONE PATH PER OP. The plugin's delete_instances is all-or-nothing: one path that is not there ("SpawnLocation.Texture", on a
+      // spawn that has only a Decal) refuses the whole call, and the paths that do exist stay. Round 2's retire step listed both, so
+      // the default spawn's star decal was never deleted (round 3, 2026-10-04). An absent path is not a problem.
+      let deleted = false;
+      for (const path of s.paths) if ((await op({ op: 'delete_instances', paths: [path] })).ok) deleted = true;
+      if (deleted) count('delete');
     } else if (s.kind === 'strip') {
       const out = await op({ op: 'strip_descendants', root: s.root, classes: s.classes as ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound')[] });
       if (out.ok) count('strip'); else report.problems.push(`strip ${s.root}: ${clip(out.error)}`);
