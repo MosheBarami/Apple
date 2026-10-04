@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Is the product called what it is called?
 //
-// The product is Apple, and (owner decision 2026-10-02) the old name is wiped out of every aspect:
-// the rebrand now covers identifiers, wire literals and storage names too, with backward
+// The product is StudPilot (owner directive 2026-10-04), and its former names, Apple and Golem, are
+// wiped out of every aspect: identifiers, wire literals and storage names too, with backward
 // compatibility for what is already in the wild. This program reads the STRING LITERALS of the
-// tracked source and the deployed bundle. What it may leave alone is no longer written here: the
-// exceptions are derived from scripts/golem-allowlist.json, the single list the CI guard
-// (scripts/check-no-golem.mjs) also enforces, each with a reason, a removal condition and an exact
+// tracked source and the deployed bundle. What it may leave alone is not written here: the
+// exceptions are derived from planning/rename-allowlist.txt, the single list the CI guard
+// (scripts/check-old-names.mjs) also enforces, each with a reason, a removal condition and an exact
 // count. This program only masks what that file names, in the files it names.
 //
 // THE DENOMINATOR IS NOT AUTHORED BY THIS PROGRAM. It is every string literal in the tracked
@@ -26,6 +26,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseAllowlist } from './check-old-names.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // THE ORIGIN IS `apple`, NOT `golem`. The old value was the LEGACY worker, which serves /api/* from
@@ -65,9 +66,12 @@ const git = (a) => {
 /* ------------------------------------------------------- the allowlisted exceptions --- */
 //
 // Derived, never hand-written: an exception that lived here AND in the guard's allowlist would be
-// two lists that drift. Each content entry of scripts/golem-allowlist.json becomes one scoped
-// exemption: its token (as a substring pattern) masked, in the files its paths name. A wildcard
-// entry (recorded history, migrations) is a path this program never reads, so it needs no mask.
+// two lists that drift. Each content line of planning/rename-allowlist.txt becomes one scoped
+// exemption, masked in the files its paths name. A line's token is the WHOLE WORD the guard allows;
+// here it is turned into what to blank inside a literal: `.*(?:X).*` blanks each whole word containing X, a plain token
+// blanks only a whole word equal to it, and `.*` (a compatibility file) blanks each old-name word.
+// A wildcard line (records, migrations, vendored data, scheduled deletions) is a path this program
+// does not read at all, so it needs no mask.
 
 function globToRegExp(g) {
   let out = '^';
@@ -80,13 +84,22 @@ function globToRegExp(g) {
   return new RegExp(`${out}$`);
 }
 
-/** The exemptions an allowlist document yields. Exported shape: [{ pattern, file, why }]. */
-function exemptionsFrom(doc) {
+/** The former names, as this program counts them inside a literal. */
+const OLD = /apple|gol+em/gi;
+const WORDCH = 'A-Za-z0-9_@./:\\-';
+
+/** The exemptions a parsed allowlist yields. Shape: [{ pattern, file, why }]. */
+function exemptionsFrom(entries) {
   const out = [];
-  for (const e of doc.entries ?? []) {
+  for (const e of entries ?? []) {
     if (e.scope !== 'content' || e.token === '*') continue;
+    const t = e.token;
+    const inner = /^\.\*\((\?i?:)(.*)\)\.\*$/s.exec(t);
+    const source = t === '.*'
+      ? `[${WORDCH}]*(?i:apple|gol+em)[${WORDCH}]*`
+      : inner ? `[${WORDCH}]*(${inner[1]}${inner[2]})[${WORDCH}]*` : `(?<![${WORDCH}])(?:${t})(?![${WORDCH}])`;
     out.push({
-      pattern: new RegExp(e.token, [...new Set([...(e.flags ?? ''), 'g', 'i'])].join('')),
+      pattern: new RegExp(source, 'g'), // case as the token says: the guard's tokens are case-sensitive
       file: new RegExp(`(?:${(e.paths ?? []).map((g) => globToRegExp(g).source).join('|')})`),
       why: `${e.reason} (removal: ${e.removal})`,
     });
@@ -94,12 +107,23 @@ function exemptionsFrom(doc) {
   return out;
 }
 
-const ALLOWLIST_PATH = join(ROOT, 'scripts/golem-allowlist.json');
+/** The paths a wildcard line covers: records and data this program does not read. */
+function wildcardPathsFrom(entries) {
+  return (entries ?? []).filter((e) => e.token === '*').flatMap((e) => (e.paths ?? []).map(globToRegExp));
+}
+
+const ALLOWLIST_PATH = join(ROOT, 'planning/rename-allowlist.txt');
 if (!existsSync(ALLOWLIST_PATH)) {
-  console.error('check-rebrand: scripts/golem-allowlist.json is missing — there is nothing to derive the exceptions from');
+  console.error('check-rebrand: planning/rename-allowlist.txt is missing — there is nothing to derive the exceptions from');
   process.exit(2);
 }
-const EXEMPT = exemptionsFrom(JSON.parse(readFileSync(ALLOWLIST_PATH, 'utf8')));
+const ALLOW = parseAllowlist(readFileSync(ALLOWLIST_PATH, 'utf8'));
+if (ALLOW.problems.length) {
+  for (const p of ALLOW.problems) console.error(`check-rebrand: allowlist ${p}`);
+  process.exit(2);
+}
+const EXEMPT = exemptionsFrom(ALLOW.entries);
+const WILDCARD_PATHS = wildcardPathsFrom(ALLOW.entries);
 
 /**
  * The string literals in a source file, and nothing else.
@@ -501,10 +525,10 @@ function selftest() {
   // 9. Comments are still excluded, which is the property the blanking existed for.
   check('line comment is not a literal', !texts("// Golem was here\nconst a = 1;\n", 'a.ts').some((t) => /Golem/.test(t)));
   // 10. An exemption masks what it names, in the file it names, and nothing else.
-  const fixture = exemptionsFrom({ entries: [
-    { scope: 'content', paths: ['apps/shim/legacy.ts'], token: 'x-golem-token', flags: 'i', reason: 'fixture', removal: 'never' },
-    { scope: 'content', paths: ['docs/evidence/**'], token: '*', max: null, reason: 'history', removal: 'never' },
-  ] });
+  const fixture = exemptionsFrom(parseAllowlist([
+    'content | apps/shim/legacy.ts | .*(?i:x-golem-token).* | 1 | a fixture shim | never: fixture',
+    'content | docs/evidence/** | * | * | a fixture record | never: fixture',
+  ].join('\n')).entries);
   check('the fixture yields one scoped exemption and ignores the wildcard', fixture.length === 1);
   check('exempt masks its token in its file',
     !/golem/i.test(maskExempt("'X-Golem-Token'", { rel: 'apps/shim/legacy.ts', line: '' }, fixture)));
@@ -515,6 +539,11 @@ function selftest() {
   check('exempt never applies where there is no file, as in the deployed bundle',
     /golem/i.test(maskExempt('window.h="X-Golem-Token"', {}, fixture)));
   check('the real exemptions are derived from the allowlist and are not empty', EXEMPT.length > 0);
+  // 11. A plain token blanks only a whole word equal to it, never a longer word containing it.
+  const plain = exemptionsFrom(parseAllowlist('content | a.ts | (?:apple|golem) | 1 | a stored id | never: fixture').entries);
+  check('a plain token masks the bare id', !/apple/i.test(maskExempt("'apple'", { rel: 'a.ts', line: '' }, plain)));
+  check('a plain token does not mask the capitalised word in copy', /Apple/.test(maskExempt("'Built with Apple'", { rel: 'a.ts', line: '' }, plain)));
+  check('a plain token does not mask a longer word containing it', /apple/.test(maskExempt("'apple-pie'", { rel: 'a.ts', line: '' }, plain)));
 
   if (fails.length) {
     for (const f of fails) console.error(`  SELFTEST FAIL ${f}`);
@@ -664,7 +693,7 @@ const SOURCE_GLOBS = ['*.ts', '*.tsx', '*.astro', '*.luau'];
 const SHIPPED_CLIENT_GLOBS = [
   'packages/sdk/src/*.mjs',
   'packages/sdk/bin/*.mjs',
-  'packages/sdk/python/apple_sdk/*.py',
+  'packages/sdk/python/studpilot_sdk/*.py',
 ];
 const lsFiles = (globs) => git(['ls-files', ...globs]).split('\n').filter(Boolean);
 const shipped = lsFiles(SHIPPED_CLIENT_GLOBS);
@@ -699,14 +728,18 @@ const sources = [...new Set([...lsFiles(SOURCE_GLOBS), ...shipped])]
   //   repository is organised against. The product's own surface is unaffected — apps/, packages/
   //   and the shipped SDK clients are all still in the denominator, and the deployed half still
   //   reads the live bundle. ]]
-  .filter((f) => !f.startsWith('docs/evidence/'));
+  .filter((f) => !f.startsWith('docs/evidence/'))
+  // Every other path a wildcard allowlist line covers is a record, vendored data or a package that
+  // handoff 3.2 deletes; the guard already accounts for it, and it ships nothing.
+  .filter((f) => !WILDCARD_PATHS.some((re) => re.test(f)));
 
+const BUNDLE_SOURCES = lsFiles(['*']).filter((f) => /^apps\/(web|site)\//.test(f));
 const capturedRoutes = deployed ? provenanceOf(deployed)?.routes?.length ?? 0 : 0;
 console.log(
   `DENOMINATOR ${sources.length} files + ${OFFLINE
     ? 'NO DEPLOYED HALF (--offline)'
     : deployed ? `${deployed.length} bytes of deployed capture (${capturedRoutes} rendered route(s))` : 'NO DEPLOYED BUNDLE'}; ` +
-  `EXCEPTIONS ${EXEMPT.length}: derived from scripts/golem-allowlist.json; SELFTEST ${selftestCases} properties`,
+  `EXCEPTIONS ${EXEMPT.length}: derived from planning/rename-allowlist.txt; SELFTEST ${selftestCases} properties`,
 );
 
 /* ------------------------------------------------------------------ the check --- */
@@ -719,12 +752,12 @@ for (const rel of sources) {
   try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
   const srcLines = src.split('\n');
   for (const lit of stringLiterals(src, rel)) {
-    const before = (lit.text.match(/golem/gi) ?? []).length;
+    const before = (lit.text.match(OLD) ?? []).length;
     if (!before) continue;
     // The line the literal STARTS on, which is what a scoped exemption's `line` proof is about.
     const startLine = src.slice(0, lit.offset).split('\n').length;
     const masked = maskExempt(lit.text, { rel, line: srcLines[startLine - 1] ?? '' });
-    const after = [...masked.matchAll(/golem/gi)];
+    const after = [...masked.matchAll(OLD)];
     exemptHits += before - after.length;
     for (const m of after) {
       const line = src.slice(0, lit.offset + m.index).split('\n').length;
@@ -750,14 +783,17 @@ if (OFFLINE) {
 // contribute findings — or, worse, contribute none — under a headline that says the deployed site
 // was not checked. The mode's sentence and the mode's behaviour have to be the same thing.
 if (!OFFLINE && deployed !== null) {
-  const maskedDeployed = maskExempt(deployed);
-  const hits = [...maskedDeployed.matchAll(/golem/gi)];
-  exemptHits += ((deployed.match(/golem/gi) ?? []).length) - hits.length;
+  // The bundle has no file paths, so it is masked only by the lines that apply to the files it is
+  // BUILT from (apps/web and apps/site): a token allowed there may appear in what they ship.
+  const deployedEntries = EXEMPT.filter((e) => BUNDLE_SOURCES.some((f) => e.file.test(f)));
+  const maskedDeployed = deployedEntries.reduce((t, e) => t.replace(e.pattern, (m) => ' '.repeat(m.length)), deployed);
+  const hits = [...maskedDeployed.matchAll(OLD)];
+  exemptHits += ((deployed.match(OLD) ?? []).length) - hits.length;
   if (hits.length) {
     // Deduplicated to a few distinct phrases: a minified bundle repeats a string, and 86 lines of
     // the same phrase tells a reader less than the phrase does.
     const phrases = [...new Set(hits.map((m) => deployed.slice(Math.max(0, m.index - 30), m.index + 30).replace(/\s+/g, ' ')))];
-    problems.push(`DEPLOYED BUNDLE still says Golem ${hits.length} time(s) in ${deployed.length} bytes — a stranger sees this, not the repository`);
+    problems.push(`DEPLOYED BUNDLE still says a former name ${hits.length} time(s) in ${deployed.length} bytes — a stranger sees this, not the repository`);
     for (const p of phrases.slice(0, 8)) problems.push(`  deployed: …${p}…`);
   }
 }
@@ -795,8 +831,8 @@ if (!problems.length) {
       : 'and whether they match HEAD could not be determined';
 
   console.log(OFFLINE
-    ? `REBRAND COMPLETE IN SOURCE — ${sources.length} tracked files carry no user-visible Golem, ${tree}. THE DEPLOYED SITE WAS NOT CHECKED (--offline).`
-    : `REBRAND COMPLETE — ${sources.length} source files, the deployed bundle and ${capturedRoutes} rendered route(s) carry no user-visible Golem, ${tree}`);
+    ? `REBRAND COMPLETE IN SOURCE — ${sources.length} tracked files carry no user-visible former name, ${tree}. THE DEPLOYED SITE WAS NOT CHECKED (--offline).`
+    : `REBRAND COMPLETE — ${sources.length} source files, the deployed bundle and ${capturedRoutes} rendered route(s) carry no user-visible former name, ${tree}`);
   process.exit(0);
 }
 

@@ -108,13 +108,15 @@ for (const path of ['/', '/pricing']) {
 
 const both = `${pages['/'].body}\n${pages['/pricing'].body}`;
 
-// CLAUSE 2 — every occurrence that is not the closed-list hostname.
-const golem = [...both.matchAll(/golem[a-z0-9._-]*/gi)]
+// CLAUSE 2 — every occurrence of a former name (Golem, and since 2026-10-04 Apple) that is not the
+// closed-list hostname or a platform spelling a page must carry (the system font stack, the iOS icon).
+const PLATFORM = /^apple-(?:system|touch-icon|mobile-web-app[a-z-]*)$/;
+const golem = [...both.matchAll(/(?:golem|apple)[a-z0-9._-]*/gi)]
   .map((m) => m[0].toLowerCase())
-  .filter((t) => t !== HOSTNAME_TOKEN);
+  .filter((t) => t !== HOSTNAME_TOKEN && !PLATFORM.test(t));
 if (golem.length) {
   const counted = [...new Set(golem)].map((t) => `${t} x${golem.filter((g) => g === t).length}`);
-  fail(`${golem.length} user-visible Golem occurrence(s): ${counted.join(', ')}`, 'clause 2 — a stranger reads this, not the repository');
+  fail(`${golem.length} user-visible former-name occurrence(s): ${counted.join(', ')}`, 'clause 2 — a stranger reads this, not the repository');
 }
 
 // CLAUSE 3

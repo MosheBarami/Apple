@@ -28,7 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHAPES = [
   {
     id: 'describe-it-builds-it',
-    re: /\b(describe|tell|type|say)\b[^.!?]{0,40}\b(and|then|,)\s*(we|it|apple|ai|watch)\b[^.!?]{0,30}\b(build|make|create|come to life|get built)/i,
+    re: /\b(describe|tell|type|say)\b[^.!?]{0,40}\b(and|then|,)\s*(we|it|studpilot|apple|ai|watch)\b[^.!?]{0,30}\b(build|make|create|come to life|get built)/i,
     found: 'revix.tech H1: "DESCRIBE IT. WATCH IT GET BUILT." · superbullet.ai: "Just describe what you want, and watch your game come to life."',
     why: 'It describes the INTERFACE, not the product. Every competitor says it, so it distinguishes nothing, and it promises a passivity the product does not have.',
   },
@@ -43,7 +43,7 @@ const SHAPES = [
     //   It sat in the browser tab of every screen of the signed-in product while this checker
     //   reported CLEAN, and it was found by reading the page rather than by running the check.
     id: 'describe-it-then-builds-it',
-    re: /\b(describe|tell|type|say)\s+(it|your|what|us)\b[^.!?]{0,30}[.!?]\s*(we|it|apple|ai|the ai)\s+(?:\w+\s+){0,2}(build|make|create)/i,
+    re: /\b(describe|tell|type|say)\s+(it|your|what|us)\b[^.!?]{0,30}[.!?]\s*(we|it|studpilot|apple|ai|the ai)\s+(?:\w+\s+){0,2}(build|make|create)/i,
     found: 'revix.tech H1: "DESCRIBE IT. WATCH IT GET BUILT." · this product\'s own app title, until it was read',
     why: 'Splitting it over two sentences does not make it a different sentence. It is the same promise, in the same shape, that three of the four rivals lead with.',
   },
@@ -67,7 +67,7 @@ const SHAPES = [
     // Anchored on the PRODUCT as the subject. The first version matched "That is not a user ID —
     // it should look like the example above", a form validation message, which is the opposite of
     // marketing copy: it is a specific, useful sentence telling somebody exactly what to fix.
-    re: /\b(apple|we|this product|the product)\s+(is|are|['’]s|['’]re)\s+not\s+(a|an|just|merely|another)\b/i,
+    re: /\b(studpilot|apple|we|this product|the product)\s+(is|are|['’]s|['’]re)\s+not\s+(a|an|just|merely|another)\b/i,
     found: 'revix.tech: "Revix is not a one-shot generator." · "MORE THAN CODE COMPLETION"',
     why: 'Defining yourself against a competitor spends your own headline on theirs.',
   },

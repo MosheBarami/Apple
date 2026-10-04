@@ -9,6 +9,7 @@
 // still invoke the program that checks it, and that its denominator still contains the clients a
 // stranger is actually handed. Both are one tidy-up away from being true of nothing.
 import test from 'node:test';
+import { parseAllowlist, globToRegExp } from '../scripts/check-old-names.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -137,16 +138,16 @@ test('the product origin is derived from the shared package, with no fallback to
  * A checker that runs everywhere and looks at two thirds of the product still prints a headline
  * over ground it never walked. packages/sdk ships three language clients and a CLI; the Luau one
  * is a .luau and was scanned, and the JavaScript (.mjs) and Python (.py) ones were not in any
- * glob — so `apple --help` printed the old product name to everyone who ran it while the checker
+ * glob — so `studpilot --help` printed the old product name to everyone who ran it while the checker
  * reported the tree clean.
  */
 test('the shipped SDK clients are inside the denominator', () => {
   const lsFiles = (globs) => execFileSync('git', ['ls-files', ...globs], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26 })
     .split('\n').filter(Boolean);
-  const shipped = lsFiles(['packages/sdk/src/*.mjs', 'packages/sdk/bin/*.mjs', 'packages/sdk/python/apple_sdk/*.py']);
+  const shipped = lsFiles(['packages/sdk/src/*.mjs', 'packages/sdk/bin/*.mjs', 'packages/sdk/python/studpilot_sdk/*.py']);
   // The clients a stranger is handed, named one by one rather than by count: a count agrees with
   // itself when a file is deleted.
-  for (const rel of ['packages/sdk/src/wire.mjs', 'packages/sdk/src/cli-args.mjs', 'packages/sdk/bin/apple.mjs', 'packages/sdk/python/apple_sdk/client.py']) {
+  for (const rel of ['packages/sdk/src/wire.mjs', 'packages/sdk/src/cli-args.mjs', 'packages/sdk/bin/studpilot.mjs', 'packages/sdk/python/studpilot_sdk/client.py']) {
     assert.ok(shipped.includes(rel), `${rel} is no longer matched by the shipped-client globs`);
   }
   const expected = new Set([...lsFiles(['*.ts', '*.tsx', '*.astro', '*.luau']), ...shipped]);
@@ -162,6 +163,13 @@ test('the shipped SDK clients are inside the denominator', () => {
   //   out of the denominator. The four clients a stranger is handed are still named by path above
   //   and asserted present, which is the part a count alone could never do. ]]
   for (const f of [...expected]) if (f.startsWith('docs/evidence/')) expected.delete(f);
+  // Paths a wildcard line of planning/rename-allowlist.txt covers (records, vendored data, the packages
+  // handoff 3.2 deletes) are not read either; modelled from the same file the checker reads.
+  const allow = parseAllowlist(readFileSync(join(ROOT, 'planning/rename-allowlist.txt'), 'utf8'));
+  const wild = allow.entries.filter((e) => e.token === '*').flatMap((e) => e.paths.map(globToRegExp));
+  assert.ok(wild.length > 5, 'no wildcard lines were read — this model would exclude nothing');
+  for (const f of [...expected]) if (wild.some((re) => re.test(f))) expected.delete(f);
+  for (const rel of ['packages/sdk/src/wire.mjs', 'packages/sdk/bin/studpilot.mjs']) assert.ok(expected.has(rel), `${rel} fell out of the modelled denominator`);
 
   const p = spawnSync('node', [join(ROOT, 'scripts/check-rebrand.mjs'), '--offline'], { cwd: ROOT, encoding: 'utf8', timeout: 120_000 });
   const out = `${p.stdout ?? ''}${p.stderr ?? ''}`;

@@ -47,8 +47,8 @@ const rootTests = readdirSync(join(ROOT, 'tests'))
 //   What I built was not that. It symlinked the MAIN checkout's node_modules INTO an in-repo
 //   worktree and then ran `pnpm -r test` there, which makes the two trees share one set of module
 //   directories — so anything pnpm writes while resolving inside the worktree lands in the
-//   checkout every other session is using. Five workspace links (@apple/shared in web, site and
-//   worker; @apple/design in worker and evals) were found pointing into a worktree tonight, and
+//   checkout every other session is using. Five workspace links (@studpilot/shared in web, site and
+//   worker; @studpilot/design in worker and evals) were found pointing into a worktree tonight, and
 //   for some window every typecheck and test in the main tree was reading a frozen copy at an old
 //   commit. I cannot prove my run caused it and I am not going to claim it did not.
 //
@@ -117,7 +117,7 @@ const parts = [
   //[[ FIRST, BECAUSE EVERYTHING AFTER IT IS A CLAIM ABOUT WHICHEVER TREE THE LINKS POINT AT.
   //
   //   F-68 happened a second time today: fourteen agents worked in `.claude/worktrees/` and this
-  //   checkout's `@apple/shared` came back pointing at one of them. tsc then reported a missing
+  //   checkout's `@studpilot/shared` came back pointing at one of them. tsc then reported a missing
   //   export for a function on line 1164 of the real file and eighteen worker tests failed — every
   //   message true about the package it was reading and false about this repository. An hour went
   //   into reading correct code looking for a defect that was not in it.
@@ -141,8 +141,8 @@ const parts = [
   //   rather than claiming the deployed site, so the narrower run cannot be misread as the wide one.
   //   The deployed half belongs on the deploy path: `node scripts/check-rebrand.mjs --deployed`.
   { label: 'check-rebrand', ...run('node', ['scripts/check-rebrand.mjs', '--offline']) },
-  // The old product name must not come back (owner decision 2026-10-02); exact-count allowlist, see the script.
-  { label: 'check-no-golem', ...run('node', ['scripts/check-no-golem.mjs']) },
+  // The former product names must not come back (owner directive 2026-10-04); exact-count allowlist, see the script.
+  { label: 'check-old-names', ...run('node', ['scripts/check-old-names.mjs']) },
   // The competitor teardown. It was a script nobody ran, which is how it came to report
   // "clean" over two of the site's six stylesheets while an 86px h1 and a 144px numeral sat in
   // the four it never opened. A guard outside the suite is a guard that has already gone stale.
@@ -193,7 +193,7 @@ const parts = [
   //
   //   `grep -c 'rk__' styles.css` returned 0, and so did `gx-ev`. Both are built from <span>s, so
   //   with no rules every span stayed inline and the owner read
-  //   "Read your assetsApple can look up things you already own" on his own settings page. A
+  //   "Read your assetsStudPilot can look up things you already own" on his own settings page. A
   //   selector that matches nothing fails no typecheck, no test and no build.
   { label: 'check-unstyled-classes', ...run('node', ['scripts/check-unstyled-classes.mjs']) },
   //[[ THE BUILD IS A CHECK, AND NOTHING HERE WAS RUNNING IT.
