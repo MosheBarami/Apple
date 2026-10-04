@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Deploy the worker with BUILD_SHA stamped from the commit being deployed.
 //
-//   node infra/deploy-worker.mjs [apple|golem] [--secrets-file <ignored JSON or .env file>]
-//   (the production worker is still named `apple` until StudPilot handoff step 1.3 renames it)
-//   node infra/deploy-worker.mjs apple --build-sha <git-archive source SHA>
+//   node infra/deploy-worker.mjs studpilot [--secrets-file <ignored JSON or .env file>]
+//   node infra/deploy-worker.mjs studpilot --build-sha <git-archive source SHA>
+//   (the old `apple` and `golem` workers are proxies now, deployed from infra/legacy-proxy)
 //
-// WHY THIS EXISTS. `BUILD_SHA` is a plain var in wrangler.*.jsonc, edited by hand before a deploy.
+// WHY THIS EXISTS. `BUILD_SHA` is a plain var in wrangler.studpilot.jsonc, edited by hand before a deploy.
 // It went stale the first time anyone deployed without remembering — including me, an hour ago:
 // `/api/health` answered `"buildSha":"616d84b"` while the code serving that answer was four commits
 // further on. A health endpoint that names the wrong build is worse than one that names none: it
@@ -20,7 +20,7 @@
 // fixing something live, and refusing it would push people back to bare `wrangler deploy`, which is
 // how the value went stale. So the stamp says so: `86c63b9-dirty` is a truthful answer and an
 // unqualified sha would not be.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -28,9 +28,9 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKER = join(ROOT, 'apps', 'worker');
 
-const target = process.argv[2] ?? 'apple';
-if (target !== 'apple' && target !== 'golem') {
-  console.error(`deploy-worker: target must be apple or golem, not ${target}`);
+const target = process.argv[2] ?? 'studpilot';
+if (target !== 'studpilot') {
+  console.error(`deploy-worker: the only target is studpilot, not ${target}`);
   process.exit(2);
 }
 
@@ -47,7 +47,7 @@ for (let i = 0; i < extras.length; i += 2) {
   if (extras[i] === '--secrets-file' && !secretsFile) secretsFile = resolve(ROOT, extras[i + 1]);
   else if (extras[i] === '--build-sha' && !suppliedSha && /^[0-9a-f]{7,40}$/.test(extras[i + 1])) suppliedSha = extras[i + 1];
   else {
-    console.error('deploy-worker: use [apple|golem] [--build-sha <hex SHA>] [--secrets-file <ignored file>]');
+    console.error('deploy-worker: use studpilot [--build-sha <hex SHA>] [--secrets-file <ignored file>]');
     process.exit(2);
   }
 }
@@ -69,19 +69,34 @@ const sha = suppliedSha ?? git('rev-parse', '--short', 'HEAD');
 const dirty = suppliedSha ? false : git('status', '--porcelain').length > 0;
 const stamp = dirty ? `${sha}-dirty` : sha;
 
+// THE NAME MUST ALREADY EXIST. A first deploy under a name creates a NEW Worker with new, empty
+// Durable Objects, and this config would then move studpilot.app to it: every project would open
+// empty. The production Worker became `studpilot` by being renamed in place (handoff 1.3), so a
+// missing `studpilot` means that step has not run, and nothing is uploaded.
+// Only Cloudflare's "does not exist" (10007) means that; any other failure (a token, an outage) is
+// reported as itself, and nothing is uploaded either way. STUDPILOT_WRANGLER is the tests' stub.
+const wrangler = process.env.STUDPILOT_WRANGLER ?? join(WORKER, 'node_modules', '.bin', 'wrangler');
+const exists = spawnSync(wrangler, ['deployments', 'list', '--name', 'studpilot', '--json'], { cwd: WORKER, encoding: 'utf8' });
+if (exists.status !== 0) {
+  const said = `${exists.stdout ?? ''}${exists.stderr ?? ''}${exists.error?.message ?? ''}`;
+  console.error(/\[code: 10007\]/.test(said)
+    ? 'deploy-worker: no Worker named studpilot exists. Rename the production Worker in place first '
+      + '(planning/proof/M1/PLAN.md, step 1.3f); deploying now would create an empty one.'
+    : `deploy-worker: could not check that the studpilot Worker exists, so nothing was uploaded:\n${said.trim().slice(0, 600)}`);
+  process.exit(2);
+}
+
 console.log(`deploying ${target} as BUILD_SHA=${stamp}`);
 execFileSync(
-  join(WORKER, 'node_modules', '.bin', 'wrangler'),
-  ['deploy', '--config', target === 'apple' ? 'wrangler.studpilot.jsonc' : 'wrangler.jsonc', '--var', `BUILD_SHA:${stamp}`,
+  wrangler,
+  ['deploy', '--config', 'wrangler.studpilot.jsonc', '--var', `BUILD_SHA:${stamp}`,
     ...(secretsFile ? ['--secrets-file', secretsFile] : [])],
   { cwd: WORKER, stdio: 'inherit' },
 );
 
 // UPLOADED IS NOT RUNNING. The one thing this script can prove afterwards is that the build now
 // answering is the build it just sent, so it asks.
-const base = target === 'apple'
-  ? 'https://apple.moshe-barami111.workers.dev'
-  : 'https://golem.moshe-barami111.workers.dev';
+const base = 'https://studpilot.app';
 for (const waitMs of [1500, 3000, 6000]) {
   await new Promise((r) => setTimeout(r, waitMs));
   const health = await fetch(`${base}/api/health`).then((r) => r.json()).catch(() => null);

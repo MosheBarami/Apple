@@ -59,7 +59,7 @@ repeat until docs/autonomy/ACCEPTANCE.json passes scripts/autonomy-review-gate.p
   2. pick the highest-value item the gate says is unmet and you can move
   3. use the real product (Chrome, Studio) as a customer to observe it — measured, not assumed
   4. fix at the root, with a test that went red before the fix (falsify), whole suite green after
-  5. deploy (node infra/deploy-worker.mjs apple; node infra/deploy-static.mjs --only web|site)
+  5. deploy (node infra/deploy-worker.mjs studpilot; node infra/deploy-static.mjs --only web|site)
   6. verify in production, in the browser/Studio, with evidence
   7. close the finding with evidence, commit with explicit pathspecs, push
   8. update CURRENT_STATE.md / NEXT_ACTION.md, then go to 1 — immediately, in the same turn

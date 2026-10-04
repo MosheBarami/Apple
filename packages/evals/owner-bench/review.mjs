@@ -139,14 +139,14 @@ export async function main(argv, deps = {}) {
     let getToken = null, base = null, fetchFn = deps.fetch ?? fetch;
     if (!f.offline) {
       const env = deps.env ?? (loadEnvFile(findUp(HERE, '.env')), process.env);
-      const wrangler = findUp(HERE, 'apps/worker/wrangler.jsonc');
+      const wrangler = findUp(HERE, 'apps/worker/wrangler.studpilot.jsonc');
       const wr = wrangler ? readFileSync(wrangler, 'utf8') : '';
       const anonKey = deps.anonKey ?? wr.match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)?.[1];
       base = (env.API_BASE ?? 'https://apple.moshe-barami111.workers.dev').replace(/\/$/, '');
       // Sign in only when some photo is actually missing: a sheet over saved photos needs no network.
       const photosMissing = rows.some((r) => (r.eval?.images || []).some((img) => !existsSync(photoFile(resultsFile, r.id, img.name))));
       if (photosMissing) {
-        if (!anonKey) throw new Error('SUPABASE_ANON_KEY not found in apps/worker/wrangler.jsonc');
+        if (!anonKey) throw new Error('SUPABASE_ANON_KEY not found in apps/worker/wrangler.studpilot.jsonc');
         getToken = createAuth({ fetch: fetchFn, env, now: deps.now, anonKey });
       }
     }

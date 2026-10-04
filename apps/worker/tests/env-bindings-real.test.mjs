@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ENV = readFileSync(join(WORKER, 'src', 'env.ts'), 'utf8');
-const WRANGLERS = ['wrangler.jsonc', 'wrangler.studpilot.jsonc'].map((f) => ({
+const WRANGLERS = ['wrangler.studpilot.jsonc'].map((f) => ({
   file: f,
   text: readFileSync(join(WORKER, f), 'utf8'),
 }));
@@ -34,7 +34,7 @@ test('Env declares no WebAssembly.Module binding while no wrangler file can prov
   assert.deepEqual(
     declared,
     [],
-    `Env names ${declared.join(', ')} as a wasm binding, and neither wrangler file declares wasm_modules`,
+    `Env names ${declared.join(', ')} as a wasm binding, and the wrangler file declares no wasm_modules`,
   );
 });
 

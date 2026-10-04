@@ -379,11 +379,11 @@ export async function main(argv, deps = {}) {
   }
   const env = deps.env ?? process.env;
   const fetchFn = deps.fetch ?? fetch;
-  const wrangler = findUp(HERE, 'apps/worker/wrangler.jsonc');
+  const wrangler = findUp(HERE, 'apps/worker/wrangler.studpilot.jsonc');
   const wr = wrangler ? readFileSync(wrangler, 'utf8') : '';
   const anonKey = deps.anonKey ?? wr.match(/"SUPABASE_ANON_KEY":\s*"([^"]+)"/)?.[1];
   const supabaseUrl = wr.match(/"SUPABASE_URL":\s*"([^"]+)"/)?.[1] ?? DEFAULT_SUPABASE;
-  if (!anonKey) throw new Error('SUPABASE_ANON_KEY not found in apps/worker/wrangler.jsonc');
+  if (!anonKey) throw new Error('SUPABASE_ANON_KEY not found in apps/worker/wrangler.studpilot.jsonc');
   const base = (o.base ?? env.API_BASE ?? DEFAULT_BASE).replace(/\/$/, '');
   const now = deps.now ?? Date.now;
   const getToken = createAuth({ fetch: fetchFn, env, now, supabaseUrl, anonKey });

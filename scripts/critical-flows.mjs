@@ -20,7 +20,7 @@
  */
 import { execFileSync } from 'node:child_process';
 
-const BASE = process.env.STUDPILOT_BASE_URL ?? 'https://apple.moshe-barami111.workers.dev';
+const BASE = process.env.STUDPILOT_BASE_URL ?? 'https://studpilot.app';
 const results = [];
 
 const record = (flow, name, verdict, why, detail) => {
@@ -136,13 +136,13 @@ async function monitoring() {
 async function persistence() {
   let tables = null;
   try {
-    const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'golem-corpus', '--remote', '--json',
+    const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'studpilot-corpus', '--config', 'apps/worker/wrangler.studpilot.jsonc', '--remote', '--json',
       '--command', "SELECT name FROM sqlite_master WHERE type='table'"], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     tables = JSON.parse(out)[0].results.map((r) => r.name);
   } catch (e) {
     return record('persistence', 'the database is reachable', 'unknown', `could not query D1: ${e.message.slice(0, 120)}`);
   }
-  record('persistence', 'the database is reachable', 'pass', `D1 golem-corpus answered with ${tables.length} tables`);
+  record('persistence', 'the database is reachable', 'pass', `D1 studpilot-corpus answered with ${tables.length} tables`);
 
   // Named because a project that survives a restart needs these specific ones. A count of tables
   // proves the database exists, not that the product's own state has somewhere to live.

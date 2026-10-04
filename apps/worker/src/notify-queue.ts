@@ -13,7 +13,7 @@ import type { Env } from './env';
 import { notify, notifyMany } from './notify';
 import type { NotificationInput } from './notifications';
 
-export const NOTIFY_QUEUE_NAME = 'apple-notifications';
+export const NOTIFY_QUEUE_NAME = 'studpilot-notifications';
 /** Retries the consumer asks for before giving up on one notice (the queue's own max_retries is higher). */
 export const NOTIFY_MAX_ATTEMPTS = 5;
 

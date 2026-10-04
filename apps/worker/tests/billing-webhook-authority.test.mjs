@@ -16,7 +16,7 @@ execFileSync(join(WORKER, 'node_modules/.bin/esbuild'), [
   `--alias:cloudflare:workers=${join(WORKER, 'tests/stubs/cloudflare-workers.mjs')}`,
   `--outfile=${OUT}`,
 ], { cwd: WORKER, stdio: 'pipe' });
-const { default: APP, QuotaDO } = await import(`file://${OUT}`);
+const { default: APP, QuotaDO, ArchiveQuotaDO } = await import(`file://${OUT}`);
 after(() => rmSync(TMP, { recursive: true, force: true }));
 
 const USER = '55555555-5555-4555-8555-555555555555';
@@ -49,7 +49,8 @@ function fixture(t) {
   const notifications = [];
   const faults = { apple: null, golem: null }; // keyed by the stored worker id ('apple'), not the product name
   let current = subscription();
-  const namespace = name => {
+  // The replica namespace is built from the class production binds (LEGACY_QUOTA_DO -> ArchiveQuotaDO).
+  const namespace = (name, Durable = QuotaDO) => {
     const objects = new Map();
     return {
       idFromName: value => value,
@@ -76,7 +77,7 @@ function fixture(t) {
               },
             },
           };
-          objects.set(id, new QuotaDO({ storage, blockConcurrencyWhile: fn => fn() }, env));
+          objects.set(id, new Durable({ storage, blockConcurrencyWhile: fn => fn() }, env));
         }
         const object = objects.get(id);
         return {
@@ -99,7 +100,7 @@ function fixture(t) {
     STRIPE_WEBHOOK_SECRET: SECRET, STRIPE_SECRET_KEY: 'sk_test_local_fixture_only',
     STRIPE_PRICE_BUILDER: 'price_builder', STRIPE_PRICE_STUDIO: 'price_studio',
     BILLING_WORKER_NAME: 'apple',
-    QUOTA_DO: namespace('apple'), LEGACY_QUOTA_DO: namespace('golem'),
+    QUOTA_DO: namespace('apple'), LEGACY_QUOTA_DO: namespace('golem', ArchiveQuotaDO),
     ADMIN_DO: passive, SESSION_DO: passive, PAIRING_DO: passive, BUDGET_DO: passive,
     KV: { get: async () => null, put: async () => {}, delete: async () => {} },
     CORPUS: {
@@ -273,13 +274,15 @@ test('expired checkout remains an intentional notification-only no-op', async t 
   assert.ok(f.notifications.some(n => /insert into notifications/i.test(n.sql) && n.args.includes(USER)));
 });
 
-test('only StudPilot binds the legacy quota namespace and both deployments declare their own role', () => {
-  const config = name => JSON.parse(readFileSync(join(WORKER, name), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
-  const studpilot = config('wrangler.studpilot.jsonc');
-  const golem = config('wrangler.jsonc');
+test('the one Worker is the billing authority and its replica is golem\'s QuotaDO, moved in with its data', () => {
+  const studpilot = JSON.parse(readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
+  // 'apple' is the stored billing-role id (billing-origin-authority.ts), not the Worker's name.
   assert.equal(studpilot.vars.BILLING_WORKER_NAME, 'apple');
-  assert.equal(golem.vars.BILLING_WORKER_NAME, 'golem');
+  // The replica is a class of this Worker now, not a binding into another script that no longer has it.
   assert.deepEqual(studpilot.durable_objects.bindings.find(b => b.name === 'LEGACY_QUOTA_DO'),
-    { name: 'LEGACY_QUOTA_DO', class_name: 'QuotaDO', script_name: 'golem' });
-  assert.equal(golem.durable_objects.bindings.some(b => b.name === 'LEGACY_QUOTA_DO'), false);
+    { name: 'LEGACY_QUOTA_DO', class_name: 'ArchiveQuotaDO' });
+  assert.ok(studpilot.migrations.some(m => (m.transferred_classes ?? []).some(t =>
+    t.from === 'QuotaDO' && t.from_script === 'golem' && t.to === 'ArchiveQuotaDO')), 'golem\'s QuotaDO storage is not transferred');
+  // The replica still answers /billing-replica, so it must keep QuotaDO's behaviour.
+  assert.ok(ArchiveQuotaDO.prototype instanceof QuotaDO);
 });

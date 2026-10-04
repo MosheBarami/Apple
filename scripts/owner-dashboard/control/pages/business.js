@@ -81,7 +81,7 @@ function flags(b) {
       <div class="card" style="padding:0" data-k="rt"><h2 class="card-h" style="padding:16px 20px 0">המודלים שהעובד יכול לנתב אליהם</h2><div class="tbl-wrap"><table class="ow-t"><tbody>
         ${arr(b.routing).map((r) => html`<tr data-k="rt-${r.k}"><td>${r.label || ltr(r.k)}<br><small class="dim">${ltr(r.k, 'mono')}</small></td><td>${r.provider}</td><td>${r.available ? html`<span class="chip chip-sm chip-ok">זמין</span>` : html`<span class="chip chip-sm chip-off">לא זמין</span>`}</td></tr>`)}
         </tbody></table></div></div>
-      <div class="card" data-k="vars"><h2 class="card-h">משתני הפריסה של העובד</h2><p class="ow-count">מ-apps/worker/wrangler.jsonc (לא סודות)</p>
+      <div class="card" data-k="vars"><h2 class="card-h">משתני הפריסה של העובד</h2><p class="ow-count">מ-apps/worker/wrangler.studpilot.jsonc (לא סודות)</p>
         <table class="ow-t"><tbody>${arr(b.vars).map((v) => html`<tr><td>${ltr(v.k, 'mono')}</td><td>${ltr(v.v, 'mono')}</td></tr>`)}</tbody></table></div>
     </div></div>`;
 }

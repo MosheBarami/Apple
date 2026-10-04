@@ -339,6 +339,7 @@ export { AdminDO } from './do/admin';
 export { BudgetDO } from './do/budget';
 import { readResetScope, SPEND_RESET_USAGE } from './do/budget';
 export { DiscordDO } from './do/discord';
+export { ArchiveSessionDO, ArchiveQuotaDO, ArchivePairingDO, ArchiveAdminDO, ArchiveBudgetDO, ArchiveDiscordDO } from './do/archive';
 export { ModelUploadWorkflow } from './model-upload-workflow';
 
 type Vars = {
@@ -7406,6 +7407,6 @@ async function reportedScheduled(env: Env, cron: string | null): Promise<void> {
 export default Object.assign(app, {
   scheduled: (event: { cron?: unknown } | null, env: Env, _ctx: unknown) =>
     reportedScheduled(env, typeof event?.cron === 'string' ? event.cron : RETENTION_CRON),
-  // The `apple-notifications` consumer (notify-queue.ts).
+  // The `studpilot-notifications` consumer (notify-queue.ts).
   queue: (batch: MessageBatch<unknown>, env: Env) => consumeNotifications(batch, env),
 });

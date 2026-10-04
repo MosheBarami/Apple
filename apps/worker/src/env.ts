@@ -32,7 +32,7 @@ export interface Env {
    * secret. `off` is the run exactly as it was (the `look` tool is not even offered); `on` adds the evidence ledger, the look,
    * the completion gate and the deterministic claim audit; `full` also runs the one cheap text judge over the final reply.
    * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` until the owner turns it on (the Q21 line is owed).
-   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.jsonc "vars"). See self-check.ts.
+   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.studpilot.jsonc "vars"). See self-check.ts.
    */
   SELF_CHECK?: string;
   /** The blind critique before answering (blind-critique.ts): on unless `off`, `0`, `false` or `no`. Only effective while SELF_CHECK is on. */
@@ -197,12 +197,12 @@ export interface Env {
   // ---------------------------------------------------------------------------
   /** Turnstile widget secret (turnstile.ts). Unset: unauthenticated routes are not challenged. */
   TURNSTILE_SECRET?: string;
-  /** Analytics Engine dataset `apple_product_events` (analytics-engine.ts). */
+  /** Analytics Engine dataset `studpilot_product_events` (analytics-engine.ts). */
   PRODUCT_EVENTS?: AnalyticsEngineDataset;
   /** Account id and an "Account Analytics: Read" token, for reading that dataset back over SQL. */
   CF_ACCOUNT_ID?: string;
   CF_ANALYTICS_TOKEN?: string;
-  /** Queue `apple-notifications` (notify-queue.ts). */
+  /** Queue `studpilot-notifications` (notify-queue.ts). */
   NOTIFY_QUEUE?: Queue<unknown>;
   /** Workflow that finishes a slow 3D model upload and notifies the user (model-upload.ts). */
   MODEL_UPLOAD_WORKFLOW?: Workflow<import('./model-upload').ModelUploadParams>;

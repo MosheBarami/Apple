@@ -21,15 +21,15 @@ const iso = (ms) => new Date(ms).toISOString();
 // ---------------------------------------------------------------- fixtures
 const V = { new: '11111111-1111-4111-8111-111111111111', prev: '22222222-2222-4222-8222-222222222222', old: '33333333-3333-4333-8333-333333333333' };
 const GQL = {
-  w: [{ dimensions: { scriptName: 'apple' }, sum: { requests: 26800, errors: 12, subrequests: 25414 }, quantiles: { cpuTimeP50: 1461, cpuTimeP99: 25980 } },
+  w: [{ dimensions: { scriptName: 'studpilot' }, sum: { requests: 26800, errors: 12, subrequests: 25414 }, quantiles: { cpuTimeP50: 1461, cpuTimeP99: 25980 } },
     { dimensions: { scriptName: 'golem' }, sum: { requests: 1502, errors: 0, subrequests: 2952 }, quantiles: { cpuTimeP50: 1086, cpuTimeP99: 8310 } }],
-  wp: [{ dimensions: { scriptName: 'apple' }, sum: { requests: 12617, errors: 3 } }],
-  wh: [{ dimensions: { datetimeHour: '2026-09-23T18:00:00Z', scriptName: 'apple' }, sum: { requests: 600, errors: 1 } },
-    { dimensions: { datetimeHour: '2026-09-23T19:00:00Z', scriptName: 'apple' }, sum: { requests: 700, errors: 2 } },
+  wp: [{ dimensions: { scriptName: 'studpilot' }, sum: { requests: 12617, errors: 3 } }],
+  wh: [{ dimensions: { datetimeHour: '2026-09-23T18:00:00Z', scriptName: 'studpilot' }, sum: { requests: 600, errors: 1 } },
+    { dimensions: { datetimeHour: '2026-09-23T19:00:00Z', scriptName: 'studpilot' }, sum: { requests: 700, errors: 2 } },
     { dimensions: { datetimeHour: '2026-09-23T19:00:00Z', scriptName: 'golem' }, sum: { requests: 70, errors: 0 } }],
   d1: [{ dimensions: { databaseId: 'db-1' }, sum: { readQueries: 9766, writeQueries: 40195, rowsRead: 69722123, rowsWritten: 61425 } }],
-  r2: [{ dimensions: { bucketName: 'apple-media', actionType: 'HeadBucket' }, sum: { requests: 82 } }, { dimensions: { bucketName: 'apple-media', actionType: 'PutObject' }, sum: { requests: 3 } }],
-  r2s: [{ dimensions: { bucketName: 'apple-media' }, max: { objectCount: 3, payloadSize: 934350, metadataSize: 249 } }],
+  r2: [{ dimensions: { bucketName: 'studpilot-media', actionType: 'HeadBucket' }, sum: { requests: 82 } }, { dimensions: { bucketName: 'studpilot-media', actionType: 'PutObject' }, sum: { requests: 3 } }],
+  r2s: [{ dimensions: { bucketName: 'studpilot-media' }, max: { objectCount: 3, payloadSize: 934350, metadataSize: 249 } }],
   ai: [{ count: 1766, dimensions: { modelId: '@cf/zai-org/glm-5.3-flash' }, sum: { totalNeurons: 194370.5, totalInputTokens: 47923824, totalOutputTokens: 531123 } }],
   aid: [{ count: 1448, sum: { totalNeurons: 160362.2 } }],
   gw: [{ count: 1921, dimensions: { gateway: 'golem' }, sum: { cost: 2.19, uncachedTokensIn: 50103170, uncachedTokensOut: 561130, cachedRequests: 9, erroredRequests: 27 } }],
@@ -38,21 +38,21 @@ const GQL = {
   do: [{ dimensions: { namespaceId: 'ns-s' }, sum: { requests: 24166, errors: 193 } }],
   qu: [{ count: 2, dimensions: { queueId: 'q-1', actionType: 'WriteMessage' }, sum: { billableOperations: 2 } }],
 };
-const deployments = (script) => (script === 'apple' ? [
+const deployments = (script) => (script === 'studpilot' ? [
   { id: 'dep-3', source: 'api', strategy: 'percentage', author_email: 'o@x.dev', created_on: iso(NOW - 0.3 * HOUR), annotations: { 'workers/triggered_by': 'secret' }, versions: [{ version_id: V.new, percentage: 100 }] },
   { id: 'dep-2', source: 'wrangler', strategy: 'percentage', author_email: 'o@x.dev', created_on: iso(NOW - 1 * HOUR), annotations: { 'workers/triggered_by': 'deployment', 'workers/message': 'ship it' }, versions: [{ version_id: V.prev, percentage: 100 }] },
 ] : [{ id: `dep-${script}`, source: 'wrangler', strategy: 'percentage', created_on: iso(NOW - 48 * HOUR), annotations: {}, versions: [{ version_id: V.old, percentage: 100 }] }]);
-const versions = (script) => (script === 'apple' ? [
+const versions = (script) => (script === 'studpilot' ? [
   { id: V.new, number: 161, metadata: { created_on: iso(NOW - 0.3 * HOUR), source: 'api', author_email: 'o@x.dev' }, annotations: { 'workers/triggered_by': 'secret' } },
   { id: V.prev, number: 160, metadata: { created_on: iso(NOW - 1 * HOUR), source: 'wrangler' }, annotations: { 'workers/triggered_by': 'upload', 'workers/message': 'ship it' } },
   { id: V.old, number: 159, metadata: { created_on: iso(NOW - 30 * HOUR), source: 'wrangler' }, annotations: {} },
 ] : [{ id: V.old, number: 4, metadata: { created_on: iso(NOW - 48 * HOUR) }, annotations: {} }]);
 const BINDINGS = [
   { type: 'd1', name: 'CORPUS', id: 'db-1', database_id: 'db-1' }, { type: 'kv_namespace', name: 'KV', namespace_id: 'kv-1' },
-  { type: 'r2_bucket', name: 'MEDIA', bucket_name: 'apple-media' }, { type: 'ai', name: 'AI' }, { type: 'vectorize', name: 'VEC', index_name: 'golem-docs' },
+  { type: 'r2_bucket', name: 'MEDIA', bucket_name: 'studpilot-media' }, { type: 'ai', name: 'AI' }, { type: 'vectorize', name: 'VEC', index_name: 'studpilot-docs' },
   { type: 'durable_object_namespace', name: 'SESSION_DO', class_name: 'SessionDO', namespace_id: 'ns-s' },
-  { type: 'queue', name: 'NOTIFY_QUEUE', queue_name: 'apple-notifications' }, { type: 'workflow', name: 'MODEL_UPLOAD_WORKFLOW', workflow_name: 'apple-model-upload' },
-  { type: 'analytics_engine', name: 'PRODUCT_EVENTS', dataset: 'apple_product_events' }, { type: 'images', name: 'IMAGES' },
+  { type: 'queue', name: 'NOTIFY_QUEUE', queue_name: 'studpilot-notifications' }, { type: 'workflow', name: 'MODEL_UPLOAD_WORKFLOW', workflow_name: 'studpilot-model-upload' },
+  { type: 'analytics_engine', name: 'PRODUCT_EVENTS', dataset: 'studpilot_product_events' }, { type: 'images', name: 'IMAGES' },
   { type: 'secret_text', name: 'OPENAI_KEY' }, { type: 'plain_text', name: 'BUILD_SHA', text: 'abc1234' }, { type: 'plain_text', name: 'PUBLIC_NOTE', text: LEAK },
 ];
 const R = (result, extra = {}) => ({ success: true, errors: [], result, ...extra });
@@ -65,22 +65,22 @@ function fixture(u, init) {
   if (u === `${WORKER_URL}/api/health`) return { buildSha: 'abc1234', version: '161' };
   if (p === '/graphql') return { data: { viewer: { accounts: [GQL] } }, errors: null };
   if (p === acc) return R({ id: 'acct-test', name: 'Moshe account' });
-  if (p === `${acc}/workers/scripts`) return R([{ id: 'apple', created_on: iso(NOW - 900 * HOUR), modified_on: iso(NOW - 0.3 * HOUR), usage_model: 'standard', handlers: ['fetch', 'scheduled', 'queue'], compatibility_date: '2026-01-01', last_deployed_from: 'wrangler' },
+  if (p === `${acc}/workers/scripts`) return R([{ id: 'studpilot', created_on: iso(NOW - 900 * HOUR), modified_on: iso(NOW - 0.3 * HOUR), usage_model: 'standard', handlers: ['fetch', 'scheduled', 'queue'], compatibility_date: '2026-01-01', last_deployed_from: 'wrangler' },
     { id: 'golem', created_on: iso(NOW - 2000 * HOUR), modified_on: iso(NOW - 48 * HOUR), usage_model: 'standard', handlers: ['fetch'] }]);
   if (p === `${acc}/workers/subdomain`) return R({ subdomain: 'moshe-barami111' });
   let m = p.match(/^\/accounts\/acct-test\/workers\/scripts\/([\w-]+)\/(settings|deployments|versions|schedules|script-settings|subdomain)$/);
   if (m) {
     const [, s, what] = m;
-    if (what === 'settings') return R({ bindings: s === 'apple' ? BINDINGS : [{ type: 'secret_text', name: 'X' }], observability: { enabled: true, logs: { enabled: true }, traces: { enabled: s === 'apple' } }, compatibility_date: '2026-01-01' });
+    if (what === 'settings') return R({ bindings: s === 'studpilot' ? BINDINGS : [{ type: 'secret_text', name: 'X' }], observability: { enabled: true, logs: { enabled: true }, traces: { enabled: s === 'studpilot' } }, compatibility_date: '2026-01-01' });
     if (what === 'deployments' && (init.method || 'GET') === 'GET') return R({ deployments: deployments(s) });
     if (what === 'deployments') return R({ id: 'dep-new' });
     if (what === 'versions') return R({ items: versions(s) });
-    if (what === 'schedules') return R({ schedules: s === 'apple' ? [{ cron: '* * * * *', modified_on: iso(NOW - 99 * HOUR) }] : [] });
+    if (what === 'schedules') return R({ schedules: s === 'studpilot' ? [{ cron: '* * * * *', modified_on: iso(NOW - 99 * HOUR) }] : [] });
     if (what === 'script-settings') return R({ observability: { enabled: true, head_sampling_rate: 1, logs: { enabled: true, invocation_logs: true }, traces: { enabled: true } }, logpush: false });
     if (what === 'subdomain') return R({ enabled: true, previews_enabled: true });
   }
-  if (p === `${acc}/d1/database`) return R([{ uuid: 'db-1', name: 'golem-corpus', num_tables: 0 }]);
-  if (p === `${acc}/d1/database/db-1`) return R({ uuid: 'db-1', name: 'golem-corpus', file_size: 610066432, num_tables: 31, running_in_region: 'WEUR', created_at: iso(NOW - 3000 * HOUR), version: 'production' });
+  if (p === `${acc}/d1/database`) return R([{ uuid: 'db-1', name: 'studpilot-corpus', num_tables: 0 }]);
+  if (p === `${acc}/d1/database/db-1`) return R({ uuid: 'db-1', name: 'studpilot-corpus', file_size: 610066432, num_tables: 31, running_in_region: 'WEUR', created_at: iso(NOW - 3000 * HOUR), version: 'production' });
   if (p === `${acc}/d1/database/db-1/query`) {
     const results = Array.from({ length: 250 }, (_, i) => ({ id: i, email: `u${i}@x.dev`, password_hash: `${LEAK}-hash`, apiKey: LEAK, note: `token ${SENTINEL}_123`, blob: 'A'.repeat(48) }));
     return R([{ results, success: true, meta: { rows_read: 250, duration: 1.5, changes: 0 } }]);
@@ -89,18 +89,18 @@ function fixture(u, init) {
   if (p === `${acc}/storage/kv/namespaces/kv-1/keys`) return R([{ name: 'user:1' }, { name: `sess:${'Z'.repeat(40)}`, expiration: 1790000000, metadata: { v: LEAK } },
     // a share-link token with dashes (random-looking, mixed case) is masked; uuids and short hex ids stay readable
     { name: 'share:link:Qw7Rt--y5Ui0Op3As_Df9Gh2' }, { name: 'share:grant:5ffa10c1-3c57-4b64-b7c1-60cea0aa8a6a' }], { result_info: { cursor: 'c2', count: 2 } });
-  if (p === `${acc}/r2/buckets`) return R({ buckets: [{ name: 'apple-media', creation_date: iso(NOW - 500 * HOUR), location: 'WEUR' }] });
-  if (p === `${acc}/r2/buckets/apple-media/objects`) return R([{ key: 'image/a.png', size: 1234, last_modified: iso(NOW - 5 * HOUR), etag: 'e', http_metadata: { contentType: 'image/png' }, custom_metadata: { owner: LEAK }, storage_class: 'Standard' }], { result_info: { delimited: ['image/thumbs/'], is_truncated: false, cursor: '' } });
-  if (p === `${acc}/vectorize/v2/indexes`) return R([{ name: 'golem-docs', config: { dimensions: 384, metric: 'cosine' }, created_on: iso(NOW - 700 * HOUR) }]);
-  if (p === `${acc}/queues`) return R([{ queue_id: 'q-1', queue_name: 'apple-notifications', producers_total_count: 1, consumers_total_count: 1, producers: [{ script: 'apple' }], consumers: [{ script: 'apple' }] }]);
+  if (p === `${acc}/r2/buckets`) return R({ buckets: [{ name: 'studpilot-media', creation_date: iso(NOW - 500 * HOUR), location: 'WEUR' }] });
+  if (p === `${acc}/r2/buckets/studpilot-media/objects`) return R([{ key: 'image/a.png', size: 1234, last_modified: iso(NOW - 5 * HOUR), etag: 'e', http_metadata: { contentType: 'image/png' }, custom_metadata: { owner: LEAK }, storage_class: 'Standard' }], { result_info: { delimited: ['image/thumbs/'], is_truncated: false, cursor: '' } });
+  if (p === `${acc}/vectorize/v2/indexes`) return R([{ name: 'studpilot-docs', config: { dimensions: 384, metric: 'cosine' }, created_on: iso(NOW - 700 * HOUR) }]);
+  if (p === `${acc}/queues`) return R([{ queue_id: 'q-1', queue_name: 'studpilot-notifications', producers_total_count: 1, consumers_total_count: 1, producers: [{ script: 'studpilot' }], consumers: [{ script: 'studpilot' }] }]);
   if (p === `${acc}/ai-gateway/gateways`) return R([{ id: 'golem', created_at: iso(NOW - 800 * HOUR), collect_logs: true, cache_ttl: 0, rate_limiting_limit: 0, authentication: false, logpush_public_key: LEAK }]);
   if (p === `${acc}/ai-gateway/gateways/studpilot/logs`) return R([{ id: 'log-1', created_at: iso(NOW - 60e3), provider: 'workers-ai', model: '@cf/zai-org/glm-5.3-flash', status_code: 200, success: true, cached: false, tokens_in: 1200, tokens_out: 80, cost: 0.0012, duration: 900, request: LEAK, response: LEAK, prompts: LEAK, metadata: { user: LEAK }, usage_metadata: { neurons: 110 } }]);
   if (p === '/zones') return R([]);
   if (p === `${acc}/challenges/widgets`) return R([{ sitekey: '0x4AAAAAAFBZ', name: 'studpilot-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'], created_on: iso(NOW - 400 * HOUR), secret: LEAK, clearance_level: 'no_clearance' }]);
   if (p === `${acc}/pages/projects`) return R([{ name: 'spin', subdomain: 'spin-b6q.pages.dev', created_on: iso(NOW - 600 * HOUR), production_branch: 'main', deployment_configs: { production: { env_vars: { K: { value: LEAK } } } },
     latest_deployment: { id: 'pd-1', created_on: iso(NOW - 70 * HOUR), url: 'https://abc.spin-b6q.pages.dev', environment: 'production', latest_stage: { name: 'deploy', status: 'success' }, env_vars: { K: { value: LEAK } }, deployment_trigger: { metadata: { branch: 'main', commit_hash: 'deadbeef00', commit_message: 'fix' } } } }]);
-  if (p === `${acc}/workers/durable_objects/namespaces`) return R([{ id: 'ns-s', name: 'apple_SessionDO', script: 'apple', class: 'SessionDO', use_sqlite: true }]);
-  if (p === `${acc}/workflows`) return R([{ id: 'wf-1', name: 'apple-model-upload', script_name: 'apple', class_name: 'ModelUpload', created_on: iso(NOW - 300 * HOUR), instances: { complete: 3, errored: 1, running: 0, queued: 0 } }]);
+  if (p === `${acc}/workers/durable_objects/namespaces`) return R([{ id: 'ns-s', name: 'apple_SessionDO', script: 'studpilot', class: 'SessionDO', use_sqlite: true }]);
+  if (p === `${acc}/workflows`) return R([{ id: 'wf-1', name: 'studpilot-model-upload', script_name: 'studpilot', class_name: 'ModelUpload', created_on: iso(NOW - 300 * HOUR), instances: { complete: 3, errored: 1, running: 0, queued: 0 } }]);
   return { success: false, errors: [{ message: `no fixture for ${p}` }], result: null };
 }
 globalThis.fetch = async (url, init = {}) => {
@@ -117,7 +117,7 @@ beforeEach(() => { calls = []; handler = null; uncache('cloudflare'); Object.ass
 
 // ---------------------------------------------------------------- exports other files rely on
 test('keeps the exports other files import', () => {
-  assert.equal(WORKER, 'apple');
+  assert.equal(WORKER, 'studpilot');
   assert.match(WORKER_URL, /^https:\/\/studpilot\./);
   assert.equal(typeof workerHealth, 'function');
 });
@@ -128,8 +128,8 @@ test('not connected: missing env → ok:false with the reason, zero requests', a
   const r = await cloudflare();
   assert.equal(r.ok, false);
   assert.match(r.reason, /CLOUDFLARE_API_TOKEN/);
-  for (const body of [{ kind: 'd1-query', db: 'db-1', sql: 'SELECT 1' }, { kind: 'kv-keys', ns: 'kv-1' }, { kind: 'r2-list', bucket: 'apple-media' },
-    { kind: 'gw-logs', gateway: 'golem' }, { kind: 'rollback', script: 'apple', versionId: V.prev }]) {
+  for (const body of [{ kind: 'd1-query', db: 'db-1', sql: 'SELECT 1' }, { kind: 'kv-keys', ns: 'kv-1' }, { kind: 'r2-list', bucket: 'studpilot-media' },
+    { kind: 'gw-logs', gateway: 'golem' }, { kind: 'rollback', script: 'studpilot', versionId: V.prev }]) {
     const a = await cloudflareAction(body);
     assert.equal(a.ok, false, body.kind);
     assert.match(a.reason, /CLOUDFLARE_API_TOKEN/, body.kind);
@@ -143,8 +143,8 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual(r.errors, {});
   assert.deepEqual(r.account, { id: 'acct-test', name: 'Moshe account' });
-  const studpilot = r.workers.find((w) => w.name === 'apple');
-  assert.equal(studpilot.url, 'https://apple.moshe-barami111.workers.dev');
+  const studpilot = r.workers.find((w) => w.name === 'studpilot');
+  assert.equal(studpilot.url, 'https://studpilot.moshe-barami111.workers.dev');
   assert.deepEqual(studpilot.deployments.map((d) => d.id), ['dep-3', 'dep-2']);
   assert.equal(studpilot.deployments[0].trigger, 'secret');
   assert.deepEqual(studpilot.deployments[0].versions, [{ id: V.new, pct: 100 }]);
@@ -156,7 +156,7 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
   assert.equal(studpilot.cpuP99Ms, 25.98);
   // bindings: type, name, target only. Never a value.
   assert.deepEqual(studpilot.bindings.find((b) => b.name === 'CORPUS'), { type: 'd1', name: 'CORPUS', target: 'db-1' });
-  assert.deepEqual(studpilot.bindings.find((b) => b.name === 'MEDIA'), { type: 'r2_bucket', name: 'MEDIA', target: 'apple-media' });
+  assert.deepEqual(studpilot.bindings.find((b) => b.name === 'MEDIA'), { type: 'r2_bucket', name: 'MEDIA', target: 'studpilot-media' });
   assert.deepEqual(studpilot.bindings.find((b) => b.name === 'OPENAI_KEY'), { type: 'secret_text', name: 'OPENAI_KEY', target: null });
   assert.equal(studpilot.buildSha, 'abc1234');
   assert.ok(!('text' in studpilot.bindings.find((b) => b.name === 'PUBLIC_NOTE')));
@@ -166,9 +166,9 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
   assert.deepEqual(r.traffic.prev24h, { requests: 12617, errors: 3 });
   assert.deepEqual(r.traffic.perHour.map((h) => h.requests), [600, 700]);
   assert.ok(r.workers.every((w) => Array.isArray(w.deployments) && w.deployments.every((d) => d.createdAt)));
-  assert.deepEqual(r.d1[0], { name: 'golem-corpus', uuid: 'db-1', sizeBytes: 610066432, tables: 31, region: 'WEUR', createdAt: iso(NOW - 3000 * HOUR),
+  assert.deepEqual(r.d1[0], { name: 'studpilot-corpus', uuid: 'db-1', sizeBytes: 610066432, tables: 31, region: 'WEUR', createdAt: iso(NOW - 3000 * HOUR),
     reads24h: 9766, writes24h: 40195, rowsRead24h: 69722123, rowsWritten24h: 61425 });
-  assert.deepEqual(r.r2[0], { name: 'apple-media', createdAt: iso(NOW - 500 * HOUR), location: 'WEUR', objects: 3, bytes: 934350, ops24h: 85, writes24h: 3 });
+  assert.deepEqual(r.r2[0], { name: 'studpilot-media', createdAt: iso(NOW - 500 * HOUR), location: 'WEUR', objects: 3, bytes: 934350, ops24h: 85, writes24h: 3 });
   assert.deepEqual(r.kv[0], { title: 'golem-kv', id: 'kv-1', ops24h: 272 });
   assert.equal(r.queues[0].ops24h, 2);
   assert.equal(r.ai.neurons24h, 194370.5);
@@ -178,7 +178,7 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
     requests24h: 1921, cost24h: 2.19, errors24h: 27, cached24h: 9, tokensIn24h: 50103170, tokensOut24h: 561130 });
   assert.deepEqual(r.turnstile[0], { sitekey: '0x4AAAAAAFBZ', name: 'studpilot-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'],
     createdAt: iso(NOW - 400 * HOUR), events24h: { challenge_issued: 2, challenge_siteverify_failed_invalid_token: 1 } });
-  assert.deepEqual(r.durableObjects[0], { id: 'ns-s', name: 'apple_SessionDO', script: 'apple', className: 'SessionDO', sqlite: true, requests24h: 24166, errors24h: 193 });
+  assert.deepEqual(r.durableObjects[0], { id: 'ns-s', name: 'apple_SessionDO', script: 'studpilot', className: 'SessionDO', sqlite: true, requests24h: 24166, errors24h: 193 });
   assert.equal(r.workflows[0].instances.errored, 1);
   assert.deepEqual(r.pages[0], { name: 'spin', subdomain: 'spin-b6q.pages.dev', createdAt: iso(NOW - 600 * HOUR), branch: 'main',
     latest: { id: 'pd-1', createdAt: iso(NOW - 70 * HOUR), url: 'https://abc.spin-b6q.pages.dev', env: 'production', status: 'success', commit: 'deadbeef00' } });
@@ -275,7 +275,7 @@ test('kv-keys returns names and expiration only, never values', async () => {
 });
 
 test('r2-list returns names, sizes, dates and content types, no bodies', async () => {
-  const r = await cloudflareAction({ kind: 'r2-list', bucket: 'apple-media', prefix: 'image/' });
+  const r = await cloudflareAction({ kind: 'r2-list', bucket: 'studpilot-media', prefix: 'image/' });
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual(r.objects, [{ key: 'image/a.png', size: 1234, uploaded: iso(NOW - 5 * HOUR), contentType: 'image/png' }]);
   assert.deepEqual(r.prefixes, ['image/thumbs/']);
@@ -306,7 +306,7 @@ test('dryRun returns the exact plan without calling fetch', async () => {
   assert.equal(calls.length, 0);
   // The rollback preview reads (script list, versions, deployments) so it can refuse what the real call
   // would refuse; it still never writes.
-  const rb = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.prev, dryRun: true });
+  const rb = await cloudflareAction({ kind: 'rollback', script: 'studpilot', versionId: V.prev, dryRun: true });
   assert.equal(rb.dryRun, true);
   assert.deepEqual(rb.plan, { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/studpilot/deployments`,
     body: { strategy: 'percentage', versions: [{ version_id: V.prev, percentage: 100 }], annotations: { 'workers/message': 'Rollback from owner dashboard' } } });
@@ -314,20 +314,20 @@ test('dryRun returns the exact plan without calling fetch', async () => {
 });
 
 test('rollback validates the script and the version before it writes', async () => {
-  for (const b of [{ script: 'apple', versionId: 'not-a-uuid' }, { script: '../x', versionId: V.prev }, { script: 'apple' }]) {
+  for (const b of [{ script: 'studpilot', versionId: 'not-a-uuid' }, { script: '../x', versionId: V.prev }, { script: 'studpilot' }]) {
     assert.equal((await cloudflareAction({ kind: 'rollback', ...b, dryRun: true })).ok, false, JSON.stringify(b));
   }
   assert.equal(calls.length, 0);
-  const foreign = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: '44444444-4444-4444-8444-444444444444' });
+  const foreign = await cloudflareAction({ kind: 'rollback', script: 'studpilot', versionId: '44444444-4444-4444-8444-444444444444' });
   assert.equal(foreign.ok, false);
   assert.match(foreign.reason, /לא שייכת/);
   const other = await cloudflareAction({ kind: 'rollback', script: 'nope', versionId: V.prev });
   assert.equal(other.ok, false);
-  const serving = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.new });
+  const serving = await cloudflareAction({ kind: 'rollback', script: 'studpilot', versionId: V.new });
   assert.equal(serving.ok, false);
   assert.match(serving.reason, /כבר/);
   // The preview refuses the same cases, so the owner never sees a plan the real call would reject.
-  for (const b of [{ script: 'apple', versionId: '44444444-4444-4444-8444-444444444444' }, { script: 'nope', versionId: V.prev }, { script: 'apple', versionId: V.new }]) {
+  for (const b of [{ script: 'studpilot', versionId: '44444444-4444-4444-8444-444444444444' }, { script: 'nope', versionId: V.prev }, { script: 'studpilot', versionId: V.new }]) {
     const r = await cloudflareAction({ kind: 'rollback', ...b, dryRun: true });
     assert.equal(r.ok, false, `dry run accepted ${JSON.stringify(b)}`);
     assert.equal(r.plan, undefined);
@@ -336,7 +336,7 @@ test('rollback validates the script and the version before it writes', async () 
 });
 
 test('rollback posts the chosen version at 100% (fake upstream) and drops the cache', async () => {
-  const r = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.prev });
+  const r = await cloudflareAction({ kind: 'rollback', script: 'studpilot', versionId: V.prev });
   assert.equal(r.ok, true, r.reason);
   const post = calls.filter((c) => c.method === 'POST');
   assert.equal(post.length, 1);
@@ -377,7 +377,7 @@ test('no secret reaches a response when the upstream echoes the Authorization he
 
 // ---------------------------------------------------------------- insights
 const base = () => ({
-  workers: [{ name: 'apple', deployments: [{ id: 'd2', createdAt: iso(NOW - 0.3 * HOUR), trigger: 'deployment', versions: [{ id: V.new, pct: 100 }] }],
+  workers: [{ name: 'studpilot', deployments: [{ id: 'd2', createdAt: iso(NOW - 0.3 * HOUR), trigger: 'deployment', versions: [{ id: V.new, pct: 100 }] }],
     versions: [{ id: V.new, number: 161, createdAt: iso(NOW - 0.3 * HOUR) }], serving: [{ id: V.new, pct: 100, number: 161 }], cpuP99Ms: 3, requests24h: 1000, errors24h: 0 }],
   traffic: { last24h: { requests: 1000, errors: 0, cpuP99Ms: 3 }, prev24h: { requests: 1000, errors: 0 }, perHour: [] },
   d1: [{ name: 'small', sizeBytes: 5e6 }], ai: { neuronsToday: 100, neurons24h: 100 }, durableObjects: [], aiGateway: [], turnstile: [], plan: { paid: false },
@@ -435,7 +435,7 @@ test('insights: the last deploy, its trigger, and whether it is the one serving'
 });
 
 test('insights: D1 size vs the plan limit', () => {
-  const p = base(); p.d1 = [{ name: 'golem-corpus', sizeBytes: 610066432 }]; p.plan = { paid: true };
+  const p = base(); p.d1 = [{ name: 'studpilot-corpus', sizeBytes: 610066432 }]; p.plan = { paid: true };
   const d = insightsFor(p, NOW).find((x) => /D1/.test(x.title));
   assert.equal(d.level, 'info');
   assert.match(d.detail, /10 GB/);

@@ -7,12 +7,13 @@ source-control / PR / CI system and deploys nothing.
 ## The canonical path (unchanged)
 
 ```
-cd apps/worker && pnpm exec wrangler deploy     # API, from apps/worker/wrangler.jsonc
+node infra/deploy-worker.mjs studpilot          # API, from apps/worker/wrangler.studpilot.jsonc
 node infra/deploy-static.mjs                    # site + app -> D1 static store
 ```
 
-`apps/worker/wrangler.jsonc` is the only wrangler config in the repository and
-remains canonical. It was not moved and no root copy was created.
+`apps/worker/wrangler.studpilot.jsonc` is the only Worker config in the repository (the former
+`wrangler.jsonc`, the `golem` Worker's, was deleted in handoff step 1.3). The rest of this page is the
+history of the Workers Builds integration.
 
 ## What was removed, and why it mattered more than the red check
 

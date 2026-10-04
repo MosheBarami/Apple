@@ -1,0 +1,19 @@
+{
+ "at": "2026-10-04T19:25:22.618Z",
+ "auth": {
+  "http": 200,
+  "before": {
+   "site_url": "https://apple.moshe-barami111.workers.dev/app",
+   "uri_allow_list": "https://apple.moshe-barami111.workers.dev/app/**,https://apple.moshe-barami111.workers.dev/app,https://apple.moshe-barami111.workers.dev/**,https://golem.moshe-barami111.workers.dev/app/**"
+  },
+  "after": {
+   "site_url": "https://studpilot.app/app",
+   "uri_allow_list": "https://studpilot.app/app/**,https://studpilot.app/app,https://studpilot.app/**,https://apple.moshe-barami111.workers.dev/app/**,https://apple.moshe-barami111.workers.dev/app,https://apple.moshe-barami111.workers.dev/**,https://golem.moshe-barami111.workers.dev/app/**"
+  }
+ },
+ "project": {
+  "http": 200,
+  "detail": "StudPilot",
+  "nameAfter": "StudPilot"
+ }
+}

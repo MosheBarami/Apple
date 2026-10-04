@@ -99,7 +99,7 @@ export function derive(d = {}, { now = Date.now(), history = {} } = {}) {
     const sum = Array(len).fill(0);
     for (const i of issues) arr(i.trend).forEach((v, k) => { sum[k + len - arr(i.trend).length] += Number(v) || 0; });
     const base = ms(st.fetchedAt) ?? now;
-    const dep = cf ? arr(cf.workers).filter((w) => w.name === 'apple').flatMap((w) => arr(w.deployments)).map((x) => ms(x.createdAt)).filter(Boolean).sort((a, b) => b - a)[0] : null;
+    const dep = cf ? arr(cf.workers).filter((w) => w.name === 'studpilot').flatMap((w) => arr(w.deployments)).map((x) => ms(x.createdAt)).filter(Boolean).sort((a, b) => b - a)[0] : null;
     if (len === 24 && dep && base - dep < 24 * HOUR && base - dep >= HOUR) {
       const hoursAfter = Math.floor((base - dep) / HOUR);
       const after = sum.slice(len - hoursAfter);

@@ -1,0 +1,304 @@
+{
+ "measuredAt": "2026-10-04 19:40-19:50 UTC, after deploy B (8fc5e840)",
+ "method": "Cloudflare REST (Durable Object object lists with SHA-256 of the sorted object-id set, Vectorize info, R2 and KV listings), the migrator Worker (D1 row counts; row-by-row SHA-256 diff in LOG.md), Supabase Management API; read-only",
+ "durableObjects": {
+  "golem_SessionDO": {
+   "before": {
+    "objects": 77,
+    "hasStoredData": 77
+   },
+   "after": {
+    "namespace": "studpilot_ArchiveSessionDO",
+    "script": "studpilot",
+    "objects": 77,
+    "hasStoredData": 77
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 77,
+    "hasStoredData": 77
+   }
+  },
+  "golem_AdminDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "studpilot_ArchiveAdminDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "golem_PairingDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "studpilot_ArchivePairingDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "golem_QuotaDO": {
+   "before": {
+    "objects": 32,
+    "hasStoredData": 32
+   },
+   "after": {
+    "namespace": "studpilot_ArchiveQuotaDO",
+    "script": "studpilot",
+    "objects": 32,
+    "hasStoredData": 32
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 32,
+    "hasStoredData": 32
+   }
+  },
+  "golem_BudgetDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "studpilot_ArchiveBudgetDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "apple_SessionDO": {
+   "before": {
+    "objects": 211,
+    "hasStoredData": 209
+   },
+   "after": {
+    "namespace": "apple_SessionDO",
+    "script": "studpilot",
+    "objects": 211,
+    "hasStoredData": 209
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 188,
+    "hasStoredData": 186
+   }
+  },
+  "apple_AdminDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "apple_AdminDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "apple_QuotaDO": {
+   "before": {
+    "objects": 35,
+    "hasStoredData": 35
+   },
+   "after": {
+    "namespace": "apple_QuotaDO",
+    "script": "studpilot",
+    "objects": 35,
+    "hasStoredData": 35
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 34,
+    "hasStoredData": 34
+   }
+  },
+  "apple_BudgetDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "apple_BudgetDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "apple_PairingDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "after": {
+    "namespace": "apple_PairingDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 1
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 1
+   }
+  },
+  "golem_DiscordDO": {
+   "before": {
+    "objects": 0,
+    "hasStoredData": 0
+   },
+   "after": {
+    "namespace": "studpilot_ArchiveDiscordDO",
+    "script": "studpilot",
+    "objects": 0,
+    "hasStoredData": 0
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 0,
+    "hasStoredData": 0
+   }
+  },
+  "apple_DiscordDO": {
+   "before": {
+    "objects": 1,
+    "hasStoredData": 0
+   },
+   "after": {
+    "namespace": "apple_DiscordDO",
+    "script": "studpilot",
+    "objects": 1,
+    "hasStoredData": 0
+   },
+   "sameObjectIds": true,
+   "countsBeforeJson": {
+    "objects": 1,
+    "hasStoredData": 0
+   }
+  }
+ },
+ "durableObjectsNote": "Compared with the id-set baseline frozen immediately before the switch (do-ids-before-cutover.json), not with counts-before.json: apple_SessionDO 188 -> 211 objects are 23 empty sessions the before-fingerprint probe created (LOG.md correction), apple_QuotaDO 34 -> 35 is a new account. sameObjectIds=true means the identical set of objects survived.",
+ "d1": {
+  "studpilot-corpus": {
+   "account_deletions": 0,
+   "api_keys": 0,
+   "asset_library": 511208,
+   "asset_library_fts": 511208,
+   "asset_verification_log": 0,
+   "automation_runs": 0,
+   "automations": 0,
+   "chunks": 9376,
+   "chunks_fts": 9376,
+   "creator_write_log": 0,
+   "generated_image_tombstones": 2,
+   "generated_images": 16,
+   "memory_audit": 37,
+   "memory_entries": 25,
+   "memory_org_members": 0,
+   "memory_orgs": 0,
+   "notifications": 573,
+   "owner_corpus_components": 11,
+   "owner_corpus_fts": 116,
+   "project_asset_use": 0,
+   "project_branding": 1,
+   "recovery_requests": 0,
+   "static_assets": 16449,
+   "static_chunks": 16745,
+   "user_credentials": 0
+  }
+ },
+ "d1ChangedSinceCountsBefore": {
+  "notifications": {
+   "countsBefore": 572,
+   "after": 573
+  },
+  "static_assets": {
+   "countsBefore": 16331,
+   "after": 16449
+  },
+  "static_chunks": {
+   "countsBefore": 16624,
+   "after": 16745
+  }
+ },
+ "d1Note": "static_assets and static_chunks grew because the 18:40 UTC static deploy (853 files) wrote to the old database before the switch; the final row-by-row reconcile (19:12-19:37 UTC) made all 25 tables equal to the old one, row for row, and the freeze check after the switch is in LOG.md.",
+ "vectorize": {
+  "studpilot-docs": {
+   "dimensions": 384,
+   "vectorCount": 9527
+  }
+ },
+ "r2": {
+  "studpilot-media": {
+   "kind": "r2",
+   "name": "studpilot-media",
+   "total": 38,
+   "bytes": 5871824,
+   "byPrefix": {
+    "image": 16,
+    "owner-corpus": 22
+   }
+  }
+ },
+ "kv": {
+  "studpilot binding, same namespace (cc341a7db4d748139f161fdc292e6e84)": {
+   "kind": "kv",
+   "name": "cc341a7db4d748139f161fdc292e6e84",
+   "total": 9,
+   "byPrefix": {
+    "config:": 1,
+    "share:": 6,
+    "ws:": 2
+   }
+  }
+ },
+ "supabase": {
+  "auth.identities": 35,
+  "auth.users": 35,
+  "public.profiles": 35,
+  "public.projects": 201,
+  "public.membership_outbox_consumers": 2,
+  "public.membership_outbox_secret": 2,
+  "public.schema_migrations": 14,
+  "public.waitlist": 1
+ },
+ "supabaseNote": "auth.users/identities/profiles 34 -> 35: one new sign-up during the day; public.schema_migrations 13 -> 14: 0014. auth.sessions and refresh tokens change on their own and are not compared.",
+ "sessionFingerprint": {
+  "projects": 201,
+  "initialized": 178,
+  "uninitialized": 23,
+  "errors": 0,
+  "messages": 982
+ },
+ "sessionFingerprintNote": "200 of 201 projects have exactly the same message count as before; the one with more (+2) is the test project of the 19:39 chat run; none has fewer."
+}

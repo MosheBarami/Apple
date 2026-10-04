@@ -25,7 +25,7 @@ const MEDIA_SKIP = [/^evidence\/pixels\//, /^site\/assets\/wall\//, /^library\/p
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
 
 const HF_AUTHOR = 'moshebarami';
-const HEALTH_URL = 'https://apple.moshe-barami111.workers.dev/api/health';
+const HEALTH_URL = 'https://studpilot.app/api/health';
 const LANGFLOW = 'http://localhost:7860';
 
 const sh = (cmd, args, opts = {}) => new Promise((resolve) => {
@@ -373,7 +373,7 @@ async function langflowOf(repo) {
 }
 
 async function vectorizeOf(repo) {
-  const r = await sh('npx', ['wrangler', 'vectorize', 'info', 'golem-docs', '--config', 'wrangler.studpilot.jsonc', '--json'], { cwd: path.join(repo, 'apps/worker'), timeout: 90000 });
+  const r = await sh('npx', ['wrangler', 'vectorize', 'info', 'studpilot-docs', '--config', 'wrangler.studpilot.jsonc', '--json'], { cwd: path.join(repo, 'apps/worker'), timeout: 90000 });
   const json = /\{[\s\S]*\}/.exec(r.stdout)?.[0];
   const j = json ? JSON.parse(json) : null;
   if (typeof j?.vectorCount !== 'number') throw new Error('wrangler did not report the index');

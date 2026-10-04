@@ -41,7 +41,7 @@ if (!E2E_EMAIL || !E2E_PASSWORD) {
 const BASE = process.env.API_BASE;
 const ADMIN = envCompat('STUDPILOT_ADMIN_KEY');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
-const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
+const ANON = readFileSync(root + '/apps/worker/wrangler.studpilot.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,
 )[1];
 

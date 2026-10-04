@@ -15,9 +15,10 @@ and the rollback of each step. Every step's result is appended to `planning/proo
    migration (`from_script`) moved SQL and KV storage of two objects intact, and the source Worker's
    old binding forwarded to the destination. (Workers `sp-xfer-src` → `sp-xfer-dst`, deleted after.)
 
-So the production Worker is **renamed, not rebuilt**. That keeps every Durable Object, secret, cron,
-queue binding and the `studpilot.app` custom domain in place. No secret has to be re-entered, which
-matters because Wrangler cannot read secret values back.
+So the production Worker is **renamed, not rebuilt**. The throwaway test measured that this keeps its
+Durable Objects, secrets and vars, so no secret has to be re-entered (Wrangler cannot read secret values
+back). It did not measure the cron, the queue consumer, the custom domain or the Workflow; step 1.3f
+checks each of those on the renamed Worker.
 
 ## The old addresses
 
@@ -42,11 +43,13 @@ the old hosts keep **answering the API** and redirect only page loads:
 | 1.3c | Create R2 `studpilot-media`; migrator `/r2` | object count and bytes equal | binding unchanged; delete the copy |
 | 1.3d | Create queue `studpilot-notifications`, AI Gateway `studpilot` (same settings as `golem`) | listed | delete |
 | 1.3e | KV: title `golem-kv` → `studpilot-kv` (same id) | same id, new title, key count equal | title back |
-| 1.3f | **Rename the Worker** `apple` → `studpilot` (API PATCH) | `studpilot.app/api/health` answers; DO object counts unchanged | PATCH the name back |
-| 1.3g | Deploy `studpilot` from the renamed config: bindings to the new D1, Vectorize, R2, queue, gateway, Analytics Engine `studpilot_product_events`, Workflow `studpilot-model-upload`; `transferred_classes` brings the six `golem` DO classes in as `Archive*` classes; `studpilot.app` declared as a custom domain | health `buildSha` = HEAD; DO counts = before for apple and golem namespaces; D1/Vectorize/R2 counts = before | `wrangler rollback` to the version before; bindings point back at the old stores, which were never written to after the copy |
-| 1.3h | Create the `apple` proxy Worker on the freed name; deploy the proxy code over `golem` | published-plugin request (`POST /api/studio/poll` with `X-Golem-*`) on the apple host reaches studpilot; a page GET answers 301 | delete the proxy |
-| 1.3i | Reconcile D1 rows written between the copy and the switch | per-table counts = old (frozen) + new writes | n/a |
-| 1.3j | Live check: an old project with history opens on `studpilot.app`; the plugin pairs; a chat run completes | measured | as 1.3g |
+| 1.3f0 | Before anything moves (added 2026-10-04 after the coupling review): export golem's SessionDO transcripts outside the repo (runbook C2a), record golem's spend and every mapped session's `agentStatus`, re-freeze the object-id sets of every namespace, apply Supabase 0014 (golem outbox consumer off) | exported = `session-info` count; 0 pending golem rows | 0014: set the row back to enabled |
+| 1.3f | **Rename the Worker** `apple` → `studpilot` (API PATCH), then at once create the `apple` stand-in (`infra/legacy-proxy`) on the freed name | `studpilot.app/api/health` answers; the cron, queue consumer, custom domain and Workflow name the renamed script; a published-plugin poll on the apple host reaches studpilot; the gap is measured | PATCH the name back; delete the stand-in |
+| 1.3g-A | **Deploy A** (commit "cutover A"): name `studpilot`, the six golem classes transferred into `Archive*`, `LEGACY_QUOTA_DO` → `ArchiveQuotaDO`, the retention cron, the custom domain; the OLD stores | `buildSha` = A; object-id sets: `apple_*` unchanged, golem's now under studpilot; billing wiring reports the replica bound | none across a Durable Object migration (Cloudflare refuses that rollback), so A carries nothing else: fix forward |
+| 1.3h | Deploy the stand-in over `golem` | on the golem host a poll reaches studpilot and a page GET answers 301 | none back to the old golem Worker: after deploy A its classes belong to studpilot (its old code would get 410s). The fallback is redeploying the stand-in |
+| 1.3i | Reconcile: D1 row by row (migrator `/diff` + `/fix`), R2 by etag (`/r2/sync`), Vectorize re-run; record the digest of every old D1 table | 0 differences left | n/a |
+| 1.3g-B | **Deploy B** (commit "cutover B"): the copied stores | `buildSha` = B; every old D1 table's digest is unchanged since 1.3i, so nothing was written between the reconcile and the switch | `wrangler rollback` to A (no migration between them); the old stores were not written after the switch |
+| 1.3j | Live check: an old project with history opens on `studpilot.app`; the plugin pairs; a chat run completes | measured | as 1.3g-B |
 | 1.4 | Supabase name, Auth site URL and redirect list; Sentry; GitHub repo rename; Discord app and bot | API output saved in `platforms/` | each is renamed back by the same call |
 | 1.5 | Domain follow-through (CORS, Turnstile hostnames, plugin API base with fallback) | 4 sign-in methods on studpilot.app | config back |
 | 1.6 | Local folder rename: asks the owner (STALLED.md) | owner answer | n/a |

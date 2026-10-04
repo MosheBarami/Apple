@@ -15,7 +15,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as esbuild from 'esbuild';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -148,7 +148,7 @@ test('analytics engine: rows are shaped with unknown kept as null and credits de
   assert.equal(r.ok, true);
   assert.equal(r.days, 90, 'window clamped to the dataset retention');
   assert.match(sql, /INTERVAL '90' DAY/);
-  assert.match(sql, /FROM apple_product_events/);
+  assert.match(sql, /FROM studpilot_product_events/);
   assert.equal(r.rows[0].avgDurationMs, 250);
   assert.equal(r.rows[0].credits, 10);
   assert.equal(r.rows[1].avgDurationMs, null, 'no timed sample: unknown, not 0 ms');
@@ -299,4 +299,20 @@ test('image resize: never worse than before — no binding, a failure, or a bigg
   assert.equal(await IR.resizeForDisplay({}, new Uint8Array(10), 640), null);
   assert.equal(await IR.resizeForDisplay({ IMAGES: fakeImages(new Uint8Array(1), { fail: true }) }, new Uint8Array(10), 640), null);
   assert.equal(await IR.resizeForDisplay({ IMAGES: fakeImages(new Uint8Array(50)) }, new Uint8Array(10), 640), null);
+});
+
+/* ------------------------------------------------------------- the config the code expects --- */
+
+test('the Worker config names what the code reads back: its own name, the dataset, the queue, the domain', () => {
+  const cfg = JSON.parse(readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8').replace(/^\s*\/\/[^\n]*$/gm, ''));
+  assert.equal(cfg.name, 'studpilot');
+  // The SQL readback queries AE_DATASET by name; writes go to the binding's dataset. They must be one.
+  assert.equal(cfg.analytics_engine_datasets.find((d) => d.binding === 'PRODUCT_EVENTS')?.dataset, AE.AE_DATASET);
+  // A queue has one consumer Worker: this one must consume the queue it produces to.
+  const produced = cfg.queues.producers.find((q) => q.binding === 'NOTIFY_QUEUE')?.queue;
+  assert.equal(produced, NQ.NOTIFY_QUEUE_NAME);
+  assert.deepEqual(cfg.queues.consumers.map((q) => q.queue), [produced]);
+  assert.ok(cfg.routes?.some((r) => r.pattern === 'studpilot.app' && r.custom_domain === true), 'studpilot.app is not this Worker\'s domain');
+  // Declaring routes turns the workers.dev host off unless it is asked for.
+  assert.equal(cfg.workers_dev, true);
 });

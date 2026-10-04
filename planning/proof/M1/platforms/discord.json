@@ -1,0 +1,30 @@
+{
+ "at": "2026-10-04T19:24:30.324Z",
+ "steps": [
+  {
+   "step": "interactions endpoint",
+   "http": 200,
+   "result": "https://studpilot.app/api/discord/interactions"
+  },
+  {
+   "step": "bot username",
+   "http": 200,
+   "result": "StudPilot"
+  },
+  {
+   "step": "application name",
+   "http": 200,
+   "result": "AppleAI"
+  }
+ ],
+ "before": {
+  "name": "AppleAI",
+  "bot": "AppleAI App",
+  "interactions": "https://apple.moshe-barami111.workers.dev/api/discord/interactions"
+ },
+ "after": {
+  "name": "AppleAI",
+  "bot": "StudPilot",
+  "interactions": "https://studpilot.app/api/discord/interactions"
+ }
+}

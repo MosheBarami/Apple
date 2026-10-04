@@ -12,7 +12,7 @@ const commitsModule = () => { const abs = path.join(HERE, 'commits.mjs'); return
 const readText = (p) => { try { return fs.readFileSync(path.join(REPO, p), 'utf8'); } catch { return null; } };
 const demd = (s) => s.replace(/\*\*|`/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const HEALTH_URL = 'https://apple.moshe-barami111.workers.dev/api/health';
+const HEALTH_URL = 'https://studpilot.app/api/health';
 const DAY = 86400000;
 
 function agentsOf(list) {

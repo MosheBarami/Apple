@@ -114,7 +114,9 @@ function main() {
     }
 
     psql(PRELUDE);
-    for (const file of readdirSync(MIGRATIONS).filter((name) => name.endsWith('.sql')).sort()) {
+    // Up to 0013: this test drives 0009 with BOTH consumers enabled, and 0014 retires `golem`. 0014 is
+    // a one-line update, pinned by apps/worker/tests/membership-access-outbox-migration.test.mjs.
+    for (const file of readdirSync(MIGRATIONS).filter((name) => name.endsWith('.sql') && name < '0014').sort()) {
       psql(readFileSync(join(MIGRATIONS, file), 'utf8'));
     }
     psql(APP_GRANTS);

@@ -1,0 +1,4 @@
+// The stand-in on the former host apple.<sub>.workers.dev (handoff 1.3). Created only after the
+// production Worker has been renamed to studpilot, which frees the name. Delete after 2027-01-02.
+{ "name": "apple", "main": "index.js", "compatibility_date": "2026-09-01", "workers_dev": true, "triggers": { "crons": [] },
+  "services": [{ "binding": "STUDPILOT", "service": "studpilot" }] }

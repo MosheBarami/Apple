@@ -845,7 +845,7 @@ export const SCENARIOS = [
         must(!(ch in W.notifications.UNBUILT_CHANNELS), `channel "${ch}" is offered and listed as unbuilt at the same time`);
       }
 
-      const wrangler = source('apps', 'worker', 'wrangler.jsonc');
+      const wrangler = source('apps', 'worker', 'wrangler.studpilot.jsonc');
       must(/"crons"\s*:/.test(wrangler), 'no cron trigger is configured — nothing runs on a schedule to notice anything');
       const index = source('apps', 'worker', 'src', 'index.ts');
       must(/scheduled\s*:/.test(index), 'the worker exports no scheduled handler for the cron to call');

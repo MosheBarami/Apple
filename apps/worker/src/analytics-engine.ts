@@ -18,7 +18,7 @@ import type { Env } from './env';
 import type { StudPilotEvent } from './analytics';
 import { NEURONS_PER_CREDIT } from './pricing';
 
-export const AE_DATASET = 'apple_product_events';
+export const AE_DATASET = 'studpilot_product_events';
 
 // Column layout. Fixed across every kind so one query can read them all; changing an index here is
 // a schema change for three months of stored data, so add at the end, never reorder.

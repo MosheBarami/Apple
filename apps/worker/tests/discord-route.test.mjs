@@ -25,7 +25,8 @@ const WORKER = join(HERE, '..');
 const INDEX = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
 const DISCORD = readFileSync(join(WORKER, 'src', 'discord.ts'), 'utf8');
 const DO = readFileSync(join(WORKER, 'src', 'do', 'discord.ts'), 'utf8');
-const WRANGLER = readFileSync(join(WORKER, 'wrangler.jsonc'), 'utf8');
+const WRANGLER = readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8');
+const CONFIG = JSON.parse(WRANGLER.replace(/^\s*\/\/[^\n]*$/gm, ''));
 const route = INDEX.slice(INDEX.indexOf("app.post('/api/discord/interactions'"), INDEX.indexOf("app.post('/api/projects/:id/discord-code'"));
 
 test('the endpoint bypasses JWT auth AND authenticates by signature — both, or neither is safe', () => {
@@ -102,19 +103,24 @@ test('the bot token is used for registration only, never on the interaction path
 });
 
 test('the Durable Object is bound and migrated, never renamed', () => {
-  assert.match(WRANGLER, /\{ "name": "DISCORD_DO", "class_name": "DiscordDO" \}/);
-  assert.match(WRANGLER, /\{ "tag": "v3", "new_sqlite_classes": \["DiscordDO"\] \}/);
+  const bindings = CONFIG.durable_objects.bindings;
+  assert.ok(bindings.some((b) => b.name === 'DISCORD_DO' && b.class_name === 'DiscordDO' && !b.script_name));
+  const v3 = CONFIG.migrations.find((m) => m.tag === 'v3');
+  assert.deepEqual(v3?.new_sqlite_classes, ['DiscordDO']);
+  // A renamed_classes or deleted_classes entry for DiscordDO would move or drop its storage.
+  assert.equal(CONFIG.migrations.some((m) => [...(m.renamed_classes ?? []), ...(m.deleted_classes ?? [])]
+    .some((c) => (typeof c === 'string' ? c : c.from) === 'DiscordDO')), false);
   assert.match(INDEX, /export \{ DiscordDO \} from '\.\/do\/discord'/);
   // Every binding that existed before must still exist under the same name.
   for (const name of ['SESSION_DO', 'QUOTA_DO', 'PAIRING_DO', 'ADMIN_DO', 'BUDGET_DO']) {
-    assert.ok(WRANGLER.includes(`"name": "${name}"`), `${name} must not be renamed`);
+    assert.ok(bindings.some((b) => b.name === name), `${name} must not be renamed`);
   }
 });
 
 test('no Discord secret is committed anywhere', () => {
   // Both values go in through `wrangler secret put`. A public key in a file is not a catastrophe;
   // a bot token in one is, and the only reliable rule is that neither is ever written down.
-  for (const file of ['wrangler.jsonc', 'package.json']) {
+  for (const file of ['wrangler.studpilot.jsonc', 'package.json']) {
     const text = readFileSync(join(WORKER, file), 'utf8');
     assert.equal(/DISCORD_PUBLIC_KEY"\s*:/.test(text), false, `${file} must not carry the public key`);
     assert.equal(/DISCORD_BOT_TOKEN"\s*:/.test(text), false, `${file} must not carry the bot token`);

@@ -116,10 +116,10 @@ const DECLARED_ENTRIES = (() => {
 })();
 
 const ENTRYPOINTS = new Set([
-  // Declared in wrangler.jsonc as "main" — re-read rather than assumed.
+  // Declared in wrangler.studpilot.jsonc as "main" — re-read rather than assumed.
   ...(() => {
     try {
-      const cfg = readFileSync(join(ROOT, 'apps/worker/wrangler.jsonc'), 'utf8');
+      const cfg = readFileSync(join(ROOT, 'apps/worker/wrangler.studpilot.jsonc'), 'utf8');
       const m = /"main"\s*:\s*"([^"]+)"/.exec(cfg);
       return m ? [`apps/worker/${m[1]}`] : [];
     } catch { return []; }

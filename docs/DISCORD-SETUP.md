@@ -56,8 +56,8 @@ press Enter. Nothing is echoed to the screen as you paste — that is normal.
 
 ```
 cd apps/worker
-npx wrangler secret put DISCORD_PUBLIC_KEY
-npx wrangler secret put DISCORD_BOT_TOKEN
+npx wrangler secret put DISCORD_PUBLIC_KEY --config wrangler.studpilot.jsonc
+npx wrangler secret put DISCORD_BOT_TOKEN --config wrangler.studpilot.jsonc
 ```
 
 - `DISCORD_PUBLIC_KEY` — the value from step 2.
@@ -65,10 +65,6 @@ npx wrangler secret put DISCORD_BOT_TOKEN
 
 These two names are exact; the worker reads these and no others
 (`apps/worker/src/env.ts`). If wrangler asks you to log in to Cloudflare, do that first.
-
-> This targets the `golem` worker, which is the one serving production. If you have moved traffic
-> to the `apple` worker, add `--config wrangler.studpilot.jsonc` to both commands and run them again —
-> secrets are per-worker and do not travel.
 
 Then redeploy so the worker picks them up:
 

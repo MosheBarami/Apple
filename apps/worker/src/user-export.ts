@@ -389,7 +389,7 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   { store: 'kv', binding: 'KV', name: 'config:models', personal: false, holds: 'the model routing table' },
 
   // ------------------------------------------------------------------- Vectorize
-  { store: 'vectorize', binding: 'VEC', name: 'golem-docs', personal: false, holds: 'embeddings of the public documentation corpus' },
+  { store: 'vectorize', binding: 'VEC', name: 'studpilot-docs', personal: false, holds: 'embeddings of the public documentation corpus' },
 ];
 
 /** The spec for one table, or null if the table is not exported at all. */
