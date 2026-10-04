@@ -40,7 +40,9 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '22'
+  # 26, the version the suites are run on locally. The old-names guard compiles allowlist tokens with
+  # regex modifiers (`(?i:...)`), which Node 22 does not support.
+  NODE_VERSION: '26'
   PNPM_VERSION: '11.13.0'
 
 jobs:
