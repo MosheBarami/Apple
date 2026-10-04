@@ -46,6 +46,12 @@ export interface RefundInputs {
   studioDropped?: boolean;
   /** Credits charged to this run so far. */
   creditsSpent: number;
+  /**
+   * The run ended because the person's own allowance could not pay for a model step that had already
+   * run. That step is real compute the person used, so it is not handed back: refunding it made a
+   * Free allowance repeatable (5 units left, admitted for 1, step settled short, the 1 refunded).
+   */
+  allowanceUsedUp?: boolean;
 }
 
 export interface RefundVerdict {
@@ -57,7 +63,7 @@ export interface RefundVerdict {
    * WHY, as a short stable code for the ledger and the oplog. Never shown to a user — the sentence
    * is `refundSentence` below, and a code is not a sentence.
    */
-  why: 'delivered' | 'not_a_failure' | 'nothing_charged' | 'no_usable_output';
+  why: 'delivered' | 'not_a_failure' | 'nothing_charged' | 'no_usable_output' | 'allowance_used';
 }
 
 /**
@@ -127,6 +133,7 @@ export function runDeliveredSomething(i: RefundInputs): boolean {
  * clamped NaN is a silent zero with a sentence on top of it.
  */
 export function refundVerdict(i: RefundInputs): RefundVerdict {
+  if (i.allowanceUsedUp === true) return { refund: false, credits: 0, why: 'allowance_used' };
   const refundable = REFUNDABLE_REASONS.has(i.reason) || REFUNDABLE_OUTCOMES.has(i.buildOutcome ?? '')
     // A person pressing Stop is their choice, not a failure; a dropped Studio link is not theirs.
     || (i.studioDropped === true && i.reason !== 'stopped');

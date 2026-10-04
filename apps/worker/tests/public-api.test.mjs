@@ -1405,6 +1405,33 @@ test('an account out of Credits gets 429 and the model does not run', async () =
   assert.equal(bundle.trace.ai.length, 0, 'the model ran after the quota refused admission');
 });
 
+test('a call that overruns the account pays what is left and the header says what was taken (no free inference)', async () => {
+  // 200k tokens in and 20k out is far more than the 4 ledger units left after the 1-unit admission.
+  // The settlement used to be refused whole and `creditsSpent` still grew by the full amount, so the
+  // account paid 1 unit for the call and the header claimed the rest.
+  const state = { ...QUOTA_STATE, creditsRemaining: 5 };
+  const bundle = makeEnv({
+    aiResponse: { choices: [{ message: { content: 'Big answer.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 200_000, completion_tokens: 20_000 } },
+    quota: async ({ path, body }) => {
+      if (path !== '/spend') return state;
+      if (body.credits === 1) return { ok: true, state, fromAllowance: 1, fromCredits: 0 };
+      return body.upTo === true
+        ? { ok: false, state: { ...state, creditsRemaining: 0 }, fromAllowance: 4, fromCredits: 0 }
+        : { ok: false, state };
+    },
+  });
+  const key = await seedKey(bundle, { scopes: ['chat:write'] });
+  const r = await call('/v1/chat/completions', {
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
+  });
+  assert.equal(r.status, 200);
+  const spends = bundle.trace.calls.filter((cc) => cc.ns === 'QUOTA_DO' && cc.path === '/spend');
+  assert.equal(spends.length, 2, 'admission, then the settlement');
+  assert.equal(spends[1].body.upTo, true, 'the settlement asks the ledger for what is left, not for an all-or-nothing amount');
+  assert.equal(r.res.headers.get('X-StudPilot-Usage-Credits'), '5', 'the header reports the 1 + 4 units the ledger took, not the amount that was owed');
+  assert.equal(r.res.headers.get('X-StudPilot-Credits-Remaining'), '0');
+});
+
 test('the event stream opens, reports the transition, and ends when the run ends', async () => {
   let poll = 0;
   const bundle = makeEnv({

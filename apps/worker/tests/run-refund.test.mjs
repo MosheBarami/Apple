@@ -111,6 +111,13 @@ test('pressing stop is not a refund, and neither is a run nobody was charged for
   assert.equal(refundVerdict(barren({ reason: 'quota' })).refund, true, 'running out with nothing to show hands the Credits back');
 });
 
+test('a run that ended because the allowance could not pay for a step that ran is NOT refunded, whatever else it lacks', () => {
+  const v = refundVerdict(barren({ reason: 'quota', allowanceUsedUp: true }));
+  assert.equal(v.refund, false);
+  assert.equal(v.why, 'allowance_used');
+  assert.equal(refundVerdict(barren({ reason: 'quota' })).refund, true, 'a service-wide capacity stop (no flag) still hands the Credits back');
+});
+
 test('runDeliveredSomething is the single answer both the verdict and the wording are written from', () => {
   assert.equal(runDeliveredSomething(barren()), false);
   // Three successful reads are still nothing delivered — see the re-aim note above.
@@ -210,6 +217,27 @@ test('a spend that straddles the allowance boundary reports BOTH halves', async 
   assert.equal(r.ok, true);
   assert.equal(r.fromAllowance, daily);
   assert.equal(r.fromCredits, 4, 'the purchased balance covers only the remainder');
+});
+
+test('a settlement (upTo) charges what is LEFT and says it was not paid in full; admission stays all-or-nothing', async () => {
+  const q = quota();
+  await q.spend(745);
+  const whole = await q.call('/spend', { credits: 20, kind: 'usage_agent' });
+  assert.equal(whole.ok, false, 'without upTo a spend the balance cannot cover is refused whole, as before');
+  assert.equal((await q.state()).allowanceRemaining, 5, 'and took nothing');
+  const part = await q.call('/spend', { credits: 20, kind: 'usage_agent', upTo: true });
+  assert.equal(part.ok, false, 'a part-paid settlement is not reported as paid');
+  assert.equal(part.fromAllowance, 5, 'but it reports what it took');
+  assert.equal(part.fromCredits, 0);
+  assert.equal((await q.state()).allowanceRemaining, 0, 'the last five units are spent');
+  const none = await q.call('/spend', { credits: 20, kind: 'usage_agent', upTo: true });
+  assert.equal(none.ok, false);
+  assert.equal(none.fromAllowance, 0, 'with nothing left it takes nothing, and never goes below zero');
+  const fits = quota();
+  assert.equal((await fits.call('/spend', { credits: 20, kind: 'usage_agent', upTo: true })).ok, true, 'a settlement the balance covers is paid in full');
+  const unreadable = await quota().call('/spend', { credits: NaN, kind: 'usage_agent', upTo: true });
+  assert.equal(unreadable.ok, false, 'upTo does not turn an unreadable amount into "everything left"');
+  assert.equal(unreadable.state.allowanceRemaining, unreadable.state.creditsDaily);
 });
 
 test('THE REFUND PUTS BACK EXACTLY WHAT WAS TAKEN, in the same two ledgers', async () => {
@@ -359,7 +387,9 @@ function ledger(dailyAllowance = 100, purchased = 0) {
     handle(path, body) {
       if (path === '/state') return Response.json(state());
       if (path === '/spend') {
-        const want = Number(body.credits);
+        const asked = Number(body.credits);
+        // `upTo` is QuotaDO's: a settlement charges what is left instead of refusing the whole amount.
+        const want = body.upTo === true ? Math.min(asked, Math.max(0, dailyAllowance - allowanceSpent) + credits) : asked;
         const fromAllowance = Math.min(want, Math.max(0, dailyAllowance - allowanceSpent));
         const fromCredits = want - fromAllowance;
         // Every ATTEMPT is recorded, refused or not: "the ledger was asked and said no" is the case
@@ -370,8 +400,8 @@ function ledger(dailyAllowance = 100, purchased = 0) {
         }
         allowanceSpent += fromAllowance;
         credits -= fromCredits;
-        spends.push({ ...body, ok: true, fromAllowance, fromCredits });
-        return Response.json({ ok: true, state: state(), fromAllowance, fromCredits });
+        spends.push({ ...body, ok: want >= asked, fromAllowance, fromCredits });
+        return Response.json({ ok: want >= asked, state: state(), fromAllowance, fromCredits });
       }
       if (path === '/refund') {
         refunds.push(body);
@@ -543,33 +573,74 @@ test('the purchased balance comes back as purchased balance, never as free allow
   assert.equal(book.credits, 40, 'and so is the balance — not one Credit more, not one less');
 });
 
-test('A RUN REFUSED FOR WANT OF CREDITS ASKS BACK WHAT IT TOOK, not what it wanted', async () => {
+test('A RUN REFUSED FOR WANT OF CREDITS REPORTS WHAT IT TOOK, not what it wanted, and does not give it back', async () => {
   // One Credit of allowance and nothing purchased. Admission takes the Credit; the settlement
   // (600 neurons = 20 Credits at 30 neurons each) is REFUSED, because there is nothing left.
   //
   // `creditsSpent` used to be incremented on BOTH sides of that branch, so a charge the ledger
-  // declined was still reported to the user as money spent. With a refund path in place that
-  // inflation becomes visible twice: the run would ask the ledger for 20 Credits it never took,
-  // get 1 back, and then explain the missing 19 with a reason that never happened.
+  // declined was still reported to the user as money spent. The figure must be what the ledger took:
+  // the 1 unit of admission, not the 20 the settlement wanted.
+  //
+  // THIS TEST USED TO ASSERT THE REFUND OF THAT UNIT ("running out with nothing built hands the
+  // Credit back"). That was the defect (review finding A): the step had run, and giving the unit back
+  // made a Free allowance repeatable. The property now is that the step is paid for as far as the
+  // balance goes and what it took stays taken.
   const book = ledger(1, 0);
   const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Some progress.', neurons: 600 })] });
   await start(h);
   await h.session.alarm();
 
-  assert.equal(book.spends.length, 2, 'admission, then a settlement the ledger refused');
+  assert.equal(book.spends.length, 2, 'admission, then a settlement the ledger could not pay in full');
   assert.equal(book.spends[1].ok, false);
   assert.equal(lastEnd(h).stopReason, 'quota');
+  assert.equal(book.refunds.length, 0, 'a step that ran is not refunded');
+  assert.equal(h.sql.oplog.some((o) => o.kind === 'credits_refunded'), false, 'and no refund is written down');
+  assert.equal(book.allowanceSpent, 1, 'the Credit taken at the door stays taken');
+  assert.equal(lastEnd(h).creditsSpent, 1, 'and the meter ends where the ledger does: 1, not the 20 the settlement wanted');
+  assert.doesNotMatch(assistantRow(h).content, /not been charged for this run/);
+});
 
-  const note = h.sql.oplog.find((o) => o.kind === 'credits_refunded');
-  assert.ok(note, 'running out with nothing built hands the Credit back');
-  assert.match(
-    note.summary,
-    /asked 1, returned 1$/,
-    'ONE Credit was taken, so one Credit is the most that can be asked back — not the 20 the settlement wanted',
-  );
-  assert.equal(book.allowanceSpent, 0);
-  assert.equal(lastEnd(h).creditsSpent, 0, 'and the meter ends where the ledger does');
-  assert.match(assistantRow(h).content, /not been charged for this run/);
+/** The PRODUCTION QuotaDO behind the session (modelled sql, real arithmetic), recording every spend and refund asked of it. */
+function realBook(q) {
+  const spends = [];
+  const refunds = [];
+  return {
+    spends, refunds,
+    async handle(path, body) {
+      const out = await q.call(path, body, path === '/state' ? 'GET' : 'POST');
+      if (path === '/spend') spends.push({ credits: body.credits, ok: out.ok, fromAllowance: out.fromAllowance, fromCredits: out.fromCredits });
+      if (path === '/refund') refunds.push(body);
+      return Response.json(out);
+    },
+  };
+}
+
+test('THE FREE ALLOWANCE CANNOT BE FARMED: a request that overruns it takes what is left, keeps it, and the next request is refused', async () => {
+  //[[ Review finding A. A Free user with 5 ledger units left is admitted for 1; the model step then
+  //   owes more than the 4 that remain; the all-or-nothing split charged NOTHING and the 'quota'
+  //   ending refunded the admission unit. Net 0, text delivered, and the same 5 units were there for
+  //   the next request, and the next, until the service-wide ceiling. A ledger that is empty after the
+  //   first request cannot be farmed by a second. ]]
+  const q = quota();
+  await q.spend(745);
+  assert.equal((await q.state()).allowanceRemaining, 5, 'the fixture: five ledger units left of Free\'s 750');
+  const book = realBook(q);
+
+  const first = makeSession({ book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Here is a long answer.', neurons: 600 })] });
+  await start(first);
+  await first.session.alarm();
+  assert.equal(lastEnd(first).stopReason, 'quota', 'the allowance ran out while paying for the step');
+  assert.equal((await q.state()).allowanceRemaining, 0, 'the five units are SPENT: what remained was settled, not left on the table');
+  assert.equal(book.refunds.length, 0, 'and the admission unit is not handed back for a step that ran');
+  assert.equal(lastEnd(first).creditsSpent, 5, 'the meter says what the ledger took');
+
+  // The same Free user asks again. Nothing is left, so nothing runs.
+  const second = makeSession({ book, responses: [] });
+  await start(second, 'and one more');
+  const refusal = second.sent.find((m) => m.type === 'error');
+  assert.equal(refusal?.code, 'quota', 'the second request is refused at the door');
+  assert.equal(second.sent.some((m) => m.type === 'msg_end'), false, 'no run, so no free inference');
+  assert.equal((await q.state()).allowanceRemaining, 0);
 });
 
 test('A LEDGER THAT DID NOT ANSWER IS NOT A REFUND THAT FAILED — and the reply claims neither', async () => {

@@ -5171,13 +5171,13 @@ app.get('/v1/openapi.json', (c) => c.json(openApiDocument(new URL(c.req.url).ori
 app.get('/v1/models', (c) => c.json(publicModelList(Date.now())));
 
 // ---------------------------------------------------------------- /v1 completions
-async function quotaSpend(env: Env, userId: string, credits: number, kind: string, requestId: string) {
+async function quotaSpend(env: Env, userId: string, credits: number, kind: string, requestId: string, upTo = false) {
   const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/spend', {
     method: 'POST',
     headers: { [REQUEST_ID_HEADER]: requestId },
-    body: JSON.stringify({ credits, kind }),
+    body: JSON.stringify({ credits, kind, ...(upTo ? { upTo: true } : {}) }),
   });
-  return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number } };
+  return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number }; fromAllowance?: number; fromCredits?: number };
 }
 
 function idemStorageKey(keyId: string, idemKey: string): string {
@@ -5292,8 +5292,10 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     }
     const owed = creditsForNeurons(resp.neurons) - creditsSpent;
     if (owed > 0) {
-      const settle = await quotaSpend(c.env, key.userId, owed, legacy ? 'api_completion' : 'api_chat', requestId);
-      creditsSpent += owed;
+      // The model has already run, so the ledger takes what the account has left (upTo) instead of
+      // refusing the whole amount and letting the call go unpaid. The header reports what it took.
+      const settle = await quotaSpend(c.env, key.userId, owed, legacy ? 'api_completion' : 'api_chat', requestId, true);
+      creditsSpent += settle.ok ? owed : Math.max(0, settle.fromAllowance ?? 0) + Math.max(0, settle.fromCredits ?? 0);
       creditsRemaining = settle.state?.creditsRemaining ?? creditsRemaining;
     }
   }

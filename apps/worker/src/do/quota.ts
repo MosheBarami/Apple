@@ -463,14 +463,27 @@ export class QuotaDO extends DurableObject<Env> {
       return Response.json({ ok: true, state: await this.state() });
     }
     if (url.pathname === '/spend' && req.method === 'POST') {
-      const { credits, kind } = (await req.json()) as { credits: number; kind: string };
+      const { credits, kind, upTo } = (await req.json()) as { credits: number; kind: string; upTo?: boolean };
       const st = await this.state();
       if (st.unmetered === true) {
         return Response.json({ ok: true, state: st, fromAllowance: 0, fromCredits: 0 });
       }
+      //[[ A SETTLEMENT IS FOR COMPUTE THAT HAS ALREADY RUN, SO IT CHARGES WHAT IS LEFT.
+      //
+      //   `upTo` is sent by the callers that pay for a finished model step. Refusing the whole amount
+      //   because the balance is a few units short charged NOTHING for the step: a Free user with 5
+      //   units left was admitted for 1, the step owed more than the 4 that remained, the all-or-nothing
+      //   split took none of it, and the next request found the same 5 units. So the amount is capped
+      //   at what the person has, the answer says `ok: false` (the step was not paid in full) and
+      //   reports what WAS taken, and the overrun is bounded by the one step that already ran.
+      //   Admission (the 1 unit before a step) never sends it and stays all-or-nothing. A NaN is still
+      //   refused: `Number.isFinite` keeps an unreadable amount from being read as "everything left". ]]
+      const amount = upTo === true && Number.isFinite(credits)
+        ? Math.min(credits, st.allowanceRemaining + st.credits)
+        : credits;
       // Allowance first, credits only for the remainder. Spending a purchased balance while a free
       // allowance is still available would quietly charge the user for something they already had.
-      const split = splitSpend(credits, st.allowanceRemaining, st.credits);
+      const split = splitSpend(amount, st.allowanceRemaining, st.credits);
       if (!split.affordable) return Response.json({ ok: false, state: st });
       const { fromAllowance, fromCredits } = split;
       if (fromCredits > 0) await this.ctx.storage.put('credits', Math.max(0, st.credits - fromCredits));
@@ -510,7 +523,7 @@ export class QuotaDO extends DurableObject<Env> {
       // this charge touched and in the right proportions. Without it the only honest reversal
       // available to a caller is "put it all back as purchased balance", which turns a spent free
       // allowance into money. Additive: an older caller reads `ok` and `state` exactly as before.
-      return Response.json({ ok: true, state: after, fromAllowance, fromCredits });
+      return Response.json({ ok: !(amount < credits), state: after, fromAllowance, fromCredits });
     }
     /*
      * GIVING IT BACK — the other half of a ledger that could only ever subtract.

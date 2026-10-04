@@ -303,6 +303,11 @@ interface AgentState {
    */
   creditsFromAllowance?: number;
   creditsFromCredits?: number;
+  /**
+   * The run ended because the person's own allowance could not pay for a model step that had already
+   * run (settleUsage). That step was real compute, so refundVerdict does not hand its Credits back.
+   */
+  allowanceUsedUp?: boolean;
   /** What was actually put back at the end of the run, once. Its presence is also the "done" mark. */
   creditsRefunded?: number;
   /** neurons this run has consumed, so Credits round once per run instead of once per call */
@@ -4423,25 +4428,11 @@ export class SessionDO extends DurableObject<Env> {
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neurons;
     const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
     if (owed > 0) {
-      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      //[[ ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST.
-      //
-      //   This was `agent.creditsSpent += owed` unconditionally, on both sides of the branch below.
-      //   So a settlement REFUSED for want of Credits still moved the figure: the ledger took
-      //   nothing, and the transcript row, `msg_end.creditsSpent` and the run-complete notification
-      //   all reported the full amount as charged. Money the user still had, shown as money they
-      //   had spent — the product's own failure shape pointed at a balance.
-      //
-      //   It matters twice over now. `refundVerdict` reads this number, so an inflated one would
-      //   ask the ledger for Credits it never took and the reply would then explain the shortfall
-      //   with a reason that never happened. ]]
-      if (settle.ok) agent.creditsSpent += owed;
-      // Accumulated per settlement, not derived at the end: allowance can run out MID-RUN, so one
-      // run's Credits are genuinely split across both ledgers and only the charges themselves know
-      // where the boundary fell. See AgentState.creditsFromAllowance.
-      this.recordSpendSplit(agent, settle);
+      const settle = await this.settleUsage(agent, owed);
       if (!settle.ok) {
-        // they have run out mid-run: finish this step's work, then stop cleanly
+        // they have run out mid-run: finish this step's work, then stop cleanly. What was left is
+        // already taken (settleUsage) and the step is not refunded: see AgentState.allowanceUsedUp.
+        agent.allowanceUsedUp = true;
         agent.finalText =
           (res.text || agent.finalText || '') +
           '\n\nThat used the last of your Credits for today. Everything so far is saved — they refill at midnight UTC.';
@@ -5721,11 +5712,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!(neurons > 0)) return;
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + neurons;
     const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
-    if (owed > 0) {
-      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      if (settle.ok) agent.creditsSpent += owed;
-      this.recordSpendSplit(agent, settle);
-    }
+    if (owed > 0) await this.settleUsage(agent, owed);
   }
 
   /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
@@ -6014,6 +6001,7 @@ export class SessionDO extends DurableObject<Env> {
       textDelivered: typeof agent.streamedText === 'string' && agent.streamedText.trim().length > 0 && !contentOverride,
       creditsSpent: agent.creditsSpent,
       studioDropped: agent.studioDropped === true,
+      allowanceUsedUp: agent.allowanceUsedUp === true,
     });
     let refundNote: string | null = null;
     if (verdict.refund && agent.creditsRefunded === undefined) {
@@ -7676,23 +7664,49 @@ export class SessionDO extends DurableObject<Env> {
     userId: string,
     credits: number,
     kind: string,
+    upTo = false,
   ): Promise<{ ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number }> {
     const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
-    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind }) });
+    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind, ...(upTo ? { upTo: true } : {}) }) });
     const data = (await res.json()) as { ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number };
     return data;
   }
 
   /**
+   * Pay for model compute that has ALREADY RUN, with whatever the person has left.
+   *
+   * `ok: false` means the step was not paid in full. What was taken is still added to the run's cost
+   * and to its split, because a refund must reverse exactly what the ledger took.
+   *
+   * ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST. This was `agent.creditsSpent += owed`
+   * unconditionally, so a settlement refused for want of Credits still moved the figure and the
+   * transcript row, `msg_end.creditsSpent` and the run-complete notification reported money the user
+   * still had as money spent. `refundVerdict` reads this number, so an inflated one would ask the
+   * ledger for Credits it never took.
+   *
+   * It is not refused outright either (`upTo`): a step that owed 20 units against 4 left charged
+   * nothing, the 'quota' ending refunded the admission unit, and the same Free allowance paid for the
+   * next request, without end. Accumulated per settlement, not derived at the end: allowance can run
+   * out mid-run, so one run's Credits are split across both ledgers and only the charges know where
+   * the boundary fell. See AgentState.creditsFromAllowance.
+   */
+  private async settleUsage(agent: AgentState, owed: number) {
+    const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`, true);
+    agent.creditsSpent += settle.ok ? owed : Math.max(0, settle.fromAllowance ?? 0) + Math.max(0, settle.fromCredits ?? 0);
+    this.recordSpendSplit(agent, settle);
+    return settle;
+  }
+
+  /**
    * Remember which ledger a charge came out of.
    *
-   * ONLY ON A CHARGE THAT SUCCEEDED, and only when QuotaDO actually reported a split. A refused
-   * spend moved nothing, and a response with no split at all is one from a worker/DO pair mid-roll:
-   * leaving the fields undefined there is what makes `refundRun` decline rather than invent a
-   * proportion. Undefined and zero are different facts and are kept different.
+   * ONLY WHEN QuotaDO actually reported a split, which a spend it took nothing for does not (it
+   * answers `ok: false` with the state alone); a part-paid settlement reports what it did take. A
+   * response with no split at all is one from a worker/DO pair mid-roll: leaving the fields
+   * undefined there is what makes `refundRun` decline rather than invent a proportion. Undefined
+   * and zero are different facts and are kept different.
    */
   private recordSpendSplit(agent: AgentState, settle: { ok: boolean; fromAllowance?: number; fromCredits?: number }): void {
-    if (!settle.ok) return;
     if (typeof settle.fromAllowance !== 'number' || typeof settle.fromCredits !== 'number') return;
     agent.creditsFromAllowance = (agent.creditsFromAllowance ?? 0) + Math.max(0, settle.fromAllowance);
     agent.creditsFromCredits = (agent.creditsFromCredits ?? 0) + Math.max(0, settle.fromCredits);
