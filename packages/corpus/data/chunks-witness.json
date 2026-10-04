@@ -36,6 +36,14 @@
         "kind": "api"
       }
     ],
+    "api-animationcontroller": [
+      {
+        "vecId": "api-animationcontroller-1",
+        "title": "AnimationController (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationController",
+        "kind": "api"
+      }
+    ],
     "api-animationtrack": [
       {
         "vecId": "api-animationtrack-1",
@@ -123,6 +131,14 @@
         "vecId": "api-contextactionservice-1",
         "title": "ContextActionService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/ContextActionService",
+        "kind": "api"
+      }
+    ],
+    "api-data-overlapparams": [
+      {
+        "vecId": "api-data-overlapparams-1",
+        "title": "OverlapParams (Datatype)",
+        "url": "https://create.roblox.com/docs/reference/engine/datatypes/OverlapParams",
         "kind": "api"
       }
     ],
@@ -241,6 +257,14 @@
         "vecId": "api-inputaction-1",
         "title": "InputAction (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/InputAction",
+        "kind": "api"
+      }
+    ],
+    "api-lib-buffer": [
+      {
+        "vecId": "api-lib-buffer-1",
+        "title": "buffer (Library)",
+        "url": "https://create.roblox.com/docs/reference/engine/libraries/buffer",
         "kind": "api"
       }
     ],
@@ -529,6 +553,14 @@
         "vecId": "api-tweenservice-1",
         "title": "TweenService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/TweenService",
+        "kind": "api"
+      }
+    ],
+    "api-unreliableremoteevent": [
+      {
+        "vecId": "api-unreliableremoteevent-1",
+        "title": "UnreliableRemoteEvent (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UnreliableRemoteEvent",
         "kind": "api"
       }
     ],
