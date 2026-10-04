@@ -56,6 +56,21 @@ API chunks.
 license file in the checkout, `src/chunk.mjs` **skips the source entirely** and
 prints a note — nothing with an unverified license enters the corpus.
 
+## Source 3 — Apple research notes (`packages/corpus/research/NN-topic.md`)
+
+- **What:** original syntheses written for Apple (2026-10-04 onward), one per topic of `research/roblox/BRIEF.md`:
+  viral hits, discovery, genre design, Luau architecture, world visuals, UI/UX, animation/audio/VFX, monetisation and
+  policy, the tools ecosystem, and a from-scratch playbook.
+- **Licence basis:** Apple's own text. Facts are restated in Apple's words, with at most a few quoted words and no
+  copied passages. Every fact carries a numbered citation `[S#]` to its public source (Roblox Creator Docs, the
+  DevForum, Roblox's blog and RDC, developer talks, press). The source list sits at the end of each note.
+- **Chunks:** `src/research-chunks.mjs` splits each note on `##`/`###` (≤2,400 chars), `kind: 'research'`,
+  `docSlug: research-<note>`. Each chunk's `url` is the first source it cites (else the note's first source), and its
+  `[S#]` markers stay in the text.
+- **Upload:** `upload.mjs` carries them with the docs chunks, so a prune keeps them. `src/research-upload.mjs` sends
+  only these (add or update, no prune) for machines without `raw/`.
+- **Third-party figures** (player counts, revenue) are labelled as such in the notes, with their date.
+
 ## Explicitly excluded
 
 - `content/en-us/assets/` media (not needed; huge LFS payload).

@@ -35,6 +35,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { researchChunks } from './research-chunks.mjs';
 import { batchWork, changedDocs, planFullIndex, planIndex } from './index-plan.mjs';
 import { skillCardChunks } from './skill-card-chunks.mjs';
 
@@ -114,7 +115,8 @@ function loadChunks() {
   });
   // The general craft cards ride along, so the index holds them and a prune never removes them.
   const cards = JSON.parse(readFileSync(path.join(ROOT, 'data', 'skill-cards.json'), 'utf8')).cards;
-  return [...docs, ...skillCardChunks(cards)];
+  // Apple's research notes ride along too (research-chunks.mjs), for the same reason.
+  return [...docs, ...skillCardChunks(cards), ...researchChunks()];
 }
 
 /**
