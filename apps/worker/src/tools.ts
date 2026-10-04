@@ -82,7 +82,7 @@ import { applyOrigin, readOrigin, sharedParent } from './local-space';
 import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, libraryAdvice, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted } from './model-library';
+import { findLibraryModels, libraryAdvice, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted, type LibraryModel } from './model-library';
 import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
 import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, librarySafetyCopy, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame, FIND_TYPES, FIND_SIZES } from './local-owner-corpus';
 import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
@@ -100,6 +100,7 @@ import { judgeComposed } from './composed-judge';
 import { JUDGE_GAME_DEF, judgeGame, judgeSummary } from './client-judge';
 import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
+import { contentWords, fetchLiveModel, liveAssetIdOf, relevanceOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -168,6 +169,18 @@ export interface AgentCtx {
   libraryRun?: LibraryRun;
   /** The one library model the project owner selected from a visual preview for this run. */
   approvedLibraryAssetId?: number;
+  /**
+   * Live Creator Store rows this run's find_library_model returned, by library id (`cs:<assetId>`): the only live ids
+   * insert_library_model takes. A plain object, kept on the run beside `libraryRun`, because the context is rebuilt for every call.
+   */
+  liveLibraryRows?: Record<string, LiveModel>;
+  /**
+   * Whether find_library_model may search the live Creator Store (creator-store-live.ts). Off unless the run's context turns it on,
+   * so a suite that never stubs the network never reaches Roblox, as with `webFetch`.
+   */
+  liveCreatorStore?: boolean;
+  /** Outbound HTTP for that search; the global fetch when absent. */
+  liveStoreFetch?: FetchLike;
   rejectedLibraryAssetIds?: number[];
   assetChoiceAnchor?: string;
   /**
@@ -1289,6 +1302,11 @@ function libraryRunOf(ctx: AgentCtx): LibraryRun {
   return (ctx.libraryRun ??= {});
 }
 
+/** A library row by id: the bundled index, or a live Creator Store row this run's search returned. */
+function libraryRow(ctx: AgentCtx, id: string): LibraryModel | null {
+  return libraryModel(id) ?? ctx.liveLibraryRows?.[id] ?? null;
+}
+
 /**
  * Does the order gate (model-rule.ts) still hold a hand-built Model back in this run? Decided from the run alone:
  * the library must be on offer and usable here, not yet tried, and the gate not spent.
@@ -1321,7 +1339,7 @@ function recordSearch(ctx: AgentCtx, result: unknown): unknown {
 function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown): unknown {
   const r = rec(result);
   const id = String(a.id ?? '');
-  const row = libraryModel(id);
+  const row = libraryRow(ctx, id);
   if (!row || id.startsWith('owner:') || id.startsWith(LOCAL_OWNER_PREFIX)) return result;
   const failed = typeof r.error === 'string';
   // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
@@ -1410,7 +1428,7 @@ const NO_MORE_CANDIDATES = 'no more candidates; continue per the asset order';
 function nextLibraryIds(ctx: AgentCtx, exceptId?: string): string[] {
   const run = libraryRunOf(ctx);
   const failed = new Set(run.failedIds ?? []);
-  return (run.candidates ?? []).filter((id) => id !== exceptId && !failed.has(libraryModel(id)?.assetId ?? -1)).slice(0, 3);
+  return (run.candidates ?? []).filter((id) => id !== exceptId && !failed.has(libraryRow(ctx, id)?.assetId ?? -1)).slice(0, 3);
 }
 
 /**
@@ -2092,17 +2110,36 @@ async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): 
   if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
   if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
   let localStatus: unknown;
+  // Rows the owner's gateway returned for the query's words in a path or description but not in the row's own name. The gateway
+  // does not rank (`ORDER BY n.id`, packages/owner-corpus/gateway.py), so "crystal" answered a javelin whose path says crystal.
+  // They are kept back and offered only when nothing else answers.
+  let heldLocal: Record<string, unknown>[] = [];
+  const localRows = (rows: unknown[], note: string, nextAfter: unknown) => ({source:'owner_local',
+    results:rows.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
+    nextAfter:nextAfter ?? null,priority:'full local owner corpus first',note});
+  const LOCAL_NOTE = 'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.';
   if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
     const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
       after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
     localStatus=local;
-    if (Array.isArray(local.items) && local.items.length) return {source:'owner_local',
-      results:local.items.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
-      nextAfter:local.nextAfter ?? null,priority:'full local owner corpus first',
-      note:'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.'};
-    if (a.after !== undefined || a.sourceSHA !== undefined) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
+    const items = Array.isArray(local.items) ? local.items as unknown[] : [];
+    const paged = a.after !== undefined || a.sourceSHA !== undefined;
+    // A page walk (after, sourceSHA) is exact by contract and is returned as it came; a fresh search is held to the row's own name.
+    const wanted = contentWords(query);
+    const named = paged ? items : items.filter((row) => relevanceOf(String(rec(row).name ?? ''), wanted) > 0)
+      .sort((x, y) => relevanceOf(String(rec(y).name ?? ''), wanted) - relevanceOf(String(rec(x).name ?? ''), wanted));
+    if (named.length) {
+      const left = items.length - named.length;
+      return localRows(named, left > 0 ? `${LOCAL_NOTE} ${left} other row(s) matched only in a path or description, not by name, and were left out.` : LOCAL_NOTE, left > 0 ? null : local.nextAfter);
+    }
+    if (items.length) heldLocal = items.map(rec);
+    if (paged) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
   }
-  const owned = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
+  const ownedAll = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
+  // The same rule as the local corpus: its full-text search also matches words inside code and properties, so a row counts
+  // as an answer only when its own name has a word of the request. Rows matched elsewhere are dropped here, not held.
+  const ownedWanted = contentWords(query ?? '');
+  const owned = ownedAll.filter((c) => relevanceOf(c.name, ownedWanted) > 0);
   if (owned.length) {
     const results: Record<string,unknown>[] = [];
     let chars = 0;
@@ -2138,9 +2175,39 @@ async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): 
   // Said, not silent: rows left out because their name lacks the last word of the agent's own query.
   const leftOut = wanted - kept.length;
   if (leftOut > 0 && requestedObject) found.note = `${leftOut} row(s) matching your words were left out because their name does not contain "${requestedObject}" (the last word of your query, or an anchor from the user's rejection); search other words to see them.${found.note ? ' ' + found.note : ''}`;
-  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
+  // The bundled index holds a few hundred rows; ordinary nouns it lacks are looked up live (creator-store-live.ts): free, verified
+  // creator, zero scripts, ranked by name. Skipped, and said so, when the project's asset sources do not allow the Creator Store.
+  let liveNote = '';
+  if (ctx.liveCreatorStore && query?.trim() && found.results.length < LIVE_TOP_UP) {
+    const refusedSource = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
+    if (refusedSource) liveNote = `Live Creator Store search was not run: ${refusedSource}`;
+    else {
+      // The same name rule as the bundled rows: the last word of the query (or the user's rejection anchor) is in the name.
+      const live = await searchLiveModels(ctx.env, query, {
+        limit: cap - found.results.length, exclude: rejected, fetchImpl: ctx.liveStoreFetch,
+        accept: (name) => matchesVisualAnchor(name, requestedObject ?? undefined) && matchesVisualAnchor(name, ctx.assetChoiceAnchor),
+      });
+      const rows = live.results;
+      const store = (ctx.liveLibraryRows ??= {});
+      for (const row of rows) store[row.id] = row;
+      const keys = Object.keys(store);
+      for (const k of keys.slice(0, Math.max(0, keys.length - LIVE_ROWS_KEPT))) delete store[k];
+      found.results = [...found.results, ...rows];
+      liveNote = live.error && !rows.length ? `${live.note} (${live.error})` : live.note;
+    }
+  }
+  if (liveNote) found.note = `${found.note ? found.note + ' ' : ''}${liveNote}`;
+  if (!found.results.length && heldLocal.length) {
+    return localRows(heldLocal.slice(0, 5), `${LOCAL_NOTE} None of these rows has a word of "${query}" in its own name: the owner library matched them only in a path or description, so check each with preview_library_models before trusting one.${liveNote ? ' ' + liveNote : ''}`, null);
+  }
+  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available${liveNote ? ' (' + liveNote.replace(/\.$/, '') + ')' : ''}. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
   return found;
 }
+
+/** Below this many bundled rows, find_library_model also searches the live Creator Store. */
+const LIVE_TOP_UP = 5;
+/** Live rows a run remembers for insert_library_model; older ones are forgotten first. */
+const LIVE_ROWS_KEPT = 60;
 
 /** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
 async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
@@ -2182,7 +2249,18 @@ async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>)
     return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
       note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
   }
-  const pick = libraryModel(String(a.id ?? ''));
+  let pick = libraryRow(ctx, String(a.id ?? ''));
+  if (!pick && String(a.id ?? '').startsWith(LIVE_ID_PREFIX)) {
+    // A live id this run did not search for (the previous run offered it and the owner picked it) is taken only when it is
+    // exactly the asset the project owner approved, and only after the same gate a search applies.
+    const wantedId = liveAssetIdOf(String(a.id));
+    if (wantedId !== null && wantedId === ctx.approvedLibraryAssetId) {
+      const got = await fetchLiveModel(ctx.env, wantedId, { fetchImpl: ctx.liveStoreFetch });
+      if (!got.ok) return refuse(`${String(a.id)} could not be verified as a free, script-free model from a verified creator (${got.reason}); search again and take another row.`);
+      (ctx.liveLibraryRows ??= {})[got.model.id] = got.model;
+      pick = got.model;
+    }
+  }
   if (!pick) return refuse(`${String(a.id ?? '')} is not a library id. Call find_library_model and pass one of its ids unchanged.`);
   if (pick.assetId === undefined) return refuse('This downloaded library file would upload a new permanent Model into your Roblox account. The current asset-source choices do not authorise that. Choose a Creator Store id from find_library_model instead.');
   const refused = sourceRefusal(ctx.assetSources, 'creator_store', ctx.askAssetSources, ctx.assetSettingsUnread);
@@ -5238,7 +5316,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_asset',
       description:
-        'Insert an asset by numeric assetId, from find_verified_asset or the USER (never one you produced yourself). EVERY id is resolved against the Creator Store and must pass the full gate (free, public, zero scripts, Mesh or Image — a Model is always refused, trusted creator, inside the triangle budget); every insertion is then scanned inside the place: scripts are removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Models come from insert_library_model, which skips this gate.',
+        'Insert an asset by numeric assetId, from find_verified_asset or the USER (never one you produced yourself). EVERY id is resolved against the Creator Store and must pass the gate find_verified_asset applies (a Model is always refused); every insertion is then scanned inside the place: scripts are removed, the place is re-listed to prove it clean, and an asset that cannot be proven clean is deleted whole and refused. Models come from insert_library_model, which skips this gate.',
       parameters: S({ assetId: { type: 'number' }, parent: { type: 'string' } }, ['assetId']),
     },
     studio: true,
@@ -5646,7 +5724,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then script-free Roblox Creator Store models. Plain words, as many queries as needed; genre and kind narrow it. Roblox-owned models only unless includeThirdParty=true (free third-party ones, marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode Apple may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
+        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode Apple may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
           sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
