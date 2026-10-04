@@ -1683,12 +1683,13 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
 
   // Researched 2026-10-04 (research/roblox/07-anim-audio-vfx.md): animation, audio, effects and game feel. Numbers tagged [OWN] in
   // the note are starting values never rendered or heard by the researcher: screenshot and listen, then tune. The plugin create
-  // allowlist omits Animator, IKControl, Explosion and the new audio classes (AudioPlayer, AudioEmitter, AudioListener,
-  // AudioDeviceOutput, Wire, effects): those skills say a script (edit_script) creates them. Humanoid:LoadAnimation and
-  // AudioPlayer.AssetId are deprecated and not used here.
+  // allowlist omitted Animator, IKControl, Explosion and the new audio classes (AudioPlayer, AudioEmitter, AudioListener,
+  // AudioDeviceOutput, Wire, effects); plugin 1.5.0 added them, so these skills say create_instances creates them (an
+  // older plugin refuses them and a script is the fallback). Humanoid:LoadAnimation and AudioPlayer.AssetId are
+  // deprecated and not used here.
   { id: 'anim-play-cache-chain-tracks', title: 'Play, cache and chain animations through the Animator', domain: 'gameplay', summary: 'Load each animation once per Animator, set priority, play with a fade and react to named markers.', refs: ['animationTrack'], keywords: ['animation', 'animator', 'animationtrack', 'priority', 'markers', 'play', 'cache', 'emote'],
     steps: [
-      'Find the Animator with humanoid:FindFirstChildOfClass("Animator") (create one under a server-side creature Humanoid if missing; a non-humanoid rig uses an AnimationController). The Animator must be in Workspace. It is not on the create allowlist, so a script creates it.',
+      'Find the Animator with humanoid:FindFirstChildOfClass("Animator") (create one under a server-side creature Humanoid if missing; a non-humanoid rig uses an AnimationController). The Animator must be in Workspace. create_instances can create one (className Animator, parent the Humanoid or AnimationController).',
       'Make an Animation with AnimationId "rbxassetid://<id>" (catalog ids or the owner uploads; never invent ids); track = animator:GetTrackByAnimationId(id) or animator:LoadAnimation(anim); never Humanoid:LoadAnimation.',
       'Set track.Priority explicitly (Idle, Movement, Action; Action2 to Action4 only to override), Looped false for actions; track:Play(0.1, 1, 1); chain with track.Ended:Once.',
       'React to markers with track:GetMarkerReachedSignal("Hit"):Connect(...) and disconnect on Stopped; check track.Length > 0 before using lengths.',
@@ -1707,7 +1708,7 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     failureModes: ['Changing values on the client only, so others do not see it.', 'A pack for a different rig type.'] },
   { id: 'anim-creature-animation-controller-rig', title: 'Animate a rig without a Humanoid using AnimationController', domain: 'gameplay', summary: 'An AnimationController with a server-created Animator, level-of-detail throttling and hero exceptions.', refs: ['animatorClass'], keywords: ['creature animation', 'animationcontroller', 'creature', 'prop animation', 'PreferLodEnabled', 'rig'],
     steps: [
-      'Under the rig add an AnimationController and an Animator on the server (neither is on the create allowlist; use a script).',
+      'Under the rig add an AnimationController and, under it, an Animator with create_instances; make both on the server.',
       'Load and play on the server so tracks replicate; an Animator created on a client does not replicate.',
       'Leave Animator.PreferLodEnabled true for crowds so distant rigs are throttled; set it false only for hero creatures.',
       'Use Animator.EvaluationThrottled to skip procedural offsets on frames where the pose was reused.',
@@ -1732,18 +1733,18 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     ],
     verification: ['Interrupt a pop mid-way: the part ends at the correct final size.', 'Frame time stays flat with many bobbing parts.'],
     failureModes: ['Recreating tweens every frame.', 'An unclamped dt that explodes the spring after a hitch.'] },
-  { id: 'audio-2d-ui-and-music-playback', title: 'Play 2D interface and music sounds with AudioPlayer and Wire', domain: 'worldbuilding', summary: 'AudioPlayer to Wire to AudioDeviceOutput, one-shots destroyed on Ended and a pitch ladder for combos (script-built).', refs: ['audioObjects'], keywords: ['audio', 'AudioPlayer', 'Wire', 'AudioDeviceOutput', 'music', 'ui sound', 'one shot', 'pitch'],
+  { id: 'audio-2d-ui-and-music-playback', title: 'Play 2D interface and music sounds with AudioPlayer and Wire', domain: 'worldbuilding', summary: 'AudioPlayer to Wire to AudioDeviceOutput, one-shots destroyed on Ended and a pitch ladder for combos (built with create_instances).', refs: ['audioObjects'], keywords: ['audio', 'AudioPlayer', 'Wire', 'AudioDeviceOutput', 'music', 'ui sound', 'one shot', 'pitch'],
     steps: [
-      'These classes are not on the plugin create allowlist: a script (edit_script) creates them. Set SoundService.DefaultListenerLocation to Camera or Character so an output device exists.',
+      'create_instances creates these (an older plugin refuses them; then a script does). Create the AudioPlayer and AudioDeviceOutput first and the Wire in a second call: a Wire end is the path of an instance that already exists. Set SoundService.DefaultListenerLocation to Camera or Character (set_properties) so an output device exists.',
       'Per play create an AudioPlayer (Asset, never the deprecated AssetId; Volume), a Wire (SourceInstance = player, TargetInstance = AudioDeviceOutput), Parent under SoundService, Play(), and Destroy on Ended (Ended does not fire for looping or stopped players).',
       'Route through a bus AudioFader (Volume 0 to 3) when you have volume sliders; starting mix [OWN]: music 0.3 to 0.5, UI 0.4 to 0.6, effects 0.6 to 1.',
       'Combo pitch ladder: PlaybackSpeed = 1.0595 ^ comboIndex, capped at 12 steps; preload with a hidden player and wait for IsReady when latency matters.',
     ],
     verification: ['Play 50 one-shots: no leftover players or wires.', 'Check the mix on a phone speaker and headphones.'],
     failureModes: ['A Wire with a missing end stays disconnected (check Wire.Connected).', 'No listener or output, so nothing is heard.'] },
-  { id: 'audio-3d-positional-emitter', title: 'Make a 3D positional sound with AudioEmitter', domain: 'worldbuilding', summary: 'Player, emitter and wire under a part, an explicit rolloff mode and a listener that exists (script-built).', refs: ['audioEmitterClass'], keywords: ['3d audio', 'positional sound', 'AudioEmitter', 'rolloff', 'attenuation', 'campfire', 'AudioListener', 'spatial'],
+  { id: 'audio-3d-positional-emitter', title: 'Make a 3D positional sound with AudioEmitter', domain: 'worldbuilding', summary: 'Player, emitter and wire under a part, an explicit rolloff mode and a listener that exists (built with create_instances).', refs: ['audioEmitterClass'], keywords: ['3d audio', 'positional sound', 'AudioEmitter', 'rolloff', 'attenuation', 'campfire', 'AudioListener', 'spatial'],
     steps: [
-      'Script-create AudioPlayer (Asset, Looping for loops), AudioEmitter and a Wire from player to emitter under a part or Attachment; a Folder or Script parent is silent.',
+      'create_instances makes an AudioPlayer (Asset, Looping for loops) and an AudioEmitter under a part or Attachment, then a Wire from player to emitter in a second call; a Folder or Script parent is silent.',
       'Set DistanceAttenuationMode explicitly (InverseTapered or Linear) with DistanceAttenuationBounds, for example NumberRange.new(6, 60) for a fire [OWN]; the default Custom mode has no curve.',
       'Make sure a listener exists: DefaultListenerLocation Camera or Character creates listener, output and wire; None means build your own.',
       'Directional sources: SetAngleAttenuation({[0]=1,[90]=0.6,[180]=0.25}); AudioInteractionGroup limits who hears it.',
@@ -1751,7 +1752,7 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     ],
     verification: ['Walk toward and away: the volume curve matches the bounds.', 'Move behind an object with acoustic simulation off: nothing unexpected changes.'],
     failureModes: ['Relying on the default Custom curve that stays audible far away.', 'Server-created one-shots arriving late.'] },
-  { id: 'audio-ambient-layers-music-ducking', title: 'Layer ambience and music with ducking and a limiter', domain: 'worldbuilding', summary: 'Looping layers plus random one-shots, three bus faders, crossfades and sidechain ducking (script-built, starting values).', refs: ['audioEffects'], keywords: ['ambience', 'music', 'ducking', 'sidechain', 'compressor', 'crossfade', 'limiter', 'mix'],
+  { id: 'audio-ambient-layers-music-ducking', title: 'Layer ambience and music with ducking and a limiter', domain: 'worldbuilding', summary: 'Looping layers plus random one-shots, three bus faders, crossfades and sidechain ducking (graph made with create_instances, crossfades by script, starting values).', refs: ['audioEffects'], keywords: ['ambience', 'music', 'ducking', 'sidechain', 'compressor', 'crossfade', 'limiter', 'mix'],
     steps: [
       'Layers: a 30 to 48 s base loop, a tonal loop and 10 to 30 short random clips (under about 10 s) at random intervals around the player; never repeat the same clip twice in a row.',
       'Buses [OWN]: Ambience AudioFader 0.3, Music 0.4, effects 0.9 into one AudioDeviceOutput; crossfade music by tweening two faders over 2 to 4 s.',
@@ -1760,9 +1761,9 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     ],
     verification: ['Trigger a stinger over music: the music dips and recovers smoothly.', 'Loudest moment stays under the limiter ceiling.'],
     failureModes: ['Very short loops are obvious.', 'Wrong sidechain pin name so ducking never happens.'] },
-  { id: 'audio-zone-reverb-and-underwater-filter', title: 'Colour all sound by zone with reverb and a low-pass filter', domain: 'worldbuilding', summary: 'A post-listener chain whose filter and reverb values change by zone with short tweens (script-built).', refs: ['audioObjects'], keywords: ['reverb', 'underwater audio', 'cave echo', 'lowpass', 'AudioFilter', 'AudioReverb', 'zone audio', 'acoustic'],
+  { id: 'audio-zone-reverb-and-underwater-filter', title: 'Colour all sound by zone with reverb and a low-pass filter', domain: 'worldbuilding', summary: 'A post-listener chain whose filter and reverb values change by zone with short tweens (effects made with create_instances, tweened by script).', refs: ['audioObjects'], keywords: ['reverb', 'underwater audio', 'cave echo', 'lowpass', 'AudioFilter', 'AudioReverb', 'zone audio', 'acoustic'],
     steps: [
-      'Script-build AudioListener -> AudioFilter (FilterType Lowpass12dB, Frequency 20000, Q 0.707) -> AudioReverb -> AudioDeviceOutput, wired after the listener so it colours everything heard.',
+      'Chain AudioListener -> AudioFilter (FilterType Lowpass12dB, Frequency 20000, Q 0.707) -> AudioReverb -> AudioDeviceOutput, wired after the listener so it colours everything heard. create_instances makes the filter, reverb, output and Wires (Wires in a later call); it cannot parent a listener under the engine-owned Camera, so a LocalScript creates that one.',
       'Underwater: tween the filter Frequency from 20000 to about 900 over 0.3 s on entry and back on exit [OWN].',
       'Rooms [OWN]: small room DecayTime 1.2, WetLevel -10, DryLevel 0, HighCutFrequency 9000; hall DecayTime 3.5, WetLevel -8; cave DecayTime 8, WetLevel -6, LowShelfGain -6; tween between zones.',
       'Set Bypass true to switch an effect off cheaply; Acoustic Simulation (SoundService.AcousticSimulationEnabled) is off by default and unreliable on weak devices, so use it for atmosphere only.',
@@ -1819,7 +1820,7 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
       'Do not use the default Explosion for looks (it kills Humanoids, breaks joints and carves terrain). Emitters disabled, Rate 0: Fireball explosion01_core_main (Size 3 to 9 to 11, Lifetime 0.5 to 0.8, emit 14), Shockwave ring (Size 2 to 26, Lifetime 0.45, emit 1), Sparks (Speed 35 to 60, Acceleration (0,-40,0), emit 40), Smoke (Size 4 to 14, Lifetime 2 to 3.5, emit 12).',
       'PointLight Brightness 6, Range 40 tweened to 0 in 0.25 s; placeholder sound rbxasset://sounds/impact_explosion_03.mp3 through a 3D emitter (bounds 10 to 300).',
       'Camera shake trauma +0.6 scaled by 1 - distance / 80.',
-      'Damage and force on the server from your own radius query; if an Explosion object is used set BlastPressure 0, DestroyJointRadiusPercent 0, ExplosionType NoCraters and Visible false (it is created by script, not on the allowlist).',
+      'Damage and force on the server from your own radius query; if an Explosion object is used, create_instances makes it harmless (BlastPressure and DestroyJointRadiusPercent default to 0 unless you set them); also set ExplosionType NoCraters and Visible false.',
     ],
     verification: ['Stand inside the blast: no unintended joint breaks or terrain craters.', 'Cap simultaneous explosions and watch frame time.'],
     failureModes: ['Default Explosion physics on a visual effect.', 'Shockwave ring orientation not checked in Studio.'] },
@@ -2478,7 +2479,7 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
   { id: 'pattern-horror-flashlight-audio-readable-kit', title: 'Add a flashlight, layered audio and phone-safe tells to a dark map', domain: 'genre_pattern', genres: ['horror', 'survival'], summary: 'A shadowed SpotLight, a quiet ambience plus sparse stings from emitters, tells audible on phone speakers and a flash warning; audio objects are made by script.', refs: ['audioEmitterClass'], keywords: ['flashlight', 'spotlight', 'ambient audio', 'stings', 'audioemitter', 'tells', 'subtitles', 'photosensitivity'],
     steps: [
       'Flashlight: a SpotLight on the head or a held Tool, Angle 55 to 70, Range 40 to 60, Brightness 2 to 3, Shadows true (heuristic), toggled on the client with a server attribute for replication. Cap shadowed lights per room for phones; PointLights Range 12 to 20, Brightness 0.8 to 1.5 at landmarks. Lighting itself comes from the night-horror look skill.',
-      'Audio is made by a script (the create tools lack AudioPlayer, AudioEmitter, AudioReverb, AudioDeviceOutput and Wire): a quiet looping AudioPlayer into an AudioDeviceOutput, stings played from the AudioEmitter at the source, an AudioReverb per room type; silence before a scare. SoundService.AmbientReverb affects legacy Sound objects only.',
+      'Audio is made with create_instances (AudioPlayer, AudioEmitter, AudioReverb, AudioDeviceOutput, then the Wire; an older plugin refuses them and a script does it): a quiet looping AudioPlayer into an AudioDeviceOutput, stings played from the AudioEmitter at the source, an AudioReverb per room type; silence before a scare. SoundService.AmbientReverb affects legacy Sound objects only.',
       'Every tell must be audible on a phone speaker: a low rumble alone is not enough, add a mid-frequency sting and a visual subtitle option (heuristic).',
       'Warn for flashing and loud audio on the game page, keep strobing off by default and under 2 flashes per second (a conservative heuristic, no Roblox policy text found).',
     ],
@@ -3312,7 +3313,7 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
   { id: 'audio-find-background-music-licensed', title: 'Pick background music from partner catalogues and respect the track and jukebox rules', domain: 'worldbuilding', summary: 'Audio search for long tracks, partner-catalogue creators, a script-built looping player and a count of licensed tracks.', refs: ['audioAssets'], keywords: ['background music', 'music search', 'apm', 'partner catalogue', 'loop', 'jukebox', 'licensed music', 'volume setting'],
     steps: [
       'Search assetType Audio with a mood plus genre query, audioMinDuration 60 for loops and verifiedCreatorsOnly true; prefer creators from the known partner catalogues and read artist and title with AssetService:GetAudioMetadataAsync if unsure (wrap in pcall, back off on HTTP 429).',
-      'Create an AudioPlayer in a folder under SoundService with Asset = "rbxassetid://<id>", Looping true and Volume 0.3 to 0.5, plus an AudioDeviceOutput and a Wire from player to output (a script creates them; the create tools do not). A Wire with no output is silent; AudioPlayer.AssetId is deprecated.',
+      'Create an AudioPlayer in a folder under SoundService with Asset = "rbxassetid://<id>", Looping true and Volume 0.3 to 0.5, plus an AudioDeviceOutput and a Wire from player to output (create_instances creates them, the Wire in a second call once both ends exist). A Wire with no output is silent; AudioPlayer.AssetId is deprecated.',
       'Licensed catalogue rules: one catalogue caps at 250 distinct live tracks in an experience (including boombox tracks); licensed tracks are for Roblox use only and may not be downloaded; the experience must be a game, not a music player or library.',
       'Add a mute or volume setting in the UI; a Sound inserted from the Toolbox lacks AudioPlayer routing, so pick one scheme.',
     ],

@@ -832,7 +832,7 @@
         "Starting mix (tune by ear): music 0.3-0.5, ambience 0.2-0.4, UI 0.4-0.6, effects 0.6-1.0. Route by bus (music, ambience, UI, effects) so one settings slider changes each.",
         "Repeated effects get 3-5 variants or a random PlaybackSpeed 0.92-1.08 so they do not grate.",
         "3D sounds sit on the thing that makes them, with an explicit rolloff (a fire about 6-60 studs, a waterfall about 20-200).",
-        "New Audio API (AudioPlayer.Asset, Wire, AudioEmitter, AudioListener, AudioDeviceOutput, AudioFader, AudioCompressor for ducking) is built in a script; keep Sound for simple one-shots placed with insert_sound. An AudioEmitter under a Folder or Script is silent.",
+        "New Audio API (AudioPlayer.Asset, Wire, AudioEmitter, AudioListener, AudioDeviceOutput, AudioFader, AudioCompressor for ducking) is made with create_instances: players, emitters and effects first, then each Wire (SourceInstance and TargetInstance are paths of instances that already exist); keep Sound for simple one-shots placed with insert_sound. An AudioEmitter under a Folder or Script is silent.",
         "Only Creator Store, original or licensed audio; never asset ids from memory."
       ],
       "avoid": [
@@ -897,7 +897,7 @@
         "Bursts: Enabled false, Rate 0, Emit(count): about 8-24 for a pickup, 20-45 for an explosion. Keep one effect under about 150 live particles (Rate x Lifetime); hard caps Rate 400/s (100 on mobile), Lifetime 20 s.",
         "Trails only while the action lasts; one reused Highlight for hover or selection (change Adornee); a PointLight (Brightness 1.5-3, Range 12-18) beside fire or magic.",
         "Juice: shake from trauma (0.2-0.3 per hit, decays about 1.5/s), FOV +6-10 over 0.15 s on a dash, hit-stop 0.04-0.10 s, squash and stretch 1.2/0.8 back over 0.2-0.35 s. Start small: over-shaking reads choppy.",
-        "Default Explosion kills and breaks joints: set BlastPressure 0, DestroyJointRadiusPercent 0, or use particles and handle damage yourself."
+        "A default Explosion kills and breaks joints; create_instances creates one with BlastPressure 0 and DestroyJointRadiusPercent 0 unless you set them. Prefer particles and handle damage yourself."
       ],
       "avoid": [
         "Emitters left at default settings.",
