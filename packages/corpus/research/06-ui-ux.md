@@ -1,5 +1,6 @@
 # UI/UX for Roblox (mobile-first layout, safe areas and top bar, constraints, fonts, accessibility, patterns)
-_Researched 2026-10-04 by Claude (deep researcher, topic 06-ui-ux). Sources: 88 (S1-S88)._
+_Researched 2026-10-04 by Claude (deep researcher, topic 06-ui-ux). Sources: 99 (S1-S88, plus S89-S99 added in the gap pass)._
+_Gap pass 2026-10-04: 8 items resolved, 8 still open._
 
 How to read this file. "Verified" means I read the page text of the cited source on 2026-10-04. API reference pages were read
 from the Roblox creator-docs repository (raw files on GitHub, branch main, which is the source of create.roblox.com/docs) and a few
@@ -11,17 +12,14 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
 ### Device split and what it implies
 - Roblox's own creator guidance says most users play on mobile and tells creators to design UI and gameplay for mobile first, with
   gamepad shortcuts and keyboard keys layered on for console and desktop [S28].
-- The best-sourced device split I could find: in 2024, about 80% of users on mobile, 17% PC, 3% console (daily-active-user share),
-  reported by PocketGamer.biz and Gameranx on 2025-04-23 citing Roblox's 2024 annual report [S80][S81]. The 10-K text itself carries
-  the breakdown only as a chart image, so I could not read the percentages from the filing [S79]. The FY2025 10-K gives no device
-  percentages in text at all (127M average DAU, 123.9B hours, 2.7 hours per DAU per day) [S78]. Treat 80/17/3 as "2024, reported via press".
-- Third-party sources disagree: RoWatcher quotes the same 80/17/3 for "Q4 2025" without attribution [S83]; ROLearn (2026-02-05) claims
+- Device split from Roblox's own filings (gap pass; the percentages are only in a pie-chart image titled "Breakdown of Our Users", "By Platform", which I read from the image files in the filings; the filing text has none): FY2024 average DAUs = 80% mobile, 17% desktop, 3% console [S90]; FY2025 average DAUs = 83% mobile, 14% desktop, 3% console [S89]. That is the 2025 vs 2024 shift: mobile up 3 points, desktop down 3. The press figure of 80/17/3 for 2024 (PocketGamer.biz and Gameranx, 2025-04-23) matches the FY2024 chart [S80][S81][S90]. FY2025 context: 127M average DAUs, 123.9B hours, 2.7 hours per DAU per day [S78]. The Q4 2025, Q1 2026 and Q2 2026 shareholder letters give no device split (they only talk about reaching low-end phones and high-end PCs), so there is no verified 2026 split yet [S98].
+- Third-party sources disagree (and the 83/14/3 filing figure supersedes them): RoWatcher quotes 80/17/3 for "Q4 2025" without attribution, which is the FY2024 figure [S83]; ROLearn (2026-02-05) claims
   60% mobile, 20% desktop, 15% console, 5% VR with no source [S84]; SpawnBlox says "over 70%" mobile [S86]; KitsBlox says "over 60%" [S87].
   Do not quote any of these as fact. Safe statement: the large majority of Roblox sessions are on phones and tablets.
 - Revenue does not follow the player split: only 46% of 2024 Robux revenue came through the Apple and Google stores (30% Apple, 16% Google
   Play) while mobile was about 80% of players, so PC and console players monetize through the web/other channels at a higher per-user rate
   (press citing the annual report) [S80]. Do not neglect PC/console UI.
-- Platform scale in 2026: 123M DAU and 29B hours engaged in Q2 2026 (up 10% and 5% year over year), 27M monthly unique payers [S82].
+- Platform scale in 2026: 123M DAU and 29B hours engaged in Q2 2026 (up 10% and 5% year over year), 27M average monthly unique payers (up 15%); verified in the Q2 2026 shareholder letter PDF in the gap pass [S82][S98].
 - Roblox's docs split viewport sizes into three buckets via GuiService.ViewportDisplaySize: Small (most tablets, phones, handhelds), Medium
   (most laptops and monitors), Large (TVs and larger) [S1][S8].
 
@@ -39,6 +37,11 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
   and bottom-right inset in pixels), only meaningful for ScreenGuis with IgnoreGuiInset = false [S1].
 - GuiService.TopbarInset (Rect, read-only) is the unoccupied area between Roblox's left-most controls and the device safe-area edge; it changes
   when the menu opens, health/CoreGui settings change or controls move, so listen with GetPropertyChangedSignal [S1][S64].
+  Coordinate space (gap pass): the reference does not name one, but its official code sample creates a ScreenGui with IgnoreGuiInset = true and
+  assigns `Position = UDim2.new(0, inset.Min.X, 0, inset.Min.Y)` and `Size = UDim2.new(0, inset.Width, 0, inset.Height)` straight from the Rect, so treat
+  it as pixel coordinates in full-screen space (an IgnoreGuiInset ScreenGui) [S94]. The Enum.ScreenInsets docs say all inset values are relative to the
+  fullscreen area, while `GuiService:GetInsetArea(...)` returns a Rect relative to the CoreUISafeInsets area (its example for None returns negative
+  top-left values such as -59, -58) [S1][S94]. Do not mix the two without converting.
 - Do not hardcode the top bar height. It was 36 px in 2020 [S63]. A 2025-03 DevForum thread says the old 36 is wrong and the real value "might be
   44 or 48" and that GetGuiInset() is the fix [S65]. Third-party guides still repeat "about 36" [S85][S86]; treat that as stale.
 - Experience controls redesign (announced 2024-06-18, rolled out; "now live" post 2024-10-15 by Roblox staff workbloxing): a left-aligned
@@ -48,7 +51,10 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
   Roblox's instruction to developers: use TopbarSafeInsets and the TopbarInset change signal or UI may overlap the controls [S61][S62].
 - 2025-2026 top bar maintenance: a Studio regression with ScreenInsets = TopbarSafeInsets (reported 2025-11-05, from a top bar performance change)
   was fixed by staff within hours the same day, and only affected Studio, not live games [S66]. A report from 2025-12-02 says TopbarSafeInsets sizes
-  wrongly on console emulation (Xbox One) with no staff answer in the thread text I could read [S67]. Docs page for ScreenInsets was updated on 2026-01-08 to link
+  wrongly on console emulation (Xbox One) with no staff answer in the thread text I could read [S67]. An older report (2024-02-22, mvyasu) about the same
+  symptom on Xbox One and PS4 emulation (PS5 fine) was still reproducible on 2025-09-19; on 2025-11-21 a staff member (romuelas) said the team believes
+  it is resolved and that console emulation should not contain the new experience controls, and asked whether it still happens; the Dec 2025 report above
+  came after that, so a fix is not confirmed [S95]. Docs page for ScreenInsets was updated on 2026-01-08 to link
   TopbarSafeInsets to TopbarInset [S68]. I found no new 2025-2026 top bar redesign announcement; the last structural change I could verify is the Oct 2024 controls update [S61].
 - Notched screens (full release 2022-12-08): ScreenGuis with IgnoreGuiInset = false use the core UI safe area, those with true use the device safe
   area; ClipToDeviceSafeArea clips children outside the device safe area; FullscreenExtension expands a full-safe-area background to the full screen
@@ -102,7 +108,7 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
 ### Accessibility and player preferences (2025 additions)
 - Global Text Size setting left beta on 2025-08-27: players pick Large, Larger or Largest (Medium is default) [S77]; GuiService.PreferredTextSize exposes it as Enum.PreferredTextSize Medium(1), Large(2), Larger(3), Largest(4) [S7][S1].
   Behaviour: engine scales text; objects with TextScaled are NOT scaled by the setting; UITextSizeConstraint min/max still bound the size; AutomaticSize elements grow with the text; TextService measurement functions honor it [S33][S77].
-  Developers complained about rollout without notice and RichText breakage; staff (BitwiseAndrea, 2025-09-02) acknowledged communication but did not make it opt-in and no per-object opt-out exists in what I read [S69].
+  Developers complained about rollout without notice and RichText breakage; staff (BitwiseAndrea, 2025-09-02) acknowledged communication but did not make it opt-in [S69]. Per-object opt-out (gap pass): none exists. The current API dump has no per-object text-size property on TextLabel, TextButton or TextBox, and the docs describe no opt-out [S97][S33]. The only indirect ways out are `TextScaled = true` or a `UITextSizeConstraint` (which then bounds the size to its Min/MaxTextSize); a Sept 2025 request notes the constraint route overwrites RichText size markup, so RichText text that is not TextScaled cannot be exempted, and a staff member only asked for an example, with no change announced [S96].
   Consequence for builders: build text boxes to grow (AutomaticSize Y, TextWrapped, scroll areas), not fixed-size labels.
 - GuiService.PreferredTransparency (0..1, default 1): multiply your BackgroundTransparency by it; Roblox's example tags elements "TransparentBack" via CollectionService [S33][S1].
 - GuiService.ReducedMotionEnabled (bool): for players with the Reduce Motion setting, set tween time to 0 or replace movement with fades [S33][S1].
@@ -110,13 +116,14 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
 - Roblox's UI-ux guide says keep contrast and header/body hierarchy [S27]. A WCAG-style 4.5:1 body-text contrast is quoted by a third-party guide [S86]; treat as judgement, it is the standard WCAG AA ratio, not a Roblox rule.
 
 ### Input, touch and gamepad
+- Enum.PreferredInput items (gap pass): KeyboardAndMouse (0), Gamepad (1), Touch (2), MicroGamepad (3; a gamepad without a thumbstick such as a TV remote, only when no standard gamepad is connected) [S91].
 - Use UserInputService.PreferredInput (read-only) rather than TouchEnabled to decide which UI to show; Roblox's property page warns TouchEnabled misleads on mixed-input devices (touch laptops, phones with a gamepad) [S49][S30]. Branch on last input (GetLastInputType / LastInputTypeChanged) or PreferredInput, not on device [S49][S85].
 - Buttons: connect to Activated (works for mouse, touch, gamepad). SecondaryActivated covers right-click on desktop and long-press on mobile [S20]. GuiObject itself has no Activated; only TextButton/ImageButton do [S19].
 - GuiObject touch gestures: TouchTap, TouchLongPress, TouchPan, TouchPinch, TouchRotate, TouchSwipe [S19]. Active = true makes an element sink input; InputSink (None, Activate, All) is the newer control [S19].
 - Gamepad navigation: set Selectable = true; wire NextSelectionUp/Down/Left/Right; SelectionImageObject overrides the selection look; GuiService.SelectedObject / GuiService:Select(); AutoSelectGuiEnabled; GuiNavigationEnabled; CoreGuiNavigationEnabled [S19][S1][S31].
   Roblox default gamepad conventions: ButtonA confirm/primary, ButtonB cancel/secondary, Thumbstick1 move, Thumbstick2 camera, triggers primary actions [S31]. Test with Studio's Controller Emulator [S31][S32].
 - Studio Device Simulator emulates screen dimensions, pixel density, on-screen keyboard and touch; Controller Emulator pairs with it [S32]. Roblox's tutorials and notched-screen post both tell you to test in it [S35][S60].
-- Haptics: HapticEffect plays vibration on iOS/Android phones, PlayStation/Xbox pads and Quest controllers; Type values include GameplayCollision and Custom; the mobile/gamepad docs also name UIClick [S50][S30][S31] (I did not verify the full enum list).
+- Haptics (gap pass, full list from the API reference): HapticEffect plays vibration on iOS/Android phones that support it, PlayStation and Xbox pads and Quest Touch controllers [S50][S92]. Members: properties Looped, Position (Vector3), Radius, Type; methods Play, Stop, SetWaveformKeys (for Custom); event Ended. Enum.HapticEffectType items: Custom (0), UIHover (1; subtle, for browsing over a UI object), UIClick (2; crisp feedback for a selection), UINotification (3; attention-grabbing inbound message), GameplayExplosion (4; large lingering rumble), GameplayCollision (5; big immediate rumble that dies quickly) [S92]. The older HapticService exposes GetMotor, IsMotorSupported, IsVibrationSupported and SetMotor, with Enum.VibrationMotor items Large, Small, LeftTrigger, RightTrigger, LeftHand, RightHand [S92]. Use UIClick for button presses and UINotification for toasts.
 - Mobile default control zones sit bottom-left (thumbstick) and bottom-right (jump); Roblox says keep important info and virtual buttons out of them; a button 40% down from the top is reachable on a phone but nearly unreachable on a tablet; prefer proximity prompts to permanent action buttons [S9].
 - Community tutorial (Micamaster100, 2023-07-29, stale-ish): custom action buttons go in the "jump button zone", never the thumbstick zone; roughly 70 px buttons on small screens and 120 px on tablets, switching when the shorter screen axis passes 500 px; position relative to the jump button; do not detect touch via TouchEnabled [S72].
 - InputActionLabel (shows the right key/button/touch glyph for an InputAction automatically) exists now; the roadmap lists a fuller "input action label" feature for early 2027 [S51][S73].
@@ -200,7 +207,8 @@ are my recommended defaults for an AI builder, not Roblox rules. Anything I coul
   1. Chunky cartoon (simulators, tycoons, pet games): saturated flat fills, UIGradient top-lighter, UIStroke 2-4 px dark outline, UICorner radius 8-16 px, UIShadow for lift, bold display font.
   2. Clean flat/minimal (hangout, RPG): 2-3 colour palette, UICorner 6-12 px, subtle strokes, Builder Sans or Source Sans, generous padding.
   3. Dark translucent/glass-lite (shooters, horror, battlegrounds): background colour near (20,20,30) at BackgroundTransparency 0.2-0.4, thin accent stroke, small caps headers; use PreferredTransparency multiplication [S33].
-  4. Pixel/retro: ImageLabels with ResampleMode Pixelated (property exists but not verified in this research), sharp corners (no UICorner), monospace/pixel fonts.
+  4. Pixel/retro: ImageLabels with `ResampleMode = Enum.ResamplerMode.Pixelated` (nearest-neighbour filtering; the default `Default` is bilinear; verified: `ImageLabel.ResampleMode` exists and the enum has exactly those two items [S93]), sharp corners (no UICorner), monospace/pixel fonts.
+- What hit games actually ship (low trust, unopened search-result snippets of marketplace UI-pack listings, 2025-2026, not developer posts): a Grow a Garden-style pack lists frames for Seed Shop, Limited Shop, Pet/Cosmetic Shop, HUD, Inventory, Hotbar, Notification, Quests, Codes, Confirmation and Settings, with a horizontal hotbar of 8-10 slots mapped to number keys; a Steal a Brainrot-style pack lists Shop, Currencies, Upgrades, Trading, Spin Wheel, Rebirth, Collection Index, Skins Selector, Mystery Merchant, Sell Confirmation, Settings and HUD; a 2026 trend article snippet calls "stud" style UI (studded textures, vibrant gradients, outlined text) dominant for simulators and pet games [S99]. A DevForum thread (ProbablyGavin, 2025-06-20) shows the Grow a Garden-style stud look is built from a tiled ImageLabel texture tinted with ImageColor3, with no pixel sizes given [S99]. This tells you which screens to build, not their exact layout.
 - Keep a written style guide as attributes/tokens: primary, secondary, danger, success colours; radius, stroke, padding scale; font sizes. In 2026 Roblox's StyleSheet tokens do this natively [S24][S27].
 
 ## Recipes (each becomes a skill)
@@ -234,7 +242,7 @@ Steps:
 3. Items 36-44 px high; use UIFlexItem or AutomaticSize X; hide the least important item with a StyleQuery @ViewportDisplaySizeSmall if width runs out.
 4. For a manual alternative, read GuiService.TopbarInset and update on GetPropertyChangedSignal("TopbarInset") [S1][S64].
 5. Console fallback: if the strip reports zero height (see the Dec 2025 bug), detect AbsoluteSize.Y < 1 and move the widget into the CoreUISafeInsets HUD [S67].
-Pitfalls: on portrait phones the controls can fill the width and your strip can be nearly empty [S61]; coordinates of TopbarInset relative to which space were not stated in the text I read (see Open questions); a Studio regression on 2025-11-05 was fixed same day [S66].
+Pitfalls: on portrait phones the controls can fill the width and your strip can be nearly empty [S61]; TopbarInset's Rect is in full-screen pixel space (use it in an IgnoreGuiInset ScreenGui, as the docs sample does [S94]); a Studio regression on 2025-11-05 was fixed same day [S66].
 
 ### 4. Modal panel with tabs and standard close
 When to use: shop, inventory, settings, quests.
@@ -545,19 +553,18 @@ end
 ```
 
 ## Open questions / unverified
+Still open after the 2026-10-04 gap pass (8):
 - Exact current top bar height in pixels: only community figures (44 or 48, March 2025 thread) and a 36 from 2020; Roblox never states one number. Use the APIs [S63][S65].
-- The coordinate space of GuiService.TopbarInset (relative to the screen vs to a ScreenGui with a given ScreenInsets) is not stated in the page text I read. Prefer TopbarSafeInsets ScreenGuis over manual math.
-- Whether TopbarSafeInsets on console was fixed after 2025-12-02, and whether console/VR have since received the updated experience controls (announced as "future" in Oct 2024) [S61][S67].
-- Device split: the 2024 80/17/3 figure comes through press, the filing's chart was not machine-readable; no verified FY2025 or 2026 split. The 60%/70%/20% variants are unsourced [S79][S80][S83][S84][S86][S87].
+- Whether TopbarSafeInsets on console emulation is fixed (staff said on 2025-11-21 they believe so; a new report on 2025-12-02 says it is not), and whether console/VR have received the updated experience controls (announced as "future" in Oct 2024) [S61][S67][S95].
+- A verified 2026 device split: the FY2025 10-K (83/14/3) is the latest; the 2026 shareholder letters give none [S89][S98]. The 60%/70%/20% third-party variants stay unsourced [S83][S84][S86][S87].
 - The interaction of ScreenInsets and IgnoreGuiInset when both are set was not spelled out in the pages I read; set ScreenInsets explicitly [S3][S60].
-- Whether per-object opt-out from the player Text Size setting exists (developers asked for one in Aug 2025; no confirmation found) [S69].
-- Enum.PreferredInput item names, the full Enum.HapticEffectType list (UIClick, UIHover?), ImageLabel.ResampleMode, TextBox.ShowNativeInput, UIPageLayout JumpTo/JumpToIndex names: not verified in this pass; check the reference before using.
 - StyleSheet/StyleRule/StyleLink scripting APIs (creating them from Luau): I only verified the Studio-level model and selector syntax, so no Luau examples are given [S24][S25].
 - UICorner reference page still says per-corner radii are beta though the DevForum recap says GA (2026-06-26); UIShadow docs verified, release by recap [S37][S76].
-- Specific HUD/shop/inventory layouts of top 2025-2026 hits (Grow a Garden, Steal a Brainrot, Fisch, etc.): not researched with sources in this pass (search budget ended); the patterns above are Roblox's documented ones plus my own judgement. A follow-up should capture screenshots/UX breakdowns from named developer talks.
+- Specific HUD/shop/inventory layouts of top 2025-2026 hits (Grow a Garden, Steal a Brainrot, Fisch, etc.): no developer post, talk or analysis article with real layouts was found; only marketplace UI-pack listings and a 90-page paid teardown whose public page does not say it covers UI (not read) [S99]. A follow-up should capture screenshots from the live games.
 - Touch-target numbers: Apple 44 pt and Android 48 dp are repeated by third-party guides but I did not fetch Apple HIG or Material pages [S85][S87].
-- Some Q2 2026 company numbers come from a filing excerpt summary [S82]; the Q2 2026 supplemental PDF could not be parsed.
-- Date flags: S63 (2020), S60 (2022), S72 (2023) are older than 2024 and may be stale; S70 (Mar 2024) is still current.
+
+Resolved in the gap pass (moved into Key facts): FY2024 and FY2025 device split (80/17/3 and 83/14/3, from the 10-K charts); TopbarInset coordinate space (full-screen pixels, per the official sample); Enum.PreferredInput item names; the full haptics list (HapticEffectType, VibrationMotor, HapticService methods); ImageLabel.ResampleMode (Default/Pixelated); per-object text-size opt-out (none exists); `TextBox.ShowNativeInput` and `UIPageLayout` JumpTo, JumpToIndex, Next, Previous exist [S97]; Q2 2026 company numbers (checked in the letter PDF).
+Date flags: S63 (2020), S60 (2022), S72 (2023) are older than 2024 and may be stale; S70 (Mar 2024) is still current.
 
 ## Sources
 [S1] GuiService class reference (creator-docs YAML, main branch; fetched 2026-10-04), https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/classes/GuiService.yaml (also create.roblox.com/docs/reference/engine/classes/GuiService)
@@ -648,3 +655,15 @@ end
 [S86] UI/UX Design for Roblox: The Complete Guide, SpawnBlox Dev Hub (third-party, 2026), https://spawnblox.com/articles/ui-ux-design.html
 [S87] How to Fix Roblox UI Scaling on Mobile, KitsBlox (third-party), 2026-03-15, https://kitsblox.com/blog/fix-roblox-ui-scaling-mobile
 [S88] GuiService reference pages on create.roblox.com (GetGuiInset, TopbarInset, PreferredTextSize), fetched 2026-10-04, https://create.roblox.com/docs/reference/engine/classes/GuiService/GetGuiInset
+Added in the gap pass (2026-10-04):
+[S89] Roblox FY2025 Form 10-K, "Breakdown of Our Users" pie charts (image rblx-20251231_g2.jpg: Platform = Mobile 83%, Desktop 14%, Console 3%; Gender, Geography also shown), SEC, https://www.sec.gov/Archives/edgar/data/1315098/000131509826000024/rblx-20251231.htm
+[S90] Roblox FY2024 Form 10-K, same chart (image rblx-20241231_g2.jpg: Mobile 80%, Desktop 17%, Console 3%), SEC, https://www.sec.gov/Archives/edgar/data/1315098/000131509825000033/rblx-20241231.htm
+[S91] Enum.PreferredInput, creator-docs, https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/enums/PreferredInput.yaml
+[S92] HapticEffect, HapticService, Enum.HapticEffectType and Enum.VibrationMotor references, creator-docs, https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/enums/HapticEffectType.yaml (and classes/HapticEffect.yaml, classes/HapticService.yaml, enums/VibrationMotor.yaml)
+[S93] ImageLabel.ResampleMode and Enum.ResamplerMode, creator-docs, https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/enums/ResamplerMode.yaml (and classes/ImageLabel.yaml)
+[S94] GuiService.TopbarInset code sample and GetInsetArea, https://create.roblox.com/docs/reference/engine/classes/GuiService ; Enum.ScreenInsets (relative to fullscreen area), https://robloxapi.github.io/ref-temp/enum/ScreenInsets.html
+[S95] "TopbarSafeInsets is wrong on Xbox and PS4 with new experience controls", mvyasu, DevForum, 2024-02-22 (staff reply 2025-11-21), https://devforum.roblox.com/t/topbarsafeinsets-is-wrong-on-xbox-and-ps4-with-new-experience-controls/2848042
+[S96] "New preferred text size setting makes it impossible to have text objects using RichText without TextScaled enabled that aren't affected by the setting", vaoo, DevForum, Sept 2025, https://devforum.roblox.com/t/3914959
+[S97] Roblox API dump, Roblox-Client-Tracker, version 0.741.19.7411056 (member checks: no per-object text-size property; TextBox.ShowNativeInput; UIPageLayout JumpTo/JumpToIndex/Next/Previous; PreferredInput), https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/API-Dump.json
+[S98] Roblox shareholder letters Q4 2025, Q1 2026 and Q2 2026 (no device split; Q2 2026: 123M DAU, 29B hours, 27M MUPs), https://s27.q4cdn.com/984876518/files/doc_financials/2026/q2/Roblox-Q2-2026-Earnings-Shareholder-Letter.pdf (also .../2026/q1/Q1-2026-Earnings-Shareholder-Letter.pdf and .../2025/q4/Q4-2025-Shareholder-Letter.pdf)
+[S99] Low-trust UI-style evidence: BuiltByBit UI-pack listings (Grow a UI Pack, Premium UI Pack Brainrot) and a 2026 UI-trends article seen only as search-result snippets, not opened; and "Grow a garden ui example", ProbablyGavin, DevForum, 2025-06-20, https://devforum.roblox.com/t/grow-a-garden-ui-example/3764006

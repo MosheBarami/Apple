@@ -1,5 +1,6 @@
 # Roblox Studio tools ecosystem 2025-2026: AI features, Creator Store safety, libraries, toolchain, testing
-_Researched 2026-10-04 by deep-research agent (topic 09). Sources: 81._
+_Researched 2026-10-04 by deep-research agent (topic 09). Sources: 96._
+_Gap pass 2026-10-04: 9 items resolved, 12 still open._
 
 Method note. Library status comes from each project's own GitHub repo (repo metadata, release list, commit list, README banners) read on 2026-10-04. Release and push dates are the ISO timestamps GitHub returns. GitHub's HTML pages show dates without a year for the current year, so a few page summaries were mis-dated; every date below that matters was cross-checked against the structured API data. Roblox AI feature dates come from Roblox's newsroom and DevForum announcements. Star counts are left out on purpose (the fetched numbers were inconsistent between page and API).
 
@@ -20,13 +21,15 @@ Method note. Library status comes from each project's own GitHub repo (repo meta
 - 2026-07-16: Roblox announced "Build", a mobile-first prompt-to-game tool (public alpha in New Zealand, testing from 2026-07-28, ages 9+ to test, published games for age-checked 16+, base tier free with paid power-user options). Same post says three Studio agents are coming "in the coming months": Playtesting Agent, Analytics Agent (ask questions about a game in plain language) and Experiment Agent (suggests tests to improve engagement, retention, monetization). Also listed: Procedural Models (parametric 3D from text or image), Cube, and a scene-generation model "coming soon". [S3]
 - 2026-07-18 DevForum (community, T0nkus): Assistant usage limits are reached quickly; failed runs (stuck, claims done when not) burn quota; asks for purchasable extra usage. No numeric quota is published in anything fetched. [S43]
 - 2026-07-25 DevForum (community, EECaptain): a 7-day automated ban reportedly caused by the Assistant's own mesh generation ("generate_mesh" of a realistic character) being flagged. Single anecdote, no staff reply seen. Treat as a risk signal, not a confirmed policy. [S44]
+- 2026-04-09 (staff Mirrattar, DevForum): the Playtest Agent shipped as a Studio Beta feature (File > Beta Features > Playtest Agent). Ask Assistant to playtest with a prompt such as using the playtest subagent to check that players can buy an item; each playtest ends with Pass, Fail, Inconclusive or Error plus a structured report of actions and observations. It runs on Roblox-run models (the post does not mention BYOK or token cost). Known limit: false positives, and it needs clear, actionable instructions. [S83]
+- 2026-09-10 to 09-12, RDC 2026 (San Jose): GamesBeat (2026-09-11) reports a Playtest Agent with multiplayer support, demoed with about 100 NPCs imitating players in a food-fight game (presented by Ore Jacob); the article states no beta/GA status or date. Roblox's IR release (2026-09-11) says new NPC behaviours, including playtesting NPCs, arrive by year-end 2026. The DevForum recap "RDC26: What We Announced" lists Studio and engine roadmap items (scene generation, orthographic camera, new primitive shapes, collision geometry, observability platform: late 2026; branch and merge, test teleports in Studio: early 2027; animation graph, terrain, material layering: mid 2027) and, as read, no Playtesting, Analytics or Experiment Agent entry and no Cube entry. Roblox Build's public alpha expanded to Serbia and Singapore. These are announcements, not shipped features. [S84][S85][S86][S87]
 
 ### B. Assistant and generation specifics (docs)
 - Assistant: multiple chat threads per place, history saved in the cloud; a screen-capture subagent looks at the viewport; Planning Mode plans are editable Markdown stored in the cloud; creates materials, textured meshes, procedural models; inserts Creator Store assets; explains and edits scripts across many objects. Docs warn generated scripts may not work flawlessly. [S5]
 - Slash commands (docs): `/insert_asset` (by ID), `/generate` and `/generate_mesh` (text or image reference), `/generate_procedural_model`, `/segment_mesh`, `/plan`. [S5]
 - Limits (docs): up to 50 procedural models per rolling 24 h; mesh generation optional max-triangles parameter defaults to 10,000 (lower gives faceted low-poly); generated multi-part models up to 8 parts; `/segment_mesh` on an imported mesh up to 5 parts per command (run again for more). [S5]
-- GenerationService (runtime Luau API on Cube): GenerateMeshAsync (single textured mesh, server only), GenerateModelAsync (multi-mesh via a schema such as "Car5" or "Body1" or a custom schema; accepts prompt, image, size hint, triangle limit; server only), LoadGeneratedMeshAsync (client only), SegmentMeshAsync (Studio/plugin only). Requires the DynamicGeneration capability, per-minute quotas, prompts are moderated, and generated editable meshes do not replicate to other clients. [S4]
-- Open-source Cube repo: Cube 3D v0.5 (July 2025) plus CubePart (part-controllable generation, May 2026 update). Hardware guidance: 16 GB VRAM, 24 GB with `--fast-inference`. The LICENSE file is a "Research-Only RAIL-MS" licence limiting use to a research purpose, so it is not a free commercial licence; verify before any product use. [S8, S75]
+- GenerationService (runtime Luau API on Cube; class is NotCreatable, a service; every method yields and needs the DynamicGeneration capability). Signatures read from the class reference on 2026-10-04: `GenerateMeshAsync(inputs: Dictionary, player: Player, options: Dictionary, intermediateResultCallback: Function?)` returns the generation id and a context id (unused); `inputs` supports only `Prompt` (string), `options` supports `SuggestedSize` (Vector3); server scripts only; marked "scheduled for future deprecation" in favour of GenerateModelAsync. `LoadGeneratedMeshAsync(generationId: string)` is client-only and returns a Model holding one MeshPart with an EditableMesh; that mesh does not replicate and loads once per id. `GenerateModelAsync(inputs: Dictionary, schema: Dictionary, options: Dictionary?)` returns a Model and a metadata table (a UUID and more); `inputs` keys are `TextPrompt` (required unless `Image`), `Image` (a Content, for example from `Content.fromAssetId`), `Size` (Vector3, approximate), `MaxTriangles` (integer) and `GenerateTextures` (default true); `schema` takes exactly one of `PredefinedSchema` ("Car5" = car as five Models, "Body1" = a single mesh) or `SchemaDefinition = { Groups = { "PartName", ... } }`; `options` is reserved and unused. The method page does not say server-only, but the guide's samples run in a server Script and state that objects generated in-game replicate to all players. `SegmentMeshAsync(meshPart: MeshPart, schema: Dictionary, options: Dictionary?)` works only in Studio edit mode or plugins, needs edit permission on a published mesh, and returns a Model plus a table with `UUID`. Documented errors for GenerateMeshAsync: rate limit exceeded per minute, moderation failed, internal error, character limit exceeded, service overloaded, size dimensions must be above 0; no numeric quota is published on these pages. Wrap calls in pcall. [S4][S89]
+- Open-source Cube repo: Cube 3D v0.5 (July 2025) plus CubePart (part-controllable generation, May 2026 update). Hardware guidance: 16 GB VRAM, 24 GB with `--fast-inference`. The LICENSE file (repo pushed 2026-05-28; GitHub reports its SPDX id as NOASSERTION) is the "Cube3D Research-Only RAIL-MS License": the Permitted Purpose is defined as academic or research purposes only; the copyright and patent grants apply "only in connection with the Permitted Purpose"; users must hold downstream users to that purpose; hosting it as a service counts as Distribution and also needs the purpose limit. So the open weights and code cannot be used commercially. The licence says the Licensor claims no rights in generated Output, but also that no use of Output may contravene the licence and that you are accountable for it, so commercial use of outputs is a legal question this note does not answer. In-Studio and in-experience generation through Roblox's own Assistant and GenerationService is a separate service under Roblox's terms, not this licence. [S8, S75, S88]
 
 ### C. Studio MCP server (built in)
 - Enable: Assistant, Manage MCP Servers, toggle "Enable Studio as MCP server". Connect through Quick Connect, a JSON config or a CLI command; any stdio-capable client works. [S6]
@@ -41,39 +44,41 @@ Method note. Library status comes from each project's own GitHub repo (repo meta
 - Insert-time controls: right-click an inserted object and choose "Disable Scripts"; check creator, rating and verification before inserting. [S46] Packages warn the same ("can contain malicious scripts"). [S65]
 - 2025-11-07: Roblox's automated moderation briefly flagged any model containing the bare word "require" (even `print("require")`) as violating Community Standards; fixed the same day. Lesson: legitimate `require(ModuleScript)` is fine; the policy targets `require(assetId)`. [S47]
 - 2025-11-21 onward (DevForum bug thread, still marked unresolved in April 2026): Creator Store search flooded by ID-verified virus models. Techniques reported: models with 546 nested children carrying very long foreign-language or emoji names to crash Studio on playtest return or selection; scripts hidden in innocent assets (skyboxes, welds); thousands of lines of spam to hide the payload and reportedly to overload AI detection; backdoors tied to a server-side executor service. First-page results "almost all virus" per reporters in April 2026 (community claim, unverified). [S50]
-- 2026-05-13 (staff, Creator Store team): Script Capabilities sandboxing. Studio now sandboxes Creator Store insertions by default. Blocked: LoadUnownedAsset (which covers `require(id)` and LoadAssetAsync), LoadAsset, LoadString, CapabilityControl, getfenv/setfenv. Blocks happen instantly at runtime with an Output error. A short list of trusted assets (HD Admin, Kohl's Admin, Adonis) got a one-time exception. Override per instance through the beta `SandboxedInstanceMode` on Workspace; Roblox strongly discourages granting these to unknown sources. Scope is Studio workflows; it does not change `LoadAssetAsync` in live games. [S48]
-- Script capabilities reference: the `Sandboxed` property marks a Model, Folder or Script as a sandboxed container; capabilities include RunClientScript, RunServerScript, AccessOutsideWrite, CreateInstances, LoadString, LoadUnownedAsset, ScriptGlobals and 30+ engine API groups (Animation, Audio, DataStore, Network, Physics, Players, UI and more). Errors name the missing capability, for example AccessOutsideWrite when modifying Workspace. Workspace's `SandboxedInstanceMode` property enables it (Experimental value documented). [S49, S73]
+- 2026-05-13 (staff, Creator Store team): Script Capabilities sandboxing. Studio now sandboxes Creator Store insertions by default. Blocked: LoadUnownedAsset (which covers `require(id)` and LoadAssetAsync), LoadAsset, LoadString, CapabilityControl, getfenv/setfenv. Blocks happen instantly at runtime with an Output error. A short list of trusted assets (HD Admin, Kohl's Admin, Adonis) got a one-time exception. Override per instance through the beta `SandboxedInstanceMode` on Workspace (an `Enum.SandboxedInstanceMode` with exactly two values: Default = the engine-default sandbox state, Experimental = sandboxed instance mode enabled); Roblox strongly discourages granting these to unknown sources. Scope is Studio workflows; it does not change `LoadAssetAsync` in live games. [S48]
+- Script capabilities reference: the `Sandboxed` property marks a Model, Folder or Script as a sandboxed container; capabilities include RunClientScript, RunServerScript, AccessOutsideWrite, CreateInstances, LoadString, LoadUnownedAsset, ScriptGlobals and 30+ engine API groups (Animation, Audio, DataStore, Network, Physics, Players, UI and more). Errors name the missing capability, for example AccessOutsideWrite when modifying Workspace. Workspace's `SandboxedInstanceMode` property enables it; the enum reference lists only Default (0) and Experimental (1). [S49, S73, S90]
 - Defaults that limit damage: `ServerScriptService.LoadStringEnabled` is false by default, and `HttpService` requests are off until "Allow HTTP Requests" is ticked in Experience Settings, Security. (From documentation search snippets; page text not fetched, so verify.) [S81]
 - Roblox's built-in warnings and LLM review: a community thread notes Studio shows a "scripts detected" prompt on model insert and that Assistant can be asked to review a script; no staff statement about automatic LLM scanning was found. [S51]
 - Community scanner plugins (ShieldScan, Advanced Anti-Backdoor, 2026) exist; both authors say keyword matching yields false positives and misses new obfuscation, and ShieldScan reportedly misses PackageLink-style backdoors. Advanced Anti-Backdoor sends flagged code to an AI service (free tier 50 requests a day) so do not run it on private code without reading its terms. Treat them as triage, never as a verdict. [S62, S63]
+- Plugin permission prompts (staff posts by RoxyBloxyy; both are from 2020, so check Studio's current behaviour): the first time a published plugin tries to manage a script in your data model (add or edit a script, or change Source or Parent) Studio shows a script-modification permission dialog (2020-11-18). A plugin's HTTP request to a domain it has not used before shows an HTTP permission dialog: the choice is remembered per plugin and per domain, sub-domains need their own grant, and closing the dialog denies that request without remembering (2020-03-23). Both choices can be changed in Studio's Plugin Management page. The HTTP post states that local plugins (files on disk) bypass permissions; the script post says its dialog works for published plugins only. Commenters asked whether a plugin update resets trust; the posts do not say. Current Creator Docs pages read for this pass (the plugins page) do not describe these prompts. [S94, S95]
 - Plugins are the highest-risk asset class because they run with elevated Studio permissions. Historical (2021, archived) tips: check the publisher is the real creator, not a group with a copied name, check account age, avoid copies of popular plugins. Malicious plugins have injected scripts parented to nil, so they are invisible in Explorer; a 2024 case showed "haxed" warnings in logs with no script found. [S61, S60, S59]
 - Packages (PackageLink, AutoUpdate) pull new versions automatically when a place opens for unmodified instances. A package you do not control is therefore a supply-chain path; a revoked-access package keeps existing copies. [S65]
 
 ### E. Open-source library status (checked 2026-10-04)
 | Library | Last release | Last repo activity | Status |
 |---|---|---|---|
-| ProfileStore (MadStudioRoblox) | no GitHub release listed; Wally/asset distribution | last push 2025-07-31 (type fix PR merge); Apache-2.0 | Maintained at low churn; the recommended session-lock store for new projects. [S9, S74] |
+| ProfileStore (MadStudioRoblox) | no GitHub release listed; Wally `lm-loleris/profilestore` 1.0.3 (realm server; versions 1.0.0 to 1.0.3 in the index) and a Creator Store asset | last push 2025-07-31 (type fix PR merge); Apache-2.0 | Maintained at low churn; the recommended session-lock store for new projects. [S9, S74, S92, S93] |
 | ProfileService (MadStudioRoblox/loleris) | n/a | last push 2024-10-13 | Not archived but README says "no longer supported"; use ProfileStore for new projects. Data is key-compatible. [S21, S74] |
 | Promise (evaera) | v4.0.0, 2022-03-03 | last commit 2023-10-16 | Stable, effectively dormant, MIT; still widely used. [S10] |
 | RbxUtil (Sleitnick): Signal 2.0.3, Trove 1.8.0, Comm 1.0.1, Net 0.2.0, Component 2.4.8, TableUtil, Spring, Timer, Silo, Concur and others | per-module versions via Wally; no GitHub releases | commits 2025-11-12, 2025-11-25, 2026-07-27 ("Better types for TypedRemote"); pushed 2026-08-11 | Actively maintained. [S11] |
 | Knit (Sleitnick) | v1.7.0, 2024-02-04 | archived (last push 2024-07-31) | Archived by the author: Luau types and Studio intellisense made a framework unnecessary; he suggests plain ModuleScript services plus thin remote wrappers. Do not start new projects on Knit. [S12] |
-| Janitor (howmanysmall) | v1.17.0, 2024-08-12 | pushed 2026-07-28 | Maintained (infrequent releases). Trove and Janitor overlap. [S20] |
+| Janitor (howmanysmall) | v1.17.0, 2024-08-12 (GitHub release); the Wally index lists `howmanysmall/janitor` up to 1.18.3 | pushed 2026-07-28 | Maintained (infrequent releases). Trove and Janitor overlap. [S20, S92] |
 | Fusion (dphfox) | v0.3 ("v0.3-beta" tag), 2024-08-30 | pushed 2026-02-02 | Alive, still a 0.x beta API (scopes, use-functions, contextuals). [S13] |
 | react-lua (jsdotlua, community fork of Roblox's React 17 port) | v17.2.1, 2024-12-04 | pushed 2025-05-23 | Maintained slowly; react-dom, devtools and react-refresh not ported. [S14] |
 | Roact (Roblox) | n/a | archived; last push 2023-12-13 | Archived; use react-lua for React-style UI. [S24] |
-| Vide (centau) and Charm (littensy) | not retrievable (rate-limited) | repos live, not archived | Active-looking reactive UI and state libraries; versions unverified. [S34, S35] |
-| Matter (matter-ecs) | v0.8.5 2024-12-09 (v0.9.0-beta.0 2024-11-15) | last commit date unverified | ECS; no release for ~21 months. [S29] |
+| Vide (centau) | 0.4.1 on 2026-07-11 and 0.4.0 on 2026-01-17 (both flagged pre-release on GitHub); 0.3.1 on 2024-10-09 | last commit 2026-09-28; MIT; Wally `centau/vide` | Active reactive UI library, still 0.x. [S34, S91, S92] |
+| Charm (littensy) | charm-v0.11.1 on 2026-10-01; charm-v0.11.0 on 2026-06-21 (release candidates rc.5 2026-03-26, rc.6 2026-05-06) | last commit 2026-10-01; MIT; Wally `littensy/charm` | Active atomic state library, still 0.x. [S35, S91, S92] |
+| Matter (matter-ecs) | v0.8.5 2024-12-09 (v0.9.0-beta.0 2024-11-15) | last commit on the default branch 2024-11-24 (repo pushed 2024-12-31); MIT; Wally `matter-ecs/matter` and `evaera/matter` | ECS; no release for about 22 months and no default-branch commits since 2024; treat as dormant. [S29, S91, S92] |
 | Zap (red-blox) | v0.6.29, 2026-06-23 | releases roughly every 2-6 months | Maintained buffer-packing networking code generator. [S25] |
 | Blink (1Axen) | v0.18.9 and v1.0.0-pre.10, both 2026-09-19 | very active | Maintained networking IDL generator, 1.0 in prerelease. [S26] |
-| roblox-ts | v3.0.0, 2024-09-12 | unverified | TypeScript to Luau; no release in 2025-2026 seen. [S30] |
+| roblox-ts | v3.0.0, 2024-09-12 (v2.3.0 2024-02-14) | commits on master through 2026-10-01 (dependency bumps and a compiler fix); MIT | TypeScript to Luau; maintained by commits but no release since 3.0.0 (about 25 months). [S30, S91] |
 
 ### F. Toolchain status
-- Rojo: stable v7.7.1 released 2026-10-02, v7.7.0 on 2026-07-02, v7.7.0-rc.1 2025-11-27, v7.6.1 2025-11-07; repo pushed 2026-10-02; MPL-2.0. Maintained. The Studio plugin is separate per major version. [S15, S16]
+- Rojo: stable v7.7.1 released 2026-10-02, v7.7.0 on 2026-07-02, v7.7.0-rc.1 2025-11-27, v7.6.1 2025-11-07; repo pushed 2026-10-02; MPL-2.0. Maintained. The Studio plugin is separate per major version. `.luau` files are supported: the Rojo changelog lists "Added support for .luau files" under 7.2.0 (2022-06-29), `rojo init` generates `*.luau` since 7.4.0 (2024-01-16), and `init.plugin.luau` was a later fix, so `.server.luau`, `.client.luau`, `init.luau` and `.luau` modules all work on 7.7.x. [S15, S16, S91]
 - Wally: v0.4.0-alpha.0 pre-release on 2026-09-26 (adds `--locked` install, homepage and repository manifest fields, lockfile format change); previous stable v0.3.2 from 2023-06-05; MPL-2.0. The registry is the `wally-index` Git repo. [S17]
 - Rokit (rojo-rbx): toolchain manager, latest release v1.2.0 on 2025-09-30; reads Foreman and Aftman files; Rojo's docs recommend it. [S31, S16]
 - Aftman: archived 2025-07-09; the author recommends mise. [S33]
-- pesde: alternative Luau package manager (multi-runtime, also Lune); active repo, release dates unverified. [S78]
-- Argon: alternative sync tool with CLI, VS Code extension and Studio plugin and two-way sync; release dates unverified. [S79]
+- pesde: alternative Luau package manager (multi-runtime, also Lune); releases v0.7.1 2025-08-24, v0.7.2 2025-12-26, v0.7.3 2026-03-18, v0.7.4 2026-09-09 (tags carry a `+registry.0.2.3` suffix); last commit 2026-08-07; MIT. [S78, S91]
+- Argon: alternative sync tool with CLI, VS Code extension and Studio plugin and two-way sync; releases 2.0.26 2025-08-25, 2.0.27 2025-12-10, 2.0.28 2026-03-04, 2.0.29 2026-05-19; repo pushed 2026-07-01; Apache-2.0. [S79, S91]
 - Luau: weekly releases, 0.741 on 2026-10-02, 0.740 on 2026-09-25, 0.739 on 2026-09-18. Experimental in the recent notes: an "exact" table type, `if local` expressions. Roblox Studio's Luau may lag the open-source version. [S18]
 - luau-lsp: 1.70.1 on 2026-09-27, 1.70.0 on 2026-09-20, 1.69.0 on 2026-07-18. [S19]
 - StyLua: v2.5.2 on 2026-05-16 (v2.5.0 added Luau const-assignment support). [S28] Selene: 0.32.0 on 2026-10-01, 0.31.0 on 2026-05-21. [S32]
@@ -84,7 +89,7 @@ Method note. Library status comes from each project's own GitHub repo (repo meta
 - Modes: Test (F5, avatar at SpawnLocation or around (0,100,0)), Test Here (avatar in front of the camera), Run (F8, no avatar). In a solo test toggle between Client view (blue viewport border) and Server view (green border, free camera). Output is colour-coded: blue client, green server. [S66]
 - "Server & Clients": one server plus up to 8 client windows; start with F7 or Play. Stop resets with Shift+F5. Team Test allows only one session at a time. [S66]
 - Simulators: Device Simulator (screen size, pixel density, touch input; it does not reproduce a phone's CPU or GPU speed, which is an inference to verify on a real device), Network Simulator (latency, jitter, packet loss), Controller Emulator, Party Simulator, Player Emulator (language, region, content policy). VR emulation is Windows only. [S66]
-- MicroProfiler: the docs give Ctrl+F6 (Cmd+F6 on Mac) for both Studio and the client (older posts say Ctrl+Alt+F6, so confirm on your build). 60 FPS budget is 16.67 ms; frame-bar colours: orange CPU-bound, blue GPU-bound, red GPU wait over 2.5 ms; wrap code with `debug.profilebegin("Label")` and `debug.profileend()`; server profiling through Developer Console (Ctrl+F9), MicroProfiler tab. [S67]
+- MicroProfiler: the docs give Ctrl+F6 (Cmd+F6 on Mac) for both Studio and the client (older posts say Ctrl+Alt+F6; that is outdated, the current MicroProfiler docs page lists only Ctrl+F6 and Cmd+F6 for Studio and the desktop client). 60 FPS budget is 16.67 ms; frame-bar colours: orange CPU-bound, blue GPU-bound, red GPU wait over 2.5 ms; wrap code with `debug.profilebegin("Label")` and `debug.profileend()`; server profiling through Developer Console (Ctrl+F9), MicroProfiler tab. [S67]
 - Scripted testing services (Studio-only): `StudioTestService` (plugin scripts only: ExecutePlayModeAsync, ExecuteRunModeAsync, ExecuteMultiplayerTestAsync with 1-8 clients, EndTest, AddPlayers, GetTestArgs, LeaveTest), `VirtualInput` from `UserInputService:CreateVirtualInput()` (SendKey, SendMouseButton, SendMousePosition, SendMouseDelta, SendPointerAction, SendTextInput; errors if input would hit CoreGui), `StudioDeviceSimulatorService`. [S66, S69, S70]
 - `TestService`: Check, Require (ends test on failure), Warn, Error, Fail, Message, Checkpoint, Done, RunAsync; properties AutoRuns, ExecuteWithStudioRun, NumberOfPlayers, Timeout, ErrorCount, TestCount, WarnCount. [S68]
 - Open Cloud Luau Execution API: five endpoints all marked Stable; run a Luau task against a place version and fetch logs; suited to CI. [S71]
@@ -98,7 +103,7 @@ Method note. Library status comes from each project's own GitHub repo (repo meta
 - DO keep generated scripts reviewable: Roblox's docs say generated code may be wrong; always read console output after a run. [S5]
 - DO set a triangle cap on generated meshes (default 10,000; for props use 2,000-5,000 if budget matters). Max 8 parts for generated models, 5 per segment call, 50 procedural models per 24 h. [S5]
 - DON'T assume mesh generation is free of moderation risk: prompts are filtered and a ban report exists tied to a character prompt. Keep prompts to neutral props; avoid realistic people. [S4, S44]
-- DON'T use the open-source Cube weights in a product without reading the research-only licence. [S75]
+- DON'T use the open-source Cube weights or code in a commercial product: the licence limits use to academic or research purposes. Roblox's own Assistant and GenerationService are separate. [S75, S88]
 - DON'T build on features announced as "coming" (Analytics Agent, Experiment Agent, scene generation, cloud agents) until Roblox ships them; as of 2026-10-04 no GA announcement was found. [S3]
 - DO require BYOK for features documented as BYOK-only (reference images in plans, playtest screenshots). [S2]
 
@@ -157,7 +162,7 @@ Pitfalls: scripts in nil-parented or deep objects hide from casual browsing; sea
 When to use: you must run third-party code (an admin system, a library) and want hard limits.
 Steps:
 1. Put the third-party model inside a Folder or Model and set its `Sandboxed` property to true. [S49]
-2. Set Workspace `SandboxedInstanceMode` to Experimental (a beta property; the value list is not fully documented). [S73]
+2. Set Workspace `SandboxedInstanceMode` to Experimental (a beta property; the enum has only Default and Experimental). [S73]
 3. Grant only the capabilities the asset needs; read the Output error text, which names the missing capability, and add one capability at a time. [S49]
 4. Never grant LoadUnownedAsset, LoadString or CapabilityControl to code from an unknown author. [S48]
 Pitfalls: Roblox says Creator Store sandboxing applies to Studio workflows and does not alter `LoadAssetAsync` behaviour in live games; do not treat it as a runtime guarantee. [S48]
@@ -169,10 +174,10 @@ Steps:
 2. `rokit add rojo-rbx/rojo`, then `rokit install`; add Wally, StyLua and Selene the same way. [S16, S31]
 3. `rojo plugin install` to put the matching Rojo 7 plugin into Studio. [S16]
 4. Create `default.project.json`: `name`, `tree` with `$className: "DataModel"`; map `$path` folders to ReplicatedStorage, ServerScriptService and StarterPlayerScripts. Optional fields: `servePort` (default 34872), `globIgnorePaths`, `placeId`. [S16]
-5. File names decide the class: `.server.lua` becomes a Script, `.client.lua` a LocalScript, `.lua` a ModuleScript; `init.*` turns the folder into that script; `.meta.json`, `.model.json`, `.rbxm`, `.json` (to ModuleScript), `.csv` (LocalizationTable), `.txt` (StringValue). The fetched docs list `.lua`; whether `.luau` is accepted on 7.7.x is unverified. [S16]
+5. File names decide the class: `.server.lua` becomes a Script, `.client.lua` a LocalScript, `.lua` a ModuleScript; `init.*` turns the folder into that script; `.meta.json`, `.model.json`, `.rbxm`, `.json` (to ModuleScript), `.csv` (LocalizationTable), `.txt` (StringValue). `.luau` is accepted in place of `.lua` for every one of these script forms (`.server.luau`, `.client.luau`, `init.luau`; verified in the Rojo changelog and source). [S16, S91]
 6. `wally init`, then add dependencies in `wally.toml`; `wally install` produces a Packages folder; add it to the project file under ReplicatedStorage. `realm` is `shared` or `server`. [S17]
 7. Run `rojo serve`, click Connect in the Studio plugin, edit in your editor. `rojo build -o game.rbxl` for a place file.
-Pitfalls: plugin and server major versions must match; Wally is still 0.3.x stable with 0.4 alpha; pin versions in `wally.toml`.
+Pitfalls: plugin and server major versions must match; Wally is still 0.3.x stable with 0.4 alpha; pin versions in `wally.toml`. For ProfileStore use `ProfileStore = "lm-loleris/profilestore@1.0.3"` in a `[server-dependencies]` section (it is a server-realm package).
 
 ### Add session-locked player data with ProfileStore
 When to use: any game that saves player data.
@@ -227,7 +232,7 @@ Pitfalls: Team Test allows only one session; stop with Shift+F5 to restore pre-t
 ### Profile a frame spike with the MicroProfiler
 When to use: frame time above 16.67 ms or a reported lag.
 Steps:
-1. Open it (Ctrl+F6 or Cmd+F6 per current docs; try Ctrl+Alt+F6 if that does nothing). [S67]
+1. Open it (Ctrl+F6, or Cmd+F6 on Mac; the docs list the same keys for Studio and the desktop client; on mobile turn it On in the Settings menu and open the shown address from a machine on the same network). [S67]
 2. Pause the capture (Ctrl+P), click the tallest frame bar. [S67]
 3. Read bar colour: orange CPU-bound, blue GPU-bound, red heavy GPU wait. [S67]
 4. Expand parent labels in the timeline; fix the widest child first.
@@ -373,17 +378,23 @@ trove:Clean()   -- disconnects everything
 ```
 Signal has Connect, Once, Fire, Wait, DisconnectAll, Destroy; FireDeferred uses task.defer. Trove has Add, Connect, Clean, Extend, Clone, BindToRenderStep, AddPromise, Remove, AttachToInstance. [S11]
 
-Wally manifest (shape from the Wally README):
+Wally manifest (shape from the Wally README; package names and versions checked against the wally-index repository and RbxUtil's own `wally.toml` files on 2026-10-04):
 ```toml
 [package]
-name = "scope/name"
+name = "yourscope/yourgame"
 version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 
 [dependencies]
 Signal = "sleitnick/signal@2.0.3"
+Trove = "sleitnick/trove@1.8.0"
+TableUtil = "sleitnick/table-util@1.2.1"
+
+[server-dependencies]
+ProfileStore = "lm-loleris/profilestore@1.0.3"
 ```
-(The `sleitnick/signal` scope name and version string are assumptions based on the module list; confirm on the Wally registry before use.)
+Verified registry entries (latest version in the index): `sleitnick/signal` 2.0.3, `sleitnick/trove` 1.8.0, `sleitnick/comm` 1.0.1, `sleitnick/net` 0.2.0, `sleitnick/component` 2.4.8, `sleitnick/table-util` 1.2.1 (the scope has `table-util`, not `tableutil`), `sleitnick/spring` 1.0.0, `sleitnick/timer` 2.0.0, `sleitnick/silo` 0.2.0, `sleitnick/concur` 0.1.2, `lm-loleris/profilestore` 1.0.3 (a server-realm package, so it goes under `[server-dependencies]`), `evaera/promise` 4.0.0, `howmanysmall/janitor` 1.18.3, `centau/vide`, `littensy/charm`, `matter-ecs/matter`. The left-hand name (`Signal`, `Trove`) is the alias you require from the Packages folder. [S92, S93, S96]
 
 Rojo project file (shape from Rojo docs):
 ```json
@@ -423,21 +434,29 @@ print("test returned", result)
 Plugin scripts only. [S69]
 
 ## Open questions / unverified
-- Assistant usage quota: no published number; Roblox's docs do not state credits or pricing for built-in generation. [S5, S43]
-- Whether Playtesting Agent, Analytics Agent and Experiment Agent are in general availability as of 2026-10-04: the 2026-07-16 post says "coming months"; no later GA post was found (search budget ran out before a final check).
+- Assistant usage quota: no published number; Roblox's docs do not state credits or pricing for built-in generation, and the GenerationService pages give no numeric per-minute quota. [S5, S43, S4]
+- Whether the Playtesting, Analytics and Experiment Agents are generally available as of 2026-10-04. Verified: the Playtest Agent has been a Studio Beta feature since 2026-04-09 and was demoed with multiplayer support at RDC 2026 (2026-09-11) with no GA statement; the 2026-07-16 post says all three arrive "over the coming months"; the RDC 2026 DevForum recap as read does not list the Analytics or Experiment Agent. A search-result snippet attributes "Late 2026" to the Analytics Agent on Roblox's Creator Roadmap page, but that page is rendered by script and could not be read, so the date is unverified. Treat the Analytics and Experiment Agents as not shipped. [S3, S83, S85, S87]
 - Procedural Model Generation shipping date: listed "coming soon" on 2026-04-15 yet documented with a `/generate_procedural_model` command and a 50 per 24 h limit; exact GA date unverified. [S1, S5]
 - Studio AI code completion/autocomplete product details and history (Code Assist, 2023-2024): not fetched.
-- Exact GenerationService method signatures and quota numbers; read the class page before coding. [S4]
-- Whether the Cube repository's Research-Only RAIL licence allows commercial use of outputs. The fetched licence text restricts use to a research permitted purpose; legal reading unverified. [S75]
-- SandboxedInstanceMode enum values besides Experimental; whether the Creator Store default sandbox applies to the Sandboxed property or only to inserted assets by an internal route; whether sandboxing extends to plugin insertions. [S48, S73]
+- Whether the Creator Store default sandbox applies to the Sandboxed property or only to inserted assets by an internal route; whether sandboxing extends to plugin insertions. [S48, S73]
 - Claims from community threads (Creator Store results "almost all virus", the "Exoliner" executor link, AI-detection overload) are single-source user reports. [S50]
-- MicroProfiler hotkey (docs say Ctrl+F6; older sources say Ctrl+Alt+F6). [S67]
-- Rojo `.luau` extension support on 7.7.x; Rojo/Wally exact Wally package names for RbxUtil modules; Vide, Charm, Matter, roblox-ts, pesde and Argon last-release and last-commit dates (GitHub API rate limit hit; some HTML pages omit versions).
-- ProfileStore has no GitHub release or tag list that could be fetched, so its "version" is a repo-commit state, not a number. [S9]
+- Whether the 2020 plugin permission prompts behave identically in current Studio (for example after a plugin update) was not re-verified; the posts are the only sources. [S94, S95]
+- Whether commercial use of Cube outputs (as opposed to the weights and code) is permitted: the licence disclaims Licensor rights in Output but ties Output use to the licence. Legal reading unverified. [S75, S88]
 - Device Simulator not emulating device performance is an inference, not a doc statement.
 - The PackageLink backdoor technique: only the ShieldScan author's note that it is missed; no technical write-up found. [S62, S65]
 - Creator Store rename timing from Toolbox/Creator Marketplace (2024) was not verified in this pass.
-- Plugin permission prompts in Studio (script injection, HTTP) not verified from current docs; the plugins docs page fetched did not cover security.
+- ProfileStore has no GitHub release or tag list; its Wally index versions (1.0.0 to 1.0.3) are the only numbered versions. [S9, S93]
+
+### Resolved in the 2026-10-04 gap pass (details are in Key facts and the library table)
+- Cube licence: Research-Only RAIL-MS, Permitted Purpose is academic or research only; weights and code are not commercially usable. [S88]
+- `SandboxedInstanceMode` values: Default and Experimental only. [S90]
+- MicroProfiler hotkey: current docs say Ctrl+F6 (Cmd+F6 on Mac) in Studio and on the desktop client; Ctrl+Alt+F6 in older posts is outdated. [S67]
+- Rojo `.luau`: supported since 7.2.0. [S91]
+- Release data for Vide, Charm, Matter, roblox-ts, pesde, Argon: filled from GitHub API. [S91]
+- GenerationService method signatures: read from the class YAML. [S4][S89]
+- Wally package names for RbxUtil modules (and ProfileStore): verified in the wally-index. [S92, S93, S96]
+- Plugin permission prompts: documented by two 2020 staff posts. [S94, S95]
+- RDC 2026 engineering announcements: DevForum recap and press coverage read; see section A. [S84][S85][S86][S87]
 
 ## Sources
 [S1] Roblox Studio is Going Agentic, Roblox newsroom, 2026-04-15, https://about.roblox.com/newsroom/2026/04/roblox-studio-going-agentic
@@ -521,3 +540,18 @@ Plugin scripts only. [S69]
 [S79] argon-rbx/argon repository, https://github.com/argon-rbx/argon
 [S80] Roblox Introduces Build, press release via Nasdaq, 2026-07-16, https://www.nasdaq.com/press-release/roblox-introduces-build-new-way-create-platform-2026-07-16 (search result only, not fetched)
 [S81] ServerScriptService.LoadStringEnabled and HttpService docs, Roblox Creator Docs, https://create.roblox.com/docs/en-us/reference/engine/classes/ServerScriptService.md and https://create.roblox.com/docs/cloud-services/http-service (from search-result snippets only; not fetched, verify)
+[S82] Roblox/creator-docs repository, content/en-us tree (GitHub API), read 2026-10-04, https://github.com/Roblox/creator-docs
+[S83] [Studio Beta] Studio Assistant & MCP Playtest Agent, Mirrattar (Roblox staff), DevForum, 2026-04-09, https://devforum.roblox.com/t/studio-beta-studio-assistant-mcp-playtest-agent/4566767
+[S84] RDC 2026: The World Needs More Play, Roblox newsroom, 2026-09, https://about.roblox.com/newsroom/2026/09/rdc-2026-the-world-needs-more-play
+[S85] Roblox shows off Playtest Agent for Roblox devs to test games, GamesBeat, 2026-09-11, https://gamesbeat.com/roblox-shows-off-playtest-agent-for-roblox-devs-to-test-games/
+[S86] Roblox unveils new play, creation and monetisation tools at RDC 2026, PocketGamer.biz, 2026-09-14, https://www.pocketgamer.biz/roblox-unveils-new-play-creation-and-monetisation-tools-at-rdc-2026/
+[S87] RDC26: What We Announced, DevForum announcements, 2026-09 (post date not captured), https://devforum.roblox.com/t/rdc26-what-we-announced/4865880 ; and Roblox Unveils New Ways to Play, Build, and Grow at RDC, Roblox investor relations press release, 2026-09-11, https://ir.roblox.com/news/news-details/2026/Roblox-Unveils-New-Ways-to-Play-Build-and-Grow-at-the-Roblox-Developers-Conference-RDC/default.aspx
+[S88] Cube3D Research-Only RAIL-MS License (full text read) and repository metadata, Roblox/cube, GitHub API, read 2026-10-04, https://github.com/Roblox/cube/blob/main/LICENSE
+[S89] Model generation guide, Roblox Creator Docs, https://create.roblox.com/docs/parts/model-generation (read via the creator-docs repo, 2026-10-04)
+[S90] SandboxedInstanceMode enum reference, Roblox Creator Docs (creator-docs repo), read 2026-10-04, https://create.roblox.com/docs/reference/engine/enums/SandboxedInstanceMode
+[S91] GitHub API release, tag and commit data read 2026-10-04 for rojo-rbx/rojo (CHANGELOG.md and src/snapshot_middleware/lua.rs), centau/vide, littensy/charm, matter-ecs/matter, roblox-ts/roblox-ts, pesde-pkg/pesde, argon-rbx/argon, https://api.github.com/repos/<owner>/<repo>
+[S92] UpliftGames/wally-index registry repository (package files under sleitnick, lm-loleris, evaera, howmanysmall, centau, littensy, matter-ecs), GitHub API, read 2026-10-04, https://github.com/UpliftGames/wally-index ; Wally README manifest sections, https://github.com/UpliftGames/wally
+[S93] MadStudioRoblox/ProfileStore wally.toml and README (package lm-loleris/profilestore 1.0.3, Creator Store asset link), GitHub, read 2026-10-04, https://github.com/MadStudioRoblox/ProfileStore
+[S94] Introducing Plugin HTTP Permissions, RoxyBloxyy (Roblox staff), DevForum, 2020-03-23 (stale), https://devforum.roblox.com/t/introducing-plugin-http-permissions/493269
+[S95] Introducing Plugin Script Modification Permissions, RoxyBloxyy (Roblox staff), DevForum, 2020-11-18 (stale), https://devforum.roblox.com/t/introducing-plugin-script-modification-permissions/877312
+[S96] Sleitnick/RbxUtil module wally.toml files (signal, trove, comm, net, component, spring, timer, silo, concur), GitHub API, read 2026-10-04, https://github.com/Sleitnick/RbxUtil/tree/main/modules
