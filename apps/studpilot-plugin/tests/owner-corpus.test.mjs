@@ -15,7 +15,7 @@ local lastRoot = nil
 local http = {
  RequestAsync = function(_, request)
   fetches += 1
-  assert(request.Url == "https://apple.moshe-barami111.workers.dev/api/owner-corpus/content/" .. string.rep("b",64))
+  assert(request.Url == "https://studpilot.app/api/owner-corpus/content/" .. string.rep("b",64))
   return { Success = true, Body = "verified mock envelope" }
  end,
  JSONDecode = function() return { componentSha256 = string.rep("a",64), byteLength = 8, rbxmBase64 = "PHJvYmxveCE=" } end,

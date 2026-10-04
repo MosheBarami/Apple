@@ -250,7 +250,7 @@ test('trusted deployment role and replica binding are required BEFORE authority 
   const f = fixture(t);
   for (const overrides of [{ BILLING_WORKER_NAME: undefined }, { BILLING_WORKER_NAME: 'golem' },
     { LEGACY_QUOTA_DO: undefined }]) {
-    assert.equal((await f.post(credit(), overrides, true, 'https://apple.moshe-barami111.workers.dev')).status, 503);
+    assert.equal((await f.post(credit(), overrides, true, 'https://studpilot.app')).status, 503);
   }
   assert.equal(f.calls.length, 0, 'a request host cannot replace a deployment binding');
   assert.equal(f.stripeCalls.length, 0);

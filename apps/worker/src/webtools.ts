@@ -824,7 +824,7 @@ type ResearchSecrets = { SERPER_API_KEY?: string; TAVILY_API_KEY?: string; CONTE
 const secrets = (env: Env): ResearchSecrets => env as Env & ResearchSecrets;
 
 /** Identifies the agent to the providers. No cookie and no forwarded user header is ever sent. */
-export const AGENT_USER_AGENT = 'StudPilotAgent/1 (+https://apple.moshe-barami111.workers.dev/bot)';
+export const AGENT_USER_AGENT = 'StudPilotAgent/1 (+https://studpilot.app/bot)';
 
 const SERPER_URL = 'https://google.serper.dev/search';
 const TAVILY_URL = 'https://api.tavily.com/search';

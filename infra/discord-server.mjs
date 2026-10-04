@@ -12,11 +12,12 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PRODUCT_ORIGIN } from '../scripts/lib/product-origin.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GUILD = process.env.DISCORD_GUILD_ID || '1549352480658169866';
-const SITE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
+const SITE = process.env.API_BASE || PRODUCT_ORIGIN;
 if (!TOKEN) { console.error('DISCORD_BOT_TOKEN is not set'); process.exit(1); }
 
 const API = 'https://discord.com/api/v10';

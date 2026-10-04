@@ -13,9 +13,14 @@
  *   PAGES REDIRECT. Anything a person reads moves to the canonical origin, permanently.
  *   APIs DO NOT. `/api/*` and `/v1` keep answering where they are, because a redirect turns an
  *   authenticated POST into a request that can lose its body, and because "stop showing a person
- *   the old name" and "sever the old name" are different promises. Every shipped client was checked
- *   one by one and already points at the canonical origin, so nothing installed depends on either
- *   behaviour — but the asymmetry is deliberate and has to survive someone tidying it.
+ *   the old name" and "sever the old name" are different promises. Every shipped client points at
+ *   the canonical origin, so nothing installed depends on either behaviour — but the asymmetry is
+ *   deliberate and has to survive someone tidying it.
+ *
+ * THE CANONICAL ORIGIN IS NOW https://studpilot.app, and the former hosts (golem, and apple) are the
+ * stand-in Worker in infra/legacy-proxy until 2027-01-02, which makes the same split in front of
+ * this Worker (tests/legacy-proxy.test.mjs). This file pins what THIS Worker does with the shared
+ * constants; the one shipped client allowed to name a former host is the Studio plugin's fallback.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,8 +34,10 @@ const INDEX = readFileSync(join(ROOT, 'apps/worker/src/index.ts'), 'utf8');
 const shared = await import(join(ROOT, 'packages/shared/src/index.ts'));
 
 test('the canonical origin and the legacy host are both named once, in the shared package', () => {
-  assert.equal(shared.PRODUCT_ORIGIN, 'https://apple.moshe-barami111.workers.dev');
+  assert.equal(shared.PRODUCT_ORIGIN, 'https://studpilot.app');
   assert.equal(shared.LEGACY_PRODUCT_HOST, 'golem.moshe-barami111.workers.dev');
+  // A redirect from a host to itself is a loop: the product must not be the host it redirects away from.
+  assert.notEqual(new URL(shared.PRODUCT_ORIGIN).hostname, shared.LEGACY_PRODUCT_HOST);
   // The redirect must READ them, not restate them. A destination typed beside the redirect is how
   // you end up 308-ing a host to a slightly different spelling of itself.
   assert.match(INDEX, /url\.hostname !== LEGACY_PRODUCT_HOST/, 'the redirect does not read the shared legacy host');
@@ -50,20 +57,33 @@ test('API routes on the legacy host are deliberately NOT redirected', () => {
     'the API exemption on the legacy-host redirect is gone');
 });
 
-test('no shipped client points at the legacy host', () => {
-  // The reason pages can be redirected at all. Checked per file rather than asserted in prose.
+test('no shipped client points at a former host, except the plugin fallback that says so', () => {
+  // The reason pages can be redirected at all. Checked per file rather than asserted in prose, and
+  // against the files that EXIST: a client list that names a deleted file passes on every run.
+  const APPLE_HOST = 'apple.moshe-barami111.workers.dev';
   const clients = [
     'apps/studpilot-plugin/src/Bridge.luau',
-    'apps/plugin/src/init.server.luau',
-    'packages/sdk/luau/AppleClient.luau',
+    'apps/studpilot-plugin/src/init.server.luau',
+    'apps/studpilot-plugin/src/ops/OwnerCorpus.luau',
+    'packages/sdk/luau/StudPilotClient.luau',
+    'packages/sdk/src/wire.mjs',
+    'packages/sdk/python/studpilot_sdk/client.py',
   ];
   const offenders = [];
   for (const rel of clients) {
-    let text;
-    try { text = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
-    if (text.includes(shared.LEGACY_PRODUCT_HOST)) offenders.push(rel);
+    const text = readFileSync(join(ROOT, rel), 'utf8');
+    if (text.includes(shared.LEGACY_PRODUCT_HOST)) offenders.push(`${rel} -> ${shared.LEGACY_PRODUCT_HOST}`);
+    // The plugin's one-release fallback is the single place that may name the apple host, once, as
+    // the fallback and not as the primary.
+    const hits = text.split(APPLE_HOST).length - 1;
+    if (rel === 'apps/studpilot-plugin/src/Bridge.luau') {
+      if (!new RegExp(`local FALLBACK_ORIGIN = "https://${APPLE_HOST.replace(/\./g, '\\.')}"`).test(text) || hits !== 1) {
+        offenders.push(`${rel} -> the apple host must appear exactly once, as FALLBACK_ORIGIN (found ${hits})`);
+      }
+      assert.match(text, /local STUDPILOT_ORIGIN = "https:\/\/studpilot\.app"/, 'the plugin primary is not the product origin');
+    } else if (hits) offenders.push(`${rel} -> ${APPLE_HOST}`);
   }
-  assert.deepEqual(offenders, [], `these shipped clients still point at the old host: ${offenders.join(', ')}`);
+  assert.deepEqual(offenders, [], `these shipped clients still point at a former host: ${offenders.join('; ')}`);
 });
 
 test('the guard fails if the redirect is removed', () => {

@@ -77,7 +77,7 @@ const studioBullet = STUDIO_PLUGIN_STORE_LIVE ? null : 'Roblox Studio plugin · 
 //   `Expected ")" but found "s"`, because it reads `import` and expects a dynamic import's paren.
 //   Isolated by bisection: the committed page builds, the same code with a template literal builds,
 //   and only the `import.meta.env` form fails. The origin is therefore a constant.
-const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const BILLING_ORIGIN = 'https://studpilot.app';
 const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config').then((r) => (r.ok ? r.json() : null)).catch(() => null);
 const billing = {
   checkout: billingProbe?.checkout === true,

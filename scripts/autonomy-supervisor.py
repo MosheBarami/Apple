@@ -67,7 +67,7 @@ MAX_SESSION_SECONDS = int(os.environ.get("AUTONOMY_MAX_SESSION_SECONDS", str(2 *
 MAX_REVIEW_SESSIONS = int(os.environ.get("AUTONOMY_MAX_REVIEW_SESSIONS", "3"))
 MAX_REVIEW_SECONDS = int(os.environ.get("AUTONOMY_MAX_REVIEW_SECONDS", str(4 * 60 * 60)))
 BACKOFF_SECONDS = tuple(int(x) for x in os.environ.get("AUTONOMY_BACKOFF", "30,120,600").split(","))
-PRODUCTION_URL = "https://apple.moshe-barami111.workers.dev"
+PRODUCTION_URL = "https://studpilot.app"
 
 ROLES = ("customer-stranger", "critic", "implementer", "reviewer")
 

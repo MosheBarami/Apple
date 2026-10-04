@@ -27,14 +27,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseAllowlist } from './check-old-names.mjs';
+import { PRODUCT_ORIGIN } from './lib/product-origin.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-// THE ORIGIN IS `apple`, NOT `golem`. The old value was the LEGACY worker, which serves /api/* from
-// a 27-commit-stale build; a capture taken from it is a measurement of a deployment nobody is sent
-// to. The hostname stays on the exemption list because clients still resolve it — being exempt from
-// the RENAME and being the right thing to MEASURE are different questions, and conflating them is
-// how the deployed half came to describe the wrong worker.
-const ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+// THE ORIGIN IS READ FROM THE ONE FILE THAT DECLARES IT (packages/shared), NOT TYPED. This program
+// once measured the LEGACY worker, a 27-commit-stale build, and wrote it into the capture as the
+// origin: a measurement of a deployment nobody is sent to. A capture whose recorded origin is not
+// the product's today (the former workers.dev hosts, say) is refused in verifyCapture below, which
+// is the point: re-run with --deployed after the product moves.
+const ORIGIN = PRODUCT_ORIGIN;
 // CHECK_REBRAND_BUNDLE redirects the capture, so this program can be exercised end to end — take a
 // real capture, verify it, watch the verification fail on a doctored one — without writing over the
 // tracked evidence file in a checkout other sessions are working in.

@@ -1,7 +1,7 @@
 --!nocheck
 -- Native owner-supplied RBXM import. Downloaded source is data, never required or executed.
 local OwnerCorpus = { name = "owner_corpus" }
-local ORIGIN = "https://apple.moshe-barami111.workers.dev"
+local ORIGIN = "https://studpilot.app"
 local MAX_BYTES = 4 * 1024 * 1024
 local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 

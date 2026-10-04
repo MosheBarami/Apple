@@ -11,7 +11,7 @@ import { PLAN_LIMITS, PLAN_COPY, PLAN_IDS, PRICE_CURRENCY, formatMoney, fullRate
 // way /pricing asks it. An unreachable probe means "cannot be charged", which is the safe claim
 // here: overstating that payment is impossible costs nothing, while a terms page silently
 // permitting charges it does not describe is the failure worth avoiding.
-const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const BILLING_ORIGIN = 'https://studpilot.app';
 const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config').then((r) => (r.ok ? r.json() : null)).catch(() => null);
 const checkoutOpen = billingProbe?.checkout === true;
 const purchasable = Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [];

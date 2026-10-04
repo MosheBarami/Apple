@@ -63,7 +63,7 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   // PRODUCT_ORIGIN out would make the probe die one line earlier, for a reason this test is not
   // about, and the assertion below would be measuring the wrong refusal.
   writeFileSync(join(dir, 'packages', 'shared', 'src', 'index.ts'),
-    "export const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';\n"
+    "export const PRODUCT_ORIGIN = 'https://studpilot.app';\n"
     + "export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';\n"
     + 'export const nothing = 1;\n');
 
@@ -74,6 +74,17 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   assert.notEqual(r.status, 0, `must not exit 0 with clause 4 underivable:\n${out}`);
   assert.ok(!out.includes(TOKEN), `a refused run must not print the success token:\n${out}`);
   assert.match(out, /cannot read PLAN_LIMITS\.free/, out);
+});
+
+test('clause 2 exempts platform spellings only: a former workers.dev host in a page is a finding', () => {
+  // Pages carry https://studpilot.app in canonical, og:url and twitter:image now, so the probe no
+  // longer has a closed-list hostname to let through. Keeping one would pass a page that still sent
+  // search engines to a stand-in that is deleted on 2027-01-02.
+  const clause = SRC.slice(SRC.indexOf('// CLAUSE 2'), SRC.indexOf('// CLAUSE 3'));
+  assert.ok(clause.length > 100, 'the clause 2 block moved — re-aim this test');
+  assert.doesNotMatch(clause, /moshe-barami|HOSTNAME_TOKEN/, 'clause 2 exempts a hostname again');
+  assert.match(clause, /\.filter\(\(t\) => !PLATFORM\.test\(t\)\)/);
+  assert.doesNotMatch(SRC, /HOSTNAME_TOKEN/);
 });
 
 test('an unrecognised flag is refused rather than ignored', () => {

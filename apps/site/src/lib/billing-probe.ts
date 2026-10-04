@@ -10,7 +10,7 @@
  * It lives in a module rather than inline in index.astro so the landing page itself names no remote
  * origin (tests/asset-wall.test.mjs holds the landing to "no remote dependency" by that spelling).
  */
-const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const BILLING_ORIGIN = 'https://studpilot.app';
 
 export async function paidPlansOnSale(): Promise<boolean> {
   const body = await fetch(BILLING_ORIGIN + '/api/billing/config')

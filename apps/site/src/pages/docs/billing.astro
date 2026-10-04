@@ -29,7 +29,7 @@ import { SUPPORT_EMAIL } from '@studpilot/shared';
 //   its own. An unreachable probe falls back to "closed", which is the safe error in both
 //   directions — a reader told checkout is shut loses nothing but a click, and the owner sees a
 //   wrong "closed" within a day, while the opposite mistake sends a customer at a 503.
-const BILLING_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+const BILLING_ORIGIN = 'https://studpilot.app';
 const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config')
   .then((r) => (r.ok ? r.json() : null))
   .catch(() => null);

@@ -58,7 +58,11 @@ function HttpService:JSONDecode(raw)
     if value == nil then error("invalid JSON fixture") end
     return value
 end
+-- Every call, counted BEFORE the queue is consulted: a request made with no response queued raises
+-- inside the bridge's pcall and would otherwise leave no trace in \`requests\`.
+local httpCalls = 0
 function HttpService:RequestAsync(request)
+    httpCalls += 1
     local fixture = table.remove(responses, 1)
     assert(fixture ~= nil, "HTTP response queue is empty")
     table.insert(requests, {
@@ -88,8 +92,15 @@ local function queueResponse(value, status, options)
         await = options and options.await or false,
     })
 end
-local function queueFailure(message)
+-- A request that never gets an answer (RequestAsync raises) is retried ONCE on the fallback origin.
+-- So "only studpilot.app is unreachable" is one raised request, and "offline" is two: the primary and
+-- the fallback both fail. queueFailure is the second, which is what the older blocks below mean.
+local function queuePrimaryFailure(message)
     table.insert(responses, { success = false, status = 0, body = "", throw = message or "offline" })
+end
+local function queueFailure(message)
+    queuePrimaryFailure(message)
+    queuePrimaryFailure(message)
 end
 
 local jobs = {}
@@ -194,7 +205,7 @@ do
     local ok, message = bridge:connect(" ab-c123 ")
     assert(ok and message == "Connected · Demo Project")
     assert(capabilityCalls() == 1, "capabilities are sampled once for this pairing")
-    assert(#requests == 1 and requests[1].url == "https://apple.moshe-barami111.workers.dev/api/studio/claim")
+    assert(#requests == 1 and requests[1].url == "https://studpilot.app/api/studio/claim")
     assert(requests[1].method == "POST")
     assert(requests[1].headers["Content-Type"] == "application/json")
     assert(requests[1].headers["X-StudPilot-Token"] == "")
@@ -211,7 +222,7 @@ do
     queueResponse({ ops = {}, waitMs = 20 })
     assert(tick(), "the poll coroutine must run")
     assert(stateCalls() == 2, "state is sent on every poll, including an idle poll")
-    assert(requests[2].url == "https://apple.moshe-barami111.workers.dev/api/studio/poll")
+    assert(requests[2].url == "https://studpilot.app/api/studio/poll")
     assert(requests[2].headers["X-StudPilot-Token"] == "project.secret")
     assert(requests[2].body.state.kind == "state")
     assert(requests[2].body.capabilities.schema == "studpilot.studio-ops.v1")
@@ -570,6 +581,100 @@ do
     assert(sent.secretToken == nil, "the allowlist let an arbitrary field through")
 end
 
+-- THE ONE-RELEASE FALLBACK. studpilot.app is the primary. A request that never gets an answer
+-- (RequestAsync raises: offline, or Studio has not been allowed to reach the new host yet) is tried
+-- once on the former host. An HTTP status, a 401, 403, 404 or 500 included, is an answer and is
+-- never taken somewhere else.
+do
+    local PRIMARY, FALLBACK = "https://studpilot.app", "https://apple.moshe-barami111.workers.dev"
+    -- Earlier blocks leave bridges polling; tick() resumes the OLDEST job, so start from none of them
+    -- and from no queued response, or a tick below would run somebody else's session.
+    table.clear(jobs)
+    assert(#responses == 0, "an earlier block left a response queued")
+
+    -- Claim: the primary raises, the fallback answers, and the retry is the same request.
+    local bridge, statuses = makeBridge()
+    local base = #requests
+    queuePrimaryFailure("HttpError: ConnectFail")
+    queueResponse({ token = "fallback.secret", projectId = "fb-project", projectName = "Fallback" })
+    local ok, message = bridge:connect("FALLB1")
+    assert(ok and message == "Connected · Fallback", tostring(message))
+    assert(#requests == base + 2, "one raised request and one retry, no more")
+    assert(requests[base + 1].url == PRIMARY .. "/api/studio/claim", requests[base + 1].url)
+    assert(requests[base + 2].url == FALLBACK .. "/api/studio/claim", requests[base + 2].url)
+    assert(requests[base + 2].method == "POST" and requests[base + 2].body.code == "FALLB1")
+    for _, field in { "Content-Type", "X-StudPilot-Token", "X-StudPilot-Plugin-Version", "X-StudPilot-Plugin-Protocol" } do
+        assert(requests[base + 2].headers[field] == requests[base + 1].headers[field], field .. " differs on the retry")
+    end
+
+    -- Poll: the same, and a recovered poll does not leave the dock saying "hiccup".
+    local before = #requests
+    queuePrimaryFailure("HttpError: ConnectFail")
+    queueResponse({ ops = {}, waitMs = 1 })
+    assert(tick())
+    assert(#requests == before + 2, "a poll is retried once, not forever")
+    assert(requests[before + 1].url == PRIMARY .. "/api/studio/poll", requests[before + 1].url)
+    assert(requests[before + 2].url == FALLBACK .. "/api/studio/poll", requests[before + 2].url)
+    assert(requests[before + 2].headers["X-StudPilot-Token"] == "fallback.secret", "the session token travels to the fallback")
+    assert(bridge:isConnected() and statuses[#statuses] == "Connected · Fallback", tostring(statuses[#statuses]))
+
+    -- NOT STICKY: the next poll asks the primary first, and when the primary answers nothing else is asked.
+    before = #requests
+    queueResponse({ ops = {}, waitMs = 1 })
+    assert(tick())
+    assert(#requests == before + 1 and requests[before + 1].url == PRIMARY .. "/api/studio/poll")
+    bridge:disconnect()
+    assert(tick())
+
+    -- An HTTP status from the primary is the answer. The queued second response must stay unasked.
+    for _, status in { 401, 403, 404, 500 } do
+        local b = makeBridge()
+        before = #requests
+        queueResponse({ message = "the primary answered" }, status, { success = false })
+        queueResponse({ token = "must.not.be.asked", projectId = "x", projectName = "X" })
+        local claimed, text = b:connect("ANSWER")
+        assert(not claimed and not b:isConnected(), "HTTP " .. status .. " paired")
+        assert(#requests == before + 1 and requests[before + 1].url == PRIMARY .. "/api/studio/claim",
+            "HTTP " .. status .. " from the primary went on to the fallback")
+        assert(#responses == 1, "the fallback's response was consumed after HTTP " .. status)
+        table.remove(responses, 1)
+        if status == 404 then assert(text == "Invalid or expired pairing code.", tostring(text)) end
+    end
+    for _, status in { 401, 403, 500 } do
+        local b = makeBridge()
+        queueResponse({ token = "poll.answer", projectId = "pa-project", projectName = "PollAnswer" })
+        assert(b:connect("POLLAN"))
+        before = #requests
+        queueResponse({ message = "the primary answered" }, status, { success = false })
+        queueResponse({ ops = {}, waitMs = 1 })
+        assert(tick())
+        assert(#requests == before + 1 and requests[before + 1].url == PRIMARY .. "/api/studio/poll",
+            "HTTP " .. status .. " on a poll went on to the fallback")
+        assert(#responses == 1, "the fallback's response was consumed after HTTP " .. status)
+        table.remove(responses, 1)
+        b:disconnect()
+        for _ = 1, 3 do tick() end
+    end
+
+    -- The fallback's own answer is final too.
+    local b = makeBridge()
+    before = #requests
+    queuePrimaryFailure("HttpError: ConnectFail")
+    queueResponse({ message = "expired" }, 404, { success = false })
+    local claimed, text = b:connect("EXPIRE")
+    assert(not claimed and text == "Invalid or expired pairing code.", tostring(text))
+    assert(#requests == before + 2)
+
+    -- Both hosts unreachable: two requests, then the network message, never a loop.
+    before = #requests
+    local callsBefore = httpCalls
+    queueFailure("HttpError: ConnectFail")
+    claimed, text = b:connect("OFFLINE")
+    assert(not claimed and text == "Could not reach StudPilot — check Studio’s network permission.", tostring(text))
+    assert(#requests == before + 2 and #responses == 0, "an unreachable network is two requests, not more")
+    assert(httpCalls == callsBefore + 2, "an unreachable network made " .. tostring(httpCalls - callsBefore) .. " calls, not two")
+end
+
 print("bridge protocol assertions passed")
 `;
 
@@ -587,7 +692,11 @@ test('StudPilot Bridge transport executes its protocol and safety contract under
 
 test('Bridge source is independent, memory-only, and fixed to the StudPilot HTTPS origin', () => {
   assert.ok(SOURCE.length > 1000);
-  assert.match(SOURCE, /https:\/\/apple\.moshe-barami111\.workers\.dev/);
+  // The product origin first, the former host as the ONE-RELEASE fallback, and no third host.
+  assert.match(SOURCE, /local STUDPILOT_ORIGIN = "https:\/\/studpilot\.app"/);
+  assert.match(SOURCE, /local FALLBACK_ORIGIN = "https:\/\/apple\.moshe-barami111\.workers\.dev"/);
+  const hosts = [...new Set([...SOURCE.matchAll(/https?:\/\/[A-Za-z0-9.-]+/g)].map((m) => m[0]))].sort();
+  assert.deepEqual(hosts, ['https://apple.moshe-barami111.workers.dev', 'https://studpilot.app']);
   assert.match(SOURCE, /X-StudPilot-Token/);
   assert.match(SOURCE, /X-StudPilot-Plugin-Version/);
   assert.ok(DECLARED_VERSION, 'Bridge.luau no longer declares PLUGIN_VERSION as a quoted literal');

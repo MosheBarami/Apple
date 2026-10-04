@@ -124,7 +124,7 @@ if (step.sleep) await new Promise((r) => setTimeout(r, step.sleep));
 if (step.reviewEvidence && step.result) {
   const folder = 'docs/autonomy/evidence/review-' + (n + 1);
   mkdirSync(root + '/' + folder, { recursive: true });
-  writeFileSync(root + '/' + folder + '/reviewer.md', '# Fresh customer review\\n\\nProduction URL: https://apple.moshe-barami111.workers.dev\\n\\nI opened the product, tried a creation request, and recorded the screen.');
+  writeFileSync(root + '/' + folder + '/reviewer.md', '# Fresh customer review\\n\\nProduction URL: https://studpilot.app\\n\\nI opened the product, tried a creation request, and recorded the screen.');
   writeFileSync(root + '/' + folder + '/screen.png', Buffer.from('89504e470d0a1a0a00000000', 'hex'));
   step.result.evidence = [folder + '/reviewer.md', folder + '/screen.png'];
 }

@@ -28,6 +28,11 @@ test('edit permission defaults off and is bound to this live connection', () => 
   assert.match(source, /Allow edits for this connection/);
 });
 
+test('the pairing copy names the product host, and not a former one', () => {
+  assert.match(source, /Pair with a project at studpilot\.app\./);
+  assert.doesNotMatch(source, /workers\.dev/, 'the dock names a workers.dev host to a person');
+});
+
 test('inspection disclosure names every pushed Studio data source', () => {
   assert.match(source, /objects and scripts/);
   assert.match(source, /current selection/);

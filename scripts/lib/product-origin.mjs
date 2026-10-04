@@ -7,6 +7,9 @@
 // deployment. Measured 2026-09-20: /api/health answers buildSha 44d9ded-dirty there against
 // 946cf5f on the canonical origin, 38 commits apart. probe-s1.mjs and check-pixels.mjs read the
 // same stale value and then WROTE IT INTO THE EVIDENCE FILE as the origin they had probed.
+// (That was then. Since the cutover the product is https://studpilot.app and the former hosts are
+// stand-ins that forward /api/* to it until 2027-01-02, but the lesson stands: a script that types
+// a hostname goes stale at the next move, and one that reads it moves with it.)
 //
 // So the value is derived rather than restated. A constant typed into a script proves only that
 // the script agrees with itself; this proves it agrees with the package every client imports.
@@ -34,14 +37,14 @@ function declared(name, pattern) {
   return m[1];
 }
 
-/** `https://apple.moshe-barami111.workers.dev` — the origin every client is sent to. */
+/** `https://studpilot.app` — the origin every client is sent to. */
 export const PRODUCT_ORIGIN = declared('PRODUCT_ORIGIN', /export const PRODUCT_ORIGIN = '([^']+)'/);
 
 /**
- * `golem.moshe-barami111.workers.dev` — the pre-rename worker, still deployed.
+ * `golem.moshe-barami111.workers.dev` — a former host, a stand-in until 2027-01-02.
  *
- * Exported so a checker can name the thing it refuses. Nothing here should ever SEND to it: page
- * routes 308 to the canonical origin and /api/* deliberately does not, so an admin POST lands on
- * the old deployment and succeeds quietly.
+ * Exported so a checker can name the thing it refuses. Nothing here should ever SEND to it: it
+ * forwards /api/* to the product only while the stand-in exists, and a script written against it
+ * stops working on the day the stand-in is deleted.
  */
 export const LEGACY_PRODUCT_HOST = declared('LEGACY_PRODUCT_HOST', /export const LEGACY_PRODUCT_HOST = '([^']+)'/);

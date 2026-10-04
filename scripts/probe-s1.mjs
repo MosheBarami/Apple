@@ -49,9 +49,6 @@ for (let i = 0; i < argv.length; i += 1) {
 }
 BASE = BASE.replace(/\/$/, '');
 
-// The hostname is on §12.5's CLOSED list and appears in canonical/og:url/twitter:image on every
-// page. It is not user-visible copy and renaming it would break every client and the plugin.
-const HOSTNAME_TOKEN = 'golem.moshe-barami111.workers.dev';
 const FORBIDDEN = /\$0 forever|No card required, ever|never be charged/gi;
 
 const findings = [];
@@ -108,12 +105,14 @@ for (const path of ['/', '/pricing']) {
 
 const both = `${pages['/'].body}\n${pages['/pricing'].body}`;
 
-// CLAUSE 2 — every occurrence of a former name (Golem, and since 2026-10-04 Apple) that is not the
-// closed-list hostname or a platform spelling a page must carry (the system font stack, the iOS icon).
+// CLAUSE 2 — every occurrence of a former name (Golem, and since 2026-10-04 Apple) that is not a
+// platform spelling a page must carry (the system font stack, the iOS icon). There is no hostname
+// exemption any more: the pages' canonical, og:url and twitter:image carry https://studpilot.app, so
+// a former workers.dev host in a page is a finding, not a closed-list spelling.
 const PLATFORM = /^apple-(?:system|touch-icon|mobile-web-app[a-z-]*)$/;
 const golem = [...both.matchAll(/(?:golem|apple)[a-z0-9._-]*/gi)]
   .map((m) => m[0].toLowerCase())
-  .filter((t) => t !== HOSTNAME_TOKEN && !PLATFORM.test(t));
+  .filter((t) => !PLATFORM.test(t));
 if (golem.length) {
   const counted = [...new Set(golem)].map((t) => `${t} x${golem.filter((g) => g === t).length}`);
   fail(`${golem.length} user-visible former-name occurrence(s): ${counted.join(', ')}`, 'clause 2 — a stranger reads this, not the repository');

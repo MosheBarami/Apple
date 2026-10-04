@@ -8,9 +8,14 @@
 
 local HttpService = game:GetService("HttpService")
 
-local STUDPILOT_ORIGIN = "https://apple.moshe-barami111.workers.dev"
-local CLAIM_URL = STUDPILOT_ORIGIN .. "/api/studio/claim"
-local POLL_URL = STUDPILOT_ORIGIN .. "/api/studio/poll"
+local STUDPILOT_ORIGIN = "https://studpilot.app"
+-- ONE RELEASE ONLY (the next release deletes this and the second attempt in post): the host every
+-- earlier plugin used. It is a stand-in that passes /api/* through to the same service until
+-- 2027-01-02. Studio asks the person to allow a plugin's HTTP access host by host, so a person who
+-- has not yet allowed studpilot.app would otherwise lose a plugin that worked yesterday.
+local FALLBACK_ORIGIN = "https://apple.moshe-barami111.workers.dev"
+local CLAIM_PATH = "/api/studio/claim"
+local POLL_PATH = "/api/studio/poll"
 -- 1.1.0 because this source does more than the 1.0.0 build published to the Creator Store on
 -- 2026-09-19 (asset 107230158271368): native viewport capture, Run-mode control and model
 -- inspection. A build that reported 1.0.0 would be indistinguishable from the store build while
@@ -28,6 +33,8 @@ local POLL_URL = STUDPILOT_ORIGIN .. "/api/studio/poll"
 -- 1.5.0 (2026-10-04): create_instances may create the audio objects (AudioPlayer, AudioEmitter, AudioListener,
 -- AudioDeviceOutput, Wire and the Audio effects), Animator, AnimationController, Animation, IKControl and
 -- Explosion; a Wire/IKControl end is a path reference; an Explosion is created harmless unless the op says otherwise.
+-- Also in 1.5.0 (handoff 1.5): the API base is https://studpilot.app, and a request that never gets an answer is
+-- tried once on the former host (FALLBACK_ORIGIN) for this release only. An HTTP status is never retried.
 local PLUGIN_VERSION = "1.5.0"
 local PLUGIN_PROTOCOL = "1"
 
@@ -223,20 +230,13 @@ local function parseResponse(response: any): (boolean, number, any)
 	return true, status, decoded
 end
 
--- The fourth value says why a request never got an answer (Studio's own error), for the poll loop.
-local function post(url: string, body: any, token: string?): (boolean, number, any, string?)
-	-- Keep the wire names used by the existing worker.  The URL is a module constant, not a value
-	-- supplied by a prompt, a project, or a server response.
-	local encodedOk, encoded = pcall(function()
-		return HttpService:JSONEncode(body)
-	end)
-	if not encodedOk or type(encoded) ~= "string" then
-		return false, 0, nil, "could not encode: " .. tostring(encoded)
-	end
-
-	local requestedOk, response = pcall(function()
+-- One attempt at one origin.  RequestAsync raises when the request never got an answer (offline,
+-- host blocked or not yet allowed in Studio); an HTTP status, even a 401 or a 404, is returned as a
+-- response and is an answer.
+local function attempt(origin: string, path: string, encoded: string, token: string?): (boolean, any)
+	return pcall(function()
 		return HttpService:RequestAsync({
-			Url = url,
+			Url = origin .. path,
 			Method = "POST",
 			Headers = {
 				["Content-Type"] = "application/json",
@@ -247,8 +247,30 @@ local function post(url: string, body: any, token: string?): (boolean, number, a
 			Body = encoded,
 		})
 	end)
+end
+
+-- The fourth value says why a request never got an answer (Studio's own error), for the poll loop.
+local function post(path: string, body: any, token: string?): (boolean, number, any, string?)
+	-- Keep the wire names used by the existing worker.  The path is a module constant, not a value
+	-- supplied by a prompt, a project, or a server response.
+	local encodedOk, encoded = pcall(function()
+		return HttpService:JSONEncode(body)
+	end)
+	if not encodedOk or type(encoded) ~= "string" then
+		return false, 0, nil, "could not encode: " .. tostring(encoded)
+	end
+
+	local requestedOk, response = attempt(STUDPILOT_ORIGIN, path, encoded, token)
 	if not requestedOk then
-		return false, 0, nil, ("%s (%d bytes)"):format(tostring(response), #encoded)
+		-- Only a request that never got an answer tries the former host.  Whatever the primary
+		-- ANSWERED, a 401, 403 or 404 included, is final: the same body is not sent twice to be
+		-- told the same thing, and a refused pairing is never retried somewhere else.
+		local primaryError = tostring(response)
+		local fallbackOk, fallbackResponse = attempt(FALLBACK_ORIGIN, path, encoded, token)
+		if not fallbackOk then
+			return false, 0, nil, ("%s (%d bytes)"):format(primaryError, #encoded)
+		end
+		return parseResponse(fallbackResponse)
 	end
 	return parseResponse(response)
 end
@@ -578,7 +600,7 @@ local function pollLoop(self: BridgeObject, session: Session)
 			local sentEvents, sentEventSequences = eventsForPoll(session)
 			if #sentEvents > 0 then outbound.events = sentEvents end
 
-			local ok, statusCode, body, failureDetail = post(POLL_URL, outbound, session.token)
+			local ok, statusCode, body, failureDetail = post(POLL_PATH, outbound, session.token)
 		-- RequestAsync yields.  A user disconnect or a replacement connect may have retired this
 		-- loop while it was away; no response from the retired generation may mutate Studio.
 		if not current(self, session) then
@@ -787,7 +809,7 @@ function Bridge:connect(code: string): (boolean, string)
 	end
 	local claimBody: any = { code = normalized }
 	if place ~= nil then claimBody.place = place end
-	local ok, statusCode, body = post(CLAIM_URL, claimBody, nil)
+	local ok, statusCode, body = post(CLAIM_PATH, claimBody, nil)
 	if self.destroyed or self.generation ~= attemptGeneration then
 		return false, "Connection attempt was cancelled."
 	end
