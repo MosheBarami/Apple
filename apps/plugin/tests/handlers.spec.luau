@@ -3,7 +3,7 @@
 --[[
 	The read and move handlers.
 
-	These are what Golem uses to UNDERSTAND a project before it changes one — the
+	These are what Apple uses to UNDERSTAND a project before it changes one — the
 	golden creation run spent its first four tool calls entirely in here — and what it
 	uses to reorganise one afterwards. They are less dramatic than the asset gate and
 	they are the ones a wrong answer misleads the model with, quietly, for the rest of

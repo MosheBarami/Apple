@@ -1,6 +1,6 @@
 # Visual quality rubric
 
-The coding eval suite (`packages/evals`) scores 98.9%. It measures whether Golem writes
+The coding eval suite (`packages/evals`) scores 98.9%. It measures whether Apple writes
 correct Luau, and it is completely blind to the fact that the scenes that Luau builds look
 like untextured block-outs — flat platforms, primitive poles, arbitrary colours, no
 composition.
@@ -92,7 +92,7 @@ There is a unit test asserting this invariant holds for all 12 tasks.
 
 ## 3. Hard-fail conditions
 
-These are the failure modes Golem currently exhibits. Each is checked against structural
+These are the failure modes Apple currently exhibits. Each is checked against structural
 telemetry, not opinion. **Any hard fail caps the total score regardless of every other
 dimension.**
 
@@ -250,7 +250,7 @@ For each: what a 0, a 2 and a 4 actually look like.
 
 - **0** — Studio's stock Baseplate, visible unmodified past the edge of whatever was built on
   it. Or one flat part in a default colour spanning the whole scene. This is the single most
-  common Golem failure and the reason it is also a hard fail.
+  common Apple failure and the reason it is also a hard fail.
 - **2** — A purpose-built floor: a distinct part with a chosen material and colour, and a
   border defining where it ends. It is no longer a baseplate, and it is still one uniform
   plane with nothing happening on it.

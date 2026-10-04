@@ -1,0 +1,46 @@
+{
+  "name": "Apple (RbxAI) - code, tests, typecheck, site builds",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "args": {
+      "LUAU_VERSION": "0.663",
+      "ROJO_VERSION": "7.7.0"
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "26",
+      "pnpmVersion": "none"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "containerEnv": {
+    "LUAU_CHECK_BIN": "/usr/local/bin/luau-analyze",
+    "PLAYWRIGHT_BROWSERS_PATH": "/home/vscode/.cache/ms-playwright"
+  },
+  "remoteUser": "vscode",
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  "updateContentCommand": "pnpm install --frozen-lockfile",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [8787, 5173, 4321],
+  "portsAttributes": {
+    "8787": { "label": "wrangler dev (apps/worker)", "onAutoForward": "notify" },
+    "5173": { "label": "vite dev (apps/web)", "onAutoForward": "notify" },
+    "4321": { "label": "astro dev (apps/site)", "onAutoForward": "notify" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "JohnnyMorganz.luau-lsp",
+        "astro-build.astro-vscode",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

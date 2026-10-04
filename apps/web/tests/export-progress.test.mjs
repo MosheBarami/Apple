@@ -153,6 +153,26 @@ test('A TRUNCATED DOWNLOAD SAVES NOTHING and says which one it was', async () =>
   assert.equal(saved.length, 0, 'a half file on disk with a plausible name is worse than no file');
 });
 
+test('the digest is verified from EITHER header spelling, and a wrong digest under either is still refused', async () => {
+  for (const name of ['X-Apple-Export-SHA256', 'X-Golem-Export-SHA256']) {
+    saved.length = 0;
+    const headers = await headersFor(BODY);
+    const digest = headers['X-Golem-Export-SHA256'];
+    delete headers['X-Golem-Export-SHA256'];
+    headers[name] = digest;
+    globalThis.fetch = async () => streamed(BODY, headers);
+    const result = await downloadExport('p1', 'md');
+    assert.equal(result.verified, true, `${name} must verify`);
+    assert.equal(saved.length, 1);
+
+    saved.length = 0;
+    headers[name] = '0'.repeat(64);
+    globalThis.fetch = async () => streamed(BODY, headers);
+    await assert.rejects(() => downloadExport('p1', 'md'), undefined, `${name} with a wrong digest must be refused`);
+    assert.equal(saved.length, 0);
+  }
+});
+
 test('an export with no digest header still saves — an older worker must not break the feature', async () => {
   saved.length = 0;
   const headers = await headersFor(BODY);

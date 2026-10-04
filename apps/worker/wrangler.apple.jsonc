@@ -153,6 +153,9 @@
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "SUPABASE_ANON_KEY": "sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt",
     "ENVIRONMENT": "production",
+    // The self-check before answering (look + claim audit), on in production since 2026-10-04: the owner's /goal item 4
+    // ("the agent checks its own work with multi-angle screenshots and improves it before answering") supersedes Q21.
+    "SELF_CHECK": "on",
     "BILLING_WORKER_NAME": "apple",
     // D-PAY-2: signed-in emails admitted to Stripe TEST-mode checkout in production (comma-separated).
     "BILLING_TEST_ADMINS": "moshe.barami111@gmail.com",

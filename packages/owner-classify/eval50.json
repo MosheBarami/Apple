@@ -1,0 +1,1050 @@
+{
+ "items": [
+  {
+   "id": "O01",
+   "cat": "object",
+   "q": "a hippopotamus for my safari game",
+   "accept": [
+    "6650769678e0",
+    "df01185937fe",
+    "6c1366e33cd9",
+    "feb20e581b4d",
+    "2c1599598324",
+    "8fe616626e5d",
+    "3210d8eb864d"
+   ],
+   "n": 7,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^hippo(#\\d+)?$",
+    "notpath": "saddle"
+   }
+  },
+  {
+   "id": "O02",
+   "cat": "object",
+   "q": "a boat with a paddle wheel that I can drive on a river",
+   "accept": [
+    "f966476ea449",
+    "fb0de6f29932",
+    "ba3bab793114"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "steamboat|paddleboat",
+    "notname": "blueprint",
+    "minparts": 10
+   }
+  },
+  {
+   "id": "O03",
+   "cat": "object",
+   "q": "fuel pumps at a gas station",
+   "accept": [
+    "8a7d5dbbcae7",
+    "70ecb7a723ec",
+    "c57db5f4851e",
+    "97aa193d35ec",
+    "1e3cbf419309",
+    "85d36102d4fa",
+    "46f4d2d45d95",
+    "5de016087f45"
+   ],
+   "n": 8,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "gas ?pump|petrol pump",
+    "notname": "fence|shop",
+    "minparts": 7
+   }
+  },
+  {
+   "id": "O04",
+   "cat": "object",
+   "q": "a dinosaur with big plates along its back",
+   "accept": [
+    "e2e87f4eaaa1",
+    "94a3288ffb20",
+    "8d585f052709",
+    "e0ca41044658",
+    "87d3b14ca265",
+    "4452ed5cbac7",
+    "ea61b4411fa9",
+    "d8c25e4cc307"
+   ],
+   "n": 8,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^[abj]?stegosaurus$"
+   }
+  },
+  {
+   "id": "O05",
+   "cat": "object",
+   "q": "a tropical bird with a giant beak",
+   "accept": [
+    "f902590f2943",
+    "f8040106d2b2",
+    "6b570293eaf4",
+    "110dac6d2805"
+   ],
+   "n": 4,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "toucan"
+   }
+  },
+  {
+   "id": "O06",
+   "cat": "object",
+   "q": "an exercise treadmill",
+   "accept": [
+    "ad6b026d92a3",
+    "df1efaedb5d2",
+    "d9626fb8debb",
+    "df1f9ebaa136",
+    "a83baecefde2",
+    "8d6fb3ea5ead",
+    "544d3f099e27",
+    "df437f576e48",
+    "ec6fd362d34f",
+    "0580e5720dc9"
+   ],
+   "n": 10,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "treadmill"
+   }
+  },
+  {
+   "id": "S01",
+   "cat": "silly",
+   "q": "a toilet with a singing head coming out of it",
+   "accept": [
+    "31a0171e374f",
+    "0585c5ce0b3b"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "skibidi toilet",
+    "path": "Animals/"
+   }
+  },
+  {
+   "id": "S02",
+   "cat": "silly",
+   "q": "a half pineapple half orangutan meme animal",
+   "accept": [
+    "1b30cac0bd17",
+    "0a44601740a3",
+    "b4d010da3498",
+    "c2f87cb9f75d",
+    "77a6768970f4",
+    "25d0ac4f7e92",
+    "c49a5d747571",
+    "12ba954c91fa",
+    "48ec00624ac7",
+    "2fec560254aa",
+    "f505b989d485",
+    "3a570fa6dd5b",
+    "40d3c53a7a1b"
+   ],
+   "n": 13,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "ananas"
+   }
+  },
+  {
+   "id": "S03",
+   "cat": "silly",
+   "q": "a gorilla with an avocado body",
+   "accept": [
+    "4dee3eabdbf6",
+    "074240076ac0",
+    "ffa7de72a4ce",
+    "e2731d1c1324",
+    "b4e16a3206e9",
+    "56de09ed639a",
+    "a91725cbe4ab"
+   ],
+   "n": 7,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "avocadorilla"
+   }
+  },
+  {
+   "id": "S04",
+   "cat": "silly",
+   "q": "a toilet made of solid gold",
+   "accept": [
+    "7b00cb1e0788"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^gold ?toilet$"
+   }
+  },
+  {
+   "id": "S05",
+   "cat": "silly",
+   "q": "a couch shaped like a coffin for a vampire",
+   "accept": [
+    "be91b2b0d501"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^coffin ?couch$"
+   }
+  },
+  {
+   "id": "S06",
+   "cat": "silly",
+   "q": "a burrito in a bandit mask",
+   "accept": [
+    "70d8950ceaf7",
+    "17f5877b4efa"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "burrito bandito",
+    "path": "Animals|Brainrot|Assets|Storage"
+   }
+  },
+  {
+   "id": "Y01",
+   "cat": "style",
+   "q": "a futuristic holographic television with neon glow",
+   "accept": [
+    "8e6049c70559"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^futuristic holo tv$"
+   }
+  },
+  {
+   "id": "Y02",
+   "cat": "style",
+   "q": "a decorated christmas tree with lights and a star",
+   "accept": [
+    "036d855e3570",
+    "9d4efa1bfa74",
+    "240a5a81a32d",
+    "20193182cb64",
+    "42355793b759",
+    "9dd6b8765786"
+   ],
+   "n": 6,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^(hc_)?(christmas ?tree|xmas ?tree)$"
+   }
+  },
+  {
+   "id": "Y03",
+   "cat": "style",
+   "q": "a pastel cartoon town hall building",
+   "accept": [
+    "d379a8258b18"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^toonhall$"
+   }
+  },
+  {
+   "id": "Y04",
+   "cat": "style",
+   "q": "a pink princess sofa",
+   "accept": [
+    "a23893b399fb",
+    "619d5806c580",
+    "ba3975edb5b7"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^(princess sofa|princess loveseat|pink m sofa)$"
+   }
+  },
+  {
+   "id": "Y05",
+   "cat": "style",
+   "q": "a broken damaged couch",
+   "accept": [
+    "6a6ad6dc00fd"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^broken sofa bed$"
+   }
+  },
+  {
+   "id": "C01",
+   "cat": "colour",
+   "q": "a purple fountain",
+   "accept": [
+    "9112997d5e14",
+    "a3680691384d"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^m fountain$"
+   }
+  },
+  {
+   "id": "C02",
+   "cat": "colour",
+   "q": "a golden orange fountain",
+   "accept": [
+    "4a97beb1b465",
+    "60b751705046"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^g fountain$"
+   }
+  },
+  {
+   "id": "C03",
+   "cat": "colour",
+   "q": "a red stop sign",
+   "accept": [
+    "683bae690c26",
+    "e145f7840947",
+    "3774616bc3fb"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "fn": "r['colors'] and r['colors'][0] in ('ff0000','c4281c') and re.search(r'stop ?sign|^stop$',r['name'],re.I) and r['parts']<=12 and mx(r)<12"
+   }
+  },
+  {
+   "id": "C04",
+   "cat": "colour",
+   "q": "a black floor lamp",
+   "accept": [
+    "d8b54ae9e05c",
+    "1cf8761779d3",
+    "e09f960eea74"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "floor lamp",
+    "fn": "r['colors'] and r['colors'][0] in ('1b2a35','111111') and mx(r)<10"
+   }
+  },
+  {
+   "id": "C05",
+   "cat": "colour",
+   "q": "a pink treadmill",
+   "accept": [
+    "df437f576e48"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "treadmill",
+    "fn": "r['colors'] and r['colors'][0] in ('f48ec3',)"
+   }
+  },
+  {
+   "id": "C06",
+   "cat": "colour",
+   "q": "a yellow lemon-coloured bird creature",
+   "accept": [
+    "6f8155d99f3b",
+    "504ebea92496",
+    "87b9817298f4",
+    "28963f9158a1",
+    "8c0bb287d7f9",
+    "7c7a9f1e32a4"
+   ],
+   "n": 6,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "lemonchello",
+    "fn": "r['colors'] and r['colors'][0]=='f5cd30'"
+   }
+  },
+  {
+   "id": "C07",
+   "cat": "colour",
+   "q": "a tree with hot pink fruit",
+   "accept": [
+    "3cab905578d3",
+    "95d2809dcb9b"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "glowberry ?tree",
+    "fn": "r['colors'] and any(c in ('ff00bf','ff9494') for c in r['colors']) and r['parts']>=7"
+   }
+  },
+  {
+   "id": "Z01",
+   "cat": "size",
+   "q": "a gigantic tree over a thousand studs tall",
+   "accept": [
+    "13780906e691",
+    "817c1c62b55d",
+    "bfa76b29edf1",
+    "8b07a59b0527",
+    "4ef4e4eaf7be",
+    "fd42a524b28b",
+    "8623eb3c2804",
+    "69ddabe2175a",
+    "7b57bf1d6546",
+    "9442ad80d45f",
+    "b6ed0740f4dd",
+    "28b3539b1f8a",
+    "e653d3271bba",
+    "81973c6f4b6b"
+   ],
+   "n": 14,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^tree(#\\d+)?$",
+    "fn": "r['size'] and r['size'][1]>=1000 and r['parts']<500"
+   }
+  },
+  {
+   "id": "Z02",
+   "cat": "size",
+   "q": "a small blue keycard about one stud across",
+   "accept": [
+    "b203e900a118"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "^blue card$"
+   }
+  },
+  {
+   "id": "Z03",
+   "cat": "size",
+   "q": "a small wrench no bigger than a couple of studs",
+   "accept": [
+    "8ef84a3b8c2f"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "model"
+    ],
+    "name": "wrench",
+    "fn": "mx(r)<=2"
+   }
+  },
+  {
+   "id": "Z04",
+   "cat": "size",
+   "q": "a tiny arena map under seventy studs across for a minigame",
+   "accept": [
+    "44e61370e211",
+    "f396cc1667f9",
+    "e840f60136e9",
+    "fffbafbba142",
+    "25ff6aba8072",
+    "41325102cbfc",
+    "4fe6b8c7c794",
+    "b4dd601e758d",
+    "98c84e3d6de4"
+   ],
+   "n": 9,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "fn": "r['size'] and max(r['size'][0],r['size'][2])<=70 and r['size'][1]<2000 and r['parts']>=5"
+   }
+  },
+  {
+   "id": "M01",
+   "cat": "map",
+   "q": "a haunted mansion with ghosts",
+   "accept": [
+    "2f93c0aca365",
+    "157cd694098a"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "gn": "^(haunted mansion|abandoned hallways horror map)$"
+   }
+  },
+  {
+   "id": "M02",
+   "cat": "map",
+   "q": "a restaurant where I work making pizza",
+   "accept": [
+    "25e9b2f0abfa",
+    "bbd1c0e88fd6",
+    "1de02eb4ee7d"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "gn": "^(work at a pizza place!?|the pizzeria roleplay)$"
+   }
+  },
+  {
+   "id": "M03",
+   "cat": "map",
+   "q": "an airport with runways and planes",
+   "accept": [
+    "b9a4d5ce48f4",
+    "f2245dc3cf12",
+    "0239596e42ca"
+   ],
+   "n": 3,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "gn": "^(airport|republic private airport|some airpore)$"
+   }
+  },
+  {
+   "id": "M04",
+   "cat": "map",
+   "q": "a city from ancient Rome",
+   "accept": [
+    "a05b06201946",
+    "d72957b41dc1"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "gn": "^(roman parthia|rome, italy \\(old\\))$"
+   }
+  },
+  {
+   "id": "M05",
+   "cat": "map",
+   "q": "survive while the floor is lava",
+   "accept": [
+    "292fe1274479",
+    "d20601809d6e"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "map"
+    ],
+    "gn": "^(thefloorislavauncopylocked|survive lava for brainrots)"
+   }
+  },
+  {
+   "id": "SY01",
+   "cat": "system",
+   "q": "a car that players can drive",
+   "accept": [
+    "system:3200818ea507",
+    "system:f5ebf24f9ac7",
+    "system:d4fd84e00d99",
+    "system:fcf237f1e9b2",
+    "system:b7df02f3087d",
+    "system:4240e1d452fd"
+   ],
+   "n": 6,
+   "rule": {
+    "source": "systems.json \"does\" field"
+   }
+  },
+  {
+   "id": "SY02",
+   "cat": "system",
+   "q": "let players catch fish",
+   "accept": [
+    "system:3e5c5c3690cf"
+   ],
+   "n": 1,
+   "rule": {
+    "source": "systems.json \"does\" field"
+   }
+  },
+  {
+   "id": "SY03",
+   "cat": "system",
+   "q": "a window where two players swap items with each other",
+   "accept": [
+    "system:5367bc77b1a0"
+   ],
+   "n": 1,
+   "rule": {
+    "source": "systems.json \"does\" field"
+   }
+  },
+  {
+   "id": "SY04",
+   "cat": "system",
+   "q": "a screen that shows while the game loads",
+   "accept": [
+    "system:5a91d05b91f2",
+    "system:8b1903c3f988",
+    "system:d129ffc45100"
+   ],
+   "n": 3,
+   "rule": {
+    "source": "systems.json \"does\" field"
+   }
+  },
+  {
+   "id": "U01",
+   "cat": "ui",
+   "q": "a glossy bright interface for a pet game with eggs to hatch",
+   "accept": [
+    "kit:plants-vs-brainrots-005e26",
+    "kit:steal-an-egg-32b399",
+    "kit:eat-food-simulator-f39276",
+    "kit:punching-simulator-91f4bd",
+    "kit:clicker-kingdom-fa1dd3",
+    "kit:40-pet-system-4c79ba"
+   ],
+   "n": 6,
+   "rule": {
+    "source": "ui.json kits style.category + purposes"
+   }
+  },
+  {
+   "id": "U02",
+   "cat": "ui",
+   "q": "a dark flat minimal interface with a combat hud",
+   "accept": [
+    "kit:nightgaladeld-s-dc-466dd7",
+    "kit:lasertag-04f80e",
+    "kit:city-of-dublin-ireland-bf448b",
+    "kit:medieval-warfare-reforged-a0bbae",
+    "kit:advanced-warfare-tycoon-12a9c0",
+    "kit:allied-airborne-boot-camp-3cd293",
+    "kit:empirebay-b6cfb2",
+    "kit:usa-las-vegas-691c29",
+    "kit:lasertag2-918d8c",
+    "kit:tgra-3b2be6",
+    "kit:reason-for-blood-43edb9",
+    "kit:fps-patrol-631df5",
+    "kit:salvage-ae6f51",
+    "kit:swat-camp-f59410"
+   ],
+   "n": 14,
+   "rule": {
+    "source": "ui.json kits style.category + purposes"
+   }
+  },
+  {
+   "id": "U03",
+   "cat": "ui",
+   "q": "plain default roblox looking menus with a shop and settings",
+   "accept": [
+    "kit:whatever-floats-your-boat-46cc73",
+    "kit:goradiel-rpg-4-dccdde",
+    "kit:limited-simulator-2-775131",
+    "kit:limited-simulator-3-8acc28",
+    "kit:starbucks-5c334b",
+    "kit:washington-district-of-columbia--3efb2c",
+    "kit:ninja-warfare-tycoon-dbb82f"
+   ],
+   "n": 7,
+   "rule": {
+    "source": "ui.json kits style.category + purposes"
+   }
+  },
+  {
+   "id": "F01",
+   "cat": "vfx",
+   "q": "flame popping out of a car exhaust pipe",
+   "accept": [
+    "0f09447ccfab",
+    "91583634fe86"
+   ],
+   "n": 2,
+   "rule": {
+    "kind": [
+     "fx"
+    ],
+    "name": "^backfire\\d$"
+   }
+  },
+  {
+   "id": "F02",
+   "cat": "vfx",
+   "q": "waterfall mist and spray",
+   "accept": [
+    "50f44607b0e8",
+    "a63c162f161e",
+    "45f95ce64a2a",
+    "d2b451be6bc9",
+    "b77edc1fed06",
+    "da7141b5b828",
+    "46d7109f8f01",
+    "05c84719bffd",
+    "af71ead2e671"
+   ],
+   "n": 9,
+   "rule": {
+    "kind": [
+     "fx"
+    ],
+    "name": "waterfall"
+   }
+  },
+  {
+   "id": "F03",
+   "cat": "vfx",
+   "q": "a protective shield aura around a character",
+   "accept": [
+    "6da4d7b2c2b7",
+    "2c851fdf7505",
+    "175f8eb36321",
+    "a958989201e0",
+    "f3fe3f004627",
+    "f12ef727c213",
+    "1a08cbfd74af",
+    "aa946b207637",
+    "d565c16bbada",
+    "7cd9eb16f090",
+    "9230d9c7aa58",
+    "56165ecb8673",
+    "83866207f98d",
+    "a93ca5f47df1"
+   ],
+   "n": 14,
+   "rule": {
+    "kind": [
+     "fx"
+    ],
+    "path": "shield ?aura|loveshield"
+   }
+  },
+  {
+   "id": "F04",
+   "cat": "vfx",
+   "q": "a fireball meteor crashing down",
+   "accept": [
+    "902d8d99c99a",
+    "d12cc31c689e",
+    "f62595263127",
+    "c901d6016dad",
+    "32a2ef81f81b",
+    "6562ecf3d2be",
+    "eb93434c0e94",
+    "beeb7f949688"
+   ],
+   "n": 8,
+   "rule": {
+    "kind": [
+     "fx"
+    ],
+    "name": "meteor|fireball"
+   }
+  },
+  {
+   "id": "X01",
+   "cat": "sfx",
+   "q": "an ambulance siren",
+   "accept": [
+    "398dc22485bf"
+   ],
+   "n": 1,
+   "rule": {
+    "kind": [
+     "sound"
+    ],
+    "name": "^siren$",
+    "path": "ambulance"
+   }
+  },
+  {
+   "id": "X02",
+   "cat": "sfx",
+   "q": "a person groaning in pain",
+   "accept": [
+    "78dd7ee7d233",
+    "5c15de2689c8",
+    "36aa5030c5ac",
+    "2f2d7f714b7c",
+    "ea8318035f3d",
+    "c7b208b69819",
+    "06ea1aa4b99f",
+    "3cf358fad345",
+    "140e94d6eef1",
+    "1414075cc95c",
+    "1ec0d9620f76",
+    "d80606381f85",
+    "da79b61726e7",
+    "91373b470880",
+    "f13eb0a35969",
+    "113be28459d9",
+    "ed50f8e9e5f3",
+    "0134bcb5a311"
+   ],
+   "n": 18,
+   "rule": {
+    "kind": [
+     "sound"
+    ],
+    "name": "^groan"
+   }
+  },
+  {
+   "id": "A01",
+   "cat": "animation",
+   "q": "a character waving hello",
+   "accept": [
+    "c67c3b7aaf22",
+    "a9e1876bfc8d",
+    "8f65f462718b",
+    "5b37dcdf1268",
+    "879d63323ba9",
+    "946792b393e2",
+    "8352588c41a0",
+    "1a899af29f55",
+    "cc6ca556301e",
+    "f63a2e5a0c65",
+    "651d2ec3ec26",
+    "2064e9022b5a"
+   ],
+   "n": 12,
+   "rule": {
+    "kind": [
+     "animation"
+    ],
+    "name": "^wave(anim)?$"
+   }
+  },
+  {
+   "id": "A02",
+   "cat": "animation",
+   "q": "a character sitting down",
+   "accept": [
+    "59f3c65f07fa",
+    "3d0609beef50",
+    "cde1010f8e39",
+    "6cfc14a853ad",
+    "fd6b52796e97",
+    "67feff061b36",
+    "7d3086ad7460",
+    "98ead7c404e5",
+    "98a8171fea2b",
+    "346d93c206fa",
+    "e2461c998f74",
+    "468355b5316f",
+    "76026eda4297",
+    "dfca81a8a783",
+    "6a7cbe8ac26d",
+    "9a66feb5d66a",
+    "1ff096d8030d",
+    "d96beb91239e",
+    "3730b8877a44",
+    "c3bd70339b3a",
+    "f43dcae36c59",
+    "32d09535cf9a",
+    "20f914d9569a",
+    "26eff11a5fbb",
+    "cadfeff16301",
+    "fe8794660aad",
+    "05ee4c6d2d1a",
+    "9bba5cadfa68",
+    "5dbf8a5387e5",
+    "8d00814b18c4",
+    "da8b76f4ecea",
+    "e09ee61bcb99",
+    "46b051e1324d",
+    "67808736da91",
+    "4963466fefdb",
+    "3d8d9836ecbc",
+    "1865b2c71eae",
+    "7011c7a500bd",
+    "e1c35018d7f2",
+    "ff9bcf34aa5e",
+    "0588e1d53a7a",
+    "003c223d3921",
+    "df976f8075b6",
+    "f21f109d148f"
+   ],
+   "n": 44,
+   "rule": {
+    "kind": [
+     "animation"
+    ],
+    "name": "^sit(anim|r15)?$"
+   }
+  },
+  {
+   "id": "T01",
+   "cat": "tool",
+   "q": "a grappling hook gadget",
+   "accept": [
+    "558e4167f683",
+    "69f2343365de",
+    "de520ade0d83",
+    "48dab4809ef7",
+    "b794a82de1e1",
+    "74e0e9ab2643",
+    "99964644073a",
+    "36a49dcb0af3",
+    "3c178f9d3ec8",
+    "c75b971d8124"
+   ],
+   "n": 10,
+   "rule": {
+    "kind": [
+     "tool"
+    ],
+    "name": "grapple"
+   }
+  },
+  {
+   "id": "T02",
+   "cat": "tool",
+   "q": "a fizzy soda drink",
+   "accept": [
+    "c4d3c5cbe347",
+    "51adea87a6fb",
+    "49d9ad16b4bb",
+    "fcd6624d0ccc",
+    "5707aec76c2d",
+    "36d10a0e4aee",
+    "728f99d49fc2",
+    "3fff9b4a3670",
+    "8cf3ee3ab5d5",
+    "1680e21ae4b4",
+    "2f526131edb6",
+    "2cfbe0b6e0d8",
+    "0890c444f437",
+    "3f8607858b0b",
+    "2b1204f98951",
+    "f67c785b9b64",
+    "c0fe24143d8a",
+    "0e95b53373e9",
+    "099116df9ca0",
+    "65499d6f862b",
+    "855cf196c4e8",
+    "39448db738aa",
+    "086cb611f14f",
+    "fa50460f1f01",
+    "b0ba0919b7ab",
+    "93dee03f1f28",
+    "2a020fbd4c35",
+    "e97694e405a9",
+    "c2244e7b6f23",
+    "69ae6e3f17c8",
+    "0330ee3c2523",
+    "163c79f8fbb1",
+    "6e1af87488e1",
+    "66b2b3e346ae",
+    "03f20c1aeea6",
+    "6100e574b0a7",
+    "02222a2df4bc",
+    "71432b417d3c",
+    "236a1c607e88",
+    "0cf0a753a7f3",
+    "e4189d71935d",
+    "4392b178ee4f",
+    "7e2f55f914be"
+   ],
+   "n": 43,
+   "rule": {
+    "kind": [
+     "tool"
+    ],
+    "name": "^(sprite|coke|bloxy ?cola|bcola|bloxiade)$"
+   }
+  }
+ ],
+ "reject_probes": [
+  {
+   "id": "R01",
+   "cat": "reject",
+   "q": "a submarine you can dive in",
+   "accept": []
+  },
+  {
+   "id": "R02",
+   "cat": "reject",
+   "q": "a brass telescope for stargazing",
+   "accept": []
+  },
+  {
+   "id": "R03",
+   "cat": "reject",
+   "q": "a saxophone",
+   "accept": []
+  }
+ ]
+}

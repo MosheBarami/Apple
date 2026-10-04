@@ -14,7 +14,7 @@
 // engine, Apple (GLM 5.3 Flash, V3 gate G01), under the `plan` and `agent` keys below.
 import { collectStream } from './stream-collect';
 import type { Env } from './env';
-import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@golem/shared';
+import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@apple/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';

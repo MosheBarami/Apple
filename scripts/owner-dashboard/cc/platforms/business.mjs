@@ -14,6 +14,7 @@ import { WORKER_URL } from './cloudflare.mjs';
 import { REF } from './supabase.mjs';
 import { sentry } from './sentry.mjs';
 import { insights } from '../insights.mjs';
+import { envCompat } from '../../../lib/env-compat.mjs';
 
 const maskEmail = (e) => { const m = String(e ?? '').match(/^([^@]{0,64})@(.+)$/); return m ? `${m[1].slice(0, 1)}***@${m[2]}` : null; }; // same as resend.mjs
 const arr = (x) => (Array.isArray(x) ? x : []);
@@ -30,7 +31,7 @@ const sbUsers = () => fetchJson(`https://api.supabase.com/v1/projects/${REF}/dat
   headers: { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` }, body: { query: USERS_SQL, read_only: true } });
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
-const admin = (p, what) => fetchJson(`${base()}${p}`, { label: 'Apple', what, headers: { 'x-admin-key': process.env.GOLEM_ADMIN_KEY } });
+const admin = (p, what) => fetchJson(`${base()}${p}`, { label: 'Apple', what, headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
 
 // The worker's deployed flags that are plain config (wrangler.jsonc "vars"), not secrets.
 function workerVars() {
@@ -64,7 +65,7 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
   const byId = Object.fromEntries(list.map((u) => [u.id, u]));
   const userRows = list.slice(0, 100).map((u) => ({ k: u.id.slice(0, 8), email: maskEmail(u.email), created: iso(u.created_at), lastSignIn: iso(u.last_sign_in_at),
-    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|^e2e|load-?test/i.test(u.email || ''),
+    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|@apple\.internal$|^e2e|load-?test/i.test(u.email || ''),
     worker: accounts[u.id] || null }));
   const workerPlans = Object.entries(accounts).map(([id, x]) => ({ k: id.slice(0, 8), email: maskEmail(byId[id]?.email) || null, ...x }));
 
@@ -105,12 +106,12 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
 export function business() {
   return cached('business', async () => {
-    const haveAdmin = Boolean(process.env.GOLEM_ADMIN_KEY);
+    const haveAdmin = Boolean(envCompat('APPLE_ADMIN_KEY'));
     const [users, ap, bl, au, st, ins, ck] = await Promise.all([
       process.env.SUPABASE_ACCESS_TOKEN ? section(sbUsers) : { error: 'חסר SUPABASE_ACCESS_TOKEN' },
       apple().catch(() => null),
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר GOLEM_ADMIN_KEY' },
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר GOLEM_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר APPLE_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר APPLE_ADMIN_KEY' },
       sentry().catch(() => null), insights().catch(() => null),
       import('./clerk.mjs').then((m) => m.clerk()).catch(() => null)]);
     if (users.error && !ap?.ok) return fail(users.error, { errors: { supabase: users.error, apple: ap?.reason ?? null } });

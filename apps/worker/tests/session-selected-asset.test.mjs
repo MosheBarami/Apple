@@ -227,7 +227,16 @@ function makeSession({ responses = [], chat } = {}) {
     },
   };
   const session = new SessionDO(ctx, env);
+  withoutStudio(session);
   return { session, store, sql, sent, spends, chatCalls, alarms, ws };
+}
+
+// This fixture replaces runTool, so it has no plugin polling the operation queue. The
+// surface default and the layout reads belong to the harness, outside runTool: answer
+// their boundary explicitly instead of waiting for a nonexistent Studio to time out.
+// A failed read is deliberately not a measured empty scene.
+function withoutStudio(session) {
+  session.execStudioOp = async () => ({ ok: false, error: 'Studio is not provided by this selection-policy fixture' });
 }
 
 async function start(h, text = 'build a small tower') {
@@ -281,6 +290,7 @@ test('unrelated searches and primitive construction cannot precede the selected 
     const executed = await chosen(h);
     // Reload the DO from the same durable store to exercise eviction, not an in-memory flag.
     h.session = new SessionDO(h.session.ctx, h.session.env);
+    withoutStudio(h.session);
     h.session.pluginConnected = async () => true;
     h.session.pluginCapabilityReport = { schema: 'golem.studio-ops.v1', operations: SUPPORTED_OPS };
     await h.session.alarm();

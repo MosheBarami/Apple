@@ -1,7 +1,7 @@
 // Evidence renderers for Task (UI05), Plan (UI08) and Chain of Thought (UI15). Each composes the
 // vendored AI Elements over already-reduced run data and returns null when there is none.
 // The Chain of Thought is the public Activity timeline (ActivityRun), never model reasoning.
-import type { RunIntent } from '@golem/shared';
+import type { RunIntent } from '@apple/shared';
 import type { ActivityRun } from '../activity-model';
 import { Task, TaskContent, TaskItem, TaskItemFile, TaskTrigger } from '../../ai-elements/task';
 import {

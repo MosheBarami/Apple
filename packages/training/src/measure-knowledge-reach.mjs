@@ -54,6 +54,7 @@ import { dirname, resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATEWAY_CEILING, MODE_BASE_TOKENS, gatewayFor, resolveMode } from './production-settings.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..', '..');
@@ -79,7 +80,7 @@ const flag = (name) => process.argv.includes(`--${name}`);
 //   is a DIFFERENT BUILD — 44d9ded vs a5fe64e on 2026-09-20. Measuring it and calling the result
 //   production would be the gateway-config-versus-lane mistake wearing a hostname. ]]
 const BASE = (process.env.API_BASE_PRODUCTION || 'https://apple.moshe-barami111.workers.dev').replace(/\/+$/, '');
-const KEY = process.env.GOLEM_ADMIN_KEY;
+const KEY = envCompat('APPLE_ADMIN_KEY');
 
 /** The two libraries this measurement is about. */
 const KNOWLEDGE_TOOLS = ['get_ui_construction', 'get_verified_module'];
@@ -437,7 +438,7 @@ if (flag('show-settings')) {
   process.exit(0);
 }
 
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 // The deployed build and the live model table, recorded WITH the result. A number whose build is
 // unknown cannot be compared to the next one.

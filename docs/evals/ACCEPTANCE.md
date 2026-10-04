@@ -6,9 +6,9 @@ user-visible outcomes. Until now they were twenty sentences. They are now twenty
 `pnpm -r test`, and reported with the success metrics by `packages/evals/src/success-metrics.mjs`.
 
 ```sh
-pnpm --filter @golem/evals acceptance   # the twenty, as tests
-pnpm --filter @golem/evals metrics      # the report: scenarios + section 53's measures
-pnpm --filter @golem/evals metrics -- --json
+pnpm --filter @apple/evals acceptance   # the twenty, as tests
+pnpm --filter @apple/evals metrics      # the report: scenarios + section 53's measures
+pnpm --filter @apple/evals metrics -- --json
 ```
 
 Nothing here calls a model, opens a socket, or spends anything. The scenarios drive the real

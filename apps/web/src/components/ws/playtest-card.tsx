@@ -19,7 +19,7 @@
 // not. Staleness is computed in lib/playtest-view.ts from the worker's own
 // timestamps and is rendered here without softening.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PlaytestRun, StudioFrame } from '@golem/shared';
+import type { PlaytestRun, StudioFrame } from '@apple/shared';
 import { frameImageSrc, paintFrame } from '../../lib/frame-decode';
 import { framesForRun, playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';

@@ -105,11 +105,11 @@ function Compose.build(api)
 			if item[key] ~= nil and (not api.finite(item[key]) or item[key] <= 0 or item[key] > 2000) then return nil, key .. " must be a positive size" end
 		end
 		if item.along ~= nil and item.along ~= "x" and item.along ~= "z" then return nil, "along must be x or z" end
-		local source = api.resolvePath(self.game, self.options.services, item.from, false)
+		local source = api.resolvePath(self.game, self.options.services, item.from, false, self)
 		if not source then return nil, "nothing at " .. tostring(item.from) end
 		local original = piece(source)
 		if not original then return nil, tostring(item.from) .. " holds nothing to place" end
-		local parent, canonical, pErr = api.resolvePath(self.game, self.options.services, item.parent, true)
+		local parent, canonical, pErr = api.resolvePath(self.game, self.options.services, item.parent, true, self)
 		if not parent then return nil, pErr or ("no parent " .. tostring(item.parent)) end
 		local refused = api.destinationRefusal(self.game, parent, canonical, "Model")
 		if refused then return nil, refused end
@@ -183,7 +183,7 @@ function Compose.build(api)
 			if not STRIPPABLE[c] then return nil, "invalid", "classes may only be LocalScript, Script, ModuleScript, Sound, BillboardGui, ProximityPrompt or ClickDetector" end
 			classes[c] = true
 		end
-		local root = api.resolvePath(self.game, self.options.services, op.root, false)
+		local root = api.resolvePath(self.game, self.options.services, op.root, false, self)
 		if not root then return nil, "not_found", "nothing at " .. tostring(op.root) end
 		if not api.writableTarget(self.game, root) then return nil, "refused", "that place is not one Apple edits" end
 		local removed = 0

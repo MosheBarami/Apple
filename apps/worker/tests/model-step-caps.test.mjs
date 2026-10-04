@@ -16,7 +16,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MODEL_REGISTRY } from '@golem/shared';
+import { MODEL_REGISTRY } from '@apple/shared';
 import {
   MAX_NEURONS_PER_REQUEST,
   MODEL_PRICES,

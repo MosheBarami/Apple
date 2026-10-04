@@ -582,9 +582,9 @@ for _, c in { { -0.7, -1.4 }, { 0.7, -1.4 }, { -0.7, 1.4 }, { 0.7, 1.4 } } do
 	local leg = part(("Part%03d"):format(n), Vector3.new(0.5, 1.6, 0.5), base * CFrame.new(c[1], 0.8, c[2]), Color3.fromRGB(120, 80, 40), quad)
 	motor(("Part%03d"):format(n), body, leg, base * CFrame.new(c[1], 1.5, c[2])); n += 1
 end
--- 3. A tomato with no joints at all: prepare gives it a root and one joint.
-local tomato = Instance.new("Model"); tomato.Name = "Tomato"; tomato.Parent = zoo
-local fruit = part("Fruit", Vector3.new(3, 3, 3), CFrame.new(12, 1.6, -18), Color3.fromRGB(220, 40, 30), tomato, Enum.PartType.Ball); fruit.Anchored = true
-local leaf = part("Leaf", Vector3.new(1.4, 0.3, 1.4), CFrame.new(12, 3.2, -18), Color3.fromRGB(40, 160, 60), tomato); leaf.Anchored = true
+-- 3. A plant with no joints at all: prepare gives it a root and one joint.
+local plant = Instance.new("Model"); plant.Name = "Plant"; plant.Parent = zoo
+local fruit = part("Fruit", Vector3.new(3, 3, 3), CFrame.new(12, 1.6, -18), Color3.fromRGB(220, 40, 30), plant, Enum.PartType.Ball); fruit.Anchored = true
+local leaf = part("Leaf", Vector3.new(1.4, 0.3, 1.4), CFrame.new(12, 3.2, -18), Color3.fromRGB(40, 160, 60), plant); leaf.Anchored = true
 for _, m in zoo:GetChildren() do print("APPLEMOTION prepare " .. m.Name .. ": " .. table.concat(Motion.prepare(m), "; ")) end
 print("APPLEMOTION proof place ready")

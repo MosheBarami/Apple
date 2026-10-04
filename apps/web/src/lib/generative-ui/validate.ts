@@ -28,6 +28,7 @@
  */
 
 import { safeInternalPath } from '../safe-redirect.ts';
+import { UI_FENCE, LEGACY_UI_FENCE } from '@apple/shared';
 import {
   ASSET_KINDS,
   BLOCK_TYPES,
@@ -999,13 +1000,16 @@ export function sanitizeDocument(input: unknown, options: ValidateOptions = {}):
 }
 
 /**
- * Pull a ```golem-ui fenced JSON block out of assistant markdown.
+ * Pull a ```apple-ui fenced JSON block out of assistant markdown. A fence written before the rename
+ * (the old tag) is read too: stored chat history still carries them, and a transcript must render the
+ * same after the rename as before it.
  * Returns the JSON text and the message with the fence removed, so the panel is
  * rendered as a real component rather than printed as code.
  */
+const UI_FENCE_RE = new RegExp('```(?:' + UI_FENCE + '|' + LEGACY_UI_FENCE + ')[ \\t]*\\r?\\n([\\s\\S]*?)```');
 export function extractUIFence(markdown: string): { json: string | null; rest: string } {
-  if (typeof markdown !== 'string' || !markdown.includes('golem-ui')) return { json: null, rest: markdown };
-  const match = /```golem-ui[ \t]*\r?\n([\s\S]*?)```/.exec(markdown);
+  if (typeof markdown !== 'string' || !(markdown.includes(UI_FENCE) || markdown.includes(LEGACY_UI_FENCE))) return { json: null, rest: markdown };
+  const match = UI_FENCE_RE.exec(markdown);
   if (!match || match[1] === undefined) return { json: null, rest: markdown };
   const rest = (markdown.slice(0, match.index) + markdown.slice(match.index + match[0].length)).trim();
   return { json: match[1], rest };

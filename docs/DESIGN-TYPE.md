@@ -70,7 +70,7 @@ composer cross-fades three typed sentences with one `@keyframes` and no script, 
 not ship and cannot, because a system stack exposes no reliable variable axis — that is a cost of
 decision 1 above, and it is named here rather than left as an unexplained gap.
 
-**Where this disagrees with memory.** `~/.claude/.../memory/golem-visual-direction.md` is outside
+**Where this disagrees with memory.** `~/.claude/.../memory/apple-visual-direction.md` is outside
 this repository and is not this lane's to edit. If it still describes a webfont, this file is the
 newer decision and the stylesheet agrees with this file.
 

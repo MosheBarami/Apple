@@ -6,11 +6,123 @@
   "sourceLines": 8326,
   "documentCount": 2193,
   "documents": {
+    "api-actor": [
+      {
+        "vecId": "api-actor-1",
+        "title": "Actor (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Actor",
+        "kind": "api"
+      }
+    ],
+    "api-adservice": [
+      {
+        "vecId": "api-adservice-1",
+        "title": "AdService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AdService",
+        "kind": "api"
+      }
+    ],
+    "api-alignposition": [
+      {
+        "vecId": "api-alignposition-1",
+        "title": "AlignPosition (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AlignPosition",
+        "kind": "api"
+      }
+    ],
+    "api-analyticsservice": [
+      {
+        "vecId": "api-analyticsservice-1",
+        "title": "AnalyticsService (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnalyticsService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-analyticsservice-2",
+        "title": "AnalyticsService (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnalyticsService",
+        "kind": "api"
+      }
+    ],
+    "api-animationcontroller": [
+      {
+        "vecId": "api-animationcontroller-1",
+        "title": "AnimationController (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationController",
+        "kind": "api"
+      }
+    ],
+    "api-animationtrack": [
+      {
+        "vecId": "api-animationtrack-1",
+        "title": "AnimationTrack (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationTrack",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-animationtrack-2",
+        "title": "AnimationTrack (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationTrack",
+        "kind": "api"
+      }
+    ],
+    "api-animator": [
+      {
+        "vecId": "api-animator-1",
+        "title": "Animator (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Animator",
+        "kind": "api"
+      }
+    ],
+    "api-assetservice": [
+      {
+        "vecId": "api-assetservice-1",
+        "title": "AssetService (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-assetservice-2",
+        "title": "AssetService (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "api"
+      }
+    ],
+    "api-audioemitter": [
+      {
+        "vecId": "api-audioemitter-1",
+        "title": "AudioEmitter (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-audioemitter-2",
+        "title": "AudioEmitter (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioEmitter",
+        "kind": "api"
+      }
+    ],
+    "api-audioplayer": [
+      {
+        "vecId": "api-audioplayer-1",
+        "title": "AudioPlayer (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioPlayer",
+        "kind": "api"
+      }
+    ],
     "api-badgeservice": [
       {
         "vecId": "api-badgeservice-1",
         "title": "BadgeService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/BadgeService",
+        "kind": "api"
+      }
+    ],
+    "api-beam": [
+      {
+        "vecId": "api-beam-1",
+        "title": "Beam (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Beam",
         "kind": "api"
       }
     ],
@@ -36,11 +148,43 @@
         "kind": "api"
       }
     ],
+    "api-colorgradingeffect": [
+      {
+        "vecId": "api-colorgradingeffect-1",
+        "title": "ColorGradingEffect (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ColorGradingEffect",
+        "kind": "api"
+      }
+    ],
     "api-contextactionservice": [
       {
         "vecId": "api-contextactionservice-1",
         "title": "ContextActionService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/ContextActionService",
+        "kind": "api"
+      }
+    ],
+    "api-data-overlapparams": [
+      {
+        "vecId": "api-data-overlapparams-1",
+        "title": "OverlapParams (Datatype)",
+        "url": "https://create.roblox.com/docs/reference/engine/datatypes/OverlapParams",
+        "kind": "api"
+      }
+    ],
+    "api-data-random": [
+      {
+        "vecId": "api-data-random-1",
+        "title": "Random (Datatype)",
+        "url": "https://create.roblox.com/docs/reference/engine/datatypes/Random",
+        "kind": "api"
+      }
+    ],
+    "api-data-raycastparams": [
+      {
+        "vecId": "api-data-raycastparams-1",
+        "title": "RaycastParams (Datatype)",
+        "url": "https://create.roblox.com/docs/reference/engine/datatypes/RaycastParams",
         "kind": "api"
       }
     ],
@@ -57,6 +201,68 @@
         "vecId": "api-debris-1",
         "title": "Debris (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/Debris",
+        "kind": "api"
+      }
+    ],
+    "api-experiencenotificationservice": [
+      {
+        "vecId": "api-experiencenotificationservice-1",
+        "title": "ExperienceNotificationService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ExperienceNotificationService",
+        "kind": "api"
+      }
+    ],
+    "api-explosion": [
+      {
+        "vecId": "api-explosion-1",
+        "title": "Explosion (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Explosion",
+        "kind": "api"
+      }
+    ],
+    "api-forcefield": [
+      {
+        "vecId": "api-forcefield-1",
+        "title": "ForceField (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ForceField",
+        "kind": "api"
+      }
+    ],
+    "api-guiservice": [
+      {
+        "vecId": "api-guiservice-1",
+        "title": "GuiService (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/GuiService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-guiservice-2",
+        "title": "GuiService (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/GuiService",
+        "kind": "api"
+      }
+    ],
+    "api-hapticeffect": [
+      {
+        "vecId": "api-hapticeffect-1",
+        "title": "HapticEffect (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HapticEffect",
+        "kind": "api"
+      }
+    ],
+    "api-highlight": [
+      {
+        "vecId": "api-highlight-1",
+        "title": "Highlight (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Highlight",
+        "kind": "api"
+      }
+    ],
+    "api-hingeconstraint": [
+      {
+        "vecId": "api-hingeconstraint-1",
+        "title": "HingeConstraint (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HingeConstraint",
         "kind": "api"
       }
     ],
@@ -92,6 +298,70 @@
         "kind": "api"
       }
     ],
+    "api-humanoiddescription": [
+      {
+        "vecId": "api-humanoiddescription-1",
+        "title": "HumanoidDescription (Class) 1/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-2",
+        "title": "HumanoidDescription (Class) 2/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-3",
+        "title": "HumanoidDescription (Class) 3/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-4",
+        "title": "HumanoidDescription (Class) 4/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      }
+    ],
+    "api-inputaction": [
+      {
+        "vecId": "api-inputaction-1",
+        "title": "InputAction (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/InputAction",
+        "kind": "api"
+      }
+    ],
+    "api-lib-buffer": [
+      {
+        "vecId": "api-lib-buffer-1",
+        "title": "buffer (Library)",
+        "url": "https://create.roblox.com/docs/reference/engine/libraries/buffer",
+        "kind": "api"
+      }
+    ],
+    "api-lighting": [
+      {
+        "vecId": "api-lighting-1",
+        "title": "Lighting (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Lighting",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-lighting-2",
+        "title": "Lighting (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Lighting",
+        "kind": "api"
+      }
+    ],
+    "api-linearvelocity": [
+      {
+        "vecId": "api-linearvelocity-1",
+        "title": "LinearVelocity (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/LinearVelocity",
+        "kind": "api"
+      }
+    ],
     "api-marketplaceservice": [
       {
         "vecId": "api-marketplaceservice-1",
@@ -112,6 +382,42 @@
         "kind": "api"
       }
     ],
+    "api-materialservice": [
+      {
+        "vecId": "api-materialservice-1",
+        "title": "MaterialService (Class) 1/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/MaterialService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-materialservice-2",
+        "title": "MaterialService (Class) 2/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/MaterialService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-materialservice-3",
+        "title": "MaterialService (Class) 3/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/MaterialService",
+        "kind": "api"
+      }
+    ],
+    "api-materialvariant": [
+      {
+        "vecId": "api-materialvariant-1",
+        "title": "MaterialVariant (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/MaterialVariant",
+        "kind": "api"
+      }
+    ],
+    "api-memorystorequeue": [
+      {
+        "vecId": "api-memorystorequeue-1",
+        "title": "MemoryStoreQueue (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/MemoryStoreQueue",
+        "kind": "api"
+      }
+    ],
     "api-memorystoreservice": [
       {
         "vecId": "api-memorystoreservice-1",
@@ -125,6 +431,86 @@
         "vecId": "api-messagingservice-1",
         "title": "MessagingService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/MessagingService",
+        "kind": "api"
+      }
+    ],
+    "api-ordereddatastore": [
+      {
+        "vecId": "api-ordereddatastore-1",
+        "title": "OrderedDataStore (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/OrderedDataStore",
+        "kind": "api"
+      }
+    ],
+    "api-particleemitter": [
+      {
+        "vecId": "api-particleemitter-1",
+        "title": "ParticleEmitter (Class) 1/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-particleemitter-2",
+        "title": "ParticleEmitter (Class) 2/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-particleemitter-3",
+        "title": "ParticleEmitter (Class) 3/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      }
+    ],
+    "api-pathfindingservice": [
+      {
+        "vecId": "api-pathfindingservice-1",
+        "title": "PathfindingService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PathfindingService",
+        "kind": "api"
+      }
+    ],
+    "api-physicsservice": [
+      {
+        "vecId": "api-physicsservice-1",
+        "title": "PhysicsService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PhysicsService",
+        "kind": "api"
+      }
+    ],
+    "api-players": [
+      {
+        "vecId": "api-players-1",
+        "title": "Players (Class) 1/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-players-2",
+        "title": "Players (Class) 2/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-players-3",
+        "title": "Players (Class) 3/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "api"
+      }
+    ],
+    "api-policyservice": [
+      {
+        "vecId": "api-policyservice-1",
+        "title": "PolicyService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PolicyService",
+        "kind": "api"
+      }
+    ],
+    "api-prismaticconstraint": [
+      {
+        "vecId": "api-prismaticconstraint-1",
+        "title": "PrismaticConstraint (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PrismaticConstraint",
         "kind": "api"
       }
     ],
@@ -142,11 +528,171 @@
         "kind": "api"
       }
     ],
+    "api-ropeconstraint": [
+      {
+        "vecId": "api-ropeconstraint-1",
+        "title": "RopeConstraint (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/RopeConstraint",
+        "kind": "api"
+      }
+    ],
+    "api-runservice": [
+      {
+        "vecId": "api-runservice-1",
+        "title": "RunService (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/RunService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-runservice-2",
+        "title": "RunService (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/RunService",
+        "kind": "api"
+      }
+    ],
+    "api-socialservice": [
+      {
+        "vecId": "api-socialservice-1",
+        "title": "SocialService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SocialService",
+        "kind": "api"
+      }
+    ],
+    "api-soundservice": [
+      {
+        "vecId": "api-soundservice-1",
+        "title": "SoundService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SoundService",
+        "kind": "api"
+      }
+    ],
+    "api-spawnlocation": [
+      {
+        "vecId": "api-spawnlocation-1",
+        "title": "SpawnLocation (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SpawnLocation",
+        "kind": "api"
+      }
+    ],
+    "api-startergui": [
+      {
+        "vecId": "api-startergui-1",
+        "title": "StarterGui (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/StarterGui",
+        "kind": "api"
+      }
+    ],
+    "api-surfaceappearance": [
+      {
+        "vecId": "api-surfaceappearance-1",
+        "title": "SurfaceAppearance (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SurfaceAppearance",
+        "kind": "api"
+      }
+    ],
+    "api-teams": [
+      {
+        "vecId": "api-teams-1",
+        "title": "Teams (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Teams",
+        "kind": "api"
+      }
+    ],
+    "api-teleportservice": [
+      {
+        "vecId": "api-teleportservice-1",
+        "title": "TeleportService (Class) 1/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TeleportService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-teleportservice-2",
+        "title": "TeleportService (Class) 2/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TeleportService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-teleportservice-3",
+        "title": "TeleportService (Class) 3/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TeleportService",
+        "kind": "api"
+      }
+    ],
+    "api-terrain": [
+      {
+        "vecId": "api-terrain-1",
+        "title": "Terrain (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Terrain",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-terrain-2",
+        "title": "Terrain (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Terrain",
+        "kind": "api"
+      }
+    ],
+    "api-textchatservice": [
+      {
+        "vecId": "api-textchatservice-1",
+        "title": "TextChatService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TextChatService",
+        "kind": "api"
+      }
+    ],
+    "api-textservice": [
+      {
+        "vecId": "api-textservice-1",
+        "title": "TextService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TextService",
+        "kind": "api"
+      }
+    ],
+    "api-tool": [
+      {
+        "vecId": "api-tool-1",
+        "title": "Tool (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Tool",
+        "kind": "api"
+      }
+    ],
+    "api-trail": [
+      {
+        "vecId": "api-trail-1",
+        "title": "Trail (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Trail",
+        "kind": "api"
+      }
+    ],
     "api-tweenservice": [
       {
         "vecId": "api-tweenservice-1",
         "title": "TweenService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/TweenService",
+        "kind": "api"
+      }
+    ],
+    "api-uigradient": [
+      {
+        "vecId": "api-uigradient-1",
+        "title": "UIGradient (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UIGradient",
+        "kind": "api"
+      }
+    ],
+    "api-uistroke": [
+      {
+        "vecId": "api-uistroke-1",
+        "title": "UIStroke (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UIStroke",
+        "kind": "api"
+      }
+    ],
+    "api-unreliableremoteevent": [
+      {
+        "vecId": "api-unreliableremoteevent-1",
+        "title": "UnreliableRemoteEvent (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UnreliableRemoteEvent",
         "kind": "api"
       }
     ],
@@ -173,6 +719,56 @@
         "vecId": "api-userinputservice-4",
         "title": "UserInputService (Class) 4/4",
         "url": "https://create.roblox.com/docs/reference/engine/classes/UserInputService",
+        "kind": "api"
+      }
+    ],
+    "api-vectorforce": [
+      {
+        "vecId": "api-vectorforce-1",
+        "title": "VectorForce (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VectorForce",
+        "kind": "api"
+      }
+    ],
+    "api-vehicleseat": [
+      {
+        "vecId": "api-vehicleseat-1",
+        "title": "VehicleSeat (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VehicleSeat",
+        "kind": "api"
+      }
+    ],
+    "api-wedgepart": [
+      {
+        "vecId": "api-wedgepart-1",
+        "title": "WedgePart (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/WedgePart",
+        "kind": "api"
+      }
+    ],
+    "api-workspace": [
+      {
+        "vecId": "api-workspace-1",
+        "title": "Workspace (Class) 1/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Workspace",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-workspace-2",
+        "title": "Workspace (Class) 2/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Workspace",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-workspace-3",
+        "title": "Workspace (Class) 3/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Workspace",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-workspace-4",
+        "title": "Workspace (Class) 4/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Workspace",
         "kind": "api"
       }
     ],
@@ -213,6 +809,56 @@
         "vecId": "g-6f54c948-4",
         "title": "Animation events — Duplicate events",
         "url": "https://create.roblox.com/docs/animation/events",
+        "kind": "guide"
+      }
+    ],
+    "docs-animation-inverse-kinematics": [
+      {
+        "vecId": "g-96ec3352-1",
+        "title": "Inverse Kinematics",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-2",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-3",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-4",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-5",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-6",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-7",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-8",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
         "kind": "guide"
       }
     ],
@@ -376,6 +1022,32 @@
         "kind": "guide"
       }
     ],
+    "docs-art-modeling-texture-specifications": [
+      {
+        "vecId": "g-9c72fa01-1",
+        "title": "Texture specifications",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-2",
+        "title": "Texture specifications",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-3",
+        "title": "Texture specifications — Surface appearance",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-4",
+        "title": "Texture specifications — Surface appearance",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      }
+    ],
     "docs-audio": [
       {
         "vecId": "g-591c8e83-1",
@@ -393,6 +1065,88 @@
         "vecId": "g-591c8e83-3",
         "title": "Audio — Audio effects",
         "url": "https://create.roblox.com/docs/audio",
+        "kind": "guide"
+      }
+    ],
+    "docs-audio-assets": [
+      {
+        "vecId": "g-3235b127-1",
+        "title": "Audio assets",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-2",
+        "title": "Audio assets — Find audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-3",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-4",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-5",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-6",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-7",
+        "title": "Audio assets — Visibility",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      }
+    ],
+    "docs-audio-effects": [
+      {
+        "vecId": "g-d8da148d-1",
+        "title": "Audio effects",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-2",
+        "title": "Audio effects — Apply audio effects",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-3",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-4",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-5",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-6",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
         "kind": "guide"
       }
     ],
@@ -610,6 +1364,256 @@
         "kind": "guide"
       }
     ],
+    "docs-effects-beams": [
+      {
+        "vecId": "g-8dd806f0-1",
+        "title": "Beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-2",
+        "title": "Beams — Create beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-3",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-4",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-5",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-6",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-7",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-highlighting": [
+      {
+        "vecId": "g-03cedd7e-1",
+        "title": "Highlighting objects",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-2",
+        "title": "Highlighting objects — Add highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-3",
+        "title": "Highlighting objects — Customize highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-4",
+        "title": "Highlighting objects — Customize highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-5",
+        "title": "Highlighting objects — Performance tips",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-6",
+        "title": "Highlighting objects — Performance tips",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-light-sources": [
+      {
+        "vecId": "g-80e54aef-1",
+        "title": "Light sources",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-2",
+        "title": "Light sources — Light types",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-3",
+        "title": "Light sources — Light types",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-4",
+        "title": "Light sources — Shared properties",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-particle-emitters": [
+      {
+        "vecId": "g-d5187756-1",
+        "title": "Particle emitters",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-2",
+        "title": "Particle emitters — Create particle emitters",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-3",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-4",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-5",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-6",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-7",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-8",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-9",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-10",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-11",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-12",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-13",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-14",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-15",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-16",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-trails": [
+      {
+        "vecId": "g-a10a4481-1",
+        "title": "Trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-2",
+        "title": "Trails — Create trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-3",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-4",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-5",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-6",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-7",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      }
+    ],
     "docs-environment-atmosphere": [
       {
         "vecId": "g-4685c508-1",
@@ -621,6 +1625,40 @@
         "vecId": "g-4685c508-2",
         "title": "Atmospheric effects — Atmosphere properties",
         "url": "https://create.roblox.com/docs/environment/atmosphere",
+        "kind": "guide"
+      }
+    ],
+    "docs-environment-clouds": [
+      {
+        "vecId": "g-b4bcf125-1",
+        "title": "Dynamic clouds",
+        "url": "https://create.roblox.com/docs/environment/clouds",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b4bcf125-2",
+        "title": "Dynamic clouds — Cloud properties",
+        "url": "https://create.roblox.com/docs/environment/clouds",
+        "kind": "guide"
+      }
+    ],
+    "docs-environment-global-wind": [
+      {
+        "vecId": "g-c40c0a7d-1",
+        "title": "Global wind",
+        "url": "https://create.roblox.com/docs/environment/global-wind",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c40c0a7d-2",
+        "title": "Global wind — Particle Influence",
+        "url": "https://create.roblox.com/docs/environment/global-wind",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c40c0a7d-3",
+        "title": "Global wind — Scripted effects",
+        "url": "https://create.roblox.com/docs/environment/global-wind",
         "kind": "guide"
       }
     ],
@@ -673,6 +1711,32 @@
         "vecId": "g-828f1364-4",
         "title": "Post-processing effects — Color grading",
         "url": "https://create.roblox.com/docs/environment/post-processing-effects",
+        "kind": "guide"
+      }
+    ],
+    "docs-environment-skybox": [
+      {
+        "vecId": "g-c275df48-1",
+        "title": "Skyboxes",
+        "url": "https://create.roblox.com/docs/environment/skybox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c275df48-2",
+        "title": "Skyboxes — Skybox construction",
+        "url": "https://create.roblox.com/docs/environment/skybox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c275df48-3",
+        "title": "Skyboxes — Orientation",
+        "url": "https://create.roblox.com/docs/environment/skybox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c275df48-4",
+        "title": "Skyboxes — Orientation",
+        "url": "https://create.roblox.com/docs/environment/skybox",
         "kind": "guide"
       }
     ],
@@ -1714,6 +2778,32 @@
         "kind": "guide"
       }
     ],
+    "docs-performance-optimization-microprofiler-use-microprofiler": [
+      {
+        "vecId": "g-ed0f4f25-1",
+        "title": "MicroProfiler walkthrough",
+        "url": "https://create.roblox.com/docs/performance-optimization/microprofiler/use-microprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ed0f4f25-2",
+        "title": "MicroProfiler walkthrough — Identify the issue",
+        "url": "https://create.roblox.com/docs/performance-optimization/microprofiler/use-microprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ed0f4f25-3",
+        "title": "MicroProfiler walkthrough — Create troubleshooting labels",
+        "url": "https://create.roblox.com/docs/performance-optimization/microprofiler/use-microprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ed0f4f25-4",
+        "title": "MicroProfiler walkthrough — Confirm and fix the issue",
+        "url": "https://create.roblox.com/docs/performance-optimization/microprofiler/use-microprofiler",
+        "kind": "guide"
+      }
+    ],
     "docs-performance-optimization-monitor": [
       {
         "vecId": "g-6709f79c-1",
@@ -1912,6 +3002,26 @@
         "kind": "guide"
       }
     ],
+    "docs-physics-units": [
+      {
+        "vecId": "g-94b44356-1",
+        "title": "Roblox units",
+        "url": "https://create.roblox.com/docs/physics/units",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-94b44356-2",
+        "title": "Roblox units — Unit conversions",
+        "url": "https://create.roblox.com/docs/physics/units",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-94b44356-3",
+        "title": "Roblox units — Unit conversions",
+        "url": "https://create.roblox.com/docs/physics/units",
+        "kind": "guide"
+      }
+    ],
     "docs-players-tools": [
       {
         "vecId": "g-49730ad1-1",
@@ -1968,6 +3078,500 @@
         "kind": "guide"
       }
     ],
+    "docs-production-analytics-acquisition": [
+      {
+        "vecId": "g-a0f1fa09-1",
+        "title": "Acquisition",
+        "url": "https://create.roblox.com/docs/production/analytics/acquisition",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a0f1fa09-2",
+        "title": "Acquisition — Acquisition sources",
+        "url": "https://create.roblox.com/docs/production/analytics/acquisition",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a0f1fa09-3",
+        "title": "Acquisition — Acquisition attribution",
+        "url": "https://create.roblox.com/docs/production/analytics/acquisition",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a0f1fa09-4",
+        "title": "Acquisition — Improve acquisition",
+        "url": "https://create.roblox.com/docs/production/analytics/acquisition",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a0f1fa09-5",
+        "title": "Acquisition — Improve acquisition",
+        "url": "https://create.roblox.com/docs/production/analytics/acquisition",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-analytics-custom-events": [
+      {
+        "vecId": "g-30cda4cb-1",
+        "title": "Custom events",
+        "url": "https://create.roblox.com/docs/production/analytics/custom-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-30cda4cb-2",
+        "title": "Custom events — Track custom events",
+        "url": "https://create.roblox.com/docs/production/analytics/custom-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-30cda4cb-3",
+        "title": "Custom events — Event aggregations",
+        "url": "https://create.roblox.com/docs/production/analytics/custom-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-30cda4cb-4",
+        "title": "Custom events — Use custom fields",
+        "url": "https://create.roblox.com/docs/production/analytics/custom-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-30cda4cb-5",
+        "title": "Custom events — Use custom events to grow your game",
+        "url": "https://create.roblox.com/docs/production/analytics/custom-events",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-analytics-economy-events": [
+      {
+        "vecId": "g-07414580-1",
+        "title": "Economy events",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-07414580-2",
+        "title": "Economy events — Track economy events",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-07414580-3",
+        "title": "Economy events — Track economy events",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-07414580-4",
+        "title": "Economy events — Track economy events",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-07414580-5",
+        "title": "Economy events — Track economy events",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-07414580-6",
+        "title": "Economy events — Use economy to grow your game",
+        "url": "https://create.roblox.com/docs/production/analytics/economy-events",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-analytics-funnel-events": [
+      {
+        "vecId": "g-a1743b03-1",
+        "title": "Funnel events",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-2",
+        "title": "Funnel events — Track funnel events",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-3",
+        "title": "Funnel events — Track funnel events",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-4",
+        "title": "Funnel events — Track funnel events",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-5",
+        "title": "Funnel events — Initial step",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-6",
+        "title": "Funnel events — Use funnel filters",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-7",
+        "title": "Funnel events — Protect your funnels from exploiters",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-8",
+        "title": "Funnel events — Protect your funnels from exploiters",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a1743b03-9",
+        "title": "Funnel events — Use funnels to grow your game",
+        "url": "https://create.roblox.com/docs/production/analytics/funnel-events",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-analytics-retention": [
+      {
+        "vecId": "g-aad835b7-1",
+        "title": "Retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-2",
+        "title": "Retention — View retention metrics",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-3",
+        "title": "Retention — Understand your new user cohorts",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-4",
+        "title": "Retention — Improve day 1 retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-5",
+        "title": "Retention — Improve day 1 retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-6",
+        "title": "Retention — Improve day 1 retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-7",
+        "title": "Retention — Improve day 7 retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-aad835b7-8",
+        "title": "Retention — Improve day 7 retention",
+        "url": "https://create.roblox.com/docs/production/analytics/retention",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-configs": [
+      {
+        "vecId": "g-6d97edfd-1",
+        "title": "Experience configs",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-2",
+        "title": "Experience configs — Create and edit configs",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-3",
+        "title": "Experience configs — Create and edit configs",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-4",
+        "title": "Experience configs — Publish configs",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-5",
+        "title": "Experience configs — Target configs to specific players",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-6",
+        "title": "Experience configs — Target configs to specific players",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-7",
+        "title": "Experience configs — Target configs to specific players",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-8",
+        "title": "Experience configs — Create and edit configs in Studio",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-9",
+        "title": "Experience configs — Add configs to your code",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-10",
+        "title": "Experience configs — Add configs to your code",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-11",
+        "title": "Experience configs — Add configs to your code",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d97edfd-12",
+        "title": "Experience configs — Test configs",
+        "url": "https://create.roblox.com/docs/production/configs",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-experiments": [
+      {
+        "vecId": "g-7dfe9c7b-1",
+        "title": "Experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-2",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-3",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-4",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-5",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-6",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-7",
+        "title": "Experiments — Create experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-8",
+        "title": "Experiments — Target experiments to specific audiences",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-9",
+        "title": "Experiments — Target experiments to specific audiences",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-10",
+        "title": "Experiments — Target experiments to specific audiences",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-11",
+        "title": "Experiments — Add experiments to your code",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-12",
+        "title": "Experiments — Add experiments to your code",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-13",
+        "title": "Experiments — Add experiments to your code",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-14",
+        "title": "Experiments — View and interpret results",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-15",
+        "title": "Experiments — View and interpret results",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-16",
+        "title": "Experiments — View and interpret results",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-17",
+        "title": "Experiments — Best practices for experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-18",
+        "title": "Experiments — Best practices for experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-7dfe9c7b-19",
+        "title": "Experiments — Best practices for experiments",
+        "url": "https://create.roblox.com/docs/production/experiments",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-analytics-essentials": [
+      {
+        "vecId": "g-b032e42f-1",
+        "title": "Analyze and experiment",
+        "url": "https://create.roblox.com/docs/production/game-design/analytics-essentials",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-balance-virtual-economies": [
+      {
+        "vecId": "g-957e1af6-1",
+        "title": "Balance virtual economies",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-2",
+        "title": "Balance virtual economies — Data-driven content",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-3",
+        "title": "Balance virtual economies — Resource planning",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-4",
+        "title": "Balance virtual economies — Resource planning",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-5",
+        "title": "Balance virtual economies — Impact estimation",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-6",
+        "title": "Balance virtual economies — Impact estimation",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-7",
+        "title": "Balance virtual economies — Resource sinks",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-content-updates": [
+      {
+        "vecId": "g-1ae2a4a4-1",
+        "title": "Content updates",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-2",
+        "title": "Content updates — Choose correct content",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-3",
+        "title": "Content updates — Choose correct content",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-4",
+        "title": "Content updates — Manage scope",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-5",
+        "title": "Content updates — Establish a routine",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-6",
+        "title": "Content updates — Prioritize sustainability",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-7",
+        "title": "Content updates — Prioritize sustainability",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      }
+    ],
     "docs-production-game-design-contextual-purchases": [
       {
         "vecId": "g-e7b0cae4-1",
@@ -2003,6 +3607,540 @@
         "vecId": "g-e7b0cae4-6",
         "title": "Contextual purchases — UI",
         "url": "https://create.roblox.com/docs/production/game-design/contextual-purchases",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-core-loops": [
+      {
+        "vecId": "g-20202ddd-1",
+        "title": "Core loops",
+        "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-20202ddd-2",
+        "title": "Core loops — Most repeated set of actions",
+        "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-design-for-roblox": [
+      {
+        "vecId": "g-8eabb8db-1",
+        "title": "Design for Roblox",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-2",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-3",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-4",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-5",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-6",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-7",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-8",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-9",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-10",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-11",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-introduction-to-quest-design": [
+      {
+        "vecId": "g-e72d933b-1",
+        "title": "Introduction to quest design",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-2",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-3",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-4",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-5",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-6",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-7",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-8",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-9",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-10",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-11",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-12",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-liveops-essentials": [
+      {
+        "vecId": "g-15a6c15e-1",
+        "title": "LiveOps essentials",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-2",
+        "title": "LiveOps essentials — Content cadence",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-3",
+        "title": "LiveOps essentials — Content cadence",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-4",
+        "title": "LiveOps essentials — Major updates",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-5",
+        "title": "LiveOps essentials — Quality of life improvements",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-6",
+        "title": "LiveOps essentials — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-7",
+        "title": "LiveOps essentials — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-monetization-foundations": [
+      {
+        "vecId": "g-6d2e067e-1",
+        "title": "Monetization foundations",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-2",
+        "title": "Monetization foundations — Items",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-3",
+        "title": "Monetization foundations — Items",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-4",
+        "title": "Monetization foundations — The shop",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-5",
+        "title": "Monetization foundations — The shop",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-6",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-7",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-8",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-9",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-10",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-11",
+        "title": "Monetization foundations — Glossary",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-12",
+        "title": "Monetization foundations — Glossary",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-onboarding": [
+      {
+        "vecId": "g-2a2f9eea-1",
+        "title": "Onboarding",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-2",
+        "title": "Onboarding — Day 1 retention",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-3",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-4",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-5",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-onboarding-techniques": [
+      {
+        "vecId": "g-c6c5e08b-1",
+        "title": "Onboarding techniques",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-2",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-3",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-4",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-5",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-6",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-7",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-8",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-9",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-10",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-11",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-12",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-13",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-14",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-15",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-prototyping": [
+      {
+        "vecId": "g-c8508c6e-1",
+        "title": "Prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-2",
+        "title": "Prototyping — Paper prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-3",
+        "title": "Prototyping — Paper prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-4",
+        "title": "Prototyping — Studio prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-5",
+        "title": "Prototyping — Studio prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-6",
+        "title": "Prototyping — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-ui-ux-design": [
+      {
+        "vecId": "g-6b324881-1",
+        "title": "UI and UX design",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-2",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-3",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-4",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-5",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-6",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-7",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-8",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-9",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-10",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-11",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-12",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-13",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-14",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-15",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-16",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
         "kind": "guide"
       }
     ],
@@ -2098,6 +4236,136 @@
         "kind": "guide"
       }
     ],
+    "docs-production-monetization-immersive-ads": [
+      {
+        "vecId": "g-ef95fb5d-1",
+        "title": "Immersive ads",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-2",
+        "title": "Immersive ads",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-3",
+        "title": "Immersive ads — Publisher earnings from immersive ads",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-4",
+        "title": "Immersive ads — Publisher earnings from immersive ads",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-5",
+        "title": "Immersive ads — Publisher eligibility",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-6",
+        "title": "Immersive ads — Publisher eligibility",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-7",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-8",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-9",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-10",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-11",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-12",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-13",
+        "title": "Immersive ads — Insert ad units",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-14",
+        "title": "Immersive ads — Remove ad units for ineligible users",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-15",
+        "title": "Immersive ads — Remove ad units for ineligible users",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ef95fb5d-16",
+        "title": "Immersive ads — View immersive ad metrics",
+        "url": "https://create.roblox.com/docs/production/monetization/immersive-ads",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-monetization-paid-random-items": [
+      {
+        "vecId": "g-40408841-1",
+        "title": "Paid random items policy guidelines",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-2",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-3",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-4",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-5",
+        "title": "Paid random items policy guidelines — Per-user regulations",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      }
+    ],
     "docs-production-monetization-passes": [
       {
         "vecId": "g-01afedae-1",
@@ -2172,6 +4440,162 @@
         "kind": "guide"
       }
     ],
+    "docs-production-monetization-private-servers": [
+      {
+        "vecId": "g-11d82b24-1",
+        "title": "Private servers",
+        "url": "https://create.roblox.com/docs/production/monetization/private-servers",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-11d82b24-2",
+        "title": "Private servers — Enable private servers",
+        "url": "https://create.roblox.com/docs/production/monetization/private-servers",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-monetization-regional-pricing": [
+      {
+        "vecId": "g-281fe40b-1",
+        "title": "Regional pricing",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-2",
+        "title": "Regional pricing",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-3",
+        "title": "Regional pricing — Enable regional pricing",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-4",
+        "title": "Regional pricing — Check for dynamic pricing",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-5",
+        "title": "Regional pricing — Check for dynamic pricing",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-6",
+        "title": "Regional pricing — Display regional prices in your game",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-7",
+        "title": "Regional pricing — Protect your trades and gifts",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-8",
+        "title": "Regional pricing — Protect your trades and gifts",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-9",
+        "title": "Regional pricing — Protect your trades and gifts",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-10",
+        "title": "Regional pricing — Protect your trades and gifts",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-281fe40b-11",
+        "title": "Regional pricing — Protect your trades and gifts",
+        "url": "https://create.roblox.com/docs/production/monetization/regional-pricing",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-monetization-roblox-plus": [
+      {
+        "vecId": "g-974fad7b-1",
+        "title": "Roblox Plus",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-2",
+        "title": "Roblox Plus",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-3",
+        "title": "Roblox Plus — Earn from in-game purchases",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-4",
+        "title": "Roblox Plus — Earn from in-game purchases",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-5",
+        "title": "Roblox Plus — Earn from in-game Plus subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-6",
+        "title": "Roblox Plus — Earn from in-game Plus subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-7",
+        "title": "Roblox Plus — Earn from in-game Plus subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-8",
+        "title": "Roblox Plus — Earn from in-game Plus subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-9",
+        "title": "Roblox Plus — Earn from in-game Plus subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-10",
+        "title": "Roblox Plus — Earn from paid private server time",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-11",
+        "title": "Roblox Plus — Earn from paid private server time",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-974fad7b-12",
+        "title": "Roblox Plus — Earn from Robux transfers",
+        "url": "https://create.roblox.com/docs/production/monetization/roblox-plus",
+        "kind": "guide"
+      }
+    ],
     "docs-production-monetization-shop": [
       {
         "vecId": "g-3b60a786-1",
@@ -2195,6 +4619,952 @@
         "vecId": "g-3b60a786-4",
         "title": "Shop — Manage your Shop",
         "url": "https://create.roblox.com/docs/production/monetization/shop",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-monetization-subscriptions": [
+      {
+        "vecId": "g-e55b2614-1",
+        "title": "Subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-2",
+        "title": "Subscriptions — Subscription guidelines",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-3",
+        "title": "Subscriptions — Robux vs local currency",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-4",
+        "title": "Subscriptions — Create subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-5",
+        "title": "Subscriptions — Activate subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-6",
+        "title": "Subscriptions — Edit subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-7",
+        "title": "Subscriptions — Delete subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-8",
+        "title": "Subscriptions — Integrate subscriptions into a game",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-9",
+        "title": "Subscriptions — Integrate subscriptions into a game",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-10",
+        "title": "Subscriptions — Integrate subscriptions into a game",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-11",
+        "title": "Subscriptions — Integrate subscriptions into a game",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-12",
+        "title": "Subscriptions — Integrate subscriptions into a game",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-13",
+        "title": "Subscriptions — Earn with subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-14",
+        "title": "Subscriptions — Earn with subscriptions",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-15",
+        "title": "Subscriptions — Subscription analytics",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-16",
+        "title": "Subscriptions — Subscription analytics",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e55b2614-17",
+        "title": "Subscriptions — Subscription analytics",
+        "url": "https://create.roblox.com/docs/production/monetization/subscriptions",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-ads-manager": [
+      {
+        "vecId": "g-bbaec7bf-1",
+        "title": "Ads Manager",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-2",
+        "title": "Ads Manager — Set up an ad account",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-3",
+        "title": "Ads Manager — Set up an ad account",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-4",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-5",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-6",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-7",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-8",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-9",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-10",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-11",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-12",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-13",
+        "title": "Ads Manager — Manage your ads",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-14",
+        "title": "Ads Manager — Asset library",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-15",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-16",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-17",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-18",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-19",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-20",
+        "title": "Ads Manager — Reporting",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-21",
+        "title": "Ads Manager — Billing",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-22",
+        "title": "Ads Manager — Billing",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbaec7bf-23",
+        "title": "Ads Manager — Billing",
+        "url": "https://create.roblox.com/docs/production/promotion/ads-manager",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-content-maturity": [
+      {
+        "vecId": "g-dc2a14b4-1",
+        "title": "Content maturity and compliance",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-2",
+        "title": "Content maturity and compliance",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-3",
+        "title": "Content maturity and compliance",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-4",
+        "title": "Content maturity and compliance — Generate labels",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-5",
+        "title": "Content maturity and compliance — Generate labels",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-6",
+        "title": "Content maturity and compliance — Generate labels",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-7",
+        "title": "Content maturity and compliance — Generate labels",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-8",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-9",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-10",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-11",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-12",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-13",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-14",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-15",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-16",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-17",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-18",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-19",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-20",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-21",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-22",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-23",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-24",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-25",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-26",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-27",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-28",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-29",
+        "title": "Content maturity and compliance — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-30",
+        "title": "Content maturity and compliance — Content maturity moderation",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dc2a14b4-31",
+        "title": "Content maturity and compliance — Content maturity moderation",
+        "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-experience-events": [
+      {
+        "vecId": "g-dbcf0739-1",
+        "title": "Experience events and updates",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-2",
+        "title": "Experience events and updates — Create events",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-3",
+        "title": "Experience events and updates — Create events",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-4",
+        "title": "Experience events and updates — Event discovery",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-5",
+        "title": "Experience events and updates — Event discovery",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-6",
+        "title": "Experience events and updates — Event discovery",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-7",
+        "title": "Experience events and updates — Use event attribution",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-8",
+        "title": "Experience events and updates — Announce experience updates",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-9",
+        "title": "Experience events and updates — Announce experience updates",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-10",
+        "title": "Experience events and updates — Announce experience updates",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-dbcf0739-11",
+        "title": "Experience events and updates — Off-Platform Featuring program",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-events",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-experience-guidelines": [
+      {
+        "vecId": "g-54da809c-1",
+        "title": "Experience guidelines",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-2",
+        "title": "Experience guidelines",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-3",
+        "title": "Experience guidelines — Generate experience guidelines",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-4",
+        "title": "Experience guidelines — Generate experience guidelines",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-5",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-6",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-7",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-8",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-9",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-10",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-11",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-12",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-13",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-14",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-15",
+        "title": "Experience guidelines — Questionnaire categories",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-54da809c-16",
+        "title": "Experience guidelines — Experience guidelines moderation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-guidelines",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-experience-notifications": [
+      {
+        "vecId": "g-c284a401-1",
+        "title": "Experience notifications",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-2",
+        "title": "Experience notifications",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-3",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-4",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-5",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-6",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-7",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-8",
+        "title": "Experience notifications — Implementation",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-9",
+        "title": "Experience notifications — Analytics",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-10",
+        "title": "Experience notifications — API reference",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c284a401-11",
+        "title": "Experience notifications — API reference",
+        "url": "https://create.roblox.com/docs/production/promotion/experience-notifications",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-invite-prompts": [
+      {
+        "vecId": "g-105bb5c7-1",
+        "title": "Player invite prompts",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-2",
+        "title": "Player invite prompts — Set invite options",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-3",
+        "title": "Player invite prompts — Set invite options",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-4",
+        "title": "Player invite prompts — Set notification options",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-5",
+        "title": "Player invite prompts — Set notification options",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-6",
+        "title": "Player invite prompts — Prompt an invite",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-7",
+        "title": "Player invite prompts — Prompt an invite",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-8",
+        "title": "Player invite prompts — Prompt an invite",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-9",
+        "title": "Player invite prompts — Include launch data",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-10",
+        "title": "Player invite prompts — Include launch data",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-11",
+        "title": "Player invite prompts — Include launch data",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-105bb5c7-12",
+        "title": "Player invite prompts — Include launch data",
+        "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-referral-system": [
+      {
+        "vecId": "g-ca38db68-1",
+        "title": "Friend referral system",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-2",
+        "title": "Friend referral system",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-3",
+        "title": "Friend referral system — Set up a referral event",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-4",
+        "title": "Friend referral system — Grant referral rewards",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-5",
+        "title": "Friend referral system — Create a reward banner",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-6",
+        "title": "Friend referral system — Create a reward banner",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-ca38db68-7",
+        "title": "Friend referral system — Frequently asked questions",
+        "url": "https://create.roblox.com/docs/production/promotion/referral-system",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-rewarded-video-ads": [
+      {
+        "vecId": "g-80736fc8-1",
+        "title": "Rewarded video ads",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-2",
+        "title": "Rewarded video ads — Implement rewarded video ads",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-3",
+        "title": "Rewarded video ads — Implement rewarded video ads",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-4",
+        "title": "Rewarded video ads — Implement rewarded video ads",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-5",
+        "title": "Rewarded video ads — Implement rewarded video ads",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-6",
+        "title": "Rewarded video ads — Placements",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-7",
+        "title": "Rewarded video ads — Ad opportunities",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-8",
+        "title": "Rewarded video ads — Exclude likely spenders",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-9",
+        "title": "Rewarded video ads — Estimate potential earnings",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-10",
+        "title": "Rewarded video ads — Analytics",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-11",
+        "title": "Rewarded video ads — Analytics",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-12",
+        "title": "Rewarded video ads — Analytics",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-13",
+        "title": "Rewarded video ads — Eligibility requirements",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-14",
+        "title": "Rewarded video ads — Eligibility requirements",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-15",
+        "title": "Rewarded video ads — Eligibility requirements",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-16",
+        "title": "Rewarded video ads — Best practices",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80736fc8-17",
+        "title": "Rewarded video ads — Best practices",
+        "url": "https://create.roblox.com/docs/production/promotion/rewarded-video-ads",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-promotion-share-links": [
+      {
+        "vecId": "g-de8e9c07-1",
+        "title": "Share links",
+        "url": "https://create.roblox.com/docs/production/promotion/share-links",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-de8e9c07-2",
+        "title": "Share links — Create a share link",
+        "url": "https://create.roblox.com/docs/production/promotion/share-links",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-accessibility": [
+      {
+        "vecId": "g-8b5f3ee4-1",
+        "title": "Accessibility guidelines",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-2",
+        "title": "Accessibility guidelines — Sound non-reliance",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-3",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-4",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-5",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-6",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-7",
+        "title": "Accessibility guidelines — Volume controls",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
         "kind": "guide"
       }
     ],
@@ -2233,6 +5603,794 @@
         "vecId": "g-cee0af5c-6",
         "title": "Adaptive design guidelines — Core principles",
         "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-descriptions": [
+      {
+        "vecId": "g-b5ef1a7f-1",
+        "title": "Game descriptions",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-2",
+        "title": "Game descriptions — Context",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-3",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-4",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-5",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-6",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-7",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-8",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-9",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-experience-icons": [
+      {
+        "vecId": "g-e56b40b3-1",
+        "title": "Icons",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e56b40b3-2",
+        "title": "Icons — Upload icons",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e56b40b3-3",
+        "title": "Icons — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-publish-games-and-places": [
+      {
+        "vecId": "g-b3ddb56d-1",
+        "title": "Create and publish games and places",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-2",
+        "title": "Create and publish games and places",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-3",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-4",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-5",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-6",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-7",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-8",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-9",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-10",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-11",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-12",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-13",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-14",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-thumbnails": [
+      {
+        "vecId": "g-0e2f8630-1",
+        "title": "Thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-2",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-3",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-4",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-5",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-6",
+        "title": "Thumbnails — Free camera mode",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-7",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-8",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-9",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-10",
+        "title": "Thumbnails — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-11",
+        "title": "Thumbnails — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-api": [
+      {
+        "vecId": "g-4e3539f5-1",
+        "title": "Creator Store queries",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-2",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-3",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-4",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-5",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-6",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-7",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-manager": [
+      {
+        "vecId": "g-e12eeced-1",
+        "title": "Asset Manager",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-2",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-3",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-4",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-5",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-6",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-7",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-8",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-9",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-10",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-11",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-12",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-13",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-14",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-15",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-16",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-17",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-packages": [
+      {
+        "vecId": "g-d002ca16-1",
+        "title": "Packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-2",
+        "title": "Packages — Create packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-3",
+        "title": "Packages — Create packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-4",
+        "title": "Packages — Insert packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-5",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-6",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-7",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-8",
+        "title": "Packages — Publish package changes",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-9",
+        "title": "Packages — Update outdated copies",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-10",
+        "title": "Packages — Update outdated copies",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-11",
+        "title": "Packages — Share and access levels",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-12",
+        "title": "Packages — Share and access levels",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-13",
+        "title": "Packages — Revert package changes",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-14",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-15",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-16",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-privacy": [
+      {
+        "vecId": "g-76cdadeb-1",
+        "title": "Asset privacy",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-2",
+        "title": "Asset privacy",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-3",
+        "title": "Asset privacy — What Asset Privacy controls",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-4",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-5",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-6",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-7",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-8",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-9",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-10",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-11",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-12",
+        "title": "Asset privacy — View permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-13",
+        "title": "Asset privacy — Revoke permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-14",
+        "title": "Asset privacy — Open permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-toolbox": [
+      {
+        "vecId": "g-4340e559-1",
+        "title": "Toolbox",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4340e559-2",
+        "title": "Toolbox",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4340e559-3",
+        "title": "Toolbox — Troubleshooting",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-server-authority": [
+      {
+        "vecId": "g-9002161b-1",
+        "title": "Server authority model",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-2",
+        "title": "Server authority model — Advantages",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-3",
+        "title": "Server authority model — Advantages",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-4",
+        "title": "Server authority model — Setup",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-5",
+        "title": "Server authority model — Concepts",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-6",
+        "title": "Server authority model — Concepts",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-7",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-8",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-9",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-10",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-11",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9002161b-12",
+        "title": "Server authority model — Implementation",
+        "url": "https://create.roblox.com/docs/projects/server-authority",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-teleport": [
+      {
+        "vecId": "g-226073cc-1",
+        "title": "Teleport between places",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-2",
+        "title": "Teleport between places — Teleport players",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-3",
+        "title": "Teleport between places — Configure secure teleportation",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-4",
+        "title": "Teleport between places — Configure secure teleportation",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-5",
+        "title": "Teleport between places — Configure secure teleportation",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-6",
+        "title": "Teleport between places — Create custom teleport screens",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-7",
+        "title": "Teleport between places — Customize teleport options",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-8",
+        "title": "Teleport between places — Customize teleport options",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-9",
+        "title": "Teleport between places — Handle failed teleports",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-226073cc-10",
+        "title": "Teleport between places — Handle failed teleports",
+        "url": "https://create.roblox.com/docs/projects/teleport",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-version-history": [
+      {
+        "vecId": "g-bbff4702-1",
+        "title": "Version History",
+        "url": "https://create.roblox.com/docs/projects/version-history",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbff4702-2",
+        "title": "Version History",
+        "url": "https://create.roblox.com/docs/projects/version-history",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-bbff4702-3",
+        "title": "Version History — Restore to a previous version",
+        "url": "https://create.roblox.com/docs/projects/version-history",
+        "kind": "guide"
+      }
+    ],
+    "docs-scripting-attributes": [
+      {
+        "vecId": "g-8f5df3cc-1",
+        "title": "Properties and attributes",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-2",
+        "title": "Properties and attributes — Replication order",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-3",
+        "title": "Properties and attributes — Replication order",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-4",
+        "title": "Properties and attributes — Replication order",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-5",
+        "title": "Properties and attributes — Modify properties",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-6",
+        "title": "Properties and attributes — Get attribute values",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-7",
+        "title": "Properties and attributes — Detect changes",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8f5df3cc-8",
+        "title": "Properties and attributes — Detect changes",
+        "url": "https://create.roblox.com/docs/scripting/attributes",
         "kind": "guide"
       }
     ],
@@ -2313,6 +6471,58 @@
         "vecId": "g-b6a11aa8-13",
         "title": "Script capabilities — Interactions between containers",
         "url": "https://create.roblox.com/docs/scripting/capabilities",
+        "kind": "guide"
+      }
+    ],
+    "docs-scripting-debounce": [
+      {
+        "vecId": "g-814f4afe-1",
+        "title": "Debounce patterns",
+        "url": "https://create.roblox.com/docs/scripting/debounce",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-814f4afe-2",
+        "title": "Debounce patterns — Detect collisions",
+        "url": "https://create.roblox.com/docs/scripting/debounce",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-814f4afe-3",
+        "title": "Debounce patterns — Trigger sounds",
+        "url": "https://create.roblox.com/docs/scripting/debounce",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-814f4afe-4",
+        "title": "Debounce patterns — Pickup effects",
+        "url": "https://create.roblox.com/docs/scripting/debounce",
+        "kind": "guide"
+      }
+    ],
+    "docs-scripting-events-deferred": [
+      {
+        "vecId": "g-561cb961-1",
+        "title": "Deferred engine events",
+        "url": "https://create.roblox.com/docs/scripting/events/deferred",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-561cb961-2",
+        "title": "Deferred engine events — Deferred event benefits",
+        "url": "https://create.roblox.com/docs/scripting/events/deferred",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-561cb961-3",
+        "title": "Deferred engine events — Resumption points",
+        "url": "https://create.roblox.com/docs/scripting/events/deferred",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-561cb961-4",
+        "title": "Deferred engine events — Common affected code patterns",
+        "url": "https://create.roblox.com/docs/scripting/events/deferred",
         "kind": "guide"
       }
     ],
@@ -2444,6 +6654,94 @@
         "kind": "guide"
       }
     ],
+    "docs-scripting-locations": [
+      {
+        "vecId": "g-6f167d3f-1",
+        "title": "Script types and locations",
+        "url": "https://create.roblox.com/docs/scripting/locations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6f167d3f-2",
+        "title": "Script types and locations — Script types",
+        "url": "https://create.roblox.com/docs/scripting/locations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6f167d3f-3",
+        "title": "Script types and locations — Script types",
+        "url": "https://create.roblox.com/docs/scripting/locations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6f167d3f-4",
+        "title": "Script types and locations — Script types",
+        "url": "https://create.roblox.com/docs/scripting/locations",
+        "kind": "guide"
+      }
+    ],
+    "docs-scripting-module": [
+      {
+        "vecId": "g-6fa4ce91-1",
+        "title": "Reuse code",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-2",
+        "title": "Reuse code — Anatomy of a module script",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-3",
+        "title": "Reuse code — Require module scripts",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-4",
+        "title": "Reuse code — Require module scripts",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-5",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-6",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-7",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-8",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-9",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6fa4ce91-10",
+        "title": "Reuse code — Patterns",
+        "url": "https://create.roblox.com/docs/scripting/module",
+        "kind": "guide"
+      }
+    ],
     "docs-scripting-multithreading": [
       {
         "vecId": "g-51f9cffb-1",
@@ -2521,6 +6819,38 @@
         "vecId": "g-51f9cffb-13",
         "title": "Parallel Luau — Best practices",
         "url": "https://create.roblox.com/docs/scripting/multithreading",
+        "kind": "guide"
+      }
+    ],
+    "docs-scripting-scheduler": [
+      {
+        "vecId": "g-3a4996c5-1",
+        "title": "Schedule code",
+        "url": "https://create.roblox.com/docs/scripting/scheduler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3a4996c5-2",
+        "title": "Schedule code",
+        "url": "https://create.roblox.com/docs/scripting/scheduler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3a4996c5-3",
+        "title": "Schedule code",
+        "url": "https://create.roblox.com/docs/scripting/scheduler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3a4996c5-4",
+        "title": "Schedule code",
+        "url": "https://create.roblox.com/docs/scripting/scheduler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3a4996c5-5",
+        "title": "Schedule code",
+        "url": "https://create.roblox.com/docs/scripting/scheduler",
         "kind": "guide"
       }
     ],
@@ -2720,6 +7050,26 @@
         "kind": "guide"
       }
     ],
+    "docs-scripting-security-defensive-design": [
+      {
+        "vecId": "g-cca95cc3-1",
+        "title": "Defensive design tactics",
+        "url": "https://create.roblox.com/docs/scripting/security/defensive-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cca95cc3-2",
+        "title": "Defensive design tactics",
+        "url": "https://create.roblox.com/docs/scripting/security/defensive-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cca95cc3-3",
+        "title": "Defensive design tactics",
+        "url": "https://create.roblox.com/docs/scripting/security/defensive-design",
+        "kind": "guide"
+      }
+    ],
     "docs-scripting-security-network-ownership": [
       {
         "vecId": "g-1fb8ce4c-1",
@@ -2851,6 +7201,316 @@
         "vecId": "g-85a2eb32-3",
         "title": "Vulnerabilities from third-party assets — Protecting your game",
         "url": "https://create.roblox.com/docs/scripting/security/third-party-vulnerabilities",
+        "kind": "guide"
+      }
+    ],
+    "docs-studio-developer-console": [
+      {
+        "vecId": "g-494562f8-1",
+        "title": "Developer Console",
+        "url": "https://create.roblox.com/docs/studio/developer-console",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-494562f8-2",
+        "title": "Developer Console — Console sections",
+        "url": "https://create.roblox.com/docs/studio/developer-console",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-494562f8-3",
+        "title": "Developer Console — Console sections",
+        "url": "https://create.roblox.com/docs/studio/developer-console",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-494562f8-4",
+        "title": "Developer Console — Console sections",
+        "url": "https://create.roblox.com/docs/studio/developer-console",
+        "kind": "guide"
+      }
+    ],
+    "docs-studio-optimization-memory-usage": [
+      {
+        "vecId": "g-1d82b83f-1",
+        "title": "Memory usage",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-2",
+        "title": "Memory usage — Memory",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-3",
+        "title": "Memory usage — Memory",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-4",
+        "title": "Memory usage — Memory",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-5",
+        "title": "Memory usage — Luau heap",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-6",
+        "title": "Memory usage — Luau heap",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-7",
+        "title": "Memory usage — Luau heap",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-8",
+        "title": "Memory usage — Luau heap",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1d82b83f-9",
+        "title": "Memory usage — Luau heap",
+        "url": "https://create.roblox.com/docs/studio/optimization/memory-usage",
+        "kind": "guide"
+      }
+    ],
+    "docs-studio-optimization-scriptprofiler": [
+      {
+        "vecId": "g-916678b5-1",
+        "title": "Script Profiler",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-916678b5-2",
+        "title": "Script Profiler — Record profiling sessions",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-916678b5-3",
+        "title": "Script Profiler — Record profiling sessions",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-916678b5-4",
+        "title": "Script Profiler — Read profiling data",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-916678b5-5",
+        "title": "Script Profiler — Read profiling data",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-916678b5-6",
+        "title": "Script Profiler — Export profiling data",
+        "url": "https://create.roblox.com/docs/studio/optimization/scriptprofiler",
+        "kind": "guide"
+      }
+    ],
+    "docs-studio-terrain-editor": [
+      {
+        "vecId": "g-fc228fb1-1",
+        "title": "Terrain Editor",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-2",
+        "title": "Terrain Editor — Create tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-3",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-4",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-5",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-6",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-7",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-8",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-9",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-10",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-11",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-12",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-13",
+        "title": "Terrain Editor — Edit tab",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-fc228fb1-14",
+        "title": "Terrain Editor — Studio shortcuts",
+        "url": "https://create.roblox.com/docs/studio/terrain-editor",
+        "kind": "guide"
+      }
+    ],
+    "docs-studio-testing-modes": [
+      {
+        "vecId": "g-72d1e2ef-1",
+        "title": "Studio testing modes",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-2",
+        "title": "Studio testing modes — Playtesting",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-3",
+        "title": "Studio testing modes — Playtesting",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-4",
+        "title": "Studio testing modes — Playtesting",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-5",
+        "title": "Studio testing modes — Playtesting",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-6",
+        "title": "Studio testing modes — Multi-client simulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-7",
+        "title": "Studio testing modes — Party simulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-8",
+        "title": "Studio testing modes — Network simulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-9",
+        "title": "Studio testing modes — Network simulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-10",
+        "title": "Studio testing modes — Network simulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-11",
+        "title": "Studio testing modes — Scripted testing",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-12",
+        "title": "Studio testing modes — VR headsets",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-13",
+        "title": "Studio testing modes — VR headsets",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-14",
+        "title": "Studio testing modes — VR headsets",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-15",
+        "title": "Studio testing modes — VR headsets",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-16",
+        "title": "Studio testing modes — VR headsets",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-72d1e2ef-17",
+        "title": "Studio testing modes — Player emulation",
+        "url": "https://create.roblox.com/docs/studio/testing-modes",
         "kind": "guide"
       }
     ],
@@ -4504,6 +9164,20 @@
         "kind": "guide"
       }
     ],
+    "docs-ui-9-slice": [
+      {
+        "vecId": "g-d8ea5157-1",
+        "title": "UI 9-slice design",
+        "url": "https://create.roblox.com/docs/ui/9-slice",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8ea5157-2",
+        "title": "UI 9-slice design — Studio editor",
+        "url": "https://create.roblox.com/docs/ui/9-slice",
+        "kind": "guide"
+      }
+    ],
     "docs-ui-animation": [
       {
         "vecId": "g-fbf7a5f6-1",
@@ -4748,6 +9422,38 @@
         "kind": "guide"
       }
     ],
+    "docs-ui-list-flex-layouts": [
+      {
+        "vecId": "g-2932b7c3-1",
+        "title": "List and flex layouts",
+        "url": "https://create.roblox.com/docs/ui/list-flex-layouts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2932b7c3-2",
+        "title": "List and flex layouts — Alignment",
+        "url": "https://create.roblox.com/docs/ui/list-flex-layouts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2932b7c3-3",
+        "title": "List and flex layouts — Padding",
+        "url": "https://create.roblox.com/docs/ui/list-flex-layouts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2932b7c3-4",
+        "title": "List and flex layouts — Flex layouts",
+        "url": "https://create.roblox.com/docs/ui/list-flex-layouts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2932b7c3-5",
+        "title": "List and flex layouts — Flex layouts",
+        "url": "https://create.roblox.com/docs/ui/list-flex-layouts",
+        "kind": "guide"
+      }
+    ],
     "docs-ui-on-screen-containers": [
       {
         "vecId": "g-d9d2371c-1",
@@ -4838,6 +9544,96 @@
         "kind": "guide"
       }
     ],
+    "docs-ui-proximity-prompts": [
+      {
+        "vecId": "g-5a160569-1",
+        "title": "Proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5a160569-2",
+        "title": "Proximity prompts — Customize proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5a160569-3",
+        "title": "Proximity prompts — Customize proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5a160569-4",
+        "title": "Proximity prompts — Customize proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5a160569-5",
+        "title": "Proximity prompts — Customize proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5a160569-6",
+        "title": "Proximity prompts — Script proximity prompts",
+        "url": "https://create.roblox.com/docs/ui/proximity-prompts",
+        "kind": "guide"
+      }
+    ],
+    "docs-ui-rich-text": [
+      {
+        "vecId": "g-013ab7c7-1",
+        "title": "Rich text markup",
+        "url": "https://create.roblox.com/docs/ui/rich-text",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-013ab7c7-2",
+        "title": "Rich text markup — Supported tags",
+        "url": "https://create.roblox.com/docs/ui/rich-text",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-013ab7c7-3",
+        "title": "Rich text markup — Supported tags",
+        "url": "https://create.roblox.com/docs/ui/rich-text",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-013ab7c7-4",
+        "title": "Rich text markup — Escape forms",
+        "url": "https://create.roblox.com/docs/ui/rich-text",
+        "kind": "guide"
+      }
+    ],
+    "docs-ui-scrolling-frames": [
+      {
+        "vecId": "g-5339790e-1",
+        "title": "Scrolling frames",
+        "url": "https://create.roblox.com/docs/ui/scrolling-frames",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5339790e-2",
+        "title": "Scrolling frames — Canvas",
+        "url": "https://create.roblox.com/docs/ui/scrolling-frames",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5339790e-3",
+        "title": "Scrolling frames — Scroll bars",
+        "url": "https://create.roblox.com/docs/ui/scrolling-frames",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-5339790e-4",
+        "title": "Scrolling frames — Scroll bars",
+        "url": "https://create.roblox.com/docs/ui/scrolling-frames",
+        "kind": "guide"
+      }
+    ],
     "docs-ui-size-modifiers": [
       {
         "vecId": "g-5f78a250-1",
@@ -4873,6 +9669,50 @@
         "vecId": "g-5f78a250-6",
         "title": "Size modifiers and constraints — Constraints",
         "url": "https://create.roblox.com/docs/ui/size-modifiers",
+        "kind": "guide"
+      }
+    ],
+    "docs-ui-styling": [
+      {
+        "vecId": "g-a9cfa404-1",
+        "title": "UI styling",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-2",
+        "title": "UI styling — Concepts",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-3",
+        "title": "UI styling — Selector definitions",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-4",
+        "title": "UI styling — Selector definitions",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-5",
+        "title": "UI styling — Selector definitions",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-6",
+        "title": "UI styling — Selector definitions",
+        "url": "https://create.roblox.com/docs/ui/styling",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a9cfa404-7",
+        "title": "UI styling — Modified properties",
+        "url": "https://create.roblox.com/docs/ui/styling",
         "kind": "guide"
       }
     ],
@@ -5156,6 +9996,68 @@
         "kind": "guide"
       }
     ],
+    "docs-workspace-streaming-slim": [
+      {
+        "vecId": "g-cb5e19d7-1",
+        "title": "SLIM",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-2",
+        "title": "SLIM",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-3",
+        "title": "SLIM — Technical behavior",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-4",
+        "title": "SLIM — SLIM for models",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-5",
+        "title": "SLIM — SLIM for models",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-6",
+        "title": "SLIM — SLIM for avatars",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-7",
+        "title": "SLIM — SLIM for avatars",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-8",
+        "title": "SLIM — Limitations",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-9",
+        "title": "SLIM — Troubleshooting",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-cb5e19d7-10",
+        "title": "SLIM — Troubleshooting",
+        "url": "https://create.roblox.com/docs/workspace/streaming/slim",
+        "kind": "guide"
+      }
+    ],
     "docs-workspace-streaming-techniques": [
       {
         "vecId": "g-1161b08e-1",
@@ -5288,6 +10190,112 @@
         "title": "Techniques and conversion — AI streaming conversion skill",
         "url": "https://create.roblox.com/docs/workspace/streaming/techniques",
         "kind": "guide"
+      }
+    ],
+    "research-05-world-visuals": [
+      {
+        "vecId": "research-05-ad749077ea301930",
+        "title": "World building and art direction (Lighting, Atmosphere, post-processing, Terrain, materials, scale, budgets) — Recipes (each becomes a skill) — Recipe 9: Custom material pack with MaterialVariant",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "research"
+      }
+    ],
+    "research-07-anim-audio-vfx": [
+      {
+        "vecId": "research-07-f1a9f57fe42ee25b",
+        "title": "Animation, audio and VFX (Animator, new Audio API, particles, beams, trails, highlights, game feel) — Key facts — Music and sound rights",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      }
+    ],
+    "research-14-genre-obby-racing-platform": [
+      {
+        "vecId": "research-14-76a92207ac8f0ed9",
+        "title": "Obby, tower, speed-escape, parkour and racing games — Key facts — 1. How Roblox classifies these games, and what Studio ships (2)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-14-9fcfa8ba871478b4",
+        "title": "Obby, tower, speed-escape, parkour and racing games — Recipes (each becomes a skill) — Recipe 1: Checkpoint obby with server-validated progress",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "research"
+      }
+    ],
+    "research-20-systems-cookbook": [
+      {
+        "vecId": "research-20-e4dc828be8efa729",
+        "title": "Systems Cookbook: correct, modern Luau for the systems every Roblox game needs — Key facts — Progression, rewards and live-ops (3)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-20-2397c57934c69b48",
+        "title": "Systems Cookbook: correct, modern Luau for the systems every Roblox game needs — Recipes (each becomes a skill) — Recipe 14: Admin and moderator tools (roles, chat commands, bans, audit log) (3)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "research"
+      }
+    ],
+    "research-23-asset-and-audio-sourcing": [
+      {
+        "vecId": "research-23-8dd4ce2639d8b00a",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — E. Asset privacy, permissions and the Asset Manager (timeline) (2)",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-0a7cfdd97714532d",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — F. Audio import, distribution and playback",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-9e3df3afd7382d93",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — G. Programmatic access: what code can do (and limits) (2)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-ff30b354d5f89678",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — H. Textures, materials, MaterialVariants",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-b5f212e97aa79c87",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Own audio: upload, permission, and verify",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-cd0fd404079da045",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Grant a universe access to many restricted assets (owner-approved batch)",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-10902efeb6a2bc1c",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Handoff checklist for the owner",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-b905568dc06f4dde",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Luau reference snippets",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-3b861b443645bfb5",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Luau reference snippets (3)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-0ebdc12990ae1625",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Open questions / unverified",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
       }
     ]
   }

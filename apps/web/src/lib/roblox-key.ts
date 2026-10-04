@@ -15,7 +15,7 @@
 //     lost half of itself to a truncated copy fails later with an error about Roblox.
 //   * WHAT THE PANEL MAY SHOW AFTERWARDS. Never the key. The server will not return it, and this
 //     file does not ask.
-import { type RobloxScope, ROBLOX_SCOPES } from '@golem/shared';
+import { type RobloxScope, ROBLOX_SCOPES } from '@apple/shared';
 import { explainFailure, type Explained } from './error-taxonomy.ts';
 
 export interface StoredCredentialView {

@@ -27,7 +27,7 @@ import {
   STUDIO_PLUGIN_INSTALL_HREF,
   STUDIO_PLUGIN_STORE_LIVE,
   type PairingCodeDto,
-} from '@golem/shared';
+} from '@apple/shared';
 import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
 import { pairingAttemptConnected, type PairingAttemptBaseline } from '../lib/pairing-confirmation';

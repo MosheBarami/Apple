@@ -24,7 +24,7 @@ from .numbers import finite_int
 
 #: The public base URL of the production worker.
 #:
-#: ``apple``, not ``golem``. The legacy host serves ``/api/*`` from a separate, older deployment
+#: ``apple``, not the retired host. The legacy host serves ``/api/*`` from a separate, older deployment
 #: (measured 2026-09-20: buildSha 44d9ded-dirty there, e30b7f9-dirty on the canonical origin, 31
 #: commits apart) and the browser redirect that moves pages across deliberately exempts ``/api/*``,
 #: so an SDK caller was never carried over. Kept identical to ``DEFAULT_BASE_URL`` in

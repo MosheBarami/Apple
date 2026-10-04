@@ -62,6 +62,21 @@ spec("unknown operations are explicit refusals", function()
     c:destroy()
 end)
 
+spec("classes outside the create allowlist are refused by name, and nothing is created", function()
+    -- Measured 2026-10-02 by reading CREATE_CLASSES: Clouds is not creatable, yet the worker's prompts told
+    -- the agent to put a Clouds object under Terrain. A class the plugin cannot create must be refused
+    -- here with a reason the agent can act on, whatever the prompts say.
+    local c = newCommands()
+    local before = #services.Workspace:GetChildren()
+    for _, className in { "Clouds", "MeshPart", "SpecialMesh", "UnionOperation" } do
+        local r = run(c, "outside-" .. className, { op = "create_instances", items = {{ className = className, name = "Nope", parent = "game.Workspace" }} }, true)
+        eq(r.ok, false, className .. " ok"); eq(r.failure, "refused", className .. " failure")
+        has(r.error, "allowlist", className .. " reason")
+    end
+    eq(#services.Workspace:GetChildren(), before, "nothing was created")
+    c:destroy()
+end)
+
 spec("ping and all read operations use data and no recording", function()
     local scriptObject = Instance.new("Script"); scriptObject.Name = "Logic"; scriptObject.Source = "local answer = 42\\nprint(answer)\\n"; scriptObject.Parent = services.ServerScriptService
     local c = newCommands()
@@ -147,6 +162,30 @@ spec("selection, camera and viewport use the companion consent boundary without 
     local focused = run(c, "focus", { op = "camera_focus", path = "game.Workspace.Selected" }, true)
     eq(focused.ok, true); eq(focused.data.focused, "game.Workspace.Selected")
     eq(#history.log, before, "Studio-only controls must not create undo entries")
+    c:destroy()
+end)
+
+-- WHAT THE WORKER'S look (self-check, M1) RELIES ON, pinned so a plugin change cannot silently take it away. It aims the
+-- user's camera with set_props on game.Workspace.Camera, captures, and puts the camera back the same way; no plugin release was
+-- needed for it because the operation already existed. The undo count below is MEASURED here and is a known cost, not a goal:
+-- set_props is a recorded write, so each aim leaves ChangeHistory entries (camera_focus, above, records none). A read-only
+-- camera-pose operation would remove that cost and is listed as a plugin-release follow-up in docs/autonomy/PHASE-3-4-PLAN.md.
+spec("the camera can be aimed and put back with set_props (the worker's look), at a measured undo cost", function()
+    local camera = workspace.CurrentCamera
+    local c = newCommands()
+    local was = { camera.CFrame:GetComponents() }
+    local before = #history.log
+    local aim = run(c, "aim-camera", { op = "set_props", path = "game.Workspace.Camera", props = { CFrame = { t = "CFrame", v = { 7, 8, 9, 1, 0, 0, 0, 1, 0, 0, 0, 1 } } } }, true)
+    eq(aim.ok, true, tostring(aim.error))
+    eq(camera.CFrame.Position.X, 7, "the camera moved where it was aimed")
+    eq(camera.CFrame.Position.Z, 9)
+    local back = run(c, "restore-camera", { op = "set_props", path = "game.Workspace.Camera", props = { CFrame = { t = "CFrame", v = was } } }, true)
+    eq(back.ok, true, tostring(back.error))
+    eq(camera.CFrame.Position.Y, was[2], "and is where it was")
+    local entries = #history.log - before
+    -- MEASURED 2026-10-02 on this mock: two entries per write (the recording opens and closes), so a look of three views plus the
+    -- restore is four writes and about eight undo entries in the user's history. Tripwire: if it grows, review the look's cost.
+    eq(entries, 4, "two camera writes were measured at two undo entries each")
     c:destroy()
 end)
 
@@ -285,6 +324,86 @@ spec("the engine gates third-party loading even when its setting cannot be read"
     services.InsertService = nil; services.AssetService = nil
 end)
 
+-- THE LOADER THAT WORKS FOR A FREE PUBLIC MODEL (measured in Studio 2026-10-04: LoadAsset and LoadAssetAsync both
+-- answered "User is not authorized to access Asset." for a free asset by a verified creator that GetObjects loaded whole).
+-- Whatever loader produced the tree, it is the same DETACHED tree that is scanned before anything is parented.
+spec("a free public model loads through GetObjects when both owned-asset loaders refuse it", function()
+    local urls = {}
+    local reply
+    services.InsertService = { LoadAsset = function() error("User is not authorized to access Asset.") end }
+    services.AssetService = { LoadAssetAsync = function() error("User is not authorized to access Asset.") end }
+    rawset(game, "GetObjects", function(_, url)
+        table.insert(urls, url)
+        if type(reply) == "function" then return reply() end
+        error("GetObjects was not expected")
+    end)
+    local c = newCommands()
+    local before = #workspace:GetChildren()
+    local function insert(id, assetId) return run(c, id, { op = "insert_asset", assetId = assetId, parent = "game.Workspace" }, true) end
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "CrystalCluster"
+        for _, name in { "Spire", "Shard" } do local part = Instance.new("MeshPart"); part.Name = name; part.Parent = model end
+        return { model }
+    end
+    local ok = insert("getobjects-ok", 136381958798606)
+    eq(ok.ok, true, "the detached loader must insert a clean model: " .. tostring(ok.error))
+    eq(ok.data.count, 1); eq(urls[1], "rbxassetid://136381958798606", "a 15-digit id must reach the loader exact")
+    local landed = workspace:FindFirstChild("CrystalCluster")
+    assert(landed ~= nil and #landed:GetChildren() == 2, "the model landed whole")
+    eq(landed.Parent, workspace)
+    landed:Destroy()
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "WithCode"
+        local part = Instance.new("Part"); part.Name = "Body"; part.Parent = model
+        local code = Instance.new("Script"); code.Name = "Payload"; code.Parent = part
+        return { model }
+    end
+    local scripted = insert("getobjects-scripted", 1235)
+    eq(scripted.ok, false); eq(scripted.remedy, "choose_scriptless_asset"); has(scripted.error, "carries 1 script")
+    eq(workspace:FindFirstChild("WithCode"), nil, "a scripted asset must never reach the place")
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "Linked"
+        local part = Instance.new("Part"); part.Name = "Body"; part.Parent = model
+        local link = Instance.new("PackageLink"); link.Name = "PackageLink"; link.Parent = model
+        return { model }
+    end
+    local linked = insert("getobjects-link", 1236)
+    eq(linked.ok, true, tostring(linked.error)); eq(linked.data.packageLinksRemoved, 1)
+    local linkedModel = workspace:FindFirstChild("Linked")
+    local links = 0
+    for _, d in linkedModel:GetDescendants() do if d.ClassName == "PackageLink" then links += 1 end end
+    eq(links, 0, "a PackageLink can pull other content in later and is removed")
+    linkedModel:Destroy()
+
+    reply = function()
+        local model = Instance.new("Model"); model.Name = "Spam"
+        local part = Instance.new("Part"); part.Name = string.rep("x", 400); part.Parent = model
+        return { model }
+    end
+    local longName = insert("getobjects-name", 1237)
+    eq(longName.ok, false); has(longName.error, "named with more than")
+    eq(workspace:FindFirstChild("Spam"), nil)
+
+    reply = function() return {} end
+    local empty = insert("getobjects-empty", 1238)
+    eq(empty.ok, false); has(empty.error, "contained nothing")
+
+    reply = function() error("HTTP 403 (HTTP 403, InsertService got there first)") end
+    local refused = insert("getobjects-refused", 1239)
+    eq(refused.ok, false); eq(refused.remedy, "take_asset_first")
+    has(refused.error, "Roblox would not load asset 1239"); has(refused.error, "User is not authorized")
+    eq(#workspace:GetChildren(), before, "every refusal left the place as it was")
+
+    rawset(game, "GetObjects", nil)
+    local absent = insert("getobjects-absent", 1240)
+    eq(absent.ok, false, "a Studio without GetObjects refuses instead of failing in the engine")
+    c:destroy()
+    services.InsertService = nil; services.AssetService = nil
+end)
+
 spec("typed creation and set_props commit a recording", function()
     local c = newCommands()
     local made = run(c, "create", { op = "create_instances", items = {{ className = "Part", name = "Typed", parent = "game.Workspace", props = { Anchored = { t = "bool", v = true }, Size = { t = "Vector3", v = { 4, 2, 1 } } }, attributes = { Zone = { t = "string", v = "safe" } }, children = {{ className = "Folder", name = "Nested" }} }} }, true)
@@ -412,6 +531,131 @@ spec("an image id written by the model survives a checkpoint round trip", functi
     eq(restored.ok, true, tostring(restored.error))
     eq(gui:FindFirstChild("Shop").Image, "rbxassetid://123"); eq(gui:FindFirstChild("Shop").HoverImage, "rbxassetid://456")
     gui:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: every audio, animation and Explosion class is creatable through create_instances", function()
+    local host = Instance.new("Part"); host.Name = "AudioHost"; host.Parent = workspace
+    local c = newCommands()
+    local classes = { "AudioPlayer", "AudioEmitter", "AudioListener", "AudioDeviceOutput", "AudioFader", "AudioCompressor", "AudioReverb",
+        "AudioEqualizer", "AudioFilter", "AudioLimiter", "Animator", "AnimationController", "Animation", "IKControl", "Explosion", "Wire" }
+    for _, className in classes do
+        local r = run(c, "new-" .. className, { op = "create_instances", items = {{ className = className, name = "N" .. className, parent = "game.Workspace.AudioHost" }} }, true)
+        eq(r.ok, true, className .. ": " .. tostring(r.error))
+        eq(host:FindFirstChild("N" .. className).ClassName, className, className .. " class")
+    end
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: audio and animation properties are typed, and the ids are the only content they take", function()
+    local host = Instance.new("Part"); host.Name = "AudioProps"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "audio-props", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Music", parent = "game.Workspace.AudioProps", props = {
+            Asset = { t = "string", v = "rbxassetid://123456" }, Volume = { t = "number", v = 0.4 }, Looping = { t = "bool", v = true },
+            AutoLoad = { t = "bool", v = true }, PlaybackSpeed = { t = "number", v = 1 } } },
+        { className = "AudioReverb", name = "Room", parent = "game.Workspace.AudioProps", props = {
+            DecayTime = { t = "number", v = 1.2 }, WetLevel = { t = "number", v = -10 }, Bypass = { t = "bool", v = false } } },
+        { className = "Animation", name = "Wave", parent = "game.Workspace.AudioProps", props = { AnimationId = { t = "string", v = "rbxassetid://987654" } } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    eq(host.Music.Asset, "rbxassetid://123456"); eq(host.Music.Volume, 0.4); eq(host.Music.Looping, true)
+    eq(host.Room.DecayTime, 1.2); eq(host.Wave.AnimationId, "rbxassetid://987654")
+    -- anything but an rbxassetid id is refused, and the id belongs to its own class only
+    local before = #host:GetChildren()
+    local bad = {
+        { "AudioPlayer", "Asset", "rbxasset://sounds/impact_water.mp3" },
+        { "AudioPlayer", "Asset", "https://example.com/a.mp3" },
+        { "AudioPlayer", "AnimationId", "rbxassetid://5" },
+        { "Animation", "Asset", "rbxassetid://5" },
+        { "AudioPlayer", "AssetId", "rbxassetid://5" },
+    }
+    for index, case in bad do
+        local r = run(c, "audio-bad-" .. index, { op = "create_instances", items = {{ className = case[1], name = "Bad" .. index, parent = "game.Workspace.AudioProps",
+            props = { [case[2]] = { t = "string", v = case[3] } } }} }, true)
+        eq(r.ok, false, case[1] .. "." .. case[2] .. " " .. case[3] .. " must be refused")
+    end
+    eq(#host:GetChildren(), before, "a refused item creates nothing")
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: a Wire is joined to its ends by a path under an allowed service, and a missing or outside end is refused", function()
+    local host = Instance.new("Part"); host.Name = "WireHost"; host.Parent = workspace
+    local c = newCommands()
+    local first = run(c, "wire-ends", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Player", parent = "game.Workspace.WireHost" },
+        { className = "AudioEmitter", name = "Emitter", parent = "game.Workspace.WireHost" },
+    } }, true)
+    eq(first.ok, true, tostring(first.error))
+    local wired = run(c, "wire-make", { op = "create_instances", items = {{ className = "Wire", name = "PlayerToEmitter", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.WireHost.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.WireHost.Emitter" },
+        SourceName = { t = "string", v = "Output" }, TargetName = { t = "string", v = "Input" } } }} }, true)
+    eq(wired.ok, true, tostring(wired.error))
+    local wire = host:FindFirstChild("PlayerToEmitter")
+    eq(wire.SourceInstance, host.Player, "SourceInstance"); eq(wire.TargetInstance, host.Emitter, "TargetInstance")
+    eq(wire.SourceName, "Output"); eq(wire.TargetName, "Input")
+    local count = #host:GetChildren()
+    local missing = run(c, "wire-missing", { op = "create_instances", items = {{ className = "Wire", name = "Dangling", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.WireHost.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.WireHost.NoSuchEmitter" } } }} }, true)
+    eq(missing.ok, false, "a missing end must be refused"); has(missing.error, "not found")
+    local outside = run(c, "wire-outside", { op = "create_instances", items = {{ className = "Wire", name = "Outside", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Players.Someone" } } }} }, true)
+    eq(outside.ok, false, "a path outside the allowed services must be refused")
+    eq(#host:GetChildren(), count, "refused wires create nothing")
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: an Explosion is created harmless unless the op sets its blast, and an explicit value is honoured", function()
+    local host = Instance.new("Part"); host.Name = "BlastHost"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "blast-default", { op = "create_instances", items = {
+        { className = "Explosion", name = "Plain", parent = "game.Workspace.BlastHost", props = { BlastRadius = { t = "number", v = 12 } } },
+        { className = "Explosion", name = "Loud", parent = "game.Workspace.BlastHost", props = { BlastPressure = { t = "number", v = 500000 }, DestroyJointRadiusPercent = { t = "number", v = 1 } } },
+        { className = "Explosion", name = "Half", parent = "game.Workspace.BlastHost", props = { BlastPressure = { t = "number", v = 250 } } },
+        { className = "Explosion", name = "Nested", parent = "game.Workspace.BlastHost", children = {} },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    eq(host.Plain.BlastPressure, 0, "default BlastPressure"); eq(host.Plain.DestroyJointRadiusPercent, 0, "default DestroyJointRadiusPercent"); eq(host.Plain.BlastRadius, 12)
+    eq(host.Loud.BlastPressure, 500000, "explicit pressure is honoured"); eq(host.Loud.DestroyJointRadiusPercent, 1, "explicit joint percent is honoured")
+    eq(host.Half.BlastPressure, 250); eq(host.Half.DestroyJointRadiusPercent, 0, "only the unset one is defaulted")
+    -- a child Explosion inside a created tree gets the same defaults
+    local tree = run(c, "blast-child", { op = "create_instances", items = {{ className = "Model", name = "Rig", parent = "game.Workspace.BlastHost", children = {
+        { className = "Explosion", name = "Pop" } } }} }, true)
+    eq(tree.ok, true, tostring(tree.error))
+    eq(host.Rig.Pop.BlastPressure, 0); eq(host.Rig.Pop.DestroyJointRadiusPercent, 0)
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: an audio graph and an Explosion's explicit blast survive a checkpoint round trip", function()
+    local host = Instance.new("Folder"); host.Name = "AudioCheckpoint"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "audio-cp-made", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Player", parent = "game.Workspace.AudioCheckpoint", props = { Asset = { t = "string", v = "rbxassetid://424242" }, Volume = { t = "number", v = 0.7 } } },
+        { className = "AudioDeviceOutput", name = "Out", parent = "game.Workspace.AudioCheckpoint" },
+        { className = "Explosion", name = "Boom", parent = "game.Workspace.AudioCheckpoint", props = { BlastPressure = { t = "number", v = 777 } } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    local wired = run(c, "audio-cp-wire", { op = "create_instances", items = {{ className = "Wire", name = "Link", parent = "game.Workspace.AudioCheckpoint", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.AudioCheckpoint.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.AudioCheckpoint.Out" } } }} }, true)
+    eq(wired.ok, true, tostring(wired.error))
+    local snap = run(c, "audio-cp-snapshot", { op = "snapshot", root = "game.Workspace.AudioCheckpoint", includeScripts = true, checkpointId = "cp-audio" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, true, "the new classes are restorable, so the checkpoint is complete"); eq(snap.data.restorable, true)
+    host.Player.Volume = 0.1; host.Boom.BlastPressure = 5
+    host.Link:Destroy()
+    local restored = run(c, "audio-cp-restore", { op = "restore", root = "game.Workspace.AudioCheckpoint", checkpointId = "cp-audio", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(host.Player.Volume, 0.7); eq(host.Player.Asset, "rbxassetid://424242"); eq(host.Boom.BlastPressure, 777)
+    eq(host.Link.SourceInstance, host.Player, "the restored wire is joined to the restored player"); eq(host.Link.TargetInstance, host.Out)
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: SoundService takes the listener settings through set_props", function()
+    Enum.ListenerLocation = { Camera = "Enum.ListenerLocation.Camera", Character = "Enum.ListenerLocation.Character" }
+    local c = newCommands()
+    local r = run(c, "listener", { op = "set_props", path = "game.SoundService", props = {
+        DefaultListenerLocation = { t = "EnumItem", v = "Enum.ListenerLocation.Camera" }, AcousticSimulationEnabled = { t = "bool", v = true } } }, true)
+    eq(r.ok, true, tostring(r.error))
+    eq(services.SoundService.DefaultListenerLocation, "Enum.ListenerLocation.Camera"); eq(services.SoundService.AcousticSimulationEnabled, true)
+    c:destroy()
 end)
 
 spec("a class Apple cannot hold or recreate still makes checkpoints incomplete", function()
@@ -1514,7 +1758,7 @@ spec("history refusal and destroy are visible", function()
 end)
 
 
-spec("read references distinguish duplicate siblings without renaming or authorizing writes", function()
+spec("read references distinguish duplicate siblings without renaming them, and write only inside the same scope as a path", function()
     local folder = Instance.new("Folder"); folder.Name = "ReadRefPack"; folder.Parent = services.Workspace
     local a = Instance.new("Part"); a.Name = "Rock"; a.Anchored = false; a.Position = v3(1,2,3); a.Parent = folder
     local b = Instance.new("Part"); b.Name = "Rock"; b.Position = v3(8,9,10); b.Parent = folder
@@ -1529,8 +1773,13 @@ spec("read references distinguish duplicate siblings without renaming or authori
     eq(first.ok,true); eq(first.data.props.Position.v[1],1)
     a.Parent = nil; a.Parent = folder -- reorder the same objects, never select by sibling ordinal
     eq(run(c,"refs-after-reorder",{op="get_instance",path=ra},false).data.props.Position.v[1],1)
+    -- A reference names the instance, so a write through it lands on that instance and no other (the
+    -- scope and consent rules are the ones a path gets: tests/duplicate-names.test.mjs). Without
+    -- consent it is refused like any write.
+    local noConsent = run(c,"refs-write-no-consent",{op="set_props",path=ra,props={Anchored={t="bool",v=true}}},false)
+    eq(noConsent.ok,false); eq(a.Anchored,false,"no consent, no write")
     local write = run(c,"refs-write",{op="set_props",path=ra,props={Anchored={t="bool",v=true}}},true)
-    eq(write.ok,false); eq(a.Anchored,false,"read reference must not authorize a write")
+    eq(write.ok,true); eq(a.Anchored,true); eq(b.Anchored ~= true,true,"the same-named sibling is untouched")
     eq(a.Name,"Rock"); eq(b.Name,"Rock")
     local other = newCommands()
     eq(run(other,"refs-other-engine",{op="get_instance",path=ra},false).ok,false)

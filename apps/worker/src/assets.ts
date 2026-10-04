@@ -371,15 +371,24 @@ export function scaleRuleFor(intent: string | undefined): { key: string; rule: S
   const text = intent.toLowerCase();
   const exact = SCALE_ENVELOPES[text];
   if (exact) return { key: text, rule: exact };
-  let bestKey: string | null = null;
-  let best: ScaleEnvelope | null = null;
-  for (const [key, rule] of Object.entries(SCALE_ENVELOPES)) {
-    if (text.includes(key) && (bestKey === null || key.length > bestKey.length)) {
-      bestKey = key;
-      best = rule;
-    }
-  }
-  return bestKey && best ? { key: bestKey, rule: best } : { key: 'prop', rule: PROP_ENVELOPE };
+  const key = headKey(text, Object.keys(SCALE_ENVELOPES));
+  return key ? { key, rule: SCALE_ENVELOPES[key]! } : { key: 'prop', rule: PROP_ENVELOPE };
+}
+
+/**
+ * The table key a free-text intent names, by WHOLE words (a key inside another word is not the key: "car" is not "carpet", "tree" is
+ * not "street"), a plural matching its singular. When several words are keys, the LATER word wins (in English "wooden crate" and "lamp
+ * post" put the thing last), and the longer key wins a tie. The agent states `intent` itself on insert; this only reads what it wrote. Pure.
+ */
+export function headKey(text: string, keys: readonly string[]): string | null {
+  const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+  let best: { key: string; at: number } | null = null;
+  words.forEach((w, at) => {
+    const key = keys.find((k) => k === w) ?? keys.find((k) => k === singular(w));
+    if (key && (best === null || at > best.at || (at === best.at && key.length > best.key.length))) best = { key, at };
+  });
+  return best ? (best as { key: string }).key : null;
 }
 
 export interface ScaleCheck {
@@ -424,7 +433,7 @@ export function lateralPivotToleranceStuds(x: number, z: number): number {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Hard allowlist of asset types Golem may auto-insert.
+ * Hard allowlist of asset types Apple may auto-insert.
  *
  * Images, Decals and **Meshes** are created as Open Use by default, so one upload is usable by
  * every customer's experience by id. **Models are not** — they need the per-place "Allow Loading
@@ -1451,6 +1460,13 @@ export interface HierarchyScanInput {
   instanceClasses?: readonly string[];
   /** True when the subtree could not be enumerated. Unknown contents are never 'clean'. */
   enumerationFailed?: boolean;
+  /**
+   * True when a tree read WORKED but was cut at its node or depth cap, so part of the subtree was not listed. Still never
+   * 'clean', but a different fact from a failed read and from a script: it is a size limit, and says so.
+   */
+  treeTruncated?: boolean;
+  /** The caps the truncated read ran under, so the reason names real numbers. */
+  treeCaps?: { nodes: number; depth: number };
 }
 
 export interface HierarchyScan {
@@ -1503,6 +1519,15 @@ export function scanInsertedHierarchy(input: HierarchyScanInput): HierarchyScan 
       line: null,
       excerpt: '',
     });
+  } else if (input.treeTruncated) {
+    const caps = input.treeCaps ? `${input.treeCaps.nodes} nodes or ${input.treeCaps.depth} levels` : 'the node or depth cap';
+    findings.push({
+      code: 'unreadable',
+      severity: 'critical',
+      message: `the inserted hierarchy is larger than the scan can list (more than ${caps}), so part of it was not checked. Unknown is never treated as empty. This is a size limit, not a script finding.`,
+      line: null,
+      excerpt: '',
+    });
   }
 
   const scannedAny = scripts.length > 0;
@@ -1524,11 +1549,14 @@ export function scanInsertedHierarchy(input: HierarchyScanInput): HierarchyScan 
 
   const removePaths = scripts.filter((s) => s.action === 'remove').map((s) => s.path);
   const critical = scripts.some((s) => s.severity === 'critical') || findings.some((f) => f.severity === 'critical');
+  // A critical finding that is only "the tree was too big or unreadable" is not a script finding, and must not be reported as one.
+  const scriptCritical = scripts.some((s) => s.severity === 'critical') || findings.some((f) => f.severity === 'critical' && f.code !== 'unreadable');
 
   let verdict: HierarchyScan['verdict'];
   if (critical) {
     verdict = 'reject';
-    reasons.push('a critical finding is not fixed by deleting a script — the whole asset is discarded');
+    if (scriptCritical) reasons.push('a critical finding is not fixed by deleting a script — the whole asset is discarded');
+    else reasons.push(findings.find((f) => f.code === 'unreadable')?.message ?? 'the hierarchy could not be proven clean — the whole asset is discarded');
   } else if (scripts.length || findings.length) {
     verdict = 'stripped';
     reasons.push(`${scripts.length} script(s) must be removed before this asset is usable; it is not auto-insertable`);
@@ -1540,7 +1568,7 @@ export function scanInsertedHierarchy(input: HierarchyScanInput): HierarchyScan 
   for (const s of scripts) {
     for (const f of s.findings) if (f.code !== 'script_present') reasons.push(`${s.path}: ${f.message}`);
   }
-  for (const f of findings) reasons.push(f.message);
+  for (const f of findings) if (!reasons.includes(f.message)) reasons.push(f.message);
 
   return {
     rootPath: input.rootPath,
@@ -2170,12 +2198,8 @@ export function expectedTier(intent: string | undefined): { key: string; tier: S
   const text = intent.toLowerCase();
   const exact = INTENT_TIERS[text];
   if (exact) return { key: text, tier: exact };
-  let bestKey: string | null = null;
-  let best: ScaleTier | null = null;
-  for (const [key, tier] of Object.entries(INTENT_TIERS)) {
-    if (text.includes(key) && (bestKey === null || key.length > bestKey.length)) { bestKey = key; best = tier; }
-  }
-  return bestKey && best ? { key: bestKey, tier: best } : { key: 'prop', tier: 'waist' };
+  const key = headKey(text, Object.keys(INTENT_TIERS));
+  return key ? { key, tier: INTENT_TIERS[key]! } : { key: 'prop', tier: 'waist' };
 }
 
 /**
@@ -2961,7 +2985,8 @@ export function describeAssetRequest(req: AssetRequest): AssetDescription {
     .filter((w) => w.length > 1 && !FILLER.has(w));
   const query = (words.join(' ') || req.description.trim()).slice(0, 80);
   const need = req.need ?? NEED_WORDS.find(([re]) => re.test(req.description))?.[1] ?? 'prop';
-  const intent = req.intent ?? scaleRuleFor(words[0] ?? req.description).key;
+  // The agent's stated intent when it gave one; else the table key the description names (by whole words, the head noun last).
+  const intent = req.intent ?? scaleRuleFor(words.join(' ') || req.description).key;
   return { query, need, intent, category: need === 'ui_icon' || need === 'texture' || need === 'particle' ? 'decal' : 'mesh' };
 }
 
@@ -3007,7 +3032,7 @@ interface TreeSummary {
 
 const MAX_TYPED_ASSET_PARTS = 200;
 
-function appendStudioPath(parent: string, name: string): string | null {
+export function appendStudioPath(parent: string, name: string): string | null {
   if (!name || /["\\\r\n]/.test(name)) return null;
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? `${parent}.${name}` : `${parent}["${name}"]`;
 }

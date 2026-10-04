@@ -11,7 +11,7 @@ changed for him, never claim more than you measured, and end every reply with th
 
 1. Read this file, then `CLAUDE.md`, `AGENTS.md`, `.claude/skills/rbxai-working-rules/SKILL.md`, and the owner's memory
    `~/.claude/projects/-Users-moshe-Developer-RbxAI/memory/MEMORY.md` (esp. `generalize-not-patch.md`,
-   `frontier-meter-every-turn.md`, `owner-standing-consent-2026-10-02.md`, `golem-github-remote.md`).
+   `frontier-meter-every-turn.md`, `owner-standing-consent-2026-10-02.md`, `apple-github-remote.md`).
 2. Re-set the owner's goal (§1.3) with `/goal` if the session supports it — the owner set it last session; it is the
    definition of done.
 3. `git worktree list`, then check the state table in §4.2 still matches (`git -C <path> log -1`).
@@ -174,12 +174,12 @@ use these. Phase 1, phase 2, world-building, credits and website round 1 live in
 - Owner's Chrome tab on `https://apple.moshe-barami111.workers.dev/app/projects/b7249560-…` holds the bench results in
   localStorage key `ownerBench:owner-30-v1` (also saved in the repo). Runner state there is gone (tab reloads kill it).
 - `wrangler dev --remote --port 8799` from `apps/worker` has been running for >1 day; not started by this session — left alone.
-- `.env` (repo root) exists again (owner restored it): `GOLEM_ADMIN_KEY`, `GOLEM_E2E_*`. Admin routes usable, e.g.
+- `.env` (repo root) exists again (owner restored it): `APPLE_ADMIN_KEY`, `APPLE_E2E_*`. Admin routes usable, e.g.
   `GET /api/admin/logs?kind=model_call&days=1&limit=2000` (per-call latency/tokens/cache — this is how the map slowness was diagnosed).
 
 ### 4.2 Worktrees (restore map)
 `git worktree list` shows ~19; the relevant ones are in §3.3–3.4. Main checkout `/Users/moshe/Developer/RbxAI` is on `main`.
-Integration-style worktrees use node_modules DIRECTORIES of symlinks into the main checkout, with `@golem/*` pointing at the
+Integration-style worktrees use node_modules DIRECTORIES of symlinks into the main checkout, with `@apple/*` pointing at the
 worktree's own packages (see how `/Users/moshe/Developer/RbxAI-integration/apps/worker/node_modules` is built). The
 `.claude/worktrees/wf_*` worktrees belong to finished/stopped workflows; delete them only after their branches are merged.
 
@@ -238,7 +238,7 @@ worktree's own packages (see how `/Users/moshe/Developer/RbxAI-integration/apps/
 
 ---
 
-## 6. Next steps (in order; owner's standing consent covers deletions, GitHub branches, Cloudflare/Supabase/Sentry, golem removal)
+## 6. Next steps (in order; owner's standing consent covers deletions, GitHub branches, Cloudflare/Supabase/Sentry, legacy removal)
 
 1. **CI green on integration**: relaunch the agent with `docs/handoff/2026-10-02/agent-prompts/01-ci-green.md` (worktree
    `/Users/moshe/Developer/RbxAI-integration`). Done = every `ci.yml` job passes locally.
@@ -252,9 +252,9 @@ worktree's own packages (see how `/Users/moshe/Developer/RbxAI-integration/apps/
 4. **Repo organisation**: re-run `scripts/reorg-repo.mjs` (from `worktree-wf_73a32ca7-af0-6`, `--dry-run` first) on the final
    integration tree; then execute `docs/operations/REPO-CLEANUP-PENDING.md` (untracked deletions incl. abandoned
    `.claude/worktrees/*` once merged; GitHub branch cleanup) under the owner's standing consent.
-5. **Golem A + B1**: bring the hand-written files from `worktree-wf_1cadd7fe-3c0-6` (guard, codemod, compat shims, runbook,
+5. **Apple A + B1**: bring the hand-written files from `worktree-wf_1cadd7fe-3c0-6` (guard, codemod, compat shims, runbook,
    dashboard + crystal-canyon fixes), then `node scripts/rename-golem.mjs --phase A` and `--phase B1` (dry-run first) on the
-   final tree; `check-no-golem.mjs` CLEAN; `@golem/*` → `@apple/*` needs one `pnpm install` → do it in step 6's fresh clone.
+   final tree; `check-no-golem.mjs` CLEAN; the package-scope rename needs one `pnpm install` → do it in step 6's fresh clone.
 6. **Dependencies** (64 Dependabot alerts, 2 critical Astro): in a FRESH CLONE (`git clone` the integration branch to a new
    folder with its own node_modules), `pnpm install`, upgrade astro/sharp/undici/devalue/fast-uri etc., run all suites, commit
    the lockfile; this also settles the `@apple/*` rename install.
@@ -265,7 +265,7 @@ worktree's own packages (see how `/Users/moshe/Developer/RbxAI-integration/apps/
    `/private/tmp/claude-501/deploy-wt`, `git checkout -q --detach <sha>`), static site `node infra/deploy-static.mjs`, plugin
    build `node apps/apple-plugin/scripts/build.mjs` and install locally in the owner's Studio (Creator Store publishing needs
    the owner). Check `/api/health` `buildSha` and `compat: wire-both`. Then merge B2 (`golem-rename-b2`) and run the golem
-   runbook's cloud steps C (Cloudflare/Supabase/Sentry/GitHub) — gate C2 on the golem DO evidence.
+   runbook's cloud steps C (Cloudflare/Supabase/Sentry/GitHub) — gate C2 on the legacy DO evidence.
 9. **Measure**: apply the GitHub ruleset only once main is green (`scripts/github/apply-rulesets.mjs`). Re-pair Studio, recreate
    `bench-baseline` on a fresh place, run the bank + `heldout-v1.json` with `run.mjs --max-credits <budget agreed with the
    owner>`; photo review with `review.mjs`; update the meter. Expect maps to cost the most.

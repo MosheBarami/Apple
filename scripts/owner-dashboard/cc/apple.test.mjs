@@ -12,7 +12,7 @@ const S = { key: 'SENTINEL_APPLE_ADMIN_KEY', actor: 'user_SENTINEL_ACTOR', actor
   stripe: 'sk_live_SENTINEL_STRIPE', price: 'price_SENTINEL_PRICE', model: 'SENTINEL_MODEL_KEY', health: 'SENTINEL_HEALTH_EXTRA' };
 const clean = (x) => { const s = JSON.stringify(x); for (const [k, v] of Object.entries(S)) assert.ok(!s.includes(v), `leaked ${k}: ${v}`); };
 
-const env = () => { process.env.GOLEM_ADMIN_KEY = S.key; process.env.API_BASE = 'http://apple.test'; };
+const env = () => { process.env.APPLE_ADMIN_KEY = S.key; process.env.API_BASE = 'http://apple.test'; };
 env();
 const { apple, appleAction, appleConclusions, NOT_EXPOSED } = await import('./platforms/apple.mjs');
 const { uncache } = await import('./http.mjs');
@@ -127,10 +127,10 @@ test('apple(): the worker enums still pass when they are what the worker sends',
   } finally { Object.assign(w, saved); }
 });
 
-test('apple(): no GOLEM_ADMIN_KEY means not connected, the missing name, and zero fetch calls', async () => {
-  delete process.env.GOLEM_ADMIN_KEY; delete process.env.API_BASE;
+test('apple(): no APPLE_ADMIN_KEY means not connected, the missing name, and zero fetch calls', async () => {
+  delete process.env.APPLE_ADMIN_KEY; delete process.env.API_BASE;
   const d = await apple();
-  assert.deepEqual([d.ok, d.configured, d.need], [true, false, ['GOLEM_ADMIN_KEY']]);
+  assert.deepEqual([d.ok, d.configured, d.need], [true, false, ['APPLE_ADMIN_KEY']]);
   assert.deepEqual(d.notExposed.map((x) => x.k), ['credits', 'users', 'd1', 'r2', 'gauntlet']);
   assert.equal(calls.length, 0);
 });

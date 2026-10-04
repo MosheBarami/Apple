@@ -5660,7 +5660,7 @@
      "id": "v2-cc7455fe",
      "name": "TypeScript type definitions",
      "status": "partial",
-     "evidence": "apps/worker/src/types/golem-evals.d.ts"
+     "evidence": "apps/worker/src/types/apple-evals.d.ts"
     },
     {
      "id": "v2-c62c7ad2",

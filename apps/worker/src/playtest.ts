@@ -23,7 +23,7 @@
 //   after-stop+8s  children=[Baseplate,Camera,ReproA,Terrain]
 //
 // ReproB and ReproModel are gone permanently. Nothing errored and nothing was reported. A user who
-// asked Golem to "check my game runs" could lose a build to it and never be told.
+// asked Apple to "check my game runs" could lose a build to it and never be told.
 //
 // THE RULE THIS FILE ENFORCES: a playtest either preserves the project, or restores it and says so.
 // Current Apple uses the typed `project_census` read op around `run_mode`, plus snapshot/restore for

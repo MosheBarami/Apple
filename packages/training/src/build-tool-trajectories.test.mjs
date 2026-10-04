@@ -94,7 +94,7 @@ test('every row carries the system prompt that describes the job', () => {
 // It was `{ skip: !existsSync(join(DATA, 'dataset-card.json')) }` and then read `train.jsonl`,
 // `val.jsonl` and `test.jsonl`. The card IS tracked (.gitignore re-includes every dataset card);
 // the three splits are NOT. So the skip never fired in a fresh checkout, the reads threw ENOENT,
-// and `pnpm -r test` bailed at @golem/training — taking @golem/worker, @golem/site and everything
+// and `pnpm -r test` bailed at @apple/training — taking @apple/worker, @apple/site and everything
 // after them down with it. Nobody saw it, because an earlier package had been failing first.
 //
 // It also never called the builder. "matches what the builder produces" was checked by comparing

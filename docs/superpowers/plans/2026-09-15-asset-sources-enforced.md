@@ -12,9 +12,9 @@
 
 ## Global Constraints
 
-- Never rename the wire literals `golem.v1`, `golem.jwt.`, `X-Golem-`, `golem_session`, `golem-ui`, `golem_original`, `golem-authored`, `@golem/`, or any D1/KV/Vectorize/DO binding or class name.
+- Never rename the wire literals `golem.v1`, `golem.jwt.`, `X-Golem-`, `golem_session`, `golem-ui`, `golem_original`, `golem-authored`, `@apple/`, or any D1/KV/Vectorize/DO binding or class name.
 - Never `git add -A` — this checkout is shared with other agents. Add explicit paths only.
-- The vocabulary (`ASSET_SOURCE_CHOICES`, `AssetSourcePolicy`, `ASSET_SOURCE_DEFAULT`) lives in `packages/shared/src/index.ts` and is re-exported by `apps/worker/src/preferences.ts`. Import from `@golem/shared`; never retype the list.
+- The vocabulary (`ASSET_SOURCE_CHOICES`, `AssetSourcePolicy`, `ASSET_SOURCE_DEFAULT`) lives in `packages/shared/src/index.ts` and is re-exported by `apps/worker/src/preferences.ts`. Import from `@apple/shared`; never retype the list.
 - Layering NARROWS: `narrowAssetSources` in `apps/worker/src/preferences.ts` is the only place precedence is decided. Do not re-derive it.
 - A refusal is a sentence that names what to change. `'not allowed'` is a plan failure.
 - Every task ends with `pnpm -C apps/worker exec tsc --noEmit -p tsconfig.json` clean and its own tests green, then a commit.
@@ -42,7 +42,7 @@
 - Test: `apps/worker/tests/asset-policy.test.mjs`
 
 **Interfaces:**
-- Consumes: `AssetSourcePolicy`, `ASSET_SOURCE_DEFAULT` from `@golem/shared`; `AssetSource` from `./assets`.
+- Consumes: `AssetSourcePolicy`, `ASSET_SOURCE_DEFAULT` from `@apple/shared`; `AssetSource` from `./assets`.
 - Produces: `allowedSources(policy): AssetSource[]`, `sourceRefusal(policy, source): string | null`, `POLICY_TO_SOURCE: Readonly<Record<AssetSourceChoice, AssetSource[]>>`.
 
 - [ ] **Step 1: Write the failing test**
@@ -142,7 +142,7 @@ Create `apps/worker/src/asset-policy.ts`:
 // PURE ON PURPOSE. No env, no D1, no DO. The policy is resolved once where the user is known and
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
-import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
+import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
 import type { AssetSource } from './assets';
 
 /**
@@ -333,7 +333,7 @@ In `apps/worker/src/tools.ts`, inside `export interface AgentCtx`, after `projec
 Add to the imports at the top of `tools.ts`:
 
 ```typescript
-import type { AssetSourcePolicy } from '@golem/shared';
+import type { AssetSourcePolicy } from '@apple/shared';
 import { allowedSources, sourceRefusal } from './asset-policy';
 ```
 
@@ -566,7 +566,7 @@ With, alongside the page's other state:
 Add the imports:
 
 ```tsx
-import type { AssetSourcePolicy } from '@golem/shared';
+import type { AssetSourcePolicy } from '@apple/shared';
 import { summarise } from '../lib/asset-sources';
 import { AssetSourceDialog } from '../components/asset-source-dialog';
 import { fetchPersonalisation, savePreferences } from '../lib/api';
@@ -597,7 +597,7 @@ git commit -m "the settings row, so the policy can be changed after the first an
 
 **Placeholders.** None. Two steps carry an explicit fallback instruction (`readPreferenceLayers` may be named differently; `fetchPersonalisation` may need a project id) because those are facts the implementer must read off the repository rather than guesses the plan should make for them.
 
-**Type consistency.** `AssetSourcePolicy` is imported from `@golem/shared` in all four tasks. `allowedSources` and `sourceRefusal` keep the same signatures in Task 1's definition and Tasks 2's use. `summarise` returns `{ line, empty }` in both the library and Task 4's use.
+**Type consistency.** `AssetSourcePolicy` is imported from `@apple/shared` in all four tasks. `allowedSources` and `sourceRefusal` keep the same signatures in Task 1's definition and Tasks 2's use. `summarise` returns `{ line, empty }` in both the library and Task 4's use.
 
 ---
 

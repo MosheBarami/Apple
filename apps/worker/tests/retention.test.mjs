@@ -35,7 +35,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const SRC = join(WORKER, 'src');
 
-const OUT = join(tmpdir(), `golem-retention-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `apple-retention-${process.pid}.mjs`);
 await esbuild.build({
   stdin: {
     contents: `

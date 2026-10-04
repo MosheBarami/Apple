@@ -1,6 +1,6 @@
 # APPLE EXECUTION LEDGER
 
-Ground truth for transforming the Golem Roblox-creation platform (`/Users/moshe/Desktop/RbxAI`) into "Apple".
+Ground truth for transforming the Apple Roblox-creation platform (`/Users/moshe/Desktop/RbxAI`) into "Apple".
 Synthesised from 10 independent code-level audits, re-verified against the working tree on 2026-09-14.
 
 **Rule applied throughout:** a capability is listed under CURRENT STATE only if a reachable product path
@@ -192,7 +192,7 @@ to try this tool FIRST, and every call pays for an embedding (`asset-library.ts:
 then either ship the ingest or withhold the tool from `toolDefs` when the table is absent.
 
 **D5. The shipped plugin binary is older than the source and has no asset-policy gate.**
-Missing link: `apps/plugin/release/golem-plugin.rbxm` decodes to `VERSION "0.1.0"` while
+Missing link: `apps/plugin/release/apple-plugin.rbxm` decodes to `VERSION "0.1.0"` while
 `apps/plugin/src/Version.luau:36` is `0.2.0`; it contains ZERO occurrences of `GenerateModelAsync`,
 `setAssetPolicy`, or `verifiedAssetIds`. Independently corroborated by a first-party measurement in the worker:
 `tools.ts:1015-1018` records that *the plugin installed in the owner's Studio returns `render_view` WITHOUT a
@@ -449,7 +449,7 @@ rather than an open hole. The fixture harness already exists at `security.test.m
 So `body` is `#100e0c` but `.gx-shell` is `#0b0a09`; `.btn-primary` is `#ff9a4d` but the workspace accent is
 `#c98a3c`. Routes split by system: `workspace.tsx`/`layout.tsx`/`ws/*` are all `gx-`;
 dashboard/usage/settings/admin/auth/ui-lab use ZERO `gx-` classes; roadmap uses `rm-`; generative UI uses `gu-`
-(225 selectors). Marks: `glyphs.tsx:17-45` and `GolemMark.astro:31` (hexagon + cube) vs
+(225 selectors). Marks: `glyphs.tsx:17-45` and `AppleMark.astro:31` (hexagon + cube) vs
 `apps/web/index.html:12` favicon (hexagon + amber dot) vs `apps/site/public/favicon.svg` (a different
 "monolith" path the mark files say is superseded). **The rebrand is the natural moment to collapse this.**
 
@@ -495,7 +495,7 @@ to this repository" — accurate for `raw/`, but silent on the other 36 checkout
 - **D48.** Roadmap `?polish=1` spends 1 Credit (`index.ts:262-268`) and is never sent —
   `api.ts:104-109` accepts it, `roadmap.tsx:69` never passes it. A latent cost waiting to be wired.
 - **D49.** `/api/waitlist` is in `AUTH_EXEMPT` (`index.ts:71`) with no handler — a pre-opened hole.
-- **D50.** `MOCK_MODE` build-time flag is not DEV-gated: `mock.ts:40` `FLAG = VITE_GOLEM_MOCK === '1'`, so a
+- **D50.** `MOCK_MODE` build-time flag is not DEV-gated: `mock.ts:40` `FLAG = VITE_APPLE_MOCK === '1'`, so a
   production build with that env var ships a bundle where `auth.tsx:22-28` fabricates a session. Backend is
   unaffected (still demands a real JWT), so the failure mode is UI chrome + 401s.
 - **D51.** Plugin has no backoff: any failure → fixed `task.wait(3)` forever (`init.server.luau:297-301`), and
@@ -629,14 +629,14 @@ These are product copy and brand identity. Nothing in the wire protocol, no depl
 
 | Surface | Locations |
 |---|---|
-| Page titles / OG metadata | `apps/web/index.html:7` (`Golem — Describe it. Golem builds it.`); `apps/site/src/layouts/Base.astro:32` and `Landing.astro:40` (`og:site_name`); every `apps/site/src/pages/**.astro` `title=`/`description=` (18 pages, ~11 under `/docs`) |
+| Page titles / OG metadata | `apps/web/index.html:7` (`Apple — Describe it. Apple builds it.`); `apps/site/src/layouts/Base.astro:32` and `Landing.astro:40` (`og:site_name`); every `apps/site/src/pages/**.astro` `title=`/`description=` (18 pages, ~11 under `/docs`) |
 | Nav / footer / brand word | `apps/site/src/components/Nav.astro:20-22, 76`; `Footer.astro:10-15, 55` (`Golem Labs`, `Describe it. Golem builds it.`) |
 | Brand mark components | `apps/site/src/components/GolemMark.astro`; `apps/web/src/components/glyphs.tsx:17-45` (`GolemGlyph`) — **rename the component AND unify the three marks (D35)** |
 | Favicons / OG images | `apps/web/index.html:12`; `apps/site/public/favicon.svg` (the stale "monolith"); `apps/site/public/og.svg` |
-| Docs prose | `apps/site/src/pages/docs/*.astro` — "Install Golem for Studio", "the Golem panel", "one Golem project", etc. (~11 files) |
+| Docs prose | `apps/site/src/pages/docs/*.astro` — "Install Apple for Studio", "the Apple panel", "one Apple project", etc. (~11 files) |
 | Changelog / pricing / status copy | `apps/site/src/pages/changelog.astro`, `pricing.astro`, `status.astro`, `404.astro:13`, `CreditMeter.astro:645` |
 | In-app copy | `apps/web/src/components/ws/*`, `routes/*` — 12 + 9 files |
-| Mode vocabulary | `packages/shared/src/index.ts:721` `MODE_INFO` and `PRODUCT_MODE_INFO` — user-facing names only, **not** the `GolemMode` type (see 4.2) |
+| Mode vocabulary | `packages/shared/src/index.ts:721` `MODE_INFO` and `PRODUCT_MODE_INFO` — user-facing names only, **not** the `AppleMode` type (see 4.2) |
 | Plugin panel title | `apps/plugin/src/init.server.luau` toolbar/button labels |
 | Repo docs | `docs/**` (20 + 18 + 31 evidence files) — lowest priority, rename last |
 
@@ -665,8 +665,8 @@ Renaming any of these breaks production, invalidates deployed state, or de-pairs
 
 ### 4.3 Renameable with care (mechanical, one commit, no runtime state)
 
-npm package names — root `golem`, then `@golem/{plugin,site,web,worker,shared,corpus,design,evals}` and
-`@golem/crystal-canyon` **[verified]** — plus every `import … from '@golem/shared'` (≈30 files in `apps/web`
+npm package names — root `golem`, then `@apple/{plugin,site,web,worker,shared,corpus,design,evals}` and
+`@apple/crystal-canyon` **[verified]** — plus every `import … from '@apple/shared'` (≈30 files in `apps/web`
 alone). Private workspace packages; a single rename + `pnpm install` is sufficient. Do this **after** the
 functional P0 work, not during it.
 
@@ -847,7 +847,7 @@ find.
 ### Phase D — the plugin release gate
 
 **D-1. Rebuild and republish the plugin; add the version assertion.** (D5, D6, D7)
-- Rebuild `release/golem-plugin.rbxm` from current source; add CI asserting the embedded VERSION equals
+- Rebuild `release/apple-plugin.rbxm` from current source; add CI asserting the embedded VERSION equals
   `Version.luau`. Owner republishes the Creator Store asset and enables distribution; flip
   `STUDIO_PLUGIN_STORE_LIVE`. Implement `CreateAssetAsync` persistence for `generate_model` or make the UI say
   the geometry is throwaway.
@@ -863,7 +863,7 @@ a visual pass over all 8 routes at 400 px and desktop width.
 **E2.** Unify the brand mark; regenerate both favicons and `og.svg` from one SVG. *Acceptance:* three files,
 one source path.
 **E3.** Replace user-visible strings per §4.1, in this order: web app → site → docs prose.
-*Acceptance:* `git grep -i golem -- apps/web/src apps/site/src` returns only `@golem/*` import specifiers.
+*Acceptance:* `git grep -i legacy -- apps/web/src apps/site/src` returns only `@apple/*` import specifiers.
 **E4.** Rename npm packages (§4.3) in one commit + `pnpm install`. *Acceptance:* `pnpm -r test` and
 `pnpm -r typecheck` green.
 **E5.** Leave every §4.2 identifier untouched. *Acceptance:* a CI guard asserting `wrangler.jsonc` `name`,
@@ -936,7 +936,7 @@ Nothing below can be resolved from the repository. Each names the decision and w
 
 ### Entitlements and credentials
 
-5. **Creator Store distribution for the plugin.** Creator Dashboard → Development Items → Golem → Configure →
+5. **Creator Store distribution for the plugin.** Creator Dashboard → Development Items → Apple → Configure →
    Distribution → *Distribute on Creator Store*. **Until this is done no user can install the plugin** (D6) and
    the whole Studio half of the product is unreachable. Owner-only action.
 6. **Republish the plugin asset from Studio.** Open Cloud cannot update a Plugin asset

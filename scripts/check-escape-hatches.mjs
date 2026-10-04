@@ -316,7 +316,7 @@ if (gatesText === null) {
 //
 //   The old Golem OG card came back into apps/site/public untracked, with its original mtime, and
 //   a rebuild put it straight back into dist — on the night both sessions spent establishing that
-//   the live site still says Golem. Nothing referenced it, so it would not have been anyone's
+//   the live site still says Apple. Nothing referenced it, so it would not have been anyone's
 //   preview image; it would simply have been a publicly reachable URL serving the previous brand.
 //
 //   That was the third artefact in one night that was in the TREE without being in the

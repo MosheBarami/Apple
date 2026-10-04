@@ -1,0 +1,26 @@
+{
+  "_comment": "Justified exceptions to no-subject-literals.test.mjs. Each entry: path (from the repo root), literal (as the guard reports it), lineContains (text of the one line it covers), reason, approvedOn (the owner's approval date YYYY-MM-DD, or null while the owner has not seen it). The count is a tripwire: it only shrinks.",
+  "entries": [
+    {
+      "path": "apps/worker/src/creator-skills.ts",
+      "literal": "keyboard",
+      "lineContains": "mouse-and-keyboard",
+      "reason": "The id, title and URL of Roblox's own documentation page 'Mouse and keyboard input' (create.roblox.com/docs/input/mouse-and-keyboard): a reference to an external page, not a subject of the harness. Cannot be reworded without breaking the link.",
+      "approvedOn": null
+    },
+    {
+      "path": "packages/components/animate/AppleAnimateClient.luau",
+      "literal": "keyboard",
+      "lineContains": "Enum.UserInputType.Keyboard",
+      "reason": "Roblox's own API enum Enum.UserInputType.Keyboard (the input device a real key press comes from): code, not a subject. The only alternative is a string-concatenation trick that dodges the check, which is worse.",
+      "approvedOn": null
+    },
+    {
+      "path": "apps/worker/src/components.generated.ts",
+      "literal": "keyboard",
+      "lineContains": "Enum.UserInputType.Keyboard",
+      "reason": "The same Luau line as above, embedded by scripts/gen-components.mjs into the generated bundle. Roblox's own API enum Enum.UserInputType.Keyboard (the input device a real key press comes from): code, not a subject. The only alternative is a string-concatenation trick that dodges the check, which is worse.",
+      "approvedOn": null
+    }
+  ]
+}

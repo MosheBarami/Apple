@@ -27,7 +27,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-billing-routes-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-billing-routes-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -39,7 +39,7 @@ const SUPABASE_URL = 'https://supa.billing.test';
 const USER_ID = '55555555-5555-4555-8555-555555555555';
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'billing-test', alg: 'ES256', use: 'sig' };
-const JWT = await new jose.SignJWT({ email: 'buyer@golem.test', role: 'authenticated' })
+const JWT = await new jose.SignJWT({ email: 'buyer@apple.test', role: 'authenticated' })
   .setProtectedHeader({ alg: 'ES256', kid: 'billing-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
@@ -219,7 +219,7 @@ async function call(path, { method = 'GET', jwt = JWT, body, headers = {}, envir
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(environment),
   );
   const text = await res.text();
@@ -355,7 +355,7 @@ test('the history route is scoped to the caller, with no id to point elsewhere',
 const stripeInvoice = (over = {}) => ({
   id: 'in_1ABC', object: 'invoice', number: 'AP-0001', created: 1_760_000_000, status: 'paid',
   amount_paid: 2900, amount_due: 2900, currency: 'usd', customer: 'cus_1',
-  customer_email: 'buyer@golem.test',
+  customer_email: 'buyer@apple.test',
   customer_address: { line1: '1 Somewhere St', country: 'NZ' },
   payment_intent: 'pi_do_not_ship',
   hosted_invoice_url: 'https://invoice.stripe.com/i/acct_1/live_abc',
@@ -387,7 +387,7 @@ test('THE RAW STRIPE INVOICE DOES NOT REACH THE BROWSER', async () => {
   reset({ plan: 'builder', customerId: 'cus_1', subscription: sub() });
   stripeReply = (url) => (url.includes('/v1/invoices?') ? { body: { object: 'list', data: [stripeInvoice()] } } : null);
   const r = await call('/api/billing/invoices');
-  for (const leak of ['Somewhere St', 'pi_do_not_ship', 'cus_1', 'buyer@golem.test']) {
+  for (const leak of ['Somewhere St', 'pi_do_not_ship', 'cus_1', 'buyer@apple.test']) {
     assert.doesNotMatch(r.text, new RegExp(leak), `${leak} must not be in the response body`);
   }
 });
@@ -454,7 +454,7 @@ async function signedWebhook(event) {
   // doing the thing under test.
   const waited = [];
   const ctx = { waitUntil: (p) => waited.push(Promise.resolve(p)), passThroughOnException: () => {} };
-  const res = await APP.fetch(new Request('https://golem.test/api/billing/webhook', {
+  const res = await APP.fetch(new Request('https://apple.test/api/billing/webhook', {
     method: 'POST',
     headers: { 'stripe-signature': `t=${ts},v1=${hex}`, 'content-type': 'application/json' },
     body,
@@ -846,7 +846,7 @@ test('and with no billing contact the checkout still names the account address',
   reset();
   await call('/api/billing/checkout', { method: 'POST', body: { plan: 'builder' } });
   const session = stripeCalls.find((c) => c.url.includes('/v1/checkout/sessions'));
-  assert.equal(new URLSearchParams(session.body).get('customer_email'), 'buyer@golem.test');
+  assert.equal(new URLSearchParams(session.body).get('customer_email'), 'buyer@apple.test');
 });
 
 // -------------------------------------------------- does Stripe still think what we think?

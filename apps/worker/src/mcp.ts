@@ -2,7 +2,7 @@
 // calls them with. Pure — nothing here touches a binding, so every decision below can be tested
 // against its own inputs rather than against a database someone had to arrange first.
 //
-// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things GOLEM
+// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things APPLE
 // may do while a person is watching it work: it edits scripts, creates parts, runs Luau, inserts
 // assets, starts playtests. An MCP client is not that person and is not watching. It is some other
 // program — Claude, Cursor, a framework nobody here reviewed — holding a long-lived credential.
@@ -26,7 +26,7 @@
 // which means the change passes the gates the agent passes. There is deliberately no way to reach
 // a writing tool directly.
 import type { ApiScope } from './api-keys';
-import type { GatewayToolDef } from '@golem/shared';
+import type { GatewayToolDef } from '@apple/shared';
 
 // ---------------------------------------------------------------------------
 // protocol versions
@@ -334,7 +334,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   find_mechanic: 'Reads a static pattern table and cites public repositories, so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as choose_asset_source and get_genre_kit: it names no project, so a key\'s grant has nothing to scope the call by.',
   find_ui_asset: 'Searches the statically bundled index of CC0 UI and icon images, so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as find_mechanic: it names no project, so a key\'s grant has nothing to scope the call by, and its answer only feeds upload_ui_asset, which this surface cannot make.',
   upload_ui_asset: 'Creates a permanent Image asset in the customer\'s own Roblox account with their stored key. Roblox will not delete an Image afterwards, so that write belongs to a watched agent run under the customer\'s tool permissions, never to an unattended credential.',
-  find_library_model: 'Searches the statically bundled index of the 3D model library, so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as find_ui_asset: it names no project, so a key\'s grant has nothing to scope the call by, and its answer only feeds insert_library_model, which this surface cannot make.',
+  find_library_model: 'Searches the bundled index of the 3D model library and, inside an agent run only, the live Creator Store (read-only search; the context that enables it is the run\'s, never a key\'s). It writes nothing but it can reach Roblox, so an unattended key must not drive it. Excluded on the same rule as find_ui_asset: it names no project, so a key\'s grant has nothing to scope the call by, and its answer only feeds insert_library_model, which this surface cannot make.',
   insert_library_model: 'Inserts into the place and, for a file row, first creates a permanent Model asset in the customer\'s own Roblox account with their stored key. That write belongs to a watched agent run under the customer\'s tool permissions, never to an unattended credential.',
   get_ui_construction: 'Reads a statically bundled corpus of how shipped Roblox interfaces are constructed — stroke weights, radii, tiles per row — so it writes nothing, spends nothing and reaches nowhere. Excluded on the same rule as get_genre_kit: it names no project, so a key\'s grant has nothing to scope the call by, and it is the opening move of a build this surface cannot make.',
   get_verified_module: 'Hands over Luau this repository authored and executed against its own checks. It writes nothing and reaches nowhere, but it is excluded rather than exposed for the reason above AND one of its own: a key holder who could pull the module bodies out one id at a time would be using this surface as a source distribution channel, which is not what a project-scoped grant is for.',
@@ -347,6 +347,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   spatial_query: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   read_terrain: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   capture_studio_viewport: 'Read-only, excluded for the same reason as search_instances: native viewport capture is an opt-in plugin operation and MCP does not check the connected plugin supports it.',
+  look: 'Moves the Studio viewport camera (and puts it back) and makes a paid vision call. An outside program is not the person watching, so it does not get a tool that moves their camera and spends their Credits.',
   inspect_attachment_image: 'Reads a private attachment and spends a vision-model call on it. Spending belongs to a watched agent run, and a key holder would be using this surface as a metered image-analysis service.',
   // ---- the owner's private library (read through the owner's paired gateway) ---------------
   query_owner_catalog: 'Pages the owner\'s private library through the owner\'s own paired Studio. That library is not a public catalogue, and a project-scoped key is not a grant to read it.',
@@ -362,9 +363,12 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   plan_game: 'Reads the owner\'s private library to design a game; excluded for the same reason as query_owner_catalog.',
   build_game: 'Builds a whole game in Studio from the owner\'s uploaded games; excluded for the same reason as query_owner_catalog.',
   build_object: 'Builds a whole object with scripts in the place; excluded until the MCP surface has a reviewed object-building scope.',
-  cool_library_model: 'Adds library pieces, effects and an animation script to an object in the place; excluded with build_object until the MCP surface has a reviewed object-building scope.',
+  dress_object: 'Adds a stage, a click response with an animation script, a counter screen, attached library pieces, a light or an effect to an object in the place; excluded with build_object until the MCP surface has a reviewed object-building scope.',
+  preview_library_models: 'Reads, but stages candidate models in Studio\'s ServerStorage (and, with a snapshot, in a temporary row in the place) and removes them again; excluded like the other tools that touch the place until the MCP scope is reviewed.',
   more_tools: 'Widens the agent\'s own tool list for a run; meaningless outside an agent run.',
   animate_model: 'Rigs a model and writes its animations as a script; excluded until the MCP surface has a reviewed rig-and-script scope.',
+  add_behaviour: 'Writes a behaviours script into a model and installs a server script that plays it; excluded with animate_model until the MCP surface has a reviewed rig-and-script scope.',
+  model_anatomy: 'Read-only (get_tree and read_script), but it is the first half of add_behaviour and means nothing on a surface that cannot add behaviour, so it is excluded with it.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
   compose_game: 'Builds a new game in Studio from components and pieces of the owner\'s private library; excluded for the same reason as query_owner_catalog.',

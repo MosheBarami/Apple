@@ -42,6 +42,7 @@ import { buildTasks } from './ui-tasks.mjs';
 import { UI_SYSTEM_PROMPT } from './ui-tasks.mjs';
 import { check, select, scoreUiTask } from './score-ui.mjs';
 import { cacheBustTokens, resolveMode, resolveSettings } from './production-settings.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUNS_DIR = resolve(HERE, '..', 'runs');
@@ -81,8 +82,8 @@ if (flag('show-settings')) {
 }
 
 const BASE = process.env.API_BASE || 'https://apple.moshe-barami111.workers.dev';
-const KEY = process.env.GOLEM_ADMIN_KEY;
-if (!KEY) { console.error('GOLEM_ADMIN_KEY is not set'); process.exit(2); }
+const KEY = envCompat('APPLE_ADMIN_KEY');
+if (!KEY) { console.error('APPLE_ADMIN_KEY is not set'); process.exit(2); }
 
 const tasks = buildTasks(check, select).filter((t) => !only || t.id === only);
 if (!tasks.length) { console.error(`no task matched --only ${only}`); process.exit(2); }

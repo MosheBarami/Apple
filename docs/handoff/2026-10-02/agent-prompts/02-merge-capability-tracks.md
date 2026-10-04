@@ -10,7 +10,7 @@ worktree if nothing else is running there.
 Merge three reviewed capability branches into the integration branch, resolve conflicts carefully, prove every suite green.
 
 - node_modules: build them like /Users/moshe/Developer/RbxAI-integration has them (a real directory whose entries symlink
-  to the main checkout's node_modules/*, except `@golem/*` pointing at THIS worktree's packages). NEVER run pnpm install.
+  to the main checkout's node_modules/*, except `@apple/*` pointing at THIS worktree's packages). NEVER run pnpm install.
 - Never push/deploy/touch Studio. Explicit-path commits; messages end with the Co-Authored-By line.
 - Owner directive generalize-not-patch: no subject-specific code; the harness informs and checks; never weaken tests.
 

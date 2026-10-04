@@ -10,7 +10,7 @@
  * overlap the evaluation tasks are dropped before execution. Nothing a teacher claims is trusted;
  * only what the executor observed.
  *
- * Usage: GOLEM_ADMIN_KEY=... node src/synthesize-game-logic.mjs [--variants 3] [--concurrency 4] [--limit N]
+ * Usage: APPLE_ADMIN_KEY=... node src/synthesize-game-logic.mjs [--variants 3] [--concurrency 4] [--limit N]
  *    or: TEACHER_URL=http://127.0.0.1:8080 node src/synthesize-game-logic.mjs ...  (local mlx_lm.server, no product spend)
  * Writes data/game-logic-synth-v1/examples.json (accepted) and rejects.json (reason per draft).
  */
@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { verifyExample } from './build-game-logic.mjs';
 import { loadEvalGuard, detectContextDependencies } from './audit-dataset.mjs';
 import { shingles } from './build-dataset.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, '../data/game-logic-synth-v1');
@@ -165,8 +166,8 @@ export function judge(example, guard, verify = verifyExample) {
 }
 
 async function main() {
-  const key = process.env.GOLEM_ADMIN_KEY;
-  if (!key && !TEACHER_URL) { console.error('GOLEM_ADMIN_KEY or TEACHER_URL is required'); process.exit(2); }
+  const key = envCompat('APPLE_ADMIN_KEY');
+  if (!key && !TEACHER_URL) { console.error('APPLE_ADMIN_KEY or TEACHER_URL is required'); process.exit(2); }
   const variants = Number(arg('variants', '3'));
   const concurrency = Number(arg('concurrency', '4'));
   const limit = Number(arg('limit', String(TOPICS.length * variants)));

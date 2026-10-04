@@ -12,8 +12,8 @@ import type {
   RenderViewResult,
   RenderedView,
   SceneLighting,
-} from '@golem/shared';
-import { verticalDominance } from '@golem/shared';
+} from '@apple/shared';
+import { verticalDominance } from '@apple/shared';
 import type { UIDocument } from './schema.ts';
 import { sanitizeDocument, type ValidationResult } from './validate.ts';
 import { formatSettings } from '../format.ts';

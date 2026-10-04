@@ -15,6 +15,8 @@ local player = Players.LocalPlayer
 local config = require(ReplicatedStorage:WaitForChild("AppleUpgradesConfig")) :: any
 local buy = ReplicatedStorage:WaitForChild("AppleUpgradeBuy") :: RemoteFunction
 local currency = config.currency or "Coins"
+-- What is printed before a price: the game's own symbol (none unless the config gives one).
+local symbolPrefix = if type(config.symbol) == "string" and config.symbol ~= "" then config.symbol .. " " else ""
 
 local function cost(u: any, level: number): number
 	return math.floor(u.cost * (u.growth or 1.5) ^ level + 0.5)
@@ -178,15 +180,21 @@ local function wire(screen: ScreenGui)
 		local button = card:FindFirstChild("Buy")
 		local price = button and button:FindFirstChild("Label")
 		local icon = card:FindFirstChild("IconBubble")
+		-- Dim: a grey sheet over the Buy button while the price cannot be paid (or the upgrade is at its maximum).
+		local dim = button and button:FindFirstChild("Dim")
 		local function refresh()
 			local level = player:GetAttribute("Upgrade_" .. u.id) or 0
 			if badgeText and badgeText:IsA("TextLabel") then badgeText.Text = "Lv " .. level end
 			if price and price:IsA("TextLabel") then
-				price.Text = if level >= (u.max or 100) then "MAX" else "$ " .. short(cost(u, level))
+				price.Text = if level >= (u.max or 100) then "MAX" else symbolPrefix .. short(cost(u, level))
+			end
+			if dim and dim:IsA("GuiObject") then
+				dim.Visible = level >= (u.max or 100) or (player:GetAttribute(currency) or 0) < cost(u, level)
 			end
 		end
 		refresh()
 		player:GetAttributeChangedSignal("Upgrade_" .. u.id):Connect(refresh)
+		player:GetAttributeChangedSignal(currency):Connect(refresh)
 		if button and button:IsA("GuiButton") then
 			springy(button)
 			button.Activated:Connect(function()

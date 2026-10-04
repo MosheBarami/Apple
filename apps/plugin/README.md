@@ -79,7 +79,7 @@ sixteen test files read it at runtime:
 And two places where it is the definition rather than the subject:
 
 - `apps/worker/src/composition.ts` — `SKY_RGB`/`GROUND_RGB` cite the rasteriser in
-  `src/Render.luau` (the constants themselves now come from `@golem/design/pixels`).
+  `src/Render.luau` (the constants themselves now come from `@apple/design/pixels`).
 - `packages/evals/src/render-scene.mjs` — the Node twin of that rasteriser, which the eval suite
   grades stored scenes with.
 

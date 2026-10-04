@@ -3,7 +3,7 @@
  *
  * Upstream draws a test run: passed, failed, skipped, a progress bar, one row per test. A playtest
  * is not a test suite, and this module refuses to pretend it is one. Every row below is a count the
- * worker measured and put on the wire (see PlaytestRun in @golem/shared). There is no row for "the
+ * worker measured and put on the wire (see PlaytestRun in @apple/shared). There is no row for "the
  * game works", because nothing measured that.
  *
  *   Errors in Output   — passed when Studio's console logged no error during run mode.
@@ -15,7 +15,7 @@
  * Only for a playtest that ended. A running one has no result yet, and a result drawn early would
  * be a claim about a game that is still being played.
  */
-import type { PlaytestRun } from '@golem/shared';
+import type { PlaytestRun } from '@apple/shared';
 
 export type CheckStatus = 'passed' | 'failed' | 'skipped';
 

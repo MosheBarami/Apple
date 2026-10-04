@@ -298,7 +298,7 @@ export type Outcome = (typeof OUTCOMES)[number];
  * answer that was wrong in our favour, and wrong by the exact amount that matters most.
  *
  * This is the ANALYTICS vocabulary, deliberately wider than the `msg_end.stopReason` the browser is
- * sent: that union lives in @golem/shared and is rendered by apps/web, and widening it is a change
+ * sent: that union lives in @apple/shared and is rendered by apps/web, and widening it is a change
  * to a contract this file does not own.
  */
 export const BUILD_OUTCOMES = ['done', 'failed', 'stopped', 'quota', 'incomplete', 'error', 'step_limit', 'timeout', 'unknown'] as const;
@@ -384,7 +384,7 @@ export interface AuditEvent extends EventBase {
   allowed: boolean;
 }
 
-export type GolemEvent = RequestEvent | ModelCallEvent | ErrorEvent | BuildEvent | AuditEvent;
+export type AppleEvent = RequestEvent | ModelCallEvent | ErrorEvent | BuildEvent | AuditEvent;
 
 /** Why an event was refused at the boundary. Counted, never silently dropped. */
 export type RejectReason =
@@ -393,7 +393,7 @@ export type RejectReason =
   | 'unreadable_timestamp'
   | 'missing_required_field';
 
-export type Normalized = { ok: true; event: GolemEvent } | { ok: false; reason: RejectReason };
+export type Normalized = { ok: true; event: AppleEvent } | { ok: false; reason: RejectReason };
 
 /**
  * The trust boundary. Everything that becomes an event goes through here, whether it came from a
@@ -539,7 +539,7 @@ export interface LogStats {
   rejected: Record<RejectReason, number>;
 }
 
-let ring: GolemEvent[] = [];
+let ring: AppleEvent[] = [];
 let stats: LogStats = { recorded: 0, dropped: 0, rejected: emptyRejects() };
 
 function emptyRejects(): Record<RejectReason, number> {
@@ -574,12 +574,12 @@ export function recordEvent(input: unknown, now = Date.now()): Normalized {
 }
 
 /** Everything currently buffered, without clearing it. */
-export function readEvents(): GolemEvent[] {
+export function readEvents(): AppleEvent[] {
   return [...ring];
 }
 
 /** Take the buffer for shipping to the durable sink, leaving it empty. */
-export function drainEvents(): GolemEvent[] {
+export function drainEvents(): AppleEvent[] {
   const out = ring;
   ring = [];
   return out;
@@ -618,7 +618,7 @@ export interface EventWindow {
   complete: boolean;
 }
 
-export function eventWindow(events: readonly GolemEvent[], opts: { truncated?: boolean } = {}): EventWindow {
+export function eventWindow(events: readonly AppleEvent[], opts: { truncated?: boolean } = {}): EventWindow {
   let from: number | null = null;
   let to: number | null = null;
   for (const e of events) {
@@ -628,11 +628,11 @@ export function eventWindow(events: readonly GolemEvent[], opts: { truncated?: b
   return { events: events.length, fromMs: from, toMs: to, complete: opts.truncated !== true };
 }
 
-const isModelCall = (e: GolemEvent): e is ModelCallEvent => e.kind === 'model_call';
-const isRequest = (e: GolemEvent): e is RequestEvent => e.kind === 'request';
-const isError = (e: GolemEvent): e is ErrorEvent => e.kind === 'error';
-const isBuild = (e: GolemEvent): e is BuildEvent => e.kind === 'build';
-const isAudit = (e: GolemEvent): e is AuditEvent => e.kind === 'audit';
+const isModelCall = (e: AppleEvent): e is ModelCallEvent => e.kind === 'model_call';
+const isRequest = (e: AppleEvent): e is RequestEvent => e.kind === 'request';
+const isError = (e: AppleEvent): e is ErrorEvent => e.kind === 'error';
+const isBuild = (e: AppleEvent): e is BuildEvent => e.kind === 'build';
+const isAudit = (e: AppleEvent): e is AuditEvent => e.kind === 'audit';
 
 /** Convert a neuron metric to dollars WITHOUT inventing a number when there is none. */
 export function usdMetric(neurons: Metric): Metric {
@@ -641,7 +641,7 @@ export function usdMetric(neurons: Metric): Metric {
 }
 
 /** The label a feature-usage row and a funnel step are matched on. One definition, two consumers. */
-export function featureLabel(e: GolemEvent): string {
+export function featureLabel(e: AppleEvent): string {
   switch (e.kind) {
     case 'model_call':
       return e.feature;
@@ -697,7 +697,7 @@ function costBuckets(calls: readonly ModelCallEvent[], key: (c: ModelCallEvent) 
  * A call whose neuron figure never resolved contributes `null`, so the day's total says "at least
  * N over 12 calls, 1 unreadable" instead of quietly under-counting by one call's spend.
  */
-export function costRollup(events: readonly GolemEvent[]): CostRollup {
+export function costRollup(events: readonly AppleEvent[]): CostRollup {
   const calls = events.filter(isModelCall);
   const neurons = sumMetric(calls.map((c) => c.neurons));
   return {
@@ -744,7 +744,7 @@ export interface LatencyRollup {
 }
 
 /** Latency analytics, kept in three separate columns because they measure three different things. */
-export function latencyRollup(events: readonly GolemEvent[]): LatencyRollup {
+export function latencyRollup(events: readonly AppleEvent[]): LatencyRollup {
   return {
     model: latencySummary(events.filter(isModelCall).map((c) => c.latencyMs)),
     request: latencySummary(events.filter(isRequest).map((r) => r.durationMs)),
@@ -771,7 +771,7 @@ export interface TokenRollup {
  * to a total whose output was missing, producing a number that is neither the truth nor a floor of
  * it — and it would report `complete` while doing so.
  */
-export function tokenRollup(events: readonly GolemEvent[]): TokenRollup {
+export function tokenRollup(events: readonly AppleEvent[]): TokenRollup {
   const calls = events.filter(isModelCall);
   const input = sumMetric(calls.map((c) => c.inputTokens));
   const output = sumMetric(calls.map((c) => c.outputTokens));
@@ -838,7 +838,7 @@ export interface SuccessAnalytics {
  * the rate cannot be read as covering more than it does, and a window with nothing but unclassified
  * outcomes yields no rate at all rather than 0%.
  */
-export function successRollup(events: readonly GolemEvent[]): SuccessAnalytics {
+export function successRollup(events: readonly AppleEvent[]): SuccessAnalytics {
   return {
     modelCalls: successOf(events.filter(isModelCall).map((c) => c.outcome)),
     builds: successOf(events.filter(isBuild).map((b) => b.outcome)),
@@ -884,7 +884,7 @@ function errorBuckets(rows: readonly { key: string; fatal: boolean }[], total: n
  * gateway handles quietly. A failure with no error kind lands in an `unknown` bucket; it is never
  * dropped, because a failure nobody classified is the one worth looking at.
  */
-export function errorBreakdown(events: readonly GolemEvent[]): ErrorBreakdown {
+export function errorBreakdown(events: readonly AppleEvent[]): ErrorBreakdown {
   const rows: { kind: string; scope: string; fatal: boolean }[] = [];
   for (const e of events) {
     if (isError(e)) rows.push({ kind: e.errorKind, scope: e.scope, fatal: e.fatal });
@@ -931,7 +931,7 @@ export type BreakdownResult =
  * `unattributed` rather than bucketed under a plausible-looking "unknown" key, because a key that
  * looks like a tenant will be read as one.
  */
-export function breakdownBy(events: readonly GolemEvent[], dimension: string): BreakdownResult {
+export function breakdownBy(events: readonly AppleEvent[], dimension: string): BreakdownResult {
   const dim = readEnum(dimension, BREAKDOWN_DIMENSIONS);
   if (dim === null) return { known: false, why: 'unknown_dimension', allowed: BREAKDOWN_DIMENSIONS };
 
@@ -969,12 +969,12 @@ export function breakdownBy(events: readonly GolemEvent[], dimension: string): B
 }
 
 /** Provider breakdown — which provider served the traffic, and how well. */
-export function providerBreakdown(events: readonly GolemEvent[]): BreakdownResult {
+export function providerBreakdown(events: readonly AppleEvent[]): BreakdownResult {
   return breakdownBy(events, 'provider');
 }
 
 /** Model breakdown — the same columns, grouped by model id. */
-export function modelBreakdown(events: readonly GolemEvent[]): BreakdownResult {
+export function modelBreakdown(events: readonly AppleEvent[]): BreakdownResult {
   return breakdownBy(events, 'model');
 }
 
@@ -999,7 +999,7 @@ export interface FeatureUsage {
  * instrumentation and not a fact about usage. Reporting `0 users` for a feature somebody just used
  * is the observation-failure shape again.
  */
-export function featureUsage(events: readonly GolemEvent[]): FeatureUsage {
+export function featureUsage(events: readonly AppleEvent[]): FeatureUsage {
   const groups = new Map<string, { events: number; actors: Set<string>; anonymous: number; lastAt: number }>();
   let unattributedEvents = 0;
   for (const e of events) {
@@ -1059,7 +1059,7 @@ export interface RetentionRollup {
  * An unreadable `now` makes EVERY cell unobservable rather than making them all zero, for the same
  * reason: without a clock there is nothing to compare a cohort's age against.
  */
-export function retentionRollup(events: readonly GolemEvent[], opts: { now: number; horizonDays?: number }): RetentionRollup {
+export function retentionRollup(events: readonly AppleEvent[], opts: { now: number; horizonDays?: number }): RetentionRollup {
   const horizonDays = Math.max(1, Math.min(90, Math.floor(readCount(opts.horizonDays) ?? 7)));
   const asOf = readTimestamp(opts.now);
   const nowIdx = asOf === null ? null : Math.floor(asOf / DAY_MS);
@@ -1124,7 +1124,7 @@ export type FunnelResult =
  * at all, and it says so, because 0% conversion and "nobody is identified in this data" send an
  * operator to two completely different places.
  */
-export function funnelRollup(events: readonly GolemEvent[], steps: readonly string[]): FunnelResult {
+export function funnelRollup(events: readonly AppleEvent[], steps: readonly string[]): FunnelResult {
   const wanted = steps.map((s) => readText(s, 120)).filter((s): s is string => s !== null);
   let unattributedEvents = 0;
   for (const e of events) if (e.actorId === null) unattributedEvents += 1;
@@ -1229,7 +1229,7 @@ export interface BuildRollup {
 }
 
 /** Builds, counted by how they ended and by what the provider said about the last response. */
-export function buildRollup(events: readonly GolemEvent[]): BuildRollup {
+export function buildRollup(events: readonly AppleEvent[]): BuildRollup {
   const builds = events.filter(isBuild);
   const failed = (b: BuildEvent) => FAILED_OUTCOMES.has(b.outcome);
   return {
@@ -1260,7 +1260,7 @@ export interface AnalyticsSummary {
 
 /** Everything at once, for the admin surface. Still pure: `now` is an argument. */
 export function summarize(
-  events: readonly GolemEvent[],
+  events: readonly AppleEvent[],
   opts: { now: number; truncated?: boolean; retentionDays?: number },
 ): AnalyticsSummary {
   const counts: Record<EventKind, number> = { request: 0, model_call: 0, error: 0, build: 0, audit: 0 };

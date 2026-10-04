@@ -48,8 +48,10 @@ export interface PropNormalisation {
   props: Record<string, unknown>;
   /** Names this turned into tagged values, with what they became. Worth reporting, not worth failing. */
   normalised: { name: string; t: string }[];
-  /** Names it could not tag, each with the sentence the model needs to fix it. */
-  refusals: { name: string; message: string }[];
+  /** Names it could not tag, each with the sentence the model needs to fix it (`short` is the same without the shared how-to). */
+  refusals: { name: string; message: string; short: string }[];
+  /** Bare values it typed from the property's own name and class (a coercion, not a guess), for the record. */
+  coerced?: { name: string; t: string }[];
   /** Set only by `normaliseItems`: the item list with its props rewritten. */
   items?: unknown[];
 }
@@ -75,29 +77,131 @@ function inferTag(value: unknown): TaggedValue | null {
   return null;
 }
 
-function refusal(name: string, value: unknown): string {
-  const shape = Array.isArray(value)
-    ? `an array of ${value.length}`
-    : typeof value === 'object' && value !== null
-      ? `an object with no "t"`
-      : typeof value;
-  // The message names the property, what arrived, and the exact repair — a model reading "must be a
-  // typed property value" has to go and remember the format; a model reading this does not.
-  return `${name} arrived as ${shape}. Every property is tagged with its type: write {"t":"Vector3","v":[0,5,0]} for a position, {"t":"Color3","v":[1,0.5,0]} for a colour, {"t":"UDim2","v":[0.5,0,0.1,0]} for GUI size. An array on its own cannot be read — [1,0.5,0] is a Vector3 for Position and a Color3 for Color, and Size is a Vector3 on a Part and a UDim2 on a TextLabel, so only you know which you meant.`;
+/** The classes whose Size, Position, Orientation, Color, Material, Shape and surfaces are the BasePart ones. */
+const BASE_PART_CLASSES = new Set(['Part', 'WedgePart', 'CornerWedgePart', 'TrussPart', 'SpawnLocation', 'Seat', 'VehicleSeat']);
+const LIGHT_CLASSES = new Set(['PointLight', 'SpotLight', 'SurfaceLight']);
+/** Plain parts whose Anchored the build leaves to the author. Vehicles and seats are left as written: they may need physics. */
+const ANCHOR_DEFAULT_CLASSES = new Set(['Part', 'WedgePart', 'CornerWedgePart', 'TrussPart']);
+/** The enum each of these BasePart properties takes, so a bare `Plastic` can only mean Enum.Material.Plastic. */
+const BARE_ENUM: Record<string, string> = { Material: 'Material', Shape: 'PartType', TopSurface: 'SurfaceType', BottomSurface: 'SurfaceType' };
+
+/**
+ * What a BARE value for this property on this class can only mean, or null when it is still ambiguous.
+ *
+ * The refusal below stays for what is genuinely ambiguous (an array of three on a class this file does not know). But the
+ * largest refusal class measured live was a model writing `"Size": [4, 1, 4]` on a Part, where Size is a Vector3 and nothing
+ * else: refusing that cost a step and taught nothing the next batch would not need again. The decision uses the property's
+ * NAME and the item's CLASS, both of which are on the wire, and never a request's subject. A colour in 0..255 is read as
+ * 0..255 only when every channel is a whole number above nothing a 0..1 colour could not hold; any other mix is refused.
+ */
+function coerceBare(className: string | undefined, name: string, value: unknown): TaggedValue | null {
+  if (!className) return null;
+  const part = BASE_PART_CLASSES.has(className);
+  if (Array.isArray(value)) {
+    if (!value.every((n) => typeof n === 'number' && Number.isFinite(n))) return null;
+    const nums = value as number[];
+    if (nums.length === 3 && ((part && (name === 'Size' || name === 'Position' || name === 'Orientation')) || (className === 'Attachment' && (name === 'Position' || name === 'Orientation')))) {
+      return { t: 'Vector3', v: nums };
+    }
+    if (nums.length === 3 && name === 'Color' && (part || LIGHT_CLASSES.has(className))) {
+      const max = Math.max(...nums);
+      if (nums.some((n) => n < 0) || max > 255) return null;
+      if (max <= 1) return { t: 'Color3', v: nums };
+      return nums.every((n) => Number.isInteger(n)) ? { t: 'Color3', v: nums.map((n) => n / 255) } : null;
+    }
+    return null;
+  }
+  if (typeof value === 'string' && part && /^[A-Za-z][A-Za-z0-9_]*$/.test(value) && BARE_ENUM[name]) {
+    return { t: 'EnumItem', v: `Enum.${BARE_ENUM[name]}.${value}` };
+  }
+  return null;
 }
 
-/** Tag what can be tagged; name what cannot. */
-export function normaliseProps(props: unknown): PropNormalisation {
-  const out: PropNormalisation = { props: {}, normalised: [], refusals: [] };
+/** The how-to, said once per refusal list instead of once per property. */
+export const TAGGING_GUIDE =
+  'Every property is tagged with its type: write {"t":"Vector3","v":[0,5,0]} for a position, {"t":"Color3","v":[1,0.5,0]} for a colour, {"t":"UDim2","v":[0.5,0,0.1,0]} for GUI size. An array on its own cannot be read here: [1,0.5,0] is a Vector3 for Position and a Color3 for Color, and Size is a Vector3 on a Part and a UDim2 on a TextLabel, so only you know which you meant.';
+
+function shapeOf(value: unknown): string {
+  return Array.isArray(value)
+    ? `an array of ${value.length}`
+    : typeof value === 'object' && value !== null
+      ? 'an object with no "t"'
+      : typeof value;
+}
+
+function refusal(name: string, value: unknown): string {
+  // The message names the property, what arrived, and the exact repair — a model reading "must be a
+  // typed property value" has to go and remember the format; a model reading this does not.
+  return `${name} arrived as ${shapeOf(value)}. ${TAGGING_GUIDE}`;
+}
+
+/**
+ * The refusal list as ONE message: where each value is, what arrived, then the how-to once. The old message repeated a
+ * 600-character sentence per property, so twelve bad Sizes overran the 3000-character tool-result ceiling and the model
+ * read a sentence cut off mid-word. The list is capped; the count of the rest is said.
+ */
+export function describeRefusals(refusals: readonly { name: string; short: string }[], limit = 2400): string {
+  const shown: string[] = [];
+  let used = 0;
+  for (const r of refusals) {
+    const line = `${r.name} (${r.short})`;
+    if (used + line.length > limit) break;
+    shown.push(line);
+    used += line.length + 2;
+  }
+  const more = refusals.length - shown.length;
+  const needsGuide = refusals.some((r) => r.short !== 'missing');
+  return `${shown.join('; ')}${more > 0 ? `; and ${more} more` : ''}.${needsGuide ? ` ${TAGGING_GUIDE}` : ''}`;
+}
+
+/**
+ * The properties that can only hold an instance, so a bare path string for one is a reference and nothing else: the two
+ * ends of a Wire, an emitter or listener's PositionInstance, and the IKControl chain (apps/apple-plugin INSTANCE_REF_PROPERTY).
+ * The plugin resolves the path under an allowlisted service and refuses it when nothing is there or it is outside them.
+ * `Value` (an ObjectValue's, but also a StringValue's) and the older reference names are deliberately not in this list.
+ */
+const REFERENCE_PROPS = new Set(['SourceInstance', 'TargetInstance', 'PositionInstance', 'EndEffector', 'ChainRoot', 'Target', 'Pole']);
+
+/** A reference given as a bare path, a `{path}` object or a tagged Instance, as the tagged Instance the plugin reads, rooted at `game`; or null. */
+function asReference(value: unknown): TaggedValue | null {
+  let path: unknown = value;
+  let rest: Record<string, unknown> = {};
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const v = value as { t?: unknown; v?: unknown; path?: unknown };
+    if (v.t === 'Instance' && typeof v.v === 'string') {
+      path = v.v;
+      rest = { ...(value as Record<string, unknown>) };
+    } else if (v.t === undefined && typeof v.path === 'string') path = v.path;
+    else return null;
+  }
+  if (typeof path !== 'string' || path.length === 0 || ENUM_TEXT.test(path)) return null;
+  return { ...rest, t: 'Instance', v: rootStudioPath(path) };
+}
+
+/** Tag what can be tagged; name what cannot. `className` lets a bare Size or Color on a Part be read as what it can only be. */
+export function normaliseProps(props: unknown, className?: string): PropNormalisation {
+  const out: PropNormalisation = { props: {}, normalised: [], refusals: [], coerced: [] };
   if (typeof props !== 'object' || props === null || Array.isArray(props)) return out;
   for (const [name, value] of Object.entries(props as Record<string, unknown>)) {
+    const reference = REFERENCE_PROPS.has(name) ? asReference(value) : null;
+    if (reference) {
+      out.props[name] = reference;
+      if (!isTagged(value) || (value as TaggedValue).v !== reference.v) out.coerced!.push({ name, t: 'Instance' });
+      continue;
+    }
     if (isTagged(value)) {
       out.props[name] = value;
       continue;
     }
+    const coerced = coerceBare(className, name, value);
+    if (coerced) {
+      out.props[name] = coerced;
+      out.coerced!.push({ name, t: coerced.t });
+      continue;
+    }
     const inferred = inferTag(value);
     if (inferred === null) {
-      out.refusals.push({ name, message: refusal(name, value) });
+      out.refusals.push({ name, message: refusal(name, value), short: shapeOf(value) });
       continue;
     }
     out.props[name] = inferred;
@@ -164,27 +268,142 @@ export function normaliseItems(items: unknown, path = 'items'): PropNormalisatio
       }
     }
     if (typeof item.className !== 'string' || item.className.length === 0) {
-      out.refusals.push({ name: `${where}.className`, message: `${where} has no className — say which Roblox class to create, e.g. "Part", "Model" or "PointLight".` });
+      out.refusals.push({ name: `${where}.className`, short: 'missing', message: `${where} has no className — say which Roblox class to create, e.g. "Part", "Model" or "PointLight".` });
     }
     if (topLevel) {
       // The one default the wire takes without asking: an item with no parent is built in Workspace,
       // which is where a creator looks for what was just built. Children never carry a parent.
       item.parent = item.parent === undefined ? 'game.Workspace' : parentPath(item.parent);
     }
+    const className = typeof item.className === 'string' ? item.className : undefined;
     if (item.props !== undefined) {
-      const pass = normaliseProps(item.props);
+      const pass = normaliseProps(item.props, className);
       item.props = pass.props;
       out.normalised.push(...pass.normalised.map((n) => ({ ...n, name: `${where}.props.${n.name}` })));
-      out.refusals.push(...pass.refusals.map((r) => ({ name: `${where}.props.${r.name}`, message: r.message })));
+      out.coerced = [...(out.coerced ?? []), ...(pass.coerced ?? []).map((n) => ({ ...n, name: `${where}.props.${n.name}` }))];
+      // The location travels with the refusal: `items[2].children[0].props.Size`, not "Size" among twenty Sizes.
+      out.refusals.push(...pass.refusals.map((r) => ({ name: `${where}.props.${r.name}`, short: r.short, message: `${where}.props.${r.message}` })));
+    }
+    // A plain part nobody anchored falls over the moment it exists; audit_build flags it after the fact, so the default is
+    // the harness's own rule applied up front. An explicit Anchored (either way) is left exactly as written.
+    if (className && ANCHOR_DEFAULT_CLASSES.has(className)) {
+      const props = (typeof item.props === 'object' && item.props !== null ? item.props : {}) as Record<string, unknown>;
+      if (!('Anchored' in props)) item.props = { ...props, Anchored: { t: 'bool', v: true } };
     }
     if (item.children !== undefined) {
       const kids = normaliseItems(item.children, `${where}.children`);
       item.children = kids.items ?? item.children;
       out.normalised.push(...kids.normalised);
+      out.coerced = [...(out.coerced ?? []), ...(kids.coerced ?? [])];
       out.refusals.push(...kids.refusals);
     }
     return item;
   });
   out.items = cleaned;
+  return out;
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// WHAT ONE create_instances CALL MAY CARRY, and what happens to a batch that carries more.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The plugin's own limits for one create_instances call (apps/apple-plugin/src/Commands.luau: MAX_ITEMS,
+ * MAX_CHILDREN_PER_SPEC, MAX_CREATE_NODES, MAX_SNAPSHOT_DEPTH, MAX_PROPS). No number was anywhere the model could
+ * see, so it found each by being refused. The description states them once, and an oversize batch of SEPARATE items is
+ * now split into sequential calls here; only one item that is itself over a limit cannot be split, and is refused with
+ * its index and the limit.
+ */
+export const CREATE_LIMITS = { items: 120, children: 40, nodes: 400, depth: 12, props: 48 } as const;
+
+function asRecord(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+/** Nodes in one item: itself and every descendant. */
+function nodesIn(item: unknown): number {
+  const kids = asRecord(item).children;
+  return 1 + (Array.isArray(kids) ? kids.reduce((n: number, k: unknown) => n + nodesIn(k), 0) : 0);
+}
+
+/** The limits a SINGLE item breaks on its own, named with its index. Splitting into batches cannot help these. */
+export function createLimitIssues(items: readonly unknown[]): string[] {
+  const issues: string[] = [];
+  items.forEach((item, i) => {
+    const where = `items[${i}]`;
+    const total = nodesIn(item);
+    if (total > CREATE_LIMITS.nodes) issues.push(`${where} holds ${total} instances; one call may create at most ${CREATE_LIMITS.nodes} and a single item cannot be split: build it from several items or several calls.`);
+    const walk = (node: unknown, depth: number, path: string): void => {
+      const n = asRecord(node);
+      const kids = Array.isArray(n.children) ? n.children : [];
+      const propCount = Object.keys(asRecord(n.props)).length;
+      if (propCount > CREATE_LIMITS.props) issues.push(`${path} sets ${propCount} properties; the limit is ${CREATE_LIMITS.props} per instance.`);
+      if (kids.length > CREATE_LIMITS.children) issues.push(`${path} has ${kids.length} children; the limit is ${CREATE_LIMITS.children} per instance.`);
+      if (depth > CREATE_LIMITS.depth) { issues.push(`${path} is nested ${depth} deep; the limit is ${CREATE_LIMITS.depth}.`); return; }
+      kids.forEach((k, j) => walk(k, depth + 1, `${path}.children[${j}]`));
+    };
+    walk(item, 0, where);
+  });
+  return issues.slice(0, 6);
+}
+
+/** The items as sequential batches that each stay within the per-call item and node limits, in order. */
+export function planCreateBatches(items: readonly unknown[]): unknown[][] {
+  const batches: unknown[][] = [];
+  let current: unknown[] = [];
+  let nodes = 0;
+  for (const item of items) {
+    const size = nodesIn(item);
+    if (current.length && (current.length >= CREATE_LIMITS.items || nodes + size > CREATE_LIMITS.nodes)) {
+      batches.push(current);
+      current = [];
+      nodes = 0;
+    }
+    current.push(item);
+    nodes += size;
+  }
+  if (current.length) batches.push(current);
+  return batches;
+}
+
+// ---------------------------------------------------------------------------------------------
+// ONE PATH SPELLING for every Studio tool.
+// ---------------------------------------------------------------------------------------------
+
+/** The services a studio path can start at (the plugin's own READ_SERVICES). A closed vocabulary of Roblox services, not of subjects. */
+const SERVICE_ROOTS = new Set([
+  'Workspace', 'ReplicatedStorage', 'ServerScriptService', 'ServerStorage', 'StarterGui', 'StarterPack', 'StarterPlayer',
+  'ReplicatedFirst', 'Lighting', 'SoundService', 'Teams', 'TextChatService', 'MaterialService',
+]);
+
+/**
+ * `Workspace.Lamp` or `workspace.Lamp` can only mean `game.Workspace.Lamp`. create_instances' own description teaches the
+ * bare form and normalises it, but every other tool passed it to a plugin that resolves only paths rooted at `game`, so
+ * scatter, set_properties and delete failed on exactly what create_instances had just been told was fine.
+ */
+export function rootStudioPath(path: string): string {
+  const m = /^([A-Za-z]+)(?=$|[.[])/.exec(path);
+  if (!m) return path;
+  const head = m[1] === 'workspace' ? 'Workspace' : m[1]!;
+  return SERVICE_ROOTS.has(head) ? `game.${head}${path.slice(m[1]!.length)}` : path;
+}
+
+/** Keys whose string (or list of strings) value is a Studio path. */
+const PATH_KEYS = ['path', 'paths', 'parent', 'newParent', 'target', 'targets', 'root', 'template'] as const;
+
+/** The call's path arguments, rooted at `game`; everything else exactly as it came. */
+export function normaliseStudioPaths(args: Record<string, unknown>): Record<string, unknown> {
+  const fix = (v: unknown): unknown => (typeof v === 'string' ? rootStudioPath(v) : Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? rootStudioPath(x) : x)) : v);
+  const out: Record<string, unknown> = { ...args };
+  for (const key of PATH_KEYS) if (key in out) out[key] = fix(out[key]);
+  if (Array.isArray(out.moves)) {
+    out.moves = out.moves.map((m) => {
+      if (typeof m !== 'object' || m === null) return m;
+      const move = { ...(m as Record<string, unknown>) };
+      for (const key of ['path', 'newParent'] as const) if (key in move) move[key] = fix(move[key]);
+      return move;
+    });
+  }
   return out;
 }

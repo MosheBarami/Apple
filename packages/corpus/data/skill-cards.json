@@ -1,6 +1,6 @@
 {
   "schema": "apple-skill-cards-v1",
-  "what": "General, genre-agnostic craft recipes for the visual skills Apple MAX was measured weak at (gauntlet rounds 1-4: flat UI without outlines/gradients/cartoon fonts, collapsed cards, missing-glyph icons, maps that are a ground plus one template, flat lighting). Every value is expressed through tools Apple already has and properties the plugin allowlist accepts. Grounded in the Roblox Creator Docs pages listed per card (local corpus packages/corpus/data/chunks.jsonl, mirrored from github.com/Roblox/creator-docs). Nothing here names or describes a specific game.",
+  "what": "General, genre-agnostic craft recipes for the visual skills Apple MAX was measured weak at (gauntlet rounds 1-4: flat UI without outlines/gradients/cartoon fonts, collapsed cards, missing-glyph icons, maps that are a ground plus one template, flat lighting). Every value is expressed through tools Apple already has and properties the plugin allowlist accepts. Grounded in the Roblox Creator Docs pages listed per card (local corpus packages/corpus/data/chunks.jsonl, mirrored from github.com/Roblox/creator-docs). Nothing here names or describes a specific game. Added 2026-10-04 (Phase R): seven genre cards, a visual-style card and a thumbnail card distilled from research notes 12-19; each states which numbers are starting points, and none names a game.",
   "cards": [
     {
       "id": "ui-from-library",
@@ -177,10 +177,10 @@
       "recipe": [
         "1 Landform: terrain, not a flat baseplate. shape_terrain heightmap (amplitude 0.15-0.3, scale 64-128) over the play area, then hide/remove the Baseplate. Keep the central play space gently rolling so players can walk it.",
         "2 Frame: raise the edges — edit_terrain fill_ball/fill_block hills and rock cliffs (Enum.Material.Rock/Ground) around the perimeter, 30-80 studs tall, so the map has a skyline and a boundary instead of an endless plane.",
-        "3 Paths: connect spawn -> each landmark with 8-12 stud wide paths: edit_terrain replace_material strips (Grass -> Sand/Ground/Pavement) or flat Parts 0.5 tall. Paths should curve and meet at a central plaza.",
+        "3 Paths: 8-12 stud wide paths from spawn to each landmark (edit_terrain replace_material strips or flat Parts) curving to a central plaza. A channel or line of terrain along points is ONE edit_terrain call, action path (points, width, depth, fill Air, Water or a material).",
         "4 Landmarks: a centrepiece at the plaza (statue, fountain, big sign) and one distinct building/structure per zone, each visible from spawn.",
         "5 Props: from the model library or grouped into Models (see props card), place in clusters of 3-7 along paths and around landmarks, never evenly spread; fences follow path edges; lamps every 20-30 studs along paths.",
-        "6 Dressing: scatter_instances trees/rocks/bushes on Grass only (onMaterial, minSpacing 8-15, scale [0.8,1.3], randomYaw) in the gaps and along the edges; then set_mood and render_view from spawn and from above.",
+        "6 Dressing: insert ONE of each tree, rock or bush (library, else built once from Parts), then clone_instances within an area (count, minSpacing 8-15, scale [0.8,1.3], yaw [0,360], seed) or along a path edge; scatter_instances suits rolling terrain. Then set_mood (overrides for the exact hour asked), render_view.",
         "Budget by layer: a small hub is 150-250 studs across with 20-60 prop models, not one ground plane plus one template."
       ],
       "avoid": [
@@ -209,7 +209,7 @@
     },
     {
       "id": "props-low-poly-from-primitives",
-      "title": "Low-poly props: the model library first, Parts as the fallback (trees, rocks, fences, lamps)",
+      "title": "Low-poly props by the asset order: library first, then Parts in full detail (trees, rocks, fences, lamps)",
       "domain": "props",
       "tools": [
         "insert_library_model",
@@ -251,14 +251,14 @@
         "detail"
       ],
       "recipe": [
-        "Library first (D-MODELLIB-1): when the run offers find_library_model, search it with a plain noun (pine tree, rock, fence, lamp, crate) and place the best hit with insert_library_model (position = its bottom centre, height in studs), then clone_instances it for repeats. Build from Parts, as below, only when the library has nothing for it or insert_library_model failed.",
+        "The asset order of the system prompt applies: find_library_model (a plain noun: pine tree, rock, fence), insert_library_model (position = bottom centre, height in studs), then the Creator Store, then adapt or combine. With no hit or a failed insert, Parts is step 4, not a failure: build it in full detail as below.",
         "Materials: SmoothPlastic (or Plastic) with saturated flat colours reads as stylised low-poly; 2-3 tones per prop (base, shade, accent). Anchored true, CastShadow true.",
         "Round tree: trunk Part Shape Cylinder (rotate so its axis is vertical: Orientation [0,0,90]) 2x10x2, brown; canopy 2-3 overlapping Shape Ball parts 8-12 studs in two greens, offset so the silhouette is lumpy.",
         "Pine tree: trunk cylinder + 3 stacked WedgePart/Part tiers shrinking upward (12 -> 8 -> 4 wide), each rotated 45 degrees from the one below, dark green.",
         "Rock: 2-3 Parts with random Orientation, slightly different greys, partly sunk into the ground.",
         "Fence: posts every 6-8 studs (1x4x1) + two rails (0.5x0.5xlength) between them, light wood colour; follow path edges.",
         "Lamp: thin dark post, a small box/ball head with Material Neon warm yellow and a PointLight (Range 12-16, Brightness 1-2).",
-        "Always wrap each prop in a Model with a PrimaryPart, name it (e.g. 'PineTree'), then clone_instances/scatter_instances the Model instead of building each copy."
+        "Build a prop ONCE: write its parts around (0,0,0) in one create_instances call with origin {at, yaw} and group {className: Model, name, primaryPart}, then repeat it with clone_instances at / along / within (positions, a line, an area; a seed repeats a layout). Never compute copy coordinates by hand."
       ],
       "avoid": [
         "One giant Part as a 'tree'.",
@@ -291,7 +291,7 @@
     },
     {
       "id": "map-buildings-from-parts",
-      "title": "Readable small buildings and stalls: the model library first, Parts as the fallback",
+      "title": "Readable small buildings and stalls by the asset order: library first, then Parts in full detail",
       "domain": "props",
       "tools": [
         "insert_library_model",
@@ -322,7 +322,7 @@
         "structure"
       ],
       "recipe": [
-        "Library first (D-MODELLIB-1): when the run offers find_library_model, try a plain noun (house, shop, stall, hut) and place a fitting hit with insert_library_model. Build from Parts, as below, only when nothing fits or insert_library_model failed.",
+        "The asset order of the system prompt applies: find_library_model (house, shop, stall, hut), insert_library_model, then the Creator Store, then adapt or combine. With no fit or a failed insert, Parts is step 4: build it in full detail as below, once around (0,0,0) with create_instances origin and group, then repeat it with clone_instances at / along / within.",
         "Footprint 14-24 studs; floor slab 1 stud tall, slightly larger than the walls.",
         "Walls: 3 wall Parts + a front with an opening (two side pieces + a lintel) so players can see in; wall colour warm/light, trim darker.",
         "Roof: two WedgePart halves meeting at a ridge (or one wedge for a lean-to), overhanging the walls by 1-2 studs, contrasting colour.",
@@ -421,6 +421,1073 @@
           "title": "BloomEffect",
           "url": "https://create.roblox.com/docs/reference/engine/classes/BloomEffect",
           "vecId": "api-bloomeffect-1"
+        }
+      ]
+    },
+    {
+      "id": "game-from-idea",
+      "title": "Turn a one-line idea into a complete game, in gated phases",
+      "domain": "game",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "create_instances",
+        "play_check",
+        "render_view",
+        "search_docs"
+      ],
+      "triggers": [
+        "game",
+        "make",
+        "create",
+        "build",
+        "full",
+        "complete",
+        "idea",
+        "from",
+        "scratch",
+        "whole",
+        "new",
+        "viral",
+        "popular",
+        "obby",
+        "tycoon",
+        "simulator",
+        "roleplay",
+        "survival",
+        "horror",
+        "fighting",
+        "racing",
+        "incremental",
+        "idle",
+        "defense"
+      ],
+      "recipe": [
+        "0 Brief first (propose_plan): pitch with a verb the player does, genre + proven references, core loop in 3 parts (minute-to-minute action, repeated action set, progression engine), the hook a clip could show in 10 s, social mechanic, mobile first, maturity target Minimal/Mild, 2-3 purchase ideas. Default scope tier S: one map, one loop, a few upgrades; everything else goes on an update list.",
+        "1 Scaffold: ReplicatedStorage Shared (one Config module holding every number) and Remotes; ServerScriptService services (Data, Economy, Progression, Round/Zone, Store); StarterPlayerScripts controllers. The server owns currency, damage and rewards; every remote is validated.",
+        "2 Greybox the loop with plain Parts: it must complete alone and with several clients, first reward in under 30 s. If it is not fun, change the loop before adding anything.",
+        "3 Vertical slice: one zone at final art (lighting, palette, materials), first upgrade, HUD, one sound set, one effect set, saving; the first 60 s is a guided path: spawn, a visual cue, first reward, a visible next goal.",
+        "4 MVP: short/mid/long goals visible, each currency has sources and sinks, daily reward with streak, a social hook (leaderboard, co-op bonus), a small store in Config, settings menu. A new player can play 20-30 min without a dead end.",
+        "5 Polish: every action gets a sound and a visual response; no grey placeholder or Part names near spawn.",
+        "6 QA: play_check, rejoin and leave mid-action, many clients, mobile layout; Output clean."
+      ],
+      "avoid": [
+        "Placing parts before the brief names the loop, hook and scope.",
+        "Monetisation or rebirths in the first prototype.",
+        "Copying a hit's title or art: copy mechanics, change theme and hook."
+      ],
+      "check": "Each phase gate passed before the next: brief has all 3 loop parts; loop is fun in greybox; slice looks final; MVP gives 20-30 min of goals; Output is clean in play_check.",
+      "docs": [
+        {
+          "title": "Core loops",
+          "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+          "vecId": "g-20202ddd-1"
+        },
+        {
+          "title": "Prototyping",
+          "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+          "vecId": "g-c8508c6e-1"
+        },
+        {
+          "title": "Design for Roblox",
+          "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+          "vecId": "g-8eabb8db-1"
+        }
+      ]
+    },
+    {
+      "id": "first-session-retention",
+      "title": "Design the first 60 seconds and reasons to return for 28 days",
+      "domain": "game",
+      "tools": [
+        "edit_script",
+        "insert_ui_component",
+        "add_effect",
+        "insert_sound",
+        "play_check"
+      ],
+      "triggers": [
+        "onboarding",
+        "tutorial",
+        "first",
+        "retention",
+        "return",
+        "daily",
+        "reward",
+        "rewards",
+        "streak",
+        "quest",
+        "quests",
+        "progression",
+        "players",
+        "engaging",
+        "addictive",
+        "fun",
+        "hook",
+        "new",
+        "beginners"
+      ],
+      "recipe": [
+        "Spawn the player next to an interactive object; first reward within 15-30 s; core loop shown by 60 s; the whole first-time experience under 5 min. Teach by context: at most two popups, then hints that appear just after the typical time a step takes.",
+        "Roblox ranks day 1, days 2-7 and days 8-28 separately: day 1 = a fun first session; days 2-7 = daily reward with a 7-day escalating streak, timers, a quest chain, a friend goal; days 8-28 = new zones or tiers unlocking around days 3, 7, 14, 21, collections, events.",
+        "Always show the next goal on screen (short, mid, long term). Early thresholds are low; reward moments get a sound, an effect and a number pop.",
+        "Build co-play in: shared goals, a group boost, an invite button wired to SocialService:PromptGameInvite.",
+        "Log the funnel on the server: AnalyticsService:LogOnboardingFunnelStepEvent per step, LogEconomyEvent, LogProgressionStartEvent/CompleteEvent."
+      ],
+      "avoid": [
+        "A text wall or long cutscene before play.",
+        "Gating play on opting in to notifications.",
+        "Designing for one marathon session: playtime counts up to 60 min per day."
+      ],
+      "check": "A stranger knows what to do in under 30 s without reading; a reward lands before 30 s; the next goal is always visible; funnel steps are logged.",
+      "docs": [
+        {
+          "title": "Onboarding",
+          "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+          "vecId": "g-2a2f9eea-1"
+        },
+        {
+          "title": "Onboarding techniques",
+          "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+          "vecId": "g-c6c5e08b-1"
+        },
+        {
+          "title": "Analyze and experiment",
+          "url": "https://create.roblox.com/docs/production/game-design/analytics-essentials",
+          "vecId": "g-b032e42f-1"
+        }
+      ]
+    },
+    {
+      "id": "monetization-setup",
+      "title": "Add fair monetisation: passes, developer products, receipts, policy",
+      "domain": "systems",
+      "tools": [
+        "edit_script",
+        "insert_ui_component",
+        "search_docs"
+      ],
+      "triggers": [
+        "monetize",
+        "monetization",
+        "monetise",
+        "money",
+        "robux",
+        "gamepass",
+        "gamepasses",
+        "pass",
+        "passes",
+        "product",
+        "products",
+        "purchase",
+        "purchases",
+        "buy",
+        "vip",
+        "premium",
+        "store",
+        "donate",
+        "earn"
+      ],
+      "recipe": [
+        "A 100 Robux sale yields 70 Robux. Offer one cheap impulse item (about 25-75), considered items (100-250) and one flagship (400-1,000+); these tiers are third-party guidance. Keep promoted passes within 50-800 Robux.",
+        "Passes = permanent perks (check UserOwnsGamePassAsync on join and on PromptGamePassPurchaseFinished). Developer products = consumables, granted only in MarketplaceService.ProcessReceipt: grant once per PurchaseId (record it in the save), return PurchaseGranted only after the grant is saved, else NotProcessedYet.",
+        "Read prices at runtime with GetProductInfo; never hard-code Robux in labels (managed and regional pricing change them).",
+        "Paid random items: show a percentage table summing to 100 before purchase and gate with PolicyService ArePaidRandomItemsRestricted; trading of paid items with IsPaidItemTradingAllowed.",
+        "Rewarded video: give a normal reward at a natural break, never Robux or random items, never gate core progression. Offer a private server price.",
+        "Place purchases in context (at the moment the item matters), not as popup loops."
+      ],
+      "avoid": [
+        "Granting a product outside ProcessReceipt or more than once.",
+        "Pay-to-win that breaks the loop for free players.",
+        "Playable gambling, real-money stakes, off-platform links."
+      ],
+      "check": "Every product grants exactly once and survives rejoin; prices come from GetProductInfo; random items show odds and respect PolicyService.",
+      "docs": [
+        {
+          "title": "Developer Products",
+          "url": "https://create.roblox.com/docs/production/monetization/developer-products",
+          "vecId": "g-d65dde5c-1"
+        },
+        {
+          "title": "Passes",
+          "url": "https://create.roblox.com/docs/production/monetization/passes",
+          "vecId": "g-01afedae-1"
+        },
+        {
+          "title": "Paid random items policy guidelines",
+          "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+          "vecId": "g-40408841-1"
+        }
+      ]
+    },
+    {
+      "id": "publish-ready-package",
+      "title": "Prepare a publish-ready page: title, description, icon, thumbnails, rating",
+      "domain": "game",
+      "tools": [
+        "render_view",
+        "look",
+        "search_docs"
+      ],
+      "triggers": [
+        "publish",
+        "publishing",
+        "release",
+        "launch",
+        "thumbnail",
+        "thumbnails",
+        "icon",
+        "title",
+        "description",
+        "name",
+        "page",
+        "players",
+        "grow",
+        "viral",
+        "algorithm",
+        "discover",
+        "discovery",
+        "popular"
+      ],
+      "recipe": [
+        "Title and description describe the real gameplay with the genre words players search; description = one-sentence premise, 3 key features, controls, what is coming.",
+        "Thumbnails: 3-5 distinct 16:9 shots at 1920x1080 of real gameplay (action shot, reward close-up, several avatars together, update banner); at least 2 active so Roblox personalises them. Icon 512x512 (author at 1024), one high-contrast subject, no small text, readable at 150x150. Frame these shots with render_view.",
+        "Answer the Maturity & Compliance Questionnaire from the real content and retake it after changes; Minimal or Mild reaches the widest audience.",
+        "Owner actions an AI cannot do: ID and age check, 2-step verification, Plus or the refundable fee for under-16 reach; new games start for 16+ and Trusted Friends. Tell the owner, and read the live publishing pages because thresholds change.",
+        "Start Private, then Limited for a beta, Public after the beta gate; plan an update every 1-2 weeks."
+      ],
+      "avoid": [
+        "Free-Robux or giveaway wording, copied names or art, art the game does not deliver: all reduce reach."
+      ],
+      "check": "Every thumbnail and the icon show the real game; description has premise, features, controls; questionnaire matches content; owner actions listed.",
+      "docs": [
+        {
+          "title": "Thumbnails",
+          "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+          "vecId": "g-0e2f8630-1"
+        },
+        {
+          "title": "Icons",
+          "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+          "vecId": "g-e56b40b3-1"
+        },
+        {
+          "title": "Game descriptions",
+          "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+          "vecId": "g-b5ef1a7f-1"
+        }
+      ]
+    },
+    {
+      "id": "vet-inserted-models",
+      "title": "Vet every inserted model for malicious scripts before keeping it",
+      "domain": "systems",
+      "tools": [
+        "insert_library_model",
+        "find_library_model",
+        "search_docs"
+      ],
+      "triggers": [
+        "model",
+        "models",
+        "toolbox",
+        "insert",
+        "asset",
+        "assets",
+        "free",
+        "creator",
+        "marketplace",
+        "import",
+        "kit",
+        "virus",
+        "backdoor",
+        "safe",
+        "script",
+        "scripts"
+      ],
+      "recipe": [
+        "Assets without scripts (meshes, images, audio) cannot carry code; models, packages and plugins can.",
+        "Block and review any Script, LocalScript or ModuleScript that has: require with a number, getfenv/setfenv, loadstring, InsertService:LoadAsset, text decoded with string.reverse, long \\ddd escape strings, XOR or decompress loops, or a script hidden inside a Weld, Part or Sky.",
+        "Verified creators, ratings and sales are not proof of safety. Hundreds of nested oddly named children is a crash trap.",
+        "Keep LoadStringEnabled off and HTTP off unless a feature needs it; never grant SandboxedInstanceMode overrides to third-party assets.",
+        "Prefer writing the behaviour yourself over keeping a free script; keep only the meshes and parts."
+      ],
+      "avoid": [
+        "Keeping an unread script from a free model.",
+        "Enabling LoadStringEnabled or HTTP for a model."
+      ],
+      "check": "No inserted script contains the patterns above; any script kept was read line by line.",
+      "docs": [
+        {
+          "title": "Vulnerabilities from third-party assets",
+          "url": "https://create.roblox.com/docs/scripting/security/third-party-vulnerabilities",
+          "vecId": "g-85a2eb32-1"
+        },
+        {
+          "title": "Toolbox",
+          "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+          "vecId": "g-4340e559-1"
+        },
+        {
+          "title": "Enum.SandboxedInstanceMode",
+          "url": "https://create.roblox.com/docs/reference/engine/enums/SandboxedInstanceMode",
+          "vecId": "api-enum-sandboxedinstancemode-1"
+        }
+      ]
+    },
+    {
+      "id": "game-architecture-data",
+      "title": "Structure game code: server authority, validated remotes, safe saving",
+      "domain": "systems",
+      "tools": [
+        "edit_script",
+        "play_check",
+        "search_docs"
+      ],
+      "triggers": [
+        "script",
+        "scripts",
+        "code",
+        "system",
+        "systems",
+        "save",
+        "saving",
+        "data",
+        "datastore",
+        "leaderstats",
+        "remote",
+        "remotes",
+        "server",
+        "multiplayer",
+        "exploit",
+        "exploiters",
+        "cheat",
+        "secure",
+        "progress",
+        "inventory",
+        "currency",
+        "economy"
+      ],
+      "recipe": [
+        "Two entry scripts: ServerScriptService/Main and StarterPlayerScripts/ClientMain, each requiring ModuleScripts (one service per concern). Behaviour shared by many objects = CollectionService tag + one script, not a script per object.",
+        "Prices, drop tables, rewards and cooldowns live in server modules; ReplicatedStorage holds only display data. Create every RemoteEvent on the server at boot in ReplicatedStorage/Remotes.",
+        "Every remote argument is hostile: check type, finite numbers, clamp ranges, positive integer quantities, string length; an Instance must be real, inside an allowed folder and in range. Send an item id, never a price or amount. Token-bucket rate limit per player (about 10/s for actions, 2/s for purchases).",
+        "Player data: session-locked profile per player (ProfileStore pattern), in-memory copy, autosave about every 300 s, save on leave and BindToClose, UpdateAsync for read-modify-write, pcall with backoff and jitter. Never write on every pickup.",
+        "Use task.wait/task.spawn (never wait/spawn), store connections and disconnect on leave, tween UI and effects on the client, anchor static parts and turn off CanTouch/CanQuery on decoration."
+      ],
+      "avoid": [
+        "Currency, damage or rewards decided on the client.",
+        "A RemoteFunction from server to client, or remotes fired every frame.",
+        "Hard-coded DataStore budgets: read GetRequestBudgetForRequestType."
+      ],
+      "check": "play_check with several clients: data survives a rejoin, Output is clean, and a client cannot change a server value by sending a crafted remote.",
+      "docs": [
+        {
+          "title": "Remote events and callbacks",
+          "url": "https://create.roblox.com/docs/scripting/events/remote",
+          "vecId": "g-cc1c16be-1"
+        },
+        {
+          "title": "Securing the client-server boundary",
+          "url": "https://create.roblox.com/docs/scripting/security/client-server-boundary",
+          "vecId": "g-192d0501-1"
+        },
+        {
+          "title": "Save player data",
+          "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/data-storage/save-player-data",
+          "vecId": "g-4655fc81-1"
+        }
+      ]
+    },
+    {
+      "id": "sound-design-pass",
+      "title": "Give the game a sound design: music, ambience, action feedback, mix",
+      "domain": "fx",
+      "tools": [
+        "insert_sound",
+        "edit_script",
+        "search_docs"
+      ],
+      "triggers": [
+        "sound",
+        "sounds",
+        "audio",
+        "music",
+        "sfx",
+        "ambience",
+        "ambient",
+        "noise",
+        "soundtrack",
+        "song",
+        "volume",
+        "quiet",
+        "silent",
+        "alive",
+        "atmosphere",
+        "feedback",
+        "polish"
+      ],
+      "recipe": [
+        "Every game gets: one music loop, one ambience bed for each area, and a sound on every core action (press, pickup, hit, success, failure, level up, purchase). Silence on a reward reads as broken.",
+        "Starting mix (tune by ear): music 0.3-0.5, ambience 0.2-0.4, UI 0.4-0.6, effects 0.6-1.0. Route by bus (music, ambience, UI, effects) so one settings slider changes each.",
+        "Repeated effects get 3-5 variants or a random PlaybackSpeed 0.92-1.08 so they do not grate.",
+        "3D sounds sit on the thing that makes them, with an explicit rolloff (a fire about 6-60 studs, a waterfall about 20-200).",
+        "New Audio API (AudioPlayer.Asset, Wire, AudioEmitter, AudioListener, AudioDeviceOutput, AudioFader, AudioCompressor for ducking) is made with create_instances: players, emitters and effects first, then each Wire (SourceInstance and TargetInstance are paths of instances that already exist); keep Sound for simple one-shots placed with insert_sound. An AudioEmitter under a Folder or Script is silent.",
+        "Only Creator Store, original or licensed audio; never asset ids from memory."
+      ],
+      "avoid": [
+        "Copyrighted music.",
+        "Every sound at volume 1.",
+        "A reward, purchase or level-up with no sound."
+      ],
+      "check": "Play: every core action is heard, music and ambience loop without a gap, nothing clips or drowns the effects.",
+      "docs": [
+        {
+          "title": "Audio objects",
+          "url": "https://create.roblox.com/docs/audio/objects",
+          "vecId": "g-612f62ca-1"
+        },
+        {
+          "title": "Audio",
+          "url": "https://create.roblox.com/docs/audio",
+          "vecId": "g-591c8e83-1"
+        },
+        {
+          "title": "Add 3D audio",
+          "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/audio/add-3D-audio",
+          "vecId": "g-f1728ab4-1"
+        }
+      ]
+    },
+    {
+      "id": "vfx-game-feel",
+      "title": "Add effects and game feel: particles, trails, highlights, juice",
+      "domain": "fx",
+      "tools": [
+        "add_effect",
+        "add_behaviour",
+        "edit_script",
+        "play_check"
+      ],
+      "triggers": [
+        "effect",
+        "effects",
+        "vfx",
+        "particle",
+        "particles",
+        "sparkle",
+        "sparkles",
+        "glow",
+        "trail",
+        "explosion",
+        "magic",
+        "fire",
+        "smoke",
+        "juice",
+        "feel",
+        "feedback",
+        "impact",
+        "hit",
+        "polish",
+        "satisfying"
+      ],
+      "recipe": [
+        "Feedback within one frame on every important action: a sound, a particle burst, a 0.1-0.2 s scale pop on the changed counter, and where it fits a small camera nudge.",
+        "ParticleEmitter under an Attachment; set Texture, Color, Size and a Transparency sequence ending at 1, Lifetime, Speed, Rate, LightEmission and LightInfluence explicitly. LightEmission 1 + LightInfluence 0 for fire, sparkles, magic; 0 and 0.6-1 for smoke, dust, rain.",
+        "Bursts: Enabled false, Rate 0, Emit(count): about 8-24 for a pickup, 20-45 for an explosion. Keep one effect under about 150 live particles (Rate x Lifetime); hard caps Rate 400/s (100 on mobile), Lifetime 20 s.",
+        "Trails only while the action lasts; one reused Highlight for hover or selection (change Adornee); a PointLight (Brightness 1.5-3, Range 12-18) beside fire or magic.",
+        "Juice: shake from trauma (0.2-0.3 per hit, decays about 1.5/s), FOV +6-10 over 0.15 s on a dash, hit-stop 0.04-0.10 s, squash and stretch 1.2/0.8 back over 0.2-0.35 s. Start small: over-shaking reads choppy.",
+        "A default Explosion kills and breaks joints; create_instances creates one with BlastPressure 0 and DestroyJointRadiusPercent 0 unless you set them. Prefer particles and handle damage yourself."
+      ],
+      "avoid": [
+        "Emitters left at default settings.",
+        "Effects created on the server for one player's feedback (play them on the client)."
+      ],
+      "check": "Play: each core action shows a visible response; effects fade out cleanly; frame rate holds with several effects at once.",
+      "docs": [
+        {
+          "title": "Work with particle emitters",
+          "url": "https://create.roblox.com/docs/tutorials/curriculums/artist/work-with-particle-emitters",
+          "vecId": "g-98a1bb28-7"
+        },
+        {
+          "title": "TweenService",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/TweenService",
+          "vecId": "api-tweenservice-1"
+        },
+        {
+          "title": "Camera",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/Camera",
+          "vecId": "api-camera-1"
+        }
+      ]
+    },
+    {
+      "id": "mobile-first-ui-rules",
+      "title": "Make every screen work on a phone first: insets, touch sizes, readable text",
+      "domain": "ui",
+      "tools": [
+        "insert_ui_component",
+        "check_ui_layout",
+        "inspect_visually"
+      ],
+      "triggers": [
+        "mobile",
+        "phone",
+        "phones",
+        "tablet",
+        "touch",
+        "screen",
+        "screens",
+        "ui",
+        "gui",
+        "hud",
+        "menu",
+        "menus",
+        "button",
+        "buttons",
+        "readable",
+        "layout",
+        "console",
+        "gamepad"
+      ],
+      "recipe": [
+        "Most Roblox players are on phones: design the phone layout first, then check desktop and gamepad.",
+        "Leave the screen container's ScreenInsets at CoreUISafeInsets (or TopbarSafeInsets for top-bar rows) and never hard-code the top bar height; read GuiService.TopbarInset if you must align to it.",
+        "Touch targets at least 44x44 px; main action buttons larger; keep the thumb zones (bottom corners) for frequent actions and the centre of the screen clear.",
+        "Size and position with Scale, plus UIAspectRatioConstraint so pieces keep shape; text never below the minimum readable size, and remember the player's Text Size setting enlarges non-TextScaled text.",
+        "Respect GuiService.ReducedMotionEnabled (skip big UI tweens) and PreferredTransparency; do not rely on colour alone to show state.",
+        "Gamepad: every button reachable with selection; give windows a close button and an Escape/B path."
+      ],
+      "avoid": [
+        "Fonts removed in 2024 (Gotham, Arial render as substitutes).",
+        "UI covering the joystick or jump button areas.",
+        "Tiny offset-sized buttons."
+      ],
+      "check": "check_ui_layout at phone and desktop sizes: nothing overlaps the Roblox controls or each other, every button is at least 44 px, text is readable.",
+      "docs": [
+        {
+          "title": "Adaptive design guidelines",
+          "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+          "vecId": "g-cee0af5c-1"
+        },
+        {
+          "title": "Position and size UI objects",
+          "url": "https://create.roblox.com/docs/ui/position-and-size",
+          "vecId": "g-caac7ebb-8"
+        },
+        {
+          "title": "Mobile input",
+          "url": "https://create.roblox.com/docs/input/mobile",
+          "vecId": "g-18d9949a-1"
+        }
+      ]
+    },
+    {
+      "id": "simulator-incremental-loop",
+      "title": "Simulator and idle loop: gain, convert, upgrade, gate, with server-owned numbers and disclosed odds",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "simulator",
+        "simulators",
+        "incremental",
+        "idle",
+        "clicker",
+        "rebirth",
+        "rebirths",
+        "prestige",
+        "hatch",
+        "hatching",
+        "egg",
+        "eggs",
+        "pets",
+        "luck",
+        "rng",
+        "gacha",
+        "offline",
+        "backpack",
+        "grind"
+      ],
+      "recipe": [
+        "Four verbs: action, convert (sell or hatch), upgrade, gate (zone or rebirth). Starting points to test: first currency in 10 s, first purchase in 30-60 s, first egg or zone inside 5 min. Every number sits in one Config module and the server validates each gain remote (a 0.08 s cooldown is a kit value, not a fact).",
+        "Costs: cost = base x growth^owned with growth 1.07-1.15, closed-form bulk buy; upgrade tracks of 7-9 tiers, cost ratio about 4x-5.5x, shrinking bonuses; aim each tier's payback at 100-300 s of current income.",
+        "Rebirth: print cycle time (cost / income) for rebirths 1-20 before shipping; first rebirth at 15-25 min; a multiplier growing slower than cost makes cycles diverge. Format huge numbers (K, M, B, T).",
+        "Random rewards: 3-6 pool entries with raw weights; luck multiplies only the rare weights, renormalise, cap it; build the shown odds from the function the roll uses; roll on the server; a paid version needs the policy check.",
+        "Offline: save lastSeen, pay rate x min(away, cap) on join (cap 8-24 h, rate 25%-100%, heuristic) and show an away screen. Details: search_creation_skills for pattern-sim."
+      ],
+      "avoid": [
+        "Client click counts or timers as truth.",
+        "Geometric costs against a linear multiplier.",
+        "Hidden odds, or a sale prompt on first load."
+      ],
+      "check": "The cycle table is finite for rebirths 1-20; spamming the gain remote pays only cooldown-spaced gains; a rejoin keeps every value.",
+      "docs": [
+        {
+          "title": "Balance virtual economies",
+          "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+          "vecId": "g-957e1af6-1"
+        },
+        {
+          "title": "Paid random items policy guidelines",
+          "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+          "vecId": "g-40408841-1"
+        },
+        {
+          "title": "Core loops",
+          "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+          "vecId": "g-20202ddd-1"
+        }
+      ]
+    },
+    {
+      "id": "tycoon-plot-economy",
+      "title": "Tycoon core: tagged plots, a server-checked button graph, rate income and a pacing check",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "tycoon",
+        "tycoons",
+        "dropper",
+        "droppers",
+        "conveyor",
+        "collector",
+        "plot",
+        "plots",
+        "payback",
+        "factory",
+        "empire",
+        "tycoon-style"
+      ],
+      "recipe": [
+        "One tagged plot Model per server slot (count = Players.MaxPlayers), claimed automatically in PlayerAdded with an OwnerId attribute; every system finds its plot by walking up to that Model.",
+        "Buttons come from one definitions module (id, cost, requires, income, effect). Show a button only when its requires are owned; buy by ProximityPrompt and re-check owner, distance, dependencies and cash on the server; mark owned before cloning the effect.",
+        "Income is a rate: pending += rate x multiplier x dt, capped at rate x 3600 and collected at a pad. Drops are visuals: cap live drops per plot, one server loop, Debris (over 1,000 live debris items server-wide deletes the oldest).",
+        "Pacing (derived): wait = payback x (g - 1); g 1.25-1.5 early; first purchase within 20-30 s, automation within 3 min, first rebirth 15-25 min. A 1.9^r rebirth multiplier keeps cycles near 37 min at r = 15; 1 + 0.5r grows to days.",
+        "Save owned ids (never instances) with a version; offline pay capped at 8 h and 25%-50%. Details: search_creation_skills for pattern-tycoon."
+      ],
+      "avoid": [
+        "Touched as the only purchase gate.",
+        "Price checks on the client.",
+        "A loop per dropper, or saving cash every second."
+      ],
+      "check": "A script firing every button out of order and from far away buys only legal ones; 12 plots run 10 minutes with live drops under the cap; the cycle table for r = 0-15 stays finite.",
+      "docs": [
+        {
+          "title": "Balance virtual economies",
+          "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+          "vecId": "g-957e1af6-1"
+        },
+        {
+          "title": "ProximityPrompt",
+          "url": "https://create.roblox.com/docs/reference/engine/classes/ProximityPrompt",
+          "vecId": "api-proximityprompt-1"
+        },
+        {
+          "title": "Save player data with standard data stores",
+          "url": "https://create.roblox.com/docs/tutorials/use-case-tutorials/data-storage/save-player-data",
+          "vecId": "g-4655fc81-1"
+        }
+      ]
+    },
+    {
+      "id": "obby-racing-course",
+      "title": "Obby and racing: fair gaps, server-owned checkpoints, physical movers and validated speed",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "obby",
+        "obbies",
+        "checkpoint",
+        "checkpoints",
+        "parkour",
+        "racing",
+        "laps",
+        "kart",
+        "speedrun",
+        "tsunami",
+        "treadmill",
+        "platformer",
+        "gauntlet"
+      ],
+      "recipe": [
+        "Size jumps from the character: flat jump reach is about 0.54 x WalkSpeed studs (8.7 at 16, derived; one test found 9.6). Gaps 2-4 tutorial, 4-5 easy, 5-6.5 medium, 7-8 hard, never above 8.5 for everyone; steps up at most 6; rescale gaps if WalkSpeed changes.",
+        "Checkpoints are tagged spawns with a StageIndex; the server accepts stage k only at current + 1 (or a paid skip) and saves it; lower Players.RespawnTime; first checkpoint within about 20 studs and no jump over 4 studs in stages 1-5.",
+        "Anything a player stands on is a physical mover (a PrismaticConstraint motor or an AngularVelocity spinner), never a tweened anchored part; pads use ApplyImpulse; a kill plane with a per-player debounce.",
+        "Races: gates validated by segment crossing on the server, driver owns the vehicle (SetNetworkOwner), a Racers collision group. Speed games map speed to WalkSpeed with a clamped saturating curve and compare displacement (WalkSpeed x dt x 1.5) every 0.25 s.",
+        "Details: search_creation_skills for pattern-obby, pattern-race and design-obby-gap."
+      ],
+      "avoid": [
+        "A gap beyond the reach.",
+        "Client-trusted checkpoints.",
+        "Uncapped WalkSpeed (far above 100 breaks collision) and pay prompts between stages."
+      ],
+      "check": "A scripted default-speed run clears every gap; a client-set WalkSpeed is pulled back; jumping to stage 20 is refused.",
+      "docs": [
+        {
+          "title": "Mover constraints",
+          "url": "https://create.roblox.com/docs/physics/mover-constraints",
+          "vecId": "g-2fb1c40a-1"
+        },
+        {
+          "title": "Network ownership",
+          "url": "https://create.roblox.com/docs/physics/network-ownership",
+          "vecId": "g-ac43f437-1"
+        },
+        {
+          "title": "Roblox units",
+          "url": "https://create.roblox.com/docs/physics/units",
+          "vecId": "g-94b44356-1"
+        }
+      ]
+    },
+    {
+      "id": "tower-defense-waves",
+      "title": "Wave defense: enemies as server data, validated placement, path-progress targeting and a scripted economy",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "tower",
+        "towers",
+        "defense",
+        "waves",
+        "wave",
+        "enemies",
+        "enemy",
+        "lanes",
+        "td",
+        "rts",
+        "bosses"
+      ],
+      "recipe": [
+        "The server owns enemies (plain tables with dist along the path), cash, tower stats and wave state; one Heartbeat loop steps everything and clients only render. Humanoid enemies suit fewer than about 40; beyond that send spawn and despawn reliably and 10 Hz packed distance snapshots on an unreliable remote.",
+        "Placement: the client ghost is cosmetic; the server checks loadout, cash, per-type and total caps, build zone, overlap with the path and towers, distance and rate; sell refunds 70%.",
+        "Towers: one central loop with nextShot; targets by path dist (first, last, strongest, weakest, closest); damage through one pipeline (defense, immunities, shield, health).",
+        "Waves as data: hand-author 1-10 teaching one trait at a time, budget later waves (90 + 15 x wave, a starting point), a boss every 5-10 waves, rest waves, a linear wave bonus.",
+        "Script the balance first: required DPS against affordable DPS per wave, ratio about 5-15 early, 1.4-2.5 in the last quarter, under 1 only at the final boss (own heuristic); an economy tower repays in 2-4 waves. Details: search_creation_skills for pattern-td."
+      ],
+      "avoid": [
+        "A script per enemy or tower.",
+        "A magnitude loop per tower per enemy.",
+        "Client-trusted placement, selling for 100%, power sold for Robux."
+      ],
+      "check": "Spamming PlaceTower lands only legal placements; 250 enemies keep bytes per second flat; the DPS ratio table has the planned shape.",
+      "docs": [
+        {
+          "title": "Pathfinding",
+          "url": "https://create.roblox.com/docs/characters/pathfinding",
+          "vecId": "g-3c467923-1"
+        },
+        {
+          "title": "Securing the client-server boundary",
+          "url": "https://create.roblox.com/docs/scripting/security/client-server-boundary",
+          "vecId": "g-192d0501-1"
+        },
+        {
+          "title": "Balance virtual economies",
+          "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+          "vecId": "g-957e1af6-1"
+        }
+      ]
+    },
+    {
+      "id": "horror-survival-fair-fear",
+      "title": "Horror and survival: fair fear, readable darkness and server-owned needs",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "horror",
+        "scary",
+        "jumpscare",
+        "jumpscares",
+        "monster",
+        "monsters",
+        "stalker",
+        "survival",
+        "campfire",
+        "hunger",
+        "thirst",
+        "crafting",
+        "flashlight",
+        "creepy",
+        "entity",
+        "entities"
+      ],
+      "recipe": [
+        "Pick one loop and its counter (rooms, shifts, generators, nights, distance) for a 12-19 minute session. Every threat has a tell on a different sense and a counter the player can learn; correct play always survives (tell seconds >= distance to cover / WalkSpeed + 1, derived).",
+        "Monsters use nodes or a throttled path (re-path every 0.5-1 s, never per frame), server network ownership, sight and noise senses and a menace value that pulls them back; no teleporting to the player; at most 1-2 jump scares per mechanic.",
+        "Light: Realistic style, low ambient, one visibility route (fog or Atmosphere), a shadowed flashlight and small guiding lights. Test at low brightness on a phone; tells must be audible on a phone speaker; no flashes above 2 per second (conservative heuristic) and a warning on the page.",
+        "Survival: day and night from a server timestamp, a fuel clock, hunger and thirst as server Attributes with one drain loop and rate-based penalties, crafting tiers gated by rare drops, a first-night grace.",
+        "Label: jump scares and creepy creatures are Mild; disfigurement, organs and realistic wounds are Moderate; answer the questionnaire for the worst case. Details: search_creation_skills for pattern-horror."
+      ],
+      "avoid": [
+        "Darkness a phone cannot read.",
+        "Invisible touch kills.",
+        "Client-set Hidden flags or replicated anomaly flags."
+      ],
+      "check": "At low brightness on a phone viewport each threat is survivable with its counter and deadly without it; needs reach 0 exactly once.",
+      "docs": [
+        {
+          "title": "Content maturity and compliance",
+          "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+          "vecId": "g-dc2a14b4-1"
+        },
+        {
+          "title": "Pathfinding",
+          "url": "https://create.roblox.com/docs/characters/pathfinding",
+          "vecId": "g-3c467923-1"
+        },
+        {
+          "title": "Global lighting",
+          "url": "https://create.roblox.com/docs/environment/lighting",
+          "vecId": "g-a09ac1a9-1"
+        }
+      ]
+    },
+    {
+      "id": "pvp-combat-authority",
+      "title": "PvP combat: a server state machine, server hit detection and a tuned time to kill",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "pvp",
+        "combat",
+        "melee",
+        "sword",
+        "swords",
+        "battlegrounds",
+        "shooter",
+        "guns",
+        "hitscan",
+        "duel",
+        "duels",
+        "ranked",
+        "parry",
+        "knockback",
+        "fps"
+      ],
+      "recipe": [
+        "The server owns health, cooldowns, stun and state (character Attributes State, StunUntil, CD_x); one active state; stun is a timestamp; every combat remote checks owner, alive, state, cooldown and rate.",
+        "Melee: the client predicts the animation and sends only the combo index; the server opens the hit window from animation markers with a timer fallback and queries GetPartBoundsInBox (Exclude the attacker, a MaxParts cap, one hit per target per swing, a box 1-2 studs generous), never Touched.",
+        "Guns: tracers at once on the client; the server re-checks fire rate, ammo, origin within 10-12 studs, direction and range and re-raycasts; add rewind only if needed, with the timestamp clamped to 0.25-0.5 s.",
+        "TTK = (ceil(HP / damage) - 1) x fire delay: print it per weapon, about 0.6-0.8 s for a duel shooter or 1-2 s for a team shooter; one role and one cost per weapon; change one number per patch.",
+        "Hit-stop of 2-4 frames, shake and server-side knockback; spawn protection 2-3 s; a kill feed; sell cosmetics, never damage; ranked only after casual works. Test at 150 ms latency. Details: search_creation_skills for combat- and shooter-."
+      ],
+      "avoid": [
+        "Client-reported victims or damage.",
+        "Touched blades.",
+        "Unbounded rewind timestamps, or power for Robux."
+      ],
+      "check": "Impossible origins, rates and NaN payloads are all refused; a 150 ms client still lands fair hits.",
+      "docs": [
+        {
+          "title": "Server authority model",
+          "url": "https://create.roblox.com/docs/projects/server-authority",
+          "vecId": "g-9002161b-1"
+        },
+        {
+          "title": "Securing the client-server boundary",
+          "url": "https://create.roblox.com/docs/scripting/security/client-server-boundary",
+          "vecId": "g-192d0501-1"
+        },
+        {
+          "title": "Security and cheat mitigation tactics",
+          "url": "https://create.roblox.com/docs/scripting/security/security-tactics",
+          "vecId": "g-447f4559-1"
+        }
+      ]
+    },
+    {
+      "id": "social-roleplay-party",
+      "title": "Social, roleplay and party games: systems in order, round loops and the 2026 age rules",
+      "domain": "genre",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "play_check",
+        "search_creation_skills",
+        "read_creation_skill"
+      ],
+      "triggers": [
+        "roleplay",
+        "rp",
+        "hangout",
+        "hangouts",
+        "minigame",
+        "minigames",
+        "party",
+        "trading",
+        "emotes",
+        "fashion",
+        "outfits",
+        "social"
+      ],
+      "recipe": [
+        "Roleplay: roles with uniforms and items must be central, not chatting. Build house claim, vehicle spawner, prop placement, roles, then avatar identity; every role works or is cut; free base content, sold packs and passes (observed ladders 99-199 utility, 299-499 packs, 700-800 flagship, third-party).",
+        "Round games: one server state machine (waiting, intermission with vote, round, results) publishing RoundState and RoundEndsAt as Workspace Attributes; minigames of 30-90 s as modules with setup, isFinished, scores and cleanup; end on a signal or a timeout; cap currency per round.",
+        "Age rules (first-party): since 2026-05-19 hangouts, free-form drawing and sensitive-issue games are limited to age-verified 16+. Avoid freehand drawing, private spaces (bedrooms, bathrooms) and chat-first design; route all text through TextChatService, filter names, and never move Robux between players outside the Transfers API.",
+        "Chat is age-banded: give pings, emotes and shared goals; a vehicle driver gets network ownership; trades use a two-step confirm and item locks. Details: search_creation_skills for pattern-town, pattern-minigame and publish-social."
+      ],
+      "avoid": [
+        "A custom chat or drawing boards.",
+        "Private rooms and romance mechanics.",
+        "Roles that do nothing."
+      ],
+      "check": "The questionnaire label is recorded; a player with chat off can finish the loop; each role completes its task.",
+      "docs": [
+        {
+          "title": "Content maturity and compliance",
+          "url": "https://create.roblox.com/docs/production/promotion/content-maturity",
+          "vecId": "g-dc2a14b4-1"
+        },
+        {
+          "title": "Text filtering",
+          "url": "https://create.roblox.com/docs/ui/text-filtering",
+          "vecId": "g-dc922655-2"
+        },
+        {
+          "title": "Player invite prompts",
+          "url": "https://create.roblox.com/docs/production/promotion/invite-prompts",
+          "vecId": "g-105bb5c7-1"
+        }
+      ]
+    },
+    {
+      "id": "visual-style-of-hits",
+      "title": "Style like the hits: one visual family, palette, light, materials and outlined text",
+      "domain": "art",
+      "tools": [
+        "set_mood",
+        "render_view",
+        "inspect_visually",
+        "look",
+        "search_creation_skills"
+      ],
+      "triggers": [
+        "aesthetic",
+        "aesthetics",
+        "palette",
+        "palettes",
+        "visuals",
+        "art-direction",
+        "professional",
+        "cohesive",
+        "generic",
+        "amateur",
+        "hits",
+        "look",
+        "looks"
+      ],
+      "recipe": [
+        "Pick one family and write the vibe in one line: bright cartoon simulator, painted low-poly cozy, clean competitive pastel with one accent, warm light in cold dark, or toon characters with outlines. Never mix two; 3-5 hues plus neutrals; each biome its own palette.",
+        "Starting values (own measurement of about 25 thumbnails, one day; (inf) inferences): cartoon simulators saturation about 0.55-0.75 and brightness 0.8-0.9 with Soft lighting (Brightness 1.8-2.5, Environment scales 0-0.4) and a light ColorCorrection; horror brightness 0.15-0.3 with one warm accent; competitive: cool desaturated surroundings and one pure-primary accent for units.",
+        "Materials: mostly SmoothPlastic plus 1-3 divider materials, lighter tops and darker undersides, a 5-stud grid, one material and palette rule per area; no clashing stock models; reuse mesh ids; check scale with a reference rig.",
+        "UI and text: set tokens once (primary, secondary, danger, success, radius, outline, font); three button tiers with depth cues; display text white with a dark outline about 7% of cap height; rarity colours paired with names and icons; neutral overlays near 0.3 transparency.",
+        "Compare a first-minute shot with the same family side by side; the thumbnail must match the game."
+      ],
+      "avoid": [
+        "Photorealism a phone cannot carry.",
+        "Default grey buttons.",
+        "Saturated stock models in a pastel scene, or copying a hit's art."
+      ],
+      "check": "One family is named; a screenshot has 5 or fewer hues; every button shares one token set; a squint test shows the focal point.",
+      "docs": [
+        {
+          "title": "Global lighting",
+          "url": "https://create.roblox.com/docs/environment/lighting",
+          "vecId": "g-a09ac1a9-1"
+        },
+        {
+          "title": "Materials",
+          "url": "https://create.roblox.com/docs/parts/materials",
+          "vecId": "g-6e148555-1"
+        },
+        {
+          "title": "UI styling",
+          "url": "https://create.roblox.com/docs/ui/styling",
+          "vecId": "g-a9cfa404-1"
+        }
+      ]
+    },
+    {
+      "id": "thumbnail-icon-grammar",
+      "title": "Thumbnail and icon grammar: one hero, big outlined words, four distinct shots, a weekly test",
+      "domain": "game",
+      "tools": [
+        "compose_thumbnail",
+        "render_view",
+        "look",
+        "search_docs"
+      ],
+      "triggers": [
+        "thumbnail",
+        "thumbnails",
+        "icon",
+        "keyart",
+        "click-through",
+        "ctr",
+        "promo",
+        "trailer",
+        "cover"
+      ],
+      "recipe": [
+        "Icon 512x512 (author at 1024), judged at 150x150: one hero subject filling 70%-90% of the frame, a headline of 1-3 words with cap height about 9%-10% of the icon, white with a 3-5 px dark outline (own observation of top thumbnails), a bright sky and ground pair or a dark field with one warm accent.",
+        "Thumbnails 16:9 at 1920x1080, under 3 MB, up to 10: A an in-engine gameplay hero shot; B exaggerated scale (a giant item beside a tiny avatar) with a pointer; C the update or event name at the top; D a social shot of 2-4 characters. Keep essentials out of the bottom strip, where metadata can cover them.",
+        "Activate 2-5 visibly different thumbnails (different gameplay, character, environment, motivation); wait at least 7 days or until the next update; keep the current best in every test; re-theme key art per event.",
+        "Check legibility at 150x150 and 128x128; show only what the first minute contains; no misleading art or giveaway wording. Frame shots with render_view or compose_thumbnail."
+      ],
+      "avoid": [
+        "Text over a blurred background that hides the game.",
+        "More than about five visual elements.",
+        "Claims the game cannot keep, or detail lost at 128 px."
+      ],
+      "check": "The icon reads at 128x128, the four thumbnails differ, and nothing shown is absent from the first minute.",
+      "docs": [
+        {
+          "title": "Thumbnails",
+          "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+          "vecId": "g-0e2f8630-1"
+        },
+        {
+          "title": "Icons",
+          "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+          "vecId": "g-e56b40b3-1"
         }
       ]
     }

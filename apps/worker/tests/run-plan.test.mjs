@@ -217,5 +217,6 @@ test('the duplicate refusal names the plan\'s next step', () => {
   assert.match(around, /const planNext = agent\.plan \? nextPlanStep\(agent\.plan, agent\.trace\)/, 'the refusal does not look up the plan\'s next step');
   assert.match(around, /planNext \? `[^`]*\$\{planNext\.title\}/, 'the refusal does not word the plan\'s next step');
   assert.match(around, /const steer =[\s\S]{0,200}planHint;/, 'the worded next step is not part of the steer');
-  assert.match(around, /Do not repeat it\.'\)\s*\+\s*steer,/, 'the steer never reaches the refusal');
+  // The refusal also names the earlier attempt's last error (between the sentence and the steer); the property is that the steer still arrives.
+  assert.match(around, /Do not repeat it\.'\)\s*\+[\s\S]{0,500}\+\s*steer,/, 'the steer never reaches the refusal');
 });

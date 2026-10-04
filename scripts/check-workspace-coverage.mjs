@@ -208,7 +208,7 @@ for (const dir of ALL) {
 
     //[[ A BARE DIRECTORY AFTER `node --test` RUNS ON MY MACHINE AND NOT ON THE RUNNER.
     //
-    //   `@golem/lumen-isles` and `@golem/site` both shipped `"test": "node --test tests/"`. On
+    //   `@apple/lumen-isles` and `@apple/site` both shipped `"test": "node --test tests/"`. On
     //   Node 26 that discovers the directory and passes. On Node 22 — which is `NODE_VERSION` in
     //   ci.yml — the runner resolves `tests/` as a module specifier and dies before a single
     //   assertion:
@@ -223,7 +223,8 @@ for (const dir of ALL) {
     //   tests/*.test.mjs`), which the shell expands and every supported Node accepts. This makes
     //   that the rule rather than the convention. `node --test` with NO argument is still the best
     //   form and is untouched by this.
-    for (const arg of script.split(/\s+/)) {
+    // Only a `node --test` script resolves its arguments as modules; `python3 -m unittest discover -s tests` is not one.
+    for (const arg of /\bnode\s+--test\b/.test(script) ? script.split(/\s+/) : []) {
       if (arg.startsWith('-') || arg.includes('*') || arg === '') continue;
       const candidate = join(dir, arg.replace(/^["']|["']$/g, ''));
       if (existsSync(candidate) && statSync(candidate).isDirectory()) {

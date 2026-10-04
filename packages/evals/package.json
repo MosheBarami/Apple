@@ -1,9 +1,9 @@
 {
-  "name": "@golem/evals",
+  "name": "@apple/evals",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Golem Roblox-specific eval harness: measures candidate models + RAG on Luau/Roblox tasks via the worker admin gateway.",
+  "description": "Apple Roblox-specific eval harness: measures candidate models + RAG on Luau/Roblox tasks via the worker admin gateway.",
   "scripts": {
     "check": "node --check src/run.mjs && node --check src/compare.mjs && node --check src/report.mjs && node --check src/selftest.mjs && node --check src/grade.mjs && node --check src/luau.mjs && node --check src/tasks.mjs && node --check src/transport.mjs && node --check src/roblox-antipatterns.mjs && node --check src/metrics.mjs && node --check src/tool-grader.mjs && node --check src/leaderboard.mjs && node --check src/regression.mjs && node --check src/history.mjs && node --check src/score.mjs && node --check src/luau-ast.mjs && node --check src/luau-symbols.mjs && node --check src/luau-flow.mjs && node --check src/luau-graph.mjs && node --check src/luau-dataflow.mjs && node --check src/luau-format.mjs && node --check src/luau-intel.mjs && node --check src/qa-overlap.mjs && node --check src/qa-buckets.mjs && node --check src/train-gate-overlap.mjs && node --check src/robloxqa-gate.mjs && node --check src/acceptance.mjs && node --check src/success-metrics.mjs",
     "overlap": "node src/train-gate-overlap.mjs",
@@ -18,6 +18,6 @@
     "pretest": "node ../../scripts/clean-test-tmp.mjs --older-than 30"
   },
   "dependencies": {
-    "@golem/design": "workspace:*"
+    "@apple/design": "workspace:*"
   }
 }

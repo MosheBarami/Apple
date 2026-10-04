@@ -2,6 +2,7 @@
 // Phases: auth -> project create -> WS connect -> concurrent inference -> isolation probes.
 // Usage: node infra/loadtest.mjs [userCount] [inferenceCount]
 import { readFileSync } from 'node:fs';
+import { envCompat } from '../scripts/lib/env-compat.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
@@ -11,16 +12,16 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // See the note in infra/real-chat.mjs and docs/DECISIONS.md.
-const E2E_EMAIL = process.env.GOLEM_E2E_EMAIL;
-const E2E_PASSWORD = process.env.GOLEM_E2E_PASSWORD;
+const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
 // The synthetic load accounts share one password. Same rule as the E2E account:
 // it lives in .env, never in the tree.
-const LOAD_PASSWORD = process.env.GOLEM_LOAD_PASSWORD;
+const LOAD_PASSWORD = envCompat('APPLE_LOAD_PASSWORD');
 if (!LOAD_PASSWORD) {
-  throw new Error('GOLEM_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
+  throw new Error('APPLE_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
 }
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('GOLEM_E2E_EMAIL / GOLEM_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -32,7 +33,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const s = [...arr].sort((a,
 const stats = (name, arr, extra = '') => console.log(`  ${name.padEnd(22)} n=${String(arr.length).padStart(3)}  p50=${pct(arr,0.5)}ms  p95=${pct(arr,0.95)}ms  max=${pct(arr,1)}ms ${extra}`);
 const t = () => Date.now();
 
-console.log(`\n=== Golem load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
+console.log(`\n=== Apple load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
 
 // ---- phase 1: concurrent sign-in --------------------------------------------
 console.log('[1] concurrent sign-in');
@@ -43,7 +44,7 @@ const users = (await Promise.all(
     try {
       const r = await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
         method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: `load${i}@golem.internal`, password: LOAD_PASSWORD }),
+        body: JSON.stringify({ email: `load${i}@apple.internal`, password: LOAD_PASSWORD }),
       });
       const d = await r.json();
       if (!d.access_token) { authFails.push(`user${i}: ${d.error_description ?? d.msg ?? r.status}`); return null; }

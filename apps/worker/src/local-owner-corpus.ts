@@ -1,6 +1,7 @@
 import type { AgentCtx } from './tools';
-import type { StudioOp } from '@golem/shared';
+import type { StudioOp } from '@apple/shared';
 import { plainName } from './run-idle';
+import { placeImportedOwner } from './model-library';
 import { screenRoots, wireScreens, type WireResult } from './menu-binder';
 
 export const LOCAL_OWNER_PREFIX = 'owner-local:';
@@ -49,7 +50,15 @@ export async function readLocalOwner(ctx: AgentCtx, a: Record<string,unknown>) {
 }
 export async function insertLocalOwner(ctx: AgentCtx, a: Record<string,unknown>) {
   const nodeId=localNodeId(String(a.id ?? ''));
-  if (a.position !== undefined || a.scale !== undefined || a.height !== undefined) return {error:'Local imports preserve authored transforms. Transform the returned Studio path after insertion.'};
+  const position=a.position===undefined ? undefined : Array.isArray(a.position) && a.position.length===3 && a.position.every((n)=>typeof n==='number' && Number.isFinite(n)) ? a.position as number[] : null;
+  if (position===null) return {error:'position must be [x, y, z] in studs'};
+  const scale=a.scale===undefined ? undefined : Number(a.scale);
+  if (scale!==undefined && !(scale>=0.001 && scale<=1000)) return {error:'scale must be between 0.001 and 1000'};
+  const height=a.height===undefined ? undefined : Number(a.height);
+  if (height!==undefined && !(height>0 && height<=2000)) return {error:'height must be between 0 and 2000 studs'};
+  const longest=a.size===undefined ? undefined : Number(a.size);
+  if (longest!==undefined && !(longest>0 && longest<=2000)) return {error:'size must be between 0 and 2000 studs'};
+  if ([scale,height,longest].filter((v)=>v!==undefined).length>1) return {error:'give one of size (longest side in studs), height or scale, not several'};
   const job=await localOwnerQuery(ctx,{action:'materialize',id:nodeId});
   if ('error' in job) return job;
   if (job.status === 'pending') return {pending:true,jobId:job.jobId,componentId:LOCAL_OWNER_PREFIX+nodeId,note:'Local native materialization is pending. Read section:plan or retry this exact insertion on a later step. Nothing inserted.'};
@@ -57,12 +66,16 @@ export async function insertLocalOwner(ctx: AgentCtx, a: Record<string,unknown>)
       !Number.isInteger(job.nativeBytes) || Number(job.nativeBytes)<1 || Number(job.nativeBytes)>4*1024*1024 || !Number.isInteger(job.nativeInstances) || Number(job.nativeInstances)<1 || Number(job.nativeInstances)>20000) {
     return {error:'Local native receipt is failed, mismatched or exceeds the import limits. Inspect section:plan and import fitting child subtrees; no library nodes are excluded.'};
   }
-  const checkpoint=await ctx.createCheckpoint('before local owner import','auto');
-  if ('error' in checkpoint) return {error:`Local owner import refused: checkpoint failed (${checkpoint.error}).`};
+  // An import only adds objects and Studio's undo takes them back, so an oversize place does not refuse it (librarySafetyCopy).
+  const copy=await librarySafetyCopy(ctx,'before local owner import');
+  if ('error' in copy) return {error:`Local owner import refused: ${copy.error}`};
   const out=await ctx.execStudioOp({op:'import_owner_local',nodeId,jobId:String(job.jobId),nativeSha256:String(job.nativeSha256),
     byteLength:Number(job.nativeBytes),nativeInstances:Number(job.nativeInstances),parent:String(a.parent ?? 'game.ServerStorage')},120_000);
-  return out.ok ? {...out.data as Record<string,unknown>,componentId:LOCAL_OWNER_PREFIX+nodeId,
-    note:'Script-free native chunk imported. Exact scripts remain inert in local records. External media, original service placement and cross-chunk references require review; gameplay and native pixels remain unverified.'} : {error:out.error ?? 'Local native import refused'};
+  if (!out.ok) return {error:out.error ?? 'Local native import refused'};
+  const landed=await placeImportedOwner((o,t)=>ctx.execStudioOp(o as StudioOp,t),out.data,{position:position ?? undefined,scale,height,longest});
+  ctx.noteCreated?.((Array.isArray(landed.inserted) ? landed.inserted as unknown[] : []).filter((p): p is string => typeof p==='string'));
+  return {...out.data as Record<string,unknown>,...landed,componentId:LOCAL_OWNER_PREFIX+nodeId,
+    note:'Script-free native chunk imported. Exact scripts remain inert in local records. External media, original service placement and cross-chunk references require review; gameplay and native pixels remain unverified.'};
 }
 
 const BINARY_ID = /^([a-f0-9]{64}):binary:(-?\d{1,11})$/;
@@ -152,8 +165,32 @@ export function libraryReady(ctx: AgentCtx) {
   if (!ctx.studioConnected()) return 'Studio is not connected.';
   return null;
 }
+export const FIND_TYPES = ['model','map','system','ui-kit','ui-screen','tool','animation','vfx','sfx','music','script','media-pack'];
+export const FIND_SIZES = ['tiny','small','medium','large','huge'];
+/**
+ * mode find: the user's whole request matched over every classified library item by meaning, style, colour, size and type
+ * (gateway /v1/library/find). The answer is the gateway's, handed on as it is: at most 12 compact candidates, each with
+ * gameId/path/kind/className for import_owner_library, a description, size, colours, quality and why it matched, and
+ * no_strong_match (true: nothing covers the request well, so build or look elsewhere instead of forcing a pick).
+ */
+export async function findOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
+  const q = typeof a.q === 'string' ? a.q.replace(/\s+/g,' ').trim().slice(0,200) : '';
+  if (!q) return {error:'mode find needs q: the request in the user\'s own words (up to 200 characters).'};
+  const plain = (v: unknown, max: number) => v === undefined || v === '' ? undefined : String(v).slice(0,max);
+  const type = plain(a.type,20), subtype = plain(a.subtype,30), colour = plain(a.colour,30), size = plain(a.size,10), game = plain(a.game,60);
+  if (type !== undefined && !FIND_TYPES.includes(type)) return {error:`type must be one of ${FIND_TYPES.join(', ')}.`};
+  if (size !== undefined && !FIND_SIZES.includes(size)) return {error:`size must be one of ${FIND_SIZES.join(', ')}.`};
+  const minQuality = a.min_quality === undefined ? undefined : Number(a.min_quality);
+  if (minQuality !== undefined && (!Number.isInteger(minQuality) || minQuality < 0 || minQuality > 100)) return {error:'min_quality must be a whole number 0..100.'};
+  const limit = Math.min(12,Math.max(1,Number(a.limit)||12));
+  const out = await ctx.execStudioOp({op:'query_owner_library',action:'route',route:'find',params:{q,...(type ? {type} : {}),...(subtype ? {subtype} : {}),...(colour ? {colour} : {}),...(size ? {size} : {}),...(game ? {game} : {}),...(minQuality !== undefined ? {min_quality:minQuality} : {}),limit}},60_000);
+  if (!out.ok) return {error:out.error ?? 'Owner library refused the request'};
+  return {...out.data as Record<string,unknown>,untrustedData:true,note:'Candidates are ranked best first. Import one with import_owner_library {gameId, path, mode:"self"} (a map: path "/Workspace", mode "children"); its scripts come with it. no_strong_match true means nothing covers the request well: do not force a pick, build it or say so. Page nothing: ask again with other words or filters.'};
+}
 export async function browseOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
   const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
+  if (a.mode !== undefined && a.mode !== 'find') return {error:'mode must be find (or omitted).'};
+  if (a.mode === 'find') return findOwnerLibrary(ctx,a);
   const id = a.id === undefined ? undefined : String(a.id);
   if (id !== undefined && !GAME_ID.test(id)) return {error:'id must be a library game id (8-64 hex characters) from a browse_owner_library list.'};
   const after = a.after === undefined ? undefined : Number(a.after);

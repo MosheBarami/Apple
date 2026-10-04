@@ -181,7 +181,7 @@ test('an empty corpus does not divide by zero', () => {
 // card against the committed one.
 
 function manifestFixture(sources) {
-  const dir = mkdtempSync(join(tmpdir(), 'golem-admissible-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-admissible-'));
   const raw = join(dir, 'raw');
   mkdirSync(raw, { recursive: true });
   writeFileSync(join(raw, 'manifest.json'), JSON.stringify({ sources }));

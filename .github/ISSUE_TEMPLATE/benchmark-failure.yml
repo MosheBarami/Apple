@@ -1,0 +1,43 @@
+name: Benchmark failure
+description: An item in the owner benchmark (packages/evals/owner-bench) or another eval scored badly or errored.
+labels: [benchmark]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Frozen bank items are never edited after their score is seen. Report the failure; fix the product. This repository is public: no secrets, tokens or session values.
+  - type: input
+    id: bank
+    attributes:
+      label: Bank and item id
+      description: The bank name and the item id from its JSON file, for example `owner-30-v1 / o07`.
+    validations:
+      required: true
+  - type: input
+    id: run
+    attributes:
+      label: Run name and results file
+      description: The `--run` name and the file under packages/evals/results.
+    validations:
+      required: true
+  - type: textarea
+    id: scores
+    attributes:
+      label: Scores and criteria that failed
+      description: The nine criteria are works, professional, matches, polished, noErrors, performance, sound, animation, fx (0 to 2 each).
+    validations:
+      required: true
+  - type: textarea
+    id: review
+    attributes:
+      label: Review of the photos and play test
+      description: What the photos and the play test showed, and whether the judge's score was lowered on review.
+  - type: input
+    id: cost
+    attributes:
+      label: Credits spent on the item
+  - type: textarea
+    id: cause
+    attributes:
+      label: Suspected general cause
+      description: The capability behind the failure, stated without the item's subject.

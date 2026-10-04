@@ -271,7 +271,7 @@ test it gated.
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI/.claude/worktrees/rf-G-BACKLOG-1; path=6765c31f4f12/53 entries; git-sha=f822661; tree-clean=yes; deps-clean=yes; break-sha=f822661; EXPECT=unmatched; output-sha256=4445194edab4518db50eb6bca1ba7e58c623a55d5bc7a4d58eb38fcd736415de; output-bytes=196; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=1; deps-sha=2d36ee1251b233b5703d6e5b; at=2026-09-14T23:25:50.966Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=76553bef18d4b6390b1419d9262faad085b266cbd5f1a7ad0d9b593ab913c7a3; output-bytes=224; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=89; deps-sha=0cf10d874d5ebd238d449f54; at=2026-09-15T00:25:13.163Z
 
-- [ ] G-S1: A stranger's browser gets a page with no Golem, no forbidden promise, and the real free quota
+- [ ] G-S1: A stranger's browser gets a page with no Apple, no forbidden promise, and the real free quota
     STATION: S1
     CHECK: node scripts/probe-s1.mjs
     UNTICKED AGAIN 2026-09-24. Commit 6812628 re-ticked this on an EVIDENCE line in the short
@@ -447,7 +447,7 @@ like it covers it.
     while the line claiming it was green was malformed. It was unticked until a real run
     produced a real line.
     The four failures that stood in the way are fixed, each in its own commit: check-rebrand
-    (__GOLEM_ sentinels), check-proof-figures (a dash-run in a banner comment read as the end of
+    (__APPLE_ sentinels), check-proof-figures (a dash-run in a banner comment read as the end of
     the frontmatter), check-harvest-licences (a gate naming a script deleted with its subject), and
     pnpm -r test (stale economics literals, two unreviewed tools, a removed route, and 164 callers
     of a renamed harness). A fifth was a flake: a spawnSync timeout reported as the checker missing
@@ -467,7 +467,7 @@ like it covers it.
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=a24e96ebf42e216f24b6a8156c34e4ccfc9fd4bbbabd2e6589cc8769d9da1900; output-bytes=31; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=3; deps-sha=0df903344301a299821dbcb4; at=2026-09-15T00:25:13.083Z
 
 - [x] G92: The landing and site E2E pass in every viewport
-    CHECK: pnpm --filter @golem/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=dot
+    CHECK: pnpm --filter @apple/site build >/dev/null && npx playwright test tests/e2e/landing.spec.ts --reporter=dot
     EXPECT: 60 passed
   FALSIFIED: exit=1; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=3a825c0; tree-clean=yes; break-sha=3a825c0; EXPECT=unmatched; output-sha256=c84fc0b7a479215ac47948e34621caeb9e0737ae5c5ff8e41b55429d44f602d8; output-bytes=5408; node=v26.8.1; luau=ABSENT; playwright=Version 1.62.1; deps=4; deps-sha=186d6090e4971af90e4e14fb; at=2026-09-14T20:44:21.540Z
   EVIDENCE: exit=0; shell=/bin/sh; cwd=/Users/moshe/Desktop/RbxAI; path=6765c31f4f12/53 entries; git-sha=e2f019f; tree-clean=yes; deps-clean=yes; EXPECT=matched; output-sha256=0a11c719657228ae440a6bcdb24537f2feb8866775b134991c2d60c50bceed80; output-bytes=189; node=v26.8.1; luau=present; playwright=Version 1.62.1; deps=4; deps-sha=3b6612f08424780a06bbe32c; at=2026-09-15T00:25:13.069Z

@@ -10,11 +10,33 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
+-- The money counter's name in the screen: the client config's `counter` (the composer names the counter for the currency, so a
+-- renamed currency is found by name), "Coins" for a config that names none.
+local counterName = "Coins"
+-- What the player's money is called as an attribute (AppleEconomy keeps it under the currency's own name).
+local currencyName = "Coins"
+-- The symbol the agent gave for the currency, printed before a price; none means the price is followed by the currency's own name.
+local symbol = ""
+local cfgFolder = ReplicatedStorage:FindFirstChild("AppleComponents")
+local cfgModule = cfgFolder and cfgFolder:FindFirstChild("AppleClientConfig")
+if cfgModule and cfgModule:IsA("ModuleScript") then
+	local ok, cfg = pcall(require, cfgModule)
+	if ok and type(cfg) == "table" and type((cfg :: any).counter) == "string" then counterName = (cfg :: any).counter; currencyName = counterName end
+	if ok and type(cfg) == "table" and type((cfg :: any).currency) == "string" then currencyName = (cfg :: any).currency end
+	if ok and type(cfg) == "table" and type((cfg :: any).symbol) == "string" then symbol = (cfg :: any).symbol end
+end
+
 local function short(n: number): string
 	for _, s in { { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } } do
 		if n >= s[1] then return (string.format("%.1f", n / s[1]):gsub("%.0$", "")) .. s[2] end
 	end
 	return tostring(math.floor(n))
+end
+
+--[[ A price in the game's own currency: with its symbol ("◆10K"), otherwise followed by its name ("10K Crystals"). Never a built-in "$". ]]
+local function priceText(n: number): string
+	if symbol ~= "" then return symbol .. short(n) end
+	return short(n) .. " " .. currencyName
 end
 
 local function pop(gui: Instance)
@@ -60,7 +82,7 @@ end
 
 local function wire(screen: ScreenGui)
 	onePanel(screen)
-	local coins = screen:FindFirstChild("Coins")
+	local coins = screen:FindFirstChild(counterName)
 	local perSecond = coins and coins:FindFirstChild("PerSecond")
 	if perSecond and perSecond:IsA("TextLabel") then
 		local function draw() perSecond.Text = "+" .. short(tonumber(player:GetAttribute("IncomePerSecond")) or 0) .. "/s" end
@@ -73,12 +95,29 @@ local function wire(screen: ScreenGui)
 	local panel = screen:FindFirstChild("RebirthPanel")
 	if not (open and open:IsA("GuiButton") and panel and panel:IsA("GuiObject")) then return end
 	local info, bonus, confirm = panel:FindFirstChild("Info", true), panel:FindFirstChild("Bonus", true), panel:FindFirstChild("Confirm", true)
+	-- The Rebirth button itself: what it costs (Cost), how far the player is (Progress.Fill) and Lock, shown while it cannot be paid.
+	local costLine = open:FindFirstChild("Cost")
+	local progress = open:FindFirstChild("Progress")
+	local fill = progress and progress:FindFirstChild("Fill")
+	local lock = open:FindFirstChild("Lock")
+	local function paintButton()
+		local need = tonumber(player:GetAttribute("RebirthCost")) or 0
+		local have = tonumber(player:GetAttribute(currencyName)) or 0
+		if fill and fill:IsA("GuiObject") then fill.Size = UDim2.new(if need > 0 then math.clamp(have / need, 0, 1) else 1, 0, 1, 0) end
+		if costLine and costLine:IsA("TextLabel") then
+			costLine.Text = if have >= need then "READY" else short(have) .. " / " .. short(need)
+		end
+		if lock and lock:IsA("GuiObject") then lock.Visible = have < need end
+	end
+	paintButton()
+	player:GetAttributeChangedSignal(currencyName):Connect(paintButton)
+	player:GetAttributeChangedSignal("RebirthCost"):Connect(paintButton)
 	local function refresh()
 		local cost = tonumber(player:GetAttribute("RebirthCost")) or 0
 		local rebirths = tonumber(player:GetAttribute("Rebirths")) or 0
 		local mult = tonumber(player:GetAttribute("Multiplier")) or 1
 		if info and info:IsA("TextLabel") then
-			info.Text = ("Rebirth for $%s: start over with every machine and upgrade gone, and earn more forever. Rebirths: %d"):format(short(cost), rebirths)
+			info.Text = ("Rebirth for %s: start over with every machine and upgrade gone, and earn more forever. Rebirths: %d"):format(priceText(cost), rebirths)
 		end
 		-- What a rebirth gives, not only what you have (a bare "x1" read as "a rebirth gives nothing").
 		local nextMult = tonumber(player:GetAttribute("NextMultiplier")) or mult

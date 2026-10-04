@@ -476,7 +476,7 @@ nothing downstream treats this as a failure.
 `session.ts:494`:
 
 ```ts
-function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
+function maxStepsFor(mode: AppleMode, productModel?: ProductModel): number {
   return productModel === 'apple' ? Math.min(STEP_LIMITS[mode], STEP_LIMITS.clay) : STEP_LIMITS[mode];
 }
 ```
@@ -484,7 +484,7 @@ function maxStepsFor(mode: GolemMode, productModel?: ProductModel): number {
 with `session.ts:370`:
 
 ```ts
-const STEP_LIMITS: Record<GolemMode, number> = { clay: 3, stone: 16, rune: 24 };
+const STEP_LIMITS: Record<AppleMode, number> = { clay: 3, stone: 16, rune: 24 };
 ```
 
 `'apple'` is the free lane and every free build is therefore capped at **3**, Plan's budget. Plan is

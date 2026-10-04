@@ -1,11 +1,11 @@
 // Tests for what a project owes and whether it can be published: the attribution export and the
 // commercial-use gate in apps/worker/src/provenance.ts.
 //
-// These are the rules that decide whether Golem can honestly say "here is everything in your game
+// These are the rules that decide whether Apple can honestly say "here is everything in your game
 // and where it came from", so they are pinned rather than left to inspection. The four cases the
 // module exists for each get a test by name: a CC0 asset that obliges nothing, a CC-BY asset that
 // obliges a credit line, a non-commercial asset that must block a commercial publish, and an
-// original Golem build that must never be filed alongside somebody else's work.
+// original Apple build that must never be filed alongside somebody else's work.
 //
 // Pure functions throughout — no D1, no network. The one storage test drives a fake D1 that
 // returns rows, because the row→record mapping is real logic and its failure mode (silently
@@ -28,7 +28,7 @@ import { join } from 'node:path';
 // package it does not declare being downloadable is a test that reports the network.
 const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
 
-const dir = mkdtempSync(join(tmpdir(), 'golem-provenance-'));
+const dir = mkdtempSync(join(tmpdir(), 'apple-provenance-'));
 const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.url).pathname;
 
 const out = join(dir, 'provenance.mjs');
@@ -136,7 +136,7 @@ test('every source site is classified as ours, the user’s, or somebody else’
   for (const site of ASSET_SOURCE_SITES) {
     assert.ok(ASSET_ORIGINALITY[site], `${site} is unclassified — it would default to being treated as ours`);
   }
-  assert.equal(originalityOf('procedural'), 'golem_original');
+  assert.equal(originalityOf('procedural'), 'apple_original');
   assert.equal(originalityOf('generated_roblox'), 'user_generated');
   for (const site of ['kenney', 'quaternius', 'ambientcg', 'poly_haven', 'sketchfab', 'creator_store', 'roblox_official']) {
     assert.equal(originalityOf(site), 'third_party', `${site} is not ours to claim`);
@@ -151,10 +151,10 @@ test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third p
     tags: ['lowpoly', 'market'],
     createdAt: '2026-08-31T11:00:00.000Z',
   });
-  // `golem_original` is a PERSISTED originality value written into provenance rows and into user
+  // `apple_original` is a PERSISTED originality value written into provenance rows and into user
   // places; the rebrand exempts it for exactly that reason. `author` is different — it is rendered
   // in the credits panel, so it carries the brand and follows it.
-  assert.equal(originalityOf(mine.source), 'golem_original');
+  assert.equal(originalityOf(mine.source), 'apple_original');
   assert.equal(mine.author, 'Apple');
   assert.equal(mine.attributionRequired, false);
 
@@ -171,7 +171,7 @@ test('AN ORIGINAL APPLE ASSET is credited as our own work and never as a third p
   // and it is not a commercial problem
   const c = commercialUseReport(PROJECT, [used(mine)]);
   assert.equal(c.ok, true);
-  assert.equal(c.counts.golem_original, 1);
+  assert.equal(c.counts.apple_original, 1);
   assert.equal(c.findings.length, 0);
 });
 
@@ -186,7 +186,7 @@ test('GenerationService output is the user’s, filed under neither ours nor a t
   });
   const report = attributionReport(PROJECT, [used(theirs)], NOW);
   assert.equal(report.userGenerated.length, 1);
-  assert.equal(report.original.length, 0, 'Golem does not own what the customer generated in their own session');
+  assert.equal(report.original.length, 0, 'Apple does not own what the customer generated in their own session');
   assert.equal(report.courtesy.length, 0);
   assert.match(renderAttribution(report), /yours, not ours/);
 });
@@ -390,14 +390,14 @@ test('a mixed project separates our work, their work and the obligations attache
   assert.equal(report.generatedAt, NOW.toISOString());
 
   const text = renderAttribution(report);
-  // the headings are what stop the credits reading as though Golem made all of it
+  // the headings are what stop the credits reading as though Apple made all of it
   assert.ok(text.indexOf('Original work') < text.indexOf('attribution required'), 'our work is listed separately and first');
   assert.match(text, /Rock 05/);
   assert.match(text, /Road Section/);
 
   const c = commercialUseReport(PROJECT, assets);
   assert.equal(c.ok, true);
-  assert.deepEqual(c.counts, { golem_original: 1, user_generated: 0, third_party: 3, unknown: 0 });
+  assert.deepEqual(c.counts, { apple_original: 1, user_generated: 0, third_party: 3, unknown: 0 });
 });
 
 test('the export is deterministic — the same project renders identically twice', () => {

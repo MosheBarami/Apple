@@ -3,7 +3,7 @@
  * (packages/components/proof/run-steps.luau) runs the same Steps from the command bar; the two must agree, and the
  * plugin's place_copies / strip_descendants ops (apps/apple-plugin/src/ops/Compose.luau) do exactly what the harness does.
  */
-import type { InstanceSpec, PropValue, StudioOp } from '@golem/shared';
+import type { InstanceSpec, PropValue, StudioOp } from '@apple/shared';
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite, Step } from './compose';
 import { LIBRARY_IMPORT_MS } from './local-owner-corpus';
@@ -133,15 +133,19 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       const props: Record<string, PropValue> = {};
       for (const [k, v] of Object.entries(s.props)) { const pv = propValue(k, v); if (pv) props[k] = pv; }
       const out = await op({ op: 'set_props', path: s.path, props });
-      if (out.ok) count('set'); else report.problems.push(`set ${s.path}: ${clip(out.error)}`);
+      if (out.ok) count('set'); else if (!s.optional) report.problems.push(`set ${s.path}: ${clip(out.error)}`);
     } else if (s.kind === 'hide') {
       const out = await op({ op: 'set_visible', paths: s.paths, visible: false });
       if (out.ok) count('hide'); else report.problems.push(`hide: ${clip(out.error)}`);
     } else if (s.kind === 'delete') {
       // The screen a game had stays when its new one was not made: an old screen beats none.
       if (report.critical.some((c) => c.startsWith("the game's screen")) && s.paths.some((p) => p.startsWith('game.StarterGui.'))) continue;
-      const out = await op({ op: 'delete_instances', paths: s.paths });
-      if (out.ok) count('delete'); // an absent Baseplate is not a problem
+      // ONE PATH PER OP. The plugin's delete_instances is all-or-nothing: one path that is not there ("SpawnLocation.Texture", on a
+      // spawn that has only a Decal) refuses the whole call, and the paths that do exist stay. Round 2's retire step listed both, so
+      // the default spawn's star decal was never deleted (round 3, 2026-10-04). An absent path is not a problem.
+      let deleted = false;
+      for (const path of s.paths) if ((await op({ op: 'delete_instances', paths: [path] })).ok) deleted = true;
+      if (deleted) count('delete');
     } else if (s.kind === 'strip') {
       const out = await op({ op: 'strip_descendants', root: s.root, classes: s.classes as ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound')[] });
       if (out.ok) count('strip'); else report.problems.push(`strip ${s.root}: ${clip(out.error)}`);

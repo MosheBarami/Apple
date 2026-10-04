@@ -25,13 +25,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(mkdtempSync(join(tmpdir(), 'golem-session-do-')), 'session.mjs');
+const OUT = join(mkdtempSync(join(tmpdir(), 'apple-session-do-')), 'session.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'do', 'session.ts'), '--bundle', '--format=esm', '--target=es2022',
    '--alias:cloudflare:workers=' + join(WORKER, 'tests', 'stubs', 'cloudflare-workers.mjs'),
    '--outfile=' + OUT], { cwd: WORKER, stdio: 'pipe' });
 const { SessionDO } = await import(`file://${OUT}`);
-const TOOLS_OUT = join(mkdtempSync(join(tmpdir(), 'golem-safety-tools-')), 'tools.mjs');
+const TOOLS_OUT = join(mkdtempSync(join(tmpdir(), 'apple-safety-tools-')), 'tools.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + TOOLS_OUT],
   { cwd: WORKER, stdio: 'pipe' });

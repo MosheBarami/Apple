@@ -140,6 +140,13 @@ Test protocol for every gate:
   - Whether system and ui categories may skip the forced look.
   - Approval of the credit uplift.
   - Plugin release is not required for this milestone (native capture is optional). Customers on the old build get the box fallback.
+- **Built (2026-10-02, not deployed, not measured live; tests and the planted lies only):**
+  - The switch is `SELF_CHECK` = `off` | `on` | `full` (`apps/worker/src/self-check.ts`, `env.ts`). Unset means `on` everywhere except `ENVIRONMENT=production`, where it means `off`, so the deployed worker is unchanged until the owner turns it on (`wrangler deploy --var SELF_CHECK:on`). `off`: nothing runs and `look` is not offered. `on`: ledger, `look`, gate, deterministic audit. `full`: also the one cheap text judge over the final reply.
+  - Files: `evidence-ledger.ts`, `colour-family.ts`, `claim-audit.ts`, `claim-audit-judge.ts`, `look-gate.ts`, `look-observe.ts`, `studio-look.ts`, `look-tool.ts`, `self-check-run.ts`, `self-check.ts`; thin call sites in `tools.ts`, `do/session.ts`, `prompts.ts`, `mcp.ts`, `packages/shared`.
+  - Bounds (frozen, pinned): 1 forced look, 2 repair rounds, 2 audit rounds, 6 looks per run. The gate is structural and refined by where a change landed: a change to the workspace, the lighting or an unknown place owes a look; a change that only touched screens, scripts or other services does not (a viewport look could not show it). This answers the owner question about system and ui runs by what the camera can see, not by category; the owner can still decide otherwise.
+  - Not built from this list: `place-census.ts`, the web "what I checked" strip, the `inspect_visually` multi-angle drop (the old tool is untouched), the K1 and K3 spikes.
+  - Plugin facts it relies on (no plugin source changed, so no release is needed): `set_props` on `game.Workspace.Camera` aims the camera and `camera_focus` is the fallback; both are pinned in `apps/apple-plugin/tests/commands.test.mjs`. Measured in the plugin's Studio mock only: two undo entries per camera write, so one look is about eight entries. Not verified in a real Studio (K1). The follow-up that would remove the cost is a read-only camera-pose operation in the next plugin release.
+  - Cost found while building: the `look` definition is 793 characters and every character of a tool definition comes out of the transcript budget; a test holds that budget above 60,000 characters and it now has about 300 characters of room, so the next added tool will trip it.
 
 ### M2. Verification substrate: `play_check` probes and playable audio (Plugin release A)
 
@@ -175,6 +182,12 @@ Test protocol for every gate:
 
 ### M4. Behaviour re-adding and inspection (flag `BEHAVIOUR_V2`)
 
+- **Build status (2026-10-02, branch `worktree-wf_90b4b7a1-0cd-4`, not merged, not deployed):** built, and measured by unit tests only. Nothing has run in Studio and nothing has been run on the benchmark. Where the build differs from the design below:
+  - The reader is `model_anatomy`, not a merged `inspect_model`: `inspect_model` already exists as a plugin-backed asset QC tool, so it was left alone. `model_anatomy` is built on the existing `get_tree` and `read_script` ops, so it needs no plugin release.
+  - Behaviours are one component, `packages/components/behave` (`AppleBehave`), driven by data in a ModuleScript `AppleBehaviours` written by `add_behaviour`. `AppleAnimate` v2, `AppleAudio`, `bounce_pad` and `animate_creature` are not part of this build. `AppleBehave` publishes `Model:SetAttribute("AppleBehave_<id>", on)`, which an M2 probe can read.
+  - `refuseLuauIngress` on direct `edit_script` source is unchanged. `behaviour-review.ts` reports those primitives on the result instead, and enforces one rule only (a loop that never yields).
+  - Not built: the numbered-label image (needs M1's `look`), the generalization test (live runs), `animate_model` v2.
+  - Unverified in Studio, to settle in one spike when the benchmark is idle (the glue was exercised only against a mock written for this build): a `ClickDetector` parented to a Model answers clicks on its parts; `ProximityPrompt` on the biggest part with line of sight off; `AssemblyLinearVelocity` set from the server on a player's root part launches it (network ownership); `JointInstance.Enabled = false` on a weld between a moving and a still part stops it fighting a CFrame move; `Sound:Clone()` of a library sound plays from a part; `workspace.DescendantAdded` wires a model cloned in at runtime; `Model:GetBoundingBox()` agrees with the part boxes `model_anatomy` read.
 - **Capability:**
   - `inspect_model` (the merge): part and joint graph, size, CFrame relative to the pivot, material, colour, hinge candidates, original script/Sound/prompt manifest, and an optional numbered-label image built on `look` (temporary labels deleted afterwards).
   - `animate_model` v2: `play: toggle | pingpong`, `then` chaining, property tracks via TweenService (see `docs/reference/engine/classes/TweenService`), events `sound`, `emit` and `setAttribute`, parametric primitives (swing, slide, spin, bob, squash, pulse), and the object-tool vocabulary lifted out of `ObjectPart`.

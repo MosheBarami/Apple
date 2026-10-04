@@ -2,7 +2,7 @@
 //
 // The GLM migration set every path to `reasoning: low`. Uniform `low` is the wrong policy: it
 // spends the same on "what does this script do" as on "design and build a plaza", and thin
-// thinking on design work is how Golem shipped a grey slab with coloured poles and called it done.
+// thinking on design work is how Apple shipped a grey slab with coloured poles and called it done.
 //
 // The tiers are `low` and `high`. `medium` is DELIBERATELY UNUSED, and that is a measurement, not
 // a preference. Against the live service on 2026-08-30, GLM-5.3-flash, two samples per cell:
@@ -19,8 +19,8 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { CONVERSATIONAL_RE, META_QUESTION_RE } from '@golem/shared';
-import type { ProductMode } from '@golem/shared';
+import { CONVERSATIONAL_RE, META_QUESTION_RE } from '@apple/shared';
+import type { ProductMode } from '@apple/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
 export type Effort = 'low' | 'medium' | 'high';
@@ -119,7 +119,7 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * language's small talk into a build. The Unicode-aware `(?![\p{L}\p{N}])` with the `u` flag is
  * what makes the boundary mean the same thing in both scripts.
  */
-// CONVERSATIONAL_RE and META_QUESTION_RE live in @golem/shared (isSmallTalk) since 2026-09-23, so the
+// CONVERSATIONAL_RE and META_QUESTION_RE live in @apple/shared (isSmallTalk) since 2026-09-23, so the
 // web app asks nothing of a greeting either (F-048). The reasoning above still applies to them.
 
 /**
@@ -287,6 +287,26 @@ export function tokensForEffort(base: number, effort: Effort): number {
   //   test asserts the clamp still precedes the estimate. ]]
   const scale = effort === 'high' ? 2 : effort === 'medium' ? 2.5 : 1;
   return Math.round(base * scale);
+}
+
+/**
+ * How many output-ceiling cuts in a row a run may be billed for before it ends. A cut step is paid for
+ * (its neurons are settled before the cut is noticed) and its tool call is discarded, and the run used to
+ * allow any number of them. The "split it smaller" nudge reaches its strongest wording at the fourth cut,
+ * so the fifth ends the run.
+ */
+export const MAX_CONSECUTIVE_CUTS = 5;
+
+/**
+ * The output budget for a step, given how many steps in a row were just cut at their ceiling. A step whose
+ * previous attempt was cut is never given less than the full budget `high` gets: after the run spent its
+ * high-effort steps the budget fell to the base (4,400), and a 75-part create_instances payload of about
+ * 5.4k tokens cannot fit under that, so the recovery step was cut again. Asking past the gateway's
+ * ceiling is free (it clamps before it reserves), and an unused budget costs nothing.
+ */
+export function tokensAfterCuts(base: number, effort: Effort, cutsInARow: number): number {
+  const asked = tokensForEffort(base, effort);
+  return cutsInARow > 0 ? Math.max(asked, tokensForEffort(base, 'high')) : asked;
 }
 
 export function higher(a: Effort, b: Effort): Effort {

@@ -16,7 +16,7 @@ import { fakeStudio } from './fixtures/fake-studio.mjs';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'library-assemble-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@golem/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
 await esbuild.build({ entryPoints: ['src/tools.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'), alias });
 await esbuild.build({ entryPoints: ['src/library-assemble.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'assemble.mjs'), alias });
 const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
@@ -509,7 +509,7 @@ test('the prompt names the flow (compose, judge, fix, answer) as the way to buil
   assert.ok(at > 0, 'the paragraph');
   const paragraph = src.slice(at, src.indexOf('\n- ', at + 10));
   assert.ok(paragraph.length < 1300, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
-  assert.match(paragraph, /compose_game \{request\}[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
+  assert.match(paragraph, /compose_game \(you pick the template[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
   assert.match(paragraph, /never build a different game instead/);
   assert.match(paragraph, /install_owner_system \{gameId\}/);
   assert.match(paragraph, /If an imported game can load code from the internet, say so in one plain sentence/);

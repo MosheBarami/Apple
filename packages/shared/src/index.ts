@@ -1,4 +1,4 @@
-// @golem/shared — wire protocol + domain types shared by worker, web app, evals.
+// @apple/shared — wire protocol + domain types shared by worker, web app, evals.
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
 import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
@@ -163,7 +163,7 @@ export type StudioOp =
   | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
       nativeInstances: number; parent: string }
   | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
-      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design'; params?: Record<string, string | number> }
+      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design' | 'find'; params?: Record<string, string | number> }
   | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
   | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
       contentToken: string; parent: string; name: string }
@@ -695,7 +695,7 @@ export interface PluginOperationCapability {
   reason?: string;
 }
 export interface PluginCapabilityReportV1 {
-  schema: 'golem.studio-ops.v1';
+  schema: 'apple.studio-ops.v1';
   operations: PluginOperationCapability[];
 }
 export interface PluginPollRequest {
@@ -923,8 +923,12 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'play_library_sound':
     // D-MODELLIB-1: a search over the bundled 3D model library index; touches nothing.
     case 'find_library_model':
+    // Looking at candidates off the place (staged in ServerStorage, measured, taken away again): a read, the agent's own look.
+    case 'preview_library_models':
     case 'find_verified_asset':
     case 'inspect_model':
+    // model_anatomy asks the place about one model's parts, joints and hinges and changes nothing.
+    case 'model_anatomy':
     // The read-only Studio tools. Each one ASKS the place something and changes nothing, so
     // announcing "building" while they run tells the user work is happening that is not.
     case 'get_instance':
@@ -1052,8 +1056,11 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'build_studded_ui':
     case 'add_upgrades':
     case 'animate_model':
+    // add_behaviour writes a behaviours script into the model and installs the one script that plays it.
+    case 'add_behaviour':
     case 'build_object':
-    case 'cool_library_model':
+    // Opt-in presentation of an object already in the place (stage, click response, counter, attached piece).
+    case 'dress_object':
     case 'insert_sound':
     case 'insert_vfx':
       return 'building';
@@ -1064,6 +1071,9 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'compose_thumbnail':
     // The plugin rasterises the live Studio viewport; nothing in the place changes.
     case 'capture_studio_viewport':
+    // The self-check's look aims the viewport camera at what was changed, captures it from several angles and
+    // puts the camera back. Nothing in the place changes, so it announces the same phase as the capture.
+    case 'look':
       return 'rendering';
     case 'check_composition':
     case 'inspect_visually':
@@ -2036,7 +2046,7 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED 2026-09-22 ~21:03 IDT, on three facts rather than the probe alone:
  *   1. re-probed at 18:02:59Z — ours 200 with the same shape as Rojo 7 (visibilityStatus 1,
  *      isAssetHashApproved, fiatProduct published + free), Moon Animator 2 200, the retired
- *      Golem id 404, an id that cannot exist 404;
+ *      Apple id 404, an id that cannot exist 404;
  *   2. the store page, rendered signed out, shows "Apple Studio - Creator Store" with a
  *      "Get Plugin" button, and Creator Store search for "Apple Studio" returns exactly this id;
  *   3. the owner reports the new plugin approved.
@@ -2052,7 +2062,7 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED AGAIN 2026-09-24 ~02:35 IDT: the appeal on the final build (3Jj4h4hPWRTA3QPDRlNRmejqPrP,
  * sent 2026-09-23 14:02 IDT) was upheld. Re-probed 2026-09-23T23:34:48Z: ours 200 (visibilityStatus 1,
  * isAssetHashApproved, published + free, updatedUtc 2026-09-23T11:00:54Z, 7 scripts — the final
- * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Golem id 404. The
+ * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Apple id 404. The
  * signed-out store page renders "Apple Studio - Creator Store" with a "Get Plugin" button, and the
  * Configure page no longer shows the violation notice. Evidence:
  * docs/autonomy/evidence/20260924T0000Z-store-listed-again/README.md.
@@ -2854,6 +2864,12 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
+    name: 'preview_library_models',
+    label: 'Look at ready-made models',
+    why: 'Measures candidate models off your place (size, colour, parts) so the right one can be chosen. It briefly stages them in the place and takes them away again; nothing stays.',
+    group: 'changes',
+  },
+  {
     name: 'insert_library_model',
     label: 'Insert models from Apple\'s model library',
     why: 'Brings ready-made 3D models (props, buildings, trees, vehicles) into your place.',
@@ -2932,15 +2948,21 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     group: 'changes',
   },
   {
-    name: 'cool_library_model',
-    label: 'Make objects cooler',
-    why: 'Adds a library piece on top of a ready-made object, an effect, a glow and spinning orbs.',
+    name: 'dress_object',
+    label: 'Dress objects',
+    why: 'Adds what you ask for to an object already in the place: a stage under it, a click response, a counter, an attached piece, a light or an effect. Nothing is added unless asked.',
     group: 'changes',
   },
   {
     name: 'animate_model',
     label: 'Make models move',
     why: 'Joins a model\'s parts with joints and adds animations that play from a script.',
+    group: 'changes',
+  },
+  {
+    name: 'add_behaviour',
+    label: 'Give models behaviour',
+    why: 'Adds a behaviours script to a model, and the script that plays it, so parts can open, spin, bob, glow, play a sound or launch a player when clicked, touched or approached.',
     group: 'changes',
   },
   {
@@ -3106,11 +3128,12 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // Attachment policy.
 //
 // Re-exported rather than defined here so the rules sit in one file with their reasons, and so
-// `import { MAX_ATTACHMENT_BYTES } from '@golem/shared'` reads the same in the browser, in the
+// `import { MAX_ATTACHMENT_BYTES } from '@apple/shared'` reads the same in the browser, in the
 // worker and in the Durable Object. A second copy of a ceiling is how a picker comes to accept a
 // file the server refuses.
 // ---------------------------------------------------------------------------
 export * from './attachments.ts';
+export * from './legacy-wire.ts';
 export * from './models.ts';
 export * from './spilled-payload.ts';
 export * from './ui-theme.ts';

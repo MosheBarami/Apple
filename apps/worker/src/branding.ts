@@ -21,7 +21,7 @@
  * or publishes anything to Roblox (see THUMBNAIL_UPLOAD in thumbnail.ts for why there is no path).
  */
 import type { Env } from './env';
-import type { OpResult, RenderViewResult, StudioOp } from '@golem/shared';
+import type { OpResult, RenderViewResult, StudioOp } from '@apple/shared';
 import { oncePerIsolate } from './schema-once';
 import { captureSizeFor, chooseFraming, isFramableView, ROBLOX_ICON, ROBLOX_THUMBNAIL, THUMBNAIL_UPLOAD, type FramingInput } from './thumbnail';
 import { compositionMetrics } from './composition';

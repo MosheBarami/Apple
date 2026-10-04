@@ -67,7 +67,7 @@ in Place1.rbxl; no mutation applied (opsApplied counted the snapshot + read); cr
 
 ## Unverified assumptions
 
-- That the payment provider's webhook no longer targets the retired golem host (F-016).
+- That the payment provider's webhook no longer targets the retired legacy host (F-016).
 - That the store build 1.0.0 refuses run_mode (inferred from HEAD source at 09-19).
 
 ## Current blockers

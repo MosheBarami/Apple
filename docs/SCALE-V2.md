@@ -2,7 +2,7 @@
 
 Status: design only. Nothing here is deployed. No spend was incurred producing it.
 
-Scope: what Golem's execution layer would have to become to survive more load than one person
+Scope: what Apple's execution layer would have to become to survive more load than one person
 testing it, and — more importantly — which parts of that are worth building **now, for zero
 dollars**, and which are a way to spend money you do not have yet.
 
@@ -61,7 +61,7 @@ Five things follow from this, and they are the whole reason v2 exists:
    schedulers: they answer yes/no at the instant of the call. Concurrency is whatever arrives.
 2. **A "no" destroys work.** `BudgetError` and `RateLimitedError` both land in `alarm()`'s catch
    and call `finishRun(agent, 'quota'|'error')`. The run *ends*. The user is told to send another
-   message. Under load, Golem drops work rather than deferring it.
+   message. Under load, Apple drops work rather than deferring it.
 3. **Tool waits live in memory.** `opQueue` is persisted (`storage.put('opQueue', …)`), but
    `opWaiters` is a plain `Map` on the instance. If the DO restarts between the op being queued and
    the plugin returning its result, the result arrives at `handlePluginPoll`, finds no waiter, and

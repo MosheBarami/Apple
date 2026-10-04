@@ -52,7 +52,7 @@ runtime is used.
 
 ## Content and trust
 
-The landing derives mode and plan names, costs, credits and build counts from `@golem/shared`. Its
+The landing derives mode and plan names, costs, credits and build counts from `@apple/shared`. Its
 library figures point at the checked manifest fields (`library.total`, `library.withRobloxId` and
 `templates.usable`). The plugin link still follows the live-store flag. All sign-in, sign-up, docs,
 pricing, legal and source links remain real routes or the existing worker surface.

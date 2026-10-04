@@ -175,7 +175,7 @@ const checkout = (over = {}) =>
       userId: 'u_1',
       email: 'personal@acme.test',
       plan: 'builder',
-      returnTo: 'https://golem.example/app/usage',
+      returnTo: 'https://apple.example/app/usage',
       ...over,
     }).body,
   );

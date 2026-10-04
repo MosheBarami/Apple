@@ -224,7 +224,7 @@ function AppleUI.mount(playerGui, options)
     round(objectives, math.min(theme.radius, 12)); outline(objectives)
     make("UIListLayout", objectives, { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder })
 
-    -- One finite queue, one clock connection. Notices never take keyboard/gamepad focus.
+    -- One finite queue, one clock connection. Notices never take key or gamepad focus.
     local notice = make("Frame", gui, {
         Name = "Notification", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24),
         Size = UDim2.new(0.9, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
@@ -398,7 +398,7 @@ function AppleUI.mount(playerGui, options)
     -- scrolled a list of one. Text stayed at 16px, read at arm's length on a six-inch screen.
     --
     -- MEASURED FROM THE VIEWPORT, NOT FROM TouchEnabled. A touch-capable laptop is not a phone, and
-    -- a phone with a keyboard attached is still a phone; the number that decides whether a 240px
+    -- a phone with an external input device is still a phone; the number that decides whether a 240px
     -- card fits is how many pixels there are, and it is the same number in both cases. It is also
     -- live: Roblox rotates, and a portrait layout that never becomes a landscape one is the defect
     -- with a different name.

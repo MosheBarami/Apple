@@ -1,7 +1,7 @@
 --!nocheck
 --!modules Version,Paths,Serializer,Render,Generation,Companion,Ops
 --[[
-	edit_script — how Golem changes code that already exists.
+	edit_script — how Apple changes code that already exists.
 
 	Every other mutating op adds or removes things. This one rewrites what a user
 	already has, which makes its failure mode the worst in the set: a find/replace that

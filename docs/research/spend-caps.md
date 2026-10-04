@@ -271,7 +271,7 @@ Sources: [Unified Billing](https://developers.cloudflare.com/ai-gateway/features
 
 ---
 
-## Architecture implications for Golem
+## Architecture implications for Apple
 
 - Enabling Workers Paid **alone** does not make uncontrolled AI billing impossible. It makes it *possible*, because it lifts the Free-plan hard stop at 10,000 neurons/day.
 - The gate the owner wants is **AI Gateway + Unified billing + spend limits + no auto-top-up**, layered with gateway rate limiting.

@@ -46,7 +46,9 @@ test('a map request gets the layered-composition card', () => {
 });
 
 test('an unrelated request, or a run that cannot build, gets nothing', () => {
-  assert.deepEqual(mod.skillCardsForRun('My datastore does not save player data when they leave, fix the script', true), { block: null, ids: [] });
+  // A data-saving request now has its own card (game-architecture-data, researched 2026-10-04), so the unrelated
+  // request here is one no craft card is about.
+  assert.deepEqual(mod.skillCardsForRun('Rename my project to Alpha and tell me what changed yesterday', true), { block: null, ids: [] });
   assert.deepEqual(mod.skillCardsForRun('Make the shop menu look colorful with cartoon buttons', false), { block: null, ids: [] });
 });
 
@@ -69,7 +71,9 @@ test('the next plan step pulls its card once, never a card already shown, and st
   const full = mod.SKILL_CARDS.map((c) => c.id).slice(0, mod.MAX_CARDS_PER_RUN);
   assert.equal(mod.skillSteerForStep(plan, [{ tool: 'shape_terrain', ok: true }], full), null, 'run cap reached');
   assert.equal(mod.skillSteerForStep(undefined, [], []), null, 'no plan, no steer');
-  assert.equal(mod.skillSteerForStep(planOf(['Write the datastore save script', 'write_script']), [], []), null);
+  // A data-saving step now pulls game-architecture-data (researched 2026-10-04); a step no card is about pulls nothing.
+  assert.deepEqual(mod.skillSteerForStep(planOf(['Write the datastore save script', 'edit_script']), [], [])?.ids, ['game-architecture-data']);
+  assert.equal(mod.skillSteerForStep(planOf(['Summarise the changes for the user', 'none']), [], []), null);
 });
 
 test('every card is complete and every cited Creator Docs chunk exists in the corpus', (t) => {
@@ -103,5 +107,16 @@ test('the props and buildings cards send the run to the model library before Par
     assert.match(c.recipe[0], /find_library_model/, id);
     assert.match(c.recipe[0], /insert_library_model/, id);
     assert.ok(mod.renderSkillCard(c).length < mod.MAX_CARD_CHARS, `${id} is truncated`);
+  }
+});
+
+// The three cards that teach building a map and its props carry the asset order and the world-building tools; a card over
+// the ceiling loses its tail (check line, docs) without a word, so each must render whole.
+test('the map, props and buildings cards render untruncated, with their check line', () => {
+  for (const id of ['map-layered-composition', 'props-low-poly-from-primitives', 'map-buildings-from-parts']) {
+    const c = mod.SKILL_CARDS.find((x) => x.id === id);
+    const text = mod.renderSkillCard(c);
+    assert.ok(text.length <= mod.MAX_CARD_CHARS && !text.endsWith('…'), `${id} is truncated (${text.length} of ${mod.MAX_CARD_CHARS})`);
+    assert.ok(text.includes(`Check: ${c.check}`), `${id} lost its check line`);
   }
 });

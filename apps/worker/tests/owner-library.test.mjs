@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 const esbuild=await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir=mkdtempSync(join(tmpdir(),'owner-library-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@apple/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const id='abcdef012345';
 const GAME={id,name:'Farm Game',place:true,terrain:true,lighting:{Brightness:2},services:{
@@ -103,6 +103,27 @@ test('browse_owner_library with kind searches single assets across the library a
   assert.match(bad.data.error ?? '',/kind must be one of|must be equal to one of/);
   const badGame=await run(ctx({}),'browse_owner_library',{kind:'ui',game:'nothex!'});
   assert.match(badGame.data.error,/game must be a library game id/);
+});
+
+test('browse_owner_library mode find hands the whole request to the classified library and the answer back as it is',async()=>{
+  const answer={q:'a pink treadmill',total_matches:4,top_score:1.4,no_strong_match:false,items:[{id:'df437f576e48',gameId:id,path:'/Treadmills/x15 Treadmill',kind:'model',className:'Model',name:'x15 Treadmill',description:'pink medium machine'}]};
+  const c=ctx(answer);
+  const {out,data}=await run(c,'browse_owner_library',{mode:'find',q:'  a pink   treadmill ',colour:'pink',type:'model',size:'medium',min_quality:50,limit:30});
+  assert.equal(out.ok,true);
+  assert.deepEqual(c.calls[0],{op:'query_owner_library',action:'route',route:'find',params:{q:'a pink treadmill',type:'model',colour:'pink',size:'medium',min_quality:50,limit:12}});
+  assert.equal(data.items[0].gameId,id);assert.equal(data.no_strong_match,false);assert.equal(data.untrustedData,true);
+  assert.match(data.note,/import_owner_library \{gameId, path, mode:"self"\}/);
+  assert.match(data.note,/no_strong_match true means nothing covers the request well/);
+  for(const bad of [{mode:'find'},{mode:'find',q:'   '},{mode:'find',q:'x',type:'spaceship'},{mode:'find',q:'x',size:'gigantic'},{mode:'find',q:'x',min_quality:101},{mode:'find',q:'x',min_quality:2.5}]){
+    const r=await run(ctx({}),'browse_owner_library',bad);
+    assert.equal(r.out.ok,false,JSON.stringify(bad));
+  }
+  assert.equal((await run(ctx({}),'browse_owner_library',{mode:'list',q:'x'})).out.ok,false,'only find is a mode');
+  // without the mode the tool is exactly what it was
+  const plain=ctx({total:0,items:[]});await run(plain,'browse_owner_library',{q:'farm'});assert.equal(plain.calls[0].action,'list');
+  // a plugin that does not know the route says so, and nothing is made up
+  const old=ctx({});old.execStudioOp=async()=>({ok:false,error:'route must be deps, install, systems, blueprint, family, report, media or design'});
+  assert.equal((await run(old,'browse_owner_library',{mode:'find',q:'chair'})).out.ok,false);
 });
 
 test('import_owner_library still imports into a place Studio cannot checkpoint, but refuses when the snapshot itself fails',async()=>{

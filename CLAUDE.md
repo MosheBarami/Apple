@@ -71,8 +71,10 @@ temp dirs pile up fast; `scripts/clean-test-tmp.mjs` runs as `pretest` and hourl
 - **Owner benchmark (`packages/evals/owner-bench/`):** the frozen 30-request bank, `runner.js` (pasted into the
   owner's signed-in browser tab) and `score.mjs`. The evaluator is `apps/worker/src/owner-bench.ts`. Never edit a
   bank item after seeing its score; version the bank instead.
-- **Infrastructure names stay `golem`** (worker, D1, KV, wire literals such as `golem.v1`). Renaming breaks live
-  sessions; the product name is Apple.
+- **One name: Apple** (owner decision 2026-10-02). `golem` survives only where `scripts/golem-allowlist.json` lists it
+  (cloud resource names until their runbook step, wire literals the published plugin still sends, shims, history);
+  `node scripts/check-no-golem.mjs` guards it. Renames carry backward compatibility; order in
+  `docs/operations/GOLEM-REMOVAL-RUNBOOK.md`.
 
 ## Closing Recap (repos with `.planning/`)
 

@@ -11,10 +11,10 @@
 //
 // `playbook_complete` is that missing verdict: given a task class, did the code
 // carry out the steps the class requires? A `missing` step is a failure. A step
-// done WITHOUT the Golem primitive is reported but does not fail the task, because
+// done WITHOUT the Apple primitive is reported but does not fail the task, because
 // hand-rolling is sometimes right and `no_design_violation` still reads the result.
 
-import { gradePlaybook, PLAYBOOK_IDS } from '@golem/design/playbooks';
+import { gradePlaybook, PLAYBOOK_IDS } from '@apple/design/playbooks';
 
 /**
  * @param {string} code   the model's fenced Luau
@@ -44,7 +44,7 @@ export function checkPlaybookComplete(code, opts = {}) {
 
   const { completeness, missing, reinvented } = graded;
   // `reinvented` is reported in BOTH outcomes. It is the §G signal — a generator
-  // rebuilding a primitive Golem already owns — and burying it inside a pass would
+  // rebuilding a primitive Apple already owns — and burying it inside a pass would
   // make the one thing this eval exists to notice the one thing it never says.
   const note = reinvented.length > 0 ? `; ${reinvented.length} step(s) bypassed the library: ${reinvented.join(', ')}` : '';
 

@@ -13,7 +13,7 @@ import { backoffMs } from './errors.mjs';
 import { finiteNumber } from './numbers.mjs';
 import { CLIENT_MSG_TYPES, PRESENCE_ACTIVITIES, socketProtocols, socketUrl } from './wire.mjs';
 
-/** `stopReason` values this build knows. Mirrors `ServerMsg` msg_end in @golem/shared. */
+/** `stopReason` values this build knows. Mirrors `ServerMsg` msg_end in @apple/shared. */
 export const STOP_REASONS = Object.freeze(['done', 'stopped', 'error', 'quota', 'incomplete']);
 
 /**

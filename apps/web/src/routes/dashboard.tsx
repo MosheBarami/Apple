@@ -18,7 +18,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ProjectSignature } from '../components/project-signature';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
-import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@golem/shared';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@apple/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -1197,7 +1197,7 @@ export function DashboardPage() {
               : 'Public Studio installation is unavailable. You can use chat now; building in Studio requires an existing plugin connection.'}
           </p>
           <div className="page-foot-links">
-            {/* Destination comes from @golem/shared: the Creator Store page while the
+            {/* Destination comes from @apple/shared: the Creator Store page while the
                 listing is distributed (true since 2026-09-22), /docs/plugin if it is ever
                 withdrawn. Same-origin while not live, so the new tab and its rel are
                 conditional too. */}

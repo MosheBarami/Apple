@@ -13,7 +13,7 @@ import * as W from './fixtures/judge-world.mjs';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'client-judge-flow-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@golem/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
 const load = async (name) => {
   await esbuild.build({ entryPoints: [`src/${name}.ts`], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, `${name}.mjs`), alias });
   return import(pathToFileURL(join(dir, `${name}.mjs`)).href);
@@ -281,7 +281,7 @@ test('the tool is registered: studio-only, gated on the plugin operations it use
   assert.equal(tool.def.name, 'judge_game');
   assert.equal(tool.studio, true);
   assert.deepEqual(tool.def.parameters.required, ['request']);
-  assert.deepEqual(Object.keys(tool.def.parameters.properties).sort(), ['ownProductIds', 'request', 'sessions']);
+  assert.deepEqual(Object.keys(tool.def.parameters.properties).sort(), ['design', 'ownProductIds', 'planId', 'request', 'sessions'], 'design (what the agent meant to build) and planId (its plan) are the phase-1 additions');
   for (const id of ['placeholders', 'ui_coherence', 'buttons_work', 'progression', 'errors', 'construction', 'fit_uniqueness']) assert.match(tool.def.description, new RegExp(id), id);
   assert.match(tool.def.description, /Only "ready" means every question is a yes/);
   assert.match(tool.def.description, /take[s]? Studio over/i);

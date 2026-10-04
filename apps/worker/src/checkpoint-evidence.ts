@@ -1,4 +1,4 @@
-import type { CheckpointMeta } from '@golem/shared';
+import type { CheckpointMeta } from '@apple/shared';
 
 export const APPLE_SNAPSHOT_FORMAT = 'apple-studio-snapshot-v1';
 

@@ -14,7 +14,7 @@
 // reads clean on a scene that looks terrible. The failure lives in value structure, palette width
 // and surface detail, which is what these measure instead.
 //
-// Thresholds are calibrated on Golem's own fixtures, not imported: nobody has published perceptual
+// Thresholds are calibrated on Apple's own fixtures, not imported: nobody has published perceptual
 // metrics for low-resolution synthetic 3D renders, and borrowed numbers would be guesses wearing a
 // citation. See packages/evals/src/pixel-stats.test.mjs for the measured separations.
 
@@ -121,7 +121,7 @@ export function pixelStats(rgb: Uint8Array, width: number, height: number): Pixe
 }
 
 /**
- * Thresholds calibrated against Golem's own fixtures. Measured separation on the two plaza
+ * Thresholds calibrated against Apple's own fixtures. Measured separation on the two plaza
  * fixtures (see packages/evals/src/pixel-stats.test.mjs, which prints these):
  *
  *   baseline (rejected):  colourfulness 48.4, edge density 0.053

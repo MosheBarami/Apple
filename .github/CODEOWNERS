@@ -1,0 +1,4 @@
+# Code owners. One maintainer owns everything; CODEOWNERS makes GitHub request his review on every
+# pull request automatically. The ruleset does NOT require the owner's approval (a sole owner cannot
+# approve his own PR), see docs/operations/GITHUB.md. Later, more specific lines override this one.
+* @MosheBarami

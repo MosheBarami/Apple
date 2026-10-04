@@ -5,7 +5,7 @@
 	torso and head: the costume is scaled to that space, stood upright if asked, welded to the torso, and the torso
 	and head are hidden (their joints stay, so the limbs still walk). The limbs can take the costume's colour.
 	Built on the server when the game starts (AppleBoot), from AppleGameConfig.creatures:
-	  { <name> = { body = "ServerStorage.AppleParts.MythicNPC", costume = "ServerStorage.AppleParts.Carrot",
+	  { <name> = { body = "ServerStorage.AppleParts.MythicNPC", costume = "ServerStorage.AppleParts.CostumeA",
 	               into = "ServerStorage.AppleEnemies", upright = true, limbColor = "#3da33a", scale = 1.15,
 	               face = true | false | "<texture id>", stretch = 2.4 } }
 ]]
@@ -135,7 +135,7 @@ function AppleCreatures.build(name: string, spec: any): (Model?, string?)
 	local box = { sx = csize.X, sy = csize.Y, sz = csize.Z }
 	local s = AppleCreatures.fit(box, { sx = spaceSize.X, sy = spaceSize.Y, sz = spaceSize.Z }, spec.upright == true, spec.scale or 1.15)
 	pcall(function() costume:ScaleTo(costume:GetScale() * s) end)
-	-- Chunky, not skinny: a thin costume (a carrot) is widened on its two short sides toward the body's width, so the
+	-- Chunky, not skinny: a thin costume (a thin one) is widened on its two short sides toward the body's width, so the
 	-- creature reads as a vegetable with arms and legs rather than a stick between them. Round ones stay as they are.
 	do
 		local bcf, bsize = costume:GetBoundingBox()

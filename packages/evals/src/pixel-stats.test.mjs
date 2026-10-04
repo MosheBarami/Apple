@@ -2,7 +2,7 @@
 //
 // The thresholds in PIXEL_THRESHOLDS are not imported from photographic literature — nobody has
 // published perceptual metrics for low-resolution synthetic 3D renders, so borrowed numbers would
-// be guesses wearing a citation. They are calibrated here against Golem's own fixtures, and this
+// be guesses wearing a citation. They are calibrated here against Apple's own fixtures, and this
 // file is the evidence for them.
 //
 // The load-bearing claim: these statistics separate the scene the owner rejected from a scene built
@@ -31,7 +31,7 @@ const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 
-const out = join(mkdtempSync(join(tmpdir(), 'golem-pixel-')), 'pixel-stats.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'apple-pixel-')), 'pixel-stats.mjs');
 execFileSync(ESBUILD, [join(REPO, 'apps/worker/src/pixel-stats.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
 const { pixelStats, pixelHardFails, PIXEL_THRESHOLDS, statsLine } = await import(out);
 
@@ -48,8 +48,8 @@ function statsFor(sceneName) {
 }
 
 const bestOf = (views, pick) => Math.max(...views.filter((v) => v.coverage >= 0.05).map((v) => pick(v.stats)));
-const baseline = statsFor('golem-plaza-baseline');
-const improved = statsFor('golem-plaza-improved');
+const baseline = statsFor('apple-plaza-baseline');
+const improved = statsFor('apple-plaza-improved');
 
 test('the statistics separate the rejected scene from the improved one', () => {
   const b = { colour: bestOf(baseline, (s) => s.colorfulness), edge: bestOf(baseline, (s) => s.edgeDensity) };

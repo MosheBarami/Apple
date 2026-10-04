@@ -1,4 +1,4 @@
-// Visual critique: the loop that makes Golem LOOK at what it built.
+// Visual critique: the loop that makes Apple LOOK at what it built.
 //
 // The failure this exists to stop: an agent inspects object properties, sees that every requested
 // part exists, and reports success — while the scene is a grey slab with coloured poles on it.
@@ -7,8 +7,8 @@
 // Flow: plugin rasterises the scene -> packed RGB over the op bridge -> PNG here -> GLM-5.3-flash
 // vision -> structured critique with named defects -> the agent edits and renders again.
 import type { Env } from './env';
-import type { RenderViewResult, RenderedView } from '@golem/shared';
-import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@golem/shared';
+import type { RenderViewResult, RenderedView } from '@apple/shared';
+import { renderShowsTerrain, TERRAIN_BLIND_NOTE } from '@apple/shared';
 import { chat } from './gateway';
 import { rgbBase64ToDataUrl, decodeRgbBase64, encodePng, bytesToBase64 } from './png';
 import { pixelStats, pixelHardFails, statsLine, type ViewStats } from './pixel-stats';

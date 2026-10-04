@@ -47,7 +47,7 @@ const DENIED_BASH = [
   'security dump-keychain',
   'security find-generic-password -w -s foo',
   'sqlite3 "$HOME/Library/Application Support/Google/Chrome/Default/Cookies" .dump',
-  'npx wrangler delete golem',
+  'npx wrangler delete legacy',
   'curl -X POST https://apis.roblox.com/assets/v1/assets -F request=@x.json',
   'cat .env',
   'head -5 apps/worker/.dev.vars',
@@ -65,7 +65,7 @@ const ALLOWED_BASH = [
   'rm -rf ~/scratch-dir',
   'node infra/deploy-worker.mjs apple',
   'curl -s https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=1',
-  'grep -c GOLEM_ADMIN_KEY .env',
+  'grep -c APPLE_ADMIN_KEY .env',
 ];
 
 test('the guard denies every forbidden command it names', { skip: GUARD_REMOVED }, () => {

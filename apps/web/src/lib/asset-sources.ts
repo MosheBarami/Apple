@@ -20,8 +20,8 @@
 //   WHAT EACH CHOICE COSTS. A source is not a preference like a theme: the Creator Store spends
 //   nothing but inserts other people's work into your game, and "from scratch" spends credits and
 //   time on every asset. A person choosing needs the consequence, not the label.
-import type { AssetSourceChoice, AssetSourcePolicy } from '@golem/shared';
-import { ASSET_SOURCE_CHOICES } from '@golem/shared';
+import type { AssetSourceChoice, AssetSourcePolicy } from '@apple/shared';
+import { ASSET_SOURCE_CHOICES } from '@apple/shared';
 
 export interface SourceExplanation {
   choice: AssetSourceChoice;

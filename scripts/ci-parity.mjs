@@ -83,12 +83,12 @@ const SKIP_PREFIX = [
 //   no-install reason above, which would no longer be the truth. ]]
 const PREREQUISITE_COMMANDS = new Set([
   'pnpm install --frozen-lockfile',
-  'pnpm --filter @golem/site build',
-  'pnpm --filter @golem/web build',
+  'pnpm --filter @apple/site build',
+  'pnpm --filter @apple/web build',
 ]);
 const RUN_WITH_BUILD = new Set([
   'pnpm -r typecheck',
-  'pnpm --filter @golem/evals check',
+  'pnpm --filter @apple/evals check',
 ]);
 const SKIP_WITH_BUILD = new Map([
   ['pnpm -r test', 'the whole workspace suite; it is the longest step in CI and three of its packages drive a browser. Run it yourself in the clone --keep leaves behind.'],
@@ -109,7 +109,7 @@ const SKIP_WITH_BUILD = new Map([
 //   A declaration whose file is gone is a stale declaration and exits 2, so this list cannot
 //   quietly outlive what it describes. ]]
 const TEST_FILES_NEEDING_AN_INSTALL = new Map([
-  ['tests/check-offer.test.mjs', { needs: 'install', why: "imports apps/worker/src/pricing.ts, which imports the workspace package `@golem/shared`; with no node_modules the FILE does not load — ERR_MODULE_NOT_FOUND — and its 21 tests do not exist rather than failing" }],
+  ['tests/check-offer.test.mjs', { needs: 'install', why: "imports apps/worker/src/pricing.ts, which imports the workspace package `@apple/shared`; with no node_modules the FILE does not load — ERR_MODULE_NOT_FOUND — and its 21 tests do not exist rather than failing" }],
   // A browser binary is not node_modules. CI installs it in a step of its own
   // (`pnpm exec playwright install --with-deps chromium`), so --with-build does not bring this one
   // back: an install is not the thing it is missing.
@@ -240,8 +240,8 @@ try {
   if (withBuild) {
     for (const step of [
       ['pnpm', ['install', '--frozen-lockfile']],
-      ['pnpm', ['--filter', '@golem/site', 'build']],
-      ['pnpm', ['--filter', '@golem/web', 'build']],
+      ['pnpm', ['--filter', '@apple/site', 'build']],
+      ['pnpm', ['--filter', '@apple/web', 'build']],
     ]) {
       process.stdout.write(`  ...${step[0]} ${step[1].join(' ')}\n`);
       const r = spawnSync(step[0], step[1], { cwd: clone, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });

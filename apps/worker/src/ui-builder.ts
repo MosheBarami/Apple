@@ -9,7 +9,7 @@
 // Output is data only: class names, property names and enum values from a fixed vocabulary, all of
 // which the plugin's create allowlist accepts (tests/phase-a-tools.test.mjs reads Commands.luau and
 // ops/Ui.luau and fails if this file ever emits anything they do not list). No script is created.
-import type { InstanceSpec, PropValue } from '@golem/shared';
+import type { InstanceSpec, PropValue } from '@apple/shared';
 import { APPLE_UI_THEMES, type AppleUITheme } from './ui-kit-themes';
 
 export const UI_NODE_KINDS = ['panel', 'card', 'row', 'column', 'grid', 'scroll', 'text', 'button', 'bar', 'spacer'] as const;

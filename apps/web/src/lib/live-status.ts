@@ -10,7 +10,7 @@
  *
  * Pure, so `node --test` can load it without a DOM.
  */
-import type { AgentPhase } from '@golem/shared';
+import type { AgentPhase } from '@apple/shared';
 import type { ActivityKind } from '../components/ws/tool-vocabulary.ts';
 import { TOOL } from '../components/ws/tool-vocabulary.ts';
 import type { ActivityRun } from '../components/ws/activity-model.ts';

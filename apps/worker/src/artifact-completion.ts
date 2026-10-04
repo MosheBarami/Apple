@@ -13,8 +13,19 @@ export function requestedArtifactTool(request = ''): 'generate_image' | 'insert_
   return null;
 }
 
+/**
+ * What delivers the artifact a request names. A 3D model comes from the library when a library piece IS the thing, and
+ * from build_object when none is (the agent decides which, in its own loop; the owner's standing preference for the
+ * library is a preference, not a ban on building).
+ */
+const DELIVERS: Record<string, readonly string[]> = {
+  insert_library_model: ['insert_library_model', 'insert_owner_component', 'build_object'],
+  generate_image: ['generate_image'],
+};
+
 export function artifactCompletion(request: string | undefined, trace: readonly { tool: string; ok: boolean }[]) {
   const tool = requestedArtifactTool(request);
-  const attempts = tool ? trace.filter((entry) => entry.tool === tool) : [];
+  const delivering = tool ? DELIVERS[tool] ?? [tool] : [];
+  const attempts = tool ? trace.filter((entry) => delivering.includes(entry.tool)) : [];
   return { tool, missing: tool !== null && !attempts.some((entry) => entry.ok), attempted: attempts.length > 0 };
 }

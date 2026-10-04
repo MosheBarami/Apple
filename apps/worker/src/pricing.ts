@@ -215,22 +215,22 @@ export const THIRD_PARTY_USD_PER_MONTH = 60;
  * the paid lane has changed models twice since and the phrase silently came to mean glm-4.7-flash
  * — against which this recalibration is not a saving at all (see BILLABLE_NEURONS_PER_DAY above).
  *
- * MOVED TO @golem/shared and re-exported here. The pricing page explains this number to buyers and
+ * MOVED TO @apple/shared and re-exported here. The pricing page explains this number to buyers and
  * this module charges with it; defined in two places they can disagree, and the page had already
  * drifted — it quoted the build-blind neuron figure beside the quality-gated price.
  */
-export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@golem/shared';
-import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS, registryModelByProviderId } from '@golem/shared';
+export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@apple/shared';
+import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS, registryModelByProviderId } from '@apple/shared';
 
-// The plan ladder now lives in @golem/shared: the limits are both a server rule and a page of
+// The plan ladder now lives in @apple/shared: the limits are both a server rule and a page of
 // copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces
 // it is a page that lies, and nothing here would have caught it. Re-exported so every existing
 // import of `PLAN_LIMITS` from this module keeps working.
-export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@golem/shared';
+export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@apple/shared';
 
-// CREDITS_PER_BUILD is in @golem/shared too, for the same reason. Asserted against the measured
+// CREDITS_PER_BUILD is in @apple/shared too, for the same reason. Asserted against the measured
 // cost here so the shared constant cannot drift away from the arithmetic it came from.
-export { CREDITS_PER_BUILD } from '@golem/shared';
+export { CREDITS_PER_BUILD } from '@apple/shared';
 
 /** What the shared constant must equal, derived rather than restated. */
 export const CREDITS_PER_BUILD_DERIVED = Math.ceil(BUILD_NEURONS.qualityGated / NEURONS_PER_CREDIT_VALUE);

@@ -37,7 +37,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ATTACHMENT_ACCEPT } from '@golem/shared';
+import { ATTACHMENT_ACCEPT } from '@apple/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
