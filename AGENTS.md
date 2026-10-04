@@ -3,8 +3,9 @@
 You are almost certainly an agent. This file is the map. Read it before the first edit, together
 with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and loads automatically.
 
-> **START HERE (2026-10-04): `GOAL.md`, and the planning dossier `planning/APPLE-PLANNING-DOSSIER.md`.** `GOAL.md` is the only active goal (research-fed agent →
-> real games judged by a blind critic). It retires `docs/autonomy/` (V3, ACCEPTANCE gates), which is history only.
+> **START HERE (2026-10-04): `GOAL.md`**, which points at the current goal, `planning/STUDPILOT-FINAL-PLAN.md`
+> (StudPilot); the build order is `planning/STUDPILOT-HANDOFF.md`. The research-first goal and `docs/autonomy/` (V3,
+> ACCEPTANCE gates) are history only. This map is rewritten for StudPilot in handoff task 1.2.
 > Ask the owner for consent on destructive, paid or external actions.
 
 Every number below was measured, not remembered — on 2026-09-16 unless the line gives another date.

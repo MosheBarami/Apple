@@ -1,0 +1,2950 @@
+[
+ {
+  "id": "a1edaf0c-4e7b-40b3-bef1-795b436a21e8",
+  "role": "user",
+  "mode": "agent",
+  "productModel": "apple",
+  "content": "build a tiny house for a hamster",
+  "toolTrace": null,
+  "createdAt": "2026-10-04T00:09:01.190Z",
+  "revisions": 0
+ },
+ {
+  "id": "50eccba0-8664-4c7c-92b3-9f6da53cd4ba",
+  "role": "assistant",
+  "mode": "agent",
+  "productModel": "apple",
+  "stopReason": "done",
+  "creditsSpent": 78,
+  "context": {
+   "usedChars": 57327,
+   "maxChars": 60082
+  },
+  "deniedTools": [],
+  "content": "The sign is confirmed — it reads \"HAMSTER HOUSE\" on the front of the house, just above the door.\n\nYour hamster's tiny home is ready: a little wooden house with a red pitched roof, the \"HAMSTER HOUSE\" sign over the door, and windows on the sides. Inside there's a soft bedding corner, and next to it a food bowl with seeds, a water bottle on the wall, and a pink exercise wheel. The camera is pointed right at it — take a look!",
+  "toolTrace": [
+   {
+    "tool": "propose_plan",
+    "summary": "✓ propose_plan",
+    "ok": true,
+    "durationMs": 0,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "build_plan",
+       "steps": [
+        {
+         "title": "Find a tiny house model",
+         "detail": "Search the model library for a hamster house or small cozy house to use as a base.",
+         "tool": "find_library_model",
+         "status": "pending"
+        },
+        {
+         "title": "Build the hamster house",
+         "detail": "Build a tiny wooden house with walls, pitched roof, door, window and trim, sized for a hamster.",
+         "tool": "build_object",
+         "status": "pending"
+        },
+        {
+         "title": "Cozy details",
+         "detail": "Add bedding, a food bowl and small props around the house.",
+         "tool": "create_instances",
+         "status": "pending"
+        },
+        {
+         "title": "Lighting and visual check",
+         "detail": "Set warm lighting and check the house from a hamster's eye view.",
+         "tool": "look",
+         "status": "pending"
+        },
+        {
+         "title": "Check the result looks right",
+         "detail": "Added automatically: a plan with no check proves nothing, so this run verifies what it built.",
+         "tool": "inspect_visually",
+         "status": "pending"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "find_library_model",
+    "summary": "✓ find_library_model · tiny house small cozy wooden house",
+    "ok": true,
+    "durationMs": 4979,
+    "detail": {
+     "total": 8,
+     "matchedWords": 1,
+     "ofWords": 6,
+     "results": [],
+     "note": "No verified Creator Store model named house is available. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary."
+    }
+   },
+   {
+    "tool": "find_verified_asset",
+    "summary": "✓ find_verified_asset · tiny wooden house hamster hut",
+    "ok": true,
+    "durationMs": 761,
+    "detail": {
+     "note": "official v2 search returned HTTP 401 12 candidate(s) from the unauthenticated marketplace endpoint. Every id must still pass verifyCreatorStoreAsset() before insertion.",
+     "passed": [
+      {
+       "assetId": 130423405374061,
+       "name": "TreeHouse",
+       "type": "MeshPart",
+       "triangles": null
+      },
+      {
+       "assetId": 891126702,
+       "name": "Beach Shack",
+       "type": "MeshPart",
+       "triangles": null
+      },
+      {
+       "assetId": 10646563949,
+       "name": "Meshes/dom ###",
+       "type": "MeshPart",
+       "triangles": null
+      }
+     ],
+     "rejected": [],
+     "cite": [
+      "[1] TreeHouse https://create.roblox.com/store/asset/130423405374061",
+      "[2] Beach Shack https://create.roblox.com/store/asset/891126702",
+      "[3] Meshes/dom ### https://create.roblox.com/store/asset/10646563949"
+     ]
+    }
+   },
+   {
+    "tool": "viewport_info",
+    "summary": "✓ viewport_info",
+    "ok": true,
+    "durationMs": 166,
+    "detail": {
+     "camera": {
+      "viewportSize": [
+       1200,
+       623
+      ],
+      "cframe": [
+       8.800000190734863,
+       4.224999904632568,
+       5.850000381469727,
+       0.906183123588562,
+       -0.12228050827980042,
+       0.4048205018043518,
+       0,
+       0.9572815895080566,
+       0.2891574800014496,
+       -0.4228855073451996,
+       -0.26202961802482605,
+       0.8674724102020264
+      ],
+      "fov": 70
+     },
+     "workspaceTopLevel": [
+      {
+       "class": "Part",
+       "path": "game.Workspace.Baseplate",
+       "center": [
+        0,
+        -8,
+        0
+       ],
+       "size": [
+        2048,
+        16,
+        2048
+       ]
+      },
+      {
+       "class": "SpawnLocation",
+       "path": "game.Workspace.SpawnLocation",
+       "center": [
+        0,
+        1,
+        0
+       ],
+       "size": [
+        12,
+        1,
+        12
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "build_object",
+    "summary": "Built it",
+    "ok": true,
+    "durationMs": 517,
+    "detail": {
+     "changed": true,
+     "object": "game.Workspace.Hamster House",
+     "parts": 17,
+     "moving": 0,
+     "size": [
+      15,
+      11.5,
+      15.6
+     ],
+     "checks": {
+      "size": [
+       15,
+       11.5,
+       15.6
+      ],
+      "playerHeights": 3.1,
+      "proportions": {
+       "longest": 15.6,
+       "shortest": 11.5,
+       "ratio": 1.4
+      },
+      "nothingMoves": true,
+      "hiddenParts": [
+       "Chimney",
+       "WindowFrameL",
+       "WindowFrameR"
+      ],
+      "floatingParts": [
+       "Lintel",
+       "Sign"
+      ],
+      "coveredText": [],
+      "lowContrastText": [],
+      "bottomY": 0
+     },
+     "built": "17 parts, studded; nothing moves; made of: Floor, BackWall, LeftWall, RightWall, FrontLeft, FrontRight, Lintel, RoofFront, RoofBack, Chimney, Door, DoorStep, Sign, WindowFrameL, WindowGlassL, WindowFrameR, WindowGlassR; Sign reads \"HAMSTER HOUSE\"; Floor is under RoofFront, BackWall is under RoofFront, LeftWall is under RoofFront, RightWall is under RoofFront, FrontLeft is under RoofFront, FrontRight is under RoofFront, Lintel is under RoofFront, RoofBack is on RoofFront, Chimney is on RoofFront, Door is under RoofFront, DoorStep is under RoofFront, Sign is under RoofFront",
+     "note": "Information, not a verdict: `checks` are measured facts about what was built (parts hidden inside others, parts with nothing under them, covered or low-contrast words, proportions, whether anything moves). Nothing was added that the spec did not ask for. Look at it (play_check, a viewport capture), fix what you judge worth fixing with build_object again (replace: true, the whole fixed spec), add a stage, click response or counter with dress_object if THIS object calls for it, and tell the user only what is really there."
+    }
+   },
+   {
+    "tool": "create_instances",
+    "summary": "✓ create_instances",
+    "ok": true,
+    "durationMs": 516,
+    "detail": {
+     "created": [
+      "game.Workspace.Bedding",
+      "game.Workspace.BeddingPuff",
+      "game.Workspace.BeddingPuff2",
+      "game.Workspace.FoodBowl",
+      "game.Workspace.FoodBowlInner",
+      "game.Workspace.Seed1",
+      "game.Workspace.Seed2",
+      "game.Workspace.Seed3",
+      "game.Workspace.WaterBottle",
+      "game.Workspace.WaterBottleCap",
+      "game.Workspace.WaterBottleSpout",
+      "game.Workspace.WheelBase",
+      "game.Workspace.WheelRim",
+      "game.Workspace.WheelStand",
+      "game.Workspace.WheelSpoke",
+      "game.Workspace.WheelSpoke2"
+     ],
+     "count": 16,
+     "group": "game.Workspace[\"Cozy Details\"]",
+     "grouped": 16
+    }
+   },
+   {
+    "tool": "set_mood",
+    "summary": "✓ set_mood",
+    "ok": true,
+    "durationMs": 701,
+    "detail": {
+     "applied": "sunny",
+     "updatedAtmosphere": "game.Lighting.Atmosphere",
+     "keptUserEffects": [
+      "SunRaysEffect",
+      "BloomEffect",
+      "DepthOfFieldEffect"
+     ],
+     "note": "Left in place: SunRaysEffect, BloomEffect, DepthOfFieldEffect — the user put those in Lighting, so they are still active and now combine with this mood. Tell them, and use remove_effect or ask before deleting them.",
+     "palettes": [
+      {
+       "name": "brightPlay",
+       "materials": [
+        "SmoothPlastic",
+        "Plastic",
+        "WoodPlanks",
+        "Neon"
+       ]
+      },
+      {
+       "name": "candyArcade",
+       "materials": [
+        "SmoothPlastic",
+        "Plastic",
+        "Neon",
+        "WoodPlanks"
+       ]
+      },
+      {
+       "name": "oceanPlay",
+       "materials": [
+        "SmoothPlastic",
+        "Plastic",
+        "Neon",
+        "WoodPlanks"
+       ]
+      },
+      {
+       "name": "cozyVillage",
+       "materials": [
+        "SmoothPlastic",
+        "Plastic",
+        "WoodPlanks",
+        "Neon"
+       ]
+      }
+     ],
+     "next": "render_view to see it. If the scene reads flat or muddy, the mood is usually right and the MATERIALS are wrong — use one of the palettes above. The scene also carries the effects listed above, which were not mine to remove."
+    }
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built from 3 angles",
+    "ok": true,
+    "durationMs": 9982,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "front",
+      "side",
+      "eye"
+     ],
+     "observations": [
+      {
+       "about": "house",
+       "verdict": "seen",
+       "note": "Frame 1 (front) shows a small wooden house with a red pitched roof and a sign on the front reading 'HAMSTER HOUSE'."
+      },
+      {
+       "about": "bedding area",
+       "verdict": "seen",
+       "note": "Frame 2 (side) shows a bedding area with a soft-looking bedding surface, a food bowl, and small seeds scattered in/near the bowl."
+      },
+      {
+       "about": "water bottle and wheel",
+       "verdict": "seen",
+       "note": "Frame 2 (side) shows a water bottle attached to the house wall and an exercise wheel next to the bedding area."
+      },
+      {
+       "about": "scale",
+       "verdict": "seen",
+       "note": "Frame 3 (eye level from spawn) shows the house at a size that reads as a tiny pet-scale home rather than a full-size building."
+      },
+      {
+       "about": "a small wooden house with a red roof and a HAMSTER HOUSE sign",
+       "verdict": "cannot_tell",
+       "note": "the look did not say anything about this"
+      },
+      {
+       "about": "a cozy bedding area with a food bowl and seeds",
+       "verdict": "cannot_tell",
+       "note": "the look did not say anything about this"
+      },
+      {
+       "about": "the house reads as a tiny home for a hamster, not a full-size building",
+       "verdict": "cannot_tell",
+       "note": "the look did not say anything about this"
+      }
+     ],
+     "answers": [
+      {
+       "question": "1. a small wooden house with a red roof and a HAMSTER HOUSE sign",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "2. a cozy bedding area with a food bowl and seeds",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "3. a water bottle and an exercise wheel",
+       "answer": "seen",
+       "verdict": "seen"
+      }
+     ],
+     "issues": [],
+     "notSeen": [],
+     "cannotTell": [
+      "a small wooden house with a red roof and a HAMSTER HOUSE sign",
+      "a cozy bedding area with a food bowl and seeds",
+      "the house reads as a tiny home for a hamster, not a full-size building"
+     ],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Do not tell the user a cannot_tell item was seen; say it was not checked."
+    }
+   },
+   {
+    "tool": "focus_camera",
+    "summary": "✓ focus_camera · game.Workspace.Hamster House",
+    "ok": true,
+    "durationMs": 160,
+    "detail": {
+     "focused": "game.Workspace[\"Hamster House\"]"
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.Hamster House.Sign",
+    "ok": true,
+    "durationMs": 168,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace[\"Hamster House\"].Sign",
+       "className": "Part",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "12, 6.2, 5.8"
+          },
+          {
+           "name": "Size",
+           "value": "6, 1.5, 0.4"
+          },
+          {
+           "name": "CFrame",
+           "value": "12, 6.2, 5.8, 1, 0, 0, 0, 1, 0, 0, 0, 1"
+          },
+          {
+           "name": "Anchored",
+           "value": "true"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Color",
+           "value": "0.96, 0.87, 0.7"
+          },
+          {
+           "name": "Material",
+           "value": "Enum.Material.Plastic"
+          },
+          {
+           "name": "Transparency",
+           "value": "0"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✗ get_instance · game.Workspace.Hamster House.Sign.SurfaceGui.TextLabel — instance not found at game.Workspace.Hamster House.Sign.SurfaceGui.TextLabel",
+    "ok": false,
+    "durationMs": 166,
+    "error": "instance not found at game.Workspace.Hamster House.Sign.SurfaceGui.TextLabel"
+   },
+   {
+    "tool": "get_project_tree",
+    "summary": "✓ get_project_tree · game.Workspace.Hamster House",
+    "ok": true,
+    "durationMs": 583,
+    "detail": {
+     "root": {
+      "path": "game.Workspace[\"Hamster House\"]",
+      "name": "Hamster House",
+      "childCount": 18,
+      "class": "Model",
+      "children": [
+       {
+        "path": "game.Workspace[\"Hamster House\"].Root",
+        "name": "Root",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": false,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.6392157077789307,
+           0.6352941393852234,
+           0.6470588445663452
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           1,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": false,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 1,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].Floor",
+        "name": "Floor",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.7882353067398071,
+           0.5411764979362488,
+           0.29411765933036804
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           13,
+           1,
+           13
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0.5,
+           -0.800000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           0.5,
+           -0.800000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].BackWall",
+        "name": "BackWall",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           13,
+           6,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           4,
+           -6.800000190734863,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           4,
+           -6.800000190734863
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].LeftWall",
+        "name": "LeftWall",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           6,
+           12
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           6,
+           4,
+           -0.800000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           6,
+           4,
+           -0.800000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].RightWall",
+        "name": "RightWall",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           6,
+           12
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           18,
+           4,
+           -0.800000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           18,
+           4,
+           -0.800000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].FrontLeft",
+        "name": "FrontLeft",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           4,
+           6,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           7.5,
+           4,
+           5.199999809265137,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           7.5,
+           4,
+           5.199999809265137
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].FrontRight",
+        "name": "FrontRight",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           4,
+           6,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           16.5,
+           4,
+           5.199999809265137,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           16.5,
+           4,
+           5.199999809265137
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].Lintel",
+        "name": "Lintel",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9098039269447327,
+           0.7647058963775635,
+           0.6196078658103943
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           5,
+           2,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           6,
+           5.199999809265137,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           6,
+           5.199999809265137
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].RoofFront",
+        "name": "RoofFront",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8392156958580017,
+           0.2705882489681244,
+           0.2549019753932953
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           8.5,
+           2.700000047683716,
+           -1,
+           0,
+           -8.742277657347586e-8,
+           0,
+           1,
+           0,
+           8.742277657347586e-8,
+           0,
+           -1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           15,
+           3,
+           7
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           180,
+           0,
+           180
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           12,
+           8.5,
+           2.700000047683716
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           180,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].RoofBack",
+        "name": "RoofBack",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8392156958580017,
+           0.2705882489681244,
+           0.2549019753932953
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           8.5,
+           -4.300000190734863,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           15,
+           3,
+           7
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           12,
+           8.5,
+           -4.300000190734863
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].Chimney",
+        "name": "Chimney",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.5568627715110779,
+           0.29019609093666077,
+           0.22745098173618317
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.5,
+           4,
+           1.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           16,
+           9.5,
+           -3.799999952316284,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           16,
+           9.5,
+           -3.799999952316284
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].Door",
+        "name": "Door",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.47843137383461,
+           0.29019609093666077,
+           0.12941177189350128
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           4.5,
+           4,
+           0.4000000059604645
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           2,
+           5.5,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           2,
+           5.5
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].DoorStep",
+        "name": "DoorStep",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.6627451181411743,
+           0.4431372582912445,
+           0.22745098173618317
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0.5,
+           6.800000190734863,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           5,
+           1,
+           2
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           12,
+           0.5,
+           6.800000190734863
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].Sign",
+        "name": "Sign",
+        "childCount": 1,
+        "class": "Part",
+        "children": [
+         {
+          "path": "game.Workspace[\"Hamster House\"].Sign.Label",
+          "name": "Label",
+          "childCount": 1,
+          "class": "SurfaceGui",
+          "children": [
+           {
+            "path": "game.Workspace[\"Hamster House\"].Sign.Label.Text",
+            "name": "Text",
+            "childCount": 1,
+            "class": "TextLabel",
+            "moreChildren": 1,
+            "props": {
+             "LayoutOrder": {
+              "v": 0,
+              "t": "number"
+             },
+             "TextWrapped": {
+              "v": true,
+              "t": "bool"
+             },
+             "LineHeight": {
+              "v": 1,
+              "t": "number"
+             },
+             "Active": {
+              "v": false,
+              "t": "bool"
+             },
+             "Interactable": {
+              "v": true,
+              "t": "bool"
+             },
+             "Selectable": {
+              "v": false,
+              "t": "bool"
+             },
+             "TextStrokeTransparency": {
+              "v": 1,
+              "t": "number"
+             },
+             "AnchorPoint": {
+              "v": [
+               0,
+               0
+              ],
+              "t": "Vector2"
+             },
+             "Position": {
+              "v": [
+               0.05000000074505806,
+               0,
+               0.05000000074505806,
+               0
+              ],
+              "t": "UDim2"
+             },
+             "Font": {
+              "v": "Enum.Font.FredokaOne",
+              "t": "EnumItem"
+             },
+             "TextTransparency": {
+              "v": 0,
+              "t": "number"
+             },
+             "Visible": {
+              "v": true,
+              "t": "bool"
+             },
+             "ZIndex": {
+              "v": 1,
+              "t": "number"
+             },
+             "TextSize": {
+              "v": 8,
+              "t": "number"
+             },
+             "Size": {
+              "v": [
+               0.8999999761581421,
+               0,
+               0.8999999761581421,
+               0
+              ],
+              "t": "UDim2"
+             },
+             "TextStrokeColor3": {
+              "v": [
+               0,
+               0,
+               0
+              ],
+              "t": "Color3"
+             },
+             "RichText": {
+              "v": false,
+              "t": "bool"
+             },
+             "AutoLocalize": {
+              "v": true,
+              "t": "bool"
+             },
+             "TextColor3": {
+              "v": [
+               0.47843137383461,
+               0.29019609093666077,
+               0.12941177189350128
+              ],
+              "t": "Color3"
+             },
+             "BorderColor3": {
+              "v": [
+               0.10588235408067703,
+               0.16470588743686676,
+               0.2078431397676468
+              ],
+              "t": "Color3"
+             },
+             "Text": {
+              "v": "HAMSTER HOUSE",
+              "t": "string"
+             },
+             "ClipsDescendants": {
+              "v": false,
+              "t": "bool"
+             },
+             "AutomaticSize": {
+              "v": "Enum.AutomaticSize.None",
+              "t": "EnumItem"
+             },
+             "Rotation": {
+              "v": 0,
+              "t": "number"
+             },
+             "Transparency": {
+              "v": 1,
+              "t": "number"
+             },
+             "BackgroundTransparency": {
+              "v": 1,
+              "t": "number"
+             },
+             "TextXAlignment": {
+              "v": "Enum.TextXAlignment.Center",
+              "t": "EnumItem"
+             },
+             "BorderSizePixel": {
+              "v": 1,
+              "t": "number"
+             },
+             "TextYAlignment": {
+              "v": "Enum.TextYAlignment.Center",
+              "t": "EnumItem"
+             },
+             "TextScaled": {
+              "v": true,
+              "t": "bool"
+             },
+             "BackgroundColor3": {
+              "v": [
+               0.6392157077789307,
+               0.6352941393852234,
+               0.6470588445663452
+              ],
+              "t": "Color3"
+             }
+            }
+           }
+          ],
+          "props": {
+           "Enabled": {
+            "v": true,
+            "t": "bool"
+           },
+           "AutoLocalize": {
+            "v": true,
+            "t": "bool"
+           },
+           "ClipsDescendants": {
+            "v": false,
+            "t": "bool"
+           },
+           "ResetOnSpawn": {
+            "v": true,
+            "t": "bool"
+           },
+           "Face": {
+            "v": "Enum.NormalId.Back",
+            "t": "EnumItem"
+           },
+           "ZOffset": {
+            "v": 0,
+            "t": "number"
+           },
+           "SizingMode": {
+            "v": "Enum.SurfaceGuiSizingMode.PixelsPerStud",
+            "t": "EnumItem"
+           },
+           "LightInfluence": {
+            "v": 0,
+            "t": "number"
+           },
+           "MaxDistance": {
+            "v": 0,
+            "t": "number"
+           },
+           "CanvasSize": {
+            "v": [
+             800,
+             600
+            ],
+            "t": "Vector2"
+           },
+           "ZIndexBehavior": {
+            "v": "Enum.ZIndexBehavior.Global",
+            "t": "EnumItem"
+           },
+           "Active": {
+            "v": true,
+            "t": "bool"
+           },
+           "Brightness": {
+            "v": 1,
+            "t": "number"
+           },
+           "AlwaysOnTop": {
+            "v": false,
+            "t": "bool"
+           },
+           "PixelsPerStud": {
+            "v": 80,
+            "t": "number"
+           }
+          }
+         }
+        ],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.8705882430076599,
+           0.7019608020782471
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           6,
+           1.5,
+           0.4000000059604645
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           6.199999809265137,
+           5.800000190734863,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           6.199999809265137,
+           5.800000190734863
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].WindowFrameL",
+        "name": "WindowFrameL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.47843137383461,
+           0.29019609093666077,
+           0.12941177189350128
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.100000023841858,
+           2.5999999046325684,
+           3.0999999046325684
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           6,
+           4.5,
+           1.7000000476837158,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           6,
+           4.5,
+           1.7000000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].WindowGlassL",
+        "name": "WindowGlassL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.843137264251709,
+           0.8666666746139526,
+           0.886274516582489
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           2,
+           2.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0.6000000238418579,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           6,
+           4.5,
+           1.7000000476837158,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           6,
+           4.5,
+           1.7000000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].WindowFrameR",
+        "name": "WindowFrameR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.47843137383461,
+           0.29019609093666077,
+           0.12941177189350128
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.100000023841858,
+           2.5999999046325684,
+           3.0999999046325684
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           18,
+           4.5,
+           -3.299999952316284,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           18,
+           4.5,
+           -3.299999952316284
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace[\"Hamster House\"].WindowGlassR",
+        "name": "WindowGlassR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.843137264251709,
+           0.8666666746139526,
+           0.886274516582489
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           2,
+           2.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0.6000000238418579,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           18,
+           4.5,
+           -3.299999952316284,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           18,
+           4.5,
+           -3.299999952316284
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       }
+      ]
+     },
+     "nodeCount": 21,
+     "truncated": false,
+     "refsWritable": true
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.Hamster House.Sign.Label.Text",
+    "ok": true,
+    "durationMs": 161,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace[\"Hamster House\"].Sign.Label.Text",
+       "className": "TextLabel",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "0.05, 0, 0.05, 0"
+          },
+          {
+           "name": "Size",
+           "value": "0.9, 0, 0.9, 0"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Transparency",
+           "value": "1"
+          }
+         ]
+        },
+        {
+         "name": "Content",
+         "rows": [
+          {
+           "name": "Text",
+           "value": "HAMSTER HOUSE"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "createdAt": "2026-10-04T00:11:08.919Z",
+  "revisions": 0
+ }
+]

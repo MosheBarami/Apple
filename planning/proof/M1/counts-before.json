@@ -1,0 +1,140 @@
+{
+ "measuredAt": "2026-10-04 (IDT), before any M1 change; production buildSha 2ffd22db-dirty",
+ "method": "Cloudflare REST API (DO objects list, D1 query, Vectorize info, R2/KV list) and Supabase Management API, read-only; scripts in the session scratchpad, loading .env like infra/smoke.mjs",
+ "durableObjects": {
+  "golem_SessionDO": {
+   "objects": 77,
+   "hasStoredData": 77
+  },
+  "golem_AdminDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "golem_PairingDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "golem_QuotaDO": {
+   "objects": 32,
+   "hasStoredData": 32
+  },
+  "golem_BudgetDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "apple_SessionDO": {
+   "objects": 188,
+   "hasStoredData": 186
+  },
+  "apple_AdminDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "apple_QuotaDO": {
+   "objects": 34,
+   "hasStoredData": 34
+  },
+  "apple_BudgetDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "apple_PairingDO": {
+   "objects": 1,
+   "hasStoredData": 1
+  },
+  "golem_DiscordDO": {
+   "objects": 0,
+   "hasStoredData": 0
+  },
+  "apple_DiscordDO": {
+   "objects": 1,
+   "hasStoredData": 0
+  }
+ },
+ "sessionFingerprint": {
+  "totals": {
+   "projects": 201,
+   "initialized": 201,
+   "uninitialized": 0,
+   "errors": 0,
+   "messages": 980
+  },
+  "note": "per-project message counts via GET /api/admin/session-info/<id> on studpilot.app for every public.projects id; ids stored as sha256[:12] in session-fingerprint-before.json"
+ },
+ "d1": {
+  "golem-corpus": {
+   "account_deletions": 0,
+   "api_keys": 0,
+   "asset_library": 511208,
+   "asset_verification_log": 0,
+   "automation_runs": 0,
+   "automations": 0,
+   "chunks": 9376,
+   "creator_write_log": 0,
+   "generated_image_tombstones": 2,
+   "generated_images": 16,
+   "memory_audit": 37,
+   "memory_entries": 25,
+   "memory_org_members": 0,
+   "memory_orgs": 0,
+   "notifications": 572,
+   "owner_corpus_components": 11,
+   "project_asset_use": 0,
+   "project_branding": 1,
+   "recovery_requests": 0,
+   "static_assets": 16331,
+   "static_chunks": 16624,
+   "user_credentials": 0,
+   "asset_library_fts": 511208,
+   "chunks_fts": 9376,
+   "owner_corpus_fts": 116
+  }
+ },
+ "vectorize": {
+  "golem-docs": {
+   "dimensions": 384,
+   "vectorCount": 9527,
+   "processedUpToDatetime": "2026-10-04T08:07:01.594Z",
+   "processedUpToMutation": "d70dbb01-5ccc-4c6e-aa63-77f681b76338"
+  }
+ },
+ "r2": {
+  "apple-media": {
+   "kind": "r2",
+   "name": "apple-media",
+   "total": 38,
+   "bytes": 5871824,
+   "byPrefix": {
+    "image": 16,
+    "owner-corpus": 22
+   }
+  }
+ },
+ "kv": {
+  "golem-kv (cc341a7db4d748139f161fdc292e6e84)": {
+   "kind": "kv",
+   "name": "cc341a7db4d748139f161fdc292e6e84",
+   "total": 9,
+   "byPrefix": {
+    "config:": 1,
+    "share:": 6,
+    "ws:": 2
+   }
+  }
+ },
+ "supabase": {
+  "auth.identities": 34,
+  "auth.mfa_amr_claims": 203,
+  "auth.refresh_tokens": 456,
+  "auth.schema_migrations": 82,
+  "auth.sessions": 203,
+  "auth.users": 34,
+  "public.membership_outbox_consumers": 2,
+  "public.membership_outbox_secret": 2,
+  "public.profiles": 34,
+  "public.projects": 201,
+  "public.schema_migrations": 13,
+  "public.waitlist": 1,
+  "storage.migrations": 73
+ }
+}

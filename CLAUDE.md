@@ -1,10 +1,11 @@
 # Apple (RbxAI)
 
-> **START HERE: `GOAL.md`** (set 2026-10-04 at the owner's instruction; the full planning dossier is `planning/APPLE-PLANNING-DOSSIER.md`). It replaces every earlier goal, mission,
-> meter and direction, including `docs/autonomy/` (V3, `ACCEPTANCE.json` gates), the old `/goal`, the bench
-> frontier loop and the meter. Those stay in git as history only. Phase now: **research and feed the agent; no
-> benchmark runs or test loops.** No autonomy skill and no blocking hooks: ask the owner for consent on anything
-> destructive, paid or external.
+> **START HERE: `GOAL.md`**, which points at the current goal, `planning/STUDPILOT-FINAL-PLAN.md` (StudPilot, set
+> 2026-10-04); the build order is `planning/STUDPILOT-HANDOFF.md` and proof goes to `planning/proof/<milestone>/`. It
+> replaces every earlier goal, mission, meter and direction, including the research-first GOAL of earlier on
+> 2026-10-04 and `docs/autonomy/` (V3, `ACCEPTANCE.json` gates); those stay in git as history only. This file is
+> rewritten for StudPilot in handoff task 1.2. No autonomy skill and no blocking hooks: ask the owner for consent on
+> anything destructive, paid or external that the handoff does not already cover.
 
 **Mods (owner-approved 2026-10-03; do not remove).** 38 function-hook mods (#37 `progress-meter`: research coverage; #38 `product-total`: the product's TOTAL completion from `~/.claude/apple-product.json`, always above the prompt, `/product`; keep that file honest) in `~/.claude/mods/<name>/`, loaded in every
 session through `CLAUDE_CODE_PLUGIN_DIRS` in `~/.claude/settings.json`. They show state (usage, context size, gates,

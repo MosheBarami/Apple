@@ -1,0 +1,13 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+const RES = '/Users/moshe/Developer/RbxAI-ci/packages/evals/owner-bench/results/2026-10-04-selfcheck.json';
+const M = `${process.env.HOME}/.claude/apple-meter.json`;
+const rows = JSON.parse(readFileSync(RES, 'utf8'));
+const meter = JSON.parse(readFileSync(M, 'utf8'));
+const done = rows.filter((r) => r.status === 'done').length;
+const credits = rows.reduce((n, r) => n + (Number(r.credits) || 0), 0);
+const totals = rows.filter((r) => r.status === 'done' && Number.isFinite(r.total)).map((r) => r.total);
+const avg = totals.length ? (totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1) : '–';
+meter.live = { label: `bench (self-check on) · mean ${avg}/18 so far (baseline 7.27)`, done, total: 30, credits, budget: 5300 };
+meter.updatedAt = new Date().toISOString();
+writeFileSync(M, JSON.stringify(meter, null, 2));
+console.log(done, credits, avg);

@@ -1,0 +1,14 @@
+{
+  "messages": [
+    {
+      "id": "cd3ad850-f46f-4f70-8c3a-6059a5673a7f",
+      "role": "user",
+      "mode": "agent",
+      "productModel": "apple",
+      "content": "a game where you mine glowing crystals, upgrade your pickaxe and rebirth to unlock deeper caves",
+      "toolTrace": null,
+      "createdAt": "2026-10-04T11:20:00.951Z",
+      "revisions": 0
+    }
+  ]
+}

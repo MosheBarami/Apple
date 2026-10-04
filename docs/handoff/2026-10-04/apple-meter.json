@@ -1,0 +1,56 @@
+{
+  "updatedAt": "2026-10-04T00:16:06.093Z",
+  "formula": "25% agent + 20% knowledge & library + 15% visual + 10% UI + 10% sound/anim/FX + 20% website",
+  "note": "Baseline values from 2026-10-02 (old code). The bench is re-running on the integrated code (1 of 30 items done); the meter moves when it finishes.",
+  "domains": [
+    {
+      "id": "agent",
+      "name": "Agent",
+      "weight": 25,
+      "value": 59.6,
+      "basis": "measured"
+    },
+    {
+      "id": "knowledge",
+      "name": "Knowledge & library",
+      "weight": 20,
+      "value": 15,
+      "basis": "estimated"
+    },
+    {
+      "id": "visual",
+      "name": "Visual quality",
+      "weight": 15,
+      "value": 15.8,
+      "basis": "measured"
+    },
+    {
+      "id": "ui",
+      "name": "UI",
+      "weight": 10,
+      "value": 37.5,
+      "basis": "measured"
+    },
+    {
+      "id": "fx",
+      "name": "Sound · animation · FX",
+      "weight": 10,
+      "value": 17.3,
+      "basis": "measured"
+    },
+    {
+      "id": "website",
+      "name": "Website",
+      "weight": 20,
+      "value": 10,
+      "basis": "estimated"
+    }
+  ],
+  "live": {
+    "label": "bench (self-check on) · mean 9.4/18 so far (baseline 7.27)",
+    "done": 11,
+    "total": 30,
+    "credits": 2273,
+    "budget": 5300
+  }
+}
