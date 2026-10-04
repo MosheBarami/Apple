@@ -4,7 +4,7 @@ import { fetchImageObjectUrl } from '../../lib/api';
 import './asset-choice.css';
 
 /**
- * The snapshot through the same authenticated read as every Apple image (lib/api.ts fetchImageObjectUrl): a bare
+ * The snapshot through the same authenticated read as every StudPilot image (lib/api.ts fetchImageObjectUrl): a bare
  * <img src> carries no credential, so the project image route refused it (review 2026-10-02). Revoked on unmount.
  */
 function useSnapshot(path: string | null | undefined): string | null {

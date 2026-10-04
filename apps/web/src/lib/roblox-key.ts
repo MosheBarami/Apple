@@ -2,20 +2,20 @@
 //
 // This panel asks a person to paste a credential that can write to their real Roblox account. That
 // is the most consequential thing the settings page does, and the reason it exists is a mistake:
-// Apple uploaded 299 assets into one person's account because the only write credential in the
+// StudPilot uploaded 299 assets into one person's account because the only write credential in the
 // product was a single shared one. Roblox refused to take them back — an Image is "not an
 // archivable asset type" — so that account keeps them permanently.
 //
 // So the decisions live here, in a file with no JSX, and the panel is the wiring:
 //
 //   * WHAT THE SCOPES MEAN, in the words of what will happen, not Roblox's identifiers. Somebody
-//     ticking a box called `asset:write` has not been told that it means Apple can create things
+//     ticking a box called `asset:write` has not been told that it means StudPilot can create things
 //     in their account that they may never be able to delete.
 //   * WHAT A BAD PASTE LOOKS LIKE, checked before a request rather than after, because a key that
 //     lost half of itself to a truncated copy fails later with an error about Roblox.
 //   * WHAT THE PANEL MAY SHOW AFTERWARDS. Never the key. The server will not return it, and this
 //     file does not ask.
-import { type RobloxScope, ROBLOX_SCOPES } from '@apple/shared';
+import { type RobloxScope, ROBLOX_SCOPES } from '@studpilot/shared';
 import { explainFailure, type Explained } from './error-taxonomy.ts';
 
 export interface StoredCredentialView {
@@ -31,10 +31,10 @@ export interface StoredCredentialView {
 }
 
 /**
- * What each scope lets Apple do, said as a consequence.
+ * What each scope lets StudPilot do, said as a consequence.
  *
  * `undoable: false` is the field that matters. Roblox lets a creator archive a Model or an Audio
- * and refuses to archive an Image or a Decal, so "Apple can create assets" and "Apple can create
+ * and refuses to archive an Image or a Decal, so "StudPilot can create assets" and "StudPilot can create
  * assets you will not be able to remove" are the same permission — and only the second sentence is
  * the truth a person needs before they tick it.
  */
@@ -48,7 +48,7 @@ export interface ScopeExplanation {
    * Whether anything in the product uses a key granted this.
    *
    * FIVE OF THE SIX WERE FALSE when this field was added, and that is what it is for. The panel
-   * offered "Publish to your places" and "Send messages to a running game" as things Apple may do,
+   * offered "Publish to your places" and "Send messages to a running game" as things StudPilot may do,
    * and no code anywhere asked for either scope — `useRobloxCredential` had exactly one caller.
    * So a person could hand over publishing authority over their real Roblox account in exchange
    * for a feature that does not exist, which is a permission taken for nothing: the feature is
@@ -64,7 +64,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'asset:read',
     title: 'Read your assets',
-    does: 'Apple can look up things you already own — names, ids and whether an upload finished.',
+    does: 'StudPilot can look up things you already own — names, ids and whether an upload finished.',
     undoable: true,
     // Called: creator-dashboard.ts getAsset() and getUploadStatus(), on every upload.
     implemented: true,
@@ -72,11 +72,11 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'asset:write',
     title: 'Create assets in your account',
-    // It said "while it builds", and that was true of a path that no longer exists: Apple used to
+    // It said "while it builds", and that was true of a path that no longer exists: StudPilot used to
     // import assets from its own catalogue into a customer's account, and the catalogue was removed
     // on 2026-09-20. The only thing that uploads now is the file you hand it, so the sentence says
     // that instead. The caution below is unchanged and is the reason this scope needs one.
-    does: 'Apple can upload a file you give it — an image, decal or audio — into your Roblox account.',
+    does: 'StudPilot can upload a file you give it — an image, decal or audio — into your Roblox account.',
     undoable: false,
     caution:
       'Roblox does not let anyone delete an uploaded image or decal — not you, not us, not through '
@@ -86,28 +86,28 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'universe.place:write',
     title: 'Publish to your places',
-    does: 'Apple can save and publish a place you own.',
+    does: 'StudPilot can save and publish a place you own.',
     undoable: true,
     implemented: false,
   },
   {
     scope: 'universe-messaging-service:publish',
     title: 'Send messages to a running game',
-    does: 'Apple can push a message into a live server, which is how a running game is told to reload something.',
+    does: 'StudPilot can push a message into a live server, which is how a running game is told to reload something.',
     undoable: true,
     implemented: false,
   },
   {
     scope: 'creator-store-product:read',
     title: 'Read the Creator Store',
-    does: 'Apple can search free Creator Store assets. It needs no key for this — the store is public — so this one is optional.',
+    does: 'StudPilot can search free Creator Store assets. It needs no key for this — the store is public — so this one is optional.',
     undoable: true,
     implemented: false,
   },
   {
     scope: 'user.social:read',
     title: 'Read your public profile',
-    does: 'Apple can read your display name and public profile fields.',
+    does: 'StudPilot can read your display name and public profile fields.',
     undoable: true,
     // The one read the connection check makes. Without it "is this key still alive?" cannot be
     // answered at all, which is why the check says so rather than guessing — see roblox-check.ts.
@@ -116,7 +116,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'universe:read',
     title: 'Read your experiences',
-    does: 'Apple can look up an experience you name — its title, description and whether it is public.',
+    does: 'StudPilot can look up an experience you name — its title, description and whether it is public.',
     undoable: true,
     // Called: creator-dashboard.ts getExperience().
     implemented: true,
@@ -124,7 +124,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'user.inventory-item:read',
     title: 'See what you own',
-    does: 'Apple can list the assets already in your Roblox account, so it can reuse them instead of making new ones.',
+    does: 'StudPilot can list the assets already in your Roblox account, so it can reuse them instead of making new ones.',
     undoable: true,
     // Called: creator-dashboard.ts listOwnedAssets().
     implemented: true,
@@ -132,7 +132,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'game-pass:read',
     title: 'Read your game passes',
-    does: 'Apple can list the game passes on your experience and what they cost.',
+    does: 'StudPilot can list the game passes on your experience and what they cost.',
     undoable: true,
     // Called: creator-dashboard.ts listGamePasses().
     implemented: true,
@@ -140,7 +140,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'game-pass:write',
     title: 'Create game passes on your experience',
-    does: 'Apple can create a game pass on an experience you own and set its price.',
+    does: 'StudPilot can create a game pass on an experience you own and set its price.',
     // Roblox publishes create and update for game passes and no delete. Off-sale is the only way
     // back, and that is a different thing from the pass never having existed.
     undoable: false,
@@ -153,7 +153,7 @@ export const SCOPE_EXPLANATIONS: readonly ScopeExplanation[] = [
   {
     scope: 'asset-permissions:write',
     title: 'Let others use your assets',
-    does: 'Apple can grant an experience, a group or a person permission to use assets you own.',
+    does: 'StudPilot can grant an experience, a group or a person permission to use assets you own.',
     // asset-permissions-api publishes a grant and no revoke, so this is one-way through the API.
     undoable: false,
     caution:
@@ -211,7 +211,7 @@ export function problemsWith(input: { apiKey: string; robloxCreatorId: string; s
 
   const id = input.robloxCreatorId.trim();
   if (!id) {
-    out.push({ field: 'robloxCreatorId', message: 'Apple needs to know which Roblox account to act on.' });
+    out.push({ field: 'robloxCreatorId', message: 'StudPilot needs to know which Roblox account to act on.' });
   } else if (!/^\d+$/.test(id)) {
     out.push({
       field: 'robloxCreatorId',
@@ -221,7 +221,7 @@ export function problemsWith(input: { apiKey: string; robloxCreatorId: string; s
   }
 
   if (input.scopes.length === 0) {
-    out.push({ field: 'scopes', message: 'Choose at least one thing Apple may do, or there is nothing to connect.' });
+    out.push({ field: 'scopes', message: 'Choose at least one thing StudPilot may do, or there is nothing to connect.' });
   }
   for (const s of input.scopes) {
     if (!(ROBLOX_SCOPES as readonly string[]).includes(s)) {
@@ -276,14 +276,14 @@ export function stateOf(input: {
 export function describeStored(c: StoredCredentialView | null, state: KeyState = c ? 'connected' : 'none'): string {
   if (state === 'loading') return 'Checking…';
   if (state === 'failed') {
-    return 'Apple could not check whether a Roblox account is connected. This is a connection '
+    return 'StudPilot could not check whether a Roblox account is connected. This is a connection '
       + 'problem, not an answer about your account — do not paste your key again until it loads.';
   }
   if (!c) return 'No Roblox account is connected.';
   const who = c.creatorType === 'group' ? 'group' : 'account';
   if (state === 'rejected') {
     // THE STATE THIS FILE WAS WRITTEN WITHOUT. Roblox expires keys and a person can revoke one
-    // without Apple being told, and until this branch existed that key rendered as "Connected …
+    // without StudPilot being told, and until this branch existed that key rendered as "Connected …
     // last used 2026-09-14" — confident, dated, and wrong. The three things this has to say are
     // what happened, what it costs (nothing), and the exact path to a new key.
     return `Roblox is refusing the key for ${who} ${c.robloxCreatorId} — it was revoked or it expired. `
@@ -381,8 +381,8 @@ export function describeWrite(row: WriteTrailRow): string {
   // no default has. The row vanished from the trail and only the unknown-action test went red,
   // naming it: "an unknown action must not render as an empty string".
   return failed
-    ? `Tried something this version of Apple does not recognise (${row.action}) on ${account}${why}.`
-    : `Did something this version of Apple does not recognise (${row.action}) on ${account}. `
+    ? `Tried something this version of StudPilot does not recognise (${row.action}) on ${account}${why}.`
+    : `Did something this version of StudPilot does not recognise (${row.action}) on ${account}. `
       + 'Update the app to see what it was.';
 }
 
@@ -441,7 +441,7 @@ export function expiryNote(c: StoredCredentialView, now: number): { text: string
   if (!Number.isFinite(ms)) {
     return {
       text: 'No expiry date was recorded for this key. Roblox shows it when the key is created — '
-        + 'add it by replacing the key below, and Apple will warn you before it runs out.',
+        + 'add it by replacing the key below, and StudPilot will warn you before it runs out.',
       soon: false,
     };
   }
@@ -497,7 +497,7 @@ export function explainKeyFailure(err: unknown, opts: { integration?: boolean } 
       ...base,
       title: 'No Roblox account is connected',
       safety: 'Nothing was created and nothing was changed in any Roblox account.',
-      next: 'Connect a key below first — Apple cannot act on an account it has no key for.',
+      next: 'Connect a key below first — StudPilot cannot act on an account it has no key for.',
     };
   }
 
@@ -510,9 +510,9 @@ export function explainKeyFailure(err: unknown, opts: { integration?: boolean } 
     return {
       ...base,
       title: 'This key was not connected for that',
-      safety: 'Apple refused before doing anything, so nothing was created.',
+      safety: 'StudPilot refused before doing anything, so nothing was created.',
       next: named
-        ? `Re-connect the key with "${named}" ticked, or leave it — Apple will keep refusing rather than using a permission you did not give.`
+        ? `Re-connect the key with "${named}" ticked, or leave it — StudPilot will keep refusing rather than using a permission you did not give.`
         : 'Re-connect the key with that permission ticked, or leave it as it is.',
     };
   }
@@ -520,7 +520,7 @@ export function explainKeyFailure(err: unknown, opts: { integration?: boolean } 
   if (lower.includes('could not be decrypted') || lower.includes('credential_key')) {
     return {
       ...base,
-      title: 'Apple cannot read the key it stored for you',
+      title: 'StudPilot cannot read the key it stored for you',
       // Pasting it again is the obvious move and it is the wrong one: the fault is on this side,
       // and a second paste fails identically while looking like the customer's problem.
       safety: 'Nothing was sent to Roblox. Your key still works on Roblox — this is a fault on our side.',

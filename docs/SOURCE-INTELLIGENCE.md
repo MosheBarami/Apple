@@ -1,9 +1,9 @@
-# Apple — Roblox source intelligence
+# StudPilot — Roblox source intelligence
 
 The architecture the incoming source manifest plugs into. Written before the
 manifest arrives so that the manifest is *data* and this is *policy*: adding a
 hundred repositories must not require a design decision, and must not be able to
-quietly widen what Apple is allowed to learn from.
+quietly widen what StudPilot is allowed to learn from.
 
 This extends `packages/corpus`, which already fetches license-verified sources,
 pins each to a commit SHA in `raw/manifest.json`, chunks them and uploads to
@@ -17,8 +17,8 @@ Everything here exists to answer two questions **separately**, because they have
 different answers and conflating them is how a project ends up with a licence
 violation baked into a model:
 
-1. **May Apple's output reuse this code?** (reuse rights)
-2. **May Apple learn from this code?** (training rights)
+1. **May StudPilot's output reuse this code?** (reuse rights)
+2. **May StudPilot learn from this code?** (training rights)
 
 MIT grants (1) freely and says nothing explicit about (2). A proprietary game
 dump grants neither. A CC-BY dataset may grant (2) with attribution while (1)
@@ -128,9 +128,9 @@ Assigned per source, with **independent** `reuse` and `training` verdicts.
 |---|---|
 | `COMMERCIAL_REUSABLE` | permissive (MIT/Apache-2.0/BSD/CC0/Unlicense). Output may reuse it, subject to notice requirements. |
 | `ATTRIBUTION_REQUIRED` | reusable but attribution must survive into the user's project (CC-BY, Poly Haven's credit requirement, many Sketchfab assets). |
-| `COPYLEFT` | GPL/AGPL/CC-BY-SA. Reuse would impose obligations on a user's own game, so Apple does **not** emit derived code. Reference and evaluation only. |
+| `COPYLEFT` | GPL/AGPL/CC-BY-SA. Reuse would impose obligations on a user's own game, so StudPilot does **not** emit derived code. Reference and evaluation only. |
 | `REFERENCE_ONLY` | may be read and cited at retrieval time; may not be reproduced and may not be trained on. |
-| `EVALUATION_ONLY` | may be used to measure Apple, never to build it. Holdout sets live here. |
+| `EVALUATION_ONLY` | may be used to measure StudPilot, never to build it. Holdout sets live here. |
 | `UNCLEAR_QUARANTINE` | no LICENSE file, ambiguous terms, or a claim of openness without evidence. **The default for anything unproven.** Unused until a human resolves it. |
 | `UNSAFE_EXCLUDED` | see §4. Excluded from every use, including retrieval. |
 
@@ -188,9 +188,9 @@ reviewable rather than invisible.
 
 ## 5. Current engine knowledge beats popular old code
 
-This is the failure mode most likely to make Apple *worse* while appearing to
+This is the failure mode most likely to make StudPilot *worse* while appearing to
 make it better: the community's most-forked UI code predates the engine's own UI
-system, so a naively-weighted corpus teaches Apple to hand-roll what the engine
+system, so a naively-weighted corpus teaches StudPilot to hand-roll what the engine
 now does natively.
 
 **Modern engine UI is the default.** Investigate and encode: `StyleSheet`,
@@ -240,7 +240,7 @@ UI question searches the UI libraries first and widens only if it returns thin.
 | L2 | curated exemplars | exemplars beat the unaided baseline on a held-out set |
 | L3 | task playbooks | the playbook's task class improves |
 | L4 | failure → diagnosis → regression data | the regression reproduces, then stops reproducing |
-| L5 | Apple-owned synthetic curriculum | generated tasks discriminate between models |
+| L5 | StudPilot-owned synthetic curriculum | generated tasks discriminate between models |
 | L6 | blind / multi-judge evaluation | judges agree above chance and disagree with the author |
 | L7 | specialist fine-tuning / LoRA | only when legally clean AND L0–L6 are exhausted |
 | L8 | promotion | the new thing beat the old thing on a blind eval |

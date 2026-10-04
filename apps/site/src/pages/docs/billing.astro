@@ -1,9 +1,9 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
-import { SUPPORT_EMAIL } from '@apple/shared';
+import { SUPPORT_EMAIL } from '@studpilot/shared';
 
-// WHY THIS PAGE EXISTS. Apple can take money — a Stripe checkout, a customer portal, a
+// WHY THIS PAGE EXISTS. StudPilot can take money — a Stripe checkout, a customer portal, a
 // signature-verified webhook, purchased Credits — and had not one written word about any of it.
 // /docs/credits-and-limits covers the quota and its only money words are "no card". The FAQ has ten
 // questions and none about a failed payment, an invoice or cancelling. So the first time a card was
@@ -37,7 +37,7 @@ const checkoutOpen = billingProbe?.checkout === true;
 ---
 
 <DocsLayout
-  title="Billing & payments — Apple Docs"
+  title="Billing & payments — StudPilot Docs"
   description={checkoutOpen
     ? 'What happens when a payment fails, where invoices live, how cancelling works, and what to do when a payment went through but the plan has not changed.'
     : 'Paid checkout is not open in this preview, so nobody can subscribe yet. How billing will work once it is: failed payments, invoices, cancelling, and changing plan.'}
@@ -50,7 +50,7 @@ const checkoutOpen = billingProbe?.checkout === true;
         in this preview — <a href="/pricing">Pricing</a> marks every paid tier "planned" and
         <a href="/terms">Terms</a> says the same. Everything below describes how billing works for a
         paid account and applies to nobody today; it is published so that the rules are readable
-        before anyone is subject to them, not because a subscription can be started. Apple is free
+        before anyone is subject to them, not because a subscription can be started. StudPilot is free
         to use, with the daily allowance on <a href="/docs/credits-and-limits">Credits &amp;
         limits</a>.
       </p>
@@ -154,7 +154,7 @@ const checkoutOpen = billingProbe?.checkout === true;
       A billing question a page cannot answer is worth an email:
       <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Include the email address on the
       account and roughly when the payment was — never a card number, which we neither need nor
-      want, and which nobody at Apple can see.
+      want, and which nobody at StudPilot can see.
     </p>
   </div>
 

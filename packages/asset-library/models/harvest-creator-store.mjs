@@ -45,7 +45,7 @@ add('Nature', 'nature', ['tree', 'low poly tree', 'pine tree', 'palm tree', 'oak
 add('Nature', 'kit', ['nature pack', 'low poly nature', 'forest pack', 'tree pack', 'island map', 'farm', 'garden', 'camp', 'beach']);
 add('Simulator/Tycoon', 'pet', ['pet', 'cat', 'dog', 'dragon pet', 'bunny', 'fox', 'panda', 'unicorn', 'bee', 'penguin', 'slime', 'low poly animal']);
 add('City/Roleplay', 'character', ['npc', 'character rig', 'r15 rig', 'dummy', 'shopkeeper', 'zombie', 'monster', 'robot', 'knight', 'animal', 'horse', 'bird', 'fish']);
-// Style passes: the same library seen through the look Apple builds in.
+// Style passes: the same library seen through the look StudPilot builds in.
 for (const s of ['low poly', 'cartoon', 'stylized']) {
   add('Nature', 'nature', [`${s} tree`, `${s} rock`, `${s} bush`]);
   add('City/Roleplay', 'building', [`${s} house`, `${s} shop`]);

@@ -105,7 +105,7 @@ test('actions: the test email goes only to OWNER_EMAIL, whatever the request say
   assert.deepEqual(r.plan.body.to, [OWNER]);
   assert.ok(!JSON.stringify(r).includes('evil.test'));
   const d = await resendAction({ kind: 'test-email', domain: 'mail.example.test', dryRun: true });
-  assert.equal(d.plan.body.from, 'Apple HQ <noreply@mail.example.test>');
+  assert.equal(d.plan.body.from, 'StudPilot HQ <noreply@mail.example.test>');
   assert.equal(calls.length, 0);
 });
 

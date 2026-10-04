@@ -1,13 +1,13 @@
 ---
 import Base from '../layouts/Base.astro';
-import AppleMark from '../components/AppleMark.astro';
-import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@apple/shared';
+import StudPilotMark from '../components/StudPilotMark.astro';
+import { PRODUCT_MODELS, PRODUCT_MODEL_INFO } from '@studpilot/shared';
 
 /*
  * /models — THE ONE ENGINE (V3 gate G01).
  *
- * Apple is the only engine: every plan uses it, Free too, and plans differ only in their allowance.
- * The name and the line under it come from the registry in @apple/shared (PRODUCT_MODEL_INFO), so
+ * StudPilot is the only engine: every plan uses it, Free too, and plans differ only in their allowance.
+ * The name and the line under it come from the registry in @studpilot/shared (PRODUCT_MODEL_INFO), so
  * this page cannot describe an engine the product does not run. The URL stays so old links land.
  *
  * Copy is short and plain on purpose (D-UX-2): the readers are young and not technical.
@@ -20,30 +20,30 @@ const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
 ---
 
 <Base
-  title="Engine — Apple"
-  description="Apple builds every game you ask for, on every plan, Free too. Every request uses your Apple Credits."
+  title="Engine — StudPilot"
+  description="StudPilot builds every game you ask for, on every plan, Free too. Every request uses your StudPilot Credits."
 >
   <section class="section mhead" aria-labelledby="models-title">
     <div class="wrap">
       <p class="eyebrow">Engine</p>
       <h1 id="models-title" class="carved">One engine builds with you.</h1>
       <p class="lede">
-        Apple answers every request, on every plan, Free too. Every request uses your Apple Credits.
+        StudPilot answers every request, on every plan, Free too. Every request uses your StudPilot Credits.
       </p>
     </div>
   </section>
 
   <section class="section" id="built-in" aria-labelledby="built-in-title">
     <div class="wrap">
-      <h2 id="built-in-title" class="mtitle">Built into Apple</h2>
+      <h2 id="built-in-title" class="mtitle">Built into StudPilot</h2>
       <ul class="builtin" role="list">
         {engines.map((m) => (
           <li class="builtin-card">
-            <span class="logo logo--apple"><AppleMark size={18} /></span>
+            <span class="logo logo--studpilot"><StudPilotMark size={18} /></span>
             <div>
               <p class="mname">{m.name}</p>
               <p class="mblurb">{m.blurb}</p>
-              <p class="micro mmeta">Uses Apple Credits · Included with every plan, Free too · plans on the <a href="/pricing">pricing page</a></p>
+              <p class="micro mmeta">Uses StudPilot Credits · Included with every plan, Free too · plans on the <a href="/pricing">pricing page</a></p>
             </div>
           </li>
         ))}
@@ -55,7 +55,7 @@ const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
 </Base>
 
 <style>
-  /* Structure only; every colour is a token from apple-minimal.css. No shadow, no glow, no colour
+  /* Structure only; every colour is a token from studpilot-minimal.css. No shadow, no glow, no colour
      but ink: the one accent is the site-wide focus ring, which this page does not touch. */
   .mhead {
     padding-top: clamp(48px, 7vw, 96px);

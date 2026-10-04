@@ -122,7 +122,7 @@
   overflow: auto;
 }
 
-/* The ASCII apple (picks/thinking/ascii-mark.tsx) sits above the title, at the card's start edge
+/* The ASCII studpilot (picks/thinking/ascii-mark.tsx) sits above the title, at the card's start edge
    like everything else on it. The canvas carries its own air, so the card's gap is enough. */
 .crash-mark { margin-block-end:-2px; }
 

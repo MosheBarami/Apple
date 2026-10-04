@@ -1,4 +1,4 @@
-// The queue of things Apple has ASKED to remember, and the two buttons that answer it.
+// The queue of things StudPilot has ASKED to remember, and the two buttons that answer it.
 //
 // Under the `review` memory setting the distiller stops writing facts and starts proposing them.
 // The worker has had the whole mechanism for a while — a queue, an accept that records the fact as

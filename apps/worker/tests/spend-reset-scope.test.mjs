@@ -96,7 +96,7 @@ test('scope "all" clears both, and only when asked for by name', async () => {
 
 // ------------------------------------------------------------------ the admin route ---
 
-const OUT = join(tmpdir(), `apple-spend-reset-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-spend-reset-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: OUT, logLevel: 'silent',

@@ -10,8 +10,8 @@
  * situation the whole field exists for: an argument about whose work a restore is about to discard.
  */
 export type CheckpointAuthorView =
-  /** Apple took it: an automatic or pre-run checkpoint has no human author. */
-  | { who: 'apple'; label: 'Apple' }
+  /** StudPilot took it: an automatic or pre-run checkpoint has no human author. */
+  | { who: 'apple'; label: 'StudPilot' }
   | { who: 'you'; label: 'You' }
   /** A member we can put a name to. */
   | { who: 'member'; label: string }
@@ -26,8 +26,8 @@ export function checkpointAuthorView(
   names: Record<string, string | null> = {},
 ): CheckpointAuthorView {
   // The kind is stronger than the column: an `auto` row with an author_id — which only a bug could
-  // write — still was not taken by a person, and crediting one would be worse than saying Apple.
-  if (cp.kind !== 'manual') return { who: 'apple', label: 'Apple' };
+  // write — still was not taken by a person, and crediting one would be worse than saying StudPilot.
+  if (cp.kind !== 'manual') return { who: 'apple', label: 'StudPilot' };
   const id = cp.authorId ?? null;
   if (id === null) return { who: 'unrecorded', label: 'Author not recorded' };
   if (viewerId !== null && id === viewerId) return { who: 'you', label: 'You' };

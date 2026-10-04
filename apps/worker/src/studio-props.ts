@@ -156,7 +156,7 @@ export function describeRefusals(refusals: readonly { name: string; short: strin
 
 /**
  * The properties that can only hold an instance, so a bare path string for one is a reference and nothing else: the two
- * ends of a Wire, an emitter or listener's PositionInstance, and the IKControl chain (apps/apple-plugin INSTANCE_REF_PROPERTY).
+ * ends of a Wire, an emitter or listener's PositionInstance, and the IKControl chain (apps/studpilot-plugin INSTANCE_REF_PROPERTY).
  * The plugin resolves the path under an allowlisted service and refuses it when nothing is there or it is outside them.
  * `Value` (an ObjectValue's, but also a StringValue's) and the older reference names are deliberately not in this list.
  */
@@ -309,7 +309,7 @@ export function normaliseItems(items: unknown, path = 'items'): PropNormalisatio
 // ---------------------------------------------------------------------------------------------
 
 /**
- * The plugin's own limits for one create_instances call (apps/apple-plugin/src/Commands.luau: MAX_ITEMS,
+ * The plugin's own limits for one create_instances call (apps/studpilot-plugin/src/Commands.luau: MAX_ITEMS,
  * MAX_CHILDREN_PER_SPEC, MAX_CREATE_NODES, MAX_SNAPSHOT_DEPTH, MAX_PROPS). No number was anywhere the model could
  * see, so it found each by being refused. The description states them once, and an oversize batch of SEPARATE items is
  * now split into sequential calls here; only one item that is itself over a limit cannot be split, and is refused with

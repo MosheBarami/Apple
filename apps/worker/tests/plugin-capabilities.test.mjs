@@ -43,7 +43,7 @@ const P = await import(pathToFileURL(promptsBundlePath).href);
 rmSync(temp, { recursive: true, force: true });
 
 const sharedSource = readFileSync(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
-const commandsSource = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+const commandsSource = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
 const studioOpUnion = /export type StudioOp =([\s\S]*?);\n\n\/\*\*/m.exec(sharedSource);
 assert.ok(studioOpUnion, 'StudioOp union must be readable');
 const liveStudioOps = new Set([...studioOpUnion[1].matchAll(/op:\s*'([a-z_]+)'/g)].map((match) => match[1]));
@@ -55,7 +55,7 @@ const candidates = studioEntries.map(([name]) => name);
 // block, which keeps it under Luau's 200-local limit at Studio's -O0). Never an accidental global.
 function luauTableKeys(name) {
   const match = new RegExp(`(local )?(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(commandsSource);
-  assert.ok(match, `${name} table was not found in current Apple Commands`);
+  assert.ok(match, `${name} table was not found in current StudPilot Commands`);
   if (!match[1]) {
     assert.ok(new RegExp(`^local [^=\\n]*\\b${name}\\b[^=\\n]*$`, 'm').test(commandsSource.slice(0, match.index)),
       `${name} is assigned without a local declared before it — that would be a global`);
@@ -63,7 +63,7 @@ function luauTableKeys(name) {
   return new Set([...match[2].matchAll(/^\s*([a-z_]+)\s*=/gm)].map((entry) => entry[1]));
 }
 
-// D-VISION-1 Phase A: operations installed by the op families in apps/apple-plugin/src/ops/*.luau.
+// D-VISION-1 Phase A: operations installed by the op families in apps/studpilot-plugin/src/ops/*.luau.
 // No installed plugin ever had them, so every one is OPT-IN.
 const PHASE_A_OPS = [
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
@@ -77,7 +77,7 @@ const PHASE_A_TOOLS = [
   'play_library_sound', // D-FXLIB-1: reviewed 2026-09-23 — plays one library id through preview_sound, needs plugin 1.3.0
 ];
 const familySource = ['Query', 'Physics', 'Terrain', 'Rig', 'Ui', 'Fx']
-  .map((name) => readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', `${name}.luau`), 'utf8'))
+  .map((name) => readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'ops', `${name}.luau`), 'utf8'))
   .join('\n');
 
 const reasons = {

@@ -1,10 +1,10 @@
 # Corpus Provenance
 
-Apple's RAG corpus is built exclusively from license-compatible public sources.
+StudPilot's RAG corpus is built exclusively from license-compatible public sources.
 `src/fetch.mjs` records the exact commit SHA of every source in `raw/manifest.json`
 on each fetch; `data/chunks.jsonl` carries a `url` per chunk that links back to the
 canonical published page, satisfying attribution requirements at retrieval time
-(chunk sources are surfaced as links in the Apple UI).
+(chunk sources are surfaced as links in the StudPilot UI).
 
 Initial fetch date: **2026-08-30**. Re-fetch by running `pnpm fetch` (shallow
 update; the SHA in `raw/manifest.json` is refreshed).
@@ -56,12 +56,12 @@ API chunks.
 license file in the checkout, `src/chunk.mjs` **skips the source entirely** and
 prints a note — nothing with an unverified license enters the corpus.
 
-## Source 3 — Apple research notes (`packages/corpus/research/NN-topic.md`)
+## Source 3 — StudPilot research notes (`packages/corpus/research/NN-topic.md`)
 
-- **What:** original syntheses written for Apple (2026-10-04 onward), one per topic of `research/roblox/BRIEF.md`:
+- **What:** original syntheses written for StudPilot (2026-10-04 onward), one per topic of `research/roblox/BRIEF.md`:
   viral hits, discovery, genre design, Luau architecture, world visuals, UI/UX, animation/audio/VFX, monetisation and
   policy, the tools ecosystem, and a from-scratch playbook.
-- **Licence basis:** Apple's own text. Facts are restated in Apple's words, with at most a few quoted words and no
+- **Licence basis:** StudPilot's own text. Facts are restated in StudPilot's words, with at most a few quoted words and no
   copied passages. Every fact carries a numbered citation `[S#]` to its public source (Roblox Creator Docs, the
   DevForum, Roblox's blog and RDC, developer talks, press). The source list sits at the end of each note.
 - **Chunks:** `src/research-chunks.mjs` splits each note on `##`/`###` (≤2,400 chars), `kind: 'research'`,
@@ -80,7 +80,7 @@ prints a note — nothing with an unverified license enters the corpus.
 
 ## Storage
 
-Chunks are uploaded to the Apple worker (`/api/admin/embed-batch`): text into
+Chunks are uploaded to the StudPilot worker (`/api/admin/embed-batch`): text into
 D1 (`chunks` + `chunks_fts` FTS5) for keyword search, and Workers AI embeddings
 into Vectorize for the `embed=true` subset. `raw/` and `data/` are gitignored;
 nothing from the corpus is committed to this repository.

@@ -3,7 +3,7 @@
  *
  * Defect D1bfeeb. `uiDesignTask` is classified on every request, stored on `agent.traits`, spread
  * into `chooseEffort`'s signals on every step — and `chooseEffort` never branched on it. So on the
- * free Apple tier in Plan mode, "make the lobby lamp warmer" got careful thinking (it matches
+ * free StudPilot tier in Plan mode, "make the lobby lamp warmer" got careful thinking (it matches
  * `visualDesignTask`, which IS read) and "fix the tooltip on the settings icon" got cheap thinking.
  * Same policy, same product, same person.
  *
@@ -11,7 +11,7 @@
  * omitted `uiDesignTask` while the assignment wrote the whole classification, so the value existed
  * in storage and did not exist in the type — which is why no reader was ever written against it.
  *
- * WHERE THIS WAS OBSERVABLE: Plan mode on non-MAX Apple, the one lane whose baseline was `low`.
+ * WHERE THIS WAS OBSERVABLE: Plan mode on non-MAX StudPilot, the one lane whose baseline was `low`.
  * V3 G01 removed Plan mode, so every request now runs the builder baseline, which is already
  * `high`; the escalation the signal buys is not observable through `chooseEffort` any more. What is
  * still asserted: the classification, the resulting effort, that talk stays cheap, and the type

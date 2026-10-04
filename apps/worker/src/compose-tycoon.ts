@@ -332,7 +332,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
     },
   };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
-    source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer from the request; edit freely.\nreturn ${luau(config)}\n` });
+    source: `-- ${recipe.title}: what this game's systems read. Written by StudPilot's composer from the request; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
     source: `-- ${recipe.title}: what the screen shows.\nreturn ${luau({ currency: theme.currency, ...(theme.symbol ? { symbol: theme.symbol } : {}) })}\n` });
   if ((recipe.surface ?? 'studs') === 'studs') steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleTycoonParts'] });

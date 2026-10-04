@@ -1,6 +1,6 @@
 // The SDK's runtime allowlists against the TypeScript unions they copy.
 //
-// WHY A COPY EXISTS AT ALL. `@apple/shared` is TypeScript. This SDK is plain JavaScript that
+// WHY A COPY EXISTS AT ALL. `@studpilot/shared` is TypeScript. This SDK is plain JavaScript that
 // Node, a browser, a CLI and a Worker all load with no build step, and a TypeScript union
 // does not exist at runtime anyway — `MODES` has to be a real array or nothing can check a
 // mode that arrived from a CLI flag or from Python.
@@ -17,8 +17,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WS_JWT_PREFIX, WS_SUBPROTOCOL, socketProtocols } from '../src/wire.mjs';
-import { echoSubprotocol, jwtFromSubprotocols } from '../../shared/src/legacy-wire.ts';
+import { HEADERS, WS_JWT_PREFIX, WS_SUBPROTOCOL, socketProtocols } from '../src/wire.mjs';
+import {
+  WIRE_HEADERS,
+  WS_JWT_PREFIX as WIRE_JWT_PREFIX,
+  WS_SUBPROTOCOL as WIRE_SUBPROTOCOL,
+  echoSubprotocol,
+  jwtFromSubprotocols,
+} from '../../shared/src/legacy-wire.ts';
 import { CLIENT_MSG_TYPES, DEFAULT_BASE_URL, MODES } from '../src/wire.mjs';
 import { STOP_REASONS } from '../src/stream.mjs';
 import { PLAN_IDS } from '../src/client.mjs';
@@ -76,15 +82,14 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
   // of, and the value it echoes back in the handshake response.
   // THIS TEST IS CALLED "parity" AND HAD ONLY ONE SIDE IN IT. Both assertions compared the
   // worker's literal against a string typed into this file, so the SDK's own WS_JWT_PREFIX and
-  // WS_SUBPROTOCOL were never read. Measured: changing WS_JWT_PREFIX to 'apple.jwt.' and
-  // WS_SUBPROTOCOL to 'apple.v1' left all ten test files green, 81 pass 0 fail, both times.
+  // WS_SUBPROTOCOL were never read. Measured: changing WS_JWT_PREFIX to 'studpilot.jwt.' and
+  // WS_SUBPROTOCOL to 'studpilot.v1' left all ten test files green, 81 pass 0 fail, both times.
   // stream.test.mjs does not catch it either — it builds its expected array FROM the same two
   // constants it is meant to be checking, which is a tautology wearing an assertion's clothes.
   //
-  // These two literals are on the never-rename list for the reason this test exists: a client
-  // that sends 'apple.v1' to a worker expecting 'golem.v1' does not fail loudly, it fails as a
-  // handshake that never completes. Compare the SDK's constants to the worker's, so a rename on
-  // EITHER side reddens.
+  // These two literals are wire identity for the reason this test exists: a client that sends a
+  // subprotocol name the worker does not read does not fail loudly, it fails as a handshake that never
+  // completes. Compare the SDK's constants to the worker's, so a rename on EITHER side reddens.
   // RESTATED (the wire rename): the worker no longer carries its own literals. It reads the bearer token and
   // chooses the echo through the shared readers, which accept BOTH spellings. So the parity that matters is
   // behavioural: what the SDK offers must be accepted by those readers, and the echo must be one of the offers
@@ -92,6 +97,10 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
   assert.match(auth, /jwtFromSubprotocols\(proto\)/, 'bearerToken must read the subprotocol through the shared reader');
   assert.match(session, /'Sec-WebSocket-Protocol': echoSubprotocol\(req\.headers\.get\('Sec-WebSocket-Protocol'\)\)/,
     'the DO must echo what the client listed, not a fixed value');
+  // The worker's primary spelling is the one the SDK sends. (The two former spellings are the worker's
+  // to accept, not the SDK's to send; the readers below take all three.)
+  assert.equal(WS_SUBPROTOCOL, WIRE_SUBPROTOCOL, 'the SDK offers a subprotocol that is not the worker\'s primary one');
+  assert.equal(WS_JWT_PREFIX, WIRE_JWT_PREFIX, 'the SDK carries the token under a prefix that is not the worker\'s primary one');
   const sent = socketProtocols('tok-123');
   assert.equal(jwtFromSubprotocols(sent.join(', ')), 'tok-123', 'the worker cannot read the token the SDK sends');
   assert.ok(sent.includes(echoSubprotocol(sent.join(', '))), 'the worker would echo a subprotocol the SDK did not offer');
@@ -99,6 +108,41 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
   // The handshake array the SDK actually sends must be built from those same two constants.
   const offered = socketProtocols('tok-123');
   assert.deepEqual(offered, [WS_SUBPROTOCOL, `${WS_JWT_PREFIX}tok-123`]);
+});
+
+/*
+ * THE PLUGIN HEADERS, IN ALL THREE CLIENTS AND THE WORKER'S OWN LIST.
+ *
+ * The SDK sends the StudPilot spelling of the three Studio headers. The worker reads that spelling
+ * first and the two former ones after it (packages/shared/src/legacy-wire.ts), so a client that
+ * drifted back to an old spelling would still work and would be counted as an old client for as long
+ * as it stayed. Each client's constants are read from their declarations and held to WIRE_HEADERS.
+ */
+test('every SDK client sends the worker\'s current spelling of the Studio headers', () => {
+  const want = {
+    token: WIRE_HEADERS.token,
+    pluginVersion: WIRE_HEADERS.pluginVersion,
+    pluginProtocol: WIRE_HEADERS.pluginProtocol,
+  };
+  // (1) JavaScript, through the object the client sends from.
+  assert.deepEqual(
+    { token: HEADERS.studioToken, pluginVersion: HEADERS.pluginVersion, pluginProtocol: HEADERS.pluginProtocol },
+    want,
+  );
+  // (2) Python, from its declarations.
+  const py = readFileSync(join(ROOT, 'packages/sdk/python/studpilot_sdk/client.py'), 'utf8');
+  const pyHeader = (name) => new RegExp(`^${name} = "([^"]+)"`, 'm').exec(py)?.[1];
+  assert.deepEqual(
+    { token: pyHeader('HEADER_STUDIO_TOKEN'), pluginVersion: pyHeader('HEADER_PLUGIN_VERSION'), pluginProtocol: pyHeader('HEADER_PLUGIN_PROTOCOL') },
+    want,
+  );
+  // (3) Luau, from its declarations.
+  const luau = readFileSync(join(ROOT, 'packages/sdk/luau/StudPilotClient.luau'), 'utf8');
+  const luauHeader = (name) => new RegExp(`^Client\\.${name} = "([^"]+)"`, 'm').exec(luau)?.[1];
+  assert.deepEqual(
+    { token: luauHeader('HEADER_TOKEN'), pluginVersion: luauHeader('HEADER_PLUGIN_VERSION'), pluginProtocol: luauHeader('HEADER_PLUGIN_PROTOCOL') },
+    want,
+  );
 });
 
 /*
@@ -120,34 +164,36 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
 test('every SDK client defaults to the canonical origin, never the legacy host', () => {
   const canonical = declaration('export const PRODUCT_ORIGIN =').match(/'([^']+)'/)?.[1];
   assert.equal(canonical, 'https://apple.moshe-barami111.workers.dev',
-    'PRODUCT_ORIGIN in @apple/shared is not what this test was written against — re-read it');
+    'PRODUCT_ORIGIN in @studpilot/shared is not what this test was written against — re-read it');
   const legacy = declaration('export const LEGACY_PRODUCT_HOST =').match(/'([^']+)'/)?.[1];
-  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @apple/shared — re-aim this test');
+  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @studpilot/shared — re-aim this test');
 
   // (1) The JavaScript default, via the value the client actually resolves against.
   assert.equal(DEFAULT_BASE_URL, canonical);
 
   // (2) The Python default, read from its declaration rather than from a grep of the file.
-  const py = readFileSync(join(ROOT, 'packages/sdk/python/apple_sdk/client.py'), 'utf8');
+  const py = readFileSync(join(ROOT, 'packages/sdk/python/studpilot_sdk/client.py'), 'utf8');
   const pyDefault = /^DEFAULT_BASE_URL = "([^"]+)"/m.exec(py);
   assert.ok(pyDefault, 'the Python client no longer declares DEFAULT_BASE_URL — re-aim this test');
   assert.equal(pyDefault[1], canonical);
 
   // (3) The Luau default, which was already right and must stay right.
-  const luau = readFileSync(join(ROOT, 'packages/sdk/luau/AppleClient.luau'), 'utf8');
+  const luau = readFileSync(join(ROOT, 'packages/sdk/luau/StudPilotClient.luau'), 'utf8');
   const luauDefault = /Client\.DEFAULT_API = "([^"]+)"/.exec(luau);
   assert.ok(luauDefault, 'the Luau client no longer declares DEFAULT_API — re-aim this test');
   assert.equal(luauDefault[1], canonical);
 
   // (4) And nothing shipped by this package may name the legacy host at all. The wire literals
-  //     `golem.v1` / `golem.jwt.` / `X-Golem-` are a different question and are pinned above.
+  //     `studpilot.v1` / `studpilot.jwt.` / `X-StudPilot-` are a different question and are pinned above.
   for (const rel of [
     'packages/sdk/src/wire.mjs',
     'packages/sdk/src/client.mjs',
     'packages/sdk/src/http.mjs',
-    'packages/sdk/bin/apple.mjs',
-    'packages/sdk/python/apple_sdk/client.py',
+    'packages/sdk/bin/studpilot.mjs',
+    'packages/sdk/python/studpilot_sdk/client.py',
+    'packages/sdk/luau/StudPilotClient.luau',
     'packages/sdk/luau/AppleClient.luau',
+    'packages/sdk/python/apple_sdk/__init__.py',
     'packages/sdk/README.md',
   ]) {
     const text = readFileSync(join(ROOT, rel), 'utf8');
@@ -170,7 +216,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
  * scripts/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
  * exists to keep that file's text from drifting away from its declarations.
  */
-test('every backticked *Mode name in @apple/shared is a type that exists', () => {
+test('every backticked *Mode name in @studpilot/shared is a type that exists', () => {
   // Every backtick-quoted SPAN, then the *Mode identifiers inside it. NOT
   // /`([A-Z][A-Za-z]*Mode)`/ — the defect's own form is `mode: AppleMode`, where the backtick sits
   // before `mode:`, so a pattern anchored to the identifier's own backticks walks straight past it.

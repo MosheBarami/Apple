@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = mkdtempSync(join(tmpdir(), 'apple-billing-wiring-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-billing-wiring-'));
 const OUT = join(TMP, 'authority.mjs');
 execFileSync(join(WORKER, 'node_modules/.bin/esbuild'), [
   join(WORKER, 'src/billing-origin-authority.ts'), '--bundle', '--format=esm', '--target=es2022',

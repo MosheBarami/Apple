@@ -1,5 +1,5 @@
 /**
- * D-UIONLY-1: Apple never makes UI by hand. Every piece of game UI is a library component inserted
+ * D-UIONLY-1: StudPilot never makes UI by hand. Every piece of game UI is a library component inserted
  * with insert_ui_component, drawn from stored library files.
  *
  * What this file holds the worker to:
@@ -25,7 +25,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const PLUGIN_SRC = join(WORKER, '..', 'apple-plugin', 'src');
+const PLUGIN_SRC = join(WORKER, '..', 'studpilot-plugin', 'src');
 const LIB = JSON.parse(readFileSync(join(WORKER, '..', '..', 'packages', 'asset-library', 'ui-components.json'), 'utf8'));
 const temp = mkdtempSync(join(tmpdir(), 'ui-only-'));
 const bundle = (entry) => {

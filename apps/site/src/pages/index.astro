@@ -28,7 +28,7 @@ import ObjectIcon from '../components/ObjectIcon.astro';
 import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
-} from '@apple/shared';
+} from '@studpilot/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /*
@@ -169,8 +169,8 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
 ---
 
 <Landing
-  title="Apple — build Roblox games inside Studio"
-  description="Describe a colorful cartoon Roblox game, and Apple builds it in the Studio place you already have open. It reads before it writes, checks its own work, and edits nothing until you allow it."
+  title="StudPilot — build Roblox games inside Studio"
+  description="Describe a colorful cartoon Roblox game, and StudPilot builds it in the Studio place you already have open. It reads before it writes, checks its own work, and edits nothing until you allow it."
 >
   <a href="#main" class="skip-link">Skip to content</a>
 
@@ -182,7 +182,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
       <div class="shell hero-inner">
         <p class="eyebrow hero-eyebrow">Inside Roblox Studio</p>
         <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
-        <p class="lead">Describe a colorful cartoon Roblox game. Apple builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
+        <p class="lead">Describe a colorful cartoon Roblox game. StudPilot builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
 
         {/* THE COMPOSER IS THE PRODUCT'S OWN CONTROL, NOT A PICTURE OF ONE: a real <form> with a
             real <textarea> and a real submit, going where the page's primary action goes. What was
@@ -227,7 +227,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
         <p class="availability">
           Free to start, no card.{' '}
           {installExternal ? (
-            <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio from the Creator Store <span aria-hidden="true">↗</span></a>
+            <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get StudPilot Studio from the Creator Store <span aria-hidden="true">↗</span></a>
           ) : (
             <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
           )}
@@ -250,7 +250,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
         <BeamFlow />
         <div class="sequence">
           <figure class="sequence-figure" data-reveal>
-            <figcaption class="figure-head micro">Studio · while Apple works</figcaption>
+            <figcaption class="figure-head micro">Studio · while StudPilot works</figcaption>
             <div class="activity" role="status" aria-live="off">
               <span class="activity-orb" aria-hidden="true"></span>
               <span class="activity-current" data-activity-current>Checking your place</span>
@@ -259,15 +259,15 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
           <div class="steps">
             <article class="step" data-reveal>
               <h3>Pair one place</h3>
-              <p>A six-character code links Apple to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
+              <p>A six-character code links StudPilot to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
             </article>
             <article class="step" data-reveal data-reveal-delay="60">
               <h3>Say what you want</h3>
-              <p>Plain language. Apple reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
+              <p>Plain language. StudPilot reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
             </article>
             <article class="step" data-reveal data-reveal-delay="120">
               <h3>Look at what it did</h3>
-              <p>See what Apple is doing now as one clear step that gives way to the next. The result stays in your place, in Studio, where you can run it.</p>
+              <p>See what StudPilot is doing now as one clear step that gives way to the next. The result stays in your place, in Studio, where you can run it.</p>
             </article>
           </div>
         </div>
@@ -393,7 +393,7 @@ const installExternal = STUDIO_PLUGIN_STORE_LIVE;
       <div class="shell">
         <div class="band-head" data-reveal>
           <h2 id="plans-title" class="section-title">One engine</h2>
-          <p class="section-sub">Describe the game; Apple shows a short plan and builds it. Apple answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
+          <p class="section-sub">Describe the game; StudPilot shows a short plan and builds it. StudPilot answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
         </div>
 
         <div class="choice-group" data-reveal>

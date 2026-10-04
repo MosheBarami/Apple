@@ -128,7 +128,7 @@ function sources(dir = SRC, acc = []) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) {
       // AICSS is third-party source pinned byte-for-byte against its upstream MIT package.
-      // Apple-owned style guards must not force a rewrite that would break the vendor fidelity proof.
+      // StudPilot-owned style guards must not force a rewrite that would break the vendor fidelity proof.
       if (relative(SRC, p) === join('components', 'aicss')) continue;
       sources(p, acc);
     }

@@ -11,13 +11,13 @@ const perWeekLines = Array.from({ length: 10 }, (_, i) => ({ week: iso((9 - i) *
 
 const tree = (() => {
   const n = (path, he, en, files, dirs = [], extra = {}) => ({ name: path.split('/').pop() || 'RbxAI', path, he, en, files, dirs, ...extra });
-  return n('', 'שורש הפרויקט: כל מה שבונה את Apple.', 'Project root: everything that builds Apple.', 24, [
+  return n('', 'שורש הפרויקט: כל מה שבונה את StudPilot.', 'Project root: everything that builds StudPilot.', 24, [
     n('apps', 'האפליקציות עצמן: השרת, הפלאגין והאתר.', 'The shipped apps: worker, plugin and site.', 1, [
-      n('apps/worker', 'השרת שרץ ב-Cloudflare ועונה למשתמשים.', 'The Cloudflare Worker that serves users.', 12, [n('apps/worker/src', 'קוד המקור של השרת.', 'Worker source code.', 48, [n('apps/worker/src/do', 'אובייקטים עמידים: תקציב וזיכרון שיחה.', 'Durable Objects: budget and session memory.', 9)])], { readme: '# Apple worker\n\nCloudflare Worker that routes chat, budgets credits and streams answers.\n\n- `src/` entry and routes\n- `test/` vitest suites', docs: [{ label: 'SECURITY.md', url: 'https://github.com/example/rbxai/blob/main/docs/SECURITY.md' }] }),
+      n('apps/worker', 'השרת שרץ ב-Cloudflare ועונה למשתמשים.', 'The Cloudflare Worker that serves users.', 12, [n('apps/worker/src', 'קוד המקור של השרת.', 'Worker source code.', 48, [n('apps/worker/src/do', 'אובייקטים עמידים: תקציב וזיכרון שיחה.', 'Durable Objects: budget and session memory.', 9)])], { readme: '# StudPilot worker\n\nCloudflare Worker that routes chat, budgets credits and streams answers.\n\n- `src/` entry and routes\n- `test/` vitest suites', docs: [{ label: 'SECURITY.md', url: 'https://github.com/example/rbxai/blob/main/docs/SECURITY.md' }] }),
       n('apps/plugin', 'הפלאגין ל-Roblox Studio שהמשתמשים מתקינים.', 'The Roblox Studio plugin users install.', 6, [n('apps/plugin/src', 'קוד Luau של הפלאגין.', 'Plugin Luau source.', 31)]),
       n('apps/site', 'אתר השיווק והתיעוד.', 'Marketing and docs site.', 18),
     ]),
-    n('packages', 'ספריות משותפות.', 'Shared packages.', 0, [n('packages/sdk', 'ערכת פיתוח למפתחים חיצוניים.', 'SDK for external developers.', 14, [], { readme: '# @apple/sdk\n\nTiny client for the Apple API.' })]),
+    n('packages', 'ספריות משותפות.', 'Shared packages.', 0, [n('packages/sdk', 'ערכת פיתוח למפתחים חיצוניים.', 'SDK for external developers.', 14, [], { readme: '# @studpilot/sdk\n\nTiny client for the StudPilot API.' })]),
     n('infra', 'תשתית: מסד הנתונים, בדיקות עומס ופריסה.', 'Infra: database, load tests, deploy.', 9, [n('infra/supabase', 'הגדרות מסד הנתונים והמיגרציות.', 'Database config and migrations.', 3, [n('infra/supabase/migrations', 'שינויי מבנה במסד הנתונים, לפי סדר.', 'Ordered schema migrations.', 22)])]),
     n('docs', 'מסמכים: החלטות, מצב נוכחי ותוכניות.', 'Docs: decisions, state and plans.', 40, [n('docs/autonomy', 'ההוראות לסוכן האוטונומי.', 'Autonomous agent instructions.', 11)], { docs: [{ label: 'MISSION.md', url: 'https://github.com/example/rbxai/blob/main/docs/autonomy/MISSION.md' }] }),
     n('scripts', 'סקריפטים לבדיקות ולכלים.', 'Check and tooling scripts.', 72, [n('scripts/owner-dashboard', 'לוח הבקרה הזה.', 'This control center.', 6)]),
@@ -55,7 +55,7 @@ const DATA = {
   },
   supabase: {
     ok: true, fetchedAt: iso(15e3),
-    project: { name: 'apple-prod', ref: 'abcdwxyzprodref', region: 'eu-central-1', status: 'ACTIVE_HEALTHY', dbVersion: '15.8.1', createdAt: iso(120 * D), dashboardUrl: 'https://supabase.com/dashboard/project/abcdwxyzprodref' },
+    project: { name: 'studpilot-prod', ref: 'abcdwxyzprodref', region: 'eu-central-1', status: 'ACTIVE_HEALTHY', dbVersion: '15.8.1', createdAt: iso(120 * D), dashboardUrl: 'https://supabase.com/dashboard/project/abcdwxyzprodref' },
     dbSizeBytes: 38.4 * 1024 * 1024,
     tables: [{ schema: 'public', name: 'credit_ledger', rows: 18420, sizeBytes: 9.1 * 1024 * 1024 }, { schema: 'public', name: 'profiles', rows: 1204, sizeBytes: 640 * 1024 }, { schema: 'public', name: 'generations', rows: 7310, sizeBytes: 21.5 * 1024 * 1024 }, { schema: 'public', name: 'api_keys', rows: 312, sizeBytes: 96 * 1024 }, { schema: 'auth', name: 'users', rows: 1204, sizeBytes: 1.2 * 1024 * 1024 }],
     storage: { buckets: [{ name: 'avatars', public: true, objects: 820, sizeBytes: 44 * 1024 * 1024 }, { name: 'exports', public: false, objects: 96, sizeBytes: 310 * 1024 * 1024 }] },
@@ -65,30 +65,30 @@ const DATA = {
   cloudflare: {
     ok: true, fetchedAt: iso(20e3),
     account: { id: '4f1c0e0d9a8b7c6d5e4f3a2b1c0d9e8f', name: "Moshe's Account" },
-    workers: [{ name: 'apple-worker', modifiedAt: iso(5 * H), url: 'https://apple-worker.example.workers.dev', deployments: [{ id: 'd3', createdAt: iso(5 * H), author: 'wrangler', message: 'deploy 3f2a9c1 — retry-safe debit' }, { id: 'd2', createdAt: iso(2 * D), author: 'wrangler', message: 'deploy 81b7d20' }, { id: 'd1', createdAt: iso(4 * D), author: 'dashboard', message: '' }] }],
+    workers: [{ name: 'studpilot-worker', modifiedAt: iso(5 * H), url: 'https://studpilot-worker.example.workers.dev', deployments: [{ id: 'd3', createdAt: iso(5 * H), author: 'wrangler', message: 'deploy 3f2a9c1 — retry-safe debit' }, { id: 'd2', createdAt: iso(2 * D), author: 'wrangler', message: 'deploy 81b7d20' }, { id: 'd1', createdAt: iso(4 * D), author: 'dashboard', message: '' }] }],
     traffic: { last24h: { requests: 184230, errors: 312, subrequests: 402110, cpuP50Ms: 3.4, cpuP99Ms: 41.7 }, perHour: Array.from({ length: 24 }, (_, i) => ({ hour: iso((23 - i) * H), requests: Math.round(4000 + 6000 * Math.abs(Math.sin((i + 3) / 4))), errors: Math.round(4 + 20 * Math.abs(Math.sin(i * 1.7))) })) },
-    d1: [{ name: 'apple-cache', uuid: 'u1', sizeBytes: 2.1 * 1024 * 1024, tables: 4 }],
-    kv: [{ title: 'APPLE_CONFIG', id: 'k1' }, { title: 'RATE_LIMIT', id: 'k2' }],
-    r2: [{ name: 'apple-assets', createdAt: iso(90 * D) }],
+    d1: [{ name: 'studpilot-cache', uuid: 'u1', sizeBytes: 2.1 * 1024 * 1024, tables: 4 }],
+    kv: [{ title: 'STUDPILOT_CONFIG', id: 'k1' }, { title: 'RATE_LIMIT', id: 'k2' }],
+    r2: [{ name: 'studpilot-assets', createdAt: iso(90 * D) }],
     vectorize: [{ name: 'roblox-docs', dimensions: 768, metric: 'cosine' }],
     queues: [],
     aiGateway: { ok: false, reason: 'למפתח של Cloudflare אין הרשאת קריאה ל-AI Gateway.' },
     zones: [],
     zonesReason: 'אין דומיין משלנו ב-Cloudflare: האתר רץ על כתובת workers.dev, ולכן אין מטמון דומיין לנקות.',
-    health: { url: 'https://apple-worker.example.workers.dev/api/health', httpStatus: 200, buildSha: '3f2a9c1d7e', ms: 184 },
+    health: { url: 'https://studpilot-worker.example.workers.dev/api/health', httpStatus: 200, buildSha: '3f2a9c1d7e', ms: 184 },
   },
   sentry: q.get('sentry') === 'on'
-    ? { ok: true, fetchedAt: iso(5e3), configured: true, issues: [{ id: '4501', title: "TypeError: Cannot read properties of undefined (reading 'credits')", culprit: 'src/routes/chat.ts in debit', level: 'error', count: '142', userCount: 37, lastSeen: iso(12 * 60e3), permalink: '#', project: 'apple-worker' }, { id: '4499', title: 'Plugin HTTP 429 from generation endpoint', culprit: 'Plugin/Net.luau', level: 'warning', count: '58', userCount: 12, lastSeen: iso(3 * H), permalink: '#', project: 'apple-plugin' }, { id: '4470', title: 'Unhandled rejection: stream closed', culprit: 'src/stream.ts', level: 'fatal', count: '4', userCount: 2, lastSeen: iso(2 * D), permalink: '#', project: 'apple-worker' }] }
-    : { ok: true, fetchedAt: iso(5e3), configured: false, how: 'מוסיפים SENTRY_AUTH_TOKEN (הרשאות project:read, event:read, event:write) לקובץ ~/.config/apple/cc.env, ואת SENTRY_ORG. אחרי הפעלה מחדש של הלוח השגיאות יופיעו כאן.' },
+    ? { ok: true, fetchedAt: iso(5e3), configured: true, issues: [{ id: '4501', title: "TypeError: Cannot read properties of undefined (reading 'credits')", culprit: 'src/routes/chat.ts in debit', level: 'error', count: '142', userCount: 37, lastSeen: iso(12 * 60e3), permalink: '#', project: 'studpilot-worker' }, { id: '4499', title: 'Plugin HTTP 429 from generation endpoint', culprit: 'Plugin/Net.luau', level: 'warning', count: '58', userCount: 12, lastSeen: iso(3 * H), permalink: '#', project: 'studpilot-plugin' }, { id: '4470', title: 'Unhandled rejection: stream closed', culprit: 'src/stream.ts', level: 'fatal', count: '4', userCount: 2, lastSeen: iso(2 * D), permalink: '#', project: 'studpilot-worker' }] }
+    : { ok: true, fetchedAt: iso(5e3), configured: false, how: 'מוסיפים SENTRY_AUTH_TOKEN (הרשאות project:read, event:read, event:write) לקובץ ~/.config/studpilot/cc.env, ואת SENTRY_ORG. אחרי הפעלה מחדש של הלוח השגיאות יופיעו כאן.' },
   hf: {
     ok: true, fetchedAt: iso(40e3), user: 'moshebarami',
-    models: [{ id: 'moshebarami/roblox-luau-embed', private: false, downloads: 1830, likes: 12, updatedAt: iso(6 * D), url: 'https://huggingface.co/moshebarami/roblox-luau-embed', pipeline: 'feature-extraction' }, { id: 'moshebarami/apple-router-small', private: true, downloads: 0, likes: 0, updatedAt: iso(20 * D), url: '#', pipeline: 'text-classification' }],
+    models: [{ id: 'moshebarami/roblox-luau-embed', private: false, downloads: 1830, likes: 12, updatedAt: iso(6 * D), url: 'https://huggingface.co/moshebarami/roblox-luau-embed', pipeline: 'feature-extraction' }, { id: 'moshebarami/studpilot-router-small', private: true, downloads: 0, likes: 0, updatedAt: iso(20 * D), url: '#', pipeline: 'text-classification' }],
     datasets: [{ id: 'moshebarami/roblox-api-docs', private: false, downloads: 420, likes: 5, updatedAt: iso(3 * D), url: '#' }, { id: 'moshebarami/luau-eval-set', private: true, downloads: 12, likes: 0, updatedAt: iso(11 * D), url: '#' }],
-    spaces: [{ id: 'moshebarami/apple-demo', sdk: 'gradio', runtimeStage: 'RUNNING', url: '#' }, { id: 'moshebarami/embed-playground', sdk: 'streamlit', runtimeStage: 'SLEEPING', url: '#' }, { id: 'moshebarami/old-test', sdk: 'docker', runtimeStage: 'RUNTIME_ERROR', url: '#' }],
+    spaces: [{ id: 'moshebarami/studpilot-demo', sdk: 'gradio', runtimeStage: 'RUNNING', url: '#' }, { id: 'moshebarami/embed-playground', sdk: 'streamlit', runtimeStage: 'SLEEPING', url: '#' }, { id: 'moshebarami/old-test', sdk: 'docker', runtimeStage: 'RUNTIME_ERROR', url: '#' }],
   },
   extras: {
     ok: true, fetchedAt: iso(25e3),
-    apple: { httpStatus: 200, buildSha: '3f2a9c1d7e', ms: 210 },
+    studpilot: { httpStatus: 200, buildSha: '3f2a9c1d7e', ms: 210 },
     robloxStore: { assetId: 123456789, httpStatus: 404, controls: [{ id: 987654321, httpStatus: 200 }] },
     stripe: { configured: false, how: 'מחכה למפתחות Stripe (live). נמצא ברשימת המשימות של הבעלים.' },
     posthog: { configured: false },

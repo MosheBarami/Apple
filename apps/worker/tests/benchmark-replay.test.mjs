@@ -47,7 +47,7 @@ await esbuild.build({
           // handler's own classification is what is exercised.
           export async function chat(env, req, opts) {
             const next = await env.__testChat(req, opts);
-            if (next && next.__refuse) throw new RateLimitedError('Apple is handling a burst of requests right now.');
+            if (next && next.__refuse) throw new RateLimitedError('StudPilot is handling a burst of requests right now.');
             if (next && next.__transient) {
               const e = new Error('workers-ai 503 temporarily unavailable');
               e.name = 'ProviderError';

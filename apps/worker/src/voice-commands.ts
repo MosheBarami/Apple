@@ -120,9 +120,10 @@ export const VOICE_COMMAND_IDS = VOICE_COMMANDS.map((c) => c.id);
  * rebrand rather than kept as a second spelling: it is an input token, not a persisted value or a
  * wire contract, so it has no claim on the exempt list, and a name the product no longer answers to
  * is not a name anyone should be taught to keep saying. The cost is real and small — someone who
- * says "hey Apple, stop" gets an unrecognised utterance rather than a stop.
+ * says "hey Apple, stop" gets an unrecognised utterance rather than a stop. The name is listed as
+ * it is written ("studpilot") and as a transcriber hears a coined compound ("stud pilot").
  */
-const LEADING_FILLER = ['um', 'uh', 'er', 'erm', 'ok', 'okay', 'so', 'now', 'hey', 'hi', 'apple', 'please', 'just', 'no', 'can you', 'could you', 'would you', 'i want you to', 'i need you to', 'you can'];
+const LEADING_FILLER = ['um', 'uh', 'er', 'erm', 'ok', 'okay', 'so', 'now', 'hey', 'hi', 'studpilot', 'stud pilot', 'please', 'just', 'no', 'can you', 'could you', 'would you', 'i want you to', 'i need you to', 'you can'];
 
 const TRAILING_FILLER = ['please', 'now', 'thanks', 'thank you', 'ok', 'okay'];
 

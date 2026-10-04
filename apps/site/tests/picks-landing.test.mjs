@@ -5,7 +5,7 @@
  * now twelve mounts, because picks that did one job were merged (four noise grounds into one
  * NoiseField, four Animated Beam variants into one BeamFlow, four button treatments into one
  * CtaButton, and so on). Two of them (eldora--animated-frameworks, eldora--integrations) drew the
- * "From other makers" row, which went with the other makers' models (V3 gate G01: Apple is the only
+ * "From other makers" row, which went with the other makers' models (V3 gate G01: StudPilot is the only
  * engine), so twenty remain. A component nobody imports is a demo, so the first half of this file reads
  * the pages, with comments stripped, and fails when a mount is removed or only described.
  *
@@ -450,7 +450,7 @@ test('Ticker: under reduced motion it is a still list, with no copies and no fra
 }));
 
 function wordPage(h) {
-  const host = new El('div', { class: 'pw', 'data-particle-word': 'Apple' }, [new El('canvas')]);
+  const host = new El('div', { class: 'pw', 'data-particle-word': 'StudPilot' }, [new El('canvas')]);
   host.clientWidth = 200; host.clientHeight = 60;
   host.children[0].rect = { left: 0, top: 0, width: 200, height: 60 };
   h.body.append(host);

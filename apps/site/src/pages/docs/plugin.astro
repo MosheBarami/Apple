@@ -3,7 +3,7 @@ import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import ObjectIcon, { type ObjectName } from '../../components/ObjectIcon.astro';
 
-// The canonical Creator Store identity for the plugin, "Apple Studio". The asset id has exactly ONE
+// The canonical Creator Store identity for the plugin, "StudPilot Studio". The asset id has exactly ONE
 // definition in this repository — packages/shared/src/index.ts — and everything, including this
 // page, derives from it. Do not restate the number here; a second copy is a second thing to forget
 // to change. (Why create.roblox.com/store/asset: roblox.com/library/<id> redirects there, so Roblox
@@ -27,9 +27,9 @@ import {
  * Roblox's own reason rather than only the outcome (apps/site/tests/plugin-listing-identity.test.mjs).
  * It is null from 2026-09-22, when the listing was distributed again.
  *
- * The labels quoted in the steps — Apple, Apple Studio, Not connected, Connect to Apple, Enable
+ * The labels quoted in the steps — StudPilot, StudPilot Studio, Not connected, Connect to StudPilot, Enable
  * edits…, Allow edits for this connection, Turn edits off — are the plugin's own strings in
- * apps/apple-plugin/src/init.server.luau.
+ * apps/studpilot-plugin/src/init.server.luau.
  */
 /* WHAT "CREATE INSTANCES" MEANS, IN OBJECTS A YOUNG CREATOR WILL MEET IN STUDIO'S EXPLORER. Each is
    one the worker's tools make or change (apps/worker/src/tools.ts): scripts through edit_script's
@@ -48,14 +48,14 @@ const decided = refusal
 ---
 
 <DocsLayout
-  title="Install the plugin — Apple Docs"
+  title="Install the plugin — StudPilot Docs"
   description={storeLive
-    ? 'How to install Apple Studio from the Roblox Creator Store, enable it, open the Apple panel, pair it with your project and allow edits.'
+    ? 'How to install StudPilot Studio from the Roblox Creator Store, enable it, open the StudPilot panel, pair it with your project and allow edits.'
     : 'Public Studio installation is unavailable right now. What that means, and what the install steps will be once the listing is available again.'}
-  heading="Install Apple Studio"
+  heading="Install StudPilot Studio"
 >
   <p>
-    Apple builds inside Roblox Studio through a free plugin, <strong>Apple Studio</strong>. The
+    StudPilot builds inside Roblox Studio through a free plugin, <strong>StudPilot Studio</strong>. The
     plugin is the product's hands: it reads and edits scripts, creates instances, sets properties
     and reads the output — always inside the one place you connect it to, and always as Studio
     undo steps.
@@ -65,7 +65,7 @@ const decided = refusal
     storeLive ? (
       <p class="cta-row">
         <a href={STORE_URL} class="btn btn-primary" rel="noopener noreferrer" target="_blank">
-          Get Apple Studio on the Creator Store <span aria-hidden="true">↗</span>
+          Get StudPilot Studio on the Creator Store <span aria-hidden="true">↗</span>
         </a>
         <span>Free. Opens Roblox's site in a new tab.</span>
       </p>
@@ -103,41 +103,41 @@ const decided = refusal
     <li>
       <strong>Get it from the Creator Store.</strong>{' '}
       {storeLive
-        ? <>Open <a href={STORE_URL} rel="noopener noreferrer" target="_blank">Apple Studio on the Creator Store</a>, sign in to Roblox and press <strong>Get Plugin</strong>.</>
-        : <>Open the Creator Store page for Apple Studio, sign in to Roblox and press <strong>Get Plugin</strong>.</>}
+        ? <>Open <a href={STORE_URL} rel="noopener noreferrer" target="_blank">StudPilot Studio on the Creator Store</a>, sign in to Roblox and press <strong>Get Plugin</strong>.</>
+        : <>Open the Creator Store page for StudPilot Studio, sign in to Roblox and press <strong>Get Plugin</strong>.</>}
       {' '}That only adds it to your Roblox inventory; nothing has reached Studio yet.
     </li>
     <li>
       <strong>Install it in Studio.</strong> Open Roblox Studio, open the <strong>Toolbox</strong>,
-      and find Apple Studio under <strong>Inventory</strong> (or search the
+      and find StudPilot Studio under <strong>Inventory</strong> (or search the
       <strong>Creator Store</strong> tab). Click it, then press <strong>Install</strong>.
     </li>
     <li>
-      <strong>Check it is enabled.</strong> An <strong>Apple</strong> button appears in Studio's
+      <strong>Check it is enabled.</strong> An <strong>StudPilot</strong> button appears in Studio's
       <strong>Plugins</strong> tab. If it does not, open <strong>Manage Plugins</strong> from the same
-      tab and switch Apple Studio on.
+      tab and switch StudPilot Studio on.
     </li>
     <li>
-      <strong>Open the Apple panel.</strong> Click <strong>Apple</strong> in the Plugins tab. The
-      <strong>Apple Studio</strong> panel docks and reads <strong>Not connected</strong>. Apple can see
+      <strong>Open the StudPilot panel.</strong> Click <strong>StudPilot</strong> in the Plugins tab. The
+      <strong>StudPilot Studio</strong> panel docks and reads <strong>Not connected</strong>. StudPilot can see
       nothing until you pair it.
     </li>
     <li>
-      <strong>Pair it, then allow edits.</strong> In the Apple web app, open your project and press
+      <strong>Pair it, then allow edits.</strong> In the StudPilot web app, open your project and press
       <strong>Enter pairing code</strong> to get a six-character code. Type it into the panel and press
-      <strong>Connect to Apple</strong>. The connection starts read-only; press
+      <strong>Connect to StudPilot</strong>. The connection starts read-only; press
       <strong>Enable edits…</strong> and then <strong>Allow edits for this connection</strong> when you
-      want Apple to build. Every new connection starts with edits off again. The details are in
+      want StudPilot to build. Every new connection starts with edits off again. The details are in
       <a href="/docs/connect">Connect a project</a>.
     </li>
   </ol>
 
   <div class="callout">
     <p>
-      <strong>Studio will ask permission to reach the network.</strong> Apple talks to its server
+      <strong>Studio will ask permission to reach the network.</strong> StudPilot talks to its server
       over HTTPS. The first time a plugin uses the network, Studio can prompt you to allow that web
       address, and you can accept, deny or revoke it at any time in the
-      <strong>Plugin Management</strong> window. Apple does nothing until you allow it. This is not
+      <strong>Plugin Management</strong> window. StudPilot does nothing until you allow it. This is not
       the same setting as <em>Game Settings → Security → Allow HTTP Requests</em>, which governs your
       game's own code, not plugins.
     </p>
@@ -156,8 +156,8 @@ const decided = refusal
       with your own Roblox account.
     </li>
     <li>
-      <strong>Bounded test control:</strong> Apple can start, pause, resume, restart and stop Studio
-      Run mode so Apple can verify its own work, capture output and take periodic viewport snapshots.
+      <strong>Bounded test control:</strong> StudPilot can start, pause, resume, restart and stop Studio
+      Run mode so StudPilot can verify its own work, capture output and take periodic viewport snapshots.
       It does not publish your game or bypass Studio/Roblox account permissions. Arbitrary code
       execution remains separately permissioned, and unsafe asset ingress is refused by name with
       an explicit reason rather than failing quietly.
@@ -175,18 +175,18 @@ const decided = refusal
 
   <h2>Removing it</h2>
   <p>
-    Uninstall Apple Studio from Studio's plugin management window, the same place you manage every
-    other plugin. You can also stop Apple acting on a place at any moment without uninstalling
+    Uninstall StudPilot Studio from Studio's plugin management window, the same place you manage every
+    other plugin. You can also stop StudPilot acting on a place at any moment without uninstalling
     anything — press <strong>Disconnect</strong> in the panel, or disconnect from the web workspace.
     See <a href="/docs/troubleshooting">Troubleshooting</a>.
   </p>
 
   <div class="callout callout--violet">
     <p>
-      <strong>Developer note — not the normal path.</strong> If you are working on Apple itself,
+      <strong>Developer note — not the normal path.</strong> If you are working on StudPilot itself,
       you can build the plugin from source and load it as a local plugin. That path is documented
       separately in <a href="/docs/build-from-source">Build the plugin from source</a>. It is for
-      development and debugging only; do not follow it to use Apple.
+      development and debugging only; do not follow it to use StudPilot.
     </p>
   </div>
 

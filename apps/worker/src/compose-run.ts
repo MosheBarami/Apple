@@ -1,9 +1,9 @@
 /**
  * Runs the composer's Steps (compose.ts) in the user's Studio through the paired plugin. The Studio proof harness
  * (packages/components/proof/run-steps.luau) runs the same Steps from the command bar; the two must agree, and the
- * plugin's place_copies / strip_descendants ops (apps/apple-plugin/src/ops/Compose.luau) do exactly what the harness does.
+ * plugin's place_copies / strip_descendants ops (apps/studpilot-plugin/src/ops/Compose.luau) do exactly what the harness does.
  */
-import type { InstanceSpec, PropValue, StudioOp } from '@apple/shared';
+import type { InstanceSpec, PropValue, StudioOp } from '@studpilot/shared';
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite, Step } from './compose';
 import { LIBRARY_IMPORT_MS } from './local-owner-corpus';

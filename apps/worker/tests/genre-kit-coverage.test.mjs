@@ -1,4 +1,4 @@
-// Every genre Apple offers is a whole kit AND has at least one reference a builder can learn from.
+// Every genre StudPilot offers is a whole kit AND has at least one reference a builder can learn from.
 //
 // The genre list is read from GENRE_KIT_IDS, never written out here: a hand-written list is how a
 // newly added genre ships with no palette or no reference and every test stays green. The genres

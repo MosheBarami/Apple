@@ -31,6 +31,22 @@ test('every author the panel offers is one the worker accepts, and it offers no 
   assert.equal(web.SEARCH_AUTHORS.includes('system'), false);
 });
 
+test('the author labels and the result nouns are keyed by the stored author ids, and say StudPilot', async () => {
+  // The stored author id is 'apple' (saved records, the worker's filter); only the label is the
+  // product name. A rename that rewrote the object KEY leaves a hit rendering its raw id and the
+  // filter chip with no label, and `tsc` does not see the nouns map (it is typed Record<string, string>).
+  assert.deepEqual(Object.keys(web.AUTHOR_LABELS), [...web.SEARCH_AUTHORS]);
+  assert.equal(web.AUTHOR_LABELS.apple, 'StudPilot');
+  const { readFileSync } = await import('node:fs');
+  const panel = readFileSync(new URL('../src/components/ws/search-panel.tsx', import.meta.url), 'utf8');
+  const nouns = panel.match(/const AUTHOR_NOUN[^=]*=\s*\{([^}]*)\}/);
+  assert.ok(nouns, 'AUTHOR_NOUN is no longer a plain object literal in search-panel.tsx; re-aim this guard');
+  for (const id of worker.SEARCH_AUTHORS) {
+    assert.match(nouns[1], new RegExp(`\\b${id}:\\s*'`), `AUTHOR_NOUN has no entry for the stored author id '${id}'`);
+  }
+  assert.match(nouns[1], /\bapple:\s*'StudPilot'/);
+});
+
 test('the panel and the worker agree on what is too short to search', () => {
   // A client floor below the server's sends requests that are refused and paints the refusal as
   // "no results"; a floor above it refuses queries the server would have answered.

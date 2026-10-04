@@ -145,9 +145,9 @@ test('a timed-out change says to read the tree before retrying; a missing target
 // ---------------------------------------------------------------- the delete fence
 test('created-paths: a delete is covered only when every path is one the run created or lies inside one', () => {
   let created = C.rememberCreated(undefined, 'create_instances', { created: ['game.Workspace.Post', 'game.Workspace.Arch'] });
-  created = C.rememberCreated(created, 'insert_asset', { inserted: ['game.Workspace.Apple_Insert_1_ab.Oak'] });
+  created = C.rememberCreated(created, 'insert_asset', { inserted: ['game.Workspace.StudPilot_Insert_1_ab.Oak'] });
   created = C.rememberCreated(created, 'get_tree', { created: ['game.Workspace.NotAnAdd'] });
-  assert.deepEqual(created, ['game.Workspace.Post', 'game.Workspace.Arch', 'game.Workspace.Apple_Insert_1_ab.Oak'], 'only ops that add instances are remembered');
+  assert.deepEqual(created, ['game.Workspace.Post', 'game.Workspace.Arch', 'game.Workspace.StudPilot_Insert_1_ab.Oak'], 'only ops that add instances are remembered');
   assert.equal(C.coveredByCreated(created, ['game.Workspace.Post']), true);
   assert.equal(C.coveredByCreated(created, ['game.Workspace.Post.Plank', 'game.Workspace.Arch']), true, 'a descendant of a created path is covered');
   assert.equal(C.coveredByCreated(created, ['game.Workspace.Post', 'game.Workspace.OldHouse']), false, 'one pre-existing path keeps the fence');
@@ -159,7 +159,7 @@ test('created-paths: a delete is covered only when every path is one the run cre
 });
 
 // Benchmark 2026-10-04, item o05: create_instances with className Script went to Studio and came back "class Script is not in
-// Apple's create allowlist", which named no way forward. A script class (at any depth) is answered before Studio, naming the tool.
+// StudPilot's create allowlist", which named no way forward. A script class (at any depth) is answered before Studio, naming the tool.
 test('a script class is answered before Studio, naming edit_script', async () => {
   const { ctx, ops } = ctxWith(ok);
   const r = await run(ctx, 'create_instances', { items: [{ className: 'Model', name: 'Jukebox', parent: 'game.Workspace', children: [{ className: 'Script', name: 'Play' }] }] });

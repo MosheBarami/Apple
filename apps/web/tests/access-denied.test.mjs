@@ -3,7 +3,7 @@
  *
  * /admin guarded itself with `me.isError || me.data?.profile?.is_admin !== true`, which folds a
  * failed profile fetch into a permission verdict: a network blip, an expired session or a 500
- * from /api/me all rendered as "Nothing here — this area is for Apple operators." The operator
+ * from /api/me all rendered as "Nothing here — this area is for StudPilot operators." The operator
  * is then told, flatly and wrongly, what they are. It is this repository's failure-to-observe
  * pattern in the place where it costs most: an authority claim the interface never established.
  *
@@ -56,5 +56,5 @@ test('the refusal card is shown only to a profile that actually answered', () =>
 test('the refusal still says what the page is, rather than showing a blank', () => {
   const body = adminPage();
   assert.match(body, /Nothing here/);
-  assert.match(body, /This area is for Apple operators\./);
+  assert.match(body, /This area is for StudPilot operators\./);
 });

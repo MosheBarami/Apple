@@ -1,7 +1,7 @@
 /**
  * ONE ENGINE IN THE BROWSER (V3 gate G01).
  *
- * Apple is the only engine, on every plan. It replaced the model picker, the remembered model
+ * StudPilot is the only engine, on every plan. It replaced the model picker, the remembered model
  * choice and the MAX wordmark (tests/model-picker, model-choice, model-name and
  * product-model-selection, removed with them). These tests hold the browser's half:
  *
@@ -36,13 +36,29 @@ test('the composer takes no model and gates nothing on one', () => {
   for (const gone of [/productModel/, /onModelChange/, /modelPlan/, /onUpgrade/, /ModelPicker/, /canUseProductModel/, /modelRefusal/, /modelUnavailable/]) {
     assert.doesNotMatch(composer, gone);
   }
-  assert.doesNotMatch(composer, /Requires Apple MAX|Apple MAX|×\s*\d|credits badge/i);
-  assert.doesNotMatch(read('design/system.css'), /apple-max-name|max-ink/);
+  assert.doesNotMatch(composer, /Requires StudPilot MAX|StudPilot MAX|×\s*\d|credits badge/i);
+  assert.doesNotMatch(read('design/system.css'), /studpilot-max-name|max-ink/);
   // Stop is another stage's control and stays.
   assert.match(composer, /Stop/);
 });
 
-test('the workspace sends Apple on every plan, with no mode and no Autonomous grant (V3 G01)', () => {
+test('every ModelMark variant has its colour rule: the class is built from the stored model id', () => {
+  // `model-signature--${variant}` is composed at run time from the stored model id ('apple'), so a
+  // rename that rewrote only the stylesheet's selector leaves the mark uncoloured and no type check
+  // or render test notices. Read the variants the component accepts and require a rule for each.
+  const mark = read('components/ws/model-mark.tsx');
+  const union = mark.match(/variant\?:\s*((?:'[a-z-]+'\s*\|?\s*)+)/);
+  assert.ok(union, 'ModelMark no longer declares a variant union; re-aim this guard at wherever the class is composed');
+  const variants = [...union[1].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+  assert.ok(variants.length > 0);
+  const css = read('design/system.css');
+  for (const v of variants) {
+    assert.ok(css.includes(`.model-signature--${v}`), `no .model-signature--${v} rule in system.css; ModelMark variant="${v}" renders unstyled`);
+  }
+  assert.ok(variants.includes('apple'), "the variant is the stored model id 'apple', not the product name");
+});
+
+test('the workspace sends StudPilot on every plan, with no mode and no Autonomous grant (V3 G01)', () => {
   const workspace = read('routes/workspace.tsx');
   assert.match(workspace, /const productModel: ProductModel = 'apple';/);
   assert.match(workspace, /sendChat\(text, attachments, productModel\)/);

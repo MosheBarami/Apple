@@ -2,10 +2,10 @@
  * A QUESTION ABOUT ONE LINE — the Eldora UI "GitHub Inline Comments" pick (MIT, eldoraui.site).
  *
  * The pick: hover a line of a diff, press the + bubble, and a thread opens under that line with a
- * box to write in; Esc closes it. What it is FOR here: a young creator reading a script Apple wrote
+ * box to write in; Esc closes it. What it is FOR here: a young creator reading a script StudPilot wrote
  * can point at the exact line they do not understand ("what does this do?", "make this faster") and
  * the question lands in the message box with the file and line attached. Nothing is stored on the
- * line — the conversation is where Apple answers — so the thread says where the words went instead
+ * line — the conversation is where StudPilot answers — so the thread says where the words went instead
  * of pretending to keep them.
  */
 import { useEffect, useId, useRef, useState } from 'react';
@@ -19,7 +19,7 @@ export function LineCommentButton({ line, open, onClick }: { line: number; open:
     <button
       type="button"
       className="lt-bubble"
-      aria-label={open ? `Close the question on line ${line}` : `Ask Apple about line ${line}`}
+      aria-label={open ? `Close the question on line ${line}` : `Ask StudPilot about line ${line}`}
       aria-expanded={open}
       title="Ask about this line"
       onClick={onClick}
@@ -72,7 +72,7 @@ export function LineThread({
           </button>
         </div>
         {code.trim() && <pre className="lt-quote">{code.trim()}</pre>}
-        <label className="tq-sr" htmlFor={id}>Your question for Apple</label>
+        <label className="tq-sr" htmlFor={id}>Your question for StudPilot</label>
         <textarea
           ref={box}
           id={id}
@@ -86,7 +86,7 @@ export function LineThread({
         <div className="lt-acts">
           <span className="lt-hint">Goes to your message box</span>
           <button type="button" className="tq-btn tq-btn--bare" onClick={onClose}>Cancel</button>
-          <button type="button" className="tq-btn tq-btn--primary" disabled={!text.trim()} onClick={send}>Ask Apple</button>
+          <button type="button" className="tq-btn tq-btn--primary" disabled={!text.trim()} onClick={send}>Ask StudPilot</button>
         </div>
       </div>
     </div>

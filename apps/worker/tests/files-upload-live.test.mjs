@@ -2,8 +2,8 @@
  * PUTTING A FILE INTO YOUR OWN PROJECT — executed against the real app.
  *
  * Every file in the workspace arrived one way: the agent wrote it. `workspace_write` is a tool, so
- * the only way a person could put a design brief, a CSV of level data or a note where Apple can
- * read it was to paste the whole thing into the chat and ask Apple to save it — which costs a turn,
+ * the only way a person could put a design brief, a CSV of level data or a note where StudPilot can
+ * read it was to paste the whole thing into the chat and ask StudPilot to save it — which costs a turn,
  * costs credits, and passes the text through a model that may reword it.
  *
  * The panel said so in its own header: "NO UPLOAD. There is no object store behind this worker."
@@ -18,7 +18,7 @@
  *      chance to differ, and the direction it differs in is the traversal that only one of them
  *      refused.
  *   2. AN OCCUPIED PATH IS A REFUSAL, NOT AN OVERWRITE — the same rule copy and move already keep.
- *      A user who picks `plan.md` from their disk must not silently replace the plan Apple wrote.
+ *      A user who picks `plan.md` from their disk must not silently replace the plan StudPilot wrote.
  *      `overwrite: true` is how they say they meant it, and the replaced text survives as a version
  *      because every write archives the previous one.
  *   3. A REFUSAL WRITES NOTHING. Each refusal below asserts the store afterwards, because "refused"
@@ -38,7 +38,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-files-upload-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-files-upload-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

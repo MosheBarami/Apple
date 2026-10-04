@@ -3,7 +3,7 @@
 //
 // The gap this closes was found by an independent audit of mission gate 26 ("corpus materially
 // improves UI/world evals"): the eleven executable checks were real and had found two live
-// defects, and `packages/evals` did not import `@apple/design` at all. The checks improved this
+// defects, and `packages/evals` did not import `@studpilot/design` at all. The checks improved this
 // repository and had never once been applied to generated output, which is what the gate says.
 //
 // Run: node --test packages/evals/src/design-checks.test.mjs
@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkNoDesignViolation, TEXT_CHECKS, TEXT_CHECK_RULE_IDS } from './design-checks.mjs';
-import { ENFORCED_RULE_IDS } from '@apple/design';
+import { ENFORCED_RULE_IDS } from '@studpilot/design';
 import { gradeTask } from './grade.mjs';
 
 test('every text-decidable rule id is a rule the design library actually enforces', () => {

@@ -33,7 +33,7 @@ test('clips: what would break the player is refused with a reason', () => {
     [{ x: { ...press, keys: [{ t: 0, ease: 'Wobbly', Key: { move: [0, 0, 0] } }, press.keys[1]] } }, /ease must be/],
     [{ x: { ...press, keys: [{ t: 0 }, press.keys[1]] } }, /names no joint/],
     [{ 'bad name!': press }, /plain name/],
-    [{ x: { ...press, sound: 'rbxassetid://1' } }, /not a sound from Apple's library/],
+    [{ x: { ...press, sound: 'rbxassetid://1' } }, /not a sound from StudPilot's library/],
   ];
   for (const [clips, why] of bad) {
     const r = A.readClips(clips);
@@ -47,7 +47,7 @@ test('the animation player ships as a component and rig ops are on the wire', ()
   assert.match(gen, /"animate": \{/);
   const shared = readFileSync(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
   for (const op of ['rig_model', 'set_joint_pivot', 'reset_joints']) assert.match(shared, new RegExp(`op: '${op}'`));
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', 'Joints.luau'), 'utf8');
+  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'ops', 'Joints.luau'), 'utf8');
   assert.match(plugin, /RIGEDIT LITE/, 'the plugin credits RigEdit Lite');
   for (const op of ['rig_model', 'set_joint_pivot', 'reset_joints']) assert.match(plugin, new RegExp(`${op} = handle`));
 });

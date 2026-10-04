@@ -94,9 +94,9 @@ function fixture(u, init) {
   if (p === `${acc}/vectorize/v2/indexes`) return R([{ name: 'golem-docs', config: { dimensions: 384, metric: 'cosine' }, created_on: iso(NOW - 700 * HOUR) }]);
   if (p === `${acc}/queues`) return R([{ queue_id: 'q-1', queue_name: 'apple-notifications', producers_total_count: 1, consumers_total_count: 1, producers: [{ script: 'apple' }], consumers: [{ script: 'apple' }] }]);
   if (p === `${acc}/ai-gateway/gateways`) return R([{ id: 'golem', created_at: iso(NOW - 800 * HOUR), collect_logs: true, cache_ttl: 0, rate_limiting_limit: 0, authentication: false, logpush_public_key: LEAK }]);
-  if (p === `${acc}/ai-gateway/gateways/apple/logs`) return R([{ id: 'log-1', created_at: iso(NOW - 60e3), provider: 'workers-ai', model: '@cf/zai-org/glm-5.3-flash', status_code: 200, success: true, cached: false, tokens_in: 1200, tokens_out: 80, cost: 0.0012, duration: 900, request: LEAK, response: LEAK, prompts: LEAK, metadata: { user: LEAK }, usage_metadata: { neurons: 110 } }]);
+  if (p === `${acc}/ai-gateway/gateways/studpilot/logs`) return R([{ id: 'log-1', created_at: iso(NOW - 60e3), provider: 'workers-ai', model: '@cf/zai-org/glm-5.3-flash', status_code: 200, success: true, cached: false, tokens_in: 1200, tokens_out: 80, cost: 0.0012, duration: 900, request: LEAK, response: LEAK, prompts: LEAK, metadata: { user: LEAK }, usage_metadata: { neurons: 110 } }]);
   if (p === '/zones') return R([]);
-  if (p === `${acc}/challenges/widgets`) return R([{ sitekey: '0x4AAAAAAFBZ', name: 'apple-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'], created_on: iso(NOW - 400 * HOUR), secret: LEAK, clearance_level: 'no_clearance' }]);
+  if (p === `${acc}/challenges/widgets`) return R([{ sitekey: '0x4AAAAAAFBZ', name: 'studpilot-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'], created_on: iso(NOW - 400 * HOUR), secret: LEAK, clearance_level: 'no_clearance' }]);
   if (p === `${acc}/pages/projects`) return R([{ name: 'spin', subdomain: 'spin-b6q.pages.dev', created_on: iso(NOW - 600 * HOUR), production_branch: 'main', deployment_configs: { production: { env_vars: { K: { value: LEAK } } } },
     latest_deployment: { id: 'pd-1', created_on: iso(NOW - 70 * HOUR), url: 'https://abc.spin-b6q.pages.dev', environment: 'production', latest_stage: { name: 'deploy', status: 'success' }, env_vars: { K: { value: LEAK } }, deployment_trigger: { metadata: { branch: 'main', commit_hash: 'deadbeef00', commit_message: 'fix' } } } }]);
   if (p === `${acc}/workers/durable_objects/namespaces`) return R([{ id: 'ns-s', name: 'apple_SessionDO', script: 'apple', class: 'SessionDO', use_sqlite: true }]);
@@ -118,7 +118,7 @@ beforeEach(() => { calls = []; handler = null; uncache('cloudflare'); Object.ass
 // ---------------------------------------------------------------- exports other files rely on
 test('keeps the exports other files import', () => {
   assert.equal(WORKER, 'apple');
-  assert.match(WORKER_URL, /^https:\/\/apple\./);
+  assert.match(WORKER_URL, /^https:\/\/studpilot\./);
   assert.equal(typeof workerHealth, 'function');
 });
 
@@ -143,23 +143,23 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
   assert.equal(r.ok, true, r.reason);
   assert.deepEqual(r.errors, {});
   assert.deepEqual(r.account, { id: 'acct-test', name: 'Moshe account' });
-  const apple = r.workers.find((w) => w.name === 'apple');
-  assert.equal(apple.url, 'https://apple.moshe-barami111.workers.dev');
-  assert.deepEqual(apple.deployments.map((d) => d.id), ['dep-3', 'dep-2']);
-  assert.equal(apple.deployments[0].trigger, 'secret');
-  assert.deepEqual(apple.deployments[0].versions, [{ id: V.new, pct: 100 }]);
-  assert.equal(apple.deployments[1].message, 'ship it');
-  assert.deepEqual(apple.versions.map((v) => v.number), [161, 160, 159]);
-  assert.deepEqual(apple.serving, [{ id: V.new, pct: 100, number: 161 }]);
-  assert.deepEqual(apple.crons, ['* * * * *']);
-  assert.equal(apple.requests24h, 26800);
-  assert.equal(apple.cpuP99Ms, 25.98);
+  const studpilot = r.workers.find((w) => w.name === 'apple');
+  assert.equal(studpilot.url, 'https://apple.moshe-barami111.workers.dev');
+  assert.deepEqual(studpilot.deployments.map((d) => d.id), ['dep-3', 'dep-2']);
+  assert.equal(studpilot.deployments[0].trigger, 'secret');
+  assert.deepEqual(studpilot.deployments[0].versions, [{ id: V.new, pct: 100 }]);
+  assert.equal(studpilot.deployments[1].message, 'ship it');
+  assert.deepEqual(studpilot.versions.map((v) => v.number), [161, 160, 159]);
+  assert.deepEqual(studpilot.serving, [{ id: V.new, pct: 100, number: 161 }]);
+  assert.deepEqual(studpilot.crons, ['* * * * *']);
+  assert.equal(studpilot.requests24h, 26800);
+  assert.equal(studpilot.cpuP99Ms, 25.98);
   // bindings: type, name, target only. Never a value.
-  assert.deepEqual(apple.bindings.find((b) => b.name === 'CORPUS'), { type: 'd1', name: 'CORPUS', target: 'db-1' });
-  assert.deepEqual(apple.bindings.find((b) => b.name === 'MEDIA'), { type: 'r2_bucket', name: 'MEDIA', target: 'apple-media' });
-  assert.deepEqual(apple.bindings.find((b) => b.name === 'OPENAI_KEY'), { type: 'secret_text', name: 'OPENAI_KEY', target: null });
-  assert.equal(apple.buildSha, 'abc1234');
-  assert.ok(!('text' in apple.bindings.find((b) => b.name === 'PUBLIC_NOTE')));
+  assert.deepEqual(studpilot.bindings.find((b) => b.name === 'CORPUS'), { type: 'd1', name: 'CORPUS', target: 'db-1' });
+  assert.deepEqual(studpilot.bindings.find((b) => b.name === 'MEDIA'), { type: 'r2_bucket', name: 'MEDIA', target: 'apple-media' });
+  assert.deepEqual(studpilot.bindings.find((b) => b.name === 'OPENAI_KEY'), { type: 'secret_text', name: 'OPENAI_KEY', target: null });
+  assert.equal(studpilot.buildSha, 'abc1234');
+  assert.ok(!('text' in studpilot.bindings.find((b) => b.name === 'PUBLIC_NOTE')));
   // the fields insights.mjs reads keep their shape
   assert.equal(r.traffic.last24h.requests, 26800);
   assert.equal(r.traffic.last24h.cpuP99Ms, 25.98);
@@ -176,7 +176,7 @@ test('payload shape: workers with bindings, deployments and versions; analytics;
   assert.equal(r.ai.models[0].model, '@cf/zai-org/glm-5.3-flash');
   assert.deepEqual(r.aiGateway[0], { id: 'golem', createdAt: iso(NOW - 800 * HOUR), collectLogs: true, cacheTtl: 0, rateLimit: 0, authentication: false,
     requests24h: 1921, cost24h: 2.19, errors24h: 27, cached24h: 9, tokensIn24h: 50103170, tokensOut24h: 561130 });
-  assert.deepEqual(r.turnstile[0], { sitekey: '0x4AAAAAAFBZ', name: 'apple-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'],
+  assert.deepEqual(r.turnstile[0], { sitekey: '0x4AAAAAAFBZ', name: 'studpilot-auth', mode: 'managed', domains: ['apple.moshe-barami111.workers.dev', 'localhost'],
     createdAt: iso(NOW - 400 * HOUR), events24h: { challenge_issued: 2, challenge_siteverify_failed_invalid_token: 1 } });
   assert.deepEqual(r.durableObjects[0], { id: 'ns-s', name: 'apple_SessionDO', script: 'apple', className: 'SessionDO', sqlite: true, requests24h: 24166, errors24h: 193 });
   assert.equal(r.workflows[0].instances.errored, 1);
@@ -298,9 +298,9 @@ test('gw-logs whitelists the log fields: no prompt, request, response or metadat
 // ---------------------------------------------------------------- writes: dry-run plans and rollback
 test('dryRun returns the exact plan without calling fetch', async () => {
   assert.deepEqual((await cloudflareAction({ kind: 'logs', value: false, dryRun: true })).plan,
-    { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/apple/script-settings`, body: { observability: { logs: { enabled: false } } } });
+    { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/studpilot/script-settings`, body: { observability: { logs: { enabled: false } } } });
   assert.deepEqual((await cloudflareAction({ kind: 'traces', value: true, dryRun: true })).plan,
-    { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/apple/script-settings`, body: { observability: { traces: { enabled: true } } } });
+    { method: 'PATCH', url: `${API}/accounts/<account>/workers/scripts/studpilot/script-settings`, body: { observability: { traces: { enabled: true } } } });
   assert.deepEqual((await cloudflareAction({ kind: 'purge', zoneId: 'z1', dryRun: true })).plan,
     { method: 'POST', url: `${API}/zones/z1/purge_cache`, body: { purge_everything: true } });
   assert.equal(calls.length, 0);
@@ -308,7 +308,7 @@ test('dryRun returns the exact plan without calling fetch', async () => {
   // would refuse; it still never writes.
   const rb = await cloudflareAction({ kind: 'rollback', script: 'apple', versionId: V.prev, dryRun: true });
   assert.equal(rb.dryRun, true);
-  assert.deepEqual(rb.plan, { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/apple/deployments`,
+  assert.deepEqual(rb.plan, { method: 'POST', url: `${API}/accounts/<account>/workers/scripts/studpilot/deployments`,
     body: { strategy: 'percentage', versions: [{ version_id: V.prev, percentage: 100 }], annotations: { 'workers/message': 'Rollback from owner dashboard' } } });
   assert.ok(!calls.some((c) => c.method !== 'GET'), 'a dry run wrote');
 });
@@ -340,7 +340,7 @@ test('rollback posts the chosen version at 100% (fake upstream) and drops the ca
   assert.equal(r.ok, true, r.reason);
   const post = calls.filter((c) => c.method === 'POST');
   assert.equal(post.length, 1);
-  assert.equal(post[0].url, `${A}/workers/scripts/apple/deployments`);
+  assert.equal(post[0].url, `${A}/workers/scripts/studpilot/deployments`);
   assert.deepEqual(JSON.parse(post[0].body), { strategy: 'percentage', versions: [{ version_id: V.prev, percentage: 100 }], annotations: { 'workers/message': 'Rollback from owner dashboard' } });
   assert.equal(r.versionId, V.prev);
 });

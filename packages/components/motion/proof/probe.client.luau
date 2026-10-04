@@ -27,5 +27,5 @@ for key, s in seen do
 	per[s.model] = p
 end
 for model, p in per do
-	print(("APPLEMOTION PROBE %s: %d of %d joints moved, largest swing %.2f"):format(model, p.moving, p.joints, p.max))
+	print(("STUDPILOTMOTION PROBE %s: %d of %d joints moved, largest swing %.2f"):format(model, p.moving, p.joints, p.max))
 end

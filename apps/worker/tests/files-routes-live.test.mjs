@@ -33,7 +33,7 @@ import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-files-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-files-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
@@ -281,7 +281,7 @@ test('a collaborator can fetch the sound, and it can actually be downloaded', as
   assert.match(inline.headers.get('Content-Disposition'), /^inline; /, 'the existing player must keep working');
 
   const download = await app.request(`${base}/audio/${AUDIO}?download=1`, as(ALICE), env);
-  assert.match(download.headers.get('Content-Disposition'), /^attachment; filename="apple-[0-9a-f-]+\.wav"$/);
+  assert.match(download.headers.get('Content-Disposition'), /^attachment; filename="studpilot-[0-9a-f-]+\.wav"$/);
   assert.equal(download.headers.get('Content-Type'), 'audio/wav');
 
   const stranger = await app.request(`${base}/audio/${AUDIO}`, as(STRANGER), env);

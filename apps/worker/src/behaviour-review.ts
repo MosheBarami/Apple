@@ -29,8 +29,8 @@
  *
  * Flag BEHAVIOUR_V2=off turns the whole thing off (no lint, no refusal).
  */
-import { parseLuau } from '@apple/evals/src/luau-ast.mjs';
-import { stripComments } from '@apple/evals/src/roblox-antipatterns.mjs';
+import { parseLuau } from '@studpilot/evals/src/luau-ast.mjs';
+import { stripComments } from '@studpilot/evals/src/roblox-antipatterns.mjs';
 import { reviewScript } from './luau-review';
 import { scanSource } from './sandbox';
 import { parseInstancePath } from './effects';

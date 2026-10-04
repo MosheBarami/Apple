@@ -288,7 +288,7 @@ function conclusions(list) {
 
 export default {
   id: 'discord', title: 'Discord', nav: 'Discord', brand: 'discord', needs: ['discord'],
-  sub: 'הבוט AppleAI כמו שהוא נראה בתוך Discord: השרתים, הערוצים, ההודעות והפקודות שלו',
+  sub: 'הבוט StudPilotAI כמו שהוא נראה בתוך Discord: השרתים, הערוצים, ההודעות והפקודות שלו',
   links: (d) => [{ label: 'Developer Portal', url: d.discord?.portalUrl }].filter((l) => l.url),
   render(d) {
     const s = d.discord || {};

@@ -1,4 +1,4 @@
-# Apple — approved visual direction
+# StudPilot — approved visual direction
 
 Transcribed from the two canonical reference images supplied 2026-08-31. Those
 images are the source of truth; this file is a faithful written transcription of
@@ -14,9 +14,9 @@ wins**.
 > **Rewritten 2026-09-14.** Sections 0 and 1 described a warm charcoal landing
 > with an amber accent, Inter throughout, and one screen that does not scroll.
 > None of that was on the page any more, and two separate changes had left it
-> behind: the warm palette went when Apple became Apple — `landing.css` says so
+> behind: the warm palette went when StudPilot became StudPilot — `landing.css` says so
 > in its own header, *"the previous warm palette (#0b0a09 ground, #c98a3c amber)
-> belonged to Apple and is gone"* — and the single screen went when the owner
+> belonged to StudPilot and is gone"* — and the single screen went when the owner
 > supplied a five-section design (docs/DECISIONS.md ADR-019, ADR-020).
 >
 > That matters more here than in most files, because of the line six paragraphs
@@ -121,13 +121,13 @@ one screen tall was the means; that is the end.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ⬡ APPLE   Product Modes How-it-works Pricing Docs            │
+│ ⬡ STUDPILOT   Product Modes How-it-works Pricing Docs            │
 │                                    [Sign in] [Start building]│  sticky, 63px
 ├──────────────────────────────────────────────────────────────┤
 │  · Works inside Roblox Studio                                │  badge
 │                                                              │
 │  DESCRIBE A ROBLOX GAME.                                     │  ink-bright
-│  APPLE BUILDS IT.                                            │  clipped gradient
+│  STUDPILOT BUILDS IT.                                            │  clipped gradient
 │                                                              │
 │  The parts, the scripts, the systems — straight into the     │  on-gradient
 │  place you have open in Studio.                              │
@@ -213,7 +213,7 @@ compare the page against the artifact will notice and need the reason.
    does — which is exactly what the design's own lede says, *"same builder, two
    settings"*. Only the eyebrow overclaims, so only the eyebrow changed, and the
    count is three because the product has three.
-2. **"Apple model only" on the free tier is gone.** A plan-conditional model
+2. **"StudPilot model only" on the free tier is gone.** A plan-conditional model
    entitlement has no code path in `gateway.ts`. Publishing it would advertise a
    restriction nothing enforces and a capability nothing withholds.
 3. **"Credits" → "Credits".** Credits already means something else here: the
@@ -226,7 +226,7 @@ compare the page against the artifact will notice and need the reason.
 the page said it once:
 
 - Any model-provider name.
-- "Two models", "both models", "Apple MAX", "model only".
+- "Two models", "both models", "StudPilot MAX", "model only".
 - "Credits" anywhere in the pricing section.
 - "One click", "available now", "get it now", "already installed" — the plugin
   asset is uploaded but not distributable, so the page may point at the store
@@ -234,7 +234,7 @@ the page said it once:
 - "$0 forever", "no card required, ever", "free forever" — contractual terms,
   and `scripts/check-offer.mjs` fails the build on them.
 - Adoption claims. "Trusted by builders", "Loved by teams" and "Indie devs to
-  studios" were on the bottom strip of the previous design, and Apple has no
+  studios" were on the bottom strip of the previous design, and StudPilot has no
   adoption to claim. The example prompts under the hero are labelled as examples
   for the same reason.
 
@@ -247,7 +247,7 @@ Conversation-first. Two columns only: rail and conversation.
 ### Left rail (~320px)
 
 ```
-⬡ Apple                                     [▤]   ← collapse toggle
+⬡ StudPilot                                     [▤]   ← collapse toggle
 ┌──────────────────────────────────────┐
 │ ✎  New chat                    ⌘ K   │        outlined, full width
 └──────────────────────────────────────┘
@@ -267,7 +267,7 @@ Conversation-first. Two columns only: rail and conversation.
 └──────────────────────────────────────┘
 ┌──────────────────────────────────────┐
 │ (A) Alex Chen               ⌄    ⚙   │
-│     alex@apple.ai                    │
+│     alex@studpilot.ai                    │
 └──────────────────────────────────────┘
 ```
 
@@ -341,9 +341,9 @@ A rounded `--surface` box with a `--line-2` border.
 ┌────────────────────────────────────────────────────────┐
 │ Ask anything about your project...                     │
 │                                                        │
-│ [⬡ Apple 1.5 ⌄]  [⚖ Balanced]              📎  🎤  (↑) │
+│ [⬡ StudPilot 1.5 ⌄]  [⚖ Balanced]              📎  🎤  (↑) │
 └────────────────────────────────────────────────────────┘
-   Apple can make mistakes. Always review important information.
+   StudPilot can make mistakes. Always review important information.
 ```
 
 - Placeholder: `Ask anything about your project...`
@@ -352,7 +352,7 @@ A rounded `--surface` box with a `--line-2` border.
   **filled circular send button** with an up arrow.
 - Below the box, centred, `--faint`, ~12px: the mistakes disclaimer.
 
-> The reference renders the model chip as `Apple 1.5`. In this product that
+> The reference renders the model chip as `StudPilot 1.5`. In this product that
 > control is the **provider** picker and the mode chip is **Plan / Agent / Super
 > Agent** (ADR-018 — this line said Clay / Stone / Rune until 2026-09-01, which
 > are the internal specialist identities and must never appear in product UI).

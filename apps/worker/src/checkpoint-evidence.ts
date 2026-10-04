@@ -1,6 +1,6 @@
-import type { CheckpointMeta } from '@apple/shared';
+import type { CheckpointMeta } from '@studpilot/shared';
 
-export const APPLE_SNAPSHOT_FORMAT = 'apple-studio-snapshot-v1';
+export const STUDPILOT_SNAPSHOT_FORMAT = 'apple-studio-snapshot-v1';
 
 type Admission =
   | { ok: true; coverage?: CheckpointMeta['coverage']; preservedObjects?: number }
@@ -19,7 +19,7 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
     }
     return { ok: true };
   }
-  if (data.format !== APPLE_SNAPSHOT_FORMAT) return refuse('Studio returned an unsupported snapshot format.');
+  if (data.format !== STUDPILOT_SNAPSHOT_FORMAT) return refuse('Studio returned an unsupported snapshot format.');
   if (data.checkpointId !== checkpointId) return refuse('the snapshot identity does not match this checkpoint.');
   if (data.root !== 'game' || data.scope !== 'place') return refuse('Studio returned a different snapshot scope.');
   // THREE CAUSES USED TO SHARE ONE SENTENCE. "Studio could not capture a restorable snapshot of the
@@ -31,10 +31,10 @@ export function checkpointEvidence(value: unknown, checkpointId: string): Admiss
   // the plugin actually sent — a count it did not send is not reported as zero.
   //
   // Order is the causal order on the wire, not preference: `truncated` forces `restorable` false in
-  // apps/apple-plugin/src/Commands.luau:2927, and `checkpointEligible` is `restorable` AND identity,
+  // apps/studpilot-plugin/src/Commands.luau:2927, and `checkpointEligible` is `restorable` AND identity,
   // so testing the narrowest cause last is what makes the named cause the actual one.
   if (data.truncated !== false) {
-    return refuse(`${truncationCause(data.truncatedBy)} — Studio stopped early${snapshotReach(data)}. Apple still edits it normally; Studio's own undo is the rollback until that changes.`);
+    return refuse(`${truncationCause(data.truncatedBy)} — Studio stopped early${snapshotReach(data)}. StudPilot still edits it normally; Studio's own undo is the rollback until that changes.`);
   }
   if (data.restorable !== true) {
     return refuse(`Studio read the project but could not capture ${omittedObjects(data.skipped)}, so a restore would not put it back as it is.`);

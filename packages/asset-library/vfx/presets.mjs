@@ -1,4 +1,4 @@
-// Roblox VFX presets (D-FXLIB-1): every effect Apple places comes from here, never from a property
+// Roblox VFX presets (D-FXLIB-1): every effect StudPilot places comes from here, never from a property
 // soup the model invents. Each preset is a small tree of real Roblox effect instances (Attachment,
 // ParticleEmitter, Beam, Trail, Highlight, PointLight) with every property that decides how it
 // looks already set, in the typed wire form the Studio plugin's create_instances accepts.

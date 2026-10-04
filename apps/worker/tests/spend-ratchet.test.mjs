@@ -49,7 +49,7 @@ test('the old 22x headroom is gone', () => {
 });
 
 // Removed 2026-09-29: 'the ceiling a compromised ADMIN_KEY could reach stays bounded' (< $50/month).
-// The owner lifted the Apple spending cap ("No Apple cap"); the compiled ceiling no longer bounds the
+// The owner lifted the StudPilot spending cap ("No StudPilot cap"); the compiled ceiling no longer bounds the
 // bill, so the worst case is Cloudflare billing. The route still cannot raise past the compiled value.
 
 test('lowering is still allowed, and zero is reachable', () => {

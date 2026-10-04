@@ -3,7 +3,7 @@
  *
  * `files-panel.tsx` was 361 lines of finished markup that nothing imported — the worker had served
  * `/api/projects/:id/files` since the web tools shipped, with a listing, folders, history, trash and
- * a download, and a user's only way to read one of their own files was to ask Apple to read it back
+ * a download, and a user's only way to read one of their own files was to ask StudPilot to read it back
  * aloud. `docs/backlog/DEADENDS.md` recorded it as WIRE, pass 13.
  *
  * WHAT THESE TESTS ARE, stated because it bounds what they prove: apps/web has no DOM renderer, so

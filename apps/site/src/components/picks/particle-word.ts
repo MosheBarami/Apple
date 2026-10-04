@@ -20,7 +20,7 @@ function mount(host: HTMLElement): void {
   const canvas = host.querySelector('canvas');
   const ctx = canvas && canvas.getContext('2d', { willReadFrequently: true });
   if (!canvas || !ctx) return;
-  const text = host.dataset.particleWord || 'Apple';
+  const text = host.dataset.particleWord || 'StudPilot';
 
   let W = 0, H = 0, dpr = 1, colour = '#3b3d46';
   let hx = new Float32Array(0), hy = new Float32Array(0), x = new Float32Array(0), y = new Float32Array(0), vx = new Float32Array(0), vy = new Float32Array(0);

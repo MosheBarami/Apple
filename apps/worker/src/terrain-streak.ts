@@ -1,6 +1,6 @@
 // THE TERRAIN LOOP (gauntlet round 6, 2026-09-23).
 //
-// Asked for a full simulator hub, Apple MAX shaped five heightmaps and then made 951 edit_terrain
+// Asked for a full simulator hub, StudPilot MAX shaped five heightmaps and then made 951 edit_terrain
 // calls in a row — one small ball of grass each — until the day's shared capacity ran out. It never
 // reached a prop, a script or a single UI screen. Every call succeeded and changed the place, so
 // neither the duplicate guard (the arguments differed) nor the idle guard (it was writing) fired.

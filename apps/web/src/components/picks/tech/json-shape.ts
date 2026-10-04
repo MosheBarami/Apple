@@ -2,7 +2,7 @@
  * THE SHAPE OF A DATA FILE — what the AI Elements `schema-display` pick draws.
  *
  * Upstream shows an API endpoint's request and response bodies as a tree of typed properties. The
- * data Apple keeps in a project's files is JSON it wrote itself (settings, tables, generated lists),
+ * data StudPilot keeps in a project's files is JSON it wrote itself (settings, tables, generated lists),
  * and the question a curious user has about one is the same: what fields are in here, and what
  * kind of value is each. This reads that out of the parsed value. It describes; it never validates.
  */

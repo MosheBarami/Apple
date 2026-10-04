@@ -26,7 +26,7 @@ const MEMBER = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const STRANGER = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const TOKENS = {
   golem: 'membership-outbox-golem-db-test-token-0123456789abcdef',
-  apple: 'membership-outbox-apple-db-test-token-0123456789abcdef',
+  studpilot: 'membership-outbox-studpilot-db-test-token-0123456789abcdef',
 };
 const TOKEN_HASHES = Object.fromEntries(
   Object.entries(TOKENS).map(([consumer, token]) => [consumer, createHash('sha256').update(token).digest('hex')]),
@@ -126,7 +126,7 @@ function main() {
       insert into public.projects(owner_id,name) values ('${OWNER}','Outbox Place');
       insert into public.membership_outbox_secret(consumer,token_hash) values
         ('golem','${TOKEN_HASHES.golem}'),
-        ('apple','${TOKEN_HASHES.apple}');
+        ('apple','${TOKEN_HASHES.studpilot}');
     `);
     const project = psql(`select id from public.projects where owner_id = '${OWNER}';`).trim();
     check(/^[0-9a-f-]{36}$/.test(project), `fixture has a project id (${project})`);
@@ -143,7 +143,7 @@ function main() {
     check(state === '1:clear:editor:1790812800', `insert atomically writes state v1 with expiry (${state})`);
     check(
       Number(psql(`select count(*) from public.membership_access_outbox where project_id='${project}' and user_id='${MEMBER}' and version=1;`).trim()) === 2,
-      'insert fans out one row to golem and one to apple',
+      'insert fans out one row to golem and one to studpilot',
     );
 
     asTenant(OWNER, `update public.project_members set role='viewer' where project_id='${project}' and user_id='${MEMBER}';`);
@@ -193,7 +193,7 @@ function main() {
     );
     check(
       throws(() => asRole('anon', `select * from public.claim_membership_access_outbox('${TOKENS.golem}','apple',25);`), /credentials refused/i),
-      'a valid golem credential cannot claim apple by forging the consumer name',
+      'a valid golem credential cannot claim studpilot by forging the consumer name',
     );
 
     const claimed = asRole('anon', `
@@ -205,18 +205,18 @@ function main() {
       `golem claims its ordered bounded batch (${claimed.join(', ')})`);
     check(
       Number(psql(`select count(*) from public.membership_access_outbox where consumer='apple' and project_id='${project}' and user_id='${MEMBER}';`).trim()) === 5,
-      'golem claim leaves every apple delivery untouched',
+      'golem claim leaves every studpilot delivery untouched',
     );
     const ack1 = asRole('anon', `select public.ack_membership_access_outbox('${TOKENS.golem}','golem','${project}','${MEMBER}',1);`).pop();
     const ack2 = asRole('anon', `select public.ack_membership_access_outbox('${TOKENS.golem}','golem','${project}','${MEMBER}',1);`).pop();
     check(
       throws(() => asRole('anon', `select public.ack_membership_access_outbox('${TOKENS.golem}','apple','${project}','${MEMBER}',1);`), /credentials refused/i),
-      'a valid golem credential cannot acknowledge apple by forging the consumer name',
+      'a valid golem credential cannot acknowledge studpilot by forging the consumer name',
     );
     check(ack1 === 't' && ack2 === 'f', `ack is exact and idempotent (first=${ack1}, retry=${ack2})`);
     check(
       Number(psql(`select count(*) from public.membership_access_outbox where consumer='apple' and project_id='${project}' and user_id='${MEMBER}' and version=1;`).trim()) === 1,
-      'golem ack cannot consume apple version 1',
+      'golem ack cannot consume studpilot version 1',
     );
 
     check(

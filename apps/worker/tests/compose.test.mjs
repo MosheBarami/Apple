@@ -258,7 +258,7 @@ test('compose_game: composer values become the plugin\'s typed values', () => {
 
 test('compose: every property the map writes is one the plugin will write (one refused property loses the whole map)', () => {
   // Seen live 2026-09-30: SpawnLocation.Duration was refused, so create_instances refused the whole AppleMap.
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const block = plugin.slice(plugin.indexOf('local PROPERTY_ALLOW = {'), plugin.indexOf('\n}', plugin.indexOf('local PROPERTY_ALLOW = {')));
   const allowed = new Set([...block.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*true/gm)].map((m) => m[1])); // names may hold digits (Color3)
   assert.ok(allowed.has('Size') && allowed.has('Material'), 'read the allowlist');
@@ -283,7 +283,7 @@ test('composed judge: it reads the config the composer wrote', () => {
   assert.equal(J.readConfig('return { foo = 1 }'), null, 'a place the composer did not make goes to the older judge');
 });
 
-const GOOD = { apple: { composed: true, bought: 2, moneyStart: 60, moneyAfterBuy: 10, moneyEnd: 22, enemies: 4, wave: 1, enemyJoints: 24, enemyJointsMoving: 22, defenderJoints: 2, defenderJointsMoving: 2 } };
+const GOOD = { studpilot: { composed: true, bought: 2, moneyStart: 60, moneyAfterBuy: 10, moneyEnd: 22, enemies: 4, wave: 1, enemyJoints: 24, enemyJointsMoving: 22, defenderJoints: 2, defenderJointsMoving: 2 } };
 
 test('composed judge: a game that plays as asked is ready; each of the owner\'s failures fails it', () => {
   const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
@@ -293,10 +293,23 @@ test('composed judge: a game that plays as asked is ready; each of the owner\'s 
   const fail = (f) => J.verdictOf(f).verdict === 'not ready';
   assert.ok(fail(J.judgeFindings(IDEA, cfg, [...world, 'Map', 'Lobby'], GOOD, { errors: [], loadFailures: [] })), 'a copied world fails');
   assert.ok(fail(J.judgeFindings(IDEA, { ...cfg, enemies: ['Tung Tung', ...cfg.enemies] }, world, GOOD, { errors: [], loadFailures: [] })), 'an enemy with no costume fails');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { apple: { ...GOOD.apple, enemyJointsMoving: 0 } }, { errors: [], loadFailures: [] })), 'a creature that does not move fails');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { studpilot: { ...GOOD.studpilot, enemyJointsMoving: 0 } }, { errors: [], loadFailures: [] })), 'a creature that does not move fails');
   assert.ok(fail(J.judgeFindings(IDEA, cfg, world, GOOD, { errors: [], loadFailures: ['Failed to load 111111', 'Failed to load 222222', 'Failed to load 333333'] })), 'assets that do not load fail');
-  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { apple: { ...GOOD.apple, moneyEnd: 10 } }, { errors: [], loadFailures: [] })), 'a loop that pays nothing fails');
+  assert.ok(fail(J.judgeFindings(IDEA, cfg, world, { studpilot: { ...GOOD.studpilot, moneyEnd: 10 } }, { errors: [], loadFailures: [] })), 'a loop that pays nothing fails');
   assert.ok(fail(J.judgeFindings(IDEA, cfg, world, null, { errors: [], loadFailures: [] })), 'not played is never ready');
+});
+
+test('composed judge: the unpublished plugin 1.5.0 reports the play check under `apple`, and is judged the same as one that says `studpilot`', () => {
+  const cfg = J.readConfig(steps.find((s) => s.name === 'AppleGameConfig').source);
+  const world = ['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders'];
+  const logs = { errors: [], loadFailures: [] };
+  const old = { apple: GOOD.studpilot };
+  assert.deepEqual(J.judgeFindings(IDEA, cfg, world, old, logs), J.judgeFindings(IDEA, cfg, world, GOOD, logs), 'the old field name reads the same');
+  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, old, logs)).verdict, 'ready');
+  const stalled = { apple: { ...GOOD.studpilot, enemyJointsMoving: 0 } };
+  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, stalled, logs)).verdict, 'not ready', 'a failure is still a failure under the old name');
+  const both = { studpilot: { ...GOOD.studpilot, enemyJointsMoving: 0 }, apple: GOOD.studpilot };
+  assert.equal(J.verdictOf(J.judgeFindings(IDEA, cfg, world, both, logs)).verdict, 'not ready', 'when both are present the new name wins');
 });
 
 test('composed judge: what the agent said it meant to build is compared with what exists, with no list of nouns', () => {
@@ -325,7 +338,7 @@ test('composed judge: what the agent said it meant to build is compared with wha
 });
 
 test('compose: every class and enum the build creates is one the plugin will create', () => {
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const table = (name) => {
     const at = plugin.indexOf(`local ${name} = {`);
     const block = plugin.slice(at, plugin.indexOf('\n}', at));

@@ -4,14 +4,14 @@
 // first sentence of /privacy, and the first sentence of /terms. On 2026-09-20 they said three
 // different things, and two of them were the same rename applied without being read:
 //
-//   footer   <p class="mono">Apple</p>           — was "Golem Labs"
-//   /privacy 'Apple is built and operated by Apple ("we", "us").'
+//   footer   <p class="mono">StudPilot</p>           — was "Golem Labs"
+//   /privacy 'StudPilot is built and operated by StudPilot ("we", "us").'
 //   /terms   'the AI building service for Roblox operated by Apple Labs.'
 //
 // The rebrand rewrote the token "Golem" wherever it appeared. In the footer that produced a second
-// "Apple" directly under the "Apple" wordmark, in a different face, on every page of the site. In
+// "StudPilot" directly under the "StudPilot" wordmark, in a different face, on every page of the site. In
 // /privacy it produced a sentence that identifies a company by the name of its product — "built and
-// operated by Apple" — which is not a fact about anything. /terms escaped because its sentence had
+// operated by StudPilot" — which is not a fact about anything. /terms escaped because its sentence had
 // the word "Labs" in a separate position.
 //
 // WHY THAT IS WORTH A TEST RATHER THAN A FIX. A privacy policy and a terms of service that name
@@ -34,7 +34,7 @@ const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(SITE, 'dist');
 
 // The product's own name, which an operator name may CONTAIN but may not BE.
-const PRODUCT = 'Apple';
+const PRODUCT = 'StudPilot';
 
 function page(rel) {
   const file = join(DIST, rel);
@@ -85,7 +85,7 @@ test('the operator is a name, not the product name repeated', () => {
     operator,
     PRODUCT,
     `the site says it is "operated by ${PRODUCT}" — the product identifying its own publisher by the ` +
-      "product's name. That is what the Golem→Apple rename produced in /privacy, and it says nothing.",
+      "product's name. That is what the Golem→StudPilot rename produced in /privacy, and it says nothing.",
   );
   assert.ok(operator.length > PRODUCT.length, `"${operator}" is not a publisher's name`);
 });

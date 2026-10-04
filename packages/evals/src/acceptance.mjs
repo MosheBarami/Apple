@@ -44,7 +44,7 @@ export const BRIEF = {
   itemCount: 20,
 };
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-acceptance-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-acceptance-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 
 /** Read a repository file as text. Used where the outcome lives in a source file, not an export. */
@@ -541,7 +541,7 @@ export const SCENARIOS = [
       const session = source('apps', 'worker', 'src', 'do', 'session.ts');
       must(/createCheckpoint\(/.test(session), 'nothing takes a checkpoint any more');
       must(
-        /before Apple changes|before Apple/i.test(session),
+        /before StudPilot changes|before StudPilot/i.test(session),
         'the automatic pre-run checkpoint is gone — a change can now be made with nothing to go back to',
       );
       const ok = await hitApp(`/api/projects/${PROJECT_ID}/checkpoints`, { jwt: OWNER_JWT, rows: OWNED_ROW });

@@ -29,7 +29,7 @@
  * picture of something that was never rendered, and this system's whole premise
  * is that the pixels are real.
  */
-import type { FrameEncoding, StudioFrame } from '@apple/shared';
+import type { FrameEncoding, StudioFrame } from '@studpilot/shared';
 
 /**
  * Ceilings, and the measurements behind them.

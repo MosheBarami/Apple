@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Apple · לוח הבקרה</title>
+<title>StudPilot · לוח הבקרה</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -353,7 +353,7 @@
         <rect x="11" y="11" width="18" height="18" rx="4" fill="url(#lg)" transform="rotate(12 20 20)"/>
         <rect x="17" y="17" width="6" height="6" rx="1.5" fill="#0f1422" transform="rotate(12 20 20)"/>
       </svg>
-      <div><h1>Apple · לוח הבקרה של המוצר</h1><div class="sub">כל מה שקורה בפרויקט במקום אחד, ומתעדכן לבד</div></div>
+      <div><h1>StudPilot · לוח הבקרה של המוצר</h1><div class="sub">כל מה שקורה בפרויקט במקום אחד, ומתעדכן לבד</div></div>
     </div>
     <div class="ticker">
       <div class="tk"><span>עלות הריצה</span><b class="ltr" id="tkCost">—</b></div>
@@ -548,7 +548,7 @@ function ring(k, f1, f2, grad, center, small) {
 }
 
 // ---- Hebrew names for the things the code names in English
-const BLURB_HE = { 'Apple': 'המנוע של Apple, בונה משחקים שלמים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
+const BLURB_HE = { 'StudPilot': 'המנוע של StudPilot, בונה משחקים שלמים', 'Gemini 3.8 Flash': 'המודל המהיר של Google, זוכר פרויקטים גדולים מאוד', 'GPT-5.6': 'מודל הדגל של OpenAI, לבניות הכי קשות', 'GPT-5.6 Luna': 'גרסה חסכונית של GPT-5.6' };
 const HELD_HE = ['L01: חיוב חי ב-Stripe מוחזק עד הוראה נפרדת של הבעלים', 'L02: הפצה ציבורית של התוסף מוחזקת עד הוראה נפרדת של הבעלים'];
 const GATE_STATUS_HE = { passed: 'עבר', failed: 'נכשל', partial: 'חלקי', in_progress: 'בעבודה', not_evaluated: 'טרם נבדק' };
 const STATUS_HE = { done: 'הושלם', partial: 'חלקית', progress: 'בעבודה עכשיו', blocked: 'מחכה', todo: 'עוד לא התחיל' };
@@ -556,7 +556,7 @@ const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני
 const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
 const KIT_HE = { horror: 'אימה', obby: 'אובי', tycoon: 'טייקון', simulator: 'סימולטור', racing: 'מרוצים', roleplay: 'משחק תפקידים', tower_defense: 'הגנת מגדלים', fps_arena: 'יריות', anime_battle: 'קרבות אנימה', survival: 'הישרדות', adventure: 'הרפתקאות' };
 const ROUTE_HE = { 'workers-ai': 'Cloudflare Workers AI', 'unified-billing': 'Cloudflare AI Gateway' };
-const VENDOR = { Apple: ['A', '#5b7cfa'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
+const VENDOR = { StudPilot: ['A', '#5b7cfa'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
 const LIMIT_HE = (l) => /5-hour/i.test(l) ? 'מגבלת 5 שעות' : /fable/i.test(l) ? 'שבועי · Fable' : /weekly/i.test(l) ? 'שבועי · כל המודלים' : l;
 const visItem = (id) => P?.vision?.items?.find((i) => i.id === id);
 const chip = (cls, text) => `<span class="chip ${cls}"><i></i>${esc(text)}</span>`;
@@ -656,7 +656,7 @@ function renderPlans() {
   const f = P.code?.facts;
   if (!f || f.error) { $('#plans').innerHTML = f?.error ? NM : '<span class="sk h120"></span>'; return; }
   const ms = f.models || [];
-  $('#plans').innerHTML = `<div class="plan"><h3>Apple<small class="ltr">מנוע אחד לכל הלקוחות</small></h3>
+  $('#plans').innerHTML = `<div class="plan"><h3>StudPilot<small class="ltr">מנוע אחד לכל הלקוחות</small></h3>
       <div class="dim" style="font-size:13px;margin-bottom:6px">${ms.length} מודלים</div>
       ${ms.map((m) => { const [ch, col] = VENDOR[m.vendor] || [m.vendor?.[0] || '?', '#8b95ad'];
         return `<div class="model"><span class="vend" style="background:${col}22;color:${col};border:1px solid ${col}55">${esc(ch)}</span><div style="min-width:0">
@@ -698,7 +698,7 @@ function renderLibs() {
   const items = measured.reduce((s, l) => s + l.count, 0);
   $('#ctLibs').textContent = libs.length;
   $('#libsIntro').innerHTML = `למוצר יש <b>${libs.length}</b> ספריות ומאגרים, עם <b>${nf(items)}</b> פריטים בסך הכול. כל מספר כאן נספר עכשיו ישר מהקוד ומהקבצים, לא נכתב ביד.
-    <span class="chip tag-agent" style="margin-inline-start:6px">לסוכן</span> = Apple משתמש בזה כשהוא בונה. <span class="chip tag-site">לאתר</span> = מופיע באתר ובאפליקציה.`;
+    <span class="chip tag-agent" style="margin-inline-start:6px">לסוכן</span> = StudPilot משתמש בזה כשהוא בונה. <span class="chip tag-site">לאתר</span> = מופיע באתר ובאפליקציה.`;
   const ui = visItem('uiLibraries');
   $('#libsNote').innerHTML = ui && ui.status !== 'done' ? `<div class="note"><b>הספריות מהאתרים ששלחת:</b> ${esc(ui.detail)}</div>` : '';
   $('#libFilters').innerHTML = cats.map((c) => `<button class="fbtn ${c === libFilter ? 'on' : ''}" data-lib="${esc(c)}">${esc(c)}<span class="ct">${c === 'הכול' ? libs.length : libs.filter((l) => l.cat === c).length}</span></button>`).join('');

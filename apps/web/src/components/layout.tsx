@@ -39,7 +39,7 @@ import { ShortcutsDialog, useGlobalShortcut } from './shortcuts-dialog';
 import { SHORTCUTS, matchesShortcut, shortcutLabel } from '../lib/shortcuts';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
-import { AppleGlyph } from './glyphs';
+import { StudPilotGlyph } from './glyphs';
 import { Icon, PATH, Popover } from './ws/primitives';
 import { NotificationInbox } from './notification-inbox';
 import { SupportDialog } from './support-dialog';
@@ -294,9 +294,9 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
       aria-label="Conversations"
     >
       <div className="gx-rail__head">
-        <Link to="/" className="gx-wordmark" aria-label="Apple — home">
-          <AppleGlyph size={28} />
-          <span className="gx-wordmark__text">Apple</span>
+        <Link to="/" className="gx-wordmark" aria-label="StudPilot — home">
+          <StudPilotGlyph size={28} />
+          <span className="gx-wordmark__text">StudPilot</span>
         </Link>
 
         <button
@@ -364,10 +364,10 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
 
         {/* "describe it and it will build it" is the sentence every competitor on this market uses
             — check-copy names four of them — and it promises a passivity this product does not
-            have: Apple reads the place, asks, and stops at three steps on the free lane. The empty
+            have: StudPilot reads the place, asks, and stops at three steps on the free lane. The empty
             state says what to DO, which is the one thing an empty state is for. */}
         {projects.isSuccess && chats.length === 0 && (
-          <p className="gx-rail__none">No chats yet. Open a project and tell Apple what to change.</p>
+          <p className="gx-rail__none">No chats yet. Open a project and tell StudPilot what to change.</p>
         )}
 
         <Link to="/" className="gx-viewall">
@@ -616,9 +616,9 @@ function Shell() {
         <nav className="studio-dock" aria-label="Workspace navigation" ref={dockRef}>
           {/* Where you are, and where the pointer is: two beds that slide between the rows. */}
           <DockHighlights dock={dockRef} route={location.pathname} />
-          <Link to="/" className="studio-dock__brand" aria-label="Apple — projects">
+          <Link to="/" className="studio-dock__brand" aria-label="StudPilot — projects">
             <ModelMark variant="apple" />
-            <span className="studio-dock__wordmark">Apple</span>
+            <span className="studio-dock__wordmark">StudPilot</span>
           </Link>
 
           <div className="studio-dock__nav">

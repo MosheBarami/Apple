@@ -2,7 +2,7 @@
 //
 // THIS FILE IS WHAT SURVIVED THE ASSET LIBRARY. On 2026-09-20 the owner removed the curated
 // catalogue outright: the search tool, the ingest and import pipelines, the upload path into
-// Apple's shared Roblox account, and the 511,208-row D1 table behind them. The reason was not a
+// StudPilot's shared Roblox account, and the 511,208-row D1 table behind them. The reason was not a
 // bug. Every upload that pipeline could make was an Image or a Decal, Roblox refuses to archive
 // either, and so every one of them was permanent in somebody's real account; the catalogue also
 // carried rows named after other people's characters under a single blanket licence claim.
@@ -48,13 +48,13 @@ export type AssetSourceSite = (typeof ASSET_SOURCE_SITES)[number];
 
 /**
  * Who owns the thing. Manifest §42 turns on this distinction and nothing else: third-party
- * material may be *used* under its licence but must never be presented as Apple's own work.
+ * material may be *used* under its licence but must never be presented as StudPilot's own work.
  *
  * `user_generated` is deliberately its own class rather than being folded into either side —
  * GenerationService output is produced in the customer's own Studio session under their own
- * account, so it is neither Apple's to claim nor a third party's to be credited.
+ * account, so it is neither StudPilot's to claim nor a third party's to be credited.
  */
-export const ASSET_ORIGINALITIES = ['apple_original', 'user_generated', 'third_party'] as const;
+export const ASSET_ORIGINALITIES = ['studpilot_original', 'user_generated', 'third_party'] as const;
 export type AssetOriginality = (typeof ASSET_ORIGINALITIES)[number];
 
 /**
@@ -77,7 +77,7 @@ export const ASSET_ORIGINALITY: Readonly<Record<AssetSourceSite, AssetOriginalit
   roblox_official: 'third_party',
   creator_store: 'third_party',
   generated_roblox: 'user_generated',
-  procedural: 'apple_original',
+  procedural: 'studpilot_original',
 };
 
 export function originalityOf(source: AssetSourceSite): AssetOriginality {
@@ -144,7 +144,7 @@ export interface AssetProvenance {
   /** ISO 8601 date-time, when the licence string and the file were observed. */
   retrievedAt: string;
   /**
-   * ISO 8601, when the asset entered Apple's control as a Roblox asset — distinct from
+   * ISO 8601, when the asset entered StudPilot's control as a Roblox asset — distinct from
    * `retrievedAt`, which is when the source page was read. null until imported.
    *
    * Optional in the type only because rows written before this field existed do not carry one;
@@ -152,7 +152,7 @@ export interface AssetProvenance {
    */
   importedAt?: string | null;
   /**
-   * What Apple changed relative to the file the source published: `['decimated to 900 tris',
+   * What StudPilot changed relative to the file the source published: `['decimated to 900 tris',
    * 'retextured to 512px']`. An empty array means "used exactly as downloaded" — which is itself
    * a claim, so it is recorded rather than assumed.
    *

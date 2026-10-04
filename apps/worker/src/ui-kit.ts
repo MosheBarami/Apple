@@ -2,14 +2,14 @@
 // Engine references: create.roblox.com/docs/ui/on-screen-containers,
 // /ui/size-modifiers, /tutorials/building/ui/interactive-buttons.
 // This is presentation, never purchase authority. Studio rendering remains a separate live gate.
-import { appleUIThemeSource } from './ui-kit-themes';
+import { studpilotUIThemeSource } from './ui-kit-themes';
 
-export const APPLE_UI_SOURCE = `--!nonstrict
+export const STUDPILOT_UI_SOURCE = `--!nonstrict
 -- AppleUI: HUD, objectives, notifications and shop. Require from a LocalScript after PlayerGui exists.
 -- onRequest receives ONLY an item id. The server must validate ownership, price and balance.
 -- Return true only after a server acknowledgement. This module never grants or charges anything.
 local AppleUI = {}
-${appleUIThemeSource()}
+${studpilotUIThemeSource()}
 
 function AppleUI.mount(playerGui, options)
     options = options or {}

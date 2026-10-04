@@ -797,7 +797,7 @@ const gridTree = () => {
   return { root: { path: 'game.Workspace', name: 'Workspace', class: 'Workspace', attributes: {}, props: {}, children } };
 };
 const build = (name) => calls(['create_instances', { items: [{ className: 'Part', name, props: { Size: { t: 'Vector3', v: [4, 1, 4] }, Position: { t: 'Vector3', v: [0, 1, 0] } } }] }]);
-const layoutReports = (h) => [...new Set(h.chatCalls.flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /Apple measured the layout/.test(String(m.content))).map((m) => String(m.content)))];
+const layoutReports = (h) => [...new Set(h.chatCalls.flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /StudPilot measured the layout/.test(String(m.content))).map((m) => String(m.content)))];
 
 test('after a step that built in the workspace, a measured layout flag reaches the agent once, fenced, and the same flag is not sent again', async () => {
   const h = await makeSession({

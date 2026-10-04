@@ -66,7 +66,7 @@ test('gateway retains a provider length finish after usage is settled', async ()
     usage: { prompt_tokens: 12, completion_tokens: 2400 },
   });
 
-  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  const response = await G.chat(env, request, { kind: 'studpilot-max-base-test' });
 
   assert.equal(seen.runs, 1);
   assert.equal(seen.settled.length, 1, 'a truncated response still consumed provider usage and must settle');
@@ -83,7 +83,7 @@ test('gateway still reports an ordinary complete response as stop', async () => 
     usage: { prompt_tokens: 12, completion_tokens: 1 },
   });
 
-  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  const response = await G.chat(env, request, { kind: 'studpilot-max-base-test' });
   assert.equal(response.finishReason, 'stop');
   assert.equal(response.text, 'complete');
 });
@@ -102,7 +102,7 @@ test('a truncated response that ends inside a tool call reports length and runs 
     ] } }],
     usage: { prompt_tokens: 21370, completion_tokens: 6500 },
   });
-  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  const response = await G.chat(env, request, { kind: 'studpilot-max-base-test' });
   assert.equal(seen.settled.length, 1, 'the truncated response still consumed usage and must settle');
   assert.deepEqual(response.toolCalls, [], 'the first half of a tool call is not a tool call');
   assert.equal(response.finishReason, 'length', 'nothing complete survived, so the run must see the ceiling');
@@ -117,7 +117,7 @@ test('a truncated response keeps the COMPLETE calls it finished before the ceili
     ] } }],
     usage: { prompt_tokens: 100, completion_tokens: 6500 },
   });
-  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  const response = await G.chat(env, request, { kind: 'studpilot-max-base-test' });
   assert.deepEqual(response.toolCalls.map((c) => c.id), ['call-1']);
   assert.equal(response.finishReason, 'tool_calls');
 });
@@ -130,7 +130,7 @@ test('control: a NON-truncated malformed call is left for runTool to report, not
     ] } }],
     usage: { prompt_tokens: 100, completion_tokens: 20 },
   });
-  const response = await G.chat(env, request, { kind: 'apple-max-base-test' });
+  const response = await G.chat(env, request, { kind: 'studpilot-max-base-test' });
   assert.deepEqual(response.toolCalls.map((c) => c.id), ['call-1']);
   assert.equal(response.finishReason, 'tool_calls');
 });

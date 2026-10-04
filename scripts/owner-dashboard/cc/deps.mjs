@@ -1,4 +1,4 @@
-// "The 100+ Repos Hub": every external GitHub repository Apple depends on or learned from, DERIVED
+// "The 100+ Repos Hub": every external GitHub repository StudPilot depends on or learned from, DERIVED
 // from the working tree (never hand-written), with health from GitHub's GraphQL API.
 //
 // Sources: npm (each workspace package.json -> installed node_modules/<dep>/package.json "repository"),

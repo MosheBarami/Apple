@@ -120,7 +120,7 @@ test('a failure box is announced once, not nested inside another alert', () => {
 
 test('LOADING NEVER RENDERS AS EMPTY on a field that will have a value', () => {
   const settings = read('routes/settings.tsx');
-  // A disabled input showing "How Apple should address you" says "you have not set one", which is
+  // A disabled input showing "How StudPilot should address you" says "you have not set one", which is
   // a claim about their account made before it was read.
   assert.match(settings, /profile\.isPending \? 'Loading/, 'the placeholder must say which it is');
 });

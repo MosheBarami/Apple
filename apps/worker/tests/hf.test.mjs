@@ -19,8 +19,8 @@ import { inspectGlb } from '../../../packages/evals/src/glb-inspect.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT_HF = join(tmpdir(), `apple-hf-${process.pid}.mjs`);
-const OUT_PIPE = join(tmpdir(), `apple-hf-3d-${process.pid}.mjs`);
+const OUT_HF = join(tmpdir(), `studpilot-hf-${process.pid}.mjs`);
+const OUT_PIPE = join(tmpdir(), `studpilot-hf-3d-${process.pid}.mjs`);
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'hf.ts')], bundle: true, format: 'esm', target: 'es2022', platform: 'node', outfile: OUT_HF, logLevel: 'error' });
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'hf-3d-pipeline.ts')], bundle: true, format: 'esm', target: 'es2022', platform: 'node', outfile: OUT_PIPE, logLevel: 'error' });
 const HF = await import(pathToFileURL(OUT_HF).href);

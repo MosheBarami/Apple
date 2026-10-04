@@ -1,7 +1,7 @@
 // The test of the harness that decides what a failed production run is CALLED.
 //
 // `infra/e2e.mjs` is the only end-to-end instrument pointed at the deployed product, and on
-// 2026-09-20 it answered a question nobody asked. A free account requesting Apple MAX is refused by
+// 2026-09-20 it answered a question nobody asked. A free account requesting StudPilot MAX is refused by
 // `refuseOne` in apps/worker/src/do/session.ts — one `error` frame, then `return`, with no
 // `msg_end`, no `run_state`, no terminal event at all. The harness logged that refusal, kept
 // waiting, and 150 seconds later reported `chat timeout after 150s`. The server had answered
@@ -82,7 +82,7 @@ test('a refusal is reported as a refusal, not as a timeout', async () => {
   assert.equal(sockets.length, 1, 'wsChat did not open a socket');
   deliver(sockets[0], [
     { type: 'hello', studioConnected: false },
-    { type: 'error', code: 'product_model_unavailable', message: 'Apple MAX is not available on your plan.' },
+    { type: 'error', code: 'product_model_unavailable', message: 'StudPilot MAX is not available on your plan.' },
   ]);
 
   const outcome = await settledWithin(run);

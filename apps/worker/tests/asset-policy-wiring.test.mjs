@@ -86,7 +86,7 @@ test('SEARCHING A FORBIDDEN CREATOR STORE IS REFUSED BEFORE THE SEARCH RUNS', ()
 //   paragraph in `toolDefs` that explains why the tool was removed, so the guard would fail on the
 //   note describing the removal and pass only once somebody deleted the explanation. A check that
 //   red-lights its own documentation is not measuring the thing it names. ]]
-test('no tool in the registry searches a catalogue of Apple\'s own', () => {
+test('no tool in the registry searches a catalogue of StudPilot\'s own', () => {
   assert.equal(tools.includes('  search_asset_library: {'), false,
     'the search_asset_library registry entry is back — the catalogue behind it was deleted on 2026-09-20');
   assert.equal(tools.includes('searchAssetLibrary('), false,

@@ -123,8 +123,8 @@ export function resend() {
 }
 
 // ---------- actions ----------
-const TEST_SUBJECT = 'Apple HQ: מייל ניסיון מלוח הבקרה';
-const TEST_TEXT = 'זה מייל ניסיון שנשלח מלוח הבקרה של Apple כדי לוודא ש-Resend מוסר מיילים. אין צורך לענות.';
+const TEST_SUBJECT = 'StudPilot HQ: מייל ניסיון מלוח הבקרה';
+const TEST_TEXT = 'זה מייל ניסיון שנשלח מלוח הבקרה של StudPilot כדי לוודא ש-Resend מוסר מיילים. אין צורך לענות.';
 
 function plan(body) {
   const kind = body?.kind;
@@ -138,7 +138,7 @@ function plan(body) {
     const to = ownerEmail();
     if (!to) return { error: 'מייל ניסיון לא זמין: חסר OWNER_EMAIL בקובץ ‎.env (רק אליו מותר לשלוח)', unavailable: true, missing: ['OWNER_EMAIL'] };
     if (body.domain != null && !HOST.test(String(body.domain))) return { error: 'שם דומיין לא תקין' };
-    const from = body.domain ? `Apple HQ <noreply@${String(body.domain).toLowerCase()}>` : `Apple HQ <${FALLBACK_FROM}>`;
+    const from = body.domain ? `StudPilot HQ <noreply@${String(body.domain).toLowerCase()}>` : `StudPilot HQ <${FALLBACK_FROM}>`;
     return { method: 'POST', url: `${API}/emails`, body: { from, to: [to], subject: TEST_SUBJECT, text: TEST_TEXT }, what: 'שליחת מייל הניסיון' };
   }
   return { error: 'פעולה לא מוכרת' };

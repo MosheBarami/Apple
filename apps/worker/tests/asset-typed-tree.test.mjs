@@ -17,7 +17,7 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
 const A = await import(pathToFileURL(bundle).href);
 rmSync(dir, { recursive: true, force: true });
 
-test('summariseTree reads geometry from the current Apple get_tree props contract', () => {
+test('summariseTree reads geometry from the current StudPilot get_tree props contract', () => {
   const tree = {
     root: {
       path: 'game.Workspace.Asset',

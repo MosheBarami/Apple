@@ -1,9 +1,9 @@
 /**
  * THE REPLY IS SHORT (owner decision D-UX-2, 2026-09-23; detail removed entirely by D-THINK-1, 2026-09-24).
  *
- * Apple is for young creators who are not technical. Plan checklists, property and instance cards
+ * StudPilot is for young creators who are not technical. Plan checklists, property and instance cards
  * ("game.Lighting · FogStart 5000 → 100000"), diff tables and raw tool names were drawn inline in the
- * reply. They are not any more: the reply keeps the words and any image or sound Apple made, and
+ * reply. They are not any more: the reply keeps the words and any image or sound StudPilot made, and
  * everything else was under Details inside the Thinking disclosure, which D-THINK-1 removed: it is not drawn.
  *
  * Held three ways: the split itself (lib/reply-docs.ts) on real documents; a whole assistant Turn
@@ -42,7 +42,7 @@ test('the split: what the person asked to see stays, every other document goes t
   assert.deepEqual(media.flatMap((d) => d.blocks.map((b) => b.type)), ['asset_picker', 'asset_picker']);
   assert.deepEqual(media.flatMap((d) => d.blocks.map((b) => b.assets[0].id)), ['img-1', 'snd-1']);
   assert.deepEqual(details.flatMap((d) => d.blocks.map((b) => b.type)), ['property_inspector', 'build_plan', 'table', 'asset_picker']);
-  assert.equal(details.at(-1).blocks[0].assets[0].id, '123456', 'a catalogue search is detail, not something Apple made');
+  assert.equal(details.at(-1).blocks[0].assets[0].id, '123456', 'a catalogue search is detail, not something StudPilot made');
   // A render review was never drawn in the conversation and is not moved into it now.
   assert.equal([...media, ...details].some((d) => d.blocks.some((b) => b.type === 'render_review')), false);
 });
@@ -81,7 +81,7 @@ test('a whole settled reply, rendered: the words and the picture, no property ca
   turn();
   await new Promise((resolve) => setTimeout(resolve, 0));
   const html = turn();
-  assert.match(html, /aria-label="Generated image"/, 'the picture Apple made is in the reply — the renderer really ran');
+  assert.match(html, /aria-label="Generated image"/, 'the picture StudPilot made is in the reply — the renderer really ran');
   const shown = text(html);
   assert.match(shown, /Made the fog start much farther away\./, 'the reply itself is there');
   assert.doesNotMatch(html, /gu-panel|gu-plan|gu-steps|gx-inline-results/, 'a generative-UI card reached the reply');

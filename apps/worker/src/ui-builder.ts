@@ -9,8 +9,8 @@
 // Output is data only: class names, property names and enum values from a fixed vocabulary, all of
 // which the plugin's create allowlist accepts (tests/phase-a-tools.test.mjs reads Commands.luau and
 // ops/Ui.luau and fails if this file ever emits anything they do not list). No script is created.
-import type { InstanceSpec, PropValue } from '@apple/shared';
-import { APPLE_UI_THEMES, type AppleUITheme } from './ui-kit-themes';
+import type { InstanceSpec, PropValue } from '@studpilot/shared';
+import { STUDPILOT_UI_THEMES, type AppleUITheme } from './ui-kit-themes';
 
 export const UI_NODE_KINDS = ['panel', 'card', 'row', 'column', 'grid', 'scroll', 'text', 'button', 'bar', 'spacer'] as const;
 export const UI_ANCHORS = ['center', 'top', 'bottom', 'left', 'right', 'top_left', 'top_right', 'bottom_left', 'bottom_right'] as const;
@@ -352,8 +352,8 @@ class Builder {
 /** Compile build_ui arguments to one create_instances item, or say exactly what is wrong. */
 export function compileUi(args: { screen: unknown; theme: unknown; tree: unknown; safeArea?: unknown }): CompiledUi | Fail {
   if (typeof args.screen !== 'string' || !NAME.test(args.screen)) return { error: 'screen must be a name like "ShopGui": a letter, then letters, digits or _.' };
-  const theme = APPLE_UI_THEMES.find((th) => th.id === args.theme);
-  if (!theme) return { error: `theme must be one of ${APPLE_UI_THEMES.map((th) => th.id).join(', ')}.` };
+  const theme = STUDPILOT_UI_THEMES.find((th) => th.id === args.theme);
+  if (!theme) return { error: `theme must be one of ${STUDPILOT_UI_THEMES.map((th) => th.id).join(', ')}.` };
   if (args.safeArea !== undefined && typeof args.safeArea !== 'boolean') return { error: 'safeArea must be true or false.' };
   const rawTop = Array.isArray(args.tree) ? args.tree : [args.tree];
   if (rawTop.length === 0 || rawTop.length > UI_BUILD_LIMITS.topLevel) return { error: `tree must be one node or a list of 1-${UI_BUILD_LIMITS.topLevel} top-level nodes.` };

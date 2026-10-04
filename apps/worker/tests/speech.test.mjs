@@ -28,8 +28,8 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-speech-${process.pid}.mjs`);
-const AUDIO_OUT = join(tmpdir(), `apple-speech-audio-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-speech-${process.pid}.mjs`);
+const AUDIO_OUT = join(tmpdir(), `studpilot-speech-audio-${process.pid}.mjs`);
 
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'speech.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: OUT });
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'audio.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: AUDIO_OUT });

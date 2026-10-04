@@ -20,7 +20,7 @@
  */
 import { execFileSync } from 'node:child_process';
 
-const BASE = process.env.APPLE_BASE_URL ?? 'https://apple.moshe-barami111.workers.dev';
+const BASE = process.env.STUDPILOT_BASE_URL ?? 'https://apple.moshe-barami111.workers.dev';
 const results = [];
 
 const record = (flow, name, verdict, why, detail) => {
@@ -114,7 +114,7 @@ async function billing() {
 async function monitoring() {
   let secrets = null;
   try {
-    const out = execFileSync('npx', ['wrangler', 'secret', 'list', '--config', 'apps/worker/wrangler.apple.jsonc'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const out = execFileSync('npx', ['wrangler', 'secret', 'list', '--config', 'apps/worker/wrangler.studpilot.jsonc'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     secrets = JSON.parse(out).map((s) => s.name);
   } catch {
     return record('monitoring', 'error reporting is configured', 'unknown', 'could not list worker secrets; absence of evidence here is not evidence of absence');

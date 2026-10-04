@@ -17,7 +17,7 @@ import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const tmp = mkdtempSync(join(tmpdir(), 'apple-skill-cards-'));
+const tmp = mkdtempSync(join(tmpdir(), 'studpilot-skill-cards-'));
 const outfile = join(tmp, 'skill-cards.mjs');
 buildSync({
   entryPoints: [join(ROOT, 'apps/worker/src/skill-cards.ts')],

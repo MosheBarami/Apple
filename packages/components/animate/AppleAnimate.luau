@@ -1,8 +1,8 @@
 --!strict
 --[[
-	AppleAnimate: plays animations on rigged models from code, so nothing is uploaded and the game runs without Apple.
+	AppleAnimate: plays animations on rigged models from code, so nothing is uploaded and the game runs without StudPilot.
 	A model is rigged the RigEdit way (every moving part joined to an anchored root by a Motor6D named after the part,
-	the joint's pivot on the hinge: apps/apple-plugin/src/ops/Joints.luau). Its animations are a ModuleScript named
+	the joint's pivot on the hinge: apps/studpilot-plugin/src/ops/Joints.luau). Its animations are a ModuleScript named
 	AppleAnimations inside the model:
 
 	  return {

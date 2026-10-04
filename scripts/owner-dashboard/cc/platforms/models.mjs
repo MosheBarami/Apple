@@ -1,8 +1,8 @@
-// GET /api/cc/models: everything the repository records about Apple's models, read at request time
+// GET /api/cc/models: everything the repository records about StudPilot's models, read at request time
 // from the sources of truth. The registry is the real exported value of packages/shared/src/models.ts
 // (Node strips the types); the RAG counts come from packages/corpus. A fact no file records comes back
 // null and the page says "לא מתועד". Training and LoRA were cancelled (V3 §2): the LoRA runs, adapter
-// evals and the Apple MAX frontier lanes this page used to read from packages/training are retired;
+// evals and the StudPilot MAX frontier lanes this page used to read from packages/training are retired;
 // that directory is kept only as a historical archive.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,7 +37,7 @@ function rag() {
   }
   const witness = readJson(C('chunks-witness.json'));
   const up = readJson(C('upload-progress.json'));
-  const wr = readText(R('apps/worker/wrangler.apple.jsonc')) || '';
+  const wr = readText(R('apps/worker/wrangler.studpilot.jsonc')) || '';
   const index = /"vectorize"\s*:\s*\[\s*\{[^\]]*?"index_name"\s*:\s*"([^"]+)"/.exec(wr)?.[1] ?? null;
   const gw = readText(R('apps/worker/src/gateway.ts')) || '';
   const embed = /const model = '(@cf\/[^']*bge[^']*)'/.exec(gw)?.[1] ?? null;
@@ -63,7 +63,7 @@ function skillCards() {
 
 // The written record of how each model decision was made.
 function modelDocs() {
-  const re = /(apple-max|apple-model|apple-v\d|local-model|lora|model-seed|MODEL-ROUTING|apple-roblox-research-dataset|huggingface-luau)/i;
+  const re = /(studpilot-max|studpilot-model|studpilot-v\d|local-model|lora|model-seed|MODEL-ROUTING|studpilot-roblox-research-dataset|huggingface-luau)/i;
   return ls(R('docs/evidence')).filter((n) => n.endsWith('.md') && re.test(n)).map((n) => {
     const s = readText(R('docs/evidence', n)) || '';
     const title = /^#\s+(.+)$/m.exec(s)?.[1]?.trim() || n;

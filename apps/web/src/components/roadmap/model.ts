@@ -127,7 +127,7 @@ export interface NextResponse {
  * §33: a milestone turned into something a run can actually execute.
  *
  * `request` is the exact text that would be sent to the conversation. Showing
- * it before sending it is the point — the user sees what Apple was asked, not
+ * it before sending it is the point — the user sees what StudPilot was asked, not
  * just what it did.
  */
 export interface MilestoneBrief {
@@ -492,7 +492,7 @@ export function effortLabel(effort: string | null | undefined): string {
  *
  * `effortLabel` above says how much WORK a milestone is — "about two Agent runs". Nobody is
  * charged in runs. The worker derives the credit range from the same `runs` that line is built
- * from, through `creditRangeForRuns` in @apple/shared, so the two can never disagree.
+ * from, through `creditRangeForRuns` in @studpilot/shared, so the two can never disagree.
  *
  * THE THREE REFUSALS, each of which would otherwise print a price that is not true:
  *

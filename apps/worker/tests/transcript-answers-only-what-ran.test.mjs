@@ -39,7 +39,7 @@ const out = join(dir, 'oa.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src/providers/workers-ai.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { cwd: WORKER, stdio: 'pipe' });
-const { workersAiAdapter, APPLE_MODEL_ID } = await import(`file://${out}`);
+const { workersAiAdapter, STUDPILOT_MODEL_ID } = await import(`file://${out}`);
 
 const HUGE = 1_000_000;
 const sys = { role: 'system', content: 'S'.repeat(200) };
@@ -65,7 +65,7 @@ function overflowingStep(n, emitted, executed, text = '') {
  * itself. Named after the failure rather than the fix.
  */
 function unansweredOnTheWire(llm) {
-  const { payload } = workersAiAdapter.encode({ modelId: APPLE_MODEL_ID, messages: llm, maxTokens: 64, temperature: 0 });
+  const { payload } = workersAiAdapter.encode({ modelId: STUDPILOT_MODEL_ID, messages: llm, maxTokens: 64, temperature: 0 });
   const answered = new Set(payload.messages.filter((m) => m.tool_call_id).map((m) => m.tool_call_id));
   return payload.messages.flatMap((m) => (m.tool_calls ?? []).map((c) => c.id)).filter((id) => !answered.has(id));
 }

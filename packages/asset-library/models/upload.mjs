@@ -7,7 +7,7 @@
 // missing, so it is safe to re-run. Files are chunked with `append` like infra/deploy-static.mjs.
 //
 //   node packages/asset-library/models/upload.mjs [--force] [--only-id <manifest-id>]
-// Env: API_BASE, APPLE_ADMIN_KEY (read from the repo .env when present).
+// Env: API_BASE, STUDPILOT_ADMIN_KEY (read from the repo .env when present).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,8 +23,8 @@ try {
   }
 } catch { /* no .env: the environment must carry both values */ }
 const BASE = process.env.API_BASE;
-const KEY = envCompat('APPLE_ADMIN_KEY');
-if (!BASE || !KEY) throw new Error('API_BASE / APPLE_ADMIN_KEY missing');
+const KEY = envCompat('STUDPILOT_ADMIN_KEY');
+if (!BASE || !KEY) throw new Error('API_BASE / STUDPILOT_ADMIN_KEY missing');
 const force = process.argv.includes('--force');
 const onlyIdAt = process.argv.indexOf('--only-id');
 const onlyId = onlyIdAt >= 0 ? process.argv[onlyIdAt + 1] : null;

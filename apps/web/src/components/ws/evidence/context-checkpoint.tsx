@@ -1,6 +1,6 @@
 /** UI12 Context, UI14 Checkpoint, UI13 Confirmation, UI16 Attachments — drawn only from real run data. */
-import type { CheckpointMeta, ChatAttachment } from '@apple/shared';
-import { attachmentSizeLabel } from '@apple/shared';
+import type { CheckpointMeta, ChatAttachment } from '@studpilot/shared';
+import { attachmentSizeLabel } from '@studpilot/shared';
 import { Button } from '../../ui/button';
 import { Attachment, AttachmentInfo, AttachmentPreview, Attachments } from '../../ai-elements/attachments';
 import type { ContextBudget } from '../context-model';

@@ -66,7 +66,7 @@ test('a retry is not an edit on the client either, and both sides ask the same f
   // Try again and Regenerate resend the text verbatim. If the client counted those and the server
   // did not, the mark would appear on a message with nothing behind it.
   assert.match(SHARED, /export function recordsRevision/);
-  assert.match(SOCKET, /import \{ recordsRevision \} from '@apple\/shared'/);
+  assert.match(SOCKET, /import \{ recordsRevision \} from '@studpilot\/shared'/);
 });
 
 // ------------------------------------------------------------------ the panel ---

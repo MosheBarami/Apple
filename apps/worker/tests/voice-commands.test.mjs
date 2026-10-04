@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const REPO = join(WORKER, '..', '..');
-const OUT = join(tmpdir(), `apple-voice-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-voice-${process.pid}.mjs`);
 
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'voice-commands.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: OUT });
 const V = await import(pathToFileURL(OUT).href);
@@ -84,7 +84,7 @@ test('the plain phrasings are recognised at full confidence', () => {
 });
 
 test('filler around a command is stripped, and the confidence says it was', () => {
-  for (const utterance of ['okay stop', 'um, stop please', 'hey Apple, stop', 'please stop now', 'can you stop', 'so, uh, stop']) {
+  for (const utterance of ['okay stop', 'um, stop please', 'hey StudPilot, stop', 'hey stud pilot, stop', 'please stop now', 'can you stop', 'so, uh, stop']) {
     const r = say(utterance);
     assert.equal(r.disposition, 'command', `"${utterance}" → ${r.disposition}: ${r.note ?? ''}`);
     assert.equal(r.command.id, 'stop');

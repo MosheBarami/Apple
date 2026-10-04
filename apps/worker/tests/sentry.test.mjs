@@ -58,7 +58,7 @@ function recorder(response = { ok: true, status: 200 }) {
   return { calls, deps: { fetch, now: () => 1_770_000_000_000, eventId: () => 'a'.repeat(32) } };
 }
 
-const ctx = (over = {}) => ({ kind: 'unhandled', route: '/api/projects/:id/ws', method: 'POST', status: null, origin: 'https://apple.example', ...over });
+const ctx = (over = {}) => ({ kind: 'unhandled', route: '/api/projects/:id/ws', method: 'POST', status: null, origin: 'https://studpilot.example', ...over });
 
 /** The bytes that would be POSTed, for the run just recorded. */
 const bodyOf = (calls) => calls[0].init.body;
@@ -145,7 +145,7 @@ test('the envelope is three lines: header, item header, event', async () => {
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://o4500.ingest.us.sentry.io/api/4509/envelope/');
   assert.equal(calls[0].init.headers['Content-Type'], 'application/x-sentry-envelope');
-  assert.match(calls[0].init.headers['X-Sentry-Auth'], /^Sentry sentry_version=7, sentry_client=apple-worker/);
+  assert.match(calls[0].init.headers['X-Sentry-Auth'], /^Sentry sentry_version=7, sentry_client=studpilot-worker/);
   const lines = bodyOf(calls).trim().split('\n');
   assert.equal(lines.length, 3, `the envelope had ${lines.length} lines`);
   assert.equal(JSON.parse(lines[1]).type, 'event');
@@ -198,12 +198,12 @@ test('a JWT, an email and an API key in the error message never reach the wire',
   // Against the SERIALISED BODY, not the event object: the object is not what leaves the isolate.
   assert.equal(body.includes(JWT), false, 'a JWT was sent to Sentry');
   assert.equal(body.includes(EMAIL), false, 'an email address was sent to Sentry');
-  assert.equal(body.includes(API_KEY), false, 'an Apple API key was sent to Sentry');
+  assert.equal(body.includes(API_KEY), false, 'a StudPilot API key was sent to Sentry');
   // And the markers ARE there — without this, a scrubber that replaced the whole message with ''
   // would pass every assertion above while destroying the error report.
   assert.match(body, /\[redacted:jwt\]/);
   assert.match(body, /\[redacted:email\]/);
-  assert.match(body, /\[redacted:apple_api_key\]/);
+  assert.match(body, /\[redacted:studpilot_api_key\]/);
   assert.match(body, /refused for/, 'the diagnostic text around the secrets was destroyed');
 });
 
@@ -253,13 +253,13 @@ test('the scrub is recursive, so a field added to the event later is still cover
 test('the request url is the ORIGIN and the LABEL — never a raw path and never a query string', () => {
   const event = S.buildEvent({
     error: new Error('boom'),
-    ctx: { kind: 'unhandled', route: '/api/projects/:id/ws', method: 'GET', status: 500, origin: 'https://apple.example' },
+    ctx: { kind: 'unhandled', route: '/api/projects/:id/ws', method: 'GET', status: 500, origin: 'https://studpilot.example' },
     eventId: 'c'.repeat(32),
     timestampMs: 0,
     release: 'x',
     environment: 'test',
   });
-  assert.equal(event.request.url, 'https://apple.example/api/projects/:id/ws');
+  assert.equal(event.request.url, 'https://studpilot.example/api/projects/:id/ws');
   assert.equal(event.request.url.includes('?'), false);
   // THE STRUCTURAL GUARANTEE, asserted as a shape rather than a hope: there is nowhere on this
   // event for a header, a cookie, a body or a person to go.
@@ -299,7 +299,7 @@ test('a thrown non-Error is still reported, with an honest type', () => {
 /* ----------------------------------------------------------------- the middleware --- */
 
 /** The smallest thing that behaves like the part of Hono's Context the middleware reads. */
-function miniCtx(env, { url = 'https://apple.example/api/projects/8f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/ws?token=secret', method = 'POST' } = {}) {
+function miniCtx(env, { url = 'https://studpilot.example/api/projects/8f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/ws?token=secret', method = 'POST' } = {}) {
   const waited = [];
   return {
     c: { env, req: { url, method }, res: undefined, executionCtx: { waitUntil: (p) => waited.push(p) } },
@@ -404,7 +404,7 @@ test('no execution context is not a crash — a synthetic request still reports'
   const { calls, deps } = recorder();
   const c = {
     env: { SENTRY_DSN: DSN },
-    req: { url: 'https://apple.example/api/x', method: 'GET' },
+    req: { url: 'https://studpilot.example/api/x', method: 'GET' },
     res: undefined,
     // The shape a test harness produces: reading `executionCtx` throws.
     get executionCtx() { throw new Error('no execution context'); },

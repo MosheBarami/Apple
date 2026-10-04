@@ -1,4 +1,4 @@
-import type { GatewayToolCall } from '@apple/shared';
+import type { GatewayToolCall } from '@studpilot/shared';
 
 /**
  * A tool call is COMPLETE when its arguments are a JSON object (an empty string means no arguments).

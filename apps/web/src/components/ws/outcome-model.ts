@@ -17,7 +17,7 @@
  * this build does not recognise falls through to the generic sentence. It is never rendered — a
  * worker deployed ahead of the app must degrade, not leak.
  */
-import { isRunFailure, type RunFailure } from '@apple/shared';
+import { isRunFailure, type RunFailure } from '@studpilot/shared';
 
 export type OutcomeTone = 'note' | 'bad';
 
@@ -75,7 +75,7 @@ const BY_FAILURE: Record<RunFailure, string> = {
   busy: 'The model was too busy to finish that step. Everything up to there is saved, and nothing further was charged.',
   interrupted: 'That run was interrupted between steps. Everything up to there is saved — send another message to continue.',
   dropped_step: 'The model dropped a step part-way through. Everything up to there is saved, and the dropped step was not charged.',
-  model_failed: 'That step failed on our side. Everything up to there is saved — send another message and Apple picks up where it left off.',
+  model_failed: 'That step failed on our side. Everything up to there is saved — send another message and StudPilot picks up where it left off.',
 };
 
 /**
@@ -103,7 +103,7 @@ export function outcomeLine(
  * Does the reply already say what this line would? Two cases, neither a guess from wording:
  *
  *   - `incomplete`: the worker never stores an incomplete reply without its own closing sentence
- *     (finishRun; the contract is written on msg_end.content in @apple/shared). That sentence names
+ *     (finishRun; the contract is written on msg_end.content in @studpilot/shared). That sentence names
  *     the real reason — the read-stall bound, a refusal and its remedy — so "That run finished
  *     without changing anything" under it is a second, vaguer account of the same ending.
  *   - any stop whose sentence IS the reply's last paragraph: "Stopped." under "Stopped.".

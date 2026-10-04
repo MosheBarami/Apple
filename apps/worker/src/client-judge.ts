@@ -14,7 +14,7 @@
  *
  * The bodies are pure functions over the op channel (`OpCall`), so tests drive them against a stand-in Studio.
  */
-import type { GatewayToolDef, StudioOp } from '@apple/shared';
+import type { GatewayToolDef, StudioOp } from '@studpilot/shared';
 import { playCheckUiOp, type OpCall } from './phase-a-tools';
 import {
   type GuiNode, type MenuCluster, arr, all, clip, coveringPieces, guiFrom, hasText, hasVisuals, isButton, labelOf, lastName, menuClusters, num, outOfSight, overlaps, pathParts, pickButtons, pickFlow, readable, rec, shown,

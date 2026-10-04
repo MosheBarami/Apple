@@ -127,7 +127,7 @@ test('disconnecting asks first, and says what it costs', () => {
   assert.ok(/confirm|Are you sure|sure\?/i.test(section), 'disconnect fires on a single click with no confirmation');
 });
 
-// F-008, measured 2026-09-22: the plugin dock read "Apple-Acceptance-2026-09-22.rbxl" while this row
+// F-008, measured 2026-09-22: the plugin dock read "StudPilot-Acceptance-2026-09-22.rbxl" while this row
 // said "Paired to a place Studio has not named". An unpublished place reports placeId 0 and is never
 // BOUND, but Studio did name it, and `openPlace` carries that name. "Has not named" is only true when
 // Studio has reported nothing at all.

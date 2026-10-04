@@ -1,7 +1,7 @@
 --!strict
 --[[
 	AppleSounds: the game's sounds by role, for every client script. Each role is a public sound effect pinned and
-	checked by Apple (packages/corpus/data/kit-pins.json: free, in the Toolbox, exists); the game's
+	checked by StudPilot (packages/corpus/data/kit-pins.json: free, in the Toolbox, exists); the game's
 	AppleClientConfig.sounds can swap any of them ({ click = 123, ... }). Sounds play on this player's screen only,
 	may overlap, and a role cannot fire more than once in `gap` seconds (a wave of hits stays a patter, not a roar).
 ]]
@@ -61,7 +61,7 @@ function AppleSounds.play(role: string, volume: number?)
 	local s = sounds[role]
 	if not s then
 		local made = Instance.new("Sound")
-		made.Name = "Apple_" .. role
+		made.Name = "StudPilot_" .. role
 		made.SoundId = r.id
 		made.Volume = r.volume
 		made.PlaybackSpeed = r.speed or 1

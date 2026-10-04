@@ -3,14 +3,14 @@
  * Ship the 80 Luau modules whose correctness has been EXECUTED, not reviewed.
  *
  * WHY THIS EXISTS. eval-v4 measured the trained model at 0/8 on game logic, against a base that
- * also scored 0/8 (docs/evidence/apple-v4-evaluation-2026-09-19.md). Reading the failures up close,
+ * also scored 0/8 (docs/evidence/studpilot-v4-evaluation-2026-09-19.md). Reading the failures up close,
  * the model writes the house style perfectly and gets the arithmetic wrong: `honest-percent` came
  * back multiplying by 99 instead of 100, and `remap-range` took four parameters where the contract
  * has five. It has learned what these modules LOOK like and not what they COMPUTE.
  *
  * Meanwhile `packages/training/` already holds 80 modules that are provably right — each carries
  * exhaustive checks that RUN. They were used to train an adapter which production cannot serve at
- * all, because the models Apple runs on answer `5005 LoRA unsupported`. So the correct code existed
+ * all, because the models StudPilot runs on answer `5005 LoRA unsupported`. So the correct code existed
  * and the product could not reach it, while the model re-derived it from scratch and got it wrong.
  *
  * This is the bridge. prefabs.ts already argues the principle — "an instruction is re-followed from

@@ -28,7 +28,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { ATTACHMENT_ACCEPT } from '@apple/shared';
+import { ATTACHMENT_ACCEPT } from '@studpilot/shared';
 import { WEB, bundle, count, decomment, element, renderWith, unescape } from './ui-bundle.mjs';
 
 const ui = await bundle(
@@ -167,7 +167,7 @@ test('the paperclip is off, with the reason, where there is no project to upload
 // ------------------------------------------------------------------ menus ---
 
 test('Create is named by what it holds, and there is no mode or model control', () => {
-  //[[ RESTATED for V3 gate G01. Apple is the only engine, so the model chip and its picker are
+  //[[ RESTATED for V3 gate G01. StudPilot is the only engine, so the model chip and its picker are
   //   gone: nothing in the composer names or chooses a model. The property is unchanged for what
   //   remains: each control says what it currently holds. ]]
   //[[ RESTATED 2026-09-23 (composer picks). Mode is no longer a menu either: it is a two-way radio

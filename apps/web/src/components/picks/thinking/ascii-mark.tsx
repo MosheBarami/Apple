@@ -1,13 +1,13 @@
 // Componentry "ASCII Effect" (MIT, componentry.fun), its "glitch" variant, as the crash card's mark.
 //
-// An apple is drawn into an offscreen canvas and read back cell by cell; each cell's brightness
+// A studpilot is drawn into an offscreen canvas and read back cell by cell; each cell's brightness
 // picks a character from a ramp (" .:-=+*#%@"), and the characters are drawn in the ink colour.
 // Every couple of seconds a few horizontal bands slip sideways and scramble for a moment — the
-// apple, stumbling. That is the joke the card's title makes ("The apple stumbled"), drawn.
+// studpilot, stumbling. That is the joke the card's title makes ("StudPilot stumbled"), drawn. (The drawing is still the old fruit mark; M6 replaces it.)
 //
 // Re-drawn from the original's approach (sample, map to a ramp, band-shift glitch); its image
 // pipeline (dithering, flow fields, pointer response) is not needed for a 120px mark. Reduced
-// motion draws the apple once, still, with no glitch. aria-hidden: the title says what happened.
+// motion draws the studpilot once, still, with no glitch. aria-hidden: the title says what happened.
 import { useRef } from 'react';
 import { useCanvasLoop } from './canvas-loop';
 import './ascii-mark.css';
@@ -15,8 +15,8 @@ import './ascii-mark.css';
 const RAMP = ' .:-=+*#%@';
 const CELL = 6;
 
-/** The apple, drawn once into an offscreen canvas at the grid's own resolution. */
-function sampleApple(columns: number, rows: number): number[] {
+/** The studpilot, drawn once into an offscreen canvas at the grid's own resolution. */
+function sampleStudPilot(columns: number, rows: number): number[] {
   const source = document.createElement('canvas');
   source.width = columns;
   source.height = rows;
@@ -59,7 +59,7 @@ export function AsciiMark({ className }: { className?: string }) {
       resize(width, height) {
         columns = Math.floor(width / CELL);
         rows = Math.floor(height / CELL);
-        lum = sampleApple(columns, rows);
+        lum = sampleStudPilot(columns, rows);
       },
       frame({ ctx, width, height, time, color }) {
         if (time >= nextGlitch) {

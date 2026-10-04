@@ -30,7 +30,7 @@ export interface TranscriptExport {
 /** What a role is called in a file a person reads, rather than what the column stores. */
 function speaker(role: string): string {
   if (role === 'user') return 'You';
-  if (role === 'assistant') return 'Apple';
+  if (role === 'assistant') return 'StudPilot';
   if (role === 'system') return 'System';
   return role;
 }

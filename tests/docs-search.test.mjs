@@ -1,5 +1,5 @@
 /**
- * Searching Apple's own help, which was not possible anywhere in the product.
+ * Searching StudPilot's own help, which was not possible anywhere in the product.
  *
  * The docs nav is a hand-maintained list of twelve links. There was no input, no form, no search
  * script, and no index: finding "what happens if I close Studio mid-build" meant opening pages
@@ -9,7 +9,7 @@
  * AND THE ENDPOINT THAT LOOKS LIKE THE ANSWER IS NOT ONE. GET /api/docs/search exists in the
  * worker, but it queries the vendored ROBLOX creator-docs corpus, it requires a signed-in user and
  * it bills a Credit per query. Pointing the docs nav at it would charge a visitor money to find out
- * how to install the plugin. This is a separate, free, static index over Apple's own pages.
+ * how to install the plugin. This is a separate, free, static index over StudPilot's own pages.
  *
  * WHAT THIS GUARDS. The index is derived from the page sources at build time, so its failure mode
  * is silent and total: a stripper that swallows the body produces an index of twelve titles and

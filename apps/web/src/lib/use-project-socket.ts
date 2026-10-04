@@ -19,10 +19,10 @@ import type {
   StudioEventSelection,
   StudioEventState,
   StudioPauseReason,
-} from '@apple/shared';
+} from '@studpilot/shared';
 // The rule for what counts as a new version of a message, shared with the DO so the count this
 // client shows before the round trip and the rows the server writes cannot disagree.
-import { recordsRevision } from '@apple/shared';
+import { recordsRevision } from '@studpilot/shared';
 // The composer's UI theme for this project; read at send time so the frame carries the current pick.
 import { readUiTheme } from './ui-theme';
 import type { PhaseMark } from '../components/ws/activity-model';
@@ -110,7 +110,7 @@ export interface ChatItem extends TraceFields {
    *
    * Comes with the transcript so the "edited" mark can be drawn without one request per turn, and
    * is incremented optimistically when an edit is sent — the server applies the same rule (see
-   * `recordsRevision` in @apple/shared), so the two agree, and a reload corrects them if they ever
+   * `recordsRevision` in @studpilot/shared), so the two agree, and a reload corrects them if they ever
    * do not. Undefined means "nothing known", never "none": a worker that predates the feature
    * sends no field, and drawing "no earlier versions" from that would be an answer nobody checked.
    */
@@ -972,7 +972,7 @@ export function useProjectSocket(
         //   something".
         //
         //   Reproduced end to end on 2026-09-20 by infra/e2e.mjs against the deployed product. A
-        //   free account asking for Apple MAX gets `product_model_unavailable`, which session.ts
+        //   free account asking for StudPilot MAX gets `product_model_unavailable`, which session.ts
         //   sends through `refuseOne` — one message, then return. No msg_end, no run_state, no
         //   terminal event of any kind. The harness waited 150 seconds and gave up; a person waits
         //   as long as they are willing to.
@@ -1066,7 +1066,7 @@ export function useProjectSocket(
     const url = `${proto}://${location.host}/api/shared/${encodeURIComponent(projectId)}/ws`;
     let ws: WebSocket;
     try {
-      ws = new WebSocket(url, ['golem.v1', `golem.jwt.${token}`]);
+      ws = new WebSocket(url, ['studpilot.v1', `studpilot.jwt.${token}`]);
     } catch {
       if (!requestFenceRef.current.isSelected(socketProjectId)) return;
       setConn('offline');
@@ -1212,7 +1212,7 @@ export function useProjectSocket(
   const editAndResend = useCallback(
     (messageId: string, text: string, productModel?: ProductModel): boolean => {
       const mode = 'agent';
-      // `model` only for a model on the customer's own key: an Apple run stays byte-identical on the
+      // `model` only for a model on the customer's own key: a StudPilot run stays byte-identical on the
       // wire to every run before the picker existed (the worker reads `productModel` then).
       const ok = sendRaw({ type: 'edit_resend', messageId, text, mode, ...(productModel ? { productModel } : {}), uiTheme: readUiTheme(projectId) });
       if (ok) {

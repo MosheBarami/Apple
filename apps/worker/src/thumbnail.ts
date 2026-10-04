@@ -172,7 +172,7 @@ export const THUMBNAIL_UPLOAD = {
     'Roblox exposes no Open Cloud endpoint for experience thumbnails or icons — both are set on the ' +
     'Creator Dashboard by hand. The only write scope that exists, asset:write, would upload this as an ' +
     'Image asset instead, and Roblox refuses to archive an Image: it would stay in the account for good. ' +
-    'So Apple never uploads a thumbnail; you download it and set it yourself.',
+    'So StudPilot never uploads a thumbnail; you download it and set it yourself.',
 } as const;
 
 /**

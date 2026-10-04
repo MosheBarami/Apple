@@ -1,6 +1,6 @@
 // rules.mjs — the design intelligence itself.
 //
-// WHY THIS EXISTS. §G: "Apple must STOP defaulting to inventing every Roblox GUI
+// WHY THIS EXISTS. §G: "StudPilot must STOP defaulting to inventing every Roblox GUI
 // and every visual primitive from a blank canvas." §K says what to do instead:
 // extract the GRAMMAR from good work, then build original primitives from it —
 // explicitly NOT paste third-party UI into generated games.
@@ -106,13 +106,13 @@ const MEASURED = (file) => ({
  *
  * `validated` says "documented" rather than "rendered" on purpose. A documented
  * behaviour has been WRITTEN DOWN by the engine's authors; it has not been seen
- * to work in an Apple fixture. `retrieve` gives its +2 only to rules that have,
+ * to work in a StudPilot fixture. `retrieve` gives its +2 only to rules that have,
  * so these correctly rank below the ones that shipped.
  */
 const DOCS = (file) => ({
   kind: 'learned-pattern',
   source: `Roblox/creator-docs content/en-us/reference/engine/${file} (CC-BY-4.0)`,
-  validated: 'documented engine behaviour; not yet built in an Apple fixture',
+  validated: 'documented engine behaviour; not yet built in a StudPilot fixture',
 });
 
 /**
@@ -126,14 +126,14 @@ const DOCS = (file) => ({
 const TYCOON = (file) => ({
   kind: 'learned-pattern',
   source: `DLinacre/slime-factory-tycoon@c471a2ef7d ${file} (MIT)`,
-  validated: 'observed in one shipped tycoon; not yet built in an Apple fixture',
+  validated: 'observed in one shipped tycoon; not yet built in a StudPilot fixture',
 });
 
 /** Same source, same licence, but a prose guide rather than the API reference. */
 const GUIDE = (file) => ({
   kind: 'learned-pattern',
   source: `Roblox/creator-docs content/en-us/${file} (CC-BY-4.0)`,
-  validated: 'documented engine behaviour; not yet built in an Apple fixture',
+  validated: 'documented engine behaviour; not yet built in a StudPilot fixture',
 });
 
 /** @type {ReadonlyArray<object>} */
@@ -683,7 +683,7 @@ export const RULES = Object.freeze([
     provenance: {
       kind: 'learned-pattern',
       source: 'Roblox/creator-docs content/en-us/tutorials/use-case-tutorials/modeling/assemble-modular-environments.md + content/en-us/parts/materials.md (CC-BY-4.0)',
-      validated: 'documented grammar; not yet built in an Apple fixture',
+      validated: 'documented grammar; not yet built in a StudPilot fixture',
     },
   },
   {

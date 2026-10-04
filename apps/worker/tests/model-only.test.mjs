@@ -9,7 +9,7 @@
  *   - a Model assembled from Parts is held back until the run has TRIED the library (a search with no hit,
  *     an insert that failed, or an insert that worked), at most twice per run, and never when the library
  *     is not on offer or the project's sources rule it out;
- *   - hand-made meshes cannot be created by Apple's plugin, so they are refused whatever the run did;
+ *   - hand-made meshes cannot be created by StudPilot's plugin, so they are refused whatever the run did;
  *   - NO NAME DECIDES ANYTHING: a part called PalmTree_3 is a part, and a renamed Model is the same Model.
  *     The module exports no word list, which a guard below enforces; create_instances says what the library holds when
  *     a Model of parts is named like a row (libraryAdvice), as information;

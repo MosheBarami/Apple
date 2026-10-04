@@ -56,7 +56,7 @@ packages/corpus/raw/*
 # claims a url, a kind, a title and an exact chunk-id list for 25 documents in the local corpus, and
 # the test that made those claims true read `chunks.jsonl` — 10 MB of gitignored build artefact. In
 # a fresh checkout that threw ENOENT instead of failing an assertion, `pnpm -r test` bailed at
-# @apple/corpus, and every package after it in the recursion never ran. This file is the 25
+# @studpilot/corpus, and every package after it in the recursion never ran. This file is the 25
 # documents, the corpus sha256 and the document count, so the claim is checkable without the corpus
 # and is re-derived from the corpus wherever the corpus exists. See src/chunk-witness.mjs.
 !packages/corpus/data/chunks-witness.json
@@ -96,7 +96,7 @@ packages/corpus/raw/*
 # directory, so the manifest went with it and a fresh clone had nothing to fetch
 # FROM. It pins a url and a commit SHA per checkout: our metadata about third-party
 # repositories, not their content, so tracking it redistributes nothing. It is what
-# `pnpm --filter @apple/corpus bootstrap` reads.
+# `pnpm --filter @studpilot/corpus bootstrap` reads.
 !packages/corpus/raw/manifest.json
 # ...and the HUGGING FACE lock, for the same reason and on the same terms. It pins each
 # harvested dataset by url + commit SHA, and records the sources that were fetched, read and
@@ -184,16 +184,16 @@ packages/training/data/*/*
 !packages/training/data/*/dataset-card.json
 # ...and THE ONE PREREGISTERED DATASET, with the preregistration beside it. Everything above turns
 # on "train/val/test.jsonl are DERIVED — build-dataset.mjs regenerates them". These 28 rows are the
-# exception: `apple-max-contract-v4-preregistration-2026-09-18.json` FREEZES them, by sha256, per
+# exception: `studpilot-max-contract-v4-preregistration-2026-09-18.json` FREEZES them, by sha256, per
 # file and per holdout row, before any training ran. A freeze is only worth the paper it is on if
 # somebody other than the machine that made it can check it, and
 # `contract-generalization-curriculum.test.mjs` does exactly that — it re-hashes every named file
 # and every holdout row against the record.
 #
 # Untracked, that test threw ENOENT in every clone, which took `pnpm -r test` down at
-# @apple/training and stopped @apple/worker and @apple/site from running at all. 71 KB in total,
+# @studpilot/training and stopped @studpilot/worker and @studpilot/site from running at all. 71 KB in total,
 # first-party-authored-synthetic, customerData false, and its own card says so.
-!packages/training/data/apple-max-contract-v4-preregistration-2026-09-18.json
+!packages/training/data/studpilot-max-contract-v4-preregistration-2026-09-18.json
 !packages/training/data/game-logic-seeds-v4-contract/*.jsonl
 # The four small, first-party storage outcome lessons are source evidence for the pinned
 # training lever. A clean clone must contain the exact bytes that the supervisor re-hashes.

@@ -219,7 +219,7 @@ test('no project-changing tool reaches the user under its own name', async () =>
   const dir = mkdtempSync(join(tmpdir(), 'run-idle-tools-'));
   try {
     await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@apple/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+      alias: { '@studpilot/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
     const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
     const { builtSummary, addMade, madeKey } = await import('../src/run-idle.ts');
     const writers = T.projectMutatingToolNames();
@@ -404,7 +404,7 @@ test('the self-check\'s look counts as a check after a change, so reading after 
   const dir = mkdtempSync(join(tmpdir(), 'run-idle-checks-'));
   try {
     await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@apple/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+      alias: { '@studpilot/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
     const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
     for (const name of EXTRA_CHECK_TOOLS) {
       assert.ok(T.toolNames().includes(name), `${name} is not a registered tool`);

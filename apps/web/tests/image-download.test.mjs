@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const web = fileURLToPath(new URL('..', import.meta.url));
-const out = join(mkdtempSync(join(tmpdir(), 'apple-image-save-')), 'api.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-image-save-')), 'api.mjs');
 execFileSync(join(web, '../worker/node_modules/.bin/esbuild'), [join(web, 'src/lib/api.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--define:import.meta.env={}', `--outfile=${out}`], { stdio: 'pipe' });
 const api = await import(`file://${out}`);
 
@@ -26,7 +26,7 @@ test('image save downloads fetched bytes and releases the blob after the browser
     assert.equal(project, 'project'); assert.equal(image, 'image');
     return new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], { type: 'image/png' });
   });
-  assert.deepEqual(events, [['append'], ['click', 'blob:verified', 'apple-image-image.jpg'], ['remove']]);
+  assert.deepEqual(events, [['append'], ['click', 'blob:verified', 'studpilot-image-image.jpg'], ['remove']]);
   nextFrame();
   assert.deepEqual(events.at(-1), ['revoke', 'blob:verified']);
 });

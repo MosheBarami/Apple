@@ -71,7 +71,7 @@ export async function runModelUpload(
           projectId: params.projectId,
           subject: params.operationId,
           title: `Your 3D model "${params.displayName}" is ready in Roblox`,
-          body: `It is in your Roblox inventory as asset ${assetId}. Ask Apple to "insert asset ${assetId}" to put it in your place.`,
+          body: `It is in your Roblox inventory as asset ${assetId}. Ask StudPilot to "insert asset ${assetId}" to put it in your place.`,
           at: Date.now(),
         });
         return out.delivered;

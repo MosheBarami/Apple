@@ -109,13 +109,13 @@ test('open questions remain internal metadata and do not become customer-facing 
   assert.equal(plan.questions, undefined);
 });
 
-// --- what Apple decided for itself -----------------------------------------
+// --- what StudPilot decided for itself -----------------------------------------
 //
 // `questions` and `assumptions` are opposites and the card labels them as such: a question is
 // still open, an assumption has already been acted on. Showing only the first tells the user
-// about the choices Apple declined to make and hides the ones it made.
+// about the choices StudPilot declined to make and hides the ones it made.
 
-test('Apple assumptions stay out of the visible plan', () => {
+test('StudPilot assumptions stay out of the visible plan', () => {
   const stages = buildTimeline({
     ...EMPTY,
     intent: { summary: 's', checklist: ['a bar'], questions: [], assumptions: ['mood: warm (from "cozy")'] },
@@ -158,7 +158,7 @@ test('an older worker that sends no assumptions field breaks nothing', () => {
   assert.equal(stages.find((s) => s.kind === 'plan').assumptions, undefined);
 });
 
-test('the customer-facing Activity renderer contains no Apple-assumed/open-question blocks', async () => {
+test('the customer-facing Activity renderer contains no StudPilot-assumed/open-question blocks', async () => {
   // A field on a model that no component reads is the dead branch this whole section of the audit
   // is about — `PlanStep.tool` sat rendered-but-never-produced for months. Both halves are checked:
   // the JSX reads the field, and the class it renders under is defined rather than unstyled.
@@ -169,14 +169,14 @@ test('the customer-facing Activity renderer contains no Apple-assumed/open-quest
   // The turn's live surface since 2026-10-01 is the AI Elements steps (the status pill was removed).
   const tsx = readFileSync(join(web, 'src/components/ws/run-steps.tsx'), 'utf8');
   assert.doesNotMatch(tsx, /stage\.assumptions/);
-  assert.doesNotMatch(tsx, /Apple assumed/);
+  assert.doesNotMatch(tsx, /StudPilot assumed/);
   assert.doesNotMatch(tsx, /gx-open-qs/);
 });
 
 test('assumptions alone do not draw a customer-facing Plan row', () => {
   // The checklist used to be the only thing that could open this stage. A request made entirely
   // of adjectives ("make it cozier") names no object, so it has no checklist — and that is
-  // exactly the request where what Apple assumed is the only thing worth reading. Gating the row
+  // exactly the request where what StudPilot assumed is the only thing worth reading. Gating the row
   // on the checklist would hide the assumption in the one case it matters most.
   const stages = buildTimeline({
     ...EMPTY,
@@ -191,7 +191,7 @@ test('an open question alone does not draw internal planning scaffolding in the 
   // when ALL FOUR are empty, so a hedged request that settled nothing yields questions and
   // nothing else. That question was computed on the server, sent over the socket and parsed
   // here — and then the Plan gate, which read only `checklist` and `assumptions`, threw it away.
-  // The user was never told Apple did not know what they meant. They found out from the build.
+  // The user was never told StudPilot did not know what they meant. They found out from the build.
   //
   // The summary is deliberately blank here: an intent whose ONLY content is a question is exactly
   // the payload that reached the client with nothing to render it. With a summary present the

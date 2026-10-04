@@ -5,7 +5,7 @@
  * honest way to charge for work that happened — and until this change it was the ONLY arithmetic
  * in the product. There was no refund path anywhere. So a run cut off at the provider's output
  * ceiling, or killed by the wall clock, or stopped by the step cap, charged for every neuron it
- * burned and then told the user, in the product's own words, to "send another message and Apple
+ * burned and then told the user, in the product's own words, to "send another message and StudPilot
  * will continue from here" — which starts a second run and charges again. One build, paid for
  * twice, every individual sentence true.
  *

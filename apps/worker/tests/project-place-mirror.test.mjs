@@ -171,13 +171,13 @@ test('a write that was REFUSED is retried, not recorded as done', async () => {
 test('with no place bound, the open unsaved place\'s name reaches the card', async () => {
   const { h, calls, restore } = await signedIn();
   try {
-    await h.session.handlePluginPoll({ state: state({ placeId: 0, gameId: 0, placeName: 'Apple-Mission2c-Baseplate.rbxl' }) });
+    await h.session.handlePluginPoll({ state: state({ placeId: 0, gameId: 0, placeName: 'StudPilot-Mission2c-Baseplate.rbxl' }) });
   } finally {
     restore();
   }
   const wrote = patches(calls);
   assert.equal(wrote.length, 1, 'an unsaved place never names the project: the card reads "No place name yet"');
-  assert.equal(wrote[0].body.place_name, 'Apple-Mission2c-Baseplate.rbxl');
+  assert.equal(wrote[0].body.place_name, 'StudPilot-Mission2c-Baseplate.rbxl');
   assert.equal(wrote[0].body.place_id, null, 'placeId 0 is "not published", not a place called 0');
   assert.equal(h.session.boundPlace ?? null, null, 'naming the card must not BIND an unidentifiable place');
 });

@@ -8,7 +8,7 @@
 // This mirrors packages/evals/src/layout-metrics.mjs, which is the calibrated reference
 // implementation and carries the tests. Kept in sync deliberately: the eval version grades stored
 // fixtures offline, this one runs in the request path against a live capture.
-import type { SceneLayout } from '@apple/shared';
+import type { SceneLayout } from '@studpilot/shared';
 
 interface P {
   x: number;

@@ -1,7 +1,7 @@
 /*
  * CONTENT ROUTES — docs, pricing, changelog, status, proof, legal, 404.
  *
- * Structure only. Every colour, type, radius and motion value is a token from apple-minimal.css,
+ * Structure only. Every colour, type, radius and motion value is a token from studpilot-minimal.css,
  * which Base.astro imports before this file; nothing here redeclares one. The page grammar is the
  * same as the landing's: a quiet page title, a muted lede, hairlines instead of shadows, and one
  * surface step for anything that needs a panel.

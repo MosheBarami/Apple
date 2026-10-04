@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const worker = fileURLToPath(new URL('..', import.meta.url));
-const out = join(mkdtempSync(join(tmpdir(), 'apple-image-fidelity-')), 'imagegen.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-image-fidelity-')), 'imagegen.mjs');
 execFileSync(join(worker, 'node_modules/.bin/esbuild'), [join(worker, 'src/imagegen.ts'), '--bundle', '--format=esm', '--outfile=' + out], { stdio: 'pipe' });
 const { composeArtDirection } = await import(`file://${out}`);
 

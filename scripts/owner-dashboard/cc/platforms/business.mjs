@@ -2,14 +2,14 @@
 // the top errors, flags and kill switches, the audit log and the open alerts. Read-only: nothing
 // here changes a plan, a flag or a subscription, sends a message or charges anyone.
 // Sources: Supabase (auth.users + public.profiles through a read_only SQL query), the worker's admin
-// API (apple(), /api/admin/logs for builds and audit, /api/admin/account/:id for the active users),
+// API (studpilot(), /api/admin/logs for builds and audit, /api/admin/account/:id for the active users),
 // clerk(), sentry() and insights(). Emails leave this module masked (a***@domain).
 // /api/admin/billing-reconcile is deliberately not called: with billing unconfigured it answers 503,
 // and every 503 becomes a Sentry event.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fetchJson, cached, ok, fail, section, REPO } from '../http.mjs';
-import { apple } from './apple.mjs';
+import { studpilot } from './studpilot.mjs';
 import { WORKER_URL } from './cloudflare.mjs';
 import { REF } from './supabase.mjs';
 import { sentry } from './sentry.mjs';
@@ -31,7 +31,7 @@ const sbUsers = () => fetchJson(`https://api.supabase.com/v1/projects/${REF}/dat
   headers: { authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` }, body: { query: USERS_SQL, read_only: true } });
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
-const admin = (p, what) => fetchJson(`${base()}${p}`, { label: 'Apple', what, headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
+const admin = (p, what) => fetchJson(`${base()}${p}`, { label: 'StudPilot', what, headers: { 'x-admin-key': envCompat('STUDPILOT_ADMIN_KEY') } });
 
 // The worker's deployed flags that are plain config (wrangler.jsonc "vars"), not secrets.
 function workerVars() {
@@ -65,7 +65,7 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
   const byId = Object.fromEntries(list.map((u) => [u.id, u]));
   const userRows = list.slice(0, 100).map((u) => ({ k: u.id.slice(0, 8), email: maskEmail(u.email), created: iso(u.created_at), lastSignIn: iso(u.last_sign_in_at),
-    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|@apple\.internal$|^e2e|load-?test/i.test(u.email || ''),
+    confirmed: Boolean(u.confirmed), plan: u.plan || 'free', admin: Boolean(u.is_admin), projects: n(u.projects) ?? 0, test: /@golem\.internal$|@studpilot\.internal$|^e2e|load-?test/i.test(u.email || ''),
     worker: accounts[u.id] || null }));
   const workerPlans = Object.entries(accounts).map(([id, x]) => ({ k: id.slice(0, 8), email: maskEmail(byId[id]?.email) || null, ...x }));
 
@@ -106,15 +106,15 @@ export function derive({ users = null, clerk = null, a = {}, builds = [], audit 
 
 export function business() {
   return cached('business', async () => {
-    const haveAdmin = Boolean(envCompat('APPLE_ADMIN_KEY'));
+    const haveAdmin = Boolean(envCompat('STUDPILOT_ADMIN_KEY'));
     const [users, ap, bl, au, st, ins, ck] = await Promise.all([
       process.env.SUPABASE_ACCESS_TOKEN ? section(sbUsers) : { error: 'חסר SUPABASE_ACCESS_TOKEN' },
-      apple().catch(() => null),
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר APPLE_ADMIN_KEY' },
-      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר APPLE_ADMIN_KEY' },
+      studpilot().catch(() => null),
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=build&days=30&limit=500', 'יומן הבניות')) : { error: 'חסר STUDPILOT_ADMIN_KEY' },
+      haveAdmin ? section(() => admin('/api/admin/logs?kind=audit&days=7&limit=500', 'יומן הביקורת')) : { error: 'חסר STUDPILOT_ADMIN_KEY' },
       sentry().catch(() => null), insights().catch(() => null),
       import('./clerk.mjs').then((m) => m.clerk()).catch(() => null)]);
-    if (users.error && !ap?.ok) return fail(users.error, { errors: { supabase: users.error, apple: ap?.reason ?? null } });
+    if (users.error && !ap?.ok) return fail(users.error, { errors: { supabase: users.error, studpilot: ap?.reason ?? null } });
     // The worker's own plan and credits for the users who built something lately (a handful at most).
     const builds = arr(bl.value?.events);
     const active = [...new Set(builds.map((e) => e?.actorId).filter((x) => /^[0-9a-f-]{36}$/i.test(x || '')))].slice(0, MAX_ACCOUNTS);
@@ -134,7 +134,7 @@ export function business() {
         { k: 'dash-audit', name: 'פעולות שנעשו מהלוח הזה', why: 'לוח הבקרה לא שומר יומן של הפעולות שלו. ביומן הביקורת של העובד מופיעות רק קריאות לנתיבי האדמין.', missing: 'יומן פעולות מקומי' },
         { k: 'funnel-visits', name: 'ביקורים לפני ההרשמה', why: 'אנליטיקת המוצר של העובד לא מחוברת (/api/admin/product-analytics מחזיר configured:false), ולכן המשפך מתחיל בהרשמה.', missing: 'CF_ANALYTICS_TOKEN בעובד' },
       ],
-      errorsRead: Object.fromEntries(Object.entries({ supabase: users.error, builds: bl.error, audit: au.error, apple: ap?.ok === false ? ap.reason : null, sentry: st?.ok === false ? st.reason : null }).filter(([, v]) => v)),
+      errorsRead: Object.fromEntries(Object.entries({ supabase: users.error, builds: bl.error, audit: au.error, studpilot: ap?.ok === false ? ap.reason : null, sentry: st?.ok === false ? st.reason : null }).filter(([, v]) => v)),
     });
   }, 5 * 60000);
 }

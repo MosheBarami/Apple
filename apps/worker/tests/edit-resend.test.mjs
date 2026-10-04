@@ -3,7 +3,7 @@
 // This is the most destructive thing the workspace can do short of deleting the project: it drops
 // every message from the edited one onward, permanently, and starts a fresh run. Every test here
 // covers a way that goes wrong quietly — a truncation the other tab never hears about, a stale
-// client id that would truncate from the beginning, or a rewrite of what Apple said.
+// client id that would truncate from the beginning, or a rewrite of what StudPilot said.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -38,7 +38,7 @@ test('a message id that is no longer there is refused, not treated as "from the 
 });
 
 test('only the user\'s own messages can be edited', () => {
-  // Editing what Apple said and replaying from there would let the transcript assert the assistant
+  // Editing what StudPilot said and replaying from there would let the transcript assert the assistant
   // produced text it never produced.
   assert.match(code, /row\.role !== 'user'/);
   assert.ok(code.indexOf("row.role !== 'user'") < code.indexOf('delete from messages'));

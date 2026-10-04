@@ -1,4 +1,4 @@
-/** A folded sheet: three connected planes, drawn for Apple rather than a provider logo. */
+/** A folded sheet: three connected planes, drawn for StudPilot rather than a provider logo. */
 export function ModelMark({ variant = 'apple', live = false }: { variant?: 'apple'; live?: boolean }) {
   return <span aria-hidden="true" className={`model-signature model-signature--${variant}${live ? ' is-live' : ''}`}>
     <svg viewBox="0 0 32 32" fill="none" focusable="false">

@@ -17,7 +17,7 @@ import './empty-state.css';
  *
  *   creation  Motion "Physical stagger": a plate of tiles a wave runs across — somewhere to build,
  *             and something to poke while it is empty.
- *   studio    Eldora "SVG Ripple Effect": rings reaching outward — Apple reaching for Studio.
+ *   studio    Eldora "SVG Ripple Effect": rings reaching outward — StudPilot reaching for Studio.
  *
  * A failure, a finished roadmap and a future plan get no default mark: an alarm is not decorated,
  * and the surfaces that show the other two (the roadmap) bring their own. A surface's own

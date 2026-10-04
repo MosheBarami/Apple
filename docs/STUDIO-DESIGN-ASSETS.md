@@ -1,4 +1,4 @@
-# Apple / Open Studio — root-authored presentation
+# StudPilot / Open Studio — root-authored presentation
 
 The owner requires the primary agent personally create all design, not a
 subagent. The active SPA presentation is `apps/web/src/design/system.css`,
@@ -11,7 +11,7 @@ design subagent was stopped; its unshipped changes are not part of this design.
   Drawn directly in source; no provider identity implied.
 - `studio-atmosphere.tsx`: procedural white filaments and a soft light beam on
   black. No banner image, stock render, or external media request.
-- Apple MAX's name uses animated multicolour ink. Thinking identity motion is
+- StudPilot MAX's name uses animated multicolour ink. Thinking identity motion is
   gated by live run state, page visibility and reduced-motion preferences.
 
 Typography: local system sans-serif and monospace. No downloaded fonts.
@@ -24,12 +24,12 @@ Credits, or Studio commands. Local verification does not imply deployment.
 The generated sculpture and light filaments described below were rejected.
 The PNG remains an unused artifact; do not reintroduce it into the fresh design.
 
-## Apple MAX sculpture — 2026-09-18
+## StudPilot MAX sculpture — 2026-09-18
 
-File: `apps/web/src/assets/apple-max-sculpture-v1.png` (512px RGBA, 282KB).
+File: `apps/web/src/assets/studpilot-max-sculpture-v1.png` (512px RGBA, 282KB).
 Provenance: generated specifically for this product using the built-in image
 generation tool, then resized from the 1254px original. No third-party stock
-asset or external licence is claimed. The standard Apple variant uses the same
+asset or external licence is claimed. The standard StudPilot variant uses the same
 asset rendered in monochrome. MAX retains its prismatic finish.
 
 Final prompt: "One original premium 3D identity mark: a compact sculptural

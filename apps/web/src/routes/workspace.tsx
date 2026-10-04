@@ -8,7 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import type { ProductModel } from '@apple/shared';
+import type { ProductModel } from '@studpilot/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { formatSettings, shortRelative } from '../lib/format';
 import { exportDoneLine, exportProgressLine, exportStartLine, exportToastKey } from '../lib/export-progress';
@@ -43,7 +43,7 @@ import {
 } from '../lib/api';
 import { FilesPanel } from '../components/ws/files-panel';
 import { ACCESS_LOADING, allows, normaliseAccess, whyNot, type AccessState } from '../lib/capabilities';
-import type { ChatAttachment } from '@apple/shared';
+import type { ChatAttachment } from '@studpilot/shared';
 import { jumpLabel, unseenCount } from '../lib/follow-latest';
 import { Conversation, ConversationContent, ConversationScrollButton } from '../components/ai-elements/conversation';
 import { useStickToBottomContext, type StickToBottomContext } from 'use-stick-to-bottom';
@@ -201,7 +201,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     },
     [projectId],
   );
-  // One engine (V3 gate G01): every message is sent as Apple, on every plan.
+  // One engine (V3 gate G01): every message is sent as StudPilot, on every plan.
   const productModel: ProductModel = 'apple';
   const [seed, setSeed] = useState<string | undefined>(undefined);
   const [label, setLabel] = useState('');
@@ -349,7 +349,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!lostChat) return;
     setSeed(lostChat.text);
-    toast("Your message didn't reach Apple — the connection dropped as you sent it. It's back in the box; press Enter to send it again.", 'error');
+    toast("Your message didn't reach StudPilot — the connection dropped as you sent it. It's back in the box; press Enter to send it again.", 'error');
     clearLostChat();
   }, [lostChat, clearLostChat]);
 
@@ -604,7 +604,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     },
     {
       id: 'ws-history',
-      title: 'What Apple did in Studio',
+      title: 'What StudPilot did in Studio',
       section: 'Run',
       keywords: ['history', 'activity', 'log', 'ops', 'timeline', 'changes'],
       run: () => setDrawer('history'),
@@ -619,7 +619,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
     },
     {
       id: 'ws-memory',
-      title: 'What Apple remembers',
+      title: 'What StudPilot remembers',
       section: 'Project',
       keywords: ['memory', 'context', 'knows'],
       run: () => setDrawer('memory'),
@@ -820,9 +820,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   const when = shortRelative(activityAt);
 
   return (
-    <div className={`gx-ws apple-workspace${running ? ' is-running' : ' is-idle'}`}>
+    <div className={`gx-ws studpilot-workspace${running ? ' is-running' : ' is-idle'}`}>
       {/* ------------------------------------------------------- topbar -- */}
-      <header className="gx-top apple-workspace__topbar">
+      <header className="gx-top studpilot-workspace__topbar">
         {/* The rail opener used to be here. It is now drawn by the shell (components/layout.tsx)
             so that it exists on every route rather than only inside a conversation; at narrow
             width it lands in this bar's reserved leading space, so the topbar is unchanged to
@@ -832,8 +832,8 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {/* Renamable in place: this is where you notice a bad name, so this is where fixing it
             belongs. Falls back to a plain heading until the project has loaded — an editable
             control over a placeholder would offer to rename something that is not there yet. */}
-        <div className="apple-workspace__identity">
-          <div className="apple-workspace__titlecopy">
+        <div className="studpilot-workspace__identity">
+          <div className="studpilot-workspace__titlecopy">
             {project.data ? (
               <EditableProjectTitle projectId={projectId} name={project.data.name} className="gx-top__title" />
             ) : (
@@ -859,7 +859,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             Studio is paired it is replaced by the connected pill, so anchoring there would silently
             drop the step again for exactly the users the step is least needed by — and silently is
             the failure mode being fixed. This div always renders. */}
-        <div className="studio-workspace-controls apple-workspace__controls" data-tour="connect-studio">
+        <div className="studio-workspace-controls studpilot-workspace__controls" data-tour="connect-studio">
           {/* THE STUDIO PILL IS OUTSIDE THE MENU (F-002, measured 2026-09-22): pairing Studio is the one
               step every new customer must take, and it sat inside the collapsed "•••" Project actions
               menu, where nothing on the page pointed to it. */}
@@ -919,15 +919,15 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           >
             <Icon d={PATH.people} />
           </button>
-          {/* The way into the files Apple keeps for this project — notes, plans and generated
-              data, which are Apple's own storage and not the Roblox place. Beside memory because
+          {/* The way into the files StudPilot keeps for this project — notes, plans and generated
+              data, which are StudPilot's own storage and not the Roblox place. Beside memory because
               it is the same kind of thing: something that persists between turns and is read
               occasionally rather than worked in. */}
           <button
             type="button"
             className="gx-icon-btn"
             onClick={() => setDrawer('files')}
-            aria-label="Files Apple keeps for this project"
+            aria-label="Files StudPilot keeps for this project"
             title="Project files"
           >
             <Icon d={PATH.docs} />
@@ -937,7 +937,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             type="button"
             className="gx-icon-btn"
             onClick={() => setDrawer('memory')}
-            aria-label="What Apple remembers about this project"
+            aria-label="What StudPilot remembers about this project"
             title="Project memory"
           >
             <Icon d={PATH.brain} />
@@ -991,7 +991,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             to={`/projects/${projectId}/roadmap`}
             className="gx-btn gx-btn--outline gx-top__cp"
             aria-label="Roadmap"
-            title="What Apple would build next in this place"
+            title="What StudPilot would build next in this place"
           >
             <Icon d={PATH.listAll} size={15} />
             <span className="gx-top__cp-label">Roadmap</span>
@@ -1029,7 +1029,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               nothing when there is nothing worth saying, so a healthy link adds no chrome. The rebind
               button is passed only while a mismatch is actually on the wire; see components/ws/
               studio-link-note.tsx. */}
-          <div className="apple-workspace__notice">
+          <div className="studpilot-workspace__notice">
             <StudioLinkNote
               status={studioStatus}
               facts={studio.link}
@@ -1143,7 +1143,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               return;
             }
             void stop().then((ok) => {
-              if (!ok) toast('Stop did not reach Apple. Check your connection and press Stop again.', 'error');
+              if (!ok) toast('Stop did not reach StudPilot. Check your connection and press Stop again.', 'error');
             });
           }}
           draftKey={projectId}
@@ -1217,11 +1217,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           </p>
         )}
         {checkpointsState === 'loading' && (
-          <p className="gx-empty">Reading the checkpoints Apple has taken…</p>
+          <p className="gx-empty">Reading the checkpoints StudPilot has taken…</p>
         )}
         {checkpointsState === 'ready' && checkpoints.length === 0 && (
           <p className="gx-empty">
-            No checkpoints yet. Apple takes one automatically before it changes anything.
+            No checkpoints yet. StudPilot takes one automatically before it changes anything.
           </p>
         )}
 
@@ -1319,7 +1319,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           existed, and no part of this app had ever called that route. Mounted only while open, like
           the panels above: a project's whole history is not worth a request on every workspace load
           for everyone who never opens it. */}
-      <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What Apple did in Studio">
+      <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What StudPilot did in Studio">
         {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
       </Drawer>
 
@@ -1366,7 +1366,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
         {drawer === 'automations' && <AutomationsPanel projectId={projectId} />}
       </Drawer>
 
-      <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What Apple remembers">
+      <Drawer open={drawer === 'memory'} onClose={() => setDrawer(null)} title="What StudPilot remembers">
         {/* Mounted only while open: the panel holds unsaved edits, and closing the drawer is the
             gesture people use to abandon them. Keeping it mounted would silently preserve a
             half-finished edit and re-present it later as if it had been saved. */}

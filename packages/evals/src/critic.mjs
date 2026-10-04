@@ -47,7 +47,7 @@ export const DEFAULT_LIGHTING = { brightness: 3, clockTime: 14.5, ambient: [0, 0
 export async function loadCriticModule() {
   const src = join(REPO, 'apps', 'worker', 'src', 'critic.ts');
   const bin = join(REPO, 'apps', 'worker', 'node_modules', '.bin', 'esbuild');
-  const dest = join(tmpdir(), `apple-critic-${process.pid}-${process.hrtime.bigint()}.mjs`);
+  const dest = join(tmpdir(), `studpilot-critic-${process.pid}-${process.hrtime.bigint()}.mjs`);
   execFileSync(bin, [src, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: join(REPO, 'apps', 'worker'),

@@ -388,7 +388,7 @@ test('the ranking pass is opt-in, with the query key the worker actually checks'
 
 test('only the milestone id crosses the wire when asking for a brief', () => {
   // The worker rebuilds the brief from a fresh scan precisely so a caller
-  // cannot hand the builder arbitrary instructions wearing Apple's roadmap as a
+  // cannot hand the builder arbitrary instructions wearing StudPilot's roadmap as a
   // disguise. A client that started posting the brief back would undo that.
   const body = /roadmap\/brief`,\s*\{[^}]*body:\s*JSON\.stringify\(\{([^}]*)\}\)/.exec(clientApi);
   assert.ok(body, 'the brief call no longer posts a JSON body');

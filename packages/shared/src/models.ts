@@ -1,13 +1,13 @@
 // The product engine: the one model customers use, and how it is called.
 //
-// ONE ENGINE (V3 handoff §2, acceptance gate G01). The only customer-facing engine is Apple. It runs
+// ONE ENGINE (V3 handoff §2, acceptance gate G01). The only customer-facing engine is StudPilot. It runs
 // GLM 5.3 Flash on Workers AI (`@cf/zai-org/glm-5.3-flash`), called through `env.AI.run` and AI
 // Gateway and billed in neurons. There is no model picker, no model tier and no plan-gated model:
-// every plan uses Apple, and plans differ only in their allowance (PLAN_LIMITS).
+// every plan uses StudPilot, and plans differ only in their allowance (PLAN_LIMITS).
 //
 // THE WIRE FIELD STAYS. `productModel` and the id `apple` are values clients already send, and
 // stored sessions and older clients still carry the retired ids (LEGACY_MODEL_IDS). normalizeModelId
-// maps every one of them — and anything else — onto Apple, so an old client or an old row is served,
+// maps every one of them — and anything else — onto StudPilot, so an old client or an old row is served,
 // never refused.
 //
 // Everything below is data. Nothing here imports a value from ./index.ts: index.ts re-exports this
@@ -20,7 +20,7 @@ export interface RegistryModel {
   displayName: string;
   /** One line for the product and the site: what the engine is for, never a benchmark claim. */
   blurb: string;
-  vendor: 'Apple';
+  vendor: 'StudPilot';
   /** The exact id `env.AI.run` is called with. */
   providerModelId: string;
   nativeTools: boolean;
@@ -43,9 +43,9 @@ export interface RegistryModel {
 export const MODEL_REGISTRY: readonly RegistryModel[] = [
   {
     id: 'apple',
-    displayName: 'Apple',
+    displayName: 'StudPilot',
     blurb: 'Builds complete Roblox games from a short prompt.',
-    vendor: 'Apple',
+    vendor: 'StudPilot',
     providerModelId: '@cf/zai-org/glm-5.3-flash',
     nativeTools: true,
     vision: true,
@@ -61,7 +61,7 @@ export const MODEL_IDS: readonly ModelId[] = MODEL_REGISTRY.map((m) => m.id);
 
 /**
  * Retired model ids that stored messages, persisted runs and older clients may still carry. They are
- * a compatibility bridge only: accepted and served by Apple, never offered and never refused.
+ * a compatibility bridge only: accepted and served by StudPilot, never offered and never refused.
  */
 export const LEGACY_MODEL_IDS = ['apple-max', 'gemini-3.8-flash', 'gpt-5.6', 'gpt-5.6-luna'] as const;
 
@@ -71,7 +71,7 @@ export function isModelId(value: unknown): value is ModelId {
 
 /**
  * THE COMPATIBILITY BRIDGE. Any `productModel` a client sends or a row stores — `apple`, a retired id
- * from LEGACY_MODEL_IDS, or something unknown — is Apple, because Apple is the only engine there is.
+ * from LEGACY_MODEL_IDS, or something unknown — is StudPilot, because StudPilot is the only engine there is.
  */
 export function normalizeModelId(value: unknown): ModelId {
   void value;

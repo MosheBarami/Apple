@@ -31,13 +31,13 @@
 // ones that do not separate are recorded as rejected in docs/COMPOSITION.md. Do not promote a
 // metric into a gate without a measured separation.
 
-// verticalElementHeights lives in @apple/shared: the worker gates on it and the web app displays
+// verticalElementHeights lives in @studpilot/shared: the worker gates on it and the web app displays
 // it, and two implementations of the same number would drift apart.
-import { verticalElementHeights } from '@apple/shared';
+import { verticalElementHeights } from '@studpilot/shared';
 
 /** Background fill constants — must match the rasteriser in apps/plugin/src/Render.luau. */
-export { SKY_RGB, GROUND_RGB, geometryMask } from '@apple/design/pixels';
-import { geometryMask } from '@apple/design/pixels';
+export { SKY_RGB, GROUND_RGB, geometryMask } from '@studpilot/design/pixels';
+import { geometryMask } from '@studpilot/design/pixels';
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);

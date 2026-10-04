@@ -1,7 +1,7 @@
-// המודלים של Apple: what the product actually runs, all from files in the repository
+// המודלים של StudPilot: what the product actually runs, all from files in the repository
 // (GET /api/cc/models): the model registry (packages/shared), the RAG index, the model evidence
 // documents and the skill cards. A fact no file records says "לא מתועד". Training and LoRA were
-// cancelled (V3 §2), so the LoRA runs, adapter evals and Apple MAX frontier lanes are retired.
+// cancelled (V3 §2), so the LoRA runs, adapter evals and StudPilot MAX frontier lanes are retired.
 import { html, num } from '../ui.js';
 import { stat } from './kit.js';
 import { nd, or, day, stamp, path } from './repo-kit.js';
@@ -28,8 +28,8 @@ function registry(r) {
 
 export default {
   id: 'models',
-  title: 'המודלים של Apple',
-  nav: 'המודלים של Apple',
+  title: 'המודלים של StudPilot',
+  nav: 'המודלים של StudPilot',
   glyph: 'models',
   eyebrow: 'ריפו וידע · מה רץ בייצור',
   sub: 'איזה מודל רץ בייצור, מאגר הידע (RAG) וכרטיסי המיומנויות.',

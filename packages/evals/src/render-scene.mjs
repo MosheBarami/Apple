@@ -270,7 +270,7 @@ export function renderScene(scene, { width = 288, height = 180, view = 'all' } =
     subject: scene.name ?? 'scene',
     boundsSize: sub(b.hi, b.lo).map((v) => Math.round(v * 10) / 10),
     views: viewpoints(b.lo, b.hi, view).map((v) => ({ name: v.name, ...renderView(scene, v.cam, width, height) })),
-    // Lighting is reported, never rendered — see SceneLighting in @apple/shared for why.
+    // Lighting is reported, never rendered — see SceneLighting in @studpilot/shared for why.
     lighting: L
       ? {
           brightness: L.brightness ?? 3,

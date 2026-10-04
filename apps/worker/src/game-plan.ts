@@ -1,4 +1,4 @@
-import type { PropValue } from '@apple/shared';
+import type { PropValue } from '@studpilot/shared';
 import type { AgentCtx } from './tools';
 import {
   GAME_ID, connectMenus, libraryDefaultParent, libraryFolders, libraryImportRaw, libraryMaterials, libraryReady, librarySafetyCopy, MENUS_CONNECTED,
@@ -668,7 +668,7 @@ function buildWords(design: Design, r: {
   if (r.failed.length) out.push(`${list(r.failed.map((f) => plainText(f, 80)), 4)} could not be added, so the game is missing ${r.failed.length > 1 ? 'those' : 'that'}.`);
   if (r.regionsLeft) out.push(`${r.regionsLeft === 1 ? 'One extra landmark' : `${r.regionsLeft} extra landmarks`} found no free ground and ${r.regionsLeft === 1 ? 'was' : 'were'} left out.`);
   if (r.disconnected) out.push('Roblox Studio stopped answering part-way, so the rest was not added.');
-  else if (r.timedOut) out.push('Apple stopped part-way to keep things quick, so a few extras are missing.');
+  else if (r.timedOut) out.push('StudPilot stopped part-way to keep things quick, so a few extras are missing.');
   if (r.saves) out.push('Progress saving will work once the game is published.');
   return out.join(' ');
 }
@@ -804,7 +804,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   const dangling = disconnected ? [] : await danglingReferences(ctx, design, late);
 
   if (imported === 0 && brought > 0 && !failed.length) return { built: false, changed: false, title: design.title, forUser: `${plainText(design.title, 60)} was already in your game, so nothing changed.`, note: 'Everything in the plan is already in the place. Go on to theming the content and judge_game if that is still owed, otherwise answer the user.' };
-  if (imported === 0) return { error: `${disconnected ? plainProblem('disconnected') : 'Apple could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0] };
+  if (imported === 0) return { error: `${disconnected ? plainProblem('disconnected') : 'StudPilot could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0] };
   // Scripts that can call out to the internet come in dozens (every plant model carries one): a few say it, the count says how many.
   const flagged = suspicious.slice(0, 8);
   await clearPlan(ctx);
@@ -831,7 +831,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
 const short = (t: string, n = 70) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 const errorLine = (r: Record<string, unknown>) => {
   const first = String(r.error ?? '').split(/(?<=[.!?])\s/)[0] ?? '';
-  return /Tell the user|library id|request is required|no saved plan|plan_game|hex/i.test(first) ? 'Apple could not do that with your saved games' : sentence(first).slice(0, 120);
+  return /Tell the user|library id|request is required|no saved plan|plan_game|hex/i.test(first) ? 'StudPilot could not do that with your saved games' : sentence(first).slice(0, 120);
 };
 export function planSummary(_args: Record<string, unknown>, result: unknown, failed: boolean): string {
   const r = rec(result);

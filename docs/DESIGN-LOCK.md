@@ -60,7 +60,7 @@ panel at most. A panel that tints four things has told the reader nothing.
 
 ## Type
 
-- **Nothing is bolder than 400.** Headings included. There is one exception in the tree, the Apple
+- **Nothing is bolder than 400.** Headings included. There is one exception in the tree, the StudPilot
   MAX wordmark, and it is a brand mark rather than typography.
 - Hierarchy is **size, colour and space**.
 - Letter-spacing is negative and grows tighter with size — about `-0.01em` at body, `-0.02em` at
@@ -103,7 +103,7 @@ Every interactive element declares all five:
 
 Every surface that loads declares **empty**, **loading**, **error** and **success**, and each one
 says what to do next. "No results" is not an empty state; "No projects yet — describe a game and
-Apple will build it" is.
+StudPilot will build it" is.
 
 ## Copy
 

@@ -20,7 +20,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 const WORKER = join(REPO, 'apps', 'worker');
 
-const dest = join(tmpdir(), `apple-playtest-${process.pid}.mjs`);
+const dest = join(tmpdir(), `studpilot-playtest-${process.pid}.mjs`);
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'playtest.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`],

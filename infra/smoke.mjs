@@ -21,7 +21,7 @@
 // --studio    exercise the plugin round-trip, which POSTs to /api/admin/studio-op. OFF by default:
 //             §12.5 says a smoke run may never go against /api/admin/*, and the previous guard was
 //             `if (ADMIN)` — which is always true, because this file reads .env into process.env
-//             at startup and APPLE_ADMIN_KEY lives there. A guard on a value the script itself
+//             at startup and STUDPILOT_ADMIN_KEY lives there. A guard on a value the script itself
 //             guarantees is not a guard.
 import { readFileSync } from 'node:fs';
 import { envCompat } from '../scripts/lib/env-compat.mjs';
@@ -32,14 +32,14 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
 
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env');
+  throw new Error('STUDPILOT_E2E_EMAIL / STUDPILOT_E2E_PASSWORD missing from .env');
 }
 
 const BASE = process.env.API_BASE;
-const ADMIN = envCompat('APPLE_ADMIN_KEY');
+const ADMIN = envCompat('STUDPILOT_ADMIN_KEY');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
 const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,
@@ -74,7 +74,7 @@ for (let i = 2; i < process.argv.length; i += 1) {
 // that ceiling at the upper end of its measured range; Plan fits. The figures remain derived below.
 //
 // Both numbers are DERIVED from the files the product actually bills with — `typicalCredits` in
-// @apple/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
+// @studpilot/shared and NEURONS_PER_CREDIT in the worker's pricing — rather than restated here, because
 // a ceiling check that keeps its own copy of the prices stops agreeing with them and then permits
 // exactly what it was written to refuse. An unreadable source is a hard error, never a default:
 // failing open on a spend guard is the one direction that costs money.
@@ -85,7 +85,7 @@ if (!NO_MODEL) {
   //[[ THE CONSTANT MOVED AND THIS HARNESS DIED WITHOUT SAYING SO.
   //
   //   This read NEURONS_PER_CREDIT out of apps/worker/src/pricing.ts. pricing.ts no longer declares
-  //   it — it re-exports it from @apple/shared (`export { NEURONS_PER_CREDIT } from '@apple/shared'`)
+  //   it — it re-exports it from @studpilot/shared (`export { NEURONS_PER_CREDIT } from '@studpilot/shared'`)
   //   — so the regex matched nothing, perCredit was NaN, and the guard below refused every run.
   //
   //   The refusal is correct and stays: failing open on a spend guard is the one direction that
@@ -216,8 +216,8 @@ let finalText = '';
 const runOnce = () =>
   new Promise((resolve) => {
     const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, [
-      'golem.v1',
-      'golem.jwt.' + jwt,
+      'studpilot.v1',
+      'studpilot.jwt.' + jwt,
     ]);
     const timer = setTimeout(() => {
       try { ws.close(); } catch {}
@@ -307,7 +307,7 @@ if (NO_MODEL) {
 // handler answers at all, which it did not before this phase.
 const replay = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, [
-    'golem.v1', 'golem.jwt.' + jwt,
+    'studpilot.v1', 'studpilot.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve(undefined); }, 20_000);
   ws.onmessage = (ev) => {

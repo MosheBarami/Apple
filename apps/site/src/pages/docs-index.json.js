@@ -3,7 +3,7 @@ import { buildDocsIndex } from '../data/docs-index';
 // The docs search index, emitted as a static file at build time.
 //
 // NOT /api/docs/search. That route exists in the worker and is the wrong thing twice over: it
-// queries the vendored Roblox creator-docs corpus rather than Apple's own pages, and it bills a
+// queries the vendored Roblox creator-docs corpus rather than StudPilot's own pages, and it bills a
 // Credit per query behind a signed-in session. A visitor looking up how to install the plugin must
 // not be charged for asking, or answered out of Roblox's documentation.
 //

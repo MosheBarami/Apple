@@ -49,9 +49,9 @@ jobs:
     name: Typecheck and tests
     runs-on: ubuntu-latest
     # 12 until 2026-09-21. This job now also builds the site and downloads Chromium, because
-    # `pnpm -r test` runs @apple/site's 272 tests and 47 of them are about the built site — see the
+    # `pnpm -r test` runs @studpilot/site's 272 tests and 47 of them are about the built site — see the
     # two steps below. Measured on the runner before those steps existed: install 40s, luau 9s,
-    # typecheck 63s, and the tests reached @apple/web at 1:13 into the step. The new steps add
+    # typecheck 63s, and the tests reached @studpilot/web at 1:13 into the step. The new steps add
     # roughly 15s and 60s. 20 leaves room without hiding a hang, and a timeout is not a verdict:
     # if this job is ever killed by the clock, nothing was measured and it must not be read as a
     # failing test.
@@ -91,19 +91,19 @@ jobs:
         run: pnpm -r typecheck
 
       - name: Build the site, because `pnpm -r test` runs the site's tests
-        # `@apple/site` is a workspace member, so `pnpm -r test` runs its 272 tests — and 47 of
+        # `@studpilot/site` is a workspace member, so `pnpm -r test` runs its 272 tests — and 47 of
         # them are about the BUILT site. `built-screen-pixels.test.mjs` opens `dist/index.html`
         # and says so itself: "apps/site/dist/index.html is missing — run `npx astro build` in
         # apps/site first. A picture nobody rendered is not a picture nobody found a defect on."
         #
         # They were right to fail. They were failing in the wrong place: this job had no site
-        # build, so the tests could not measure and said so, `pnpm -r test` bailed at @apple/site,
-        # and @apple/web, @apple/worker and @apple/evals never ran at all behind it. Measured in a
+        # build, so the tests could not measure and said so, `pnpm -r test` bailed at @studpilot/site,
+        # and @studpilot/web, @studpilot/worker and @studpilot/evals never ran at all behind it. Measured in a
         # clean clone: without this step 47 of 272 fail; with it, 272 pass.
         #
         # Building here rather than excluding the package, because a package that quietly leaves
         # `pnpm -r test` is what `scripts/check-workspace-coverage.mjs` exists to catch.
-        run: pnpm --filter @apple/site build
+        run: pnpm --filter @studpilot/site build
 
       - name: Install Chromium, because three of those tests use a real browser
         # built-screen-pixels, demo-stages-fit and rendered-typography decode actual pixels out of
@@ -153,10 +153,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build marketing site
-        run: pnpm --filter @apple/site build
+        run: pnpm --filter @studpilot/site build
 
       - name: Build web app
-        run: pnpm --filter @apple/web build
+        run: pnpm --filter @studpilot/web build
 
       - name: Internal links resolve
         # Nineteen pages that cross-reference each other, and a dead href is valid HTML —
@@ -215,14 +215,14 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------- plugin --
-  # THE SHIPPED PLUGIN IS apps/apple-plugin — the Creator Store's "Apple Studio", asset
+  # THE SHIPPED PLUGIN IS apps/studpilot-plugin — the Creator Store's "Apple Studio" listing (its title until the owner retitles it), asset
   # 107230158271368. Until 2026-09-22 this job built apps/plugin, the legacy source whose asset
   # Roblox removed, so CI proved that the plugin nobody installs still compiled and never looked at
   # the one people do. apps/plugin now lives on only as test fixtures: its Luau specs still run under
-  # `pnpm -r test` in the job above, because apple-plugin's render-parity test and a dozen worker and
+  # `pnpm -r test` in the job above, because studpilot-plugin's render-parity test and a dozen worker and
   # eval tests read its files. Nothing builds it into an artifact.
   plugin:
-    name: Build and verify the Studio plugin (apps/apple-plugin)
+    name: Build and verify the Studio plugin (apps/studpilot-plugin)
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -265,17 +265,17 @@ jobs:
       - name: Build the plugin and verify the built bytes
         # One command, the same one a person runs locally and the one docs/PLUGIN-RELEASE.md names:
         # parse every source, refuse a require of a module that is not bundled, rojo build
-        # apps/apple-plugin/default.project.json into release/apple-studio.rbxm, scan the artifact
+        # apps/studpilot-plugin/default.project.json into release/studpilot-studio.rbxm, scan the artifact
         # for secrets (scripts/inspect-plugin-build.py), then read the BUILT bytes for every
-        # capability the source claims (apps/apple-plugin/scripts/verify-artifact.py). The last
+        # capability the source claims (apps/studpilot-plugin/scripts/verify-artifact.py). The last
         # step is the one that was never run in CI: every test reads the .luau, and the legacy
         # artifact once shipped with zero GenerateModelAsync while its source had generation.
         # Any of the four failing fails this step.
         run: |
           set -euo pipefail
-          node apps/apple-plugin/scripts/build.mjs
-          ls -l apps/apple-plugin/release/apple-studio.rbxm
-          sha256sum apps/apple-plugin/release/apple-studio.rbxm
+          node apps/studpilot-plugin/scripts/build.mjs
+          ls -l apps/studpilot-plugin/release/studpilot-studio.rbxm
+          sha256sum apps/studpilot-plugin/release/studpilot-studio.rbxm
 
       - name: Upload plugin
         uses: actions/upload-artifact@v4
@@ -286,8 +286,8 @@ jobs:
           #   fork's. It is a build check, not a release. Customers install the plugin
           #   from the Creator Store, and the release candidate comes from
           #   plugin-release.yml, which is workflow_dispatch-only. ]]
-          name: apple-studio-pr-unverified
-          path: apps/apple-plugin/release/apple-studio.rbxm
+          name: studpilot-studio-pr-unverified
+          path: apps/studpilot-plugin/release/studpilot-studio.rbxm
           if-no-files-found: error
           retention-days: 7
 
@@ -312,7 +312,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Syntax-check eval scripts
-        run: pnpm --filter @apple/evals check
+        run: pnpm --filter @studpilot/evals check
 
       - name: Every package is reachable from `pnpm -r test`
         # apps/plugin shipped for the whole of Phase IV with no package.json, so the
@@ -335,14 +335,14 @@ jobs:
         # the deploy path.
         run: node scripts/check-rebrand.mjs --offline
 
-      - name: The old product name does not come back
-        # Owner decision 2026-10-02: the old name is wiped out of every aspect of the product. This is the guard
-        # (scripts/check-no-golem.mjs): every tracked file's contents, binary bytes and path names, against an
-        # exact-count allowlist (scripts/golem-allowlist.json) in which every entry has a reason and a removal
-        # condition. A new use fails; so does an entry that matches nothing or whose count is no longer exact.
-        # It needs only git and node, so it is deterministic and offline. tests/no-golem-guard.test.mjs proves it
-        # can fail.
-        run: node scripts/check-no-golem.mjs
+      - name: The former product names do not come back
+        # Owner directive 2026-10-04: the product is StudPilot, and its former names (Apple, Golem) are gone from
+        # every aspect of it. This is the guard (scripts/check-old-names.mjs): every tracked file's contents, binary
+        # bytes and path names, against an exact-count allowlist (planning/rename-allowlist.txt) in which every
+        # line has a reason and a removal condition. A new use fails; so does a line that matches nothing or whose
+        # count is no longer exact. It needs only git and node, so it is deterministic and offline.
+        # tests/check-old-names.test.mjs proves it can fail.
+        run: node scripts/check-old-names.mjs
 
       - name: Every script CI invokes exists
         # This checker was written for the rename that missed .github and left main red for five
@@ -432,7 +432,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Build site
-        run: pnpm --filter @apple/site build
+        run: pnpm --filter @studpilot/site build
 
       - name: Smoke tests
         # Static preview of the built output. No worker, no Supabase, no

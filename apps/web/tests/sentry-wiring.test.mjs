@@ -117,7 +117,7 @@ test('the crash card reports the error AND still writes it to the console', () =
 const SPECIMENS = {
   jwt: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk',
   email: 'someone.real@example.com',
-  apple_api_key: 'gk_live_0123456789abcdef01234567_0123456789abcdef0123456789abcdef0123456789abcdef',
+  studpilot_api_key: 'gk_live_0123456789abcdef01234567_0123456789abcdef0123456789abcdef0123456789abcdef',
   anthropic_key: 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123',
   openai_key: 'sk-abcdefghijklmnopqrstuvwxyz0123',
   github_token: 'ghp_abcdefghijklmnopqrstuvwxyz0123456789',
@@ -147,7 +147,7 @@ test('the two scrubbers agree on ordinary text, so neither is quietly redacting 
   for (const benign of [
     'TypeError: Cannot read properties of undefined (reading "map")',
     'the build failed at step 3 of 7',
-    'Failed to fetch https://apple.example/api/projects/list',
+    'Failed to fetch https://studpilot.example/api/projects/list',
     'v0.1.0 (build cafe123)',
   ]) {
     assert.equal(WEBS.redactText(benign), benign, `the browser scrubber mangled: ${benign}`);

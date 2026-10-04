@@ -1,11 +1,11 @@
 import type { AgentCtx } from './tools';
-import type { StudioOp } from '@apple/shared';
+import type { StudioOp } from '@studpilot/shared';
 
 /**
  * SCREENS THAT ARRIVED WITHOUT WORKING CODE STILL HAVE TO RESPOND.
  *
  * Library screens (a studded UI kit, a shop whose logic was stripped from the saved file) come with buttons and no
- * script that opens anything. Apple flags exactly those screens with the attribute AppleMenuBinder and adds ONE
+ * script that opens anything. StudPilot flags exactly those screens with the attribute AppleMenuBinder and adds ONE
  * LocalScript, AppleMenuBinder, that makes flagged screens open and close. A screen with working scripts of its own is
  * never flagged, so the binder never touches a button a real script already handles.
  */
@@ -15,7 +15,7 @@ export const BINDER_PARENT = 'game.StarterPlayer.StarterPlayerScripts';
 export const BINDER_PATH = `${BINDER_PARENT}.${BINDER_NAME}`;
 
 /** Runs on each player's client. Tested with a stand-in for the Roblox objects (tests/menu-binder.test.mjs). */
-export const BINDER_SOURCE = `-- Apple menu binder. Screens that arrived without working code are flagged AppleMenuBinder; this script makes only
+export const BINDER_SOURCE = `-- StudPilot menu binder. Screens that arrived without working code are flagged AppleMenuBinder; this script makes only
 -- those screens open and close. A screen with scripts of its own is never flagged and never touched.
 local Players = game:GetService("Players")
 

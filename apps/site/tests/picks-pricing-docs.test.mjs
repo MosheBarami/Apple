@@ -120,13 +120,13 @@ test('the terminal on /docs/build-from-source prints only lines the build really
   const lines = [...block[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).filter((l) => l !== '…');
   assert.ok(lines.length >= 1, 'the terminal quotes no output — this check would pass on nothing');
   const scripts = [
-    readFileSync(join(ROOT, 'apps', 'apple-plugin', 'scripts', 'build.mjs'), 'utf8'),
-    readFileSync(join(ROOT, 'apps', 'apple-plugin', 'scripts', 'verify-artifact.py'), 'utf8'),
+    readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'scripts', 'build.mjs'), 'utf8'),
+    readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'scripts', 'verify-artifact.py'), 'utf8'),
   ].join('\n');
   for (const line of lines) {
     assert.ok(scripts.includes(line), `the terminal prints "${line}", which no build script prints`);
   }
-  assert.match(visibleCopy(src), /<Terminal command="node apps\/apple-plugin\/scripts\/build\.mjs"/);
+  assert.match(visibleCopy(src), /<Terminal command="node apps\/studpilot-plugin\/scripts\/build\.mjs"/);
 });
 
 test('the picks are dependency-free: no Motion, GSAP or Radix import anywhere in the kit', () => {

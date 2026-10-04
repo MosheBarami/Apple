@@ -1,5 +1,5 @@
 /**
- * Studs by default (owner, 2026-10-01): every part Apple makes is studded unless the USER asked for another surface.
+ * Studs by default (owner, 2026-10-01): every part StudPilot makes is studded unless the USER asked for another surface.
  * The maps are Resurface's (cxmeel); the plugin's Surface family applies them.
  */
 import test from 'node:test';
@@ -35,7 +35,7 @@ test('the maps are image ids the plugin will accept, and the plugin source holds
     assert.match(m.normalMap, /^rbxassetid:\/\/\d{1,20}$/, kind);
     assert.ok(m.studsPerTile > 0 && m.studsPerTile <= 64);
   }
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', 'Surface.luau'), 'utf8');
+  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'ops', 'Surface.luau'), 'utf8');
   assert.match(plugin, /resurface-plugin/, 'the plugin credits Resurface');
   assert.doesNotMatch(plugin.replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/--[^\n]*/g, ''), /rbxassetid:\/\//, 'ids come from the worker');
   assert.deepEqual(S.applySurfaceOp(['game.Workspace'], 'smooth'), { op: 'apply_surface', paths: ['game.Workspace'], surface: 'smooth' });
@@ -44,7 +44,7 @@ test('the maps are image ids the plugin will accept, and the plugin source holds
 
 test('every building run tells Studio the surface rule before it starts', () => {
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const at = session.indexOf("createCheckpoint('before Apple changes'");
+  const at = session.indexOf("createCheckpoint('before StudPilot changes'");
   assert.ok(at > 0, 'found the pre-run checkpoint');
   const after = session.slice(at, at + 2500);
   // RESTATED 2026-10-02: the request the run carries out (effectiveRequest: the user's words, or the original object

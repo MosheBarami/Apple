@@ -17,9 +17,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from apple_sdk import (  # noqa: E402
+from studpilot_sdk import (  # noqa: E402
     ApiError,
-    AppleClient,
+    StudPilotClient,
     StudioClient,
     StudioSessionEnded,
     backoff_seconds,
@@ -87,6 +87,15 @@ class ServerCase(unittest.TestCase):
         return "http://127.0.0.1:{}".format(server.server_address[1]), handler
 
 
+def _lower_headers(record):
+    return {k.lower(): v for k, v in record["headers"].items()}
+
+
+def _custom_headers_outside_current_spelling(lowered):
+    """Every `X-` header the client sent that is not in the current StudPilot spelling."""
+    return [k for k in lowered if k.startswith("x-") and not k.startswith("x-studpilot-")]
+
+
 class TestNumbers(unittest.TestCase):
     def test_is_finite_number_rejects_what_or_would_accept(self):
         for bad in (float("nan"), float("inf"), "12", "", None, {}, [], True, False):
@@ -149,7 +158,7 @@ class TestClient(ServerCase):
             "GET /api/me": lambda req, n: {"body": {"userId": "u1"}},
             "GET /api/health": lambda req, n: {"body": {"ok": True}},
         })
-        client = AppleClient(base_url=base, token="jwt-abc")
+        client = StudPilotClient(base_url=base, token="jwt-abc")
         self.assertEqual(client.me()["userId"], "u1")
         self.assertEqual(h.requests[-1]["headers"].get("Authorization"), "Bearer jwt-abc")
         client.health()
@@ -163,7 +172,7 @@ class TestClient(ServerCase):
             counter["n"] += 1
             return "jwt-{}".format(counter["n"])
 
-        client = AppleClient(base_url=base, token=token)
+        client = StudPilotClient(base_url=base, token=token)
         client.me()
         client.me()
         self.assertEqual(h.requests[0]["headers"]["Authorization"], "Bearer jwt-1")
@@ -174,7 +183,7 @@ class TestClient(ServerCase):
             "GET /api/me": lambda req, n: ({"status": 429, "body": {"error": "slow down"}}
                                            if n < 3 else {"body": {"userId": "u1"}}),
         })
-        client = AppleClient(base_url=base, token="x", sleep=lambda s: None)
+        client = StudPilotClient(base_url=base, token="x", sleep=lambda s: None)
         self.assertEqual(client.me()["userId"], "u1")
         self.assertEqual(len(h.requests), 3)
 
@@ -182,7 +191,7 @@ class TestClient(ServerCase):
         base, _ = self.serve({
             "GET /api/docs/search": lambda req, n: {"status": 429, "body": {"error": "Daily Credits used up"}},
         })
-        client = AppleClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=2)
+        client = StudPilotClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=2)
         with self.assertRaises(ApiError) as caught:
             client.search_docs("humanoid")
         self.assertEqual(caught.exception.status, 429)
@@ -193,7 +202,7 @@ class TestClient(ServerCase):
         base, h = self.serve({
             "POST /api/projects/{}/checkpoints".format(PROJECT): lambda req, n: {"status": 503, "body": {"error": "down"}},
         })
-        client = AppleClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=5)
+        client = StudPilotClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=5)
         with self.assertRaises(ApiError):
             client.create_checkpoint(PROJECT, "a")
         self.assertEqual(len(h.requests), 1, "exactly one checkpoint attempt reached the server")
@@ -203,14 +212,14 @@ class TestClient(ServerCase):
             "GET /api/me": lambda req, n: {"status": 502, "headers": {"Content-Type": "text/html"},
                                            "body": "<html>502 Bad Gateway</html>"},
         })
-        client = AppleClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=1)
+        client = StudPilotClient(base_url=base, token="x", sleep=lambda s: None, max_attempts=1)
         with self.assertRaises(ApiError) as caught:
             client.me()
         self.assertEqual(caught.exception.status, 502)
         self.assertIn("502", caught.exception.message)
 
     def test_an_unreachable_server_is_a_transport_error_not_a_status(self):
-        client = AppleClient(base_url="http://127.0.0.1:1", token=None, sleep=lambda s: None, max_attempts=2)
+        client = StudPilotClient(base_url="http://127.0.0.1:1", token=None, sleep=lambda s: None, max_attempts=2)
         with self.assertRaises(ApiError) as caught:
             client.health()
         self.assertEqual(caught.exception.status, 0)
@@ -218,7 +227,7 @@ class TestClient(ServerCase):
 
     def test_an_unknown_plan_never_reaches_checkout(self):
         base, h = self.serve({"POST /api/billing/checkout": lambda req, n: {"body": {"url": "https://stripe.test/x"}}})
-        client = AppleClient(base_url=base, token="x")
+        client = StudPilotClient(base_url=base, token="x")
         for bad in ("pro", "team", "", None):
             with self.assertRaises(ValueError, msg="{!r} was accepted".format(bad)):
                 client.start_checkout(bad)
@@ -229,7 +238,7 @@ class TestClient(ServerCase):
         base, h = self.serve({
             "PUT /api/projects/{}/memory".format(PROJECT): lambda req, n: {"body": {"memory": {}, "editedAt": None}},
         })
-        client = AppleClient(base_url=base, token="x")
+        client = StudPilotClient(base_url=base, token="x")
         with self.assertRaises(ValueError):
             client.save_memory(PROJECT, {"summary": "x"})
         self.assertEqual(len(h.requests), 0)
@@ -244,7 +253,7 @@ class TestClient(ServerCase):
                 "body": "# tower\n",
             },
         })
-        client = AppleClient(base_url=base, token="x")
+        client = StudPilotClient(base_url=base, token="x")
         out = client.export_transcript(PROJECT, "md")
         self.assertEqual(out["filename"], "tower-2026.md")
         self.assertEqual(out["body"], "# tower\n")
@@ -254,9 +263,9 @@ class TestClient(ServerCase):
     def test_admin_routes_refuse_without_a_key(self):
         base, h = self.serve({"GET /api/admin/stats": lambda req, n: {"body": {"counters": []}}})
         with self.assertRaises(ValueError):
-            AppleClient(base_url=base, token="x").admin("/api/admin/stats")
+            StudPilotClient(base_url=base, token="x").admin("/api/admin/stats")
         self.assertEqual(len(h.requests), 0)
-        AppleClient(base_url=base, token="x", admin_key="secret").admin("/api/admin/stats")
+        StudPilotClient(base_url=base, token="x", admin_key="secret").admin("/api/admin/stats")
         self.assertEqual(h.requests[-1]["headers"]["X-Admin-Key"], "secret")
 
 
@@ -275,8 +284,24 @@ class TestStudio(ServerCase):
         client = StudioClient(base_url=base, version="0.2.0", protocol=1)
         client.claim("GLM-7F3K2Q")
         self.assertEqual(client.token, TOKEN)
-        self.assertEqual(h.requests[-1]["headers"]["X-Golem-Plugin-Version"], "0.2.0")
-        self.assertEqual(h.requests[-1]["headers"]["X-Golem-Plugin-Protocol"], "1")
+        # Header names are case-insensitive, and urllib title-cases them on the way out
+        # (`X-StudPilot-...` arrives as `X-Studpilot-...`), so the server side is read lower-cased.
+        sent = _lower_headers(h.requests[-1])
+        self.assertEqual(sent["x-studpilot-plugin-version"], "0.2.0")
+        self.assertEqual(sent["x-studpilot-plugin-protocol"], "1")
+        self.assertEqual(_custom_headers_outside_current_spelling(sent), [])
+
+    def test_the_poll_carries_the_token_header_and_returns_the_ops_it_was_given(self):
+        base, h = self.serve({
+            "POST /api/studio/poll": lambda req, n: {"body": {"ops": [{"id": "o1", "seq": 1}], "waitMs": 500}},
+        })
+        client = StudioClient(base_url=base, token=TOKEN, version="0.2.0", protocol=1)
+        res = client.poll(results=[{"id": "o0", "ok": True}])
+        self.assertEqual(len(res["ops"]), 1)
+        sent = _lower_headers(h.requests[-1])
+        self.assertEqual(sent["x-studpilot-token"], TOKEN)
+        self.assertEqual(_custom_headers_outside_current_spelling(sent), [])
+        self.assertEqual(json.loads(h.requests[-1]["body"])["results"], [{"id": "o0", "ok": True}])
 
     def test_polling_before_pairing_sends_nothing(self):
         base, h = self.serve({"POST /api/studio/poll": lambda req, n: {"body": {"ops": []}}})
@@ -303,6 +328,29 @@ class TestStudio(ServerCase):
         self.assertEqual(poll_wait_seconds(None), 2.0)
         self.assertEqual(poll_wait_seconds({"waitMs": 0}), 0.2, "zero would be a spin; the floor holds")
         self.assertEqual(poll_wait_seconds({"waitMs": 999999}), 10.0)
+
+
+class TestFormerPackageName(unittest.TestCase):
+    """`apple_sdk` is the former name of this package, kept for one release."""
+
+    def test_it_re_exports_everything_warns_and_hands_back_the_same_client(self):
+        import importlib
+        import warnings
+
+        import studpilot_sdk
+
+        sys.modules.pop("apple_sdk", None)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            apple_sdk = importlib.import_module("apple_sdk")
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) and "studpilot_sdk" in str(w.message) for w in caught),
+            "importing the former package name must warn, and say what to import instead",
+        )
+        for name in studpilot_sdk.__all__:
+            self.assertIs(getattr(apple_sdk, name), getattr(studpilot_sdk, name), name)
+        self.assertIs(apple_sdk.AppleClient, studpilot_sdk.StudPilotClient)
+        self.assertIn("AppleClient", apple_sdk.__all__)
 
 
 if __name__ == "__main__":

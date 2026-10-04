@@ -220,11 +220,11 @@ function localFact(rel, expectedBytes, expectedSha, verifyHash = true) {
 }
 
 async function storedPaths() {
-  const base = process.env.API_BASE; const key = envCompat('APPLE_ADMIN_KEY');
+  const base = process.env.API_BASE; const key = envCompat('STUDPILOT_ADMIN_KEY');
   if (!base || !key) return null;
   try {
     const rows = await cached('library:stored-paths', () => fetchJson(`${base}/api/admin/static-list`,
-      { label: 'Apple', what: 'רשימת קבצים בשרת', headers: { 'X-Admin-Key': key } }), 60000);
+      { label: 'StudPilot', what: 'רשימת קבצים בשרת', headers: { 'X-Admin-Key': key } }), 60000);
     return new Set(arr(rows).map((r) => r.path));
   } catch { return null; }
 }

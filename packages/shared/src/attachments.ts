@@ -126,14 +126,14 @@ export function attachmentRefusalMessage(reason: AttachmentRefusal, detail?: { n
     case 'invalid_image':
       return `${named} is not a supported PNG or JPEG, or exceeds the image dimensions limit (4096 per side, 8 million pixels).`;
     case 'audio_unsupported':
-      return `Apple can’t listen to audio yet, so ${named} wouldn’t be heard. Type what you wanted to say.`;
+      return `StudPilot can’t listen to audio yet, so ${named} wouldn’t be heard. Type what you wanted to say.`;
     case 'not_text':
       return detail?.format
-        ? `${named} is a ${detail.format} file, whatever it is named — Apple can only read text files.`
-        : `${named} isn’t text, whatever it is named — Apple can only read text files.`;
+        ? `${named} is a ${detail.format} file, whatever it is named — StudPilot can only read text files.`
+        : `${named} isn’t text, whatever it is named — StudPilot can only read text files.`;
     case 'type_not_allowed':
     default:
-      return `Apple can’t read ${named}. PNG or JPEG images, Text, Markdown, CSV, JSON and Luau files are supported.`;
+      return `StudPilot can’t read ${named}. PNG or JPEG images, Text, Markdown, CSV, JSON and Luau files are supported.`;
   }
 }
 
@@ -252,7 +252,7 @@ export function validateAttachment(input: {
   const maxBytes = mime?.startsWith('image/') ? MAX_IMAGE_ATTACHMENT_BYTES : MAX_ATTACHMENT_BYTES;
   if (size > maxBytes) return { ok: false, reason: 'too_large', message: attachmentRefusalMessage('too_large', { name, maxBytes }) };
 
-  // Named before the generic refusal, because "Apple can't read images yet" is the true and
+  // Named before the generic refusal, because "StudPilot can't read images yet" is the true and
   // actionable sentence and "that type isn't allowed" is neither.
   const imageish = declared.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'heic', 'avif'].includes(extensionOf(name));
   if (imageish && !mime?.startsWith('image/')) return { ok: false, reason: 'image_unsupported', message: attachmentRefusalMessage('image_unsupported', { name }) };

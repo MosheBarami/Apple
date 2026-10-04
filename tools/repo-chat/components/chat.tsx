@@ -27,7 +27,7 @@ const SUGGESTIONS = [
   "Which phase are we in and what is left?",
   "What changed in the last few days?",
   "Why was the Creator Store chosen over the .rbxm download?",
-  "How far has the rename to Apple got?",
+  "How far has the rename to StudPilot got?",
 ];
 
 type Branches = Record<string, UIMessage[]>;
@@ -158,7 +158,7 @@ function ChatInner({ initial }: { initial: Stored }) {
         <img src="/favicon.svg" alt="" className="size-7" />
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-semibold leading-tight">Repo Chat</h1>
-          <p className="truncate text-xs text-muted-foreground">Ask about the Apple (RbxAI) repo and product. Read-only, answers cite file:line.</p>
+          <p className="truncate text-xs text-muted-foreground">Ask about the StudPilot (RbxAI) repo and product. Read-only, answers cite file:line.</p>
         </div>
         {info && (
           <Badge variant="outline" className="hidden gap-1.5 font-mono text-[11px] sm:inline-flex" title="Knowledge index: files / heading chunks">

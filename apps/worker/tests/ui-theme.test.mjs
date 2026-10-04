@@ -3,7 +3,7 @@
  *
  * It is UI-only and per request: the worker validates the untrusted frame value (anything else is
  * studded, never a refusal) and adds ONE line to that run's context — the system message of the
- * run's transcript, not the prompt builder in prompts.ts. `none` means Apple picks the UI style; it
+ * run's transcript, not the prompt builder in prompts.ts. `none` means StudPilot picks the UI style; it
  * never means "build no UI".
  *
  * Run with:  node --test           (from apps/worker)

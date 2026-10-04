@@ -3,9 +3,9 @@
 // This file is the half of the type test that can actually fail. A fixture that only
 // compiled correct code would pass against a declaration file full of `any` — which is
 // exactly the shape of "a test that measured nothing".
-import { AppleClient, SessionStream, type Memory } from '../index';
+import { StudPilotClient, SessionStream, type Memory } from '../index';
 
-const client = new AppleClient({ baseUrl: 'https://api.test', token: 'jwt' });
+const client = new StudPilotClient({ baseUrl: 'https://api.test', token: 'jwt' });
 
 // ERROR: 'pro' is not a PlanId.
 export const wrongPlan = client.startCheckout('pro');

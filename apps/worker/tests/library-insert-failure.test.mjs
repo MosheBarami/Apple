@@ -249,7 +249,7 @@ test('a removal that failed is never reported as removed', async () => {
   assert.ok(r.data.error);
   assert.doesNotMatch(r.data.error, /refused and removed/, 'a failed removal was reported as done');
   assert.match(r.data.error, /removal also failed \(Studio is busy\)/);
-  assert.match(r.data.error, /delete game\.Workspace\.Apple_Insert_\d+_\w+ yourself|delete .* yourself/);
+  assert.match(r.data.error, /delete game\.Workspace\.StudPilot_Insert_\d+_\w+ yourself|delete .* yourself/);
   assert.ok(Array.isArray(r.data.manualCleanupRequired) && r.data.manualCleanupRequired.length > 0);
   assert.equal(r.data.removeFailed, 'Studio is busy');
   assert.equal(r.data.stage, 'scan');
@@ -302,6 +302,17 @@ test('a timeout may be retried once, and does not write the id off', async () =>
   assert.equal(r.data.retry, true);
   assert.match(r.data.reason, /read the tree/);
   assert.equal(ctx.libraryRun.failedIds, undefined, 'a timeout wrote the id off for the whole run');
+});
+
+test('a scope refusal is stage policy whatever name the plugin that sent it carried (published builds say an older one)', async () => {
+  const [a] = rows;
+  // The wording is the plugin's own, so each former product name is written out: published plugins still send them.
+  for (const brand of ['StudPilot', 'Apple', 'Golem']) {
+    const p = place({}, { fail: { insert_asset: () => ({ ok: false, error: `insert parent is outside ${brand}'s place scope`, failure: 'refused' }) } });
+    const r = await insert(ctxFor(p), a.id);
+    assert.equal(r.data.stage, 'policy', brand);
+    assert.equal(r.data.retry, false, brand);
+  }
 });
 
 test('a refusal before anything was tried (source off) is stage policy and does not count as a failed library attempt', async () => {

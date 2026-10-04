@@ -13,7 +13,7 @@ import { backoffMs } from './errors.mjs';
 import { finiteNumber } from './numbers.mjs';
 import { CLIENT_MSG_TYPES, PRESENCE_ACTIVITIES, socketProtocols, socketUrl } from './wire.mjs';
 
-/** `stopReason` values this build knows. Mirrors `ServerMsg` msg_end in @apple/shared. */
+/** `stopReason` values this build knows. Mirrors `ServerMsg` msg_end in @studpilot/shared. */
 export const STOP_REASONS = Object.freeze(['done', 'stopped', 'error', 'quota', 'incomplete']);
 
 /**
@@ -280,7 +280,7 @@ export class SessionStream {
     return this.send({ type: 'resume' });
   }
 
-  /** Resume a run Apple paused because Studio disconnected (the worker's `continue`; a reconnect alone never does). */
+  /** Resume a run StudPilot paused because Studio disconnected (the worker's `continue`; a reconnect alone never does). */
   continueRun() {
     return this.send({ type: 'continue' });
   }

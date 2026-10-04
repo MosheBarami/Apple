@@ -55,7 +55,7 @@ const row = (i, doc = ENGINE) => ({
 
 /** Build a throwaway gate directory. `excluded` omitted entirely means the file is NOT written. */
 function gateFixture({ rows, excluded }) {
-  const dir = mkdtempSync(join(tmpdir(), 'apple-robloxqa-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-robloxqa-'));
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'gate.jsonl'), rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
   if (excluded !== undefined) {
@@ -135,7 +135,7 @@ test('§3 A MISSING EXCLUSION LIST REFUSES TO SCORE rather than scoring the whol
 });
 
 test('§3 A MISSING GATE THROWS rather than being read as an empty gate', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'apple-robloxqa-empty-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-robloxqa-empty-'));
   assert.throws(() => loadGate({ dir }), /is absent/);
 });
 

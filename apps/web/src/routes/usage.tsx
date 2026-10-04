@@ -1,6 +1,6 @@
 // /usage — Credits today, 30 days of history, and the plan.
 //
-// Every number on this page comes from the live quota or from @apple/shared.
+// Every number on this page comes from the live quota or from @studpilot/shared.
 // Credits are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
 import { useEffect, useRef, useState } from 'react';
@@ -19,7 +19,7 @@ import {
   formatMoney,
   isPlanId,
   type PlanId,
-} from '@apple/shared';
+} from '@studpilot/shared';
 import { ModelMark } from '../components/ws/model-mark';
 import {
   billingChangeLine,
@@ -60,7 +60,7 @@ import { LiveStats } from '../components/picks/settings/live-stats';
 import { GlideIndicator } from '../components/picks/settings/glide-indicator';
 import '../components/picks/settings/account-buttons.css';
 
-// The one engine (V3 gate G01): every plan uses Apple; plans differ only in their allowance.
+// The one engine (V3 gate G01): every plan uses StudPilot; plans differ only in their allowance.
 const MODELS = PRODUCT_MODELS;
 
 /* ===== WHAT THE NEXT REQUEST COSTS: BEGIN — executed by tests/next-request-cost.test.mjs ===== */
@@ -753,7 +753,7 @@ export function UsagePage() {
         <div>
           <h1 className="page-title">Usage &amp; billing</h1>
           <p className="page-sub">
-            See what Apple used, what is left, and the plan behind it — without mixing metering and billing into one long page.
+            See what StudPilot used, what is left, and the plan behind it — without mixing metering and billing into one long page.
           </p>
         </div>
       </div>

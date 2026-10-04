@@ -155,7 +155,7 @@ test('a playtest whose stop is refused is reported as a failure, headline first'
     execStudioOp: async (op) => {
       ops.push(`${op.op}${op.action ? `:${op.action}` : ''}`);
       if (op.op === 'run_mode' && op.action === 'stop') {
-        return { ok: false, error: 'Studio is running a non-Run test; Apple will not take over a test it did not start' };
+        return { ok: false, error: 'Studio is running a non-Run test; StudPilot will not take over a test it did not start' };
       }
       if (op.op === 'project_census') return { ok: true, data: { parts: 3, scripts: 1, services: {}, topLevel: [] } };
       if (op.op === 'get_logs') return { ok: true, data: { entries: [] } };

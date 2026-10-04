@@ -15,7 +15,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PairingCodeDto } from '@apple/shared';
+import type { PairingCodeDto } from '@studpilot/shared';
 import { MOCK_MODE, mockProfile } from '../lib/mock';
 import { getAccessToken, supabase, type ProfileRow } from '../lib/supabase';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
@@ -399,10 +399,10 @@ export function automationRunFollowUps(
  * about in a separate list a reader cannot miss.
  */
 const READ_ME =
-  'One file, assembled by your browser from every route Apple serves about you. `database` is the ' +
+  'One file, assembled by your browser from every route StudPilot serves about you. `database` is the ' +
   'server’s own export document, exactly as it was signed, including its sha256. `followed` is ' +
   'everything that document pointed at — your conversations in full, your checkpoints, your Credit ' +
-  'spend, your inbox, what Apple was asked to remember, your comments, reviews, share links and ' +
+  'spend, your inbox, what StudPilot was asked to remember, your comments, reviews, share links and ' +
   'Studio pairings — each under the route it came from. `complete` is a claim about those and only ' +
   'those: it is true when every route answered. Two kinds of thing are NOT in here whatever it says, ' +
   'and both are listed in `notInThisFile` with the route that serves them: bytes (images, audio, ' +
@@ -589,7 +589,7 @@ export async function buildCompleteAccountExport(
   const stamp = now();
   const doc = assembleAccountExport(base, plan, results, stamp.toISOString());
   const text = JSON.stringify(doc, null, 2);
-  const filename = `apple-data-${stamp.toISOString().slice(0, 10)}.json`;
+  const filename = `studpilot-data-${stamp.toISOString().slice(0, 10)}.json`;
   save(text, filename);
   return {
     complete: doc.complete === true,
@@ -680,7 +680,7 @@ function DiscordCard({ userId }: { userId: string }) {
       <p className="settings-note">
         Join the{' '}
         <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">
-          Apple Discord server
+          StudPilot Discord server
         </a>{' '}
         for help, the changelog and to show what you built.
       </p>
@@ -1043,7 +1043,7 @@ const HOUR_NAMES: Record<HourCycle, string> = {
 /* --------------------------------------------------------- notifications --- */
 
 /**
- * When Apple is allowed to interrupt you, and about what.
+ * When StudPilot is allowed to interrupt you, and about what.
  *
  * THE ENGINE BEHIND THIS ALREADY EXISTED and could never engage. apps/worker holds a quiet window
  * that wraps midnight and survives a clock change, an hourly and a daily digest, and a per-kind
@@ -1249,7 +1249,7 @@ function NotificationSettings({
           </>
         }
       >
-        <p className="settings-note">How often Apple collects what has happened and sends it on.</p>
+        <p className="settings-note">How often StudPilot collects what has happened and sends it on.</p>
       </Row>
 
       <Row id="notify-events" visible={shows('notify-events')}>
@@ -2030,7 +2030,7 @@ export function SettingsPage() {
       subject: DELETE_ACCOUNT_PHRASE,
       body:
         'Your projects, conversations, checkpoints, workspace files, memory, notifications, automations, ' +
-        'API keys and your stored Roblox key are deleted from every store Apple can reach. None of it can be ' +
+        'API keys and your stored Roblox key are deleted from every store StudPilot can reach. None of it can be ' +
         'brought back. Your sign-in itself is not removed by this — the receipt afterwards names everything that survives, and why.',
     },
   };
@@ -2105,10 +2105,10 @@ export function SettingsPage() {
                   maxLength={60}
                   name="displayName"
                   id="display-name"
-                  // A disabled field showing "How Apple should address you" reads as "you have not
+                  // A disabled field showing "How StudPilot should address you" reads as "you have not
                   // set one" while the answer is still being fetched. Same conflation as everywhere
                   // else.
-                  placeholder={profile.isPending ? 'Loading…' : 'How Apple should address you'}
+                  placeholder={profile.isPending ? 'Loading…' : 'How StudPilot should address you'}
                   disabled={profile.isPending}
                 />
               </label>
@@ -2123,7 +2123,7 @@ export function SettingsPage() {
             </form>
           }
         >
-          <p className="settings-note">How Apple addresses you in chat and on your projects.</p>
+          <p className="settings-note">How StudPilot addresses you in chat and on your projects.</p>
         </Row>
       </Section>
 
@@ -2296,7 +2296,7 @@ export function SettingsPage() {
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>
-        {/* Apple's OWN keys, under the same heading as the Roblox one deliberately: both are
+        {/* StudPilot's OWN keys, under the same heading as the Roblox one deliberately: both are
             credentials that act on your behalf, and the only difference is which side holds them.
             The worker has served this whole lifecycle since the public API shipped and nothing in
             this app called any of it — a leaked key could be revoked only with curl. */}
@@ -2326,8 +2326,8 @@ export function SettingsPage() {
         >
           <p className="settings-note">
             {prefs.appearance === 'system'
-              ? `Your system is set to ${systemTheme === 'dark' ? 'dark' : 'light'}, so Apple is ${theme}. It follows along when you change it.`
-              : 'Dark is the apple’s natural habitat, but daylight works too.'}
+              ? `Your system is set to ${systemTheme === 'dark' ? 'dark' : 'light'}, so StudPilot is ${theme}. It follows along when you change it.`
+              : 'Dark is the studpilot’s natural habitat, but daylight works too.'}
           </p>
         </Row>
 
@@ -2346,7 +2346,7 @@ export function SettingsPage() {
         >
           <p className="settings-note">
             {prefs.motion === 'full'
-              ? 'Some effects are switched off by your operating system’s own reduced-motion setting and stay off; this covers the movement Apple itself drives.'
+              ? 'Some effects are switched off by your operating system’s own reduced-motion setting and stay off; this covers the movement StudPilot itself drives.'
               : 'Animation, the drifting cursor and the grain. “Always reduce” overrides your system setting in this product only.'}
           </p>
         </Row>
@@ -2370,7 +2370,7 @@ export function SettingsPage() {
           }
         >
           <p className="settings-note">
-            Dates and numbers throughout Apple. Right now: <strong>{formatNumber(1234.5)}</strong> and{' '}
+            Dates and numbers throughout StudPilot. Right now: <strong>{formatNumber(1234.5)}</strong> and{' '}
             <strong>{fullStamp(Date.now())}</strong>.
           </p>
         </Row>
@@ -2388,7 +2388,7 @@ export function SettingsPage() {
             />
           }
         >
-          <p className="settings-note">How times are written across Apple.</p>
+          <p className="settings-note">How times are written across StudPilot.</p>
         </Row>
 
         <Row id="time-zone"
@@ -2415,14 +2415,14 @@ export function SettingsPage() {
             </label>
           }
         >
-          <p className="settings-note">Every timestamp in Apple is shown in this zone, and says which zone it is.</p>
+          <p className="settings-note">Every timestamp in StudPilot is shown in this zone, and says which zone it is.</p>
         </Row>
       </Section>
 
 
       <Section id="privacy" title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
         {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
-            Both published privacy pages say Apple never trains on a customer's projects — the
+            Both published privacy pages say StudPilot never trains on a customer's projects — the
             policy states outright that no opt-in programme exists. This row offered exactly that
             opt-in, in the account settings of the same product. A careful reader could not
             reconcile the two, and whichever they believed, one of them was lying to them.
@@ -2431,9 +2431,9 @@ export function SettingsPage() {
             stays in the database untouched — dropping a column is a migration, and nothing reads
             it now. */}
         <Row id="training-promise" visible={shows('training-promise')}>
-          <p className="settings-lead">Apple never trains on your work.</p>
+          <p className="settings-lead">StudPilot never trains on your work.</p>
           <p className="settings-note">
-            Your projects, your prompts and the code Apple writes for you are yours. They are not used to
+            Your projects, your prompts and the code StudPilot writes for you are yours. They are not used to
             train models, and there is no setting here that would change that — the commitment is the
             product's, not a preference you have to remember to keep switched off.
           </p>
@@ -2461,7 +2461,7 @@ export function SettingsPage() {
           }
         >
           <p className="settings-note">
-            Apple records which requests were made and how long they took, so a broken feature can be told from a slow
+            StudPilot records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
             counted either way — an opt-out removes your name from the row, not the row.
           </p>
@@ -2491,7 +2491,7 @@ export function SettingsPage() {
             </button>
           }
         >
-          <p className="settings-note">One file with everything Apple keeps about you.</p>
+          <p className="settings-note">One file with everything StudPilot keeps about you.</p>
           {/* The long answers fold away (picks: multi-layout accordion) — one click, not the first read. */}
           <Accordion
             items={[
@@ -2501,7 +2501,7 @@ export function SettingsPage() {
                 children: (
                   <p className="settings-note">
                     One file, one click. Your profile and your projects, every message of every conversation in full, your
-                    checkpoints, every Credit you have spent, your inbox, what Apple was asked to remember, your comments,
+                    checkpoints, every Credit you have spent, your inbox, what StudPilot was asked to remember, your comments,
                     reviews, share links and Studio pairings. The browser walks every route the server holds about you rather
                     than handing you a list of them to fetch yourself, and it counts the requests while it does it.
                   </p>
@@ -2564,7 +2564,7 @@ export function SettingsPage() {
         >
           <p className="settings-note">
             Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
-            keys and your stored Roblox key from every store Apple can reach. It cannot be undone.
+            keys and your stored Roblox key from every store StudPilot can reach. It cannot be undone.
           </p>
           <p className="settings-note">
             It does not remove your sign-in. That needs an operator, and the receipt afterwards names it along with

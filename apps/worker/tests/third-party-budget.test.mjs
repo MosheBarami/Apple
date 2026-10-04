@@ -1,13 +1,13 @@
 /**
  * THE THIRD-PARTY WALLET IN BudgetDO (D-VISION-1, rollout step 2).
  *
- * No customer engine is billed here any more: Apple is the only engine and runs on Workers AI
+ * No customer engine is billed here any more: StudPilot is the only engine and runs on Workers AI
  * (V3 gate G01). The ledger stays for any outside (non-`@cf/`) id an operator may still route, on
  * its own dollar ceiling ($5/day, $60/month in pricing.ts). The properties:
  *
- *   - a third-party reservation never spends, or is admitted by, Apple's neuron day;
- *   - the third-party day refuses at its ceiling, with a sentence that says Apple still works;
- *   - an unlisted outside id keeps the global 1,200 step cap, exactly like Apple;
+ *   - a third-party reservation never spends, or is admitted by, StudPilot's neuron day;
+ *   - the third-party day refuses at its ceiling, with a sentence that says StudPilot still works;
+ *   - an unlisted outside id keeps the global 1,200 step cap, exactly like StudPilot;
  *   - a hold is released and settled on the ledger it was taken on;
  *   - an operator ratchet of the per-request cap reaches the third-party models too.
  *
@@ -74,21 +74,21 @@ test('an outside-model step at the cap is admitted, and it never touches the neu
   assert.ok(s.thirdParty.dayPendingUsd > 0);
 });
 
-test('one neuron over the cap is refused, for an outside id and for Apple alike', async () => {
+test('one neuron over the cap is refused, for an outside id and for StudPilot alike', async () => {
   const b = budget();
   assert.equal((await b.call('/reserve', { neurons: SOL_CAP + 1, model: SOL })).reason, 'request_too_large');
   assert.equal((await b.call('/reserve', { neurons: 1_201, model: GLM })).reason, 'request_too_large');
   assert.equal((await b.call('/reserve', { neurons: 1_200, model: GLM })).ok, true);
 });
 
-test('the third-party day refuses at its ceiling and says Apple still works; the neuron day is unaffected', async () => {
+test('the third-party day refuses at its ceiling and says StudPilot still works; the neuron day is unaffected', async () => {
   const b = budget({ thirdParty: { day: today(), month: thisMonth(), dayNeurons: TP_DAY - 100, dayPending: 0, monthNeurons: TP_DAY - 100 } });
   const refused = await b.call('/reserve', { neurons: 101, model: SOL });
   assert.equal(refused.ok, false);
   assert.equal(refused.reason, 'third_party_daily_cap');
-  assert.match(refused.message, /Apple still works/);
+  assert.match(refused.message, /StudPilot still works/);
   assert.equal((await b.call('/reserve', { neurons: 100, model: SOL })).ok, true, 'exactly at the ceiling is admitted');
-  assert.equal((await b.call('/reserve', { neurons: 500, model: GLM })).ok, true, 'Apple is not refused by the outside models\' ceiling');
+  assert.equal((await b.call('/reserve', { neurons: 500, model: GLM })).ok, true, 'StudPilot is not refused by the outside models\' ceiling');
 });
 
 test('the third-party month refuses independently of the day', async () => {

@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-reasoning-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-reasoning-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'reasoning.ts'),
   '--bundle',

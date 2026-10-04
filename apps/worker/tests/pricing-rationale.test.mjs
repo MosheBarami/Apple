@@ -26,7 +26,7 @@ import { BILLABLE_NEURONS_PER_DAY, MODEL_PRICES, neuronsFor } from '../src/prici
 
 const SOURCE = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'pricing.ts'), 'utf8');
 
-/** The model Apple runs on today, and the one the paid lane moved off on 2026-09-19. */
+/** The model StudPilot runs on today, and the one the paid lane moved off on 2026-09-19. */
 const MAX_TODAY = '@cf/zai-org/glm-5.3-flash';
 const MAX_BEFORE = '@cf/zai-org/glm-4.7-flash';
 

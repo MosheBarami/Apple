@@ -455,14 +455,14 @@ export class BudgetDO extends DurableObject<Env> {
       const want = Math.max(1, Math.ceil(asked));
 
       // A third-party model spends the third-party wallet and ONLY that one: its ceiling is in the
-      // owner's dollars, and it must neither eat Apple's neuron day nor be admitted by it.
+      // owner's dollars, and it must neither eat StudPilot's neuron day nor be admitted by it.
       if (isThirdParty(model)) {
         const t = await this.loadThirdParty();
         if (t.dayNeurons + t.dayPending + want > limits.thirdPartyNeuronsPerDay) {
           return Response.json({
             ok: false,
             reason: 'third_party_daily_cap',
-            message: "Today's allowance for outside models is used up. Apple still works, and it resets at midnight UTC.",
+            message: "Today's allowance for outside models is used up. StudPilot still works, and it resets at midnight UTC.",
             state: this.view(s, killed, killedReason, limits, t),
           });
         }
@@ -470,7 +470,7 @@ export class BudgetDO extends DurableObject<Env> {
           return Response.json({
             ok: false,
             reason: 'third_party_monthly_cap',
-            message: "This month's allowance for outside models is used up. Apple still works.",
+            message: "This month's allowance for outside models is used up. StudPilot still works.",
             state: this.view(s, killed, killedReason, limits, t),
           });
         }

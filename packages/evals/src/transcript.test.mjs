@@ -18,7 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..');
 
 // One implementation: the production TypeScript, transpiled with the worker's own esbuild.
-const dest = join(tmpdir(), `apple-transcript-${process.pid}.mjs`);
+const dest = join(tmpdir(), `studpilot-transcript-${process.pid}.mjs`);
 execFileSync(
   join(REPO, 'apps', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(REPO, 'apps', 'worker', 'src', 'transcript.ts'), '--format=esm', '--target=es2022', `--outfile=${dest}`],
@@ -54,7 +54,7 @@ function runFor(steps) {
 
 test('the user request survives a full 16-step Stone run — the bug that shipped', () => {
   const llm = runFor(16);
-  // The trim's run record (`ledger`) is also user-role and pinned, but it is Apple's note, not the
+  // The trim's run record (`ledger`) is also user-role and pinned, but it is StudPilot's note, not the
   // user's request; the property is that the REQUEST is present exactly once.
   const user = llm.filter((m) => m.role === 'user' && !m.ledger);
   assert.equal(user.length, 1, 'the pinned request must still be present exactly once');

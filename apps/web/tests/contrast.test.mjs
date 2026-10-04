@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CSS = readFileSync(join(HERE, '../src/design/system.css'), 'utf8');
 // The marketing and docs surfaces have their own token sets and the same obligation.
-// 2026-09-22: the site redesign moved every colour token into apple-minimal.css (global.css and
+// 2026-09-22: the site redesign moved every colour token into studpilot-minimal.css (global.css and
 // landing.css now declare none), so these read the stylesheet that actually carries the palette. The
 // file is found by what it declares, not by name, so the next move cannot blind them.
 const SITE_STYLES = join(HERE, '../../site/src/styles');

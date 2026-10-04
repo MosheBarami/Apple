@@ -20,7 +20,7 @@
 // one gets one file with no dependencies, which is the only shape that survives being dropped into
 // a project the agent did not write.
 
-import { APPLE_UI_SOURCE } from './ui-kit';
+import { STUDPILOT_UI_SOURCE } from './ui-kit';
 
 export interface Prefab {
   id: string;
@@ -1782,7 +1782,7 @@ return DailyReward
 const COLLECTIBLES_SOURCE = `--!strict
 -- Collectibles — touch to collect, score it, bring it back.
 --
--- The first game most creators ask for, and the one Apple got wrong three times in a row on
+-- The first game most creators ask for, and the one StudPilot got wrong three times in a row on
 -- 2026-09-22 (runs 76b59615, fad0ab1b, a95f86fa). Each failure was silent in a playtest with no player:
 --
 --   * The coins were found by PART name ("coin") when the name was on the MODEL (Coin1..Coin8) and
@@ -2008,7 +2008,7 @@ export const PREFABS: Record<string, Prefab> = {
       'AppleUI.mount(...) returns ui:setObjectives({{id="lap", title="Finish the course", current=2, target=5, completed=false}}), replacing at most 8 objectives atomically; omit current/target for unknown progress, set completed only from authoritative state, and use {} to hide. No quest or reward logic is installed.',
       'AppleUI.mount(...) returns ui:notify(message, "info" | "success" | "error", seconds=5) -> boolean; 2–12 seconds, at most 5 queued, false when full or destroyed. Success is only for observed server confirmation. Notices pause while the shop is open; ui:clearNotifications() clears them. Neither API sends remotes or grants anything.',
     ],
-    source: APPLE_UI_SOURCE,
+    source: STUDPILOT_UI_SOURCE,
   },
   daily_reward: {
     id: 'daily_reward',

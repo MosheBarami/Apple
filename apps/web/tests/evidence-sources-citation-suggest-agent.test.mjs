@@ -37,7 +37,7 @@ test('evidence sources / citation / suggestion / agent', async () => {
   assert.equal(r(m.h(m.TurnSuggestions, { turn: { stopReason: 'incomplete', streaming: true }, onPick() {} })), '');
 
   const agent = r(m.h(m.AgentIdentityCard, { productModel: 'apple', studioConnected: true, place, deniedTools: ['run_script'] }));
-  assert.match(text(agent), /Apple/);
+  assert.match(text(agent), /StudPilot/);
   assert.match(text(agent), /Studio: connected to Obby Place/);
   assert.match(text(agent), /Withheld this run:/);
   assert.match(text(r(m.h(m.AgentIdentityCard, { productModel: 'apple' }))), /Studio: unavailable[\s\S]*none reported/);

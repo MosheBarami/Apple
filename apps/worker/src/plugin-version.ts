@@ -1,4 +1,4 @@
-import { WIRE_HEADERS, readWire } from '@apple/shared';
+import { WIRE_HEADERS, readWire } from '@studpilot/shared';
 
 /**
  * What the worker will, and will not, refuse to talk to.
@@ -41,7 +41,7 @@ import { WIRE_HEADERS, readWire } from '@apple/shared';
 
 /**
  * The wire contract this worker speaks. Must match PLUGIN_PROTOCOL in the shipped
- * plugin, apps/apple-plugin/src/Bridge.luau; plugin-version.test.mjs reads both
+ * plugin, apps/studpilot-plugin/src/Bridge.luau; plugin-version.test.mjs reads both
  * files and fails if they drift.
  *
  * Deliberately NOT an alias of `PROTOCOL_VERSION` in packages/shared. That constant
@@ -64,13 +64,13 @@ export const MIN_PLUGIN_PROTOCOL = 1;
 /**
  * The newest plugin build published to the Creator Store, for advisory
  * "an update exists" notices. Its one consumer is `clientNotice`, which tells a
- * polling plugin that reports an OLDER version "Apple <this> is available. Update
+ * polling plugin that reports an OLDER version "StudPilot <this> is available. Update
  * it in Studio → Plugins → Manage Plugins → Update" — so this must name a build a
  * user can actually get from that button today. Bump it at the moment the human
  * republishes the Store asset, not when the source changes. Announcing a version
  * nobody can install yet is worse than saying nothing.
  *
- * '1.0.0' since 2026-09-22: the build of apps/apple-plugin published as asset
+ * '1.0.0' since 2026-09-22: the build of apps/studpilot-plugin published as asset
  * 107230158271368 on 2026-09-19 (toolbox-service: 5 scripts, createdUtc =
  * updatedUtc = 2026-09-19T18:13Z), distributed again as of 2026-09-22. That
  * build's version is inferred, not read: every commit of Bridge.luau declares
@@ -78,7 +78,7 @@ export const MIN_PLUGIN_PROTOCOL = 1;
  * published bytes. It was '0.2.0' — the legacy apps/plugin, whose asset
  * (132128477945417) is removed.
  *
- * The source (`PLUGIN_VERSION` in apps/apple-plugin/src/Bridge.luau) may be AHEAD
+ * The source (`PLUGIN_VERSION` in apps/studpilot-plugin/src/Bridge.luau) may be AHEAD
  * of this — it is 1.5.0 while those changes are unpublished — and never behind it.
  * A newer client reads as newer and gets silence; packages/evals/src/plugin-version.test.mjs
  * enforces the ordering.
@@ -182,7 +182,7 @@ export function pluginCompatibility(protocol: number | null, min: number = MIN_P
   if (protocol < min) {
     return {
       compatible: false,
-      message: `This Apple build is too old for the server and cannot run builds. Update it in ${UPDATE_PATH}.`,
+      message: `This StudPilot build is too old for the server and cannot run builds. Update it in ${UPDATE_PATH}.`,
     };
   }
   return { compatible: true };
@@ -206,7 +206,7 @@ export function clientNotice(
   if (compareVersions(info.version, latest) === -1) {
     return {
       compatible: true,
-      message: `Apple ${latest} is available. Update it in ${UPDATE_PATH}.`,
+      message: `StudPilot ${latest} is available. Update it in ${UPDATE_PATH}.`,
     };
   }
   return null;

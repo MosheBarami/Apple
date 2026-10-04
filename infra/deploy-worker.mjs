@@ -2,6 +2,7 @@
 // Deploy the worker with BUILD_SHA stamped from the commit being deployed.
 //
 //   node infra/deploy-worker.mjs [apple|golem] [--secrets-file <ignored JSON or .env file>]
+//   (the production worker is still named `apple` until StudPilot handoff step 1.3 renames it)
 //   node infra/deploy-worker.mjs apple --build-sha <git-archive source SHA>
 //
 // WHY THIS EXISTS. `BUILD_SHA` is a plain var in wrangler.*.jsonc, edited by hand before a deploy.
@@ -71,7 +72,7 @@ const stamp = dirty ? `${sha}-dirty` : sha;
 console.log(`deploying ${target} as BUILD_SHA=${stamp}`);
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'wrangler'),
-  ['deploy', '--config', target === 'apple' ? 'wrangler.apple.jsonc' : 'wrangler.jsonc', '--var', `BUILD_SHA:${stamp}`,
+  ['deploy', '--config', target === 'apple' ? 'wrangler.studpilot.jsonc' : 'wrangler.jsonc', '--var', `BUILD_SHA:${stamp}`,
     ...(secretsFile ? ['--secrets-file', secretsFile] : [])],
   { cwd: WORKER, stdio: 'inherit' },
 );

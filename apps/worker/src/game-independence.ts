@@ -1,6 +1,6 @@
-// G13 / G14: the delivered game must run without Apple, and must not pretend to sell anything.
+// G13 / G14: the delivered game must run without StudPilot, and must not pretend to sell anything.
 //
-// Two deterministic checks on Luau that Apple writes into a customer's place. Both take the
+// Two deterministic checks on Luau that StudPilot writes into a customer's place. Both take the
 // scan variants tools.ts builds (comments stripped, literals folded) and, for edits, the script
 // as it stood: a script that already offended can still be edited, it just cannot offend MORE.
 
@@ -9,10 +9,11 @@ export interface GameScriptRefusal {
   blocked: string[];
 }
 
-// A game script that phones home would stop working the day the subscription ends.
-const OUR_HOSTS = /["'\[][^"'\]\n]*(?:workers\.dev|api\.z\.ai|bigmodel\.cn|open\.bigmodel|\.apple-rbx\.|rbxai\.)[^"'\]\n]*["'\]]/gi;
-// Requiring the Studio plugin (or anything named for it) from a game script.
-const PLUGIN_REQUIRE = /\brequire\s*\(?\s*[^)\n]*\b(?:plugin|AppleBridge|ApplePlugin|AppleAgent)\b/gi;
+// A game script that phones home would stop working the day the subscription ends. Both the current host
+// pattern and the one the product had before its rename: a game built earlier may carry either.
+const OUR_HOSTS = /["'\[][^"'\]\n]*(?:workers\.dev|api\.z\.ai|bigmodel\.cn|open\.bigmodel|\.studpilot-rbx\.|\.apple-rbx\.|rbxai\.)[^"'\]\n]*["'\]]/gi;
+// Requiring the Studio plugin (or anything named for it, under the current or the former name) from a game script.
+const PLUGIN_REQUIRE = /\brequire\s*\(?\s*[^)\n]*\b(?:plugin|StudPilotBridge|StudPilotPlugin|AppleBridge|ApplePlugin|AppleAgent)\b/gi;
 
 // Purchase APIs: a nonzero numeric literal argument is a fabricated id. 0 is the placeholder.
 const PURCHASE_CALL =
@@ -51,10 +52,10 @@ export function refuseApplyDependence(variants: readonly string[], before?: read
   if (!found.length) return null;
   return {
     error:
-      `Refused (G13): this game script would reach Apple, GLM or the plugin at runtime (${found.slice(0, 3).join(' | ')}). ` +
-      'The delivered game must stay playable and editable without Apple, GLM, Jev or an active subscription, so no inserted script may call our endpoints or require plugin modules. ' +
+      `Refused (G13): this game script would reach StudPilot, GLM or the plugin at runtime (${found.slice(0, 3).join(' | ')}). ` +
+      'The delivered game must stay playable and editable without StudPilot, GLM, Jev or an active subscription, so no inserted script may call our endpoints or require plugin modules. ' +
       'Keep the logic inside the game itself. Nothing was sent to Studio.',
-    blocked: ['apple_runtime_dependency'],
+    blocked: ['studpilot_runtime_dependency'],
   };
 }
 
@@ -64,7 +65,7 @@ export function refuseFabricatedPurchaseId(variants: readonly string[], before?:
   if (after.n <= had) return null;
   return {
     error:
-      `Refused (G14): this script hard-codes a purchase id (${after.hits.slice(0, 3).join(' | ')}). Apple never invents gamepass, developer-product or subscription ids. ` +
+      `Refused (G14): this script hard-codes a purchase id (${after.hits.slice(0, 3).join(' | ')}). StudPilot never invents gamepass, developer-product or subscription ids. ` +
       'Read the id from owner config instead, for example a ModuleScript ReplicatedStorage.MonetizationConfig whose ids are 0 until the game owner creates the product on Roblox and pastes the id, ' +
       'and treat 0 as "not configured": the purchase button stays hidden or disabled and base gameplay is unchanged. Nothing was sent to Studio.',
     blocked: ['fabricated_purchase_id'],

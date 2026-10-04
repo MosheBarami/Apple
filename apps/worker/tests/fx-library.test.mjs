@@ -1,5 +1,5 @@
 /**
- * D-FXLIB-1: Apple's sounds and particle effects come from the stored library.
+ * D-FXLIB-1: StudPilot's sounds and particle effects come from the stored library.
  *
  * What this file holds the worker to:
  *   - find_sound / find_vfx are read-only lookups over bundled indexes; insert_sound / insert_vfx
@@ -27,7 +27,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
-const PLUGIN_SRC = join(WORKER, '..', 'apple-plugin', 'src');
+const PLUGIN_SRC = join(WORKER, '..', 'studpilot-plugin', 'src');
 const SFX = JSON.parse(readFileSync(join(ROOT, 'packages', 'asset-library', 'sfx', 'index.json'), 'utf8'));
 const VFX = JSON.parse(readFileSync(join(ROOT, 'packages', 'asset-library', 'vfx', 'index.json'), 'utf8'));
 const temp = mkdtempSync(join(tmpdir(), 'fx-library-'));

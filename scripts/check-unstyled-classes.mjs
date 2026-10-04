@@ -5,8 +5,8 @@
 // that one panel. `rk__` and `asrc__` were not: `grep -c 'rk__' styles.css` returned ZERO, and the
 // owner opened his own settings page and read
 //
-//     "Read your assetsApple can look up things you already own"
-//     "The Apple libraryApple picks from assets it has already gathered"
+//     "Read your assetsStudPilot can look up things you already own"
+//     "The StudPilot libraryStudPilot picks from assets it has already gathered"
 //
 // Both panels are built from <span>s. With no rules every span stays inline and each label runs
 // into its own description. Nothing failed: tsc passed, the tests passed, the build passed, the
@@ -110,5 +110,5 @@ for (const [prefix, list] of [...byPrefix].sort((a, b) => b[1].length - a[1].len
   if (list.length > 6) console.error(`        … ${list.length - 6} more`);
 }
 console.error('\nA selector that matches nothing fails no typecheck, no test and no build. It renders,');
-console.error('and every span stays inline: "Read your assetsApple can look up things you already own".');
+console.error('and every span stays inline: "Read your assetsStudPilot can look up things you already own".');
 process.exit(1);

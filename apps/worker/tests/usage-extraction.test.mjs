@@ -44,7 +44,7 @@ const bundle = (rel, name) => {
     { cwd: WORKER, stdio: 'pipe' });
   return import(`file://${out}`);
 };
-// providers/openai.ts was removed with BYOK (D-VISION-1): every model — Apple's and the outside
+// providers/openai.ts was removed with BYOK (D-VISION-1): every model — StudPilot's and the outside
 // ones on unified billing — is decoded by workers-ai.ts, so that is the one adapter checked here.
 const WA = await bundle('providers/workers-ai.ts', 'wa.mjs');
 const COST = await bundle('providers/cost.ts', 'cost.mjs');

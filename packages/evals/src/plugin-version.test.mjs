@@ -34,7 +34,7 @@ const REPO = join(HERE, '..', '..', '..');
 const WORKER = join(REPO, 'apps', 'worker');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const out = join(mkdtempSync(join(tmpdir(), 'apple-plugin-version-')), 'plugin-version.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-plugin-version-')), 'plugin-version.mjs');
 execFileSync(ESBUILD, [join(WORKER, 'src', 'plugin-version.ts'), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', `--outfile=${out}`], {
   stdio: 'pipe',
 });
@@ -133,17 +133,24 @@ test('reported version strings are treated as untrusted', () => {
 test('readPluginHeaders degrades to unknown rather than throwing', () => {
   const empty = V.readPluginHeaders(new Headers());
   assert.deepEqual(empty, { version: null, protocol: null });
-  const good = V.readPluginHeaders(new Headers({ 'X-Golem-Plugin-Version': '0.2.0', 'X-Golem-Plugin-Protocol': '1' }));
+  const good = V.readPluginHeaders(new Headers({ 'X-StudPilot-Plugin-Version': '0.2.0', 'X-StudPilot-Plugin-Protocol': '1' }));
   assert.deepEqual(good, { version: '0.2.0', protocol: 1 });
+  // The PUBLISHED plugin builds in the wild still send an old spelling (the oldest builds the oldest
+  // one), and a Studio plugin changes only when a user clicks Update. Both former spellings must keep
+  // being read, or the first request of every old install reads as anonymous.
+  for (const brand of ['Apple', 'Golem']) {
+    const old = V.readPluginHeaders(new Headers({ [`X-${brand}-Plugin-Version`]: '0.2.0', [`X-${brand}-Plugin-Protocol`]: '1' }));
+    assert.deepEqual(old, { version: '0.2.0', protocol: 1 }, `the X-${brand}-* spelling stopped being read`);
+  }
 });
 
 // ------------------------------------------------- the two files must not drift
 //
-// THE PLUGIN THESE READ IS apps/apple-plugin, the one the Creator Store serves (asset
+// THE PLUGIN THESE READ IS apps/studpilot-plugin, the one the Creator Store serves (asset
 // 107230158271368). Until 2026-09-22 they read apps/plugin/src/Version.luau — the legacy build,
 // whose asset was removed — so the worker's idea of "latest" was pinned to a plugin nobody can
 // install and this suite stayed green about it.
-const PLUGIN_SRC = join(REPO, 'apps', 'apple-plugin', 'src');
+const PLUGIN_SRC = join(REPO, 'apps', 'studpilot-plugin', 'src');
 // Luau comments stripped first: Bridge.luau explains its version in prose, and a scanner that read
 // the explanation would find the constant in a sentence about it.
 const luauCode = (file) => readFileSync(join(PLUGIN_SRC, file), 'utf8')
@@ -178,21 +185,21 @@ test('the worker never announces a plugin version the shipped source does not ha
 test('the plugin reports its version on every request, and every copy of it agrees', () => {
   // The periodic `state` event carries pluginVersion too, but pairing and the first polls would
   // otherwise be anonymous, so the headers must carry it on every request.
-  assert.match(BRIDGE, /\["X-Golem-Plugin-Version"\]\s*=\s*PLUGIN_VERSION\b/);
-  assert.match(BRIDGE, /\["X-Golem-Plugin-Protocol"\]\s*=\s*PLUGIN_PROTOCOL\b/);
+  assert.match(BRIDGE, /\["X-StudPilot-Plugin-Version"\]\s*=\s*PLUGIN_VERSION\b/);
+  assert.match(BRIDGE, /\["X-StudPilot-Plugin-Protocol"\]\s*=\s*PLUGIN_PROTOCOL\b/);
   // There is no Version module in this plugin: the entry script repeats the literal in its state
   // event and in the label a user reads in the dock. The property is that every copy agrees with
   // the one the headers send, so a bump that misses one is a failure rather than a plugin that
   // tells the worker one version and the user another.
   const init = luauCode('init.server.luau');
   const stated = init.match(/pluginVersion\s*=\s*"([^"]+)"/)?.[1];
-  const shown = init.match(/"Apple Studio · (\d+\.\d+\.\d+)\b/)?.[1];
+  const shown = init.match(/"StudPilot Studio · (\d+\.\d+\.\d+)\b/)?.[1];
   assert.ok(stated, 'init.server.luau no longer puts pluginVersion in its state event');
   assert.ok(shown, 'the version must be visible in the plugin UI');
   assert.equal(stated, DECLARED_VERSION, 'the state event reports a different version from the headers');
   assert.equal(shown, DECLARED_VERSION, 'the dock shows a different version from the one the worker is told');
-  const pkg = JSON.parse(readFileSync(join(REPO, 'apps', 'apple-plugin', 'package.json'), 'utf8'));
-  assert.equal(pkg.version, DECLARED_VERSION, 'apps/apple-plugin/package.json names a different version');
+  const pkg = JSON.parse(readFileSync(join(REPO, 'apps', 'studpilot-plugin', 'package.json'), 'utf8'));
+  assert.equal(pkg.version, DECLARED_VERSION, 'apps/studpilot-plugin/package.json names a different version');
 });
 
 test('an incompatible client is handed no ops', () => {

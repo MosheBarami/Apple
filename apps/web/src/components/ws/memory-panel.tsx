@@ -1,4 +1,4 @@
-// What Apple believes about this project — and how to correct it.
+// What StudPilot believes about this project — and how to correct it.
 //
 // Memory is written by a model, from the conversation, with nobody reading it first, and then it
 // steers every later run. That makes it the one part of the product that can be confidently wrong
@@ -6,7 +6,7 @@
 // DoorService" outlives the code it described and quietly shapes everything after.
 //
 // So this shows all of it, not just the summary, and every part of it can be changed. The
-// important honesty is at the bottom: deleting a fact does not stop Apple noticing it again.
+// important honesty is at the bottom: deleting a fact does not stop StudPilot noticing it again.
 // Someone who deletes something and watches it come back needs to have been told that is how it
 // works, rather than concluding the delete button is broken.
 import { useEffect, useState } from 'react';
@@ -59,12 +59,12 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
       void qc.invalidateQueries({ queryKey: ['memory', projectId] });
       void qc.invalidateQueries({ queryKey: ['project', projectId] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
-      toast('Memory updated — Apple uses this from the next run', 'success');
+      toast('Memory updated — StudPilot uses this from the next run', 'success');
     },
     onError: (e: Error) => toast(e instanceof ApiError ? e.message : 'Could not save memory', 'error'),
   });
 
-  //[[ ANSWERING WHAT APPLE ASKED TO REMEMBER.
+  //[[ ANSWERING WHAT STUDPILOT ASKED TO REMEMBER.
   //
   //   Under the `review` memory setting nothing the model learns reaches memory until a person
   //   says so. The queue and both decisions have existed in the worker the whole time; this is the
@@ -95,7 +95,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
   if (state.isPending) {
     return (
       <p className="gx-empty" aria-busy="true">
-        Reading what Apple remembers…
+        Reading what StudPilot remembers…
       </p>
     );
   }
@@ -126,9 +126,9 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
       */}
       {(pending.summary !== null || pending.facts.length > 0) && (
         <div className="mem__pending">
-          <span className="field-label">Apple asked to remember</span>
+          <span className="field-label">StudPilot asked to remember</span>
           <p className="mem__note">
-            Your memory setting is “review”, so nothing here is in use yet. Keep it and Apple works
+            Your memory setting is “review”, so nothing here is in use yet. Keep it and StudPilot works
             from it on the next run; discard it and nothing changes.
           </p>
           <ul className="mem__list">
@@ -183,7 +183,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
 
       {empty && !dirty ? (
         <p className="gx-empty">
-          Nothing yet. As you build, Apple keeps a short note about how your project is put together
+          Nothing yet. As you build, StudPilot keeps a short note about how your project is put together
           and uses it on later turns. You can also write one yourself.
         </p>
       ) : null}
@@ -251,7 +251,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
             className="mem__fact"
             value={adding}
             maxLength={FACT_MAX}
-            placeholder="Tell Apple something it should remember…"
+            placeholder="Tell StudPilot something it should remember…"
             aria-label="New fact"
             onChange={(e) => setAdding(e.target.value)}
           />
@@ -288,7 +288,7 @@ export function MemoryPanel({ projectId }: { projectId: string }) {
 
       {/* The part someone will otherwise learn by being surprised. */}
       <p className="mem__note">
-        Apple keeps noticing things as you build, so something you forget here can come back if the
+        StudPilot keeps noticing things as you build, so something you forget here can come back if the
         conversation says it again. Changes apply from the next run — they do not alter anything
         already built.
       </p>

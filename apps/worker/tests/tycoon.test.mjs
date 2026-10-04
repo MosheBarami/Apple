@@ -141,7 +141,7 @@ test('the economy curve: prices are the agent\'s when given, the documented defa
 test('every class and property the tycoon writes is one the plugin accepts', () => {
   // Live 2026-10-02: the whole map was refused for Neutral, Duration and TextStrokeTransparency, and the run said only
   // "did not work". The plugin's allowlists are the source of truth.
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const plugin = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const allowed = new Set([...plugin.matchAll(/^\s*([A-Z][A-Za-z0-9]*) = true,/gm)].map((m) => m[1]));
   assert.ok(allowed.size > 100, 'the allowlists were read');
   const steps = T.tycoonSteps(T.tycoonRecipe(1, theme()));

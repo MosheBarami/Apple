@@ -27,7 +27,7 @@ export function extras() {
   return cached('extras', async () => {
     const [health, asset, ...controls] = await Promise.all([workerHealth(), storeStatus(ASSET_ID), ...CONTROLS.map(storeStatus)]);
     return ok({
-      apple: health,
+      studpilot: health,
       robloxStore: { ...asset, url: `https://create.roblox.com/store/asset/${ASSET_ID}`, controls,
         siteSaysLive: STUDIO_PLUGIN_STORE_LIVE, refusal: STUDIO_PLUGIN_STORE_REFUSAL },
       stripe: { configured: Boolean(process.env.STRIPE_SECRET_KEY),

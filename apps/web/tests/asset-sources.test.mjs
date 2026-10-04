@@ -36,7 +36,7 @@ const WS = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
 
 test('A DISMISSED DIALOG IS NOT AN ANSWER — the second way to be unanswered', () => {
   // `ask` is the obvious one. The one worth writing down is `remember` with an empty allow list:
-  // that is what a dismissed dialog leaves behind, and treating it as settled means Apple builds
+  // that is what a dismissed dialog leaves behind, and treating it as settled means StudPilot builds
   // with no sources at all and nobody ever finds out why everything it makes is grey boxes.
   assert.equal(A.owesAnswer(null), true, 'never answered');
   assert.equal(A.owesAnswer(undefined), true);
@@ -55,7 +55,7 @@ test('AND IT DOES NOT PRE-TICK THE ONE THAT SPENDS CREDITS', () => {
   // default is not a decision, and this is the default that would cost money.
   const fresh = A.initialSelection(null);
   assert.equal(fresh.includes('from_scratch'), false, 'the paid choice must be opt-in');
-  // It was two of these until the Apple library went; `creator_store` is what is left that adds
+  // It was two of these until the StudPilot library went; `creator_store` is what is left that adds
   // nothing to what a build already costs.
   assert.deepEqual(fresh, ['creator_store'], 'the one that costs nothing extra');
   // AND THE DEFAULT CANNOT NAME A RETIRED SOURCE. This is the failure that put this file in front
@@ -80,7 +80,7 @@ test('every choice states what it COSTS, not just what it is', () => {
 });
 
 test('source descriptions promise no inventory the product cannot prove', () => {
-  // This test used to be asked about the Apple library — that a catalogue MATCH was not the same
+  // This test used to be asked about the StudPilot library — that a catalogue MATCH was not the same
   // as an insertable asset. The library is gone; the claim it was protecting against is not, and
   // `creator_store` is now the surface that can over-promise, because what it reaches depends on
   // Roblox permissions and on the individual asset rather than on us.
@@ -92,7 +92,7 @@ test('source descriptions promise no inventory the product cannot prove', () => 
     assert.doesNotMatch(e.reach, /\d[\d,]* assets|Unlimited/i, 'static copy cannot prove live inventory or unlimited service');
   }
   // And a retired source has no card left to describe it.
-  assert.equal(A.explainSource('apple_library'), null, 'the Apple library card must be gone, not merely unreachable');
+  assert.equal(A.explainSource('apple_library'), null, 'the StudPilot library card must be gone, not merely unreachable');
 });
 
 test('an unrecognised choice never reaches the worker', () => {
@@ -108,7 +108,7 @@ test('an unrecognised choice never reaches the worker', () => {
 
 /* ------------------------------------------------------------------ summarising --- */
 
-test('the settings row reads as a sentence, and says when Apple will ask again', () => {
+test('the settings row reads as a sentence, and says when StudPilot will ask again', () => {
   assert.match(A.summarise({ mode: 'remember', allow: ['creator_store'] }).line, /Roblox Creator Store/);
   assert.match(A.summarise({ mode: 'remember', allow: ['creator_store', 'from_scratch'] }).line, /and/);
   assert.match(A.summarise({ mode: 'ask', allow: ['creator_store'] }).line, /ask again/);
@@ -147,7 +147,7 @@ test('nothing chosen cannot be submitted, and the reason is on screen', () => {
   // the layers above strip out, which saves a policy allowing nothing and reopens this dialog on
   // the next send, forever.
   assert.match(DIALOG, /disabled=\{sending\.length === 0 \|\| save\.isPending\}/);
-  assert.match(DIALOG, /Apple can only place plain parts/, 'the consequence, not "select an option"');
+  assert.match(DIALOG, /StudPilot can only place plain parts/, 'the consequence, not "select an option"');
 });
 
 test('it is a real dialog for a screen reader', () => {

@@ -3,7 +3,7 @@
  *
  * `golem.moshe-barami111.workers.dev` was not a stale leftover — it was a COMPLETE, CURRENT second
  * copy. Measured 2026-09-19: `/`, `/app`, `/pricing`, `/privacy` and `/terms` all returned 200 with
- * bytes identical to the apple host, `/app` served the same JS bundle byte for byte, `robots.txt`
+ * bytes identical to the studpilot host, `/app` served the same JS bundle byte for byte, `robots.txt`
  * said `Allow: /`, and nothing redirected. `rel=canonical` was present, which is a hint to a
  * crawler and not an instruction to a browser: a person arriving from a bookmark, an old link or a
  * search result stayed on the old brand's hostname for their whole session, address bar included.
@@ -53,7 +53,7 @@ test('API routes on the legacy host are deliberately NOT redirected', () => {
 test('no shipped client points at the legacy host', () => {
   // The reason pages can be redirected at all. Checked per file rather than asserted in prose.
   const clients = [
-    'apps/apple-plugin/src/Bridge.luau',
+    'apps/studpilot-plugin/src/Bridge.luau',
     'apps/plugin/src/init.server.luau',
     'packages/sdk/luau/AppleClient.luau',
   ];

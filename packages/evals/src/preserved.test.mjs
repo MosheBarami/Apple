@@ -34,7 +34,7 @@ const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 const SRC = (...p) => join(WORKER, 'src', ...p);
 const read = (...p) => readFileSync(SRC(...p), 'utf8');
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-preserved-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-preserved-'));
 const CF_SHIM = join(TMP, 'cf-workers-shim.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
@@ -805,14 +805,14 @@ test('B8 an admin key cannot erase spend to slip under a cap — simulate-usage 
 
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
-const SUPABASE_URL = 'https://supa.apple.test';
+const SUPABASE_URL = 'https://supa.studpilot.test';
 const OWNER_ID = '33333333-3333-4333-8333-333333333333';
 const PROJECT_ID = 'cccccccc-dddd-4eee-8fff-aaaaaaaaaaaa';
 const ADMIN_KEY = 'PRESERVED-admin-key-b91e7f';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
 const JWKS_BODY = JSON.stringify({ keys: [{ ...(await jose.exportJWK(publicKey)), kid: 'k', alg: 'ES256', use: 'sig' }] });
-const OWNER_JWT = await new jose.SignJWT({ email: 'o@apple.test', role: 'authenticated' })
+const OWNER_JWT = await new jose.SignJWT({ email: 'o@studpilot.test', role: 'authenticated' })
   .setProtectedHeader({ alg: 'ES256', kid: 'k' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
@@ -850,7 +850,7 @@ async function hitApp(path, { method = 'GET', jwt, adminKey, body } = {}) {
   if (jwt) headers.Authorization = `Bearer ${jwt}`;
   if (adminKey) headers['X-Admin-Key'] = adminKey;
   const res = await APP.fetch(
-    new Request(`https://apple.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://studpilot.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     appEnv(),
   );
   return { status: res.status, text: await res.text() };
@@ -998,7 +998,7 @@ function sessionHarness(store = new Map()) {
     //
     //   WAS: every path returned `{ ok: true, state: quota }` — the `/spend` shape — over a fixture
     //   whose plan was 'free'. WHAT MOVED: startRun now asks `/state` for the account's PLAN before
-    //   it admits a run, because `stone` with no explicit productModel means Apple MAX and MAX is
+    //   it admits a run, because `stone` with no explicit productModel means StudPilot MAX and MAX is
     //   paid-only (canUseProductModel). A `/spend` body carries no top-level `plan`, so that read
     //   answered undefined and every run below was refused `product_model_unavailable` — a refusal
     //   no test in this file read, so twenty-one of them failed on a missing `agent` instead.
@@ -1022,7 +1022,7 @@ const intentsIn = (sent) => sent.filter((m) => m.type === 'run_intent');
 test('B10 the fixture account is actually admitted — every session test below rests on it', async () => {
   //[[ THE READ FOUND SOMETHING, ASSERTED SEPARATELY FROM WHAT IS READ FROM IT.
   //
-  //   When the Apple MAX entitlement gate landed, `startRun` began refusing this fixture before it
+  //   When the StudPilot MAX entitlement gate landed, `startRun` began refusing this fixture before it
   //   created a run. The refusal was broadcast and no test in this file read it, so twenty-one
   //   tests failed instead on `agent` being undefined and on broadcasts that were never made, and
   //   not one of those failures named admission. This test names it. When it is the only red in
@@ -1418,7 +1418,7 @@ test('A4 a healthy checkpoint reports nothing and still schedules the run', asyn
   let called = 0;
   h.session.createCheckpoint = async () => {
     called += 1;
-    return { id: 'cp1', label: 'before Apple changes', kind: 'pre_agent', createdAt: Date.now() };
+    return { id: 'cp1', label: 'before StudPilot changes', kind: 'pre_agent', createdAt: Date.now() };
   };
 
   await h.session.startRun(h.bind, TAVERN_BRIEF, 'agent');

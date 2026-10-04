@@ -52,7 +52,7 @@ test('an allowed choice yields its sources, and nothing else', () => {
 //   licence claim. Putting the choice back would put that back.
 //
 //   It is tested HERE, in the policy, rather than only by the absence of a tool, because the
-//   dialog's vocabulary is where it would come back first: a box that reads "the Apple library"
+//   dialog's vocabulary is where it would come back first: a box that reads "the StudPilot library"
 //   and unlocks an engine source is the whole feature, and everything else follows from it. ]]
 test('NEITHER THE LIBRARY ENGINE SOURCE NOR THE DIALOG CHOICE THAT UNLOCKED IT EXISTS', () => {
   assert.equal(P.ASSET_SOURCES.includes('library'), false,

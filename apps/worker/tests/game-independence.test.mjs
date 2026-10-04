@@ -1,4 +1,4 @@
-/** G13/G14: inserted game scripts must not depend on Apple and must not fabricate purchase ids.
+/** G13/G14: inserted game scripts must not depend on StudPilot and must not fabricate purchase ids.
  *  Run with: node --test tests/game-independence.test.mjs (from apps/worker) */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,9 +25,17 @@ rmSync(temp, { recursive: true, force: true });
 const v = (s) => T.luauScanVariants(s);
 
 test('refuses HttpService calls to our domains and plugin requires', () => {
-  assert.ok(G.refuseGameScript(v('local H=game:GetService("HttpService"); H:GetAsync("https://apple.x.workers.dev/api")')));
+  assert.ok(G.refuseGameScript(v('local H=game:GetService("HttpService"); H:GetAsync("https://studpilot.x.workers.dev/api")')));
   assert.ok(G.refuseGameScript(v('H:PostAsync("https://api.z.ai/v1/chat", body)')));
-  assert.ok(G.refuseGameScript(v('local b = require(plugin.AppleBridge)')));
+  assert.ok(G.refuseGameScript(v('local b = require(plugin.StudPilotBridge)')));
+});
+
+test('refuses the plugin and host names the product had before its rename, too', () => {
+  assert.ok(G.refuseGameScript(v('local b = require(game.ServerScriptService.AppleBridge)')));
+  assert.ok(G.refuseGameScript(v('local p = require(game.ServerScriptService.ApplePlugin)')));
+  assert.ok(G.refuseGameScript(v('local p = require(game.ServerScriptService.StudPilotPlugin)')));
+  assert.ok(G.refuseGameScript(v('H:GetAsync("https://api.apple-rbx.app/x")')));
+  assert.ok(G.refuseGameScript(v('H:GetAsync("https://api.studpilot-rbx.app/x")')));
 });
 
 test('allows ordinary scripts, comments and unrelated HTTP', () => {

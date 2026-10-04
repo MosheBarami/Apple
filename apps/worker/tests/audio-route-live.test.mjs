@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-audio-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-audio-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

@@ -41,7 +41,7 @@ const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
 const MIGRATIONS = join(ROOT, 'infra', 'supabase', 'migrations');
 
-const out = join(tmpdir(), `apple-inventory-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-inventory-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'user-export.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -341,7 +341,7 @@ test('the non-Postgres inventory names real stores, and says what each holds', (
 test('every personal store has a deliberate answer to "where do I get this"', async () => {
   // The export names the stores it does NOT contain. An entry that fell through to a default would
   // print a sentence nobody wrote, next to the one store the person actually wanted.
-  const bundled = join(tmpdir(), `apple-inventory-ax-${process.pid}.mjs`);
+  const bundled = join(tmpdir(), `studpilot-inventory-ax-${process.pid}.mjs`);
   execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
     join(WORKER, 'src', 'account-export.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${bundled}`,
   ], { cwd: WORKER, stdio: 'pipe' });

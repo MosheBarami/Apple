@@ -80,12 +80,12 @@ test('every lane gets at least the budget its own toolset is sized for', () => {
   }
 });
 
-test('one engine, one output room: a retired id gets exactly what Apple gets (V3 G01)', () => {
-  const apple = budget('agent', 'apple', 'high');
+test('one engine, one output room: a retired id gets exactly what StudPilot gets (V3 G01)', () => {
+  const studpilot = budget('agent', 'apple', 'high');
   const legacy = budget('agent', 'apple-max', 'high');
   // The measured failure was 2000 vs 5500 — a third of the room for the identical toolset.
-  assert.ok(apple >= 5000, `the Agent lane gets ${apple} output tokens`);
-  assert.equal(legacy, apple, 'a retired product model id is served by the same lane as Apple');
+  assert.ok(studpilot >= 5000, `the Agent lane gets ${studpilot} output tokens`);
+  assert.equal(legacy, studpilot, 'a retired product model id is served by the same lane as StudPilot');
 });
 
 test('the one request kind asks for enough that its model can answer at all', () => {

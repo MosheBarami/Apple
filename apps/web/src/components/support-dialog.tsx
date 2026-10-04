@@ -24,7 +24,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from './modal';
-import { SUPPORT_EMAIL } from '@apple/shared';
+import { SUPPORT_EMAIL } from '@studpilot/shared';
 import { fetchStudioDiagnostics, fetchSupportRequests, submitSupportRequest, type SupportReceipt } from '../lib/api';
 import {
   SUPPORT_CATEGORIES,

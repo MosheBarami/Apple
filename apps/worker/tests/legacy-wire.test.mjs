@@ -2,15 +2,16 @@
  * THE RENAME'S COMPATIBILITY, EXECUTED: the old wire spellings still work, the new ones work, and
  * nothing a client could forge slips through the gap between them.
  *
- * The product used to carry its old name on the wire — the WebSocket subprotocols, the Studio
- * plugin's `X-<Brand>-*` headers, the capability schema, an attribute written into users' places.
- * The PUBLISHED plugin (Creator Store asset 107230158271368) and every open browser tab still speak
- * the old spellings, and neither can be updated from here. So the worker accepts both
- * (packages/shared/src/legacy-wire.ts) and the clients switch only after it is deployed.
+ * The product carried two former names on the wire — Golem, then Apple — in the WebSocket
+ * subprotocols, the Studio plugin's `X-<Brand>-*` headers, the capability schema, an attribute
+ * written into users' places. The PUBLISHED plugin (Creator Store asset 107230158271368) and every
+ * open browser tab still speak an old spelling, and neither can be updated from here. So the worker
+ * accepts all three: StudPilot, Apple and Golem (packages/shared/src/legacy-wire.ts, compat
+ * `wire-all`) and the clients switch only after it is deployed.
  *
  * THE OLD LITERALS ARE WRITTEN OUT HERE ON PURPOSE. This file pins them as a wire contract: if it
  * derived them with `legacyOf` it would agree with a broken `legacyOf` forever. The allowlist
- * (scripts/golem-allowlist.json) names this file for that reason, and phase D deletes it.
+ * (planning/rename-allowlist.txt) names this file for that reason, and phase D deletes it.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +20,7 @@ import { rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
-import * as W from '@apple/shared';
+import * as W from '@studpilot/shared';
 import { PLUGIN_CAPABILITY_SCHEMA, normalisePluginCapabilities, parsePluginCapabilities } from '../src/plugin-capabilities.ts';
 import { readPluginHeaders } from '../src/plugin-version.ts';
 import { usageHeaders } from '../src/public-api.ts';
@@ -50,66 +51,102 @@ test('legacyOf derives exactly the literals the published plugin and the old cli
   for (const [key, old] of Object.entries(pairs)) assert.equal(W.legacyOf(W.WIRE_HEADERS[key]), old, key);
 });
 
+test('legaciesOf derives BOTH former spellings, newest first: Apple, then Golem', () => {
+  assert.deepEqual(W.legaciesOf('studpilot.v1'), ['apple.v1', 'golem.v1']);
+  assert.deepEqual(W.legaciesOf('studpilot.jwt.'), ['apple.jwt.', 'golem.jwt.']);
+  assert.deepEqual(W.legaciesOf('studpilot.studio-ops.v1'), ['apple.studio-ops.v1', 'golem.studio-ops.v1']);
+  assert.deepEqual(W.legaciesOf('studpilot-ui'), ['apple-ui', 'golem-ui']);
+  assert.deepEqual(W.LEGACY_SUBPROTOCOLS, ['apple.v1', 'golem.v1']);
+  assert.deepEqual(W.LEGACY_JWT_PREFIXES, ['apple.jwt.', 'golem.jwt.']);
+  assert.deepEqual(W.LEGACY_CAPABILITY_SCHEMAS, ['apple.studio-ops.v1', 'golem.studio-ops.v1']);
+  assert.deepEqual(W.LEGACY_UI_FENCES, ['apple-ui', 'golem-ui']);
+  const pairs = {
+    token: 'X-Apple-Token',
+    pluginVersion: 'X-Apple-Plugin-Version',
+    pluginProtocol: 'X-Apple-Plugin-Protocol',
+    role: 'X-Apple-Role',
+    grantExpiresAt: 'X-Apple-Grant-Expires-At',
+    exportSha256: 'X-Apple-Export-SHA256',
+    sandbox: 'X-Apple-Sandbox',
+    usageInputTokens: 'X-Apple-Usage-Input-Tokens',
+    usageOutputTokens: 'X-Apple-Usage-Output-Tokens',
+    usageCredits: 'X-Apple-Usage-Credits',
+    creditsRemaining: 'X-Apple-Credits-Remaining',
+  };
+  assert.deepEqual(Object.keys(pairs).sort(), Object.keys(W.WIRE_HEADERS).sort(), 'every header has its Apple spelling pinned here');
+  for (const [key, apple] of Object.entries(pairs)) assert.equal(W.legaciesOf(W.WIRE_HEADERS[key])[0], apple, key);
+});
+
 test('the new spellings are what the clients will send after the rename', () => {
-  assert.equal(W.WS_SUBPROTOCOL, 'apple.v1');
-  assert.equal(W.WS_JWT_PREFIX, 'apple.jwt.');
-  assert.equal(W.CAPABILITY_SCHEMA, 'apple.studio-ops.v1');
-  assert.equal(W.UI_FENCE, 'apple-ui');
+  assert.equal(W.WS_SUBPROTOCOL, 'studpilot.v1');
+  assert.equal(W.WS_JWT_PREFIX, 'studpilot.jwt.');
+  assert.equal(W.CAPABILITY_SCHEMA, 'studpilot.studio-ops.v1');
+  assert.equal(W.UI_FENCE, 'studpilot-ui');
   assert.equal(W.BASE_VOLUME_ATTRIBUTE, 'AppleBaseVolume');
-  assert.equal(W.WIRE_HEADERS.token, 'X-Apple-Token');
+  assert.equal(W.WIRE_HEADERS.token, 'X-StudPilot-Token');
 });
 
 /* ------------------------------------------------------------------ headers --- */
 
 test('readWire: the new header, the old header, both (new wins), neither', () => {
   W.resetLegacyWireCounts();
-  assert.equal(W.readWire(new Headers({ 'X-Apple-Token': 'n' }), W.WIRE_HEADERS.token), 'n');
+  assert.equal(W.readWire(new Headers({ 'X-StudPilot-Token': 'n' }), W.WIRE_HEADERS.token), 'n');
   assert.deepEqual(W.legacyWireCounts(), {}, 'reading the new spelling is not a legacy use');
   assert.equal(W.readWire(new Headers({ 'X-Golem-Token': 'o' }), W.WIRE_HEADERS.token), 'o');
   assert.equal(Object.values(W.legacyWireCounts()).reduce((a, b) => a + b, 0), 1, 'the old spelling is counted');
-  assert.equal(W.readWire(new Headers({ 'X-Golem-Token': 'o', 'x-apple-token': 'n' }), W.WIRE_HEADERS.token), 'n', 'the new one wins');
+  assert.equal(W.readWire(new Headers({ 'X-Golem-Token': 'o', 'x-studpilot-token': 'n' }), W.WIRE_HEADERS.token), 'n', 'the new one wins');
+  assert.equal(W.readWire(new Headers({ 'X-Apple-Token': 'a' }), W.WIRE_HEADERS.token), 'a', 'the Apple spelling is read too');
+  assert.equal(W.readWire(new Headers({ 'X-Golem-Token': 'o', 'X-Apple-Token': 'a' }), W.WIRE_HEADERS.token), 'a', 'of the two old ones, the newer wins');
+  assert.equal(W.readWire(new Headers({ 'X-Apple-Token': 'a', 'x-studpilot-token': 'n' }), W.WIRE_HEADERS.token), 'n', 'the new one beats Apple');
   assert.equal(W.readWire(new Headers(), W.WIRE_HEADERS.token), null);
 });
 
-test('setWire writes both spellings; stripWire removes both', () => {
+test('setWire writes every spelling; stripWire removes every one', () => {
   const h = new Headers();
   W.setWire(h, W.WIRE_HEADERS.role, 'editor');
+  assert.equal(h.get('X-StudPilot-Role'), 'editor');
   assert.equal(h.get('X-Apple-Role'), 'editor');
   assert.equal(h.get('X-Golem-Role'), 'editor');
   W.stripWire(h, W.WIRE_HEADERS.role);
+  assert.equal(h.get('X-StudPilot-Role'), null);
   assert.equal(h.get('X-Apple-Role'), null);
   assert.equal(h.get('X-Golem-Role'), null);
 });
 
-test('the plugin self-report is read from either spelling', () => {
-  assert.deepEqual(readPluginHeaders(new Headers({ 'X-Apple-Plugin-Version': '1.1.0', 'X-Apple-Plugin-Protocol': '1' })), { version: '1.1.0', protocol: 1 });
+test('the plugin self-report is read from any spelling', () => {
+  assert.deepEqual(readPluginHeaders(new Headers({ 'X-StudPilot-Plugin-Version': '1.1.0', 'X-StudPilot-Plugin-Protocol': '1' })), { version: '1.1.0', protocol: 1 });
+  assert.deepEqual(readPluginHeaders(new Headers({ 'X-Apple-Plugin-Version': '1.5.0', 'X-Apple-Plugin-Protocol': '1' })), { version: '1.5.0', protocol: 1 });
   assert.deepEqual(readPluginHeaders(new Headers({ 'X-Golem-Plugin-Version': '1.0.0', 'X-Golem-Plugin-Protocol': '1' })), { version: '1.0.0', protocol: 1 });
   assert.deepEqual(readPluginHeaders(new Headers()), { version: null, protocol: null }, 'silence is still unknown, not a refusal');
 });
 
-test('public usage headers carry every figure under BOTH names, with equal values', () => {
+test('public usage headers carry every figure under ALL THREE names, with equal values', () => {
   const h = usageHeaders({ inputTokens: 12, outputTokens: 34, creditsSpent: 5, creditsRemaining: 90 });
-  for (const [a, b] of [
-    ['X-Apple-Usage-Input-Tokens', 'X-Golem-Usage-Input-Tokens'],
-    ['X-Apple-Usage-Output-Tokens', 'X-Golem-Usage-Output-Tokens'],
-    ['X-Apple-Usage-Credits', 'X-Golem-Usage-Credits'],
-    ['X-Apple-Credits-Remaining', 'X-Golem-Credits-Remaining'],
+  for (const [a, b, c] of [
+    ['X-StudPilot-Usage-Input-Tokens', 'X-Apple-Usage-Input-Tokens', 'X-Golem-Usage-Input-Tokens'],
+    ['X-StudPilot-Usage-Output-Tokens', 'X-Apple-Usage-Output-Tokens', 'X-Golem-Usage-Output-Tokens'],
+    ['X-StudPilot-Usage-Credits', 'X-Apple-Usage-Credits', 'X-Golem-Usage-Credits'],
+    ['X-StudPilot-Credits-Remaining', 'X-Apple-Credits-Remaining', 'X-Golem-Credits-Remaining'],
   ]) {
-    assert.ok(a in h && b in h, `${a} and ${b}`);
+    assert.ok(a in h && b in h && c in h, `${a}, ${b} and ${c}`);
     assert.equal(h[a], h[b]);
+    assert.equal(h[a], h[c]);
   }
-  assert.equal(h['X-Apple-Usage-Input-Tokens'], '12');
-  assert.equal(Object.keys(usageHeaders({ inputTokens: 1, outputTokens: 1, creditsSpent: 1, creditsRemaining: null })).length, 6, 'no remaining figure is invented');
+  assert.equal(h['X-StudPilot-Usage-Input-Tokens'], '12');
+  assert.equal(Object.keys(h).length, 12, 'four figures, three names each');
+  assert.equal(Object.keys(usageHeaders({ inputTokens: 1, outputTokens: 1, creditsSpent: 1, creditsRemaining: null })).length, 9, 'no remaining figure is invented');
 });
 
 /* -------------------------------------------------------------- subprotocols --- */
 
 test('the WebSocket echoes the version protocol the CLIENT listed (a browser aborts on any other)', () => {
+  assert.equal(W.echoSubprotocol('studpilot.v1, studpilot.jwt.tok'), 'studpilot.v1');
   assert.equal(W.echoSubprotocol('apple.v1, apple.jwt.tok'), 'apple.v1');
   assert.equal(W.echoSubprotocol('golem.v1, golem.jwt.tok'), 'golem.v1');
   assert.equal(W.echoSubprotocol('golem.jwt.tok, golem.v1'), 'golem.v1', 'wherever it sits in the list');
-  assert.equal(W.echoSubprotocol('apple.v1, golem.v1'), 'apple.v1', 'first listed wins');
-  assert.equal(W.echoSubprotocol('golem.v1, apple.v1'), 'golem.v1');
+  assert.equal(W.echoSubprotocol('studpilot.v1, golem.v1'), 'studpilot.v1', 'first listed wins');
+  assert.equal(W.echoSubprotocol('apple.v1, studpilot.v1'), 'apple.v1', 'first listed wins, whichever spelling it is');
+  assert.equal(W.echoSubprotocol('golem.v1, studpilot.v1'), 'golem.v1');
   assert.equal(W.echoSubprotocol(null), 'golem.v1', 'a client that listed neither is answered exactly as before the rename');
   assert.equal(W.echoSubprotocol('chat'), 'golem.v1');
 });
@@ -117,11 +154,12 @@ test('the WebSocket echoes the version protocol the CLIENT listed (a browser abo
 test('the bearer token rides either subprotocol prefix; a header still beats a subprotocol', async () => {
   const { bearerToken } = await import('../src/auth.ts');
   const proto = (v) => new Request('https://x/', { headers: { 'Sec-WebSocket-Protocol': v } });
+  assert.equal(bearerToken(proto('studpilot.v1, studpilot.jwt.abc.def.ghi')), 'abc.def.ghi');
   assert.equal(bearerToken(proto('apple.v1, apple.jwt.abc.def.ghi')), 'abc.def.ghi');
   assert.equal(bearerToken(proto('golem.v1, golem.jwt.abc.def.ghi')), 'abc.def.ghi');
-  assert.equal(bearerToken(proto('apple.jwt.new, golem.jwt.old')), 'new', 'listed order decides, deterministically');
-  assert.equal(bearerToken(proto('apple.v1, chat')), null);
-  assert.equal(bearerToken(new Request('https://x/', { headers: { Authorization: 'Bearer h', 'Sec-WebSocket-Protocol': 'apple.jwt.p' } })), 'h');
+  assert.equal(bearerToken(proto('studpilot.jwt.new, golem.jwt.old')), 'new', 'listed order decides, deterministically');
+  assert.equal(bearerToken(proto('studpilot.v1, chat')), null);
+  assert.equal(bearerToken(new Request('https://x/', { headers: { Authorization: 'Bearer h', 'Sec-WebSocket-Protocol': 'studpilot.jwt.p' } })), 'h');
 });
 
 test('the Durable Object answers the upgrade with the echoed protocol, derived from the request — never a fixed value', async () => {
@@ -137,19 +175,20 @@ test('the Durable Object answers the upgrade with the echoed protocol, derived f
 
 const OPS = [{ op: 'get_tree', status: 'supported' }, { op: 'run_code', status: 'unsupported', reason: 'not available' }];
 
-test('the capability report is accepted under either schema and normalised to the new one', () => {
-  for (const schema of ['golem.studio-ops.v1', 'apple.studio-ops.v1']) {
+test('the capability report is accepted under any schema spelling and normalised to the new one', () => {
+  for (const schema of ['golem.studio-ops.v1', 'apple.studio-ops.v1', 'studpilot.studio-ops.v1']) {
     const parsed = parsePluginCapabilities({ schema, operations: OPS });
     assert.ok(parsed, schema);
     assert.equal(parsed.schema, PLUGIN_CAPABILITY_SCHEMA);
-    assert.equal(normalisePluginCapabilities({ schema, operations: OPS }).schema, 'apple.studio-ops.v1');
+    assert.equal(normalisePluginCapabilities({ schema, operations: OPS }).schema, 'studpilot.studio-ops.v1');
   }
-  assert.equal(PLUGIN_CAPABILITY_SCHEMA, 'apple.studio-ops.v1');
+  assert.equal(PLUGIN_CAPABILITY_SCHEMA, 'studpilot.studio-ops.v1');
 });
 
 test('an unknown schema is still compatibility mode, not a crash and not an accept', () => {
   assert.equal(parsePluginCapabilities({ schema: 'golem.studio-ops.v2', operations: OPS }), null);
   assert.equal(parsePluginCapabilities({ schema: 'apple.studio-ops.v2', operations: OPS }), null);
+  assert.equal(parsePluginCapabilities({ schema: 'studpilot.studio-ops.v2', operations: OPS }), null);
   assert.equal(parsePluginCapabilities({ operations: OPS }), null);
 });
 
@@ -158,15 +197,16 @@ test('STORAGE FALLBACK: a report stored under the old schema reads back normalis
   // stored row is found after the rename and only its VALUE carries the old spelling.
   const stored = { schema: 'golem.studio-ops.v1', operations: OPS };
   const back = normalisePluginCapabilities(stored);
-  assert.equal(back.schema, 'apple.studio-ops.v1');
+  assert.equal(back.schema, 'studpilot.studio-ops.v1');
   assert.deepEqual(back.operations.map((o) => o.op), ['get_tree', 'run_code']);
 });
 
-test('a real SessionDO accepts a poll in either spelling and persists the NEW schema', async () => {
+test('a real SessionDO accepts a poll in any spelling and persists the NEW schema', async () => {
   const state = { kind: 'state', placeName: 'P', placeId: 1, gameId: 2, isRunMode: false, selectionCount: 0, pluginVersion: '1.0.0' };
   for (const [tokenHeader, versionHeader, protocolHeader, schema] of [
     ['X-Golem-Token', 'X-Golem-Plugin-Version', 'X-Golem-Plugin-Protocol', 'golem.studio-ops.v1'],
     ['X-Apple-Token', 'X-Apple-Plugin-Version', 'X-Apple-Plugin-Protocol', 'apple.studio-ops.v1'],
+    ['X-StudPilot-Token', 'X-StudPilot-Plugin-Version', 'X-StudPilot-Plugin-Protocol', 'studpilot.studio-ops.v1'],
   ]) {
     const h = sessionHarness();
     await new Promise((r) => setTimeout(r, 0));
@@ -180,7 +220,7 @@ test('a real SessionDO accepts a poll in either spelling and persists the NEW sc
       body: JSON.stringify({ state, capabilities: { schema, operations: OPS } }),
     }));
     assert.equal(res.status, 200, `${tokenHeader}: ${await res.text()}`);
-    assert.equal(h.store.get(`pluginCapabilities:${tokenHash}`).schema, 'apple.studio-ops.v1', `${schema} is stored normalised`);
+    assert.equal(h.store.get(`pluginCapabilities:${tokenHash}`).schema, 'studpilot.studio-ops.v1', `${schema} is stored normalised`);
   }
 });
 
@@ -193,12 +233,14 @@ test('a real SessionDO refuses a poll with NO token header in either spelling', 
 
 /* ------------------------------------------------- the role a socket may claim --- */
 
-test('socketRole reads the role from either spelling, through the same allowlist; a made-up role is refused in both', () => {
+test('socketRole reads the role from any spelling, through the same allowlist; a made-up role is refused in each', () => {
   const { session } = sessionHarness();
   const bind = { ownerId: 'u-owner' };
   const ask = (headers) => session.socketRole(new Request('https://do/ws', { headers: { 'X-User-Id': 'u-member', ...headers } }), bind);
+  assert.deepEqual(ask({ 'X-StudPilot-Role': 'editor' }), { userId: 'u-member', role: 'editor' });
   assert.deepEqual(ask({ 'X-Apple-Role': 'editor' }), { userId: 'u-member', role: 'editor' });
   assert.deepEqual(ask({ 'X-Golem-Role': 'editor' }), { userId: 'u-member', role: 'editor' });
+  assert.equal(ask({ 'X-StudPilot-Role': 'superuser' }), null);
   assert.equal(ask({ 'X-Apple-Role': 'superuser' }), null);
   assert.equal(ask({ 'X-Golem-Role': 'superuser' }), null);
   assert.equal(ask({}), null, 'no role is no socket');
@@ -209,7 +251,7 @@ test('socketRole reads the role from either spelling, through the same allowlist
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-legacy-wire-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-legacy-wire-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: OUT,
@@ -237,27 +279,30 @@ function worker() {
 const CTX = { waitUntil() {}, passThroughOnException() {} };
 const poll = (env, headers, ip = '10.0.0.1') => app.fetch(new Request('https://w/api/studio/poll', { method: 'POST', headers: { 'CF-Connecting-IP': ip, ...headers }, body: '{}' }), env, CTX);
 
-test('POST /api/studio/poll: the old headers still pair, the new headers pair, and both reach the Durable Object in both spellings', async () => {
-  for (const [label, headers] of [
-    ['old', { 'X-Golem-Token': TOKEN, 'X-Golem-Plugin-Version': '1.0.0', 'X-Golem-Plugin-Protocol': '1' }],
-    ['new', { 'X-Apple-Token': TOKEN, 'X-Apple-Plugin-Version': '1.1.0', 'X-Apple-Plugin-Protocol': '1' }],
+test('POST /api/studio/poll: both old spellings still pair, the new one pairs, and each reaches the Durable Object in every spelling', async () => {
+  for (const [label, headers, ip] of [
+    ['golem', { 'X-Golem-Token': TOKEN, 'X-Golem-Plugin-Version': '1.0.0', 'X-Golem-Plugin-Protocol': '1' }, '10.0.0.2'],
+    ['apple', { 'X-Apple-Token': TOKEN, 'X-Apple-Plugin-Version': '1.5.0', 'X-Apple-Plugin-Protocol': '1' }, '10.0.0.8'],
+    ['new', { 'X-StudPilot-Token': TOKEN, 'X-StudPilot-Plugin-Version': '1.1.0', 'X-StudPilot-Plugin-Protocol': '1' }, '10.0.0.3'],
   ]) {
     const { seen, env } = worker();
-    const res = await poll(env, headers, label === 'old' ? '10.0.0.2' : '10.0.0.3');
+    const res = await poll(env, headers, ip);
     assert.equal(res.status, 200, label);
     assert.equal(seen.length, 1, label);
     const h = seen[0].headers;
-    // both spellings on the hop: a DO instance still running the previous bundle reads only the old one
+    // every spelling on the hop: a DO instance still running a previous bundle reads only an old one
+    assert.equal(h.get('X-StudPilot-Token'), TOKEN, label);
     assert.equal(h.get('X-Apple-Token'), TOKEN, label);
     assert.equal(h.get('X-Golem-Token'), TOKEN, label);
-    assert.ok(h.get('X-Apple-Plugin-Version') && h.get('X-Golem-Plugin-Version'), label);
+    assert.ok(h.get('X-StudPilot-Plugin-Version') && h.get('X-Apple-Plugin-Version') && h.get('X-Golem-Plugin-Version'), label);
+    assert.equal(h.get('X-StudPilot-Plugin-Protocol'), '1', label);
     assert.equal(h.get('X-Apple-Plugin-Protocol'), '1', label);
     assert.equal(h.get('X-Golem-Plugin-Protocol'), '1', label);
   }
 });
 
-test('POST /api/studio/poll: a bad or missing token is refused in either spelling, before any Durable Object is touched', async () => {
-  for (const headers of [{}, { 'X-Apple-Token': 'nodot' }, { 'X-Golem-Token': 'nodot' }, { 'X-Apple-Token': `${PROJECT}.short` }]) {
+test('POST /api/studio/poll: a bad or missing token is refused in any spelling, before any Durable Object is touched', async () => {
+  for (const headers of [{}, { 'X-StudPilot-Token': 'nodot' }, { 'X-Apple-Token': 'nodot' }, { 'X-Golem-Token': 'nodot' }, { 'X-StudPilot-Token': `${PROJECT}.short` }, { 'X-Apple-Token': `${PROJECT}.short` }]) {
     const { seen, env } = worker();
     const res = await poll(env, headers, '10.0.0.4');
     assert.equal(res.status, 401, JSON.stringify(headers));
@@ -265,12 +310,12 @@ test('POST /api/studio/poll: a bad or missing token is refused in either spellin
   }
 });
 
-test('GET /api/health says this build accepts both spellings — the gate scripts/rename-golem.mjs --phase B2 reads', async () => {
+test('GET /api/health says this build accepts every spelling — StudPilot, Apple and Golem', async () => {
   const { env } = worker();
   const res = await app.fetch(new Request('https://w/api/health', { headers: { 'CF-Connecting-IP': '10.0.0.5' } }), env, CTX);
   const body = await res.json();
   assert.equal(body.ok, true);
-  assert.equal(body.compat, 'wire-both');
+  assert.equal(body.compat, 'wire-all');
   assert.equal(typeof body.legacyWire, 'object', 'the counters that phase D waits on are reported');
 });
 
@@ -282,10 +327,13 @@ test('the legacy counters move when an old client is served, and not when a new 
   };
   const { env } = worker();
   const before = await total();
-  await poll(env, { 'X-Apple-Token': TOKEN, 'X-Apple-Plugin-Version': '1.1.0', 'X-Apple-Plugin-Protocol': '1' }, '10.0.0.6');
+  await poll(env, { 'X-StudPilot-Token': TOKEN, 'X-StudPilot-Plugin-Version': '1.1.0', 'X-StudPilot-Plugin-Protocol': '1' }, '10.0.0.6');
   assert.equal(await total(), before, 'a client that speaks the new spelling is not a legacy use');
   await poll(env, { 'X-Golem-Token': TOKEN, 'X-Golem-Plugin-Version': '1.0.0', 'X-Golem-Plugin-Protocol': '1' }, '10.0.0.7');
-  assert.ok(await total() > before, 'a client that speaks the old spelling is counted');
+  const afterGolem = await total();
+  assert.ok(afterGolem > before, 'a client that speaks the oldest spelling is counted');
+  await poll(env, { 'X-Apple-Token': TOKEN, 'X-Apple-Plugin-Version': '1.5.0', 'X-Apple-Plugin-Protocol': '1' }, '10.0.0.9');
+  assert.ok(await total() > afterGolem, 'a client that speaks the Apple spelling is counted too');
 });
 
 /* ------------------------------------------- the attribute in users' places --- */

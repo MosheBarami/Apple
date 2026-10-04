@@ -57,7 +57,7 @@ export const ACTIVITY = {
   // — telling a user "Searching the Roblox docs" while the agent reads a GitHub issue is a wrong
   // sentence, and the whole reason this table exists is that wrong sentences shipped.
   browsing: { canonical: null, label: 'Reading the web' },
-  // The project's scratch files, which are Apple's storage and not the Roblox place. C08 is
+  // The project's scratch files, which are StudPilot's storage and not the Roblox place. C08 is
   // "Editing project", and using it here would claim the agent touched the user's game.
   filing: { canonical: null, label: 'Working with project files' },
   // The honest fallback for a tool this build has never heard of.
@@ -124,7 +124,7 @@ export const TOOL = {
   // underscore-stripping fallback as "get ui construction" and "get verified module" — our
   // registry's names, in the middle of a column of written sentences.
   // Named for the question the agent is answering, per the two notes below: what the owner sees is
-  // Apple checking how a real shop screen is put together, and Apple reaching for logic that has
+  // StudPilot checking how a real shop screen is put together, and StudPilot reaching for logic that has
   // already been run rather than writing the arithmetic fresh.
   get_ui_construction: { kind: 'searching_knowledge', label: 'Looked up how this screen is usually built', live: 'Sketching the screen' },
   get_verified_module: { kind: 'searching_knowledge', label: 'Took logic that has already been checked', live: 'Grabbing a tried-and-tested piece' },

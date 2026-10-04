@@ -2,7 +2,7 @@
  * THE ONE BUILD INSTRUCTION THIS PRODUCT PUBLISHES MUST BUILD THE PLUGIN IT SHIPS.
  *
  * Public Creator Store installation is closed, so /docs/build-from-source is the only way a reader
- * can end up with an Apple plugin at all. It said "The plugin lives in apps/plugin" and gave
+ * can end up with a StudPilot plugin at all. It said "The plugin lives in apps/plugin" and gave
  * `rojo build apps/plugin/default.project.json`.
  *
  * `apps/plugin` is the legacy source. Its `handlers.run_code` builds a ModuleScript out of text
@@ -12,10 +12,10 @@
  * capability report at all, so the worker's compatibility path withholds nothing and hands them all
  * over. Meanwhile the landing page promises "It will not run code it was sent" and /docs/plugin
  * promises "Refuses by name: ... it will not execute code it was sent" — both true of
- * `apps/apple-plugin`, which declares that refusal by name, and both false of what this page built.
+ * `apps/studpilot-plugin`, which declares that refusal by name, and both false of what this page built.
  *
  * The 2026-09-19 decision reached the CI workflows and never reached this page. It also left the
- * page naming a CI artifact, `apple-plugin`, that ci.yml had renamed to `apple-plugin-pr-unverified`
+ * page naming a CI artifact, `studpilot-plugin`, that ci.yml had renamed to `studpilot-plugin-pr-unverified`
  * — and which is built from the legacy source anyway, so the paragraph offering it as a shortcut is
  * gone rather than corrected.
  *
@@ -67,12 +67,12 @@ test('THE PREMISE IS STILL TRUE: apps/plugin is still the legacy, code-executing
 
   // And the plugin the page now names must actually be buildable the way the page says.
   assert.ok(
-    existsSync(join(ROOT, 'apps', 'apple-plugin', 'scripts', 'build.mjs')),
-    'apps/apple-plugin/scripts/build.mjs is gone, so the command this page publishes does not run',
+    existsSync(join(ROOT, 'apps', 'studpilot-plugin', 'scripts', 'build.mjs')),
+    'apps/studpilot-plugin/scripts/build.mjs is gone, so the command this page publishes does not run',
   );
   assert.ok(
-    existsSync(join(ROOT, 'apps', 'apple-plugin', 'default.project.json')),
-    'apps/apple-plugin has no Rojo project, so build.mjs cannot produce the artifact the page names',
+    existsSync(join(ROOT, 'apps', 'studpilot-plugin', 'default.project.json')),
+    'apps/studpilot-plugin has no Rojo project, so build.mjs cannot produce the artifact the page names',
   );
 });
 
@@ -82,27 +82,27 @@ test('the page does not tell anybody to build, load or download the legacy plugi
     bad,
     [],
     `/docs/build-from-source instructs a reader toward apps/plugin (${bad.join(', ')}). That is the ` +
-      'source Roblox removed, and it executes Luau it is sent. Point at apps/apple-plugin.',
+      'source Roblox removed, and it executes Luau it is sent. Point at apps/studpilot-plugin.',
   );
 });
 
 test('the page publishes the shipped plugin and the command that builds it', () => {
   const hay = visibleCopy(page);
-  assert.match(hay, /node apps\/apple-plugin\/scripts\/build\.mjs/,
+  assert.match(hay, /node apps\/studpilot-plugin\/scripts\/build\.mjs/,
     'the page no longer gives the build command for the plugin this product ships');
-  assert.match(hay, /apps\/apple-plugin\/release\/apple-studio\.rbxm/,
+  assert.match(hay, /apps\/studpilot-plugin\/release\/studpilot-studio\.rbxm/,
     'the page does not say where the artifact lands, so a reader has nothing to load into Studio');
   assert.match(hay, /apps\/plugin/,
     'the page no longer warns about apps/plugin at all — a reader who finds it in the tree has ' +
       'nothing telling them not to load it');
 
   // The dead CI artifact must not come back: ci.yml builds the LEGACY plugin and publishes it as
-  // apple-plugin-pr-unverified, so neither that name nor the old one belongs on this page.
+  // studpilot-plugin-pr-unverified, so neither that name nor the old one belongs on this page.
   //[[ RESTATED 2026-09-22, WHEN THIS TRIPWIRE FIRED ON AN IMPROVEMENT.
   //
   //   It pinned `rojo build apps/plugin/default.project.json` in ci.yml, with the message "THIS GUARD
   //   IS STALE ... Go and look." A peer moved the CI plugin job onto the shipped plugin —
-  //   `node apps/apple-plugin/scripts/build.mjs`, which also verifies the built bytes — and it fired,
+  //   `node apps/studpilot-plugin/scripts/build.mjs`, which also verifies the built bytes — and it fired,
   //   which is its job. Looking: the reason this page may not send readers to the CI artifact did not
   //   go away with the legacy build. That artifact is built from whatever a pull request contains,
   //   including a fork's, and ci.yml still names it `…-pr-unverified` so nobody installs it.
@@ -122,7 +122,7 @@ test('the page publishes the shipped plugin and the command that builds it', () 
 test('the guard has teeth: it fails on the instruction that shipped', () => {
   const shipped =
     '<p>The plugin lives in <code>apps/plugin</code> and is built with Rojo.</p>' +
-    '<pre><code>rojo build apps/plugin/default.project.json --output apple-plugin.rbxm</code></pre>';
+    '<pre><code>rojo build apps/plugin/default.project.json --output studpilot-plugin.rbxm</code></pre>';
   const bad = scan(shipped);
   assert.ok(bad.length > 0, 'the shipped instruction slipped past every pattern — re-aim them');
   assert.ok(bad.includes('rojo-build-legacy') && bad.includes('legacy-project-file'), bad.join(', '));

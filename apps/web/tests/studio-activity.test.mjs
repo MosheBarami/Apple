@@ -1,5 +1,5 @@
 /**
- * WHAT APPLE DID TO YOUR PLACE, WHERE A PERSON CAN READ IT.
+ * WHAT STUDPILOT DID TO YOUR PLACE, WHERE A PERSON CAN READ IT.
  *
  * Every Studio op has been recorded since the oplog existed — op_id, kind, ok, summary, the typed
  * failure kind and now the run that asked for it — and `/api/projects/:id/studio/diagnostics`
@@ -152,7 +152,7 @@ test('an unknown Studio failure stays visible without exposing its code or raw m
     { op_id: 'op-private', kind: 'edit_script', ok: 0, summary: 'SECRET_RAW_ERROR', created_at: 1700000000000, failure: 'new_private_failure', runId: null },
   ]);
   assert.match(text(html), /could not finish this step/i);
-  assert.match(text(html), /ask Apple to try another way/i);
+  assert.match(text(html), /ask StudPilot to try another way/i);
   assert.doesNotMatch(html, /SECRET_RAW_ERROR|new_private_failure|<details\b/);
 });
 

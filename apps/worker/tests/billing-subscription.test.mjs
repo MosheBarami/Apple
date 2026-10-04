@@ -41,7 +41,7 @@ const LIVE = {
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
 };
-const RETURN_TO = 'https://apple.example/app/usage';
+const RETURN_TO = 'https://studpilot.example/app/usage';
 
 /**
  * Stripe's round trip, modelled on the ONE fact that matters: the subscription a checkout creates

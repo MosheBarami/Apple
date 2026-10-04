@@ -1,5 +1,5 @@
 /**
- * WHAT APPLE UNDERSTOOD, AND WHAT IT QUIETLY DECIDED FOR ITSELF.
+ * WHAT STUDPILOT UNDERSTOOD, AND WHAT IT QUIETLY DECIDED FOR ITSELF.
  *
  * `runIntentFor` builds the Intent and Plan rows of the Thinking card from the request alone, at
  * zero model cost. Three of its four lists were already reaching the user. The fourth was not.
@@ -8,13 +8,13 @@
  * rather than read: a mood taken from "cozy", a focal point nobody named outright, a soft
  * exclusion it chose to read as "restrained" rather than "absent". Those inferences steer the
  * build. `runIntentFor` kept `checklist` and `questions` and threw `notes` away, so the run
- * surface said nothing at all about what Apple had assumed — while the roadmap surface, for the
+ * surface said nothing at all about what StudPilot had assumed — while the roadmap surface, for the
  * same product, prints its own honesty notes under "Reads as <genre>".
  *
  * The distinction the two lists draw is the whole point and it is easy to collapse:
  *
- *   questions   the request did not say, and Apple did NOT decide. Still open.
- *   assumptions the request did not say, and Apple DECIDED ANYWAY. Already acted on.
+ *   questions   the request did not say, and StudPilot did NOT decide. Still open.
+ *   assumptions the request did not say, and StudPilot DECIDED ANYWAY. Already acted on.
  *
  * A product that shows only the first is telling the user about the choices it declined to make
  * while hiding the ones it made. That is the failure-to-observe shape wearing a humble face.
@@ -71,10 +71,10 @@ test('CONTROL: the extractor really does infer something from this request', () 
   assert.ok(intentCheck(SOFT).notes.length > 0, 'the fixture stopped exercising the soft-constraint path');
 });
 
-test('what Apple inferred reaches the user, instead of being discarded', () => {
+test('what StudPilot inferred reaches the user, instead of being discarded', () => {
   const intent = runIntentFor(SOFT);
   assert.ok(Array.isArray(intent.assumptions), 'RunIntent carries no assumptions list at all');
-  assert.ok(intent.assumptions.length > 0, 'the run surface says nothing about what Apple assumed');
+  assert.ok(intent.assumptions.length > 0, 'the run surface says nothing about what StudPilot assumed');
 });
 
 test('the assumptions are the extractor\'s own notes, not a rewrite of them', () => {
@@ -84,7 +84,7 @@ test('the assumptions are the extractor\'s own notes, not a rewrite of them', ()
 });
 
 test('ASSUMPTIONS ARE NOT QUESTIONS — the two lists say opposite things', () => {
-  // questions: Apple did not decide. assumptions: Apple decided anyway. Collapsing them would
+  // questions: StudPilot did not decide. assumptions: StudPilot decided anyway. Collapsing them would
   // let a decision already acted on render under a label that says nothing was assumed.
   const intent = runIntentFor(SOFT);
   for (const a of intent.assumptions) {

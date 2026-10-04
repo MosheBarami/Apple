@@ -1,7 +1,7 @@
 /**
  * ONE STRIPE AUTHORITY, TWO EXISTING QUOTA STORES.
  *
- * Apple owns the signed Stripe endpoint. Its per-user QuotaDO resolves the current Stripe
+ * StudPilot owns the signed Stripe endpoint. Its per-user QuotaDO resolves the current Stripe
  * subscription while that user's events are serialised, applies the result locally, and returns one
  * bounded mutation. The route sends that exact mutation through an external Durable Object binding
  * to the existing legacy QuotaDO. A failed second write is a failed webhook delivery: Stripe retries,

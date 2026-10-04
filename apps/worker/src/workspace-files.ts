@@ -209,7 +209,7 @@ export async function copyWorkspaceFile(
  *
  * `workspace_write` (webtools.ts) is the agent's door and it replaces whatever is there, which is
  * right for a tool that has just read the file it is editing. A person picking a file off their own
- * disk has not read anything, and the name they are carrying — `plan.md` — is exactly the name Apple
+ * disk has not read anything, and the name they are carrying — `plan.md` — is exactly the name StudPilot
  * is most likely to have used. So this refuses an occupied path by default, the same rule copy and
  * move already keep, and `overwrite` is how the user says they meant it.
  *

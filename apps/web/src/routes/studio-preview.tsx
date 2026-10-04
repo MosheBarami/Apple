@@ -17,7 +17,7 @@
 // through the same model the socket uses (lib/run-trace.ts); `?at=<ms>` freezes the replay.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { type PlaytestRun, type StudioFrame } from '@apple/shared';
+import { type PlaytestRun, type StudioFrame } from '@studpilot/shared';
 import { Turn } from '../components/ws/turn';
 import { ChatWelcome } from '../components/ws/chat-welcome';
 import { Composer } from '../components/ws/composer';
@@ -26,7 +26,7 @@ import { Drawer } from '../components/ws/primitives';
 import { Conversation, ConversationContent } from '../components/ai-elements/conversation';
 import type { AgentStatus, ChatItem, ToolEvent } from '../lib/use-project-socket';
 import { withReasoning, withReasoningClosed, withSources, withToolStart } from '../lib/run-trace';
-import type { RunSource } from '@apple/shared';
+import type { RunSource } from '@studpilot/shared';
 import type { StagedAttachment } from '../lib/attachments';
 import { mockAttribution, mockBuildPlanDetail, mockDiffDetail } from '../lib/mock';
 import { useTheme } from '../lib/theme';
@@ -613,7 +613,7 @@ export function StudioPreviewPage() {
 
   return (
     <div className="gx">
-      <div className="gx-ws apple-workspace spec-ws">
+      <div className="gx-ws studpilot-workspace spec-ws">
         <header className="spec-bar">
           <span className="spec-bar__tag">Specimen</span>
           <span className="spec-bar__note">Fixture data · no project, worker or Studio</span>

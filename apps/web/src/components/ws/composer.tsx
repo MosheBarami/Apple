@@ -1,5 +1,5 @@
-// One engine, Apple (V3 gate G01): there is no model picker and no model-gated control here.
-// The workspace sends `productModel: 'apple'` on the wire; the server serves every value as Apple.
+// One engine, StudPilot (V3 gate G01): there is no model picker and no model-gated control here.
+// The workspace sends `productModel: 'apple'` on the wire; the server serves every value as StudPilot.
 //
 // BUILT FROM VERCEL AI ELEMENTS (components/ai-elements/prompt-input.tsx and attachments.tsx, the
 // genuine upstream files — see that directory's NOTICE). PromptInputProvider holds the box's text and
@@ -9,7 +9,7 @@
 // this product decides: which key sends (the person's preference), what a file is allowed to be and
 // where it goes (uploaded to the project as it is staged), when a send is refused and that the
 // refusal keeps the draft and the @-mention picker. There is no mode switch (V3 G01): every message
-// runs the one Apple behaviour.
+// runs the one StudPilot behaviour.
 import { useEffect, useReducer, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import {
   ATTACHMENT_ACCEPT,
@@ -19,7 +19,7 @@ import {
   type ChatAttachment,
   type UiTheme,
   type StudioEventSelection,
-} from '@apple/shared';
+} from '@studpilot/shared';
 import { Icon, PATH } from './primitives';
 import {
   PromptInput,
@@ -121,7 +121,7 @@ const UI_THEME_LABEL: Record<UiTheme, string> = { studded: 'Studded', cartoony: 
 const UI_THEME_BLURB: Record<UiTheme, string> = {
   studded: 'Classic studded look (default)',
   cartoony: 'Soft, rounded, playful',
-  none: 'Apple picks the style',
+  none: 'StudPilot picks the style',
 };
 
 interface Props {
@@ -824,7 +824,7 @@ export function Composer({
         <PromptInputBridge text={text} onFiles={addFiles} />
         <PromptInputBody>
           <label className="sr-only" htmlFor="gx-composer-input">
-            What should Apple build in your place?
+            What should StudPilot build in your place?
           </label>
           <PromptInputTextarea
             id="gx-composer-input"
@@ -862,7 +862,7 @@ export function Composer({
               locked
                 ? 'Connect Roblox Studio with the paired place open to build'
                 : running
-                  ? 'Add direction — Apple applies it after the current step'
+                  ? 'Add direction — StudPilot applies it after the current step'
                   : creation === 'build' ? (placeholder ?? PLACEHOLDER) : CREATION_INTENTS[creation].placeholder
             }
             disabled={disabled}
@@ -990,7 +990,7 @@ export function Composer({
           <PromptInputTools className="flex-wrap">
             {/* THE ASSET BROWSER IS GONE, on the owner's instruction of 2026-09-19, and what it means
                 is a change of who does the looking. The customer describes what the place needs and
-                Apple finds it; they do not shop in a catalogue. The agent's own path to the library
+                StudPilot finds it; they do not shop in a catalogue. The agent's own path to the library
                 is untouched; only this door is closed. */}
             {selectionLabel && (
               <PromptInputButton
@@ -1008,7 +1008,7 @@ export function Composer({
 
             {/* One secondary-creation menu instead of six permanent controls around the text box.
                 Images, 3D and starting points are useful but they are not the primary act here:
-                describing what Apple should do is. The chip names the intent while one is chosen. */}
+                describing what StudPilot should do is. The chip names the intent while one is chosen. */}
             <PromptInputActionMenu>
               <PromptInputActionMenuTrigger
                 className="rounded-full text-muted-foreground data-[active]:text-foreground"
@@ -1060,15 +1060,15 @@ export function Composer({
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
 
-            {/* UI theme: how the interfaces Apple builds look. Not the world, not this website. `none`
-                hands the choice to Apple; it never means "build no UI". Studded is the default. */}
+            {/* UI theme: how the interfaces StudPilot builds look. Not the world, not this website. `none`
+                hands the choice to StudPilot; it never means "build no UI". Studded is the default. */}
             <PromptInputActionMenu>
               <PromptInputActionMenuTrigger
                 className="rounded-full text-muted-foreground"
                 size="sm"
                 disabled={locked}
                 aria-label={`UI theme: ${UI_THEME_LABEL[uiTheme]}`}
-                data-tip="Style of the interfaces Apple builds"
+                data-tip="Style of the interfaces StudPilot builds"
                 data-fx="press ripple"
               >
                 <Icon d={PATH.layers} size={11} />
@@ -1168,7 +1168,7 @@ export function Composer({
       {locked && (
         <p className="mt-2 text-center text-muted-foreground text-xs" role="status">
           {paused
-            ? 'Paused: Roblox Studio disconnected. Reopen the paired place with the Apple plugin running, then press Continue.'
+            ? 'Paused: Roblox Studio disconnected. Reopen the paired place with the StudPilot plugin running, then press Continue.'
             : 'Connect Roblox Studio with the paired place open to send a message. Your history stays here.'}
         </p>
       )}
@@ -1177,14 +1177,14 @@ export function Composer({
       )}
       {creation !== 'build' && <p className="mt-2 text-center text-muted-foreground text-xs" role="status">{creationUnavailable ? 'Studio disconnected. Reconnect using Studio above, or switch to Images or chat. Your draft is kept.' : CREATION_INTENTS[creation].note}</p>}
       {/* TWO FACTS, AND THEY WERE RUNNING INTO EACH OTHER. JSX collapses the line break into a
-          single space, so this line rendered "⇧↵ for a new line Apple can get things wrong" — one
+          single space, so this line rendered "⇧↵ for a new line StudPilot can get things wrong" — one
           sentence with a keyboard shortcut welded onto the front of it. The separator is the same
           middot `sendHint` already uses between its own two halves, so the strip reads as a list of
           facts about this box rather than as prose. */}
       <p className="gx-composer__note mt-3 text-center text-[10px] text-muted-foreground">
         {sendHint(prefs.sendKey)}
         {' · '}
-        Apple can get things wrong. Check what it changed before you publish.
+        StudPilot can get things wrong. Check what it changed before you publish.
       </p>
     </div>
   );

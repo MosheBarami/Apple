@@ -1,5 +1,5 @@
 import type {AgentCtx} from './tools';
-import type {StudioOp} from '@apple/shared';
+import type {StudioOp} from '@studpilot/shared';
 import {localNodeId} from './local-owner-corpus';
 import {resizeForDisplay} from './image-resize';
 import {bytesToBase64} from './png';

@@ -1,7 +1,7 @@
 // The typed client: what it sends, and what it refuses to send.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AppleClient, filenameFromDisposition } from '../src/client.mjs';
+import { StudPilotClient, filenameFromDisposition } from '../src/client.mjs';
 import { projectPath, isProjectId } from '../src/wire.mjs';
 import { startServer } from './fake-server.mjs';
 
@@ -10,7 +10,7 @@ const PROJECT = '3f2a1c9e-77b4-4c2a-9a1e-0b8d6e4f1234';
 test('a project id that is not a UUID never reaches the network', async () => {
   const s = await startServer({ 'GET /api/admin/stats': () => ({ body: { counters: [] } }) });
   try {
-    const client = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const client = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     // THE ATTACK, not a typo: `/api/projects/../../admin/stats/messages` normalises to an
     // admin path. A client that only validated on the server's 404 would have sent it.
     for (const evil of ['../../admin/stats', '../..%2fadmin', 'not-a-uuid', '', null, undefined, 42]) {
@@ -57,7 +57,7 @@ test('each read method hits the route the worker actually serves', async () => {
     'GET /api/billing/config': record('billing'),
   });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     await c.health();
     await c.me();
     await c.usage();
@@ -81,7 +81,7 @@ test('each read method hits the route the worker actually serves', async () => {
 test('the health check sends no Authorization header even when the client holds a token', async () => {
   const s = await startServer({ 'GET /api/health': () => ({ body: { ok: true, version: '0.1.0' } }) });
   try {
-    await new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' }).health();
+    await new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' }).health();
     assert.equal(s.requests.at(-1).headers.authorization, undefined);
   } finally {
     await s.close();
@@ -95,7 +95,7 @@ test('search and limit travel as query parameters, not as path segments', async 
     [`GET /api/projects/${PROJECT}/roadmap`]: () => ({ body: { milestones: [] } }),
   });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     await c.messages(PROJECT, { limit: 7 });
     assert.equal(s.requests.at(-1).query.get('limit'), '7');
     await c.searchConversation(PROJECT, 'a b&c');
@@ -112,7 +112,7 @@ test('search and limit travel as query parameters, not as path segments', async 
 test('a plan the deployment does not have is refused before checkout is opened', async () => {
   const s = await startServer({ 'POST /api/billing/checkout': () => ({ body: { url: 'https://stripe.test/x' } }) });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     for (const bad of ['pro', 'team', '', null, 'FREE']) {
       assert.throws(() => c.startCheckout(bad), TypeError, `${String(bad)} was accepted`);
     }
@@ -127,7 +127,7 @@ test('a plan the deployment does not have is refused before checkout is opened',
 test('saveMemory sends the WHOLE memory and refuses a patch-shaped argument', async () => {
   const s = await startServer({ [`PUT /api/projects/${PROJECT}/memory`]: () => ({ body: { memory: { summary: null, facts: [] }, editedAt: null } }) });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     assert.throws(() => c.saveMemory(PROJECT, { summary: 'x' }), TypeError, 'facts missing');
     assert.throws(() => c.saveMemory(PROJECT, null), TypeError);
     assert.equal(s.requests.length, 0);
@@ -149,7 +149,7 @@ test('the export keeps the filename the SERVER chose', async () => {
     }),
   });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     const file = await c.exportTranscript(PROJECT, 'md');
     assert.equal(file.filename, 'my-tower-2026-09-15.md');
     assert.equal(file.body, '# my tower\n');
@@ -173,9 +173,9 @@ test('filenameFromDisposition reads the header forms, and null when there is non
 test('an admin route without an admin key refuses instead of sending an empty header', async () => {
   const s = await startServer({ 'GET /api/admin/stats': () => ({ body: { counters: [] } }) });
   try {
-    assert.throws(() => new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' }).adminStats(), TypeError);
+    assert.throws(() => new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' }).adminStats(), TypeError);
     assert.equal(s.requests.length, 0);
-    const admin = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt', adminKey: 'secret-key' });
+    const admin = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt', adminKey: 'secret-key' });
     await admin.adminStats();
     assert.equal(s.requests.at(-1).headers['x-admin-key'], 'secret-key');
   } finally {
@@ -192,7 +192,7 @@ test('image bytes come back as bytes, not as a string that has been through UTF-
     }),
   });
   try {
-    const c = new AppleClient({ baseUrl: s.baseUrl, token: 'jwt' });
+    const c = new StudPilotClient({ baseUrl: s.baseUrl, token: 'jwt' });
     const bytes = await c.image(PROJECT, 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
     assert.ok(bytes instanceof Uint8Array);
     assert.deepEqual([...bytes.slice(0, 4)], [0x89, 0x50, 0x4e, 0x47], 'the PNG magic survived');

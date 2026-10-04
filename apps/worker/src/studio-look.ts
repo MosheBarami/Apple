@@ -22,7 +22,7 @@
  *
  * Every dependency is injected (`LookDeps`), so the whole thing runs in tests with a fake plugin.
  */
-import type { OpResult, StudioFrame, StudioOp } from '@apple/shared';
+import type { OpResult, StudioFrame, StudioOp } from '@studpilot/shared';
 import { bytesToBase64, decodeRgbBase64, encodePng } from './png.ts';
 import type { LookFrame, ObserveInput, ObserveResult, Observation, Answer } from './look-observe.ts';
 import { LOOK_FRAME_MAX } from './look-observe.ts';

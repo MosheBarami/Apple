@@ -11,7 +11,7 @@
 // is 4,000 characters in: the user sees a result list where nothing visibly matches what they
 // typed. The snippet has to be a window around the HIT.
 
-import { splitSpilledPayload } from '@apple/shared';
+import { splitSpilledPayload } from '@studpilot/shared';
 
 /** Wildcards in a LIKE pattern belong to SQL, not to whoever typed the query. */
 export function escapeLike(query: string, escape = '\\'): string {
@@ -93,7 +93,7 @@ export function isSearchable(query: string): boolean {
 // The search above answers "where was this phrase said". Everything below answers the question
 // users actually arrive with — "where is that thing" — over the four other kinds of record a
 // project holds: the checkpoints it can be rolled back to, the artifacts the agent produced, the
-// operations that were run against Studio, and what Apple remembers.
+// operations that were run against Studio, and what StudPilot remembers.
 //
 // Three decisions here are the ones that would quietly ruin it:
 //
@@ -120,7 +120,7 @@ export type SearchType = (typeof SEARCH_TYPES)[number];
 /**
  * Who a record came from.
  *
- * Deliberately not the raw message role: the UI has always said "You" and "Apple", and a filter
+ * Deliberately not the raw message role: the UI has always said "You" and "StudPilot", and a filter
  * whose values do not match the words on screen is a filter nobody can use.
  *
  * `teammate` exists because there WAS no true value for it, and the absence produced a lie rather
@@ -139,7 +139,8 @@ const AUTHOR_ALIASES: Record<string, SearchAuthor> = {
   you: 'you',
   user: 'you',
   me: 'you',
-  apple: 'apple',
+  studpilot: 'apple',
+  apple: 'apple', // the former name, still typed as a filter; the stored author id is 'apple'
   assistant: 'apple',
   system: 'system',
 };
@@ -197,7 +198,7 @@ export function customerWorkSearchText(kind: string, _summary: string, ok?: bool
   else if (/play|test|check|audit|inspect|verify/.test(kind)) title = 'Checked the game';
   else if (/create|insert|add/.test(kind)) title = 'Added to your place';
   else if (/transform|move|resize|rotate|update|edit/.test(kind)) title = 'Changed your place';
-  return { title, body: ok === false ? 'Apple could not complete this step.' : 'Apple worked on this step.' };
+  return { title, body: ok === false ? 'StudPilot could not complete this step.' : 'StudPilot worked on this step.' };
 }
 
 /** Match only text the transcript actually renders. Keep the person's own messages intact. */

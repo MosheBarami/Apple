@@ -1,7 +1,7 @@
 /**
  * THE SENTENCE THE OWNER MOST WANTS TO WRITE IS THE ONE NOTHING WAS STOPPING.
  *
- * The work queue's own words: *"the apple and apple max also have something you are ... 100%
+ * The work queue's own words: *"the studpilot and studpilot max also have something you are ... 100%
  * confident about calling in the final turn of this big night 'the world's most trained and skilled
  * roblox ai model'"*, and the disposition on that row is **do not write the claim anywhere
  * user-facing** until an unseen-set number supports it.
@@ -75,7 +75,7 @@ test('the matcher catches the sentence the work queue quoted, and leaves the hon
   for (const claim of [
     "the world's most trained and skilled roblox ai model",
     'The best-trained Roblox model available anywhere.',
-    'Apple MAX is the most trained Roblox AI.',
+    'StudPilot MAX is the most trained Roblox AI.',
     'the best Roblox model, by a distance',
     'we trained it on millions of Luau files',
   ]) {
@@ -85,7 +85,7 @@ test('the matcher catches the sentence the work queue quoted, and leaves the hon
   for (const honest of [
     'They currently run on the same third-party foundation model — neither is a model we trained.',
     'Custom Roblox training is in development; a completed independently trained frontier model is not available.',
-    'Apple and Apple MAX are separate product choices with different access and working limits.',
+    'StudPilot and StudPilot MAX are separate product choices with different access and working limits.',
     'trained on the Creator Store corpus is not a claim we make',
   ]) {
     assert.deepEqual(findClaims(honest), [], `false positive on: ${honest}`);

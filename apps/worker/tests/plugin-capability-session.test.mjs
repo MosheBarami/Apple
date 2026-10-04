@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { sessionHarness } from './session-harness.mjs';
 
-//[[ THE RUNS BELOW ARE APPLE MAX RUNS, so their owner must be on a plan that includes it: the model
+//[[ THE RUNS BELOW ARE STUDPILOT MAX RUNS, so their owner must be on a plan that includes it: the model
 //   is re-checked against the QuotaDO plan on every step (D-VISION-1), and the harness's default
 //   QuotaDO names no plan — which is no plan, so the step would stop before the part under test. ]]
 const PAID_PLAN = {
@@ -81,7 +81,7 @@ test('real SessionDO persists capabilities per pairing, survives offline restart
   assert.equal(filter.allowed.has('get_project_tree'), true);
   // the plugin in this fixture reports in the OLD schema spelling (the published plugin still does); the worker
   // stores the report normalised to the new one — apps/worker/tests/legacy-wire.test.mjs pins both directions
-  assert.equal(first.store.get(`pluginCapabilities:${hash1}`).schema, 'apple.studio-ops.v1');
+  assert.equal(first.store.get(`pluginCapabilities:${hash1}`).schema, 'studpilot.studio-ops.v1');
   assert.deepEqual(first.store.get(`pluginCapabilitiesClient:${hash1}`), { version: '1.0.0', protocol: 1 });
 
   // Bridge omits the report after its first acknowledged poll. Omission must preserve the current

@@ -34,15 +34,15 @@ function wireOps() {
   return new Set([...union.matchAll(/\bop:\s*'([a-z_]+)'/g)].map((m) => m[1]));
 }
 
-/** The operations accounted for by the current Apple plugin command engine. */
+/** The operations accounted for by the current StudPilot plugin command engine. */
 function pluginHandlers() {
-  const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
+  const src = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/Commands.luau'), 'utf8');
   // Declared in place (`local X = {`) or assigned to a local declared earlier (`X = {`, the form
   // Commands.luau uses inside its handler-region `do` block to stay under Luau's 200-local limit at
   // Studio's -O0). Either way it must be a LOCAL: an assignment with none in scope is a global.
   const tableKeys = (name) => {
     const match = new RegExp(`(local )?(?<![.\\w])${name} = \\{([\\s\\S]*?)\\n\\}`).exec(src);
-    assert.ok(match, `${name} table was not found in Apple Commands.luau`);
+    assert.ok(match, `${name} table was not found in StudPilot Commands.luau`);
     if (!match[1]) {
       assert.ok(new RegExp(`^local [^=\\n]*\\b${name}\\b[^=\\n]*$`, 'm').test(src.slice(0, match.index)),
         `${name} is assigned without a local declared before it — that would be a global`);
@@ -60,12 +60,12 @@ function pluginHandlers() {
 }
 
 /**
- * The op families (apps/apple-plugin/src/ops) install their handlers at load. Each family is named
+ * The op families (apps/studpilot-plugin/src/ops) install their handlers at load. Each family is named
  * by a literal `require(script.X)` in ops/init.luau; only those count, so a module that is present
  * but never required contributes nothing, exactly as in Studio.
  */
 function familyHandlers() {
-  const dir = join(ROOT, 'apps/apple-plugin/src/ops');
+  const dir = join(ROOT, 'apps/studpilot-plugin/src/ops');
   const init = readFileSync(join(dir, 'init.luau'), 'utf8');
   const names = [...init.matchAll(/^load\(function\(\) return require\(script\.([A-Za-z]+)\) end\)/gm)].map((m) => m[1]);
   assert.ok(names.length >= 1, 'ops/init.luau requires no family');

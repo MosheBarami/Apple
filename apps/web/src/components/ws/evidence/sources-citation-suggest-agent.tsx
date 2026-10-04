@@ -8,7 +8,7 @@ import {
   suggestionsForTurn,
   type ToolLike,
 } from './sources-model';
-import type { StudioPlace } from '@apple/shared';
+import type { StudioPlace } from '@studpilot/shared';
 import './evidence.css';
 
 // Upstream's Sources is a Radix Collapsible that forwards its props, so `defaultOpen` works at runtime;

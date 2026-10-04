@@ -1,6 +1,6 @@
 // Speech in and speech out, behind an interface, on a budget.
 //
-// Two jobs and one shared discipline. The jobs are transcription (a user speaks to Apple instead
+// Two jobs and one shared discipline. The jobs are transcription (a user speaks to StudPilot instead
 // of typing) and synthesis (a line of NPC dialogue comes back as audio). The discipline is that
 // BOTH are billed per AUDIO MINUTE rather than per token, which breaks the assumption every other
 // spend path in this worker rests on:
@@ -408,8 +408,8 @@ function budgetStub(env: Env) {
 }
 
 const BUDGET_MESSAGES: Record<string, string> = {
-  daily_cap: "Apple has reached today's shared building capacity. It resets at midnight UTC.",
-  monthly_cap: "Apple has reached this month's shared building capacity.",
+  daily_cap: "StudPilot has reached today's shared building capacity. It resets at midnight UTC.",
+  monthly_cap: "StudPilot has reached this month's shared building capacity.",
   request_too_large: 'That recording needs more capacity than a single request allows.',
   killed: 'AI generation is paused right now.',
 };

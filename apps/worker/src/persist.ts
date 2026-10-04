@@ -31,7 +31,7 @@
  * docs/FAILURES.md.
  */
 import { turnGroups } from './transcript.ts';
-import type { GatewayMessage } from '@apple/shared';
+import type { GatewayMessage } from '@studpilot/shared';
 
 /** The fields shedding touches. Deliberately structural: this module has no business knowing
  *  what else a run carries, and typing it that way keeps it out of session.ts's import cycle. */
@@ -51,7 +51,7 @@ export interface Sheddable {
 export type PersistOutcome = 'full' | 'shed' | 'terminal';
 
 export const TOO_LARGE_MESSAGE =
-  'This run got too big to keep going, so Apple stopped it. Everything already in your place is saved. Send another message to carry on.';
+  'This run got too big to keep going, so StudPilot stopped it. Everything already in your place is saved. Send another message to carry on.';
 
 /** How much trace survives a shed. Enough to explain what the run was doing, not enough to be
  *  what made it too large. */

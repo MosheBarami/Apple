@@ -111,7 +111,7 @@ test('the help link is an anchor, not a router Link — /docs is not an SPA rout
 });
 
 test('the failed-run block in the workspace reaches the section written for it', () => {
-  // /docs/troubleshooting has an "Apple stopped mid-build" section and a #messages index. The
+  // /docs/troubleshooting has an "StudPilot stopped mid-build" section and a #messages index. The
   // block that tells a user a run died linked nowhere at all.
   assert.match(TURN_TSX, /\/docs\/troubleshooting#messages/, 'a failed run offers no route to the written answer');
   assert.ok(

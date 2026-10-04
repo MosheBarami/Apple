@@ -4,10 +4,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const css = readFileSync(new URL('../src/design/apple-minimal.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const css = readFileSync(new URL('../src/design/studpilot-minimal.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('the top bar that owns the project menu is stacked above the thread', () => {
-  const rule = css.match(/\.apple-workspace__topbar\s*\{([^}]*)\}/);
+  const rule = css.match(/\.studpilot-workspace__topbar\s*\{([^}]*)\}/);
   assert.ok(rule, 'the top bar rule was not found — this checks nothing');
   assert.match(rule[1], /position\s*:\s*relative/);
   const z = Number((rule[1].match(/z-index\s*:\s*(\d+)/) ?? [])[1]);

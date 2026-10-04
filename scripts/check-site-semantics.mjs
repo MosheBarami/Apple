@@ -149,7 +149,7 @@ for (const file of files) {
 }
 
 if (files.length === 0) {
-  console.error('check-site-semantics: no built pages found — run `pnpm --filter @apple/site build` first');
+  console.error('check-site-semantics: no built pages found — run `pnpm --filter @studpilot/site build` first');
   process.exit(1);
 }
 

@@ -11,7 +11,7 @@ const rec = (taskId, score, extra = {}) => ({ model: 'clay', taskId, category: '
 const deadRec = (taskId) => ({ model: 'clay', taskId, category: 'c', ok: false, attempts: 1, ms: 0, score: null, scored: false, ungradedReason: 'transport_error', error: 'HTTP 500', checks: [] });
 
 function fixtureDir(files) {
-  const dir = mkdtempSync(join(tmpdir(), 'apple-history-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-history-'));
   for (const [name, body] of Object.entries(files)) writeFileSync(join(dir, name), typeof body === 'string' ? body : JSON.stringify(body));
   return dir;
 }
@@ -153,7 +153,7 @@ test('findRun resolves a tag, a filename, and "latest"', () => {
 });
 
 test('an unreadable results directory is an error, not an empty history', () => {
-  const { runs, errors } = loadRunHistory({ dir: join(tmpdir(), 'apple-history-does-not-exist-xyz') });
+  const { runs, errors } = loadRunHistory({ dir: join(tmpdir(), 'studpilot-history-does-not-exist-xyz') });
   assert.deepEqual(runs, []);
   assert.equal(errors.length, 1);
   assert.match(errors[0].why, /unreadable results directory/);

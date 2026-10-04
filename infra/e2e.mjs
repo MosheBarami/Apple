@@ -11,12 +11,12 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // They used to be inline literals in four scripts, which put a real Supabase
-// password in git history. Set APPLE_E2E_EMAIL and APPLE_E2E_PASSWORD in .env
+// password in git history. Set STUDPILOT_E2E_EMAIL and STUDPILOT_E2E_PASSWORD in .env
 // (gitignored) — see docs/DECISIONS.md.
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('STUDPILOT_E2E_EMAIL / STUDPILOT_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -73,7 +73,7 @@ const FAKE_TREE = { services: [{ name: 'Workspace', class: 'Workspace', children
 // `{ ok: true }` without reading ONE of the flags a current plugin sends. So every green E2E run
 // since the v1 format landed has said nothing whatsoever about checkpointing: the admission was
 // reached, took the compatibility path, and agreed. A mock that models a client nobody ships is the
-// exact failure `apps/apple-plugin/tests/studio-mock.mjs` warns about in its own header.
+// exact failure `apps/studpilot-plugin/tests/studio-mock.mjs` warns about in its own header.
 //
 // These two payloads are the shapes the REAL plugin emits — verified field by field, from the real
 // Commands.luau through the real admission, in apps/worker/tests/checkpoint-evidence-live-plugin.test.mjs.
@@ -112,7 +112,7 @@ async function pluginLoop() {
     results = [];
     const res = await fetch(`${BASE}/api/studio/poll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Golem-Token': claim.token },
+      headers: { 'Content-Type': 'application/json', 'X-StudPilot-Token': claim.token },
       body: JSON.stringify(body),
     });
     if (!res.ok) { log('   plugin poll error', res.status); break; }
@@ -138,7 +138,7 @@ async function pluginLoop() {
 // ---- websocket chat ---------------------------------------------------------
 function wsChat(text, mode, { expectTools, productModel } = {}) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
+    const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${project.id}/ws`, ['studpilot.v1', 'studpilot.jwt.' + jwt]);
     const events = [];
     let finalText = '';
     const timer = setTimeout(() => { ws.close(); reject(new Error('chat timeout after 150s; events: ' + events.map((e) => e.type).join(','))); }, 150_000);
@@ -203,16 +203,16 @@ if (planRun.stopReason !== 'done' || planRun.finalText.length < 10) fail('Plan c
 //
 // `effectiveProductModel` (apps/worker/src/do/session.ts:460) reads
 // `requested ?? (mode === 'plan' ? 'apple' : 'apple-max')`, so an Agent chat that names no product
-// model is a request for **Apple MAX**, which `productModelVerdict` refuses on any free plan. The
+// model is a request for **StudPilot MAX**, which `productModelVerdict` refuses on any free plan. The
 // E2E account is free — step 3 above prints `plan free` on every run — so since product-model
 // entitlement landed this step asked for something this account can never have, and the run died
 // here before reaching the assertion below. Measured against the live worker 2026-09-20T23:19Z:
-// `product_model_unavailable — Apple MAX requires a paid subscription.`
+// `product_model_unavailable — StudPilot MAX requires a paid subscription.`
 //
 // THIS DOES NOT WEAKEN THE STEP, and it is worth being exact about why. What is being tested here
 // is named on the line above: *the agent calls Studio tools*, asserted at the bottom of this block
 // against `opsHandled`. That assertion is untouched. The mode stays Agent, so the toolset is the
-// build toolset; only the product-model entitlement is pinned to Apple for this free fixture. What the free lane
+// build toolset; only the product-model entitlement is pinned to StudPilot for this free fixture. What the free lane
 // actually gives up is steps (`maxStepsFor` caps it at Plan's limit), which is a smaller budget for
 // the same work, not a different test. A step that cannot run asserts nothing at all; this one can.
 //

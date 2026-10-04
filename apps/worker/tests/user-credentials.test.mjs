@@ -1,7 +1,7 @@
-// Storing a customer's own Roblox key, so Apple acts on THEIR account and not on one person's.
+// Storing a customer's own Roblox key, so StudPilot acts on THEIR account and not on one person's.
 //
 // WHY THIS MODULE EXISTS AT ALL is worth keeping in the test file and not only in the source:
-// Apple uploaded 299 assets into the owner's personal Roblox account because the only write
+// StudPilot uploaded 299 assets into the owner's personal Roblox account because the only write
 // credential it had was a single shared one belonging to a real person. Roblox then refused to
 // take them back — an Image is "not an archivable asset type" — so that account keeps them for
 // good. A shared write credential means every customer's work lands in one identity.
@@ -195,8 +195,8 @@ test('a malformed credential is refused with the reason, and stores nothing', as
 test('A STORED KEY IS NOT CONSENT FOR EVERY SCOPE — the lesson, one level down', async () => {
   // "They gave us a key" and "they agreed to this action" are different facts. That distinction is
   // what was missing when a creator id in a config file was enough to start uploading into a real
-  // person's account, and it applies again here: a key connected so Apple could READ must not
-  // quietly become a key Apple uploads with.
+  // person's account, and it applies again here: a key connected so StudPilot could READ must not
+  // quietly become a key StudPilot uploads with.
   const env = makeEnv();
   await C.putRobloxCredential(env, { ...GOOD, scopes: ['asset:read'] });
   const read = await C.useRobloxCredential(env, 'user-1', 'asset:read');

@@ -154,7 +154,7 @@ test('A TRUNCATED DOWNLOAD SAVES NOTHING and says which one it was', async () =>
 });
 
 test('the digest is verified from EITHER header spelling, and a wrong digest under either is still refused', async () => {
-  for (const name of ['X-Apple-Export-SHA256', 'X-Golem-Export-SHA256']) {
+  for (const name of ['X-StudPilot-Export-SHA256', 'X-Golem-Export-SHA256']) {
     saved.length = 0;
     const headers = await headersFor(BODY);
     const digest = headers['X-Golem-Export-SHA256'];

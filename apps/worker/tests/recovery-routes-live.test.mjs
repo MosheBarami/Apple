@@ -39,7 +39,7 @@ import { d1, countRows } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-recovery-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-recovery-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

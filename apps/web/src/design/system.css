@@ -506,6 +506,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .gx-composer__count { font:11px var(--font-mono); text-align:end; padding-inline:16px; } .gx-composer__count.is-full { color:var(--bad); animation:count-flash var(--t-slow) var(--ease-out); }
 .model-signature { width:30px; height:30px; display:inline-grid; place-items:center; color:var(--accent); flex-shrink:0; }
 .model-signature svg { width:100%; height:100%; }
+/* The class is built from the stored model id (ModelMark's variant), which is still 'apple'. */
 .model-signature--apple { color:var(--ink); }
 .model-signature.is-live { animation:signature-work 2.4s ease-in-out infinite; transform-origin:50% 50%; }
 .gx-turn { margin:0 0 30px; } .gx-turn--user { margin-inline-start:20%; display:flex; flex-direction:column; align-items:flex-end; } .gx-user { font-size:15px; line-height:1.65; border:1px solid var(--line); border-radius:var(--r-lg); padding:12px 18px; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--control-fill); width:fit-content; max-width:100%; }
@@ -810,7 +811,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-op__detail { font-size:12px; line-height:1.55; color:var(--faint); overflow-wrap:anywhere; }
 /* THE EDIT WARNING AND THE SENTENCE UNDER IT. Both are <p>s in one box, so nothing ran together —
    what was missing was any difference between them. The first says what this action costs and
-   keeps the app's ink. The second says what it does NOT cost (anything Apple already built in the
+   keeps the app's ink. The second says what it does NOT cost (anything StudPilot already built in the
    place stays as it is), which is the reassurance, so it steps down instead of shouting alongside
    the warning. The count inside the first is a <strong>: it is picked out with ink rather than
    weight, because nothing in this product is bolder than 400 and an emphasised number is exactly

@@ -42,7 +42,7 @@ const WORKER = join(ROOT, 'apps', 'worker');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 function bundle(entry, label) {
-  const dest = join(tmpdir(), `apple-${label}-${process.pid}.mjs`);
+  const dest = join(tmpdir(), `studpilot-${label}-${process.pid}.mjs`);
   execFileSync(ESBUILD, [entry, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: WORKER,
@@ -75,7 +75,7 @@ rmSync(gatewayFile, { force: true });
 //
 // Staged under node_modules so `tsc --noEmit` never sees it; relative imports are rewritten to
 // point back at the real src/ so it compiles against the same env and pricing modules.
-const BASELINE_DIR = join(WORKER, 'node_modules', '.apple-baseline');
+const BASELINE_DIR = join(WORKER, 'node_modules', '.studpilot-baseline');
 let BASELINE = null;
 let BASELINE_REV = null;
 try {
@@ -193,7 +193,7 @@ const REQUESTS = [
     req: {
       model: 'agent',
       messages: [
-        { role: 'system', content: 'You are Apple.' },
+        { role: 'system', content: 'You are StudPilot.' },
         { role: 'user', content: 'Build a market stall.' },
       ],
       tools: [
@@ -207,7 +207,7 @@ const REQUESTS = [
     req: {
       model: 'plan',
       messages: [
-        { role: 'system', content: 'You are Apple.' },
+        { role: 'system', content: 'You are StudPilot.' },
         { role: 'user', content: 'Fix the door.', pinned: true },
         { role: 'assistant', content: '', toolCalls: [{ id: 'call_0', name: 'run_luau', arguments: '{"source":"x"}' }] },
         { role: 'tool', content: '{"ok":true}', toolCallId: 'call_0', name: 'run_luau' },
@@ -343,8 +343,8 @@ test('REFACTOR PROOF: provider refactor preserves transport outside model-specif
   }
 });
 
-test('every Apple product route still uses the Workers AI adapter', () => {
-  for (const modelId of [P.APPLE_MODEL_ID, P.APPLE_MAX_MODEL_ID, P.VISION_MODEL_ID]) {
+test('every StudPilot product route still uses the Workers AI adapter', () => {
+  for (const modelId of [P.STUDPILOT_MODEL_ID, P.STUDPILOT_MAX_MODEL_ID, P.VISION_MODEL_ID]) {
     assert.equal(P.adapterForModelId(modelId).id, 'workers-ai', `${modelId} must use Workers AI`);
   }
   // and so does anything unrecognised — the AI binding is the only transport this worker has
@@ -353,24 +353,24 @@ test('every Apple product route still uses the Workers AI adapter', () => {
 
 test('gateway defaults: one engine for every run key, and memory and vision stay independent', () => {
   // RESTATED 2026-10-01 (38efea2e single engine; c839d7af one mode). There is ONE product mode,
-  // 'agent', and ONE engine, Apple (GLM 5.3 Flash). There is no Apple MAX tier and no outside
+  // 'agent', and ONE engine, StudPilot (GLM 5.3 Flash). There is no StudPilot MAX tier and no outside
   // model. `plan` survives only as a gateway key for a legacy persisted run, and it must resolve to
   // the same engine, never to a second foundation. The two lanes that are not run modes —
   // housekeeping and vision — are still independent and pinned on their own terms.
   for (const mode of ['agent', 'plan']) {
-    assert.equal(G.DEFAULT_MODELS[mode].id, P.APPLE_MODEL_ID, `${mode} runs on the one Apple engine (GLM 5.3 Flash)`);
-    assert.equal(G.DEFAULT_MODELS[mode].ctx, P.APPLE_CONTEXT_WINDOW, `${mode} gets the full context window`);
+    assert.equal(G.DEFAULT_MODELS[mode].id, P.STUDPILOT_MODEL_ID, `${mode} runs on the one StudPilot engine (GLM 5.3 Flash)`);
+    assert.equal(G.DEFAULT_MODELS[mode].ctx, P.STUDPILOT_CONTEXT_WINDOW, `${mode} gets the full context window`);
     assert.equal(G.DEFAULT_MODELS[mode].nativeTools, true, `${mode} must be able to call tools natively`);
   }
   assert.equal(MODEL_REGISTRY.length, 1, 'one customer engine in the registry');
-  assert.equal(MODEL_REGISTRY[0].providerModelId, P.APPLE_MODEL_ID, 'the registry and the provider layer name the same engine');
+  assert.equal(MODEL_REGISTRY[0].providerModelId, P.STUDPILOT_MODEL_ID, 'the registry and the provider layer name the same engine');
   // The lane that is NOT a run mode and stays on the cheap Qwen3 foundation for housekeeping. The
   // Qwen id is named explicitly: it is internal, no longer a customer engine, and no longer exported.
   assert.equal(G.DEFAULT_MODELS.memory.id, MEMORY_MODEL_ID, 'housekeeping stays on the cheap Qwen3 foundation');
-  assert.notEqual(G.DEFAULT_MODELS.memory.id, P.APPLE_MODEL_ID);
+  assert.notEqual(G.DEFAULT_MODELS.memory.id, P.STUDPILOT_MODEL_ID);
   assert.equal(G.DEFAULT_MODELS.memory.ctx, 32_768);
   assert.equal(G.DEFAULT_MODELS.memory.nativeTools, false, 'housekeeping is not given a toolset');
-  // Vision shares the Apple model id and is still a separate lane: smaller ceiling, no tools.
+  // Vision shares the StudPilot model id and is still a separate lane: smaller ceiling, no tools.
   assert.equal(G.DEFAULT_MODELS.vision.id, P.VISION_MODEL_ID, 'vision remains the separate multimodal specialist');
   assert.equal(G.DEFAULT_MODELS.vision.ctx, P.VISION_CONTEXT_WINDOW);
   assert.equal(G.DEFAULT_MODELS.vision.nativeTools, false);
@@ -391,13 +391,13 @@ test('gateway defaults: one engine for every run key, and memory and vision stay
   assert.deepEqual(Object.keys(G.DEFAULT_MODELS).filter((k) => !lab.includes(k)).sort(), ['agent', 'memory', 'plan', 'vision']);
 });
 
-test('the Apple engine, housekeeping and vision catalogue rows carry the verified facts', () => {
-  // RESTATED 2026-10-01 (38efea2e): there is no Apple MAX row. Apple IS the GLM-5.3 Flash row; the
+test('the StudPilot engine, housekeeping and vision catalogue rows carry the verified facts', () => {
+  // RESTATED 2026-10-01 (38efea2e): there is no StudPilot MAX row. StudPilot IS the GLM-5.3 Flash row; the
   // visual critic is the same row; the Qwen3 row is the housekeeping (memory) lane's model.
-  const apple = P.WORKERS_AI_MODELS.find((model) => model.id === P.APPLE_MODEL_ID);
+  const studpilot = P.WORKERS_AI_MODELS.find((model) => model.id === P.STUDPILOT_MODEL_ID);
   const memory = P.WORKERS_AI_MODELS.find((model) => model.id === MEMORY_MODEL_ID);
   const vision = P.WORKERS_AI_MODELS.find((model) => model.id === P.VISION_MODEL_ID);
-  assert.ok(apple && memory && vision, 'the three routes the gateway can run must be catalogued');
+  assert.ok(studpilot && memory && vision, 'the three routes the gateway can run must be catalogued');
 
   assert.deepEqual(
     [memory.displayName, memory.supportsTools, memory.supportsVision, memory.contextWindow, memory.inputCostPer1M, memory.outputCostPer1M],
@@ -405,11 +405,11 @@ test('the Apple engine, housekeeping and vision catalogue rows carry the verifie
   );
   assert.ok(memory.unverifiedFields.includes('maxOutput'), 'Qwen max output must stay labelled unverified');
 
-  // APPLE AND VISION ARE THE SAME ROW, and this test says so rather than asserting the same object
+  // STUDPILOT AND VISION ARE THE SAME ROW, and this test says so rather than asserting the same object
   // twice under two names as if it had checked two things.
-  assert.equal(apple.id, vision.id, 'Apple and the visual critic resolve to one model');
+  assert.equal(studpilot.id, vision.id, 'StudPilot and the visual critic resolve to one model');
   assert.deepEqual(
-    [apple.displayName, apple.supportsTools, apple.supportsVision, apple.contextWindow, apple.inputCostPer1M, apple.outputCostPer1M],
+    [studpilot.displayName, studpilot.supportsTools, studpilot.supportsVision, studpilot.contextWindow, studpilot.inputCostPer1M, studpilot.outputCostPer1M],
     ['GLM-5.3 Flash', true, true, 1_310_720, 0.15, 0.5],
   );
   // The lanes stay separate in DEFAULT_MODELS; only the model behind them merged.
@@ -418,7 +418,7 @@ test('the Apple engine, housekeeping and vision catalogue rows carry the verifie
 
   // Exactly one catalogue row for that id. Two rows would make `modelById` answer with whichever
   // came first and hide the other's prices — which is how a billing figure goes wrong silently.
-  assert.equal(P.WORKERS_AI_MODELS.filter((m) => m.id === P.APPLE_MODEL_ID).length, 1);
+  assert.equal(P.WORKERS_AI_MODELS.filter((m) => m.id === P.STUDPILOT_MODEL_ID).length, 1);
 });
 
 test('a stale free-tier KV map cannot restore legacy models for user-facing keys', async () => {
@@ -438,9 +438,9 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   };
   const { env } = fakeEnv({ KV: { get: async () => JSON.stringify(stale) } });
   const models = await G.getModels(env);
-  // The run keys: absent from the stale row, so the compiled defaults hold (Apple is the one engine).
-  assert.equal(models.plan.id, P.APPLE_MODEL_ID, 'the legacy plan key must not be routed by a stale KV row');
-  assert.equal(models.agent.id, P.APPLE_MODEL_ID, 'Agent must not be routed by a stale KV row');
+  // The run keys: absent from the stale row, so the compiled defaults hold (StudPilot is the one engine).
+  assert.equal(models.plan.id, P.STUDPILOT_MODEL_ID, 'the legacy plan key must not be routed by a stale KV row');
+  assert.equal(models.agent.id, P.STUDPILOT_MODEL_ID, 'Agent must not be routed by a stale KV row');
   // Present in the stale row with a RETIRED model id — the override must be refused, not applied.
   assert.equal(models.memory.id, MEMORY_MODEL_ID, 'a stale row must not put housekeeping back on gpt-oss');
   assert.equal(models.vision.id, P.VISION_MODEL_ID, 'a stale row must not put vision back on llama-3.2-11b');
@@ -450,10 +450,10 @@ test('a stale free-tier KV map cannot restore legacy models for user-facing keys
   G.resetModelCache();
 });
 
-test('Apple (GLM-5.3 Flash) native tool calls stay structured and use its documented reasoning control', () => {
-  // RESTATED 2026-10-01 (38efea2e): Apple IS GLM-5.3 Flash now; there is no separate MAX/GLM-4.7 id.
+test('StudPilot (GLM-5.3 Flash) native tool calls stay structured and use its documented reasoning control', () => {
+  // RESTATED 2026-10-01 (38efea2e): StudPilot IS GLM-5.3 Flash now; there is no separate MAX/GLM-4.7 id.
   const { payload } = P.workersAiAdapter.encode({
-    modelId: P.APPLE_MODEL_ID,
+    modelId: P.STUDPILOT_MODEL_ID,
     messages: [{ role: 'user', content: 'Call echo_probe.' }],
     tools: [{ name: 'echo_probe', description: 'Return a message.', parameters: { type: 'object' } }],
     maxTokens: 256,
@@ -470,7 +470,7 @@ test('Apple (GLM-5.3 Flash) native tool calls stay structured and use its docume
       usage: { prompt_tokens: 166, completion_tokens: 12 },
     },
     500,
-    P.APPLE_MODEL_ID,
+    P.STUDPILOT_MODEL_ID,
   );
   assert.equal(decoded.finishReason, 'tool_calls');
   assert.deepEqual(decoded.toolCalls, [{ id: 'call_1', name: 'echo_probe', arguments: '{"message":"ok"}' }]);
@@ -478,7 +478,7 @@ test('Apple (GLM-5.3 Flash) native tool calls stay structured and use its docume
 });
 
 test('Qwen (housekeeping lane) requests do not receive an undocumented reasoning-effort field', () => {
-  // RESTATED 2026-10-01 (38efea2e): Qwen3 is no longer Apple; it is the memory lane's model, and the
+  // RESTATED 2026-10-01 (38efea2e): Qwen3 is no longer StudPilot; it is the memory lane's model, and the
   // property (no invented reasoning knob for a non-GLM route) is unchanged.
   const { payload } = P.workersAiAdapter.encode({
     modelId: MEMORY_MODEL_ID,
@@ -490,7 +490,7 @@ test('Qwen (housekeeping lane) requests do not receive an undocumented reasoning
   assert.equal(Object.hasOwn(payload, 'reasoning_effort'), false);
   assert.equal(Object.hasOwn(payload, 'reasoning'), false);
   assert.equal(P.acceptsReasoningEffort(MEMORY_MODEL_ID), false);
-  assert.equal(P.acceptsReasoningEffort(P.APPLE_MODEL_ID), true, 'the GLM engine does accept it');
+  assert.equal(P.acceptsReasoningEffort(P.STUDPILOT_MODEL_ID), true, 'the GLM engine does accept it');
 });
 
 test('the response still reports provider "workers-ai" and settles on reported neurons', async () => {
@@ -630,7 +630,7 @@ test('OpenAI-shaped providers decode tool_calls into GatewayToolCall', () => {
     ],
     usage: { prompt_tokens: 10, completion_tokens: 3 },
   };
-  const out = P.workersAiAdapter.decode(raw, 100, P.APPLE_MODEL_ID);
+  const out = P.workersAiAdapter.decode(raw, 100, P.STUDPILOT_MODEL_ID);
   assert.deepEqual(out.toolCalls, [{ id: 'c1', name: 'run_luau', arguments: '{"source":"x"}' }]);
   assert.equal(out.finishReason, 'tool_calls');
   // The token counts, by field: the binding's decoder also carries `reportedNeurons` (absent here).
@@ -661,7 +661,7 @@ test('Workers AI errors map to the common taxonomy, and only free failures are r
 
 // `classifyHttpError` (status-first classification for direct HTTP providers) was removed with
 // providers/openai.ts in D-VISION-1: no provider this worker calls speaks HTTP to it directly any
-// more — every model, Apple's and the outside ones, is reached through the AI binding.
+// more — every model, StudPilot's and the outside ones, is reached through the AI binding.
 
 test('every adapter answers classifyError with a kind from the taxonomy', () => {
   const KINDS = new Set(['rate_limit', 'auth', 'context_length', 'content_filter', 'transient', 'unknown']);
@@ -690,32 +690,32 @@ test('Workers AI cost still goes through the existing neuron price table', () =>
   assert.equal(cached, Math.ceil(0.03 / 0.000011));
 });
 
-test('Apple and housekeeping reservations use the conservative selected-model price rows', () => {
-  // RESTATED 2026-10-01 (38efea2e): there is no Apple MAX. Apple is GLM-5.3 Flash; Qwen3 is the
-  // housekeeping lane. The "Apple MAX" arithmetic below is Apple's now, unchanged in value.
-  const apple = P.allModels().find((m) => m.id === P.APPLE_MODEL_ID);
+test('StudPilot and housekeeping reservations use the conservative selected-model price rows', () => {
+  // RESTATED 2026-10-01 (38efea2e): there is no StudPilot MAX. StudPilot is GLM-5.3 Flash; Qwen3 is the
+  // housekeeping lane. The "StudPilot MAX" arithmetic below is StudPilot's now, unchanged in value.
+  const studpilot = P.allModels().find((m) => m.id === P.STUDPILOT_MODEL_ID);
   const memory = P.allModels().find((m) => m.id === MEMORY_MODEL_ID);
-  assert.ok(apple && memory);
+  assert.ok(studpilot && memory);
   // Qwen's model page currently prints $0.0509/M input while Cloudflare's pricing table rounds it
   // to $0.051/M. The reservation boundary intentionally uses the larger figure.
   assert.equal(P.neuronsForModelTokens(memory, 1_000_000, 1_000_000), Math.ceil((0.051 + 0.335) / 0.000011));
 
   // GLM-5.3 costs $0.15/$0.50 and reserves 59,091 neurons for 1M in + 1M out. (GLM-4.7 cost
   // $0.0605/$0.40 and reserved 41,864; the engine moved to the dearer measured model on 2026-09-19.)
-  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), Math.ceil((0.15 + 0.5) / 0.000011));
-  assert.equal(P.neuronsForModelTokens(apple, 1_000_000, 1_000_000), 59_091);
+  assert.equal(P.neuronsForModelTokens(studpilot, 1_000_000, 1_000_000), Math.ceil((0.15 + 0.5) / 0.000011));
+  assert.equal(P.neuronsForModelTokens(studpilot, 1_000_000, 1_000_000), 59_091);
   const glm47 = Math.ceil((0.0605 + 0.4) / 0.000011);
   assert.ok(
-    P.neuronsForModelTokens(apple, 1_000_000, 1_000_000) > glm47,
+    P.neuronsForModelTokens(studpilot, 1_000_000, 1_000_000) > glm47,
     'if this ever stops being true the engine moved again and the credit model needs re-checking',
   );
 
   // GLM-5.3 is the one Workers AI row that publishes a cached-input rate, and a builder re-sends a
   // large fixed prompt every turn. Cached input is $0.03/M against $0.15 — a FIFTH of the headline
   // rate. The reservation above stays pessimistic and assumes none of it.
-  const cached = P.neuronsForModelTokens(apple, 1_000_000, 0, 1_000_000);
+  const cached = P.neuronsForModelTokens(studpilot, 1_000_000, 0, 1_000_000);
   assert.equal(cached, Math.ceil(0.03 / 0.000011));
-  assert.ok(cached < P.neuronsForModelTokens(apple, 1_000_000, 0, 0), 'the cached discount is not reaching Apple');
+  assert.ok(cached < P.neuronsForModelTokens(studpilot, 1_000_000, 0, 0), 'the cached discount is not reaching StudPilot');
 });
 
 // RESTATED (D-VISION-1). These three used the retired OpenAI and DeepSeek catalogue rows. The

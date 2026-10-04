@@ -330,7 +330,7 @@ export async function tree() {
       const meta = folders[n.path] || {};
       const readme = at('README.md');
       const pkg = at('package.json');
-      const out = { name: n.name || 'Apple', path: n.path, files: n.files, he: meta.he ?? null, en: meta.en ?? null,
+      const out = { name: n.name || 'StudPilot', path: n.path, files: n.files, he: meta.he ?? null, en: meta.en ?? null,
         readme: readme ? firstParagraph(readme) : null,
         docs: [...(meta.docs || []), ...(pkg ? npmLinks(pkg) : [])], dirs: [] };
       const kids = [...n.kids.values()].sort((a, b) => a.name.localeCompare(b.name));

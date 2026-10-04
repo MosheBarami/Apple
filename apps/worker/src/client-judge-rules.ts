@@ -691,7 +691,7 @@ export function judgeConstruction(f: WorldFacts): Criterion {
   const evidence = cap(findings);
   if (findings.length > MAX_EVIDENCE) evidence[MAX_EVIDENCE - 1] = `${findings.length - MAX_EVIDENCE + 1} more construction problems`;
   const untagged = f.items.filter((x) => !x.tagged).length;
-  evidence.push(`Checked ${f.items.length} objects (${untagged} added by Apple, ${f.items.length - untagged} imported) of ${f.itemsSeen} in the world, and ${f.spawns.length} spawn point(s)${f.notChecked ? `; ${f.notChecked} more were not checked` : ''}. ${f.stood?.length ? `The test player's height was read ${f.stood.length} time${f.stood.length === 1 ? '' : 's'} during play (at the spawn, after the wait, after the touches).` : 'Whether the player stays above the map during play is inferred from the ground under the spawn, not observed.'}`);
+  evidence.push(`Checked ${f.items.length} objects (${untagged} added by StudPilot, ${f.items.length - untagged} imported) of ${f.itemsSeen} in the world, and ${f.spawns.length} spawn point(s)${f.notChecked ? `; ${f.notChecked} more were not checked` : ''}. ${f.stood?.length ? `The test player's height was read ${f.stood.length} time${f.stood.length === 1 ? '' : 's'} during play (at the spawn, after the wait, after the touches).` : 'Whether the player stays above the map during play is inferred from the ground under the spawn, not observed.'}`);
   const spawnBad = findings.filter((x) => /spawn|world origin/i.test(x)).length;
   const ok = findings.length === 0;
   return {

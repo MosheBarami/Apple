@@ -88,7 +88,7 @@ is a smaller hole than "nobody can sign up" and it stays OPEN.
 **Measured 2026-09-19:**
 
 ```
-$ npx wrangler secret list --config wrangler.apple.jsonc
+$ npx wrangler secret list --config wrangler.studpilot.jsonc
 [ ADMIN_KEY, ROBLOX_API_KEY, STRIPE_PRICE_BUILDER, STRIPE_PRICE_STUDIO,
   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET ]
 ```
@@ -116,8 +116,8 @@ migration written for the authority had only been deployed to `apple`.
 Deployed to legacy and verified, same command against both hosts:
 
 ```
-apple  ledgerColumns ["id","day","kind","sparks","created_at","credits"]  200   (was 500)
-apple  ledgerColumns ["id","day","kind","credits","created_at"]           200
+studpilot  ledgerColumns ["id","day","kind","sparks","created_at","credits"]  200   (was 500)
+studpilot  ledgerColumns ["id","day","kind","credits","created_at"]           200
 ```
 
 `sparks` is retained and `credits` was added and populated from it, so the ledger's history carried
@@ -149,11 +149,11 @@ below. Nothing else changes, because the test-mode path exercised every line of 
 
 ```bash
 cd apps/worker
-npx wrangler secret put STRIPE_SECRET_KEY            --config wrangler.apple.jsonc
-npx wrangler secret put STRIPE_PRICE_BUILDER         --config wrangler.apple.jsonc
-npx wrangler secret put STRIPE_PRICE_STUDIO          --config wrangler.apple.jsonc
-npx wrangler secret put STRIPE_WEBHOOK_SECRET        --config wrangler.apple.jsonc
-npx wrangler secret put STRIPE_PORTAL_CONFIGURATION  --config wrangler.apple.jsonc
+npx wrangler secret put STRIPE_SECRET_KEY            --config wrangler.studpilot.jsonc
+npx wrangler secret put STRIPE_PRICE_BUILDER         --config wrangler.studpilot.jsonc
+npx wrangler secret put STRIPE_PRICE_STUDIO          --config wrangler.studpilot.jsonc
+npx wrangler secret put STRIPE_WEBHOOK_SECRET        --config wrangler.studpilot.jsonc
+npx wrangler secret put STRIPE_PORTAL_CONFIGURATION  --config wrangler.studpilot.jsonc
 ```
 
 Type them into that prompt. Not into a chat window, not into a file — the current keys arrived
@@ -203,7 +203,7 @@ describing work that had already been done. A launch checklist that overstates w
 costs the same as one that understates it.
 
 Closed and probed on 2026-09-20: `SENTRY_DSN` is set on the `apple` worker, and the probe is an
-issue that actually arrived — `APPLE-WORKER-6`, a real 500 caught within a minute of being
+issue that actually arrived — `STUDPILOT-WORKER-6`, a real 500 caught within a minute of being
 triggered. Reading its stack trace is what revealed that the failure was on the legacy `golem`
 worker rather than on the product, which four deploys had failed to establish.
 
@@ -232,7 +232,7 @@ no DSN they are deliberate no-ops: nothing is sent, and the original error still
 1. In Sentry org `moshe-s6`, create two projects — **Cloudflare Workers** for the API and
    **Browser JavaScript** for the SPA. Two, not one: different release schemes and noise profiles.
 2. Copy each DSN from *Settings → Projects → <project> → Client Keys (DSN)*.
-3. `cd apps/worker && npx wrangler secret put SENTRY_DSN --config wrangler.apple.jsonc`
+3. `cd apps/worker && npx wrangler secret put SENTRY_DSN --config wrangler.studpilot.jsonc`
 4. `VITE_SENTRY_DSN` in `apps/web/.env.local`, then rebuild and redeploy the web bundle.
 
 **Probe:** trigger a handled error and confirm the issue appears in Sentry within a minute. A DSN

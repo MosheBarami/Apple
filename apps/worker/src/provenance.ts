@@ -9,7 +9,7 @@
 //      which asset, and why, in words the owner can act on.
 //
 // And underneath both, the line manifest §42 draws: **third-party material is used under someone
-// else's licence and is never presented as Apple's own work.** The attribution report separates
+// else's licence and is never presented as StudPilot's own work.** The attribution report separates
 // the three cases explicitly rather than emitting one undifferentiated credits list, because a
 // credits list that does not distinguish them is exactly how the mistake gets made.
 //
@@ -247,7 +247,7 @@ const JOINED =
  * sitting in the deployed `CORPUS` database until somebody drops them, and a project that placed a
  * catalogue asset BEFORE the removal has a usage row keyed on that asset's provenance slug. Those
  * credits are real and are still owed. Dropping the join to match the new write path would turn
- * every one of them into "Apple cannot account for this" — a product that used to know whose work
+ * every one of them into "StudPilot cannot account for this" — a product that used to know whose work
  * it placed, reporting that it does not. New placements key on `unaccounted:roblox:<id>`, which by
  * construction can never match, so they take this path whether or not the table is there.
  */
@@ -356,7 +356,7 @@ export interface CommercialUseReport {
  */
 export function commercialUseReport(projectId: string, assets: ProjectAsset[]): CommercialUseReport {
   const findings: ComplianceFinding[] = [];
-  const counts: Record<AssetOriginality | 'unknown', number> = { apple_original: 0, user_generated: 0, third_party: 0, unknown: 0 };
+  const counts: Record<AssetOriginality | 'unknown', number> = { studpilot_original: 0, user_generated: 0, third_party: 0, unknown: 0 };
 
   for (const { use, provenance } of assets) {
     if (!provenance) {
@@ -481,7 +481,7 @@ export interface CreditEntry {
 export interface AttributionReport {
   projectId: string;
   generatedAt: string;
-  /** Apple's own work. Separated so §42's line is visible in the output, not just in policy. */
+  /** StudPilot's own work. Separated so §42's line is visible in the output, not just in policy. */
   original: CreditEntry[];
   /** Made by GenerationService in the customer's own Studio session — theirs, not ours. */
   userGenerated: CreditEntry[];
@@ -535,7 +535,7 @@ export function attributionReport(projectId: string, assets: ProjectAsset[], now
     const licenceId = normaliseLicence(provenance.licence);
     const rule = licenceId ? LICENCES[licenceId] : undefined;
 
-    if (originality === 'apple_original') report.original.push(entry);
+    if (originality === 'studpilot_original') report.original.push(entry);
     else if (originality === 'user_generated') report.userGenerated.push(entry);
     else if (rule?.attributionRequired || provenance.attributionRequired) report.required.push(entry);
     else report.courtesy.push(entry);
@@ -564,13 +564,13 @@ function line(e: CreditEntry): string {
  * GUI. Plain text on purpose: it has to survive being pasted into a Roblox TextLabel.
  *
  * The section headings do the §42 work. "Original work" and "Third-party assets" are separate
- * headings so the finished credits cannot read as though Apple made everything in the list.
+ * headings so the finished credits cannot read as though StudPilot made everything in the list.
  */
 export function renderAttribution(report: AttributionReport): string {
   const out: string[] = ['Credits', '======='];
 
   if (report.original.length) {
-    out.push('', 'Original work, built for this experience by Apple');
+    out.push('', 'Original work, built for this experience by StudPilot');
     for (const e of report.original) out.push(`  - ${e.name}`);
   }
   if (report.userGenerated.length) {

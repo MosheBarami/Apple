@@ -22,7 +22,7 @@
 	          bob     rise and fall about rest, as a sine or as hops (studs, seconds a cycle)
 	          fade    go to a transparency (and stop colliding when it is gone), and come back
 	          light   switch the lights under the target (or make one), and optionally glow (Neon)
-	          sound   play a Sound (an existing one by path, or an id from Apple's sound library), once or looped
+	          sound   play a Sound (an existing one by path, or an id from StudPilot's sound library), once or looped
 	          emit    burst the particle emitters under the target, or switch them on and off
 	          bounce  launch whoever touches the target (studs a second, along a direction in the target's frame)
 	Triggers  click | prompt | touch | near | auto, on the target or on another part (trigger.at)

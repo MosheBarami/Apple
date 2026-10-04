@@ -20,11 +20,11 @@
 > provenance-unknown, which is the honest answer rather than a gap.
 >
 > Read the rest of this document as a record of what the system WAS wherever it names Layer 1, the
-> library, an import, or an upload under Apple's own account. The 511,208 rows are still sitting in
+> library, an import, or an upload under StudPilot's own account. The 511,208 rows are still sitting in
 > the live `CORPUS` D1 database until somebody drops them; the product no longer reads or writes
 > them.
 
-Apple's instinct, left alone, is to search the toolbox for a tree. That instinct is wrong in almost
+StudPilot's instinct, left alone, is to search the toolbox for a tree. That instinct is wrong in almost
 every row of the table below, and in two rows it is actively dangerous: free Roblox *Models* are
 the classic delivery vehicle for backdoor scripts.
 
@@ -42,7 +42,7 @@ tested against a live Studio edit-mode DataModel or read off a live page, not in
 
 ```
 ┌─ Layer 0  PROCEDURAL          Luau the agent writes. Zero assets. Zero cost. Wins almost everywhere.
-├─ Layer 1  APPLE KIT           Mesh + Image asset IDs uploaded once from CC0 sources.
+├─ Layer 1  STUDPILOT KIT           Mesh + Image asset IDs uploaded once from CC0 sources.
 │                               Open Use by default → every customer can reference them by id.
 ├─ Layer 2  GENERATED           GenerationService:GenerateModelAsync in the user's own Studio.
 │                               Free, ~20s, session-scoped, 10 req/min.
@@ -50,7 +50,7 @@ tested against a live Studio edit-mode DataModel or read off a live page, not in
 └─ Layer 4  BUILD-TIME GEN      Meshy / open models on the owner's machine. NEVER runtime. See §6.
 ```
 
-The insight that makes Layer 1 free: **Apple stores Roblox asset IDs and metadata, never asset
+The insight that makes Layer 1 free: **StudPilot stores Roblox asset IDs and metadata, never asset
 bytes.** Roblox already hosts and CDN-serves the geometry. A provenance row is ~1.5 KB, so a
 400-asset library is ~1.5 MB of D1. R2 is not needed and its absence is not a blocker.
 
@@ -59,7 +59,7 @@ Two rules follow, and both are enforced in code:
 1. **The library is keyed on Mesh and Image/Decal ids, never Model ids.** Images, Decals and Meshes
    are created *Open Use* by default; Models are not, and Models are the container type that can
    carry scripts.
-2. **Apple never re-hosts asset bytes.** If a thing cannot be referenced by a Roblox asset id, it
+2. **StudPilot never re-hosts asset bytes.** If a thing cannot be referenced by a Roblox asset id, it
    does not go in the library.
 
 ### Files
@@ -100,7 +100,7 @@ Sources are `procedural | library | generation_service | creator_store | terrain
   rectilinear — exactly what procedural geometry is good at — and Creator Store characters
   reliably carry scripts.
 
-Lighting and materials are free and move perceived quality more than geometry does. If Apple does
+Lighting and materials are free and move perceived quality more than geometry does. If StudPilot does
 one thing on a scene, it should be: set `Material` correctly on every part, and configure
 `Atmosphere` plus the six `Lighting` properties.
 

@@ -66,7 +66,7 @@ test('owner acquisition view separates listed sources, local bytes and backend s
   const onlyOwner = await library(q({ tab: 'intake', view: 'files', owner: '1', limit: '10' }));
   assert.ok(onlyOwner.page.rows.every((r) => r.ownerListed && r.source !== 'polyhaven'), 'excluded general models cannot count as owner acquisitions');
   const files = await library(q({ tab: 'intake', view: 'files', q: 'Wooden Crate 01', limit: '10' }));
-  assert.ok(files.page.rows.every((r) => r.source !== 'polyhaven'), 'generic Poly Haven files must not be presented as Apple models');
+  assert.ok(files.page.rows.every((r) => r.source !== 'polyhaven'), 'generic Poly Haven files must not be presented as StudPilot models');
   const excluded = await library(q({ tab: 'intake', view: 'sources', off: '133', limit: '11' }));
   assert.ok(excluded.page.rows.every((r) => r.state === 'out-of-scope-not-roblox' && r.acquired === 0));
   // Verify an owner-listed Roblox acquisition; an unrelated legacy audio pack is not required inventory.
@@ -194,7 +194,7 @@ test('costs derive: joins Workers AI with the gateway, groups runs, projects the
     ai: [{ count: 10, dimensions: { date: day, modelId: '@cf/a' }, sum: { totalInputTokens: 1000, totalOutputTokens: 100, totalNeurons: 20000 } }],
     gw: [{ count: 12, dimensions: { date: day, model: '@cf/a', provider: 'workers-ai' }, sum: { cachedRequests: 3, erroredRequests: 1, cost: 0.5 } },
       { count: 2, dimensions: { date: day, model: 'gpt-x', provider: 'openai' }, sum: { cachedRequests: 0, erroredRequests: 0, cost: 0.1, uncachedTokensIn: 50, uncachedTokensOut: 5 } }],
-    calls: [{ runId: 'run-aaaaaaaa1', inputTokens: 500, outputTokens: 50, cachedInputTokens: 400, neurons: 1000, at: now - 1000, model: '@cf/a', feature: 'apple-max:x', outcome: 'ok' },
+    calls: [{ runId: 'run-aaaaaaaa1', inputTokens: 500, outputTokens: 50, cachedInputTokens: 400, neurons: 1000, at: now - 1000, model: '@cf/a', feature: 'studpilot-max:x', outcome: 'ok' },
       { runId: 'run-aaaaaaaa1', inputTokens: 100, outputTokens: 10, neurons: 200, at: now, outcome: 'error' }],
     a: { tokens: { cacheHit: 0.8, input: 600, cached: 480 }, spend: { dayNeurons: 20000, monthNeurons: 50000, monthUsd: 1, maxMonthlyUsd: 19.8, limits: { billablePerMonth: 1800000 } } },
   });
@@ -228,7 +228,7 @@ test('business derive: masks emails, builds the funnel from real rows, flags rea
   const now = Date.UTC(2026, 8, 20);
   const users = [
     { id: '11111111-1111-1111-1111-111111111111', email: 'owner@example.com', created_at: '2026-09-19T10:00:00Z', last_sign_in_at: '2026-09-19T11:00:00Z', confirmed: true, plan: 'enterprise', is_admin: true, projects: 2 },
-    { id: '22222222-2222-2222-2222-222222222222', email: 'load-test-1@apple.internal', created_at: '2026-09-01T10:00:00Z', last_sign_in_at: null, confirmed: false, plan: 'free', is_admin: false, projects: 0 },
+    { id: '22222222-2222-2222-2222-222222222222', email: 'load-test-1@studpilot.internal', created_at: '2026-09-01T10:00:00Z', last_sign_in_at: null, confirmed: false, plan: 'free', is_admin: false, projects: 0 },
   ];
   const out = business.derive({ users, now, builds: [{ actorId: users[0].id }, { actorId: users[0].id }],
     a: { spend: { killed: false }, billing: { keyMode: 'test', production: true, webhook: true }, routing: [{ id: 'm', label: 'M', provider: 'workers-ai', available: true }] },

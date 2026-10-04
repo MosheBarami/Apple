@@ -1,7 +1,7 @@
 // Uploads built frontends into the worker's D1 static store.
 //   node infra/deploy-static.mjs [--only site|web]
 //   node infra/deploy-static.mjs --file <local> <remote>
-// Env: API_BASE, APPLE_ADMIN_KEY (from repo .env)
+// Env: API_BASE, STUDPILOT_ADMIN_KEY (from repo .env)
 //
 // THE SECOND LINE USED TO BE DOCUMENTED AS `--only file <local> <remote>`, WHICH UPLOADS NOTHING.
 // The code branches on `args[0] === '--file'`, so the documented spelling set `only = 'file'`,
@@ -35,10 +35,10 @@ try {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
   }
-} catch { /* no .env: the environment is expected to carry API_BASE and APPLE_ADMIN_KEY */ }
+} catch { /* no .env: the environment is expected to carry API_BASE and STUDPILOT_ADMIN_KEY */ }
 const BASE = process.env.API_BASE;
-const KEY = envCompat('APPLE_ADMIN_KEY');
-if (!BASE || !KEY) throw new Error('API_BASE / APPLE_ADMIN_KEY missing');
+const KEY = envCompat('STUDPILOT_ADMIN_KEY');
+if (!BASE || !KEY) throw new Error('API_BASE / STUDPILOT_ADMIN_KEY missing');
 
 const CHUNK = 700_000; // bytes per request (D1 row limit headroom + request size)
 const IMMUTABLE = /\.(js|css|woff2|png|jpg|webp|svg|glb)$/;

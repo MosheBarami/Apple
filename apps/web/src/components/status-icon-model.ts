@@ -8,7 +8,7 @@
  * §16.1 names a status vocabulary (I01–I12) and §16.4 asks for it as "semantic status
  * icon sets". What existed instead was the same idea drawn four different ways: a
  * literal `✓` character in `pairing-dialog.tsx` and `loading.tsx`, plus independent
- * status drawings in the generative UI. Apple-owned renderers now use one vocabulary.
+ * status drawings in the generative UI. StudPilot-owned renderers now use one vocabulary.
  *
  * A Unicode tick is not a small shortcut. It renders in whatever the font decides —
  * different weight, different baseline, different size from every other mark on the

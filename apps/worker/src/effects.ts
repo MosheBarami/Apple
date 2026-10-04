@@ -25,7 +25,7 @@
 // can be materialised with bounded create_instances operations. The Luau emitters remain below for
 // compatibility tests and old clients, but current authoring does not need code execution.
 
-import type { InstanceSpec, PropValue } from '@apple/shared';
+import type { InstanceSpec, PropValue } from '@studpilot/shared';
 
 /** One instance the preset creates under the target, as a class plus already-rendered Luau props. */
 interface EffectPart {

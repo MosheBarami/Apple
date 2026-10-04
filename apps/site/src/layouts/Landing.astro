@@ -1,7 +1,7 @@
 ---
-// apple-minimal.css FIRST: it is the token source and the shared base, and landing.css adds the
+// studpilot-minimal.css FIRST: it is the token source and the shared base, and landing.css adds the
 // front page's structure on top of it. The reverse order is what forced 117 `!important`s.
-import '../styles/apple-minimal.css';
+import '../styles/studpilot-minimal.css';
 import '../styles/landing.css';
 import Aura from '../components/picks/Aura.astro';
 
@@ -11,7 +11,7 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
-const site = Astro.site ?? new URL('https://appleworks.pages.dev');
+const site = Astro.site ?? new URL('https://studpilot.app');
 const canonical = new URL(Astro.url.pathname, site);
 const ogImage = new URL('/og.png', site);
 
@@ -43,7 +43,7 @@ const ogImage = new URL('/og.png', site);
     <link rel="sitemap" href="/sitemap-index.xml" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Apple" />
+    <meta property="og:site_name" content="StudPilot" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
@@ -51,7 +51,7 @@ const ogImage = new URL('/og.png', site);
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Apple — a creative AI chat for Roblox Studio." />
+    <meta property="og:image:alt" content="StudPilot — a creative AI chat for Roblox Studio." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />

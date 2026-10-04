@@ -1,4 +1,4 @@
-/* The Apple Test Lab (pages/tests.js). The base skin stays underneath (link#skin-base); this file adds
+/* The StudPilot Test Lab (pages/tests.js). The base skin stays underneath (link#skin-base); this file adds
    the lab layout and, under .tl-site, a port of the workspace's own thinking/tool-call CSS
    (apps/web/src/components/ai-elements/{chain-of-thought,tool,reasoning}.css, ws/reasoning.css,
    picks/thinking/lattice-glyph.css) so the replay looks like the site. */
@@ -141,7 +141,7 @@
 .tl-site .ai-tool__icon { width: 16px; height: 16px; flex: none; }
 .tl-site .ai-tool__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
 .tl-site .ai-tool__chevron { flex: none; transition: transform var(--t-fast) var(--ease-out); }
-.tl-site .ai-tool[open] > summary .ai-tool__chevron, .tl-site .apple-reasoning__history[open] > summary .ai-tool__chevron { transform: rotate(180deg); }
+.tl-site .ai-tool[open] > summary .ai-tool__chevron, .tl-site .studpilot-reasoning__history[open] > summary .ai-tool__chevron { transform: rotate(180deg); }
 .tl-site .ai-tool__state { display: inline-flex; animation: ai-tool-pop .32s cubic-bezier(.34, 1.36, .64, 1) both; }
 .tl-site .ai-tool__badge--input-available svg { color: var(--accent); animation: ai-tool-pulse 1.4s ease-in-out infinite; }
 .tl-site .ai-tool__badge--output-available { color: var(--muted); }
@@ -157,43 +157,43 @@
 .tl-site .ai-elements-shimmer { background: linear-gradient(120deg, var(--muted) 0%, var(--muted) 35%, var(--ink) 50%, var(--muted) 65%, var(--muted) 100%); background-size: 200% auto; background-position: 150% center; -webkit-background-clip: text; background-clip: text; color: transparent; animation: tl-shimmer 1s linear infinite; }
 @keyframes tl-shimmer { from { background-position: 150% center; } to { background-position: -50% center; } }
 
-.tl-site .apple-reasoning { width: min(100%, 760px); margin: 2px 0 14px; color: var(--muted); }
-.tl-site .apple-reasoning__head { min-height: 32px; display: flex; align-items: center; gap: 12px; }
-.tl-site .apple-reasoning__trigger { min-height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; margin-inline: -6px; border-radius: var(--r-xs); font-size: 13px; line-height: 20px; min-width: 0; }
-.tl-site .apple-reasoning__trigger:hover { background: var(--control-fill); }
-.tl-site .apple-reasoning__summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
-.tl-site .apple-reasoning__settle { animation: apple-reasoning-settle 350ms cubic-bezier(.23, 1, .32, 1) both; }
-@keyframes apple-reasoning-settle { from { opacity: 0; filter: blur(2px); } }
-.tl-site .apple-reasoning__time { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
-.tl-site .apple-reasoning__chev { color: var(--faint); transform: rotate(180deg); }
-.tl-site .apple-reasoning__trigger:hover .apple-reasoning__chev { color: var(--muted); }
-.tl-site .apple-reasoning__cost { color: var(--faint); font-size: 11px; margin-inline-start: auto; }
-.tl-site .apple-reasoning__details { margin-block-start: 6px; padding: 4px 0 2px; display: grid; gap: 12px; font-size: 13px; line-height: 20px; }
-.tl-site .apple-reasoning__note { color: var(--faint); font-size: 12px; line-height: 18px; max-width: 70ch; margin: 0; }
-.tl-site .apple-reasoning__chain { gap: 2px; }
-.tl-site .apple-reasoning__history > summary { color: var(--faint); font-size: 12px; }
-.tl-site .apple-reasoning__history > .apple-reasoning__chain { margin-top: 4px; }
-.tl-site .apple-step.ai-chain-of-thought__step { min-height: var(--h-xs); align-items: flex-start; padding-block: 4px; }
-.tl-site .apple-step .ai-tool__header { min-height: var(--h-xs); padding: 4px 6px; margin-inline: -6px; width: auto; display: inline-flex; align-self: flex-start; align-items: center; justify-content: flex-start; gap: 8px; border-radius: var(--r-xs); color: var(--muted); max-width: 100%; }
-.tl-site .apple-step .ai-tool__header:hover { background: var(--control-fill); color: var(--ink); }
-.tl-site .apple-step .ai-tool__title { font-size: 13px; }
-.tl-site .apple-step .ai-tool__icon { color: var(--faint); }
-.tl-site .apple-step .ai-tool__chevron { width: 14px; height: 14px; color: var(--faint); }
-.tl-site .apple-step .ai-tool__badge { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--faint); font-size: 11px; }
-.tl-site .apple-step .ai-tool__badge--output-available { font-size: 0; }
-.tl-site .apple-step .ai-tool__badge--output-available svg { width: 12px; height: 12px; }
+.tl-site .studpilot-reasoning { width: min(100%, 760px); margin: 2px 0 14px; color: var(--muted); }
+.tl-site .studpilot-reasoning__head { min-height: 32px; display: flex; align-items: center; gap: 12px; }
+.tl-site .studpilot-reasoning__trigger { min-height: 32px; display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; margin-inline: -6px; border-radius: var(--r-xs); font-size: 13px; line-height: 20px; min-width: 0; }
+.tl-site .studpilot-reasoning__trigger:hover { background: var(--control-fill); }
+.tl-site .studpilot-reasoning__summary { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.tl-site .studpilot-reasoning__settle { animation: studpilot-reasoning-settle 350ms cubic-bezier(.23, 1, .32, 1) both; }
+@keyframes studpilot-reasoning-settle { from { opacity: 0; filter: blur(2px); } }
+.tl-site .studpilot-reasoning__time { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tl-site .studpilot-reasoning__chev { color: var(--faint); transform: rotate(180deg); }
+.tl-site .studpilot-reasoning__trigger:hover .studpilot-reasoning__chev { color: var(--muted); }
+.tl-site .studpilot-reasoning__cost { color: var(--faint); font-size: 11px; margin-inline-start: auto; }
+.tl-site .studpilot-reasoning__details { margin-block-start: 6px; padding: 4px 0 2px; display: grid; gap: 12px; font-size: 13px; line-height: 20px; }
+.tl-site .studpilot-reasoning__note { color: var(--faint); font-size: 12px; line-height: 18px; max-width: 70ch; margin: 0; }
+.tl-site .studpilot-reasoning__chain { gap: 2px; }
+.tl-site .studpilot-reasoning__history > summary { color: var(--faint); font-size: 12px; }
+.tl-site .studpilot-reasoning__history > .studpilot-reasoning__chain { margin-top: 4px; }
+.tl-site .studpilot-step.ai-chain-of-thought__step { min-height: var(--h-xs); align-items: flex-start; padding-block: 4px; }
+.tl-site .studpilot-step .ai-tool__header { min-height: var(--h-xs); padding: 4px 6px; margin-inline: -6px; width: auto; display: inline-flex; align-self: flex-start; align-items: center; justify-content: flex-start; gap: 8px; border-radius: var(--r-xs); color: var(--muted); max-width: 100%; }
+.tl-site .studpilot-step .ai-tool__header:hover { background: var(--control-fill); color: var(--ink); }
+.tl-site .studpilot-step .ai-tool__title { font-size: 13px; }
+.tl-site .studpilot-step .ai-tool__icon { color: var(--faint); }
+.tl-site .studpilot-step .ai-tool__chevron { width: 14px; height: 14px; color: var(--faint); }
+.tl-site .studpilot-step .ai-tool__badge { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--faint); font-size: 11px; }
+.tl-site .studpilot-step .ai-tool__badge--output-available { font-size: 0; }
+.tl-site .studpilot-step .ai-tool__badge--output-available svg { width: 12px; height: 12px; }
 .tl-site .ai-chain-of-thought__step--active .ai-tool__title { color: var(--ink); }
 .tl-site .ai-chain-of-thought__step--active .ai-tool__icon { color: var(--accent); }
-.tl-site .apple-step .ai-tool__badge--output-error { color: var(--bad); }
-.tl-site .apple-step--failed .ai-tool__title { color: var(--bad); }
-.tl-site .apple-step--failed .picks-step { color: var(--bad); }
-.tl-site .apple-step__body { padding-block: 2px 8px; padding-inline: 24px 0; }
-.tl-site .apple-step__facts { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 8px; margin: 0; }
-.tl-site .apple-step__facts dt { color: var(--faint); font-size: 11px; }
-.tl-site .apple-step__facts dd { margin: 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; color: var(--muted); }
-.tl-site .apple-step__facts dd.apple-step__err { color: var(--bad); }
-.tl-site .apple-step__facts dd.tl-nr { text-align: right; }
-.tl-site .apple-reasoning__target { font-family: var(--font-mono); }
+.tl-site .studpilot-step .ai-tool__badge--output-error { color: var(--bad); }
+.tl-site .studpilot-step--failed .ai-tool__title { color: var(--bad); }
+.tl-site .studpilot-step--failed .picks-step { color: var(--bad); }
+.tl-site .studpilot-step__body { padding-block: 2px 8px; padding-inline: 24px 0; }
+.tl-site .studpilot-step__facts { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 8px; margin: 0; }
+.tl-site .studpilot-step__facts dt { color: var(--faint); font-size: 11px; }
+.tl-site .studpilot-step__facts dd { margin: 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; color: var(--muted); }
+.tl-site .studpilot-step__facts dd.studpilot-step__err { color: var(--bad); }
+.tl-site .studpilot-step__facts dd.tl-nr { text-align: right; }
+.tl-site .studpilot-reasoning__target { font-family: var(--font-mono); }
 
 /* step marks */
 .tl-site .picks-step { display: inline-flex; width: 16px; height: 16px; color: currentColor; }

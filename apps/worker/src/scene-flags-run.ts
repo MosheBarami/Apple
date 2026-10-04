@@ -5,7 +5,7 @@
  * fails is reported as `error`, and a terrain read that fails only means the terrain half of the flags is not made (an unread
  * terrain is not "no terrain").
  */
-import type { OpResult, StudioOp } from '@apple/shared';
+import type { OpResult, StudioOp } from '@studpilot/shared';
 import { flagLines, footprintCentre, sceneFlags, type SceneFlagsResult } from './scene-flags';
 
 export type Exec = (op: StudioOp, timeoutMs?: number) => Promise<OpResult>;

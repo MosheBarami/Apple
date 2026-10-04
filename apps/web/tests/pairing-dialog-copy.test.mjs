@@ -92,7 +92,7 @@ test('the dead ConnectStudio block is gone and nothing imports it', () => {
 });
 
 // F-014, 2026-09-22: "Studio connected" was followed by "Enable edits in the plugin before asking
-// Apple to change your place" while the dock read "edits allowed for this connection". The browser
+// StudPilot to change your place" while the dock read "edits allowed for this connection". The browser
 // cannot see the plugin's consent (it lives in Studio; the worker is never told), so the dialog may
 // only say what is true in BOTH states — a condition, never an instruction that presumes edits are off.
 test('the connected panel never tells someone to enable edits it cannot see are off', () => {
@@ -100,5 +100,5 @@ test('the connected panel never tells someone to enable edits it cannot see are 
   assert.ok(at > 0, 'the connected panel was not found — this checks nothing');
   const panel = DIALOG.slice(at, DIALOG.indexOf('</div>', at));
   assert.doesNotMatch(panel, /\bEnable edits\b/i, 'the panel instructs the reader to enable edits');
-  assert.match(panel, /only while[^<]*edits allowed/i, 'the panel no longer says when Apple may change the place');
+  assert.match(panel, /only while[^<]*edits allowed/i, 'the panel no longer says when StudPilot may change the place');
 });

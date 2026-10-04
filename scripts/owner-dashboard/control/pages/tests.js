@@ -1,4 +1,4 @@
-// The Apple Test Lab: one card per real gauntlet test of Apple (round × test), newest first.
+// The StudPilot Test Lab: one card per real gauntlet test of StudPilot (round × test), newest first.
 // Index: the cards (final shot, model, test, date, length, steps, tools, errors, score, the arrow
 // against the previous round of the same test), filters, and the progress chart per test.
 // #/tests/<id>: the exact prompt, the run replayed with the site's own thinking/tool-call UI (dir=ltr,
@@ -48,7 +48,7 @@ const all = (d) => arr(d.cards).map((c) => join(d, c));
 
 // ---------------------------------------------------------------------------- pieces ---
 const whenOf = (j) => (j.round.date ? html`<span title="${j.round.dateSource === 'worker' ? 'זמן תחילת הריצה, מה-worker' : 'הזמן שבו הראיה נכנסה לריפו (git). הריצה עצמה לא נשמרה ב-worker'}">${fullDate(j.round.date)}${j.round.dateSource === 'repo' ? ' · לפי הריפו' : ''}</span>` : nr());
-const modelChip = (j) => (j.model ? html`<span class="chip chip-sm chip-ai">${j.model}</span>` : html`<span class="chip chip-sm" title="אין רישום ריצה. לפי הפרוטוקול ב-GAUNTLET.md הבדיקה רצה על Apple MAX">Apple MAX · לפי הפרוטוקול</span>`);
+const modelChip = (j) => (j.model ? html`<span class="chip chip-sm chip-ai">${j.model}</span>` : html`<span class="chip chip-sm" title="אין רישום ריצה. לפי הפרוטוקול ב-GAUNTLET.md הבדיקה רצה על StudPilot MAX">StudPilot MAX · לפי הפרוטוקול</span>`);
 const msText = (ms) => (isNum(ms) ? duration(ms / 1000) : null);
 
 /** The "ours" panel of a compare image: the left half of the owner's side-by-side, same box every round. */
@@ -67,7 +67,7 @@ function deltaView(delta, { full = false } = {}) {
     <small>${delta.better} טובים יותר · ${delta.worse} גרועים יותר · ${delta.same} זהים</small></p>${full ? html`<ul class="tl-dls">${list}</ul>` : ''}</div>`;
 }
 
-const scoreLine = (j) => html`<p class="tl-score"><span>ציון מבחן הקושי</span>${nr('לא נרשם')}${isNum(j.self) ? html`<span class="chip chip-sm ${j.run.critique.passed ? 'chip-ok' : 'chip-bad'}" title="הציון ש-Apple נתן לעצמו בבדיקה החזותית (inspect_visually), מתוך 10. זה לא ציון מבחן הקושי">בדיקה עצמית ${j.self}/10</span>` : ''}</p>`;
+const scoreLine = (j) => html`<p class="tl-score"><span>ציון מבחן הקושי</span>${nr('לא נרשם')}${isNum(j.self) ? html`<span class="chip chip-sm ${j.run.critique.passed ? 'chip-ok' : 'chip-bad'}" title="הציון ש-StudPilot נתן לעצמו בבדיקה החזותית (inspect_visually), מתוך 10. זה לא ציון מבחן הקושי">בדיקה עצמית ${j.self}/10</span>` : ''}</p>`;
 
 function card(j) {
   const { card: c } = j; const pinned = pins.has(c.id);
@@ -77,7 +77,7 @@ function card(j) {
     isNum(j.tools) ? `${num(j.tools)} כלים` : null,
   ].filter(Boolean);
   return html`<article class="card tl-card ${pinned ? 'is-pinned' : ''}" data-k="tl-${c.id}">
-    <a class="tl-thumb" href="#/tests/${c.id}" aria-label="פתיחת סבב ${c.round}, ${TESTS[c.test]}">${crop(c.compare, `מה ש-Apple בנה בסבב ${c.round}`)}</a>
+    <a class="tl-thumb" href="#/tests/${c.id}" aria-label="פתיחת סבב ${c.round}, ${TESTS[c.test]}">${crop(c.compare, `מה ש-StudPilot בנה בסבב ${c.round}`)}</a>
     <div class="tl-cb">
       <div class="tl-chips"><span class="chip chip-sm" style="--tc:${TEST_COLOR[c.test]}"><i class="tl-dot" aria-hidden="true"></i>${TESTS[c.test]}</span>${modelChip(j)}
         ${isNum(j.errors) ? html`<span class="chip chip-sm ${j.errors ? 'chip-bad' : 'chip-ok'}">${num(j.errors)} שגיאות</span>` : ''}</div>
@@ -94,7 +94,7 @@ const PIN_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" str
 // ------------------------------------------------------------------- progress chart ---
 const METRICS = {
   hardness: { label: 'ציון מבחן הקושי (%)', of: () => null, max: 100 },
-  selfScore: { label: 'הבדיקה החזותית של Apple (%)', of: (j) => (isNum(j.self) ? j.self * 10 : null), max: 100 },
+  selfScore: { label: 'הבדיקה החזותית של StudPilot (%)', of: (j) => (isNum(j.self) ? j.self * 10 : null), max: 100 },
   opsApplied: { label: 'שינויים שהוחלו', of: (j) => j.run?.opsApplied ?? null },
   errors: { label: 'כלים שנכשלו', of: (j) => j.errors },
   minutes: { label: 'אורך הריצה (דקות)', of: (j) => (isNum(j.run?.durationMs) ? Math.round(j.run.durationMs / 6000) / 10 : null) },
@@ -126,14 +126,14 @@ function progress(js) {
   }
   return html`<section class="card tl-prog" aria-labelledby="h-prog"><h2 id="h-prog">ההתקדמות לפי סבב<small>נקודה רק איפה שמשהו באמת נרשם</small></h2>
     ${seg}${chart}
-    <p class="explain">סבב אחד של Apple בונה את כל המבחנים בבת אחת, אז הבדיקה העצמית, השינויים והשגיאות הם של הריצה כולה ולא של מבחן אחד. לחיצה על נקודה פותחת את הסבב.</p></section>`;
+    <p class="explain">סבב אחד של StudPilot בונה את כל המבחנים בבת אחת, אז הבדיקה העצמית, השינויים והשגיאות הם של הריצה כולה ולא של מבחן אחד. לחיצה על נקודה פותחת את הסבב.</p></section>`;
 }
 
 // ------------------------------------------------------------------------------ index ---
 function filtered(js) {
   const q = S.q.trim().toLowerCase();
   const out = js.filter((j) => (S.test === 'all' || j.card.test === S.test)
-    && (S.model === 'all' || (j.model || 'Apple MAX') === S.model)
+    && (S.model === 'all' || (j.model || 'StudPilot MAX') === S.model)
     && (!S.pinned || pins.has(j.card.id))
     && (!q || [TESTS[j.card.test], `סבב ${j.card.round}`, `round ${j.card.round}`, j.prompt, j.round.protocolPrompt, j.run?.reply, ...arr(j.round.findings).map((f) => `${f.id} ${f.text}`), ...j.trace.map((t) => `${t.tool} ${t.title} ${t.result || ''}`)]
       .filter(Boolean).join(' ').toLowerCase().includes(q)));
@@ -151,7 +151,7 @@ function index(d) {
   const shown = filtered(js);
   const tbtn = (k, label) => html`<button class="seg-b ${S.test === k ? 'on' : ''}" data-act="ftest" data-t="${k}" aria-pressed="${S.test === k ? 'true' : 'false'}">${label}</button>`;
   return html`
-    ${note('info', 'מה יש כאן, ומאיפה', 'כל כרטיס הוא בדיקה אמיתית אחת של Apple: סבב אחד של הגאנטלט ומבחן אחד בתוכו. התמונה, ההשוואה וההערות של הבודק באים מהריפו (docs/gauntlet). הפרומפט, הכלים, השגיאות, העלות והבדיקה העצמית באים מה-worker, רק מפרויקטים בשם "Gauntlet". מה שלא נרשם כתוב "לא נרשם בריצה הזאת", ושום מספר לא הומצא.')}
+    ${note('info', 'מה יש כאן, ומאיפה', 'כל כרטיס הוא בדיקה אמיתית אחת של StudPilot: סבב אחד של הגאנטלט ומבחן אחד בתוכו. התמונה, ההשוואה וההערות של הבודק באים מהריפו (docs/gauntlet). הפרומפט, הכלים, השגיאות, העלות והבדיקה העצמית באים מה-worker, רק מפרויקטים בשם "Gauntlet". מה שלא נרשם כתוב "לא נרשם בריצה הזאת", ושום מספר לא הומצא.')}
     ${d.worker?.ok === false ? note('warn', 'אין נתוני ריצה מה-worker כרגע', `${d.worker.reason || ''} הכרטיסים מוצגים רק ממה שיש בריפו.`) : ''}
     <section class="g g4" aria-label="מדדים">
       ${stat({ key: 'tl-n', label: 'בדיקות מתועדות', value: js.length, sub: `${num(arr(d.rounds).length)} סבבים · ${num(runs.length)} עם רישום ריצה מה-worker` })}
@@ -163,7 +163,7 @@ function index(d) {
     <div class="tl-filters card" role="search">
       <label class="tl-search">${icon('search', 15)}<input id="tl-q" type="search" placeholder="חיפוש בפרומפט, בכלים, בשגיאות ובממצאים" value="${S.q}" data-input="q" aria-label="חיפוש"></label>
       <div class="seg" role="group" aria-label="סוג מבחן">${tbtn('all', 'הכל')}${tbtn('map', 'מפה')}${tbtn('models', 'מודלים')}${tbtn('ui', 'UI')}${tbtn('other', 'אחר')}</div>
-      <label class="tl-sel"><span>מודל</span><select id="tl-model" data-change="fmodel"><option value="all" ${S.model === 'all' ? 'selected' : ''}>הכל</option><option ${S.model === 'Apple MAX' ? 'selected' : ''}>Apple MAX</option><option ${S.model === 'Apple' ? 'selected' : ''}>Apple</option></select></label>
+      <label class="tl-sel"><span>מודל</span><select id="tl-model" data-change="fmodel"><option value="all" ${S.model === 'all' ? 'selected' : ''}>הכל</option><option ${S.model === 'StudPilot MAX' ? 'selected' : ''}>StudPilot MAX</option><option ${S.model === 'StudPilot' ? 'selected' : ''}>StudPilot</option></select></label>
       <label class="tl-sel"><span>מיון</span><select id="tl-sort" data-change="fsort"><option value="new" ${S.sort === 'new' ? 'selected' : ''}>החדש קודם</option><option value="old" ${S.sort === 'old' ? 'selected' : ''}>הישן קודם</option><option value="errors" ${S.sort === 'errors' ? 'selected' : ''}>הכי הרבה שגיאות</option></select></label>
       <button class="btn btn-sm ${S.pinned ? 'btn-primary' : ''}" data-act="fpinned" aria-pressed="${S.pinned ? 'true' : 'false'}">${raw(PIN_SVG)}<span>רק נעוצים</span></button>
     </div>
@@ -179,7 +179,7 @@ function suggest() {
     ['הפרמטרים של כל כלי', 'ToolTraceEntry (packages/shared/src/index.ts) לא כולל args. להוסיף שדה args מקוצר ולמלא אותו כשהכלי רץ (apps/worker/src/session.ts).'],
     ['הכישורים (skills) שנבחרו', 'agent.skillCardsShown נדרס בכל ריצה. לשמור אותו על הודעת ה-assistant, כמו deniedTools.'],
     ['המודל באירוע הבנייה', 'אירוע ה-build לא כולל productModel. להוסיף אותו ל-recordEvent ולרשימת השדות המותרים ב-analytics.ts.'],
-    ['הצילומים ש-Apple צילם', 'render_view שומר רק מטא-דאטה, ו-inspect_visually שומר תמונה זעירה. לשמור את התמונות ב-R2 (MEDIA) ולרשום את המפתח ב-trace.'],
+    ['הצילומים ש-StudPilot צילם', 'render_view שומר רק מטא-דאטה, ו-inspect_visually שומר תמונה זעירה. לשמור את התמונות ב-R2 (MEDIA) ולרשום את המפתח ב-trace.'],
   ];
   return html`<details class="card tl-sug"><summary><b>מה חסר כדי שהריצות הבאות יירשמו במלואן</b><small>שינויים קטנים ב-worker, לא נפרסו</small></summary>
     <table class="tl-tbl"><thead><tr><th>שדה</th><th>מה צריך לשנות</th></tr></thead><tbody>${rows.map(([a, b]) => html`<tr><td>${a}</td><td dir="auto">${b}</td></tr>`)}</tbody></table></details>`;
@@ -220,18 +220,18 @@ function stepRow(t, state, k) {
   const badge = state === 'active' ? 'input-available' : t.ok ? 'output-available' : 'output-error';
   const status = badge === 'output-available' ? DONE_MARK(12) : SV(12, badge === 'input-available' ? CLOCK : XCIRCLE);
   const facts = [
-    t.target ? html`<dt>On</dt><dd class="apple-reasoning__target">${t.target}</dd>` : '',
-    t.result ? html`<dt>Result</dt><dd class="${t.ok ? '' : 'apple-step__err'}">${t.result}</dd>` : '',
+    t.target ? html`<dt>On</dt><dd class="studpilot-reasoning__target">${t.target}</dd>` : '',
+    t.result ? html`<dt>Result</dt><dd class="${t.ok ? '' : 'studpilot-step__err'}">${t.result}</dd>` : '',
     isNum(t.ms) && t.ms > 0 ? html`<dt>Time</dt><dd>${elapsed(t.ms)}</dd>` : '',
     html`<dt>Input</dt><dd class="tl-nr" dir="rtl">${NR}</dd>`,
   ];
   const mark = state === 'active' ? ACTIVE_MARK : t.ok ? DONE_MARK(16) : FAIL_MARK;
-  return html`<div class="ai-chain-of-thought__step ai-chain-of-thought__step--${state === 'active' ? 'active' : 'complete'} apple-step ${t.ok ? '' : 'apple-step--failed'}" data-k="${k}">
+  return html`<div class="ai-chain-of-thought__step ai-chain-of-thought__step--${state === 'active' ? 'active' : 'complete'} studpilot-step ${t.ok ? '' : 'studpilot-step--failed'}" data-k="${k}">
     <div class="ai-chain-of-thought__rail"><span class="picks-step picks-step--${state === 'active' ? 'active' : t.ok ? 'complete' : 'failed'}">${mark}</span><span class="ai-chain-of-thought__line"></span></div>
     <div class="ai-chain-of-thought__body"><details class="ai-tool">
       <summary class="ai-tool__header"><span class="ai-tool__heading">${SV(16, KIND_ICON[KIND[t.kind] || 'wrench'], 'ai-tool__icon')}<span class="ai-tool__title ${state === 'active' ? 'is-running' : ''}">${state === 'active' ? t.running : t.title}</span>
         <span class="ai-tool__badge ai-tool__badge--${badge}"><span class="ai-tool__state">${status}</span>${badge === 'output-error' ? 'Error' : badge === 'input-available' ? 'Running' : 'Done'}</span></span>${SV(14, CHEVRON, 'ai-tool__chevron')}</summary>
-      <div class="ai-tool__content apple-step__body"><dl class="apple-step__facts">${facts}</dl></div>
+      <div class="ai-tool__content studpilot-step__body"><dl class="studpilot-step__facts">${facts}</dl></div>
     </details></div></div>`;
 }
 
@@ -244,18 +244,18 @@ function replay(j, at) {
   const settled = j.run.durationMs ?? upTo;
   const finalState = j.run.error ? 'failed' : 'done';
   const summary = live
-    ? html`<span class="apple-reasoning__summary ai-elements-shimmer">${rows.at(-1)?.running || 'Working'}</span>`
-    : html`<span class="apple-reasoning__summary apple-reasoning__settle">Thought for ${secs(settled)}</span>`;
-  const hist = earlier.length ? html`<details class="apple-reasoning__history"><summary class="ai-chain-of-thought__header">${earlier.length} earlier steps${SV(14, CHEVRON, 'ai-tool__chevron')}</summary>
-    <div class="ai-chain-of-thought apple-reasoning__chain">${earlier.map((x, i) => stepRow(x, 'complete', `s${i}`))}</div></details>` : '';
+    ? html`<span class="studpilot-reasoning__summary ai-elements-shimmer">${rows.at(-1)?.running || 'Working'}</span>`
+    : html`<span class="studpilot-reasoning__summary studpilot-reasoning__settle">Thought for ${secs(settled)}</span>`;
+  const hist = earlier.length ? html`<details class="studpilot-reasoning__history"><summary class="ai-chain-of-thought__header">${earlier.length} earlier steps${SV(14, CHEVRON, 'ai-tool__chevron')}</summary>
+    <div class="ai-chain-of-thought studpilot-reasoning__chain">${earlier.map((x, i) => stepRow(x, 'complete', `s${i}`))}</div></details>` : '';
   return html`<div class="tl-user" dir="auto">${j.prompt || j.round.protocolPrompt || ''}</div>
-    <div class="apple-reasoning">
-      <div class="apple-reasoning__head"><span class="apple-reasoning__trigger" aria-expanded="true">${lattice(live ? 'working' : finalState)}${summary}${live ? html`<span class="apple-reasoning__time">${elapsed(upTo)}</span>` : ''}${SV(14, CHEVRON, 'apple-reasoning__chev')}</span>
-        ${isNum(j.run.credits) ? html`<span class="apple-reasoning__cost">${j.run.credits} credits</span>` : ''}</div>
-      <div class="apple-reasoning__details">
-        <p class="apple-reasoning__note">The model's own thinking text was not saved for this run, so only its steps are shown.</p>
+    <div class="studpilot-reasoning">
+      <div class="studpilot-reasoning__head"><span class="studpilot-reasoning__trigger" aria-expanded="true">${lattice(live ? 'working' : finalState)}${summary}${live ? html`<span class="studpilot-reasoning__time">${elapsed(upTo)}</span>` : ''}${SV(14, CHEVRON, 'studpilot-reasoning__chev')}</span>
+        ${isNum(j.run.credits) ? html`<span class="studpilot-reasoning__cost">${j.run.credits} credits</span>` : ''}</div>
+      <div class="studpilot-reasoning__details">
+        <p class="studpilot-reasoning__note">The model's own thinking text was not saved for this run, so only its steps are shown.</p>
         ${hist}
-        <div class="ai-chain-of-thought apple-reasoning__chain">${recent.map((x, i) => stepRow(x, live && i === recent.length - 1 ? 'active' : 'complete', `s${earlier.length + i}`))}</div>
+        <div class="ai-chain-of-thought studpilot-reasoning__chain">${recent.map((x, i) => stepRow(x, live && i === recent.length - 1 ? 'active' : 'complete', `s${earlier.length + i}`))}</div>
       </div>
     </div>
     ${!live && j.run.reply ? html`<div class="tl-reply" dir="auto">${j.run.reply}</div>` : ''}`;
@@ -273,8 +273,8 @@ function shotsOf(j) {
   const r = j.round; const c = j.card;
   const out = [];
   if (c.compare) out.push({ src: media(c.compare), label: `השוואה של הבודק · סבב ${c.round} · ${TESTS[c.test]}`, by: 'הבודק' });
-  for (const p of arr(r.shots)) out.push({ src: media(p), label: p.split('/').pop(), by: /apple-max-run1/.test(p) ? 'צילום Studio של התוצאה' : 'צילום Studio של הבודק' });
-  for (const s of arr(j.run?.appleShots)) out.push({ src: s.src, label: s.label, by: 'Apple צילם בעצמו' });
+  for (const p of arr(r.shots)) out.push({ src: media(p), label: p.split('/').pop(), by: /studpilot-max-run1/.test(p) ? 'צילום Studio של התוצאה' : 'צילום Studio של הבודק' });
+  for (const s of arr(j.run?.studpilotShots)) out.push({ src: s.src, label: s.label, by: 'StudPilot צילם בעצמו' });
   return out;
 }
 
@@ -289,7 +289,7 @@ function detail(d, id) {
   const shots = shotsOf(j);
   const others = js.filter((x) => x.card.id !== id);
   const spec = { id: `tests-rerun-${id}`, path: '/api/cc/tests/action', body: { op: 'rerun', id }, platform: 'apple', title: `להריץ שוב את סבב ${c.round} עם אותו פרומפט`,
-    what: 'השרת יחזיר את הקריאה המדויקת שמפעילה ריצה אמיתית של Apple עם אותו פרומפט, ולא ישלח אותה. ריצה אמיתית עולה קרדיטים וצריכה Studio מחובר עם Baseplate ריק.',
+    what: 'השרת יחזיר את הקריאה המדויקת שמפעילה ריצה אמיתית של StudPilot עם אותו פרומפט, ולא ישלח אותה. ריצה אמיתית עולה קרדיטים וצריכה Studio מחובר עם Baseplate ריק.',
     undo: 'אין מה לבטל: שום דבר לא נשלח ושום ריצה לא מתחילה.', confirmLabel: 'להציג את הקריאה' };
   const worked = [
     ...(isNum(run?.opsApplied) ? [`${num(run.opsApplied)} שינויים הוחלו במשחק`] : []),
@@ -327,8 +327,8 @@ function detail(d, id) {
       ${stat({ key: `tl-c-${id}`, label: 'עלות', text: isNum(run?.usd) ? `$${num(run.usd, 3)}` : 'לא נרשם', sub: run ? `${num(run.credits)} קרדיטים · ${compact(run.neurons)} neurons` : '' })}
     </section>
 
-    <section class="card" aria-labelledby="h-vs"><h2 id="h-vs">התוצאה מול המשחק האמיתי<small>הצילום הסופי של Apple, חתוך מתמונת ההשוואה של הבודק, מול תמונות הייחוס של המשחק האמיתי</small></h2>
-      <div class="tl-vs"><figure>${crop(c.compare, 'מה ש-Apple בנה')}<figcaption>Apple · סבב ${c.round}</figcaption></figure>
+    <section class="card" aria-labelledby="h-vs"><h2 id="h-vs">התוצאה מול המשחק האמיתי<small>הצילום הסופי של StudPilot, חתוך מתמונת ההשוואה של הבודק, מול תמונות הייחוס של המשחק האמיתי</small></h2>
+      <div class="tl-vs"><figure>${crop(c.compare, 'מה ש-StudPilot בנה')}<figcaption>StudPilot · סבב ${c.round}</figcaption></figure>
         <div class="tl-refs">${arr(test.refs).slice(0, 4).map((p) => html`<button class="tl-ref" data-act="shot" data-src="${media(p)}" data-label="${p.split('/').pop()}"><img src="${media(p)}" alt="תמונת ייחוס" loading="lazy"></button>`)}</div></div>
       ${c.compare ? html`<details class="tl-full"><summary>תמונת ההשוואה המלאה, עם ההערות של הבודק</summary><button class="tl-ref" data-act="shot" data-src="${media(c.compare)}" data-label="השוואה מלאה"><img src="${media(c.compare)}" alt="השוואה מלאה" loading="lazy"></button></details>` : ''}
       ${deltaView(c.delta, { full: true })}</section>
@@ -343,7 +343,7 @@ function detail(d, id) {
     </section>
 
     <div class="g g2">
-      <section class="card" aria-labelledby="h-plan"><h2 id="h-plan">התוכנית ש-Apple כתב</h2>
+      <section class="card" aria-labelledby="h-plan"><h2 id="h-plan">התוכנית ש-StudPilot כתב</h2>
         ${run?.plan ? html`<p class="tl-plan-t" dir="auto">${run.plan.title}</p><ol class="tl-plan" dir="ltr">${run.plan.steps.map((s) => html`<li><b>${s.title}</b>${s.detail ? html`<span>${s.detail}</span>` : ''}${s.tool ? html`<code>${s.tool}</code>` : ''}</li>`)}</ol>` : nr()}</section>
       <section class="card" aria-labelledby="h-tools"><h2 id="h-tools">הכלים שהופעלו<small>${num(t.length)} קריאות · ${num(counts.length)} כלים שונים</small></h2>
         ${counts.length ? html`<table class="tl-tbl"><thead><tr><th>כלי</th><th>פעמים</th><th>נכשל</th><th>זמן</th></tr></thead><tbody>${counts.map((x) => html`<tr><td dir="ltr"><b>${x.title}</b> <code>${x.tool}</code></td><td>${num(x.n)}</td><td class="${x.fail ? 'bad' : ''}">${num(x.fail)}</td><td>${x.ms ? elapsed(x.ms) : '—'}</td></tr>`)}</tbody></table>` : nr()}</section>
@@ -359,19 +359,19 @@ function detail(d, id) {
         ${run.error ? html`<p class="tl-err-p" dir="auto">${run.error}</p>` : ''}`}</section>
 
     <div class="g g2">
-      <section class="card" aria-labelledby="h-know"><h2 id="h-know">ממה Apple למד<small>ידע, ערכות ומודולים שהוא שלף בריצה</small></h2>
+      <section class="card" aria-labelledby="h-know"><h2 id="h-know">ממה StudPilot למד<small>ידע, ערכות ומודולים שהוא שלף בריצה</small></h2>
         ${run ? listOr(run.knowledge, (x) => html`<li dir="ltr"><b>${x.title}</b> <code>${x.tool}</code>${x.what ? html`<span>${x.what}</span>` : ''}</li>`, 'לא נשלף שום ידע בריצה הזאת.') : nr()}
-        <h3>מסמכים (RAG)</h3>${run ? listOr(run.docs, (x) => html`<li dir="ltr">${x.url ? html`<a href="${x.url}" target="_blank" rel="noopener noreferrer">${x.title || x.url}</a>` : x.title}${x.citation ? html` <code>${x.citation}</code>` : ''}</li>`, 'Apple לא חיפש במסמכים (search_docs) בריצה הזאת.') : nr()}
+        <h3>מסמכים (RAG)</h3>${run ? listOr(run.docs, (x) => html`<li dir="ltr">${x.url ? html`<a href="${x.url}" target="_blank" rel="noopener noreferrer">${x.title || x.url}</a>` : x.title}${x.citation ? html` <code>${x.citation}</code>` : ''}</li>`, 'StudPilot לא חיפש במסמכים (search_docs) בריצה הזאת.') : nr()}
         <h3>כישורים (skills)</h3><p class="tl-nr-p">${NR}: ה-worker שומר את הכישורים שבחר רק עד הריצה הבאה.</p></section>
       <section class="card" aria-labelledby="h-work"><h2 id="h-work">מה עבד ומה לא</h2>
         <h3 class="good">עבד</h3>${listOr(worked, (x) => html`<li dir="auto">${x}</li>`)}
         <h3 class="bad">לא עבד</h3>${listOr(didnt, (x) => html`<li dir="auto">${x}</li>`)}
-        ${run?.critique ? html`<h3>הבדיקה העצמית של Apple · ${run.critique.score}/10</h3><p class="explain" dir="ltr">${run.critique.summary}</p>` : ''}</section>
+        ${run?.critique ? html`<h3>הבדיקה העצמית של StudPilot · ${run.critique.score}/10</h3><p class="explain" dir="ltr">${run.critique.summary}</p>` : ''}</section>
     </div>
 
     <section class="card" aria-labelledby="h-shots"><h2 id="h-shots">הצילומים<small>${num(shots.length)} · לחיצה מגדילה</small></h2>
       ${shots.length ? html`<div class="tl-strip">${shots.map((s) => html`<button class="tl-shot" data-act="shot" data-src="${s.src}" data-label="${s.by} · ${s.label}"><img src="${s.src}" alt="${s.label}" loading="lazy"><span>${s.by}</span></button>`)}</div>` : nr()}
-      ${run && !run.appleShots.length ? html`<p class="explain">הצילומים ש-Apple צילם בעצמו בריצה (render_view) ${NR}: נשמרו רק הנתונים עליהם, בלי התמונה.</p>` : ''}</section>
+      ${run && !run.studpilotShots.length ? html`<p class="explain">הצילומים ש-StudPilot צילם בעצמו בריצה (render_view) ${NR}: נשמרו רק הנתונים עליהם, בלי התמונה.</p>` : ''}</section>
 
     <div class="g g2">
       <section class="card" aria-labelledby="h-crit"><h2 id="h-crit">ציון לכל קריטריון<small>"מה נחשב זהה" לפי GAUNTLET.md</small></h2>
@@ -397,7 +397,7 @@ function diffView(d, a, b) {
   const js = all(d); const A = js.find((x) => x.card.id === a); const B = js.find((x) => x.card.id === b);
   if (!A || !B) return html`<p><a href="#/tests" class="btn btn-sm">→ כל הבדיקות</a></p>${note('warn', 'אחת הבדיקות לא נמצאה', `${a} / ${b}`)}`;
   const rows = [
-    ['מודל', (j) => j.model || 'Apple MAX · לפי הפרוטוקול'],
+    ['מודל', (j) => j.model || 'StudPilot MAX · לפי הפרוטוקול'],
     ['תאריך', (j) => (j.round.date ? fullDate(j.round.date) : null)],
     ['אורך', (j) => msText(j.run?.durationMs)],
     ['צעדים', (j) => (isNum(j.run?.steps) ? num(j.run.steps) : null)],
@@ -437,7 +437,7 @@ function report(d, id) {
   for (const t of j.trace) L.push(`- ${t.ok ? '✓' : '✗'} ${t.title} (\`${t.tool}\`)${t.target ? ` · ${t.target}` : ''}${t.result ? ` — ${t.result}` : ''}`);
   if (!j.trace.length) L.push(NR);
   L.push('', '## ממצאים', '', ...(arr(r.findings).length ? r.findings.map((f) => `- [${f.status}][${f.severity}] ${f.id}: ${f.text}`) : ['אין']), '');
-  if (run?.reply) L.push('## התשובה האחרונה של Apple', '', run.reply, '');
+  if (run?.reply) L.push('## התשובה האחרונה של StudPilot', '', run.reply, '');
   if (c.compare) L.push('## ראיה', '', `- ${c.compare}`, ...arr(r.shots).map((p) => `- ${p}`), '');
   return L.join('\n');
 }
@@ -464,7 +464,7 @@ function lightbox(src, label) {
 
 export default {
   id: 'tests', title: 'מעבדת בדיקות', nav: 'מעבדת בדיקות', glyph: 'flask', needs: ['tests'],
-  sub: 'כל בדיקה אמיתית של Apple: מה ביקשו, מה הוא עשה, איפה נכשל, ואיך זה נראה מול המקור',
+  sub: 'כל בדיקה אמיתית של StudPilot: מה ביקשו, מה הוא עשה, איפה נכשל, ואיך זה נראה מול המקור',
   links: () => [],
   render(d) {
     const t = d.tests || {};
@@ -512,7 +512,7 @@ export default {
     export(el, ctx) {
       const md = report(D, el.dataset.id); if (!md) return;
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
-      a.download = `apple-test-${el.dataset.id}.md`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      a.download = `studpilot-test-${el.dataset.id}.md`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       ctx.toast('הדוח ירד כקובץ Markdown. שום דבר לא נשלח לשום מקום.', 'ok', 'מעבדת בדיקות');
     },
   },

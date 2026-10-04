@@ -1,6 +1,6 @@
 // Naming one of the project's own files from the message box.
 //
-// Apple has been writing files into the project workspace since the web tools shipped — notes,
+// StudPilot has been writing files into the project workspace since the web tools shipped — notes,
 // plans, generated CSVs, design briefs — and `workspace_read` lets the agent open any of them by
 // path. The person typing had no way to say WHICH. They could open the Files drawer, read a path
 // off it, close the drawer and type it out from memory into a box that had by then lost their

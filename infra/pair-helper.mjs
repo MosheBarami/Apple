@@ -9,12 +9,12 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // They used to be inline literals in four scripts, which put a real Supabase
-// password in git history. Set APPLE_E2E_EMAIL and APPLE_E2E_PASSWORD in .env
+// password in git history. Set STUDPILOT_E2E_EMAIL and STUDPILOT_E2E_PASSWORD in .env
 // (gitignored) — see docs/DECISIONS.md.
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('STUDPILOT_E2E_EMAIL / STUDPILOT_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';

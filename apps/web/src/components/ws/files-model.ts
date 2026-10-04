@@ -1,7 +1,7 @@
 /**
  * THE PROJECT'S FILES, REDUCED TO WHAT A DRAWER CAN DRAW.
  *
- * Apple has been writing files into the project workspace since the web tools shipped — notes,
+ * StudPilot has been writing files into the project workspace since the web tools shipped — notes,
  * plans, generated CSVs, design briefs — and the browser's only acknowledgement was a line in the
  * activity feed reading "Listed the project files". There was no way to open one. This module is
  * the decision half of the drawer that fixes that; `files-panel.tsx` is the markup.

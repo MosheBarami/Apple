@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(mkdtempSync(join(tmpdir(), 'apple-start-')), 'ps.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-start-')), 'ps.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'lib', 'pending-start.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { cwd: WEB, stdio: 'pipe' });

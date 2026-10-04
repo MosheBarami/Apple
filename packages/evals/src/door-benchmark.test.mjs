@@ -5,8 +5,8 @@
 // including three that were genuinely broken — and asserts the suite separates them.
 //
 // Each bad case is a failure that actually happened:
-//   apple-v1   looped out seven `Instance.new("Joint")` calls. "Joint" is not a Roblox class.
-//   apple-v2   emitted `doorService:GetDoorByHandle(doorHandle)` — a service and a method that do
+//   studpilot-v1   looped out seven `Instance.new("Joint")` calls. "Joint" is not a Roblox class.
+//   studpilot-v2   emitted `doorService:GetDoorByHandle(doorHandle)` — a service and a method that do
 //              not exist, because it was trained on library internals and wrote code that belongs
 //              inside a framework nobody defined.
 //   the base   set `prompt.Visible`, which ProximityPrompt does not have, and used bare `wait()`.
@@ -103,8 +103,8 @@ end)
 
 const CASES = [
   ['GOOD door', GOOD, ['door-01-proximity-open-close', 'door-02-no-invented-api', 'door-04-cleanup-and-state'], true],
-  ['apple-v1 (Joint loop)', V1_OUTPUT, ['door-02-no-invented-api'], false],
-  ['apple-v2 (doorService)', V2_OUTPUT, ['door-02-no-invented-api'], false],
+  ['studpilot-v1 (Joint loop)', V1_OUTPUT, ['door-02-no-invented-api'], false],
+  ['studpilot-v2 (doorService)', V2_OUTPUT, ['door-02-no-invented-api'], false],
   ['base (prompt.Visible, bare wait)', BASE_OUTPUT, ['door-01-proximity-open-close', 'door-04-cleanup-and-state'], false],
   ['client-trusted hasKey', CLIENT_TRUSTED, ['door-03-server-authority'], false],
 ];

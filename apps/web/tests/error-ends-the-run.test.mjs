@@ -2,11 +2,11 @@
  * A REFUSED RUN MUST STOP THE UI SAYING IT IS THINKING.
  *
  * Reproduced end to end against the deployed product on 2026-09-20 by infra/e2e.mjs. A free account
- * asking for Apple MAX gets `product_model_unavailable`. session.ts sends that through `refuseOne`,
+ * asking for StudPilot MAX gets `product_model_unavailable`. session.ts sends that through `refuseOne`,
  * which sends ONE message and returns — no msg_end, no run_state, no terminal event at all. The
  * harness waited 150 seconds for one and gave up:
  *
- *   ws error msg: product_model_unavailable Apple MAX requires a paid subscription.
+ *   ws error msg: product_model_unavailable StudPilot MAX requires a paid subscription.
  *   Error: chat timeout after 150s; events: presence,hello,studio_status,error
  *
  * The workspace's handler was `toast(message, 'error')` and nothing else, so `running` stayed true

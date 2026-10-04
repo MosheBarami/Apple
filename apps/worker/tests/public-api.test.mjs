@@ -40,7 +40,7 @@ const WORKER = join(HERE, '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 const SRC = (...p) => join(WORKER, 'src', ...p);
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-public-api-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-public-api-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 
 const CF_SHIM = join(TMP, 'cf-shim.mjs');
@@ -70,15 +70,15 @@ const INDEX_SRC = readFileSync(SRC('index.ts'), 'utf8');
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 
-const SUPABASE_URL = 'https://supa.apple.test';
+const SUPABASE_URL = 'https://supa.studpilot.test';
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const PROJECT_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const OTHER_PROJECT_ID = 'ffffffff-eeee-4ddd-8ccc-bbbbbbbbbbbb';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
-const JWKS_BODY = JSON.stringify({ keys: [{ ...(await jose.exportJWK(publicKey)), kid: 'apple-test', alg: 'ES256', use: 'sig' }] });
-const OWNER_JWT = await new jose.SignJWT({ email: 'owner@apple.test', role: 'authenticated' })
-  .setProtectedHeader({ alg: 'ES256', kid: 'apple-test' })
+const JWKS_BODY = JSON.stringify({ keys: [{ ...(await jose.exportJWK(publicKey)), kid: 'studpilot-test', alg: 'ES256', use: 'sig' }] });
+const OWNER_JWT = await new jose.SignJWT({ email: 'owner@studpilot.test', role: 'authenticated' })
+  .setProtectedHeader({ alg: 'ES256', kid: 'studpilot-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
   .setSubject(OWNER_ID)
@@ -255,7 +255,7 @@ async function call(path, { method = 'GET', key, jwt, headers = {}, body, env, r
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined && h['Content-Type'] === undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://apple.test${path}`, {
+    new Request(`https://studpilot.test${path}`, {
       method,
       headers: h,
       ...(body !== undefined ? { body: typeof body === 'string' ? body : JSON.stringify(body) } : {}),
@@ -515,7 +515,7 @@ test('STATIC — no /v1 handler addresses a session except through grantedStub',
 });
 
 test('the OpenAI request parser refuses numbers that are not numbers', () => {
-  const ok = { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] };
+  const ok = { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] };
   assert.equal(P.parseChatCompletionRequest(ok).ok, true);
 
   // `??` defends undefined and null only. Each of these survives it, and then every `>` and
@@ -554,7 +554,7 @@ test('the model id is looked up on the table itself, not through Object.prototyp
 });
 
 test('a foundation-model id is refused by name rather than silently aliased', () => {
-  // RESTATED for V3 G01. The API serves one engine, Apple, as `apple-chat`; the retired product ids
+  // RESTATED for V3 G01. The API serves one engine, StudPilot, as `studpilot-chat`; the retired product ids
   // are bridged to it (below). What stays refused is every PROVIDER id, the registry's own
   // included, and every model the product never offered.
   const providerIds = S.MODEL_REGISTRY.map((m) => m.providerModelId);
@@ -566,31 +566,36 @@ test('a foundation-model id is refused by name rather than silently aliased', ()
   }
 });
 
-test('the public model list is one engine: Apple as apple-chat, on the gateway key that runs GLM', () => {
-  assert.deepEqual(Object.keys(P.PUBLIC_MODELS), ['apple-chat']);
-  // `apple-plan` named the retired Plan mode (V3 G01). It is never listed, and a caller that still
-  // sends it is answered by Apple as apple-chat rather than refused.
-  const legacyPlan = P.parseChatCompletionRequest({ model: 'apple-plan', messages: [{ role: 'user', content: 'hi' }] });
-  assert.equal(legacyPlan.ok, true, 'apple-plan was refused');
-  assert.equal(legacyPlan.value.publicModel, 'apple-chat');
-  assert.equal(legacyPlan.value.productModel, 'apple');
-  assert.equal(JSON.stringify(P.publicModelList(0)).includes('apple-plan'), false, 'apple-plan is listed');
-  const apple = P.PUBLIC_MODELS['apple-chat'];
-  assert.equal(apple.productModel, 'apple');
-  assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, apple.internal), `apple-chat routes to '${apple.internal}', which the gateway does not configure`);
-  assert.equal(GW.DEFAULT_MODELS[apple.internal].id, S.registryModel('apple').providerModelId);
+test('the public model list is one engine: StudPilot as studpilot-chat, on the gateway key that runs GLM', () => {
+  assert.deepEqual(Object.keys(P.PUBLIC_MODELS), ['studpilot-chat']);
+  // `apple-chat` was this model before the rename and `apple-plan` named the retired Plan mode (V3 G01).
+  // Neither is listed, and a caller that still sends one is answered by StudPilot as studpilot-chat rather
+  // than refused. The old ids are written out here on purpose: they are what published clients send.
+  for (const old of ['apple-chat', 'apple-plan']) {
+    const legacy = P.parseChatCompletionRequest({ model: old, messages: [{ role: 'user', content: 'hi' }] });
+    assert.equal(legacy.ok, true, `${old} was refused`);
+    assert.equal(legacy.value.publicModel, 'studpilot-chat', old);
+    assert.equal(legacy.value.productModel, 'apple', old);
+    assert.equal(JSON.stringify(P.publicModelList(0)).includes(old), false, `${old} is listed`);
+  }
+  // A name that never existed is still refused: the bridge is for the ids that were published, not for any spelling.
+  assert.equal(P.parseChatCompletionRequest({ model: 'studpilot-plan', messages: [{ role: 'user', content: 'hi' }] }).ok, false, 'studpilot-plan never existed');
+  const studpilot = P.PUBLIC_MODELS['studpilot-chat'];
+  assert.equal(studpilot.productModel, 'apple');
+  assert.ok(Object.hasOwn(GW.DEFAULT_MODELS, studpilot.internal), `studpilot-chat routes to '${studpilot.internal}', which the gateway does not configure`);
+  assert.equal(GW.DEFAULT_MODELS[studpilot.internal].id, S.registryModel('apple').providerModelId);
   // No retired id is published; each is only accepted, through the bridge.
   for (const id of S.LEGACY_MODEL_IDS) assert.equal(Object.hasOwn(P.PUBLIC_MODELS, id), false, id);
 });
 
 test('the request parser refuses the shapes this surface cannot honour', () => {
-  const base = { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] };
+  const base = { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] };
   const cases = [
     [{ ...base, tools: [{ type: 'function' }] }, 'tools_not_supported'],
     [{ ...base, functions: [] }, 'tools_not_supported'],
     [{ ...base, n: 2 }, 'invalid_request_error'],
-    [{ model: 'apple-chat', messages: [] }, 'invalid_request_error'],
-    [{ model: 'apple-chat' }, 'invalid_request_error'],
+    [{ model: 'studpilot-chat', messages: [] }, 'invalid_request_error'],
+    [{ model: 'studpilot-chat' }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'tool', content: 'x' }] }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'user', content: [{ type: 'image_url', image_url: {} }] }] }, 'invalid_request_error'],
     [{ ...base, messages: [{ role: 'user' }] }, 'invalid_request_error'],
@@ -611,11 +616,11 @@ test('the request parser refuses the shapes this surface cannot honour', () => {
 });
 
 test('the deprecated /v1/completions parser is the same validator, not a laxer one', () => {
-  const r = P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: 'hello', max_tokens: '8' });
+  const r = P.parseLegacyCompletionRequest({ model: 'studpilot-chat', prompt: 'hello', max_tokens: '8' });
   assert.equal(r.ok, false, 'the legacy route accepted a max_tokens the chat route rejects');
-  assert.equal(P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: '' }).ok, false);
-  assert.equal(P.parseLegacyCompletionRequest({ model: 'apple-chat' }).ok, false);
-  const good = P.parseLegacyCompletionRequest({ model: 'apple-chat', prompt: 'hello' });
+  assert.equal(P.parseLegacyCompletionRequest({ model: 'studpilot-chat', prompt: '' }).ok, false);
+  assert.equal(P.parseLegacyCompletionRequest({ model: 'studpilot-chat' }).ok, false);
+  const good = P.parseLegacyCompletionRequest({ model: 'studpilot-chat', prompt: 'hello' });
   assert.equal(good.ok, true);
   assert.equal(good.value.legacy, true);
   assert.equal(good.value.messages[0].content, 'hello');
@@ -632,7 +637,7 @@ test('a finish reason this API cannot represent never becomes "stop"', () => {
 
 test('streamed chunks carry the finish reason last, and usage only when asked', () => {
   const resp = { text: 'hello', toolCalls: [], usage: { inputTokens: 3, outputTokens: 2 }, neurons: 1, provider: 'p', model: 'm', finishReason: 'stop' };
-  const meta = { id: 'chatcmpl_1', model: 'apple-chat', createdAtMs: 1_700_000_000_000, fingerprint: 'fp' };
+  const meta = { id: 'chatcmpl_1', model: 'studpilot-chat', createdAtMs: 1_700_000_000_000, fingerprint: 'fp' };
 
   const without = P.chatCompletionChunks(resp, meta, 'stop', false);
   assert.equal(without[0].choices[0].delta.role, 'assistant');
@@ -779,14 +784,14 @@ test('usage headers omit headroom rather than inventing it', () => {
 });
 
 test('the sandbox completion is deterministic and labels itself', () => {
-  const req = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
+  const req = P.parseChatCompletionRequest({ model: 'studpilot-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
   const a = P.sandboxCompletion(req);
   const b = P.sandboxCompletion(req);
   assert.equal(a.text, b.text, 'the sandbox is not deterministic');
   assert.match(a.text, /sandbox/i);
   assert.equal(a.neurons, 0, 'the sandbox must cost nothing');
   assert.equal(a.finishReason, 'stop');
-  const other = P.sandboxCompletion(P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'pong' }] }).value);
+  const other = P.sandboxCompletion(P.parseChatCompletionRequest({ model: 'studpilot-chat', messages: [{ role: 'user', content: 'pong' }] }).value);
   assert.notEqual(a.text, other.text, 'the sandbox ignores the request');
 });
 
@@ -839,7 +844,7 @@ test('a key without chat:write cannot create a completion, and the model is neve
     method: 'POST',
     key: reader.key,
     env: bundle.env,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert.equal(r.status, 403);
   assert.equal(r.json.error.code, 'insufficient_scope');
@@ -855,11 +860,11 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'describe a plaza' }], max_tokens: 64 },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'describe a plaza' }], max_tokens: 64 },
   });
   assert.equal(r.status, 200, r.text.slice(0, 300));
   assert.equal(r.json.object, 'chat.completion');
-  assert.equal(r.json.model, 'apple-chat');
+  assert.equal(r.json.model, 'studpilot-chat');
   assert.equal(r.json.choices[0].message.role, 'assistant');
   assert.equal(r.json.choices[0].message.content, 'A stone plaza with a clock tower.');
   assert.equal(r.json.choices[0].finish_reason, 'stop');
@@ -870,18 +875,23 @@ test('a live key returns an OpenAI-shaped completion with usage and rate-limit h
   assert.ok(r.res.headers.get('X-Golem-Usage-Input-Tokens'));
   assert.ok(r.res.headers.get('X-Golem-Usage-Output-Tokens'));
   assert.ok(r.res.headers.get('X-Golem-Usage-Credits'));
+  for (const brand of ['Apple', 'StudPilot']) {
+    for (const figure of ['Usage-Input-Tokens', 'Usage-Output-Tokens', 'Usage-Credits']) {
+      assert.equal(r.res.headers.get(`X-${brand}-${figure}`), r.res.headers.get(`X-Golem-${figure}`), `X-${brand}-${figure} carries the same figure`);
+    }
+  }
   // Rate-limit headers belong on the 200, not only on the 429.
   assert.equal(r.res.headers.get('X-RateLimit-Limit'), String(K.rateLimitFor('live')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Remaining')) < Number(r.res.headers.get('X-RateLimit-Limit')));
   assert.ok(Number(r.res.headers.get('X-RateLimit-Reset')) > 0);
-  assert.equal(r.res.headers.get('Apple-Version'), P.CURRENT_API_VERSION);
+  assert.equal(r.res.headers.get('StudPilot-Version'), P.CURRENT_API_VERSION);
   assert.equal(r.res.headers.get('Deprecation'), null, 'the current route announced a deprecation');
 
   assert.equal(bundle.trace.ai.length, 1, 'the model should have run exactly once');
   assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), 'a live call did not spend Credits');
 });
 
-test('a retired model id is served by Apple on a free account and answered as apple-chat (V3 G01 bridge)', async () => {
+test('a retired model id is served by StudPilot on a free account and answered as studpilot-chat (V3 G01 bridge)', async () => {
   for (const id of S.LEGACY_MODEL_IDS) {
     const bundle = makeEnv({ aiText: 'A stone plaza.' });
     const key = await seedKey(bundle, { scopes: ['chat:write'] });
@@ -890,26 +900,26 @@ test('a retired model id is served by Apple on a free account and answered as ap
       body: { model: id, messages: [{ role: 'user', content: 'build a tower' }] },
     });
     assert.equal(r.status, 200, `${id}: ${r.text.slice(0, 200)}`);
-    assert.equal(r.json.model, 'apple-chat', `${id} was not answered as what actually ran`);
+    assert.equal(r.json.model, 'studpilot-chat', `${id} was not answered as what actually ran`);
     assert.equal(bundle.trace.ai.length, 1, `${id} did not run`);
     assert.ok(bundle.trace.calls.some((c) => c.ns === 'QUOTA_DO' && c.path === '/spend'), `${id} did not spend Credits`);
   }
 });
 
-test('the public parser answers every retired id as apple-chat, run as Apple', () => {
-  const apple = P.parseChatCompletionRequest({ model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] });
-  assert.equal(apple.ok, true);
-  assert.equal(apple.value.productModel, 'apple');
+test('the public parser answers every retired id as studpilot-chat, run as StudPilot', () => {
+  const studpilot = P.parseChatCompletionRequest({ model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] });
+  assert.equal(studpilot.ok, true);
+  assert.equal(studpilot.value.productModel, 'apple');
   for (const id of S.LEGACY_MODEL_IDS) {
     const r = P.parseChatCompletionRequest({ model: id, messages: [{ role: 'user', content: 'hi' }] });
     assert.equal(r.ok, true, `${id} was refused`);
-    assert.equal(r.value.publicModel, 'apple-chat', id);
-    assert.equal(r.value.internalModel, apple.value.internalModel, id);
+    assert.equal(r.value.publicModel, 'studpilot-chat', id);
+    assert.equal(r.value.internalModel, studpilot.value.internalModel, id);
     assert.equal(r.value.productModel, 'apple', id);
   }
 });
 
-test('any productModel on a run, retired or unknown, runs as Apple on every plan', async () => {
+test('any productModel on a run, retired or unknown, runs as StudPilot on every plan', async () => {
   for (const plan of ['free', 'builder']) {
     for (const productModel of ['apple', ...S.LEGACY_MODEL_IDS, 'gpt-4o']) {
       const seen = [];
@@ -952,7 +962,7 @@ test('a run that ends in a tool call is an error, not an empty completion', asyn
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'edit my script' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'edit my script' }] },
   });
   assert.equal(r.status, 502, `expected a refusal, got ${r.status}: ${r.text.slice(0, 200)}`);
   assert.equal(r.json.error.code, 'upstream_incomplete');
@@ -966,11 +976,13 @@ test('a test key is served by the sandbox: no model, no Credits, and it says so'
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'ping' }] },
   });
   assert.equal(r.status, 200, r.text.slice(0, 200));
   assert.equal(r.json.system_fingerprint, P.SANDBOX_FINGERPRINT);
   assert.equal(r.res.headers.get('X-Golem-Sandbox'), 'true');
+  assert.equal(r.res.headers.get('X-Apple-Sandbox'), 'true', 'the Apple spelling answers too');
+  assert.equal(r.res.headers.get('X-StudPilot-Sandbox'), 'true', 'and so does the current one');
   assert.match(r.json.choices[0].message.content, /sandbox/i);
   assert.equal(r.res.headers.get('X-Golem-Usage-Credits'), '0');
   assert.equal(bundle.trace.ai.length, 0, 'a TEST key ran the model');
@@ -980,7 +992,7 @@ test('a test key is served by the sandbox: no model, no Credits, and it says so'
     method: 'POST',
     key: key.key,
     env: bundle.env,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'ping' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'ping' }] },
   });
   assert.equal(again.json.choices[0].message.content, r.json.choices[0].message.content);
   // The live key's rate limit is not the test key's.
@@ -1089,7 +1101,7 @@ test('stream: true produces a real SSE body terminated by [DONE]', async () => {
     key: key.key,
     env: bundle.env,
     raw: true,
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'go' }], stream: true, stream_options: { include_usage: true } },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'go' }], stream: true, stream_options: { include_usage: true } },
   });
   assert.equal(res.status, 200, text.slice(0, 200));
   assert.match(res.headers.get('Content-Type') ?? '', /text\/event-stream/);
@@ -1109,7 +1121,7 @@ test('stream: true produces a real SSE body terminated by [DONE]', async () => {
 test('Idempotency-Key replays the first answer and refuses a second, different body', async () => {
   const bundle = makeEnv({ aiText: 'once' });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
-  const body = { model: 'apple-chat', messages: [{ role: 'user', content: 'charge me once' }] };
+  const body = { model: 'studpilot-chat', messages: [{ role: 'user', content: 'charge me once' }] };
   const headers = { 'Idempotency-Key': 'order-42' };
 
   const first = await call('/v1/chat/completions', { method: 'POST', key: key.key, env: bundle.env, headers, body });
@@ -1269,7 +1281,28 @@ test('an unknown /v1 path is a JSON 404, not the marketing 404 page', async () =
   assert.ok(bare.res.headers.get('X-Request-Id'));
 });
 
-test('an unknown Apple-Version is refused before anything else happens', async () => {
+test('an unknown StudPilot-Version is refused before anything else happens', async () => {
+  const bundle = makeEnv();
+  const key = await seedKey(bundle, { scopes: ['chat:write'] });
+  const r = await call('/v1/chat/completions', {
+    method: 'POST',
+    key: key.key,
+    env: bundle.env,
+    headers: { 'StudPilot-Version': '2019-01-01' },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
+  });
+  assert.equal(r.status, 400);
+  assert.equal(r.json.error.code, 'unsupported_api_version');
+  assert.equal(bundle.trace.ai.length, 0);
+  // The current version is accepted and echoed.
+  const ok = await call('/v1/models', { key: key.key, env: bundle.env, headers: { 'StudPilot-Version': P.CURRENT_API_VERSION } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.res.headers.get('StudPilot-Version'), P.CURRENT_API_VERSION);
+});
+
+test('the former Apple-Version header is still read and echoed, so a pinned client stays pinned', async () => {
+  // Renamed 2026-10-04 (StudPilot handoff 1.2). A client written against the old name must not be
+  // silently unpinned: an unknown version under the OLD name is refused exactly as under the new one.
   const bundle = makeEnv();
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
@@ -1277,22 +1310,21 @@ test('an unknown Apple-Version is refused before anything else happens', async (
     key: key.key,
     env: bundle.env,
     headers: { 'Apple-Version': '2019-01-01' },
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
-  assert.equal(r.status, 400);
+  assert.equal(r.status, 400, 'the old header was ignored');
   assert.equal(r.json.error.code, 'unsupported_api_version');
-  assert.equal(bundle.trace.ai.length, 0);
-  // The current version is accepted and echoed.
   const ok = await call('/v1/models', { key: key.key, env: bundle.env, headers: { 'Apple-Version': P.CURRENT_API_VERSION } });
   assert.equal(ok.status, 200);
-  assert.equal(ok.res.headers.get('Apple-Version'), P.CURRENT_API_VERSION);
+  assert.equal(ok.res.headers.get('Apple-Version'), P.CURRENT_API_VERSION, 'the old header is echoed for old clients');
+  assert.equal(ok.res.headers.get('StudPilot-Version'), P.CURRENT_API_VERSION);
 });
 
 test('the deprecated completion route still works and announces its own sunset', async () => {
   const bundle = makeEnv({ aiText: 'legacy answer' });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/completions', {
-    method: 'POST', key: key.key, env: bundle.env, body: { model: 'apple-chat', prompt: 'hello' },
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', prompt: 'hello' },
   });
   assert.equal(r.status, 200, r.text.slice(0, 200));
   assert.equal(r.json.object, 'text_completion');
@@ -1334,7 +1366,7 @@ test('a caller\'s request id is echoed when it is safe, replaced when it is not,
   const chatKey = await seedKey(chatBundle, { scopes: ['chat:write'] });
   await call('/v1/chat/completions', {
     method: 'POST', key: chatKey.key, env: chatBundle.env, headers: { 'X-Request-Id': 'chat-trace-3' },
-    body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
+    body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   const spend = chatBundle.trace.calls.find((cc) => cc.ns === 'QUOTA_DO' && cc.path === '/spend');
   assert.ok(spend, 'no Credit spend was recorded');
@@ -1366,7 +1398,7 @@ test('an account out of Credits gets 429 and the model does not run', async () =
   const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, creditsRemaining: 0 } } : QUOTA_STATE) });
   const key = await seedKey(bundle, { scopes: ['chat:write'] });
   const r = await call('/v1/chat/completions', {
-    method: 'POST', key: key.key, env: bundle.env, body: { model: 'apple-chat', messages: [{ role: 'user', content: 'hi' }] },
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert.equal(r.status, 429);
   assert.equal(r.json.error.code, 'insufficient_quota');
@@ -1473,7 +1505,7 @@ test('the discovery document and the OpenAPI schema are served at the caller\'s 
   const schema = await call('/v1/openapi.json', { key: key.key, env: bundle.env });
   assert.equal(schema.status, 200);
   assert.equal(schema.json.openapi, '3.1.0');
-  assert.equal(schema.json.servers[0].url, 'https://apple.test');
+  assert.equal(schema.json.servers[0].url, 'https://studpilot.test');
   assert.ok(schema.json.paths['/v1/chat/completions'].post);
   assert.ok(schema.json.paths['/v1/projects/{id}/messages'].get);
 });

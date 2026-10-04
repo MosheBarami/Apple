@@ -6,7 +6,7 @@ const roblox = source('components/roblox-key-panel.tsx');
 const settings = source('routes/settings.tsx');
 const css = source('design/system.css');
 
-test('Roblox credential fields are distinct from saved Apple login credentials', () => {
+test('Roblox credential fields are distinct from saved StudPilot login credentials', () => {
   const id = roblox.match(/<input\s+id="rk-id"[\s\S]*?\/>/)?.[0];
   const key = roblox.match(/<input\s+id="rk-key"[\s\S]*?\/>/)?.[0];
   assert.ok(id && key);
@@ -35,11 +35,11 @@ test('privacy copy states the promise outright, with no control beside it', () =
   // outlives the choice it was written for stops protecting anything and starts blocking the fix.
   //
   // Re-aimed at what must now hold: the page STATES the promise, and offers no way to change it.
-  assert.match(settings, /Apple never trains on your work/);
+  assert.match(settings, /StudPilot never trains on your work/);
   assert.doesNotMatch(settings, /Training contribution is off by default/);
   assert.doesNotMatch(settings, /name="trainingOptIn"/, 'a control here would contradict the sentence above it');
 });
 
 test('asset-source choices are absent from customer settings', () => {
-  assert.doesNotMatch(settings, /AssetSourceSettings|Save asset sources|Where Apple gets assets/);
+  assert.doesNotMatch(settings, /AssetSourceSettings|Save asset sources|Where StudPilot gets assets/);
 });

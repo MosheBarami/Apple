@@ -1,13 +1,13 @@
 # Roblox Frontier Studio benchmark
 
 This is a **product benchmark**, not a claim that a text model knows how to build a game. It asks
-Apple to take one ordinary customer prompt through its actual paired Studio plugin and complete a
+StudPilot to take one ordinary customer prompt through its actual paired Studio plugin and complete a
 playable game. The first fixed bank has 12 genres × 3 independent fresh-place attempts = **36
 full-game runs per product lane**. Each run names eight genre-specific gameplay requirements and
 four or five purpose-built Roblox asset roles, plus eleven cross-cutting gates. A pretty blockout,
 passing Luau, or a chat reply saying “done” cannot pass it.
 
-The original bank is frozen in `missions.mjs`. After the owner narrowed Apple to
+The original bank is frozen in `missions.mjs`. After the owner narrowed StudPilot to
 colorful cartoon games on 2026-09-25, a distinct bank was frozen in
 `missions-cartoon-v2.mjs`: twelve cartoon game genres, three fresh-place attempts
 each. Its visual-style gate needs an independent blind verdict that the finished
@@ -54,8 +54,8 @@ Luau/API failures; its code-only score cannot stand in for this game benchmark.
    its highlighted control, the world and HUD respond, and a legible next objective appears.
    Record the before/after images, actual input, and changed state. The native Roblox Player
    observation of Ride A Pet documented this chain, but its art and mechanics are reference
-   observations only; the Apple benchmark must use original work and independently verify its
-   own Play session. If Apple shows a tutorial label but its button has no effect, fail the
+   observations only; the StudPilot benchmark must use original work and independently verify its
+   own Play session. If StudPilot shows a tutorial label but its button has no effect, fail the
    `first-action` proof; if the next objective or interface is unreadable, fail `visual-ui` too.
    Store the exact operations and observed outcomes, including failures.
    For `garden-farming`, server crop state alone does not prove visible growth. Capture the same
@@ -162,8 +162,8 @@ owner's visual rejection remains a product failure, not an unmeasured success.
 
 `node observe-run.mjs init <private-manifest.json> <project-UUID> <fresh-baseline>`
 records the unchanged cartoon garden-r1 brief, baseline bytes/hash and monitoring bounds.
-`APPLE_ADMIN_KEY` must be provided privately to `node observe-run.mjs observe <manifest>`;
-never put the key in a command argument, artifact or commit. Reads use the approved Apple origin
+`STUDPILOT_ADMIN_KEY` must be provided privately to `node observe-run.mjs observe <manifest>`;
+never put the key in a command argument, artifact or commit. Reads use the approved StudPilot origin
 and refuse redirects. This observer does not submit prompts, pair Studio, mutate a game or stop it.
 It cannot enforce a server spending cap. Completed-turn Credits and retained provider neurons are
 lower bounds; active-turn spend is unavailable. Message coverage and provider-log truncation are

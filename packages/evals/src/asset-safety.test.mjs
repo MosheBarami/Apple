@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', '..', 'apps', 'worker');
-const dir = mkdtempSync(join(tmpdir(), 'apple-asset-safety-'));
+const dir = mkdtempSync(join(tmpdir(), 'studpilot-asset-safety-'));
 const out = join(dir, 'assets.mjs');
 // assets.ts deliberately has no runtime imports, so a plain transpile is the whole build.
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'assets.ts'), '--format=esm', '--outfile=' + out], { stdio: 'pipe', cwd: WORKER });
@@ -1064,11 +1064,11 @@ function toolCtx(studio, {
 }
 
 /**
- * What the place lost, NOT counting the run-unique holder Folder (`Apple_Insert_<n>_<id>`) every insert creates first and
+ * What the place lost, NOT counting the run-unique holder Folder (`StudPilot_Insert_<n>_<id>`) every insert creates first and
  * removes last (tools.ts insertAndProveClean). The holder is bookkeeping that makes the inserted model's path unambiguous;
  * the assertions below are about the asset and its scripts, so a delete of the holder is not what they are counting.
  */
-const gone = (studio) => studio.state.deleted.filter((path) => !/\.Apple_Insert_\d+_[a-z0-9]+$/.test(path));
+const gone = (studio) => studio.state.deleted.filter((path) => !/\.StudPilot_Insert_\d+_[a-z0-9]+$/.test(path));
 
 const insert = async (ctx, assetId, parent = 'game.Workspace') => {
   const out = await T.runTool(ctx, 'insert_asset', JSON.stringify({ assetId, parent }));
@@ -1162,7 +1162,7 @@ test('a discovered id carrying scripts is refused on the field the details endpo
 
 //[[ THE WAIVER THIS TESTED IS GONE, AND WHAT REPLACES IT IS THE SAME ASSET WITH THE OPPOSITE VERDICT.
 //
-//   A catalogue asset was uploaded under Apple's own account, so by construction it carried no
+//   A catalogue asset was uploaded under StudPilot's own account, so by construction it carried no
 //   marketplace price, no votes and no verified-creator badge. Refusing it on those three would
 //   have refused the whole catalogue, so those three — and only those three — were waived, and the
 //   waiver was reported back as `waivedForLibraryAsset` so nobody had to infer it.
@@ -1176,7 +1176,7 @@ test('a discovered id carrying scripts is refused on the field the details endpo
 //   exemption did not survive in some quieter form. ]]
 test('NOTHING WAIVES PRICE, VOTES OR THE CREATOR BADGE ANY MORE — the exemption is gone, not hidden', async () => {
   const unwaivable = {
-    creator: { id: 4242, name: 'Apple', isVerifiedCreator: false },
+    creator: { id: 4242, name: 'StudPilot', isVerifiedCreator: false },
     voting: { upVotePercent: 0, voteCount: 0 },
     fiatProduct: { isFree: false },
   };
@@ -1634,7 +1634,7 @@ function adminEnv() {
 const adminOp = async (op, key = 'test-admin-key') => {
   const { env, forwarded } = adminEnv();
   const res = await worker.fetch(
-    new Request('https://apple.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
+    new Request('https://studpilot.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
       method: 'POST',
       headers: { 'X-Admin-Key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ op, timeoutMs: 5000 }),

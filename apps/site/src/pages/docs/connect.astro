@@ -5,53 +5,53 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/
 ---
 
 <DocsLayout
-  title="Connect a project — Apple Docs"
-  description="Pair the Apple Studio plugin with one Apple project using a short-lived code, and understand what the connection covers and how long it lasts."
+  title="Connect a project — StudPilot Docs"
+  description="Pair the StudPilot Studio plugin with one StudPilot project using a short-lived code, and understand what the connection covers and how long it lasts."
   heading="Connect a project"
 >
   {/* Availability comes BEFORE the steps, asked of the shared flag, so nobody follows five steps
       for a plugin they cannot get (apps/site/tests/onboarding-recovery.test.mjs). */}
   {STUDIO_PLUGIN_STORE_LIVE ? (
     <div class="callout">
-      <p><strong>No plugin yet?</strong> Apple Studio is free on the Roblox Creator Store. <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get Apple Studio</a>, then follow <a href="/docs/plugin">Install the plugin</a> and come back here.</p>
+      <p><strong>No plugin yet?</strong> StudPilot Studio is free on the Roblox Creator Store. <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get StudPilot Studio</a>, then follow <a href="/docs/plugin">Install the plugin</a> and come back here.</p>
     </div>
   ) : (
     <div class="callout">
-      <p><strong>Public Studio installation is unavailable right now.</strong> These steps are for people who already have a working Apple plugin. New customers can use chat, but cannot build inside Studio yet. <a href="/docs/plugin">Plugin availability</a>.</p>
+      <p><strong>Public Studio installation is unavailable right now.</strong> These steps are for people who already have a working StudPilot plugin. New customers can use chat, but cannot build inside Studio yet. <a href="/docs/plugin">Plugin availability</a>.</p>
     </div>
   )}
   <p>
-    Connecting links the Apple panel in <em>this</em> Studio window to <em>one</em> Apple project.
-    Until you do it, the plugin is inert: the panel reads <strong>Not connected</strong> and Apple
+    Connecting links the StudPilot panel in <em>this</em> Studio window to <em>one</em> StudPilot project.
+    Until you do it, the plugin is inert: the panel reads <strong>Not connected</strong> and StudPilot
     cannot see or change anything.
   </p>
   <p>
     The link uses a short-lived pairing code instead of your password. Treat the code as a
-    temporary credential: enter it only in your own Apple plugin and do not share it.
+    temporary credential: enter it only in your own StudPilot plugin and do not share it.
   </p>
 
   <h2>Connecting</h2>
   <ol>
-    <li>Open the place you want Apple to work on in Roblox Studio.</li>
+    <li>Open the place you want StudPilot to work on in Roblox Studio.</li>
     <li>
-      In Studio's <strong>Plugins</strong> tab, click <strong>Apple</strong>. The
-      <strong>Apple Studio</strong> panel docks and shows <strong>Not connected</strong>.
+      In Studio's <strong>Plugins</strong> tab, click <strong>StudPilot</strong>. The
+      <strong>StudPilot Studio</strong> panel docks and shows <strong>Not connected</strong>.
     </li>
     <li>
-      In the Apple web workspace, open the project. Until Studio is linked, the conversation ends
+      In the StudPilot web workspace, open the project. Until Studio is linked, the conversation ends
       with a <strong>Connect Roblox Studio</strong> block — press <strong>Enter pairing code</strong>
       on its last step. (The <strong>Connect</strong> button in the project's <strong>Studio</strong>
       panel opens the same thing.) You get a six-character code — something like <code>K7M3QP</code>
       — with a countdown.
     </li>
     <li>
-      Type that code into the plugin panel and press <strong>Connect to Apple</strong>.
+      Type that code into the plugin panel and press <strong>Connect to StudPilot</strong>.
     </li>
   </ol>
   <p>
     The panel reads <strong>Connected</strong> followed by the project name, and the button becomes
     <strong>Disconnect</strong>. The web workspace stops saying it is waiting for Studio and shows the
-    place you have open. The access line reads <strong>Access: inspect only</strong>: Apple can now
+    place you have open. The access line reads <strong>Access: inspect only</strong>: StudPilot can now
     read this place, and it cannot change anything yet.
   </p>
 
@@ -60,7 +60,7 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/
     Edits are allowed per connection, and every new connection starts with them off. In the panel,
     press <strong>Enable edits…</strong> and confirm with <strong>Allow edits for this
     connection</strong>. The access line changes to <strong>Access: edits allowed for this
-    connection</strong>, and Apple can build when this project's chat asks it to. Press
+    connection</strong>, and StudPilot can build when this project's chat asks it to. Press
     <strong>Turn edits off</strong> at any time to go back to inspect only.
   </p>
 
@@ -97,14 +97,14 @@ import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/
   <h2>Disconnecting</h2>
   <p>
     Press <strong>Disconnect</strong> in the plugin panel, or disconnect from the web workspace.
-    Either one stops Apple acting on the place immediately, whether or not the plugin stays
-    installed. Nothing Apple already built is undone — use Studio's undo or a checkpoint for that.
+    Either one stops StudPilot acting on the place immediately, whether or not the plugin stays
+    installed. Nothing StudPilot already built is undone — use Studio's undo or a checkpoint for that.
   </p>
 
   <div class="callout">
     <p>
-      <strong>Team Create:</strong> the connection belongs to your Studio window, and Apple's edits
-      reach your teammates the same way your own edits do. Teammates who want their own Apple chat
+      <strong>Team Create:</strong> the connection belongs to your Studio window, and StudPilot's edits
+      reach your teammates the same way your own edits do. Teammates who want their own StudPilot chat
       should connect their own Studio window to their own project.
     </p>
   </div>

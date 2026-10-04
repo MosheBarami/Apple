@@ -6,7 +6,7 @@
 // What the agent gets is OBSERVATIONS about what it changed — seen, not seen, cannot tell — and which
 // of the views they came from. Never a score: whether the work looks right and fits the request is the
 // agent's call, and the whole point of the tool is that the agent has SEEN the place before it speaks.
-import type { GatewayToolDef, StudioFrame } from '@apple/shared';
+import type { GatewayToolDef, StudioFrame } from '@studpilot/shared';
 import type { AgentCtx } from './tools';
 import { chat } from './gateway';
 import { runLook, DEFAULT_SETTLE_MS, type LookArgs } from './studio-look';

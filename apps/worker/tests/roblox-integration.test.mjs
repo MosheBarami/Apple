@@ -3,14 +3,14 @@
  *
  * Two holes, both of the same shape: the product knew something and told nobody.
  *
- *   1. NO RECORD. Minting, rotating and revoking an Apple API key each fired a `securityNotice`.
+ *   1. NO RECORD. Minting, rotating and revoking a StudPilot API key each fired a `securityNotice`.
  *      Attaching a credential that can create things in somebody's real Roblox account — the most
  *      consequential control in the settings page, and the one that exists because 299 assets were
  *      uploaded into one person's account — fired nothing at all. The account history could tell
- *      you about a key that talks to Apple and not about a key that talks to Roblox.
+ *      you about a key that talks to StudPilot and not about a key that talks to Roblox.
  *
  *   2. NO HEALTH. Roblox expires Open Cloud keys, and a person can revoke one from
- *      create.roblox.com without Apple being told. The stored row does not change, the settings
+ *      create.roblox.com without StudPilot being told. The stored row does not change, the settings
  *      page keeps saying "Connected", and the first symptom is a build dying with an upstream 401.
  *
  * WHAT THESE ASSERT, AND THE ORDER MATTERS. The check's three verdicts are the point: `ok` must be
@@ -40,7 +40,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-roblox-integration-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-roblox-integration-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -58,7 +58,7 @@ const API_KEY = 'OpenCloudKeyABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'roblox-test', alg: 'ES256', use: 'sig' };
-const OWNER_JWT = await new jose.SignJWT({ email: 'owner@apple.test', role: 'authenticated' })
+const OWNER_JWT = await new jose.SignJWT({ email: 'owner@studpilot.test', role: 'authenticated' })
   .setProtectedHeader({ alg: 'ES256', kid: 'roblox-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
@@ -121,7 +121,7 @@ async function call(path, { method = 'GET', body } = {}) {
   const headers = { Authorization: `Bearer ${OWNER_JWT}` };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://apple.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://studpilot.test${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
   );
   const text = await res.text();
@@ -171,7 +171,7 @@ test('CONNECTING A ROBLOX ACCOUNT IS WRITTEN INTO THE ACCOUNT HISTORY', async ()
 });
 
 test('and the notice does not claim the key is gone from Roblox when it is not', async () => {
-  // The one sentence people get wrong: disconnecting here removes Apple's ability to act and
+  // The one sentence people get wrong: disconnecting here removes StudPilot's ability to act and
   // leaves the key alive on Roblox. A notice implying otherwise would leave a live key nobody
   // goes back to revoke.
   const r = await call('/api/me/roblox-key', { method: 'DELETE' });
@@ -251,6 +251,6 @@ test('A KEY WITHOUT THE PROBE\'S SCOPE IS NOT PROBED — consent is not borrowed
 });
 
 test('the check is private to the person whose key it is', async () => {
-  const res = await APP.fetch(new Request('https://apple.test/api/me/roblox-key/check'), env());
+  const res = await APP.fetch(new Request('https://studpilot.test/api/me/roblox-key/check'), env());
   assert.equal(res.status, 401, 'no token, no answer about somebody else\'s credential');
 });

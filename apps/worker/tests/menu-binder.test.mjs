@@ -1,7 +1,7 @@
 // The menu binder: ONE generic LocalScript that makes screens which arrived without working code open and close.
 //
 // Owner rule: every GUI must respond. A studded UI kit (no scripts at all) or a shop whose logic was stripped from the
-// saved file has buttons that do nothing. Apple flags those screens with the attribute AppleMenuBinder and adds this
+// saved file has buttons that do nothing. StudPilot flags those screens with the attribute AppleMenuBinder and adds this
 // script; a screen with working scripts is never flagged, so the binder never touches a button a real script handles.
 //
 // The Luau is run for real with the `luau` interpreter against a small stand-in for the Roblox objects (Instance
@@ -14,10 +14,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
+const esbuild = await import(process.env.STUDPILOT_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'menu-binder-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-await esbuild.build({ entryPoints: ['src/menu-binder.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'binder.mjs'), alias: { '@apple/shared': '../../packages/shared/src/index.ts' } });
+await esbuild.build({ entryPoints: ['src/menu-binder.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'binder.mjs'), alias: { '@studpilot/shared': '../../packages/shared/src/index.ts' } });
 const B = await import(pathToFileURL(join(dir, 'binder.mjs')).href);
 
 const LUAU = process.env.LUAU_BIN || 'luau';
@@ -105,12 +105,12 @@ test('the binder passes the same source rules a script the agent writes must pas
     `export { UI_RULE } from ${JSON.stringify(join(process.cwd(), 'src/ui-components.ts'))};`,
     `export { FX_RULE } from ${JSON.stringify(join(process.cwd(), 'src/fx-library.ts'))};`,
   ].join('\n'));
-  await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'guards.mjs'), alias: { '@apple/shared': '../../packages/shared/src/index.ts' } });
+  await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'guards.mjs'), alias: { '@studpilot/shared': '../../packages/shared/src/index.ts' } });
   const G = await import(pathToFileURL(join(dir, 'guards.mjs')).href);
   const variants = G.luauScanVariants(B.BINDER_SOURCE);
   assert.equal(G.refuseLibraryLuau(variants, G.UI_RULE), null, 'it makes no UI by hand');
   assert.equal(G.refuseLibraryLuau(variants, G.FX_RULE), null, 'it makes no sounds or effects');
-  assert.equal(G.refuseGameScript(variants), null, 'it does not depend on Apple');
+  assert.equal(G.refuseGameScript(variants), null, 'it does not depend on StudPilot');
   // Control: the guard really refuses a script that builds UI by hand.
   assert.notEqual(G.refuseLibraryLuau(G.luauScanVariants('local f = Instance.new("Frame")'), G.UI_RULE), null);
 });

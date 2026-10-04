@@ -1,6 +1,6 @@
 // design-brief.ts — put learned UI grammar in front of the model BEFORE it writes a GUI.
 //
-// §G: "Apple must STOP defaulting to inventing every Roblox GUI and every visual primitive
+// §G: "StudPilot must STOP defaulting to inventing every Roblox GUI and every visual primitive
 // from a blank canvas." A library nothing reads does not change that. This is the read path.
 //
 // WHY IT IS SHAPED LIKE THE ART-DIRECTION BRIEF. `prompts.ts` already established the
@@ -10,15 +10,15 @@
 // being design work. This brief follows the same rules rather than inventing new ones.
 //
 // WHAT IT IS NOT. It does not paste a kit. §K is explicit that the corpus teaches grammar
-// and the output must be Apple-authored, and the licence classification made that binding
+// and the output must be StudPilot-authored, and the licence classification made that binding
 // rather than stylistic: of the seed manifest's 24 free cartoon UI kits and world packs,
 // ZERO can prove a licence. `composeBrief` enforces that boundary by refusing to emit
 // concrete values for any rule sourced from something we may only read.
 // The fixed visual families selected below are independently backed by >=5 inspected examples in
 // packages/corpus/data/style-visual-evidence.json. That ledger is evidence/provenance only; this
-// module still emits Apple-authored grammar, not copied source layouts.
+// module still emits StudPilot-authored grammar, not copied source layouts.
 
-import { composeBrief, COMPONENTS, STYLE_FAMILIES } from '@apple/design';
+import { composeBrief, COMPONENTS, STYLE_FAMILIES } from '@studpilot/design';
 import { styleVisualCueBlock } from './style-visual-evidence.ts';
 
 /**

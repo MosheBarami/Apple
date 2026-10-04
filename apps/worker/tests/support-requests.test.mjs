@@ -42,7 +42,7 @@ const ROOT = join(WORKER, '..', '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 // Compiled rather than read: these are the functions the route calls, not a paraphrase of them.
-const TMP = mkdtempSync(join(tmpdir(), 'apple-support-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-support-'));
 const OUT = join(TMP, 'support.mjs');
 execFileSync(
   ESBUILD,

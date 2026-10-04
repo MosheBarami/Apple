@@ -254,7 +254,7 @@ ls .mcp.json → No such file or directory
 
 ### 3.12 The live worker corresponds to no commit
 
-**Next:** `cd apps/worker && npx wrangler deploy --config wrangler.apple.jsonc --var BUILD_SHA:$(git rev-parse --short HEAD)` from a clean tree. I did not do this: `apps/worker/src/do/session.ts` is dirty (`git status --porcelain` → ` M apps/worker/src/do/session.ts`), another lane holds it, and deploying a worker bundle that includes another lane's in-flight edit would reproduce the exact `-dirty` defect this row is about.
+**Next:** `cd apps/worker && npx wrangler deploy --config wrangler.studpilot.jsonc --var BUILD_SHA:$(git rev-parse --short HEAD)` from a clean tree. I did not do this: `apps/worker/src/do/session.ts` is dirty (`git status --porcelain` → ` M apps/worker/src/do/session.ts`), another lane holds it, and deploying a worker bundle that includes another lane's in-flight edit would reproduce the exact `-dirty` defect this row is about.
 
 ### 3.13 `check-rebrand` is red on a file another lane holds
 

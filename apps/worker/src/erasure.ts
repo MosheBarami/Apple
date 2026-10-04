@@ -81,7 +81,7 @@ export interface ErasureReceipt {
 export const ACCOUNT_RESIDUE: readonly Residue[] = [
   {
     store: 'kv', target: 'in-flight temporary image previews',
-    why: 'A preview already running can finish after the cache sweep and remain for up to one hour. The deleted-project fence prevents image retrieval through Apple.',
+    why: 'A preview already running can finish after the cache sweep and remain for up to one hour. The deleted-project fence prevents image retrieval through StudPilot.',
   },
   {
     store: 'd1', target: 'generated_image_tombstones — deleted project identifiers',

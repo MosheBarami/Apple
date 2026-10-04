@@ -79,7 +79,7 @@ test('the report wrapper is a fixed literal around the fenced body, for both kin
   assert.ok(c.includes(fenced));
   assert.match(c, /this is the only fix pass/);
   assert.match(c, /already read your previous answer/);
-  assert.match(reportMessage('layout', fenced), /Apple measured the layout of what you built, without a render/);
+  assert.match(reportMessage('layout', fenced), /StudPilot measured the layout of what you built, without a render/);
   // Nothing but the fenced body varies.
   assert.equal(reportMessage('critique', '@@1@@').replace('@@1@@', ''), reportMessage('critique', '@@2@@').replace('@@2@@', ''));
 });

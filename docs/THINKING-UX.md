@@ -1,6 +1,6 @@
-# Thinking UX — what the chat may say Apple is doing
+# Thinking UX — what the chat may say StudPilot is doing
 
-The Apple chat should feel alive, friendly and creative rather than like a debug
+The StudPilot chat should feel alive, friendly and creative rather than like a debug
 console. It must do that **without ever showing private chain of thought**, and
 without inventing a state to fill a gap.
 
@@ -113,7 +113,7 @@ forever. Folding by `toolId` makes both cases expressible:
 | `remembering` | `remember`; `phase = remembering` |
 | `working` | the honest floor: an unmapped tool, or a step whose name never arrived |
 
-**The tool name outranks the phase.** `phaseForTool` in `@apple/shared` reports
+**The tool name outranks the phase.** `phaseForTool` in `@studpilot/shared` reports
 `search_asset_library` as phase `inspecting`, so without the tool table
 "Searching assets" would be unreachable. The same is true of `generate_model`
 (reported as `building`) and `inspect_model` (reported as `inspecting`).

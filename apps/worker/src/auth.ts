@@ -1,7 +1,7 @@
 // Supabase JWT verification via JWKS (ES256). The worker never holds auth secrets.
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { Env, AuthedUser } from './env';
-import { jwtFromSubprotocols } from '@apple/shared';
+import { jwtFromSubprotocols } from '@studpilot/shared';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let jwksUrl = '';

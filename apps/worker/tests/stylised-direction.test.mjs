@@ -2,7 +2,7 @@
  * F-059: THE ART DIRECTION FORBADE THE STYLE THE CUSTOMER ASKED FOR.
  *
  * 2026-09-23, the owner's gauntlet: "Build Basically Grow A Garden Type Game include 6 plots" on
- * Apple MAX came back as flat 0.2-stud slabs on realistic Grass, a grey path and two-part trees,
+ * StudPilot MAX came back as flat 0.2-stud slabs on realistic Grass, a grey path and two-part trees,
  * next to reference shots of bright, fenced, signposted plots. The model had followed its brief.
  * The brief banned Plastic outright, capped every large surface at HSV saturation 0.35 and offered
  * only desaturated palettes — the exact opposite of docs/ROBLOX-STYLE-SPEC.md, the repository's own
@@ -105,7 +105,7 @@ test('organic shapes follow the asset order, library first, and a single primiti
   assert.doesNotMatch(organic, /never (assemble|build)[^.]*from Parts/i, 'the brief forbids the last step of the order');
 });
 
-// A Clouds object cannot be created: the plugin's create allowlist refuses it (apps/apple-plugin
+// A Clouds object cannot be created: the plugin's create allowlist refuses it (apps/studpilot-plugin
 // tests/commands.test.mjs pins that). No prompt may tell the agent to create one.
 test('the sky is Lighting; no brief tells the agent to create a Clouds object the plugin refuses', () => {
   const lighting = section(worldBuildingBrief(PLOT_GAME), 'LIGHTING');

@@ -18,7 +18,7 @@ function bundle(source, tag) {
 
 const R = await import(`file://${bundle('roadmap.ts', 'roadmap')}`);
 const P = await import(`file://${bundle('prefabs.ts', 'prefabs')}`);
-const APPLE_UI_PATH = 'game.ReplicatedStorage.AppleUI';
+const STUDPILOT_UI_PATH = 'game.ReplicatedStorage.AppleUI';
 
 function scan(scripts, truncated = {}) {
   return {
@@ -34,13 +34,13 @@ function script(path, source, className = 'ModuleScript') {
 
 test('the installed AppleUI source is not quest evidence, including a per-script cap', () => {
   const source = P.PREFABS.ui_kit.source;
-  const full = R.analyzeProject(scan([script(APPLE_UI_PATH, source)]));
+  const full = R.analyzeProject(scan([script(STUDPILOT_UI_PATH, source)]));
   assert.equal(full.features.quests.state, 'absent', 'UI labels must not become a gameplay feature');
 
   // The live scan caps each script. Its known prefix is not evidence of gameplay, but the unread
   // tail could have been modified: partial source must not establish confident absence.
   const capped = source.slice(0, 6000);
-  const partial = R.analyzeProject(scan([script(APPLE_UI_PATH, capped)], { source: true }));
+  const partial = R.analyzeProject(scan([script(STUDPILOT_UI_PATH, capped)], { source: true }));
   assert.equal(partial.features.quests.state, 'unknown', 'a capped prefix cannot prove its unread tail');
 });
 
@@ -48,7 +48,7 @@ test('quest evidence in a separate gameplay script survives the UI exclusion and
   const source = P.PREFABS.ui_kit.source;
   const gameplay = 'local objective = { id = "escape", target = 3 }\nreturn objective';
   const shape = R.analyzeProject(scan([
-    script(APPLE_UI_PATH, source.slice(0, 6000)),
+    script(STUDPILOT_UI_PATH, source.slice(0, 6000)),
     script('game.ServerScriptService.QuestController', gameplay, 'Script'),
   ], { source: true }));
   assert.equal(shape.features.quests.state, 'present');
@@ -63,10 +63,10 @@ test('a similarly named user module is not exempted from quest detection', () =>
 
 test('retaining the AppleUI header and path cannot conceal modified gameplay source', () => {
   const modified = P.PREFABS.ui_kit.source.replace('local AppleUI = {}', 'local AppleUI = {}\nlocal objective = { target = 3 }');
-  const shape = R.analyzeProject(scan([script(APPLE_UI_PATH, modified)]));
+  const shape = R.analyzeProject(scan([script(STUDPILOT_UI_PATH, modified)]));
   assert.equal(shape.features.quests.state, 'present');
   const shortHeader = '--!nonstrict\n-- AppleUI: retained header\nlocal objective = {}';
-  assert.equal(R.analyzeProject(scan([script(APPLE_UI_PATH, shortHeader)], {source:true})).features.quests.state, 'present');
+  assert.equal(R.analyzeProject(scan([script(STUDPILOT_UI_PATH, shortHeader)], {source:true})).features.quests.state, 'present');
 });
 
 test('known UI source at another install path is still presentation, not gameplay', () => {

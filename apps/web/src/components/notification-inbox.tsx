@@ -167,7 +167,7 @@ export function NotificationInbox() {
         )}
 
         {inbox.isSuccess && groups.length === 0 && (
-          <p className="gx-inbox__none">Nothing yet. Apple will tell you here when a build finishes or needs you.</p>
+          <p className="gx-inbox__none">Nothing yet. StudPilot will tell you here when a build finishes or needs you.</p>
         )}
 
         {expanded === null &&

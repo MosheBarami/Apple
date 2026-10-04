@@ -4,7 +4,7 @@
 //
 // Current Studio builds can expose StudioCaptureService. When Roblox grants screenshot
 // permission, the plugin uses it to capture the active 3D viewport as a bounded PNG. Older Studio
-// builds or sessions without that permission fall back to Apple's own depth-buffered geometry
+// builds or sessions without that permission fall back to StudPilot's own depth-buffered geometry
 // renderer. The frame's `source` says which path produced it; the UI must never blur that line.
 //
 // Neither path is video. frame-bus.ts allows a capture request no more often than every 1.5s, so
@@ -19,7 +19,7 @@
 // not. Staleness is computed in lib/playtest-view.ts from the worker's own
 // timestamps and is rendered here without softening.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PlaytestRun, StudioFrame } from '@apple/shared';
+import type { PlaytestRun, StudioFrame } from '@studpilot/shared';
 import { frameImageSrc, paintFrame } from '../../lib/frame-decode';
 import { framesForRun, playtestView, PLAYTEST_TICK_MS } from '../../lib/playtest-view';
 import { Icon, PATH } from './primitives';

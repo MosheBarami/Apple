@@ -43,7 +43,7 @@ test('the thinking surface is genuine AI Elements, and its live words are AI Ele
   assert.ok(importedNames(CODE, '../ai-elements/task').includes('Task'));
   assert.deepEqual(importedNames(CODE, '../ai-elements/shimmer'), ['Shimmer']);
   assert.doesNotMatch(CODE, /aicss/, 'an AICSS component is back in the thinking surface');
-  assert.doesNotMatch(CODE, /\b(?:Orb|ThinkingState|StreamingText|reasoningOrb|MorphingWords)\b|apple-status/, 'a retired piece is back');
+  assert.doesNotMatch(CODE, /\b(?:Orb|ThinkingState|StreamingText|reasoningOrb|MorphingWords)\b|studpilot-status/, 'a retired piece is back');
   assert.doesNotMatch(TURN, /<Thinking\b|from '\.\/thinking'/, 'the status pill is back beside the AI Elements');
 });
 
@@ -89,7 +89,7 @@ test('honesty: observed facts only, no denied-tools note, failures stay with the
   //[[ RESTATED 2026-09-24 (D-THINK-1): the gate list, planned-steps line and "Observed run activity"
   //   region were detail and are gone. What stays: no placeholder for an unobserved run,
   //   one polite announcement of the live line, and failure copy owned by the outcome row. ]]
-  assert.doesNotMatch(CODE, /apple-status__note|turned off in your settings/, 'no persistent notice belongs in thinking');
+  assert.doesNotMatch(CODE, /studpilot-status__note|turned off in your settings/, 'no persistent notice belongs in thinking');
 
   assert.doesNotMatch(CODE, /<ActivityTerminal\b|<Failure\b|is-fail|is-bad/,
     'Thinking must stay calm and must not own terminal failure presentation');

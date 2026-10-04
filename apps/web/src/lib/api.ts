@@ -1,8 +1,8 @@
-// Typed fetch helpers for the Apple worker API. All authed calls carry the
+// Typed fetch helpers for the StudPilot worker API. All authed calls carry the
 // user's Supabase access token as a Bearer header.
-import { PRICE_CURRENCY, WIRE_HEADERS, readWire, type RobloxScope, type AssetSourcePolicy } from '@apple/shared';
-import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@apple/shared';
-import type { ApiKeyMode, ApiScope } from '@apple/shared';
+import { PRICE_CURRENCY, WIRE_HEADERS, readWire, type RobloxScope, type AssetSourcePolicy } from '@studpilot/shared';
+import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@studpilot/shared';
+import type { ApiKeyMode, ApiScope } from '@studpilot/shared';
 import type { ApiKeyView } from './api-keys.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
@@ -428,7 +428,7 @@ export interface Memory {
   summary: string | null;
   facts: string[];
   /**
-   * What Apple has ASKED to remember but has not been allowed to yet.
+   * What StudPilot has ASKED to remember but has not been allowed to yet.
    *
    * Only ever populated under the `review` memory setting, which is what puts anything in the
    * queue. Optional because this is also the shape sent BACK on a save, and the editor deliberately
@@ -445,7 +445,7 @@ export interface MemoryResponse {
 }
 
 /**
- * What Apple actually believes about this project.
+ * What StudPilot actually believes about this project.
  *
  * Read from the Durable Object rather than from the `projects.memory_summary` column the dashboard
  * uses. That column is a MIRROR, written best-effort at the tail of a run, so it lags — a viewer
@@ -458,7 +458,7 @@ export const fetchMemory = (projectId: string): Promise<MemoryResponse> =>
     : request<MemoryResponse>(`/api/projects/${encodeURIComponent(projectId)}/memory`);
 
 /**
- * Replace what Apple believes about this project.
+ * Replace what StudPilot believes about this project.
  *
  * The WHOLE memory is sent, not a patch. Facts are free-text strings a model rewrites every few
  * turns, so client and server would need a shared notion of identity for them and would not agree
@@ -475,7 +475,7 @@ export const saveMemory = (projectId: string, memory: Memory): Promise<MemoryRes
       });
 
 /**
- * Answer one thing Apple asked to remember.
+ * Answer one thing StudPilot asked to remember.
  *
  * `body` names what it is about — the fact's own text, or `target: 'summary'` for the proposed
  * summary, which is the one proposal with no text to match on. A 404 here is an ANSWER: the worker
@@ -681,7 +681,7 @@ export async function downloadMemoryExport(scope: MemoryScope, scopeId: string):
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = named ?? `apple-memory-${scope}.json`;
+  a.download = named ?? `studpilot-memory-${scope}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -767,7 +767,7 @@ export async function downloadAccountExport(): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = named ?? 'apple-data.json';
+  a.download = named ?? 'studpilot-data.json';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -782,7 +782,7 @@ export const fetchCheckpoints = (projectId: string, signal?: AbortSignal) =>
   );
 
 /**
- * WHAT APPLE ACTUALLY DID INSIDE STUDIO.
+ * WHAT STUDPILOT ACTUALLY DID INSIDE STUDIO.
  *
  * The worker has recorded every op since the oplog existed and served it here, and nothing in this
  * app had ever called it — a grep for 'studio/diagnostics' across apps/web returned nothing at all.
@@ -1010,7 +1010,7 @@ export async function downloadProjectImage(
   const url = URL.createObjectURL(blob.slice(0, blob.size, format.mime));
   const link = document.createElement('a');
   link.href = url;
-  link.download = `apple-image-${imageId}.${format.extension}`;
+  link.download = `studpilot-image-${imageId}.${format.extension}`;
   document.body.appendChild(link);
   try {
     link.click();
@@ -1123,7 +1123,7 @@ export interface ExportSaved {
  *   there is not: a missing Content-Length must reach the caller as an ABSENCE, because the moment
  *   it becomes 0 somebody divides by it.
  *
- *   IT IS CHECKED. The worker sends X-Apple-Export-SHA256 (and the old spelling) over the bytes it actually wrote, and a
+ *   IT IS CHECKED. The worker sends X-StudPilot-Export-SHA256 (and the old spelling) over the bytes it actually wrote, and a
  *   truncated transfer is otherwise undetectable — a Markdown file that ends mid-sentence and a
  *   JSON file that will not parse both save silently. The digest is recomputed over what was
  *   received and the file is saved ONLY if it matches, because a half file on disk under a
@@ -1554,7 +1554,7 @@ export const fetchNextMilestones = (projectId: string): Promise<NextResponse> =>
  *
  * Only the id crosses the wire. The worker rebuilds the brief from a fresh
  * scan precisely so that a client cannot hand the builder arbitrary
- * instructions wearing Apple's own roadmap as a disguise.
+ * instructions wearing StudPilot's own roadmap as a disguise.
  */
 export const fetchMilestoneBrief = (projectId: string, milestoneId: string): Promise<MilestoneBrief> =>
   MOCK_MODE
@@ -1879,7 +1879,7 @@ export const adminRegisterDiscordCommands = (adminKey: string) =>
 
 // ---------------------------------------------------------------- project files
 //
-// The workspace Apple writes into, from the browser. `request<T>` for everything except the
+// The workspace StudPilot writes into, from the browser. `request<T>` for everything except the
 // download, which needs the response rather than its JSON — the same split, and the same reason, as
 // downloadExport above.
 
@@ -1949,7 +1949,7 @@ export async function fileOp(projectId: string, body: FileOpRequest): Promise<{ 
  * matching on prose to tell "that name is taken" from "that is not a workspace file type".
  *
  * `overwrite` is never sent on the first attempt. An occupied path comes back as a refusal the user
- * answers, so replacing the plan Apple wrote is always something they chose.
+ * answers, so replacing the plan StudPilot wrote is always something they chose.
  */
 export async function uploadProjectFile(
   projectId: string,
@@ -2092,7 +2092,7 @@ export interface RobloxWrite {
 }
 
 /**
- * Everything Apple has done to this person's Roblox account.
+ * Everything StudPilot has done to this person's Roblox account.
  *
  * Their own trail and nobody else's — the worker keys the query on the id off the verified token,
  * and there is deliberately no route that reads another customer's. This exists because the 299
@@ -2117,7 +2117,7 @@ export type RobloxKeyHealth =
 
 export const checkRobloxKey = (): Promise<RobloxKeyHealth> => request('/api/me/roblox-key/check');
 
-// ------------------------------------------------------- Apple's own public-API keys
+// ------------------------------------------------------- StudPilot's own public-API keys
 //
 // Four routes that have existed since the public API shipped and that nothing in this app called.
 // The lifecycle is entirely the server's: it mints, it hashes, it authorizes, it retires. What was

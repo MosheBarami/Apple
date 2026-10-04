@@ -7,7 +7,7 @@
  * word about what the snapshot contains or why it was taken.
  *
  * The automatic ones were the worse half. Every pre-run checkpoint a project has is called "before
- * Apple changes", so a list of them is twenty identical rows, and the user restoring one is picking
+ * StudPilot changes", so a list of them is twenty identical rows, and the user restoring one is picking
  * by timestamp alone. The request that prompted it was in scope on that very line and thrown away.
  */
 import test from 'node:test';
@@ -98,10 +98,10 @@ test('the HTTP route carries one too', async () => {
 });
 
 test('an automatic checkpoint says what the run was about to do', () => {
-  // Every pre-run checkpoint is labelled "before Apple changes". Without a description a list of
+  // Every pre-run checkpoint is labelled "before StudPilot changes". Without a description a list of
   // them is twenty identical rows and restoring one is picking by timestamp alone. The sentence
   // comes from the user's own request, which is already in scope on that line — not a model call.
-  const at = SESSION.indexOf("'before Apple changes'");
+  const at = SESSION.indexOf("'before StudPilot changes'");
   assert.ok(at > 0, 'the pre-run checkpoint is gone — this test is measuring nothing');
   const call = SESSION.slice(at, at + 400);
   assert.match(call, /description:/, 'the pre-run checkpoint must carry a description');

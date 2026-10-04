@@ -27,7 +27,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const REPO = join(WORKER, '..', '..');
-const OUT = join(tmpdir(), `apple-sound-design-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-sound-design-${process.pid}.mjs`);
 const TMP = mkdtempSync(join(tmpdir(), 'sd-luau-'));
 
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'sound-design.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: OUT });
@@ -443,10 +443,10 @@ test('A PLACE BUILT BEFORE THE RENAME: the trim does not compound across it, and
     'print(string.format("%.6f %.6f %s %s", afterOne, sound.Volume, tostring(sound:GetAttribute("AppleBaseVolume")), tostring(sound:GetAttribute("GolemBaseVolume"))))',
   ].join('\n'));
   assert.ok(r.ok, `the chunk failed to run:\n${r.output}`);
-  const [afterOne, afterTwo, appleAttr, golemAttr] = r.output.trim().split('\n')[0].split(/\s+/);
+  const [afterOne, afterTwo, studpilotAttr, golemAttr] = r.output.trim().split('\n')[0].split(/\s+/);
   assert.ok(Math.abs(Number(afterOne) - 0.501187) < 0.001, `the first pass after the rename moved the volume to ${afterOne} — it re-baselined off the trimmed value`);
   assert.equal(afterTwo, afterOne, 'and the second pass must not move it either');
-  assert.equal(appleAttr, '1', 'the base is now recorded under the new name');
+  assert.equal(studpilotAttr, '1', 'the base is now recorded under the new name');
   assert.equal(golemAttr, 'nil', 'and the old attribute is cleared, so the place converges to one');
 });
 

@@ -60,7 +60,7 @@ test('a checkpoint from before the column says so instead of picking someone', (
   assert.match(v.label, /not recorded/i);
 });
 
-test("Apple's own checkpoints are Apple's, whatever is in the column", () => {
+test("StudPilot's own checkpoints are StudPilot's, whatever is in the column", () => {
   for (const kind of ['auto', 'pre_agent']) {
     assert.equal(checkpointAuthorView({ kind, authorId: null }, 'u-me').who, 'apple');
     // A bug that wrote an author onto an automatic checkpoint must not turn into a claim about a
@@ -111,7 +111,7 @@ test('the checkpoint author contract guard fails when optionality or nullability
   );
 });
 
-test('search has a word for a record that is neither yours nor Apple’s', () => {
+test('search has a word for a record that is neither yours nor StudPilot’s', () => {
   // Without one, the only options were a lie and a different lie.
   const worker = readFileSync(join(WEB, '..', 'worker', 'src', 'search.ts'), 'utf8');
   assert.match(worker, /SEARCH_AUTHORS = \[[^\]]*'teammate'/);

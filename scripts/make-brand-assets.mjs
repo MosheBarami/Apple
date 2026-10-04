@@ -41,7 +41,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
  * the build if someone changes the SVG without doing so. A hand-made icon set drifts silently,
  * which is exactly how the last one came to show a mark that exists nowhere in the product.
  *
- * `square: true` drops the rounded corner for the Apple touch icon. iOS applies its own mask to
+ * `square: true` drops the rounded corner for the StudPilot touch icon. iOS applies its own mask to
  * that image, so baking a radius in produces a rounded shape inside a rounded mask with a sliver
  * of ground between them.
  */

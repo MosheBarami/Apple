@@ -50,7 +50,7 @@ export const ROLE_LABELS: Record<CollabRole, string> = {
 export const ROLE_BLURBS: Record<CollabRole, string> = {
   viewer: 'Can read the conversation, the checkpoints and the credits.',
   commenter: 'Can also comment and react.',
-  editor: 'Can also talk to Apple and build — which spends the owner’s Credits.',
+  editor: 'Can also talk to StudPilot and build — which spends the owner’s Credits.',
   admin: 'Can also restore checkpoints, manage members and share the project.',
   owner: 'Owns the project. Only the owner can delete it.',
 };
@@ -107,7 +107,7 @@ const ACTION_NEEDS: Record<CollabAction, string> = {
   react: 'react here',
   request_review: 'ask for a review',
   approve: 'approve work',
-  chat: 'talk to Apple here',
+  chat: 'talk to StudPilot here',
   build: 'build in this project',
   restore_version: 'restore a checkpoint',
   manage_members: 'manage members',

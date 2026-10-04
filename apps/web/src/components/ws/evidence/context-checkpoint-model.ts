@@ -5,7 +5,7 @@
  * `checkpoint`, a sent `ChatAttachment`) and returns null/empty when they are absent. Unknown is
  * "unavailable", never zero. Pure and DOM-free.
  */
-import type { CheckpointMeta, ChatAttachment } from '@apple/shared';
+import type { CheckpointMeta, ChatAttachment } from '@studpilot/shared';
 import { contextBudgetLabel, contextFill, contextOverBudget, type ContextBudget } from '../context-model';
 
 export interface ContextView {

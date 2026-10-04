@@ -2,7 +2,7 @@
 // Keeps worst-case inference spend inside the free neuron allocation.
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
-import type { QuotaState } from '@apple/shared';
+import type { QuotaState } from '@studpilot/shared';
 import { isPlanId, type PlanId } from '../pricing';
 import { entitlementFor, NO_BILLING_DETAILS, readBillingDetails, type BillingDetails, type Subscription } from '../billing';
 import {
@@ -99,7 +99,7 @@ export class QuotaDO extends DurableObject<Env> {
       //   For those users `state()` throws `no such column: credits`, and `state()` is on the hot
       //   path: /state, the charge path and every refund call it. So the failure is not cosmetic —
       //   a user whose DO predates the rename cannot spend a Credit. Found in production on
-      //   2026-09-20 through Sentry APPLE-WORKER-6, on a real account.
+      //   2026-09-20 through Sentry STUDPILOT-WORKER-6, on a real account.
       //
       //   RENAME, NOT ADD. `add column credits` would leave every historical row reading 0 and the
       //   user's whole spend history would silently become "never spent" — the account would look

@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Apple">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="StudPilot">
   <!--
     THE PRODUCT MARK: one studded brick, drawn isometrically.
 
     WHERE IT CAME FROM. The owner asked for the brand to be made in ChatGPT rather than in a
-    terminal, so it was: the render is apps/site/brand/apple-mark-source.png, generated in his own
+    terminal, so it was: the render is apps/site/brand/studpilot-mark-source.png, generated in his own
     ChatGPT account from a prompt naming this palette. That render is an azure brick carrying a
     single stud, standing on a white studded plate. This is that drawing, authored as vector so
     the whole icon set can be generated from one file and stay crisp at 16px.

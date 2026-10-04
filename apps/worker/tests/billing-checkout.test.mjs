@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(tmpdir(), `apple-checkout-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-checkout-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'billing.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -36,7 +36,7 @@ const LIVE = {
   STRIPE_PRICE_BUILDER: 'price_builder_1',
   STRIPE_PRICE_STUDIO: 'price_studio_1',
 };
-const RETURN_TO = 'https://apple.example/app/usage';
+const RETURN_TO = 'https://studpilot.example/app/usage';
 const build = (env, over = {}) =>
   B.buildCheckoutRequest(env, { userId: 'u_1', email: 'a@b.c', plan: 'builder', returnTo: RETURN_TO, ...over });
 const params = (r) => new URLSearchParams(r.body);

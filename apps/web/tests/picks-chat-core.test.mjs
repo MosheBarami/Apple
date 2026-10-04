@@ -173,7 +173,7 @@ test('there is no Plan-mode reply card and no "Build it" approval (V3 G01, UI08)
   assert.equal(existsSync(join(WEB, 'src', 'components', 'picks', 'chat', 'plan-card.tsx')), false);
 });
 
-test('an image Apple made opens larger (GSAP Flip expand + ae-image)', () => {
+test('an image StudPilot made opens larger (GSAP Flip expand + ae-image)', () => {
   mounted(TURN, 'ExpandableImages', '../picks/chat/expandable-images', 'turn');
 });
 

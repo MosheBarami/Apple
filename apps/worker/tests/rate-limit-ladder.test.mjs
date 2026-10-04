@@ -57,7 +57,7 @@ test('the ladder length and the loop bound cannot drift apart', () => {
 });
 
 test('an exhausted allowance and a transient are told apart', () => {
-  // A leading guard conjunct is allowed (`!customer && …`: a customer-key failure is never Apple's
+  // A leading guard conjunct is allowed (`!customer && …`: a customer-key failure is never StudPilot's
   // daily cap); what is asserted is the regex that decides the reading.
   const m = SRC.match(/if \((?:!?[\w.]+ && )?(\/[^/]+\/i)\.test\(msg\)\) \{\s*\n\s*throw new BudgetError\('daily_cap'/);
   assert.ok(m, 'the daily-cap branch could not be read out of gateway.ts; nothing was verified');

@@ -2,14 +2,14 @@
 //
 // The user's turn is AI Elements' Message from "user": right-aligned on the secondary surface, with
 // its actions and time beneath. The assistant's turn is Message from "assistant", no card, in this
-// order: the one live status line while Apple works (thinking.tsx); what the run thought and did —
+// order: the one live status line while StudPilot works (thinking.tsx); what the run thought and did —
 // Reasoning blocks and Task rows, step by step (run-steps.tsx); the reply (MessageResponse, with
 // InlineCitation for `[n]`); the sources it used ("Used N sources"); media; the outcome; and the
 // reply's actions (MessageToolbar + MessageActions). Cards are reserved for content whose structure
 // genuinely benefits — a render, a sound — and those come from the typed component registry, never
 // from free-form model output.
 import { Suspense, lazy, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import type { PlaytestRun, StudioFrame } from '@apple/shared';
+import type { PlaytestRun, StudioFrame } from '@studpilot/shared';
 import type { UIDocument } from '../../lib/generative-ui/schema';
 import { splitSpilledPayload } from '../../lib/spilled-payload';
 import { extractUIFence, parseDocument } from '../../lib/generative-ui';
@@ -38,13 +38,13 @@ import { cn } from '../../lib/utils';
 const GenerativeUI = lazy(() => import('../../lib/generative-ui/render').then((m) => ({ default: m.GenerativeUI })));
 
 /**
- * WHAT THE PERSON ASKED TO SEE, AND NOTHING ELSE (owner decision D-UX-2). An image or a sound Apple
+ * WHAT THE PERSON ASKED TO SEE, AND NOTHING ELSE (owner decision D-UX-2). An image or a sound StudPilot
  * made stays in the reply; every other validated document — plans, property cards, tables, diffs —
  * goes to Details inside the Thinking disclosure. lib/reply-docs.ts draws the line.
  */
 function ReplyMedia({ docs }: { docs: UIDocument[] }) {
   if (docs.length === 0) return null;
-  // An image Apple made opens larger, growing out of where it sits (picks/chat/expandable-images).
+  // An image StudPilot made opens larger, growing out of where it sits (picks/chat/expandable-images).
   return <ExpandableImages className="gx-reply-media">
     <Suspense fallback={<p className="gx-reply-media__wait">Loading…</p>}>
       {docs.map((doc, index) => <GenerativeUI key={index} doc={doc} />)}
@@ -128,7 +128,7 @@ function ShareAction({ getText }: { getText: () => string }) {
       label={canSheet ? 'Share this reply' : 'Copy a link to this chat'}
       onClick={() => {
         if (canSheet) {
-          void navigator.share({ title: 'Apple', text: getText() }).catch(() => undefined);
+          void navigator.share({ title: 'StudPilot', text: getText() }).catch(() => undefined);
           return;
         }
         void writeClipboard(`${window.location.origin}${window.location.pathname}`).then((ok) => {
@@ -225,7 +225,7 @@ export function Turn({
   const assetOptions = useMemo(() => visualOptions(item.tools), [item.tools]);
   const assetSnapshot = useMemo(() => visualSnapshot(item.tools), [item.tools]);
 
-  // The one split (lib/reply-docs.ts): an image or a sound Apple made stays in the reply; every other
+  // The one split (lib/reply-docs.ts): an image or a sound StudPilot made stays in the reply; every other
   // document is technical detail and is not drawn at all (owner decision D-THINK-1).
   const replyDocs = useMemo(
     () => splitReplyDocs([...(fenceDoc ? [fenceDoc] : []), ...panels.map((panel) => panel.doc)]),
@@ -421,13 +421,13 @@ export function Turn({
           // The same row the outcome uses, so an empty turn and a stopped one are one shape. The
           // sentence says what happened and what to do next.
           <div className="flex flex-wrap items-baseline gap-3" data-outcome="empty">
-            <p className="basis-full text-muted-foreground text-sm leading-relaxed">Apple ended this turn without a reply. Run that prompt again, or rephrase it and send.</p>
+            <p className="basis-full text-muted-foreground text-sm leading-relaxed">StudPilot ended this turn without a reply. Run that prompt again, or rephrase it and send.</p>
             {retryControl}
           </div>
         ) : null}
 
         {hadDeniedTools && (
-          <p className="text-muted-foreground text-sm">Some of Apple’s abilities are turned off in your settings, so it worked without them.</p>
+          <p className="text-muted-foreground text-sm">Some of StudPilot’s abilities are turned off in your settings, so it worked without them.</p>
         )}
 
         {/* THE REPLY'S TOOLBAR — AI Elements MessageToolbar and MessageActions: Copy, Share, Regenerate

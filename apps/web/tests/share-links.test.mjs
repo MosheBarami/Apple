@@ -60,8 +60,8 @@ const workerCollab = read(ROOT, 'apps', 'worker', 'src', 'collab.ts');
 // ============================================================ the link points at a page that exists
 
 test('THE COPY BUTTON PRODUCES AN ADDRESS THIS APP ACTUALLY SERVES', () => {
-  const url = client.shareLinkUrl('https://apple.test', 'tok-123');
-  assert.equal(url, 'https://apple.test/app/join?token=tok-123');
+  const url = client.shareLinkUrl('https://studpilot.test', 'tok-123');
+  assert.equal(url, 'https://studpilot.test/app/join?token=tok-123');
 
   // The two halves that must agree: the basename and the route. Both are read from app.tsx, so
   // renaming either without renaming the other turns this red instead of shipping a dead link.
@@ -75,7 +75,7 @@ test('THE COPY BUTTON PRODUCES AN ADDRESS THIS APP ACTUALLY SERVES', () => {
 });
 
 test('a token with URL-hostile characters survives the round trip', () => {
-  const url = client.shareLinkUrl('https://apple.test/', 'a b&c=d#e');
+  const url = client.shareLinkUrl('https://studpilot.test/', 'a b&c=d#e');
   assert.equal(new URL(url).searchParams.get('token'), 'a b&c=d#e');
   assert.equal(url.includes('#'), false, 'an unescaped # would truncate the token at the fragment');
 });

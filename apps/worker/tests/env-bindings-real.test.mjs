@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ENV = readFileSync(join(WORKER, 'src', 'env.ts'), 'utf8');
-const WRANGLERS = ['wrangler.jsonc', 'wrangler.apple.jsonc'].map((f) => ({
+const WRANGLERS = ['wrangler.jsonc', 'wrangler.studpilot.jsonc'].map((f) => ({
   file: f,
   text: readFileSync(join(WORKER, f), 'utf8'),
 }));

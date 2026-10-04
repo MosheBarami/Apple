@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(mkdtempSync(join(tmpdir(), 'toolperm-')), 'a.mjs');
 // esbuild lives in the worker's node_modules, not the web app's — the same path every other web
-// test that bundles TypeScript uses. The bundle is what pulls in @apple/shared.
+// test that bundles TypeScript uses. The bundle is what pulls in @studpilot/shared.
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'lib', 'tool-permissions.ts'), '--bundle', '--format=esm', '--target=es2022',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + out],

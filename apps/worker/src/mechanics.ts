@@ -546,7 +546,7 @@ export function licenceGuidance(spdx: string): string {
     return `${spdx} is share-alike: derivative work must carry the same licence. Read for the approach; write your own.`;
   }
   if (/^(MIT|Apache|BSD|ISC|MPL|Zlib|CC0|Unlicense|WTFPL)/.test(spdx)) {
-    return `${spdx} is permissive, but Apple still does not copy: read it for the approach and write code shaped like this customer's game.`;
+    return `${spdx} is permissive, but StudPilot still does not copy: read it for the approach and write code shaped like this customer's game.`;
   }
   return `${spdx}: treat as read-only reference. Do not copy.`;
 }
@@ -639,7 +639,7 @@ export function answerFor(pattern: MechanicPattern, limit = 4): MechanicAnswer {
     }),
     searchedRepositories: MECHANIC_CITATIONS.length,
     vendoring: 'Read these to understand the approach, then write the mechanic for THIS game. '
-      + 'Do not copy their code: Apple vendors nothing, and a customer\'s game must not carry '
+      + 'Do not copy their code: StudPilot vendors nothing, and a customer\'s game must not carry '
       + 'someone else\'s licence.',
   };
 }

@@ -19,12 +19,12 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-sfx-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-sfx-${process.pid}.mjs`);
 
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'sfx.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: OUT });
 const S = await import(pathToFileURL(OUT).href);
 
-const AUDIO_OUT = join(tmpdir(), `apple-sfx-audio-${process.pid}.mjs`);
+const AUDIO_OUT = join(tmpdir(), `studpilot-sfx-audio-${process.pid}.mjs`);
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'audio.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: AUDIO_OUT });
 const A = await import(pathToFileURL(AUDIO_OUT).href);
 process.on('exit', () => { rmSync(OUT, { force: true }); rmSync(AUDIO_OUT, { force: true }); });

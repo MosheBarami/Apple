@@ -101,11 +101,11 @@ test('every SECURITY DEFINER function pins an empty search_path', () => {
 test('both Worker configs schedule their own consumer and only golem retains the nightly sweep', () => {
   const parse = (name) => JSON.parse(readFileSync(join(ROOT, 'apps', 'worker', name), 'utf8').replace(/^\s*\/\/[^\n]*$/gm, ''));
   const golem = parse('wrangler.jsonc');
-  const apple = parse('wrangler.apple.jsonc');
+  const studpilot = parse('wrangler.studpilot.jsonc');
   assert.equal(golem.vars.MEMBERSHIP_OUTBOX_CONSUMER, 'golem');
-  assert.equal(apple.vars.MEMBERSHIP_OUTBOX_CONSUMER, 'apple');
+  assert.equal(studpilot.vars.MEMBERSHIP_OUTBOX_CONSUMER, 'apple');
   assert.ok(golem.triggers.crons.includes('* * * * *'));
-  assert.ok(apple.triggers.crons.includes('* * * * *'));
+  assert.ok(studpilot.triggers.crons.includes('* * * * *'));
   assert.ok(golem.triggers.crons.includes('0 3 * * *'));
-  assert.equal(apple.triggers.crons.includes('0 3 * * *'), false, 'two workers must not race the shared D1 retention sweep');
+  assert.equal(studpilot.triggers.crons.includes('0 3 * * *'), false, 'two workers must not race the shared D1 retention sweep');
 });

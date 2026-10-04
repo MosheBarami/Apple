@@ -142,7 +142,7 @@ test('a live run: the open step shimmers "Thinking...", the closed one says how 
   assert.match(text(html), /Now the door\./, 'the streaming block is open and its text is on the page');
   assert.doesNotMatch(text(html), /Reading the shop first\./, 'the finished block has collapsed');
   // Owner, 2026-10-01: "replace the vercel ones with these, not both" — the app's own status pill is gone.
-  assert.doesNotMatch(html, /apple-status/, 'a status line of our own next to the AI Elements');
+  assert.doesNotMatch(html, /studpilot-status/, 'a status line of our own next to the AI Elements');
 });
 
 /** The text of every AI Elements Shimmer on the page (its gradient clips to the letters). */
@@ -163,7 +163,7 @@ test('every live state shimmers (AI Elements Shimmer), and nothing does once the
 
   const settled = turn({ content: 'Done.', stopReason: 'done', endedAt: T + 9000, tools: [tool('t1', 'get_project_tree')] });
   assert.deepEqual(shimmering(settled), [], 'a settled turn is still');
-  assert.doesNotMatch(settled, /apple-status/);
+  assert.doesNotMatch(settled, /studpilot-status/);
 });
 
 test('a settled reply: its sources under it, and its [n] as inline citations to them', () => {

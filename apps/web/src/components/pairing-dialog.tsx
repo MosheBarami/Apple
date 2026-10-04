@@ -27,7 +27,7 @@ import {
   STUDIO_PLUGIN_INSTALL_HREF,
   STUDIO_PLUGIN_STORE_LIVE,
   type PairingCodeDto,
-} from '@apple/shared';
+} from '@studpilot/shared';
 import { createPairingCode, discardStudioQueue, disconnectStudio, fetchStudioDiagnostics, rebindPlace } from '../lib/api';
 import { countdownTo, fullStamp, shortRelative } from '../lib/format';
 import { pairingAttemptConnected, type PairingAttemptBaseline } from '../lib/pairing-confirmation';
@@ -111,7 +111,7 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
   const place = link.place;
   // A place never published to Roblox reports placeId 0 and is never BOUND (studio-place.ts refuses
   // to bind what it cannot compare later), but Studio still named it. Measured 2026-09-22 (F-008):
-  // the dock read "Apple-Acceptance-2026-09-22.rbxl" while this row said Studio "has not named" it.
+  // the dock read "StudPilot-Acceptance-2026-09-22.rbxl" while this row said Studio "has not named" it.
   const open = record.data.openPlace;
   const expires = record.data.pairingExpiresAt;
   const lapsed = expires !== null && expires <= Date.now();
@@ -129,7 +129,7 @@ function ConnectionRecord({ projectId }: { projectId: string }) {
               : open
                 ? open.placeId > 0
                   ? `Place ${open.placeId}`
-                  : 'Not published to Roblox yet, so it has no place ID. Apple builds in it as it is.'
+                  : 'Not published to Roblox yet, so it has no place ID. StudPilot builds in it as it is.'
                 : 'Studio has not reported which place it has open.'}
           </p>
         </div>
@@ -399,7 +399,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
               <StatusIcon status="success" size={22} />
             </span>
             <h3>Studio connected</h3>
-            <p className="muted">Apple changes your place only while the Apple panel in Studio shows edits allowed for this connection.</p>
+            <p className="muted">StudPilot changes your place only while the StudPilot panel in Studio shows edits allowed for this connection.</p>
             <button type="button" className="btn btn-primary" onClick={onClose}>
               Start building
             </button>
@@ -476,8 +476,8 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
             {state === 'ready' && pairing && !expired && (
               <>
                 <p className="pairing-how">
-                  In Roblox Studio, click <strong>Apple</strong> in the Plugins tab, enter this code and
-                  press <strong>Connect to Apple</strong>. Edits stay off until you allow them for this
+                  In Roblox Studio, click <strong>StudPilot</strong> in the Plugins tab, enter this code and
+                  press <strong>Connect to StudPilot</strong>. Edits stay off until you allow them for this
                   connection.
                 </p>
                 <p className="pairing-how">If you close or restart Studio, you will need a new code.</p>
@@ -499,7 +499,7 @@ export function PairingDialog({ projectId, studioConnected, onClose }: PairingDi
                 rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
                 className="pairing-link"
               >
-                {STUDIO_PLUGIN_STORE_LIVE ? 'Get Apple Studio from the Creator Store' : 'Public installation unavailable — see status'}
+                {STUDIO_PLUGIN_STORE_LIVE ? 'Get StudPilot Studio from the Creator Store' : 'Public installation unavailable — see status'}
                 {STUDIO_PLUGIN_STORE_LIVE ? ' ↗' : ''}
               </a>
             </p>

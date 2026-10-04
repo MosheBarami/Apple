@@ -59,7 +59,7 @@ export function BrandingDetails({ view, draft, onDraft, onSave, onRegenerate, on
         <div className="brand__empty card">
           <h2>No branding yet</h2>
           <p className="field-hint">
-            Apple takes real pictures of your game from Roblox Studio, composes a 512x512 icon and 1920x1080 thumbnails from them, and
+            StudPilot takes real pictures of your game from Roblox Studio, composes a 512x512 icon and 1920x1080 thumbnails from them, and
             suggests names and descriptions. Studio must be connected with this place open. Uses 1 Credit.
           </p>
           {status}

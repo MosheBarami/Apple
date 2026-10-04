@@ -75,7 +75,7 @@
 
 /* ------------------------------------------------------------ the aurora --- */
 
-/* Shown on every signed-in route, over apple-minimal's `display:none !important` and the
+/* Shown on every signed-in route, over studpilot-minimal's `display:none !important` and the
    non-workspace pages' own hide. It spans the whole window now, rail included, so the rail can be
    glass too. The old beam, thread mesh and dust are retired: the dust animated background-position,
    which repaints the full screen every frame. */
@@ -122,7 +122,7 @@
 /* The grounds that used to paint over it are opened up. The page colour stays on <html>. */
 .gx-shell,
 .gx-shell .gx-main,
-.gx-shell .apple-workspace,
+.gx-shell .studpilot-workspace,
 .gx-shell .gx-conversation { background:transparent; }
 
 /* -------------------------------------------------------------------- rail --- */
@@ -162,8 +162,8 @@
 
 /* ----------------------------------------------------------------- top bar --- */
 
-.gx-shell .apple-workspace__topbar,
-:root[data-theme='light'] .gx-shell .apple-workspace__topbar {
+.gx-shell .studpilot-workspace__topbar,
+:root[data-theme='light'] .gx-shell .studpilot-workspace__topbar {
   background:var(--glass-fill);
   border-bottom:1px solid var(--glass-line);
   box-shadow:var(--glass-sheen);

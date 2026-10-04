@@ -79,7 +79,7 @@ test('two addressed ids are both kept, in path order', () => {
 
 // ------------------------------------------------------------------ the gate, executed ---
 
-const OUT = join(tmpdir(), `apple-admin-audit-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-admin-audit-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: OUT,

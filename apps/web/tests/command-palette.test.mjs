@@ -2,7 +2,7 @@
 //
 // `command-match.test.mjs` pins the ranking, which is the part that decides whether the palette
 // feels good. It cannot tell you whether the palette exists on screen. This file is the other
-// half, and it exists because of this repo's own rule (docs/audit/APPLE-LEDGER.md):
+// half, and it exists because of this repo's own rule (docs/audit/STUDPILOT-LEDGER.md):
 //
 //     "Code that compiles, is tested, and has no caller is a DEAD END, not a feature."
 //

@@ -49,7 +49,7 @@ The inactive preview was rendered against this isolated worktree, not installed;
 rerender against the approved durable root once the code is integrated and access
 works. Illustrative condition (the supplied parent file takes precedence):
 
-> Complete the Apple Roblox Studio product: scripts/autonomy-review-gate.py exits 0 on fresh independent browser/Studio/gameplay evidence, while the approved full owner objective has a persistent strategic Opus owner, deterministic single-instance recovery, independent evaluations and canonical mission state; preserve STOP and account/provider boundaries.
+> Complete the StudPilot Roblox Studio product: scripts/autonomy-review-gate.py exits 0 on fresh independent browser/Studio/gameplay evidence, while the approved full owner objective has a persistent strategic Opus owner, deterministic single-instance recovery, independent evaluations and canonical mission state; preserve STOP and account/provider boundaries.
 
 A native achieved/impossible/paused/cleared verdict or zero exit alone never establishes
 completion. `candidate_complete` requires all three: an explicit owner result
@@ -132,7 +132,7 @@ is Free and privately matched its account to CLI auth status, which still report
 cached Max. Server OAuth requires Max. This is an observed entitlement mismatch,
 not proof of an organization-admin switch. No alternate API environment/key helper
 is configured. Sanitized parent evidence:
-`/private/tmp/apple-native-goal-probe/sanitized-proof.json` (temporary local evidence;
+`/private/tmp/studpilot-native-goal-probe/sanitized-proof.json` (temporary local evidence;
 parent owns its durable preservation). A response from the requested model remains
 blocked; cached CLI auth status alone does not establish access.
 

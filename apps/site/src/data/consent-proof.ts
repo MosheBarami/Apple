@@ -3,7 +3,7 @@
  *
  * The owner's standing instruction for the marketing site is "do not make claims when we can
  * demonstrate them". On 2026-09-21 the deployed landing carried `<img>` 0 and `<video>` 0: every
- * sentence on it was a claim, including the load-bearing one — that Apple changes nothing in your
+ * sentence on it was a claim, including the load-bearing one — that StudPilot changes nothing in your
  * place until you allow it. That sentence is the product's central safety promise and it was
  * printed in the same typeface as everything else, with nothing behind it.
  *
@@ -19,7 +19,7 @@
  * So no sentence in the proof band is written by anybody: each one is a VERBATIM quote out of a
  * file in this repository, and it says which file. Two kinds of source, and the difference matters:
  *
- *   'plugin'  — apps/apple-plugin/src/init.server.luau, the shipped plugin's own string literals.
+ *   'plugin'  — apps/studpilot-plugin/src/init.server.luau, the shipped plugin's own string literals.
  *               The page reproduces the panel's wording, so if the panel's wording changes and
  *               nobody updates the page, the page is lying about a UI that still exists. Pointing
  *               at the source makes that a red test rather than a slow drift.
@@ -42,7 +42,7 @@
  * `apps/experiences/lumen-isles/World.luau:2` calls it "an authored low-poly adventure", its
  * package description calls it "the first-party experience built for local visual review", and
  * `scripts/build-lumen-isles.mjs:1` says it "Builds the exact first-party experience for local
- * visual review". It is four hand-written Luau files compiled into a place. Apple did not produce
+ * visual review". It is four hand-written Luau files compiled into a place. StudPilot did not produce
  * it from a prompt. A visitor cannot be expected to read a caption that carefully; a game
  * screenshot on a marketing page is read as the thing the product makes. Publishing those two
  * would have been precisely the class of claim this repository exists to prevent, and
@@ -55,7 +55,7 @@
  */
 
 const record = 'docs/evidence/plugin-consent-verified-in-studio-2026-09-19.md';
-const plugin = 'apps/apple-plugin/src/init.server.luau';
+const plugin = 'apps/studpilot-plugin/src/init.server.luau';
 
 /**
  * A quoted string, and the file it was taken out of.
@@ -88,14 +88,14 @@ export const CONSENT_PROOF = {
    * for a mock-up and the test goes red, which is the only way a picture's provenance stays true.
    */
   capture: {
-    src: '/assets/proof/apple-consent-panel-947fad5391.webp',
+    src: '/assets/proof/studpilot-consent-panel-947fad5391.webp',
     from: 'docs/evidence/lumen-isles-2026-09-19/independent-paired-edit-consent.png',
     sha256: '8475ae9cddd76f585fbf88108f10a38922efa5dd5883bed5deae23ffc3aa7742',
     crop: '318x400 at 1504,512 of 1877x1097',
     /* Intrinsic size of the served file, so the row does not reflow when the image arrives. */
     width: 318,
     height: 400,
-    alt: "Apple's panel docked inside Roblox Studio, connected to a place named Lumen Isles, "
+    alt: "StudPilot's panel docked inside Roblox Studio, connected to a place named Lumen Isles, "
       + 'showing the access line and the control that turns edits off.',
   },
 
@@ -138,7 +138,7 @@ export const CONSENT_PROOF = {
   /**
    * THE RECORD'S OWN LIMITATION, ON THE PAGE, NOT ONLY IN THE FILE.
    * The evidence document lists what it does not establish. One of those lines belongs in front of
-   * a reader, because without it the band reads as "Apple is safe" when what was measured is one
+   * a reader, because without it the band reads as "StudPilot is safe" when what was measured is one
    * refused operation and one granted one.
    */
   limit: { text: 'One refused op and one granted op is a control pair, not a capability sweep.', from: record } as ProofQuote,

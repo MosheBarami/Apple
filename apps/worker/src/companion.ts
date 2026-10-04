@@ -33,7 +33,7 @@
  *                               would let a browser drive the plugin's rasteriser flat
  *                               out.
  */
-import type { SelectionItem, StudioEventSelection } from '@apple/shared';
+import type { SelectionItem, StudioEventSelection } from '@studpilot/shared';
 
 // --------------------------------------------------------------------------- selection
 

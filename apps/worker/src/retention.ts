@@ -95,5 +95,5 @@ export const RETENTION_POLICY: readonly RetentionRule[] = [
   { key: 'generatedAudioR2Days', what: 'sound the agent generated for you', window: `${RETENTION.generatedAudioR2Days} days`, where: 'R2', personal: true },
   { key: 'generatedAudioSeconds', what: 'sound generated before this moved to the object store, and sound made by a deployment that has none', window: `${RETENTION.generatedAudioSeconds / 3600} hour`, where: 'KV', personal: true },
   { key: 'workspaceTrashDays', what: 'workspace files you deleted, while they are still recoverable', window: `${RETENTION.workspaceTrashDays} days`, where: 'KV', personal: true },
-  { key: 'memoryMaxTtlDays', what: 'the longest expiry you may set on anything Apple remembers', window: `${RETENTION.memoryMaxTtlDays} days`, where: 'D1 memory_entries', personal: true },
+  { key: 'memoryMaxTtlDays', what: 'the longest expiry you may set on anything StudPilot remembers', window: `${RETENTION.memoryMaxTtlDays} days`, where: 'D1 memory_entries', personal: true },
 ];

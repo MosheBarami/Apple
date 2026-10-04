@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-webhook-visibility-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-webhook-visibility-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

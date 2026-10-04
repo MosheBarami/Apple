@@ -5,7 +5,7 @@
  * every delete aimed at such a path, so copies the agent made (or a library model that repeats a name inside
  * itself) could be neither fixed nor removed, and `clone_instances` could not be asked for N copies of one
  * thing. The plugin now accepts the `read-ref:` references get_tree already hands out for these nodes as the
- * address of a write (apps/apple-plugin/src/Commands.luau, resolvePath), and says so on every tree it returns
+ * address of a write (apps/studpilot-plugin/src/Commands.luau, resolvePath), and says so on every tree it returns
  * (`refsWritable`). This module is what the worker does with that, and with a plugin that cannot:
  *
  *  - planCopyRounds: a source listed N times is N copies, sent as rounds in which no path repeats, because
@@ -17,7 +17,7 @@
  *
  * Nothing here knows what a thing is called or what it is for. It reads names, counts and references.
  */
-import type { StudioOp } from '@apple/shared';
+import type { StudioOp } from '@studpilot/shared';
 
 /** The most clones one clone_instances call may make: the same ceiling every direct edit has. */
 export const COPIES_LIMIT = 120;

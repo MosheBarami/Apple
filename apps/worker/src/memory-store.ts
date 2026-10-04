@@ -1,10 +1,10 @@
-// What Apple remembers ACROSS a conversation — and who it is allowed to remember it for.
+// What StudPilot remembers ACROSS a conversation — and who it is allowed to remember it for.
 //
 // `memory.ts` holds one project's model-written summary and facts, in that project's Durable
 // Object. That is the right home for it: it is derived from one transcript and read by one run.
 //
 // This file is the other half, and it exists because three things are true of the rest of what a
-// person wants Apple to remember, and none of them fit a per-project DO:
+// person wants StudPilot to remember, and none of them fit a per-project DO:
 //
 //   1. It is NOT per-project. "Answer me in Hebrew", "use Rojo layout", "never run_luau without
 //      asking" are facts about the PERSON, and a preference that has to be re-taught in every new
@@ -197,7 +197,7 @@ export function refusedDisclosure(value: unknown): Disclosure | null {
 /**
  * Personal data that is legitimate to remember and must not be rendered in the open.
  *
- * An email address or a phone number is a real thing to ask Apple to remember, so it is stored —
+ * An email address or a phone number is a real thing to ask StudPilot to remember, so it is stored —
  * but a settings panel that prints it in a shared screen share is a leak the user did not choose.
  * The viewer masks these until asked. Card numbers and SSNs are NOT in this list: those are
  * refused outright by `refusedDisclosure`, and a kind cannot be in both.
@@ -720,7 +720,7 @@ export async function putMemoryEntry(env: Corpus, access: MemoryAccess, input: M
     .bind(e.scope, e.scopeId, e.key)
     .first<Row>();
 
-  // created_at survives an overwrite: "since when has Apple believed this" is a different question
+  // created_at survives an overwrite: "since when has StudPilot believed this" is a different question
   // from "when was it last touched", and collapsing them loses the one the user actually asks.
   const createdAt = prior?.created_at ?? e.createdAt;
   await env.CORPUS.prepare(
@@ -745,7 +745,7 @@ export async function putMemoryEntry(env: Corpus, access: MemoryAccess, input: M
 /**
  * Forget one entry, for real.
  *
- * A hard delete, not a tombstone. The user asked Apple to forget something; leaving the text in a
+ * A hard delete, not a tombstone. The user asked StudPilot to forget something; leaving the text in a
  * row with a flag on it means the thing they asked to be forgotten is still in the database, which
  * is not what the word means. What survives is the AUDIT line — the fact that a key was deleted,
  * by whom and when, and its previous value, which is what makes "why did this stop applying?"
@@ -801,7 +801,7 @@ export type MoveReject = RejectReason | 'not_found' | 'target_exists' | 'same_sc
  *   - THE PROFILE STAYS PERSONAL. `profile.*` rows are read from the user layer only
  *     (`personalisationForProject`), so a profile row moved to a project scope would be a row that
  *     exists, is visible, and is read by nothing — a setting that silently stopped applying.
- *   - `created_at` SURVIVES. "Since when has Apple believed this" is not reset by relocating it.
+ *   - `created_at` SURVIVES. "Since when has StudPilot believed this" is not reset by relocating it.
  */
 export async function moveMemoryEntry(
   env: Corpus,

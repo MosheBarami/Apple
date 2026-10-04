@@ -1,4 +1,4 @@
-// Apple API keys: the credential the PUBLIC HTTP surface authenticates with, and the per-key
+// StudPilot API keys: the credential the PUBLIC HTTP surface authenticates with, and the per-key
 // scoping that decides what a given key may reach.
 //
 // WHY A SECOND CREDENTIAL AT ALL. Everything under `/api/*` authenticates with the user's Supabase
@@ -31,7 +31,7 @@
 // That is the correct trade — a credential whose authority silently grows is the thing scoped
 // credentials exist to prevent.
 import type { Env } from './env';
-import { API_KEY_MODES, API_SCOPES, isApiScope, type ApiKeyMode, type ApiScope } from '@apple/shared';
+import { API_KEY_MODES, API_SCOPES, isApiScope, type ApiKeyMode, type ApiScope } from '@studpilot/shared';
 import { oncePerIsolate } from './schema-once';
 
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ const SECRET_HEX = 48;
 const KEY_RE = new RegExp(`^gk_(live|test)_([0-9a-f]{${ID_HEX}})_([0-9a-f]{${SECRET_HEX}})$`);
 
 /**
- * The scope vocabulary now lives in @apple/shared, and is re-exported here so every existing
+ * The scope vocabulary now lives in @studpilot/shared, and is re-exported here so every existing
  * importer and test keeps working.
  *
  * IT MOVED BECAUSE THE SETTINGS PAGE NEEDED IT. The browser cannot import from apps/worker, so a
@@ -66,7 +66,7 @@ const KEY_RE = new RegExp(`^gk_(live|test)_([0-9a-f]{${ID_HEX}})_([0-9a-f]{${SEC
  * a key row is JSON written months ago by a route that may since have changed, and a scope string
  * nobody defines must not become a scope nobody checks.
  */
-export { API_SCOPES, isApiScope, type ApiScope } from '@apple/shared';
+export { API_SCOPES, isApiScope, type ApiScope } from '@studpilot/shared';
 
 export interface GrantedProject {
   id: string;

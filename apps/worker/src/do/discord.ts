@@ -1,10 +1,10 @@
-// DiscordDO — singleton. Who on Discord may spend which Apple account, and the progress pusher.
+// DiscordDO — singleton. Who on Discord may spend which StudPilot account, and the progress pusher.
 //
 // THE SECURITY QUESTION THIS OBJECT ANSWERS: a Discord user id is just a number in a webhook body.
 // Before any command can spend an account's Credits, that Discord user must have PROVED they own
-// the Apple account. The proof is a code that only a signed-in owner of the account can mint:
+// the StudPilot account. The proof is a code that only a signed-in owner of the account can mint:
 //
-//   1. Signed in to Apple, on a project you own, you press Connect Discord. The worker checks
+//   1. Signed in to StudPilot, on a project you own, you press Connect Discord. The worker checks
 //      ownership with YOUR Supabase token (row-level security, same as everywhere else) and asks
 //      this object for a code. The code exists for 10 minutes and can be used once.
 //   2. In Discord you run `/link code:…`. Discord signs that interaction, so the Discord user id
@@ -12,7 +12,7 @@
 //
 // The direction matters and is not interchangeable. The AUTHENTICATED side mints the secret and
 // the UNAUTHENTICATED side presents it, so redeeming a code is evidence of having been signed in
-// to that account. Minting in Discord and redeeming in Apple would prove nothing about the Discord
+// to that account. Minting in Discord and redeeming in StudPilot would prove nothing about the Discord
 // user at all — it would only prove that somebody could read a code somebody else sent them.
 //
 // Guessing is bounded rather than merely unlikely: wrong codes are counted per Discord user and
@@ -23,7 +23,7 @@ import type { Env } from '../env';
 import type { LinkRecord, RedeemResult, RateVerdict } from '../discord';
 import { editOriginal, progressLine, rateLimitForCommand, RATE_DEFAULT, RATE_WINDOW_MS } from '../discord';
 import { rateLimitCheck, type RateBucket } from '../public-api';
-import type { RunSnapshot } from '@apple/shared';
+import type { RunSnapshot } from '@studpilot/shared';
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_LEN = 8;
@@ -128,7 +128,7 @@ export class DiscordDO extends DurableObject<Env> {
       await editOriginal(
         watch.applicationId,
         watch.token,
-        `**${watch.projectName}** is still building — Discord stops letting Apple update this message after 15 minutes.\nFollow it here: ${watch.projectUrl}`,
+        `**${watch.projectName}** is still building — Discord stops letting StudPilot update this message after 15 minutes.\nFollow it here: ${watch.projectUrl}`,
       );
       return true;
     }
@@ -143,7 +143,7 @@ export class DiscordDO extends DurableObject<Env> {
         await editOriginal(
           watch.applicationId,
           watch.token,
-          `**${watch.projectName}** — Apple could not see that build start. Open the project to check: ${watch.projectUrl}`,
+          `**${watch.projectName}** — StudPilot could not see that build start. Open the project to check: ${watch.projectUrl}`,
         );
         return true;
       }
@@ -230,7 +230,7 @@ export class DiscordDO extends DurableObject<Env> {
       await this.ctx.storage.delete(key); // single use, consumed whether or not the rest succeeds
       await this.ctx.storage.delete(failKey);
 
-      // One Discord account to one Apple account, in BOTH directions. Two Discord users quietly
+      // One Discord account to one StudPilot account, in BOTH directions. Two Discord users quietly
       // sharing one balance is a billing surprise nobody consented to, and the person paying is
       // the one who would never see it.
       const replaced = (await this.ctx.storage.get<LinkRecord>(`link:${discordUserId}`)) ?? null;
@@ -256,7 +256,7 @@ export class DiscordDO extends DurableObject<Env> {
       return json({ link });
     }
 
-    /** What the Apple-side settings screen shows: the Discord account bound to THIS user, if any. */
+    /** What the StudPilot-side settings screen shows: the Discord account bound to THIS user, if any. */
     if (path === '/link-for-owner' && req.method === 'GET') {
       const holder = await this.ctx.storage.get<string>(`owner:${url.searchParams.get('appleUserId') ?? ''}`);
       const link = holder ? ((await this.ctx.storage.get<LinkRecord>(`link:${holder}`)) ?? null) : null;
@@ -265,7 +265,7 @@ export class DiscordDO extends DurableObject<Env> {
 
     // ------------------------------------------------------------- revoking
     if (path === '/unlink' && req.method === 'POST') {
-      // Revocable from either end. From Discord the caller is a signed interaction; from Apple the
+      // Revocable from either end. From Discord the caller is a signed interaction; from StudPilot the
       // caller is a verified JWT. Neither can revoke the other's OTHER links, only this pairing.
       const { discordUserId, appleUserId } = (await req.json()) as { discordUserId?: string; appleUserId?: string };
       let holder = discordUserId ?? '';

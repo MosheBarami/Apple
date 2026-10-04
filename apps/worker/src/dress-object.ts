@@ -110,7 +110,7 @@ export async function dressObject(ctx: AgentCtx, a: Record<string, unknown>) {
             soundSaid = sound ? `sound ${direct ? `id ${direct}` : `"${hit?.name ?? o.sound}"`}` : `no sound: nothing in the library matched "${String(o.sound).slice(0, 40)}"`;
           }
           const clips = { [`AppleBody.${as}`]: { ...motionClip(body), ...(sound ? { sound, volume: 0.7 } : {}) } };
-          const wrote = await ctx.execStudioOp({ op: 'edit_script', path: `${model}.AppleAnimations`, source: `-- What ${luau(name).slice(1, -1)} does when clicked or walked into, played by AppleAnimate. Written by Apple's dress_object; edit freely.\nreturn ${luau(clips)}\n`, create: { className: 'ModuleScript', parent: model } }, 60_000);
+          const wrote = await ctx.execStudioOp({ op: 'edit_script', path: `${model}.AppleAnimations`, source: `-- What ${luau(name).slice(1, -1)} does when clicked or walked into, played by AppleAnimate. Written by StudPilot's dress_object; edit freely.\nreturn ${luau(clips)}\n`, create: { className: 'ModuleScript', parent: model } }, 60_000);
           const player = wrote.ok ? await installAnimationPlayer(ctx) : 'animations not written';
           moves = wrote.ok && !player;
           hasBody = true;

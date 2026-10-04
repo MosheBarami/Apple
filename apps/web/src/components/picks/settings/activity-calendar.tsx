@@ -4,7 +4,7 @@
 // contributions: one column per week, one square per day, darker for busier days, squares
 // springing in on a diagonal stagger, a tooltip on hover.
 //
-// ONLY THE WEEKS APPLE ACTUALLY KNOWS. The usage ledger is pruned at 35 days (lib/api.ts), so a
+// ONLY THE WEEKS STUDPILOT ACTUALLY KNOWS. The usage ledger is pruned at 35 days (lib/api.ts), so a
 // full year here would be eleven months of empty squares claiming "you built nothing" about days
 // nobody measured. The grid covers the five weeks the server can answer for, and says so.
 import { useState, type CSSProperties } from 'react';

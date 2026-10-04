@@ -43,19 +43,19 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: 'new-chat',
     title: 'Every build starts as a chat',
-    body: 'Describe the experience you want. Apple opens your place, reads what is already there, and builds with you from inside it.',
+    body: 'Describe the experience you want. StudPilot opens your place, reads what is already there, and builds with you from inside it.',
     anchor: 'new-chat',
     satisfiedBy: 'hasProject',
   },
   {
     id: 'composer',
     title: 'Say how it should feel',
-    body: 'Apple inspects the project before it changes anything, so "make the lobby feel colder" is a sentence it can act on.',
+    body: 'StudPilot inspects the project before it changes anything, so "make the lobby feel colder" is a sentence it can act on.',
     anchor: 'composer',
   },
   {
     id: 'connect-studio',
-    title: 'Apple works on your real place',
+    title: 'StudPilot works on your real place',
     body: 'Pairing Roblox Studio is what lets it read and edit the actual project rather than guessing at one.',
     anchor: 'connect-studio',
   },

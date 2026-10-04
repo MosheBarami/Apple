@@ -4,7 +4,7 @@
 // scale 1 -> 1.08 and stroke-opacity .3 -> .6) runs on each with a 50ms-per-ring delay. The
 // original's radial mask fades the outer rings out.
 //
-// Used where Apple is reaching for Studio: around the mark of "Creating a pairing code", and as the
+// Used where StudPilot is reaching for Studio: around the mark of "Creating a pairing code", and as the
 // art of the "Waiting for Studio" empty states. Rings are drawn in currentColor at low opacity, so
 // the caller's colour decides the tone. Reduced motion: still rings.
 import type { CSSProperties, ReactNode } from 'react';

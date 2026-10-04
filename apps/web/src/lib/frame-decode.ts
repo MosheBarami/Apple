@@ -17,7 +17,7 @@
  *      a scene that actually has a hole in it — and the whole premise of this
  *      surface is that what you see was really rendered.
  */
-import type { StudioFrame } from '@apple/shared';
+import type { StudioFrame } from '@studpilot/shared';
 
 function fromBase64(s: string): Uint8Array | null {
   try {

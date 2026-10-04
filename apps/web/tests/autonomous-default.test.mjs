@@ -18,11 +18,11 @@ test('the workspace holds no Autonomous state to start a visit in (V3 G01)', () 
 // workspace grid's implicit `auto` column grew to the topbar's min-content (507.6px) and every row —
 // the conversation included — overflowed and was clipped. The column may be narrower than its content.
 test('the workspace grid column can be narrower than its widest child', () => {
-  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'design', 'apple-minimal.css'), 'utf8');
-  const rule = /\.apple-workspace \{([^}]*)\}/.exec(css);
-  assert.ok(rule, 'the .apple-workspace rule was not found — this test would check nothing');
+  const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'design', 'studpilot-minimal.css'), 'utf8');
+  const rule = /\.studpilot-workspace \{([^}]*)\}/.exec(css);
+  assert.ok(rule, 'the .studpilot-workspace rule was not found — this test would check nothing');
   assert.match(rule[1], /grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  const pill = /\.apple-workspace__controls \.gx-pill \{([^}]*)\}/.exec(css);
+  const pill = /\.studpilot-workspace__controls \.gx-pill \{([^}]*)\}/.exec(css);
   assert.ok(pill && /min-width:\s*0/.test(pill[1]) && /flex:\s*0 1 auto/.test(pill[1]), 'the topbar pill must be allowed to shrink');
 });
 

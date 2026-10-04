@@ -1,7 +1,7 @@
 {
-  "name": "Apple — AI builder for Roblox",
-  "short_name": "Apple",
-  "description": "Describe a Roblox game. Apple builds it — the parts, the scripts, the systems — straight into the place you have open in Studio.",
+  "name": "StudPilot — AI builder for Roblox",
+  "short_name": "StudPilot",
+  "description": "Describe a Roblox game. StudPilot builds it — the parts, the scripts, the systems — straight into the place you have open in Studio.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

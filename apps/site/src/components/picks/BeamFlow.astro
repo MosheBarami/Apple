@@ -22,7 +22,7 @@
  * is information that only the motion carries.
  */
 import './beam-flow.css';
-import AppleMark from '../AppleMark.astro';
+import StudPilotMark from '../StudPilotMark.astro';
 import ObjectIcon, { type ObjectName } from '../ObjectIcon.astro';
 
 const ICON: Record<string, string> = {
@@ -63,8 +63,8 @@ const svg = (name: string) =>
     </ul>
 
     <div class="beam-hub" data-beam-hub>
-      <AppleMark size={30} alive={false} />
-      <span class="visually-hidden">Apple</span>
+      <StudPilotMark size={30} alive={false} />
+      <span class="visually-hidden">StudPilot</span>
     </div>
 
     <ul class="beam-col beam-col--out" role="list" aria-label="What it can make">

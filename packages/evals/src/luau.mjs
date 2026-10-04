@@ -68,7 +68,7 @@ let resolved; // undefined = not probed yet; null = nothing usable
  */
 export function resolveLuauChecker() {
   if (resolved !== undefined) return resolved;
-  const dir = mkdtempSync(join(tmpdir(), 'apple-evals-probe-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-evals-probe-'));
   const good = join(dir, 'good.luau');
   const bad = join(dir, 'bad.luau');
   writeFileSync(good, GOOD_PROBE);
@@ -116,7 +116,7 @@ export function checkLuauSyntax(code, opts = {}) {
       detail: 'no working Luau checker found (tried luau-lsp, luau-analyze); set LUAU_CHECK_BIN',
     };
   }
-  const dir = mkdtempSync(join(tmpdir(), 'apple-evals-luau-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-evals-luau-'));
   const file = join(dir, 'snippet.luau');
   try {
     writeFileSync(file, code.endsWith('\n') ? code : code + '\n');

@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { vaultPath, searchWiki } from '../../apple-os/vault.mjs';
-import { collectBriefFacts, latestBrief, runBrief } from '../../apple-os/brief.mjs';
-import { SKILLS } from '../../apple-os/skills.mjs';
-import { voiceStatus } from '../../apple-os/voice.mjs';
-import { routeRequest } from '../../apple-os/route.mjs';
-import { latestDiscovery } from '../../apple-os/discover.mjs';
+import { vaultPath, searchWiki } from '../../studpilot-os/vault.mjs';
+import { collectBriefFacts, latestBrief, runBrief } from '../../studpilot-os/brief.mjs';
+import { SKILLS } from '../../studpilot-os/skills.mjs';
+import { voiceStatus } from '../../studpilot-os/voice.mjs';
+import { routeRequest } from '../../studpilot-os/route.mjs';
+import { latestDiscovery } from '../../studpilot-os/discover.mjs';
 
 export async function os() {
   const root = vaultPath();
@@ -36,7 +36,7 @@ export async function osAction(body) {
     return { ok: true, hits: searchWiki(query) };
   }
   if (body?.kind !== 'brief') return { ok: false, reason: 'פעולה לא מוכרת' };
-  if (body.dryRun === true) return { ok: true, dryRun: true, plan: { action: 'write owner brief to private Apple OS vault' } };
+  if (body.dryRun === true) return { ok: true, dryRun: true, plan: { action: 'write owner brief to private StudPilot OS vault' } };
   const result = runBrief();
   return { ok: true, path: result.path, fetchedAt: new Date().toISOString() };
 }

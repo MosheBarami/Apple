@@ -128,11 +128,11 @@ test('To-do list / Thought Line: a step is marked by its status', () => {
 });
 
 test('Forge recalling: Hyperspeed behind, Fill text headline, the infinity loop', () => {
-  const out = html(ui.h(ui.Forge, { kind: 'recalling', label: 'Waking the apple', compact: true }));
+  const out = html(ui.h(ui.Forge, { kind: 'recalling', label: 'Waking StudPilot', compact: true }));
   assert.match(out, /<canvas[^>]*picks-backdrop--warp/);
   const fill = element(out, /<p class="picks-fill/);
   assert.ok(fill, 'the headline is not the fill text');
-  assert.equal(count(fill, 'Waking the apple'), 2, 'drawn twice, base and ink');
+  assert.equal(count(fill, 'Waking StudPilot'), 2, 'drawn twice, base and ink');
   assert.match(fill, /picks-fill__ink" aria-hidden="true"/, 'and heard once');
   assert.doesNotMatch(text(out), /\d+%/, 'no invented percentage');
   assert.match(out, /picks-infinity forge-bar/);
@@ -143,7 +143,7 @@ test('Forge connecting: the ripple round the mark and the pairing-code rain behi
   assert.match(out, /<canvas[^>]*picks-backdrop--rain/);
   const mark = element(out, /<span class="forge-mark"/);
   assert.match(mark, /picks-ripple/);
-  assert.match(mark, /apple-pulse/, 'the brand mark stays at the centre of the rings');
+  assert.match(mark, /studpilot-pulse/, 'the brand mark stays at the centre of the rings');
 });
 
 // RESTATED 2026-10-01: the caption is the genuine AI Elements Shimmer (a sweep, not a per-glyph wave).
@@ -167,7 +167,7 @@ test('EmptyState: the tile plate invites building, the ripple waits for Studio, 
 });
 
 test('Failure: the server\'s own words are folded behind "Details"', () => {
-  const explained = { kind: 'ours', title: 'Apple hit a problem', safety: 'Nothing was changed.', next: null, retryable: false };
+  const explained = { kind: 'ours', title: 'StudPilot hit a problem', safety: 'Nothing was changed.', next: null, retryable: false };
   const out = html(ui.h(ui.Failure, { error: new Error('x'), explain: () => ({ ...explained, detail: 'upstream 502 from provider' }) }));
   const fold = element(out, /<details class="picks-fold failure__detail"/);
   assert.ok(fold, 'the detail is not folded');

@@ -5,7 +5,7 @@
 // points fly out of the centre, each drawn as a streak from where it was to where it is, brighter
 // as it nears. No code is copied (React Bits adds the Commons Clause to MIT).
 //
-// Used behind the very first screen, "Waking the apple". That is an account screen, so the streaks
+// Used behind the very first screen, "Waking StudPilot". That is an account screen, so the streaks
 // are the ink colour only — no accent, no tint. Reduced motion draws nothing.
 import { useRef } from 'react';
 import { useCanvasLoop } from './canvas-loop';

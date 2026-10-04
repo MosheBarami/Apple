@@ -1,5 +1,5 @@
 /**
- * WHAT APPLE DID TO YOUR ROBLOX ACCOUNT, IN WORDS YOU CAN READ.
+ * WHAT STUDPILOT DID TO YOUR ROBLOX ACCOUNT, IN WORDS YOU CAN READ.
  *
  * The worker records every write to a customer's Roblox account in `creator_write_log`. A log
  * nobody can read is the same as no log: the 299 assets that went into the owner's personal account

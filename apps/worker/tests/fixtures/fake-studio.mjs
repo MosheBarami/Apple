@@ -2,7 +2,7 @@
 //
 // It is a small world (a flat ground, optional walls and invisible zones, a spawn) plus the operations those tools send:
 // the library routes, imports, tree reads, spatial queries, transforms, clones and script reads. It keeps a log of every
-// operation and answers the way the real plugin does (apps/apple-plugin/src/ops/Query.luau and Commands.luau), so a test can
+// operation and answers the way the real plugin does (apps/studpilot-plugin/src/ops/Query.luau and Commands.luau), so a test can
 // check what the tools ASKED and what the world looks like afterwards, not only what they returned.
 
 const CLASS_PARENTS = { TextButton: 'GuiButton', ImageButton: 'GuiButton', Script: 'LuaSourceContainer', LocalScript: 'LuaSourceContainer', ModuleScript: 'LuaSourceContainer', ScreenGui: 'LayerCollector', BillboardGui: 'LayerCollector', SurfaceGui: 'LayerCollector' };

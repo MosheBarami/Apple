@@ -199,15 +199,15 @@ for (const rt of ['node', 'python', 'luau']) {
 /* =============================================================== environment === */
 
 test('the environment handed to a program is four variables, none of them this machine\'s', () => {
-  process.env.APPLE_SANDBOX_SENTINEL = 'a-secret-that-must-not-travel';
+  process.env.STUDPILOT_SANDBOX_SENTINEL = 'a-secret-that-must-not-travel';
   try {
     const env = sandboxEnv('/tmp/scratch');
     assert.deepEqual(Object.keys(env).sort(), ['HOME', 'LANG', 'PATH', 'TMPDIR']);
-    assert.equal(envCompat('APPLE_SANDBOX_SENTINEL', env), undefined);
+    assert.equal(envCompat('STUDPILOT_SANDBOX_SENTINEL', env), undefined);
     assert.equal(env.HOME, '/tmp/scratch', 'HOME must point at the scratch dir, not the real one');
     assert.ok(env.PATH, 'without PATH nothing can be spawned at all');
   } finally {
-    delete process.env.APPLE_SANDBOX_SENTINEL;
+    delete process.env.STUDPILOT_SANDBOX_SENTINEL;
   }
 });
 
@@ -217,14 +217,14 @@ test('END TO END: a program that reads the environment finds none of this machin
   // which sandbox.ts says plainly it is. So this asserts the layer BELOW the scanner: even when a
   // program gets to read the environment, there is nothing in it. If the scan were the only thing
   // standing between a model-authored program and CLOUDFLARE_API_TOKEN, this test would fail.
-  process.env.APPLE_SANDBOX_SENTINEL = 'a-secret-that-must-not-travel';
+  process.env.STUDPILOT_SANDBOX_SENTINEL = 'a-secret-that-must-not-travel';
   try {
     const evade = 'const e = globalThis["pro" + "cess"].env;\nconsole.log(Object.keys(e).sort().join(","));';
     const job = admitProgram({ runtime: 'node', backend: 'local-process', source: evade });
     assert.ok(!isRefusal(job), 'the evasion was refused, so this test no longer measures the layer below the scanner');
     const r = await runSandbox(job);
     assert.equal(r.reason, 'exit');
-    assert.ok(!r.stdout.includes('APPLE_SANDBOX_SENTINEL'), `the environment leaked: ${r.stdout.slice(0, 200)}`);
+    assert.ok(!r.stdout.includes('STUDPILOT_SANDBOX_SENTINEL'), `the environment leaked: ${r.stdout.slice(0, 200)}`);
 
     const keys = r.stdout.trim().split(',').filter(Boolean);
     // The denominator: the parent has far more than four, so "the child saw four" is a real cut.
@@ -254,7 +254,7 @@ test('END TO END: a program that reads the environment finds none of this machin
     }
     assert.deepEqual(keys.filter((k) => !expected.has(k)), [], `the program saw ${keys.join(',')}`);
   } finally {
-    delete process.env.APPLE_SANDBOX_SENTINEL;
+    delete process.env.STUDPILOT_SANDBOX_SENTINEL;
   }
 });
 

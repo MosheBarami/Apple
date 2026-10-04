@@ -27,8 +27,8 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-files-archive-${process.pid}.mjs`);
-const UNZIP_OUT = join(tmpdir(), `apple-unzip-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-files-archive-${process.pid}.mjs`);
+const UNZIP_OUT = join(tmpdir(), `studpilot-unzip-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

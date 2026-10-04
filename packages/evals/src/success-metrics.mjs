@@ -392,7 +392,7 @@ const wrap = (text, indent) => {
 
 const rule = (t) => `\n${'─'.repeat(100)}\n${t}\n${'─'.repeat(100)}`;
 
-console.log('APPLE — SUCCESS METRICS');
+console.log('STUDPILOT — SUCCESS METRICS');
 console.log(`measured  ${provenance.measuredAt}`);
 console.log(`commit    ${provenance.commit ?? 'unknown'}${provenance.treeDirty ? '  (WORKING TREE DIRTY — these numbers are not the commit’s)' : ''}`);
 if (provenance.commitSubject) console.log(`           ${provenance.commitSubject}`);

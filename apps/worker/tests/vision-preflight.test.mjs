@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
-const output = join(tmpdir(), `apple-vision-preflight-${process.pid}.mjs`);
+const output = join(tmpdir(), `studpilot-vision-preflight-${process.pid}.mjs`);
 execFileSync(join(root, 'node_modules/.bin/esbuild'), ['--bundle', '--format=esm', '--platform=node', '--target=es2022', `--outfile=${output}`, '--log-level=error'], {
   input: `export {workersAiAdapter} from '${root}src/providers/workers-ai.ts'; export {contentChars} from '${root}src/providers/types.ts'; export {estimateNeurons,maxNeuronsPerStepFor} from '${root}src/pricing.ts';`,
   cwd: root,
@@ -16,8 +16,8 @@ rmSync(output, { force: true });
 const model = '@cf/zai-org/glm-5.3-flash';
 // Optional native frame for local evidence; normal tests need no private owner fixture.
 // Validation of image bytes happens before this transport/preflight boundary.
-const frame = process.env.APPLE_VISION_PREFLIGHT_FRAME
-  ? readFileSync(process.env.APPLE_VISION_PREFLIGHT_FRAME) : Buffer.alloc(410850, 0x61);
+const frame = process.env.STUDPILOT_VISION_PREFLIGHT_FRAME
+  ? readFileSync(process.env.STUDPILOT_VISION_PREFLIGHT_FRAME) : Buffer.alloc(410850, 0x61);
 const url = 'data:image/jpeg;base64,' + frame.toString('base64');
 const image = { type: 'image_url', image_url: { url } };
 test('large inline screenshot survives encoding and fits vision preflight without weakening the cap', () => {

@@ -1,6 +1,6 @@
 // retrieve.mjs — the part that makes §G true.
 //
-// §G: "Apple must STOP defaulting to inventing every Roblox GUI and every visual
+// §G: "StudPilot must STOP defaulting to inventing every Roblox GUI and every visual
 // primitive from a blank canvas." A library nothing reads does not change that, so
 // this is the read path: a brief in, a design brief out, ready to be put in front
 // of a generator BEFORE it starts writing.

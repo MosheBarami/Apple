@@ -15,7 +15,7 @@
  * without reading a single one of the flags below. So a green E2E run says nothing about
  * checkpointing, and the cause-naming has never run end to end.
  *
- * What this file does instead: it runs the REAL `apps/apple-plugin/src/Commands.luau` under the REAL
+ * What this file does instead: it runs the REAL `apps/studpilot-plugin/src/Commands.luau` under the REAL
  * `luau` binary against the shared Roblox-shaped mock, takes the snapshot payloads the plugin
  * actually returns, and feeds them to the REAL `checkpointEvidence` compiled from TypeScript. Both
  * halves are production source. Nothing here is a fixture except the shape of the mock place.
@@ -33,11 +33,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PRELUDE } from '../../apple-plugin/tests/studio-mock.mjs';
+import { PRELUDE } from '../../studpilot-plugin/tests/studio-mock.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const PLUGIN_SOURCE_PATH = join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau');
+const PLUGIN_SOURCE_PATH = join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau');
 
 function luauAvailable() {
   try { execFileSync('luau', ['--help'], { stdio: 'pipe' }); return true; } catch { return false; }

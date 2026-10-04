@@ -22,8 +22,8 @@
 //                                   moderation gate and cannot reference something that is not there.
 //   generate_sound / speak_line   — make audio. It reaches the USER, not the place.
 import type { AgentCtx } from './tools';
-import type { GatewayToolDef, StudioOp, InstanceSpec, PropValue } from '@apple/shared';
-import { BASE_VOLUME_ATTRIBUTE, baseVolumeOf } from '@apple/shared';
+import type { GatewayToolDef, StudioOp, InstanceSpec, PropValue } from '@studpilot/shared';
+import { BASE_VOLUME_ATTRIBUTE, baseVolumeOf } from '@studpilot/shared';
 import { encodePng, bytesToBase64 } from './png';
 import { encodeWav, isAudioFault, waveformPeaks, waveformPixels, type PcmAudio } from './audio';
 import { SFX, SFX_NAMES, renderSfx, sfxCatalogue } from './sfx';

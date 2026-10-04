@@ -232,7 +232,7 @@ test('a parent written as a tagged Instance or a {path} object means its path', 
 // plugin's, so it is read from the plugin source rather than restated here from memory.
 test('every top-level parent is rooted at game, as the plugin path resolver requires', async () => {
   const { readFileSync } = await import('node:fs');
-  const plugin = readFileSync(new URL('../../apple-plugin/src/Commands.luau', import.meta.url), 'utf8');
+  const plugin = readFileSync(new URL('../../studpilot-plugin/src/Commands.luau', import.meta.url), 'utf8');
   assert.match(plugin, /if first ~= "game" then return nil, 'path must start with "game"' end/,
     'the plugin no longer requires game-rooted paths — revisit parentPath() in studio-props.ts');
   const r = M.normaliseItems([

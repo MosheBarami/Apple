@@ -1,5 +1,5 @@
 /**
- * Adapters: real Apple data → generative-UI documents.
+ * Adapters: real StudPilot data → generative-UI documents.
  *
  * These build *candidate* documents from first-party payloads (a Studio render,
  * a visual critique, checkpoint metadata, quota state). They are still passed
@@ -12,8 +12,8 @@ import type {
   RenderViewResult,
   RenderedView,
   SceneLighting,
-} from '@apple/shared';
-import { verticalDominance } from '@apple/shared';
+} from '@studpilot/shared';
+import { verticalDominance } from '@studpilot/shared';
 import type { UIDocument } from './schema.ts';
 import { sanitizeDocument, type ValidationResult } from './validate.ts';
 import { formatSettings } from '../format.ts';

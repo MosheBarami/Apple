@@ -22,7 +22,7 @@ import {
   sha256,
 } from '../../../scripts/lib/migration-runner.mjs';
 
-const NAME = `apple-migration-ledger-${process.pid}`;
+const NAME = `studpilot-migration-ledger-${process.pid}`;
 const IMAGE = process.env.POSTGRES_IMAGE || 'postgres:16-alpine';
 
 const failures = [];

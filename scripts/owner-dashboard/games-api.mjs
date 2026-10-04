@@ -1,14 +1,14 @@
 // GET /api/cc/games            the index of every rbxl game the owner supplied (built by games.py)
 // GET /api/cc/games/<id>       one game: header, failures, per-service counts and a page of its components
 //                              [?off=&limit=&q=&service=&sort=instances|percent|percent-asc|name]
-// Reads ~/Library/Application Support/Apple/owner-dashboard (or $APPLE_DASH_GAMES_DIR), cached per file
+// Reads ~/Library/Application Support/Apple/owner-dashboard (or $STUDPILOT_DASH_GAMES_DIR), cached per file
 // mtime. Components can number in the tens of thousands, so the browser only ever gets one page.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fail, ok, sendJson, localHost } from './cc/http.mjs';
 
-const dir = () => process.env.APPLE_DASH_GAMES_DIR || path.join(os.homedir(), 'Library/Application Support/Apple/owner-dashboard');
+const dir = () => process.env.STUDPILOT_DASH_GAMES_DIR || path.join(os.homedir(), 'Library/Application Support/Apple/owner-dashboard');
 const HINT = 'python3 scripts/owner-dashboard/games.py';
 const missing = () => fail('אינדקס המשחקים עדיין לא נבנה. הריצו: ' + HINT, { hint: HINT });
 // Same rule as games.py safe(): the file name of a game is its id with anything but letters, digits and -_. replaced.

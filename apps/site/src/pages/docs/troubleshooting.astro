@@ -4,8 +4,8 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 ---
 
 <DocsLayout
-  title="Troubleshooting — Apple Docs"
-  description="Every message the Apple Studio panel can show, what it means, and the shortest fix — plus the panel that never appeared and the build that stalled."
+  title="Troubleshooting — StudPilot Docs"
+  description="Every message the StudPilot Studio panel can show, what it means, and the shortest fix — plus the panel that never appeared and the build that stalled."
   heading="Troubleshooting"
 >
   <p>
@@ -19,16 +19,16 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     TWO QUOTES ON THIS PAGE WERE COPIED FROM apps/plugin — the retired plugin the site itself tells
     you not to build — AND NOT FROM THE SHIPPED ONE.
 
-    This page's stated purpose is “Every message the Apple Studio panel can show”, so a quote that
+    This page's stated purpose is “Every message the StudPilot Studio panel can show”, so a quote that
     does not match the artifact is the one failure it cannot afford: a reader copies the text out of
     Studio, searches this page for it, and finds nothing.
 
-    Verbatim from apps/apple-plugin/src/Bridge.luau, the shipped artifact:
+    Verbatim from apps/studpilot-plugin/src/Bridge.luau, the shipped artifact:
       “Invalid or expired pairing code.”                       (was “Invalid or expired code”)
-      “Could not reach Apple — check Studio’s network permission.”
+      “Could not reach StudPilot — check Studio’s network permission.”
                                                         (was “— check your internet”)
     The three other quotes on this page — “Session ended — reconnect with a new code” and
-    “Connection hiccup — retrying…” from the same file, and “This Apple build is too old for the
+    “Connection hiccup — retrying…” from the same file, and “This StudPilot build is too old for the
     server” from apps/worker/src/plugin-version.ts — already matched and are unchanged. The remedies
     below were correct throughout; only the strings were stale.
   */}
@@ -39,7 +39,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     matter, so mistyping those is not the cause — a stale code almost always is.
   </p>
 
-  <h3>“Could not reach Apple — check Studio’s network permission”</h3>
+  <h3>“Could not reach StudPilot — check Studio’s network permission”</h3>
   <p>
     The plugin's HTTPS request never landed. In order of likelihood:
   </p>
@@ -50,7 +50,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
       permissions can be accepted, denied and revoked.
     </li>
     <li><strong>The network blocks it.</strong> School and workplace networks often block outbound HTTPS from Studio. Another network settles it in a minute.</li>
-    <li><strong>Apple is actually down.</strong> The <a href="/status">status page</a> checks the live API from your own browser and answers that in a second.</li>
+    <li><strong>StudPilot is actually down.</strong> The <a href="/status">status page</a> checks the live API from your own browser and answers that in a second.</li>
   </ul>
 
   <h3>“Session ended — reconnect with a new code”</h3>
@@ -59,17 +59,17 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <a href="/docs/connect">Connect again</a>; nothing in the project is lost.
   </p>
 
-  <h3>“This Apple build is too old for the server”</h3>
+  <h3>“This StudPilot build is too old for the server”</h3>
   <p>
     Shown in red, and it does block builds. Update the plugin —
     <a href="/docs/updating">Updating the plugin</a> has the two-click version. This is rare by
-    design: Apple admits every plugin build whose wire protocol it still supports, and today it
+    design: StudPilot admits every plugin build whose wire protocol it still supports, and today it
     supports all of them, so you should not see this yet.
   </p>
 
   <h3>An amber line about a newer version</h3>
   <p>
-    Advisory only. A newer Apple has been published and you are still on an older one — everything
+    Advisory only. A newer StudPilot has been published and you are still on an older one — everything
     keeps working. Update when convenient. It is written to Studio's Output window once, not
     repeatedly.
   </p>
@@ -77,16 +77,16 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h3>“Connection hiccup — retrying…”</h3>
   <p>
     One request failed and the plugin is already retrying. It clears itself. If it never clears,
-    treat it as “Could not reach Apple” above.
+    treat it as “Could not reach StudPilot” above.
   </p>
 
-  <h2>The Apple button isn't in the Plugins tab</h2>
+  <h2>The StudPilot button isn't in the Plugins tab</h2>
   <ul>
     <li>
       Acquiring the plugin on the web only puts it in your inventory. The install happens inside
       Studio, in the <strong>Toolbox</strong> — see <a href="/docs/plugin">Install</a>.
     </li>
-    <li>Check Studio's plugin management window: if Apple is listed but disabled, enable it.</li>
+    <li>Check Studio's plugin management window: if StudPilot is listed but disabled, enable it.</li>
     <li>Restart Studio once. Plugins are loaded at launch.</li>
   </ul>
 
@@ -103,10 +103,10 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     </li>
   </ul>
 
-  <h2>Apple stopped mid-build</h2>
+  <h2>StudPilot stopped mid-build</h2>
   <ul>
     <li>
-      <strong>Studio was closed or the place was switched.</strong> Apple loses its hands and pauses
+      <strong>Studio was closed or the place was switched.</strong> StudPilot loses its hands and pauses
       with a message. Reopen the place, reconnect if needed, and ask it to continue — the plan and
       history are still in the project.
     </li>
@@ -130,7 +130,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
   <h3>Transient model failure</h3>
   <p>
-    Apple retries transient provider failures inside the same run with bounded backoff. Work already
+    StudPilot retries transient provider failures inside the same run with bounded backoff. Work already
     applied to Studio stays in place, completed tools are not replayed, and you do not need to send
     another message to restart the task. If the provider keeps failing repeatedly, the run eventually
     ends with a real error rather than looping and spending indefinitely.
@@ -138,12 +138,12 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
   <h3>Provider is temporarily busy</h3>
   <p>
-    A free provider refusal is handled as an internal wait. Apple keeps the run open, sleeps until
+    A free provider refusal is handled as an internal wait. StudPilot keeps the run open, sleeps until
     the retry window, and resumes the same step automatically. Nothing about your account changes,
     and there is no Continue button or second message you need to send.
   </p>
 
-  <h3>“Apple has reached today's shared building capacity”</h3>
+  <h3>“StudPilot has reached today's shared building capacity”</h3>
   <p>
     Different from running out of your own Credits: this is a ceiling on what the whole service will
     spend in a day, and it protects the free tier from a single runaway build. The message says when
@@ -188,7 +188,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <div class="callout">
     <p>
       In all three cases the work already done is in your place and the conversation is intact.
-      Apple never rolls back finished steps because a later one failed — that is what the checkpoint
+      StudPilot never rolls back finished steps because a later one failed — that is what the checkpoint
       before the run is for, and it is still there if you want it.
     </p>
   </div>
@@ -196,35 +196,35 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2 id="roblox-key-refused">“Roblox is refusing this key”</h2>
   <p>
     This is about the Open Cloud key you connected under
-    <strong>Settings → Connections</strong>, not about your Apple account. Roblox expires API keys,
-    and a key can be deleted from create.roblox.com at any time — neither of those tells Apple, so
+    <strong>Settings → Connections</strong>, not about your StudPilot account. Roblox expires API keys,
+    and a key can be deleted from create.roblox.com at any time — neither of those tells StudPilot, so
     the first sign is usually an upload that fails.
   </p>
   <ol>
     <li>Press <strong>Test connection</strong> in Settings → Connections. It says which of the three it is: accepted, refused, or not checkable right now.</li>
     <li>If it was refused, make a new key at create.roblox.com → <strong>Open Cloud</strong> → <strong>API Keys</strong>, tick the same permissions, and paste it in. It replaces the old one.</li>
-    <li>Nothing already built is affected, and nothing in your Roblox account changes. Assets Apple created stay where they are.</li>
+    <li>Nothing already built is affected, and nothing in your Roblox account changes. Assets StudPilot created stay where they are.</li>
   </ol>
   <p>
-    If the answer is neither — “Apple could not reach Roblox”, or a 403 — the check did not happen.
+    If the answer is neither — “StudPilot could not reach Roblox”, or a 403 — the check did not happen.
     That is not a verdict on the key, and making a new one will not help.
   </p>
 
-  <h2>Apple changed something I didn't want</h2>
+  <h2>StudPilot changed something I didn't want</h2>
   <p>Three exits, smallest first:</p>
   <ol>
     {/* The unit is the operation, not the batch: Commands.luau opens one ChangeHistoryService
         recording per operation and Bridge.luau executes a batch one operation at a time. Saying
         "each batch is one undo step" sent people to press Ctrl+Z once for a run that needed six. */}
-    <li>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (<kbd>⌘Z</kbd> on macOS) in Studio. Each change Apple made is its own undo step, so a run of several steps needs one press per step.</li>
-    <li>Restore the checkpoint Apple took before the run, from the project's sidebar. That takes the whole run back in one action, which <kbd>Ctrl</kbd>+<kbd>Z</kbd> cannot do.</li>
+    <li>Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (<kbd>⌘Z</kbd> on macOS) in Studio. Each change StudPilot made is its own undo step, so a run of several steps needs one press per step.</li>
+    <li>Restore the checkpoint StudPilot took before the run, from the project's sidebar. That takes the whole run back in one action, which <kbd>Ctrl</kbd>+<kbd>Z</kbd> cannot do.</li>
     <li>Say what is wrong in the chat. Fixing a wrong turn is usually faster than rolling back.</li>
   </ol>
 
-  <h2>Stop Apple now</h2>
+  <h2>Stop StudPilot now</h2>
   <p>
     Press <strong>Disconnect</strong> in the plugin panel, or disconnect from the web workspace.
-    Either one ends Apple's access to the place immediately, without uninstalling anything. To
+    Either one ends StudPilot's access to the place immediately, without uninstalling anything. To
     remove the plugin entirely, uninstall it from Studio's plugin management window.
   </p>
 

@@ -34,13 +34,13 @@ export function plainText(v: unknown, max = 160): string {
 /** One plain sentence for whatever went wrong, whatever the engineering text said. */
 export function plainProblem(raw: unknown): string {
   const t = String(raw ?? '');
-  if (/action must be|unknown action|route must be|not supported by/i.test(t)) return 'The Apple plugin in Roblox Studio needs updating before it can do that.';
-  if (/not reachable|start it on the Mac|live paired|gateway|library refused|owner library/i.test(t)) return 'Apple could not reach your saved games right now.';
+  if (/action must be|unknown action|route must be|not supported by/i.test(t)) return 'The StudPilot plugin in Roblox Studio needs updating before it can do that.';
+  if (/not reachable|start it on the Mac|live paired|gateway|library refused|owner library/i.test(t)) return 'StudPilot could not reach your saved games right now.';
   if (/did not respond|timed? ?out/i.test(t)) return 'Roblox Studio took too long to answer.';
   if (/not connected|disconnected/i.test(t)) return 'Roblox Studio stopped answering.';
   return 'Something stopped it from finishing.';
 }
-export const noCopy = (technical: string) => ({ error: 'Apple could not save a copy of your place first, so nothing was changed. Tell the user in one plain sentence.', technical });
+export const noCopy = (technical: string) => ({ error: 'StudPilot could not save a copy of your place first, so nothing was changed. Tell the user in one plain sentence.', technical });
 export const list = (items: readonly string[], most = 6): string => {
   const shown = items.slice(0, most);
   const text = shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}` : (shown[0] ?? '');
@@ -125,7 +125,7 @@ function installWords(plan: InstallPlan, r: { added: string[]; failed: number; m
   const parts: string[] = [];
   parts.push(r.added.length ? `${plan.name} is now in your game from your saved games: ${list([...new Set(r.added.map(sentence))])}.` : `${plan.name} was already in your game, so nothing changed.`);
   if (r.added.length) {
-    // The library says in its own plain words what was lost with the code; the buttons Apple connected only open and close menus.
+    // The library says in its own plain words what was lost with the code; the buttons StudPilot connected only open and close menus.
     const caveat = plan.works === 'yes' ? '' : r.menus
       ? 'Its menus open and close, but part of its code was stripped out, so the rest will not respond until it is built again.'
       : plan.note || (plan.works === 'looks only' ? 'It looks right but has no working code behind it.' : 'Most of it works, but a few parts may stay quiet.');
@@ -159,7 +159,7 @@ export async function installOwnerSystem(ctx: AgentCtx, a: Record<string, unknow
   const wired = await connectMenus(ctx, screens);
   const changed = added.length > 0 || (wired?.wired.length ?? 0) > 0;
   if (!added.length && (failed.length || stopped)) {
-    return { error: `${stopped ? plainProblem('disconnected') : 'Apple could not add it to your game.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0]?.problem };
+    return { error: `${stopped ? plainProblem('disconnected') : 'StudPilot could not add it to your game.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0]?.problem };
   }
   const saves = added.some((r) => r.inserted.some((p) => SAVES.test(p)));
   const suspicious = results.flatMap((r) => r.suspicious).slice(0, 50);
@@ -272,7 +272,7 @@ function assembleWords(title: string, parts: readonly Part[], games: readonly st
   const missing = [...new Set(parts.filter((p) => !p.ok).map((p) => ROLE_WORDS[p.role]))];
   if (missing.length) lines.push(`${list(missing)} could not be added, so the game is missing ${missing.length > 1 ? 'those' : 'that'}.`);
   if (extra.disconnected) lines.push('Roblox Studio stopped answering part-way, so the rest was not added.');
-  else if (extra.timedOut) lines.push('Apple stopped part-way to keep things quick, so a few extras are missing.');
+  else if (extra.timedOut) lines.push('StudPilot stopped part-way to keep things quick, so a few extras are missing.');
   if (extra.saves) lines.push('Progress saving will work once the game is published.');
   return lines.join(' ');
 }
@@ -396,7 +396,7 @@ export async function assembleOwnerGame(ctx: AgentCtx, a: Record<string, unknown
   const changed = good.length > 0;
   const seconds = Math.round((now() - started) / 1000);
   if (!changed) {
-    return { error: `${disconnected ? plainProblem('disconnected') : 'Apple could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: parts.find((p) => p.problem)?.problem };
+    return { error: `${disconnected ? plainProblem('disconnected') : 'StudPilot could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: parts.find((p) => p.problem)?.problem };
   }
   const problems = [...new Set(parts.filter((p) => !p.ok).map((p) => `${ROLE_WORDS[p.role]} from ${p.game}`))];
   return {
@@ -417,7 +417,7 @@ export async function assembleOwnerGame(ctx: AgentCtx, a: Record<string, unknown
 const short = (t: string, n = 70) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 const errorLine = (r: Record<string, unknown>) => {
   const first = String(r.error ?? '').split(/(?<=[.!?])\s/)[0] ?? '';
-  return /Tell the user|library id|niche is required|hex/i.test(first) ? 'Apple could not do that with your saved games' : sentence(first).slice(0, 120);
+  return /Tell the user|library id|niche is required|hex/i.test(first) ? 'StudPilot could not do that with your saved games' : sentence(first).slice(0, 120);
 };
 export function installSummary(_args: Record<string, unknown>, result: unknown, failed: boolean): string {
   const r = (result ?? {}) as Record<string, unknown>;
@@ -442,5 +442,5 @@ export function recreateSummary(_args: Record<string, unknown>, result: unknown,
   return `✓ Rebuilt ${short(displayName(r.game, 60) || 'a saved game')} from your saved games`;
 }
 export function browseSummary(_args: Record<string, unknown>, _result: unknown, failed: boolean): string {
-  return failed ? '✗ Apple could not look through your saved games' : '✓ Looked through your saved games';
+  return failed ? '✗ StudPilot could not look through your saved games' : '✓ Looked through your saved games';
 }

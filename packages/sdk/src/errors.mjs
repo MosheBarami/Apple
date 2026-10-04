@@ -2,7 +2,7 @@
 import { finiteInt, isFiniteNumber, retryAfterSeconds } from './numbers.mjs';
 
 /**
- * A failed call to the Apple API.
+ * A failed call to the StudPilot API.
  *
  * `status` is 0 for a transport failure — DNS, TLS, a dropped connection, an offline
  * laptop. That is deliberately distinct from every HTTP status: "the server said no" and

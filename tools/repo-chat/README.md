@@ -1,6 +1,6 @@
 # Repo Chat
 
-A local, read-only AI chat that answers questions **only** about the Apple (RbxAI) repo and product,
+A local, read-only AI chat that answers questions **only** about the StudPilot (RbxAI) repo and product,
 grounded in the repo itself. It is a dev tool for the owner: it runs on `127.0.0.1:4790`, is not a
 pnpm workspace member and is not deployed anywhere.
 

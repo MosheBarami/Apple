@@ -1,7 +1,7 @@
 // THREE PLACES WHERE THE SITE SAID LESS THAN IT KNEW.
 //
 //   /pricing never mentioned the service-wide inference ceiling. A prospect reads "about N builds a
-//   month, free" and signs up; a few busy accounts later a run stops with "Apple has reached today's
+//   month, free" and signs up; a few busy accounts later a run stops with "StudPilot has reached today's
 //   shared building capacity" while their own balance still shows Credits. /docs/credits-and-limits
 //   and /docs/troubleshooting both disclose it — the page people decide on did not.
 //
@@ -110,10 +110,10 @@ test('noindex is opt-in: every other route keeps its canonical', () => {
 
 test('the a/an slip in /docs/updating is gone, and nowhere else', () => {
   for (const rel of ['../src/pages/docs/updating.astro']) {
-    assert.doesNotMatch(read(rel), /\ba\s+Apple\b/, 'the article is wrong again');
+    assert.doesNotMatch(read(rel), /\ba\s+StudPilot\b/, 'the article is wrong again');
   }
   // the corrected sentence is still the sentence
-  assert.match(read('../src/pages/docs/updating.astro'), /not an\s+Apple choice/);
+  assert.match(read('../src/pages/docs/updating.astro'), /not an\s+StudPilot choice/);
 });
 
 // ---------------------------------------------------------------------------
@@ -126,5 +126,5 @@ test('the guard rejects the pages that shipped', () => {
     /no way to become a paying customer yet/i,
   );
   assert.doesNotMatch('<link rel="canonical" href="/404/">', /name="robots" content="noindex/);
-  assert.match('That is platform behaviour, not a\n    Apple choice.', /\ba\s+Apple\b/);
+  assert.match('That is platform behaviour, not a\n    StudPilot choice.', /\ba\s+StudPilot\b/);
 });

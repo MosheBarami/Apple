@@ -1,4 +1,4 @@
-import type { RestoreFidelity, ServerMsg } from '@apple/shared';
+import type { RestoreFidelity, ServerMsg } from '@studpilot/shared';
 
 /** The `restore_status` frame, narrowed out of the server union. */
 export type RestoreStatus = Extract<ServerMsg, { type: 'restore_status' }>;

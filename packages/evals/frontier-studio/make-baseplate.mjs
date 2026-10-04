@@ -7,9 +7,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const directory = mkdtempSync(join(tmpdir(), 'apple-frontier-baseplate-'));
+const directory = mkdtempSync(join(tmpdir(), 'studpilot-frontier-baseplate-'));
 const project = {
-  name: 'Apple Frontier Studio fresh Baseplate',
+  name: 'StudPilot Frontier Studio fresh Baseplate',
   tree: {
     $className: 'DataModel',
     Workspace: {

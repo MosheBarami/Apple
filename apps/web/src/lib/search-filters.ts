@@ -24,7 +24,11 @@ export const MIN_QUERY = 2;
 export const SEARCH_TYPES = ['message', 'artifact', 'checkpoint', 'activity', 'memory'] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
-/** Mirrors SEARCH_AUTHORS. 'system' is not offered as a choice — nothing user-visible carries it. */
+/**
+ * Mirrors SEARCH_AUTHORS. 'system' is not offered as a choice — nothing user-visible carries it.
+ * The stored author id is 'apple' and stays so (saved records and the worker's filter use it); the
+ * product is StudPilot, which is only the label (AUTHOR_LABELS).
+ */
 export const SEARCH_AUTHORS = ['you', 'apple'] as const;
 export type SearchAuthor = (typeof SEARCH_AUTHORS)[number];
 
@@ -38,7 +42,7 @@ export const TYPE_LABELS: Record<SearchType, string> = {
 
 export const AUTHOR_LABELS: Record<SearchAuthor, string> = {
   you: 'You',
-  apple: 'Apple',
+  apple: 'StudPilot',
 };
 
 export const DATE_RANGES = ['any', 'day', 'week', 'month', 'custom'] as const;

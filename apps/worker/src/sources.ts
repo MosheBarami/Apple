@@ -5,7 +5,7 @@
  * Read from what tools actually returned, never invented: a Creator Docs page a search returned (create.roblox.com/docs),
  * a Creator Store model or sound a search returned (its store page), a creation skill's official references.
  */
-import type { RunSource } from '@apple/shared';
+import type { RunSource } from '@studpilot/shared';
 
 const DOCS = /^https:\/\/create\.roblox\.com\/docs\//;
 const MAX_PER_CALL = 8;

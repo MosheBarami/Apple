@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {rankCommands,groupBySection} from '../src/lib/command-match.ts';
-const {transformSync}=createRequire(new URL('../../worker/package.json',import.meta.url))(process.env.APPLE_TEST_ESBUILD??'esbuild');
+const {transformSync}=createRequire(new URL('../../worker/package.json',import.meta.url))(process.env.STUDPILOT_TEST_ESBUILD??'esbuild');
 const source=readFileSync(new URL('../src/components/command-palette.tsx',import.meta.url),'utf8');
 function render(selected=0){
  const calls=[];const commands=[

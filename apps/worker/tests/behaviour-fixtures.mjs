@@ -100,7 +100,7 @@ export function fakeStudio(root, { scripts = new Map(), hash } = {}) {
               parent.children.push({ name, class: op.create.className, props: {}, children: [], path: op.path, childCount: 0 });
             }
           }
-          if (/loadstring|getfenv|setfenv|insertservice|assetservice|loadasset|getobjects|httpservice|requestasync|postasync|debug\./i.test(op.source)) return { id: 'x', ok: false, error: 'script uses a primitive Apple does not write through this command' };
+          if (/loadstring|getfenv|setfenv|insertservice|assetservice|loadasset|getobjects|httpservice|requestasync|postasync|debug\./i.test(op.source)) return { id: 'x', ok: false, error: 'script uses a primitive StudPilot does not write through this command' };
           scripts.set(op.path, op.source);
           return { id: 'x', ok: true, data: { path: op.path, created: !!op.create } };
         }

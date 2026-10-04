@@ -1,5 +1,5 @@
 /**
- * Apple generative UI — schema (v1).
+ * StudPilot generative UI — schema (v1).
  *
  * The agent may present product interfaces, but ONLY by emitting a document that
  * matches this schema. It can never emit HTML, CSS, class names, style objects,
@@ -32,7 +32,7 @@ export type Severity = (typeof SEVERITIES)[number];
 export const HEADING_LEVELS = [2, 3, 4] as const;
 export type HeadingLevel = (typeof HEADING_LEVELS)[number];
 
-/** Mirrors RENDER_VIEWS in @apple/shared; duplicated so this module stays dependency-free. */
+/** Mirrors RENDER_VIEWS in @studpilot/shared; duplicated so this module stays dependency-free. */
 export const VIEW_NAMES = ['hero', 'front', 'side', 'top', 'eye'] as const;
 export type ViewName = (typeof VIEW_NAMES)[number];
 

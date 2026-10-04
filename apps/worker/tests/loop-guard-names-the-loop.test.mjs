@@ -1,7 +1,7 @@
 /**
  * THE LOOP GUARD KNOWS WHAT IS REPEATING.
  *
- * Owner benchmark 2026-10-02 (a canyon map): "Apple stopped because it kept changing the same thing over and over" after
+ * Owner benchmark 2026-10-02 (a canyon map): "StudPilot stopped because it kept changing the same thing over and over" after
  * ten alternating "Checking the build" / "Tweaking lots of things at once" steps. The guard counts a change by tool and
  * what it was aimed at (transcript.ts aim), and aim() read neither `targets` nor `template` nor `region` nor an object
  * `query`, and kept no property names: every set_properties_bulk call aimed at '' and every scatter at its parent, so twelve

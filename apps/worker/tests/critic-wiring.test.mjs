@@ -21,7 +21,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const out = join(tmpdir(), `apple-critic-input-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-critic-input-${process.pid}.mjs`);
 execFileSync(ESBUILD, [
   join(WORKER, 'src', 'critic-input.ts'), '--bundle', '--format=esm', '--target=es2022',
   '--main-fields=main,module', `--outfile=${out}`,
@@ -52,7 +52,7 @@ const RENDER = {
 test('the critic SHIPS — the deployed entry point bundles it', () => {
   // This is the assertion that would have caught the dead end. Every unit test in
   // packages/evals/src/critic.test.mjs passed while zero bytes of critic.ts reached production.
-  const bundle = join(tmpdir(), `apple-worker-bundle-${process.pid}.mjs`);
+  const bundle = join(tmpdir(), `studpilot-worker-bundle-${process.pid}.mjs`);
   execFileSync(ESBUILD, [
     join(WORKER, 'src', 'index.ts'), '--bundle', '--format=esm', '--target=es2022',
     '--external:cloudflare:workers', `--outfile=${bundle}`,

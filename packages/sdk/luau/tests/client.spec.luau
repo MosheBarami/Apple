@@ -1,5 +1,5 @@
 --!nocheck
--- AppleClient's own spec. Loaded by ../../tests/luau.test.mjs, which concatenates a
+-- StudPilotClient's own spec. Loaded by ../../tests/luau.test.mjs, which concatenates a
 -- prelude (a scripted HttpService), this module's source VERBATIM, and this file into one
 -- chunk for the standalone Luau CLI. What is tested is what ships.
 
@@ -210,4 +210,4 @@ h.test("opsFrom is always iterable, whatever the server sent", function()
 	h.eq(#Client.opsFrom("garbage"), 0)
 end)
 
-h.report("AppleClient")
+h.report("StudPilotClient")

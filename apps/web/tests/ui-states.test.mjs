@@ -96,7 +96,7 @@ test('the workspace specifically distinguishes loading, failed and not-found', (
 
 test('a failure state is announced to assistive technology, an empty shelf is not', () => {
   // Reading "Summon your first project" to a screen-reader user as an alert would be noise;
-  // silently swallowing "Could not reach Apple" would not be.
+  // silently swallowing "Could not reach StudPilot" would not be.
   const es = readFileSync(join(HERE, '..', 'src', 'components', 'empty-state.tsx'), 'utf8');
   assert.match(es, /role=\{isFailure \? 'alert' : undefined\}/);
   const model = readFileSync(join(HERE, '..', 'src', 'components', 'empty-state-model.ts'), 'utf8');

@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-auth-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-auth-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'auth.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });

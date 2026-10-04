@@ -37,7 +37,7 @@ import {
   grantLabel,
   newKeyProblems,
 } from '../src/lib/api-keys.ts';
-import { API_SCOPES } from '@apple/shared';
+import { API_SCOPES } from '@studpilot/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PANEL = readFileSync(join(WEB, 'src', 'components', 'api-keys-panel.tsx'), 'utf8');
@@ -151,7 +151,7 @@ test('a key with no project granted is a WARNING, not a refusal', () => {
 });
 
 test('every scope the form offers is one the worker will accept', () => {
-  // The vocabulary lives in @apple/shared for this reason: a scope offered here and refused there
+  // The vocabulary lives in @studpilot/shared for this reason: a scope offered here and refused there
   // is a tickbox whose failure arrives as a 400 with no field on it.
   const offered = [...PANEL.matchAll(/'([a-z]+:[a-z]+)'/g)].map((m) => m[1]);
   // F-64: a scrape that matched nothing would pass this loop zero times and report success.

@@ -6,7 +6,7 @@
  *
  *   - a failed immediate DO fetch leaves the row pending and the scheduled pass delivers it;
  *   - a DO success followed by a failed acknowledgement is delivered again, then removed;
- *   - golem cannot acknowledge apple's distinct Durable Object delivery;
+ *   - golem cannot acknowledge studpilot's distinct Durable Object delivery;
  *   - one scheduled invocation claims a bounded batch and never loops for the remainder.
  */
 import test from 'node:test';
@@ -35,7 +35,7 @@ const {
 
 const TOKENS = {
   golem: 'membership-outbox-golem-test-token-0123456789abcdef',
-  apple: 'membership-outbox-apple-test-token-0123456789abcdef',
+  apple: 'membership-outbox-studpilot-test-token-0123456789abcdef', // keyed by the stored consumer id, which stays 'apple'
 };
 const PROJECT = '11111111-1111-4111-8111-111111111111';
 const USER = '22222222-2222-4222-8222-222222222222';
@@ -191,34 +191,34 @@ test('DO success plus acknowledgement failure redelivers idempotently and then c
   assert.deepEqual(ns.state.deliveries.map((d) => d.version), [1, 1]);
 });
 
-test('golem acknowledgement cannot consume apple delivery for its separate DO namespace', async (t) => {
+test('golem acknowledgement cannot consume studpilot delivery for its separate DO namespace', async (t) => {
   const api = dataApi([row({ consumer: 'golem' }), row({ consumer: 'apple' })]);
   const golem = namespace();
-  const apple = namespace();
+  const studpilot = namespace();
   const oldFetch = globalThis.fetch;
   globalThis.fetch = api.fetch;
   t.after(() => { globalThis.fetch = oldFetch; });
 
   const first = await drainMembershipAccessOutbox(env(api, golem, 'golem'));
   assert.equal(first.acknowledged, 1);
-  assert.deepEqual(api.state.rows.map((r) => r.consumer), ['apple'], 'apple remains pending after golem succeeds');
+  assert.deepEqual(api.state.rows.map((r) => r.consumer), ['apple'], 'studpilot remains pending after golem succeeds');
   assert.equal(golem.state.deliveries.length, 1);
-  assert.equal(apple.state.deliveries.length, 0);
+  assert.equal(studpilot.state.deliveries.length, 0);
 
-  const second = await drainMembershipAccessOutbox(env(api, apple, 'apple'));
+  const second = await drainMembershipAccessOutbox(env(api, studpilot, 'apple'));
   assert.equal(second.acknowledged, 1);
   assert.equal(api.state.rows.length, 0);
-  assert.equal(apple.state.deliveries.length, 1);
+  assert.equal(studpilot.state.deliveries.length, 1);
 });
 
-test('a valid golem credential cannot claim apple by forging the consumer field', async (t) => {
+test('a valid golem credential cannot claim studpilot by forging the consumer field', async (t) => {
   const api = dataApi([row({ consumer: 'apple' })]);
-  const apple = namespace();
+  const studpilot = namespace();
   const oldFetch = globalThis.fetch;
   globalThis.fetch = api.fetch;
   t.after(() => { globalThis.fetch = oldFetch; });
 
-  const forged = env(api, apple, 'apple');
+  const forged = env(api, studpilot, 'apple');
   forged.MEMBERSHIP_OUTBOX_TOKEN = TOKENS.golem;
   await assert.rejects(
     drainMembershipAccessOutbox(forged),

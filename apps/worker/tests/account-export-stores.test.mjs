@@ -37,13 +37,13 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-account-export-stores-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-account-export-stores-${process.pid}.mjs`);
 
 // PostgREST, modelled as the only thing this suite needs it to be: a table name in, rows out. It
 // answers `[]` for anything unseeded, which is exactly what the live database does for the three
 // tables under test.
 const SUPA_FIXTURE = `
-  const state = globalThis.__APPLE_EXPORT_STORES_FIXTURE ??= { rows: new Map(), asked: [] };
+  const state = globalThis.__STUDPILOT_EXPORT_STORES_FIXTURE ??= { rows: new Map(), asked: [] };
   export const rows = state.rows;
   export const asked = state.asked;
   export async function supaRest(env, jwt, path) {
@@ -70,9 +70,9 @@ await esbuild.build({
 
 const { collectAccountExport, elsewhereFor, recordedElsewhereAnswer } = await import(pathToFileURL(OUT).href);
 process.on('exit', () => rmSync(OUT, { force: true }));
-const { rows, asked } = globalThis.__APPLE_EXPORT_STORES_FIXTURE;
+const { rows, asked } = globalThis.__STUDPILOT_EXPORT_STORES_FIXTURE;
 
-const SPEC_OUT = join(tmpdir(), `apple-account-export-stores-spec-${process.pid}.mjs`);
+const SPEC_OUT = join(tmpdir(), `studpilot-account-export-stores-spec-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'user-export.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: SPEC_OUT,

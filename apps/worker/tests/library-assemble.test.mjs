@@ -13,10 +13,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fakeStudio } from './fixtures/fake-studio.mjs';
 
-const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
+const esbuild = await import(process.env.STUDPILOT_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'library-assemble-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@studpilot/shared': '../../packages/shared/src/index.ts' };
 await esbuild.build({ entryPoints: ['src/tools.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'), alias });
 await esbuild.build({ entryPoints: ['src/library-assemble.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'assemble.mjs'), alias });
 const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
@@ -157,8 +157,8 @@ test('install_owner_system: nothing added and something failed is one plain erro
   const f = studio({ importOf: () => ({ error: 'path not found: /x' }) });
   const { out, data } = await run(f, 'install_owner_system', { gameId: gid(4) });
   assert.equal(out.ok, false);
-  assert.match(data.error, /^Apple could not add it to your game\. Tell the user in one plain sentence/);
-  assert.equal(out.summary, '✗ Apple could not add it to your game');
+  assert.match(data.error, /^StudPilot could not add it to your game\. Tell the user in one plain sentence/);
+  assert.equal(out.summary, '✗ StudPilot could not add it to your game');
   assert.equal(out.mutatedProject, undefined);
 });
 
@@ -169,8 +169,8 @@ test('install_owner_system: bad input and a library that cannot answer are refus
   const down = studio({ route: { install: new Error('owner library gateway is not reachable on 127.0.0.1:63747; start it on the Mac') } });
   const r = await run(down, 'install_owner_system', { gameId: gid(3) });
   assert.equal(r.out.ok, false);
-  assert.match(r.data.error, /^Apple could not reach your saved games right now\./);
-  assert.equal(r.out.summary, '✗ Apple could not reach your saved games right now');
+  assert.match(r.data.error, /^StudPilot could not reach your saved games right now\./);
+  assert.equal(r.out.summary, '✗ StudPilot could not reach your saved games right now');
   assert.equal(down.ctx.checkpoints.length, 0, 'no copy of the place was taken for a plan that never came');
   const empty = studio({ route: { install: { game: gid(9), name: 'Empty', steps: [{ path: 'no-slash', mode: 'self', parent: 'game.Workspace' }] } } });
   assert.match((await run(empty, 'install_owner_system', { gameId: gid(9) })).data.error, /nothing in that saved game/);
@@ -178,7 +178,7 @@ test('install_owner_system: bad input and a library that cannot answer are refus
   noCopy.ctx.createCheckpoint = async () => ({ error: 'snapshot failed' });
   const c = await run(noCopy, 'install_owner_system', { gameId: gid(3) });
   assert.equal(c.out.ok, false); assert.equal(imports(noCopy).length, 0);
-  assert.match(c.out.summary, /^✗ Apple could not save a copy of your place first/);
+  assert.match(c.out.summary, /^✗ StudPilot could not save a copy of your place first/);
   assert.equal(/checkpoint/i.test(c.out.summary), false);
 });
 
@@ -390,7 +390,7 @@ test('assemble_owner_game: a run that has taken too long stops adding extras and
   f.ctx.execStudioOp = async (op) => { t += 1000; return inner(op); };
   const r = await A.assembleOwnerGame(f.ctx, { niche: 'x', seed: 1 }, { budgetMs: 40_000, now: () => t });
   assert.ok(r.changed);
-  assert.match(r.forUser, /Apple stopped part-way to keep things quick, so a few extras are missing\./);
+  assert.match(r.forUser, /StudPilot stopped part-way to keep things quick, so a few extras are missing\./);
   assert.ok(r.parts.some((p) => !p.ok && p.technical === 'out of time'));
   assert.ok(imports(f).length < 20, 'and it really stopped asking');
   const unlimited = await A.assembleOwnerGame(studio().ctx, { niche: 'x', seed: 1 });
@@ -402,7 +402,7 @@ test('assemble_owner_game: no plan, no niche or no way to save a copy first chan
   const none = studio({ route: { blueprint: new Error('owner library gateway is not reachable; start it on the Mac') } });
   const a = await assemble(none, { niche: 'obby' });
   assert.equal(a.out.ok, false);
-  assert.equal(a.out.summary, '✗ Apple could not reach your saved games right now');
+  assert.equal(a.out.summary, '✗ StudPilot could not reach your saved games right now');
   assert.deepEqual([none.ctx.checkpoints.length, imports(none).length], [0, 0]);
   const empty = studio({ route: { blueprint: { title: 'X', components: [{ role: 'nonsense', gameId: 'zz' }] } } });
   const b = await assemble(empty, { niche: 'obby' });
@@ -415,10 +415,10 @@ test('assemble_owner_game: no plan, no niche or no way to save a copy first chan
   noCopy.ctx.createCheckpoint = async () => ({ error: 'snapshot failed' });
   const c = await assemble(noCopy, { niche: 'obby' });
   assert.deepEqual([c.out.ok, imports(noCopy).length], [false, 0]);
-  assert.match(c.out.summary, /^✗ Apple could not save a copy of your place first/);
+  assert.match(c.out.summary, /^✗ StudPilot could not save a copy of your place first/);
   const allFail = studio({ importOf: () => ({ error: 'path not found' }), route: { install: { ok: false, error: 'x' }, blueprint: BLUEPRINT() } });
   const d = await assemble(allFail, { niche: 'obby', seed: 1 });
-  assert.equal(d.out.ok, false); assert.match(d.out.summary, /^✗ Apple could not build a game from your saved games this time/);
+  assert.equal(d.out.ok, false); assert.match(d.out.summary, /^✗ StudPilot could not build a game from your saved games this time/);
   assert.equal(d.out.mutatedProject, undefined);
 });
 
@@ -554,6 +554,6 @@ test('a plugin that does not know the route yet is one plain sentence about upda
   const old = studio({ route: { install: new Error('action must be list, game or deps') } });
   const r = await run(old, 'install_owner_system', { gameId: gid(3) });
   assert.equal(r.out.ok, false);
-  assert.equal(r.out.summary, '✗ The Apple plugin in Roblox Studio needs updating before it can do that');
+  assert.equal(r.out.summary, '✗ The StudPilot plugin in Roblox Studio needs updating before it can do that');
   assert.equal(old.ctx.checkpoints.length, 0);
 });

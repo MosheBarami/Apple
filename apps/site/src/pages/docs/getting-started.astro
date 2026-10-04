@@ -1,5 +1,5 @@
 ---
-import { PLAN_LIMITS } from '@apple/shared';
+import { PLAN_LIMITS } from '@studpilot/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import Folder from '../../components/picks-docs/Folder.astro';
@@ -20,15 +20,15 @@ const free = PLAN_LIMITS.free;
 ---
 
 <DocsLayout
-  title="Getting started — Apple Docs"
+  title="Getting started — StudPilot Docs"
   description={STUDIO_PLUGIN_STORE_LIVE
     ? 'From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build.'
-    : 'From signup to your first conversation with Apple: create an account, make a project and start chatting. Public Studio installation is unavailable right now, so the Studio steps apply only to an existing working plugin.'}
+    : 'From signup to your first conversation with StudPilot: create an account, make a project and start chatting. Public Studio installation is unavailable right now, so the Studio steps apply only to an existing working plugin.'}
   heading="Getting started"
 >
   <p>
     {STUDIO_PLUGIN_STORE_LIVE
-      ? 'Create an account, install the Apple Studio plugin, pair it with a project, and ask for your first change.'
+      ? 'Create an account, install the StudPilot Studio plugin, pair it with a project, and ask for your first change.'
       : 'Create your workspace, start a conversation, and check Studio availability before building.'}
   </p>
 
@@ -43,7 +43,7 @@ const free = PLAN_LIMITS.free;
 
   <h2>2. Create a project</h2>
   <p>
-    A <strong>project</strong> is Apple's workspace for one Roblox place: its chat history, its
+    A <strong>project</strong> is StudPilot's workspace for one Roblox place: its chat history, its
     checkpoints, and its memory of what you have built together. Click
     <strong>New project</strong>, give it a name (naming it after the place helps), and you land in
     the chat workspace.
@@ -51,9 +51,9 @@ const free = PLAN_LIMITS.free;
   <Folder
     label="What a project keeps"
     items={[
-      { name: 'Chat', text: 'everything you and Apple have said about this place.' },
+      { name: 'Chat', text: 'everything you and StudPilot have said about this place.' },
       { name: 'Checkpoints', text: 'saved copies of your place from before each run.' },
-      { name: 'Memory', text: 'what you have built together, so Apple remembers next time.' },
+      { name: 'Memory', text: 'what you have built together, so StudPilot remembers next time.' },
     ]}
   />
   <p>
@@ -63,18 +63,18 @@ const free = PLAN_LIMITS.free;
 
   <h2>3. {STUDIO_PLUGIN_STORE_LIVE ? 'Install the Studio plugin' : 'Check Studio availability'}</h2>
   <p>
-    {STUDIO_PLUGIN_STORE_LIVE ? <>Apple changes your place through the <strong>Apple Studio</strong> plugin. It is free on the Roblox Creator Store — follow <a href="/docs/plugin">Install the plugin</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
+    {STUDIO_PLUGIN_STORE_LIVE ? <>StudPilot changes your place through the <strong>StudPilot Studio</strong> plugin. It is free on the Roblox Creator Store — follow <a href="/docs/plugin">Install the plugin</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
   </p>
 
   <h2>4. Connect it to your project</h2>
   <ol>
-    <li>Open your place in Roblox Studio and click <strong>Apple</strong> in the Plugins tab. The <strong>Apple Studio</strong> panel docks.</li>
+    <li>Open your place in Roblox Studio and click <strong>StudPilot</strong> in the Plugins tab. The <strong>StudPilot Studio</strong> panel docks.</li>
     <li>
-      In the Apple web workspace, open the project and press <strong>Enter pairing code</strong> in
+      In the StudPilot web workspace, open the project and press <strong>Enter pairing code</strong> in
       the <strong>Connect Roblox Studio</strong> block. You get a six-character code like
       <code>K7M3QP</code>.
     </li>
-    <li>Type the code into the panel in Studio and press <strong>Connect to Apple</strong>.</li>
+    <li>Type the code into the panel in Studio and press <strong>Connect to StudPilot</strong>.</li>
   </ol>
   <p>
     The panel reads <strong>Connected</strong> followed by the project name, and the workspace shows
@@ -84,7 +84,7 @@ const free = PLAN_LIMITS.free;
 
   <h2>5. Ask for your first build</h2>
   <p>
-    Describe what you want. Apple shows a short plan and then builds it:
+    Describe what you want. StudPilot shows a short plan and then builds it:
   </p>
   <ul>
     <li>“make a lobby with a spinning obby door”</li>
@@ -99,7 +99,7 @@ const free = PLAN_LIMITS.free;
   <h2>6. Iterate like you mean it</h2>
   <p>
     The first result is a first draft. React to it the way you would with a collaborator: “make
-    the door slower”, “the door should only open for players with the key”. Apple keeps the
+    the door slower”, “the door should only open for players with the key”. StudPilot keeps the
     context of everything it has done in this project.
   </p>
 
@@ -107,7 +107,7 @@ const free = PLAN_LIMITS.free;
     <p>
       <strong>Safety net:</strong> every individual change is one native undo step
       (<kbd>Ctrl+Z</kbd> / <kbd>⌘Z</kbd> in Studio), so undoing a whole run means one press per
-      step. Apple also checkpoints your place before every agent run, and restoring that checkpoint
+      step. StudPilot also checkpoints your place before every agent run, and restoring that checkpoint
       from the workspace sidebar takes the whole run back at once — even days later.
     </p>
   </div>

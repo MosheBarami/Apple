@@ -15,7 +15,7 @@ test.after(() => rmSync(dir,{recursive:true,force:true}));
 async function bundle(name) {
   const out = join(dir,name+'.mjs');
   await esbuild.build({entryPoints:[join(root,'src',name+'.ts')],bundle:true,format:'esm',platform:'node',outfile:out,
-    alias:{'@apple/shared':join(root,'../../packages/shared/src/index.ts')}});
+    alias:{'@studpilot/shared':join(root,'../../packages/shared/src/index.ts')}});
   return import(pathToFileURL(out).href);
 }
 const C = await bundle('owner-corpus');
@@ -136,8 +136,8 @@ test('large descriptions are explicitly paged rather than silently clipped by th
   assert.equal(JSON.parse(all).propertiesXml,propertiesXml);e.db.close();
 });
 
-test('supplied private production bundle traverses real ingestion, priority search and exact native byte delivery', {skip:!process.env.APPLE_OWNER_BUNDLE},async()=>{
-  const filename=process.env.APPLE_OWNER_BUNDLE,manifest=JSON.parse(readFileSync(filename,'utf8')),e=env();
+test('supplied private production bundle traverses real ingestion, priority search and exact native byte delivery', {skip:!process.env.STUDPILOT_OWNER_BUNDLE},async()=>{
+  const filename=process.env.STUDPILOT_OWNER_BUNDLE,manifest=JSON.parse(readFileSync(filename,'utf8')),e=env();
   await C.ingestOwnerManifest(e,'owner-a',manifest);
   for(const c of manifest.components){
     const native=readFileSync(join(dirname(filename),c.blobFile));
@@ -182,8 +182,8 @@ test('streaming uploader verifies and sequentially sends native files, with exac
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try{
     const result=await promisify(execFile)(process.execPath,[join(root,'../../scripts/ingest-owner-corpus.mjs'),filename],{
-      env:{...process.env,APPLE_OWNER_JWT:'local-test-token',APPLE_OWNER_ORIGIN:'http://127.0.0.1:'+server.address().port,
-        APPLE_OWNER_BATCH_SIZE:'1',APPLE_OWNER_SKIP_COMPONENTS:'1'}});
+      env:{...process.env,STUDPILOT_OWNER_JWT:'local-test-token',STUDPILOT_OWNER_ORIGIN:'http://127.0.0.1:'+server.address().port,
+        STUDPILOT_OWNER_BATCH_SIZE:'1',STUDPILOT_OWNER_SKIP_COMPONENTS:'1'}});
     assert.equal(requests.length,4);assert.deepEqual(requests.map(r=>r.method),['POST','PUT','POST','PUT']);
     assert.equal(JSON.parse(requests[0].body).components[0].id,c.id+'2');
     assert.deepEqual(requests[1].body,Buffer.from(bytes));assert.match(result.stdout,/SKIP_COMPONENTS=3/);

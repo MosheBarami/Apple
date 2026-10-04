@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(tmpdir(), `apple-stop-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-stop-live-${process.pid}.mjs`);
 await esbuild.build({
   entryPoints: [join(HERE, '..', 'src', 'index.ts')],
   bundle: true, format: 'esm', target: 'es2022', outfile: OUT,

@@ -6,10 +6,10 @@ import {createInterface} from 'node:readline';
 import {resolve,dirname} from 'node:path';
 import {createHash} from 'node:crypto';
 const [manifestPath] = process.argv.slice(2);
-if (!manifestPath) throw new Error('Usage: APPLE_OWNER_JWT=<signed-in JWT> node scripts/ingest-owner-corpus.mjs <manifest.json>');
-const token = process.env.APPLE_OWNER_JWT;
-if (!token) throw new Error('APPLE_OWNER_JWT must contain the signed-in owner JWT (never an admin key)');
-const origin = new URL(process.env.APPLE_OWNER_ORIGIN ?? 'https://apple.moshe-barami111.workers.dev');
+if (!manifestPath) throw new Error('Usage: STUDPILOT_OWNER_JWT=<signed-in JWT> node scripts/ingest-owner-corpus.mjs <manifest.json>');
+const token = process.env.STUDPILOT_OWNER_JWT;
+if (!token) throw new Error('STUDPILOT_OWNER_JWT must contain the signed-in owner JWT (never an admin key)');
+const origin = new URL(process.env.STUDPILOT_OWNER_ORIGIN ?? 'https://apple.moshe-barami111.workers.dev');
 if (origin.protocol !== 'https:' && !['localhost','127.0.0.1'].includes(origin.hostname)) throw new Error('HTTPS required');
 // JSONL: first line {"ownerAttested":true}, then one component per line.
 // Use this for exhaustive exports: only one bounded batch is resident in memory.
@@ -30,8 +30,8 @@ async function* components() {
     yield* input.components;
   }
 }
-const batchSize=Number(process.env.APPLE_OWNER_BATCH_SIZE ?? 8);
-const skip=Number(process.env.APPLE_OWNER_SKIP_COMPONENTS ?? 0);
+const batchSize=Number(process.env.STUDPILOT_OWNER_BATCH_SIZE ?? 8);
+const skip=Number(process.env.STUDPILOT_OWNER_SKIP_COMPONENTS ?? 0);
 if(!Number.isSafeInteger(batchSize)||batchSize<1||batchSize>100||!Number.isSafeInteger(skip)||skip<0) throw new Error('Invalid bounded batch size or resume offset');
 const max = 4 * 1024 * 1024;
 const base = dirname(resolve(manifestPath));
@@ -59,7 +59,7 @@ async function ingestBatch(batch) {
     await request(`/api/owner-corpus/blobs/${c.componentSha256}`,binary,'model/x-rbxm');
     if (description) await request(`/api/owner-corpus/descriptions/${c.descriptionSha256}`,description,'application/json');
     completed++;
-    process.stdout.write(`Verified and ingested owner component ${completed}. Resume with APPLE_OWNER_SKIP_COMPONENTS=${completed}.\n`);
+    process.stdout.write(`Verified and ingested owner component ${completed}. Resume with STUDPILOT_OWNER_SKIP_COMPONENTS=${completed}.\n`);
   }
 }
 for await(const c of components()) {

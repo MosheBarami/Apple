@@ -50,7 +50,7 @@ test('fifteen independent families, good and bad, two variants each', () => {
 
 test('every fixture is a SceneLayout-shaped payload, matching what composition.ts parses', () => {
   // apps/worker/src/composition.ts -> structureFromLayout(parts) expects
-  // [x, y, z, sx, sy, sz, yawDeg] per part, which is @apple/shared's SceneLayout.parts.
+  // [x, y, z, sx, sy, sz, yawDeg] per part, which is @studpilot/shared's SceneLayout.parts.
   for (const f of fixtures) {
     assert.equal(f.layout.format, 'x,y,z,sx,sy,sz,yawDeg', `${f.id} declares the wrong wire format`);
     assert.equal(f.layout.skipped, 0);

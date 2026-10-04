@@ -10,12 +10,12 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // They used to be inline literals in four scripts, which put a real Supabase
-// password in git history. Set APPLE_E2E_EMAIL and APPLE_E2E_PASSWORD in .env
+// password in git history. Set STUDPILOT_E2E_EMAIL and STUDPILOT_E2E_PASSWORD in .env
 // (gitignored) — see docs/DECISIONS.md.
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('STUDPILOT_E2E_EMAIL / STUDPILOT_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -26,7 +26,7 @@ const { access_token: jwt } = await (await fetch(`${SUPA}/auth/v1/token?grant_ty
   body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),
 })).json();
 const projectId = 'b0766f21-7028-47cc-b9ab-e19198b144d2';
-const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${projectId}/ws`, ['golem.v1', 'golem.jwt.' + jwt]);
+const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${projectId}/ws`, ['studpilot.v1', 'studpilot.jwt.' + jwt]);
 let finalText = '';
 const t0 = Date.now();
 const stamp = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';

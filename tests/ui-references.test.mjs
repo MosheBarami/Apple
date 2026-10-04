@@ -41,7 +41,7 @@ const load = (file) => JSON.parse(readFileSync(join(DIR, file), 'utf8'));
 
 function themeIds() {
   const src = readFileSync(join(ROOT, 'apps/worker/src/ui-kit-themes.ts'), 'utf8');
-  const block = src.slice(src.indexOf('APPLE_UI_THEMES'));
+  const block = src.slice(src.indexOf('STUDPILOT_UI_THEMES'));
   return [...new Set([...block.matchAll(/\{\s*id:\s*'([a-z]+)'/g)].map((m) => m[1]))];
 }
 

@@ -158,7 +158,7 @@ test('user_supplied is NEVER refused by the source policy, even when NOTHING is 
     assert.doesNotMatch(
       result.error,
       /Settings under Connections/,
-      "a pasted id is the customer's own choice, not a source decision Apple made",
+      "a pasted id is the customer's own choice, not a source decision StudPilot made",
     );
     assert.ok(stub.calls() > 0, 'must have reached verification — the security gate still runs in full');
   } finally {

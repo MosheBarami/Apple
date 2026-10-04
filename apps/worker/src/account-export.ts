@@ -342,8 +342,8 @@ export async function collectAccountExport(
   };
 }
 
-/** `apple-data-2026-09-15.json`. Dated, because a person keeps more than one of these. */
+/** `studpilot-data-2026-09-15.json`. Dated, because a person keeps more than one of these. */
 export function accountExportFilename(exportedAt: string): string {
   const day = /^\d{4}-\d{2}-\d{2}/.exec(exportedAt)?.[0] ?? 'export';
-  return `apple-data-${day}.json`;
+  return `studpilot-data-${day}.json`;
 }

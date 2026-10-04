@@ -71,7 +71,7 @@ test('a parameterised route can be walked up to: its parent path resolves too', 
 
   assert.deepEqual(missing, [],
     'these paths sit between two routes that work and resolve to the not-found page — somebody who '
-    + 'deletes the last segment off a URL they were sent lands on "This apple is lost": '
+    + 'deletes the last segment off a URL they were sent lands on "This page is lost": '
     + missing.map((m) => `${m.parent} (parent of ${m.child})`).join(', '));
 });
 

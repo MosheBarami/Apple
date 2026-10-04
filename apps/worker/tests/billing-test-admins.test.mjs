@@ -27,7 +27,7 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
-const TMP = mkdtempSync(join(tmpdir(), 'apple-test-admins-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-test-admins-'));
 const bundle = (entry, name, extra = []) => {
   const out = join(TMP, name);
   execFileSync(ESBUILD, [join(WORKER, 'src', entry), '--bundle', '--format=esm', '--target=es2022', ...extra,
@@ -40,21 +40,21 @@ const B = await bundle('billing.ts', 'billing.mjs');
 const AUTHORITY = await bundle('billing-origin-authority.ts', 'authority.mjs');
 const APP = (await bundle('index.ts', 'worker.mjs', [`--alias:cloudflare:workers=${CF_SHIM}`])).default;
 
-const ADMIN = 'Owner@Apple.test';
+const ADMIN = 'Owner@StudPilot.test';
 const PRICES = { STRIPE_PRICE_BUILDER: 'price_builder_1', STRIPE_PRICE_STUDIO: 'price_studio_1' };
 const PROD_TEST_KEY = {
   STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_SECRET_KEY: 'sk_test_x',
   ENVIRONMENT: 'production',
   // Spaces and case differ from the signed-in address on purpose: the list is typed by a person.
-  BILLING_TEST_ADMINS: ' someone@else.test ,  owner@apple.TEST ',
+  BILLING_TEST_ADMINS: ' someone@else.test ,  owner@studpilot.TEST ',
   ...PRICES,
 };
 
 // ------------------------------------------------------------------------------------ pure half
 
 test('a non-admin in production with a test key is refused, exactly as before', () => {
-  for (const email of ['buyer@apple.test', null, undefined, '']) {
+  for (const email of ['buyer@studpilot.test', null, undefined, '']) {
     assert.equal(B.checkoutConfigured(PROD_TEST_KEY, email), false, String(email));
     const config = B.billingConfigFor(PROD_TEST_KEY, email);
     assert.equal(config.checkout, false);
@@ -84,14 +84,14 @@ test('the billing contact cannot make a non-admin an admin — only the signed-i
   // The billing contact is a field the customer types. Naming the owner's address there must not
   // open a test checkout for somebody else.
   const r = B.buildCheckoutRequest(PROD_TEST_KEY, {
-    userId: 'u_1', email: 'buyer@apple.test', billingEmail: ADMIN, plan: 'builder', returnTo: 'https://x/app/usage',
+    userId: 'u_1', email: 'buyer@studpilot.test', billingEmail: ADMIN, plan: 'builder', returnTo: 'https://x/app/usage',
   });
   assert.equal(r.ok, false);
 });
 
 test('a live key in production is unchanged and never claims test mode', () => {
   const live = { ...PROD_TEST_KEY, STRIPE_SECRET_KEY: 'sk_live_x' };
-  for (const email of [ADMIN, 'buyer@apple.test', null]) {
+  for (const email of [ADMIN, 'buyer@studpilot.test', null]) {
     assert.equal(B.checkoutConfigured(live, email), true);
     assert.notEqual(B.billingConfigFor(live, email).testMode, true);
   }
@@ -108,8 +108,8 @@ const jwtFor = (sub, email) => new jose.SignJWT({ email, role: 'authenticated' }
   .setProtectedHeader({ alg: 'ES256', kid: 'k' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`).setAudience('authenticated').setSubject(sub)
   .setIssuedAt().setExpirationTime('1h').sign(privateKey);
-const ADMIN_JWT = await jwtFor(ADMIN_ID, 'owner@apple.test');
-const BUYER_JWT = await jwtFor(BUYER_ID, 'buyer@apple.test');
+const ADMIN_JWT = await jwtFor(ADMIN_ID, 'owner@studpilot.test');
+const BUYER_JWT = await jwtFor(BUYER_ID, 'buyer@studpilot.test');
 const LATER = Math.floor(Date.now() / 1000) + 10 * 86_400;
 
 let doCalls = [];
@@ -156,7 +156,7 @@ const env = (over = {}) => {
 
 async function call(path, { jwt, method = 'GET', body, environment } = {}) {
   const headers = { ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}), ...(body ? { 'content-type': 'application/json' } : {}) };
-  const res = await APP.fetch(new Request(`https://apple.test${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }), env(environment));
+  const res = await APP.fetch(new Request(`https://studpilot.test${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined }), env(environment));
   const text = await res.text();
   let json = null;
   try { json = JSON.parse(text); } catch { /* not json */ }
@@ -171,7 +171,7 @@ async function webhook(event, environment) {
   const v1 = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
   const waited = [];
   const ctx = { waitUntil: (p) => waited.push(Promise.resolve(p)), passThroughOnException: () => {} };
-  const res = await APP.fetch(new Request('https://apple.test/api/billing/webhook', {
+  const res = await APP.fetch(new Request('https://studpilot.test/api/billing/webhook', {
     method: 'POST', headers: { 'stripe-signature': `t=${t},v1=${v1}`, 'content-type': 'application/json' }, body,
   }), env(environment), ctx);
   const out = { status: res.status, json: await res.json() };
@@ -233,7 +233,7 @@ test('webhook: a livemode:false event for a non-admin grants nothing, and is ans
   // refusing to mint one — so here the metadata is the most a stranger's session could carry.
   for (const metadata of [
     { userId: BUYER_ID, plan: 'builder' },
-    { userId: BUYER_ID, plan: 'builder', testAdmin: 'buyer@apple.test' },
+    { userId: BUYER_ID, plan: 'builder', testAdmin: 'buyer@studpilot.test' },
   ]) {
     reset();
     const r = await webhook(subscriptionEvent('evt_stranger', metadata, false));

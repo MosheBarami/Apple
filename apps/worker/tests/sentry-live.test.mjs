@@ -32,7 +32,7 @@ import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-sentry-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-sentry-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
@@ -93,7 +93,7 @@ async function drive(env) {
   const ctx = { waitUntil: (p) => pending.push(p), passThroughOnException() {} };
   try {
     const res = await app.request(
-      `https://apple.example/api/projects/${PROJECT_ID}/ws?access_token=${QUERY_TOKEN}&email=${EMAIL}`,
+      `https://studpilot.example/api/projects/${PROJECT_ID}/ws?access_token=${QUERY_TOKEN}&email=${EMAIL}`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${JWT}`, 'Content-Type': 'application/json' },
@@ -169,7 +169,7 @@ test('a request that succeeds reports nothing', async () => {
   };
   const pending = [];
   try {
-    const res = await app.request('https://apple.example/api/health', {}, { ...baseEnv, AUTH_EXPLODES: false, SENTRY_DSN: DSN }, { waitUntil: (p) => pending.push(p), passThroughOnException() {} });
+    const res = await app.request('https://studpilot.example/api/health', {}, { ...baseEnv, AUTH_EXPLODES: false, SENTRY_DSN: DSN }, { waitUntil: (p) => pending.push(p), passThroughOnException() {} });
     assert.equal(res.status, 200, 'the healthy request under test was not healthy');
     await Promise.allSettled(pending);
   } finally {

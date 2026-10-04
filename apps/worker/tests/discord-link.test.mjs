@@ -2,12 +2,12 @@
  * PROVING YOU OWN THE ACCOUNT BEFORE YOU CAN SPEND IT.
  *
  * `/build` from Discord spends a paying customer's Credits. The only thing standing between that
- * and a stranger is the link: a code minted by somebody SIGNED IN to the Apple account, redeemed
+ * and a stranger is the link: a code minted by somebody SIGNED IN to the StudPilot account, redeemed
  * once, in Discord, by a user id Discord itself vouched for.
  *
  * The direction is the whole design and these tests pin it. The authenticated side mints; the
  * unauthenticated side presents. Redeeming a code is therefore evidence of having been signed in
- * to that account. Reverse it — mint in Discord, redeem in Apple — and the Discord user proves
+ * to that account. Reverse it — mint in Discord, redeem in StudPilot — and the Discord user proves
  * nothing at all about themselves; only that somebody could read a code somebody else sent them.
  *
  * What is asserted here, each because the alternative is somebody else's bill:
@@ -221,7 +221,7 @@ test('either side can revoke, and neither can revoke somebody else’s', async (
   await d.redeem('discord-a', (await d.mint(...P1)).code);
   await d.redeem('discord-b', (await d.mint(...P2)).code);
 
-  // The Apple owner revokes their own.
+  // The StudPilot owner revokes their own.
   assert.equal((await d.unlink({ appleUserId: 'owner-1' })).removed, true);
   assert.equal((await d.link('discord-a')).link, null);
   assert.equal((await d.linkForOwner('owner-2')).link.discordUserId, 'discord-b', 'the other link is untouched');

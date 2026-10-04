@@ -1,14 +1,14 @@
 /**
  * /models — THE ONE ENGINE (V3 gate G01) — WHAT IT MAY CLAIM, AND HOW IT LOOKS.
  *
- * The page used to list the model registry, other makers' models included. Apple is now the only
+ * The page used to list the model registry, other makers' models included. StudPilot is now the only
  * engine, on every plan, so the page describes one engine. Four ways it can lie, each guarded below:
  *
- *   1. AN ENGINE THAT IS NOT ON OFFER. What it names is exactly the registry's (Apple), read here from
+ *   1. AN ENGINE THAT IS NOT ON OFFER. What it names is exactly the registry's (StudPilot), read here from
  *      the registry itself, and no retired model (MAX, Gemini, GPT-5.6, Luna) appears on it or on the
  *      landing.
  *   2. A PRICE OR A PLAN GATE. No row is "Included with" one plan and no "×N credits" rate is shown:
- *      every plan uses Apple, and the page says so.
+ *      every plan uses StudPilot, and the page says so.
  *   3. A KEY OF YOUR OWN. That path is gone; nothing on /models or the landing may offer it.
  *   4. AN INSTALL PROMISE. The Studio plugin cannot be installed right now; nothing here may say it
  *      can while STUDIO_PLUGIN_STORE_LIVE is false.
@@ -48,8 +48,8 @@ function section(id) {
 
 const { MODEL_REGISTRY, LEGACY_MODEL_IDS } = await import('../../../packages/shared/src/models.ts');
 const main = (h) => text(h.slice(h.indexOf('<main'), h.indexOf('</main>')));
-/** What a retired model was called on this site. "Max" alone is a plan's name, so only "Apple MAX". */
-const RETIRED = /Apple MAX|Gemini|GPT-5\.6|\bLuna\b|other makers|×\s?\d+(\.\d+)? credits/i;
+/** What a retired model was called on this site. "Max" alone is a plan's name, so only "StudPilot MAX". */
+const RETIRED = /StudPilot MAX|Gemini|GPT-5\.6|\bLuna\b|other makers|×\s?\d+(\.\d+)? credits/i;
 
 test('the build and the registry are both here, so nothing below is vacuous', () => {
   assert.ok(html, 'dist/models/index.html is missing — run `npx astro build` in apps/site first');
@@ -58,14 +58,14 @@ test('the build and the registry are both here, so nothing below is vacuous', ()
   assert.equal(LEGACY_MODEL_IDS.length, 4);
 });
 
-test('THE ENGINE IS THE REGISTRY\'S: Apple, named from @apple/shared, on every plan', () => {
+test('THE ENGINE IS THE REGISTRY\'S: StudPilot, named from @studpilot/shared, on every plan', () => {
   const built = text(section('built-in'));
   for (const m of MODEL_REGISTRY) {
     assert.ok(built.includes(m.displayName), `the page does not name ${m.displayName}`);
     assert.ok(built.includes(m.blurb), `the page does not carry ${m.id}'s registry line`);
   }
-  assert.match(built, /every plan/i, 'the page does not say every plan uses Apple');
-  assert.match(built, /Apple Credits/, 'the page does not say what a request spends');
+  assert.match(built, /every plan/i, 'the page does not say every plan uses StudPilot');
+  assert.match(built, /StudPilot Credits/, 'the page does not say what a request spends');
   assert.equal(html.includes('id="other-makers"'), false, '/models still has an other-makers section');
 });
 

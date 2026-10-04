@@ -37,7 +37,7 @@ import {
   implementedScopes,
   stateOf,
 } from '../src/lib/roblox-key.ts';
-import { ROBLOX_SCOPES } from '@apple/shared';
+import { ROBLOX_SCOPES } from '@studpilot/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PANEL = readFileSync(join(WEB, 'src', 'components', 'roblox-key-panel.tsx'), 'utf8');
@@ -137,9 +137,9 @@ test('A KEY ROBLOX IS REFUSING IS ITS OWN STATE — not "connected", not "none"'
 
 test('a health verdict of "unknown" NEVER becomes a claim about the key', () => {
   // The whole hazard: an unreachable provider rendered as a working credential, or as a dead one.
-  const state = stateOf({ isPending: false, isError: false, credential: CRED, health: { status: 'unknown', reason: 'Apple could not reach Roblox to check.' } });
+  const state = stateOf({ isPending: false, isError: false, credential: CRED, health: { status: 'unknown', reason: 'StudPilot could not reach Roblox to check.' } });
   assert.equal(state, 'connected', 'an unmeasured check leaves the stored state exactly as it was');
-  const said = describeHealth({ status: 'unknown', reason: 'Apple could not reach Roblox to check.' });
+  const said = describeHealth({ status: 'unknown', reason: 'StudPilot could not reach Roblox to check.' });
   clean(said, 'the unknown sentence');
   assert.match(said, /could not/i);
   assert.equal(/still works|is fine|healthy|all good/i.test(said), false, `an unknown verdict must not reassure: ${said}`);
@@ -174,7 +174,7 @@ test('THE WORKER\'S THREE CREDENTIAL REFUSALS BECOME THREE DIFFERENT ANSWERS', (
   const cases = [
     ['no Roblox key is connected for this account', /connect/i],
     ['the connected Roblox key was not declared with the asset:write scope', /permission|scope/i],
-    ['the stored key could not be decrypted — CREDENTIAL_KEY may have been rotated or lost', /support|Apple/i],
+    ['the stored key could not be decrypted — CREDENTIAL_KEY may have been rotated or lost', /support|StudPilot/i],
   ];
   const seen = new Set();
   for (const [message, next] of cases) {
@@ -191,7 +191,7 @@ test('a Roblox 401 is the key being refused, NOT the user being signed out', () 
   // The taxonomy's own 401 branch says "Your session has expired — sign in again", which for an
   // integration failure sends somebody to re-authenticate the wrong account entirely.
   const x = explainKeyFailure(Object.assign(new Error('{"message":"Invalid API Key"}'), { status: 401 }), { integration: true });
-  assert.equal(/sign in/i.test(x.next ?? ''), false, `a dead Roblox key must not ask for an Apple sign-in: ${x.next}`);
+  assert.equal(/sign in/i.test(x.next ?? ''), false, `a dead Roblox key must not ask for a StudPilot sign-in: ${x.next}`);
   assert.match(x.title, /Roblox/i);
   assert.match(x.next, /new key|create\.roblox\.com/i);
 });
@@ -217,7 +217,7 @@ test('the panel renders the mapped explanation, not a bare e.message toast', () 
 });
 
 test('every scope the panel offers is one the worker will accept', () => {
-  // The vocabulary lives in @apple/shared precisely so this cannot drift; asserted because a
+  // The vocabulary lives in @studpilot/shared precisely so this cannot drift; asserted because a
   // scope offered and refused is a tickbox that fails at save time.
   for (const e of SCOPE_EXPLANATIONS) {
     assert.ok(ROBLOX_SCOPES.includes(e.scope), `${e.scope} is not a Roblox Open Cloud scope`);

@@ -242,7 +242,7 @@ print("seam " .. tostring(seam.Enabled) .. " hold " .. tostring(hold.Enabled) ..
 
 test('the runtime script and every config this tool writes pass the plugin\'s own source refusal list', () => {
   // The plugin refuses to write a script that mentions any of these; derive the list from the plugin, never copy it.
-  const plugin = readFileSync(join(ROOT, 'apps', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const plugin = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const block = plugin.slice(plugin.indexOf('local function sourceDanger'));
   const forbidden = [...block.slice(0, block.indexOf('return nil\nend')).matchAll(/\{ "([a-z.]+)", "/g)].map((m) => m[1]);
   assert.ok(forbidden.length >= 8, 'the plugin\'s refusal list was found');
@@ -416,7 +416,7 @@ test('a sound by id needs an id from the library or one the search found; a Soun
   assert.ok(!inside.error, inside.error);
   assert.deepEqual(C.parseConfigSource(written(studio)).records.find((r) => r.id === 'hum').sound, { segs: ['Cover', 'Hum'] });
   assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Knob.Mute` }] })).error, /no SoundId/);
-  assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body.Rogue` }] })).error, /not from Apple's library/);
+  assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body.Rogue` }] })).error, /not from StudPilot's library/);
   assert.match((await call(studio, { behaviours: [{ verb: 'sound', sound: `${MODEL}.Body` }] })).error, /is a Part, not a Sound/);
 });
 

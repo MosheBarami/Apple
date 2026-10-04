@@ -20,7 +20,7 @@
  * The token is NEVER printed. If you lose it between step 2 and step 3, run this again: it is a
  * purpose token with one consumer, so replacing it costs nothing but the two writes.
  *
- *   node infra/provision-outbox-token.mjs [--consumer apple] [--worker apple]
+ *   node infra/provision-outbox-token.mjs [--consumer studpilot] [--worker studpilot]
  *
  * Run the printed SQL FIRST, then answer yes to the wrangler step. In that order the database
  * accepts a token the Worker does not yet hold, which fails closed; the other order leaves the

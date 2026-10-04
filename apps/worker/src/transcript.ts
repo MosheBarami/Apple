@@ -18,7 +18,7 @@
 // Both are invisible from outside: nothing errors, the agent simply gets worse the longer it works.
 // That is the hardest kind of defect to attribute, and it is the shape of the "narrates instead of
 // acting" and "declares the task finished" behaviour already on record for this system.
-import type { GatewayMessage } from '@apple/shared';
+import type { GatewayMessage } from '@studpilot/shared';
 
 /** How many recent turn groups are never dropped, so a step always keeps its own working context. */
 export const KEEP_RECENT_GROUPS = 2;

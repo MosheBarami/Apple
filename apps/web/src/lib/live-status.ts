@@ -1,7 +1,7 @@
 /**
  * THE ONE LINE A RUNNING TURN SHOWS (owner decision D-THINK-1, 2026-09-24).
  *
- * While Apple works, the customer sees one friendly sentence about what it is doing right now —
+ * While StudPilot works, the customer sees one friendly sentence about what it is doing right now —
  * "Editing the shop", "Placing things around the map" — and when the next step starts that sentence
  * is replaced, never appended to. No tool name, argument, path, JSON, duration or error code can come
  * out of this module: a tool becomes its `live` phrase from tool-vocabulary.ts (the one table, held to
@@ -10,7 +10,7 @@
  *
  * Pure, so `node --test` can load it without a DOM.
  */
-import type { AgentPhase } from '@apple/shared';
+import type { AgentPhase } from '@studpilot/shared';
 import type { ActivityKind } from '../components/ws/tool-vocabulary.ts';
 import { TOOL } from '../components/ws/tool-vocabulary.ts';
 import type { ActivityRun } from '../components/ws/activity-model.ts';

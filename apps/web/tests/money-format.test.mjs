@@ -114,7 +114,7 @@ test('every surface that prints a price formats it', () => {
       continue;
     }
     assert.match(src, /formatMoney\(/, `${what} must render prices through the shared formatter`);
-    assert.match(src, /from '@apple\/shared'/, `${what} must take it from shared, not a local copy`);
+    assert.match(src, /from '@studpilot\/shared'/, `${what} must take it from shared, not a local copy`);
   }
 });
 

@@ -1,7 +1,7 @@
 // What a screen reader is told about a reply, and — more of the work — what it is NOT told.
 //
 // WHAT EXISTED. `thinking.tsx` has an sr-only `aria-live="polite"` region carrying the phase hint
-// while a run is in flight, so a blind user knew Apple was working. Nothing announced the ANSWER.
+// while a run is in flight, so a blind user knew StudPilot was working. Nothing announced the ANSWER.
 // The reply arrived as text mutated into an existing node, which no live region reports and no
 // screen reader reads, so the run simply went quiet and stayed quiet.
 //
@@ -59,7 +59,7 @@ export interface AnnouncableTurn {
  * apps/web/tests/failed-run-money-claims.test.mjs holds BOTH tables to the same rule.
  */
 const OUTCOME_SPEECH: Record<string, string> = {
-  stopped: 'Apple stopped.',
+  stopped: 'StudPilot stopped.',
   // Not "without changing anything": an incomplete run can have changed things (a stall after edits,
   // measured 2026-09-23 — the reply said "It made 3 changes" and this line said none).
   incomplete: 'That run stopped before it finished.',
@@ -118,5 +118,5 @@ export function replyAnnouncement(turn: AnnouncableTurn | null | undefined): str
 
   if (!body) return '';
   const { text, clipped } = clip(body, ANNOUNCE_MAX);
-  return clipped ? `Apple replied. ${text}… The rest of the reply is in the conversation.` : `Apple replied. ${text}`;
+  return clipped ? `StudPilot replied. ${text}… The rest of the reply is in the conversation.` : `StudPilot replied. ${text}`;
 }

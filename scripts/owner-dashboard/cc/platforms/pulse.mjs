@@ -7,7 +7,7 @@ import { supabase } from './supabase.mjs';
 import { cloudflare, workerHealth } from './cloudflare.mjs';
 import { sentry } from './sentry.mjs';
 import { hf } from './hf.mjs';
-import { apple } from './apple.mjs';
+import { studpilot } from './studpilot.mjs';
 import { groq } from './groq.mjs';
 import { discord } from './discord.mjs';
 import { roblox } from './roblox.mjs';
@@ -26,7 +26,7 @@ function perDay(dates, days = 14) {
 
 export async function pulse() {
   const [gh, sb, cf, st, h, ap, gq, dc, rb, vs, cn, ping, lf] = await Promise.all([
-    val(github), val(supabase), val(cloudflare), val(sentry), val(hf), val(apple), val(groq), val(discord), val(roblox), val(status),
+    val(github), val(supabase), val(cloudflare), val(sentry), val(hf), val(studpilot), val(groq), val(discord), val(roblox), val(status),
     val(connectors), workerHealth(), val(langflow)]);
   const vendor = Object.fromEntries((vs?.vendors || []).map((v) => [v.id, v]));
   const P = [];

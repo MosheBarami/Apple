@@ -14,11 +14,11 @@ process.env.VERCEL_TEAM_ID = TEAM;
 const H = 3600000;
 const T0 = Date.now();
 const at = (hoursAgo) => T0 - hoursAgo * H;
-const PRJ = 'prj_AppleWeb0000000001';
+const PRJ = 'prj_StudPilotWeb0000000001';
 const PRJ2 = 'prj_Docs00000000000002';
-const dep = (uid, o = {}) => ({ uid, name: 'apple-web', url: `${uid.slice(4, 12).toLowerCase()}-apple.vercel.app`, state: 'READY',
+const dep = (uid, o = {}) => ({ uid, name: 'studpilot-web', url: `${uid.slice(4, 12).toLowerCase()}-studpilot.vercel.app`, state: 'READY',
   readyState: 'READY', target: null, created: at(1), createdAt: at(1), buildingAt: at(1) + 1000, ready: at(1) + 61000,
-  creator: { uid: 'u1', username: 'moshe' }, projectId: PRJ, inspectorUrl: `https://vercel.com/moshe/apple-web/${uid.slice(4)}`,
+  creator: { uid: 'u1', username: 'moshe' }, projectId: PRJ, inspectorUrl: `https://vercel.com/moshe/studpilot-web/${uid.slice(4)}`,
   source: 'git', meta: { githubCommitSha: 'abc1234def5678', githubCommitMessage: 'fix: header', githubCommitRef: 'main',
     githubCommitAuthorName: 'Moshe', githubCommitAuthorLogin: 'moshe' }, ...o });
 
@@ -28,10 +28,10 @@ function fixtures() {
     '/v2/user': { user: { id: 'u1', username: 'moshe', name: 'Moshe', email: 'owner@example.com', avatar: 'ffff', defaultTeamId: TEAM } },
     [`/v2/teams/${TEAM}`]: { id: TEAM, slug: 'moshe-team', name: 'Moshe Team', avatar: null },
     '/v9/projects': { projects: [
-      { id: PRJ, name: 'apple-web', framework: 'nextjs', nodeVersion: '22.x', createdAt: at(900), updatedAt: at(1),
+      { id: PRJ, name: 'studpilot-web', framework: 'nextjs', nodeVersion: '22.x', createdAt: at(900), updatedAt: at(1),
         link: { type: 'github', org: 'moshe', repo: 'rbxai', productionBranch: 'main' }, live: false,
         env: [{ key: 'STRIPE_KEY', value: ENV_VALUE, type: 'encrypted' }],
-        targets: { production: { id: 'dpl_Prod0000000000000001', url: 'prod1-apple.vercel.app', readyState: 'READY', createdAt: at(2), alias: ['apple.dev'] } } },
+        targets: { production: { id: 'dpl_Prod0000000000000001', url: 'prod1-studpilot.vercel.app', readyState: 'READY', createdAt: at(2), alias: ['studpilot.dev'] } } },
       { id: PRJ2, name: 'docs', framework: 'astro', nodeVersion: '20.x', createdAt: at(2000), updatedAt: at(300),
         link: { type: 'github', org: 'moshe', repo: 'docs', productionBranch: 'main' }, env: [{ key: 'X', value: ENV_VALUE }] },
     ] },
@@ -44,22 +44,22 @@ function fixtures() {
       dep('dpl_Old00000000000000001', { created: at(80), createdAt: at(80), state: 'ERROR', readyState: 'ERROR' }),
     ] },
     '/v5/domains': { domains: [
-      { name: 'apple.dev', verified: true, serviceType: 'external', createdAt: at(5000), expiresAt: null, renew: null, boughtAt: null },
+      { name: 'studpilot.dev', verified: true, serviceType: 'external', createdAt: at(5000), expiresAt: null, renew: null, boughtAt: null },
     ] },
-    '/v4/aliases': { aliases: [{ alias: 'apple.dev', deploymentId: 'dpl_Prod0000000000000001', projectId: PRJ, createdAt: at(2) }] },
+    '/v4/aliases': { aliases: [{ alias: 'studpilot.dev', deploymentId: 'dpl_Prod0000000000000001', projectId: PRJ, createdAt: at(2) }] },
     [`/v9/projects/${PRJ}/domains`]: { domains: [
-      { name: 'apple.dev', verified: true, redirect: null, gitBranch: null },
-      { name: 'www.apple.dev', verified: true, redirect: 'apple.dev', gitBranch: null },
+      { name: 'studpilot.dev', verified: true, redirect: null, gitBranch: null },
+      { name: 'www.studpilot.dev', verified: true, redirect: 'studpilot.dev', gitBranch: null },
     ] },
-    [`/v9/projects/${PRJ2}/domains`]: { domains: [{ name: 'docs.apple.dev', verified: false, redirect: null }] },
+    [`/v9/projects/${PRJ2}/domains`]: { domains: [{ name: 'docs.studpilot.dev', verified: false, redirect: null }] },
     [`/v10/projects/${PRJ}/env`]: { envs: [
       { id: 'e1', key: 'STRIPE_KEY', value: ENV_VALUE, decrypted: false, type: 'encrypted', target: ['production'], gitBranch: null, updatedAt: at(10) },
       { id: 'e2', key: 'NEXT_PUBLIC_URL', value: ENV_VALUE, type: 'plain', target: ['production', 'preview'], updatedAt: at(20) },
     ] },
     [`/v10/projects/${PRJ2}/env`]: { envs: [] },
-    '/v6/domains/apple.dev/config': { misconfigured: false, configuredBy: 'A' },
-    '/v6/domains/www.apple.dev/config': { misconfigured: true, configuredBy: null },
-    '/v6/domains/docs.apple.dev/config': { misconfigured: false, configuredBy: 'CNAME' },
+    '/v6/domains/studpilot.dev/config': { misconfigured: false, configuredBy: 'A' },
+    '/v6/domains/www.studpilot.dev/config': { misconfigured: true, configuredBy: null },
+    '/v6/domains/docs.studpilot.dev/config': { misconfigured: false, configuredBy: 'CNAME' },
     '/v2/deployments/dpl_Fail0000000000000001/check-runs': { runs: [] },
     '/v2/deployments/dpl_Prod0000000000000001/check-runs': { runs: [{ id: 'cr1', name: 'Lighthouse', status: 'completed', conclusion: 'succeeded', blocks: 'build-ready', completedAt: at(1.9) }] },
   };
@@ -128,12 +128,12 @@ test('connected: projects, deployments, domains, aliases, checks and scope are m
   assert.equal(r.user.username, 'moshe');
   assert.equal(r.user.email, undefined, 'no email in the payload');
   const p = r.projects.find((x) => x.id === PRJ);
-  assert.equal(p.name, 'apple-web');
+  assert.equal(p.name, 'studpilot-web');
   assert.equal(p.framework, 'nextjs');
   assert.equal(p.repo, 'moshe/rbxai');
   assert.equal(p.productionBranch, 'main');
   assert.equal(p.production.id, 'dpl_Prod0000000000000001');
-  assert.deepEqual(p.domains.map((d) => d.name), ['apple.dev', 'www.apple.dev']);
+  assert.deepEqual(p.domains.map((d) => d.name), ['studpilot.dev', 'www.studpilot.dev']);
   assert.equal(p.domains[1].misconfigured, true);
   assert.equal(p.domains[0].configuredBy, 'A');
   assert.equal(r.projects[0].id, PRJ, 'most recently updated first');
@@ -143,14 +143,14 @@ test('connected: projects, deployments, domains, aliases, checks and scope are m
   assert.equal(d.errorCode, 'BUILD_FAILED');
   assert.equal(d.commit.sha, 'abc1234def5678');
   assert.equal(d.commit.ref, 'main');
-  assert.equal(d.project, 'apple-web');
+  assert.equal(d.project, 'studpilot-web');
   const prod = r.deployments.find((x) => x.id === 'dpl_Prod0000000000000001');
   assert.equal(prod.target, 'production');
   assert.equal(prod.current, true, 'the deployment serving production is marked');
   assert.equal(prod.duration, 60000);
   assert.equal(r.deployments.find((x) => x.id === 'dpl_Prod0000000000000000').rollbackCandidate, true);
-  assert.equal(r.domains[0].name, 'apple.dev');
-  assert.equal(r.aliases[0].alias, 'apple.dev');
+  assert.equal(r.domains[0].name, 'studpilot.dev');
+  assert.equal(r.aliases[0].alias, 'studpilot.dev');
   assert.equal(r.checks['dpl_Prod0000000000000001'][0].name, 'Lighthouse');
   assert.deepEqual(r.errors, {});
   // every request is authenticated with Bearer and scoped to the team, and none is a write
@@ -227,8 +227,8 @@ test('insights from fixtures: failed builds today, misconfigured domain, latest 
   const dom = ins.find((i) => /דומיי[ןנ]/.test(i.title));
   assert.ok(dom);
   assert.equal(dom.level, 'warn');
-  assert.match(`${dom.title} ${dom.detail}`, /www\.apple\.dev/);
-  assert.match(`${dom.title} ${dom.detail}`, /docs\.apple\.dev/, 'unverified project domain counts too');
+  assert.match(`${dom.title} ${dom.detail}`, /www\.studpilot\.dev/);
+  assert.match(`${dom.title} ${dom.detail}`, /docs\.studpilot\.dev/, 'unverified project domain counts too');
   const prod = ins.find((i) => /production/.test(i.title));
   assert.ok(prod);
   assert.equal(prod.level, 'good');
@@ -264,10 +264,10 @@ test('dryRun returns the exact plan and never calls fetch (with or without a tok
     if (tok) process.env.VERCEL_TOKEN = tok; else delete process.env.VERCEL_TOKEN;
     const q = `?teamId=${TEAM}`;
     const cases = [
-      [{ kind: 'redeploy', deploymentId: D1, name: 'apple-web', target: 'production' },
-        { method: 'POST', url: `https://api.vercel.com/v13/deployments${q}`, body: { name: 'apple-web', deploymentId: D1, target: 'production' } }],
-      [{ kind: 'redeploy', deploymentId: D1, name: 'apple-web', target: 'preview' },
-        { method: 'POST', url: `https://api.vercel.com/v13/deployments${q}`, body: { name: 'apple-web', deploymentId: D1 } }],
+      [{ kind: 'redeploy', deploymentId: D1, name: 'studpilot-web', target: 'production' },
+        { method: 'POST', url: `https://api.vercel.com/v13/deployments${q}`, body: { name: 'studpilot-web', deploymentId: D1, target: 'production' } }],
+      [{ kind: 'redeploy', deploymentId: D1, name: 'studpilot-web', target: 'preview' },
+        { method: 'POST', url: `https://api.vercel.com/v13/deployments${q}`, body: { name: 'studpilot-web', deploymentId: D1 } }],
       [{ kind: 'promote', projectId: PRJ, deploymentId: D1 },
         { method: 'POST', url: `https://api.vercel.com/v10/projects/${PRJ}/promote/${D1}${q}`, body: null }],
       [{ kind: 'rollback', projectId: PRJ, deploymentId: D1 },
@@ -289,9 +289,9 @@ test('dryRun returns the exact plan and never calls fetch (with or without a tok
 // ---------------------------------------------------------------- actions: validation
 test('unknown or destructive kinds are refused, with no request', async () => {
   for (const kind of ['delete', 'remove', 'env', 'env-add', 'buy-domain', 'transfer', 'billing', 'pause', '', undefined, '__proto__', 'toString']) {
-    const r = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'apple-web', dryRun: true });
+    const r = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'studpilot-web', dryRun: true });
     assert.equal(r.ok, false, `kind ${kind} accepted`);
-    const r2 = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'apple-web' });
+    const r2 = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'studpilot-web' });
     assert.equal(r2.ok, false);
   }
   assert.equal(calls.length, 0);
@@ -301,7 +301,7 @@ test('ids are validated server-side before the dry run and before any request', 
   const bad = ['', 'dpl_', 'dpl_short', 'dpl_../../v9/projects', 'dpl_abc12345/cancel', 'prj_Abcdefgh12345678', 'dpl_abcdefgh?x=1', ' dpl_abcdefgh1234', 'DPL_abcdefgh1234', 123, null, ['dpl_abcdefgh1234']];
   for (const id of bad) {
     for (const kind of ['redeploy', 'promote', 'rollback', 'cancel']) {
-      const r = await vercelAction({ kind, deploymentId: id, projectId: PRJ, name: 'apple-web', dryRun: true });
+      const r = await vercelAction({ kind, deploymentId: id, projectId: PRJ, name: 'studpilot-web', dryRun: true });
       assert.equal(r.ok, false, `${kind} accepted deploymentId ${JSON.stringify(id)}`);
     }
   }
@@ -311,12 +311,12 @@ test('ids are validated server-side before the dry run and before any request', 
       assert.equal(r.ok, false, `${kind} accepted projectId ${JSON.stringify(pid)}`);
     }
   }
-  for (const name of ['', 'Apple-Web', 'a/b', 'a b', '../x', 'x'.repeat(101), undefined]) {
+  for (const name of ['', 'StudPilot-Web', 'a/b', 'a b', '../x', 'x'.repeat(101), undefined]) {
     const r = await vercelAction({ kind: 'redeploy', deploymentId: D1, name, dryRun: true });
     assert.equal(r.ok, false, `redeploy accepted name ${JSON.stringify(name)}`);
   }
   for (const target of ['staging', 'PRODUCTION', 'prod', 1]) {
-    const r = await vercelAction({ kind: 'redeploy', deploymentId: D1, name: 'apple-web', target, dryRun: true });
+    const r = await vercelAction({ kind: 'redeploy', deploymentId: D1, name: 'studpilot-web', target, dryRun: true });
     assert.equal(r.ok, false, `redeploy accepted target ${JSON.stringify(target)}`);
   }
   assert.equal(calls.length, 0);
@@ -347,11 +347,11 @@ test('a real write sends exactly the planned request, returns no upstream text, 
 });
 
 test('redeploy sends its body and returns the new deployment id', async () => {
-  fx['/v13/deployments'] = { id: 'dpl_New00000000000000001', url: 'new-apple.vercel.app', readyState: 'QUEUED' };
-  const r = await vercelAction({ kind: 'redeploy', deploymentId: D1, name: 'apple-web', target: 'production' });
+  fx['/v13/deployments'] = { id: 'dpl_New00000000000000001', url: 'new-studpilot.vercel.app', readyState: 'QUEUED' };
+  const r = await vercelAction({ kind: 'redeploy', deploymentId: D1, name: 'studpilot-web', target: 'production' });
   assert.equal(r.ok, true, r.reason);
   assert.equal(calls.length, 1);
-  assert.deepEqual(JSON.parse(calls[0].body), { name: 'apple-web', deploymentId: D1, target: 'production' });
+  assert.deepEqual(JSON.parse(calls[0].body), { name: 'studpilot-web', deploymentId: D1, target: 'production' });
   assert.equal(r.deployment.id, 'dpl_New00000000000000001');
 });
 
@@ -364,7 +364,7 @@ test('no secret in any response: upstream echoing the Authorization header in 20
     assert.ok(!json(r).includes(SENTINEL), `${m}: page leaked the token`);
     assert.ok(!json(r).includes('upstream crashed') && !json(r).includes('boom'), `${m}: forwarded upstream text`);
     for (const kind of ['cancel', 'rollback', 'promote', 'redeploy']) {
-      const w = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'apple-web', target: 'production' });
+      const w = await vercelAction({ kind, deploymentId: D1, projectId: PRJ, name: 'studpilot-web', target: 'production' });
       assert.ok(!json(w).includes(SENTINEL), `${m}/${kind}: action leaked the token`);
       assert.ok(!json(w).includes('upstream crashed') && !json(w).includes('boom'), `${m}/${kind}: forwarded upstream text`);
       if (m !== 'echo200') assert.equal(w.ok, false);

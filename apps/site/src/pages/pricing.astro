@@ -18,7 +18,7 @@ import {
   monthlyCeilingBitesFirst,
   PRODUCT_MODEL_INFO,
   MODE_INFO,
-  CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@apple/shared';
+  CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@studpilot/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
 
@@ -27,7 +27,7 @@ import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
  *
  * A plan's Credits are a per-account allowance. Behind all of them is ONE service-wide daily
  * ceiling on inference — apps/worker/src/pricing.ts, DAILY_NEURON_CEILING — and a run stops against
- * it with "Apple has reached today's shared building capacity" while the customer's own balance
+ * it with "StudPilot has reached today's shared building capacity" while the customer's own balance
  * still shows Credits. /docs/credits-and-limits and /docs/troubleshooting both disclose it. This
  * page, which is the one a prospect reads before signing up, did not: it said "about N builds a
  * month, free" and stopped.
@@ -118,7 +118,7 @@ const stepsBullet = 'Up to 1000 steps a message';
 const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => PLAN_IDS.every((id) => f.values[id] === true)).map((f) => f.label);
 
 /* ONE ENGINE ON EVERY PLAN (V3 gate G01). Free, Builder, Studio and Enterprise are plans and differ
-   only in their allowance; every one of them uses Apple, the only engine there is. */
+   only in their allowance; every one of them uses StudPilot, the only engine there is. */
 const listNames = (names: string[]) =>
   names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 const planNames = listNames(PLAN_IDS.map((id) => PLAN_COPY[id].name));
@@ -173,7 +173,7 @@ const planFeatures = PLAN_FEATURES.map((f) =>
         ...f,
         /* The shared label says "credits" in lower case; the unit is a proper noun on this site. */
         label: f.label.replace(/\bcredits\b/g, 'Credits'),
-        note: 'Apple cannot sell Credits in this preview — there is no checkout for them on any plan.',
+        note: 'StudPilot cannot sell Credits in this preview — there is no checkout for them on any plan.',
         values: Object.fromEntries(PLAN_IDS.map((id) => [id, 'Unavailable'])) as Record<string, string>,
       }
     : f,
@@ -244,7 +244,7 @@ const requestRow = {
    * WHAT THAT PRICE BOUGHT, beside the price.
    *
    * The cost column and the per-day column are useless to a buyer without the unit between them,
-   * and leaving it out is how this table came to say "Apple Max builds features across your
+   * and leaving it out is how this table came to say "StudPilot Max builds features across your
    * project · 4 credits · ~57 a free day" on a page whose plan cards say a build is 77 Credits
    * and three a free day. The blurb describes the work; this describes the REQUEST that was
    * measured. See MODE_INFO.entryUnit in packages/shared.
@@ -256,11 +256,11 @@ const requestRow = {
 const limitFaq = [
   {
     q: 'What happens when I run out of Credits?',
-    a: `<p>Apple tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset. If it is the <em>monthly</em> ceiling you have reached rather than the day's, the next reset that helps you is the start of the month, and the workspace says which of the two you hit.</p>`,
+    a: `<p>StudPilot tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset. If it is the <em>monthly</em> ceiling you have reached rather than the day's, the next reset that helps you is the start of the month, and the workspace says which of the two you hit.</p>`,
   },
   {
     q: 'Why is there a limit at all?',
-    a: `<p>Apple runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest daily allowance than an unlimited plan with an asterisk.</p>`,
+    a: `<p>StudPilot runs real inference on every request, and inference costs real compute. A hard daily quota is how the free tier stays genuinely free — no card required, no surprise bill, no "free trial" countdown. We would rather give you an honest daily allowance than an unlimited plan with an asterisk.</p>`,
   },
   {
     q: 'Do unused Credits roll over?',
@@ -272,7 +272,7 @@ const limitFaq = [
   },
   //[[ NO SENTENCE HERE MAY PROMISE A WARNING BEFORE A RUN STARTS.
   //
-  //   This answer used to end "a request never silently drains your day — Apple warns before
+  //   This answer used to end "a request never silently drains your day — StudPilot warns before
   //   starting work it estimates will be expensive." Nothing in the product does that, and nothing
   //   can: `ServerMsg` in packages/shared has no cost-warning variant, `RunIntent` carries no cost
   //   field, and a run is admitted on `quotaSpend(owner, 1, …)` (apps/worker/src/do/session.ts)
@@ -294,7 +294,7 @@ const limitFaq = [
   },
   {
     q: 'What is a Credit, underneath?',
-    a: `<p>A unit of real compute. One Credit is ${NEURONS_PER_CREDIT} neurons, and Apple bills from the engine's own reported figure for each call rather than from an estimate. A <strong>quality-gated</strong> build — read the tree, edit scripts, create instances, then render it and critique the picture — measures about ${BUILD_NEURONS.qualityGated.toLocaleString()} neurons, which is the ${CREDITS_PER_BUILD} Credits the allowances above are counted in. The same build with the critique left out measured ${BUILD_NEURONS.buildBlind}; we price the one that looked at what it made.</p>`,
+    a: `<p>A unit of real compute. One Credit is ${NEURONS_PER_CREDIT} neurons, and StudPilot bills from the engine's own reported figure for each call rather than from an estimate. A <strong>quality-gated</strong> build — read the tree, edit scripts, create instances, then render it and critique the picture — measures about ${BUILD_NEURONS.qualityGated.toLocaleString()} neurons, which is the ${CREDITS_PER_BUILD} Credits the allowances above are counted in. The same build with the critique left out measured ${BUILD_NEURONS.buildBlind}; we price the one that looked at what it made.</p>`,
   },
   {
     q: 'Can I subscribe now?',
@@ -306,8 +306,8 @@ const limitFaq = [
 ---
 
 <Base
-  title="Pricing — Apple"
-  description={`Plans and Credits for Apple. Free includes ${free.creditsPerDay} Credits a day, and every plan uses ${engineName}.${billing.checkout ? '' : ' Paid checkout is not open yet.'}`}
+  title="Pricing — StudPilot"
+  description={`Plans and Credits for StudPilot. Free includes ${free.creditsPerDay} Credits a day, and every plan uses ${engineName}.${billing.checkout ? '' : ' Paid checkout is not open yet.'}`}
 >
   <!-- ==================================================== head -->
   <section class="section phead" aria-labelledby="pricing-title">
@@ -495,7 +495,7 @@ const limitFaq = [
           shared pool of about {serviceCreditsPerDay.toLocaleString()} Credits of building a day
           across the whole service, which is roughly{' '}
           {Math.floor(serviceCreditsPerDay / free.creditsPerDay)} accounts building flat out. When
-          that day's pool is gone, a run stops with “Apple has reached today's shared building
+          that day's pool is gone, a run stops with “StudPilot has reached today's shared building
           capacity” even though your own balance still shows Credits. It resets at midnight UTC, the
           same instant for everyone, and the steps that already finished stay done and stay paid for.{' '}
           <a href="/docs/credits-and-limits">How the two limits differ</a>.
@@ -615,9 +615,9 @@ const limitFaq = [
           ? 'Paid plans can be purchased above.'
           : 'Paid plans are not yet available to purchase.'}{' '}
         {STUDIO_PLUGIN_STORE_LIVE ? (
-          <>Building in Studio also needs the Apple Studio plugin, which is free: <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">get it from the Creator Store</a>.</>
+          <>Building in Studio also needs the StudPilot Studio plugin, which is free: <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">get it from the Creator Store</a>.</>
         ) : (
-          <>Building in Studio also needs the Apple Studio plugin; public installation is unavailable. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>.</>
+          <>Building in Studio also needs the StudPilot Studio plugin; public installation is unavailable. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>.</>
         )}
       </p>
     </div>
@@ -660,7 +660,7 @@ const limitFaq = [
 
       <p class="tfoot" data-reveal>
         A request settles against the work it actually did, so a long build costs more than
-        the entry price above — the workspace counts what the run has spent while it runs. Apple&rsquo;s own
+        the entry price above — the workspace counts what the run has spent while it runs. StudPilot&rsquo;s own
         housekeeping does not count against your quota.
       </p>
 
@@ -700,7 +700,7 @@ const limitFaq = [
 </Base>
 
 <style>
-  /* Structure only; every value is a token from apple-minimal.css. The cards are the page's one
+  /* Structure only; every value is a token from studpilot-minimal.css. The cards are the page's one
      grid of panels: a surface step and a hairline each, no shadow, the Free card ranked by its
      filled button rather than by colour. */
   .phead {

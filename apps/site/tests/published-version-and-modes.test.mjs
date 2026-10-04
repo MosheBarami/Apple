@@ -8,9 +8,9 @@
  *                      does not exist and put a price on it.
  *   /docs/credits...   said "Pro (when it ships) queues ahead", inventing a fourth tier. The plans
  *                      are Free, Builder and Studio, and there is no paid queue priority at all.
- *   /docs/updating     told a customer to look for "Apple v0.2.0 · protocol 1" at the bottom of the
+ *   /docs/updating     told a customer to look for "StudPilot v0.2.0 · protocol 1" at the bottom of the
  *                      panel. The shipped plugin is 1.0.0 and prints
- *                      "Apple Studio · 1.0.0 · independent preview".
+ *                      "StudPilot Studio · 1.0.0 · independent preview".
  *
  * Each of these is a sentence a customer acts on — looks for a mode, waits for a tier, checks a
  * version — so each of them ends in confusion rather than in a wrong belief they never test.
@@ -30,16 +30,16 @@ const text = (f) => readFileSync(join(DOCS, f), 'utf8');
 test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
   // Read it out of the plugin rather than out of another document. The panel's own string is the
   // thing a customer compares against, so that is the string this asserts on.
-  const panel = readFileSync(join(ROOT, 'apps', 'apple-plugin', 'src', 'init.server.luau'), 'utf8');
-  const shown = /text\("(Apple Studio · [^"]+)"/.exec(panel);
+  const panel = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'init.server.luau'), 'utf8');
+  const shown = /text\("(StudPilot Studio · [^"]+)"/.exec(panel);
   assert.ok(shown, 'the plugin panel no longer prints a version line — re-aim this test');
   const version = /(\d+\.\d+\.\d+)/.exec(shown[1])[1];
 
   for (const f of pages) {
     const body = text(f);
-    for (const [, found] of body.matchAll(/Apple v?(\d+\.\d+\.\d+)\s*·/g)) {
+    for (const [, found] of body.matchAll(/StudPilot v?(\d+\.\d+\.\d+)\s*·/g)) {
       assert.equal(found, version,
-        `${f} tells a customer to look for Apple ${found} at the bottom of the panel; it prints ${version}`);
+        `${f} tells a customer to look for StudPilot ${found} at the bottom of the panel; it prints ${version}`);
     }
   }
 });
@@ -91,6 +91,6 @@ test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are na
 
 test('the 404 a stranger reaches from a dead share link is written in English', () => {
   const notFound = readFileSync(join(HERE, '..', 'src', 'pages', '404.astro'), 'utf8');
-  assert.doesNotMatch(notFound, /\bA apple\b/, 'the headline reads "A apple" — this is the first page a stranger sees');
+  assert.doesNotMatch(notFound, /\bA studpilot\b/, 'the headline reads "A studpilot" — this is the first page a stranger sees');
   assert.doesNotMatch(notFound, /\bA (a|e|i|o|u)/, 'an "a" before a vowel on the 404 headline');
 });

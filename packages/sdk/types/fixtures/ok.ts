@@ -2,8 +2,10 @@
 import {
   ApiError,
   AppleClient,
+  type AppleClientOptions,
   SessionStream,
   StudioClient,
+  StudPilotClient,
   applyServerMsg,
   emptyRun,
   parseArgs,
@@ -11,9 +13,9 @@ import {
   type Memory,
   type Run,
 } from '../index';
-import type { MessageDto } from '@apple/shared';
+import type { MessageDto } from '@studpilot/shared';
 
-const client = new AppleClient({ baseUrl: 'https://api.test', token: 'jwt' });
+const client = new StudPilotClient({ baseUrl: 'https://api.test', token: 'jwt' });
 
 export async function main(projectId: string): Promise<string> {
   const health = await client.health();
@@ -25,8 +27,13 @@ export async function main(projectId: string): Promise<string> {
   await client.startCheckout('studio');
 
   // A token that refreshes: the callable form.
-  const refreshing = new AppleClient({ token: async () => 'fresh-jwt' });
+  const refreshing = new StudPilotClient({ token: async () => 'fresh-jwt' });
   await refreshing.me();
+
+  // The former name keeps compiling for one release: as a value, as a type, and for its options.
+  const legacyOptions: AppleClientOptions = { baseUrl: 'https://api.test', token: 'jwt' };
+  const legacy: AppleClient = new AppleClient(legacyOptions);
+  await legacy.health();
 
   const studio = new StudioClient({ baseUrl: 'https://api.test', version: '0.2.0', protocol: 1 });
   const claim = await studio.claim('GLM-7F3K2Q');

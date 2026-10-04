@@ -1,4 +1,4 @@
-// Scoped memory: what Apple is allowed to remember, for whom, and for how long.
+// Scoped memory: what StudPilot is allowed to remember, for whom, and for how long.
 //
 // THE CLAIM THIS FILE EXISTS TO FALSIFY: "one project cannot read another's memory."
 //
@@ -18,7 +18,7 @@ import { d1, countRows } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-memory-store-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-memory-store-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'memory-store.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });

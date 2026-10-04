@@ -4,7 +4,7 @@
  * Two sweeps over the customer-facing source trees:
  *
  *   1. No non-Latin script — Hebrew, Arabic, Cyrillic, CJK, kana, Hangul, Thai, Devanagari — in the
- *      CODE of apps/web/src, apps/site/src and apps/apple-plugin/src. Comments are stripped first:
+ *      CODE of apps/web/src, apps/site/src and apps/studpilot-plugin/src. Comments are stripped first:
  *      the reasons this product stopped offering Hebrew are written down in Hebrew, and a scanner
  *      that read them would report its own explanation as the defect.
  *   2. No formatter in the web app that takes the BROWSER's locale. `toLocaleString()` with no
@@ -22,7 +22,7 @@ import { join, dirname, relative, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const APPS = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const ROOTS = ['web/src', 'site/src', 'apple-plugin/src'];
+const ROOTS = ['web/src', 'site/src', 'studpilot-plugin/src'];
 const CODE = new Set(['.ts', '.tsx', '.js', '.mjs', '.jsx', '.astro', '.html', '.css', '.json', '.luau', '.lua']);
 
 function walk(dir, out = []) {

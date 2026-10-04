@@ -1,7 +1,7 @@
 /**
  * NO MODE SURFACE (V3 gate G01; handoff: "Remove user-facing Plan, Agent and Autonomous modes").
  *
- * Every request runs the one Apple behaviour. The web app offers no Plan/Agent switch, no
+ * Every request runs the one StudPilot behaviour. The web app offers no Plan/Agent switch, no
  * Autonomous toggle, and no mode choice anywhere a person could reach one (composer, workspace,
  * automations, roadmap, usage). The wire keeps `mode: 'agent'` only as a compatibility bridge for a
  * worker deployed separately; nothing in the app chooses it.
@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as shared from '@apple/shared';
+import * as shared from '@studpilot/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(WEB, 'src', p), 'utf8');

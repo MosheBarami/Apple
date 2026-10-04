@@ -18,8 +18,8 @@ let calls = []; let mode = 'fixture';
 const res = (body, status = 200) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 
 const FIX = {
-  '/users/@me': { id: APP, username: 'AppleAI App', global_name: null, discriminator: '4925', bot: true, verified: true, mfa_enabled: false, avatar: null, email: 'bot-owner@example.com' },
-  '/applications/@me': { id: APP, name: 'AppleAI', description: '', verify_key: 'VERIFY_KEY_abcdef0123', owner: { id: USER, username: 'owner-person', email: 'owner@example.com' },
+  '/users/@me': { id: APP, username: 'StudPilotAI App', global_name: null, discriminator: '4925', bot: true, verified: true, mfa_enabled: false, avatar: null, email: 'bot-owner@example.com' },
+  '/applications/@me': { id: APP, name: 'StudPilotAI', description: '', verify_key: 'VERIFY_KEY_abcdef0123', owner: { id: USER, username: 'owner-person', email: 'owner@example.com' },
     flags: 0, install_params: { scopes: ['applications.commands'], permissions: '0' }, bot_public: true, approximate_guild_count: 1 },
   '/users/@me/guilds?with_counts=true': [{ id: GUILD, name: 'Test Guild', icon: null, owner: false, approximate_member_count: 42, approximate_presence_count: 7 }],
   '/gateway/bot': { url: 'wss://gateway.discord.gg', shards: 1, session_start_limit: { total: 1000, remaining: 999, reset_after: 1000, max_concurrency: 1 } },
@@ -66,7 +66,7 @@ test('with a bot token: identity, app, guilds with channels, members, messages a
   withToken();
   const r = await discord();
   assert.equal(r.ok, true); assert.equal(r.bot, true);
-  assert.equal(r.identity.username, 'AppleAI App'); assert.equal(r.app.name, 'AppleAI');
+  assert.equal(r.identity.username, 'StudPilotAI App'); assert.equal(r.app.name, 'StudPilotAI');
   assert.deepEqual(r.app.scopes, ['applications.commands']);
   assert.deepEqual(r.app.intents, { presence: false, members: false, content: false });
   const g = r.guilds[0];

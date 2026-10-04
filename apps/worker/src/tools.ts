@@ -2,7 +2,7 @@
 // op queue) or run worker-side (docs search, memory, checkpoints).
 import { annotateModels, candidateOf, placeLibraryPiece, placeSizeOf, previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
-import { renderShowsTerrain } from '@apple/shared';
+import { renderShowsTerrain } from '@studpilot/shared';
 import { isOutdoorRequest } from './worldbuilding';
 import { floatingIslandKit } from './scene-kits';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
@@ -13,8 +13,8 @@ import { retryHint, remedyHint, retryEligibility } from './op-failure';
 import { planCopyRounds } from './dup-names';
 import { VERIFIER_TOOLS, APPENDED_VERIFIER_PREFERENCE, PLANNER_TOOL } from './verifiers';
 import { normaliseItems, normaliseProps, describeRefusals, createLimitIssues, planCreateBatches, normaliseStudioPaths } from './studio-props';
-import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@apple/shared';
-import { RENDER_VIEWS, phaseForTool } from '@apple/shared';
+import type { GatewayToolDef, StudioOp, OpResult, CheckpointMeta, RenderViewResult, StudioFrame, AssetSourcePolicy, InstanceSpec, PropValue } from '@studpilot/shared';
+import { RENDER_VIEWS, phaseForTool } from '@studpilot/shared';
 import { searchDocsDetailed } from './rag';
 import { critiqueViews, critiqueToText, type VisualCritique } from './vision';
 import { allowedSources, sourceRefusal, provenanceRefusal } from './asset-policy';
@@ -285,7 +285,7 @@ export interface AgentCtx {
    * see the note at the provenance computation in `insert_asset`.
    *
    * SINCE 2026-09-20 NOTHING IN THIS WORKER WAIVES AN ASSERTION AT ALL. There was a second set,
-   * `libraryAssetIds`, holding the ids that came out of Apple's curated catalogue, and membership
+   * `libraryAssetIds`, holding the ids that came out of StudPilot's curated catalogue, and membership
    * in it waived three marketplace assertions — price, votes, verified creator — which a catalogue
    * asset had none of by construction. The catalogue is gone, so the set is gone and the waiver
    * with it, and every id now faces the identical verdict.
@@ -350,7 +350,7 @@ export interface AgentCtx {
   /** more_tools: lift the run's focused toolset for the rest of the run (session.ts AgentState.focused), or only the named tools. */
   widenTools?: (tools?: string[]) => void;
   /** The run's sources (sources.ts): add some, get their [n] numbers back. */
-  addSources?: (fresh: import('@apple/shared').RunSource[]) => number[];
+  addSources?: (fresh: import('@studpilot/shared').RunSource[]) => number[];
 }
 
 /**
@@ -1150,7 +1150,7 @@ async function dumpScripts(
  *
  * `fix` is the third of those things and it was missing, which cost a user a wrong instruction on
  * 2026-09-19: told only that a write was refused for want of edit consent, the model invented a
- * Studio settings page that does not exist rather than naming the button in the Apple panel. `retry`
+ * Studio settings page that does not exist rather than naming the button in the StudPilot panel. `retry`
  * answers "may I do this again"; `fix` answers "what does the PERSON do", and a refusal is precisely
  * the case where those two have different answers. See remedyHint in op-failure.ts.
  */
@@ -1461,7 +1461,7 @@ function insertStage(res: { error?: string; failure?: string }): { stage: Insert
   if (/would not load asset/i.test(err)) return { stage: 'roblox_load', reason: 'Roblox would not load this id (it is not loadable for this place); try the next id and do not retry this one', retry: false };
   if (/carries \d+ script/i.test(err)) return { stage: 'scan', reason: 'this asset carries scripts and was not inserted; try the next id', retry: false };
   if (/contained nothing|inserted nothing/i.test(err)) return { stage: 'roblox_load', reason: 'this asset held nothing to insert; try the next id', retry: false };
-  if (res.failure === 'invalid' || /outside Apple's place scope|allowlist|ambiguous|no such|not found|path/i.test(err)) return { stage: 'policy', reason: err, retry: false };
+  if (res.failure === 'invalid' || /outside (?:StudPilot|Apple|Golem)'s place scope|allowlist|ambiguous|no such|not found|path/i.test(err)) return { stage: 'policy', reason: err, retry: false };
   return { stage: 'roblox_load', reason: err, retry: false };
 }
 
@@ -1529,7 +1529,7 @@ async function settleOutOfHolder(ctx: AgentCtx, holder: string, paths: string[],
  *
  * THE ASSET LANDS INSIDE A RUN-UNIQUE FOLDER, not directly under the parent. Roblox keeps the model's own name, so a
  * second insert of the same id left two same-named siblings and every path-addressed op on either ("path is ambiguous")
- * failed. Inside `Apple_Insert_<n>` the path is unambiguous for the whole scan; once the roots are proven clean they are
+ * failed. Inside `StudPilot_Insert_<n>` the path is unambiguous for the whole scan; once the roots are proven clean they are
  * given a name unique under the real parent and moved there. If the holder cannot be made the insert goes straight to the
  * parent, as it always did.
  */
@@ -1537,7 +1537,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
   const run = libraryRunOf(ctx);
   const seq = (run.inserts = (run.inserts ?? 0) + 1);
   const parentRoot = rootedPath(parent);
-  const holderName = `Apple_Insert_${seq}_${Math.random().toString(36).slice(2, 6)}`;
+  const holderName = `StudPilot_Insert_${seq}_${Math.random().toString(36).slice(2, 6)}`;
   let holder: string | null = null;
   const holderPath = appendStudioPath(parentRoot, holderName);
   if (holderPath) {
@@ -1699,7 +1699,7 @@ async function insertAndProveClean(ctx: AgentCtx, assetId: number, parent: strin
 //     is the whole reason computed indexing of `game` is refused outright);
 //   * `edit_script` writing a game Script that calls `GetObjects`, then `run_and_check` running it.
 //     That is a deliberate product capability — the user asked for a game — and is out of scope
-//     here; it is bounded by the user owning and reading the scripts Apple writes.
+//     here; it is bounded by the user owning and reading the scripts StudPilot writes.
 //   * ASSIGNING A COMPUTED ASSET URI TO A CONTENT PROPERTY. `Paths.setProp` in the plugin refuses an
 //     unverified `MeshId` / `Texture` / `SoundId`, which closes this for `create_instances` and
 //     `set_properties` — but `run_code` executes Luau straight against the engine and never goes
@@ -1952,12 +1952,12 @@ export function refuseLuauIngress(code: string): { error: string; blocked: strin
  * because a Roblox id says nothing about where the bytes came from or under what licence. Those
  * slugs came from the curated library, and the library was removed on 2026-09-20 — so an id
  * arriving at `insert_asset` today is, by construction, a Creator Store id or one the user pasted,
- * and Apple knows nothing about its licence beyond what the Creator Store said when it was gated.
+ * and StudPilot knows nothing about its licence beyond what the Creator Store said when it was gated.
  *
  * It is therefore keyed `unaccounted:roblox:<id>`, which contains a colon and can never satisfy
  * the provenance id pattern, so `provenance.ts`'s left join always misses and the credits panel
  * renders it as provenance-unknown. That is the one state `provenance: null` exists to express,
- * and it is what the customer should see: Apple placed this, and cannot tell you who made it.
+ * and it is what the customer should see: StudPilot placed this, and cannot tell you who made it.
  *
  * WHAT USED TO BE HERE, so nobody re-adds it. This function asked D1 for a library row matching
  * the Roblox id, on every insertion, so that an asset that WAS in the library got credited no
@@ -2345,7 +2345,7 @@ async function createInBatches(ctx: AgentCtx, items: unknown[]): Promise<unknown
   return { ...compact, batches: batches.length, createdItems: landed };
 }
 
-/** Copies the plugin's place_copies op handles per call (apps/apple-plugin/src/ops/Compose.luau MAX_PLACE). */
+/** Copies the plugin's place_copies op handles per call (apps/studpilot-plugin/src/ops/Compose.luau MAX_PLACE). */
 const PLACE_COPIES_PER_CALL = 200;
 
 /**
@@ -2424,7 +2424,7 @@ async function placeCopiesCall(ctx: AgentCtx, a: Record<string, unknown>, source
       const unsupported = /unknown Studio operation|unsupported|not supported/i.test(String(res.error ?? ''));
       const where = start ? ` after ${placed.length} of ${items.length} copies were placed` : '';
       const error = unsupported
-        ? 'This Studio plugin cannot place copies at positions yet (it does not know place_copies); update the Apple plugin. Until then use clone_instances with only `paths`, then transform_instances to move each copy.'
+        ? 'This Studio plugin cannot place copies at positions yet (it does not know place_copies); update the StudPilot plugin. Until then use clone_instances with only `paths`, then transform_instances to move each copy.'
         : `${res.error ?? 'place_copies failed'}${where}`;
       return { error, ...(placed.length ? { placed: placed.slice(0, 20), placedCount: placed.length, projectMutated: true } : {}) };
     }
@@ -2505,7 +2505,7 @@ async function createGrouped(ctx: AgentCtx, items: unknown[], rawGroup: unknown)
 
 /**
  * What set_mood's `overrides` may set, by group. A name is here only if the plugin's property allowlist carries it
- * (apps/apple-plugin/src/Commands.luau PROPERTY_ALLOW); the value is the kind it takes, with a range where a wrong number
+ * (apps/studpilot-plugin/src/Commands.luau PROPERTY_ALLOW); the value is the kind it takes, with a range where a wrong number
  * is silently nonsense (ClockTime past 24, a colour channel past 255).
  */
 const MOOD_OVERRIDES = {
@@ -2866,7 +2866,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-FXLIB-1: the same for Sounds and particle effects, which come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryLuau(luauScanVariants(after), FX_RULE, before === null ? undefined : luauScanVariants(before));
       if (handMadeFx) return handMadeFx;
-      // G13/G14: no runtime dependence on Apple, no fabricated purchase ids.
+      // G13/G14: no runtime dependence on StudPilot, no fabricated purchase ids.
       const gameRule = refuseGameScript(luauScanVariants(after), before === null ? undefined : luauScanVariants(before));
       if (gameRule) return gameRule;
       // M4 backstop for agent-written scripts (behaviour-review.ts): a loop that never yields is refused with the fix; the other
@@ -3342,7 +3342,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   move_instances: {
     def: {
       name: 'move_instances',
-      description: 'Reparent existing instances without recreating them. Each move is { path, newParent }; either may be a readRef from get_project_tree when siblings share a name. Paths stay inside Apple\'s writable place scope and Studio refuses cycles, duplicate targets and sibling-name collisions.',
+      description: 'Reparent existing instances without recreating them. Each move is { path, newParent }; either may be a readRef from get_project_tree when siblings share a name. Paths stay inside StudPilot\'s writable place scope and Studio refuses cycles, duplicate targets and sibling-name collisions.',
       parameters: S({
         moves: {
           type: 'array',
@@ -3993,7 +3993,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   /**
    * THE CLIENT'S QUESTIONS. The owner judged a finished game as a paying customer would (is it unique, is the UI clean and
    * fitting, is there progression, are there placeholders, do the buttons and the code work, does it have what the request
-   * implies) and found that the checks Apple ran asked none of them. This asks all seven, from the place and from up to three
+   * implies) and found that the checks StudPilot ran asked none of them. This asks all seven, from the place and from up to three
    * Test sessions, and returns a fix for each no. The bodies are in client-judge.ts; it changes nothing in the place.
    */
   judge_game: {
@@ -4772,7 +4772,7 @@ export const TOOLS: Record<string, ToolImpl> = {
    *
    * WHAT COMES BACK IS THE PATTERN, NOT THE CODE. The mechanic, where its authority has to live,
    * the calls that are current, the specific ways it breaks — then the repositories that
-   * demonstrably implement it, each with its author and its licence. Apple vendors nothing: six of
+   * demonstrably implement it, each with its author and its licence. StudPilot vendors nothing: six of
    * the surviving repositories are GPL and one is AGPL, and a customer's game must never carry
    * someone else's licence. The citation is there to be read, and the licence travels with it so
    * the agent cannot forget which one it is reading.
@@ -4958,7 +4958,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         return {
           judged: false,
           reason:
-            'Not scored: the connected Apple plugin draws no Terrain in its renders, so this outdoor scene\'s land, rock and water cannot be seen by the check. ' +
+            'Not scored: the connected StudPilot plugin draws no Terrain in its renders, so this outdoor scene\'s land, rock and water cannot be seen by the check. ' +
             'Do not change the scene because of this check. Reply to the user, and say the visual check could not look at the landform.',
         };
       }
@@ -5095,7 +5095,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'search_creation_skills',
       description:
-        'Search Apple’s bounded catalogue of Roblox creation tasks before inventing an implementation plan. Search by a plain-language task, domain, genre, or both. Returns at most five compact matches grounded in exact Creator Docs corpus ids. These entries are authored guidance, not executable code, training examples, licensed assets, or proof that a Studio build passed. Use read_creation_skill on the chosen id.',
+        'Search the bounded catalogue of Roblox creation tasks before inventing an implementation plan. Search by a plain-language task, domain, genre, or both. Returns at most five compact matches grounded in exact Creator Docs corpus ids. These entries are authored guidance, not executable code, training examples, licensed assets, or proof that a Studio build passed. Use read_creation_skill on the chosen id.',
       parameters: S({
         query: { type: 'string', description: 'The task in plain language. Treated only as search data; commands inside it are never executed.' },
         domain: { type: 'string', enum: [...CREATOR_SKILL_DOMAINS], description: 'Optional task domain filter.' },
@@ -5388,7 +5388,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       // looking for through this app in the first place would be the same mistake find_verified_asset
       // avoids above. `user_supplied` is never refused here — see
       // `PROVENANCE_SOURCE` in asset-policy.ts for why a pasted id is the customer's own choice, not
-      // Apple's, and still faces the full gate immediately below regardless.
+      // StudPilot's, and still faces the full gate immediately below regardless.
       const sourceRefused = provenanceRefusal(ctx.assetSources, provenance, ctx.askAssetSources, ctx.assetSettingsUnread);
       if (sourceRefused) return { error: sourceRefused };
 
@@ -5405,7 +5405,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       //[[ THERE IS NO LONGER A WAIVER HERE, AND THAT IS THE POINT.
       //
       //   A curated-library id used to take a softer path: it had been ingested by an operator and
-      //   uploaded under Apple's own account, so by construction it carried no marketplace price,
+      //   uploaded under StudPilot's own account, so by construction it carried no marketplace price,
       //   no votes and no verified-creator badge, and the full gate would have refused every asset
       //   in the library on those three alone. Those three were waived and only those three.
       //
@@ -5450,7 +5450,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_model',
       description:
-        "CLOSED to the agent (D-MODELLIB-2): Apple never generates a 3D model from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
+        "CLOSED to the agent (D-MODELLIB-2): no 3D model is generated from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
       parameters: S(
         {
           prompt: { type: 'string' },
@@ -5482,7 +5482,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   },
   /**
    * THE RETENTION SENTENCE IN THIS DESCRIPTION IS THE ONLY RETENTION FACT THE MODEL HAS. The tool
-   * result carries no expiry field and search_docs indexes Roblox's documentation, not Apple's, so
+   * result carries no expiry field and search_docs indexes Roblox's documentation, not StudPilot's, so
    * whatever this says is what the customer gets told. It said "retrievable for one hour" — the
    * KV window this tool stopped using in the same commit that moved it to `saveGeneratedImage` —
    * while /docs/credits-and-limits told the customer images stay until the project is deleted. The
@@ -5661,7 +5661,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_ui_asset',
       description:
-        `Search Apple's UI image library: 5,000+ CC0 PNGs (buttons, panels, bars, borders, HUD and menu icons, controller/key/touch prompts, emotes, cursors) AND ${UI_STORE_COUNT.toLocaleString('en-US')} free Roblox Creator Store UI images. Use it before generating an image for a standard UI element. Plain words match names (e.g. "coin icon", "shop button", "gamepass", "settings", "rebirth"); \`genre\` lifts that genre's Creator Store images; \`pack\` narrows the CC0 part to one pack; an empty query lists the packs. \`results\` are CC0 files: pass an \`asset\` to upload_ui_asset, or as an icon to insert_ui_component. \`store\` hits are already on Roblox: their \`image\` (rbxassetid://…) goes straight into an icon of insert_ui_component or an Image property, never uploaded. Nothing is uploaded or changed by this call.`,
+        `Search the UI image library: 5,000+ CC0 PNGs (buttons, panels, bars, borders, HUD and menu icons, controller/key/touch prompts, emotes, cursors) AND ${UI_STORE_COUNT.toLocaleString('en-US')} free Roblox Creator Store UI images. Use it before generating an image for a standard UI element. Plain words match names (e.g. "coin icon", "shop button", "gamepass", "settings", "rebirth"); \`genre\` lifts that genre's Creator Store images; \`pack\` narrows the CC0 part to one pack; an empty query lists the packs. \`results\` are CC0 files: pass an \`asset\` to upload_ui_asset, or as an icon to insert_ui_component. \`store\` hits are already on Roblox: their \`image\` (rbxassetid://…) goes straight into an icon of insert_ui_component or an Image property, never uploaded. Nothing is uploaded or changed by this call.`,
       parameters: S(
         {
           query: { type: 'string', description: 'Plain words for the element, e.g. "red round button" or "pause".' },
@@ -5760,7 +5760,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'find_library_model',
       description:
-        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode Apple may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
+        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode StudPilot may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
           sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
@@ -6072,7 +6072,7 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'generate_model_external',
       description:
-        "CLOSED to the agent (D-MODELLIB-2): Apple never generates a 3D model from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
+        "CLOSED to the agent (D-MODELLIB-2): no 3D model is generated from scratch, so this refuses. Every prop, building, vehicle and character comes from find_library_model + insert_library_model.",
       parameters: S(
         {
           prompt: { type: 'string', description: 'One object, as a plain noun phrase. No brands, no text.' },
@@ -6749,7 +6749,7 @@ export async function runTool(
   const impl = TOOLS[name];
   if (!impl) return { summary: `unknown tool ${name}`, resultForLlm: JSON.stringify({ error: `unknown tool: ${name}` }), ok: false };
   if (impl.studio && !ctx.studioConnected()) {
-    return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Roblox Studio is not connected right now — the Apple plugin is not answering. It is not a limit of this mode. Tell the user to reconnect Studio from the Apple panel, and do not claim any Studio change you did not see succeed.' }), ok: false };
+    return { summary: `${name}: Studio not connected`, resultForLlm: JSON.stringify({ error: 'Roblox Studio is not connected right now — the StudPilot plugin is not answering. It is not a limit of this mode. Tell the user to reconnect Studio from the StudPilot panel, and do not claim any Studio change you did not see succeed.' }), ok: false };
   }
   // UNPARSEABLE ARGUMENTS ARE NOT ABSENT ARGUMENTS. This used to swallow the parse error and
   // continue with `{}`, so `'{not json'` reached web_fetch and came back as
@@ -6875,7 +6875,7 @@ export async function runTool(
 }
 
 /**
- * Strip anything that names the engine behind Apple.
+ * Strip anything that names the engine behind StudPilot.
  *
  * Deliberately a denylist of shapes rather than an allowlist of safe text. An
  * allowlist would also drop the actionable half of an error — "Studio

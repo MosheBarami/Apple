@@ -18,7 +18,7 @@
  * happens: a tool starts, another step begins reasoning, the reply's text starts, or the run ends.
  * More reasoning for the same step after a tool is a new block, because it is a new thought.
  */
-import type { RunSource } from '@apple/shared';
+import type { RunSource } from '@studpilot/shared';
 
 export interface ReasoningBlock {
   /** Stable within the message: `r0`, `r1`, … in arrival order. */

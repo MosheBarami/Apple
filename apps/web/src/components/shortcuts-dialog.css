@@ -41,7 +41,7 @@
 
 .shortcuts__list { display:grid; gap:0; margin:0; padding:0; min-width:0; }
 
-/* THE ROW. Two columns, and the chord column is `auto` because it has to survive the non-Apple
+/* THE ROW. Two columns, and the chord column is `auto` because it has to survive the non-StudPilot
    spelling: "⌘⇧F" is four characters and "Ctrl+Shift+F" is twelve, and the name is the half that
    can afford to wrap. Baseline alignment, so a two-line name still starts on the cap's line.
    Every row carries its own top hairline, INCLUDING THE FIRST, which anchors the list under the

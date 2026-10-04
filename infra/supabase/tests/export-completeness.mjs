@@ -28,7 +28,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
 const MIGRATIONS = join(HERE, '..', 'migrations');
-const NAME = `apple-export-${process.pid}`;
+const NAME = `studpilot-export-${process.pid}`;
 const docker = (args, opts = {}) => execFileSync('docker', args, { encoding: 'utf8', ...opts });
 const psql = (sql) =>
   docker(['exec', '-i', NAME, 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-Atq'], { input: sql, stdio: ['pipe', 'pipe', 'pipe'] });

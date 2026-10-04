@@ -11,10 +11,10 @@
 // this file owns spend policy, the prompted-tool fallback and response post-processing, and an
 // adapter owns one provider's wire format. Every model key resolves to the Workers AI adapter,
 // and every call is `env.AI.run(id, payload, gatewayOpts(...))`. The product has one customer
-// engine, Apple (GLM 5.3 Flash, V3 gate G01), under the `plan` and `agent` keys below.
+// engine, StudPilot (GLM 5.3 Flash, V3 gate G01), under the `plan` and `agent` keys below.
 import { collectStream } from './stream-collect';
 import type { Env } from './env';
-import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@apple/shared';
+import type { GatewayMessage, GatewayRequest, GatewayResponse, GatewayToolCall, GatewayToolDef } from '@studpilot/shared';
 import { isCompleteToolCall } from './tool-call-integrity';
 import { estimateNeurons, neuronsFor, maxNeuronsPerStepFor } from './pricing';
 import { recordEvent } from './analytics';
@@ -79,7 +79,7 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   // neuron caps, not by this number, and settlement is on ACTUAL usage, so a short step still
   // costs a short step.
   // -------------------------------------------------------------------------
-  // PRODUCT RUN ROUTING. Apple is the one customer engine (V3 gate G01): Plan and Agent both run
+  // PRODUCT RUN ROUTING. StudPilot is the one customer engine (V3 gate G01): Plan and Agent both run
   // GLM 5.3 Flash, the id the shared registry names (tests/single-engine.test.mjs holds them equal). The run mode controls tools, never the model.
   // Both keys exist because callers name the product mode directly. GLM 5.3 Flash spends output
   // budget on reasoning_content before it writes `content`, so these ceilings must not be lowered:
@@ -189,12 +189,12 @@ function budgetStub(env: Env) {
 }
 
 const BUDGET_MESSAGES: Record<string, string> = {
-  daily_cap: "Apple has reached today's shared building capacity. It resets at midnight UTC.",
-  monthly_cap: "Apple has reached this month's shared building capacity.",
+  daily_cap: "StudPilot has reached today's shared building capacity. It resets at midnight UTC.",
+  monthly_cap: "StudPilot has reached this month's shared building capacity.",
   request_too_large: 'That request needs more context than a single step allows — try narrowing it.',
   killed: 'AI generation is paused right now.',
-  third_party_daily_cap: "Today's allowance for outside models is used up. Apple still works, and it resets at midnight UTC.",
-  third_party_monthly_cap: "This month's allowance for outside models is used up. Apple still works.",
+  third_party_daily_cap: "Today's allowance for outside models is used up. StudPilot still works, and it resets at midnight UTC.",
+  third_party_monthly_cap: "This month's allowance for outside models is used up. StudPilot still works.",
 };
 
 async function reserve(env: Env, model: string, neurons: number): Promise<number> {
@@ -473,7 +473,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
       // here, so that one class exhausted the ladder and then fell through to the raw
       // `inference failed (model): ...` below — a transient, shown to a customer as a crash.
       if (/\b3021\b|rate limit|too many requests|capacity temporarily/i.test(msg)) {
-        throw new RateLimitedError('Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.');
+        throw new RateLimitedError('StudPilot is handling a burst of requests right now. Nothing was charged — try that again in a moment.');
       }
       // Preserve the provider's structured failure kind across the gateway boundary. SessionDO
       // can safely keep a run asleep through a transport outage without pattern-matching provider

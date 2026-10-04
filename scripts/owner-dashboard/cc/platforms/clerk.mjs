@@ -78,7 +78,7 @@ const pickOrg = (o = {}) => ({ id: String(o.id || ''), name: str(o.name), slug: 
 // ---------------------------------------------------------------- insights
 const nf = (n) => new Intl.NumberFormat('en-US').format(n);
 const METHOD = { password: 'סיסמה', email: 'קוד או קישור במייל', phone: 'SMS', passkey: 'Passkey', web3: 'ארנק Web3', sso: 'SSO ארגוני',
-  google: 'Google', github: 'GitHub', apple: 'Apple', microsoft: 'Microsoft', discord: 'Discord', facebook: 'Facebook', gitlab: 'GitLab', linkedin_oidc: 'LinkedIn', x: 'X' };
+  google: 'Google', github: 'GitHub', studpilot: 'StudPilot', microsoft: 'Microsoft', discord: 'Discord', facebook: 'Facebook', gitlab: 'GitLab', linkedin_oidc: 'LinkedIn', x: 'X' };
 const methodName = (m) => METHOD[m] || m;
 // The way a user signs in: a social provider first, then a password, then an email code, then SMS.
 const mainMethod = (u) => u.providers[0] || (u.methods.includes('password') ? 'password' : u.methods.includes('passkey') ? 'passkey'

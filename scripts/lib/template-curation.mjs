@@ -1,5 +1,5 @@
 // CURATION, not classification. 3,017 rows came back from GitHub; the question this file answers
-// is which of them is a Roblox GAME MECHANIC that Apple may learn from, and it answers "no" far
+// is which of them is a Roblox GAME MECHANIC that StudPilot may learn from, and it answers "no" far
 // more often than "yes".
 //
 // THREE THINGS MAKE THIS DIFFERENT FROM A RANKING.
@@ -95,7 +95,7 @@ const fieldText = (repo, field) => field === 'name' ? repo.fullName
  * `terms` always fire. `softTerms` are the generic words — "exploit", "cheat" — that appear just
  * as often in the repository that DEFENDS against them, so they stand down when a shield word is
  * present. Without that, `roblox-movement-anticheat` is excluded as a cheat by the word inside its
- * own name, and server-side validation is one of the mechanics Apple is asked to write.
+ * own name, and server-side validation is one of the mechanics StudPilot is asked to write.
  */
 const SHIELDS = ['anticheat', 'anticheats', 'antiexploit', 'antiexploits', 'antihack',
   'cheatdetection', 'exploitdetection'];
@@ -105,7 +105,7 @@ export const EXCLUSION_RULES = [
     id: 'exploit_tooling',
     class: 'abuse',
     why: 'an executor, injector, script hub, ESP or aim-assist: software written to break other '
-      + "people's games. Nothing Apple builds may be informed by it, and a permissive licence on an "
+      + "people's games. Nothing StudPilot builds may be informed by it, and a permissive licence on an "
       + 'exploit does not make it a template.',
     fields: ['name', 'topics', 'description'],
     // HARD — words that say what the repository IS. Nothing an honest anti-cheat calls itself.
@@ -217,7 +217,7 @@ export function excludeReason(repo) {
 /* ------------------------------------------------------------------------- the vocabulary --- */
 
 /**
- * The mechanics Apple can be asked for, named the way a builder asks.
+ * The mechanics StudPilot can be asked for, named the way a builder asks.
  *
  * The ids are the roadmap's own `FeatureId` vocabulary wherever one exists, so what the roadmap
  * DETECTS in a place and what this library can TEACH are the same word. A second vocabulary would

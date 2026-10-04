@@ -3,7 +3,7 @@
 // Its own failure mode is the interesting one: a dead-end checker with a blind spot reports the
 // repository as broken when the BLIND SPOT is broken, and that finding is confident, specific and
 // wrong — the worst kind. Two of those were found while writing it: workspace imports
-// (`@apple/shared`) resolved to nothing, so every shared module looked dead, and Astro frontmatter
+// (`@studpilot/shared`) resolved to nothing, so every shared module looked dead, and Astro frontmatter
 // was never read, so a TypeScript file imported by two pages looked unreached.
 //
 // So half of these tests are about what the checker must NOT report.
@@ -49,7 +49,7 @@ test('a workspace import counts as an import, and the count is what proves it', 
   // the bug in place and with it removed, because that file has relative importers too. It was
   // green and measuring nothing: the exact shape of a test whose mechanism is inert.
   //
-  // What actually moves is the EDGE COUNT. Restoring the blind spot takes fifty `@apple/*`
+  // What actually moves is the EDGE COUNT. Restoring the blind spot takes fifty `@studpilot/*`
   // specifiers out of the graph. So the graph's own completeness is published, and asserted here.
   const r = run();
   const resolved = Number(/GRAPH (\d+) import edge\(s\) resolved/.exec(r.out)[1]);
@@ -66,7 +66,7 @@ test('a workspace import counts as an import, and the count is what proves it', 
   //     32  Astro and JSON targets. `.astro` files were read as IMPORTERS but never accepted as
   //         TARGETS, so `../layouts/Base.astro` — imported by fourteen pages — resolved to
   //         nothing, as did the landing page's `../data/asset-wall.json`.
-  //     10  Deep paths into a workspace package. `@apple/evals/src/luau-*.mjs` is how the worker
+  //     10  Deep paths into a workspace package. `@studpilot/evals/src/luau-*.mjs` is how the worker
   //         reaches the whole Luau intelligence cluster on every review; packages/evals declares
   //         no `exports` map, so neither the exact-name nor the subpath branch saw them.
   //      8  `apps/worker/tests/retention.test.mjs`, whose esbuild `stdin` module is written
@@ -109,7 +109,7 @@ test('a workspace import counts as an import, and the count is what proves it', 
   //   must be red at one. So the file the specifier sits in is the property, and it does not move
   //   when someone writes another sample program.
   //
-  //   Held against the four measured holes above: the 32 Astro/JSON targets, the 10 `@apple/evals`
+  //   Held against the four measured holes above: the 32 Astro/JSON targets, the 10 `@studpilot/evals`
   //   deep paths and the 2 `packages/sdk` fixtures were all in non-test files and each goes red on
   //   the property alone, at ANY count. The 8 esbuild `stdin` ones were in a test file, so the
   //   ratio is what has to cover them — and it does, measured 2026-09-19 by forcing `virtualBase`
@@ -318,7 +318,7 @@ test('only the three words count as a disposition', () => {
 });
 
 test('a package subpath export resolves, so the module behind it is not reported dead', () => {
-  // The resolver read only `pkg.main`, so `@apple/design/pixels` — and ./rules, ./retrieve,
+  // The resolver read only `pkg.main`, so `@studpilot/design/pixels` — and ./rules, ./retrieve,
   // ./checks, ./playbooks alongside it — resolved to nothing, and every module behind those
   // specifiers looked imported by nothing at all.
   //

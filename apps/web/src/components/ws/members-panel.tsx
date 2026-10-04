@@ -721,7 +721,7 @@ function InviteForm({
     >
       <h3 className="mb__invite-head">Add someone</h3>
       <p className="cs__note">
-        Paste their Apple user ID. There is no name lookup yet, so an email or a handle will not
+        Paste their StudPilot user ID. There is no name lookup yet, so an email or a handle will not
         work here.
       </p>
       <label className="field">

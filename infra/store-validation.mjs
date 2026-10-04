@@ -1,11 +1,11 @@
-// End-to-end validation against the CREATOR STORE-INSTALLED Apple plugin.
+// End-to-end validation against the CREATOR STORE-INSTALLED StudPilot plugin.
 //
 // This is not a unit test and not a mock. It drives the real deployed worker,
 // which dispatches real ops to the real plugin running in the operator's open
 // Studio, and asserts on what actually comes back.
 //
 // SAFETY. Everything this script builds goes inside one clearly-named folder,
-// Workspace/AppleStoreValidation, and is deleted at the end whether the run
+// Workspace/StudPilotStoreValidation, and is deleted at the end whether the run
 // passes or fails. The playtest step goes through `run_and_check`, which is the
 // protected path: it censuses the place, takes a checkpoint, runs, censuses
 // again, and auto-restores if the run destroyed anything. That protection is
@@ -22,15 +22,15 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 }
 
 const BASE = process.env.API_BASE;
-const ADMIN = envCompat('APPLE_ADMIN_KEY');
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const ADMIN = envCompat('STUDPILOT_ADMIN_KEY');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
 const ANON = readFileSync(root + '/apps/worker/wrangler.jsonc', 'utf8').match(
   /"SUPABASE_ANON_KEY":\s*"([^"]+)"/,
 )[1];
 const PID = 'b0766f21-7028-47cc-b9ab-e19198b144d2';
-const FOLDER = 'AppleStoreValidation';
+const FOLDER = 'StudPilotStoreValidation';
 
 const H = { 'X-Admin-Key': ADMIN, 'Content-Type': 'application/json' };
 const checks = [];
@@ -163,7 +163,7 @@ const seen = { phases: [], tools: [], intent: null, studioConnected: null, frame
 let text = '';
 const stop = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${PID}/ws`, [
-    'golem.v1', 'golem.jwt.' + jwt,
+    'studpilot.v1', 'studpilot.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve('timeout'); }, 240000);
   ws.onmessage = (ev) => {
@@ -194,7 +194,7 @@ check('user path: the assistant answered', text.trim().length > 0, text.trim().s
 // ------------------------------------------------------- 10. reconnect ----
 const replay = await new Promise((resolve) => {
   const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${PID}/ws`, [
-    'golem.v1', 'golem.jwt.' + jwt,
+    'studpilot.v1', 'studpilot.jwt.' + jwt,
   ]);
   const timer = setTimeout(() => { try { ws.close(); } catch {} resolve(undefined); }, 20000);
   ws.onmessage = (ev) => {

@@ -101,7 +101,7 @@ test('a group creator replaces the user one rather than joining it', async () =>
 //   They asserted that `OPEN_USE_UPLOAD_TYPES` was exactly ['Decal','Image','Mesh'] and never
 //   'Model', and that `uploadTypeFor(kind, contentType)` mapped a catalogue kind onto one of them —
 //   refusing .glb and .fbx, because those can only go up as a Model, and a Model uploaded under
-//   APPLE'S account would load for Apple and 404 for every paying customer.
+//   STUDPILOT'S account would load for StudPilot and 404 for every paying customer.
 //
 //   That constraint was about one account: the shared one the asset library imported into. The
 //   library was removed on 2026-09-20 and both exports went with it. The only caller left is
@@ -114,7 +114,7 @@ test('a group creator replaces the user one rather than joining it', async () =>
 //   form, because that is the thing that must not come back. ]]
 test('THERE IS NO SHARED-ACCOUNT UPLOAD PATH LEFT, in any shape', () => {
   assert.equal(U.OPEN_USE_UPLOAD_TYPES, undefined,
-    'the Open Use type list is back — it only ever described what Apple could upload into its own account');
+    'the Open Use type list is back — it only ever described what StudPilot could upload into its own account');
   assert.equal(U.uploadTypeFor, undefined,
     'uploadTypeFor is back, and it is the function that turned a catalogue row into a shared-account upload');
   assert.equal(U.archiveAsset, undefined,

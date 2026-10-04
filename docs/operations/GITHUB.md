@@ -35,7 +35,7 @@ are written so they refuse or warn while CI on `main` is red.
 | "Branch must be up to date" | off | Agents land many branches a day; forcing a rebase and a full CI re-run for each is cost without a failure it prevents here. |
 | Linear history | **off** | The history already contains merge commits (the "land worktree-..." merges), and rebase-merging would rewrite the SHAs that evidence files record. Merge methods are limited to `merge` and `squash`. Turn on `required_linear_history` and drop `merge` only if the owner wants a flat history. |
 | Bypass | repository Admin role, **pull-request mode** | The owner can merge a PR past a stuck or wrong check in an emergency, but cannot push to `main` directly. Without a bypass, a broken required check would lock the owner out of his own repository. |
-| `Workers Builds: apple` | **not** required | It is a Cloudflare check run, not a GitHub Actions job, and it is red on `main` today. Add it only after it is green. |
+| `Workers Builds: studpilot` | **not** required | It is a Cloudflare check run, not a GitHub Actions job, and it is red on `main` today. Add it only after it is green. |
 
 ### Do not apply it while `main` is red
 
@@ -93,8 +93,8 @@ Only packages that opt in by carrying `"publishConfig": { "registry": "https://n
   Worker). Nothing else is publishable.
 
 **GitHub Packages only accepts a package whose npm scope equals the repository owner.** The owner is
-`MosheBarami`, so the published names are lower-case: `@apple/sdk` is published as **`@moshebarami/sdk`** and
-`@apple/shared` as **`@moshebarami/shared`** (after the rename, `@apple/sdk` also becomes `@moshebarami/sdk`; the
+`MosheBarami`, so the published names are lower-case: `@studpilot/sdk` is published as **`@moshebarami/sdk`** and
+`@studpilot/shared` as **`@moshebarami/shared`** (after the rename, `@studpilot/sdk` also becomes `@moshebarami/sdk`; the
 base name is kept). The in-repo names are not changed, because every `workspace:*` dependency and `--filter` uses
 them. `publish-packages.mjs` stages a copy in a temp directory: it rewrites the name, removes `private` and
 `scripts`, adds the `repository` field GitHub uses to link the package to this repo, and normalizes `bin`
