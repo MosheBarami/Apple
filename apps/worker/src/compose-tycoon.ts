@@ -15,7 +15,7 @@
  * tycoonSteps turns a recipe into composer steps.
  */
 import { COMPONENTS } from './components.generated';
-import { luau, type LibRef, type Step, type InstanceSpecLite } from './compose';
+import { luau, retireDefaultSpawn, type LibRef, type Step, type InstanceSpecLite } from './compose';
 import { studdedScreen } from './stud-ui';
 
 type V3 = [number, number, number];
@@ -288,6 +288,7 @@ export function tycoonSteps(recipe: TycoonRecipe): Step[] {
   // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
   // Lighting is not touched: set_mood is the agent's own call.
   if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
+  else steps.push(...retireDefaultSpawn());
 
   // The unlockables, held per base until bought (Dropper1 is every player's from the start).
   for (let i = 0; i < recipe.players; i++) {

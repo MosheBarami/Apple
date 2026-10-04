@@ -15,7 +15,7 @@
  * plotSimSteps turns a recipe into composer steps (tests/plot-sim.test.mjs).
  */
 import { COMPONENTS } from './components.generated';
-import { luau, rng, LANE_WIDTH, plotTiles, type LibRef, type Step } from './compose';
+import { luau, rng, LANE_WIDTH, plotTiles, retireDefaultSpawn, type LibRef, type Step } from './compose';
 import { hubLayout } from './hub-layout';
 import { studdedMap, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
@@ -173,6 +173,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
   // Lighting is not touched: set_mood is the agent's own call.
   if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
+  else steps.push(...retireDefaultSpawn());
 
   // 4. The hub's library props beside their pads.
   let n = 0;

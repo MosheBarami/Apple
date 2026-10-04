@@ -15,12 +15,15 @@ local player = Players.LocalPlayer
 local counterName = "Coins"
 -- What the player's money is called as an attribute (AppleEconomy keeps it under the currency's own name).
 local currencyName = "Coins"
+-- The symbol the agent gave for the currency, printed before a price; none means the price is followed by the currency's own name.
+local symbol = ""
 local cfgFolder = ReplicatedStorage:FindFirstChild("AppleComponents")
 local cfgModule = cfgFolder and cfgFolder:FindFirstChild("AppleClientConfig")
 if cfgModule and cfgModule:IsA("ModuleScript") then
 	local ok, cfg = pcall(require, cfgModule)
 	if ok and type(cfg) == "table" and type((cfg :: any).counter) == "string" then counterName = (cfg :: any).counter; currencyName = counterName end
 	if ok and type(cfg) == "table" and type((cfg :: any).currency) == "string" then currencyName = (cfg :: any).currency end
+	if ok and type(cfg) == "table" and type((cfg :: any).symbol) == "string" then symbol = (cfg :: any).symbol end
 end
 
 local function short(n: number): string
@@ -28,6 +31,12 @@ local function short(n: number): string
 		if n >= s[1] then return (string.format("%.1f", n / s[1]):gsub("%.0$", "")) .. s[2] end
 	end
 	return tostring(math.floor(n))
+end
+
+--[[ A price in the game's own currency: with its symbol ("◆10K"), otherwise followed by its name ("10K Crystals"). Never a built-in "$". ]]
+local function priceText(n: number): string
+	if symbol ~= "" then return symbol .. short(n) end
+	return short(n) .. " " .. currencyName
 end
 
 local function pop(gui: Instance)
@@ -108,7 +117,7 @@ local function wire(screen: ScreenGui)
 		local rebirths = tonumber(player:GetAttribute("Rebirths")) or 0
 		local mult = tonumber(player:GetAttribute("Multiplier")) or 1
 		if info and info:IsA("TextLabel") then
-			info.Text = ("Rebirth for $%s: start over with every machine and upgrade gone, and earn more forever. Rebirths: %d"):format(short(cost), rebirths)
+			info.Text = ("Rebirth for %s: start over with every machine and upgrade gone, and earn more forever. Rebirths: %d"):format(priceText(cost), rebirths)
 		end
 		-- What a rebirth gives, not only what you have (a bare "x1" read as "a rebirth gives nothing").
 		local nextMult = tonumber(player:GetAttribute("NextMultiplier")) or mult

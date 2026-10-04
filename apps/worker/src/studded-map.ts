@@ -264,16 +264,20 @@ export const HUB_COLOURS = { plaza: '#f0dcae', inlay: '#fff1cf', shop: '#3ddc5f'
 /** A pad is this many studs on a side (hub-layout.ts PAD). */
 const PAD_SIZE = 10;
 
-/** A flat pad on the hub with big words on its top face: stepping on it is how the game opens the shop or sells. */
+/**
+ * A flat pad on the hub with its name over it: stepping on it is how the game opens the shop or rebirth. The words are a
+ * BillboardGui above the pad, not a decal on its floor: a floor label reads along one fixed direction (owner's recording,
+ * 2026-10-04: SHOP lay sideways and mirrored from the way the player walked up), a billboard always faces the player.
+ */
 function pad(name: string, at: P2, colour: string, text: string): InstanceSpecLite {
   return brick(name, [PAD_SIZE, 0.6, PAD_SIZE], [at[0], 1.1, at[1]], colour, {
     collide: false, children: [{
-      className: 'SurfaceGui', name: 'FaceTop',
-      props: { Face: enumOf('NormalId', 'Top'), SizingMode: enumOf('SurfaceGuiSizingMode', 'PixelsPerStud'), PixelsPerStud: 40, LightInfluence: 0 },
+      className: 'BillboardGui', name: 'Sign',
+      props: { Size: { t: 'UDim2', v: [0, 240, 0, 70] }, StudsOffset: { t: 'Vector3', v: [0, 6, 0] }, MaxDistance: 140, LightInfluence: 0 },
       children: [{
         className: 'TextLabel', name: 'Words',
-        props: { Size: { t: 'UDim2', v: [1, -24, 0.5, 0] }, Position: { t: 'UDim2', v: [0.5, 0, 0.5, 0] }, AnchorPoint: { t: 'Vector2', v: [0.5, 0.5] }, BackgroundTransparency: 1, Text: text.toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
-        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }],
+        props: { Size: { t: 'UDim2', v: [1, 0, 1, 0] }, BackgroundTransparency: 1, Text: text.toUpperCase(), TextScaled: true, Font: enumOf('Font', 'FredokaOne'), TextColor3: '#ffffff' },
+        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } }],
       }],
     }],
   });

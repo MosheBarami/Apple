@@ -54,6 +54,18 @@ export interface Recipe {
   seed: number;
 }
 
+/**
+ * The place's default SpawnLocation, when the map keeps it (no clearDefaultGround): the map has its own themed spawn, so the
+ * default one is switched off and made invisible and its star decal removed, instead of sitting in the middle of the hub
+ * (owner's recording, 2026-10-04). Nothing is deleted: it is the user's, and Enabled turns it back on. Absent is not a problem.
+ */
+export function retireDefaultSpawn(): Step[] {
+  return [
+    { kind: 'delete', paths: ['game.Workspace.SpawnLocation.Decal', 'game.Workspace.SpawnLocation.Texture'] },
+    { kind: 'set', path: 'game.Workspace.SpawnLocation', props: { Enabled: false, Transparency: 1, CanCollide: false }, optional: true },
+  ];
+}
+
 export type Step =
   | { kind: 'import'; key: string; ref: LibRef; into: string }
   | { kind: 'create'; parent: string; items: InstanceSpecLite[] }
@@ -68,8 +80,8 @@ export type Step =
   /** Remove every instance of these classes under `root` (a library piece's own sounds and scripts). */
   | { kind: 'strip'; root: string; classes: string[] }
   | { kind: 'hide'; paths: string[] }
-  /** Set properties of one existing instance (Lighting). */
-  | { kind: 'set'; path: string; props: Record<string, unknown> }
+  /** Set properties of one existing instance (Lighting). `optional`: an instance that is not there is not a problem. */
+  | { kind: 'set'; path: string; props: Record<string, unknown>; optional?: boolean }
   /** Give every part under these places a classic surface on every face (surfaces.ts, after Resurface). */
   | { kind: 'surface'; paths: string[]; surface: 'studs' }
   | { kind: 'delete'; paths: string[] };
@@ -257,6 +269,7 @@ export function composeSteps(recipe: Recipe): Step[] {
   // The default Baseplate and SpawnLocation are the user's until the agent says the map replaces them (clearDefaultGround).
   // Lighting is not touched: set_mood is the agent's own call.
   if (recipe.clearDefaultGround) steps.push({ kind: 'delete', paths: ['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation'] });
+  else steps.push(...retireDefaultSpawn());
 
   // 4. Props, placed on the new map (the base at the lane's end, the rest on free spots).
   const r = rng(recipe.seed ^ 0x9e3779b9);
@@ -340,7 +353,7 @@ export function composeSteps(recipe: Recipe): Step[] {
 
   // 8. The game's own studded HUD (stud-ui.ts), real editable instances in StarterGui that AppleGameUI makes work.
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [waveDefenseHud(
-    recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, blurb: d.blurb })), recipe.words,
+    recipe.defenders.map((d) => ({ id: d.id, name: d.name, price: d.price, blurb: d.blurb })), recipe.words, { currency: recipe.currency, symbol: recipe.symbol },
   )] });
   return steps;
 }

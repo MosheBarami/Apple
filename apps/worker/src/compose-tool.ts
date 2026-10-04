@@ -50,6 +50,21 @@ export const TEMPLATES = [
   },
 ] as const;
 
+/** Models this run placed directly in the workspace, as the `from` a machine takes ("Workspace.<Model>"). Newest last, at most 6. */
+export function insertedFromCandidates(ctx: Pick<AgentCtx, 'evidence'>): string[] {
+  const out: string[] = [];
+  for (const path of ctx.evidence?.inserted ?? []) {
+    const m = /^game\.Workspace\.([^.[\]]{1,40})$/.exec(path);
+    if (m && !out.includes(`Workspace.${m[1]}`)) out.push(`Workspace.${m[1]}`);
+  }
+  return out.slice(-6);
+}
+
+/** The sentence that names them. Plain words; the names are the run's own placements. */
+export function fromCandidatesText(from: string[]): string {
+  return `You inserted ${from.length === 1 ? 'this model' : 'these models'} in this run; pass ${from.length === 1 ? 'it' : 'one'} as machines[i].from (a different one per machine, or one for all): ${from.map((f) => `"${f}"`).join(', ')}.`;
+}
+
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** What stopped a build, in the user's words. */
@@ -123,7 +138,12 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
     };
   } else if (template === 'plot-sim') {
     const p = readPlotSim(a.plotSim, seed, hasComponents);
-    if ('error' in p) return { changed: false, template, error: p.error, missing: p.missing };
+    if ('error' in p) {
+      // A machine with no look, in a run that already placed models: those are the candidates (the agent searched, inserted, and then forgot to use them).
+      const lacksLook = p.missing.some((m) => /\.look\b|\.from\b/.test(m));
+      const own = lacksLook ? insertedFromCandidates(ctx) : [];
+      return { changed: false, template, error: own.length ? `${p.error} ${fromCandidatesText(own)}` : p.error, missing: p.missing };
+    }
     const recipe = p.recipe;
     recipe.surface = surface;
     // The hero is the agent's own naming: measured here so the hub is made to hold it, and moved onto the hub after.
@@ -142,9 +162,9 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
     };
     const libNames = recipe.machines.filter((m) => m.ref).length;
     forUser = [
-      recipe.hero ? `Your ${recipe.subject} is now **${recipe.title}**: a hub with it in the middle and ${recipe.players} plots around it, one for each player.` : `**${recipe.title}** is ready: a hub and ${recipe.players} plots around it, one for each player.`,
+      recipe.hero ? `Your ${recipe.subject} is now **${recipe.title}**: a hub with it in the middle and ${recipe.players} plots around it, one for each player.` : `**${recipe.title}** is set up: a hub and ${recipe.players} plots around it, one for each player.`,
       `- Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning ${recipe.currency}.`,
-      `- The Shop (button, or the SHOP pad in the hub) sells ${plural(recipe.machines.length, 'machine')}: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second; pressing your own pays extra.`,
+      `- The Shop (button, or the SHOP pad in the hub) sells ${plural(recipe.machines.length, 'machine')}: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second, and clicking or tapping one of your machines presses it for an instant payout that upgrades raise.`,
       `- Upgrades make every press and every second worth more; Rebirth starts you over with a permanent boost.`,
     ].join('\n');
     verify = async () => {
@@ -191,11 +211,22 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
     built: report.counts,
     ...(report.missing.length ? { missingPieces: report.missing } : {}),
     ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
-    ...(clearDefaultGround ? {} : { scene: 'The default Baseplate and SpawnLocation were left as they were; pass clearDefaultGround: true if the new map should replace them. Lighting was not changed (set_mood is yours).' }),
+    ...(clearDefaultGround ? {} : { scene: 'The default Baseplate was left as it was (pass clearDefaultGround: true to remove it and build ground that fits the setting); the default SpawnLocation was switched off and its decal removed, the map has its own spawn. Lighting was not changed (set_mood is yours).' }),
     forUser,
-    note: 'The game is built from components; do not rebuild any of it by hand. Check it once in play (play_check; judge_game for a composed game), fix only what is broken, and answer from forUser in your own friendly words. Name no tools, paths or counts.',
+    note: BASE_NOTE,
   };
 }
+
+/**
+ * What the agent is told after a composer succeeds: this is a starting kit, not the game (t1 round 2: the plot-sim template was
+ * answered as the whole game, an island and four flat plots for an idea about crystals and caves). Fixed words, no subject; the
+ * at-answer check (world-pass.ts) holds the run to it.
+ */
+export const BASE_NOTE =
+  'This is the BASE of the game, not the finished game: the template\'s map, economy, shop, screens and scripts. The template makes the same map for any idea, so the world, setting, objects and progression the request describes are NOT built yet. ' +
+  'Build them now on top of it: re-read the request; find real assets (find_library_model, then insert_library_model; clone_instances for copies) and place them; dress and fill the map; add what the request names that the template does not provide; use the creator skills you were given. ' +
+  'If the default Baseplate still shows, replace it (clearDefaultGround, terrain, ground that fits the setting). Keep the template\'s own systems; do not rebuild them by hand. ' +
+  'Then check it (judge_game), fix what it lists, and answer: how it plays from forUser, plus what you added. Name no tools, paths or counts. An answer before the world is built is sent back.';
 
 export function composeSummary(_args: Record<string, unknown>, result: unknown, failed: boolean): string {
   if (failed) return 'Could not build the game';

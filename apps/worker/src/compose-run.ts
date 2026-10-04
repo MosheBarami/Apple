@@ -133,7 +133,7 @@ export async function runSteps(ctx: AgentCtx, steps: Step[], onProgress?: (done:
       const props: Record<string, PropValue> = {};
       for (const [k, v] of Object.entries(s.props)) { const pv = propValue(k, v); if (pv) props[k] = pv; }
       const out = await op({ op: 'set_props', path: s.path, props });
-      if (out.ok) count('set'); else report.problems.push(`set ${s.path}: ${clip(out.error)}`);
+      if (out.ok) count('set'); else if (!s.optional) report.problems.push(`set ${s.path}: ${clip(out.error)}`);
     } else if (s.kind === 'hide') {
       const out = await op({ op: 'set_visible', paths: s.paths, visible: false });
       if (out.ok) count('hide'); else report.problems.push(`hide: ${clip(out.error)}`);

@@ -212,6 +212,10 @@ test('stud-ui: the lane-defense HUD and the generic studded screen are byte-for-
   // The lane-defense HUD changed by the panels' Backdrop and nothing else: with the backdrops taken out it is the old hash.
   const withoutBackdrops = (n) => ({ ...n, ...(n.children ? { children: n.children.filter((c) => c.name !== 'Backdrop').map(withoutBackdrops) } : {}) });
   const wave = U.waveDefenseHud([{ id: 'a', name: 'A', price: 5, blurb: 'x' }], { wave: 'Wave' });
-  assert.equal(hash(withoutBackdrops(wave)), 'aa546348cf3427e1');
+  // RESTATED 2026-10-04 (owner's recording of round 2: "$" and "money" in a game whose currency is Crystals), a deliberate change: the
+  // lane screen no longer hard-codes "$" on its coin and prices; it wears the game's own symbol, or the currency's first letter.
+  // The old hash is still the hash of the same screen when the game's symbol IS "$", so nothing else moved.
+  assert.equal(hash(withoutBackdrops(U.waveDefenseHud([{ id: 'a', name: 'A', price: 5, blurb: 'x' }], { wave: 'Wave' }, { symbol: '$' }))), 'aa546348cf3427e1');
+  assert.equal(hash(withoutBackdrops(wave)), '5242bb7ec5cbcd84');
   assert.equal(all(wave).filter((n) => n.name === 'Backdrop').length, 2, 'both panels (Shop, Upgrades) got a Backdrop');
 });

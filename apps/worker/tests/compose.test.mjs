@@ -197,9 +197,12 @@ test('compose_game: a tycoon is exactly what the agent said: its names, its chai
   const text = ops.map(authored).join('\n');
   assert.ok(text.includes('חומר גלם') && text.includes('מטבעות'), 'the agent\'s own words are in what was written');
   for (const gone of ['Fabric', 'Cleaner', 'Polisher', 'Packer', 'Dirty', 'Laundry', '$']) assert.equal(text.includes(gone), false, `${gone} is back`);
-  assert.equal(ops.some((o) => o.op === 'delete_instances' && o.paths.some((p) => /Baseplate|SpawnLocation/.test(p))), false, 'the default ground was left');
+  // RESTATED 2026-10-04 (owner's recording of round 2): the default SpawnLocation's star decal is removed and the spawn switched off,
+  // nothing else of the default ground is touched; the Baseplate and the spawn itself are not deleted.
+  assert.equal(ops.some((o) => o.op === 'delete_instances' && o.paths.some((p) => /Baseplate|SpawnLocation/.test(p) && !/^game\.Workspace\.SpawnLocation\.(Decal|Texture)$/.test(p))), false, 'the default ground was left (only the default spawn\'s decal goes)');
+  assert.ok(ops.some((o) => o.op === 'set_props' && o.path === 'game.Workspace.SpawnLocation' && o.props.Enabled?.v === false), 'the default spawn is switched off');
   assert.equal(ops.some((o) => o.op === 'set_props' && o.path === 'game.Lighting'), false, 'lighting was left');
-  assert.match(r.scene, /left as they were/);
+  assert.match(r.scene, /Baseplate was left as it was/);
   const cleared = studio();
   await CT.composeGame(cleared.ctx, { request: 'x', template: 'tycoon', clearDefaultGround: true, tycoon: TYCOON });
   assert.ok(cleared.ops.some((o) => o.op === 'delete_instances' && o.paths.includes('game.Workspace.Baseplate')), 'cleared when the agent asked');

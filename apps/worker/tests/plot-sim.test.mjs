@@ -115,13 +115,18 @@ test('the steps build a hub with 4 plots, every simulator system, its config and
   assert.ok(steps.some((s) => s.kind === 'place' && s.from === 'ServerStorage.AppleParts.HubSell'), 'the sell stand is placed');
 });
 
-test('nothing the agent did not name is deleted, moved or restyled: no Baseplate, no spawn, no Lighting, no screen of another object', () => {
+// RESTATED 2026-10-04 (owner's recording of round 2, a deliberate behaviour change): the default SpawnLocation's star decal sat in
+// the middle of the hub, so the composer now retires that one object (its decal removed, switched off and invisible: nothing of the
+// user's is deleted, and Enabled turns it back on). Everything else stays as it was: no Baseplate, no Lighting, no other screen.
+test('nothing the agent did not name is deleted, moved or restyled: no Baseplate, no Lighting, no screen of another object; the default spawn is only retired', () => {
   const steps = P.plotSimSteps(recipe({ hero: 'MyGadget' }));
-  assert.equal(steps.some((s) => s.kind === 'delete'), false, 'a composed simulator deletes nothing');
+  assert.deepEqual(steps.filter((s) => s.kind === 'delete').map((s) => s.paths), [['game.Workspace.SpawnLocation.Decal', 'game.Workspace.SpawnLocation.Texture']], 'only the default spawn\'s decal');
+  assert.deepEqual(steps.filter((s) => s.kind === 'set').map((s) => [s.path, s.props, s.optional]), [['game.Workspace.SpawnLocation', { Enabled: false, Transparency: 1, CanCollide: false }, true]], 'and the one switch that retires it');
   assert.equal(steps.some((s) => s.kind === 'set' && s.path === 'game.Lighting'), false);
   assert.equal(steps.some((s) => s.kind === 'create' && s.parent === 'game.Lighting'), false);
   const cleared = P.plotSimSteps(recipe({ clearDefaultGround: true }));
   assert.deepEqual(cleared.filter((s) => s.kind === 'delete').map((s) => s.paths), [['game.Workspace.Baseplate', 'game.Workspace.SpawnLocation']], 'only when the agent said the map replaces them');
+  assert.equal(cleared.some((s) => s.kind === 'set' && s.path === 'game.Workspace.SpawnLocation'), false, 'a deleted spawn is not also retired');
 });
 
 test('a renamed currency is found everywhere: the counter is named for it, the client config and the upgrades config carry it, no "$" is written', () => {

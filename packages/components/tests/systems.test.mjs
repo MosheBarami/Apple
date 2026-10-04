@@ -58,7 +58,8 @@ spec("shop: a purchase is refused for the right reason", function()
   eq(Shop.refusal(item, 2, 1, false, 100), "Place it on your own plot.")
   eq(Shop.refusal(item, nil, 1, false, 100), "Place it on your own plot.")
   eq(Shop.refusal(item, 1, 1, true, 100), "That spot is taken.")
-  eq(Shop.refusal(item, 1, 1, false, 29), "Not enough money.")
+  eq(Shop.refusal(item, 1, 1, false, 29, "Crystals"), "Not enough crystals.", "a shortfall names the game's own currency")
+  eq(Shop.refusal(item, 1, 1, false, 29), "Not enough yet.", "and never says money")
   eq(Shop.refusal(item, 1, 1, false, 30), nil)
 end)
 
@@ -164,7 +165,7 @@ spec("machines: income is base times level, multipliers stack, rebirth costs gro
   eq(rules.cost, 100); eq(rules.growth, 1.5); eq(rules.multiplier, 0.5, "the rest keep their defaults")
   eq(Machines.rebirthCost(rules, 0), 100); eq(Machines.rebirthCost(rules, 1), 150); eq(Machines.rebirthCost(rules, 2), 225)
   eq(Machines.rebirthCost(rules, 3), 337, "floored"); eq(Machines.rebirthCost(Machines.rebirthRules(nil), 0), 1000)
-  eq(Machines.rebirthRefusal(99, 100), "You need more money to rebirth."); eq(Machines.rebirthRefusal(100, 100), nil)
+  eq(Machines.rebirthRefusal(99, 100, "Crystals"), "You need more crystals to rebirth."); eq(Machines.rebirthRefusal(99, 100), "You need more to rebirth."); eq(Machines.rebirthRefusal(100, 100), nil)
   local pay = Machines.payouts({
     { owner = 1, item = "Drill", level = 2 }, { owner = 1, item = "Drill", level = 1 }, { owner = 2, item = "Drill", level = 1 },
     { owner = 2, item = "Rock", level = 1 }, { owner = nil, item = "Drill", level = 1 }, { owner = 3, item = "Drill", level = 1 },

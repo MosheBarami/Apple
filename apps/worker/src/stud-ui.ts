@@ -159,14 +159,17 @@ export interface HudItem { id: string; name: string; price: number; blurb?: stri
  * health, the menu, a shop of the game's own items and an upgrades panel. AppleGameUI (packages/components/gameui) binds
  * to these names and makes every piece work.
  */
-export function waveDefenseHud(items: HudItem[], words: Record<string, string>): InstanceSpecLite {
+export function waveDefenseHud(items: HudItem[], words: Record<string, string>, money: { currency?: string; symbol?: string } = {}): InstanceSpecLite {
+  // The game's own symbol (or the currency's first letter) on the coin and in every price: never a built-in "$".
+  const symbol = money.symbol ?? '';
+  const sign = symbol || Array.from(money.currency ?? '')[0]?.toUpperCase() || '#';
   const card = (it: HudItem, i: number): InstanceSpecLite => studSurface(`Item_${it.id}`, { size: [0, 150, 0, 210] }, 'cream', {
     tile: 60, corner: 12, order: i,
     children: [
       { className: 'Frame', name: 'Icon', props: { Size: udim2(1, -16, 0, 96), Position: udim2(0, 8, 0, 8), BackgroundTransparency: 1 } },
       studText('ItemName', it.name, { size: [1, -12, 0, 26], pos: [0.5, 0, 0, 104], anchor: [0.5, 0] }),
       studText('Info', it.blurb ?? '', { size: [1, -12, 0, 18], pos: [0.5, 0, 0, 130], anchor: [0.5, 0] }, { stroke: 1.5 }),
-      studButton('Buy', `$${it.price}`, { size: [1, -20, 0, 44], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, 'green', { tile: 32 }),
+      studButton('Buy', `${symbol}${it.price}`, { size: [1, -20, 0, 44], pos: [0.5, 0, 1, -10], anchor: [0.5, 1] }, 'green', { tile: 32 }),
       studSurface('Lock', { size: [1, 0, 1, 0] }, 'grey', {
         visible: false, tile: 60, corner: 12, z: 4, see: 0.35,
         children: [studText('Label', 'LOCKED', { size: [0.9, 0, 0, 34], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 5 })],
@@ -178,7 +181,7 @@ export function waveDefenseHud(items: HudItem[], words: Record<string, string>):
     children: [
       studText('ItemName', it.name, { size: [0.42, 0, 0, 30], pos: [0, 14, 0.5, 0], anchor: [0, 0.5] }, { align: 'Left' }),
       studText('Level', 'LV 1', { size: [0.2, 0, 0, 30], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }),
-      studButton('Buy', '$50', { size: [0, 130, 0, 46], pos: [1, -10, 0.5, 0], anchor: [1, 0.5] }, 'blue', { tile: 32 }),
+      studButton('Buy', `${symbol}50`, { size: [0, 130, 0, 46], pos: [1, -10, 0.5, 0], anchor: [1, 0.5] }, 'blue', { tile: 32 }),
     ],
   });
   return {
@@ -187,7 +190,7 @@ export function waveDefenseHud(items: HudItem[], words: Record<string, string>):
       studSurface('Coins', { size: [0, 250, 0, 66], pos: [0, 16, 0, 14] }, 'yellow', {
         tile: 44, corner: 12,
         children: [
-          // The coin: a round gold token with a dollar sign (an emoji would not draw in the game font).
+          // The coin: a round gold token with the game's own sign (an emoji would not draw in the game font).
           {
             className: 'Frame', name: 'Icon',
             props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: '#ffd23f', ZIndex: 2 },
@@ -195,7 +198,7 @@ export function waveDefenseHud(items: HudItem[], words: Record<string, string>):
               { className: 'UICorner', name: 'Round', props: { CornerRadius: udim(1, 0) } },
               { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } },
               { className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } },
-              studText('Sign', '$', { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
+              studText('Sign', sign, { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
             ],
           },
           studText('Value', '0', { size: [1, -126, 0.78, 0], pos: [0, 64, 0.5, 0], anchor: [0, 0.5] }, { align: 'Left' }),
@@ -469,8 +472,10 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
   const symbol = words.symbol ?? '';
   const sign = symbol || Array.from(currency)[0]?.toUpperCase() || '#';
 
+  // The first button (the shop, the thing to do first) is the primary action: taller than the others, which are the same weight as each other.
+  const PRIMARY_H = 88;
   const menuButton = (name: string, label: string, icon: string, colour: StudColour, order: number, badge: boolean, progress = false): InstanceSpecLite => {
-    const b = studSurface(name, { size: [1, 0, 0, progress ? 80 : 64] }, colour, {
+    const b = studSurface(name, { size: [1, 0, 0, progress ? 80 : order === 1 ? PRIMARY_H : 64] }, colour, {
       button: true, tile: 40, order, shine: true,
       children: [
         studSurface('IconBubble', { size: [0, 44, 0, 44], pos: [0, 10, 0.5, 0], anchor: [0, 0.5] }, 'cream', {
@@ -533,7 +538,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
       toast,
       {
         className: 'Frame', name: 'Menu',
-        props: { Size: udim2(0, 200, 0, 64 * 3 + 14 * 2 + 16), Position: udim2(0, 16, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundTransparency: 1 },
+        props: { Size: udim2(0, 200, 0, PRIMARY_H + 64 + 80 + 14 * 2 + 16), Position: udim2(0, 16, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundTransparency: 1 },
         children: [
           { className: 'UIListLayout', name: 'List', props: { Padding: udim(0, 14), SortOrder: enumOf('SortOrder', 'LayoutOrder') } },
           menuButton('Shop', words.shop ?? 'Shop', '\u{1F6D2}', 'green', 1, true),
