@@ -15,6 +15,7 @@
 // Rendered outside a QueryClient — the specimen book, a server render in a test — it is absent.
 import { useContext, useState } from 'react';
 import { QueryClientContext, useQuery } from '@tanstack/react-query';
+import { internalToCredits } from '@studpilot/shared';
 import { fetchMe } from '../../../lib/api';
 import { meterView } from '../../usage-meter-model';
 import {
@@ -24,8 +25,6 @@ import {
 } from '../../ai-elements/prompt-input';
 import { SlidingNumber } from './sliding-number';
 import './credits-ring.css';
-
-const COMPACT = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
 export function CreditsRing() {
   const client = useContext(QueryClientContext);
@@ -70,8 +69,8 @@ function Ring() {
           {view.allowanceRemaining === 0 && view.credits > 0
             // The day's allowance is gone but the account is not empty: a bare "0" read as "you are
             // out" on an account holding extra credits (measured 2026-09-23). Show what is spendable.
-            ? <span className="pk-credits__num">{COMPACT.format(view.credits)}</span>
-            : <SlidingNumber value={view.allowanceRemaining} className="pk-credits__num" />}
+            ? <span className="pk-credits__num">{view.creditsText}</span>
+            : <SlidingNumber value={internalToCredits(view.allowanceRemaining)} decimals={2} className="pk-credits__num" />}
         </button>
       </PromptInputHoverCardTrigger>
       <PromptInputHoverCardContent className="pk-credits__card" side="top">

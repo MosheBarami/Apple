@@ -11,12 +11,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD, buildsPerDay, buildsPerMonth } from '../packages/shared/src/index.ts';
+import {
+  PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PLAN_TABLE, LISTED_PLAN_IDS, INTERNAL_PER_CREDIT, TYPICAL_BUILD_CREDITS,
+  CREDITS_PER_BUILD, buildsPerDay, buildsPerMonth,
+} from '../packages/shared/src/index.ts';
 import { DAILY_NEURON_CEILING, NEURONS_PER_CREDIT, USD_PER_NEURON } from '../apps/worker/src/pricing.ts';
-import { copyProblems, planProblems, termProblems } from '../scripts/lib/offer-rules.mjs';
+import { copyProblems, limitProblems, planProblems, priceProblems, termProblems } from '../scripts/lib/offer-rules.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -46,13 +50,16 @@ test('it prints a real denominator first', () => {
 test('a free tier that cannot finish one build is a broken offer, and this one is', () => {
   // Computed, not restated: if the allowance is raised past one build this assertion flips, and it
   // should — the point is the RELATIONSHIP, not today's number.
+  // Rule 3 counts the SMALLEST quality-gated build (CREDITS_PER_BUILD ledger units); the page's
+  // "builds a day" counts the TYPICAL one (TYPICAL_BUILD_CREDITS). Free must afford both.
   const affords = Math.floor(PLAN_LIMITS.free.creditsPerDay / CREDITS_PER_BUILD);
-  assert.equal(affords, buildsPerDay('free'), 'the helper and the arithmetic must agree');
+  assert.ok(buildsPerDay('free') >= 1, 'a free day must afford at least one typical build');
+  assert.ok(affords >= buildsPerDay('free'), 'the smallest build cannot be dearer than the typical one');
 
   const r = run();
   if (affords === 0) {
     assert.equal(r.exit, 1, 'a free tier affording zero builds must fail the check');
-    assert.match(r.out, /the free plan grants \d+ Credits\/day and one quality-gated build costs \d+/);
+    assert.match(r.out, /the free plan grants \d+ ledger units\/day and one quality-gated build costs \d+/);
   } else {
     assert.doesNotMatch(r.out, /the free plan grants/, 'a sufficient free tier must not be reported');
   }
@@ -65,7 +72,7 @@ test('a plan promising more per day than the service can serve is reported', () 
   const over = PLAN_IDS.filter((id) => PLAN_LIMITS[id].creditsPerDay > ceiling);
   const r = run();
   for (const id of over) {
-    assert.match(r.out, new RegExp(`BROKEN: ${id} grants ${PLAN_LIMITS[id].creditsPerDay} Credits/day`));
+    assert.match(r.out, new RegExp(`BROKEN: ${id} grants ${PLAN_LIMITS[id].creditsPerDay} ledger units/day`));
   }
   if (over.length) assert.equal(r.exit, 1);
 });
@@ -106,14 +113,15 @@ test('the contractual promises a subscription product cannot make are gone', () 
 
 /* ------------------------------------------------------- the helpers are honest --- */
 
-test('builds-per-month floors rather than rounds', () => {
-  // A rounded-up figure is a promise the allowance cannot keep: 6,000 Credits at 77 each is 77
-  // builds and a remainder, not 78.
+test('builds-per-month can only understate what the credits buy', () => {
+  // A rounded-up figure is a promise the allowance cannot keep. "About N builds" is the pricing
+  // doc's figure, held to the typical build's cost: it may be less than the credits afford, never more.
   for (const id of PLAN_IDS) {
-    const exact = PLAN_LIMITS[id].creditsPerMonth / CREDITS_PER_BUILD;
-    assert.equal(buildsPerMonth(id), Math.floor(exact));
-    assert.ok(buildsPerMonth(id) * CREDITS_PER_BUILD <= PLAN_LIMITS[id].creditsPerMonth, `${id} promises more builds than it grants`);
+    const most = Math.floor(PLAN_TABLE[id].creditsPerMonth / TYPICAL_BUILD_CREDITS);
+    assert.equal(buildsPerMonth(id), PLAN_TABLE[id].approxBuilds);
+    assert.ok(buildsPerMonth(id) <= most, `${id} promises ${buildsPerMonth(id)} builds and its credits buy ${most}`);
   }
+  assert.equal(buildsPerDay('free'), Math.floor(PLAN_TABLE.free.creditsPerDay / TYPICAL_BUILD_CREDITS));
 });
 
 test('every plan in the ladder has copy, and every copy has a plan', () => {
@@ -128,13 +136,21 @@ test('every plan in the ladder has copy, and every copy has a plan', () => {
 });
 
 test('the ladder is monotonic — more money never buys less', () => {
-  // Not checked anywhere else, and the kind of thing that survives a careless edit to one row.
-  for (let i = 1; i < PLAN_IDS.length; i += 1) {
-    const lo = PLAN_LIMITS[PLAN_IDS[i - 1]];
-    const hi = PLAN_LIMITS[PLAN_IDS[i]];
-    assert.ok(hi.creditsPerDay > lo.creditsPerDay, `${PLAN_IDS[i]} grants no more per day than ${PLAN_IDS[i - 1]}`);
-    assert.ok(hi.creditsPerMonth > lo.creditsPerMonth, `${PLAN_IDS[i]} grants no more per month than ${PLAN_IDS[i - 1]}`);
+  // Not checked anywhere else, and the kind of thing that survives a careless edit to one row. The
+  // ladder is the DISPLAYED plans: the stored `enterprise` id carries Max's allowance and is not on it.
+  for (let i = 1; i < LISTED_PLAN_IDS.length; i += 1) {
+    const lo = PLAN_LIMITS[LISTED_PLAN_IDS[i - 1]];
+    const hi = PLAN_LIMITS[LISTED_PLAN_IDS[i]];
+    assert.ok(hi.creditsPerDay > lo.creditsPerDay, `${LISTED_PLAN_IDS[i]} grants no more per day than ${LISTED_PLAN_IDS[i - 1]}`);
+    assert.ok(hi.creditsPerMonth > lo.creditsPerMonth, `${LISTED_PLAN_IDS[i]} grants no more per month than ${LISTED_PLAN_IDS[i - 1]}`);
   }
+});
+
+test('what is enforced is the plan table times the credit unit, for every stored plan', () => {
+  assert.deepEqual(
+    limitProblems({ planIds: PLAN_IDS, table: PLAN_TABLE, limits: PLAN_LIMITS, internalPerCredit: INTERNAL_PER_CREDIT }),
+    [],
+  );
 });
 
 test('the monthly allowance is reachable within the month', () => {
@@ -169,7 +185,11 @@ test('the monthly allowance is reachable within the month', () => {
    it measures, which is an escape hatch, not a test.
    ============================================================================================ */
 
-/** A plan table that satisfies every rule, so each case below can break exactly one thing. */
+/**
+ * A plan table that satisfies every rule, so each case below can break exactly one thing. It is a
+ * SYNTHETIC table for exercising the rule functions: its numbers are not the product's, and nothing
+ * here reads or restates PLAN_TABLE.
+ */
 const HEALTHY = {
   planIds: ['free', 'paid'],
   limits: { free: { creditsPerDay: 231, creditsPerMonth: 2_310 }, paid: { creditsPerDay: 416, creditsPerMonth: 12_600 } },
@@ -204,7 +224,7 @@ test('RULE 2 FIRES: a plan granting more per day than the service can serve is r
     limits: { ...HEALTHY.limits, paid: { creditsPerDay: 6_000, creditsPerMonth: 12_600 } },
   });
   assert.equal(problems.length, 1, problems.join('\n'));
-  assert.match(problems[0], /paid grants 6000 Credits\/day but the WHOLE SERVICE can serve 833/);
+  assert.match(problems[0], /paid grants 6000 ledger units\/day but the WHOLE SERVICE can serve 833/);
   assert.match(problems[0], /exhausts the day for everyone/);
 });
 
@@ -214,7 +234,7 @@ test('RULE 3 FIRES: a free tier that cannot finish one build is reported', () =>
     limits: { ...HEALTHY.limits, free: { creditsPerDay: 60, creditsPerMonth: 1_800 } },
   });
   assert.equal(problems.length, 1, problems.join('\n'));
-  assert.match(problems[0], /the free plan grants 60 Credits\/day and one quality-gated build costs 77/);
+  assert.match(problems[0], /the free plan grants 60 ledger units\/day and one quality-gated build costs 77/);
 });
 
 test('RULE 1 EXEMPTS the free tier, and only from that rule', () => {
@@ -274,4 +294,63 @@ test('RULES 4 AND 5 READ THE SOURCE, NOT THE COMMENTARY ON IT', () => {
 
   // And the href's `//` must not have eaten the real claim on that line.
   assert.equal(copyProblems(commented, new Set([1])).length, 1);
+});
+
+test('RULE 6 FIRES: a limit that is not the table times the unit is reported, with both figures', () => {
+  const table = { free: { creditsPerDay: 5, creditsPerMonth: 30 } };
+  assert.deepEqual(
+    limitProblems({ planIds: ['free'], table, limits: { free: { creditsPerDay: 750, creditsPerMonth: 4_500 } }, internalPerCredit: 150 }),
+    [],
+    'the control: a limit that IS the table times the unit is clean',
+  );
+  const problems = limitProblems({
+    planIds: ['free'],
+    table,
+    limits: { free: { creditsPerDay: 231, creditsPerMonth: 4_500 } },
+    internalPerCredit: 150,
+  });
+  assert.equal(problems.length, 1, problems.join('\n'));
+  assert.match(problems[0], /free is enforced at 231 ledger units a day, but its plan table says 5 credits a day, which is 750/);
+});
+
+test('RULE 7 FIRES: a monthly price no plan charges is reported', () => {
+  const prices = new Set([9.99, 24.99]);
+  const problems = priceProblems(
+    [{ rel: 'fake/page.astro', src: '<p>Pro is $12 a month, Max is $40/month, or $24.99 per month.</p>' }],
+    prices,
+  );
+  assert.equal(problems.length, 2, problems.join('\n'));
+  assert.match(problems[0], /fake\/page\.astro states \$12 a month, which no plan charges/);
+  assert.match(problems[1], /states \$40 a month/);
+});
+
+test('RULE 7 IS SILENT on a plan price, a compute price, and a comment', () => {
+  const prices = new Set([9.99]);
+  assert.deepEqual(
+    priceProblems(
+      [{ rel: 'fake/page.astro', src: '<p>$9.99 a month. A Credit is $0.05 of compute.</p>\n// was $12 a month before the repricing' }],
+      prices,
+    ),
+    [],
+  );
+});
+
+test('THE SCRIPT HANDS RULES 4, 6 AND 7 THE REAL TABLES: credits for copy, ledger units for enforcement', () => {
+  // The rule functions above are pure, so they cannot tell which table they were handed. What makes
+  // the real run meaningful is the wiring in check-offer.mjs, asserted here: copy is held to the
+  // credits the plan table grants (never to ledger units, which no page quotes), the enforced limits
+  // are held to the table times the unit, and prices in copy are held to the table's prices.
+  // Raw source: its glob strings ('apps/site/**') defeat a comment stripper, and the patterns below are
+  // specific enough that a comment cannot satisfy them.
+  const src = readFileSync(join(ROOT, 'scripts', 'check-offer.mjs'), 'utf8');
+  assert.match(src, /PLAN_TABLE\[id\]\.creditsPerDay, PLAN_TABLE\[id\]\.creditsPerMonth/, 'copy is checked against the credits in the plan table');
+  assert.doesNotMatch(src, /PLAN_LIMITS\[id\]\.creditsPerDay, PLAN_LIMITS\[id\]\.creditsPerMonth/, 'copy must not be checked against ledger units');
+  assert.match(src, /limitProblems\(\{ planIds: PLAN_IDS, table: PLAN_TABLE, limits: PLAN_LIMITS, internalPerCredit: INTERNAL_PER_CREDIT \}\)/);
+  assert.match(src, /priceProblems\(sources, prices\)/);
+
+  // And with the tables the script builds, a ledger figure in a page is a finding, a credit figure is not.
+  const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_TABLE[id].creditsPerDay, PLAN_TABLE[id].creditsPerMonth]));
+  const ledger = copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_LIMITS.free.creditsPerMonth} Credits a month.</p>` }], enforced);
+  assert.equal(ledger.length, 1, 'a ledger-unit figure printed as credits is 150x too large and must be reported');
+  assert.deepEqual(copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_TABLE.free.creditsPerMonth} Credits a month.</p>` }], enforced), []);
 });

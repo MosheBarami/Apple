@@ -741,7 +741,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .plan.is-current::before { content:''; position:absolute; inset-block:0; inset-inline-start:-1px; width:3px; background:var(--accent); }
 .plan__head { display:flex; align-items:center; justify-content:space-between; } .plan__name { font-size:20px; }
 .plan__price { margin-block:20px; } .plan__amount { font-size:38px; letter-spacing:-.05em; } .plan__per { font-size:12px; color:var(--muted); }
-.plan__amount--talk { font-size:28px; } .plan__blurb { font-size:13px; } .plan__allowance { border-block:1px solid var(--line); padding-block:16px; }
+.plan__blurb { font-size:13px; } .plan__allowance { border-block:1px solid var(--line); padding-block:16px; }
 .plan__allowance-sub { display:block; font-size:12px; color:var(--muted); } .plan__list { padding-inline-start:16px; font-size:13px; flex:1; }
 .plan__support { font-size:12px; padding-block:12px; } .plan__support-label { display:block; color:var(--muted); }
 .plan__action { margin-top:16px; } .plan__on,.plan__soon,.plans-currency { font-size:12px; color:var(--muted); }

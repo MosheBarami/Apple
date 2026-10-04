@@ -44,20 +44,15 @@ test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
   }
 });
 
-test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are named', () => {
-  const shared = readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8');
-  // The declared plan ids. Two earlier versions of this parse were wrong and the assertion below
-  // caught both, which is the only reason they are worth mentioning: the first matched by
-  // indentation across the whole file and returned `free, builder, studio, enterprise, opts, free,
-  // builder, studio, enterprise` — `opts` is a function parameter and the list was doubled — and
-  // the second read `PlanId`, which is `keyof typeof PLAN_LIMITS` and carries no literal union at
-  // all, so it returned nothing. A guard whose own input is wrong reports the wrong defect, so the
-  // `>= 3` check is doing real work rather than decorating.
-  const block = /export const PLAN_LIMITS = \{([\s\S]*?)^\} as const;/m.exec(shared)
-    ?? /export const PLAN_LIMITS = \{([\s\S]*?)^\};/m.exec(shared);
-  assert.ok(block, 'PLAN_LIMITS moved — re-aim this test');
-  const ids = [...block[1].matchAll(/^\s{2}([a-z][a-z-]*):\s*\{\s*creditsPerDay/gm)].map((m) => m[1]);
-  assert.ok(ids.length >= 3, `only ${ids.length} plans parsed — the shape changed`);
+test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are named', async () => {
+  // The plans come from the shared PLAN_TABLE through PLAN_COPY, not from a parse of its source: the
+  // table moved twice (PLAN_LIMITS, then PLAN_TABLE) and each move broke the parse. A guard whose
+  // own input is wrong reports the wrong defect, so the `>= 3` check below is doing real work.
+  // `Pro` is a real plan name now (the stored id `builder` is shown as Pro), so what is checked is
+  // that a docs page names it only while the table does.
+  const { PLAN_COPY, LISTED_PLAN_IDS } = await import('../../../packages/shared/src/index.ts');
+  const ids = LISTED_PLAN_IDS.map((id) => PLAN_COPY[id].name);
+  assert.ok(ids.length >= 3, `only ${ids.length} plans listed — the shape changed`);
 
   for (const f of pages) {
     // A plan name is capitalised and stands alone. `Pro` inside `Protocol` is not a claim, and
@@ -82,7 +77,7 @@ test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are na
     // Pro is the one that was actually published — "Pro (when it ships) queues ahead", a tier, a
     // promise and a capability, none of them real — and it is the one word here with no other use.
     // A guard narrow enough to stay true beats a guard wide enough to be ignored.
-    if (!ids.includes('pro')) {
+    if (!ids.includes('Pro')) {
       assert.doesNotMatch(body, /\bPro\b(?![a-z])/,
         `${f} names a tier called Pro; the plans are ${ids.join(', ')}`);
     }

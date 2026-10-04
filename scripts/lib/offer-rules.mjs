@@ -28,7 +28,7 @@
  * Nothing here reads a file, runs git, or prints. That is the property that makes it testable.
  */
 
-/** Credit claims a page can make to a reader: "231 Credits a day", "12,600 Credits per month". */
+/** Credit claims a page can make to a reader: "30 Credits a day", "1,200 Credits per month". */
 export const CREDIT_CLAIM = /(\d[\d,]{1,8})\s*(?:Credits?|credits?)\s*(?:a|per|\/)\s*(day|month)/g;
 
 /**
@@ -65,11 +65,11 @@ export const stripComments = (src) =>
  *
  * @param {object} o
  * @param {string[]} o.planIds
- * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits  ledger units (PLAN_LIMITS)
  * @param {Record<string, {priceUsdMonthly: number|null}>} o.copy
- * @param {number} o.ceilingCredits  what the WHOLE SERVICE can serve in a day
- * @param {number} o.creditsPerBuild
- * @param {number} o.usdPerCredit
+ * @param {number} o.ceilingCredits  what the WHOLE SERVICE can serve in a day, in ledger units
+ * @param {number} o.creditsPerBuild  ledger units in one quality-gated build
+ * @param {number} o.usdPerCredit  dollars of compute per ledger unit
  * @param {number} o.margin
  * @param {string} [o.ceilingDetail] a human sentence naming where the ceiling comes from
  * @returns {{problems: string[], notes: string[]}}
@@ -102,7 +102,7 @@ export function planProblems({
     const floor = serveCost * margin;
     if (price <= floor) {
       problems.push(
-        `${id} charges $${price}/month for ${limits[id].creditsPerMonth.toLocaleString()} Credits, ` +
+        `${id} charges $${price}/month for ${limits[id].creditsPerMonth.toLocaleString()} ledger units, ` +
         `which cost $${serveCost.toFixed(2)} to serve — below the $${floor.toFixed(2)} floor at ${margin}x`,
       );
     } else {
@@ -117,7 +117,7 @@ export function planProblems({
     const day = limits[id].creditsPerDay;
     if (day > ceilingCredits) {
       problems.push(
-        `${id} grants ${day} Credits/day but the WHOLE SERVICE can serve ${ceilingCredits}` +
+        `${id} grants ${day} ledger units/day but the WHOLE SERVICE can serve ${ceilingCredits}` +
         `${ceilingDetail} One user on this plan exhausts the day for everyone.`,
       );
     }
@@ -128,11 +128,11 @@ export function planProblems({
   if (freeDay !== undefined) {
     if (freeDay < creditsPerBuild) {
       problems.push(
-        `the free plan grants ${freeDay} Credits/day and one quality-gated build costs ${creditsPerBuild} — ` +
+        `the free plan grants ${freeDay} ledger units/day and one quality-gated build costs ${creditsPerBuild} — ` +
         `a free user cannot complete a single build in a day, so the trial demonstrates the product not working`,
       );
     } else {
-      notes.push(`free: ${freeDay} Credits/day affords ${Math.floor(freeDay / creditsPerBuild)} build(s)`);
+      notes.push(`free: ${freeDay} ledger units/day affords ${Math.floor(freeDay / creditsPerBuild)} build(s) of ${creditsPerBuild}`);
     }
   }
 
@@ -176,6 +176,63 @@ export function termProblems(files) {
     for (const re of FOREVER) {
       const hit = re.exec(text);
       if (hit) problems.push(`${rel} promises "${hit[0]}" — a contractual term, and this product now has subscriptions`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Rule 6: what is enforced is what the table says, in the ledger's unit.
+ *
+ * The plan table is in credits (what a person is shown) and PLAN_LIMITS is in ledger units (what
+ * QuotaDO counts), INTERNAL_PER_CREDIT of them to a credit. They are one set of numbers only while
+ * the second is derived from the first; this is the check that says so, handed both tables, so a
+ * limit edited in one place and not the other is reported with both figures.
+ *
+ * @param {object} o
+ * @param {string[]} o.planIds
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.table credits
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits ledger units
+ * @param {number} o.internalPerCredit
+ * @returns {string[]}
+ */
+export function limitProblems({ planIds, table, limits, internalPerCredit }) {
+  const problems = [];
+  for (const id of planIds) {
+    for (const [field, per] of [['creditsPerDay', 'day'], ['creditsPerMonth', 'month']]) {
+      const want = table[id][field] * internalPerCredit;
+      if (limits[id][field] !== want) {
+        problems.push(
+          `${id} is enforced at ${limits[id][field]} ledger units a ${per}, but its plan table says ` +
+          `${table[id][field]} credits a ${per}, which is ${want}`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/** A monthly price in copy: "$9.99 a month", "$12/month", "$24.99 per month". */
+export const PRICE_CLAIM = /\$(\d[\d,]*(?:\.\d{2})?)\s*(?:\/|a\s+|per\s+)(month|mo\b)/gi;
+
+/**
+ * Rule 7: a monthly price a page states is a price some plan charges.
+ *
+ * A price typed into copy is a price free to outlive the plan table: the site said $12 and $40 a
+ * month after the owner had decided $9.99 and $24.99. Prices are matched only in a "per month"
+ * context, so a dollar figure for AI compute ("$0.05") is not a plan price.
+ *
+ * @param {{rel: string, src: string}[]} files
+ * @param {Set<number>} prices every monthly price some plan charges
+ */
+export function priceProblems(files, prices) {
+  const problems = [];
+  for (const { rel, src } of files) {
+    for (const m of stripComments(src).matchAll(PRICE_CLAIM)) {
+      const claimed = Number(m[1].replace(/,/g, ''));
+      if (!prices.has(claimed)) {
+        problems.push(`${rel} states $${m[1]} a month, which no plan charges`);
+      }
     }
   }
   return problems;

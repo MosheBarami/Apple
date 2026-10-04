@@ -11,7 +11,7 @@
 //   1. the site and /pricing return 200
 //   2. zero user-visible "Golem"
 //   3. zero "$0 forever" / "No card required, ever" / "never be charged"
-//   4. the published free quota equals PLAN_LIMITS.free.creditsPerDay
+//   4. the published free quota equals PLAN_TABLE.free.creditsPerDay (credits, as the page quotes them)
 //
 // TWO THINGS THIS GETS RIGHT THAT THE HAND-RUN VERSION GOT WRONG.
 //
@@ -66,9 +66,11 @@ async function get(path) {
 const shared = (() => {
   try { return readFileSync(join(ROOT, 'packages', 'shared', 'src', 'index.ts'), 'utf8'); } catch { return null; }
 })();
-const freeMatch = shared?.match(/free: \{ creditsPerDay: ([\d_]+), creditsPerMonth: ([\d_]+) \}/);
+// PLAN_TABLE is the one pricing config and is in credits, which is what /pricing publishes. (PLAN_LIMITS,
+// the ledger-unit table QuotaDO counts in, is derived from it and is not what a page quotes.)
+const freeMatch = shared?.match(/free: \{ name: 'Free', priceUsdMonthly: 0, creditsPerDay: ([\d_]+), creditsPerMonth: ([\d_]+)/);
 if (!freeMatch) {
-  console.error('probe-s1: cannot read PLAN_LIMITS.free from packages/shared/src/index.ts');
+  console.error('probe-s1: cannot read PLAN_TABLE.free from packages/shared/src/index.ts');
   console.error('Clause 4 compares the PUBLISHED quota against that constant. With the constant unreadable there is');
   console.error('nothing to compare against, and passing the other three clauses off as a proven station would be reporting');
   console.error('a station proven over a clause that was never checked.');
@@ -132,8 +134,8 @@ if (!published.length) {
   fail('no per-day Credit figure is published on /pricing at all', 'clause 4 — nothing to compare against the constant');
 } else if (!published.some((p) => p.day === FREE_PER_DAY && p.month === FREE_PER_MONTH)) {
   fail(
-    `no published row matches the free plan: page has ${published.map((p) => `${p.day}/day`).join(', ')}, PLAN_LIMITS.free is ${FREE_PER_DAY}/day`,
-    'clause 4 — the published free quota must equal PLAN_LIMITS.free.creditsPerDay',
+    `no published row matches the free plan: page has ${published.map((p) => `${p.day}/day`).join(', ')}, PLAN_TABLE.free is ${FREE_PER_DAY}/day`,
+    'clause 4 — the published free quota must equal PLAN_TABLE.free.creditsPerDay',
   );
 }
 
@@ -165,7 +167,7 @@ console.log(`S1 probed against ${BASE} at HEAD ${sha.slice(0, 7)}`);
 console.log(`  clause 1  / ${pages['/'].status} ${pages['/'].contentType}, /pricing ${pages['/pricing'].status} ${pages['/pricing'].contentType}`);
 console.log(`  clause 2  user-visible Golem: ${golem.length}`);
 console.log(`  clause 3  forbidden phrases: ${forbidden.length}`);
-console.log(`  clause 4  published ${published.map((p) => p.day).join('/')} per day against PLAN_LIMITS.free ${FREE_PER_DAY}`);
+console.log(`  clause 4  published ${published.map((p) => p.day).join('/')} per day against PLAN_TABLE.free ${FREE_PER_DAY}`);
 
 if (findings.length) {
   for (const f of findings) console.error(`  ${f.what} — ${f.why}`);

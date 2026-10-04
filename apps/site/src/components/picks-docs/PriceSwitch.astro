@@ -28,7 +28,7 @@ const { creditsPerBuild } = Astro.props;
     <button type="button" aria-pressed="true" data-view="month">A month</button>
     <button type="button" aria-pressed="false" data-view="build">A build</button>
   </div>
-  <p class="pswitch__hint">One build is about {creditsPerBuild} Credits.</p>
+  <p class="pswitch__hint">A typical build is about {creditsPerBuild.toFixed(2)} Credits.</p>
 </div>
 
 <style>

@@ -1,5 +1,5 @@
 ---
-import { PLAN_LIMITS } from '@studpilot/shared';
+import { PLAN_TABLE } from '@studpilot/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import Folder from '../../components/picks-docs/Folder.astro';
@@ -16,7 +16,7 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
  * promise reached the reader BEFORE the correction did, and the correction only arrived if they
  * clicked. Same constant, same answer, one sentence earlier.
  */
-const free = PLAN_LIMITS.free;
+const free = PLAN_TABLE.free;
 ---
 
 <DocsLayout

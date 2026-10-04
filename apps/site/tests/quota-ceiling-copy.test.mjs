@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * "Credits reset to your full daily amount every day."
  *
- * True for three plans, false for the only one anyone can currently have. Free grants 231 a day
- * against 2,310 a month, and `quotaState` spends the MINIMUM of the two, so the eleventh day of
- * every month returns nothing — while the pricing page computed "≈ requests a free day" from the
- * daily figure and the docs page called Credits "daily energy" that "refills to full once a day".
+ * Free grants a daily figure that is a small multiple of its monthly one, and `quotaState` spends
+ * the MINIMUM of the two, so the day after the cutoff returns nothing — while the pricing page
+ * computed requests from the daily figure and the docs page called Credits "daily energy" that
+ * "refills to full once a day". The figures are PLAN_TABLE's and are never restated here.
  *
  * Nobody typed a wrong number. Both numbers were right and were printed side by side on both pages;
  * what was missing was the sentence saying which of them wins. That is the failure this pins: a
@@ -47,27 +47,30 @@ test('the guard fails on the sentence that shipped', () => {
 test('while the ceiling bites, both pages derive the cutoff rather than restating the daily rate', async () => {
   // No catch: a specifier that stops resolving must turn this red, not make it vacuous.
   const shared = await import('../../../packages/shared/src/index.ts');
-  const bites = shared.monthlyCeilingBitesFirst('free');
+  const { PLAN_TABLE, LISTED_PLAN_IDS } = shared;
 
-  // The arithmetic this whole test exists for, asserted rather than assumed.
-  assert.equal(shared.fullRateDays('free'), 10);
-  assert.equal(bites, true, 'free no longer hits its ceiling early — rewrite these guards, do not delete them');
+  // The arithmetic this whole test exists for, asserted from the config rather than a typed 10.
+  const expectedFree = Math.floor(PLAN_TABLE.free.creditsPerMonth / PLAN_TABLE.free.creditsPerDay);
+  assert.equal(shared.fullRateDays('free'), expectedFree);
+  assert.equal(shared.monthlyCeilingBitesFirst('free'), true, 'free no longer hits its ceiling early — rewrite these guards, do not delete them');
 
   for (const [name, text] of [['pricing.astro', pricing], ['credits-and-limits.astro', credits]]) {
     assert.match(text, /monthlyCeilingBitesFirst/, `${name} does not ask whether the ceiling bites`);
     assert.match(text, /fullRateDays/, `${name} states no cutoff, so the number can drift out of the prose`);
     assert.match(text, /monthly ceiling/i, `${name} never names the ceiling in shipped copy`);
   }
-});
 
-test('the plans that clear a month are not slandered by the same guard', async () => {
-  const shared = await import('../../../packages/shared/src/index.ts');
-  // If this ever flips, the copy above says something false about a PAID plan, which is worse.
-  for (const plan of ['builder', 'studio', 'enterprise']) {
-    assert.equal(
-      shared.monthlyCeilingBitesFirst(plan),
-      false,
-      `${plan} now hits its monthly ceiling in ${shared.fullRateDays(plan)} days and the copy does not say so`,
-    );
+  // And what the BUILT pages say is the config's cutoff for every plan the ceiling bites on.
+  for (const [name, rel] of [['pricing', 'pricing/index.html'], ['credits-and-limits', 'docs/credits-and-limits/index.html']]) {
+    const file = new URL(`../dist/${rel}`, import.meta.url);
+    if (!existsSync(file)) continue;
+    const html = readFileSync(file, 'utf8').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    for (const id of LISTED_PLAN_IDS.filter((p) => shared.monthlyCeilingBitesFirst(p))) {
+      const t = PLAN_TABLE[id];
+      assert.ok(
+        html.includes(`${t.creditsPerDay} a day against ${t.creditsPerMonth} a month`) && html.includes(`${shared.fullRateDays(id)} full days`),
+        `${name}: no derived cutoff for ${t.name} (${t.creditsPerDay} a day against ${t.creditsPerMonth} a month)`,
+      );
+    }
   }
 });

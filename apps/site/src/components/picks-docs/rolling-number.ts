@@ -5,8 +5,8 @@
  * Those ship under the Motion+ licence, so no code is taken from them: each digit is a column of
  * 0-9 that slides to its value, columns are matched from the right so a unit ("$", "Credits")
  * stays put while the magnitude changes, and new columns fade in. The formatting is whatever
- * string the caller hands over (Intl in practice), so "$12" can become "$0.07" and "2,310" can
- * become "12,600" without the component knowing what a currency is.
+ * string the caller hands over (Intl in practice), so "$9.99" can become "$0.14" and "28" can
+ * become "98" without the component knowing what a currency is.
  *
  * Screen readers get the plain string: the columns are aria-hidden and a visually hidden copy of
  * the text sits beside them. The ten digits of a column are DRAWN, not written: each is CSS

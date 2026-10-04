@@ -11,7 +11,6 @@
 // known it says so rather than printing a zero.
 import { useQuery } from '@tanstack/react-query';
 import { fetchMe } from '../../../lib/api';
-import { formatNumber } from '../../../lib/format';
 import { meterView } from '../../usage-meter-model';
 import { RollingNumber } from './rolling-number';
 import './user-button.css';
@@ -23,7 +22,6 @@ export function AccountMenuHeader({ name, email }: { name: string | null; email:
   const primary = name ?? email ?? 'Account';
   const secondary = name ? email : null;
   const initial = (primary[0] ?? '?').toUpperCase();
-  const left = view.allowanceRemaining + view.credits;
 
   return (
     <div className="pk-ubtn" role="presentation">
@@ -39,8 +37,8 @@ export function AccountMenuHeader({ name, email }: { name: string | null; email:
       <div className="pk-ubtn__credits">
         <span>Credits</span>
         {known ? (
-          <b aria-label={`${formatNumber(left)} Credits left`}>
-            <RollingNumber value={formatNumber(left)} />
+          <b aria-label={`${view.spendableText} Credits left`}>
+            <RollingNumber value={view.spendableText} />
           </b>
         ) : (
           <b className="pk-ubtn__unknown">{me.isPending ? 'Checking…' : 'Not known right now'}</b>

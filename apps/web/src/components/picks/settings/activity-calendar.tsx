@@ -10,6 +10,7 @@
 import { useState, type CSSProperties } from 'react';
 import { spring } from './motion';
 import { formatSettings } from '../../../lib/format';
+import { formatCredits } from '@studpilot/shared';
 import './activity-calendar.css';
 
 export interface CalendarDay {
@@ -56,7 +57,7 @@ export function ActivityCalendar({ days, today = new Date() }: { days: CalendarD
       </p>
       <div className="pk-cal__grid" role="list" aria-label={`Building activity for the last ${WEEKS} weeks`} onMouseLeave={() => setTip(null)}>
         {cells.map((c, i) => {
-          const text = c.future ? `${longDay(c.day)}: still to come` : `${longDay(c.day)}: ${c.events} ${c.events === 1 ? 'request' : 'requests'}, ${c.credits} Credits`;
+          const text = c.future ? `${longDay(c.day)}: still to come` : `${longDay(c.day)}: ${c.events} ${c.events === 1 ? 'request' : 'requests'}, ${formatCredits(c.credits)} Credits`;
           return (
             <span
               key={c.day}

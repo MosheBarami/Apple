@@ -51,7 +51,9 @@ test('/pricing discloses the shared ceiling, with the figure derived from the wo
   const html = flat(readFileSync(dist('pricing/index.html'), 'utf8'));
 
   const ceiling = num(workerPricing, 'FREE_NEURONS_PER_DAY') + num(workerPricing, 'BILLABLE_NEURONS_PER_DAY');
-  const perCredit = num(shared, 'NEURONS_PER_CREDIT');
+  // A credit is INTERNAL_PER_CREDIT ledger units of NEURONS_PER_CREDIT neurons each, so the service-wide
+  // pool is quoted in the credits a person is shown.
+  const perCredit = num(shared, 'NEURONS_PER_CREDIT') * num(shared, 'INTERNAL_PER_CREDIT');
   const serviceCredits = Math.floor(ceiling / perCredit);
 
   assert.ok(
@@ -120,7 +122,7 @@ test('the a/an slip in /docs/updating is gone, and nowhere else', () => {
 // The guard can fail.
 // ---------------------------------------------------------------------------
 test('the guard rejects the pages that shipped', () => {
-  assert.doesNotMatch('One build costs about 77 Credits, so every figure above is a number of builds.', /shared building capacity/i);
+  assert.doesNotMatch('A typical build costs about 1.40 Credits, so every allowance above is a number of builds.', /shared building capacity/i);
   assert.doesNotMatch(
     '<p>Everything to do with money lives in the billing portal.</p>',
     /no way to become a paying customer yet/i,

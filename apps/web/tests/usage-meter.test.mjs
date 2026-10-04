@@ -37,13 +37,21 @@ const out = join(mkdtempSync(join(tmpdir(), 'usage-')), 'usage.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, 'src', 'components', 'usage-meter-model.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
-const { meterView, resetsIn, nextMonthResetIso, spendByKind, usageKindLabel, periodComparisonLine } = await import(out);
+const { meterView, resetsIn, nextMonthResetIso, spendByKind, usageKindLabel, periodComparisonLine, daysInCredits } = await import(out);
 
 const sharedOut = join(mkdtempSync(join(tmpdir(), 'shared-')), 'shared.mjs');
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + sharedOut], { stdio: 'pipe' });
-const { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD } = await import(sharedOut);
+const {
+  PLAN_LIMITS, PLAN_COPY, PLAN_TABLE, INTERNAL_PER_CREDIT, TYPICAL_BUILD_CREDITS, formatCredits,
+} = await import(sharedOut);
+
+// The meter's fields are LEDGER units (what QuotaDO counts) and its sentences are CREDITS with two
+// decimals, so a test that checks a sentence converts the same way the product does.
+const credits = (ledger) => formatCredits(ledger / INTERNAL_PER_CREDIT);
+// One typical build, in ledger units: what the builds hint divides by.
+const BUILD = Math.round(TYPICAL_BUILD_CREDITS * INTERNAL_PER_CREDIT);
 
 const NOW = Date.UTC(2026, 8, 14, 12, 0, 0);
 const quota = (over = {}) => ({
@@ -109,9 +117,26 @@ test('allowance and credits are reported as separate numbers', () => {
   assert.equal(v.allowanceRemaining, 12);
   assert.equal(v.credits, 500);
   assert.equal(v.allowanceRemaining + v.credits, 512);
-  // the headline is the ALLOWANCE, never the sum — 512 would imply today's budget is 512
-  assert.match(v.headline, /\b12\b/);
-  assert.doesNotMatch(v.headline, /512/);
+  // the headline is the ALLOWANCE, never the sum — the sum would imply today's budget is that much
+  assert.ok(v.headline.includes(credits(12)), v.headline);
+  assert.ok(!v.headline.includes(credits(512)), v.headline);
+  assert.equal(v.allowanceRemainingText, credits(12));
+  assert.equal(v.creditsText, credits(500));
+  assert.equal(v.spendableText, credits(512));
+});
+
+test('THE WORDS ARE CREDITS WITH TWO DECIMALS, DERIVED FROM THE PLAN TABLE', () => {
+  // A fresh Free day: the figures come from PLAN_TABLE (credits), the fields from PLAN_LIMITS (ledger).
+  const free = PLAN_TABLE.free;
+  const v = meterView(quota({ plan: 'free', allowanceRemaining: PLAN_LIMITS.free.creditsPerDay, creditsUsedToday: 0 }), NOW);
+  assert.equal(v.headline, `${formatCredits(free.creditsPerDay)} Credits left today`);
+  assert.equal(v.detail, `of ${formatCredits(free.creditsPerDay)} a day`);
+  assert.match(v.headline, /^\d+\.\d{2} Credits left today$/, 'two decimals, always');
+  assert.equal(v.allowanceTotalText, formatCredits(free.creditsPerDay));
+  // and a balance that is not a whole credit keeps its cents
+  const part = meterView(quota({ allowanceRemaining: 531 }), NOW);
+  assert.equal(part.allowanceRemainingText, formatCredits(531 / INTERNAL_PER_CREDIT));
+  assert.match(part.headline, /^\d+\.\d{2} Credits left today$/);
 });
 
 test('the two kinds of zero are different sentences with different next actions', () => {
@@ -123,7 +148,7 @@ test('the two kinds of zero are different sentences with different next actions'
   assert.equal(trulyEmpty.tone, 'bad');
   assert.equal(spentButFunded.nextAction, null, 'nothing is blocked, so nothing is demanded');
   assert.ok(trulyEmpty.nextAction, 'a dead stop must name the next action');
-  assert.match(spentButFunded.detail, /300/, 'the purchased balance must still be visible');
+  assert.ok(spentButFunded.detail.includes(credits(300)), 'the purchased balance must still be visible');
 });
 
 // --- 3. an unreadable quota is not a healthy one ----------------------------------------
@@ -144,8 +169,8 @@ test('a missing or malformed quota is unknown, never good and never bad', () => 
 test('the bar fills against the plan total and is clamped', () => {
   // The RELATIONSHIP is asserted, not a round number. This said 0.5 against a fixture of 30-of-60,
   // so the literal was a second copy of an allowance — the one thing rule 1 of this component
-  // forbids, in the test written to enforce it. And free is 231 a day, which is three whole builds
-  // and therefore odd, so "half" does not land on a tidy fraction anyway.
+  // forbids, in the test written to enforce it. Free's day is a whole number of credits but an odd
+  // number of ledger units, so "half" does not land on a tidy fraction anyway.
   const total = PLAN_LIMITS.free.creditsPerDay;
   const some = Math.floor(total / 2);
   assert.equal(meterView(quota({ allowanceRemaining: some, plan: 'free' }), NOW).allowanceFraction, some / total);
@@ -162,16 +187,17 @@ test('running low is warned before it is spent', () => {
 });
 
 test('the builds hint is withheld below one whole build rather than shown as zero', () => {
-  const under = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD - 1, credits: 0 }), NOW);
+  // A build here is the pricing doc's typical build (TYPICAL_BUILD_CREDITS), in ledger units.
+  const under = meterView(quota({ allowanceRemaining: BUILD - 1, credits: 0 }), NOW);
   assert.equal(under.buildsHint, null, '"0 builds" reads as a fault in the account');
-  const over = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD * 3, credits: 0 }), NOW);
+  const over = meterView(quota({ allowanceRemaining: BUILD * 3, credits: 0 }), NOW);
   assert.match(over.buildsHint, /3 more builds/);
-  const one = meterView(quota({ allowanceRemaining: CREDITS_PER_BUILD, credits: 0 }), NOW);
+  const one = meterView(quota({ allowanceRemaining: BUILD, credits: 0 }), NOW);
   assert.match(one.buildsHint, /1 more build\b/, 'singular, not "1 more builds"');
 });
 
 test('the builds hint counts purchased credits, because they are spendable too', () => {
-  const v = meterView(quota({ allowanceRemaining: 0, credits: CREDITS_PER_BUILD * 2 }), NOW);
+  const v = meterView(quota({ allowanceRemaining: 0, credits: BUILD * 2 }), NOW);
   assert.match(v.buildsHint, /2 more builds/);
 });
 
@@ -317,8 +343,28 @@ test('a concrete ledger row with a non-ProductMode suffix stays counted without 
 
 test('an aggregate extra balance does not claim it was purchased rather than granted', () => {
   const view = meterView(quota({ allowanceRemaining: 0, credits: 300, creditsRemaining: 300 }), NOW);
-  assert.match(view.detail, /300 extra credits/);
+  assert.ok(view.detail.includes(`${credits(300)} extra credits`), view.detail);
   assert.doesNotMatch(view.detail, /purchased/);
+});
+
+test('THE HISTORY IS CONVERTED ONCE, AND THE PARTS STILL SUM TO THE WHOLE', () => {
+  // The server sends ledger units. The page converts the days once (daysInCredits) and everything it
+  // draws from them, the chart, the live panel and the breakdown, is then in credits.
+  const converted = daysInCredits(DAYS);
+  assert.equal(converted.length, DAYS.length);
+  assert.deepEqual(converted.map((d) => d.day), DAYS.map((d) => d.day), 'only the figures change');
+  assert.equal(converted[0].events, 3, 'and the request count is a count, not credits');
+  for (let i = 0; i < DAYS.length; i += 1) {
+    assert.equal(converted[i].credits, DAYS[i].credits / INTERNAL_PER_CREDIT);
+    assert.equal(
+      converted[i].kinds.reduce((n, k) => n + k.credits, 0),
+      DAYS[i].kinds.reduce((n, k) => n + k.credits, 0) / INTERNAL_PER_CREDIT,
+    );
+  }
+  const total = DAYS.reduce((n, d) => n + d.credits, 0) / INTERNAL_PER_CREDIT;
+  assert.ok(Math.abs(spendByKind(converted).reduce((n, r) => n + r.credits, 0) - total) < 1e-9);
+  assert.equal(DAYS[0].credits, 10, 'the input is not mutated');
+  assert.deepEqual(daysInCredits([{ day: '2026-09-10', credits: 150 }]), [{ day: '2026-09-10', credits: 1 }], 'a day with no breakdown stays without one');
 });
 
 test('THE BIGGEST SPEND IS FIRST, because that is the one worth knowing about', () => {
@@ -362,14 +408,15 @@ test('THE COMPARISON IS OMITTED ENTIRELY WHEN THERE IS NOTHING TO COMPARE', () =
 });
 
 test('a real comparison names both figures and which way it went', () => {
+  // The history is in ledger units, like the quota; the sentence is credits with two decimals.
   const up = periodComparisonLine(1200, { month: '2026-08', credits: 900 });
-  assert.ok(up.includes('1,200') || up.includes('1200'), up);
-  assert.ok(up.includes('900'), up);
+  assert.ok(up.includes(credits(1200)), up);
+  assert.ok(up.includes(credits(900)), up);
   assert.match(up, /last month/i);
   assert.doesNotMatch(up, /undefined|NaN|null/, up);
 
   const down = periodComparisonLine(300, { month: '2026-08', credits: 900 });
-  assert.ok(down.includes('300') && down.includes('900'), down);
+  assert.ok(down.includes(credits(300)) && down.includes(credits(900)), down);
   assert.notEqual(up, down, 'the two directions must not read identically');
 });
 

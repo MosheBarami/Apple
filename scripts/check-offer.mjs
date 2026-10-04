@@ -19,7 +19,12 @@
 //   3. A free plan whose daily allowance does not afford one complete quality-gated build. A free
 //      tier that cannot finish a single job is not a trial; it is a demonstration that the product
 //      does not work.
-//   4. A quota stated in the marketing site or the app that differs from the enforced constant.
+//   4. A quota stated in the marketing site or the app that differs from the plan table. Copy states
+//      credits (PLAN_TABLE), so a figure is checked against the credits a plan grants, not against the
+//      ledger units QuotaDO counts in.
+//   5. A contractual term ("free forever", "never be charged") in copy.
+//   6. An enforced limit (PLAN_LIMITS, ledger units) that is not the plan table times INTERNAL_PER_CREDIT.
+//   7. A monthly price in copy that no plan charges.
 //
 // §12.5 puts price points, entitlements and free-allowance size in the OWNER's hands. So this
 // checker never edits a number — it measures the relationships and names which one is broken, and
@@ -29,10 +34,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { copyProblems, planProblems, termProblems } from './lib/offer-rules.mjs';
+import { copyProblems, limitProblems, planProblems, priceProblems, termProblems } from './lib/offer-rules.mjs';
 
 import { createHash } from 'node:crypto';
-import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD } from '../packages/shared/src/index.ts';
+import { PLAN_COPY, PLAN_IDS, PLAN_LIMITS, PLAN_TABLE, INTERNAL_PER_CREDIT, CREDITS_PER_BUILD } from '../packages/shared/src/index.ts';
 import {
   BILLABLE_NEURONS_PER_DAY,
   DAILY_NEURON_CEILING,
@@ -89,7 +94,8 @@ console.log(`DENOMINATOR ${copySurface.length} files; EXCEPTIONS ${EXCEPTIONS.le
 // Measured: the daily-ceiling rule replaced by `if (false)` and the contractual-terms list emptied
 // to `[]` both left that suite at 12/12 green, and G-ORACLE-3 could not be falsified. Violating
 // inputs have to come from somewhere other than the tree being checked.
-const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_LIMITS[id].creditsPerDay, PLAN_LIMITS[id].creditsPerMonth]));
+const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_TABLE[id].creditsPerDay, PLAN_TABLE[id].creditsPerMonth]));
+const prices = new Set(PLAN_IDS.map((id) => PLAN_COPY[id].priceUsdMonthly).filter((p) => p !== null && p > 0));
 const ceilingCredits = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
 
 const sources = copySurface.flatMap((rel) => {
@@ -111,7 +117,9 @@ const { problems: planIssues, notes: note } = planProblems({
 
 const problems = [
   ...planIssues,
+  ...limitProblems({ planIds: PLAN_IDS, table: PLAN_TABLE, limits: PLAN_LIMITS, internalPerCredit: INTERNAL_PER_CREDIT }),
   ...copyProblems(sources, enforced),
+  ...priceProblems(sources, prices),
   ...termProblems(sources),
 ];
 

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
-import { meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
+import { creditsText, daysInCredits, meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { formatNumber, formatSettings } from '../lib/format';
 import { Failure } from '../components/failure';
@@ -16,7 +16,9 @@ import {
   PRODUCT_MODELS,
   PRODUCT_MODEL_INFO,
   MODE_INFO,
+  formatCredits,
   formatMoney,
+  internalToCredits,
   isPlanId,
   type PlanId,
 } from '@studpilot/shared';
@@ -83,8 +85,9 @@ const MODELS = PRODUCT_MODELS;
  * price rendered as NaN Credits is a lie with a number in it.
  */
 interface RequestCost {
-  /** The published figure, en-dashed for reading: "2", "4–18". */
+  /** The published figure as credits for reading, en-dashed: "0.03–0.12". */
   published: string;
+  /** The range in LEDGER units, because it divides a ledger-unit balance in requestsLeftLine. */
   low: number;
   high: number;
 }
@@ -95,7 +98,9 @@ function requestCost(): RequestCost | null {
   const low = parts[0] ?? NaN;
   const high = parts.length === 2 ? (parts[1] ?? NaN) : low;
   if (!(Number.isFinite(low) && Number.isFinite(high) && low > 0 && high >= low)) return null;
-  return { published: published.replace('-', '–'), low, high };
+  // MODE_INFO is in ledger units (INTERNAL_PER_CREDIT to a credit); a person is shown credits.
+  const text = low === high ? formatCredits(internalToCredits(low)) : `${formatCredits(internalToCredits(low))}–${formatCredits(internalToCredits(high))}`;
+  return { published: text, low, high };
 }
 
 const REQUEST_COST = requestCost();
@@ -164,7 +169,7 @@ function CreditsRing({ remaining, daily, period }: { remaining: number; daily: n
       height="140"
       viewBox="0 0 140 140"
       role="img"
-      aria-label={`${remaining} of ${daily} Credits of allowance remaining ${window}`}
+      aria-label={`${creditsText(remaining)} of ${creditsText(daily)} Credits of allowance remaining ${window}`}
     >
       <circle cx="70" cy="70" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="9" />
       <circle
@@ -180,10 +185,10 @@ function CreditsRing({ remaining, daily, period }: { remaining: number; daily: n
         className="ring-arc"
       />
       <text x="70" y="68" textAnchor="middle" className="ring-number">
-        {Math.round(shown)}
+        {creditsText(shown)}
       </text>
       <text x="70" y="90" textAnchor="middle" className="ring-caption">
-        of {daily}
+        of {creditsText(daily)}
       </text>
     </svg>
   );
@@ -530,6 +535,8 @@ function UsageBars({ days }: { days: UsageDay[] }) {
  * a paused tab or a failed refresh turns it to "Paused" rather than showing old numbers as current.
  */
 const LIVE_EVERY = 30_000;
+// `left` and every day's credits are CREDITS (two decimals), already converted from the ledger's units
+// by the caller (daysInCredits, internalToCredits); this panel only draws them.
 function RightNow({ left, days, updatedAt }: { left: number; days: UsageDay[]; updatedAt: number }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -542,13 +549,13 @@ function RightNow({ left, days, updatedAt }: { left: number; days: UsageDay[]; u
   const bars = Array.from({ length: 14 }, (_, k) => {
     const d = new Date(Date.now() - (13 - k) * 864e5).toISOString().slice(0, 10);
     const v = byDay.get(d) ?? 0;
-    return { key: d, value: v, label: `${d}: ${v} Credits` };
+    return { key: d, value: v, label: `${d}: ${formatCredits(v)} Credits` };
   });
   return (
     <LiveStats
       stats={[
-        { label: 'Credits left', value: left },
-        { label: 'Spent today', value: todayRow?.credits ?? 0 },
+        { label: 'Credits left', value: left, decimals: 2 },
+        { label: 'Spent today', value: todayRow?.credits ?? 0, decimals: 2 },
         { label: 'Builds today', value: todayRow?.events ?? 0 },
       ]}
       bars={bars}
@@ -591,7 +598,7 @@ function SpendBreakdown({ days }: { days: UsageDay[] }) {
                 style={{ width: `${total > 0 ? Math.max(2, (s.credits / total) * 100) : 0}%` }}
               />
             </span>
-            <span className="spend-kind__value">{formatNumber(s.credits)}</span>
+            <span className="spend-kind__value">{formatCredits(s.credits)}</span>
           </li>
         ))}
       </ul>
@@ -808,7 +815,7 @@ export function UsagePage() {
                 user can actually spend. */}
             {view.credits > 0 && (
               <p className="credits-credits">
-                <strong>{formatNumber(view.credits)}</strong> extra credits (purchased or granted), which do not expire
+                <strong>{view.creditsText}</strong> extra credits (purchased or granted), which do not expire
                 <span className="muted"> — spent only once the allowance is gone</span>
               </p>
             )}
@@ -857,15 +864,16 @@ export function UsagePage() {
                 <p className="muted">No Credits spent yet — go build something.</p>
               ) : (
                 <>
+                  {/* The server sends ledger units; everything below draws credits, converted once. */}
                   <RightNow
-                    left={view.allowanceRemaining + view.credits}
-                    days={usage.data.days}
+                    left={internalToCredits(view.allowanceRemaining + view.credits)}
+                    days={daysInCredits(usage.data.days)}
                     updatedAt={Math.min(me.dataUpdatedAt, usage.dataUpdatedAt)}
                   />
-                  <UsageBars days={usage.data.days} />
-                  <SpendBreakdown days={usage.data.days} />
+                  <UsageBars days={daysInCredits(usage.data.days)} />
+                  <SpendBreakdown days={daysInCredits(usage.data.days)} />
                   {/* Picks: Componentry "Github Calendar" — which days you built on. */}
-                  <ActivityCalendar days={usage.data.days} />
+                  <ActivityCalendar days={daysInCredits(usage.data.days)} />
                 </>
               ))}
           </div>

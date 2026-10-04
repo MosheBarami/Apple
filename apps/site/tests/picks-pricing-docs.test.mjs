@@ -69,18 +69,37 @@ test('every plan card is lit by the spotlight and every price can roll', () => {
   assert.equal((src.match(/\bdata-spotlight\b/g) ?? []).length, 2, 'the Free card and the paid-card template each carry data-spotlight');
   assert.equal((src.match(/\bdata-price-roll\b/g) ?? []).length, 2, 'the Free price and the paid-price template each carry data-price-roll');
   assert.equal((src.match(/\bdata-price-unit\b/g) ?? []).length, 2);
-  // Only the ranked card gets the beam and the shining button.
-  assert.match(src, /promoted === 'free' && <BeamBorder \/>/);
-  assert.match(src, /promoted === id && <BeamBorder \/>/);
-  assert.match(src, /promoted === 'free' \? \(\s*<ShinyButton/);
+  // Only the ranked card gets the beam and the shining button, and the ranked card is Free: both are
+  // mounted once, before the paid-card template, so no paid card (none can be bought yet) carries them.
+  const paidAt = src.indexOf('paid.map(');
+  assert.ok(paidAt > 0, 'the paid-card template is gone');
+  for (const el of ['<BeamBorder />', '<ShinyButton']) {
+    assert.equal(src.split(el).length - 1, 1, `${el} is mounted more than once, or not at all`);
+    assert.ok(src.indexOf(el) < paidAt, `${el} is on a paid card`);
+  }
 });
 
-test('the estimator and the per-build price are derived, never typed', () => {
+test('the estimator and the per-build price are derived, never typed', async () => {
   const src = page('pricing.astro');
   assert.match(src, /builds: buildsPerMonth\(id\)/, 'the estimator plans no longer read buildsPerMonth');
-  assert.match(src, /creditsPerBuild=\{CREDITS_PER_BUILD\}/);
+  assert.equal((src.match(/creditsPerBuild=\{TYPICAL_BUILD_CREDITS\}/g) ?? []).length, 2, 'the price switch and the estimator both read the shared typical build');
   assert.match(src, /start=\{buildsPerMonth\('free'\)\}/);
   assert.match(src, /buildsPerMonth\(id\)\)\) \* 100\) \/ 100/, 'the per-build price is no longer the monthly price over buildsPerMonth');
+
+  // And the built page carries the config's numbers, whatever they are.
+  const shared = await import('../../../packages/shared/src/index.ts');
+  const file = join(SITE, 'dist', 'pricing', 'index.html');
+  if (existsSync(file)) {
+    const html = readFileSync(file, 'utf8');
+    assert.match(html, new RegExp(`data-cpb="${shared.TYPICAL_BUILD_CREDITS}"`), 'the estimator was not handed the typical build');
+    for (const id of shared.LISTED_PLAN_IDS.filter((p) => p !== 'free')) {
+      const perBuild = Math.round((shared.PLAN_TABLE[id].priceUsdMonthly / shared.PLAN_TABLE[id].approxBuilds) * 100) / 100;
+      assert.ok(
+        html.includes(`data-build="${shared.formatMoney(perBuild)}"`),
+        `${id}: the rendered per-build price is not ${shared.formatMoney(perBuild)}, the monthly price over its builds`,
+      );
+    }
+  }
 });
 
 test('both rolling-number users share one implementation', () => {

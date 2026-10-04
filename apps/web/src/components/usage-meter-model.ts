@@ -12,6 +12,12 @@
 //    the same table QuotaDO enforces. A meter with "60" written in it is a meter that lies the
 //    moment the table changes, and it would lie silently, in the user's favour or against them.
 //
+// 1b. THE FIELDS ARE LEDGER UNITS, THE WORDS ARE CREDITS. QuotaDO counts in ledger units and a credit
+//    is INTERNAL_PER_CREDIT of them (packages/shared), so every number on `MeterView` is in ledger
+//    units, as it always was, and every sentence it builds prints credits with two decimals
+//    ("3.54 Credits left today"). The `...Text` fields carry the same figures already formatted, so
+//    a component that draws a number draws the one the sentence beside it uses.
+//
 // 2. ALLOWANCE AND CREDITS ARE TWO NUMBERS, NEVER ONE. `QuotaState` reports `allowanceRemaining`
 //    (renewable, resets, does not accumulate) and `credits` (purchased, non-expiring, spent only
 //    once the allowance is gone) separately, and its own comment says why: "you have 0 left today"
@@ -38,16 +44,16 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@studpilot/shared';
+import {
+  PLAN_LIMITS, PLAN_COPY, TYPICAL_BUILD_CREDITS, formatCredits, internalToCredits, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE,
+} from '@studpilot/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 
 /** Which limit is currently the binding one. The copy and the reset both hang off this. */
 export type MeterPeriod = 'day' | 'month';
-// Numbers go through the shared formatter so the reader's region decides the separators.
-// `formatNumber` with the default settings is character-for-character what `toLocaleString()`
-// produced, so nothing about this line changed for anyone who has not chosen a region.
-import { formatNumber } from '../lib/format.ts';
+/** A ledger-unit figure as the credits a person reads: two decimals, always. */
+export const creditsText = (ledgerUnits: number): string => formatCredits(internalToCredits(ledgerUnits));
 
 export interface MeterView {
   tone: MeterTone;
@@ -61,6 +67,12 @@ export interface MeterView {
   allowanceFraction: number;
   /** Purchased, non-expiring. Reported beside the allowance, never added to it. */
   credits: number;
+  /** The three figures above, and their sum, as credits with two decimals. Empty while unknown. */
+  allowanceRemainingText: string;
+  allowanceTotalText: string;
+  creditsText: string;
+  /** Allowance and purchased credits together: what can be spent right now. */
+  spendableText: string;
   headline: string;
   detail: string;
   /** Named ONLY when there is genuinely nothing left to spend. */
@@ -78,6 +90,10 @@ const BLANK = {
   allowanceTotal: 0,
   allowanceFraction: 0,
   credits: 0,
+  allowanceRemainingText: '',
+  allowanceTotalText: '',
+  creditsText: '',
+  spendableText: '',
   nextAction: null,
   buildsHint: null,
   resetsIn: null,
@@ -175,7 +191,8 @@ export function meterView(
 
   const allowanceFraction = allowanceTotal > 0 ? Math.min(1, allowanceRemaining / allowanceTotal) : 0;
   const spendable = allowanceRemaining + credits;
-  const builds = Math.floor(spendable / CREDITS_PER_BUILD);
+  // Typical builds the balance affords, in credits: the pricing doc's typical build, not the ledger's.
+  const builds = Math.floor(internalToCredits(spendable) / TYPICAL_BUILD_CREDITS);
 
   let tone: MeterTone;
   let headline: string;
@@ -184,16 +201,16 @@ export function meterView(
 
   if (allowanceRemaining > 0) {
     tone = allowanceFraction <= 0.15 ? 'warn' : 'good';
-    headline = `${formatNumber(allowanceRemaining)} Credits left ${window}`;
+    headline = `${creditsText(allowanceRemaining)} Credits left ${window}`;
     detail = credits > 0
-      ? `of ${formatNumber(allowanceTotal)} ${per}, plus ${formatNumber(credits)} purchased`
-      : `of ${formatNumber(allowanceTotal)} ${per}`;
+      ? `of ${creditsText(allowanceTotal)} ${per}, plus ${creditsText(credits)} purchased`
+      : `of ${creditsText(allowanceTotal)} ${per}`;
   } else if (credits > 0) {
     // A real distinction: the day's allowance is gone but the account is not empty, and nothing
     // the user does next is blocked.
     tone = 'warn';
     headline = period === 'month' ? "This month's allowance is used up" : "Today's allowance is used up";
-    detail = `Running on ${formatNumber(credits)} extra credit${credits === 1 ? '' : 's'}, which do not expire.`;
+    detail = `Running on ${creditsText(credits)} extra credits, which do not expire.`;
   } else {
     tone = 'bad';
     headline = 'No Credits left';
@@ -252,6 +269,10 @@ export function meterView(
     allowanceTotal,
     allowanceFraction,
     credits,
+    allowanceRemainingText: creditsText(allowanceRemaining),
+    allowanceTotalText: creditsText(allowanceTotal),
+    creditsText: creditsText(credits),
+    spendableText: creditsText(spendable),
     headline,
     detail,
     nextAction,
@@ -293,8 +314,9 @@ export function periodComparisonLine(
   if (typeof thisMonth !== 'number' || !Number.isFinite(thisMonth)) return null;
   if (!previous || typeof previous.credits !== 'number' || !Number.isFinite(previous.credits)) return null;
   const prev = previous.credits;
-  const now = formatNumber(thisMonth);
-  const then = formatNumber(prev);
+  // The history is in ledger units, like the quota: it is shown as the credits it is.
+  const now = creditsText(thisMonth);
+  const then = creditsText(prev);
   // Three directions rather than two. "the same as last month" is a real and quite common answer,
   // and forcing it into "more" or "less" would be false about a figure somebody can check.
   if (thisMonth === prev) return `${now} Credits this month — the same as last month.`;
@@ -308,6 +330,19 @@ export interface UsageDayRow {
   credits: number;
   events?: number;
   kinds?: { kind: string; credits: number }[];
+}
+
+/**
+ * The ledger's history as credits a person reads: every day's total and every kind's total divided
+ * by INTERNAL_PER_CREDIT. The server sends ledger units; the usage page converts ONCE, here, so the
+ * chart, the live panel and the breakdown all draw the same figure.
+ */
+export function daysInCredits<T extends UsageDayRow>(days: readonly T[]): T[] {
+  return days.map((d) => ({
+    ...d,
+    credits: internalToCredits(d.credits),
+    ...(Array.isArray(d.kinds) ? { kinds: d.kinds.map((k) => ({ ...k, credits: internalToCredits(k.credits) })) } : {}),
+  }));
 }
 
 export interface SpendSlice {

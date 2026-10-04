@@ -1834,37 +1834,17 @@ export interface GatewayResponse {
  * `typicalCredits` is different: the composer renders it, as "Typically N Credits". It is
  * derived from docs/COST-MODEL.md through `ceil(neurons / 30)`, the same arithmetic the
  * worker bills with, and `scripts/check-credit-figures.mjs` checks it against those
- * measurements.
- */
-/*
- * AND `entryUnit`, WHICH IS THE PIECE OF WORK THE LOW END OF `typicalCredits` WAS MEASURED ON.
- *
- * The pricing page published `StudPilot Max · 4 credits · "Builds features across your project" ·
- * ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
- * the plan cards turn into three builds a free day. Both numbers are right and they are not about
- * the same work: the 4 is `ceil(111 / 30)` from COST-MODEL's targeted edit + read-back
- * verify in Studio*, and the 77 is `ceil(2300 / 30)` from BUILD_NEURONS.qualityGated. A reader who
- * takes the blurb at face value divides and finds the page 19x apart with itself on the one
- * question the owner actually asked — what will this cost me in a month.
- *
- * `blurb` is what the MODE does; it is rendered by the composer's model picker and is right there.
- * `entryUnit` is what the ENTRY PRICE bought, and the pricing table needs that one, because a cost
- * column and a per-day column mean nothing without the unit between them.
- *
- * The words come from the COST-MODEL row each figure is derived from, so there is one measurement
- * and one sentence about it. `check-credit-figures.mjs` fails when an offered mode's entryUnit
- * claims a build at a price that is not CREDITS_PER_BUILD — which is the drift above, stated as an
- * assertion. The guard firing when the published cost drifts is the point of writing it this way.
+ * measurements. IT IS IN LEDGER UNITS (INTERNAL_PER_CREDIT of them to a credit), so a surface that
+ * shows it to a person converts it with `internalToCredits` first.
  */
 export const MODE_INFO: Record<
   ProductMode,
-  { name: string; blurb: string; typicalCredits: string; entryUnit: string }
+  { name: string; blurb: string; typicalCredits: string }
 > = {
   agent: {
     name: 'Agent',
     blurb: 'Builds features across your project',
     typicalCredits: '4-18',
-    entryUnit: 'one targeted edit, read back and verified',
   },
 };
 
@@ -2174,38 +2154,109 @@ export const STUDIO_PLUGIN_INSTALL_HREF: string = STUDIO_PLUGIN_STORE_LIVE
 // allowance for the period is gone. Keeping them apart is what makes "your plan includes this, buy
 // more if you need it" expressible without either one quietly subsidising the other.
 
-export const PLAN_LIMITS = {
-  // SET AGAINST WHAT THE SERVICE CAN ACTUALLY SERVE, not against what the prices could afford.
-  //
-  // The binding number is DAILY_NEURON_CEILING. It was 25,000 neurons a day — 833 Credits a day,
-  // about 11 quality-gated builds a day for EVERY user combined — and the rows below were sized
-  // against exactly that. On 2026-09-20 it became 100,000 (10,000 free + 90,000 billable), because
-  // at the old figure the live product refused every build it was asked for. So the rows are now
-  // roughly 4x under the ceiling rather than pressed against it. Nothing below is unsafe as a
-  // result; what changed is that the headroom argument is no longer tight, and the next person to
-  // raise a plan row should re-derive it from the CURRENT ceiling, not from 833. Three of the four old rows were
-  // promises against that: team granted 1,500/day and enterprise 6,000/day, so a single customer
-  // on either could exhaust the day for everyone, and free granted 60/day against a 77-Credit
-  // build, so the trial could not finish one job. Those are not pricing mistakes, they are
-  // arithmetic that was never done.
-  //
-  // Every row below is now under the ceiling, and free clears one build with room. The monthly
-  // figure never exceeds what the daily figure can reach in a month, or it is an allowance nobody
-  // can spend. What these numbers are NOT is what the $12 and $40 price points could support —
-  // $12 at a 1.4x margin would buy 25,974 Credits a month, and the whole service only makes 25,323.
-  // Closing that gap is a spending decision, not a code change: see docs/DECISIONS.md.
-  free: { creditsPerDay: 231, creditsPerMonth: 2_310 },
-  builder: { creditsPerDay: 416, creditsPerMonth: 12_600 },
-  studio: { creditsPerDay: 700, creditsPerMonth: 21_000 },
-  enterprise: { creditsPerDay: 833, creditsPerMonth: 25_000 },
+// ---------------------------------------------------------------------------
+// THE PRICING CONFIG. One table; the site, the app and QuotaDO all read it.
+// ---------------------------------------------------------------------------
+//
+// Owner decisions of 2026-10-04 (planning/pricing-2026-10-04.md). Everything a person is quoted
+// (price, credits, how many builds that is) and everything the ledger enforces (PLAN_LIMITS, in
+// ledger units) is DERIVED from `PLAN_TABLE` below, so a page disagreeing with the thing enforcing
+// it has no second number to disagree with. The tests in apps/worker/tests/plan-economics.test.mjs
+// recompute the profit of every plan from these numbers and fail below $0.
+
+/** One credit, as a person is shown it, is this many US dollars of AI compute (Workers AI cost). */
+export const CREDIT_USD = 0.05;
+
+/**
+ * Ledger units in one credit. The ledger (QuotaDO, the run charge, `QuotaState`) counts in units of
+ * NEURONS_PER_CREDIT neurons; a credit is 150 of them. 150 x 30 neurons x $0.011 per 1,000 neurons
+ * is $0.0495, the decided $0.05 less 1%: the exact quotient is 151.5 and the owner's round figure
+ * is the multiple of ten below it. apps/worker/tests/plan-economics.test.mjs derives the quotient
+ * from NEURONS_PER_CREDIT and the neuron price in apps/worker/src/pricing.ts and fails if this
+ * number stops being that figure, so it is a pinned decision and not a second source of truth.
+ */
+export const INTERNAL_PER_CREDIT = 150;
+
+/** The card fee the plan-profit test charges against every payment: 2.9% plus $0.30. */
+export const CARD_FEE = { rate: 0.029, fixedUsd: 0.3 } as const;
+
+/**
+ * What a typical build costs, in credits (pricing doc: about $0.07). The cards turn an allowance
+ * into "about N builds" with it, and `approxBuilds` below may never promise more than this allows.
+ */
+export const TYPICAL_BUILD_CREDITS = 1.4;
+
+/**
+ * The plans. Credits here are the credits people see (see CREDIT_USD), not ledger units.
+ *
+ * THE KEYS ARE STORED IDENTIFIERS (QuotaDO, the profiles.plan constraint, Stripe price mapping) and
+ * do not change: `builder` is shown as Pro, `studio` as Max. `enterprise` stays a valid stored id
+ * so a row holding it still resolves, but it is `listed: false` and never displayed; it carries
+ * Max's allowance because no number was ever decided for it.
+ *
+ * `approxBuilds` is the pricing doc's "about how many builds" column, typed from the doc and bounded
+ * by TYPICAL_BUILD_CREDITS in the test. The paid plans' `creditsPerDay` are NOT in the pricing doc
+ * (it decides only the monthly pools); they were set so a paid plan never grants less per day
+ * than Free, affords a 12-credit big build, and stays under the whole-service daily ceiling that
+ * scripts/check-offer.mjs holds every plan to. The owner confirms or replaces them.
+ */
+export const PLAN_TABLE = {
+  free: { name: 'Free', priceUsdMonthly: 0, creditsPerDay: 5, creditsPerMonth: 30, approxBuilds: 20, listed: true },
+  builder: { name: 'Pro', priceUsdMonthly: 9.99, creditsPerDay: 20, creditsPerMonth: 100, approxBuilds: 70, listed: true },
+  studio: { name: 'Max', priceUsdMonthly: 24.99, creditsPerDay: 30, creditsPerMonth: 300, approxBuilds: 200, listed: true },
+  enterprise: { name: 'Enterprise', priceUsdMonthly: null, creditsPerDay: 30, creditsPerMonth: 300, approxBuilds: 200, listed: false },
 } as const;
 
-export type PlanId = keyof typeof PLAN_LIMITS;
+/** The top-up pack: credits that do not expire, bought once. Checkout for it is off (CREDIT_PURCHASE_LIVE). */
+export const TOPUP_PACK = { priceUsd: 4.99, credits: 50, approxBuilds: 35 } as const;
 
-export const PLAN_IDS = Object.keys(PLAN_LIMITS) as PlanId[];
+/**
+ * What builds cost, from the pricing doc. `estimated` rows are not measured yet. The dollar figure
+ * of a row is its credits x CREDIT_USD and is never stored.
+ */
+export const BUILD_COSTS = [
+  { id: 'small', label: 'Small', creditsLow: 0.52, creditsHigh: 1.4, estimated: false },
+  { id: 'typical', label: 'Typical', creditsLow: TYPICAL_BUILD_CREDITS, creditsHigh: TYPICAL_BUILD_CREDITS, estimated: false },
+  { id: 'big', label: 'Big (systems, zones; up to 10 minutes)', creditsLow: 4, creditsHigh: 12, estimated: true },
+] as const;
+
+export type PlanId = keyof typeof PLAN_TABLE;
+
+export const PLAN_IDS = Object.keys(PLAN_TABLE) as PlanId[];
+
+/** The ids PLAN_TABLE marks `listed`, as a type, so a displayed plan's price is a number and never null. */
+export type ListedPlanId = { [K in PlanId]: (typeof PLAN_TABLE)[K]['listed'] extends true ? K : never }[PlanId];
+
+/** The plans a page or the app may show. Enterprise is a stored id only. */
+export const LISTED_PLAN_IDS: readonly ListedPlanId[] = PLAN_IDS.filter((id): id is ListedPlanId => PLAN_TABLE[id].listed);
 
 export function isPlanId(v: unknown): v is PlanId {
   return typeof v === 'string' && (PLAN_IDS as string[]).includes(v);
+}
+
+/**
+ * What QuotaDO enforces, in LEDGER units (see INTERNAL_PER_CREDIT): the table above x 150.
+ * Free is 5 credits a day and 30 a month, which is 750 and 4,500 here; it was 231 and 2,310.
+ */
+export const PLAN_LIMITS = Object.fromEntries(
+  PLAN_IDS.map((id) => [
+    id,
+    {
+      creditsPerDay: PLAN_TABLE[id].creditsPerDay * INTERNAL_PER_CREDIT,
+      creditsPerMonth: PLAN_TABLE[id].creditsPerMonth * INTERNAL_PER_CREDIT,
+    },
+  ]),
+) as Record<PlanId, { readonly creditsPerDay: number; readonly creditsPerMonth: number }>;
+
+/** Ledger units to the credits a person is shown. Nothing is rounded here; the formatter does that. */
+export function internalToCredits(internal: number): number {
+  return internal / INTERNAL_PER_CREDIT;
+}
+
+/** Credits for a reader: two decimals, always ("3.54", "5.00"), en-US because product text is English. */
+export function formatCredits(credits: number): string {
+  if (typeof credits !== 'number' || !Number.isFinite(credits)) return '';
+  return credits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export interface PlanCopy {
@@ -2214,12 +2265,8 @@ export interface PlanCopy {
   /** One line: who the plan is for, not what it costs. */
   blurb: string;
   /**
-   * Monthly price in USD, or null for a plan that is not self-serve.
-   *
-   * THESE ARE THE OWNER'S NUMBERS TO SET. They are seeded from the measured unit economics rather
-   * than invented: a quality-gated build is ~2,300 neurons (docs/COST-MODEL.md) at $0.011/1,000
-   * neurons, so Pro's 6,000 Credits/month is ~$1.98 of inference and Team's 30,000 is ~$9.90.
-   * Enterprise is deliberately null — a plan whose limits are negotiated cannot carry a price tag.
+   * Monthly price in USD, or null for a plan that is not self-serve. Read from PLAN_TABLE, never
+   * typed here: the owner's numbers are in one place.
    */
   priceUsdMonthly: number | null;
   /** What this tier adds over the one below it. The bullets a person actually compares. */
@@ -2267,47 +2314,46 @@ export function formatMoney(
   }
 }
 
+/** How many times the Free monthly allowance a plan's monthly pool is, to the nearest whole number. */
+function allowanceMultiple(id: PlanId): number {
+  return Math.round(PLAN_TABLE[id].creditsPerMonth / PLAN_TABLE.free.creditsPerMonth);
+}
+
+/** Name and price come from PLAN_TABLE; only the prose is written here. */
+function planCopy(id: PlanId, blurb: string, highlights: string[]): PlanCopy {
+  return { id, name: PLAN_TABLE[id].name, blurb, priceUsdMonthly: PLAN_TABLE[id].priceUsdMonthly, highlights };
+}
+
 export const PLAN_COPY: Record<PlanId, PlanCopy> = {
-  free: {
-    id: 'free',
-    name: 'Free',
-    blurb: 'Enough to build something real and see whether StudPilot suits you.',
-    priceUsdMonthly: 0,
-    highlights: ['Every build mode', STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable', 'Checkpoints and restore'],
-  },
+  free: planCopy('free', 'Enough to build something real and see whether StudPilot suits you.', [
+    'Every build mode',
+    STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable',
+    'Checkpoints and restore',
+  ]),
   // THE ID STAYS `builder`; ONLY THE NAME IS "Pro" (D-VISION-1). The id is stored in QuotaDO and
   // mapped to a Stripe price, so renaming it would orphan every existing subscription.
-  builder: {
-    id: 'builder',
-    name: 'Pro',
-    blurb: 'For building most days.',
-    priceUsdMonthly: 12,
-    //[[ 'Priority during busy periods' IS GONE, and it was the third reason to pay $12.
-    //
-    //   No plan buys a place in the queue — docs/credits-and-limits says so in the product's own
-    //   documentation, two clicks from the pricing card that was selling it. Paying changes your
-    //   allowance, not your turn. A buyer comparing the card to the docs finds the contradiction;
-    //   a buyer who does not compare pays for it and never gets it.
-    //
-    //   Owner's decision, 2026-09-20: remove the claim rather than build the feature. Selling a
-    //   thing that does not exist is the defect; a shorter honest card is not. ]]
-    highlights: ['About 5× the Free allowance', 'Buy credits when you need more', 'Everything in Free'],
-  },
+  //[[ 'Priority during busy periods' IS GONE, and it was the third reason to pay.
+  //
+  //   No plan buys a place in the queue — docs/credits-and-limits says so in the product's own
+  //   documentation, two clicks from the pricing card that was selling it. Paying changes your
+  //   allowance, not your turn. Owner's decision, 2026-09-20: remove the claim rather than build
+  //   the feature. Selling a thing that does not exist is the defect; a shorter honest card is not. ]]
+  builder: planCopy('builder', 'For building most days.', [
+    `About ${allowanceMultiple('builder')}× the Free monthly allowance`,
+    'Buy credits when you need more',
+    'Everything in Free',
+  ]),
   // Likewise `studio` is shown as "Max".
-  studio: {
-    id: 'studio',
-    name: 'Max',
-    blurb: 'For sustained building with a larger allowance.',
-    priceUsdMonthly: 40,
-    highlights: ['About 9× the Free allowance', 'Everything in Pro'],
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    blurb: 'For studios with their own limits, terms and support needs.',
-    priceUsdMonthly: null,
-    highlights: ['Negotiated limits', 'Invoicing', 'Direct support'],
-  },
+  studio: planCopy('studio', 'For sustained building with a larger allowance.', [
+    `About ${allowanceMultiple('studio')}× the Free monthly allowance`,
+    'Everything in Pro',
+  ]),
+  // Not displayed (PLAN_TABLE.enterprise.listed is false); kept so the stored id still resolves.
+  enterprise: planCopy('enterprise', 'For studios with their own limits, terms and support needs.', [
+    'Negotiated limits',
+    'Invoicing',
+    'Direct support',
+  ]),
 };
 
 /**
@@ -2364,6 +2410,9 @@ export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
  * worker charges with it, and those two had no shared definition — `apps/worker/src/pricing.ts`
  * held the number and re-exports it from here now, the same way PLAN_LIMITS and CREDITS_PER_BUILD
  * already do.
+ *
+ * This is the LEDGER unit's size. What a person is shown as one credit is INTERNAL_PER_CREDIT of
+ * these (CREDIT_USD of compute); no page quotes this number as a credit.
  */
 export const NEURONS_PER_CREDIT = 30;
 
@@ -2386,42 +2435,45 @@ export const BUILD_NEURONS = {
   buildBlind: 511,
 } as const;
 
-/** Credits in one quality-gated build, from the measured neuron cost. */
+/**
+ * Ledger units in one quality-gated build, from the measured neuron cost: about half a credit
+ * (77 / INTERNAL_PER_CREDIT), the floor of the pricing doc's "small" build. A plan is not quoted in
+ * these; they remain the engine's own accounting unit (the free-tier affordability rule in
+ * scripts/check-offer.mjs and the worker's cost checks).
+ */
 export const CREDITS_PER_BUILD = 77;
 
 /**
- * A plan's allowance in the unit people actually think in.
- *
- * "6,000 Credits" means nothing on first read; "about 78 builds a month" does. Floored, because a
- * rounded-up figure is a promise the allowance cannot keep.
+ * A plan's allowance in the unit people actually think in: the pricing doc's "about how many
+ * builds" figure, read from PLAN_TABLE (bounded by TYPICAL_BUILD_CREDITS in the plan-economics
+ * test, so it can only understate).
  */
 export function buildsPerMonth(plan: PlanId): number {
-  return Math.floor(PLAN_LIMITS[plan].creditsPerMonth / CREDITS_PER_BUILD);
+  return PLAN_TABLE[plan].approxBuilds;
 }
 
+/** Typical builds one day's allowance affords. Floored, because a rounded-up figure is a promise the allowance cannot keep. */
 export function buildsPerDay(plan: PlanId): number {
-  return Math.floor(PLAN_LIMITS[plan].creditsPerDay / CREDITS_PER_BUILD);
+  return Math.floor(PLAN_TABLE[plan].creditsPerDay / TYPICAL_BUILD_CREDITS);
 }
 
 /**
  * How many days a plan can actually spend its DAILY allowance before the MONTHLY one stops it.
  *
  * `quotaState` spends `Math.min(dailyLeft, monthlyLeft)` (apps/worker/src/quota-math.ts), so a plan
- * has two limits and the smaller one is the one the user has. For three of the four plans the
- * monthly figure is about thirty times the daily figure and the distinction never shows. On **free**
- * it is ten: 231 a day against 2,310 a month. A free user who spends their full daily allowance
- * reaches the monthly ceiling on the tenth and gets nothing for the rest of the month.
+ * has two limits and the smaller one is the one the user has. On every plan the monthly figure is
+ * only a few times the daily one: Free is 5 a day against 30 a month, six full days. A user who
+ * spends the whole daily allowance reaches the monthly ceiling on the sixth day and gets nothing
+ * for the rest of the month.
  *
- * That is a legitimate way to shape a free tier. It is not a legitimate thing to leave out of the
- * sentence "Credits reset to your full daily amount every day", which the pricing page ran for as
- * long as these numbers have been live, and which is false for two thirds of every month for the
- * only plan anyone can currently have.
+ * That is a legitimate way to shape a plan. It is not a legitimate thing to leave out of the
+ * sentence "Credits reset to your full daily amount every day", which the pricing page once ran.
  *
  * Exported so the claim is DERIVED wherever it is made. A page that wants to say "every day" has to
  * ask this function whether that is true for the plan it is describing.
  */
 export function fullRateDays(plan: PlanId): number {
-  return Math.floor(PLAN_LIMITS[plan].creditsPerMonth / PLAN_LIMITS[plan].creditsPerDay);
+  return Math.floor(PLAN_TABLE[plan].creditsPerMonth / PLAN_TABLE[plan].creditsPerDay);
 }
 
 /**
@@ -2434,11 +2486,10 @@ export function monthlyCeilingBitesFirst(plan: PlanId): boolean {
   return fullRateDays(plan) < 28;
 }
 
-// PLACED AFTER `CREDITS_PER_BUILD` AND `buildsPerMonth` ON PURPOSE. The table below is built at
-// module-evaluation time and calls `buildsPerMonth`, which reads the `const CREDITS_PER_BUILD`.
-// Declared above them, that read happens inside the temporal dead zone and the whole module
-// throws `Cannot access 'CREDITS_PER_BUILD' before initialization` on import — every page in
-// three apps, blank. `tsc --noEmit` does NOT catch it; importing the module does.
+// PLACED AFTER `PLAN_TABLE` AND `buildsPerMonth` ON PURPOSE. The table below is built at
+// module-evaluation time and calls `buildsPerMonth`, which reads `PLAN_TABLE`. Declared above
+// them, that read happens inside the temporal dead zone and the whole module throws on import —
+// every page in three apps, blank. `tsc --noEmit` does NOT catch it; importing the module does.
 /**
  * The plan comparison, as a matrix rather than as four lists of bullets.
  *
@@ -2479,7 +2530,7 @@ export interface PlanFeature {
   values: Record<PlanId, boolean | string>;
 }
 
-/** Built from PLAN_LIMITS and PLAN_COPY so a number can never be typed twice. */
+/** Built from PLAN_TABLE and PLAN_COPY so a number can never be typed twice. */
 function everyPlan<T>(f: (plan: PlanId) => T): Record<PlanId, T> {
   return Object.fromEntries(PLAN_IDS.map((id) => [id, f(id)])) as Record<PlanId, T>;
 }
@@ -2492,7 +2543,7 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
       PLAN_COPY[p].priceUsdMonthly === null
         ? 'Negotiated'
         : PLAN_COPY[p].priceUsdMonthly === 0
-          ? 'Free forever'
+          ? 'Free while in beta'
           : `${formatMoney(PLAN_COPY[p].priceUsdMonthly ?? 0)} a month`,
     ),
   },
@@ -2500,16 +2551,16 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
     id: 'credits-per-day',
     label: 'Credits a day',
     note: 'The hard daily ceiling. It resets at midnight UTC for everyone.',
-    values: everyPlan((p) => PLAN_LIMITS[p].creditsPerDay.toLocaleString('en-US')),
+    values: everyPlan((p) => PLAN_TABLE[p].creditsPerDay.toLocaleString('en-US')),
   },
   {
     id: 'credits-per-month',
     label: 'Credits a month',
-    values: everyPlan((p) => PLAN_LIMITS[p].creditsPerMonth.toLocaleString('en-US')),
+    values: everyPlan((p) => PLAN_TABLE[p].creditsPerMonth.toLocaleString('en-US')),
   },
   {
     id: 'builds-per-month',
-    label: 'Quality-gated builds a month',
+    label: 'Typical builds a month',
     note: 'The same allowance in the unit people think in.',
     values: everyPlan((p) => `About ${buildsPerMonth(p)}`),
   },
@@ -2529,18 +2580,9 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
       : 'StudPilot cannot sell Credits in this preview — there is no checkout for them on any plan.',
     values: everyPlan(() => (CREDIT_PURCHASE_LIVE ? true : 'Unavailable')),
   },
-  {
-    id: 'self-serve',
-    label: 'Sign up without talking to anyone',
-    // The one genuine capability difference, and it is enforced: `buildCheckoutRequest` refuses a
-    // plan with no price id.
-    values: everyPlan((p) => PLAN_COPY[p].priceUsdMonthly !== null),
-  },
-  {
-    id: 'invoicing',
-    label: 'Invoicing and negotiated terms',
-    values: everyPlan((p) => PLAN_COPY[p].priceUsdMonthly === null),
-  },
+  // The `self-serve` and `invoicing` rows are gone with Enterprise from the display: they differed
+  // only for the one plan that is no longer shown, so on the listed plans they were a tick row and
+  // an all-dashes row.
 ];
 
 // ---------------------------------------------------------------------------------------------

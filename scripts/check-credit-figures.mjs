@@ -33,9 +33,31 @@
  *
  * A guard that says "these agree" is not a guard that says "this is true".
  *
+ * THE CREDIT UNIT CHANGED (M2, 2026-10-04), AND SO DID WHAT THIS CHECKS ABOUT THE PAGE. A credit is
+ * now INTERNAL_PER_CREDIT ledger units (the unit `creditsForNeurons` counts in) and $0.05 of AI
+ * compute, and every figure a person is quoted lives once in PLAN_TABLE and BUILD_COSTS in
+ * packages/shared. The ledger-unit chain above (COST-MODEL -> MODE_INFO -> the worker) is still
+ * checked exactly as before, because the engine still counts in ledger units. What is new is the
+ * second half: the credit unit equals the neuron arithmetic, the site and the app quote credits from
+ * the plan table and never a ledger-unit figure, and the pricing page reads the config instead of
+ * restating it. The per-request table and its requests-a-free-day arithmetic are gone with the
+ * figures they derived, so are the checks that pinned them.
+ *
  * Usage: node scripts/check-credit-figures.mjs
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import {
+  BUILD_COSTS,
+  CREDIT_USD,
+  CREDITS_PER_BUILD,
+  INTERNAL_PER_CREDIT,
+  NEURONS_PER_CREDIT,
+  PLAN_LIMITS,
+  PLAN_TABLE,
+  PLAN_IDS,
+  TYPICAL_BUILD_CREDITS,
+} from '../packages/shared/src/index.ts';
+import { USD_PER_NEURON } from '../apps/worker/src/pricing.ts';
 
 const root = new URL('..', import.meta.url).pathname;
 const read = (p) => readFileSync(root + p, 'utf8');
@@ -71,36 +93,22 @@ const renderers = [...astroFiles('apps/site/src/pages'), ...astroFiles('apps/sit
 const meterIsRendered = meter !== null && renderers.some((f) => read(f).includes('components/CreditMeter.astro'));
 
 const problems = [];
-/** Modes whose requests-per-free-day is computed by the page rather than typed into it. */
+/** Config reads the pricing page was actually seen to make. Not "no typed figure found". */
 let derived = 0;
-/** Modes whose stated figure was actually parsed and compared. Not "not derived". */
-let stated = 0;
 
-// NEURONS_PER_CREDIT HAS NOW DONE EXACTLY WHAT PLAN_LIMITS DID BELOW: it moved to the shared
-// package, leaving `export { NEURONS_PER_CREDIT } from '@studpilot/shared'` in pricing.ts, and the
-// regex that read `NEURONS_PER_CREDIT = 30` there stopped matching. The guard said so and exited 1,
-// which is the whole reason it is written to fail loudly on a missing declaration rather than
-// treating an unparsed number as zero — the second time this move has happened and the second time
-// nothing was silently mis-verified. Read it where it is DECLARED, which is the shared package, and
-// the `= (\d+)` shape still refuses a re-export.
-const perCredit = Number(/NEURONS_PER_CREDIT = (\d+)/.exec(read('packages/shared/src/index.ts'))?.[1]);
-
-// PLAN_LIMITS LIVES IN packages/shared AND THE WORKER RE-EXPORTS IT. It used to be
-// declared in pricing.ts, and this line used to read it there. When the repricing moved
-// the table to the shared package — leaving `export { PLAN_LIMITS } from '@studpilot/shared'`
-// behind so every importer kept working — the regex stopped matching, `freeDay` became
-// NaN, and this guard exited 1 with "could not read". It had been red in CI since.
-//
-// It failing loudly is the only reason this was cheap to find: the same move against a
-// check that treated a miss as a pass would have left the whole chain unverified while
-// still printing "3 modes agree". Read the declaration where it is declared, and make a
-// missing one an error rather than a zero.
+// BOTH FIGURES ARE IMPORTED, NOT PARSED OUT OF SOURCE TEXT. This used to read `NEURONS_PER_CREDIT = 30`
+// and `free: { creditsPerDay: N` with regexes, and each time the declaration moved (to the shared
+// package, then into the plan table) the regex stopped matching and the guard exited 1 with "could not
+// read". It failing loudly was the only reason that was cheap to find; importing the values makes the
+// move invisible instead, and the guard below still refuses to run on a number that is not a number.
+// `freeDay` is in LEDGER units, the same unit `perCredit` neurons make up.
+const perCredit = NEURONS_PER_CREDIT;
+const freeDay = PLAN_LIMITS.free.creditsPerDay;
 const shared_ = read('packages/shared/src/index.ts');
-const freeDay = Number(/free: \{ creditsPerDay: ([\d_]+)/.exec(shared_)?.[1].replace(/_/g, ''));
-if (!perCredit || !freeDay) {
+if (!Number.isFinite(perCredit) || !Number.isFinite(freeDay) || !perCredit || !freeDay) {
   console.error(
-    'check-credit-figures: could not read NEURONS_PER_CREDIT or PLAN_LIMITS.free.creditsPerDay ' +
-    '(both packages/shared/src/index.ts). One of them moved; follow it.',
+    'check-credit-figures: NEURONS_PER_CREDIT or PLAN_LIMITS.free.creditsPerDay (packages/shared) is not a ' +
+    'usable number. One of them moved; follow it.',
   );
   process.exit(1);
 }
@@ -151,14 +159,6 @@ for (const { key, mode, row } of MODES) {
       problems.push(`MODE_INFO.${key}.typicalCredits starts at ${low} for ${mode}; ${neurons} neurons / ${perCredit} = ${expected}`);
     }
   }
-  if (!/const requestInfo = MODE_INFO\.agent/.test(page)) {
-    problems.push('pricing.astro no longer derives its request row from MODE_INFO.agent');
-  }
-  if (!/perDay: perFreeDay\(requestCost\)/.test(page)) {
-    problems.push('pricing.astro no longer derives requests-per-free-day from the same mode cost');
-  } else {
-    derived += 1;
-  }
   // The calculator's own figures are checked only while the calculator exists. When it does not,
   // there is nothing to bind to MODE_INFO and no literal to re-introduce — and a check that read a
   // missing file would be the crash this guard used to end on, which reported nothing at all.
@@ -198,12 +198,13 @@ const PROSE = siteSources;
 const stripMarkupComments = (src) =>
   src.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-const expectedFor = {};
-for (const { mode, row } of MODES) {
-  const n = neuronsFor(row);
-  if (n !== null) expectedFor[mode] = creditsFor(n);
-}
-
+//[[ THE SITE NO LONGER STATES A PER-REQUEST COST AT ALL (M2).
+//
+//   "Agent costs 4 credits" was a ledger-unit figure printed as a credit, and a credit is now 150
+//   ledger units, so the sentence would be wrong by a factor of 150 in the unit people read. The
+//   pricing page quotes what a BUILD costs, in credits, from BUILD_COSTS. Any "<mode> ... N credits"
+//   claim left in a site source is therefore stale by construction, whatever N is, and is reported.
+//   Comments are stripped first, for the reason written above. ]]
 for (const file of PROSE) {
   let text;
   try {
@@ -212,25 +213,27 @@ for (const file of PROSE) {
     problems.push(`${file} is listed here but does not exist — update this list`);
     continue;
   }
-  for (const [mode, expected] of Object.entries(expectedFor)) {
-    // "Plan — 3 credits", "Plan: 3 credits", "Plan</strong> (3 credits", "Plan ... for 3 credits".
-    //
-    const guard = '';
-    // `gi`, not `g`. The unit is a proper noun in product copy — "2 Credits" — and a
-    // case-sensitive `credit` would walk straight past every capitalised claim.
-    // `[^.]`, NOT `[^.\n]`. The class excluded newlines, so it could only ever see a cost
-    // written on the same line as its mode name — which is how prose puts it and is NOT
-    // how structured copy does. The landing lists `name: 'Agent',` and `tag: '4 credits',`
-    // on consecutive lines, and adding that file to this list caught nothing at all until
-    // this changed; a deliberate '3 Credits' drift passed. The sentence-ending period is
-    // still the boundary, so a claim cannot run into the next one, and the window is 60
-    // rather than 40 to cover the intervening key.
-    const re = new RegExp(`${guard}\\b${mode}[^.]{0,60}?\\b(\\d+) credit`, 'gi');
+  for (const { mode } of MODES) {
+    // `gi`: the unit is a proper noun in product copy — "2 Credits" — and a case-sensitive `credit`
+    // would walk straight past every capitalised claim. `[^.]`, NOT `[^.\n]`: structured copy puts
+    // the cost on the line after the name (`name: 'Agent',` then `tag: '4 credits',`).
+    const re = new RegExp(`\\b${mode}[^.]{0,60}?\\b(\\d+) credit`, 'gi');
     for (const m of text.matchAll(re)) {
-      if (Number(m[1]) !== expected) {
-        problems.push(`${file}: "${m[0].trim()}" — ${mode} costs ${expected} credit(s)`);
-      }
+      problems.push(`${file}: "${m[0].trim()}" — a per-request cost in ledger units; the site quotes builds, in credits (BUILD_COSTS)`);
     }
+  }
+
+  // THE SITE QUOTES CREDITS, NEVER LEDGER UNITS. These four are ledger-unit figures (PLAN_LIMITS is
+  // the table QuotaDO enforces, CREDITS_PER_BUILD and BUILD_NEURONS are the engine's own accounting,
+  // MODE_INFO.typicalCredits is a per-run range in the same unit). Printed on a page they read as
+  // credits and are INTERNAL_PER_CREDIT times too large.
+  for (const [name, re] of [
+    ['PLAN_LIMITS', /\bPLAN_LIMITS\b/],
+    ['CREDITS_PER_BUILD', /\bCREDITS_PER_BUILD\b/],
+    ['BUILD_NEURONS', /\bBUILD_NEURONS\b/],
+    ['MODE_INFO', /\bMODE_INFO\b/],
+  ]) {
+    if (re.test(text)) problems.push(`${file} reads ${name}, a ledger-unit figure; the site quotes credits from PLAN_TABLE and BUILD_COSTS`);
   }
 }
 
@@ -296,91 +299,53 @@ if (!rangeFn || rangeFn === shared) {
   }
 }
 
-//[[ A REQUEST IS NOT A BUILD, AND THE PAGE PUBLISHED BOTH AS IF THEY WERE.
+//[[ THE CREDIT UNIT, AND THE PAGE THAT QUOTES IT (M2, 2026-10-04).
 //
-//   /pricing carried `StudPilot Max · 4 credits · "Builds features across your project" ·
-//   ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
-//   the plan cards turn into three builds a free day and thirty a month. Both figures are measured
-//   and neither is wrong: the 4 is ceil(111/30) from COST-MODEL's *Agent, targeted edit +
-//   read-back verify in Studio*, and the 77 is ceil(2300/30) from BUILD_NEURONS.qualityGated. What
-//   was wrong was publishing them in the same unit-less breath, so a buyer dividing the free
-//   allowance got 57 builds a day where the product delivers 3 — 19x, on the one question the
-//   owner actually asked ("the exact expected monthly bill at low, medium and heavy usage").
+//   The previous block here existed because /pricing published a REQUEST price ("4 credits", "~57 a
+//   free day") a hundred lines above a BUILD price ("77 credits", "3 a free day"): both measured, both
+//   true, 19x apart on the one question the owner asked. The cure was to make the page say which unit
+//   each was in. The cure now is that there is one: the page quotes what a build costs in credits and
+//   one credit is a fixed amount of compute, so what is checked is that chain.
 //
-//   THE PROPERTY, not the wording: the per-request table and the one-build figure must not imply
-//   two different daily counts for the same work. A mode may price a request at anything it likes
-//   as long as it SAYS what that request was; the moment its declared unit is a build, its price
-//   has to be the build price, or the page is publishing 231/cost builds a day and 231/77 builds a
-//   day at once.
-//
-//   ONLY OFFERED MODES. `agent` declares a build at 10 Credits and is deliberately not checked
-//   here, because it is withdrawn from PRODUCT_MODES. COST-MODEL measures its build at 297
-//   neurons and BUILD_NEURONS measures the quality-gated one at 2,300; whoever re-offers that mode
-//   has to reconcile those before publishing either, and this guard going red on that day is the
-//   reason it is written against the offered list rather than against all three.
-//
-//   READ OFF THE STRIPPED SOURCE. The comment that explains this defect in packages/shared names
-//   every string below — "claims a build", "CREDITS_PER_BUILD" — and a prose-reading scanner would
-//   report the explanation of the fix as the defect. That has happened four times in this
-//   repository already. ]]
-const creditsPerBuild = Number(/CREDITS_PER_BUILD = (\d+)/.exec(shared)?.[1]);
-if (!creditsPerBuild) {
-  console.error(
-    'check-credit-figures: could not read CREDITS_PER_BUILD from packages/shared/src/index.ts. '
-    + 'It moved; follow it rather than letting the request-vs-build check pass vacuously.',
-  );
-  process.exit(1);
-}
-const buildsFreeDay = Math.floor(freeDay / creditsPerBuild);
-/** Modes whose declared entry unit was actually parsed. Not "not missing". */
-let unitsChecked = 0;
-for (const { key, mode } of MODES) {
-  const unit = modeField(key, 'entryUnit');
-  if (unit === undefined) {
-    problems.push(
-      `MODE_INFO.${key} has no entryUnit — the ${mode} row publishes a Credit cost and a `
-      + 'requests-per-day count with no statement of what one request is, which is the shape that '
-      + `let "${mode} builds features" sit beside a per-request price`,
-    );
-    continue;
-  }
-  unitsChecked += 1;
-  const neurons = neuronsFor(ROW_FOR[key]);
-  if (neurons === null) continue;
-  const cost = creditsFor(neurons);
-  // `\bbuild` catches build, builds, building. A mode that says it builds at its entry price is
-  // making the same daily-count claim CREDITS_PER_BUILD makes, and the two must agree.
-  if (/\bbuild/i.test(unit) && cost !== creditsPerBuild) {
-    problems.push(
-      `MODE_INFO.${key}.entryUnit says "${unit}" at ${cost} Credits, so the per-request `
-      + `table implies ${Math.floor(freeDay / cost)} builds a free day while CREDITS_PER_BUILD `
-      + `(${creditsPerBuild}) implies ${buildsFreeDay}. Price the build at ${creditsPerBuild}, or `
-      + 'name the smaller piece of work the entry price was measured on.',
-    );
-  }
-}
-if (unitsChecked === 0) {
-  problems.push('no entryUnit was parsed for any offered mode, so the request-vs-build check is vacuous');
-}
-
-// AND THE PAGE HAS TO CARRY BOTH. A unit that exists in packages/shared and is not rendered is a
-// field, not a disclosure; a build figure the reader has to scroll a hundred lines to find is the
-// defect above with an extra step. Both are DERIVED — a typed "3 builds a day" is the literal that
-// gets left behind by the next repricing, which is how "30 / 15 / up to 6" survived a fourfold
-// change to the free tier.
-const pageSrc = stripComments(page);
-if (!/const requestInfo = MODE_INFO\.agent/.test(pageSrc) || !/unit: requestInfo\.entryUnit/.test(pageSrc)) {
-  problems.push('pricing.astro does not read MODE_INFO.entryUnit — the per-request table states a price and a per-day count with no unit between them');
-}
-if (!/\{requestRow\.unit\}/.test(pageSrc)) {
-  problems.push('pricing.astro reads entryUnit and never renders it — the disclosure ships to nobody');
-}
-if (!/buildsPerDay\('free'\)/.test(pageSrc) || !/CREDITS_PER_BUILD/.test(pageSrc)) {
+//   1. THE UNIT. A credit is INTERNAL_PER_CREDIT ledger units of NEURONS_PER_CREDIT neurons, priced at
+//      the neuron rate in apps/worker/src/pricing.ts. That must come to CREDIT_USD less at most the
+//      1% the round figure gives away, or the page's "about $0.05 of AI compute" is a claim the
+//      arithmetic does not make.
+//   2. THE SMALLEST BUILD. CREDITS_PER_BUILD ledger units is the quality-gated build the engine
+//      measures, and BUILD_COSTS.small is what the page calls a small build. They are the same
+//      build in two units and must agree to a hundredth of a credit.
+//   3. THE BUILD COUNTS. "About N builds" is typed from the pricing doc, so it may only understate
+//      what the typical build's cost allows: N <= floor(credits / TYPICAL_BUILD_CREDITS).
+//   4. THE PAGE READS THE CONFIG. pricing.astro must import PLAN_TABLE, BUILD_COSTS, CREDIT_USD and
+//      TYPICAL_BUILD_CREDITS and render them; a page that stops reading them has typed a number. The
+//      ledger-unit names it must not read are refused for every site source above.
+const small = BUILD_COSTS.find((b) => b.id === 'small');
+const dollarsPerCredit = INTERNAL_PER_CREDIT * NEURONS_PER_CREDIT * USD_PER_NEURON;
+if (!(dollarsPerCredit <= CREDIT_USD) || CREDIT_USD - dollarsPerCredit > CREDIT_USD * 0.011) {
   problems.push(
-    'pricing.astro does not derive builds-per-free-day from CREDITS_PER_BUILD beside the '
-    + 'per-request table — the reader is left to reconcile requests and builds themselves, which '
-    + 'is the arithmetic that came out 19x wrong',
+    `${INTERNAL_PER_CREDIT} ledger units x ${NEURONS_PER_CREDIT} neurons x $${USD_PER_NEURON} is $${dollarsPerCredit.toFixed(5)}, ` +
+    `not within 1.1% below the decided $${CREDIT_USD} a credit`,
   );
+}
+if (!small || Math.abs(CREDITS_PER_BUILD / INTERNAL_PER_CREDIT - small.creditsLow) > 0.01) {
+  problems.push(
+    `a quality-gated build is ${CREDITS_PER_BUILD} ledger units = ${(CREDITS_PER_BUILD / INTERNAL_PER_CREDIT).toFixed(3)} credits, ` +
+    `but BUILD_COSTS.small starts at ${small?.creditsLow}`,
+  );
+}
+for (const id of PLAN_IDS) {
+  const most = Math.floor(PLAN_TABLE[id].creditsPerMonth / TYPICAL_BUILD_CREDITS);
+  if (PLAN_TABLE[id].approxBuilds > most) {
+    problems.push(`${id} promises ${PLAN_TABLE[id].approxBuilds} builds a month; ${PLAN_TABLE[id].creditsPerMonth} credits at ${TYPICAL_BUILD_CREDITS} a build buy at most ${most}`);
+  }
+}
+const pageSrc = stripComments(page);
+for (const name of ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']) {
+  if (new RegExp(`\\b${name}\\b`).test(pageSrc)) derived += 1;
+  else problems.push(`pricing.astro no longer reads ${name} from packages/shared, so a figure on it is typed`);
+}
+if (/\b\d[\d,.]*\s+Credits?\b/.test(pageSrc.replace(/\{[^}]*\}/g, ''))) {
+  problems.push('pricing.astro types a Credit figure into its copy instead of reading the plan table');
 }
 
 const roadmapSrc = stripComments(read('apps/worker/src/roadmap.ts'));
@@ -441,12 +406,12 @@ if (!meterIsRendered) {
   );
 }
 console.log(
-  `  requests/free day: ${derived} of ${MODES.length} derived from PLAN_LIMITS at build time, ` +
-  `${stated} stated and checked against ${freeDay} Credits/day`,
+  `  plan figures: ${derived} config reads on /pricing; a free day is ${PLAN_TABLE.free.creditsPerDay} credits ` +
+  `(${freeDay} ledger units), a month ${PLAN_TABLE.free.creditsPerMonth}`,
 );
-// Printed rather than assumed: a request-vs-build check that parsed no unit has checked nothing,
-// and the count is the only thing that tells the two apart from the outside.
+// Printed rather than assumed: a unit check that compared nothing has checked nothing, and the figures
+// are the only thing that tells the two apart from the outside.
 console.log(
-  `  request vs build: ${unitsChecked} of ${MODES.length} offered modes declare what their entry ` +
-  `price bought; a whole build is ${creditsPerBuild} Credits, ${buildsFreeDay} a free day`,
+  `  credit unit: 1 credit = ${INTERNAL_PER_CREDIT} ledger units = $${dollarsPerCredit.toFixed(4)} of compute ` +
+  `(decided $${CREDIT_USD}); a typical build is ${TYPICAL_BUILD_CREDITS} credits`,
 );
