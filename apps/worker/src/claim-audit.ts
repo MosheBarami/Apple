@@ -31,7 +31,7 @@
 import { colourWordsIn, familiesOfWord, sameColour } from './colour-family.ts';
 import type { EvidenceLedger, ColourFact } from './evidence-ledger.ts';
 
-export type ClaimKind = 'colour' | 'text' | 'count' | 'behaviour' | 'other';
+export type ClaimKind = 'colour' | 'text' | 'count' | 'behaviour' | 'presence' | 'other';
 export type Verdict = 'supported' | 'contradicted' | 'unsupported';
 export type Need = 'read' | 'play' | 'look' | 'none';
 
@@ -245,12 +245,37 @@ function behaviourClaims(clause: string): Claim[] {
   return [{ kind: 'behaviour', sentence: clause.slice(0, 160), trigger, ...(subject ? { subject } : {}) }];
 }
 
+// A sentence that says the agent SAW what it made. Read per sentence, not per clause: "a duck, a cart and a hat (all
+// verified in the viewport)" vouches for every thing in the list (benchmark s08, 2026-10-04: none of the three existed).
+const SEEN = /\b(?:verified|confirmed|(?:i|you)(?:'ll| will| can)? see|visible|in the (?:viewport|screenshot|scene|shot))\b/i;
+const NOT_A_THING = new Set(['lot', 'bit', 'look', 'check', 'glance', 'screenshot', 'viewport', 'scene', 'shot', 'view', 'way', 'sense', 'touch', 'result', 'player', 'test']);
+
+function presenceClaims(sentence: string): Claim[] {
+  if (!SEEN.test(sentence) || NEGATION.test(sentence) || OFFER.test(sentence)) return [];
+  const plain = blankQuotes(sentence).toLowerCase();
+  const claims: Claim[] = [];
+  // "a marshmallow on a stick": the thing after a preposition is where it is, not another thing.
+  for (const m of plain.matchAll(/(?<!\b(?:on|in|at|with|near|by|of|under|inside|onto|to|from|beside|behind|above|below)\s)\b(?:a|an)\s+((?:[a-z-]+\s+){0,3}?[a-z-]+)(?=\s+(?:on|in|at|with|that|which|near|by|next|to|and|for|of|is|are|was|sits?|stands?)\b|\s*[(),.;:!—]|\s*$)/g)) {
+    const tokens = subjectTokens(m[1]);
+    if (!tokens.length || tokens.some((t) => NOT_A_THING.has(t))) continue;
+    claims.push({ kind: 'presence', sentence: sentence.slice(0, 160), subject: m[1] });
+  }
+  return claims.slice(0, 6);
+}
+
+function sentencesOf(reply: string): string[] {
+  return maskQuotes(reply).split(/\n+/).flatMap((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim().split(/(?<=[.!?])\s+/))
+    .filter((s) => s && !/\?\s*$/.test(s)).map((s) => unmask(s).trim().slice(0, CLAUSE_MAX_CHARS));
+}
+
 /** Every concrete claim in a reply, in reading order, one per distinct claim. */
 export function extractClaims(reply: string): Claim[] {
   const out: Claim[] = [];
   const seen = new Set<string>();
-  for (const clause of clausesOf(reply)) {
-    for (const claim of [...textClaims(clause), ...colourClaims(clause), ...countClaims(clause), ...behaviourClaims(clause)]) {
+  const units = [...clausesOf(reply).map((c) => ['clause', c] as const), ...sentencesOf(reply).map((s) => ['sentence', s] as const)];
+  for (const [unit, clause] of units) {
+    const got = unit === 'sentence' ? presenceClaims(clause) : [...textClaims(clause), ...colourClaims(clause), ...countClaims(clause), ...behaviourClaims(clause)];
+    for (const claim of got) {
       const key = [
         claim.kind, claim.text?.toLowerCase(), claim.colour ? [...(familiesOfWord(claim.colour) ?? [claim.colour])].join('/') : '',
         subjectTokens(claim.subject).join(' '), claim.count, claim.noun, claim.kind === 'behaviour' ? claim.sentence.toLowerCase() : '',
@@ -375,12 +400,19 @@ function evalBehaviour(claim: Claim, l: EvidenceLedger): Finding {
     : found(claim, 'unsupported', 'nothing has played the game since the last change', 'play');
 }
 
+function evalPresence(claim: Claim, l: EvidenceLedger): Finding {
+  const subject = subjectTokens(claim.subject);
+  if (l.names.some((n) => tokensMatch(subject, pathTokens(n.path, n.name)))) return found(claim, 'supported', 'the run recorded an object by that name');
+  return found(claim, 'unsupported', 'this run made or read nothing by that name', 'read');
+}
+
 function evaluate(claim: Claim, l: EvidenceLedger): Finding {
   switch (claim.kind) {
     case 'colour': return evalColour(claim, l);
     case 'text': return evalText(claim, l);
     case 'count': return evalCount(claim, l);
     case 'behaviour': return evalBehaviour(claim, l);
+    case 'presence': return evalPresence(claim, l);
     default: return found(claim, 'unsupported', 'nothing this run observed says either way', 'none');
   }
 }
@@ -458,6 +490,7 @@ function plainPhrase(f: Finding): string {
     case 'colour': return `that ${c.subject ? `the ${c.subject.replace(/^(?:the|a|an)\s+/i, '')}` : 'it'} is ${c.colour}${f.verdict === 'contradicted' ? ` (${trimTo(f.because, 80)})` : ''}`;
     case 'text': return c.visible ? `that "${c.text}" really shows on the screen${f.verdict === 'contradicted' ? ' (it was hidden when I checked)' : ''}` : `that the text really says "${c.text}"`;
     case 'count': return `that there are ${c.count} ${c.noun}s${f.verdict === 'contradicted' ? ` (${trimTo(f.because, 60)})` : ''}`;
+    case 'presence': return `that the ${c.subject} is really there`;
     case 'other': return `that this is true: "${trimTo(c.sentence, 90)}"`;
     default: return `that it works as I said: "${trimTo(c.sentence, 90)}"${clue}`;
   }
