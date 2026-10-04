@@ -19,7 +19,7 @@ import { luau, rng, LANE_WIDTH, plotTiles, type LibRef, type Step } from './comp
 import { hubLayout } from './hub-layout';
 import { studdedMap, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
-import { KIND_ICON, readUpgrades, upgradeBlurb, type UpgradeSpec } from './upgrades-tool';
+import { readUpgrades, upgradeBlurb, upgradeIcon, type UpgradeSpec } from './upgrades-tool';
 import { cleanText } from './compose-tycoon';
 
 /** A machine the shop sells: a library model (ref), or a model already in the place (from), recoloured when a hue is given. */
@@ -255,7 +255,7 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   // 8. The simulator HUD.
   steps.push({ kind: 'create', parent: 'game.StarterGui', items: [plotSimHud(
     recipe.machines.map((m) => ({ id: m.id, name: m.name, price: m.price, income: m.income, icon: m.icon, colour: m.colour })),
-    recipe.upgrades.map((u) => ({ id: u.id, label: u.label, cost: u.cost, icon: u.icon ?? KIND_ICON[u.kind], blurb: upgradeBlurb(u, recipe.currency) })),
+    recipe.upgrades.map((u) => ({ id: u.id, label: u.label, cost: u.cost, icon: upgradeIcon(u), blurb: upgradeBlurb(u, recipe.currency) })),
     { currency: recipe.currency, symbol: recipe.symbol, shop: 'Shop', upgrades: 'Upgrades', rebirth: 'Rebirth' },
   )] });
   return steps;

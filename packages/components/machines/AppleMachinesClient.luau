@@ -13,11 +13,14 @@ local player = Players.LocalPlayer
 -- The money counter's name in the screen: the client config's `counter` (the composer names the counter for the currency, so a
 -- renamed currency is found by name), "Coins" for a config that names none.
 local counterName = "Coins"
+-- What the player's money is called as an attribute (AppleEconomy keeps it under the currency's own name).
+local currencyName = "Coins"
 local cfgFolder = ReplicatedStorage:FindFirstChild("AppleComponents")
 local cfgModule = cfgFolder and cfgFolder:FindFirstChild("AppleClientConfig")
 if cfgModule and cfgModule:IsA("ModuleScript") then
 	local ok, cfg = pcall(require, cfgModule)
-	if ok and type(cfg) == "table" and type((cfg :: any).counter) == "string" then counterName = (cfg :: any).counter end
+	if ok and type(cfg) == "table" and type((cfg :: any).counter) == "string" then counterName = (cfg :: any).counter; currencyName = counterName end
+	if ok and type(cfg) == "table" and type((cfg :: any).currency) == "string" then currencyName = (cfg :: any).currency end
 end
 
 local function short(n: number): string
@@ -83,6 +86,23 @@ local function wire(screen: ScreenGui)
 	local panel = screen:FindFirstChild("RebirthPanel")
 	if not (open and open:IsA("GuiButton") and panel and panel:IsA("GuiObject")) then return end
 	local info, bonus, confirm = panel:FindFirstChild("Info", true), panel:FindFirstChild("Bonus", true), panel:FindFirstChild("Confirm", true)
+	-- The Rebirth button itself: what it costs (Cost), how far the player is (Progress.Fill) and Lock, shown while it cannot be paid.
+	local costLine = open:FindFirstChild("Cost")
+	local progress = open:FindFirstChild("Progress")
+	local fill = progress and progress:FindFirstChild("Fill")
+	local lock = open:FindFirstChild("Lock")
+	local function paintButton()
+		local need = tonumber(player:GetAttribute("RebirthCost")) or 0
+		local have = tonumber(player:GetAttribute(currencyName)) or 0
+		if fill and fill:IsA("GuiObject") then fill.Size = UDim2.new(if need > 0 then math.clamp(have / need, 0, 1) else 1, 0, 1, 0) end
+		if costLine and costLine:IsA("TextLabel") then
+			costLine.Text = if have >= need then "READY" else short(have) .. " / " .. short(need)
+		end
+		if lock and lock:IsA("GuiObject") then lock.Visible = have < need end
+	end
+	paintButton()
+	player:GetAttributeChangedSignal(currencyName):Connect(paintButton)
+	player:GetAttributeChangedSignal("RebirthCost"):Connect(paintButton)
 	local function refresh()
 		local cost = tonumber(player:GetAttribute("RebirthCost")) or 0
 		local rebirths = tonumber(player:GetAttribute("Rebirths")) or 0

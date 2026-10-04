@@ -19,6 +19,8 @@ import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';
 import { libraryAsset, type UploadDeps } from './asset-library';
 import { uiStoreImage } from './ui-store-search';
+import { currencyIconKey } from './ui-icons';
+import { actionKey } from './ui-layout';
 
 type Spec = Omit<InstanceSpec, 'parent'>;
 type P = Record<string, PropValue>;
@@ -41,6 +43,17 @@ const ANCHOR_POINTS: Record<Anchor, [number, number]> = {
   bottom_left: [0, 1], bottom: [0.5, 1], bottom_right: [1, 1],
 };
 const MARGIN = 0.02;
+/** Buttons that are actions of the HUD. Placed on the right edge; anywhere that collides with Roblox's own controls is moved there. */
+const BUTTON_COMPONENTS = new Set(['button_primary', 'button_secondary']);
+const BAD_BUTTON_SPOT: Partial<Record<Anchor, string>> = {
+  bottom: 'bottom-centre is where the Roblox tool hotbar sits',
+  bottom_left: 'the bottom-left corner is the movement thumbstick',
+  bottom_right: 'the bottom-right corner is the jump button',
+  center: 'the centre of the screen stays clear',
+  top: 'primary actions go on the right edge',
+  top_left: 'the top-left belongs to the Roblox menu',
+  top_right: 'the top-right belongs to the Roblox player list',
+};
 const WORLD = new Set(['billboard_tag', 'surface_sign']);
 
 /* ------------------------------------------------------------------ wire values --- */
@@ -303,8 +316,8 @@ const BUILD: Record<string, { size: [number, number]; anchor: Anchor; build: (b:
     ]),
   },
   tooltip: { size: [0.22, 0.08], anchor: 'center', build: (b, a) => b.slice(a.name, 'tooltip', {}, [b.label('Value', s(a.text, 'Tap to collect'), b.role('tooltip'), box(0.5, 0.5, 0.88, 0.62, 0.5, 0.5))]) },
-  button_primary: { size: [0.2, 0.1], anchor: 'bottom', build: (b, a) => b.button(a.name, 'button_primary', s(a.text, 'Play'), {}, a.icon) },
-  button_secondary: { size: [0.2, 0.1], anchor: 'bottom', build: (b, a) => b.button(a.name, 'button_secondary', s(a.text, 'Back'), {}, a.icon) },
+  button_primary: { size: [0.2, 0.1], anchor: 'right', build: (b, a) => b.button(a.name, 'button_primary', s(a.text, 'Play'), {}, a.icon) },
+  button_secondary: { size: [0.2, 0.1], anchor: 'right', build: (b, a) => b.button(a.name, 'button_secondary', s(a.text, 'Back'), {}, a.icon) },
   button_icon: {
     size: [0.07, 0.125], anchor: 'right',
     build: (b, a) => b.fit(a.name, b.role('button_icon'), {}, [b.icon('Icon', a.icon ?? 'gear', box(0.5, 0.45, 0.56, 0.56, 0.5, 0.5)), b.aspect(1)], true),
@@ -535,6 +548,8 @@ export interface Compiled {
   count: number;
   size: [number, number];
   anchor: Anchor;
+  /** What was moved and why, when the placement rules moved the component. */
+  placement?: string;
 }
 
 const refuse = (message: string) => ({ error: `${message} Nothing was sent to Studio.` });
@@ -583,7 +598,9 @@ function readInput(a: Args): Input | { error: string } {
   return {
     component, skin, colour, name,
     title: title as string | undefined, text: body as string | undefined,
-    value: value as Input['value'], items: list, icon: a.icon === undefined ? undefined : String(a.icon),
+    value: value as Input['value'], items: list,
+    // A currency counter's icon follows the currency named (phase T, flaw 15: Crystals drew a dollar coin); an icon the agent gave wins.
+    icon: a.icon !== undefined ? String(a.icon) : component.id === 'currency_counter' ? currencyIconKey(a.title, a.text, a.name) : undefined,
   };
 }
 
@@ -602,8 +619,15 @@ export function compileComponent(a: Args, idOf: (asset: string) => string = () =
   if (size && 'error' in size) return size;
   const position = vecArg(a.position, 'position', 0);
   if (position && 'error' in position) return position;
-  const anchor = (a.anchor === undefined ? recipe.anchor : String(a.anchor)) as Anchor;
+  let anchor = (a.anchor === undefined ? recipe.anchor : String(a.anchor)) as Anchor;
   if (!ANCHORS.includes(anchor)) return refuse(`anchor must be one of ${ANCHORS.join(', ')}.`);
+  // The placement rules (phase T, flaw 19): an action button asked for a reserved spot with no exact position goes to the right edge.
+  // An explicit `position` is the user's own placement and is kept.
+  let placement: string | undefined;
+  if (BUTTON_COMPONENTS.has(input.component.id) && position === undefined && BAD_BUTTON_SPOT[anchor]) {
+    placement = `${input.name} moved ${anchor} -> right: ${BAD_BUTTON_SPOT[anchor]}. Pass position [x, y] to place it exactly.`;
+    anchor = 'right';
+  }
   const b = new Builder(input, idOf);
   const root = recipe.build(b, input);
   const world = WORLD.has(input.component.id);
@@ -620,7 +644,7 @@ export function compileComponent(a: Args, idOf: (asset: string) => string = () =
   return {
     component: input.component, skin: input.skin, colour: input.colour, name: input.name, world,
     item: root, assets: [...b.assets].sort(), count: b.count,
-    size: (size as [number, number] | undefined) ?? recipe.size, anchor,
+    size: (size as [number, number] | undefined) ?? recipe.size, anchor, ...(placement ? { placement } : {}),
   };
 }
 
@@ -693,6 +717,15 @@ export const insertUiComponent = {
       if (cls === null) return { ...(where as object), note: `Could not read ${parent}, so nothing was built.` };
       if (!plan.world && !GUI_CONTAINERS.has(cls)) return refuse(`${parent} is a ${cls}; a screen component nests only in ${[...GUI_CONTAINERS].join(', ')}. Leave parent out to make a new ScreenGui.`);
       if (plan.world && GUI_CONTAINERS.has(cls)) return refuse(`${parent} is a ${cls}; ${plan.component.id} goes on a part in the world.`);
+      // One layout per screen (phase T, flaw 14): a button that does what one already on this screen does is not inserted again.
+      const screenPath = BUTTON_COMPONENTS.has(plan.component.id) ? /^game\.StarterGui\.[A-Za-z0-9_]+/.exec(parent)?.[0] : undefined;
+      if (screenPath) {
+        const found = await call({ op: 'query_instances', root: screenPath, className: 'ImageButton', limit: 80 });
+        const wanted = [actionKey(plan.name), actionKey(a.text)].filter(Boolean);
+        const same = (((found && typeof found === 'object' ? (found as Args).matches : undefined) as Array<{ path?: unknown }> | undefined) ?? [])
+          .find((m) => typeof m.path === 'string' && wanted.includes(actionKey(m.path.split('.').pop())));
+        if (same) return refuse(`${String(same.path)} already does "${actionKey(String(same.path).split('.').pop())}" on this screen. Use it (set_properties for its text, your script for its action) instead of a second button; choose another name only for a different action.`);
+      }
       const clash = await call({ op: 'get_instance', path: `${parent}.${plan.name}` });
       const err = clash && typeof clash === 'object' && 'error' in clash ? String((clash as Args).error) : null;
       if (err === null) return refuse(`${parent}.${plan.name} already exists. Pick another name.`);
@@ -729,6 +762,7 @@ export const insertUiComponent = {
     const layout = screen && !built.world ? await call({ op: 'ui_layout_check', screen }, 60_000) : null;
     return {
       inserted: root,
+      ...(built.placement ? { placement: built.placement } : {}),
       component: built.component.id,
       skin: built.skin,
       colour: built.colour,

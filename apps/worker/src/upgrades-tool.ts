@@ -9,18 +9,31 @@ import type { AgentCtx } from './tools';
 import { COMPONENTS } from './components.generated';
 import { luau } from './compose';
 import { studdedScreen, type StudPiece } from './stud-ui';
-import { writeScreen, type TreeNode } from './studded-ui-tool';
+import { readScreen, reusedNote, writeScreen, type TreeNode } from './studded-ui-tool';
+import { EDGE_BUTTONS, edgeButtons, nameUsed, reconcilePieces } from './ui-layout';
+import { GLYPHS, currencyGlyph, effectIconKey, glyphOf, knownKey } from './ui-icons';
 import { installAnimationPlayer } from './animate-tool';
 import { findSounds } from './fx-library';
 
 const clip = (s: unknown) => String(s ?? '').slice(0, 300);
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 const KINDS = new Set(['perPress', 'perSecond', 'multiplier']);
+/** The names the screen's button and panel carry unless the screen already has its own (the client config names whichever is used). */
+const DEFAULT_NAMES = { button: 'Upgrades', panel: 'UpgradesPanel' };
 
 export interface UpgradeSpec { id: string; label: string; kind: 'perPress' | 'perSecond' | 'multiplier'; amount: number; cost: number; growth: number; max: number; icon?: string }
 
 /** Each kind's icon (owner, 2026-10-01: "the upgrades gui does not have any icons"), and what one level does. Pure. */
 export const KIND_ICON: Record<UpgradeSpec['kind'], string> = { perPress: '\u{1F446}', perSecond: '\u{1F916}', multiplier: '\u2728' };
+/**
+ * The glyph an upgrade's card shows (phase T, flaw 16: "Pickaxe Power" drew a pointing finger). What the agent gave wins (an icon
+ * key becomes its glyph), then what the upgrade's own name says it does (ui-icons.ts effectIconKey), then the icon of its kind.
+ */
+export function upgradeIcon(u: UpgradeSpec): string {
+  if (u.icon) return glyphOf(u.icon);
+  const key = effectIconKey(u.label, u.id);
+  return key ? GLYPHS[key]! : KIND_ICON[u.kind];
+}
 export function upgradeBlurb(u: UpgradeSpec, currency: string): string {
   const amount = Number.isInteger(u.amount) ? String(u.amount) : u.amount.toFixed(1);
   if (u.kind === 'perSecond') return `+${amount} ${currency} a second`;
@@ -52,7 +65,7 @@ export function readUpgrades(raw: unknown): UpgradeSpec[] | { error: string } {
       cost: Math.round(num(u.cost ?? u.price, 25, 1, 1e12)),
       growth: num(u.growth, 1.5, 1, 10),
       max: Math.round(num(u.max, 100, 1, 10000)),
-      ...(typeof u.icon === 'string' && u.icon.trim() ? { icon: u.icon.trim().slice(0, 4) } : {}),
+      ...(typeof u.icon === 'string' && u.icon.trim() ? { icon: knownKey(u.icon) ?? u.icon.trim().slice(0, 4) } : {}),
     });
   }
   return out;
@@ -93,6 +106,22 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
   const currency = typeof a.currency === 'string' && NAME.test(a.currency) ? a.currency : 'Coins';
   const screen = await screenName(ctx, a.screen);
 
+  // 0. What the screen already holds (phase T, flaw 14: the screen said "Upgrades" three times). An Upgrades button or a counter
+  // for this currency that is already there is kept and used, not drawn again; a panel already there keeps its name and gets these
+  // cards. The names found go into the config, so the client binds to the pieces that exist.
+  const existing = await readScreen(ctx, screen);
+  const held = edgeButtons(existing);
+  const pieces: StudPiece[] = [
+    { kind: 'counter', name: currency, text: '0', icon: currencyGlyph(currency), colour: 'yellow', plus: false, at: 'top-left', caption: currency },
+    // Primary actions go on the right edge; when that column is full the left one takes it (ui-layout.ts).
+    { kind: 'button', name: DEFAULT_NAMES.button, text: 'Upgrades', icon: '\u2B06', colour: 'green', at: held.right < EDGE_BUTTONS || held.left >= EDGE_BUTTONS ? 'right' : 'left', badge: true },
+    { kind: 'panel', name: DEFAULT_NAMES.panel, title: 'Upgrades', header: 'green', body: 'orange', cards: upgrades.map((u) => ({
+      name: u.id, label: u.label, price: String(u.cost), priceIcon: currencyGlyph(currency), icon: upgradeIcon(u), blurb: upgradeBlurb(u, currency), level: 'Lv 0',
+    })) },
+  ];
+  const plan = reconcilePieces(pieces, existing, 'existing-wins');
+  const names = { counter: nameUsed(plan.reused, currency), button: nameUsed(plan.reused, DEFAULT_NAMES.button), panel: nameUsed(plan.reused, DEFAULT_NAMES.panel) };
+
   // 1. The money: AppleEconomy in ServerScriptService.AppleComponents.
   if (!(await exists(ctx, 'game.ServerScriptService.AppleComponents'))) {
     const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ className: 'Folder', name: 'AppleComponents', parent: 'game.ServerScriptService' }] }, 30_000);
@@ -119,7 +148,7 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
     buy: findSounds('cash register', { category: 'purchase', limit: 1, maxSeconds: 1.5 })[0]?.soundId,
     levelUp: findSounds('power up sweeteners', { category: 'power_up', limit: 1, maxSeconds: 1.5 })[0]?.soundId,
   };
-  const config = { currency, screen, counter: currency, button: 'Upgrades', panel: 'UpgradesPanel', perPress: 1, upgrades, sounds };
+  const config = { currency, screen, counter: names.counter, button: names.button, panel: names.panel, perPress: 1, upgrades, sounds };
   const source = `-- The game's upgrades (AppleUpgrades). Written by Apple; edit freely: kind = perPress | perSecond | multiplier.\nreturn ${luau(config)}\n`;
   const wrote = await writeScript(ctx, { parent: 'ReplicatedStorage', name: 'AppleUpgradesConfig', className: 'ModuleScript', source });
   if (wrote) return { error: `The upgrades config was not written: ${wrote}`, changed: true, projectMutated: true };
@@ -135,20 +164,15 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
   }
 
   // 4. The screen: added to what is there, never redrawn.
-  const pieces: StudPiece[] = [
-    { kind: 'counter', name: currency, text: '0', icon: '$', colour: 'yellow', plus: false, at: 'top-left', caption: currency },
-    { kind: 'button', name: 'Upgrades', text: 'Upgrades', icon: '\u2B06', colour: 'green', at: 'left', badge: true },
-    { kind: 'panel', name: 'UpgradesPanel', title: 'Upgrades', header: 'green', body: 'orange', cards: upgrades.map((u) => ({
-      name: u.id, label: u.label, price: `$ ${u.cost}`, icon: u.icon ?? KIND_ICON[u.kind], blurb: upgradeBlurb(u, currency), level: 'Lv 0',
-    })) },
-  ];
-  const failed = await writeScreen(ctx, studdedScreen({ name: screen, pieces }));
+  const failed = await writeScreen(ctx, studdedScreen({ name: screen, pieces: plan.pieces }), false, { existing, deletes: plan.deletes });
   if (failed) return { error: `The upgrades screen was not added: ${failed}`, changed: true, projectMutated: true };
+  const reused = reusedNote(plan.reused.filter((r) => r.kind !== 'panel'));
 
   return {
     changed: true,
     screen,
     upgrades: upgrades.map((u) => `${u.label} (${u.kind}, ${u.cost} ${currency})`),
-    note: `Done and working: every press pays ${currency}, the ${currency} counter, the Upgrades button and panel are on ${screen} (everything already on it is unchanged), and the server checks every purchase. Check it once with play_check_ui, then answer; add nothing else.`,
+    ...(plan.reused.length ? { reused: plan.reused.map((r) => `${r.wanted} -> ${r.have}`) } : {}),
+    note: `Done and working: every press pays ${currency}, the ${names.counter} counter, the ${names.button} button and the ${names.panel} panel are on ${screen} (everything already on it is unchanged${reused ? `; ${reused}` : ''}), and the server checks every purchase. Check it once with play_check_ui, then answer; add nothing else.`,
   };
 }
