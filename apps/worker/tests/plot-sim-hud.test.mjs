@@ -204,6 +204,14 @@ test('stud-ui: the lane-defense HUD and the generic studded screen are byte-for-
     { kind: 'button', name: 'Upgrades', text: 'Up', at: 'left', badge: true },
     { kind: 'panel', name: 'P', title: 'T', cards: [{ name: 'a', label: 'A', price: '$1', icon: 'x', blurb: 'b', level: 'Lv 0' }, { name: 'b', label: 'B', price: '$2' }] },
   ] });
-  assert.equal(hash(screen), 'd39ade4b4b51c86b');
-  assert.equal(hash(U.waveDefenseHud([{ id: 'a', name: 'A', price: 5, blurb: 'x' }], { wave: 'Wave' })), 'aa546348cf3427e1');
+  // RESTATED, phase T (UI tools, 2026-10-04), a deliberate change: the generic screen's regions moved (top row clears the Roblox top
+  // bar, the side columns start 20% down and stop above the thumbstick and jump zones), a card's icon bubble and level badge no
+  // longer overlap and its "what it does" line is one fixed size, and every panel carries a dimmed Backdrop. The old hash was
+  // d39ade4b4b51c86b. tests/ui-layout.test.mjs and tests/ui-modal-and-pieces.test.mjs hold each of those as a property.
+  assert.equal(hash(screen), '3b08c32dc2ade161');
+  // The lane-defense HUD changed by the panels' Backdrop and nothing else: with the backdrops taken out it is the old hash.
+  const withoutBackdrops = (n) => ({ ...n, ...(n.children ? { children: n.children.filter((c) => c.name !== 'Backdrop').map(withoutBackdrops) } : {}) });
+  const wave = U.waveDefenseHud([{ id: 'a', name: 'A', price: 5, blurb: 'x' }], { wave: 'Wave' });
+  assert.equal(hash(withoutBackdrops(wave)), 'aa546348cf3427e1');
+  assert.equal(all(wave).filter((n) => n.name === 'Backdrop').length, 2, 'both panels (Shop, Upgrades) got a Backdrop');
 });
