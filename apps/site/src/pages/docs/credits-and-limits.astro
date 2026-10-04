@@ -30,7 +30,7 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 <DocsLayout
   title="Credits & limits — Apple Docs"
   description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-request costs, live metering, daily reset, and exactly what happens when you run out.`}
-  heading="Credits &amp; limits"
+  heading="Credits & limits"
 >
   <p>
     Credits are Apple's unit of daily energy. Every AI request burns some; your balance refills to
@@ -209,7 +209,7 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 
   <h2>Generated images</h2>
   <p>
-    New generated images stay with their project until it is deleted. Each image can be up to
+    New generated images stay with their project until it is deleted. Each image can be up to{' '}
     {GENERATED_IMAGE_MAX_BYTES / 1024 / 1024} MiB, with at most {GENERATED_PROJECT_COUNT} images
     and {GENERATED_PROJECT_BYTES / 1024 / 1024} MiB of encoded image data per project
     (encoding uses about a third more space than the downloaded file).
