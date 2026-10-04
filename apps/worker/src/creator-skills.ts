@@ -3903,6 +3903,27 @@ function fitSearchPayload(
   return JSON.stringify(withNote).length <= budget ? withNote : minimal;
 }
 
+/**
+ * The same token scoring `searchCreatorSkills` ranks by, for every skill, with no payload around it: what the harness needs to
+ * decide which skills to bring to a plan step itself (skill-push.ts). Same tokeniser, same weights; a query with no usable token
+ * scores nothing.
+ */
+export function scoreCreatorSkills(query: string): { id: string; domain: CreatorSkillDomain; score: number; matched: number }[] {
+  const tokens = normalizedTokens(query);
+  if (!tokens.length) return [];
+  const normalizedQuery = tokens.join(' ');
+  return CREATOR_SKILLS
+    .map((skill) => {
+      const hay = searchable(skill);
+      // How many DIFFERENT query words name the skill (its id, title or keywords), as opposed to merely occurring in its prose.
+      const named = new Set(`${hay.id.replace(/-/g, ' ')} ${hay.title} ${hay.keywords}`.split(/[^a-z0-9]+/));
+      const matched = new Set(tokens.filter((t) => named.has(t))).size;
+      return { id: skill.id, domain: skill.domain, score: rankSkill(skill, tokens, normalizedQuery), matched };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+}
+
 /** Search treats query text only as tokens. It is never executed, interpolated into code, or echoed. */
 export function searchCreatorSkills(input: CreatorSkillSearchInput = {}): Record<string, unknown> {
   const domain = input.domain;

@@ -81,6 +81,7 @@ import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
+import type { SkillPushState } from '../skill-push';
 import { refundSentence, refundVerdict } from '../run-refund';
 import { toolsForMode } from '../router';
 import { recoverToolCall } from '../tool-recovery';
@@ -574,6 +575,8 @@ interface AgentState {
   plan?: RunPlan;
   /** Skill cards (skill-cards.ts) already given to this run, so none repeats and the run cap holds. */
   skillCardsShown?: string[];
+  /** Creator skills (skill-push.ts) pushed to this run: which, for which plan steps, and how many characters, so each bound holds across a restart. */
+  skillPush?: SkillPushState;
 }
 
 type AccessChange = RevocationReason | 'clear';
@@ -5342,10 +5345,17 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
     // The plan's next step may call for a craft recipe the prompt did not carry (skill-cards.ts).
-    const skillSteer = canBuild ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? []) : null;
+    // The same note carries the researched creator skills ranked for that step (skill-push.ts): the small model does not go
+    // looking for them (t1 round 1: 0 reads in 90 calls). Bounded by count, characters and the transcript's own budget.
+    const skillSteer = canBuild
+      ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? [], {
+          request: agent.request ?? '', state: agent.skillPush, context: { usedChars: agent.contextUsedChars, maxChars: agent.contextMaxChars },
+        })
+      : null;
     if (skillSteer) {
       pushHarness(agent.llm, skillSteer.message);
       agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
+      if (skillSteer.skills) agent.skillPush = skillSteer.skills;
     }
     this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);
