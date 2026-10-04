@@ -33,6 +33,7 @@ test('every committed research note yields bounded chunks with unique ids and a 
   assert.equal(ids.size, chunks.length);
   for (const c of chunks) {
     assert.ok(c.text.length <= 2400, c.vecId);
+    assert.ok(Buffer.byteLength(c.vecId) <= 64, `${c.vecId}: Vectorize ids are capped at 64 bytes`);
     assert.match(c.url, /^https:\/\//, c.vecId);
   }
 });

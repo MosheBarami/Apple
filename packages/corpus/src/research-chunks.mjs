@@ -9,7 +9,6 @@ import { createHash } from 'node:crypto';
 const DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'research');
 const MAX = 2400;
 
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
 const sha8 = (s) => createHash('sha256').update(s).digest('hex').slice(0, 8);
 
 /** [S3] -> url, from the note's "## Sources" list. */
@@ -55,7 +54,8 @@ export function noteChunks(file, md) {
       const url = cited ?? firstUrl;
       if (!url) return;
       chunks.push({
-        vecId: `research-${base}-${slug(head[2])}-${sha8(title + i + part)}`,
+        // Vectorize ids are capped at 64 bytes: the note number and a content hash, nothing longer.
+        vecId: `research-${base.slice(0, 2)}-${sha8(title + i + part)}${sha8(part + i)}`,
         docSlug: `research-${base}`,
         title: i ? `${title} (${i + 1})` : title,
         url,
