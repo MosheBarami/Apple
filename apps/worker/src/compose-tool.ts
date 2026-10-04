@@ -17,7 +17,8 @@ import { PLAY_TEST_STOP, runSteps } from './compose-run';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
 import { userWantsOwnSurface } from './surfaces';
 import { tycoonEconomy, tycoonForUser, tycoonRecipe, tycoonSteps, tycoonTheme, tycoonUnlocks } from './compose-tycoon';
-import { heroSpot, plotSimSteps, readPlotSim } from './compose-plotsim';
+import { heroSpot, plotSimMapFacts, plotSimSteps, readPlotSim } from './compose-plotsim';
+import { placementSpots } from './world-steps';
 import { LANE_NEEDS, readLaneDefense } from './compose-lane';
 import { bounds } from './library-object';
 
@@ -54,10 +55,51 @@ export const TEMPLATES = [
 export function insertedFromCandidates(ctx: Pick<AgentCtx, 'evidence'>): string[] {
   const out: string[] = [];
   for (const path of ctx.evidence?.inserted ?? []) {
-    const m = /^game\.Workspace\.([^.[\]]{1,40})$/.exec(path);
+    // An insert names a model "Thing (2)" when the name is taken; the ledger keeps that as game.Workspace["Thing (2)"].
+    const m = /^game\.Workspace\.([^.[\]]{1,40})$/.exec(path) ?? /^game\.Workspace\["([^"\\.[\]]{1,40})"\]$/.exec(path);
     if (m && !out.includes(`Workspace.${m[1]}`)) out.push(`Workspace.${m[1]}`);
   }
   return out.slice(-6);
+}
+
+/** The same, kept to the ones still in the place: the run may have renamed or deleted a model since the ledger saw it. */
+export async function liveInsertedFrom(ctx: AgentCtx): Promise<string[]> {
+  const out: string[] = [];
+  for (const from of insertedFromCandidates(ctx)) if (await bounds(ctx.execStudioOp, `game.${from}`)) out.push(from);
+  return out;
+}
+
+/**
+ * A plot simulator's machines that name no model (no `look`, no `from`) take the models this run inserted, one each in turn: the run
+ * searched and inserted real models and then described machines without them (round 3: "from 0 library pieces"). Only a machine the
+ * agent left bare is filled; one that names its own model is never changed. Returns the plotSim to build and what was filled.
+ */
+export function withInsertedLooks(plotSim: unknown, candidates: readonly string[]): { plotSim: unknown; filled: { index: number; from: string }[] } {
+  const g = plotSim && typeof plotSim === 'object' ? (plotSim as Record<string, unknown>) : null;
+  if (!g || !Array.isArray(g.machines) || !candidates.length) return { plotSim, filled: [] };
+  const filled: { index: number; from: string }[] = [];
+  const machines = g.machines.map((m, index) => {
+    const o = m && typeof m === 'object' ? (m as Record<string, unknown>) : null;
+    if (!o || o.look || (typeof o.from === 'string' && o.from)) return m;
+    const from = candidates[filled.length % candidates.length]!;
+    filled.push({ index, from });
+    return { ...o, from };
+  });
+  return { plotSim: { ...g, machines }, filled };
+}
+
+/** What the result says about the models this run inserted: which the game uses, and for the rest how to use them. Pure. */
+export function insertedReport(models: readonly string[], used: readonly string[], map: ReturnType<typeof plotSimMapFacts> | undefined): Record<string, unknown> | undefined {
+  if (!models.length) return undefined;
+  const unused = models.filter((m) => !used.includes(m));
+  const spots = map ? placementSpots(map, Math.min(8, map.plots.length + 4)) : [];
+  return {
+    used: models.filter((m) => used.includes(m)),
+    unused,
+    ...(unused.length
+      ? { note: `These models you inserted are NOT part of the game yet: ${unused.map((m) => `"${m}"`).join(', ')}. They still stand where you left them. Copy them onto the map with clone_instances (paths [${unused.slice(0, 4).map((m) => `"game.${m}"`).join(', ')}]${spots.length ? `, at [${spots.map((p) => `[${p.join(', ')}]`).join(', ')}]` : ', within a rect'}), or, to make one a machine, call compose_game again with existing "replace" and machines[i].from set to it.` }
+      : {}),
+  };
 }
 
 /** The sentence that names them. Plain words; the names are the run's own placements. */
@@ -112,6 +154,7 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
   const clearDefaultGround = a.clearDefaultGround === true;
 
+  let mapFacts: ReturnType<typeof plotSimMapFacts> | undefined; let modelsUsed: string[] = []; let modelsMine: string[] = []; let autoFrom: string[] = [];
   let steps; let title = ''; let forUser = ''; let extra: Record<string, unknown> = {}; let afterRun: ((report: { problems: string[]; critical: string[] }) => Promise<void>) | undefined;
   let verify: (() => Promise<string[]>) | undefined;
   if (template === 'tycoon') {
@@ -137,14 +180,26 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
       return out;
     };
   } else if (template === 'plot-sim') {
-    const p = readPlotSim(a.plotSim, seed, hasComponents);
+    // The models this run inserted and still stands in the place: a machine the agent left bare takes one (withInsertedLooks).
+    const mine = await liveInsertedFrom(ctx);
+    const given = withInsertedLooks(a.plotSim, mine);
+    const p = readPlotSim(given.plotSim, seed, hasComponents);
     if ('error' in p) {
       // A machine with no look, in a run that already placed models: those are the candidates (the agent searched, inserted, and then forgot to use them).
       const lacksLook = p.missing.some((m) => /\.look\b|\.from\b/.test(m));
-      const own = lacksLook ? insertedFromCandidates(ctx) : [];
+      const own = lacksLook ? mine : [];
       return { changed: false, template, error: own.length ? `${p.error} ${fromCandidatesText(own)}` : p.error, missing: p.missing };
     }
     const recipe = p.recipe;
+    // A `from` that names nothing in the place builds a shop of machines with no model: said now, with the models that do exist.
+    for (const [i, m] of recipe.machines.entries()) {
+      if (m.from && !(await bounds(ctx.execStudioOp, `game.${m.from}`))) {
+        return { changed: false, template, error: `machines[${i}].from: game.${m.from} is not in the place (or has no measurable size). ${mine.length ? fromCandidatesText(mine) : 'Insert a model first (insert_library_model), or name one that exists.'}`, missing: [`machines[${i}].from`] };
+      }
+    }
+    modelsUsed = [...recipe.machines.map((m) => m.from), recipe.hero ? `Workspace.${recipe.hero}` : undefined].filter((v): v is string => !!v);
+    modelsMine = mine;
+    autoFrom = given.filled.map((f) => `machines[${f.index}] "${recipe.machines[f.index]?.name ?? ''}" uses ${f.from}`);
     recipe.surface = surface;
     // The hero is the agent's own naming: measured here so the hub is made to hold it, and moved onto the hub after.
     let hb: Awaited<ReturnType<typeof bounds>> = null;
@@ -153,6 +208,7 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
       if (!hb) return { changed: false, template, error: `hero: game.Workspace.${recipe.hero} is not in the place (or has no measurable size). Name an object that exists, or leave hero out.` };
       recipe.heroSize = [Math.max(hb.size[0], 1), Math.max(hb.size[2], 1)];
     }
+    mapFacts = plotSimMapFacts(recipe); // after the hero is measured: the hub is made to hold it
     steps = plotSimSteps(recipe); title = recipe.title;
     extra = {
       game: recipe.title, template: 'plot-sim',
@@ -211,6 +267,10 @@ export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
     built: report.counts,
     ...(report.missing.length ? { missingPieces: report.missing } : {}),
     ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
+    // What the world pass builds on: the map's bounds, the hub and the plots (world-steps.ts), measured from the layout just built.
+    ...(mapFacts ? { map: mapFacts } : {}),
+    ...(autoFrom.length ? { machinesFromYourModels: autoFrom } : {}),
+    ...(insertedReport(modelsMine, modelsUsed, mapFacts) ? { yourModels: insertedReport(modelsMine, modelsUsed, mapFacts) } : {}),
     ...(clearDefaultGround ? {} : { scene: 'The default Baseplate was left as it was (pass clearDefaultGround: true to remove it and build ground that fits the setting); the default SpawnLocation was switched off and its decal removed, the map has its own spawn. Lighting was not changed (set_mood is yours).' }),
     forUser,
     note: BASE_NOTE,

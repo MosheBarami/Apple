@@ -28,6 +28,15 @@ export interface LibraryRun {
   failedIds?: number[];
   /** Library inserts started this run: names each run-unique holder Folder (tools.ts insertAndProveClean). */
   inserts?: number;
+  /** Where each model this run inserted stands (bottom-centre) and its footprint radius, newest last: a new insert is kept off them. */
+  placed?: { path: string; at: [number, number, number]; r: number }[];
+}
+
+/** Most models remembered; older ones are forgotten first. */
+export const PLACED_KEPT = 24;
+
+export function notePlaced(run: LibraryRun, path: string, at: [number, number, number], r: number): void {
+  run.placed = [...(run.placed ?? []).filter((p) => p.path !== path), { path, at, r }].slice(-PLACED_KEPT);
 }
 
 /** A step that ended the library question: the model may go on to the next step in the order. */

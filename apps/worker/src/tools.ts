@@ -76,7 +76,8 @@ import { findUiStoreImages, UI_STORE_COUNT, UI_STORE_GENRES } from './ui-store-s
 import { refuseLibraryItems, refuseLibraryLuau } from './library-guard';
 import { refuseGameScript, sourcesIn } from './game-independence';
 import { orderApplies, refuseGeneratedModel, refuseHandMadeModel, refuseHandMadeModelLuau, refuseNewHandMadeModelLuau, type LibraryOrder } from './model-rule';
-import { noteInsert, noteSearch, type LibraryRun } from './library-run';
+import { noteInsert, noteSearch, notePlaced, type LibraryRun } from './library-run';
+import { footprintRadius } from './library-placement';
 import { planCopies } from './placement';
 import { applyOrigin, readOrigin, sharedParent } from './local-space';
 import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
@@ -2296,14 +2297,20 @@ async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>)
     if (path) paths = [path];
     ctx.noteCreated?.(paths);
   }
+  const run = libraryRunOf(ctx);
   const where = paths.length === 1
-    ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height, longest })
+    ? await placeInserted((o, t) => ctx.execStudioOp(o as StudioOp, t), paths[0]!, pick, { position: pos, scale, height, longest, avoid: (run.placed ?? []).map((p) => ({ x: p.at[0], z: p.at[2], r: p.r })) })
     : { error: 'inserted as several pieces; left where Roblox put them' };
+  if (!('error' in where) && paths.length === 1 && where.position.length === 3) notePlaced(run, paths[0]!, [where.position[0]!, where.position[1]!, where.position[2]!], where.size ? footprintRadius(where.size as [number, number, number]) : 1);
+  const here = !('error' in where) && where.position.length === 3 ? where.position.map((n) => Math.round(n * 10) / 10) : undefined;
   return {
     ...placed,
     inserted: paths,
     library: { id: pick.id, name: pick.name, kind: pick.kind, licence: pick.licence, ...(pick.attribution ? { attribution: pick.attribution } : {}) },
     ...('error' in where ? { placementWarning: where.error } : { placed: where }),
+    // Where it went, and where the run's other models stand: a model inserted with no position stands at the origin, and the agent
+    // must put it somewhere (round 3: four crystals sat stacked at (0, 2, 0) for the whole run).
+    ...(here ? { placementNote: `${a.position === undefined ? `No position was given, so it stands at (${here.join(', ')}). ` : ''}${(run.placed?.length ?? 0) > 1 ? `Models you placed this run: ${(run.placed ?? []).slice(-8).map((p) => `${lastSegment(p.path) ?? p.path} at (${p.at.map((n) => Math.round(n)).join(', ')})`).join('; ')}. ` : ''}Put it where it belongs with transform_instances, or copy it onto the map with clone_instances (at [[x, y, z], ...]).` } : {}),
   };
 }
 

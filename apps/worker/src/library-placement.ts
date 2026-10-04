@@ -42,6 +42,19 @@ export const footprintRadius = (size: Vec3): number => Math.hypot(size[0], size[
 export function crowded(x: number, z: number, r: number, placed: readonly Footprint[], gap = 2): boolean {
   return placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + gap);
 }
+/**
+ * Where a model asked to stand at `asked` (x, y, z) goes when others are already placed: there if it touches none, else the first
+ * free spot along +x (a row, steps of its own radius plus a gap). `hits` is how many it would have stood on. Pure.
+ */
+export function spreadSpot(asked: readonly number[], r: number, placed: readonly Footprint[], gap = 3): { x: number; moved: boolean; hits: number } {
+  const x0 = asked[0]!, z = asked[2]!;
+  const hits = placed.filter((p) => Math.hypot(p.x - x0, p.z - z) < p.r + r + gap).length;
+  if (!hits) return { x: x0, moved: false, hits: 0 };
+  const step = Math.max(r, 2) + gap;
+  for (let i = 1; i <= 200; i++) if (!crowded(x0 + i * step, z, r, placed, gap)) return { x: Math.round((x0 + i * step) * 10) / 10, moved: true, hits };
+  return { x: x0, moved: false, hits };
+}
+
 /** The move that puts a box's bottom on the ground at (x, z): the centre goes there, the bottom lands on groundY. */
 export function restingMove(box: Box, x: number, z: number, groundY: number): Vec3 {
   return [x - box.center[0], groundY - box.bottomY, z - box.center[2]];

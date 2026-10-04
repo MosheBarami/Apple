@@ -21,6 +21,7 @@ import { studdedMap, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
 import { readUpgrades, upgradeBlurb, upgradeIcon, type UpgradeSpec } from './upgrades-tool';
 import { cleanText } from './compose-tycoon';
+import type { MapFacts } from './world-steps';
 
 /** A machine the shop sells: a library model (ref), or a model already in the place (from), recoloured when a hue is given. */
 export interface MachineSpec {
@@ -260,6 +261,25 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     { currency: recipe.currency, symbol: recipe.symbol, shop: 'Shop', upgrades: 'Upgrades', rebirth: 'Rebirth' },
   )] });
   return steps;
+}
+
+/**
+ * The map this recipe builds, in the numbers the world pass needs to give the agent concrete steps (world-steps.ts): the island's
+ * bounds, the hub, each plot, and eight spots of free ground. From the same layout the steps were made from, so nothing is measured
+ * twice and nothing is guessed.
+ */
+export function plotSimMapFacts(recipe: PlotSimRecipe): MapFacts {
+  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) });
+  const hub = layout.hub!;
+  const stride = Math.max(1, Math.floor(layout.scatter.length / 8));
+  return {
+    root: 'game.Workspace.AppleMap',
+    ground: { center: layout.ground.center, half: [layout.ground.size[0] / 2, layout.ground.size[1] / 2] },
+    hub: { path: 'game.Workspace.AppleMap.Hub', center: hub.center, half: hub.radius },
+    plots: layout.plots.map((at, i) => ({ path: `game.Workspace.AppleMap.Plots.Plot${i + 1}`, at })),
+    free: layout.scatter.filter((_, i) => i % stride === 0).slice(0, 8),
+    frame: (PLOT_TILES * PLOT_TILE) / 2 + 1,
+  };
 }
 
 /** Where the hero goes: the centre of the hub. */

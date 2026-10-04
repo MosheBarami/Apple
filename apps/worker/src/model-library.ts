@@ -17,6 +17,7 @@ import { serveStatic } from './static';
 import { getUploadStatus, uploadAsset, type CreatorEnv, type Result, type UploadedAsset, type UploadAssetInput } from './creator-dashboard';
 import { describeRobloxCredential } from './user-credentials';
 import { appendStudioPath } from './assets';
+import { footprintRadius, spreadSpot, type Footprint, type Vec3 } from './library-placement';
 
 type Row = [string, string, number, number, string, number | string, number, string | null, number | null, number[] | null, boolean?];
 interface Index { genres: string[]; kinds: string[]; licences: string[]; rows: Row[] }
@@ -292,8 +293,8 @@ export async function placeInserted(
   exec: Exec,
   path: string,
   m: LibraryModel,
-  want: { position?: number[]; scale?: number; height?: number; longest?: number },
-): Promise<{ position: number[]; size: number[] | null; sizeNote?: string; scaledBy: number | null } | { error: string }> {
+  want: { position?: number[]; scale?: number; height?: number; longest?: number; /** Footprints of models already placed this run: this one is moved off them. */ avoid?: readonly Footprint[] },
+): Promise<{ position: number[]; size: number[] | null; sizeNote?: string; scaledBy: number | null; spread?: string } | { error: string }> {
   const bounds = async () => {
     const b = await exec({ op: 'spatial_query', action: 'bounds', path }, 15_000);
     const d = (b.ok ? b.data : null) as { center?: unknown; size?: unknown; bottomY?: unknown } | null;
@@ -320,7 +321,12 @@ export async function placeInserted(
     b = await bounds();
     if (!b) return { error: 'the scaled model has no measurable bounds' };
   } else factor = null;
-  const to = want.position ?? [0, 0, 0];
+  // ROUND 3 (2026-10-04): four models inserted one after another with no position all landed at (0, 2, 0), stacked in one spot and
+  // never used. A model that would stand on one this run already placed is moved along +x to the first free spot, and the result says so.
+  const asked = want.position ?? [0, 0, 0];
+  const spot = spreadSpot(asked, footprintRadius(b.size as Vec3), want.avoid ?? []);
+  const to = [spot.x, asked[1]!, asked[2]!];
+  const spread = spot.moved ? `It would have stood on ${spot.hits === 1 ? 'a model' : `${spot.hits} models`} you already placed, so it was moved ${Math.round(Math.abs(spot.x - asked[0]!))} studs along x, to a free spot.` : undefined;
   const move = [to[0]! - b.center[0]!, to[1]! - b.bottomY, to[2]! - b.center[2]!];
   if (move.some((n) => Math.abs(n) > 0.001)) {
     const mv = await exec({ op: 'transform_instances', paths: [path], move }, 20_000);
@@ -328,5 +334,5 @@ export async function placeInserted(
   }
   const side = Math.max(...b.size);
   // Measured, said against the player: the agent judges whether that suits the thing, the harness does not resize it.
-  return { position: to, size: b.size.map((n) => Math.round(n * 100) / 100), sizeNote: `about ${Math.round(side)} studs at its longest (${Math.round(side / 5 * 10) / 10} player heights; a player is 5 studs tall)`, scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
+  return { position: to, ...(spread ? { spread } : {}), size: b.size.map((n) => Math.round(n * 100) / 100), sizeNote: `about ${Math.round(side)} studs at its longest (${Math.round(side / 5 * 10) / 10} player heights; a player is 5 studs tall)`, scaledBy: factor === null ? null : Math.round(factor * 1000) / 1000 };
 }

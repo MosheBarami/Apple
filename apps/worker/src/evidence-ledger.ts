@@ -230,6 +230,17 @@ function forget(l: EvidenceLedger, path: string): void {
   l.names = l.names.filter((f) => !gone(f.path));
   l.touched = l.touched.filter((p) => !gone(p));
   l.texts = l.texts.filter((f) => !gone(f.where));
+  // A deleted model is not a model the run can still use (compose_game offers `inserted` as machine looks).
+  if (l.inserted) l.inserted = l.inserted.filter((p) => !gone(p));
+}
+
+/** A renamed model keeps its place in `inserted` under its new name: round 3 renamed four crystals and the composer was offered the old paths. */
+function renameInserted(l: EvidenceLedger, from: string, name: string): void {
+  if (!l.inserted?.length) return;
+  const parent = from.replace(/(?:\.[A-Za-z_][A-Za-z0-9_]*|\["(?:[^"\\]|\\.)*"\])$/, '');
+  if (parent === from) return;
+  const to = joinPath(parent, name);
+  l.inserted = [...new Set(l.inserted.map((p) => (p === from ? to : p.startsWith(`${from}.`) || p.startsWith(`${from}[`) ? to + p.slice(from.length) : p)))];
 }
 
 // ---------------------------------------------------------------------- what a call wrote ---
@@ -269,6 +280,10 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
   const { l } = rec;
   l.mutationSeq += 1;
   const paths: string[] = [];
+  if (tool === 'rename_instance') {
+    const from = asPath(args.path), name = typeof args.name === 'string' ? args.name.trim() : '';
+    if (from && name) renameInserted(l, from, name);
+  }
   if (tool === 'delete_instances') {
     const gone: string[] = [];
     pathsIn(args, gone);
