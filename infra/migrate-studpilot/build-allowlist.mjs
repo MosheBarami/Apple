@@ -71,7 +71,7 @@ const COMPAT_FILES = new Set([
   'packages/sdk/src/index.mjs',
   'packages/sdk/types/index.d.ts',
   'packages/sdk/types/fixtures/ok.ts',
-  'packages/sdk/python/tests/test_client.py',
+  'packages/sdk/python/tests/test_client.py', 'packages/sdk/tests/compat.test.mjs', 'packages/sdk/python/apple_sdk/__init__.py',
   'packages/sdk/tests/cli.test.mjs',
   'packages/sdk/tests/protocol-parity.test.mjs',
   'packages/sdk/tests/luau.test.mjs',
