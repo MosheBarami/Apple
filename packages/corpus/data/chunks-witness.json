@@ -126,6 +126,14 @@
         "kind": "api"
       }
     ],
+    "api-colorgradingeffect": [
+      {
+        "vecId": "api-colorgradingeffect-1",
+        "title": "ColorGradingEffect (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ColorGradingEffect",
+        "kind": "api"
+      }
+    ],
     "api-contextactionservice": [
       {
         "vecId": "api-contextactionservice-1",
@@ -595,6 +603,22 @@
         "vecId": "api-tweenservice-1",
         "title": "TweenService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/TweenService",
+        "kind": "api"
+      }
+    ],
+    "api-uigradient": [
+      {
+        "vecId": "api-uigradient-1",
+        "title": "UIGradient (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UIGradient",
+        "kind": "api"
+      }
+    ],
+    "api-uistroke": [
+      {
+        "vecId": "api-uistroke-1",
+        "title": "UIStroke (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/UIStroke",
         "kind": "api"
       }
     ],
