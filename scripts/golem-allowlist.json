@@ -439,6 +439,18 @@
       "removal": "runbook step C12: delete those users, then drop the alternative"
     },
     {
+      "id": "research-third-party-names",
+      "scope": "content",
+      "paths": [
+        "packages/corpus/research/10-from-scratch-playbook.md",
+        "packages/corpus/research/15-genre-defense-strategy.md"
+      ],
+      "token": "FriendlyStoneGolem|Golem",
+      "max": 2,
+      "reason": "third-party data in Apple research notes: a DevForum author's username cited as a source, and an enemy named 'Molten Golem' in a tower-defense game's published stats",
+      "removal": "remove a path when that source or stat is dropped from its note"
+    },
+    {
       "id": "rename-history-docs",
       "scope": "content",
       "paths": [
@@ -495,17 +507,6 @@
       "max": 20,
       "reason": "the Crystal Canyon promo code that was GOLEM and is now APPLE is ONE code with an alias: players who redeemed it under the old key hold codes.GOLEM = true in their DataStore saves, and without the alias a rename lets them redeem it again (+1000 coins) and shows old saves as unredeemed. The spec pins that behaviour.",
       "removal": "when the owner decides saves written before the rename no longer need to load (nobody holds codes.GOLEM): delete the Aliases entry from CodeTable.luau, the alias fold in Profile.sanitize, and the spec cases; the old key then becomes an unknown code"
-    },
-    {
-      "id": "research-third-party-names",
-      "scope": "content",
-      "paths": [
-        "packages/corpus/research/10-from-scratch-playbook.md"
-      ],
-      "token": "FriendlyStoneGolem",
-      "max": 1,
-      "reason": "third-party data: a DevForum author's username (FriendlyStoneGolem) cited as a source in an Apple research note",
-      "removal": "remove if that source is dropped from the note"
     }
   ]
 }
