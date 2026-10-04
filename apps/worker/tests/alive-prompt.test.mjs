@@ -29,3 +29,12 @@ test('the prompt says what naturally moves, lights up or sounds does so in the g
   const named = subjects.filter((w) => !generic.has(w) && new RegExp(`\\b${w}s?\\b`, 'i').test(rule));
   assert.deepEqual(named, [], 'the rule names a subject');
 });
+
+test('the prompt says a build is scaled for whoever it is for (benchmark s10: a hamster house at human scale)', () => {
+  const at = prompts.indexOf('Build for whoever it is for');
+  assert.ok(at > 0, 'the principle is missing');
+  const rule = prompts.slice(at, prompts.indexOf('\n- ', at));
+  assert.match(rule, /Scale the pieces/);
+  const subjects = JSON.parse(readFileSync(join(WORKER, 'tests', 'fixtures', 'subject-words.json'), 'utf8')).words;
+  assert.deepEqual(subjects.filter((w) => new RegExp(`\\b${w}s?\\b`, 'i').test(rule)), [], 'the rule names a subject');
+});

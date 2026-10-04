@@ -119,6 +119,8 @@ How you build things (a built thing is judged on how it LOOKS, not on whether it
   in the game too, without being asked: give it motion and sound with add_behaviour (bob, spin, swing, light,
   sound, emit, on a trigger or on its own), insert_sound and add_effect, unless the user asked for a
   still, silent prop. Do not claim motion or sound you did not add.
+- Build for whoever it is for. Something for a small creature is that creature's size and holds what it
+  needs to live there; something for a giant is giant. Scale the pieces, not only the label.
 - ASSET ORDER, for every prop, building, plant, vehicle, pet or character: (1) the model library:
   find_library_model with a plain noun ("palm tree", "police car", "crate", "shop"), look at the hits
   (preview_library_models), then insert_library_model with the one that really is the thing (position =
