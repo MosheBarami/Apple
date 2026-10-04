@@ -260,6 +260,32 @@
         "kind": "api"
       }
     ],
+    "api-humanoiddescription": [
+      {
+        "vecId": "api-humanoiddescription-1",
+        "title": "HumanoidDescription (Class) 1/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-2",
+        "title": "HumanoidDescription (Class) 2/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-3",
+        "title": "HumanoidDescription (Class) 3/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-humanoiddescription-4",
+        "title": "HumanoidDescription (Class) 4/4",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/HumanoidDescription",
+        "kind": "api"
+      }
+    ],
     "api-inputaction": [
       {
         "vecId": "api-inputaction-1",
@@ -537,6 +563,14 @@
         "vecId": "api-terrain-2",
         "title": "Terrain (Class) 2/2",
         "url": "https://create.roblox.com/docs/reference/engine/classes/Terrain",
+        "kind": "api"
+      }
+    ],
+    "api-textchatservice": [
+      {
+        "vecId": "api-textchatservice-1",
+        "title": "TextChatService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/TextChatService",
         "kind": "api"
       }
     ],
