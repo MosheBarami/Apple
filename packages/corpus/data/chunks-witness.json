@@ -134,6 +134,14 @@
         "kind": "api"
       }
     ],
+    "api-data-raycastparams": [
+      {
+        "vecId": "api-data-raycastparams-1",
+        "title": "RaycastParams (Datatype)",
+        "url": "https://create.roblox.com/docs/reference/engine/datatypes/RaycastParams",
+        "kind": "api"
+      }
+    ],
     "api-datastoreservice": [
       {
         "vecId": "api-datastoreservice-1",
@@ -250,6 +258,14 @@
         "kind": "api"
       }
     ],
+    "api-linearvelocity": [
+      {
+        "vecId": "api-linearvelocity-1",
+        "title": "LinearVelocity (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/LinearVelocity",
+        "kind": "api"
+      }
+    ],
     "api-marketplaceservice": [
       {
         "vecId": "api-marketplaceservice-1",
@@ -350,11 +366,35 @@
         "kind": "api"
       }
     ],
+    "api-pathfindingservice": [
+      {
+        "vecId": "api-pathfindingservice-1",
+        "title": "PathfindingService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PathfindingService",
+        "kind": "api"
+      }
+    ],
+    "api-physicsservice": [
+      {
+        "vecId": "api-physicsservice-1",
+        "title": "PhysicsService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PhysicsService",
+        "kind": "api"
+      }
+    ],
     "api-policyservice": [
       {
         "vecId": "api-policyservice-1",
         "title": "PolicyService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/PolicyService",
+        "kind": "api"
+      }
+    ],
+    "api-prismaticconstraint": [
+      {
+        "vecId": "api-prismaticconstraint-1",
+        "title": "PrismaticConstraint (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/PrismaticConstraint",
         "kind": "api"
       }
     ],
@@ -369,6 +409,14 @@
         "vecId": "api-proximityprompt-2",
         "title": "ProximityPrompt (Class) 2/2",
         "url": "https://create.roblox.com/docs/reference/engine/classes/ProximityPrompt",
+        "kind": "api"
+      }
+    ],
+    "api-ropeconstraint": [
+      {
+        "vecId": "api-ropeconstraint-1",
+        "title": "RopeConstraint (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/RopeConstraint",
         "kind": "api"
       }
     ],
@@ -399,6 +447,14 @@
         "vecId": "api-soundservice-1",
         "title": "SoundService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/SoundService",
+        "kind": "api"
+      }
+    ],
+    "api-spawnlocation": [
+      {
+        "vecId": "api-spawnlocation-1",
+        "title": "SpawnLocation (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SpawnLocation",
         "kind": "api"
       }
     ],
@@ -499,6 +555,22 @@
         "vecId": "api-userinputservice-4",
         "title": "UserInputService (Class) 4/4",
         "url": "https://create.roblox.com/docs/reference/engine/classes/UserInputService",
+        "kind": "api"
+      }
+    ],
+    "api-vectorforce": [
+      {
+        "vecId": "api-vectorforce-1",
+        "title": "VectorForce (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VectorForce",
+        "kind": "api"
+      }
+    ],
+    "api-vehicleseat": [
+      {
+        "vecId": "api-vehicleseat-1",
+        "title": "VehicleSeat (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VehicleSeat",
         "kind": "api"
       }
     ],
@@ -9544,6 +9616,28 @@
         "title": "Techniques and conversion — AI streaming conversion skill",
         "url": "https://create.roblox.com/docs/workspace/streaming/techniques",
         "kind": "guide"
+      }
+    ],
+    "research-14-genre-obby-racing-platform": [
+      {
+        "vecId": "research-14-b40a70c0026bd5d3",
+        "title": "Obby, tower, speed-escape, parkour and racing games — Recipes (each becomes a skill) — Recipe 10: Co-op two-player obby (tethered)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VehicleSeat",
+        "kind": "research"
+      }
+    ],
+    "research-20-systems-cookbook": [
+      {
+        "vecId": "research-20-e29bf80469537eff",
+        "title": "Systems Cookbook: correct, modern Luau for the systems every Roblox game needs — Recipes (each becomes a skill) — Recipe 11: Drivable vehicles (VehicleSeat + constraints, driver-owned physics, server sanity checks) (3)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VehicleSeat",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-20-d7552882abe9e575",
+        "title": "Systems Cookbook: correct, modern Luau for the systems every Roblox game needs — Recipes (each becomes a skill) — Recipe 11: Drivable vehicles (VehicleSeat + constraints, driver-owned physics, server sanity checks) (5)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/VehicleSeat",
+        "kind": "research"
       }
     ]
   }
