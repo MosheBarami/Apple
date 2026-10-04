@@ -14,6 +14,7 @@ import { observeFrames, LOOK_FRAME_MAX, type LookFrame, type ObserveInput } from
 import { recordLook } from './evidence-ledger';
 import { SELF_CHECK_LIMITS } from './self-check';
 import { decodeRgbBase64, encodePng, bytesToBase64 } from './png';
+import { critiqueFrames, type Critique } from './blind-critique';
 
 export const LOOK_TOOL = 'look';
 
@@ -127,4 +128,34 @@ export function lookSummary(_args: Record<string, unknown>, result: unknown, fai
   if (failed) return 'Could not look at the place';
   const views = (result as { views?: unknown[] } | null)?.views;
   return `Looked at what was built${Array.isArray(views) && views.length > 1 ? ` from ${views.length} angles` : ''}`;
+}
+
+/**
+ * The blind critique's pictures and verdict, end to end (blind-critique.ts): the same camera work as `look` (four views, the
+ * camera put back), then ONE vision call that is given the user's request and the frames and nothing else. `touched` only decides
+ * where the camera stands; it is not sent to the critic. Not recorded as a look in the ledger: it is a review, not an observation
+ * the agent may cite. Never throws.
+ */
+export async function runBlindCritique(ctx: AgentCtx, request: string): Promise<{ ok: true; critique: Critique; neurons: number; source: string } | { ok: false; error: string; neurons: number }> {
+  let verdict: Awaited<ReturnType<typeof critiqueFrames>> | undefined;
+  let source = 'none';
+  const outcome = await runLook(
+    {
+      exec: (op, timeoutMs) => ctx.execStudioOp(op, timeoutMs),
+      boxViews: (target) => boxViews(ctx, target),
+      observe: async (obs: ObserveInput) => {
+        source = obs.source;
+        verdict = await critiqueFrames(
+          { request, frames: obs.frames, source: obs.source },
+          (req, opts) => chat(ctx.env, req as never, opts) as Promise<{ text: string; neurons: number }>,
+        );
+        return { ok: verdict.ok, observations: [], answers: [], issues: [], neurons: verdict.neurons, ...(verdict.ok ? {} : { error: verdict.error }) };
+      },
+      emitFrame: ctx.emitFrame ? (f) => ctx.emitFrame?.(f) : undefined,
+      settleMs: settleMsOf(ctx.env),
+    },
+    { request, touched: ctx.evidence?.touched ?? [], views: ['front', 'high', 'side', 'eye'] },
+  );
+  if (verdict?.ok) return { ok: true, critique: verdict.critique, neurons: verdict.neurons, source };
+  return { ok: false, neurons: verdict?.neurons ?? outcome.neurons, error: verdict && !verdict.ok ? verdict.error : (outcome.error ?? 'no picture of the place') };
 }

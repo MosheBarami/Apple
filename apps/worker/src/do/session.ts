@@ -81,7 +81,7 @@ import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
-import type { SkillPushState } from '../skill-push';
+import { WORLD_BUILDING_TOOLS, type SkillPushState } from '../skill-push';
 import { refundSentence, refundVerdict } from '../run-refund';
 import { toolsForMode } from '../router';
 import { recoverToolCall } from '../tool-recovery';
@@ -111,7 +111,9 @@ import { newLedger, type EvidenceLedger } from '../evidence-ledger';
 import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-run';
 import { auditReply, type Finding } from '../claim-audit';
 import { judgeReply } from '../claim-audit-judge';
-import { LOOK_TOOL } from '../look-tool';
+import { LOOK_TOOL, runBlindCritique } from '../look-tool';
+import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, type ReportKind } from '../blind-critique';
+import { readSceneFlags } from '../scene-flags-run';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { runIntentFor } from '../run-intent';
@@ -577,6 +579,9 @@ interface AgentState {
   skillCardsShown?: string[];
   /** Creator skills (skill-push.ts) pushed to this run: which, for which plan steps, and how many characters, so each bound holds across a restart. */
   skillPush?: SkillPushState;
+  /** Layout checks run after a world-building step (scene-flags.ts), and the kinds of flag already sent to the agent, so each goes once. */
+  layoutChecks?: number;
+  layoutFlagsSent?: string[];
 }
 
 type AccessChange = RevocationReason | 'clear';
@@ -629,6 +634,8 @@ type QueuedSteer = { id: string; text: string; at: number };
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** Where the run's evidence ledger lives: its own key, never inside the agent state (the transcript already presses its 128 KiB cap). */
 const SELF_CHECK_KEY = 'selfCheckLedger';
+/** Layout reads after world-building steps, per run (scene-flags.ts). */
+const MAX_LAYOUT_CHECKS = 3;
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 /** What the request's list and the plan's building steps named that nothing this run built is named for. */
@@ -5357,6 +5364,8 @@ export class SessionDO extends DurableObject<Env> {
       agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
       if (skillSteer.skills) agent.skillPush = skillSteer.skills;
     }
+    // The layout flags (scene-flags.ts) once the plan has moved on from building the world: model-free, from the typed tree.
+    if (canBuild && studioConnected) await this.layoutCheckAfterWorldStep(agent, ctx, executedThisStep);
     this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -5496,6 +5505,11 @@ export class SessionDO extends DurableObject<Env> {
       pushHarness(agent.llm, decision.message);
       return this.takeAnotherStep(agent, ledger);
     }
+    // THE BLIND CRITIQUE (blind-critique.ts): the answer is about to go. A reviewer who sees only the request and pictures of the
+    // place says what is wrong with them; a severe flaw sends the agent back for ONE fix pass, then it answers.
+    if (decision.action === 'finish' && await this.blindCritiqueAtAnswer(agent, ledger, ctx, allowed, studioConnected)) {
+      return this.takeAnotherStep(agent, ledger);
+    }
     if (decision.action === 'finish' && decision.note) {
       // The same way every other product note is added: after the agent's own words, never in place of them.
       const prior = agent.streamedText ?? '';
@@ -5516,6 +5530,76 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /**
+   * THE BLIND CRITIQUE AT THE MOMENT OF ANSWERING. Returns true when a report was pushed to the agent and it must take its one fix
+   * pass; false when the run may answer. Bounded: ONE critique per run (`ledger.criticRounds`, counted before the call so a failure
+   * cannot be retried), only for a run that changed what the viewport shows, only with Studio connected and `look` offered.
+   * The critic is given the request and the frames and nothing else (blind-critique.ts); the layout flags (scene-flags.ts) ride
+   * along because they are measured, model-free and cost no pass of their own.
+   */
+  private async blindCritiqueAtAnswer(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx, allowed: ReadonlySet<string>, studioConnected: boolean): Promise<boolean> {
+    if (selfCheckMode(this.env) === 'off' || !criticFlagOn(this.env)) return false;
+    if ((ledger.criticRounds ?? 0) >= CRITIC_LIMITS.fixPasses) return false;
+    if (ledger.viewChangedSeq === 0 || !studioConnected || !allowed.has(LOOK_TOOL)) return false;
+    ledger.criticRounds = (ledger.criticRounds ?? 0) + 1;
+    await this.saveLedger(agent, ledger);
+
+    ctx.evidence = ledger;
+    const toolId = `selfcheck_${agent.step}_review`;
+    this.broadcast({ type: 'agent_status', phase: phaseForTool(LOOK_TOOL), step: agent.step, tool: LOOK_TOOL });
+    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
+    const t0 = Date.now();
+    const verdict = await runBlindCritique(ctx, agent.request ?? '');
+    await this.settleNeurons(agent, verdict.neurons);
+    const severe = verdict.ok && hasSevereFlaw(verdict.critique);
+    const summary = verdict.ok
+      ? `A fresh reviewer looked at the result: ${verdict.critique.flaws.length} flaw(s) found${severe ? ', some serious' : ''}`
+      : 'A fresh review of the result could not be made';
+    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: verdict.ok, summary });
+    agent.uiTools = agent.uiTools ?? [];
+    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: verdict.ok, summary, durationMs: Date.now() - t0 });
+    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
+
+    const flags = await this.newLayoutFlags(agent, ctx);
+    if (!severe && flags.length === 0) return false;
+    const body = [
+      ...(severe && verdict.ok ? [critiqueLines(verdict.critique)] : []),
+      ...(flags.length ? [`Layout flags (measured, no render):\n${flags.join('\n')}`] : []),
+    ].join('\n\n');
+    this.pushReport(agent, severe ? 'critique' : 'layout', body);
+    return true;
+  }
+
+  /** The layout flags (scene-flags.ts) of the place as it stands that this run has not been told yet, high ones only, as lines. Never throws. */
+  private async newLayoutFlags(agent: AgentState, ctx: AgentCtx): Promise<string[]> {
+    const read = await readSceneFlags((op, ms) => ctx.execStudioOp(op, ms), agent.request);
+    if ('error' in read) return [];
+    const sent = agent.layoutFlagsSent ?? [];
+    const fresh = read.flags.filter((f) => f.severity === 'high' && !sent.includes(f.kind));
+    if (fresh.length) agent.layoutFlagsSent = [...sent, ...fresh.map((f) => f.kind)];
+    return fresh.map((f) => `[${f.severity}] ${f.kind}: ${f.text}`);
+  }
+
+  /**
+   * After a step that built in the workspace, once the plan has moved on from building (or there is no plan): the layout flags
+   * (scene-flags.ts), model-free. A flag not yet sent goes to the agent as one fenced harness note, so it can fix the layout while
+   * the builder tools are still the ones it is using. Bounded: MAX_LAYOUT_CHECKS reads per run, each kind of flag sent once.
+   */
+  private async layoutCheckAfterWorldStep(agent: AgentState, ctx: AgentCtx, executedThisStep: number): Promise<void> {
+    if (selfCheckMode(this.env) === 'off' || executedThisStep === 0 || (agent.layoutChecks ?? 0) >= MAX_LAYOUT_CHECKS) return;
+    if (!agent.trace.slice(-executedThisStep).some((t) => t.ok && WORLD_BUILDING_TOOLS.includes(t.tool))) return;
+    const next = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
+    if (next && WORLD_BUILDING_TOOLS.includes(next.tool)) return; // the plan is still building the world
+    agent.layoutChecks = (agent.layoutChecks ?? 0) + 1;
+    const flags = await this.newLayoutFlags(agent, ctx);
+    if (flags.length) this.pushReport(agent, 'layout', flags.join('\n'));
+  }
+
+  /** THE ONE PLACE a measured or model-made report enters the transcript: a fixed wrapper around a fenced body (blind-critique.ts reportMessage). */
+  private pushReport(agent: AgentState, kind: ReportKind, body: string): void {
+    pushHarness(agent.llm, reportMessage(kind, this.fencedToolOutput(agent, kind === 'critique' ? 'blind_critique' : 'layout_flags', body).text));
+  }
+
+  /**
    * SELF_CHECK=full: the one cheap text call that reads the reply for claims the deterministic audit does not (claim-audit-judge.ts).
    * Only for a reply that could be the last, and only ever adds findings. Its compute is counted into the run and settled now,
    * because an answer that ends the run has no later step to settle it.
@@ -5524,16 +5608,20 @@ export class SessionDO extends DurableObject<Env> {
     if (selfCheckMode(this.env) !== 'full' || !judgeWorthIt(input)) return undefined;
     const existing = auditReply(input.reply, input.ledger).findings;
     const judged = await judgeReply({ reply: input.reply, ledger: input.ledger, existing }, (req, opts) => llmChat(this.env, req as never, opts));
-    if (judged.neurons > 0) {
-      agent.neuronsUsed = (agent.neuronsUsed ?? 0) + judged.neurons;
-      const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
-      if (owed > 0) {
-        const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-        if (settle.ok) agent.creditsSpent += owed;
-        this.recordSpendSplit(agent, settle);
-      }
-    }
+    await this.settleNeurons(agent, judged.neurons);
     return judged.findings;
+  }
+
+  /** Count model compute made outside a step into the run and settle it now (an answer that ends the run has no later step to do it). */
+  private async settleNeurons(agent: AgentState, neurons: number): Promise<void> {
+    if (!(neurons > 0)) return;
+    agent.neuronsUsed = (agent.neuronsUsed ?? 0) + neurons;
+    const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
+    if (owed > 0) {
+      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
+      if (settle.ok) agent.creditsSpent += owed;
+      this.recordSpendSplit(agent, settle);
+    }
   }
 
   /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */

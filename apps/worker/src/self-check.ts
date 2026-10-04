@@ -14,6 +14,10 @@
  *      checked against the ledger; claims it cannot support go back to the agent, and what is still
  *      unchecked at the end is said plainly in one line. The agent's own words are never rewritten
  *      (claim-audit.ts).
+ *   4. the blind critique (2026-10-04) — a run that changed what the viewport shows, about to answer, is
+ *      reviewed by a vision call that is given ONLY the user's request and the frames, and a severe flaw
+ *      sends the agent back for ONE fix pass (blind-critique.ts). Its own switch, SELF_CHECK_CRITIC, is
+ *      on unless it says off; it is part of this check, so SELF_CHECK=off turns it off too.
  *
  * THE SWITCH: `SELF_CHECK` (a Worker var; `wrangler secret put` is not needed, it is not a secret).
  *

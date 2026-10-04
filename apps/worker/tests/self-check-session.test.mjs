@@ -66,7 +66,7 @@ const PNG = bytesToBase64(await encodePng(new Uint8Array(8 * 6 * 3).fill(100), 8
 // ------------------------------------------------------------------------------------ a fake Studio ---
 
 /** A place that remembers. `stickyColour: false` is a plugin that says "set" and leaves the colour white. */
-function fakeStudio({ stickyColour = true, play = null, captureWorks = true, renderWorks = false } = {}) {
+function fakeStudio({ stickyColour = true, play = null, captureWorks = true, renderWorks = false, workspaceTree = null } = {}) {
   const items = new Map([
     ['game.Workspace.Door', { class: 'Part', props: { Color: { t: 'Color3', v: [1, 1, 1] }, Position: { t: 'Vector3', v: [0, 3, 0] }, Size: { t: 'Vector3', v: [4, 6, 1] } } }],
     ['game.Workspace.Spawn', { class: 'SpawnLocation', props: { Position: { t: 'Vector3', v: [0, 0.5, 30] }, Size: { t: 'Vector3', v: [6, 1, 6] } } }],
@@ -77,7 +77,9 @@ function fakeStudio({ stickyColour = true, play = null, captureWorks = true, ren
   const answer = (op) => {
     log.push(op);
     switch (op.op) {
-      case 'get_tree': return { ok: true, data: { root: { path: op.root ?? 'game.Workspace', name: 'Workspace', class: 'Workspace', children: [] } } };
+      case 'get_tree':
+        if (workspaceTree && op.root === 'game.Workspace') return { ok: true, data: workspaceTree };
+        return { ok: true, data: { root: { path: op.root ?? 'game.Workspace', name: 'Workspace', class: 'Workspace', children: [] } } };
       case 'get_instance': {
         const it = items.get(op.path);
         return it ? { ok: true, data: { path: op.path, name: op.path.split('.').pop(), class: it.class, childCount: 0, props: it.props, attributes: {} } } : { ok: false, error: 'not found', failure: 'not_found' };
@@ -127,9 +129,13 @@ class SqlMemory {
 }
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+// The blind critique (blind-critique.ts) runs when a run that changed the place is about to answer. By default these tests give it
+// a clean verdict, so it asks nothing of the agent; its own behaviour is pinned in blind-critique-session.test.mjs.
+const CLEAN_CRITIQUE = { scores: { delivers: 8, world: 8, art: 8, assets: 8, ui: 8, feedback: 8 }, flaws: [] };
+
 const LOOK_OBSERVATIONS = { observations: [{ about: 'the door', verdict: 'seen', note: 'a door in the wall' }], answers: [], issues: [] };
 
-async function makeSession({ responses = [], studio = fakeStudio(), env: envExtra = {}, capabilities = null, look = LOOK_OBSERVATIONS, lookNeurons = 120, judge = { unsupported: [] }, judgeNeurons = 33 } = {}) {
+async function makeSession({ responses = [], studio = fakeStudio(), env: envExtra = {}, capabilities = null, look = LOOK_OBSERVATIONS, lookNeurons = 120, critic = CLEAN_CRITIQUE, judge = { unsupported: [] }, judgeNeurons = 33 } = {}) {
   const store = new Map([['bind', { projectId: 'project-1', projectName: 'Check Place', ownerId: 'owner-1' }]]);
   store.set('pluginLastSeen', Date.now());
   const sql = new SqlMemory();
@@ -139,6 +145,7 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
   const chatCalls = [];
   const visionCalls = [];
   const judgeCalls = [];
+  const criticCalls = [];
   const alarms = [];
   const ops = [];
   let attachment = { userId: 'owner-1', role: 'owner', connectionId: 'connection-1', activity: 'viewing', lastSeenMs: Date.now() };
@@ -195,6 +202,11 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
         if (judge instanceof Error) throw judge;
         return { text: JSON.stringify(judge), neurons: judgeNeurons };
       }
+      if (opts?.kind === 'visual:critic') {
+        criticCalls.push({ req, opts });
+        if (critic instanceof Error) throw critic;
+        return { text: JSON.stringify(critic), neurons: 90 };
+      }
       if (opts?.kind === 'visual:look') {
         visionCalls.push({ req, opts });
         if (look instanceof Error) throw look;
@@ -220,7 +232,7 @@ async function makeSession({ responses = [], studio = fakeStudio(), env: envExtr
       waiter({ id: op.id, ...studio.answer(op.studioOp) });
     }
   }, 1);
-  return { session, store, sql, sent, spends, refunds, chatCalls, visionCalls, judgeCalls, alarms, ops, studio, stop: () => clearInterval(answerer), queue };
+  return { session, store, sql, sent, spends, refunds, chatCalls, visionCalls, criticCalls, judgeCalls, alarms, ops, studio, stop: () => clearInterval(answerer), queue };
 }
 
 const answer = ({ text = '', toolCalls = [], neurons = 40 } = {}) => ({
@@ -637,5 +649,188 @@ test('FULL: the judge is not asked about a reply the gate is about to send back 
     await run(h);
     assert.equal(h.visionCalls.length, 1);
     assert.equal(h.judgeCalls.length, 1, 'once, on the reply that could be final — not on the one the look interrupted');
+  } finally { h.stop(); }
+});
+
+// ============================================================================== the blind critique ===
+
+const SEVERE = {
+  scores: { delivers: 3, world: 2, art: 2, assets: 3, ui: 5, feedback: 3 },
+  flaws: [
+    { area: 'art', severity: 'severe', flaw: 'Frame 1 is almost uniformly dark, nothing is readable.', fix: 'Raise the ambient light.' },
+    { area: 'world', severity: 'moderate', flaw: 'Frame 2 shows a flat plane to the horizon.', fix: 'Add height and enclosure.' },
+  ],
+};
+const MODERATE_ONLY = { scores: SEVERE.scores, flaws: [SEVERE.flaws[1]] };
+const reportsIn = (h) => h.chatCalls.flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /reviewer who was told nothing/.test(String(m.content)));
+
+test('a severe flaw sends the agent back for ONE fix pass, with the flaws fenced as data; then it answers', async () => {
+  const h = await makeSession({
+    critic: SEVERE,
+    responses: [
+      paint([1, 0, 0]), answer({ text: 'Done.' }), // forced look
+      answer({ text: 'The door is in the wall, red.' }), // the answer the critic reviews
+      paint([0.9, 0, 0]), calls(['look', { expect: ['a door'] }]), answer({ text: 'Fixed the light; the door is red.' }),
+    ],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.criticCalls.length, 1, 'one critique');
+    const reports = [...new Set(reportsIn(h).map((m) => String(m.content)))];
+    assert.equal(reports.length, 1, 'one report was handed to the agent');
+    assert.match(reports[0], /^\[Harness note, not the user\] Before you answer, a reviewer who was told nothing/);
+    assert.match(reports[0], /<untrusted-tool-output id="[^"]+" tool="blind_critique"/);
+    assert.match(reports[0], /\[severe, art and light\] Frame 1 is almost uniformly dark/);
+    assert.ok(reports[0].indexOf('severe, art') < reports[0].indexOf('moderate, world'), 'severe flaws first');
+    assert.match(reports[0], /this is the only fix pass/);
+    assert.equal(stepCalls(h).length, 6, 'build, answer, answer, fix, look, final answer');
+    assert.equal(reply(h), 'Fixed the light; the door is red.');
+    assert.equal(lastEnd(h).stopReason, 'done');
+  } finally { h.stop(); }
+});
+
+test('the fix pass is the only one: a second severe verdict is not asked for, the run ends', async () => {
+  const h = await makeSession({
+    critic: SEVERE,
+    responses: [
+      paint([1, 0, 0]), answer({ text: 'Done.' }), answer({ text: 'Looks right.' }),
+      paint([0.9, 0, 0]), calls(['look', {}]), answer({ text: 'Changed it.' }),
+    ],
+  });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.criticCalls.length, 1, 'the critique is not run a second time');
+    assert.equal(h.store.get('selfCheckLedger'), undefined, 'the ledger is removed when the run ends');
+  } finally { h.stop(); }
+});
+
+test('a clean critique, or one with no severe flaw, asks nothing of the agent: the answer stands', async () => {
+  for (const critic of [CLEAN_CRITIQUE, MODERATE_ONLY]) {
+    const h = await makeSession({ critic, responses: [paint([1, 0, 0]), answer({ text: 'Done.' }), answer({ text: 'The door is in the wall.' })] });
+    try {
+      await start(h);
+      await run(h);
+      assert.equal(h.criticCalls.length, 1);
+      assert.equal(reportsIn(h).length, 0);
+      assert.equal(stepCalls(h).length, 3, 'no extra pass');
+      assert.equal(reply(h), 'The door is in the wall.', 'nothing appended to the agent\'s words');
+    } finally { h.stop(); }
+  }
+});
+
+test('THE CRITIC IS BLIND: its prompt holds the request and the pictures, and not the agent\'s reply, plan or what it touched', async () => {
+  const h = await makeSession({
+    responses: [
+      paint([1, 0, 0]), answer({ text: 'Done.' }),
+      answer({ text: 'ZEBRA-REPLY I put the door in the wall because I meant it to be a gate.' }),
+    ],
+  });
+  try {
+    await start(h, 'put a door in the wall and make it red');
+    await run(h);
+    assert.equal(h.criticCalls.length, 1);
+    const { req, opts } = h.criticCalls[0];
+    assert.equal(opts.kind, 'visual:critic');
+    assert.equal(req.model, 'vision');
+    const [system, user] = req.messages;
+    const text = user.content.find((p) => p.type === 'text').text;
+    assert.match(text, /put a door in the wall and make it red/, 'the request is given');
+    assert.ok(user.content.filter((p) => p.type === 'image_url').length >= 3, 'the pictures are given');
+    const everything = JSON.stringify(req.messages).replace(/data:image\/png;base64,[A-Za-z0-9+/=]+/g, '');
+    for (const leak of ['ZEBRA-REPLY', 'meant it', 'game.Workspace.Door', 'set_properties', 'Harness note', 'propose_plan']) {
+      assert.equal(everything.includes(leak), false, `the critic was shown "${leak}"`);
+    }
+    assert.match(system.content, /You were not told how this place was built/);
+    assert.match(system.content, /top-100 Roblox/);
+  } finally { h.stop(); }
+});
+
+test('the critique is part of the self-check and has its own switch: off, SELF_CHECK off, a run that changed nothing, no Studio view', async () => {
+  const cases = [
+    { name: 'SELF_CHECK_CRITIC=off', env: { SELF_CHECK_CRITIC: 'off' }, responses: [paint([1, 0, 0]), answer({ text: 'Done.' }), answer({ text: 'Done.' })] },
+    { name: 'SELF_CHECK=off', env: { SELF_CHECK: 'off' }, responses: [paint([1, 0, 0]), answer({ text: 'Done.' })] },
+    { name: 'nothing changed', env: {}, responses: [readDoor(), answer({ text: 'It is white.' })] },
+  ];
+  for (const c of cases) {
+    const h = await makeSession({ critic: SEVERE, env: c.env, responses: c.responses });
+    try {
+      await start(h);
+      await run(h);
+      assert.equal(h.criticCalls.length, 0, c.name);
+    } finally { h.stop(); }
+  }
+});
+
+test('a critique that cannot be made (the vision model fails) never blocks the answer, and is not retried', async () => {
+  const h = await makeSession({ critic: new Error('the model is down'), responses: [paint([1, 0, 0]), answer({ text: 'Done.' }), answer({ text: 'The door is in the wall.' })] });
+  try {
+    await start(h);
+    await run(h);
+    assert.equal(h.criticCalls.length, 1);
+    assert.equal(stepCalls(h).length, 3);
+    assert.equal(reply(h), 'The door is in the wall.');
+    const row = h.sent.find((m) => m.type === 'tool_end' && /fresh review of the result could not be made/.test(m.summary));
+    assert.ok(row, 'the user sees that the review could not be made');
+  } finally { h.stop(); }
+});
+
+test('the critique\'s vision call is counted into the run\'s Credits', async () => {
+  const h = await makeSession({ critic: CLEAN_CRITIQUE, responses: [paint([1, 0, 0]), answer({ text: 'Done.' }), answer({ text: 'The door is in the wall.' })] });
+  try {
+    await start(h);
+    await run(h);
+    assert.ok(h.criticCalls.length === 1 && h.spends.length > 0);
+  } finally { h.stop(); }
+});
+
+// ============================================================================== the layout flags ===
+
+const gridTree = () => {
+  const part = (name, at, size) => ({ path: `game.Workspace.${name}`, name, class: 'Part', attributes: {}, children: [], props: { Position: { t: 'Vector3', v: at }, Size: { t: 'Vector3', v: size }, Transparency: { t: 'number', v: 0 } } });
+  const children = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 8; c++) {
+    const n = `Node_${r * 8 + c}`;
+    children.push({ path: `game.Workspace.${n}`, name: n, class: 'Model', attributes: {}, props: {}, children: [part(`${n}_a`, [-70 + c * 20, 2, -30 + r * 20], [3, 4, 3]), part(`${n}_b`, [-69 + c * 20, 5, -30 + r * 20], [1, 3, 1])] });
+  }
+  return { root: { path: 'game.Workspace', name: 'Workspace', class: 'Workspace', attributes: {}, props: {}, children } };
+};
+const build = (name) => calls(['create_instances', { items: [{ className: 'Part', name, props: { Size: { t: 'Vector3', v: [4, 1, 4] }, Position: { t: 'Vector3', v: [0, 1, 0] } } }] }]);
+const layoutReports = (h) => [...new Set(h.chatCalls.flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /Apple measured the layout/.test(String(m.content))).map((m) => String(m.content)))];
+
+test('after a step that built in the workspace, a measured layout flag reaches the agent once, fenced, and the same flag is not sent again', async () => {
+  const h = await makeSession({
+    studio: fakeStudio({ workspaceTree: gridTree() }),
+    responses: [build('PadA'), build('PadB'), answer({ text: 'Built it.' }), answer({ text: 'Built it.' })],
+  });
+  try {
+    await start(h, 'build the area');
+    await run(h);
+    const reports = layoutReports(h);
+    assert.equal(reports.length, 1, 'the flag was sent exactly once across two world-building steps');
+    assert.match(reports[0], /<untrusted-tool-output id="[^"]+" tool="layout_flags"/);
+    assert.match(reports[0], /\[high\] repeated_grid: 32 identical objects/);
+    assert.match(reports[0], /8 x 4 grid/);
+    assert.equal(opsNamed(h, 'get_tree').filter((o) => o.root === 'game.Workspace').length >= 1, true);
+  } finally { h.stop(); }
+});
+
+test('the layout check is part of the self-check: SELF_CHECK=off reads nothing and sends nothing', async () => {
+  const h = await makeSession({ env: { SELF_CHECK: 'off' }, studio: fakeStudio({ workspaceTree: gridTree() }), responses: [build('PadA'), answer({ text: 'Built it.' })] });
+  try {
+    await start(h, 'build the area');
+    await run(h);
+    assert.equal(layoutReports(h).length, 0);
+    assert.equal(opsNamed(h, 'terrain_read').length, 0);
+  } finally { h.stop(); }
+});
+
+test('a place with a natural layout sends no layout flag', async () => {
+  const h = await makeSession({ responses: [build('PadA'), answer({ text: 'Built it.' }), answer({ text: 'Built it.' })] });
+  try {
+    await start(h, 'build the area');
+    await run(h);
+    assert.equal(layoutReports(h).length, 0);
   } finally { h.stop(); }
 });
