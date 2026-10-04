@@ -674,7 +674,8 @@ test('the flow: plan_game, build_game and judge_game are the agent\'s tools; ass
   assert.match(defs.build_game.description, /at most three rounds/);
   assert.match(defs.plan_game.description, /build_game/);
   assert.match(defs.plan_game.description, /compose_game/, 'a new idea goes to the composer');
-  assert.match(defs.compose_game.description, /Builds a NEW game from components/);
+  // RESTATED 2026-10-04 (t1 round 2): the composer's definition says it builds the BASE of a game, not the whole game.
+  assert.match(defs.compose_game.description, /BASE of a NEW game/);
   const prompts = readFileSync('src/prompts.ts', 'utf8');
   assert.match(prompts, /compose_game \(you pick the template[\s\S]{0,500}judge_game \{request\}[\s\S]{0,120}at most three rounds/);
   assert.equal(/assemble_owner_game/.test(prompts), false);

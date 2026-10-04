@@ -103,7 +103,9 @@ test('the steps build bases with a belt, droppers, machines, a seller and pads t
 
 test('the default ground and the lighting are left alone unless the agent asks', () => {
   const steps = T.tycoonSteps(T.tycoonRecipe(1, theme()));
-  assert.equal(steps.some((s) => s.kind === 'delete' && s.paths.some((p) => /Baseplate|SpawnLocation/.test(p))), false);
+  // RESTATED 2026-10-04 (owner's recording of round 2): only the default spawn's decal is removed and the spawn switched off.
+  assert.equal(steps.some((s) => s.kind === 'delete' && s.paths.some((p) => /Baseplate|SpawnLocation/.test(p) && !/^game\.Workspace\.SpawnLocation\.(Decal|Texture)$/.test(p))), false);
+  assert.ok(steps.some((s) => s.kind === 'set' && s.path === 'game.Workspace.SpawnLocation' && s.props.Enabled === false), 'the default spawn is retired');
   assert.equal(steps.some((s) => s.kind === 'set' && s.path === 'game.Lighting'), false);
   assert.equal(steps.some((s) => s.kind === 'create' && s.parent === 'game.Lighting'), false);
   const cleared = T.tycoonSteps({ ...T.tycoonRecipe(1, theme()), clearDefaultGround: true });

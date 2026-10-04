@@ -112,7 +112,7 @@ import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-ru
 import { auditReply, type Finding } from '../claim-audit';
 import { judgeReply } from '../claim-audit-judge';
 import { LOOK_TOOL, runBlindCritique } from '../look-tool';
-import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
+import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, AREA_WORDS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
 import { decideJudgeGate, judgeFixMessage, readJudge, type JudgeVerdict } from '../judge-gate';
 import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, type WorldBase } from '../world-pass';
 import { readSceneFlags } from '../scene-flags-run';
@@ -308,8 +308,9 @@ interface AgentState {
   judgeFixPasses?: number;
   /** A composer built a base and what the run has built on it since (world-pass.ts); undefined before any composer. */
   worldBase?: WorldBase;
-  /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary). */
+  /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary), and the change count then. */
   critiqueSevere?: FlawArea[];
+  critiqueAtSeq?: number;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -4994,7 +4995,7 @@ export class SessionDO extends DurableObject<Env> {
         if (verdict) agent.lastJudge = verdict;
       }
       // A composer built the BASE of a game; what the run builds on it after is counted (world-pass.ts).
-      if (out.ok && out.mutatedProject === true) {
+      if (out.mutatedProject === true && out.ok) {
         if (COMPOSER_TOOLS.includes(call.name)) agent.worldBase = noteComposer(agent.worldBase);
         else noteWorldTool(agent.worldBase, call.name);
       }
@@ -5509,7 +5510,7 @@ export class SessionDO extends DurableObject<Env> {
     canBuild: boolean,
   ): Promise<boolean> {
     // What the run still owes before it may answer, and what it must admit once the bounds on that are used.
-    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected);
+    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected, ledger.mutationSeq);
     const input = {
       ledger,
       reply: agent.finalText ?? '',
@@ -5559,7 +5560,7 @@ export class SessionDO extends DurableObject<Env> {
    * judge's findings go in fenced: they quote names from the place); `admit` are the plain lines for the final note once a bound
    * is used, plus the critique's severe areas (a fixed vocabulary, never its words). `canFix` is false when nothing could be changed.
    */
-  private owedAtAnswer(agent: AgentState, canFix: boolean): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
+  private owedAtAnswer(agent: AgentState, canFix: boolean, mutationSeq: number): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
     const admit: string[] = [];
     let owed: { kind: 'world' | 'judge'; message: string } | undefined;
     const world = decideWorldPass(agent.worldBase, { canBuild: canFix });
@@ -5568,8 +5569,10 @@ export class SessionDO extends DurableObject<Env> {
     const judge = decideJudgeGate(agent.lastJudge, agent.judgeFixPasses ?? 0, { canBuild: canFix });
     if (judge.action === 'steer' && !owed) owed = { kind: 'judge', message: judgeFixMessage(this.fencedToolOutput(agent, 'judge_game', judge.body).text) };
     else if (judge.action === 'admit') admit.push(judge.line);
+    // The critique's severe flaws are admitted when the run changed nothing after hearing them (what it changed after is looked at, or
+    // said not to have been, by the gate). The areas are a fixed vocabulary: the reviewer's own words never reach the user's reply.
     const severe = (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a));
-    if (severe.length) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.join(', ')}); I made one fix pass and it was not reviewed again, so some may remain.`);
+    if (severe.length && mutationSeq === agent.critiqueAtSeq) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.map((a) => AREA_WORDS[a]).join(', ')}) and I did not change anything in answer to them, so they are still there.`);
     return { ...(owed ? { owed } : {}), admit };
   }
 
@@ -5613,7 +5616,10 @@ export class SessionDO extends DurableObject<Env> {
     agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: verdict.ok, summary, durationMs: Date.now() - t0 });
     if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
 
-    if (severe && verdict.ok) agent.critiqueSevere = [...new Set(verdict.critique.flaws.filter((f) => f.severity === 'severe').map((f) => f.area))];
+    if (severe && verdict.ok) {
+      agent.critiqueSevere = [...new Set(verdict.critique.flaws.filter((f) => f.severity === 'severe').map((f) => f.area))];
+      agent.critiqueAtSeq = ledger.mutationSeq;
+    }
     const flags = await this.newLayoutFlags(agent, ctx);
     if (!severe && flags.length === 0) return false;
     const body = [

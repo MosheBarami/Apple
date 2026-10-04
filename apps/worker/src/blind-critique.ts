@@ -196,7 +196,7 @@ export async function critiqueFrames(i: CriticInput, chat: ChatFn): Promise<Crit
   return { ok: true, critique, neurons: res.neurons };
 }
 
-const AREA_WORDS: Record<FlawArea, string> = {
+export const AREA_WORDS: Record<FlawArea, string> = {
   delivers: 'request', world: 'world', art: 'art and light', assets: 'assets', ui: 'interface', feedback: 'feedback',
 };
 
