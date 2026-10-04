@@ -28,8 +28,13 @@
  * Nothing here reads a file, runs git, or prints. That is the property that makes it testable.
  */
 
-/** Credit claims a page can make to a reader: "30 Credits a day", "1,200 Credits per month". */
-export const CREDIT_CLAIM = /(\d[\d,]{1,8})\s*(?:Credits?|credits?)\s*(?:a|per|\/)\s*(day|month)/g;
+/**
+ * Credit claims a page can make to a reader: "30 Credits a day", "1,200 Credits per month", and since
+ * the app and the pricing page quote credits, "5 Credits a day" (one digit) and "5.00 Credits a day"
+ * (decimals). The number used to need two characters, so every claim under ten was invisible and
+ * "5.00" read as "00".
+ */
+export const CREDIT_CLAIM = /(?<![\d.,])(\d[\d,]*(?:\.\d+)?)\s*(?:Credits?|credits?)\s*(?:a|per|\/)\s*(day|month)/g;
 
 /**
  * Terms, not descriptions. §12.5 puts contractual promises in the owner's hands, and this product

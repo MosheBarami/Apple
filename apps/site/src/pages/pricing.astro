@@ -240,7 +240,7 @@ const limitFaq = [
   //   protocol still has nothing to carry it.
   {
     q: 'Can a build cost more than the table says?',
-    a: `<p>Yes. The table shows what builds typically cost, not a quote. A build is charged for the AI work it actually used, so a long one costs more. You see the running total live in the workspace while it climbs, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
+    a: `<p>Yes. The table shows what builds typically cost, not a quote. A build is charged for the AI work it actually used, so a long one costs more. The workspace shows what a request cost once it has finished, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
   },
   {
     q: 'What is a Credit?',
@@ -578,7 +578,7 @@ const limitFaq = [
 
       <p class="tfoot" data-reveal>
         These are what builds typically cost, not a quote. A build is charged for the work it actually
-        did, so a long one costs more, and the workspace counts what the run has spent while it runs.
+        did, so a long one costs more, and the workspace shows what each request cost once it has finished.
         StudPilot&rsquo;s own housekeeping does not count against your quota.
       </p>
     </div>

@@ -21,7 +21,11 @@ import { fileURLToPath } from 'node:url';
 import { visibleCopy } from './lib/visible-copy.mjs';
 
 const shared = await import('../../../packages/shared/src/index.ts');
-const { PLAN_TABLE, LISTED_PLAN_IDS, BUILD_COSTS, CREDIT_USD, TYPICAL_BUILD_CREDITS, formatCredits, formatMoney } = shared;
+const {
+  PLAN_TABLE, LISTED_PLAN_IDS, BUILD_COSTS, CREDIT_USD, TYPICAL_BUILD_CREDITS, INTERNAL_PER_CREDIT, NEURONS_PER_CREDIT,
+  buildsPerMonth, formatCredits, formatMoney,
+} = shared;
+const { DAILY_NEURON_CEILING } = await import('../../worker/src/pricing.ts');
 
 const distFile = fileURLToPath(new URL('../dist/pricing/index.html', import.meta.url));
 const sourceFile = fileURLToPath(new URL('../src/pages/pricing.astro', import.meta.url));
@@ -39,33 +43,75 @@ const text = html
   .replace(/&rsquo;|&#8217;|&#x27;|&#39;/g, "'")
   .replace(/\s+/g, ' ');
 
+/** Tags, scripts and styles out; what a reader sees of one fragment, cells separated by a single space. */
+const plain = (fragment) =>
+  fragment
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&rsquo;|&#8217;|&#x27;|&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** One plan card, from the <article> that names it to the </article> that closes it. Nothing outside it. */
+function card(id) {
+  const m = new RegExp(`<article[^>]*aria-labelledby="plan-${id}"[\\s\\S]*?</article>`).exec(html);
+  assert.ok(m, `no card for ${id}`);
+  return plain(m[0]);
+}
+
+/** The answer of the FAQ item whose question is `question`. */
+function faqAnswer(question) {
+  const item = html.split('<details class="acc__item"').find((chunk) => chunk.includes(`>${question}</span>`));
+  assert.ok(item, `no FAQ item asks "${question}"`);
+  const open = item.indexOf('class="acc__a"');
+  return plain(item.slice(item.indexOf('>', open) + 1));
+}
+
+/** A titled note under the cards ("A second, shared limit"): the paragraph that opens with that title. */
+function note(title) {
+  const m = new RegExp(`<p class="plan__note"[^>]*><strong class="note-title"[^>]*>${title}</strong>([\\s\\S]*?)</p>`).exec(html);
+  assert.ok(m, `no note titled "${title}"`);
+  return plain(m[1]);
+}
+
 test('the page says the owner\'s line, exactly', () => {
   assert.ok(text.includes('Free while in beta. Paid plans start later'), 'the headline is not the decided line');
   assert.match(html, /<h1[^>]*>\s*Free while in beta\. Paid plans start later\s*<\/h1>/, 'and it is the page\'s one h1');
 });
 
-test('every displayed plan shows its name, price and credits from the plan table', () => {
+test('EACH CARD carries its own price, allowance and build count, from the plan table, and no other card\'s', () => {
   assert.deepEqual([...LISTED_PLAN_IDS], ['free', 'builder', 'studio']);
+  const cards = Object.fromEntries(LISTED_PLAN_IDS.map((id) => [id, card(id)]));
   for (const id of LISTED_PLAN_IDS) {
     const plan = PLAN_TABLE[id];
-    assert.match(html, new RegExp(`<h2 id="plan-${id}"[^>]*>\\s*${plan.name}\\s*</h2>`), `no card for ${plan.name}`);
-    // Free leads with its day (that is how it is given out), a paid plan with its month (its pool).
+    const t = cards[id];
+    assert.ok(t.includes(plan.name), `${plan.name}: the card does not carry its own name`);
+    // Price. Free is $0 in beta; a paid card is "<price> a month", adjacent, inside the card.
+    if (plan.priceUsdMonthly === 0) assert.match(t, /\$0 in beta/, `${plan.name}: the card does not say it is $0 in beta`);
+    else assert.ok(t.includes(`${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not on its card`);
+    // Allowance. Free leads with its day (that is how it is given out), a paid plan with its month (its pool).
     const line = id === 'free'
-      ? `${plan.creditsPerDay} Credits per day \u00b7 up to ${plan.creditsPerMonth} a month`
-      : `${plan.creditsPerMonth} Credits a month \u00b7 up to ${plan.creditsPerDay} a day`;
-    assert.ok(text.includes(line), `${plan.name}: "${line}" is not on the page`);
-    if (plan.priceUsdMonthly > 0) {
-      assert.ok(
-        text.includes(`${formatMoney(plan.priceUsdMonthly)} a month`),
-        `${plan.name}: ${formatMoney(plan.priceUsdMonthly)} a month is not on the page`,
-      );
+      ? `${plan.creditsPerDay} Credits per day · up to ${plan.creditsPerMonth} a month`
+      : `${plan.creditsPerMonth} Credits a month · up to ${plan.creditsPerDay} a day`;
+    assert.ok(t.includes(line), `${plan.name}: "${line}" is not on its card`);
+    // Build count.
+    assert.ok(t.includes(`About ${buildsPerMonth(id)} typical builds a month`), `${plan.name}: "About ${buildsPerMonth(id)} typical builds a month" is not on its card`);
+  }
+  // Nothing crosses: a card never carries another plan's price or allowance (a swapped pair would pass the loop above).
+  for (const id of LISTED_PLAN_IDS) {
+    for (const other of LISTED_PLAN_IDS.filter((o) => o !== id)) {
+      const o = PLAN_TABLE[other];
+      if (o.priceUsdMonthly > 0) assert.ok(!cards[id].includes(formatMoney(o.priceUsdMonthly)), `the ${PLAN_TABLE[id].name} card carries the ${o.name} price`);
+      assert.ok(!cards[id].includes(`${o.creditsPerMonth} Credits a month`) || o.creditsPerMonth === PLAN_TABLE[id].creditsPerMonth, `the ${PLAN_TABLE[id].name} card carries the ${o.name} allowance`);
     }
   }
-  // The exact figures the owner decided, spelled out once, so a config edit that is wrong is caught
-  // here too and not only a page that disagrees with it.
-  assert.ok(text.includes('$9.99 a month') && text.includes('$24.99 a month'));
-  assert.ok(text.includes('5 Credits per day \u00b7 up to 30 a month'));
-  assert.ok(text.includes('100 Credits a month') && text.includes('300 Credits a month'));
+  // The exact figures the owner decided, typed once, so a config edit that is wrong is caught here too
+  // and not only a page that disagrees with it.
+  assert.ok(cards.builder.includes('$9.99 a month') && cards.studio.includes('$24.99 a month'));
+  assert.ok(cards.free.includes('5 Credits per day · up to 30 a month'));
+  assert.ok(cards.builder.includes('100 Credits a month · up to 20 a day') && cards.studio.includes('300 Credits a month · up to 30 a day'));
+  assert.ok(cards.free.includes('About 20 typical builds a month') && cards.builder.includes('About 70 typical builds') && cards.studio.includes('About 200 typical builds'));
 });
 
 test('Enterprise is not on the page, in any form', () => {
@@ -110,6 +156,38 @@ test('NO METERING CLAIM THAT IS NOT BUILT: no estimate before a build, no exact 
     /\b(charge|cost)\b[^.]{0,30}\bafter (the|each|every) (build|run)\b/i,
   ];
   for (const re of claims) assert.doesNotMatch(text, re, `a metering claim: ${re}`);
+});
+
+test('THE FAQ DEFINES A CREDIT from CREDIT_USD and the unit, at the question that asks', () => {
+  const a = faqAnswer('What is a Credit?');
+  assert.ok(a.startsWith(`One Credit is about ${formatMoney(CREDIT_USD)} of AI compute:`), `the answer does not open with the definition: ${a.slice(0, 80)}`);
+  const neurons = (INTERNAL_PER_CREDIT * NEURONS_PER_CREDIT).toLocaleString('en-US');
+  assert.ok(a.includes(`${neurons} of Cloudflare's Workers AI neurons`), `the answer does not give the ${neurons} neurons a credit is`);
+  assert.equal(neurons, '4,500', 'a credit is 150 ledger units of 30 neurons');
+  assert.ok(a.includes('shows with two decimals'), 'and the app\'s two-decimal balance is said');
+  assert.ok(a.includes(`A typical build uses about ${formatCredits(TYPICAL_BUILD_CREDITS)} Credits`), 'and what a typical build uses');
+});
+
+test('THE SHARED-POOL SENTENCE gives the whole-service ceiling in credits and the accounts it serves, from the worker\'s own number', () => {
+  const pool = Math.floor(DAILY_NEURON_CEILING / (NEURONS_PER_CREDIT * INTERNAL_PER_CREDIT));
+  const accounts = Math.floor(pool / PLAN_TABLE.free.creditsPerDay);
+  assert.deepEqual([pool, accounts], [35, 7], 'the service-wide ceiling moved: decide what the page may say');
+  const n = note('A second, shared limit');
+  assert.ok(n.includes(`shared pool of about ${pool} Credits of building a day across the whole service`), `the pool is not ${pool} Credits: ${n.slice(0, 140)}`);
+  assert.ok(n.includes(`roughly ${accounts} accounts building flat out`), `the page does not say ${accounts} accounts`);
+  assert.ok(n.includes('even though your own balance still shows Credits'), 'and what the user sees when the pool is gone');
+});
+
+test('THE BUILD COST TABLE has one row per build, with its credits and its dollars in that row', () => {
+  const rows = [...html.matchAll(/<tr[^>]*>\s*<td[^>]*data-label="Build"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*data-label="Credits"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*data-label="AI compute"[^>]*>([\s\S]*?)<\/td>/g)]
+    .map((m) => [plain(m[1]), plain(m[2]), plain(m[3])]);
+  assert.equal(rows.length, BUILD_COSTS.length, 'one row per build cost');
+  const cents = (credits) => formatMoney(Math.round(credits * CREDIT_USD * 100) / 100);
+  BUILD_COSTS.forEach((b, k) => {
+    const credits = b.creditsLow === b.creditsHigh ? formatCredits(b.creditsLow) : `${formatCredits(b.creditsLow)}\u2013${formatCredits(b.creditsHigh)}`;
+    const dollars = b.creditsLow === b.creditsHigh ? cents(b.creditsLow) : `${cents(b.creditsLow)}\u2013${cents(b.creditsHigh)}`;
+    assert.deepEqual(rows[k], [`${b.label}${b.estimated ? ', estimated' : ''}`, credits, dollars], `row ${k} (${b.label}) is not the config's`);
+  });
 });
 
 test('what a Credit buys comes from BUILD_COSTS and CREDIT_USD, not from the page', () => {

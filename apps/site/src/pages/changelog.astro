@@ -1,6 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
-import { PLAN_TABLE } from '@studpilot/shared';
+import { LISTED_PLAN_IDS, PLAN_TABLE } from '@studpilot/shared';
+
+/* The plan names as the product shows them ("Free, Pro and Max"), read from the plan table so this
+   page cannot name a plan the pricing page does not have. */
+const names = LISTED_PLAN_IDS.map((id) => PLAN_TABLE[id].name);
+const planNames = `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 
 ---
 
@@ -192,7 +197,7 @@ import { PLAN_TABLE } from '@studpilot/shared';
             <li>
               Free tier: 60 Credits per day, hard quota, resets daily, no card ever collected.
               <span class="release__since">
-                Since repriced: the free tier is {PLAN_TABLE.free.creditsPerDay} Credits a day, and a Credit is now a larger unit. A reader
+                Since repriced: the free tier is {PLAN_TABLE.free.creditsPerDay} Credits a day and {PLAN_TABLE.free.creditsPerMonth} a month, and a Credit is now a larger unit. A reader
                 comparing this page with <a href="/pricing">Pricing</a> was seeing two different numbers
                 for the same thing.
               </span>
@@ -200,7 +205,8 @@ import { PLAN_TABLE } from '@studpilot/shared';
             <li>
               Pro (400 Credits/day, priority queue, extended checkpoints) opens as a waitlist.
               <span class="release__since">
-                Since withdrawn: there is no Pro tier. The paid tiers are Builder and Studio — see
+                Since replaced: the plans are {planNames}, and paying changes the allowance, not your turn,
+                so there is no priority queue. Paid checkout is not open yet — see
                 <a href="/pricing">Pricing</a>.
               </span>
             </li>

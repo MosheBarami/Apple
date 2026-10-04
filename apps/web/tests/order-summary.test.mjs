@@ -35,17 +35,22 @@ const bundle = (src, name) => {
 };
 
 const { orderSummary } = await import(`file://${bundle(join(WEB, 'src', 'lib', 'order-summary.ts'), 'model.mjs')}`);
-const { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, formatMoney } =
+const { PLAN_COPY, PLAN_LIMITS, PLAN_TABLE, PRICE_CURRENCY, formatMoney } =
   await import(`file://${bundle(join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'shared.mjs')}`);
 
-/** The real figures for a real move, so nothing below is checked against a number invented here. */
+/**
+ * The real figures for a real move, so nothing below is checked against a number invented here.
+ * CREDITS, from PLAN_TABLE: the unit a person is quoted. PLAN_LIMITS is the same table times 150 in
+ * the ledger's units; feeding the summary those printed a 300-credit plan as "45,000 a month", and
+ * this helper handing the model ledger units is what let that pass.
+ */
 const order = (to = 'studio', from = 'free') =>
   orderSummary({
     planName: PLAN_COPY[to].name,
     priceMonthly: PLAN_COPY[to].priceUsdMonthly,
-    creditsPerMonth: PLAN_LIMITS[to].creditsPerMonth,
+    creditsPerMonth: PLAN_TABLE[to].creditsPerMonth,
     currentPlanName: PLAN_COPY[from].name,
-    currentCreditsPerMonth: PLAN_LIMITS[from].creditsPerMonth,
+    currentCreditsPerMonth: PLAN_TABLE[from].creditsPerMonth,
     currency: PRICE_CURRENCY,
     formatMoney: (amount, currency) => formatMoney(amount, { locale: 'en-US', currency }),
     formatNumber: (n) => n.toLocaleString('en-US'),
@@ -88,12 +93,36 @@ test('and it never calls a smaller allowance an upgrade', () => {
   assert.match(whole(order('studio', 'free')), /\bup from\b/, 'and a real upgrade still says so');
 });
 
-test('THE ALLOWANCE IN THE SUMMARY IS THE ENFORCED ONE', () => {
-  // A summary that quotes a different allowance from the one QuotaDO applies is a page that lies at
-  // the exact moment the user is deciding to pay.
+test('THE ALLOWANCE IN THE SUMMARY IS THE PLAN TABLE\'S, IN CREDITS, and never the ledger\'s count of it', () => {
+  // A summary that quotes a different allowance from the one the plan is sold at is a page that lies
+  // at the exact moment the user is deciding to pay. The enforced limit is this number times the unit
+  // (apps/worker/tests/plan-economics.test.mjs), so quoting the table IS quoting what is enforced.
   const s = order('studio');
-  const expected = PLAN_LIMITS.studio.creditsPerMonth.toLocaleString('en-US');
-  assert.ok(whole(s).includes(expected), `the new monthly allowance (${expected}) must be stated: ${whole(s)}`);
+  const credits = PLAN_TABLE.studio.creditsPerMonth.toLocaleString('en-US');
+  assert.ok(whole(s).includes(`${credits} a month`), `the new monthly allowance (${credits} credits) must be stated: ${whole(s)}`);
+  const ledgerUnits = PLAN_LIMITS.studio.creditsPerMonth.toLocaleString('en-US');
+  assert.notEqual(ledgerUnits, credits);
+  assert.ok(!whole(s).includes(ledgerUnits), `the ledger-unit count (${ledgerUnits}) reached the summary`);
+});
+
+test('THE DIALOG ITSELF QUOTES CREDITS: rendered, it reads the plan table and not the ledger-unit limits', async () => {
+  // The model above is handed its numbers by components/order-summary.tsx, and it prints whatever it
+  // is handed. This renders that component, so reverting its inputs to PLAN_LIMITS (ledger units)
+  // fails here and not nowhere.
+  const { bundle: bundleUi, renderWith, text } = await import('./ui-bundle.mjs');
+  const ui = await bundleUi(`
+    export { createElement as h } from 'react';
+    export { renderToStaticMarkup } from 'react-dom/server';
+    export { OrderSummaryDialog } from './src/components/order-summary';
+  `, { name: 'order-summary-dialog', resolveDir: WEB });
+  const html = text(renderWith(ui.renderToStaticMarkup, ui.h(ui.OrderSummaryDialog, { plan: 'builder', currentPlan: 'free', onConfirm() {}, onCancel() {} })));
+  const to = PLAN_TABLE.builder.creditsPerMonth;
+  const from = PLAN_TABLE.free.creditsPerMonth;
+  assert.ok(html.includes(`${to} a month, up from ${from}`), `the Credits line is not "${to} a month, up from ${from}": ${html}`);
+  for (const plan of ['builder', 'free']) {
+    const units = PLAN_LIMITS[plan].creditsPerMonth.toLocaleString('en-US');
+    assert.ok(!html.includes(units), `the dialog printed ${units}, a ledger-unit count, as a monthly allowance`);
+  }
 });
 
 test('TAX IS STATED HERE TOO, because this is the last screen we control', () => {

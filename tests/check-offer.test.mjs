@@ -266,6 +266,30 @@ test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Cred
   assert.deepEqual(problems, []);
 });
 
+test('RULE 4 READS A ONE-DIGIT CLAIM AND A DECIMAL ONE: "5 Credits a day", "5.00 Credits a day", "7 credits per month"', () => {
+  // The claim used to need two characters, so every figure under ten was invisible to the rule, and
+  // "5.00" was read as "00". Free is 5 a day, which is exactly the claim that was unguarded.
+  const enforced = new Set([5, 30, 100, 20, 300]);
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
+  for (const words of ['5 Credits a day', '5.00 Credits a day', '30 credits per month', '30.00 Credits/month', '100 Credits a month, 20 a day']) {
+    assert.deepEqual(copyProblems(page(words), enforced), [], `${words}: an enforced figure was reported`);
+  }
+  const wrong = [
+    ['7 credits per month', /fake\/page\.astro states 7 Credits a month, which no plan grants/],
+    ['6 Credits a day', /states 6 Credits a day/],
+    ['7.50 Credits a day', /states 7\.5 Credits a day/],
+    ['5.50 Credits per month', /states 5\.5 Credits a month/],
+    ['Start with 8 Credits/day.', /states 8 Credits a day/],
+  ];
+  for (const [words, expected] of wrong) {
+    const problems = copyProblems(page(words), enforced);
+    assert.equal(problems.length, 1, `${words}: expected one finding, got ${JSON.stringify(problems)}`);
+    assert.match(problems[0], expected, words);
+  }
+  // The tail of a longer number is not a claim of its own: "1.5.5" and "2,5" are not "5".
+  assert.deepEqual(copyProblems(page('version 1.5 Credits a day'), new Set([1.5])), []);
+});
+
 test('RULE 5 FIRES: a contractual term in copy is reported', () => {
   // The rule that could be deleted outright without this suite noticing.
   const problems = termProblems([{ rel: 'fake/page.astro', src: '<p>Free forever. You will never be charged.</p>' }]);

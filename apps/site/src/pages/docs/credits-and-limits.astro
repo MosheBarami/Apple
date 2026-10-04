@@ -6,6 +6,7 @@ import {
   PLAN_COPY,
   PLAN_TABLE,
   PRICE_CURRENCY,
+  INTERNAL_PER_CREDIT,
   TYPICAL_BUILD_CREDITS,
   buildsPerDay,
   formatCredits,
@@ -31,7 +32,7 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
 
 <DocsLayout
   title="Credits & limits — StudPilot Docs"
-  description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free (up to ${free.creditsPerMonth} a month), what builds cost, live metering, daily reset, and exactly what happens when you run out.`}
+  description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free (up to ${free.creditsPerMonth} a month), what builds cost, how it is metered, daily reset, and exactly what happens when you run out.`}
   heading="Credits & limits"
 >
   <p>
@@ -64,7 +65,7 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     protocol has no cost-warning message, a run is admitted on a one-Credit spend whose only refusal
     is a zero balance, and the worker's own preferences.ts downgrades the `ask` tool permission to
     `deny` because "nothing in this product can interrupt a run to ask". The paragraph above already
-    describes the live running total truthfully and stands on its own; a warning BEFORE the spend is
+    describes what the app shows truthfully and stands on its own; a warning BEFORE the spend is
     a different promise, and it was not kept.
 
     THIS PARAGRAPH SAID "NOTHING COMES BACK" AND THAT STOPPED BEING TRUE on 2026-09-20, when
@@ -108,9 +109,12 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     does not destructure `quota` from the hook, so the update is received and dropped. The figure a
     customer watches for an hour is the one from page load.
 
-    What IS live is the per-run total: thinking.tsx renders "<n> Credits this run" from
-    status.creditsSpent while the run works, which is why that sentence stays and the balance
-    sentence changed. Wiring the balance is an apps/web fix and was reported to the lead as one.
+    NOR IS THE PER-RUN TOTAL LIVE. This note used to say "What IS live is the per-run total:
+    thinking.tsx renders '<n> Credits this run' from status.creditsSpent while the run works".
+    thinking.tsx was removed on 2026-10-01 and nothing in apps/web renders `status.creditsSpent`:
+    the only cost the app draws is the settled figure under a finished reply (ws/turn.tsx). So no
+    sentence here or on /pricing may say a run's cost is counted while it runs; the guard is
+    apps/site/tests/no-live-cost-claim.test.mjs. Wiring the balance is an apps/web fix.
   */}
   <h2>How metering works</h2>
   <p>
@@ -120,10 +124,10 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     workspace loads, so the meter itself is not on screen until you open it — once you do, it sits
     in the footer of the left rail beside your account, reading what is left, what your allowance is
     and when it resets. Either surface is read when the page loads and does not refresh itself while
-    you build — reload for the current figure. What does move as it happens is the run you are
-    watching: the thinking panel counts the Credits this run has spent, step by step. One Credit is taken when a request starts, and the
-    rest settles against the compute the run actually consumed, so a long build's cost arrives as
-    it is incurred rather than as a total you could not see coming.
+    you build — reload for the current figure. The app shows a request's cost under its reply once
+    the reply has finished, not while it works. A request is let in for
+    1/{INTERNAL_PER_CREDIT} of a Credit, and the rest settles against the compute the run actually
+    consumed after each model call, so a long build can cost more than the figures above.
   </p>
   <p>
     A step that fails on our side is not charged: Credits are settled from the compute a call
