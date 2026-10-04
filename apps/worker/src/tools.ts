@@ -5894,7 +5894,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   build_studded_ui: {
     def: {
       name: 'build_studded_ui',
-      description: "Studded game GUI: pieces [{kind counter|button|bar|panel, name, text, at, colour, cards}] (creation skill ui-studded-gui). Then script every value and button.",
+      description: "Studded GUI: pieces [{kind counter|button|bar|panel, name, text, at, colour, cards}] (skill ui-studded-gui). Reuses screen pieces; buttons avoid bottom/corners unless exact:true. Then script each value and button.",
       parameters: S({ screen: { type: 'string' }, pieces: { type: 'array', items: { type: 'object' } }, replace: { type: 'boolean' } }, ['pieces']),
     },
     studio: true,
@@ -5906,7 +5906,7 @@ export const TOOLS: Record<string, ToolImpl> = {
   add_upgrades: {
     def: {
       name: 'add_upgrades',
-      description: 'Working upgrades in ONE call: money per press and per second, an Upgrades button and panel on the screen (nothing on it changes), server-checked buys, saved. You design the upgrades for THIS game.',
+      description: 'Working upgrades in ONE call: money per press and second, Upgrades button and panel on the screen (nothing on it changes), server-checked buys, saved. Design them for THIS game.',
       parameters: S({ screen: { type: 'string' }, currency: { type: 'string' }, upgrades: { type: 'array', minItems: 1, maxItems: 9, items: { type: 'object' }, description: '[{label, kind perPress|perSecond|multiplier, amount, cost, growth?, max?, icon?}]' } }, ['upgrades']),
     },
     studio: true,
