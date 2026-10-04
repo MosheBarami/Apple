@@ -358,6 +358,8 @@ interface AgentState {
   buildNudged?: boolean;
   /** What this run has done with the model library (library-run.ts); the order gate and the insert failure hints read it. */
   libraryRun?: LibraryRun;
+  /** Live Creator Store rows this run's find_library_model returned (tools.ts liveLibraryRows); a plain object, so a persisted run keeps it. */
+  liveLibraryRows?: Record<string, import('../creator-store-live').LiveModel>;
   /**
    * Studio ops this run has queued. A tool call that moved this counter REACHED Studio; one that did not was refused by the
    * worker before anything was sent. That difference decides whether a repeat is a duplicate and whether a failure is worth
@@ -6271,6 +6273,10 @@ export class SessionDO extends DurableObject<Env> {
       approvedLibraryAssetId: agent?.approvedLibraryAssetId,
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
       assetChoiceAnchor: agent?.assetChoiceAnchor,
+      // The live Creator Store search (creator-store-live.ts) is on for a real run, and its rows live on the run beside libraryRun:
+      // a context built without this never reaches Roblox.
+      liveCreatorStore: true,
+      ...(agent ? { liveLibraryRows: (agent.liveLibraryRows ??= {}) } : {}),
       askAssetSources: () => this.askAssetSources(),
       assetSettingsUnread: this.pinnedPrefs === null,
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
