@@ -1968,6 +1968,102 @@
         "kind": "guide"
       }
     ],
+    "docs-production-game-design-analytics-essentials": [
+      {
+        "vecId": "g-b032e42f-1",
+        "title": "Analyze and experiment",
+        "url": "https://create.roblox.com/docs/production/game-design/analytics-essentials",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-balance-virtual-economies": [
+      {
+        "vecId": "g-957e1af6-1",
+        "title": "Balance virtual economies",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-2",
+        "title": "Balance virtual economies — Data-driven content",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-3",
+        "title": "Balance virtual economies — Resource planning",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-4",
+        "title": "Balance virtual economies — Resource planning",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-5",
+        "title": "Balance virtual economies — Impact estimation",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-6",
+        "title": "Balance virtual economies — Impact estimation",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-957e1af6-7",
+        "title": "Balance virtual economies — Resource sinks",
+        "url": "https://create.roblox.com/docs/production/game-design/balance-virtual-economies",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-content-updates": [
+      {
+        "vecId": "g-1ae2a4a4-1",
+        "title": "Content updates",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-2",
+        "title": "Content updates — Choose correct content",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-3",
+        "title": "Content updates — Choose correct content",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-4",
+        "title": "Content updates — Manage scope",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-5",
+        "title": "Content updates — Establish a routine",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-6",
+        "title": "Content updates — Prioritize sustainability",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-1ae2a4a4-7",
+        "title": "Content updates — Prioritize sustainability",
+        "url": "https://create.roblox.com/docs/production/game-design/content-updates",
+        "kind": "guide"
+      }
+    ],
     "docs-production-game-design-contextual-purchases": [
       {
         "vecId": "g-e7b0cae4-1",
@@ -2003,6 +2099,540 @@
         "vecId": "g-e7b0cae4-6",
         "title": "Contextual purchases — UI",
         "url": "https://create.roblox.com/docs/production/game-design/contextual-purchases",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-core-loops": [
+      {
+        "vecId": "g-20202ddd-1",
+        "title": "Core loops",
+        "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-20202ddd-2",
+        "title": "Core loops — Most repeated set of actions",
+        "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-design-for-roblox": [
+      {
+        "vecId": "g-8eabb8db-1",
+        "title": "Design for Roblox",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-2",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-3",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-4",
+        "title": "Design for Roblox — Design for behavior",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-5",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-6",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-7",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-8",
+        "title": "Design for Roblox — Design for the audience",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-9",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-10",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8eabb8db-11",
+        "title": "Design for Roblox — Design for the engine",
+        "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-introduction-to-quest-design": [
+      {
+        "vecId": "g-e72d933b-1",
+        "title": "Introduction to quest design",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-2",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-3",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-4",
+        "title": "Introduction to quest design — Quest structure",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-5",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-6",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-7",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-8",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-9",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-10",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-11",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e72d933b-12",
+        "title": "Introduction to quest design — Use cases",
+        "url": "https://create.roblox.com/docs/production/game-design/introduction-to-quest-design",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-liveops-essentials": [
+      {
+        "vecId": "g-15a6c15e-1",
+        "title": "LiveOps essentials",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-2",
+        "title": "LiveOps essentials — Content cadence",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-3",
+        "title": "LiveOps essentials — Content cadence",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-4",
+        "title": "LiveOps essentials — Major updates",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-5",
+        "title": "LiveOps essentials — Quality of life improvements",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-6",
+        "title": "LiveOps essentials — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-15a6c15e-7",
+        "title": "LiveOps essentials — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/liveops-essentials",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-monetization-foundations": [
+      {
+        "vecId": "g-6d2e067e-1",
+        "title": "Monetization foundations",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-2",
+        "title": "Monetization foundations — Items",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-3",
+        "title": "Monetization foundations — Items",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-4",
+        "title": "Monetization foundations — The shop",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-5",
+        "title": "Monetization foundations — The shop",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-6",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-7",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-8",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-9",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-10",
+        "title": "Monetization foundations — Season passes",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-11",
+        "title": "Monetization foundations — Glossary",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6d2e067e-12",
+        "title": "Monetization foundations — Glossary",
+        "url": "https://create.roblox.com/docs/production/game-design/monetization-foundations",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-onboarding": [
+      {
+        "vecId": "g-2a2f9eea-1",
+        "title": "Onboarding",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-2",
+        "title": "Onboarding — Day 1 retention",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-3",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-4",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-2a2f9eea-5",
+        "title": "Onboarding — Onboarding goals",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-onboarding-techniques": [
+      {
+        "vecId": "g-c6c5e08b-1",
+        "title": "Onboarding techniques",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-2",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-3",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-4",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-5",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-6",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-7",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-8",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-9",
+        "title": "Onboarding techniques — Visual elements",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-10",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-11",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-12",
+        "title": "Onboarding techniques — Contextual tutorials",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-13",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-14",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c6c5e08b-15",
+        "title": "Onboarding techniques — Timed Hints",
+        "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-prototyping": [
+      {
+        "vecId": "g-c8508c6e-1",
+        "title": "Prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-2",
+        "title": "Prototyping — Paper prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-3",
+        "title": "Prototyping — Paper prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-4",
+        "title": "Prototyping — Studio prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-5",
+        "title": "Prototyping — Studio prototyping",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-c8508c6e-6",
+        "title": "Prototyping — Best practices",
+        "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-game-design-ui-ux-design": [
+      {
+        "vecId": "g-6b324881-1",
+        "title": "UI and UX design",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-2",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-3",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-4",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-5",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-6",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-7",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-8",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-9",
+        "title": "UI and UX design — UI",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-10",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-11",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-12",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-13",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-14",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-15",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-6b324881-16",
+        "title": "UI and UX design — UX",
+        "url": "https://create.roblox.com/docs/production/game-design/ui-ux-design",
         "kind": "guide"
       }
     ],
@@ -2098,6 +2728,38 @@
         "kind": "guide"
       }
     ],
+    "docs-production-monetization-paid-random-items": [
+      {
+        "vecId": "g-40408841-1",
+        "title": "Paid random items policy guidelines",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-2",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-3",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-4",
+        "title": "Paid random items policy guidelines — Item odds disclosures",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-40408841-5",
+        "title": "Paid random items policy guidelines — Per-user regulations",
+        "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+        "kind": "guide"
+      }
+    ],
     "docs-production-monetization-passes": [
       {
         "vecId": "g-01afedae-1",
@@ -2172,6 +2834,20 @@
         "kind": "guide"
       }
     ],
+    "docs-production-monetization-private-servers": [
+      {
+        "vecId": "g-11d82b24-1",
+        "title": "Private servers",
+        "url": "https://create.roblox.com/docs/production/monetization/private-servers",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-11d82b24-2",
+        "title": "Private servers — Enable private servers",
+        "url": "https://create.roblox.com/docs/production/monetization/private-servers",
+        "kind": "guide"
+      }
+    ],
     "docs-production-monetization-shop": [
       {
         "vecId": "g-3b60a786-1",
@@ -2195,6 +2871,50 @@
         "vecId": "g-3b60a786-4",
         "title": "Shop — Manage your Shop",
         "url": "https://create.roblox.com/docs/production/monetization/shop",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-accessibility": [
+      {
+        "vecId": "g-8b5f3ee4-1",
+        "title": "Accessibility guidelines",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-2",
+        "title": "Accessibility guidelines — Sound non-reliance",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-3",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-4",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-5",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-6",
+        "title": "Accessibility guidelines — Player preferences",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8b5f3ee4-7",
+        "title": "Accessibility guidelines — Volume controls",
+        "url": "https://create.roblox.com/docs/production/publishing/accessibility",
         "kind": "guide"
       }
     ],
@@ -2233,6 +2953,256 @@
         "vecId": "g-cee0af5c-6",
         "title": "Adaptive design guidelines — Core principles",
         "url": "https://create.roblox.com/docs/production/publishing/adaptive-design",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-descriptions": [
+      {
+        "vecId": "g-b5ef1a7f-1",
+        "title": "Game descriptions",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-2",
+        "title": "Game descriptions — Context",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-3",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-4",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-5",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-6",
+        "title": "Game descriptions — Content recommendations",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-7",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-8",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b5ef1a7f-9",
+        "title": "Game descriptions — Full examples",
+        "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-experience-icons": [
+      {
+        "vecId": "g-e56b40b3-1",
+        "title": "Icons",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e56b40b3-2",
+        "title": "Icons — Upload icons",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e56b40b3-3",
+        "title": "Icons — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-publish-games-and-places": [
+      {
+        "vecId": "g-b3ddb56d-1",
+        "title": "Create and publish games and places",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-2",
+        "title": "Create and publish games and places",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-3",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-4",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-5",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-6",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-7",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-8",
+        "title": "Create and publish games and places — Publish games",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-9",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-10",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-11",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-12",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-13",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-b3ddb56d-14",
+        "title": "Create and publish games and places — Make game public",
+        "url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places",
+        "kind": "guide"
+      }
+    ],
+    "docs-production-publishing-thumbnails": [
+      {
+        "vecId": "g-0e2f8630-1",
+        "title": "Thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-2",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-3",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-4",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-5",
+        "title": "Thumbnails — Manage thumbnails",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-6",
+        "title": "Thumbnails — Free camera mode",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-7",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-8",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-9",
+        "title": "Thumbnails — Home page personalization",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-10",
+        "title": "Thumbnails — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-0e2f8630-11",
+        "title": "Thumbnails — Best practices",
+        "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-toolbox": [
+      {
+        "vecId": "g-4340e559-1",
+        "title": "Toolbox",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4340e559-2",
+        "title": "Toolbox",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4340e559-3",
+        "title": "Toolbox — Troubleshooting",
+        "url": "https://create.roblox.com/docs/projects/assets/toolbox",
         "kind": "guide"
       }
     ],
