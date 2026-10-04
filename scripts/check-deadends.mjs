@@ -87,6 +87,7 @@ const EXCEPTIONS = [
   { glob: 'apps/benchmark/**', why: 'a benchmark place is built by Rojo, not imported by the product' },
   { glob: 'tools/repo-chat/**', why: 'a standalone Next.js app outside the pnpm workspace (its own npm lockfile): Next loads app/ routes by convention and its imports go through `@/` aliases this graph does not resolve, so every file reads as unimported' },
   { glob: 'docs/**', why: 'documents: the .js under docs/handoff are archived workflow scripts kept as handoff records, run by hand from the record if ever, imported by nothing by design' },
+  { glob: 'research/**', why: 'research notes: the two helper scripts there (tools-add-witness-docs.mjs, tools-docids.sh) were run by hand once to feed the corpus and are kept beside the notes they produced, imported by nothing by design' },
   { glob: '<package.json scripts>', why: 'a file a package DECLARES as a script entry point is invoked by name' },
   { glob: 'packages/evals/**', why: 'an offline grading harness — every module in it is reached from a test BY DESIGN, which is what the package is for; §6.6 excludes cross-package library surfaces by construction' },
 ];
@@ -139,6 +140,7 @@ const isExcepted = (rel) =>
   rel.startsWith('apps/benchmark/') ||
   rel.startsWith('tools/repo-chat/') ||
   rel.startsWith('docs/') ||
+  rel.startsWith('research/') ||
   // Astro pages and layouts are routed by the framework, not imported.
   /^apps\/site\/src\/(pages|layouts)\//.test(rel);
 
