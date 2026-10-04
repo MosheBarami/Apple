@@ -423,6 +423,317 @@
           "vecId": "api-bloomeffect-1"
         }
       ]
+    },
+    {
+      "id": "game-from-idea",
+      "title": "Turn a one-line idea into a complete game, in gated phases",
+      "domain": "game",
+      "tools": [
+        "propose_plan",
+        "edit_script",
+        "create_instances",
+        "play_check",
+        "render_view",
+        "search_docs"
+      ],
+      "triggers": [
+        "game",
+        "make",
+        "create",
+        "build",
+        "full",
+        "complete",
+        "idea",
+        "from",
+        "scratch",
+        "whole",
+        "new",
+        "viral",
+        "popular",
+        "obby",
+        "tycoon",
+        "simulator",
+        "roleplay",
+        "survival",
+        "horror",
+        "fighting",
+        "racing",
+        "incremental",
+        "idle",
+        "defense"
+      ],
+      "recipe": [
+        "0 Brief first (propose_plan): pitch with a verb the player does, genre + proven references, core loop in 3 parts (minute-to-minute action, repeated action set, progression engine), the hook a clip could show in 10 s, social mechanic, mobile first, maturity target Minimal/Mild, 2-3 purchase ideas. Default scope tier S: one map, one loop, a few upgrades; everything else goes on an update list.",
+        "1 Scaffold: ReplicatedStorage Shared (one Config module holding every number) and Remotes; ServerScriptService services (Data, Economy, Progression, Round/Zone, Store); StarterPlayerScripts controllers. The server owns currency, damage and rewards; every remote is validated.",
+        "2 Greybox the loop with plain Parts: it must complete alone and with several clients, first reward in under 30 s. If it is not fun, change the loop before adding anything.",
+        "3 Vertical slice: one zone at final art (lighting, palette, materials), first upgrade, HUD, one sound set, one effect set, saving; the first 60 s is a guided path: spawn, a visual cue, first reward, a visible next goal.",
+        "4 MVP: short/mid/long goals visible, each currency has sources and sinks, daily reward with streak, a social hook (leaderboard, co-op bonus), a small store in Config, settings menu. A new player can play 20-30 min without a dead end.",
+        "5 Polish: every action gets a sound and a visual response; no grey placeholder or Part names near spawn.",
+        "6 QA: play_check, rejoin and leave mid-action, many clients, mobile layout; Output clean."
+      ],
+      "avoid": [
+        "Placing parts before the brief names the loop, hook and scope.",
+        "Monetisation or rebirths in the first prototype.",
+        "Copying a hit's title or art: copy mechanics, change theme and hook."
+      ],
+      "check": "Each phase gate passed before the next: brief has all 3 loop parts; loop is fun in greybox; slice looks final; MVP gives 20-30 min of goals; Output is clean in play_check.",
+      "docs": [
+        {
+          "title": "Core loops",
+          "url": "https://create.roblox.com/docs/production/game-design/core-loops",
+          "vecId": "g-20202ddd-1"
+        },
+        {
+          "title": "Prototyping",
+          "url": "https://create.roblox.com/docs/production/game-design/prototyping",
+          "vecId": "g-c8508c6e-1"
+        },
+        {
+          "title": "Design for Roblox",
+          "url": "https://create.roblox.com/docs/production/game-design/design-for-roblox",
+          "vecId": "g-8eabb8db-1"
+        }
+      ]
+    },
+    {
+      "id": "first-session-retention",
+      "title": "Design the first 60 seconds and reasons to return for 28 days",
+      "domain": "game",
+      "tools": [
+        "edit_script",
+        "insert_ui_component",
+        "add_effect",
+        "insert_sound",
+        "play_check"
+      ],
+      "triggers": [
+        "onboarding",
+        "tutorial",
+        "first",
+        "retention",
+        "return",
+        "daily",
+        "reward",
+        "rewards",
+        "streak",
+        "quest",
+        "quests",
+        "progression",
+        "players",
+        "engaging",
+        "addictive",
+        "fun",
+        "hook",
+        "new",
+        "beginners"
+      ],
+      "recipe": [
+        "Spawn the player next to an interactive object; first reward within 15-30 s; core loop shown by 60 s; the whole first-time experience under 5 min. Teach by context: at most two popups, then hints that appear just after the typical time a step takes.",
+        "Roblox ranks day 1, days 2-7 and days 8-28 separately: day 1 = a fun first session; days 2-7 = daily reward with a 7-day escalating streak, timers, a quest chain, a friend goal; days 8-28 = new zones or tiers unlocking around days 3, 7, 14, 21, collections, events.",
+        "Always show the next goal on screen (short, mid, long term). Early thresholds are low; reward moments get a sound, an effect and a number pop.",
+        "Build co-play in: shared goals, a group boost, an invite button wired to SocialService:PromptGameInvite.",
+        "Log the funnel on the server: AnalyticsService:LogOnboardingFunnelStepEvent per step, LogEconomyEvent, LogProgressionStartEvent/CompleteEvent."
+      ],
+      "avoid": [
+        "A text wall or long cutscene before play.",
+        "Gating play on opting in to notifications.",
+        "Designing for one marathon session: playtime counts up to 60 min per day."
+      ],
+      "check": "A stranger knows what to do in under 30 s without reading; a reward lands before 30 s; the next goal is always visible; funnel steps are logged.",
+      "docs": [
+        {
+          "title": "Onboarding",
+          "url": "https://create.roblox.com/docs/production/game-design/onboarding",
+          "vecId": "g-2a2f9eea-1"
+        },
+        {
+          "title": "Onboarding techniques",
+          "url": "https://create.roblox.com/docs/production/game-design/onboarding-techniques",
+          "vecId": "g-c6c5e08b-1"
+        },
+        {
+          "title": "Analyze and experiment",
+          "url": "https://create.roblox.com/docs/production/game-design/analytics-essentials",
+          "vecId": "g-b032e42f-1"
+        }
+      ]
+    },
+    {
+      "id": "monetization-setup",
+      "title": "Add fair monetisation: passes, developer products, receipts, policy",
+      "domain": "systems",
+      "tools": [
+        "edit_script",
+        "insert_ui_component",
+        "search_docs"
+      ],
+      "triggers": [
+        "monetize",
+        "monetization",
+        "monetise",
+        "money",
+        "robux",
+        "gamepass",
+        "gamepasses",
+        "pass",
+        "passes",
+        "product",
+        "products",
+        "purchase",
+        "purchases",
+        "buy",
+        "vip",
+        "premium",
+        "store",
+        "donate",
+        "earn"
+      ],
+      "recipe": [
+        "A 100 Robux sale yields 70 Robux. Offer one cheap impulse item (about 25-75), considered items (100-250) and one flagship (400-1,000+); these tiers are third-party guidance. Keep promoted passes within 50-800 Robux.",
+        "Passes = permanent perks (check UserOwnsGamePassAsync on join and on PromptGamePassPurchaseFinished). Developer products = consumables, granted only in MarketplaceService.ProcessReceipt: grant once per PurchaseId (record it in the save), return PurchaseGranted only after the grant is saved, else NotProcessedYet.",
+        "Read prices at runtime with GetProductInfo; never hard-code Robux in labels (managed and regional pricing change them).",
+        "Paid random items: show a percentage table summing to 100 before purchase and gate with PolicyService ArePaidRandomItemsRestricted; trading of paid items with IsPaidItemTradingAllowed.",
+        "Rewarded video: give a normal reward at a natural break, never Robux or random items, never gate core progression. Offer a private server price.",
+        "Place purchases in context (at the moment the item matters), not as popup loops."
+      ],
+      "avoid": [
+        "Granting a product outside ProcessReceipt or more than once.",
+        "Pay-to-win that breaks the loop for free players.",
+        "Playable gambling, real-money stakes, off-platform links."
+      ],
+      "check": "Every product grants exactly once and survives rejoin; prices come from GetProductInfo; random items show odds and respect PolicyService.",
+      "docs": [
+        {
+          "title": "Developer Products",
+          "url": "https://create.roblox.com/docs/production/monetization/developer-products",
+          "vecId": "g-d65dde5c-1"
+        },
+        {
+          "title": "Passes",
+          "url": "https://create.roblox.com/docs/production/monetization/passes",
+          "vecId": "g-01afedae-1"
+        },
+        {
+          "title": "Paid random items policy guidelines",
+          "url": "https://create.roblox.com/docs/production/monetization/paid-random-items",
+          "vecId": "g-40408841-1"
+        }
+      ]
+    },
+    {
+      "id": "publish-ready-package",
+      "title": "Prepare a publish-ready page: title, description, icon, thumbnails, rating",
+      "domain": "game",
+      "tools": [
+        "render_view",
+        "look",
+        "search_docs"
+      ],
+      "triggers": [
+        "publish",
+        "publishing",
+        "release",
+        "launch",
+        "thumbnail",
+        "thumbnails",
+        "icon",
+        "title",
+        "description",
+        "name",
+        "page",
+        "players",
+        "grow",
+        "viral",
+        "algorithm",
+        "discover",
+        "discovery",
+        "popular"
+      ],
+      "recipe": [
+        "Title and description describe the real gameplay with the genre words players search; description = one-sentence premise, 3 key features, controls, what is coming.",
+        "Thumbnails: 3-5 distinct 16:9 shots at 1920x1080 of real gameplay (action shot, reward close-up, several avatars together, update banner); at least 2 active so Roblox personalises them. Icon 512x512 (author at 1024), one high-contrast subject, no small text, readable at 150x150. Frame these shots with render_view.",
+        "Answer the Maturity & Compliance Questionnaire from the real content and retake it after changes; Minimal or Mild reaches the widest audience.",
+        "Owner actions an AI cannot do: ID and age check, 2-step verification, Plus or the refundable fee for under-16 reach; new games start for 16+ and Trusted Friends. Tell the owner, and read the live publishing pages because thresholds change.",
+        "Start Private, then Limited for a beta, Public after the beta gate; plan an update every 1-2 weeks."
+      ],
+      "avoid": [
+        "Free-Robux or giveaway wording, copied names or art, art the game does not deliver: all reduce reach."
+      ],
+      "check": "Every thumbnail and the icon show the real game; description has premise, features, controls; questionnaire matches content; owner actions listed.",
+      "docs": [
+        {
+          "title": "Thumbnails",
+          "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+          "vecId": "g-0e2f8630-1"
+        },
+        {
+          "title": "Icons",
+          "url": "https://create.roblox.com/docs/production/publishing/experience-icons",
+          "vecId": "g-e56b40b3-1"
+        },
+        {
+          "title": "Game descriptions",
+          "url": "https://create.roblox.com/docs/production/publishing/descriptions",
+          "vecId": "g-b5ef1a7f-1"
+        }
+      ]
+    },
+    {
+      "id": "vet-inserted-models",
+      "title": "Vet every inserted model for malicious scripts before keeping it",
+      "domain": "systems",
+      "tools": [
+        "insert_library_model",
+        "find_library_model",
+        "search_docs"
+      ],
+      "triggers": [
+        "model",
+        "models",
+        "toolbox",
+        "insert",
+        "asset",
+        "assets",
+        "free",
+        "creator",
+        "marketplace",
+        "import",
+        "kit",
+        "virus",
+        "backdoor",
+        "safe",
+        "script",
+        "scripts"
+      ],
+      "recipe": [
+        "Assets without scripts (meshes, images, audio) cannot carry code; models, packages and plugins can.",
+        "Block and review any Script, LocalScript or ModuleScript that has: require with a number, getfenv/setfenv, loadstring, InsertService:LoadAsset, text decoded with string.reverse, long \\ddd escape strings, XOR or decompress loops, or a script hidden inside a Weld, Part or Sky.",
+        "Verified creators, ratings and sales are not proof of safety. Hundreds of nested oddly named children is a crash trap.",
+        "Keep LoadStringEnabled off and HTTP off unless a feature needs it; never grant SandboxedInstanceMode overrides to third-party assets.",
+        "Prefer writing the behaviour yourself over keeping a free script; keep only the meshes and parts."
+      ],
+      "avoid": [
+        "Keeping an unread script from a free model.",
+        "Enabling LoadStringEnabled or HTTP for a model."
+      ],
+      "check": "No inserted script contains the patterns above; any script kept was read line by line.",
+      "docs": [
+        {
+          "title": "Vulnerabilities from third-party assets",
+          "url": "https://create.roblox.com/docs/scripting/security/third-party-vulnerabilities",
+          "vecId": "g-85a2eb32-1"
+        },
+        {
+          "title": "Toolbox",
+          "url": "https://create.roblox.com/docs/projects/assets/toolbox",
+          "vecId": "g-4340e559-1"
+        },
+        {
+          "title": "Enum.SandboxedInstanceMode",
+          "url": "https://create.roblox.com/docs/reference/engine/enums/SandboxedInstanceMode",
+          "vecId": "api-enum-sandboxedinstancemode-1"
+        }
+      ]
     }
   ]
 }
