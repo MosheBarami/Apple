@@ -381,7 +381,7 @@ about 3.1× the hard maximum of $24.80 that this section was derived against. **
 ratio is `1,000,010,000 / 1,200 ≈ 833,000`, far above the required 200. The figures in this argument
 belong to the 100,000-neuron ceiling and need their author before they are relied on.
 
-The hard monthly ceiling is now $330,005.00 (it was $24.80 when this section was derived), and unlike every earlier version of this sentence it is not
+The hard monthly ceiling is now $29.97 (caps restored 2026-10-04; it was $24.80 when this section was derived and $330,005.00 while the cap was lifted), and unlike every earlier version of this sentence it is not
 claimed to be immovable: it moved on 2026-09-20, from $10.06, when the old cap turned out to refuse
 every build the live product was asked for. `HARD_MAX_USD_PER_MONTH` in
 `packages/evals/src/economics.mjs` is the one place it is derived, and the gate is what must not
@@ -414,7 +414,7 @@ grew — check that before doing anything structural.
 | Signal | Threshold | Today |
 |---|---|---|
 | T1 `ceiling / maxNeuronsPerRequest` | ≥ 200 (for N=2) | **83.3** — fails by ~2.4× |
-| T1 monthly ceiling | ≥ ~$77/month | **$330,005.00/month** (was $24.80 from 2026-09-20; cap lifted 2026-09-29, owner). STALE: not re-derived |
+| T1 monthly ceiling | ≥ ~$77/month | **$29.97/month** (caps restored 2026-10-04; was $330,005.00 while lifted from 2026-09-29, $24.80 from 2026-09-20). STALE: not re-derived |
 | T2 p95 `budget_reserve_ms` | > 250 ms, low DO CPU | **not instrumented** (Phase 0) |
 | T3 BudgetDO request rate | > 100/s sustained | **~1.0/s** at the measured provider ceiling |
 | Realistic worst-case burst | — | **23/s** (a whole day's allowance inside one minute) |

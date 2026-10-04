@@ -174,10 +174,22 @@ export class BudgetDO extends DurableObject<Env> {
     });
   }
 
-  /** Caps can be lowered (or raised) at runtime without a redeploy; compiled values are the default. */
+  /**
+   * Caps can be lowered at runtime without a redeploy; the compiled values are the ceiling.
+   *
+   * A stored value is taken only up to the compiled one. `POST /limits` already clamps to the
+   * compiled ceiling, but a value it accepted under an older, higher ceiling stays in storage, and a
+   * plain spread let it outlive the deploy that lowered the cap: restoring the caps on 2026-10-04
+   * (1,000,000,000 → 150,000 a day) would have changed nothing in force.
+   */
   private async limits(): Promise<Limits> {
-    const stored = await this.ctx.storage.get<Partial<Limits>>(LIMITS_KEY);
-    return { ...DEFAULT_LIMITS, ...(stored ?? {}) };
+    const stored = (await this.ctx.storage.get<Partial<Limits>>(LIMITS_KEY)) ?? {};
+    const out = { ...DEFAULT_LIMITS };
+    for (const k of Object.keys(DEFAULT_LIMITS) as (keyof Limits)[]) {
+      const v = stored[k];
+      if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.min(v, DEFAULT_LIMITS[k]);
+    }
+    return out;
   }
 
   private async load(): Promise<Stored> {

@@ -47,8 +47,10 @@ const FREE_PER_DAY = 10_000;
 // boundary arithmetic assumes, restated independently, and the first test compares them against
 // the COMPILED module. Raised 2026-09-20 with pricing.ts: 15,000 -> 90,000, because at 15,000 the
 // live product refused every build and the owner could not use it. See the long note there.
-const BILLABLE_PER_DAY = 1_000_000_000;
-const BILLABLE_PER_MONTH = 30_000_000_000;
+// RESTATED 2026-10-04 (StudPilot handoff 0.5): the caps lifted on 2026-09-29 ($11,000/day) are
+// restored to the planner's figures, $1.65/day and $24.97/month; pricing.ts carries the decision.
+const BILLABLE_PER_DAY = 150_000;
+const BILLABLE_PER_MONTH = 2_270_000;
 const CEILING = FREE_PER_DAY + BILLABLE_PER_DAY;
 const MAX_PER_REQUEST = 1_200;
 
@@ -371,6 +373,30 @@ test('the admin route cannot raise a ceiling above the compiled default', async 
   assert.equal(raised.limits.billableNeuronsPerDay, BILLABLE_PER_DAY);
   assert.equal(raised.limits.billableNeuronsPerMonth, BILLABLE_PER_MONTH);
   assert.equal(raised.limits.maxNeuronsPerRequest, MAX_PER_REQUEST);
+});
+
+test('a stored cap above the compiled ceiling does not outlive the deploy that lowered it', async () => {
+  // POST /limits clamps to the compiled ceiling, but storage can hold a value it accepted under an
+  // older, higher ceiling: before 2026-10-04 that was 1,000,000,000 a day. A spread of storage over
+  // the defaults let it stay in force, so lowering the compiled cap would have changed nothing.
+  const b = budget({ limits: { billableNeuronsPerDay: 1_000_000_000, billableNeuronsPerMonth: 30_000_000_000, maxNeuronsPerRequest: 9_999 } });
+  const p = await b.call('/probe', { neurons: 1 });
+  assert.equal(p.limits.billableNeuronsPerDay, BILLABLE_PER_DAY);
+  assert.equal(p.limits.billableNeuronsPerMonth, BILLABLE_PER_MONTH);
+  assert.equal(p.limits.maxNeuronsPerRequest, MAX_PER_REQUEST);
+  assert.equal(p.dayCeiling, CEILING);
+  // and it binds admission, not just the report
+  await b.call('/simulate-usage', { neurons: CEILING });
+  const blocked = await b.reserve(100);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, 'daily_cap');
+});
+
+test('CONTROL: a stored cap BELOW the compiled ceiling stays in force', async () => {
+  const b = budget({ limits: { billableNeuronsPerDay: 100 } });
+  const p = await b.call('/probe', { neurons: 1 });
+  assert.equal(p.limits.billableNeuronsPerDay, 100, 'a runtime ratchet-down must survive a deploy');
+  assert.equal(p.limits.billableNeuronsPerMonth, BILLABLE_PER_MONTH, 'a field nobody stored keeps the compiled value');
 });
 
 test('CONTROL: lowering a cap actually BINDS', async () => {

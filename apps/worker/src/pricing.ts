@@ -145,17 +145,23 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  *   or no Apple cap, the owner chose no Apple cap: a build must only stop at a real blocker. The
  *   figures below are high enough never to bind (1,000,000,000 is $11,000 a day), so Cloudflare
  *   billing is the only spending bound. MAX_NEURONS_PER_REQUEST still bounds one call. ]]*/
-export const BILLABLE_NEURONS_PER_DAY = 1_000_000_000;
+/*[[ RESTORED 2026-10-04, STUDPILOT PLAN §8 AND HANDOFF TASK 0.5 (planner defaults; owner task X3 approves
+ *   or replaces them). The lifted cap allowed $11,000 a day and $330,000 a month, against a $50 dev budget.
+ *
+ *   The handoff wrote these as 150_000_000 and 2_270_000_000 "(≈ $1.65/day, ≈ $25/month)". The dollar
+ *   figures are the decision and the neuron figures were 1,000× off: at $0.011 per 1,000 neurons,
+ *   2,270,000,000 is $24,970. 150,000 × $0.000011 = $1.65 a day. ]]*/
+export const BILLABLE_NEURONS_PER_DAY = 150_000;
 
 /**
- * Independent monthly backstop: was 1,800,000 × $0.011/1000 ≈ $19.80; lifted with the day cap
- * (owner, 2026-09-29) to 30,000,000,000, which never binds.
+ * Independent monthly backstop: 2,270,000 × $0.011/1000 = $24.97 (restored 2026-10-04, see above;
+ * it was 1,800,000 ≈ $19.80 until the owner lifted it on 2026-09-29).
  *
  * It stays INDEPENDENT of the daily figure on purpose — thirty days at the daily ceiling would be
- * $29.70, and this stops there instead. A month of heavy days cannot quietly become a bigger bill
- * than a month of light ones was budgeted for.
+ * $49.50, and this stops at $24.97 instead, on day 15. A month of heavy days cannot quietly become a
+ * bigger bill than a month of light ones was budgeted for.
  */
-export const BILLABLE_NEURONS_PER_MONTH = 30_000_000_000;
+export const BILLABLE_NEURONS_PER_MONTH = 2_270_000;
 
 /** Total neurons usable in a day (free + billable) before generation stops. */
 export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_DAY;
