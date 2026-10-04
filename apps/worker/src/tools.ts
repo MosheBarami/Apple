@@ -1124,6 +1124,21 @@ async function dumpScripts(
 /** The Studio channel as phase-a-tools.ts sees it: the same `op`, bound to this run. */
 const studioCall = (ctx: AgentCtx): OpCall => (studioOp, timeoutMs) => op(ctx, studioOp, timeoutMs);
 
+/** A rename that leaves scripts naming the old object breaks them silently (s08: Baseplate -> LavaFloor
+ * killed the lava). The rename stands; the result lists every script line that still names the old one. */
+async function renameAndAudit(ctx: AgentCtx, path: string, name: string): Promise<unknown> {
+  const res = await op(ctx, { op: 'rename_instance', path, name });
+  const old = parseInstancePath(path)?.at(-1);
+  if (!old || old.length < 3 || old === name || (res as { error?: unknown })?.error) return res;
+  const found = await ctx.execStudioOp({ op: 'search_scripts', query: old, maxResults: 20 }, 20_000).catch(() => null);
+  const named = new RegExp(`["'.]${old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_])`);
+  const stale = ((found?.ok && (found.data as { matches?: { path: string; line: number; text: string }[] })?.matches) || [])
+    .filter((m) => named.test(m.text)).slice(0, 8);
+  if (!stale.length) return res;
+  return { ...(res as object), staleReferences: stale.map((m) => `${m.path}:${m.line}  ${m.text.trim()}`),
+    warning: `These scripts still name "${old}" and no longer find it: update each with edit_script to "${name}" before you claim the mechanic works.` };
+}
+
 async function op(ctx: AgentCtx, studioOp: StudioOp, timeoutMs = 30_000): Promise<unknown> {
   const res = await ctx.execStudioOp(studioOp, timeoutMs);
   if (!res.ok) {
@@ -3391,14 +3406,14 @@ export const TOOLS: Record<string, ToolImpl> = {
       parameters: S({ path: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.pathChars }, name: { type: 'string', maxLength: DIRECT_EDIT_LIMITS.nameChars } }, ['path', 'name']),
     },
     studio: true,
-    studioOps: ['rename_instance'],
+    studioOps: ['rename_instance', 'search_scripts'],
     mutatesProject: true,
     run: (ctx, a) => {
       const path = boundedPath(a.path, 'path');
       if (typeof path !== 'string') return Promise.resolve(path);
       const name = directName(a.name, 'name');
       if (typeof name !== 'string') return Promise.resolve(name);
-      return op(ctx, { op: 'rename_instance', path, name });
+      return renameAndAudit(ctx, path, name);
     },
   },
   set_locked: {

@@ -47,7 +47,8 @@ test('direct Studio authoring ops are model-visible typed tools with exact capab
     assert.ok(tool, `${toolName} is not registered`);
     assert.equal(tool.def.name, toolName);
     assert.equal(tool.studio, true);
-    assert.deepEqual(tool.studioOps, [opName]);
+    // rename_instance also reads scripts afterwards, for references that still name the old object.
+    assert.deepEqual(tool.studioOps, toolName === 'rename_instance' ? [opName, 'search_scripts'] : [opName]);
     const ops = [];
     const out = await T.runTool(ctx(ops), toolName, JSON.stringify(args));
     assert.equal(out.ok, true, `${toolName}: ${out.resultForLlm}`);
