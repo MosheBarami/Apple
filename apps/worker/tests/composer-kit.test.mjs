@@ -67,7 +67,7 @@ test('a machine with no look is told which models this run already inserted', ()
 
 test('compose_game\'s tool definition says it is the base, and stays inside the context budget (the budget test holds the number)', async () => {
   const out = join(tmp, 'tools.mjs');
-  const esb = await import(join(WORKER, 'node_modules', 'esbuild', 'lib', 'main.js'));
+  const esb = await import('esbuild');
   await esb.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: out, logLevel: 'silent' });
   const { TOOLS } = await import(`file://${out}`);
   const def = TOOLS.compose_game.def;

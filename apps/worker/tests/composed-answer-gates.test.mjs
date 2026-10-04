@@ -272,7 +272,7 @@ const said = (text) => answer({ text });
 const many = (text, n = 24) => Array.from({ length: n }, () => said(text));
 const studioFor = () => fakeStudio();
 // A plugin that reports the newer operations compose_game and judge_game stand on (plugin-capabilities.ts OPT_IN_OPERATIONS).
-const FULL_PLUGIN = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'play_check', 'play_check_ui', 'query_instances', 'spatial_query', 'ui_layout_check', 'scatter', 'set_props_bulk', 'capture_studio_viewport'].map((op) => ({ op, status: 'supported' })) };
+const FULL_PLUGIN = { schema: 'apple.studio-ops.v1', operations: ['import_owner_library', 'play_check', 'play_check_ui', 'query_instances', 'spatial_query', 'ui_layout_check', 'scatter', 'set_props_bulk', 'capture_studio_viewport'].map((op) => ({ op, status: 'supported' })) };
 const harness = (h) => stepCalls(h).flatMap((c) => c.req.messages).filter((m) => m.role === 'user' && /Harness note/.test(String(m.content))).map((m) => String(m.content));
 const harnessMatching = (h, re) => [...new Set(harness(h).filter((t) => re.test(t)))];
 
