@@ -15,7 +15,7 @@
     "@apple/evals": "workspace:*",
     "@apple/shared": "workspace:*",
     "hono": "^4.13.12",
-    "jose": "^5.9.0"
+    "jose": "^6.2.12"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260830.1",
