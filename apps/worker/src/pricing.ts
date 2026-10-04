@@ -33,6 +33,12 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
   // system prompt on every turn, so most of its input tokens are cached ones, and the discount
   // lands where the increase does. `neuronsFor` already applies it; nothing else changes.
   '@cf/zai-org/glm-5.3-flash': { id: '@cf/zai-org/glm-5.3-flash', usdPerMInput: 0.15, usdPerMOutput: 0.5, usdPerMCachedInput: 0.03 },
+  // Stronger build models for the owner's comparison on game 1 (2026-10-04). Prices are Cloudflare's own catalog
+  // (`wrangler ai models list --json`, read 2026-10-04). Routing still defaults to glm-5.3-flash; these rows only let a
+  // deliberate `config:models` experiment run and be billed truthfully.
+  '@cf/zai-org/glm-5.3': { id: '@cf/zai-org/glm-5.3', usdPerMInput: 1.4, usdPerMOutput: 4.4, usdPerMCachedInput: 0.26 },
+  '@cf/deepseek-ai/deepseek-v4-pro-0813': { id: '@cf/deepseek-ai/deepseek-v4-pro-0813', usdPerMInput: 1.32, usdPerMOutput: 3.96, usdPerMCachedInput: 0.044 },
+  '@cf/moonshotai/kimi-k2.7-code': { id: '@cf/moonshotai/kimi-k2.7-code', usdPerMInput: 0.95, usdPerMOutput: 4, usdPerMCachedInput: 0.19 },
   '@cf/openai/gpt-oss-120b': { id: '@cf/openai/gpt-oss-120b', usdPerMInput: 0.35, usdPerMOutput: 0.75 },
   '@cf/openai/gpt-oss-20b': { id: '@cf/openai/gpt-oss-20b', usdPerMInput: 0.2, usdPerMOutput: 0.3 },
   '@cf/qwen/qwen3-30b-a3b-fp8': { id: '@cf/qwen/qwen3-30b-a3b-fp8', usdPerMInput: 0.051, usdPerMOutput: 0.335 },
