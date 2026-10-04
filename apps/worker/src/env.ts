@@ -35,6 +35,8 @@ export interface Env {
    * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.jsonc "vars"). See self-check.ts.
    */
   SELF_CHECK?: string;
+  /** The blind critique before answering (blind-critique.ts): on unless `off`, `0`, `false` or `no`. Only effective while SELF_CHECK is on. */
+  SELF_CHECK_CRITIC?: string;
   /** How long, in ms (0 to 2000, default 350), the look waits after aiming the viewport camera before it captures. Tuning, not a switch. */
   SELF_CHECK_SETTLE_MS?: string;
   /**

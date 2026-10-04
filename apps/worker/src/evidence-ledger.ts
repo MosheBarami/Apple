@@ -83,6 +83,8 @@ export interface EvidenceLedger {
   forcedLooks: number;
   repairRounds: number;
   auditRounds: number;
+  /** Blind critiques run (blind-critique.ts). Optional so a ledger stored before it existed reads as zero. */
+  criticRounds?: number;
   /** `mutationSeq` at the last look that actually looked; null before any. */
   lastLookMutationSeq: number | null;
   /** `mutationSeq` when a look attempt last FAILED; the gate does not demand a look that just could not run. */

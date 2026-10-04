@@ -911,6 +911,9 @@ test('a read trimmed out of the transcript can be read again; the duplicate guar
 // Gauntlet round 4 (2026-09-23): Apple MAX on a 1.3M-token model was trimmed at a fixed 60,000 chars
 // and dropped 23 turn groups. The ceiling a step is told about is the one derived from its model
 // (prompt-budget.ts), and it is larger than the old constant.
+// The layout check (scene-flags-run.ts) makes three READS of its own after a step that built in the workspace and at the answer: the
+// whole Workspace tree, the Lighting rig and a terrain read. They are the harness reading, not the agent, and they add nothing.
+const isLayoutRead = (op) => op.op === 'terrain_read' || (op.op === 'get_tree' && ((op.root === 'game.Workspace' && op.maxNodes === 1200) || (op.root === 'game.Lighting' && op.maxNodes === 200)));
 // What a building run sends Studio before its first step: the rollback checkpoint, and the surface rule (studs unless
 // the user asked for another surface; surfaces.ts), which is a setting of the connection and changes nothing in the place.
 const RUN_START_OPS = new Set(['snapshot', 'set_surface_default']);
@@ -947,7 +950,7 @@ test('a run that changed something and then only reads is ended at the read-stal
     for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
     const end = lastEnd(h);
     assert.ok(end, 'the run never ended');
-    const reads = h.ops.filter((op) => op.op === 'get_tree').length;
+    const reads = h.ops.filter((op) => op.op === 'get_tree' && !isLayoutRead(op)).length;
     assert.ok(reads <= 21, `ended after ${reads} read-only steps, not at the limit`);
     const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
     assert.match(text, /kept looking at your place instead of building/);

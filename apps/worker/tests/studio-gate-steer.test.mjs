@@ -479,6 +479,10 @@ test('G10: Stop ends a paused run promptly — the stop brings its alarm forward
   }
 });
 
+// The layout check (scene-flags-run.ts) makes three READS of its own after a step that built in the workspace and at the answer: the
+// whole Workspace tree, the Lighting rig and a terrain read. They are the harness reading, not the agent, and they add nothing.
+const isLayoutRead = (op) => op.op === 'terrain_read' || (op.op === 'get_tree' && ((op.root === 'game.Workspace' && op.maxNodes === 1200) || (op.root === 'game.Lighting' && op.maxNodes === 200)));
+
 // ================================================== G10: repeated unchanged failure ===
 
 test('G10: the same call failing the same way is stopped at the bound, even with changes in between', async () => {
@@ -498,7 +502,7 @@ test('G10: the same call failing the same way is stopped at the bound, even with
     await send(h, chat('tidy up the place'));
     for (let i = 0; i < 10 && !lastEnd(h); i++) await h.session.alarm();
     assert.ok(h.chatCalls.length >= 8, 'the run ended before the fourth attempt — this checks nothing');
-    assert.equal(h.ops.filter((op) => op.op === 'get_tree').length, 3, 'a call that failed the same way three times ran again');
+    assert.equal(h.ops.filter((op) => op.op === 'get_tree' && !isLayoutRead(op)).length, 3, 'a call that failed the same way three times ran again');
     const last = toolTexts(h.chatCalls[7].req).at(-1);
     assert.match(last, /failed every time/);
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 3, 'the work between the failures was not kept');

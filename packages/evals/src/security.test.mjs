@@ -2656,7 +2656,9 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // those two steers are the TWENTY comments below; the total of user-role turns stays the 19 pinned further down.
   // REVIEWED at the 2026-10-03 merge of the self-check (M1): + 2 = 20, the check steer (decision.message) and the forced
   // look's fenced observations, both now through pushHarness; their reviews are the TWENTY-ONE comment below. 21 user-role turns.
-  assert.equal(harnessPushes.length, 20, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
+  // REVIEWED at the 2026-10-04 agent-quality change (F3 + F5): + 1 = 21, the report push (`pushReport` in session.ts), written up as the
+  // TWENTY-TWO comment below. The skill push (F1) added NO site: creator skills ride in the existing skill-card note.
+  assert.equal(harnessPushes.length, 21, 'a harness push was added or removed — review it for injection risk (do not just bump the number)');
   const userPushes = [...rawUserPushes, ...harnessPushes];
   {
     const idleSrc = readCode('run-idle.ts');
@@ -2753,7 +2755,24 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   //[[ TWENTY SINCE 2026-10-02: the back-and-forth steer ("Over your last 24 changes, 12 or more went to the same thing…",
   //   run-idle.ts afterChangeWindow). REVIEWED: a fixed string literal with no interpolation, pushed once per 12 changes by the
   //   run's own counter; nothing the model, the user or a tool wrote reaches it (the keys it counts are never quoted back). ]]
-  assert.equal(userPushes.length, 21, 'a user-role transcript injection was added or removed — review it for injection risk');
+  //[[ TWENTY-TWO SINCE 2026-10-04 (the blind critique, F5, and the layout flags, F3). ONE site, `pushReport` in session.ts:
+  //   `pushHarness(agent.llm, reportMessage(kind, this.fencedToolOutput(agent, <'blind_critique'|'layout_flags'>, body).text))`.
+  //   WHAT CAN REACH IT. `body` is either (a) the blind critic's verdict: vision-model output about screenshots, which can contain any
+  //   text a scene shows, or (b) the layout flags: measured numbers and the NAMES of objects in the place (place text). BOTH enter
+  //   ONLY through the shared fence helper, as untrusted data under the run's own unguessable id, the same as the forced look's
+  //   observations (TWENTY above). The words around the body are a fixed literal (blind-critique.ts reportMessage, interpolating
+  //   only the fenced text); the fence's tool name is one of two literals. Nothing the user, the model or a tool wrote reaches
+  //   the wrapper. The critic itself is given only the user's request and the frames (held in blind-critique.test.mjs). ]]
+  assert.equal(userPushes.length, 22, 'a user-role transcript injection was added or removed — review it for injection risk');
+  assert.match(session, /pushHarness\(agent\.llm, reportMessage\(kind, this\.fencedToolOutput\(agent, kind === 'critique' \? 'blind_critique' : 'layout_flags', body\)\.text\)\)/,
+    'the report must enter the transcript only through the fence helper, under one of two literal tool names');
+  {
+    const critic = readCode('blind-critique.ts');
+    const wrapper = bodyBlock(critic, critic.indexOf('export function reportMessage('));
+    assert.ok(wrapper.length > 300, 'reportMessage was not found — this test would check nothing');
+    assert.deepEqual([...wrapper.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['fenced', 'fenced'],
+      'the report wrapper interpolates something other than the fenced body');
+  }
   const failSteer = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function failureSteer('));
   assert.ok(failSteer.length > 100, 'failureSteer was not found — this test would check nothing');
   assert.deepEqual([...failSteer.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['failures', 'tool'],

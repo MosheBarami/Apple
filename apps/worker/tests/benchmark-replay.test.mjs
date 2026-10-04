@@ -274,7 +274,10 @@ const madeNames = (h) => {
   for (const o of h.ops) if (o.op === 'create_instances') walk(o.items);
   return names;
 };
-const opsText = (h) => h.ops.map((o) => JSON.stringify(o)).join('\n');
+// The layout check (scene-flags-run.ts) makes three READS of its own after a step that built in the workspace and at the answer: the
+// whole Workspace tree, the Lighting rig and a terrain read. They are the harness reading, not the agent, and they add nothing.
+const isLayoutRead = (op) => op.op === 'terrain_read' || (op.op === 'get_tree' && ((op.root === 'game.Workspace' && op.maxNodes === 1200) || (op.root === 'game.Lighting' && op.maxNodes === 200)));
+const opsText = (h) => h.ops.filter((o) => !isLayoutRead(o)).map((o) => JSON.stringify(o)).join('\n');
 
 for (const [request, spec] of Object.entries(SPECS)) {
   test(`replay: "${request}" starts with the model, keeps the whole choice offered after a rejection, and builds what the spec says`, async () => {
