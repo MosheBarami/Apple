@@ -104,6 +104,7 @@ import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
 import { auditCaptureFromTree, auditMetrics, lensCoverage, runnableLenses, sceneFromTree } from './build-audit';
+import { sceneFlags } from './scene-flags';
 import { formatPanelReport, runCriticPanel } from './critic';
 import { criticInputFromRender } from './critic-input';
 import { specLuau, parseSpecRun, refuseSpecCases, missingCases, SPEC_LIMITS, type SpecCase } from './spec-runner';
@@ -4299,6 +4300,17 @@ export const TOOLS: Record<string, ToolImpl> = {
       if (!capture) return { error: 'the typed Studio tree returned something this worker could not read' };
       // What the audit's parts-only view could not see: terrain, lighting as numbers, and how the place is grouped.
       const scene = await measureScene(ctx, workspace, capture);
+      // THE LAYOUT FLAGS (scene-flags.ts), from the two trees already read and the terrain measure above: identical models on a grid
+      // or a mirror, objects outside their walls, an open flat map, near-black lighting. Facts with their numbers; no further read.
+      const solidVoxels = scene.terrain && 'solidVoxels' in scene.terrain ? Number(scene.terrain.solidVoxels) : undefined;
+      const layout = sceneFlags({ workspace, lighting, terrainSolidVoxels: Number.isFinite(solidVoxels) ? solidVoxels : undefined, request: String(a.intent ?? ctx.request ?? ctx.userRequest?.() ?? '') });
+      // Bounded hard: this result is cut at MAX_RESULT_CHARS (3,000) and a cut-off result is not JSON, and the audit's own result is already
+      // close. At most three flags, each reduced to its kind and its measurement (the first sentence, at most 190 characters); the
+      // full text with its advice goes to the panel below and to check_composition-style reads. The measurement carries the numbers.
+      const layoutLines = (layout?.flags ?? []).slice(0, 3).map((f) => {
+        const first = f.text.split(/(?<=[.)])\s+(?=[A-Z])/)[0] ?? f.text;
+        return `${f.severity} ${f.kind}: ${first.length > 190 ? `${first.slice(0, 189)}…` : first}`;
+      });
       if (capture.parts.length === 0) {
         // Terrain is geometry: a map made of it is not "nothing to audit". The measurements are the answer.
         if (scene.terrain && 'solidVoxels' in scene.terrain && Number(scene.terrain.solidVoxels) > 0) {
@@ -4359,6 +4371,7 @@ export const TOOLS: Record<string, ToolImpl> = {
                 ? `${panel.unchecked.length} rule(s) inside the lenses that did run were skipped for want of a measurement: ${[...new Set(panel.unchecked.map((u) => u.metric))].join(', ')}.`
                 : notRun.length ? '' : capture.truncated ? '' : 'Every rule in every lens was evaluated.'),
           },
+          ...(layoutLines.length ? [{ type: 'callout', tone: layout!.flags.some((f) => f.severity === 'high') ? 'warn' : 'neutral', title: `${layoutLines.length} layout flag(s)`, text: (layout?.flags ?? []).map((f) => `${f.severity} ${f.kind}: ${f.text}`).join(' ') }] : []),
           ...(confirmed.length
             ? [{
                 type: 'table',
@@ -4405,6 +4418,7 @@ export const TOOLS: Record<string, ToolImpl> = {
         rulesUnchecked: panel.unchecked.length || undefined,
         partsAudited: capture.parts.length,
         truncated: capture.truncated || undefined,
+        ...(layoutLines.length ? { layoutFlags: layoutLines } : {}),
         scene,
       };
     },
