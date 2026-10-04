@@ -3,11 +3,9 @@
 You are almost certainly an agent. This file is the map. Read it before the first edit, together
 with `.claude/skills/rbxai-working-rules/SKILL.md`, which is the **method** and loads automatically.
 
-> **START HERE — `docs/autonomy/`.** The owner's locked product scope is **V3**
-> (`docs/autonomy/v3/Apple_RbxAI_HANDOFF_V3.md`, adopted 2026-09-28); it supersedes conflicting text in
-> this file and in `docs/autonomy/OWNER_PROMPT.md`. Read `docs/autonomy/README.md`, `MISSION.md`,
-> `CURRENT_STATE.md` and `NEXT_ACTION.md` before anything below. There are no hooks (removed 2026-09-28 at
-> owner instruction): ask the owner for consent on destructive, paid or external actions.
+> **START HERE (2026-10-04): `GOAL.md`, and the planning dossier `planning/APPLE-PLANNING-DOSSIER.md`.** `GOAL.md` is the only active goal (research-fed agent →
+> real games judged by a blind critic). It retires `docs/autonomy/` (V3, ACCEPTANCE gates), which is history only.
+> Ask the owner for consent on destructive, paid or external actions.
 
 Every number below was measured, not remembered — on 2026-09-16 unless the line gives another date.
 Where a number will drift, the command that produced it is beside it.
