@@ -724,6 +724,14 @@
         "kind": "api"
       }
     ],
+    "api-wedgepart": [
+      {
+        "vecId": "api-wedgepart-1",
+        "title": "WedgePart (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/WedgePart",
+        "kind": "api"
+      }
+    ],
     "api-workspace": [
       {
         "vecId": "api-workspace-1",
@@ -5741,6 +5749,104 @@
         "vecId": "g-0e2f8630-11",
         "title": "Thumbnails — Best practices",
         "url": "https://create.roblox.com/docs/production/publishing/thumbnails",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-packages": [
+      {
+        "vecId": "g-d002ca16-1",
+        "title": "Packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-2",
+        "title": "Packages — Create packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-3",
+        "title": "Packages — Create packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-4",
+        "title": "Packages — Insert packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-5",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-6",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-7",
+        "title": "Packages — Modify packages",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-8",
+        "title": "Packages — Publish package changes",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-9",
+        "title": "Packages — Update outdated copies",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-10",
+        "title": "Packages — Update outdated copies",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-11",
+        "title": "Packages — Share and access levels",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-12",
+        "title": "Packages — Share and access levels",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-13",
+        "title": "Packages — Revert package changes",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-14",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-15",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d002ca16-16",
+        "title": "Packages — Compare package versions",
+        "url": "https://create.roblox.com/docs/projects/assets/packages",
         "kind": "guide"
       }
     ],
