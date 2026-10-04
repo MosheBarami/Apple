@@ -2325,10 +2325,10 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     steps: [
       'Client: a local ghost (CanCollide false, Transparency 0.5), raycast each frame with ViewportPointToRay excluding the ghost, snap to a 1 or 2 stud grid, tint green or red and draw a range circle (a flat cylinder sized range x 2); fire PlaceTower(towerId, cframe) once on confirm. Slot-based maps skip the raycast and use pre-placed Slot parts.',
       'Server validates: the player owns the tower in the loadout; cash >= cost; per-type and total limits (sample repo: 5 per type, 15 total); the point lies in a BuildZone (GetPartBoundsInBox with an OverlapParams Include filter); no overlap with the path or other towers; distance from the character under a sanity limit; one placement per 0.1 s per player.',
-      'Create the anchored model on the server with the owner UserId as an Attribute, store {def, level, lastShot, targetMode}, tell clients with a reliable event. Sell refunds 70% of total invested (a shipped pattern).',
+      'Create the anchored model on the server with the owner UserId as an Attribute, store {def, level, lastShot, targetMode}, tell clients with a reliable event. Selling refunds a configured share of the total invested (a reference game refunds about a third; tune it, it is a design choice).',
       'When a player leaves, refund cash to the team or remove their towers by your rule.',
     ],
-    verification: ['Place on the path, outside a zone and over the limit from a test client: all refused.', 'Sell then rebuy: the refund is 70% and the limit count drops.'],
+    verification: ['Place on the path, outside a zone and over the limit from a test client: all refused.', 'Sell then rebuy: the refund equals the configured share and the limit count drops.'],
     failureModes: ['Trusting the client position, or towers that overlap the path.', 'Large towers on tiny parts.'] },
   { id: 'pattern-td-targeting-attack-loop', title: 'Run tower targeting from path progress in one central loop', domain: 'genre_pattern', genres: ['tower_defense', 'fps_arena'], summary: 'nextShot timers in one loop, targets chosen by dist, a single damage pipeline and an optional uniform grid only when profiling asks for it.', refs: ['worldRoot'], keywords: ['targeting', 'first last strongest', 'attack loop', 'splash', 'damage pipeline', 'cooldown', 'nextshot'],
     steps: [

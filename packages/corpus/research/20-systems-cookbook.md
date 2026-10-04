@@ -1,5 +1,6 @@
 # Systems Cookbook: correct, modern Luau for the systems every Roblox game needs
-_Researched 2026-10-04 by Claude (Sonnet 5.5). Sources: 91._
+_Gap pass 2026-10-04: 6 resolved, 5 still open._
+_Researched 2026-10-04 by Claude (Sonnet 5.5). Sources: 100._
 
 How this was verified: every class, method, property, enum member and limit used in the recipes was checked on
 2026-10-04 against the Creator Hub reference. Reference pages were read from the raw docs source
@@ -24,8 +25,10 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
 - `ProximityPrompt.Triggered` fires on the server and passes the player, but an exploiter can fire prompts from anywhere,
   so re-check distance and state in the handler. [S11][S59]
 - Tool events (`Equipped`, `Activated`) are documented as firing in client `LocalScript`s because only the device sees
-  input; tools therefore normally pair a LocalScript, a RemoteEvent and a server Script. Whether a server Script inside
-  a Tool also receives `Activated` was not confirmed in the docs (see Open questions). [S13][S14]
+  input; tools therefore normally pair a LocalScript, a RemoteEvent and a server Script. The Tool reference page is silent on
+  the context (re-read 2026-10-04). A 2022 DevForum thread (Presterboi and Forummer, community, no staff reply) says a server
+  Script inside the Tool does receive `Activated`, which contradicts the guide; treat server-side `Activated` as not confirmed by
+  Roblox and keep the LocalScript + RemoteEvent pattern (see Open questions). [S13][S14][S100]
 - A character's `Backpack` is filled from `StarterPack` and `StarterGear` on spawn and is recreated on death, so granted
   Tools must be re-granted on every `CharacterAdded`. Tool needs a part named `Handle` unless `RequiresHandle` is
   false; no part of a tool should be `Anchored` (the character gets stuck). Tools earned or bought belong in
@@ -45,8 +48,10 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
   `RespectCanCollide`, `BruteForceAllSlow`, `Tolerance`. Parts with `CanQuery = false` are ignored by spatial queries. [S4][S5][S6]
 - Since 2026-04-07 `RaycastParams` and `OverlapParams` have `ExcludeInstances` and `IncludeInstances` (both usable at
   once, exclusion wins a tie, `IncludeInstances = nil` means everything and `{}` means nothing). The older
-  `FilterDescendantsInstances` plus `FilterType` still work but will eventually be deprecated and `AddToFilter` is already
-  deprecated. The recipes below set filters through one helper that tries the new properties first. [S7][S6][S8]
+  `FilterDescendantsInstances` plus `FilterType` still work, but the RaycastParams and OverlapParams reference pages (read 2026-10-04) now
+  list them as superseded/deprecated, and `AddToFilter` is already deprecated. OverlapParams is the parameter type of
+  `GetPartBoundsInBox`, `GetPartBoundsInRadius` and `GetPartsInPart`. The recipes below set filters through one helper that tries the
+  new properties first. [S7][S6][S8]
 - Roblox's own blaster tutorial validates a client-reported shot with four checks: data types, angle against the
   expected direction (dot product), tagged player near the beam end within a stud tolerance, and a server recast for
   obstruction; damage goes through `Humanoid:TakeDamage` so ForceFields keep working; the docs say no anti-exploit
@@ -66,8 +71,17 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
 - RaycastHitbox 4.01 (TeamSwordphin, 2021-09-21) is a popular attachment-ray melee module (attachments named `DmgPoint`,
   `OnHit`, hits each target once per `HitStart`) but is no longer maintained; the thread itself notes it is superseded by a shapecast-based module and has known bugs.
   Flag: stale (2021). [S72]
-- FastCast (EtiTheSpirit) simulates projectiles with raycasts instead of physics and exposes `RayHit`, `RayPierced`,
-  `LengthChanged`, `CastTerminating`; the old V2 wiki is marked obsolete, so verify the current signature before use. [S71]
+- FastCast (EtiTheSpirit) simulates projectiles with raycasts instead of physics. Current API (docs read 2026-10-04; the changelist
+  names 13.2.1 as latest, without a date): `FastCast.new()` returns a Caster (create one per weapon, never one per shot) and
+  `FastCast.newBehavior()` returns a `FastCastBehavior`. `Caster:Fire(origin: Vector3, direction: Vector3, velocity: Vector3 | number,
+  behavior: FastCastBehavior?)`; a number velocity is a speed along `direction`. The signature changed in 12.0.0 and the changelist says
+  old code "will completely fail" (the Caster page itself prints the method as `ActiveCast(...)`, a docs typo; the changelist calls it
+  `Caster:Fire()`). `FastCastBehavior` fields and defaults: `RaycastParams` nil, `MaxDistance` 1000, `Acceleration` Vector3.new(),
+  `HighFidelitySegmentSize` 0.5, `HighFidelityBehavior` 0, `CosmeticBulletTemplate`, `CosmeticBulletContainer` and
+  `CosmeticBulletProvider` nil, `AutoIgnoreContainer` true, `CanPierceFunction` nil. Caster events: `RayHit` and `RayPierced` pass
+  (ActiveCast, RaycastResult, Vector3, Instance); `LengthChanged` passes (ActiveCast, Vector3, Vector3, number, Vector3, Instance);
+  `CastTerminating` passes (ActiveCast). An ActiveCast has `GetVelocity/SetVelocity/AddVelocity` (and Acceleration, Position
+  equivalents), `Pause`, `Resume`, `Terminate`. `SimulateAfterPhysics` is not a field on the behavior page. [S92][S71]
 
 ### Movement, NPCs and physics
 - `PathfindingService:CreatePath(params)` keys and defaults: `AgentRadius` 2, `AgentHeight` 5, `AgentCanJump` true,
@@ -85,6 +99,12 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
   `SetNetworkOwnershipAuto()` are server-side; `CanSetNetworkOwnership()` says whether it is allowed. The docs' vehicle
   example gives the driver ownership when seated and restores automatic ownership when they leave, and warns that a
   second occupant waits several network cycles for responsive input. [S30][S31]
+  Constraint property writes by the owning client are not seen by the server: the server sees only their physical effects (community answer
+  by Sepruko, 2023-01); the network-ownership and constraint docs pages say nothing on this (checked 2026-10-04). A staff-acknowledged engine
+  bug (ticket noted 2024-03-05) says a client-owned part can stop replicating position and rotation to the server when the client sets up
+  hinge, rope or rod constraints locally (`AlignPosition` and `AlignOrientation` are not affected). So build vehicle constraints on the server,
+  never create them on the client, and treat a constraint property read on the server as stale. One 2023 thread reports that other players
+  did not see a hinge driven from a LocalScript, so the two-client test stays. [S94][S95][S96]
 - `VehicleSeat` exposes `MaxSpeed`, `Torque`, `TurnSpeed`, `ThrottleFloat` and `SteerFloat` (the integer `Throttle` and
   `Steer` are deprecated), `Occupant`, `HeadsUpDisplay`. A plain `Seat` welds the occupant (`SeatWeld`) and has a
   3-second per-character, per-seat re-sit cooldown. `HingeConstraint` with `ActuatorType = Motor` uses `AngularVelocity`,
@@ -140,7 +160,10 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
 - Chat commands: a `TextChatCommand` parented to `TextChatService` with `PrimaryAlias` (and optional `SecondaryAlias`) fires
   `Triggered(originTextSource, unfilteredText)`; the matching message is not delivered to others; matching is
   case-insensitive and needs a space or end-of-message after the alias; Roblox's example connects `Triggered` in a server
-  Script and maps `textSource.UserId` to a player. [S20][S21]
+  Script and maps `textSource.UserId` to a player. The reference (updated 2026-10-02) lists Security None and Capabilities Chat and names
+  no side; `Triggered` fires where the instance lives, and the example places the instance in Studio and connects it on the server.
+  Messages matching a command are sunk only for commands created on the server: a client-created command leaves the message visible to
+  others (answer by 7z99, 2024-07; engine bug by EmeraldSlash 2024-09-30, staff acknowledged, still pending when read). [S20][S21][S97][S98]
 - Bans: `Players:BanAsync{UserIds (max 50), Duration (seconds, -1 permanent), DisplayReason (max 400 chars), PrivateReason (max
   1000), ApplyToUniverse (default true), ExcludeAltAccounts (default false), ApplyDeviceBlock (default false)}`, server-only,
   yields; `UnbanAsync{UserIds, ApplyToUniverse}`; `GetBanHistoryAsync(userId)`. Roblox's ban guidelines: rules must be
@@ -158,9 +181,9 @@ shared persistence layer (ProfileStore session locking, DataStore budgets, `Proc
   tiles are connected when they share at least two connection points. [S56]
 - Community modules worth knowing: `t` (osyrisrblx; runtime type checkers such as `t.strictInterface`, `t.numberConstrained`,
   built to stop malformed remote data) [S77]; ZonePlus v3.2.0 (ForeverHD; zone enter/exit via spatial queries) [S78];
-  RbxUtil (Sleitnick; Signal, Trove, Timer, TableUtil, Comm, Spring and more via Wally or Creator Store) [S79]; Cmdr (evaera,
-  2018 announcement: typed commands, hooks such as `BeforeRun` that can block a command by returning a string; stale age, check
-  the repo) [S68]; Adonis (Epix-Incorporated; MIT; set a random `DataStoreKey` and disable debug mode in production) [S70];
+  RbxUtil (Sleitnick; Signal, Trove, Timer, TableUtil, Comm, Spring and more via Wally or Creator Store) [S79]; Cmdr (evaera;
+  typed commands, hooks such as `BeforeRun` that can block a command by returning a string; announced 2018 but maintained, latest release
+  v1.13.1 on 2024-09-30 with TextChatService support and `ban`/`unban` commands; setup in Recipe 14) [S68][S93]; Adonis (Epix-Incorporated; MIT; set a random `DataStoreKey` and disable debug mode in production) [S70];
   Operator (cb12438, 2026-09-01: roles and audit built in) [S69]; A-Chassis (community open-source car kit) [S90].
 
 ## How to apply it (rules for an AI builder)
@@ -936,8 +959,9 @@ loop (only the first writes).
 ### Recipe 6: Player-to-player trading (same server, two-phase confirm)
 When to use: pets, weapons, collectibles. Cross-server trading needs a ledger (below) because session-locked profiles can only be
 edited by the server that owns them. Add trade restrictions for new accounts and rare items (account age, level) and a trade
-log players can review (Adopt Me's trade license, per a community wiki, gates ultra-rare trades behind a quiz and keeps 30 days of
-history; third-party source). [S87][S88]
+log players can review (Adopt Me's trade license, per the developer's own post of 2020-11-05, is a three-question quiz in a Safety Hub, retakeable without
+limit, that unlocks trading Legendary and Ultra-rare pets, gives a 30-day trade history from which scammers can be reported, and an unfair
+trade shows a warning popup to both players; stale, 2020; the 2026-07-31 Trading Hub notes add a 2-hour playtime gate and listing rules). [S87][S99]
 Server/client split: the server holds the trade object and both offers; clients send intents (`TradeInvite`, `TradeRespond`,
 `TradeOffer`, `TradeLock`, `TradeCancel`) and receive `TradeState` snapshots. Anti-scam rules: any change resets both locks and bumps
 `version`; `TradeLock` must echo the current `version`; a 5-second countdown runs after both lock and aborts on any change;
@@ -1722,9 +1746,9 @@ Optional lag compensation (competitive shooters): keep roughly one second of roo
 pattern: array indexed by tick, 32 snapshots per second), let the client send `workspace:GetServerTimeNow()` with the shot, clamp it to the
 last 0.3 s, and test the ray against the rewound positions with a radius instead of moving parts. The helper is in "Luau reference
 snippets". [S75][S76]
-Physical projectiles (rockets, arrows, grenades): either a small server-stepped kinematic loop (snippet below) or FastCast (RayHit,
-RayPierced, LengthChanged, CastTerminating events; re-check its current API, the old V2 wiki is obsolete). For visual-only bullets,
-simulate on each client from the `ShotFx` data; only the server damages. [S54][S71]
+Physical projectiles (rockets, arrows, grenades): either a small server-stepped kinematic loop (snippet below) or FastCast (`FastCast.new()` once per weapon,
+`Caster:Fire(origin, direction, velocity, behavior?)`, events RayHit, RayPierced, LengthChanged, CastTerminating; signature in Key facts).
+For visual-only bullets, simulate on each client from the `ShotFx` data; only the server damages. [S54][S71][S92]
 Pitfalls: accepting a client `hit` position or target (use the direction only); not checking origin (shoot from anywhere);
 automatic weapons faster than `cooldown` (server bucket plus the `nextShot` check); changing weapons to dodge a reload (state is per
 weaponId and resets on swap: persist per weapon if you do not want this); counting team damage; broadcasting from the client
@@ -1739,7 +1763,9 @@ community kit) or Server Authority (see `04`) rather than writing physics from s
 Server/client split: the server spawns one vehicle per player, owns spawning, ownership rules and sanity checks; the seated driver's
 client owns the physics (`SetNetworkOwner(driver)`) and applies throttle and steering to constraints for instant response; when nobody
 sits the server owns it (`SetNetworkOwner(nil)`) so parked cars cannot be flung. The docs' own example hands ownership to the occupant and back
-to auto when they leave and warns that exploiters can send bad data from an owned assembly. [S30][S31][S84][S85]
+to auto when they leave and warns that exploiters can send bad data from an owned assembly. The server never sees the properties the driver's
+client writes to constraints, only the motion that results, so the sanity sampler below must read assembly position and velocity, not
+`AngularVelocity`; all constraints are created on the server in the template (client-created constraints can halt replication, see Key facts). [S30][S31][S84][S85][S94][S95]
 Model (ServerStorage/Vehicles/`car_basic`, PrimaryPart = Chassis): a `VehicleSeat` named `DriverSeat` welded to the chassis; four
 wheels as MeshParts or cylinders each with a `HingeConstraint` (wheels: `ActuatorType = Motor`, name `DriveMotor`, set `MotorMaxTorque` and
 `MotorMaxAcceleration` high enough to move the mass; front wheels: second hinge or knuckle with `ActuatorType = Servo`, name
@@ -2285,10 +2311,18 @@ character (pets reattach), and stress with 30 players' worth of pets using a loo
 
 ### Recipe 14: Admin and moderator tools (roles, chat commands, bans, audit log)
 When to use: every live game needs at least kick, ban, unban and announce. Build the minimum yourself, or adopt a maintained console: Cmdr (typed commands, hooks such
-as `BeforeRun` to block commands; announced in 2018, check the repo's current state), Adonis (MIT, community maintained; set a random `DataStoreKey` and turn off
+as `BeforeRun` to block commands; maintained, v1.13.1 on 2024-09-30, setup below), Adonis (MIT, community maintained; set a random `DataStoreKey` and turn off
 debug mode in production), or Operator (2026-09-01, roles and audit built in). [S68][S69][S70]
 Server/client split: all authority server-side. Commands are `TextChatCommand`s whose `Triggered` handler runs on the server (Roblox's own example does this), so
 permissions cannot be spoofed by a client; roles come from owner ids and group ranks; feedback goes through the notification remote (Recipe 15). [S20][S21]
+Cmdr setup (docs read 2026-10-04): install it where only the server sees it (ServerScriptService or ServerStorage; the docs warn against
+ReplicatedStorage) from the official `Cmdr.rbxm` release or Wally (`[server-dependencies] Cmdr = "evaera/cmdr@^1.9.0"`; check the latest
+version); it is not on the Creator Store, so avoid copies. Server Script: `local Cmdr = require(path.to.Cmdr)` then
+`Cmdr.Registry:RegisterDefaultCommands()` (server only; takes an array of groups or a filter function), optionally
+`Cmdr.Registry:RegisterCommandsIn(folder)` (modules with `Server` in the name are not sent to clients) and `RegisterHooksIn(folder)` (server
+only); `RegisterHook(hookName, callback(context) -> string?, priority?)` works on either side. Client LocalScript in StarterPlayerScripts:
+`local Cmdr = require(ReplicatedStorage:WaitForChild("CmdrClient"))` then `Cmdr:SetActivationKeys({ Enum.KeyCode.F2 })` (F2 is the
+default); the server inserts `CmdrClient` into ReplicatedStorage, and both sides must require Cmdr. [S93]
 ```luau
 --!strict
 -- ServerScriptService/Services/Admin.luau
@@ -2791,24 +2825,22 @@ end
 ```
 
 ## Open questions / unverified
+Resolved in the 2026-10-04 gap pass (details live in Key facts and Recipes above): `ExcludeInstances`/`IncludeInstances` are in the current reference
+pages [S6][S7]; the current FastCast signature, behavior fields and events [S92]; client-set constraints on owned vehicles (server does not see the
+property, only the effects; build constraints on the server) [S94][S95]; Cmdr setup and maintenance status [S93]; Adopt Me trade license and Trading Hub
+facts, now from the developer [S99]; which side `TextChatCommand.Triggered` fires on [S20][S21][S97][S98].
 - Whether a server Script inside a Tool receives `Equipped`/`Activated`: the Tools guide says tool events fire only for client LocalScripts, the Tool
-  reference says nothing about replication, and many community answers say server Scripts also receive `Activated`. The recipes use LocalScript + RemoteEvent +
-  server checks (safe either way). Test once in Studio before relying on server-side `Activated`. [S13][S14]
-- `RaycastParams`/`OverlapParams` `ExcludeInstances`/`IncludeInstances` are documented (announced 2026-04-07) but a given Studio/client build may lag; the `Filters`
-  helper falls back automatically. Which other spatial queries accept them was not listed in the announcement. [S8]
-- FastCast: the current (Redux) constructor and `Fire` signature were not confirmed; only the obsolete V2 wiki signature and the event names were read. Verify against
-  the live docs before coding against it. [S71]
-- Setting constraint properties (`AngularVelocity`, `TargetAngle`) from the owning client and having them drive the assembly for all observers is the widely used
-  community pattern (A-Chassis style) and consistent with network-ownership docs, but no Roblox page spells it out; verify with two Studio clients. [S30][S90]
-- Cmdr setup specifics (module layout, activation keys) were not re-read from its docs in this pass; only the announcement and hook semantics were. Operator and Adonis
-  claims come from their posts/README, not from running them. [S68][S69][S70]
-- Adopt Me details (Trade License, a "Trading Hub" dated 2026-07-31) come from community wiki and guide sites, not from the developer. Third-party; treat as
-  illustrative design precedent. [S88]
-- Numbers invented for the sketches and flagged inline (origin tolerance 12, melee tolerance 2, reach 60, strike slack for vehicles, 3-second code cooldown from forum
-  advice) are starting points; none comes from a Roblox page.
-- `TextChatCommand` instances created at run time by a server Script (rather than placed in Studio) follow the docs' general "parent to TextChatService" rule, but the docs'
-  example places the instance in Studio; test that clients see the autocomplete and that `Triggered` fires. [S20][S21]
-- No in-Studio execution of the recipes was done (the analyzer used here does not know Roblox types); a syntax pass only.
+  reference says nothing about context, and a 2022 community thread says server Scripts also receive `Activated` (no staff statement found in this pass).
+  The recipes use LocalScript + RemoteEvent + server checks (safe either way). Test once in Studio before relying on server-side `Activated`. [S13][S14][S100]
+- Numbers invented for the sketches and flagged inline (origin tolerance 12, melee tolerance 2, reach 60, strike slack for vehicles, 3-second code cooldown
+  from forum advice) are starting points; none comes from a Roblox page. The security page was re-read and gives no numeric tolerance for weapon
+  origin or hit distance, only that "extra tolerance" is needed for latency. [S59]
+- `TextChatCommand` instances created at run time by a server Script (as Recipe 14 does) rather than placed in Studio: the docs only require the instance to be
+  parented to `TextChatService` and the sunk-message answers speak of commands "created on the server", but Roblox's example places the instance in Studio;
+  test that clients see the autocomplete and that `Triggered` fires. [S20][S21][S98]
+- No in-Studio execution of the recipes was done (the analyzer used here does not know Roblox types); a syntax pass only. This includes the two-client check
+  that observers see a driver-written hinge motor (Recipe 11) and the Cmdr snippet, which was taken from its docs, not run. Operator and Adonis claims come
+  from their posts/README. [S69][S70][S93]
 - Cross-server trading, auctions and a trade ledger are sketched in prose only; a full design needs MemoryStore/MessagingService locking and is not verified here. [S62][S91]
 
 ## Sources
@@ -2899,7 +2931,16 @@ end
 [S85] "Exploit prevention with vehicles?", DevForum, 2018-11 (stale). https://devforum.roblox.com/t/exploit-prevention-with-vehicles/203654
 [S86] "Players:BanAsync() new feature", pf_z1, DevForum, 2024-04-28. https://devforum.roblox.com/t/playersbanasync-new-feature/2950192
 [S87] "Roblox trading system design", creation.dev, 2026-02-16 (third-party blog). https://www.creation.dev/blog/roblox-trading-system-design
-[S88] Adopt Me! wiki "Trade License" and allthings.how trading-hub guides (community/third-party). https://adoptme.fandom.com/wiki/Trade_License
+[S88] Adopt Me! wiki "Trade License" and allthings.how trading-hub guides (community/third-party; superseded by [S99] for the licence facts). https://adoptme.fandom.com/wiki/Trade_License
 [S89] DevForum code-redemption threads: "How to make a code that once redeemed expires and cannot be used by anyone else", "Limited use codes", "Redemption Codes System" (2020-2024, community advice). https://devforum.roblox.com/t/how-to-make-a-code-one-time-use/581016
 [S90] A-Chassis, open-source community vehicle chassis kit (GitHub; the search result was a community fork) and DevForum threads about it. https://github.com/lisphm/A-Chassis
 [S91] `04-luau-architecture.md` (this research set, 2026-10-04): DataStore budgets, ProfileStore, ProcessReceipt, MemoryStore, TeleportService, StreamingEnabled, Server Authority. /Users/moshe/Developer/RbxAI/research/roblox/04-luau-architecture.md
+[S92] FastCast API docs (Caster, FastCastBehavior, FastCast, ActiveCast, Changelist), EtiTheSpirit, read 2026-10-04 (changelist: 12.0.0 changed Fire; latest listed 13.2.1, undated). https://etithespir.it/FastCastAPIDocs/fastcast-objects/caster/ ; https://etithespir.it/FastCastAPIDocs/fastcast-objects/fcbehavior/ ; https://etithespir.it/FastCastAPIDocs/fastcast-objects/fastcast/ ; https://etithespir.it/FastCastAPIDocs/changelog/
+[S93] Cmdr docs (Installation, Setup, Registry API, CmdrClient API), evaera, read 2026-10-04, and GitHub releases (v1.13.1, 2024-09-30). https://eryn.io/Cmdr/docs/installation ; https://eryn.io/Cmdr/docs/setup ; https://eryn.io/Cmdr/api/Registry ; https://eryn.io/Cmdr/api/CmdrClient ; https://github.com/evaera/Cmdr/releases
+[S94] "Can constraints replicate from client to server?", DevForum (Sepruko's answer), 2023-01-13 to 17 (community). https://devforum.roblox.com/t/can-constraints-replicate-from-client-to-server/2136810
+[S95] "Parts with a client network owner can have replication halted with certain physics constraint configurations", ThoughtSpinnr, DevForum Engine Bugs, 2024-02-23 (staff thirdtakeonit noted an internal ticket 2024-03-05). https://devforum.roblox.com/t/parts-with-a-client-network-owner-can-have-replication-halted-with-certain-physics-constraint-configurations/2850190
+[S96] "Help replicating hingeconstraint", fjordfall and replies, DevForum, 2023-01-28 (community). https://devforum.roblox.com/t/help-replicating-hingeconstraint/2166792
+[S97] "Messages that trigger a client-side TextChatCommand are not sunk", EmeraldSlash, DevForum Engine Bugs, 2024-09-30 (staff acknowledged). https://devforum.roblox.com/t/messages-that-trigger-a-client-side-textchatcommand-are-not-sunk/3176993
+[S98] "Issue with TextChatCommand.Triggered messages not being sunk", DistortedFunction and 7z99, DevForum, 2024-07-01/02 (community). https://devforum.roblox.com/t/issue-with-textchatcommandtriggered-messages-not-being-sunk/3048929
+[S99] Adopt Me! official news: "Trade Changes & Scam Prevention update" (2020-11-05, stale) and "Trading Hub Notes" (2026-07-31), Uplift Games. https://www.playadopt.me/news/trade-changes-and-scam-prevention-update ; https://www.playadopt.me/news/trading-hub-notes
+[S100] "Local script vs Server script for Tool.Activated", Presterboi and Forummer, DevForum, 2022-06-11 (community, no staff reply). https://devforum.roblox.com/t/local-script-vs-server-script-for-toolactivated/1829727
