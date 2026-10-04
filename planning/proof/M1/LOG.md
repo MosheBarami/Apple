@@ -210,3 +210,12 @@
 - **`CF_ANALYTICS_TOKEN`:** I tried to create it through the API first. The main token has no token-management
   permission (403, code 9109), and `CLOUDFLARE_API_TOKEN_WRITE_ALL` is rejected as invalid by both the user and
   the account verify endpoints (code 1000). It is listed in `BLOCKED.md` with steps.
+
+## 1.3 Freeze proof: the old D1 did not change across the switch (2026-10-04, 19:39–20:10 UTC)
+- A check-only pass after deploy B recomputed every old-database table's digest: the SHA-256 of the per-page
+  SHA-256 of every row, with the same page sizes as before. **All 25 digests equal those of the final reconcile
+  (19:37 UTC)**, and every table has the same row count.
+- So nothing was written to the old D1 between the reconcile and the switch, and the new D1 started from an
+  exact copy.
+- The only difference between the two databases is `notifications`: 1 row in the new database that the old one
+  lacks, written after the switch, which shows writes now go to the new database.
