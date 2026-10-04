@@ -37,8 +37,11 @@ export const ANSWER_ONLY_NUDGE = 5;
  * ever passed, so neither bound above started. This one counts read-only steps since the last change
  * in any run that can build, tells the model to build at the nudge, and ends the run at the limit.
  */
-export const READ_STALL_NUDGE = 10;
+export const READ_STALL_NUDGE = 6;
 export const READ_STALL_LIMIT = 20;
+// The nudge was 10 until round 3 (2026-10-04): a run after a composer read for 30 steps, and the generic note at the tenth did not
+// move it. It is 6 now, and after a composer the note restates the next concrete step of the world pass (world-pass.ts readStallNote).
+// Still well under the limit, which ends the run.
 
 /**
  * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`

@@ -114,7 +114,8 @@ import { judgeReply } from '../claim-audit-judge';
 import { LOOK_TOOL, runBlindCritique } from '../look-tool';
 import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, AREA_WORDS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
 import { decideJudgeGate, judgeFixMessage, readJudge, type JudgeVerdict } from '../judge-gate';
-import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, type WorldBase } from '../world-pass';
+import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, readStallNote, type WorldBase } from '../world-pass';
+import { noteFactsComposer, noteFactsTool, stepsBody, worldSteps, type MapFacts, type WorldFacts } from '../world-steps';
 import { readSceneFlags } from '../scene-flags-run';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
@@ -190,6 +191,23 @@ function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): vo
 }
 
 /** The last few trace rows, as the rows describe themselves, for the note that a read-only stall ended the run. */
+/** The composer's `map` result as MapFacts, or undefined when it is not that shape (a composer with no map, an older result). */
+function mapFactsOf(v: unknown): MapFacts | undefined {
+  const m = v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
+  const p2 = (x: unknown): x is [number, number] => Array.isArray(x) && x.length === 2 && x.every((n) => typeof n === 'number' && Number.isFinite(n));
+  if (!m || typeof m.root !== 'string' || !Array.isArray(m.plots) || !Array.isArray(m.free)) return undefined;
+  const g = m.ground as { center?: unknown; half?: unknown } | undefined;
+  if (!g || !p2(g.center) || !p2(g.half)) return undefined;
+  const hub = m.hub as { path?: unknown; center?: unknown; half?: unknown } | undefined;
+  return {
+    root: m.root, ground: { center: g.center, half: g.half },
+    ...(hub && typeof hub.path === 'string' && p2(hub.center) && typeof hub.half === 'number' ? { hub: { path: hub.path, center: hub.center, half: hub.half } } : {}),
+    plots: (m.plots as { path?: unknown; at?: unknown }[]).filter((q) => typeof q.path === 'string' && p2(q.at)).map((q) => ({ path: q.path as string, at: q.at as [number, number] })).slice(0, 8),
+    free: (m.free as unknown[]).filter(p2).slice(0, 8),
+    ...(typeof m.frame === 'number' ? { frame: m.frame } : {}),
+  };
+}
+
 function lastReads(trace: readonly ToolTraceEntry[], n: number): string {
   return trace.slice(-n).map((t) => t.summary.replace(/\s+/g, ' ').slice(0, 80)).join('; ') || 'none';
 }
@@ -308,6 +326,8 @@ interface AgentState {
   judgeFixPasses?: number;
   /** A composer built a base and what the run has built on it since (world-pass.ts); undefined before any composer. */
   worldBase?: WorldBase;
+  /** What the composer built (its map in numbers) and the tools used since: the facts the world pass's steps are made from (world-steps.ts). */
+  worldFacts?: WorldFacts;
   /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary), and the change count then. */
   critiqueSevere?: FlawArea[];
   critiqueAtSeq?: number;
@@ -4996,8 +5016,13 @@ export class SessionDO extends DurableObject<Env> {
       }
       // A composer built the BASE of a game; what the run builds on it after is counted (world-pass.ts).
       if (out.mutatedProject === true && out.ok) {
-        if (COMPOSER_TOOLS.includes(call.name)) agent.worldBase = noteComposer(agent.worldBase);
-        else noteWorldTool(agent.worldBase, call.name);
+        if (COMPOSER_TOOLS.includes(call.name)) {
+          agent.worldBase = noteComposer(agent.worldBase);
+          agent.worldFacts = noteFactsComposer(mapFactsOf((out.detail as { map?: unknown } | undefined)?.map));
+        } else {
+          noteWorldTool(agent.worldBase, call.name);
+          noteFactsTool(agent.worldFacts, call.name);
+        }
       }
       // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
       if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
@@ -5334,9 +5359,10 @@ export class SessionDO extends DurableObject<Env> {
         'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
         'If each change really adds something new, carry on.');
     }
+    // With a composed base the note restates the next step of the world pass (world-steps.ts), fenced as data; round 3 read for 30 steps.
+    const stallNote = idle.action === 'build' ? readStallNote(agent.worldBase ? this.fencedToolOutput(agent, 'world_steps', this.worldStepsFor(agent, ledger)[0] ?? '').text : undefined) : '';
     if (idle.action === 'build') {
-      pushHarness(agent.llm, 'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
-          'already know. If a detail is missing, choose a sensible default instead of reading again.');
+      pushHarness(agent.llm, stallNote);
     }
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
@@ -5510,7 +5536,7 @@ export class SessionDO extends DurableObject<Env> {
     canBuild: boolean,
   ): Promise<boolean> {
     // What the run still owes before it may answer, and what it must admit once the bounds on that are used.
-    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected, ledger.mutationSeq);
+    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected, ledger.mutationSeq, ledger);
     const input = {
       ledger,
       reply: agent.finalText ?? '',
@@ -5560,10 +5586,10 @@ export class SessionDO extends DurableObject<Env> {
    * judge's findings go in fenced: they quote names from the place); `admit` are the plain lines for the final note once a bound
    * is used, plus the critique's severe areas (a fixed vocabulary, never its words). `canFix` is false when nothing could be changed.
    */
-  private owedAtAnswer(agent: AgentState, canFix: boolean, mutationSeq: number): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
+  private owedAtAnswer(agent: AgentState, canFix: boolean, mutationSeq: number, ledger?: EvidenceLedger): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
     const admit: string[] = [];
     let owed: { kind: 'world' | 'judge'; message: string } | undefined;
-    const world = decideWorldPass(agent.worldBase, { canBuild: canFix });
+    const world = decideWorldPass(agent.worldBase, { canBuild: canFix, ...(agent.worldBase ? { steps: this.fencedToolOutput(agent, 'world_steps', stepsBody(this.worldStepsFor(agent, ledger))).text } : {}) });
     if (world.action === 'steer') owed = { kind: 'world', message: world.message };
     else if (world.action === 'admit') admit.push(world.line);
     const judge = decideJudgeGate(agent.lastJudge, agent.judgeFixPasses ?? 0, { canBuild: canFix });
@@ -5574,6 +5600,23 @@ export class SessionDO extends DurableObject<Env> {
     const severe = (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a));
     if (severe.length && mutationSeq === agent.critiqueAtSeq) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.map((a) => AREA_WORDS[a]).join(', ')}) and I did not change anything in answer to them, so they are still there.`);
     return { ...(owed ? { owed } : {}), admit };
+  }
+
+  /**
+   * The numbered calls the run still owes after a composer (world-steps.ts), from facts it holds: the composer's map, the models it
+   * inserted (the ledger's list, and where the library step left each), the tools it has used since, and the areas a fresh
+   * reviewer found serious. Pure reading; the caller fences the text before it reaches the transcript.
+   */
+  private worldStepsFor(agent: AgentState, ledger?: EvidenceLedger): string[] {
+    const stands = new Map((agent.libraryRun?.placed ?? []).map((p) => [p.path.replace(/^game\./, ''), p.at] as const));
+    const models = (ledger?.inserted ?? []).slice(-6).map((path) => ({ path, at: stands.get(path.replace(/^game\./, '')) }));
+    return worldSteps({
+      ...(agent.worldFacts?.map ? { map: agent.worldFacts.map } : {}),
+      models,
+      used: agent.worldFacts?.used ?? [],
+      assets: agent.worldBase?.assets ?? 0,
+      flawWords: (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a)).map((a) => AREA_WORDS[a]),
+    });
   }
 
   /** End the step here and take another: the check handed the agent something to act on. */

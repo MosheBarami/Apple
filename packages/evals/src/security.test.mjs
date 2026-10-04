@@ -2715,6 +2715,15 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // next change…", F-039). Reviewed: a fixed string, no interpolation, pushed once when run-idle.ts counts
   // READ_STALL_NUDGE read-only steps in a run that can build; nothing the model, the user or a tool wrote
   // reaches it. Its partner at READ_STALL_LIMIT ends the run and pushes nothing into the transcript.
+  //[[ NINE, REVISED 2026-10-04 (round 3: a run after a composer read for 30 steps and the generic note did not move it). The same
+  //   push site, the same trigger (run-idle.ts READ_STALL_NUDGE, now 6), but the content is a variable, `stallNote`, which is
+  //   `readStallNote(fenced)` (world-pass.ts). REVIEWED. WITHOUT a composed base it is the old fixed string, byte for byte. WITH one it
+  //   adds the first step of the world pass's list (world-steps.ts): that text holds paths and names a place or a Creator Store
+  //   author supplied, so it enters ONLY through the shared fence helper (`this.fencedToolOutput(agent, 'world_steps', …)`), as
+  //   untrusted data under the run's own unguessable id, exactly like the judge's findings; the words around it are fixed
+  //   literals and its only interpolations are the fixed `plain` sentence and the fenced step (held below). The names in the list
+  //   are also cut to a safe alphabet and length (world-steps.ts safeName). The number of pushes does not move: 22 sites. The
+  //   world pass's own list rides the existing `decision.message` site (`decideWorldPass(…, { steps: <fenced> })`), no new push. ]]
   // TEN SINCE 2026-09-23 — the retune steer ("You have changed the same thing several times in a row. Stop
   // tuning it…", F-036). Reviewed: a fixed string with no interpolation — the target it counted is never
   // quoted back to the model — pushed once when run-idle.ts afterChange reaches RETUNE_NUDGE for one target.
@@ -2824,7 +2833,9 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   // REVIEWED 2026-10-02: `text` is the once-per-run "Nothing has changed yet" note, `buildNudge(agent.trace, …)` in
   // run-idle.ts. It carries trace text, so it is held below to the same rule as a plan title: tool names only from
   // the registry, error text only through fenceForQuote, inside its own quotation.
-  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'decision.message', 'partNext', 'skillSteer.message', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
+  // RESTATED 2026-10-04 (round 3, a deliberate change, reviewed in "NINE, REVISED" above): `stallNote`, the read-stall note, became a
+  // variable because after a composer it carries the next step of the world pass, fenced. The held properties are asserted below.
+  assert.deepEqual([...new Set(bare)].sort(), ['AUTONOMOUS_IDLE_STEER', 'decision.message', 'partNext', 'skillSteer.message', 'stallNote', 'steer', 'text'], 'a user-role push now sends a variable this review has not traced');
   assert.match(session, /const text = buildNudge\(agent\.trace, [^;]*\);/, 'the build note no longer comes from buildNudge — review its new source');
   {
     const nudge = bodyBlock(readCode('run-idle.ts'), readCode('run-idle.ts').indexOf('export function buildNudge('));
@@ -2851,7 +2862,20 @@ test('A5 STATIC CHECK — the non-tool transcript injections are the known, revi
   const idle = /export const AUTONOMOUS_IDLE_STEER =([^;]*);/.exec(readCode('run-idle.ts'));
   assert.ok(idle, 'AUTONOMOUS_IDLE_STEER was not found — this check would be vacuous');
   assert.match(idle[1], /^\s*(?:'[^'$`]*'\s*\+?\s*)+$/, 'AUTONOMOUS_IDLE_STEER is no longer pure string literals — review what it now carries');
-  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text' && n !== 'decision.message')) {
+  {
+    // The read-stall note: the plain sentence, or the plain sentence plus ONE step of the world pass that arrives fenced.
+    assert.match(session, /const stallNote = idle\.action === 'build' \? readStallNote\(agent\.worldBase \? this\.fencedToolOutput\(agent, 'world_steps', this\.worldStepsFor\(agent, ledger\)\[0\] \?\? ''\)\.text : undefined\) : '';/,
+      'the read-stall note no longer gets its step through the fence helper — review its new source');
+    const wp = readCode('world-pass.ts');
+    const stall = bodyBlock(wp, wp.indexOf('export function readStallNote('));
+    assert.ok(stall.length > 200, 'readStallNote was not found — this test would check nothing');
+    assert.deepEqual([...stall.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['plain', 'fencedStep'],
+      'the read-stall note interpolates something other than its own fixed sentence and the fenced step');
+    // The world pass's list rides the existing check-steer site and is fenced before decideWorldPass sees it.
+    assert.match(session, /decideWorldPass\(agent\.worldBase, \{ canBuild: canFix, \.\.\.\(agent\.worldBase \? \{ steps: this\.fencedToolOutput\(agent, 'world_steps', stepsBody\(this\.worldStepsFor\(agent, ledger\)\)\)\.text \} : \{\}\) \}\)/,
+      'the world pass list no longer reaches the transcript through the fence helper');
+  }
+  for (const name of bare.filter((n) => n !== 'skillSteer.message' && n !== 'AUTONOMOUS_IDLE_STEER' && n !== 'text' && n !== 'decision.message' && n !== 'stallNote')) {
     assert.match(session, new RegExp(`const ${name.replace('.', '\\.')} =[^;]*\\bsteerToPart\\(agent\\)`),
       `user-role push of \`${name}\` no longer comes from steerToPart — review its source`);
   }

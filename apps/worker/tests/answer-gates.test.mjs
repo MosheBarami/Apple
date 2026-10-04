@@ -122,11 +122,17 @@ test('the world pass: a bare base is sent back twice, then admitted; a built-on 
   assert.deepEqual({ ...WORLD_PASS }, { minChanges: 3, steers: 2 });
 });
 
-test('the world note names counts and fixed words only: nothing the model or the place wrote can ride in it', () => {
+test('the world note carries counts and the fenced steps only; place text has no other interpolation channel', () => {
   const fn = code('world-pass.ts');
-  const wrapper = fn.slice(fn.indexOf('export function worldPassMessage('));
-  assert.deepEqual([...wrapper.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['base.changes', "base.changes === 1 ? '' : 's'", 'base.assets', "base.assets === 1 ? '' : 's'"]);
+  const wrapper = fn.slice(fn.indexOf('export function worldPassMessage('), fn.indexOf('export function readStallNote('));
+  assert.ok(wrapper.length > 500, 'worldPassMessage was not found');
+  assert.deepEqual([...wrapper.matchAll(/\$\{([^}]*)\}/g)].map((m) => m[1].trim()), ['base.changes', "base.changes === 1 ? '' : 's'", 'base.assets', "base.assets === 1 ? '' : 's'", 'fencedSteps']);
   assert.match(worldPassMessage({ changes: 1, assets: 0, steers: 0 }), /added 1 thing to the world since it was built, and 0 real models/);
+  const fenced = '<untrusted-tool-output id="test" tool="world_steps">1. Place the model.</untrusted-tool-output>';
+  const d = decideWorldPass(noteComposer(undefined), { canBuild: true, steps: fenced });
+  assert.equal(d.action, 'steer');
+  assert.ok(d.message.includes(fenced), 'the wrapper preserves the fenced body');
+  assert.match(d.message, /in order, one tool call each/);
 });
 
 test('the tools the pass counts are registered tools, and the assets are a subset of them', async () => {

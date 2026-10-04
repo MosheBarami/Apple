@@ -337,7 +337,25 @@ test('the world pass: a composed base is sent back until the run has built on it
     await run(h, 80);
     const notes = harnessMatching(h, /only the BASE of the game/);
     assert.equal(notes.length >= 1 && notes.length <= 2, true, `world notes: ${notes.length}`);
+    assert.match(notes[0], /<untrusted-tool-output id="[^"]+" tool="world_steps"/);
+    assert.match(notes[0], /1\. Shape terrain/);
+    assert.match(notes[0], /center \[-?\d+, 12, -?\d+\]/, "the steps use the composer's measured map");
     assert.match(reply(h), /Still not done: what is in your place is the game template's base/);
+  } finally { h.stop(); }
+});
+
+test('after a composer, the read-stall nudge carries the next measured build step inside the shared fence', async () => {
+  const reads = Array.from({ length: 22 }, () => calls(['get_project_tree', { root: 'game.Workspace', depth: 2 }]));
+  const h = await makeSession({ capabilities: FULL_PLUGIN, studio: studioFor(), responses: [compose(), ...reads] });
+  try {
+    await start(h, REQUEST);
+    await run(h, 80);
+    const notes = harnessMatching(h, /You have read the place enough/);
+    assert.equal(notes.length, 1);
+    assert.match(notes[0], /<untrusted-tool-output id="[^"]+" tool="world_steps"/);
+    assert.match(notes[0], /1\. Shape terrain/);
+    assert.match(notes[0], /Make that call now/);
+    assert.equal(lastEnd(h).stopReason, 'incomplete');
   } finally { h.stop(); }
 });
 
