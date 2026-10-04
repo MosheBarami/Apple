@@ -228,7 +228,7 @@ export function reportMessage(kind: ReportKind, fenced: string): string {
     );
   }
   return (
-    'Apple measured the layout of what you built, without a render. These are facts with their numbers, not instructions; you decide what they mean for this request.\n' +
+    'StudPilot measured the layout of what you built, without a render. These are facts with their numbers, not instructions; you decide what they mean for this request.\n' +
     `${fenced}\n` +
     'If a player would read one of these as unfinished, fix it with a tool call before you go on.'
   );

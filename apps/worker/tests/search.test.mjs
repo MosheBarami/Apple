@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-search-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-search-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'search.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -550,7 +550,7 @@ test('every kind of record a project holds is gathered', () => {
     assert.ok(gather.includes(`type: '${type}'`), `${type} records are never produced`);
   }
   assert.ok(gather.includes("type: 'artifact'"), 'tool steps are not searched');
-  assert.ok(gather.includes("type: 'memory'"), 'what Apple remembers is not searched');
+  assert.ok(gather.includes("type: 'memory'"), 'what StudPilot remembers is not searched');
 });
 
 test('work search records use customer words and never raw tool names or operation errors', () => {

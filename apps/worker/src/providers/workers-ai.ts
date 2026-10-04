@@ -1,4 +1,4 @@
-// Cloudflare Workers AI adapter — the ONLY provider Apple actually runs.
+// Cloudflare Workers AI adapter — the ONLY provider StudPilot actually runs.
 //
 // This is a lift of the code that lived inline in gateway.ts, moved behind the adapter interface
 // WITHOUT changing a byte of its arithmetic:
@@ -11,7 +11,7 @@
 // Workers AI is reached through a BINDING, not HTTP: there is no key and no base URL, which is
 // why its availability is "does env.AI exist", not "is a secret set".
 import type { Env } from '../env';
-import { registryModel } from '@apple/shared';
+import { registryModel } from '@studpilot/shared';
 import { routeForModelId } from '../pricing';
 import {
   contentChars,
@@ -30,16 +30,16 @@ import {
 } from './types';
 
 /**
- * THE ONE PRODUCT ENGINE (V3 gate G01): Apple runs GLM 5.3 Flash, read from the registry in
- * @apple/shared so this id cannot go stale beside it again (it once still named Qwen3).
+ * THE ONE PRODUCT ENGINE (V3 gate G01): StudPilot runs GLM 5.3 Flash, read from the registry in
+ * @studpilot/shared so this id cannot go stale beside it again (it once still named Qwen3).
  *
  * The visual critic is the same model. The product run routes and `vision` keep their own
  * maxTokens, temperature and tool settings in DEFAULT_MODELS; they merely resolve to the same weights.
  */
-export const APPLE_MODEL_ID = registryModel('apple')!.providerModelId;
-export const VISION_MODEL_ID = APPLE_MODEL_ID;
+export const STUDPILOT_MODEL_ID = registryModel('apple')!.providerModelId;
+export const VISION_MODEL_ID = STUDPILOT_MODEL_ID;
 
-export const APPLE_CONTEXT_WINDOW = 1_310_720;
+export const STUDPILOT_CONTEXT_WINDOW = 1_310_720;
 export const VISION_CONTEXT_WINDOW = 1_310_720;
 
 /** The memory summariser's model (DEFAULT_MODELS.memory). Internal; never a customer engine. */
@@ -110,11 +110,11 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
     outputCostPer1M: 0.335,
     unverifiedFields: ['maxOutput'],
   },
-  // ONE ROW, because APPLE_MODEL_ID and VISION_MODEL_ID are the same id. A second row for the same
+  // ONE ROW, because STUDPILOT_MODEL_ID and VISION_MODEL_ID are the same id. A second row for the same
   // string would make `modelById()` return whichever came first and quietly hide the other one's
   // figures — two catalogue entries for one model is a disagreement waiting to be believed.
   {
-    id: APPLE_MODEL_ID,
+    id: STUDPILOT_MODEL_ID,
     displayName: 'GLM-5.3 Flash',
     provider: 'workers-ai',
     supportsTools: true,
@@ -133,7 +133,7 @@ export const WORKERS_AI_MODELS: readonly ProviderModel[] = [
  * SESSION AFFINITY IS WHY cached_tokens WAS ALWAYS 0. Workers AI does prefix caching — it reuses
  * the prefill tensors for the shared prefix of consecutive requests and bills those tokens at a
  * discounted cached rate — but only when consecutive requests land on the same model instance, and
- * that requires the `x-session-affinity` header. Apple sent none, so every step re-prefilled an
+ * that requires the `x-session-affinity` header. StudPilot sent none, so every step re-prefilled an
  * identical ~5,200-token prefix of system prompt plus tool definitions from cold.
  * https://developers.cloudflare.com/changelog/product/workers-ai/ ("Prefix caching and session
  * affinity") describes exactly this workload: "When an agent sends a new prompt, it resends all
@@ -297,7 +297,7 @@ export const workersAiAdapter: ProviderAdapter = {
       available: bound,
       reason: bound ? null : 'binding_missing',
       detail: bound
-        ? 'Cloudflare Workers AI binding is present — Apple uses Workers AI product routes.'
+        ? 'Cloudflare Workers AI binding is present — StudPilot uses Workers AI product routes.'
         : 'The `AI` Workers AI binding is not present on this environment.',
       unsupportedModelKeys: [],
     };

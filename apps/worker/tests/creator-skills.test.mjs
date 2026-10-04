@@ -58,7 +58,7 @@ const {
 // WAS: `readFileSync(join(REPO, 'packages', 'corpus', 'data', 'chunks.jsonl'))`. That file is a
 // 10 MB gitignored BUILD ARTEFACT — it exists on a machine that has run the chunker and in no
 // clone — so on the runner this did not fail an assertion, it threw ENOENT before the first test,
-// and `pnpm -r test` bailed at @apple/worker with everything behind it unrun.
+// and `pnpm -r test` bailed at @studpilot/worker with everything behind it unrun.
 //
 // The addresses are checked against the tracked witness instead, which records exactly what the
 // corpus SAID about the 86 documents this repository cites, plus the corpus's own sha256 and

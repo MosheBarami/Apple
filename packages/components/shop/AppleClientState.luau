@@ -1,5 +1,5 @@
 --!strict
--- Shared client state between Apple's client components: the item being placed and short messages to show.
+-- Shared client state between StudPilot's client components: the item being placed and short messages to show.
 local State = {}
 local picked = Instance.new("BindableEvent")
 local said = Instance.new("BindableEvent")

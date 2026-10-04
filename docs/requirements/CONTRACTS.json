@@ -1,5 +1,5 @@
 {
-  "schema": "apple-handoff-execution-contracts-v1",
+  "schema": "studpilot-handoff-execution-contracts-v1",
   "prepared_at": "2026-09-19",
   "purpose": "83 derived execution contracts; not a replacement for the full 1200-item checklist or a measured completion percentage.",
   "must_reconcile_with": [
@@ -125,15 +125,15 @@
     },
     {
       "id": "R17",
-      "title": "חוזה Apple/MAX וסמכות הזכאות",
-      "execution_contract": "מקור אמת לזכאות הוא subscription state סמכותי בצד השרת. admin, email, owner status או יתרת מיליארד Credits אינם מנוי. חסר/לא תקין `productModel` אינו bypass. free Apple במצב Agent משתמש במודל Apple ובכלים שמותרים לו; MAX ב־Plan שומר foundation של MAX בלי פתיחת write tools. [S05]\n\nהרץ matrix של כל productModel × autonomy × entitlement × connection/capabilities, כולל invalid/omitted values. בדוק route של chat, edit/resend, retry, queued request, resumed run, public API ו־automation; לא רק picker. UI צריך להציג למה אפשרות לא זמינה, אך launch דורש מסלול רכישה אמיתי במקום unavailable קבוע. model IDs, aliases ו־actual provider attribution צריכים להגיע משכבת serving, לא מטקסט שהדפדפן המציא.",
+      "title": "חוזה StudPilot/MAX וסמכות הזכאות",
+      "execution_contract": "מקור אמת לזכאות הוא subscription state סמכותי בצד השרת. admin, email, owner status או יתרת מיליארד Credits אינם מנוי. חסר/לא תקין `productModel` אינו bypass. free StudPilot במצב Agent משתמש במודל StudPilot ובכלים שמותרים לו; MAX ב־Plan שומר foundation של MAX בלי פתיחת write tools. [S05]\n\nהרץ matrix של כל productModel × autonomy × entitlement × connection/capabilities, כולל invalid/omitted values. בדוק route של chat, edit/resend, retry, queued request, resumed run, public API ו־automation; לא רק picker. UI צריך להציג למה אפשרות לא זמינה, אך launch דורש מסלול רכישה אמיתי במקום unavailable קבוע. model IDs, aliases ו־actual provider attribution צריכים להגיע משכבת serving, לא מטקסט שהדפדפן המציא.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
     {
       "id": "R18",
       "title": "בחירת frontier מבוססת עבודה",
-      "execution_contract": "בחר מודלים לפי תוצאות Apple בפועל: שימוש מדויק בכלים, תכנון multi-file, Luau, מרחב, הבנת תמונה, תיקון מתוך errors, שמירת הקשר, הוראות בעברית והימנעות מטענות completion לא נכונות. השווה foundations זמינים באמת במועד העבודה ותיעד מזהה מדויק/גרסה, structured tool support, context, output limits, streaming, concurrency, latency, privacy וזכות לשימוש מסחרי. אין במסמך זה דירוג עדכני של כל המודלים בשוק. [S02; דרישת בעלים חדשה]\n\nבדיקה קצרה על קוד טהור אינה מספיקה למודל בנייה. דרוש benchmark של trajectories עם request→context→tools→Studio→tests→visual critique→repair. מדוד הצלחה per task, לא per assertion שקל לפצל לאלף נקודות. כל truncation, unsupported tool, engine error או היעדר output נשארים במכנה. בחר מודל חזק ואמין לתפקיד ולא קיר של שמות שנראה מרשים.",
+      "execution_contract": "בחר מודלים לפי תוצאות StudPilot בפועל: שימוש מדויק בכלים, תכנון multi-file, Luau, מרחב, הבנת תמונה, תיקון מתוך errors, שמירת הקשר, הוראות בעברית והימנעות מטענות completion לא נכונות. השווה foundations זמינים באמת במועד העבודה ותיעד מזהה מדויק/גרסה, structured tool support, context, output limits, streaming, concurrency, latency, privacy וזכות לשימוש מסחרי. אין במסמך זה דירוג עדכני של כל המודלים בשוק. [S02; דרישת בעלים חדשה]\n\nבדיקה קצרה על קוד טהור אינה מספיקה למודל בנייה. דרוש benchmark של trajectories עם request→context→tools→Studio→tests→visual critique→repair. מדוד הצלחה per task, לא per assertion שקל לפצל לאלף נקודות. כל truncation, unsupported tool, engine error או היעדר output נשארים במכנה. בחר מודל חזק ואמין לתפקיד ולא קיר של שמות שנראה מרשים.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -224,7 +224,7 @@
     {
       "id": "R31",
       "title": "build, הפצה ציבורית והתקנה",
-      "execution_contract": "`apps/apple-plugin` הוא המימוש העצמאי שנבחר, לא binary ישן עם label חדש. כל קוד שהפלאגין מריץ קריא וגלוי; אין hidden loaders, remote require או הרצת קוד שרירותי ב־plugin context כדי לעקוף מגבלות. התקנה מקומית, build מוצלח ו־Creator Store approval הם שלושה מצבים שונים. ה־asset הישן `132128477945417` הוסר עם סיבת moderation מתועדת; לא מפיצים אותו מחדש במסווה. [S03–S05]\n\nלקראת שחרור נדרש מסלול הפצה מורשה שמפתח רגיל יכול להשתמש בו, עם package identity/hash, הוראות פשוטות, תאימות, update/removal וחוזה permissions. יש לבדוק הורדה/התקנה בפועל מהמסלול הציבורי, לא רק להעתיק קובץ פנימי למחשב המפתח. מקור פרטי יכול להישאר פרטי; public product אינו אוטומטית public repository.",
+      "execution_contract": "`apps/studpilot-plugin` הוא המימוש העצמאי שנבחר, לא binary ישן עם label חדש. כל קוד שהפלאגין מריץ קריא וגלוי; אין hidden loaders, remote require או הרצת קוד שרירותי ב־plugin context כדי לעקוף מגבלות. התקנה מקומית, build מוצלח ו־Creator Store approval הם שלושה מצבים שונים. ה־asset הישן `132128477945417` הוסר עם סיבת moderation מתועדת; לא מפיצים אותו מחדש במסווה. [S03–S05]\n\nלקראת שחרור נדרש מסלול הפצה מורשה שמפתח רגיל יכול להשתמש בו, עם package identity/hash, הוראות פשוטות, תאימות, update/removal וחוזה permissions. יש לבדוק הורדה/התקנה בפועל מהמסלול הציבורי, לא רק להעתיק קובץ פנימי למחשב המפתח. מקור פרטי יכול להישאר פרטי; public product אינו אוטומטית public repository.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -392,14 +392,14 @@
     {
       "id": "R55",
       "title": "חשבון מסחרי ומסלול checkout מוגדר",
-      "execution_contract": "היעד החדש הוא תשלומים עובדים, לא לינק Stripe שלא נבדק. בדוק account readiness, test/live mode, product/price IDs, currency, tax configuration, portal configuration, webhook endpoint/secrets, return URLs ושמות מוצר Apple. אלה פעולות מורשות במסגרת הפרויקט ככל שהסביבה מאפשרת, אך שדות זהות/עסק/מס או הצהרות לבנק חייבים להיות אמיתיים ולא להיגזר מהשערה של הסוכן. תנאי גיל/אזור/חשבון מאומתים בזמן ההפעלה.\n\nבשלב test mode העבר checkout→payment→signed webhook→authority→entitlement→UI→portal→cancel/recovery. לאחריו בצע release live מבוקר כשחשבון הספק מוכן ודרך התשלום חוקית. אין לרכוש לעצמך שוב ושוב כדי לייצר “הכנסה ראשונה”, אין duplicate subscription ואין bypass של MAX לצורך QA. הסוכן יכול להביא את המוצר למצב שמסוגל לקבל הכנסה; אינו יכול להבטיח שמישהו יקנה או לקרוא לתשלום מדומה רווח.",
+      "execution_contract": "היעד החדש הוא תשלומים עובדים, לא לינק Stripe שלא נבדק. בדוק account readiness, test/live mode, product/price IDs, currency, tax configuration, portal configuration, webhook endpoint/secrets, return URLs ושמות מוצר StudPilot. אלה פעולות מורשות במסגרת הפרויקט ככל שהסביבה מאפשרת, אך שדות זהות/עסק/מס או הצהרות לבנק חייבים להיות אמיתיים ולא להיגזר מהשערה של הסוכן. תנאי גיל/אזור/חשבון מאומתים בזמן ההפעלה.\n\nבשלב test mode העבר checkout→payment→signed webhook→authority→entitlement→UI→portal→cancel/recovery. לאחריו בצע release live מבוקר כשחשבון הספק מוכן ודרך התשלום חוקית. אין לרכוש לעצמך שוב ושוב כדי לייצר “הכנסה ראשונה”, אין duplicate subscription ואין bypass של MAX לצורך QA. הסוכן יכול להביא את המוצר למצב שמסוגל לקבל הכנסה; אינו יכול להבטיח שמישהו יקנה או לקרוא לתשלום מדומה רווח.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
     {
       "id": "R56",
       "title": "סמכות billing, replay וסדר אירועים",
-      "execution_contract": "במקור המאוחר כבר נבנה מסלול canonical Apple authority עם replica של Apple. יש בו serialization, user pinning, monotonic sequence, authority replay ואישור mutation מדויק לפני החזרת webhook200. שמור אותו והעבר אותו בשלמותו בהגירת השם/namespace. אי אפשר להניח shared dedup ב־KV פותר אירועים בשתי DO namespaces; הוא עלול למנוע את העדכון הדרוש לשנייה. [S05]\n\nבדוק raw signature verification לפני parsing, timestamp tolerance, same event replay, different event out-of-order, duplicate delivery, lost replica acknowledgement, error body שגוי, wrong user/amount, cancellation event arriving late ו־resubscribe. webhook200 מתקבל רק לאחר שהחוזה המוגדר הושלם או לאחר no-op חוקי ומאומת. fixture חתום ב־HMAC אינו actual Stripe lifecycle; צריך את שניהם.",
+      "execution_contract": "במקור המאוחר כבר נבנה מסלול canonical StudPilot authority עם replica של StudPilot. יש בו serialization, user pinning, monotonic sequence, authority replay ואישור mutation מדויק לפני החזרת webhook200. שמור אותו והעבר אותו בשלמותו בהגירת השם/namespace. אי אפשר להניח shared dedup ב־KV פותר אירועים בשתי DO namespaces; הוא עלול למנוע את העדכון הדרוש לשנייה. [S05]\n\nבדוק raw signature verification לפני parsing, timestamp tolerance, same event replay, different event out-of-order, duplicate delivery, lost replica acknowledgement, error body שגוי, wrong user/amount, cancellation event arriving late ו־resubscribe. webhook200 מתקבל רק לאחר שהחוזה המוגדר הושלם או לאחר no-op חוקי ומאומת. fixture חתום ב־HMAC אינו actual Stripe lifecycle; צריך את שניהם.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -434,7 +434,7 @@
     {
       "id": "R61",
       "title": "revocation/outbox/expiry",
-      "execution_contract": "מיגרציה0009 וה־outbox נועדו לפתור פער שבו DB revoke הצליח אבל הודעת best-effort ל־SessionDO אבדה וה־run המשיך. המסלול כולל atomic intent, versioned lifecycle state, consumer tokens נפרדים, retry/ack ו־fencing ב־socket/run/queue. expiration extension/shortening הן שינויים אמיתיים, לא רק revoke boolean. [S04–S05]\n\nreadiness4/4 וה־pending queue0 אינם הוכחת live revocation. בדוק queue שנוצר, נמסר לצרכנים, נכשל ונמסר שוב, ושמשתמש פתוח מאבד build authority בזמן אמת. regrant אינו מחייה run שכבר נפסל. שמור migrations/tokens שכבר קיימים; אין regenerate “כי לא מצאתי תיקייה משוערת”. בהגירה ל־Apple-only עדכן consumer topology בלי לאבד delivery שלא הושלם.",
+      "execution_contract": "מיגרציה0009 וה־outbox נועדו לפתור פער שבו DB revoke הצליח אבל הודעת best-effort ל־SessionDO אבדה וה־run המשיך. המסלול כולל atomic intent, versioned lifecycle state, consumer tokens נפרדים, retry/ack ו־fencing ב־socket/run/queue. expiration extension/shortening הן שינויים אמיתיים, לא רק revoke boolean. [S04–S05]\n\nreadiness4/4 וה־pending queue0 אינם הוכחת live revocation. בדוק queue שנוצר, נמסר לצרכנים, נכשל ונמסר שוב, ושמשתמש פתוח מאבד build authority בזמן אמת. regrant אינו מחייה run שכבר נפסל. שמור migrations/tokens שכבר קיימים; אין regenerate “כי לא מצאתי תיקייה משוערת”. בהגירה ל־StudPilot-only עדכן consumer topology בלי לאבד delivery שלא הושלם.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -462,7 +462,7 @@
     {
       "id": "R65",
       "title": "שפה חזותית עקבית, לא redesign מחדש בכל סיבוב",
-      "execution_contract": "יישם token system אחיד לצבע, typography, spacing, elevation, motion ו־states במקום חמש שכבות סותרות. לא מדובר בהחזרת כל קובצי CSS הישנים; הסגנונות הפעילים ומחיקות העבר נשמרים. אמץ naming ברור לרכיבי button/input/modal/table/badge/error/empty בלי לבנות framework נוסף שאין בו צורך. [S03–S05]\n\nבדוק את כל המצבים, לא רק hero screenshot: signed out, onboarding, empty project, long chat, running tools, generating media, failed write, offline, readonly, expired session, paid state ו־cancelled subscription. שלוט בדגש כך שהתוכן מרכזי; אין rainbow על Apple, אין mascot, אין banner wall. ארטיפקט אמיתי יכול להופיע כשהוא שימושי ולא כדקורציה קבועה.",
+      "execution_contract": "יישם token system אחיד לצבע, typography, spacing, elevation, motion ו־states במקום חמש שכבות סותרות. לא מדובר בהחזרת כל קובצי CSS הישנים; הסגנונות הפעילים ומחיקות העבר נשמרים. אמץ naming ברור לרכיבי button/input/modal/table/badge/error/empty בלי לבנות framework נוסף שאין בו צורך. [S03–S05]\n\nבדוק את כל המצבים, לא רק hero screenshot: signed out, onboarding, empty project, long chat, running tools, generating media, failed write, offline, readonly, expired session, paid state ו־cancelled subscription. שלוט בדגש כך שהתוכן מרכזי; אין rainbow על StudPilot, אין mascot, אין banner wall. ארטיפקט אמיתי יכול להופיע כשהוא שימושי ולא כדקורציה קבועה.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },
@@ -532,7 +532,7 @@
     {
       "id": "R75",
       "title": "public API, SDK ו־CLI",
-      "execution_contract": "פרסם חוזה resource model עקבי עם product/conversation/run/artifact, authentication, scopes, idempotency, pagination, deterministic ordering, errors, streaming ו־versioning. existing SDK שמדבר `/api` עם JWT אישי אינו בהכרח public API client מתאים. OpenAPI צריך schemas, דוגמאות ניתנות להרצה ו־compatibility policy, לא רק רשימת paths. [S02; קטעי הצ'קליסט]\n\nבדוק client JS/TS/Python/Luau/CLI לפי scope שנשאר, עם install/version/help/examples, timeout/retry/pagination/streaming וסוד שמגיע ממקום בטוח. אין להשאיר שמות `@apple` במוצר הפעיל לאחר הגירה. compatibility של clients ישנים דורשת חלון מעבר ותיעוד, לא endpoint פומבי בעל הרשאות רחבות. פרסום חבילה אינו public Git repository.",
+      "execution_contract": "פרסם חוזה resource model עקבי עם product/conversation/run/artifact, authentication, scopes, idempotency, pagination, deterministic ordering, errors, streaming ו־versioning. existing SDK שמדבר `/api` עם JWT אישי אינו בהכרח public API client מתאים. OpenAPI צריך schemas, דוגמאות ניתנות להרצה ו־compatibility policy, לא רק רשימת paths. [S02; קטעי הצ'קליסט]\n\nבדוק client JS/TS/Python/Luau/CLI לפי scope שנשאר, עם install/version/help/examples, timeout/retry/pagination/streaming וסוד שמגיע ממקום בטוח. אין להשאיר שמות `@studpilot` במוצר הפעיל לאחר הגירה. compatibility של clients ישנים דורשת חלון מעבר ותיעוד, לא endpoint פומבי בעל הרשאות רחבות. פרסום חבילה אינו public Git repository.",
       "verification_status": "not_reassessed_for_current_repository",
       "completion_claim": false
     },

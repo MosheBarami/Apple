@@ -96,7 +96,7 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ measuredAt: new Date().toISOString(), rows }, null, 1));
 } else {
   const open = process.argv.includes('--open');
-  console.log('APPLE — REQUIREMENTS MAP');
+  console.log('STUDPILOT — REQUIREMENTS MAP');
   console.log(`measured  ${new Date().toISOString()}`);
   console.log(`source    docs/requirements/CONTRACTS.json (${CONTRACTS.contracts.length} contracts)`);
   console.log(`evidence  ${INVENTORY.length} test names across ${new Set(INVENTORY.map((t) => t.suite)).size} suites`);

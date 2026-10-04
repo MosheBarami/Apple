@@ -25,7 +25,7 @@ async function adminOp(op) {
     forwarded.push(JSON.parse(init.body));
     return new Response(JSON.stringify({ ok: true, data: { forwarded: true } }), { headers: { 'content-type': 'application/json' } });
   } }) } };
-  const res = await worker.fetch(new Request('https://apple.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
+  const res = await worker.fetch(new Request('https://studpilot.test/api/admin/studio-op/9f1c1f2a-0000-4000-8000-000000000001', {
     method: 'POST', headers: { 'X-Admin-Key': 'test-admin-key', 'Content-Type': 'application/json' }, body: JSON.stringify({ op, timeoutMs: 5000 }),
   }), env);
   return { status: res.status, body: await res.json(), forwarded };

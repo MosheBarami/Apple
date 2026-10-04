@@ -1,10 +1,10 @@
 // THE UNIT OF A NATIVE UNDO STEP IS ONE OPERATION, NOT ONE RUN AND NOT ONE BATCH.
 //
 // Ground truth, read rather than remembered:
-//   apps/apple-plugin/src/Commands.luau — `execute` calls beginRecording(...) once per operation
+//   apps/studpilot-plugin/src/Commands.luau — `execute` calls beginRecording(...) once per operation
 //     and finishOperation(...) once per operation, so every mutating op is its own
 //     ChangeHistoryService recording.
-//   apps/apple-plugin/src/Bridge.luau  — `for index = 1, #ops do ... resultForExecution(...)`,
+//   apps/studpilot-plugin/src/Bridge.luau  — `for index = 1, #ops do ... resultForExecution(...)`,
 //     so a server-sent batch is walked one operation at a time. Nothing groups a batch.
 //
 // Therefore a run that writes N times is N native undo steps. Four surfaces on this site said
@@ -39,7 +39,7 @@ const PAGES = {
 
 /** The two shapes that assert the wrong unit. Both are what shipped. */
 const FALSE_UNIT = [
-  // "each batch of Apple changes is one native undo step" / "every batch of changes is one native undo step"
+  // "each batch of StudPilot changes is one native undo step" / "every batch of changes is one native undo step"
   /\b(?:each|every)\s+batch[^.]{0,60}?\bone\s+(?:native\s+)?undo\s+step/i,
   // "a run you dislike is a single Ctrl+Z away"
   /\b(?:a\s+)?run[^.]{0,60}?\bsingle\s+Ctrl\+?-?Z\b/i,
@@ -85,7 +85,7 @@ for (const [name, rel] of [
 // ---------------------------------------------------------------------------
 test('the guard rejects the exact sentences that shipped', () => {
   assert.throws(
-    () => audit('victim', '<p>Each batch of Apple changes is one native undo step.</p>'),
+    () => audit('victim', '<p>Each batch of StudPilot changes is one native undo step.</p>'),
     /one undo step/,
   );
   assert.throws(

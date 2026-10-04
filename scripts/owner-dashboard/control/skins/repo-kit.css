@@ -181,14 +181,14 @@
 .md-links a:hover { text-decoration: underline; }
 
 /* ------------------------------------------------------------------ design history */
-.page-design-history { --legacy: var(--warn); --apple: var(--accent); }
+.page-design-history { --legacy: var(--warn); --studpilot: var(--accent); }
 .dh-era { display: flex; flex-direction: column; gap: 16px; }
 .dh-era-bar { display: flex; gap: 4px; min-height: 92px; }
 .dh-e { min-width: 180px; display: flex; flex-direction: column; justify-content: flex-end; gap: 3px; padding: 14px 16px; border-radius: var(--r-md); position: relative; overflow: hidden; transform-origin: right; animation: grow 800ms var(--ease-out) both; }
 .dh-e.legacy { background: color-mix(in srgb, var(--legacy) 16%, var(--surface-2)); border: 1px solid color-mix(in srgb, var(--legacy) 35%, transparent); }
-.dh-e.apple { background: color-mix(in srgb, var(--apple) 18%, var(--surface-2)); border: 1px solid var(--accent-ring); animation-delay: 160ms; }
+.dh-e.studpilot { background: color-mix(in srgb, var(--studpilot) 18%, var(--surface-2)); border: 1px solid var(--accent-ring); animation-delay: 160ms; }
 .dh-e b { font-size: 20px; letter-spacing: -.02em; }
-.dh-e.legacy b { color: var(--legacy); } .dh-e.apple b { color: var(--accent-ink, var(--apple)); }
+.dh-e.legacy b { color: var(--legacy); } .dh-e.studpilot b { color: var(--accent-ink, var(--studpilot)); }
 .dh-e span { font-size: 12.5px; color: var(--ink-2, var(--ink)); }
 .dh-e small { font-size: 11.5px; color: var(--muted); }
 .dh-era-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px 20px; margin: 0; }
@@ -201,9 +201,9 @@
 .dh-chips small { color: var(--faint); font-variant-numeric: tabular-nums; }
 
 .dh-tl { list-style: none; margin: 0; padding: 0 28px 0 0; position: relative; }
-.dh-tl::before { content: ""; position: absolute; inset-block: 8px; inset-inline-start: 9px; width: 2px; border-radius: 2px; background: linear-gradient(to bottom, var(--legacy), color-mix(in srgb, var(--legacy) 40%, var(--line)) 30%, var(--accent-ring) 45%, var(--apple)); opacity: .55; }
+.dh-tl::before { content: ""; position: absolute; inset-block: 8px; inset-inline-start: 9px; width: 2px; border-radius: 2px; background: linear-gradient(to bottom, var(--legacy), color-mix(in srgb, var(--legacy) 40%, var(--line)) 30%, var(--accent-ring) 45%, var(--studpilot)); opacity: .55; }
 .dh-day { position: relative; padding: 4px 0 26px; animation: reveal 420ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
-.dh-day::before { content: ""; position: absolute; inset-inline-start: -25px; inset-block-start: 9px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--apple); box-shadow: 0 0 0 4px var(--bg, #000); }
+.dh-day::before { content: ""; position: absolute; inset-inline-start: -25px; inset-block-start: 9px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--studpilot); box-shadow: 0 0 0 4px var(--bg, #000); }
 .dh-day.legacy::before { border-color: var(--legacy); }
 .dh-dh { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
 .dh-dh h3 { font-size: 15px; font-weight: 600; }
@@ -224,8 +224,8 @@
 .dh-f[open] > :not(summary) { animation: reveal 260ms var(--ease-out) both; }
 .dh-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .dh-more { margin-top: 2px; }
-.dh-rename { position: relative; display: flex; align-items: center; gap: 10px; margin: 0 0 26px; padding: 12px 16px; border-radius: var(--r-md); background: linear-gradient(90deg, color-mix(in srgb, var(--apple) 20%, transparent), color-mix(in srgb, var(--legacy) 16%, transparent)); border: 1px solid var(--accent-ring); font-weight: 600; font-size: 14px; animation: pop 500ms var(--ease-out) both; }
-.dh-rename::before { content: ""; position: absolute; inset-inline-start: -29px; width: 20px; height: 20px; border-radius: 50%; background: var(--apple); box-shadow: 0 0 0 4px var(--bg, #000), 0 0 18px var(--apple); }
+.dh-rename { position: relative; display: flex; align-items: center; gap: 10px; margin: 0 0 26px; padding: 12px 16px; border-radius: var(--r-md); background: linear-gradient(90deg, color-mix(in srgb, var(--studpilot) 20%, transparent), color-mix(in srgb, var(--legacy) 16%, transparent)); border: 1px solid var(--accent-ring); font-weight: 600; font-size: 14px; animation: pop 500ms var(--ease-out) both; }
+.dh-rename::before { content: ""; position: absolute; inset-inline-start: -29px; width: 20px; height: 20px; border-radius: 50%; background: var(--studpilot); box-shadow: 0 0 0 4px var(--bg, #000), 0 0 18px var(--studpilot); }
 
 .dh-decs { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .dh-dec { display: flex; flex-direction: column; gap: 10px; animation: reveal 420ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }

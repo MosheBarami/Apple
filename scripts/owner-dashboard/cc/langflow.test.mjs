@@ -27,7 +27,7 @@ const FIX = {
   'GET /api/v1/flows/': [...REPO.map((f) => ({ id: f.id, name: f.name, folder_id: 'p-1', user_id: S.user, is_component: false })),
     { id: 'other', name: 'Scratch', user_id: S.user, is_component: false }, { id: 'comp', name: 'A component', is_component: true }],
   'GET /api/v1/monitor/traces': { total: 2, traces: [trace('aaaaaaaa-1111', B.id, 'error', '2026-09-23T18:50:20'), trace('bbbbbbbb-2222', A.id, 'ok', '2026-09-23T18:40:00')] },
-  'GET /api/v1/projects/': [{ id: 'p-1', name: 'Apple', user_id: S.user }],
+  'GET /api/v1/projects/': [{ id: 'p-1', name: 'StudPilot', user_id: S.user }],
   'GET /api/v1/monitor/job_queue': { backend: 'asyncio', active_jobs: 0 },
   'POST /api/v1/api_key/': { id: 'key-1', name: 'x', api_key: S.key, user_id: S.user },
   'DELETE /api/v1/api_key/key-1': { detail: 'deleted' },
@@ -35,7 +35,7 @@ const FIX = {
 // The instance copy of a flow: its credential field holds a real-looking token, and its code differs
 // from the repo file, so the page must show "drift" without ever carrying the copy's contents.
 const instanceFlow = (id) => ({ id, updated_at: '2026-09-23T18:00:00', user_id: S.user,
-  data: { nodes: [{ id: 'n', data: { type: 'AppleWorkersAI', node: { template: { api_token: { value: S.cred, password: true }, code: { value: 'edited in the UI' } } } } }] } });
+  data: { nodes: [{ id: 'n', data: { type: 'StudPilotWorkersAI', node: { template: { api_token: { value: S.cred, password: true }, code: { value: 'edited in the UI' } } } } }] } });
 
 let mode = 'fixture';
 const calls = [];
@@ -61,7 +61,7 @@ test('langflow(): shape from a realistic instance, repo flows matched by id, per
   const r = await langflow();
   assert.equal(r.ok, true); assert.equal(r.running, true); assert.equal(r.auth, 'ok'); assert.equal(r.version, '1.12.2');
   assert.equal(r.ui, false, 'a 404 at / means backend-only: no link may be offered');
-  assert.deepEqual(r.project, { id: 'p-1', name: 'Apple' });
+  assert.deepEqual(r.project, { id: 'p-1', name: 'StudPilot' });
   assert.equal(r.extraInstanceFlows, 1, 'the scratch flow counts; the component does not');
   assert.equal(r.flows.length, REPO.length);
   for (const f of r.flows) {
@@ -79,7 +79,7 @@ test('langflow(): shape from a realistic instance, repo flows matched by id, per
 });
 
 test('canvasOf: credential and password field values never reach the page; plain values do', () => {
-  const c = canvasOf({ nodes: [{ id: 'w', position: { x: 1, y: 2 }, data: { type: 'AppleWorkersAI', node: { display_name: 'Workers AI',
+  const c = canvasOf({ nodes: [{ id: 'w', position: { x: 1, y: 2 }, data: { type: 'StudPilotWorkersAI', node: { display_name: 'Workers AI',
     field_order: ['account_id', 'api_token', 'secret_note', 'model', 'max_tokens'], outputs: [{ name: 'reply', display_name: 'Reply', types: ['Message'] }],
     template: { account_id: { type: 'str', value: 'acct-plain-looking', password: true }, api_token: { type: 'str', value: S.cred },
       secret_note: { type: 'str', value: S.env, display_name: 'Note' }, model: { type: 'str', value: '@cf/meta/llama' }, max_tokens: { type: 'int', value: 1024 } } } } }], edges: [] });
@@ -167,7 +167,7 @@ test('conclusions: down vs up-with-drift-and-a-failed-run vs refused login read 
   assert.match(down[0].title, /כבוי/); assert.match(down[1].title, /1 מתוך 2/);
 
   const now = Date.parse('2026-09-23T20:50:00Z');
-  const up = langflowConclusions({ repoFolder: true, running: true, auth: 'ok', version: '1.12.2', ui: false, project: { name: 'Apple' }, runsKnown: true, runsTotal: 7,
+  const up = langflowConclusions({ repoFolder: true, running: true, auth: 'ok', version: '1.12.2', ui: false, project: { name: 'StudPilot' }, runsKnown: true, runsTotal: 7,
     recentRuns: [{ at: '2026-09-23T18:50:00Z', flowName: 'a' }],
     flows: [{ ...flows[0], imported: true, current: false, lastRun: { ok: false } }, { ...flows[1], imported: true, current: true, lastRun: { ok: true } }] }, now);
   assert.deepEqual(up.map((c) => [c.k, c.tone]), [['up', 'ok'], ['drift', 'warn'], ['failed', 'bad'], ['cost', 'info']]);

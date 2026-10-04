@@ -53,7 +53,7 @@ async function loadSemanticModule() {
   const REPO_ROOT = join(HERE, '..', '..', '..');
   const src = join(REPO_ROOT, 'apps', 'worker', 'src', 'semantic.ts');
   const bin = join(REPO_ROOT, 'apps', 'worker', 'node_modules', '.bin', 'esbuild');
-  const dest = join(tmpdir(), `apple-semantic-${process.pid}-${process.hrtime.bigint()}.mjs`);
+  const dest = join(tmpdir(), `studpilot-semantic-${process.pid}-${process.hrtime.bigint()}.mjs`);
   execFileSync(bin, [src, '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: join(REPO_ROOT, 'apps', 'worker'),

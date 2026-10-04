@@ -165,7 +165,7 @@ test('the envelope is three lines with a readable event id, and carries the buil
   assert.equal(outcome.sent, true);
   assert.equal(h.sent[0].url, 'https://o4500.ingest.us.sentry.io/api/4509/envelope/');
   assert.equal(h.sent[0].init.headers['Content-Type'], 'application/x-sentry-envelope');
-  assert.match(h.sent[0].init.headers['X-Sentry-Auth'], /sentry_client=apple-web/);
+  assert.match(h.sent[0].init.headers['X-Sentry-Auth'], /sentry_client=studpilot-web/);
   const lines = h.body().trim().split('\n');
   assert.equal(lines.length, 3);
   //[[ THE EVENT ID SURVIVES THE SCRUB. A Sentry event id is 32 hex characters, which is exactly

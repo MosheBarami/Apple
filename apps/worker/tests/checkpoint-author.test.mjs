@@ -57,11 +57,11 @@ test('a checkpoint a person took records that person', async () => {
   assert.equal(cp.authorId, 'u-maya', 'and the meta the browser gets says so too');
 });
 
-test("Apple's own checkpoint has no human author, rather than being credited to one", async () => {
+test("StudPilot's own checkpoint has no human author, rather than being credited to one", async () => {
   // `pre_agent` is taken by the run, not by a person. Attributing it to whoever happened to be
   // connected would put a name on work they did not do.
   const h = sessionHarness();
-  const cp = await take(h, 'before Apple changes', 'pre_agent');
+  const cp = await take(h, 'before StudPilot changes', 'pre_agent');
   const [row] = rows(h, `select author_id from checkpoints where id = ?`, cp.id);
   assert.equal(row.author_id, null);
   assert.equal(cp.authorId, null);
@@ -120,9 +120,9 @@ test('search still calls your own checkpoint yours', async () => {
   assert.equal(hit.author, 'you');
 });
 
-test("Apple's checkpoint is still Apple's", async () => {
+test("StudPilot's checkpoint is still StudPilot's", async () => {
   const h = sessionHarness();
-  await take(h, 'before Apple changes the portal', 'pre_agent');
+  await take(h, 'before StudPilot changes the portal', 'pre_agent');
   const body = await (await h.session.fetch(new Request('https://do/search?q=portal&viewer=u-owner'))).json();
   const hit = body.results.find((r) => r.type === 'checkpoint');
   assert.equal(hit.author, 'apple');

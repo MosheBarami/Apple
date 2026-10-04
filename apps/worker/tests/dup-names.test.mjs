@@ -3,7 +3,7 @@
  * how to address one of several same-named instances (only when the connected plugin can honour it), and the
  * benchmark's place reset can empty a place that is full of duplicate names.
  *
- * The plugin half is apps/apple-plugin/tests/duplicate-names.test.mjs. Everything here has to degrade with
+ * The plugin half is apps/studpilot-plugin/tests/duplicate-names.test.mjs. Everything here has to degrade with
  * the PUBLISHED plugin, which cannot write through a read reference: that plugin's tree carries no
  * `refsWritable`, and its refusals are what a fake `execStudioOp` below reproduces.
  */

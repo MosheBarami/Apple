@@ -8,7 +8,7 @@ import path from 'node:path';
 import http from 'node:http';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'games-'));
-process.env.APPLE_DASH_GAMES_DIR = dir;
+process.env.STUDPILOT_DASH_GAMES_DIR = dir;
 const { games, gamesRoute } = await import('../games-api.mjs');
 const q = (o) => new URLSearchParams(o);
 const names = (d) => d.page.rows.map((c) => c.name);
@@ -20,9 +20,9 @@ const components = [comp(1, 'Workspace', 10), comp(2, 'Workspace', 30), comp(3, 
 const head = (id, name) => ({ id, name, paths: ['/x/' + name], bytes: 1, status: 'indexed', failures: [{ kind: 'k', he: 'כשל', detail: 'd' }], instances: 65, componentCount: 4, stages, percent: 16.7, weight: 65 });
 
 test('missing index answers ok:false with the command that builds it', () => {
-  process.env.APPLE_DASH_GAMES_DIR = path.join(dir, 'nothing-here');
+  process.env.STUDPILOT_DASH_GAMES_DIR = path.join(dir, 'nothing-here');
   const d = games(null);
-  process.env.APPLE_DASH_GAMES_DIR = dir;
+  process.env.STUDPILOT_DASH_GAMES_DIR = dir;
   assert.equal(d.ok, false);
   assert.equal(d.hint, 'python3 scripts/owner-dashboard/games.py');
 });

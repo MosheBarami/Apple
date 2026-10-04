@@ -329,7 +329,7 @@ export function addMade(made: Record<string, number> | undefined, key: string): 
 
 /**
  * What a run that a bound stopped gave the user, from its own record of successful changes. Measured 2026-09-23:
- * three sky-island runs ended "Apple stopped here … What it built is in your place" with no word of what that was,
+ * three sky-island runs ended "StudPilot stopped here … What it built is in your place" with no word of what that was,
  * and an earlier reply (F-033) guessed "about a dozen" edits for 149. A count from the record cannot be that wrong.
  * It names what the user got ("the shop screen", "3 sounds"), never a tool. Empty when nothing changed.
  */
@@ -350,7 +350,7 @@ export function builtSummary(made: Record<string, number> | undefined): string {
 }
 
 /**
- * Runs that stop to ask. Measured 2026-09-23 (gauntlet round 2, Apple MAX, "make the full
+ * Runs that stop to ask. Measured 2026-09-23 (gauntlet round 2, StudPilot MAX, "make the full
  * game"): the run placed a landmark, passed check_composition, then wrote "audit_build still reports
  * one real defect I have not fixed yet … the full loop has not been playtested … Want me to fix the
  * z-fighting next, then run the playtest?" and the idle bound ended it. The person asked for the whole

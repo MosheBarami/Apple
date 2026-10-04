@@ -36,7 +36,7 @@ const WORKER = join(HERE, '..');
 
 /** preferences.ts and memory-store.ts are bundled separately and share ONE database. */
 function bundle(rel, tag) {
-  const out = join(tmpdir(), `apple-assetsrc-${tag}-${process.pid}.mjs`);
+  const out = join(tmpdir(), `studpilot-assetsrc-${tag}-${process.pid}.mjs`);
   execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
     [join(WORKER, 'src', rel), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`],
     { cwd: WORKER, stdio: 'pipe' });

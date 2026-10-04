@@ -1,4 +1,4 @@
-// Gauntlet round 3 (2026-09-23, Apple MAX, "make the full game"): 78 ops in, the model re-read the
+// Gauntlet round 3 (2026-09-23, StudPilot MAX, "make the full game"): 78 ops in, the model re-read the
 // same scripts while chasing one defect, three all-duplicate steps ended the run, and the plan's
 // next step ("Player HUD and shop screen") was never built. A stuck step is not a finished run.
 import test from 'node:test';

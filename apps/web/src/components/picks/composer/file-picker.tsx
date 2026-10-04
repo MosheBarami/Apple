@@ -129,7 +129,7 @@ export function FilePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={chosen.length ? `Files: ${chosen.length} chosen` : 'Files'}
-        data-tip="Point Apple at files in this project"
+        data-tip="Point StudPilot at files in this project"
         data-fx="press ripple"
         disabled={disabled}
         onClick={() => (open ? close() : setOpen(true))}

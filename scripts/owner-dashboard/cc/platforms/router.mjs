@@ -10,7 +10,7 @@ import { cloudflare, cloudflareAction } from './cloudflare.mjs';
 import { sentry, sentryAction } from './sentry.mjs';
 import { hf, hfAction } from './hf.mjs';
 import { extras } from './extras.mjs';
-import { apple, appleAction } from './apple.mjs';
+import { studpilot, studpilotAction } from './studpilot.mjs';
 import { groq, groqAction } from './groq.mjs';
 import { discord, discordAction } from './discord.mjs';
 import { roblox, robloxAction } from './roblox.mjs';
@@ -48,7 +48,7 @@ const GETS = {
   overview: () => laneB('repo.mjs', 'overview'),
   tree: () => laneB('repo.mjs', 'tree'),
   repos: () => laneB('deps.mjs', 'repos'),
-  github, supabase, cloudflare, sentry, hf, extras, apple, groq, discord, roblox, status, connectors, langflow, pulse, insights, os,
+  github, supabase, cloudflare, sentry, hf, extras, studpilot, groq, discord, roblox, status, connectors, langflow, pulse, insights, os,
 };
 // Platforms whose module lives in platforms/<id>.mjs and is loaded lazily: GET → <id>(), POST → <id>Action(body).
 export const LAZY_PLATFORMS = ['vercel', 'clerk', 'resend', 'tests'];
@@ -66,14 +66,14 @@ const POSTS = {
   'roblox/action': robloxAction,
   'connectors/action': connectorAction,
   'langflow/action': langflowAction,
-  'apple/action': appleAction,
+  'studpilot/action': studpilotAction,
   'os/action': osAction,
 };
 for (const id of LAZY_PLATFORMS) POSTS[`${id}/action`] = (b) => laneB(`platforms/${id}.mjs`, `${id}Action`, b);
 // ?fresh=1 on a GET drops that platform's cache first (the "refresh now" button). The keys match
 // each module's cached() key; pulse refreshes nothing on its own.
 const FRESH = { github: 'github', supabase: 'supabase', cloudflare: 'cloudflare', sentry: 'sentry', hf: 'hf', extras: 'extras',
-  apple: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow',
+  studpilot: 'apple', groq: 'groq', discord: 'discord', roblox: 'roblox', status: 'status', connectors: 'conn:', langflow: 'langflow',
   vercel: 'vercel', clerk: 'clerk', resend: 'resend', tests: 'tests' };
 
 // The `pulse` SSE event: the pulse payload with the derived insights beside it.

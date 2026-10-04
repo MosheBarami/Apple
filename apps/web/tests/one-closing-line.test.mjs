@@ -23,7 +23,7 @@ execFileSync(
 const { outcomeLine } = await import(out);
 
 const STALL_REPLY =
-  'Apple stopped because it kept re-reading your place instead of building, and nothing in your place was changed. Ask again to continue.' +
+  'StudPilot stopped because it kept re-reading your place instead of building, and nothing in your place was changed. Ask again to continue.' +
   '\n\nYou have not been charged for this run: the 63 Credits it used have been put back.';
 
 test('an incomplete reply that carries the worker\'s closing gets no second sentence — the row and its retry stay', () => {

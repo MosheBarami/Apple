@@ -7,7 +7,7 @@
  *
  * `startRun` answered the refusal with `this.broadcast`, which loops every client socket on the
  * project — while the role refusals two lines away have always used a targeted `ws.send`. So when
- * one member was building, every other member's screen said "Apple is already working — stop the
+ * one member was building, every other member's screen said "StudPilot is already working — stop the
  * current run first." as if they had pressed something. There is nothing on that screen to tell
  * them it is not about them, and the sentence instructs them to stop a run that is not theirs.
  *

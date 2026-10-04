@@ -4,7 +4,7 @@
  *
  * The pick's diff: a file header with a change badge, a hunk header, old and new line numbers side
  * by side, + and − gutters, tinted added/removed rows, and a comment bubble on any line. Added rows
- * take the accent (Apple's direction has no green); removed rows take `--bad`. The header reads the
+ * take the accent (StudPilot's direction has no green); removed rows take `--bad`. The header reads the
  * way package-info reads a dependency bump: the name, "Version 2 → Version 4", how much changed.
  */
 import { useState } from 'react';

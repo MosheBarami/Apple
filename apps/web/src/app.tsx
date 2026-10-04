@@ -158,7 +158,7 @@ export function App() {
                     <Route index element={<DashboardPage />} />
                     {/* The shelf lives at the index, and `/projects/:id` is a project on it — so
                         `/app/projects` was the one address in between that resolved to nothing and
-                        fell through to "This apple is lost". Nothing in the product LINKS there;
+                        fell through to "This page is lost". Nothing in the product LINKS there;
                         people arrive by deleting the id off a project URL they were given, which is
                         the ordinary way anyone walks up a path. A redirect rather than a second
                         mounting of DashboardPage, so the shelf keeps exactly one canonical URL. */}

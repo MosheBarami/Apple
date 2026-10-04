@@ -15,7 +15,7 @@
  * Pure: no import. The one transformation applied to the text (`scrub`) is injected by the caller, because the engine-identity
  * rule is the tool layer's.
  */
-import type { ToolTraceEntry } from '@apple/shared';
+import type { ToolTraceEntry } from '@studpilot/shared';
 
 export const TRACE_ERROR_CHARS = 400;
 const LIST_ITEMS = 4;

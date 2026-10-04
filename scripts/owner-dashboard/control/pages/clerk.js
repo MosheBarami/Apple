@@ -45,7 +45,7 @@ const avatar = (u, cls = '') => (u.image ? html`<img class="clx-av ${cls}" src="
   : html`<span class="clx-av ${cls}" aria-hidden="true" style="--h:${[...String(u.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7)}">${initials(u)}</span>`);
 const badge = (tone, text, icn) => html`<span class="clx-badge clx-${tone}">${icn ? ic(icn, 12) : ''}${text}</span>`;
 const METHOD = { password: 'סיסמה', email: 'מייל', phone: 'SMS', passkey: 'Passkey', web3: 'Web3', sso: 'SSO' };
-const PROV = { google: 'Google', github: 'GitHub', apple: 'Apple', microsoft: 'Microsoft', discord: 'Discord', facebook: 'Facebook', gitlab: 'GitLab', linkedin_oidc: 'LinkedIn', x: 'X' };
+const PROV = { google: 'Google', github: 'GitHub', studpilot: 'StudPilot', microsoft: 'Microsoft', discord: 'Discord', facebook: 'Facebook', gitlab: 'GitLab', linkedin_oidc: 'LinkedIn', x: 'X' };
 const status = (u) => (u.banned ? badge('bad', 'חסום', 'ban') : u.locked ? badge('warn', 'נעול', 'lock') : badge('ok', 'פעיל'));
 const errBox = (x, title = 'החלק הזה לא נקרא') => (x && x.error ? html`<div class="clx-callout clx-callout-bad">${ic('warn')}<div><b>${title}</b><p>${x.error}</p></div></div>` : null);
 const isErr = (x) => x && typeof x === 'object' && !Array.isArray(x) && 'error' in x;
@@ -60,7 +60,7 @@ function data(d) {
 function topbar(c) {
   const env = c.instance?.env; const prod = env === 'production';
   return html`<div class="clx-bar">
-    <div class="clx-crumb"><span class="clx-app-logo">${CLERK}</span><b>Apple</b><span class="clx-slash" aria-hidden="true">/</span>
+    <div class="clx-crumb"><span class="clx-app-logo">${CLERK}</span><b>StudPilot</b><span class="clx-slash" aria-hidden="true">/</span>
       <span class="clx-env ${prod ? 'is-prod' : 'is-dev'}"><i aria-hidden="true"></i>${prod ? 'Production' : env === 'development' ? 'Development' : 'לא ידוע'}</span>
       ${c.instance?.fapi ? ltr(c.instance.fapi, 'clx-mono clx-host') : ''}</div></div>`;
 }

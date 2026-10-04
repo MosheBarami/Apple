@@ -73,9 +73,9 @@ test('copy injection never edits the shared checkout', () => {
 });
 
 for (const [line, rule] of [
-  ['Describe what you want and Apple builds it for you', 'describe-it-builds-it'],
+  ['Describe what you want and StudPilot builds it for you', 'describe-it-builds-it'],
   ['Turn one prompt into a whole playable game', 'one-x-whole-y'],
-  ['Apple is not just another code assistant', 'x-not-y'],
+  ['StudPilot is not just another code assistant', 'x-not-y'],
   ['Make Roblox games without learning to code', 'without-learning'],
   ['Create your dream game in minutes', 'dream-vague'],
 ]) {

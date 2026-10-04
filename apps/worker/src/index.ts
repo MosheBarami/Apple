@@ -1,4 +1,4 @@
-// Apple worker entry: API routes + static serving + DO exports.
+// StudPilot worker entry: API routes + static serving + DO exports.
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -267,6 +267,7 @@ import {
 } from './api-keys';
 import {
   API_VERSION_HEADER,
+  LEGACY_API_VERSION_HEADER,
   CURRENT_API_VERSION,
   REQUEST_ID_HEADER,
   SANDBOX_FINGERPRINT,
@@ -304,11 +305,11 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@apple/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@apple/shared';
-import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@apple/shared';
-import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@apple/shared';
-import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@apple/shared';
+import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@studpilot/shared';
+import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@studpilot/shared';
+import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@studpilot/shared';
 
 /**
  * The refusals that mean "this kind of file will never work here", as opposed to "this particular
@@ -506,13 +507,13 @@ app.use('*', sentryMiddleware(routeLabel));
 //[[ THE OLD NAME STOPS SERVING THE PRODUCT.
 //
 //   golem.moshe-barami111.workers.dev was a COMPLETE SECOND COPY of the product, not a stale one:
-//   /, /app, /pricing, /privacy and /terms all returned 200 with bytes identical to the apple host,
+//   /, /app, /pricing, /privacy and /terms all returned 200 with bytes identical to the studpilot host,
 //   /app served the same JS bundle, robots.txt said `Allow: /`, and nothing redirected — rel=canonical
 //   is a hint to a crawler, not an instruction to a browser. So a bookmark, an old link or a search
 //   result put a person on a hostname carrying the brand this product is supposed to have left, and
 //   kept them there for the whole session, address bar and all.
 //
-//   PAGES REDIRECT; APIs DO NOT. Every shipped client already points at the apple host — the two
+//   PAGES REDIRECT; APIs DO NOT. Every shipped client already points at the studpilot host — the two
 //   Studio plugins and the Luau SDK were checked one by one — so no installed thing breaks. But a
 //   301 on `/api` or `/v1` would turn an authenticated POST into a GET at the new host and lose the
 //   body, so those keep answering where they are. The rule is "stop showing the old name to a
@@ -825,9 +826,9 @@ app.get('/api/health', async (c) => {
     ok: true,
     version: VERSION,
     buildSha: c.env.BUILD_SHA ?? 'unknown',
-    // `wire-both`: this build ACCEPTS the old and the new wire spellings. Clients that send the new ones
-    // must not be released until the live /api/health says so (scripts/rename-golem.mjs --phase B2 checks).
-    compat: 'wire-both',
+    // `wire-all`: this build ACCEPTS every wire spelling: the current one (StudPilot) and the two former ones
+    // (Apple, Golem). Clients that send the new ones must not be released until the live /api/health says so.
+    compat: 'wire-all',
     // How many requests this isolate had to read in the old spelling: the evidence for removing it (phase D).
     legacyWire: legacyWireCounts(),
     time: new Date().toISOString(),
@@ -919,7 +920,7 @@ app.get('/api/projects/:id/ws', async (c) => {
   headers.set('X-User-Id', ctx.user.userId);
   headers.set('X-User-Jwt', ctx.user.jwt);
   stripWire(headers, WIRE_HEADERS.grantExpiresAt);
-  stripWire(headers, WIRE_HEADERS.role); // never client-supplied, in either spelling
+  stripWire(headers, WIRE_HEADERS.role); // never client-supplied, in any spelling
   return ctx.stub.fetch(new Request('https://do/ws', { headers, method: 'GET' }));
 });
 
@@ -931,7 +932,7 @@ app.get('/api/projects/:id/messages', async (c) => {
 });
 
 /**
- * Read what Apple believes about a project.
+ * Read what StudPilot believes about a project.
  *
  * From the Durable Object, not from the Supabase columns: those are a mirror written best-effort
  * at the tail of a run, and showing the user a stale copy of the thing the agent is steering by
@@ -1053,7 +1054,7 @@ app.post('/api/voice/transcribe', (c) => handleVoiceTranscribe(c.req.raw, c.env,
  *
  * This route is the reason the composer's paperclip was `disabled` with the title "Attachments
  * aren’t supported yet": there was nothing to post to. `ChatAttachment` had been declared in
- * @apple/shared since the protocol was written, and no code anywhere had ever set one of its
+ * @studpilot/shared since the protocol was written, and no code anywhere had ever set one of its
  * fields.
  *
  * `'build'` rather than `'read'`. Reading an attachment is part of reading the conversation, and
@@ -1193,7 +1194,7 @@ app.get('/api/projects/:id/audio/:audioId', async (c) => {
   return new Response(bytes, {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="apple-${audioId}.${extension}"`,
+      'Content-Disposition': `${download ? 'attachment' : 'inline'}; filename="studpilot-${audioId}.${extension}"`,
       // PRIVATE, and bounded — by what remains of the KV object's life on that path, and by an
       // hour on the durable one. The bound is doing two different jobs for the same reason: a
       // cached copy must never outlive the object it copies, and on R2 nothing expires, so there
@@ -1218,7 +1219,7 @@ app.get('/api/projects/:id/memory', async (c) => {
  * Correct it.
  *
  * Writes BOTH copies. The DO's is what the agent reads on the next run, so an edit that only
- * touched Supabase would change what the dashboard shows and nothing about what Apple does — the
+ * touched Supabase would change what the dashboard shows and nothing about what StudPilot does — the
  * user would delete a wrong fact, watch it disappear, and see the agent keep acting on it.
  *
  * The Supabase write goes through the caller's own JWT and RLS, exactly like every other write in
@@ -1251,7 +1252,7 @@ app.put('/api/projects/:id/memory', async (c) => {
 });
 
 /**
- * Accept or discard what Apple has asked to remember.
+ * Accept or discard what StudPilot has asked to remember.
  *
  * Only reachable when the project's memory setting is `review`, which is what puts anything in the
  * queue in the first place. The DO owns the decision — it holds the queue, and a second
@@ -1306,7 +1307,7 @@ app.get('/api/projects/:id/search', async (c) => {
 
 
 // ---------------------------------------------------------------- scoped memory
-//[[ WHAT APPLE REMEMBERS ABOUT A PERSON, A PROJECT, AND AN ORGANISATION.
+//[[ WHAT STUDPILOT REMEMBERS ABOUT A PERSON, A PROJECT, AND AN ORGANISATION.
 //
 //   `/api/projects/:id/memory` above is the project's model-written summary and facts, which live
 //   in that project's Durable Object. These routes are the other half: the layered store in D1 that
@@ -1466,7 +1467,7 @@ app.get('/api/memory/:scope/:scopeId', async (c) => {
  * second opinion that goes stale the moment the row is edited or the scanner learns a new shape,
  * and a stale "this is safe to show" is the one direction that matters. Credentials never reach
  * this function — `normaliseEntry` refuses them at the door — so what is left is the legitimate
- * personal data a person may well have asked Apple to remember.
+ * personal data a person may well have asked StudPilot to remember.
  */
 function withSensitivity(e: MemoryEntry): MemoryEntry & { sensitive: string[] } {
   return { ...e, sensitive: [...new Set(personalDisclosures(e.value).map((d) => d.kind))] };
@@ -1599,7 +1600,7 @@ app.get('/api/memory/:scope/:scopeId/export', async (c) => {
   return new Response(JSON.stringify(bundle, null, 2), {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="apple-memory-${proven.scope}.json"`,
+      'Content-Disposition': `attachment; filename="studpilot-memory-${proven.scope}.json"`,
       'Cache-Control': 'private, no-store',
     },
   });
@@ -1731,7 +1732,7 @@ app.get('/api/projects/:id/export', async (c) => {
  * The workspace has existed since the web tools shipped and NOBODY COULD SEE IT. The agent wrote
  * notes, plans, generated CSVs and design briefs into `ws:<project>:<path>` through
  * `workspace_write`, the activity feed said "Listed the project files", and there was no route that
- * returned one — so the only way to read a file Apple had written was to ask Apple to read it back
+ * returned one — so the only way to read a file StudPilot had written was to ask StudPilot to read it back
  * to you. Files a user cannot open are not the user's files.
  *
  * FIVE DECISIONS, and each of them is the same decision the rest of this file already makes:
@@ -1811,10 +1812,10 @@ app.get('/api/projects/:id/files/content', async (c) => {
 });
 
 /**
- * PUT A FILE IN, WITHOUT ASKING APPLE TO TYPE IT OUT.
+ * PUT A FILE IN, WITHOUT ASKING STUDPILOT TO TYPE IT OUT.
  *
  * Every file in a workspace arrived through `workspace_write`, which is a TOOL: to get a design
- * brief or a CSV of level data where Apple can read it, a user had to paste the whole thing into
+ * brief or a CSV of level data where StudPilot can read it, a user had to paste the whole thing into
  * the chat and ask for it to be saved — a turn, the credits for that turn, and a model in the
  * middle that may reword it.
  *
@@ -2305,7 +2306,7 @@ app.get('/api/projects/:id/roadmap/next', async (c) => {
  *
  * The brief is regenerated from a fresh scan rather than from a roadmap the client sends back:
  * a client-supplied brief would let any caller hand the builder arbitrary instructions attributed
- * to Apple's own roadmap. Only the milestone id crosses the wire.
+ * to StudPilot's own roadmap. Only the milestone id crosses the wire.
  */
 app.post('/api/projects/:id/roadmap/brief', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
@@ -2433,7 +2434,7 @@ app.post('/api/studio/poll', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
   if (ipLimited(`poll:${ip}`, 400)) return c.json({ error: 'slow down' }, 429);
   const stub = sessionStub(c.env, projectId);
-  // Both spellings on the hop into the Durable Object, so it works whichever bundle version the DO instance is
+  // Every spelling on the hop into the Durable Object, so it works whichever bundle version the DO instance is
   // still running while a deploy rolls out.
   const headers = new Headers({ 'Content-Type': 'application/json' });
   setWire(headers, WIRE_HEADERS.token, token);
@@ -2631,7 +2632,7 @@ app.post('/api/billing/webhook', async (c) => {
     });
   }
 
-  // A request Host is not a billing role. Only Apple's deployment may resolve provider state;
+  // A request Host is not a billing role. Only StudPilot's deployment may resolve provider state;
   // the legacy worker is an explicitly bound replica, not a second independent Stripe authority. Check both
   // prerequisites before an authority call can commit an otherwise undeliverable purchase.
   if (c.env.BILLING_WORKER_NAME !== BILLING_AUTHORITY_WORKER || !c.env.LEGACY_QUOTA_DO) {
@@ -2660,7 +2661,7 @@ app.post('/api/billing/webhook', async (c) => {
       throw new BillingAuthorityError('quota_authority_mismatch', 503, 'Billing authority acknowledgement did not match the event');
     }
     const replica = c.env.LEGACY_QUOTA_DO.get(c.env.LEGACY_QUOTA_DO.idFromName(outcome.userId));
-    // Even an authority replay MUST retry this delivery. Apple may have committed while the first
+    // Even an authority replay MUST retry this delivery. StudPilot may have committed while the first
     // replica request or response failed; shared deduplication here would strand the old namespace.
     await deliverBillingMutation(replica, mutation, BILLING_REPLICA_WORKER);
     return c.json({
@@ -3037,7 +3038,7 @@ app.get('/api/providers', async (c) => {
 
 // ---------------------------------------------------------------- discord
 /**
- * APPLE ON DISCORD.
+ * STUDPILOT ON DISCORD.
  *
  * `/api/discord/interactions` is the bot. It is PUBLIC — Discord is not a user and carries no JWT
  * — and it authenticates by an Ed25519 signature over `timestamp + rawBody`, made with a key only
@@ -3205,7 +3206,7 @@ app.get('/api/discord/link', async (c) => {
   return c.json({ link: body?.link ?? null, configured });
 });
 
-/** Revoke from the Apple side. Discord's own `/unlink` revokes the same link from the other end. */
+/** Revoke from the StudPilot side. Discord's own `/unlink` revokes the same link from the other end. */
 app.delete('/api/discord/link', async (c) => {
   const user = c.get('user');
   const body = await okJson<{ removed: boolean }>(
@@ -4022,7 +4023,7 @@ app.put('/api/me/roblox-key', async (c) => {
     expiresAt: body.expiresAt,
   });
   // A CONNECTED ROBLOX ACCOUNT IS A SECURITY EVENT ON THIS ACCOUNT, and it was the one credential
-  // path that produced no record at all: minting, rotating and revoking an Apple API key each fire
+  // path that produced no record at all: minting, rotating and revoking a StudPilot API key each fire
   // one of these, while attaching a key that can create things in somebody's real Roblox account
   // fired nothing. Unremarkable on the day you do it; the only warning you get on the day you did
   // not. Fire-and-forget, after the write — see securityNotice.
@@ -4031,8 +4032,8 @@ app.put('/api/me/roblox-key', async (c) => {
       c,
       user.userId,
       `roblox:${res.credential.robloxCreatorId}`,
-      'A Roblox account was connected to Apple',
-      `Apple can now act on Roblox ${res.credential.creatorType === 'group' ? 'group' : 'account'} `
+      'A Roblox account was connected to StudPilot',
+      `StudPilot can now act on Roblox ${res.credential.creatorType === 'group' ? 'group' : 'account'} `
       + `${res.credential.robloxCreatorId} with a key ending ${res.credential.hint}. `
       + `Permissions: ${res.credential.scopes.join(', ') || 'none'}. `
       + 'If this was not you, disconnect it in Settings and revoke the key on Roblox.',
@@ -4074,8 +4075,8 @@ app.delete('/api/me/roblox-key', async (c) => {
       c,
       user.userId,
       `roblox:${was.robloxCreatorId}`,
-      'A Roblox account was disconnected from Apple',
-      `Apple can no longer act on Roblox account ${was.robloxCreatorId}. `
+      'A Roblox account was disconnected from StudPilot',
+      `StudPilot can no longer act on Roblox account ${was.robloxCreatorId}. `
       + 'Anything already created in that account stays there, and the key itself still works on '
       + 'Roblox until you revoke it at create.roblox.com.',
     );
@@ -4091,7 +4092,7 @@ app.delete('/api/me/roblox-key', async (c) => {
  * never off the body — an id in a body is a request to act on somebody else.
  *
  * `creator-dashboard.ts` has no platform credential in scope at all, so none of these can quietly
- * become a write to Apple's account when a customer has not connected a key.
+ * become a write to StudPilot's account when a customer has not connected a key.
  */
 /**
  * The audit fields, but ONLY when there is something they could be describing.
@@ -4244,7 +4245,7 @@ app.post('/api/me/roblox/asset-permissions', async (c) => {
     : c.json({ error: out.error, ...auditTrail(out) }, (out.status || 400) as 400);
 });
 
-/** What Apple has done to this person's Roblox account, for this person. Their own trail only. */
+/** What StudPilot has done to this person's Roblox account, for this person. Their own trail only. */
 app.get('/api/me/roblox/writes', async (c) => {
   const user = c.get('user');
   if (!user) return c.json({ error: 'not signed in' }, 401);
@@ -5088,6 +5089,7 @@ app.use('/v1/*', async (c, next) => {
   await next();
   c.header(REQUEST_ID_HEADER, requestId);
   c.header(API_VERSION_HEADER, c.get('apiVersion') ?? CURRENT_API_VERSION);
+  c.header(LEGACY_API_VERSION_HEADER, c.get('apiVersion') ?? CURRENT_API_VERSION);
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'no-referrer');
   // The limiter's verdict belongs on the 200s too. Headers that only appear once you are already
@@ -5103,7 +5105,7 @@ app.use('/v1/*', async (c, next) => {
   const refuse = (status: 400 | 401 | 403 | 404 | 429, code: string, message: string) =>
     c.json(errorBody(status, code, message, requestId), status);
 
-  const version = resolveApiVersion(c.req.header(API_VERSION_HEADER));
+  const version = resolveApiVersion(c.req.header(API_VERSION_HEADER) ?? c.req.header(LEGACY_API_VERSION_HEADER));
   if (!version.ok) {
     return refuse(
       400,
@@ -5305,7 +5307,7 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     id: `chatcmpl_${requestId.replace(/^req_/, '')}`,
     model: req.publicModel,
     createdAtMs: Date.now(),
-    fingerprint: sandbox ? SANDBOX_FINGERPRINT : `apple-${c.env.BUILD_SHA ?? 'dev'}`,
+    fingerprint: sandbox ? SANDBOX_FINGERPRINT : `studpilot-${c.env.BUILD_SHA ?? 'dev'}`,
   };
   const extra: Record<string, string> = {
     ...usageHeaders({
@@ -5391,7 +5393,7 @@ app.get('/v1/projects/:id/messages', async (c) => {
   return c.json({ object: 'list', data: out.messages ?? [] });
 });
 
-/** The additive `productModel` field on API runs. Any value, retired ids included, is Apple. */
+/** The additive `productModel` field on API runs. Any value, retired ids included, is StudPilot. */
 function asProductModel(value: unknown): ProductModel | undefined {
   if (value === undefined || value === null) return undefined;
   return normalizeModelId(value);
@@ -5992,9 +5994,9 @@ app.get('/api/shared/:id/ws', async (c) => {
   const grantExpiry = ctx.membership.expiresAtMs;
   if (typeof grantExpiry === 'number' && Number.isFinite(grantExpiry)) setWire(headers, WIRE_HEADERS.grantExpiresAt, new Date(grantExpiry).toISOString());
   //[[ SET, NEVER APPENDED — the browser's own headers were copied into this object one line above,
-  //   and a client that sent `X-Apple-Role: owner` (or the old spelling) would otherwise have written its own permission
+  //   and a client that sent `X-StudPilot-Role: owner` (or either old spelling) would otherwise have written its own permission
   //   slip. `set` replaces; the value here is the one the access decision produced. ]]
-  setWire(headers, WIRE_HEADERS.role, ctx.role); // both spellings: the DO reads either, and an older DO instance only the old one
+  setWire(headers, WIRE_HEADERS.role, ctx.role); // every spelling: the DO reads any, and an older DO instance only an old one
   return ctx.stub.fetch(new Request('https://do/ws', { headers, method: 'GET' }));
 });
 

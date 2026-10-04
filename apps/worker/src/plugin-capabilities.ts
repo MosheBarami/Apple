@@ -1,5 +1,5 @@
-import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } from '@apple/shared';
-import { CAPABILITY_SCHEMA, isCapabilitySchema } from '@apple/shared';
+import type { PluginCapabilityReportV1, PluginOperationCapability, StudioOp } from '@studpilot/shared';
+import { CAPABILITY_SCHEMA, isCapabilitySchema } from '@studpilot/shared';
 
 /**
  * Explicit Studio-operation capability report sent by a plugin poll.
@@ -53,7 +53,7 @@ export const OPT_IN_OPERATIONS: ReadonlySet<StudioOpName> = new Set<StudioOpName
   'import_owner_component',
   'capture_studio_viewport',
   'play_check',
-  // D-VISION-1 Phase A: the op families in apps/apple-plugin/src/ops. No plugin before them had any.
+  // D-VISION-1 Phase A: the op families in apps/studpilot-plugin/src/ops. No plugin before them had any.
   'query_instances', 'set_props_bulk', 'spatial_query', 'scatter', 'collision_groups', 'collision_groups_list',
   'terrain_shape', 'terrain_read', 'create_rig', 'ui_layout_check', 'play_check_ui',
   // D-FXLIB-1: the sound and effect library family (ops/Fx.luau).

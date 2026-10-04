@@ -1,29 +1,22 @@
-"""apple_sdk — the Python client for the Apple REST API.
+"""apple_sdk — the former name of studpilot_sdk, kept for one release. Removal: next major.
 
-    from apple_sdk import AppleClient
-    client = AppleClient(token="<supabase access token>")
-    print(client.health())
+    from apple_sdk import AppleClient            # still works, and warns
+    from studpilot_sdk import StudPilotClient    # what new code imports
 """
-from .client import (
-    DEFAULT_BASE_URL,
-    MODES,
-    PLAN_IDS,
-    AppleClient,
-    filename_from_disposition,
-    is_project_id,
-    normalize_base_url,
-    project_path,
+import warnings
+
+from studpilot_sdk import *  # noqa: F401,F403
+from studpilot_sdk import StudPilotClient
+from studpilot_sdk import __all__ as _studpilot_all
+
+warnings.warn(
+    "apple_sdk is the former name of studpilot_sdk and will be removed in the next major release; "
+    "import studpilot_sdk instead (AppleClient is now StudPilotClient)",
+    DeprecationWarning,
+    stacklevel=2,
 )
-from .errors import ApiError, backoff_seconds, message_from_body, should_retry
-from .numbers import finite_int, finite_number, is_finite_number, retry_after_seconds
-from .studio import StudioClient, StudioSessionEnded, is_studio_token, poll_wait_seconds
 
-__version__ = "0.1.0"
+#: The former name of StudPilotClient: the same class, not a copy.
+AppleClient = StudPilotClient
 
-__all__ = [
-    "ApiError", "AppleClient", "DEFAULT_BASE_URL", "MODES", "PLAN_IDS", "StudioClient",
-    "StudioSessionEnded", "backoff_seconds", "filename_from_disposition", "finite_int",
-    "finite_number", "is_finite_number", "is_project_id", "is_studio_token",
-    "message_from_body", "normalize_base_url", "poll_wait_seconds", "project_path",
-    "retry_after_seconds", "should_retry", "__version__",
-]
+__all__ = [*_studpilot_all, "AppleClient"]

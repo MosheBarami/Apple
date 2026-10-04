@@ -1,5 +1,5 @@
 import type { AgentCtx } from './tools';
-import type { StudioOp } from '@apple/shared';
+import type { StudioOp } from '@studpilot/shared';
 import { plainName } from './run-idle';
 import { placeImportedOwner } from './model-library';
 import { screenRoots, wireScreens, type WireResult } from './menu-binder';
@@ -231,7 +231,7 @@ export async function libraryImport(ctx: AgentCtx, gameId: string, path: string,
 export async function librarySafetyCopy(ctx: AgentCtx, label: string): Promise<{error: string} | {oversize: boolean}> {
   const checkpoint = await ctx.createCheckpoint(label,'auto');
   const oversize = 'error' in checkpoint && /^Checkpoint was not saved: |too large to checkpoint/.test(checkpoint.error);
-  if ('error' in checkpoint && !oversize) return {error:`Nothing was imported: Apple could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
+  if ('error' in checkpoint && !oversize) return {error:`Nothing was imported: StudPilot could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
   return {oversize};
 }
 /** The game's MaterialVariants ("2022 Stud"...): its parts name them, and without them Studio draws the bare base
@@ -293,7 +293,7 @@ export async function connectMenus(ctx: AgentCtx, screens: {path:string; works?:
   if (!screens.length) return undefined;
   try { return await wireScreens(ctx,screens); } catch { return undefined; }
 }
-export const MENUS_CONNECTED = 'Some screens came without working code, so Apple connected their buttons: each menu now opens and closes.';
+export const MENUS_CONNECTED = 'Some screens came without working code, so StudPilot connected their buttons: each menu now opens and closes.';
 export async function importOwnerLibrary(ctx: AgentCtx, a: Record<string,unknown>) {
   const blocked = libraryReady(ctx); if (blocked) return {error:blocked};
   const gameId = String(a.gameId ?? ''), path = String(a.path ?? ''), mode = a.mode;
@@ -330,7 +330,7 @@ export async function recreateOwnerGame(ctx: AgentCtx, a: Record<string,unknown>
   });
   if (!slots.length) return {error:'This library entry has nothing to import.'};
   const checkpoint = await ctx.createCheckpoint('before recreating an owner game','auto');
-  if ('error' in checkpoint) return {error:`Nothing was imported: Apple could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
+  if ('error' in checkpoint) return {error:`Nothing was imported: StudPilot could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.`};
   const results: Record<string,unknown>[] = [], suspicious: unknown[] = [];
   let roots = 0, instances = 0, scripts = 0, screens: string[] = [];
   // Each slot replaces what it held (template Baseplate/SpawnLocation, default Sky), so the place is the original.

@@ -23,7 +23,7 @@ export function OfflineBanner() {
   useEffect(() => {
     const update = () => setReach(currentReach());
     // The browser tells us when the radio goes down and when it comes back. Both are worth having
-    // even though neither is sufficient: `online` firing is not evidence that Apple is reachable,
+    // even though neither is sufficient: `online` firing is not evidence that StudPilot is reachable,
     // it is only a reason to look again.
     window.addEventListener('offline', update);
     window.addEventListener('online', update);

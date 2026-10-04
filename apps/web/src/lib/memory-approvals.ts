@@ -1,4 +1,4 @@
-// What Apple has ASKED to remember, waiting on an answer.
+// What StudPilot has ASKED to remember, waiting on an answer.
 //
 // Under the `review` memory setting the distiller stops writing facts into memory and starts
 // proposing them. The worker has held that queue, and the accept/discard decision, for a while;

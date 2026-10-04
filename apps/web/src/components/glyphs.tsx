@@ -2,7 +2,7 @@
 // marks follow light/dark without a second asset.
 
 /**
- * The Apple mark: a hexagonal outline containing an isometric cube.
+ * The StudPilot mark: a hexagonal outline containing an isometric cube.
  *
  * Geometry only — not a monolith, not a face, not a character. The outer
  * hexagon is never filled, the three interior lines are the classic "cube in
@@ -14,7 +14,7 @@
  * Used at 32px beside the wordmark, ~28px in the workspace rail, and 22px as
  * the assistant avatar in the conversation.
  */
-export function AppleGlyph({ size = 28, className }: { size?: number; className?: string }) {
+export function StudPilotGlyph({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
@@ -65,15 +65,15 @@ export function AppleGlyph({ size = 28, className }: { size?: number; className?
   );
 }
 
-/** Small Apple status mark used by branded waits. */
-export function ApplePulse({ size = 16 }: { size?: number }) {
+/** Small StudPilot status mark used by branded waits. */
+export function StudPilotPulse({ size = 16 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 16 16"
       fill="none"
-      className="apple-pulse"
+      className="studpilot-pulse"
       aria-hidden="true"
       focusable="false"
     >
@@ -157,7 +157,7 @@ export function SummonIllustration() {
  * geometry rather than from a personified character. The earlier version was a
  * tilted robot with a blinking accent eye, which §3 forbids. No animation.
  */
-export function LostAppleIllustration() {
+export function LostStudPilotIllustration() {
   return (
     <svg
       width="190"

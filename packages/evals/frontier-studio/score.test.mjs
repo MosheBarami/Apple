@@ -8,7 +8,7 @@ import { TASKS } from './missions.mjs';
 import { TASKS as CARTOON_TASKS, BANK as CARTOON_BANK } from './missions-cartoon-v2.mjs';
 import { criteriaFor, gradeMission, gradeSuite } from './score.mjs';
 
-const root = mkdtempSync(join(tmpdir(), 'apple-frontier-score-'));
+const root = mkdtempSync(join(tmpdir(), 'studpilot-frontier-score-'));
 const body = Buffer.from('synthetic fixture: not a real Studio observation');
 writeFileSync(join(root, 'fixture.txt'), body);
 const digest = createHash('sha256').update(body).digest('hex');
@@ -150,7 +150,8 @@ test('a conclusive observed failure remains a failure when other proofs are miss
 test('missing, self-attested, wrong-run or fabricated artifacts do not become scores', () => {
   for (const mutation of [
     (b) => { delete b.proofs['visual-ui']; },
-    (b) => { b.proofs['visual-ui'].observer = 'Apple'; },
+    (b) => { b.proofs['visual-ui'].observer = 'StudPilot'; },
+    (b) => { b.proofs['visual-ui'].observer = 'Apple'; }, // the product's former name is still the product
     (b) => { b.proofs['visual-ui'].runId = 'other-run'; },
     (b) => { b.proofs['visual-ui'].artifact = '../fixture.txt'; },
     (b) => { b.proofs['visual-ui'].sha256 = '0'.repeat(64); },

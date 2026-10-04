@@ -43,11 +43,11 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { d1 } from './stubs/d1.mjs';
-import { MAX_ATTACHMENT_BYTES } from '@apple/shared';
+import { MAX_ATTACHMENT_BYTES } from '@studpilot/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-attachment-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-attachment-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
@@ -250,7 +250,7 @@ test('a PNG posted as text/plain with a .txt name is refused on its bytes', asyn
 });
 
 // PNG and JPEG are read since ec29b221, so only the formats it does not read are refused by name.
-test('an image of a format Apple cannot read is refused by name with the sentence the person needs', async () => {
+test('an image of a format StudPilot cannot read is refused by name with the sentence the person needs', async () => {
   const { db, store } = fresh();
   const env = envFor(db, store);
   const res = await hit(`${url()}?name=shot.gif`, upload(ALICE, 'shot.gif', 'whatever', 'image/gif'), env);

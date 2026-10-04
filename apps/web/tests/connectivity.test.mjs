@@ -1,4 +1,4 @@
-// Whether the browser can reach Apple — and, more importantly, when we do not know.
+// Whether the browser can reach StudPilot — and, more importantly, when we do not know.
 //
 // `navigator.onLine` is the single most over-trusted signal on the web. It is TRUE behind a captive
 // portal, TRUE on a wifi network with no uplink, TRUE while the worker is down. It is only reliable

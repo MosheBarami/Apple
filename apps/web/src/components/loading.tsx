@@ -9,9 +9,9 @@
 //   Infinite path drawing   the Forge's "still alive" line: a segment running round a loop. It
 //                           replaces the sweeping bar — same job, and a loop has no end to seem to
 //                           arrive at.
-//   SVG Ripple Effect       rings around the mark while Apple reaches for Studio (connecting).
+//   SVG Ripple Effect       rings around the mark while StudPilot reaches for Studio (connecting).
 //   Hacker Background       the pairing-code alphabet raining faintly behind "Creating a pairing code".
-//   Hyperspeed              streaks rushing past the first screen, "Waking the apple" (recalling).
+//   Hyperspeed              streaks rushing past the first screen, "Waking StudPilot" (recalling).
 //   Fill text               that first screen's headline, inked left to right — no percentage.
 //   SVG loading spinner     the Spinner: an arc growing and shrinking round a turning ring.
 //   Shimmering Text         the Spinner's caption, a light sweeping across it (AI Elements Shimmer).
@@ -21,7 +21,7 @@ import { OPERATION_STEPS, type OperationKind } from '../lib/tool-meta';
 // `useReducedMotion` — but a user who has overridden it in settings must be able to override it
 // HERE too, and a second local copy of the query could only ever disagree with the first.
 import { useReducedMotion } from '../lib/theme';
-import { ApplePulse } from './glyphs';
+import { StudPilotPulse } from './glyphs';
 import { StatusIcon } from './status-icon';
 import { Shimmer } from './ai-elements/shimmer';
 import { ArcSpinner } from './picks/thinking/arc-spinner';
@@ -33,9 +33,9 @@ import { WarpField } from './picks/thinking/warp-field';
 import './loading.css';
 
 const HEADLINE: Record<OperationKind, string> = {
-  building: 'Apple is building',
-  verifying: 'Apple is verifying',
-  rendering: 'Apple is looking at your scene',
+  building: 'StudPilot is building',
+  verifying: 'StudPilot is verifying',
+  rendering: 'StudPilot is looking at your scene',
   restoring: 'Rewinding your place',
   connecting: 'Waiting for Studio',
   recalling: 'Opening the session',
@@ -78,8 +78,8 @@ export function Forge({ kind, label, compact, cadenceMs = 1500 }: ForgeProps) {
       {kind === 'recalling' && <WarpField className="forge-backdrop--screen" />}
       <span className="forge-mark" aria-hidden="true">
         {kind === 'connecting'
-          ? <RippleField size={88} rings={7}><ApplePulse size={24} /></RippleField>
-          : <ApplePulse size={24} />}
+          ? <RippleField size={88} rings={7}><StudPilotPulse size={24} /></RippleField>
+          : <StudPilotPulse size={24} />}
       </span>
       {kind === 'recalling'
         ? <FillText className="forge-label">{label ?? HEADLINE[kind]}</FillText>

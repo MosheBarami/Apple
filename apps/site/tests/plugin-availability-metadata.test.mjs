@@ -98,10 +98,10 @@ test('/pricing derives its Studio bullet instead of calling the block "pending"'
 // ---------------------------------------------------------------------------
 test('the guard rejects the description and the bullet that shipped', () => {
   const shippedDesc =
-    '  description="How to install Apple for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs."';
+    '  description="How to install StudPilot for Studio from the Roblox Creator Store, and what Studio asks for the first time it runs."';
   assert.doesNotMatch(shippedDesc, /STUDIO_PLUGIN_STORE_LIVE|storeLive/);
   assert.match(
-    'How to install Apple for Studio from the Roblox Creator Store, and what Studio asks.',
+    'How to install StudPilot for Studio from the Roblox Creator Store, and what Studio asks.',
     /How to install .* from the Roblox Creator Store/i,
   );
   assert.match('<li>Studio integration · public installation pending</li>', /public installation pending/i);

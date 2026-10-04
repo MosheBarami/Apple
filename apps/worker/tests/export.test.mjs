@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-export-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-export-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'export.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -55,7 +55,7 @@ test('every message reaches the file', () => {
   }
   // And the count of role headings matches, so a message cannot be present as text while its
   // attribution was dropped.
-  assert.equal(md.split('\n').filter((l) => /^## (You|Apple)$/.test(l)).length, 250);
+  assert.equal(md.split('\n').filter((l) => /^## (You|StudPilot)$/.test(l)).length, 250);
 });
 
 test('a clipped transcript says so at the top, before anyone reads it as complete', () => {

@@ -1,4 +1,4 @@
-// Argument parsing for the `apple` CLI, as a pure function.
+// Argument parsing for the `studpilot` CLI, as a pure function.
 //
 // SEPARATE FROM THE CLI ON PURPOSE. A parser that only exists inside `main()` can only be
 // tested by spawning a process, which means the cases worth testing — a missing argument, a
@@ -22,7 +22,7 @@ export const COMMANDS = Object.freeze({
   docs: { args: ['query'], describe: 'search the ingested Roblox documentation' },
   messages: { args: ['projectId'], flags: { limit: 'number' }, describe: 'recent conversation messages' },
   search: { args: ['projectId', 'query'], describe: 'search a project conversation server-side' },
-  memory: { args: ['projectId'], describe: 'what Apple believes about a project' },
+  memory: { args: ['projectId'], describe: 'what StudPilot believes about a project' },
   checkpoints: { args: ['projectId'], describe: 'list checkpoints' },
   checkpoint: { args: ['projectId'], flags: { label: 'string' }, describe: 'create a checkpoint' },
   restore: { args: ['projectId', 'checkpointId'], destructive: true, describe: 'restore a checkpoint' },
@@ -79,7 +79,7 @@ export function parseArgs(argv) {
   const rest = [];
   let i = 0;
 
-  // Flags may appear before the command (`apple --json health`), so the command is whatever
+  // Flags may appear before the command (`studpilot --json health`), so the command is whatever
   // first non-flag token survives, and flag typing is resolved in a second pass.
   const tokens = [];
   while (i < argv.length) {
@@ -172,21 +172,21 @@ export function helpText() {
     return `  ${usage.padEnd(34)}${spec.describe}`;
   });
   return [
-    'apple — command line client for the Apple API',
+    'studpilot — command line client for the StudPilot API',
     '',
-    'Usage: apple [--base-url URL] [--token TOKEN] [--json] <command> [args]',
+    'Usage: studpilot [--base-url URL] [--token TOKEN] [--json] <command> [args]',
     '',
     'Commands:',
     ...rows,
     '',
     // THE OLD VARIABLE STILL WORKS AND IS NO LONGER ADVERTISED, and the two halves are separate
-    // decisions. bin/apple.mjs keeps reading GOLEM_TOKEN / GOLEM_API_URL after APPLE_TOKEN /
-    // APPLE_API_URL, so a shell that has exported the pre-rename name since before the rename
+    // decisions. bin/studpilot.mjs keeps reading APPLE_TOKEN / APPLE_API_URL and GOLEM_TOKEN / GOLEM_API_URL
+    // after STUDPILOT_TOKEN / STUDPILOT_API_URL, so a shell that has exported either former name
     // keeps working — removing the fallback would break a working setup to tidy a string.
     // Printing it is the other half: this text is the most-read sentence the CLI has, and the
     // product's old name has no business in it. cli.test.mjs pins both — the old name absent from the help,
     // and the fallback still resolving.
-    'The access token is read from --token, then APPLE_TOKEN.',
-    'The base URL is read from --base-url, then APPLE_API_URL, then the production worker.',
+    'The access token is read from --token, then STUDPILOT_TOKEN.',
+    'The base URL is read from --base-url, then STUDPILOT_API_URL, then the production worker.',
   ].join('\n');
 }

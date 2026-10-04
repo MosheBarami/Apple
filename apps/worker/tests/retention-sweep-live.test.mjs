@@ -33,7 +33,7 @@ import { d1, countRows } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-retention-sweep-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-retention-sweep-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

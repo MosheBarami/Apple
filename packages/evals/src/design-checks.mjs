@@ -5,7 +5,7 @@
 // An independent audit put it plainly: mission gate 26 claims "the corpus materially improves
 // UI/world evals", justified by "11 of 107 rules mechanised as executable checks" — and **the
 // word doing the work is *evals*, and there was no eval**. `packages/evals` did not import
-// `@apple/design` at all. The eleven checks were real, and two of them found live defects the
+// `@studpilot/design` at all. The eleven checks were real, and two of them found live defects the
 // moment they ran (F-37, F-38), but they had only ever been pointed at THIS REPOSITORY'S
 // shipped source. They had never once been applied to something a model wrote, which is what
 // the gate actually says.
@@ -26,7 +26,7 @@ import {
   checkInertSurfaceFlags,
   checkFocusFeedback,
   checkTextScaleOrder,
-} from '@apple/design';
+} from '@studpilot/design';
 
 /**
  * The design checks that can be decided from source text alone.

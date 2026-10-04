@@ -21,17 +21,17 @@ function fixtures() {
       auth: { type: 'access_token', accessToken: { displayName: AUTH_SECRET, role: 'fineGrained', value: AUTH_SECRET,
         fineGrained: { scoped: [{ entity: { name: 'moshebarami' }, permissions: ['repo.content.read', 'repo.write'] }] } } } },
     '/api/users/moshebarami/overview': { numModels: 1, numDatasets: 1, numSpaces: 1, numFollowers: 0, numLikes: 0, createdAt: iso(129600) },
-    '/api/models': [{ id: 'moshebarami/apple-lora', private: true, downloads: 0, likes: 0, lastModified: iso(420), createdAt: iso(600),
+    '/api/models': [{ id: 'moshebarami/studpilot-lora', private: true, downloads: 0, likes: 0, lastModified: iso(420), createdAt: iso(600),
       library_name: 'peft', tags: ['peft', 'lora', 'base_model:adapter:meta-llama/Llama-3.2-3B-Instruct', 'license:other', 'region:us'] }],
-    '/api/datasets': [{ id: 'moshebarami/apple-roblox-corpus', private: true, downloads: 0, likes: 0, lastModified: iso(10), description: 'The corpus.',
-      cardData: { pretty_name: 'Apple Roblox corpus' }, tags: ['luau', 'license:other'] }],
+    '/api/datasets': [{ id: 'moshebarami/studpilot-roblox-corpus', private: true, downloads: 0, likes: 0, lastModified: iso(10), description: 'The corpus.',
+      cardData: { pretty_name: 'StudPilot Roblox corpus' }, tags: ['luau', 'license:other'] }],
     '/api/spaces': [{ id: 'moshebarami/backrooms-api', sdk: 'docker', private: false, likes: 0, lastModified: iso(100000),
       runtime: { stage: 'NO_APP_FILE', hardware: { current: null, requested: 'cpu-basic' }, gcTimeout: 172800, domains: [{ stage: 'READY' }] },
       cardData: { title: 'Backrooms Api', emoji: '💻', colorFrom: 'yellow', colorTo: 'pink' } }],
-    '/api/models/moshebarami/apple-lora': { usedStorage: 27816768, siblings: [{ rfilename: 'adapter_model.safetensors' }, { rfilename: 'README.md' }] },
-    '/api/datasets/moshebarami/apple-roblox-corpus': { usedStorage: 10836638, siblings: [{ rfilename: 'data.jsonl' }] },
-    '/api/models/moshebarami/apple-lora/commits/main': [{ id: 'a'.repeat(40), title: 'Upload adapter', date: iso(420), authors: [{ user: 'moshebarami' }] }],
-    '/api/datasets/moshebarami/apple-roblox-corpus/commits/main': [{ id: 'b'.repeat(40), title: 'Corpus snapshot', date: iso(10), authors: [{ user: 'moshebarami' }] },
+    '/api/models/moshebarami/studpilot-lora': { usedStorage: 27816768, siblings: [{ rfilename: 'adapter_model.safetensors' }, { rfilename: 'README.md' }] },
+    '/api/datasets/moshebarami/studpilot-roblox-corpus': { usedStorage: 10836638, siblings: [{ rfilename: 'data.jsonl' }] },
+    '/api/models/moshebarami/studpilot-lora/commits/main': [{ id: 'a'.repeat(40), title: 'Upload adapter', date: iso(420), authors: [{ user: 'moshebarami' }] }],
+    '/api/datasets/moshebarami/studpilot-roblox-corpus/commits/main': [{ id: 'b'.repeat(40), title: 'Corpus snapshot', date: iso(10), authors: [{ user: 'moshebarami' }] },
       { id: 'c'.repeat(40), title: 'initial commit', date: iso(900), authors: [] }],
   };
 }
@@ -94,7 +94,7 @@ test('hf: account, repos with commits, Spaces and rate limit, with nothing of th
   assert.equal(m.commits[0].title, 'Upload adapter');
   assert.equal(d.commitCount, 3, 'the commit count comes from x-total-count');
   assert.equal(d.commits.length, 2);
-  assert.equal(d.title, 'Apple Roblox corpus');
+  assert.equal(d.title, 'StudPilot Roblox corpus');
   assert.equal(s.runtimeStage, 'NO_APP_FILE');
   assert.equal(s.requestedHardware, 'cpu-basic');
   assert.equal(s.sleepAfterSec, 172800);

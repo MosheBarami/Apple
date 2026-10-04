@@ -25,7 +25,7 @@ export interface ModelPrice {
 // is not. If Cloudflare changes a price, update it here — nothing else needs to change.
 export const MODEL_PRICES: Record<string, ModelPrice> = {
   '@cf/zai-org/glm-4.7-flash': { id: '@cf/zai-org/glm-4.7-flash', usdPerMInput: 0.0605, usdPerMOutput: 0.4 },
-  // APPLE, THE ONE CUSTOMER ENGINE (V3 gate G01), and the visual specialist. This is the row
+  // STUDPILOT, THE ONE CUSTOMER ENGINE (V3 gate G01), and the visual specialist. This is the row
   // customers are billed against.
   // It is dearer than the row above it — $0.15/M in against $0.0605, $0.50/M out against $0.40,
   // which is +41% on an uncached 1M-in/1M-out call — and it is the only Workers AI row here
@@ -104,7 +104,7 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  * because inference got cheaper, which is what this comment claimed until 2026-09-20: it justified
  * the ceiling by naming gpt-oss-120b ($0.35/$0.75) as the model glm-5.3-flash replaced and
  * concluding the same cap therefore bought more work. That was true of the 2026-08-30 migration
- * and stopped being true when the paid lane went to glm-4.7-flash and back. The model Apple MAX
+ * and stopped being true when the paid lane went to glm-4.7-flash and back. The model StudPilot MAX
  * actually moved off on 2026-09-19 is the $0.0605/$0.40 row above, so the move was +41% on an
  * uncached call — a 1M-in/1M-out reservation went 41,864 → 59,091 neurons. Under an unchanged
  * ceiling that is roughly 29% FEWER reserved MAX steps a day, not more.
@@ -125,7 +125,7 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  *   the previous model: the bill did not move, the runs it buys did.
  *
  *   What that produced in practice, measured on 2026-09-20: every build on the live product
- *   returned "Apple has reached today's shared building capacity." Twelve consecutive evaluation
+ *   returned "StudPilot has reached today's shared building capacity." Twelve consecutive evaluation
  *   prompts, all refused. The owner could not use his own product to find out whether it works,
  *   which is the one thing he has asked for repeatedly. A single agent run measures between 125 and
  *   718 neurons, so a 25,000-neuron day is roughly 35 to 200 runs for EVERY user combined — and a
@@ -139,10 +139,10 @@ export const FREE_NEURONS_PER_DAY = 10_000;
  *   This is the owner's money and the decision is reversible in one constant. If $19.80 a month is
  *   the wrong answer, this line is where to change it — not the guard, not the message, not the
  *   admission logic, all of which are correct and should stay exactly as they are. ]]*/
-/*[[ REMOVED AS A LIMIT 2026-09-29, OWNER DECISION ("No Apple cap").
+/*[[ REMOVED AS A LIMIT 2026-09-29, OWNER DECISION ("No StudPilot cap").
  *
  *   The 90,000 day ($0.99) stopped a Candy Garden build mid-run on 2026-09-29. Asked to pick 300k, 1M
- *   or no Apple cap, the owner chose no Apple cap: a build must only stop at a real blocker. The
+ *   or no StudPilot cap, the owner chose no StudPilot cap: a build must only stop at a real blocker. The
  *   figures below are high enough never to bind (1,000,000,000 is $11,000 a day), so Cloudflare
  *   billing is the only spending bound. MAX_NEURONS_PER_REQUEST still bounds one call. ]]*/
 /*[[ RESTORED 2026-10-04, STUDPILOT PLAN §8 AND HANDOFF TASK 0.5 (planner defaults; owner task X3 approves
@@ -170,7 +170,7 @@ export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_
  * A single request may never reserve more than this — one runaway agent cannot drain the day.
  *
  * This is the cap for every model that is NOT in the model registry (memory, embeddings, images,
- * speech). The registry's one engine, Apple, carries its own `maxNeuronsPerStep`.
+ * speech). The registry's one engine, StudPilot, carries its own `maxNeuronsPerStep`.
  */
 export const MAX_NEURONS_PER_REQUEST = 1_200;
 
@@ -202,7 +202,7 @@ export function routeForModelId(modelId: string): ModelRoute {
  *   Gemini 3.8 Flash, GPT-5.6 (Sol) and GPT-5.6 Luna were paid from prepaid AI Gateway credits on
  *   Cloudflare Unified Billing — a different wallet from Workers AI's neurons. BudgetDO keeps them
  *   on this separate ceiling instead of the neuron day above, for two reasons: at the neuron day's
- *   $0.99 of billable spend, about two Sol steps would take the whole service's day and leave Apple
+ *   $0.99 of billable spend, about two Sol steps would take the whole service's day and leave StudPilot
  *   with nothing; and a separate number is the only way to say how much of the owner's money the
  *   third-party models may spend, which is the question he will ask.
  *
@@ -221,22 +221,22 @@ export const THIRD_PARTY_USD_PER_MONTH = 60;
  * the paid lane has changed models twice since and the phrase silently came to mean glm-4.7-flash
  * — against which this recalibration is not a saving at all (see BILLABLE_NEURONS_PER_DAY above).
  *
- * MOVED TO @apple/shared and re-exported here. The pricing page explains this number to buyers and
+ * MOVED TO @studpilot/shared and re-exported here. The pricing page explains this number to buyers and
  * this module charges with it; defined in two places they can disagree, and the page had already
  * drifted — it quoted the build-blind neuron figure beside the quality-gated price.
  */
-export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@apple/shared';
-import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS, registryModelByProviderId } from '@apple/shared';
+export { NEURONS_PER_CREDIT, BUILD_NEURONS } from '@studpilot/shared';
+import { NEURONS_PER_CREDIT as NEURONS_PER_CREDIT_VALUE, BUILD_NEURONS, registryModelByProviderId } from '@studpilot/shared';
 
-// The plan ladder now lives in @apple/shared: the limits are both a server rule and a page of
+// The plan ladder now lives in @studpilot/shared: the limits are both a server rule and a page of
 // copy, and written down twice they drift — a plan page disagreeing with the ledger that enforces
 // it is a page that lies, and nothing here would have caught it. Re-exported so every existing
 // import of `PLAN_LIMITS` from this module keeps working.
-export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@apple/shared';
+export { PLAN_LIMITS, PLAN_IDS, isPlanId, type PlanId } from '@studpilot/shared';
 
-// CREDITS_PER_BUILD is in @apple/shared too, for the same reason. Asserted against the measured
+// CREDITS_PER_BUILD is in @studpilot/shared too, for the same reason. Asserted against the measured
 // cost here so the shared constant cannot drift away from the arithmetic it came from.
-export { CREDITS_PER_BUILD } from '@apple/shared';
+export { CREDITS_PER_BUILD } from '@studpilot/shared';
 
 /** What the shared constant must equal, derived rather than restated. */
 export const CREDITS_PER_BUILD_DERIVED = Math.ceil(BUILD_NEURONS.qualityGated / NEURONS_PER_CREDIT_VALUE);

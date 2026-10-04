@@ -1,11 +1,11 @@
-/* WHERE APPLE GETS ASSETS — the rules asset-source-dialog.tsx's markup was written expecting.
+/* WHERE STUDPILOT GETS ASSETS — the rules asset-source-dialog.tsx's markup was written expecting.
  *
  * design/system.css already owns the scrim, the panel, the title, the lede, the choice row, the
  * body grid, the name, the `does` sentence, the meta block, the reach line, the remember row, the
  * actions and the warning. Everything below is what those rules left undrawn: the cost sentence,
  * the reason a source is unavailable, and what a row looks like once it is.
  *
- * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It is the one question that decides what Apple
+ * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It is the one question that decides what StudPilot
  * may put in somebody's game, and it is asked once. So every rule here buys reading speed and
  * nothing else: no weight above 400, no shadow, no fill. The dialog's whole colour budget is
  * already spent on `.asrc__warn` — the single sentence somebody can act on from here — and

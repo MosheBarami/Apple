@@ -21,7 +21,7 @@ const WORKER = join(REPO, 'apps', 'worker');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 async function load(file) {
-  const dest = join(tmpdir(), `apple-${file}-${process.pid}.mjs`);
+  const dest = join(tmpdir(), `studpilot-${file}-${process.pid}.mjs`);
   execFileSync(ESBUILD, [join(WORKER, 'src', `${file}.ts`), '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`], {
     stdio: 'pipe',
     cwd: WORKER,

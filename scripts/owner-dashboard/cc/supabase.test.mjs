@@ -31,7 +31,7 @@ const CATALOG = {
   extensions: [{ name: 'pgcrypto', version: '1.3' }],
 };
 const FIX = {
-  project: { id: REF, ref: REF, organization_id: 'orgslug', organization_slug: 'orgslug', name: 'AppleAI', region: 'eu-central-1', created_at: '2026-08-30T00:00:00Z',
+  project: { id: REF, ref: REF, organization_id: 'orgslug', organization_slug: 'orgslug', name: 'StudPilotAI', region: 'eu-central-1', created_at: '2026-08-30T00:00:00Z',
     status: 'ACTIVE_HEALTHY', database: { host: `db.${REF}.supabase.co`, version: '17.6.1.166', postgres_engine: '17', release_channel: 'ga' } },
   health: [
     { name: 'auth', healthy: true, status: 'ACTIVE_HEALTHY', info: { name: 'GoTrue', version: 'v2.197.0' } },
@@ -128,7 +128,7 @@ test('GET: the payload carries every Studio section from real-shaped answers', a
   const d = await supabase();
   assert.equal(d.ok, true); assert.ok(d.fetchedAt);
   assert.deepEqual(d.errors, {});
-  assert.equal(d.project.name, 'AppleAI'); assert.equal(d.project.ref, REF); assert.equal(d.project.dbVersion, '17.6.1.166');
+  assert.equal(d.project.name, 'StudPilotAI'); assert.equal(d.project.ref, REF); assert.equal(d.project.dbVersion, '17.6.1.166');
   assert.equal(d.org.plan, 'free');
   assert.equal(d.health.length, 5); assert.equal(d.health.find((s) => s.name === 'realtime').healthy, false);
   assert.equal(d.dbSizeBytes, CATALOG.db_bytes);
@@ -167,7 +167,7 @@ test('GET: one failing section shows its Hebrew reason and leaves the rest', asy
   assert.equal(d.ok, true);
   assert.equal(d.health, null); assert.match(d.errors.health, HE);
   assert.equal(d.traffic, null); assert.match(d.errors.traffic, HE);
-  assert.equal(d.project.name, 'AppleAI');
+  assert.equal(d.project.name, 'StudPilotAI');
   assert.ok(!JSON.stringify(d).includes(SENTINEL)); assert.ok(!JSON.stringify(d).includes('Backend error'));
 });
 
@@ -391,7 +391,7 @@ test('no credential in any response: echo 200/403/500 and a throwing fetch', asy
 
 // ---------------------------------------------------------------- insights
 const base = () => ({
-  project: { status: 'ACTIVE_HEALTHY', name: 'AppleAI' }, org: { plan: 'free' }, dbSizeBytes: 12_840_083,
+  project: { status: 'ACTIVE_HEALTHY', name: 'StudPilotAI' }, org: { plan: 'free' }, dbSizeBytes: 12_840_083,
   health: FIX.health.map((h) => ({ name: h.name, healthy: h.healthy, status: h.status })),
   usage: { totals: { rest: 2800, auth: 700, storage: 0, realtime: 0 } },
   advisors: { security: { error: 0, warn: 3, info: 1, groups: [

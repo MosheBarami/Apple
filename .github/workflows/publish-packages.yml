@@ -14,8 +14,8 @@ name: Publish packages
 #
 # Scope: GitHub Packages requires the npm scope to equal the repository owner, so the script stages
 # a copy of each package as @<owner>/<name> (lower-case owner) and publishes that. The source
-# package.json names (@apple/*) are untouched. No package name appears in this file,
-# so the package-scope rename (from the old product name to @apple) needed no edit here.
+# package.json names (@studpilot/*) are untouched. No package name appears in this file,
+# so the package-scope rename (from the old product name to @studpilot) needed no edit here.
 #
 # It uses only GITHUB_TOKEN. No Cloudflare, Supabase or provider secret is available to it, and it
 # publishes nothing that has not first been typechecked and tested.

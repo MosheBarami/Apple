@@ -442,7 +442,7 @@
   .auth-page .auth-card .btn-block.btn-primary:active:not(:disabled) { transform:none; }
 }
 
-/* Picks: React Bits "Orb" sits behind the Apple mark — a soft ink glow, no hue. */
+/* Picks: React Bits "Orb" sits behind the StudPilot mark — a soft ink glow, no hue. */
 .auth-page .auth-hero-orb { position:relative; display:inline-grid; place-items:center; width:28px; height:28px; }
 .auth-page .auth-hero-orb > .pk-orb { position:absolute; inset:-26px; width:auto; height:auto; z-index:0; opacity:.7; }
 .auth-page .auth-hero-orb > :not(.pk-orb) { position:relative; z-index:1; }

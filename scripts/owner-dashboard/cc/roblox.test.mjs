@@ -19,7 +19,7 @@ let calls = []; let mode = 'fixture'; let cloudStatus = 401; let thumbUrl = 'htt
 const res = (body, status = 200) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
 const econ = (id, name, uid, uname) => ({ AssetId: +id, Name: name, Description: 'd', AssetTypeId: 38, Creator: { CreatorTargetId: +uid, Name: uname, CreatorType: 'User', HasVerifiedBadge: false },
   Created: '2026-09-19T18:13:20Z', Updated: '2026-09-23T11:00:54Z', Sales: 0, IsForSale: false, PriceInRobux: null, IsPublicDomain: true });
-const listing = (id) => ({ asset: { id: +id, name: 'Apple Studio', visibilityStatus: 1, isAssetHashApproved: true, isEndorsed: false, scriptCount: 7, categoryPath: 'plugins__ai-tools',
+const listing = (id) => ({ asset: { id: +id, name: 'StudPilot Studio', visibilityStatus: 1, isAssetHashApproved: true, isEndorsed: false, scriptCount: 7, categoryPath: 'plugins__ai-tools',
   createdUtc: '2026-09-19T18:13:20Z', updatedUtc: '2026-09-23T11:00:54Z' }, fiatProduct: { published: true, purchasable: true, isFree: true },
   voting: { upVotes: 0, downVotes: 0, showVotes: true }, creator: { isVerifiedCreator: true } });
 
@@ -110,7 +110,7 @@ test('robloxAction refuses every write, dry run included, with no request', asyn
 
 const store = (over = {}) => ({ assetId: +MAIN, httpStatus: 200, controls: [{ assetId: 6415005344, httpStatus: 200 }], siteSaysLive: false,
   refusal: { reason: 'Misusing Roblox Systems', decidedAt: '2026-09-23T01:23+03:00', appealableUntil: '2026-10-23T01:23+03:00', appealId: null }, ...over });
-const asset = (st, over = {}) => ({ id: MAIN, name: 'Apple Studio', sales: 0, favorites: 0, updated: '2026-09-23T11:00:54Z', store: st, ...over });
+const asset = (st, over = {}) => ({ id: MAIN, name: 'StudPilot Studio', sales: 0, favorites: 0, updated: '2026-09-23T11:00:54Z', store: st, ...over });
 const L = (over = {}) => ({ listed: true, published: true, purchasable: true, free: true, updated: '2026-09-23T11:00:54Z', votes: { up: 0, down: 0 }, ...over });
 
 test('infer: store listing after a recorded removal reads as "back", with the inference labelled', () => {

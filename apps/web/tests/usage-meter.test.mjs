@@ -10,7 +10,7 @@
  *
  * Three properties are load-bearing and each is pinned below:
  *
- *   1. `allowanceTotal` is read from PLAN_LIMITS in @apple/shared — the same table QuotaDO
+ *   1. `allowanceTotal` is read from PLAN_LIMITS in @studpilot/shared — the same table QuotaDO
  *      enforces. The test imports that table rather than repeating its numbers, so a meter
  *      that hard-codes 60 fails here even though 60 is today's correct answer.
  *   2. allowanceRemaining and credits are reported separately. QuotaState's own comment is

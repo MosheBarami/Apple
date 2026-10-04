@@ -1,5 +1,5 @@
 {
-  "name": "Apple (RbxAI) - code, tests, typecheck, site builds",
+  "name": "StudPilot (RbxAI) - code, tests, typecheck, site builds",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".",

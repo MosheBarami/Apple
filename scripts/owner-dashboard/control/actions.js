@@ -58,7 +58,7 @@ export const gh = {
 export const cf = {
   toggle: (kind, cur) => {
     const name = kind === 'logs' ? 'יומני הרצה (Logs)' : 'מעקב בקשות (Traces)';
-    return { id: `cf-${kind}`, platform: 'cloudflare', label: `${cur ? 'כיבוי' : 'הדלקת'} ${name}`, hint: 'Worker apple',
+    return { id: `cf-${kind}`, platform: 'cloudflare', label: `${cur ? 'כיבוי' : 'הדלקת'} ${name}`, hint: 'Worker studpilot',
       title: `${cur ? 'לכבות' : 'להדליק'} ${name} ב-Worker?`,
       what: kind === 'logs' ? `Cloudflare ${cur ? 'יפסיק לשמור' : 'ישמור'} את השורות שה-Worker כותב, כדי שאפשר יהיה לחפש בהן תקלות.`
         : `Cloudflare ${cur ? 'יפסיק לעקוב' : 'יעקוב'} אחרי כל בקשה מקצה לקצה (כמה זמן לקח כל שלב).`,

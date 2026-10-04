@@ -71,7 +71,7 @@ export type AssetKind = Exclude<AssetNeed, 'lighting'>;
 
 //[[ `library` WAS REMOVED FROM THIS LIST ON 2026-09-20, WITH THE THING IT NAMED.
 //
-//   It meant Apple's own curated catalogue: 511,208 provenance rows in D1, filled by an offline
+//   It meant StudPilot's own curated catalogue: 511,208 provenance rows in D1, filled by an offline
 //   harvest and made insertable by uploading the bytes into a Roblox account. The owner removed it
 //   outright. Every upload that pipeline could make was an Image or a Decal, Roblox refuses to
 //   archive either, and so each one was permanent in somebody's real account; the catalogue also
@@ -433,7 +433,7 @@ export function lateralPivotToleranceStuds(x: number, z: number): number {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Hard allowlist of asset types Apple may auto-insert.
+ * Hard allowlist of asset types StudPilot may auto-insert.
  *
  * Images, Decals and **Meshes** are created as Open Use by default, so one upload is usable by
  * every customer's experience by id. **Models are not** — they need the per-place "Allow Loading
@@ -1389,7 +1389,7 @@ export function scanScriptSource(path: string, className: string, source: string
   findings.push({
     code: 'script_present',
     severity: 'medium',
-    message: `${className} at ${path} carries ${lines.length} line(s) of Luau. Apple never auto-inserts an asset containing code, whatever the code says.`,
+    message: `${className} at ${path} carries ${lines.length} line(s) of Luau. StudPilot never auto-inserts an asset containing code, whatever the code says.`,
     line: lines.length ? 1 : null,
     excerpt: excerptOf(lines.find((l) => l.trim().length) ?? ''),
   });
@@ -3079,7 +3079,7 @@ export function summariseTree(data: unknown, rootPath?: string): TreeSummary {
     nodeCount += 1;
     if (n.truncated === true || num(n.moreChildren) !== null) truncated = true;
 	const props = obj(n.props);
-	// Current Apple `get_tree` nodes carry typed Position/Size values in `props`. Keep the old
+	// Current StudPilot `get_tree` nodes carry typed Position/Size values in `props`. Keep the old
 	// top-level fields only as a compatibility fallback for historical fixtures/older companions.
 	const pos = taggedTriple(props.Position ?? n.pos, 'Vector3');
 	const size = taggedTriple(props.Size ?? n.size, 'Vector3');

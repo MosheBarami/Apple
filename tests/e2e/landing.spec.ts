@@ -18,7 +18,7 @@ import { strayCanvases } from './owner-picks';
  * The landing page's invariants, restated 2026-09-22 against the calm redesign.
  *
  * WHAT CHANGED AND WHY THIS WAS REWRITTEN RATHER THAN PATCHED. This file had gone stale almost
- * everywhere: it expected an h1 reading "Describe a Roblox game. / Apple builds it.", links called
+ * everywhere: it expected an h1 reading "Describe a Roblox game. / StudPilot builds it.", links called
  * "Start building — free" and "Install for Studio", `.ap-*` classes, sections #top/#product/
  * #library/#modes/#how/#pricing, a Rubik display face and a loaded Archivo webfont — none of which
  * the landing has had for weeks. It also asserted "ships no JavaScript", which the landing stopped
@@ -32,7 +32,7 @@ import { strayCanvases } from './owner-picks';
  *     published by infra/deploy-showcase.mjs, not by Astro, so it is resolved against its
  *     publisher rather than fetched from this preview — see WORKER_SERVED)
  *   - no 3D, and a canvas only where an owner pick draws one; no model maker the product does not
- *     offer, and never what Apple's own models run on; Credits capitalised (these two, and the
+ *     offer, and never what StudPilot's own models run on; Credits capitalised (these two, and the
  *     composer ghost's "nothing runs forever", RESTATED 2026-09-24 to the owner's picks, commit
  *     3940085, and to D-VISION-1 — each says why where it is asserted)
  *   - the primary action reaches registration and sign-in reaches sign-in
@@ -43,7 +43,7 @@ import { strayCanvases } from './owner-picks';
  *     pixels actually behind it, in BOTH themes now, read off one held frame (RESTATED 2026-09-24:
  *     the owner's picks move, and a box and its pixels must come from the same picture)
  *
- * ONE ASSERTION IS INVERTED: "claims no second model" forbade the words "apple max". Apple MAX is a
+ * ONE ASSERTION IS INVERTED: "claims no second model" forbade the words "studpilot max". StudPilot MAX is a
  * real model today (PRODUCT_MODELS), so the property it protected — no capability claim without a
  * capability — is asserted directly: the page names exactly the shared models, and says which plans
  * include each. RESTATED 2026-10-03 (V3 G01/G16, 38efea2e, c839d7af): one engine on every plan and no
@@ -255,21 +255,21 @@ test('every nav destination resolves', async ({ page }) => {
   }
 });
 
-test('names no model maker the product does not offer, and never what Apple itself runs on', async ({ page }) => {
+test('names no model maker the product does not offer, and never what StudPilot itself runs on', async ({ page }) => {
   // RESTATED 2026-09-24 (D-VISION-1): the product now offers other makers' models by name, so those
   // names may appear — read from MODEL_REGISTRY, not typed here. Two things stay off the page: a
-  // maker or model the registry does not offer, and the foundation under Apple's own models, which
+  // maker or model the registry does not offer, and the foundation under StudPilot's own models, which
   // the registry records in providerModelId ('@cf/<org>/<family>-…') and the page never repeats.
   await page.goto('/');
   const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
   const offered = MODEL_REGISTRY.map((m) => `${m.vendor} ${m.displayName}`).join(' ').toLowerCase();
-  const underApple = MODEL_REGISTRY.filter((m) => m.vendor === 'Apple').flatMap((m) => {
+  const underStudPilot = MODEL_REGISTRY.filter((m) => m.vendor === 'StudPilot').flatMap((m) => {
     const [org, model] = m.providerModelId.split('/').slice(-2);
     return [org.replace(/-org$/, ''), model.split('-')[0]];
   });
-  expect(underApple.length, 'the registry has no Apple model, so this check would pass over nothing').toBeGreaterThan(0);
+  expect(underStudPilot.length, 'the registry has no StudPilot model, so this check would pass over nothing').toBeGreaterThan(0);
   const notOffered = ['glm', 'gpt', 'openai', 'gemini', 'deepseek', 'anthropic', 'claude'].filter((b) => !offered.includes(b));
-  for (const brand of new Set([...notOffered, ...underApple])) {
+  for (const brand of new Set([...notOffered, ...underStudPilot])) {
     expect(text, `landing must not mention "${brand}"`).not.toContain(brand);
   }
 });
@@ -348,7 +348,7 @@ test('no copy on the landing promises an install path the store does not have', 
   test.skip(STUDIO_PLUGIN_STORE_LIVE, 'the store is live; offering the install is the truth');
   await page.goto('/');
   const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
-  for (const claim of ['available now', 'now on the creator store', 'available on the creator store', 'get it now', 'get apple studio']) {
+  for (const claim of ['available now', 'now on the creator store', 'available on the creator store', 'get it now', 'get studpilot studio']) {
     expect(text, `landing must not claim "${claim}"`).not.toContain(claim);
   }
 });

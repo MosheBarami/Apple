@@ -1,4 +1,4 @@
-// The typed surface: one method per documented route of the Apple worker API.
+// The typed surface: one method per documented route of the StudPilot worker API.
 //
 // Every path here exists in apps/worker/src/index.ts. Nothing in this file invents an
 // endpoint, and nothing reshapes a response — the worker's JSON is what a caller gets,
@@ -11,7 +11,7 @@ import { HEADERS } from './wire.mjs';
 /**
  * Plans this client will send to `/api/billing/checkout`.
  *
- * A COPY of `PLAN_IDS` in @apple/shared, and deliberately so: that module is TypeScript and
+ * A COPY of `PLAN_IDS` in @studpilot/shared, and deliberately so: that module is TypeScript and
  * this one is plain JavaScript that a browser, a CLI and Node all load without a build step.
  * A copy that nothing checks is drift waiting to happen, so `tests/protocol-parity.test.mjs`
  * reads the declaration in packages/shared/src/index.ts and fails when the two disagree.
@@ -30,7 +30,7 @@ function assertOneOf(value, allowed, what) {
  * `token` may be a string or a function returning one (possibly async), which is what lets
  * a long-lived process hand over a session that refreshes without rebuilding the client.
  */
-export class AppleClient {
+export class StudPilotClient {
   constructor(options = {}) {
     this.transport = options.transport ?? createTransport(options);
     this.baseUrl = this.transport.baseUrl;
@@ -105,7 +105,7 @@ export class AppleClient {
     return this.transport.request(projectPath(projectId, '/memory'), {});
   }
 
-  /** Replace what Apple believes about a project. The WHOLE memory is sent, never a patch. */
+  /** Replace what StudPilot believes about a project. The WHOLE memory is sent, never a patch. */
   saveMemory(projectId, memory) {
     if (!memory || typeof memory !== 'object') throw new TypeError('memory must be an object');
     if (!Array.isArray(memory.facts)) throw new TypeError('memory.facts must be an array');
@@ -212,6 +212,9 @@ export class AppleClient {
     return this.admin('/api/admin/spend');
   }
 }
+
+// The former name of StudPilotClient, kept for one release so existing imports keep working. Removal: next major.
+export { StudPilotClient as AppleClient };
 
 /** Modes a chat turn may be sent in, re-exported so callers need not import wire.mjs. */
 export { MODES };

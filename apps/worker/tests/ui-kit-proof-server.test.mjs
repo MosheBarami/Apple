@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
-const source = readFileSync(join(fixtures, 'apple-ui-studio-server.luau'), 'utf8');
-const prelude = readFileSync(join(fixtures, 'apple-ui-runtime.luau'), 'utf8');
-const directory = mkdtempSync(join(tmpdir(), 'apple-ui-proof-server-'));
+const source = readFileSync(join(fixtures, 'studpilot-ui-studio-server.luau'), 'utf8');
+const prelude = readFileSync(join(fixtures, 'studpilot-ui-runtime.luau'), 'utf8');
+const directory = mkdtempSync(join(tmpdir(), 'studpilot-ui-proof-server-'));
 const setup = `
 local now = 10
 local os = { clock = function() return now end }
@@ -79,7 +79,7 @@ test('only an explicit inspection run ends automatically, returning real server 
     services.delays = {}
     local task = { delay = function(seconds, fn) table.insert(services.delays, {seconds=seconds, fn=fn}) end }
     services.StudioTestService = {
-      GetTestArgs = function() return {appleUIVisualProof=true} end,
+      GetTestArgs = function() return {studpilotUIVisualProof=true} end,
       EndTest = function(_, value) services.ended=value end,
     }
   `;
@@ -93,5 +93,5 @@ test('only an explicit inspection run ends automatically, returning real server 
     assert(result.states[1].balance==25 and result.states[1].upgrades==3 and result.states[1].walkSpeed==28)`,
     instrumentation + source);
   run('assert(#services.delays==0 and services.ended==nil)',
-    instrumentation.replace('{appleUIVisualProof=true}', '{appleUIVisualProof=false}') + source);
+    instrumentation.replace('{studpilotUIVisualProof=true}', '{studpilotUIVisualProof=false}') + source);
 });

@@ -1,4 +1,4 @@
-# Apple — security review (2026-08-30)
+# StudPilot — security review (2026-08-30)
 
 This is a record of a real adversarial audit of the deployed service, not a checklist. Four
 reviewers worked disjoint threat dimensions against the actual source; every claimed finding was
@@ -21,7 +21,7 @@ rendered, and the confirmed ones were fixed and re-tested against the live deplo
 | # | Finding | Impact | Fix |
 |---|---|---|---|
 | 1 | **Quoted `tool_call` fences were re-parsed in native-tool mode** (`gateway.ts`). Tool results carry untrusted content — script sources, Studio logs. A model *quoting* a fence found in that content turned it into an executed `run_luau` call in the victim's Studio. | prompt-injection → code execution | Removed the fence-parsing fallback entirely; fences are parsed **only** for models without native tool calling, where no untrusted text is echoed back as a tool result. |
-| 2 | **Headless `ApplePairingCode` pairing** (`init.server.luau`) — a script resident in *any* place could drop a `StringValue` and silently re-point the user's Studio at an attacker's project. I had added this myself as a dev convenience. | zero-click Studio takeover | Now gated behind an explicit per-machine opt-in setting (off by default), never re-points an active session, and warns loudly when used. |
+| 2 | **Headless `StudPilotPairingCode` pairing** (`init.server.luau`) — a script resident in *any* place could drop a `StringValue` and silently re-point the user's Studio at an attacker's project. I had added this myself as a dev convenience. | zero-click Studio takeover | Now gated behind an explicit per-machine opt-in setting (off by default), never re-points an active session, and warns loudly when used. |
 | 3 | **Clients could choose a project's primary key** (RLS insert). A released project UUID could be re-registered by a different user and inherit that project's Durable Object. | cross-tenant session hijack | `force_project_id` BEFORE INSERT trigger overrides `id` with `gen_random_uuid()` and pins `owner_id` to `auth.uid()`. |
 | 4 | **Durable Objects addressed by the raw path parameter.** Casing/encoding variants of one UUID mapped to unbounded distinct DOs. | quota exhaustion, split state | DOs are addressed by the canonical row id from the database; the path parameter is UUID-validated first, and a failed `/init` owner check now refuses the request. |
 | 5 | **`/api/studio/poll` was unauthenticated at the edge** and materialized a Durable Object for any attacker-chosen id. | free-tier exhaustion | Token shape (UUID + 48-hex secret) is validated before any storage is touched, plus per-IP rate limiting. Verified: malformed → 401. |

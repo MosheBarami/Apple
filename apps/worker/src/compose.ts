@@ -328,7 +328,7 @@ export function composeSteps(recipe: Recipe): Step[] {
     stage,
     creatures,
     prepare: ['ServerStorage.AppleEnemies', 'ServerStorage.AppleDefenders'],
-    economy: { currency: recipe.currency, start: recipe.start, dataKey: `Apple_${recipe.seed}` },
+    economy: { currency: recipe.currency, start: recipe.start, dataKey: `StudPilot_${recipe.seed}` },
     waves: {
       first: recipe.waves.first, between: recipe.waves.between, baseHealth: recipe.waves.baseHealth, rewardShare: 'killer', clearBonus: recipe.waves.clearBonus ?? 15,
       enemies: Object.fromEntries(recipe.enemies.map((e) => [e.name, { health: e.health, speed: e.speed, reward: e.reward, damage: e.damage }])),
@@ -341,9 +341,9 @@ export function composeSteps(recipe: Recipe): Step[] {
     },
   };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
-    source: `-- ${recipe.title}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
+    source: `-- ${recipe.title}: what this game's systems read. Written by StudPilot's composer; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: recipe.words })}\n` });
+    source: `-- ${recipe.title}: what the screens show. Written by StudPilot's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: recipe.words })}\n` });
 
   // 7. Studs on everything the game is made of: the map, the props, every library piece (bodies, costumes, trees,
   //    projectiles) before the boot script copies them into creatures and defenders, so all of it shares one surface.

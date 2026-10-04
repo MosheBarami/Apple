@@ -455,7 +455,7 @@
 .settings-card .settings-row .btn-danger:hover:not(:disabled) { border-color:color-mix(in srgb,var(--bad) 60%,transparent); background:color-mix(in srgb,var(--bad) 11%,transparent); color:var(--bad); }
 .settings-card .settings-row .btn-danger:active:not(:disabled) { background:color-mix(in srgb,var(--bad) 18%,transparent); }
 
-/* ------------------------------------------------- where Apple gets assets: the stack --- */
+/* ------------------------------------------------- where StudPilot gets assets: the stack --- */
 
 /* SIX CONTROLS IN A WRAPPING FLEX ROW. `.settings-pair` is `display:flex; flex-wrap:wrap`, which
    is right for the two-field rows it was built for and wrong for this one: three checkbox rows of
@@ -481,7 +481,7 @@
 .settings-pair--stack > .form-error { margin:14px 0 0; font-size:13px; line-height:1.55; text-wrap:pretty; }
 .settings-pair--stack > .btn { justify-self:start; margin-top:18px; }
 
-/* ------------------------------------------------ where Apple gets assets: one choice --- */
+/* ------------------------------------------------ where StudPilot gets assets: one choice --- */
 
 /* THE SETTINGS VARIANT OF A CHOICE ROW. The dialog gives each row 18px of air and a 15px name
    because it is the only thing on the screen. Here the identical markup is one entry in a long

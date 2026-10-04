@@ -15,7 +15,7 @@ function searchDetail(tools: ToolEvent[]): Record<string, unknown> | null {
   return detail && typeof detail === 'object' && (detail as { kind?: unknown }).kind === 'asset_choices' ? detail as Record<string, unknown> : null;
 }
 
-/** A model-supplied tool detail is untrusted. Accept only Apple's own search row shape. */
+/** A model-supplied tool detail is untrusted. Accept only StudPilot's own search row shape. */
 export function visualOptions(tools: ToolEvent[]): VisualOption[] {
   const raw = searchDetail(tools)?.options;
   if (!Array.isArray(raw)) return [];

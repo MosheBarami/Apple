@@ -3,13 +3,13 @@
 // Sources, all read-only:
 //   Cloudflare GraphQL  aiInferenceAdaptiveGroups (Workers AI neurons + tokens by day and model) and
 //                       aiGatewayRequestsAdaptiveGroups (AI Gateway requests, cache, errors, cost).
-//   apple()             the worker's admin API (spend ledger, ceilings, prompt-cache rate, prices).
+//   studpilot()             the worker's admin API (spend ledger, ceilings, prompt-cache rate, prices).
 //   worker logs         /api/admin/logs?kind=model_call, grouped by runId for the per-run table.
 //   cloudflare(), groq probeState(), supabase(): request counts, Groq quota headers, DB size.
 // A provider with no readable source is listed in `noSource` with the missing source named, never 0.
 // Every admin GET is itself logged by the worker as an audit event, so this reads at most every 5 min.
 import { fetchJson, cached, ok, fail, section } from '../http.mjs';
-import { apple } from './apple.mjs';
+import { studpilot } from './studpilot.mjs';
 import { cloudflare, WORKER_URL } from './cloudflare.mjs';
 import * as groq from './groq.mjs'; // probeState is newer than some checkouts of groq.mjs
 import { supabase, FREE_DB_BYTES } from './supabase.mjs';
@@ -42,7 +42,7 @@ async function cfUsage(now) {
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
 const modelCalls = () => fetchJson(`${base()}/api/admin/logs?kind=model_call&days=${DAYS}&limit=2000`,
-  { label: 'Apple', what: 'יומן הקריאות למודל', headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
+  { label: 'StudPilot', what: 'יומן הקריאות למודל', headers: { 'x-admin-key': envCompat('STUDPILOT_ADMIN_KEY') } });
 
 /** Pure: everything the page shows from the raw sources. Exported for the tests. */
 export function derive({ ai = [], gw = [], calls = [], a = {}, cf = {}, groqProbe = null, sb = null, now = Date.now() } = {}) {
@@ -141,11 +141,11 @@ export function costs() {
   return cached('costs', async () => {
     const now = Date.now();
     const haveCf = Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID);
-    const haveAdmin = Boolean(envCompat('APPLE_ADMIN_KEY'));
+    const haveAdmin = Boolean(envCompat('STUDPILOT_ADMIN_KEY'));
     const [usage, logs, ap, cf, sb] = await Promise.all([
       haveCf ? section(() => cfUsage(now)) : { error: 'חסרים CLOUDFLARE_API_TOKEN או CLOUDFLARE_ACCOUNT_ID' },
-      haveAdmin ? section(modelCalls) : { error: 'חסר APPLE_ADMIN_KEY' },
-      apple().catch(() => null), cloudflare().catch(() => null), supabase().catch(() => null)]);
+      haveAdmin ? section(modelCalls) : { error: 'חסר STUDPILOT_ADMIN_KEY' },
+      studpilot().catch(() => null), cloudflare().catch(() => null), supabase().catch(() => null)]);
     if (usage.error && logs.error) return fail(usage.error, { errors: { cloudflare: usage.error, worker: logs.error } });
     const a = ap?.ok ? ap : {};
     const out = derive({ ai: usage.value?.ai, gw: usage.value?.gw, calls: arr(logs.value?.events), a, cf: cf?.ok ? cf : {}, groqProbe: groq.probeState?.().probe ?? null,
@@ -157,8 +157,8 @@ export function costs() {
       ...out, noSource,
       spend: a.spend || null, routing: arr(a.routing).filter((r) => r.inPer1M != null || r.outPer1M != null),
       window: a.window || null, logRetained: logs.value ? { retained: logs.value.retained ?? null, truncated: Boolean(logs.value.truncated) } : null,
-      errors: Object.fromEntries(Object.entries({ cloudflare: usage.error, worker: logs.error, apple: ap?.ok === false ? ap.reason : null }).filter(([, v]) => v)),
-      sources: ['Cloudflare GraphQL: aiInferenceAdaptiveGroups, aiGatewayRequestsAdaptiveGroups', '/api/admin/spend, /api/admin/analytics (דרך דף Apple)', `/api/admin/logs?kind=model_call&days=${DAYS}`],
+      errors: Object.fromEntries(Object.entries({ cloudflare: usage.error, worker: logs.error, studpilot: ap?.ok === false ? ap.reason : null }).filter(([, v]) => v)),
+      sources: ['Cloudflare GraphQL: aiInferenceAdaptiveGroups, aiGatewayRequestsAdaptiveGroups', '/api/admin/spend, /api/admin/analytics (דרך דף StudPilot)', `/api/admin/logs?kind=model_call&days=${DAYS}`],
     });
   }, 5 * 60000);
 }

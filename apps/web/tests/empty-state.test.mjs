@@ -103,7 +103,7 @@ test('the only hand-written block states are the two that have no canonical form
   //   write in flight, "You're in" is a success confirmation, "This link is incomplete" is a
   //   malformed address (not-found's reasoning) and "This link didn't work" is an
   //   authorization notice (admin's). Only the fifth, the request failing to arrive, is near
-  //   M07 — and M07's title is "Could not reach Apple", which is not what happened: the
+  //   M07 — and M07's title is "Could not reach StudPilot", which is not what happened: the
   //   sentence that branch exists to say is that the LINK MAY STILL BE FINE, and a title this
   //   component deliberately does not let a caller override would contradict it. Routing one
   //   of five branches through <EmptyState> would also leave the other four hand-written, so

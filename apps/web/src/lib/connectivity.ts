@@ -1,5 +1,5 @@
 /**
- * Whether the browser can reach Apple — and, more importantly, when we do not know.
+ * Whether the browser can reach StudPilot — and, more importantly, when we do not know.
  *
  * `navigator.onLine` is the most over-trusted signal on the web. It is TRUE behind a captive
  * portal, TRUE on wifi with no uplink, TRUE while the worker itself is down. It is reliable in
@@ -78,7 +78,7 @@ export function reachNotice(reach: Reach): ReachNotice | null {
     return {
       // Deliberately different words from 'offline': this one is probably not their wifi, and
       // sending someone to restart a router that is working fine is its own small insult.
-      title: 'Apple is not answering',
+      title: 'StudPilot is not answering',
       body: NOTHING_SENT,
       next: 'Check your connection first.',
       reach,

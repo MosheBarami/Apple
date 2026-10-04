@@ -19,10 +19,10 @@
 // HONESTY. Detection is three-valued on purpose. `present` and `absent` are claims about the
 // project; `unknown` is the answer when the scan hit a cap and genuinely could not see (a code-only
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
-// the confident next step — it is offered with `verify` telling the user Apple could not tell.
-import type { StudioOp, OpResult, ProductMode } from '@apple/shared';
-import { creditRangeForRuns } from '@apple/shared';
-import { APPLE_UI_SOURCE } from './ui-kit';
+// the confident next step — it is offered with `verify` telling the user StudPilot could not tell.
+import type { StudioOp, OpResult, ProductMode } from '@studpilot/shared';
+import { creditRangeForRuns } from '@studpilot/shared';
+import { STUDPILOT_UI_SOURCE } from './ui-kit';
 import { parseCensus } from './playtest';
 
 // -----------------------------------------------------------------------------------------------
@@ -411,10 +411,10 @@ interface ScanIndex {
  * path or comment a modified/user module can retain. A known capped prefix is not evidence about
  * its unread tail: omit the presentation prefix but keep missing code evidence UNKNOWN.
  */
-function appleUiSourceKind(script: ScannedScript, sourceCapped: boolean): 'complete' | 'partial' | null {
+function studpilotUiSourceKind(script: ScannedScript, sourceCapped: boolean): 'complete' | 'partial' | null {
   if (script.className !== 'ModuleScript') return null;
   const source = script.source.trim();
-  const known = APPLE_UI_SOURCE.trim();
+  const known = STUDPILOT_UI_SOURCE.trim();
   if (source === known) return 'complete';
   if (sourceCapped && source.length >= 1024 && known.startsWith(source)) return 'partial';
   return null;
@@ -494,7 +494,7 @@ function buildIndex(scan: ProjectScan): ScanIndex {
   let presentationSourceIncomplete = false;
   const code = scan.scripts
     .filter((s) => {
-      const kind = appleUiSourceKind(s, scan.truncated.source);
+      const kind = studpilotUiSourceKind(s, scan.truncated.source);
       if (kind === 'partial') presentationSourceIncomplete = true;
       return kind === null;
     })
@@ -818,7 +818,7 @@ interface MilestoneSpec {
   why: string;
   impact: string;
   complexity: Complexity;
-  /** Apple effort, in the units the product actually bills in */
+  /** StudPilot effort, in the units the product actually bills in */
   mode: ProductMode;
   runs: number;
   dependsOn: readonly string[];
@@ -1650,7 +1650,7 @@ function topoOrder(specs: MilestoneSpec[]): MilestoneSpec[] {
 /** Detection for one milestone: present if every satisfying feature is present. */
 function detectionFor(spec: MilestoneSpec, shape: ProjectShape): { state: Detected; evidence: string[] } {
   if (!spec.satisfiedBy.length) {
-    return { state: 'unknown', evidence: ['Apple cannot tell from the project files whether this is done'] };
+    return { state: 'unknown', evidence: ['StudPilot cannot tell from the project files whether this is done'] };
   }
   const states = spec.satisfiedBy.map((f) => shape.features[f]);
   const evidence = spec.satisfiedBy.map((f) => `${f}: ${shape.features[f]?.evidence ?? 'not checked'}`);
@@ -1690,7 +1690,7 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
       deliverables: [...s.build],
       detected: det.state,
       evidence: det.evidence,
-      verify: det.state === 'unknown' ? 'Apple could not confirm this from the project — check before building it again.' : null,
+      verify: det.state === 'unknown' ? 'StudPilot could not confirm this from the project — check before building it again.' : null,
     };
   });
 
@@ -1715,7 +1715,7 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
   } else if (shape.genreConfidence < 0.34 && shape.runnerUp) {
     notes.push(`This reads as a ${GENRE_LABEL[shape.genre]}, but ${GENRE_LABEL[shape.runnerUp.genre]} is close behind — say which and the roadmap sharpens.`);
   }
-  if (!current && ready.length) notes.push('Everything Apple can detect is already built; what is left could not be verified from the files.');
+  if (!current && ready.length) notes.push('Everything StudPilot can detect is already built; what is left could not be verified from the files.');
 
   return {
     genre: shape.genre,

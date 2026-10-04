@@ -16,7 +16,7 @@ import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const tmp = mkdtempSync(join(tmpdir(), 'apple-skill-push-'));
+const tmp = mkdtempSync(join(tmpdir(), 'studpilot-skill-push-'));
 const load = async (entry, name) => {
   const outfile = join(tmp, `${name}.mjs`);
   buildSync({ entryPoints: [join(ROOT, 'apps/worker/src', entry)], outfile, bundle: true, platform: 'node', format: 'esm', target: 'es2022', logLevel: 'error' });

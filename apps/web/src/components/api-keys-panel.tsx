@@ -26,7 +26,7 @@
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_SCOPES, API_KEY_MODES, type ApiKeyMode, type ApiScope } from '@apple/shared';
+import { API_SCOPES, API_KEY_MODES, type ApiKeyMode, type ApiScope } from '@studpilot/shared';
 import { createApiKey, fetchApiKeys, revokeApiKey, rotateApiKey } from '../lib/api';
 import {
   describeKey,
@@ -172,7 +172,7 @@ export function ApiKeysPanel() {
     <div className="ak" data-setting="api-keys">
       <h3 className="settings-sub">API keys</h3>
       <p className="ak__lede">
-        For the Apple API and the SDK. A key acts as you, on the projects you grant it — treat one
+        For the StudPilot API and the SDK. A key acts as you, on the projects you grant it — treat one
         like a password.
       </p>
 
@@ -186,7 +186,7 @@ export function ApiKeysPanel() {
             <DecryptedText text={revealed.key} />
           </code>
           <p className="ak__reveal-note">
-            Copy it now. Apple stores only a hash of it and cannot show it again — if you lose it,
+            Copy it now. StudPilot stores only a hash of it and cannot show it again — if you lose it,
             rotate the key.
             {revealed.note ? ` ${revealed.note}` : ''}
           </p>
@@ -196,7 +196,7 @@ export function ApiKeysPanel() {
             onClick={() => {
               void navigator.clipboard?.writeText(revealed.key).then(
                 () => toast('Key copied.'),
-                () => toast('Your browser would not let Apple copy it — select it and copy by hand.'),
+                () => toast('Your browser would not let StudPilot copy it — select it and copy by hand.'),
               );
             }}
           >
@@ -216,7 +216,7 @@ export function ApiKeysPanel() {
           {/* A FAILED LOOKUP IS NOT AN EMPTY LIST. "You have no API keys" from a network error
               would invite somebody to mint a second key they already have. */}
           <p className="ak__state is-failed">
-            Apple could not load your keys. This is a connection problem, not an answer about your
+            StudPilot could not load your keys. This is a connection problem, not an answer about your
             account — nothing has changed.
           </p>
           <button type="button" className="btn" onClick={() => void keys.refetch()}>
@@ -226,7 +226,7 @@ export function ApiKeysPanel() {
       )}
 
       {keys.isSuccess && rows.length === 0 && (
-        <p className="ak__state">You have no API keys. You only need one to use the Apple API or the SDK.</p>
+        <p className="ak__state">You have no API keys. You only need one to use the StudPilot API or the SDK.</p>
       )}
 
       {rows.length > 0 && (
@@ -377,7 +377,7 @@ export function ApiKeysPanel() {
             {projects.isPending && <p className="ak__state">Loading your projects…</p>}
             {projects.isError && (
               <p className="ak__problem">
-                Apple could not list your projects, so it cannot offer them here. The key can still be
+                StudPilot could not list your projects, so it cannot offer them here. The key can still be
                 created without one, and rotating it later will not add any.
               </p>
             )}

@@ -173,11 +173,11 @@ test('nothing owed means nothing to copy, even though the document is never empt
   assert.equal(copyableCredits({ ...res({ commercialUse: { checked: 3 } }), credits: 'Credits\n=======' }), null);
 });
 
-test('an asset Apple could not account for is not an asset it ruled against', () => {
+test('an asset StudPilot could not account for is not an asset it ruled against', () => {
   // THE ONE THAT MATTERED. The worker grades `missing_provenance` as a blocker, which
   // is right for its own export gate — you cannot certify what you cannot account for.
   // Rendering that as red "N assets cannot ship commercially" is a determination nobody
-  // made, and while the curated library does not exist (BLOCKERS §4b) EVERY asset Apple
+  // made, and while the curated library does not exist (BLOCKERS §4b) EVERY asset StudPilot
   // inserts lands unaccounted. So every user with a placed asset was being told their
   // game was not shippable, on evidence that says only that a licence was never read.
   const v = readiness(

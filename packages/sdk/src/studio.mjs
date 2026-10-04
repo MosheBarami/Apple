@@ -52,8 +52,8 @@ export function pollWaitMs(response, fallback = 2000, { min = 200, max = 10_000 
 export class StudioClient {
   /**
    * @param options.token   a token from `claim()`, when this client is already paired
-   * @param options.version plugin version reported on every request (X-Golem-Plugin-Version)
-   * @param options.protocol wire protocol integer (X-Golem-Plugin-Protocol)
+   * @param options.version plugin version reported on every request (X-StudPilot-Plugin-Version)
+   * @param options.protocol wire protocol integer (X-StudPilot-Plugin-Protocol)
    */
   constructor(options = {}) {
     this.transport = options.transport ?? createTransport(options);

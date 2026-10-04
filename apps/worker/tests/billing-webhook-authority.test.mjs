@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = mkdtempSync(join(tmpdir(), 'apple-billing-webhook-authority-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-billing-webhook-authority-'));
 const OUT = join(TMP, 'worker.mjs');
 execFileSync(join(WORKER, 'node_modules/.bin/esbuild'), [
   join(WORKER, 'src/index.ts'), '--bundle', '--format=esm', '--target=es2022',
@@ -47,7 +47,7 @@ function fixture(t) {
   const calls = [];
   const stripeCalls = [];
   const notifications = [];
-  const faults = { apple: null, golem: null };
+  const faults = { apple: null, golem: null }; // keyed by the stored worker id ('apple'), not the product name
   let current = subscription();
   const namespace = name => {
     const objects = new Map();
@@ -128,7 +128,7 @@ function fixture(t) {
       const ns = name === 'apple' ? env.QUOTA_DO : env.LEGACY_QUOTA_DO;
       return (await ns.get(ns.idFromName(user)).fetch(`https://do${path}`)).json();
     },
-    async post(payload, overrides = {}, signatureValid = true, host = 'https://apple.test') {
+    async post(payload, overrides = {}, signatureValid = true, host = 'https://studpilot.test') {
       const raw = JSON.stringify(payload);
       const timestamp = Math.floor(Date.now() / 1000);
       const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET),
@@ -273,13 +273,13 @@ test('expired checkout remains an intentional notification-only no-op', async t 
   assert.ok(f.notifications.some(n => /insert into notifications/i.test(n.sql) && n.args.includes(USER)));
 });
 
-test('only Apple binds the legacy quota namespace and both deployments declare their own role', () => {
+test('only StudPilot binds the legacy quota namespace and both deployments declare their own role', () => {
   const config = name => JSON.parse(readFileSync(join(WORKER, name), 'utf8').replace(/^\s*\/\/.*$/gm, ''));
-  const apple = config('wrangler.apple.jsonc');
+  const studpilot = config('wrangler.studpilot.jsonc');
   const golem = config('wrangler.jsonc');
-  assert.equal(apple.vars.BILLING_WORKER_NAME, 'apple');
+  assert.equal(studpilot.vars.BILLING_WORKER_NAME, 'apple');
   assert.equal(golem.vars.BILLING_WORKER_NAME, 'golem');
-  assert.deepEqual(apple.durable_objects.bindings.find(b => b.name === 'LEGACY_QUOTA_DO'),
+  assert.deepEqual(studpilot.durable_objects.bindings.find(b => b.name === 'LEGACY_QUOTA_DO'),
     { name: 'LEGACY_QUOTA_DO', class_name: 'QuotaDO', script_name: 'golem' });
   assert.equal(golem.durable_objects.bindings.some(b => b.name === 'LEGACY_QUOTA_DO'), false);
 });

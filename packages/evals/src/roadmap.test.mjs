@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..', '..', '..', 'apps', 'worker');
-const dest = join(tmpdir(), `apple-roadmap-${process.pid}.mjs`);
+const dest = join(tmpdir(), `studpilot-roadmap-${process.pid}.mjs`);
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'roadmap.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${dest}`],

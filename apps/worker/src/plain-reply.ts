@@ -1,7 +1,7 @@
 /**
  * THE REPLY IS FOR A YOUNG CREATOR, NOT AN ENGINEER (owner, 2026-09-30). The model's own words leaked the machinery:
  * "every screen will be assembled from stored library components … checked with check_ui_layout and inspect_visually".
- * A sentence that names one of Apple's tools, or a Roblox path like game.ServerScriptService or /StarterGui/Main, is dropped
+ * A sentence that names one of StudPilot's tools, or a Roblox path like game.ServerScriptService or /StarterGui/Main, is dropped
  * from the reply; the rest stands. A reply that would be left empty keeps its words with the tool names taken out.
  */
 const PATHISH = /\bgame\.[A-Z]\w+|(?:^|\s)\/(?:Workspace|StarterGui|ReplicatedStorage|ServerScriptService|ServerStorage|StarterPlayer)\b|\brbxassetid:\/\//;

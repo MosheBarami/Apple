@@ -75,7 +75,7 @@ function errors(b) {
 
 function flags(b) {
   return html`<div class="ow-panel">
-    ${note('info', 'לקריאה בלבד', 'הדף הזה מראה את המצב. שינוי של מתג נעשה בדף Apple, עם אישור ותוכנית יבשה לפני כל שינוי.')}
+    ${note('info', 'לקריאה בלבד', 'הדף הזה מראה את המצב. שינוי של מתג נעשה בדף StudPilot, עם אישור ותוכנית יבשה לפני כל שינוי.')}
     <div class="ow-flags">${arr(b.flags).map((f) => html`<div class="ow-flag is-${f.tone}" data-k="fl-${f.k}"><div class="row" style="justify-content:space-between"><b>${f.label}</b><span class="ow-sev ${tone[f.tone] || ''}"></span></div><p dir="auto">${f.text}</p><small>${f.source}</small></div>`)}</div>
     <div class="g g2">
       <div class="card" style="padding:0" data-k="rt"><h2 class="card-h" style="padding:16px 20px 0">המודלים שהעובד יכול לנתב אליהם</h2><div class="tbl-wrap"><table class="ow-t"><tbody>

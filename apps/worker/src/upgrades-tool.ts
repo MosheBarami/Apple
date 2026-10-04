@@ -132,7 +132,7 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
     // A new player starts with the price of the cheapest upgrade: the first buy comes at once (and a play check can
     // confirm a real purchase; with 0 the re-test's check could only see a refusal).
     const start = Math.min(...upgrades.map((u) => u.cost));
-    const settings = `-- Game settings read by Apple's components. Written by Apple; edit freely.\nreturn ${luau({ economy: { currency, start } })}\n`;
+    const settings = `-- Game settings read by StudPilot's components. Written by StudPilot; edit freely.\nreturn ${luau({ economy: { currency, start } })}\n`;
     const failed = await writeScript(ctx, { parent: 'ServerScriptService.AppleComponents', name: 'AppleGameConfig', className: 'ModuleScript', source: settings });
     if (failed) return { error: `The game settings were not written: ${failed}`, changed: true, projectMutated: true };
   }
@@ -149,7 +149,7 @@ export async function addUpgrades(ctx: AgentCtx, a: Record<string, unknown>) {
     levelUp: findSounds('power up sweeteners', { category: 'power_up', limit: 1, maxSeconds: 1.5 })[0]?.soundId,
   };
   const config = { currency, screen, counter: names.counter, button: names.button, panel: names.panel, perPress: 1, upgrades, sounds };
-  const source = `-- The game's upgrades (AppleUpgrades). Written by Apple; edit freely: kind = perPress | perSecond | multiplier.\nreturn ${luau(config)}\n`;
+  const source = `-- The game's upgrades (AppleUpgrades). Written by StudPilot; edit freely: kind = perPress | perSecond | multiplier.\nreturn ${luau(config)}\n`;
   const wrote = await writeScript(ctx, { parent: 'ReplicatedStorage', name: 'AppleUpgradesConfig', className: 'ModuleScript', source });
   if (wrote) return { error: `The upgrades config was not written: ${wrote}`, changed: true, projectMutated: true };
 

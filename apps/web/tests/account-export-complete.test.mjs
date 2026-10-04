@@ -85,7 +85,7 @@ function baseDocument() {
   return {
     format: 'apple.account-export.v1',
     exportedAt: '2026-09-20T09:48:04.000Z',
-    user: { id: USER_ID, email: 'e2e-test@apple.internal' },
+    user: { id: USER_ID, email: 'e2e-test@studpilot.internal' },
     complete: false,
     incomplete: ['messages', 'checkpoints', 'usage_events', 'studio_pairings'],
     tables: {
@@ -178,7 +178,7 @@ test('one click writes one file, and the conversations are inside it', async () 
   assert.deepEqual(doc.incomplete, []);
   assert.equal(outcome.complete, true);
   assert.equal(outcome.requests, asked.length, 'the count reported to the user is the count actually made');
-  assert.match(file.filename, /^apple-data-2026-09-20\.json$/);
+  assert.match(file.filename, /^studpilot-data-2026-09-20\.json$/);
 });
 
 test('a route that does not answer is named, and the file refuses to call itself complete', async () => {
@@ -329,7 +329,7 @@ test('the page says what the file holds and what it does not, and neither claim 
   assert.match(row, /pairing code/i);
   // The plan is exercised above; here the page must not promise a completeness it cannot know.
   assert.equal(
-    /everything Apple holds about you/i.test(row),
+    /everything StudPilot holds about you/i.test(row),
     false,
     'bytes and a credential are not in the file, so the row must not say everything',
   );

@@ -1,4 +1,4 @@
-// The empty conversation: what Apple is for, and three ways to start.
+// The empty conversation: what StudPilot is for, and three ways to start.
 //
 // Built from AI Elements' ConversationEmptyState (the sheet) and Suggestions/Suggestion (the
 // seeds), styled by upstream's own classes. The sheet is passed as children, so upstream's default
@@ -22,7 +22,7 @@ export function ChatWelcome({ seeds, onSeed }: {
     <div className="start-sheet__lead">
       <span className="start-sheet__identity"><ModelMark variant="apple" /></span>
       <h1 id="start-title">What do you want to build?</h1>
-      <p>Describe the change. Apple will inspect the place, build it and verify the result.</p>
+      <p>Describe the change. StudPilot will inspect the place, build it and verify the result.</p>
     </div>
     {/* The seeds wrap rather than scroll: the row is three short pills, and a scroll area's clip
         would cut the focus ring off the outer edge of each. */}

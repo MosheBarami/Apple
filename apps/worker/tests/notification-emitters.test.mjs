@@ -126,7 +126,7 @@ test('the seven routes that change a credential or a membership all tell the acc
   // day something is wrong.
   //
   // IT WAS FIVE. Connecting a Roblox account — a credential that can create things in somebody's
-  // real Roblox account, permanently — fired nothing at all, while minting an Apple API key fired
+  // real Roblox account, permanently — fired nothing at all, while minting a StudPilot API key fired
   // one. The count moving is the point of pinning it: adding a credential route and not telling
   // the account holder about it should be a decision somebody makes on purpose, in this file.
   //
@@ -167,7 +167,7 @@ test('the membership notice goes to the OWNER, not to the person who was added o
     2,
     'the two membership routes must address the project owner',
   );
-  // Three Apple keys and two Roblox connection events, all addressed to the person on the token —
+  // Three StudPilot keys and two Roblox connection events, all addressed to the person on the token —
   // never to an id read off a body, which would be a way to post alarming sentences into anybody's
   // account history.
   // (The model-key save that made it six for a day went with BYOK, D-VISION-1.)

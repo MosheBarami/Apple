@@ -2,7 +2,7 @@
  * THE MODULES MUST BE RIGHT, AND THE RIGHT ONE MUST COME BACK.
  *
  * eval-v4 measured the model at 0/8 on game logic. The failures are near-misses — correct house
- * style, wrong arithmetic. apple-v4 answered `honest-percent` with `* 99` where the contract says
+ * style, wrong arithmetic. studpilot-v4 answered `honest-percent` with `* 99` where the contract says
  * the scale is 0..100. A customer never sees that: the build succeeds and the number is quietly
  * wrong forever.
  *
@@ -25,7 +25,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
 
-const out = join(mkdtempSync(join(tmpdir(), 'apple-vmod-')), 'vm.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-vmod-')), 'vm.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'verified-modules.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { stdio: 'pipe', cwd: WORKER });
@@ -45,7 +45,7 @@ test('the library is not empty and carries real Luau', () => {
 });
 
 test('the shipped honest-percent is the version the MODEL failed to write', () => {
-  // The whole point. apple-v4 wrote `* 99`; the contract is a 0..100 scale. If the library ever
+  // The whole point. studpilot-v4 wrote `* 99`; the contract is a 0..100 scale. If the library ever
   // shipped the model's version, this tool would launder the defect it exists to prevent.
   const m = getVerifiedModule('honest-percent');
   assert.ok(!/\*\s*99\b/.test(m.source), `the library is shipping the wrong constant: ${m.source}`);

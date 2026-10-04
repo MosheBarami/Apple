@@ -3,7 +3,7 @@
  *
  * The app is behind Supabase auth, so design review of the signed-in surfaces
  * would otherwise be impossible without a real account. With
- * `VITE_APPLE_MOCK=1` or `?mock=1` on a dev server every network read is
+ * `VITE_STUDPILOT_MOCK=1` or `?mock=1` on a dev server every network read is
  * replaced by realistic fixtures and the WebSocket is replaced by a scripted
  * session. Nothing here runs in a normal production build: the flag folds to a
  * constant `false` and the fixtures are tree-shaken out.
@@ -21,13 +21,13 @@ import type {
   StudioEventSelection,
   StudioEventState,
   StudioFrame,
-} from '@apple/shared';
+} from '@studpilot/shared';
 import type { MeResponse, StudioDiagnosticsResponse, UsageDay } from './api';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { ProfileRow, ProjectRow } from './supabase';
 import { NOTIFICATION_KINDS, type InboxResponse, type NotificationRow } from './notification-inbox.ts';
 
-const FLAG = import.meta.env.VITE_APPLE_MOCK === '1';
+const FLAG = import.meta.env.VITE_STUDPILOT_MOCK === '1';
 
 function queryFlag(): boolean {
   if (typeof window === 'undefined') return false;
@@ -41,7 +41,7 @@ function queryFlag(): boolean {
 /**
  * True when the app should serve fixtures instead of talking to the network.
  *
- * DEV gates BOTH switches. The env flag used to sit outside it, so `VITE_APPLE_MOCK=1 vite build`
+ * DEV gates BOTH switches. The env flag used to sit outside it, so `VITE_STUDPILOT_MOCK=1 vite build`
  * produced a production bundle full of fake projects that never reached the API.
  */
 export const MOCK_MODE: boolean = import.meta.env.DEV && (FLAG || queryFlag());
@@ -529,7 +529,7 @@ export const mockCheckpoints: CheckpointMeta[] = [
 ];
 
 export const mockLogs: StudioEventLog[] = [
-  { kind: 'log', level: 'info', message: 'Apple plugin attached — Ember Halls', clock: 1 },
+  { kind: 'log', level: 'info', message: 'StudPilot plugin attached — Ember Halls', clock: 1 },
   { kind: 'log', level: 'output', message: 'LobbyService loaded 3 checkpoint pads', clock: 2 },
   { kind: 'log', level: 'output', message: 'CoinService: 42 coins registered', clock: 3 },
   { kind: 'log', level: 'warn', message: 'Infinite yield possible on Workspace:WaitForChild("Shop")', clock: 4 },
@@ -590,7 +590,7 @@ export interface MockToolDetail {
 /**
  * What a `run_intent` message carries: a deterministic restatement of the
  * user's own words, the things the request named by hand, the places it
- * genuinely did not say, and the places it did not say where Apple decided
+ * genuinely did not say, and the places it did not say where StudPilot decided
  * anyway. This is the ONLY source the Thinking card's Intent and Plan rows read
  * from — without it those rows do not render at all.
  *
@@ -969,7 +969,7 @@ export function mockPlaytest(): { run: PlaytestRun; frames: StudioFrame[] } {
 
 /**
  * A project mid-flight: one asset that cannot ship, one that owes a credit, one CC0,
- * and one Apple placed by Roblox id that the library cannot account for.
+ * and one StudPilot placed by Roblox id that the library cannot account for.
  *
  * Deliberately NOT the happy path. The empty and the clean cases are one line each and
  * are exercised by `tests/credits-model.test.mjs`; what a fixture is for is the state

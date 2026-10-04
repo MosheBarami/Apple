@@ -163,7 +163,7 @@ test('LIVE: the step running now shimmers in plain words; there is no status pil
   // The steps themselves are the AI Elements Task the owner asked for, in words, with object chips.
   assert.match(html, /data-slot="collapsible-trigger"/, 'the steps are not an AI Elements Task');
   // Owner, 2026-10-01: the "Planning it out | N Credits" pill is removed entirely — AI Elements only.
-  assert.doesNotMatch(html, /apple-status/, 'the old status pill is back');
+  assert.doesNotMatch(html, /studpilot-status/, 'the old status pill is back');
   assert.doesNotMatch(text(html), /\d+ Credits?\b/, 'the pill\'s running cost is back');
 });
 
@@ -172,7 +172,7 @@ test('SETTLED, worked: the reply, the Task naming the work, and nothing moving',
     tools: busy.slice(0, 3) });
   assertNothingTechnical(html, 'settled turn');
   assert.match(text(html), /Your market has two stalls now\./);
-  assert.doesNotMatch(html, /apple-status/, 'the old summary line is back');
+  assert.doesNotMatch(html, /studpilot-status/, 'the old summary line is back');
   assert.deepEqual(shimmering(html), [], 'a finished turn still shimmers');
   assert.match(text(html), /Inspecting project/, 'the Task says what kind of work was done');
 });

@@ -90,7 +90,7 @@ export function guiFrom(raw: unknown, parent: GuiNode | null = null, screen?: st
   return node;
 }
 
-/** Apple took it out of sight when it built the game (a left-out feature's window that stays because code names it): no player reaches it. */
+/** StudPilot took it out of sight when it built the game (a left-out feature's window that stays because code names it): no player reaches it. */
 export function outOfSight(n: GuiNode): boolean {
   for (let a: GuiNode | null = n; a; a = a.parent) if (a.attrs.AppleHidden === true) return true;
   return false;

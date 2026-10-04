@@ -1,4 +1,4 @@
-import type { MessageDto } from '@apple/shared';
+import type { MessageDto } from '@studpilot/shared';
 import type { ChatItem } from './use-project-socket';
 import type { StudioLinkFacts } from './studio-connection';
 

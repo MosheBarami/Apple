@@ -25,7 +25,7 @@
 // nobody is watching. That is the same class of failure as a `rbxasset://` path that does not
 // exist, and it gets the same treatment.
 import { parseInstancePath } from './effects';
-import { BASE_VOLUME_ATTRIBUTE, LEGACY_BASE_VOLUME_ATTRIBUTE } from '@apple/shared';
+import { BASE_VOLUME_ATTRIBUTE, LEGACY_BASE_VOLUME_ATTRIBUTE } from '@studpilot/shared';
 
 // ---------------------------------------------------------------------------------------------
 // Verified vocabulary
@@ -425,7 +425,7 @@ export function soundDesignLuau(environment: string, opts: SoundDesignOptions = 
   const masterTrimDb = typeof opts.masterTrimDb === 'number' && Number.isFinite(opts.masterTrimDb) ? opts.masterTrimDb : 0;
 
   const lines: string[] = [
-    `-- Apple sound design: ${environment}. Configuration only; no asset is referenced.`,
+    `-- StudPilot sound design: ${environment}. Configuration only; no asset is referenced.`,
     'local SoundService = game:GetService("SoundService")',
     '',
     '-- Look up before creating, so a second run retunes rather than duplicating. A name held by a',
@@ -557,7 +557,7 @@ export function assignSoundsLuau(assignments: SoundAssignment[]): string | Sound
   }
 
   const lines: string[] = [
-    '-- Apple: route existing Sounds onto buses and give them a real falloff. No asset is written:',
+    '-- StudPilot: route existing Sounds onto buses and give them a real falloff. No asset is written:',
     '-- this configures Sounds that already carry audio and never supplies any.',
     'local SoundService = game:GetService("SoundService")',
     'local assigned, missing = 0, {}',

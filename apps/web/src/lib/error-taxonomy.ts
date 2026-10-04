@@ -37,7 +37,7 @@ export type FailureKind =
   // A THIRD PARTY THE CUSTOMER CONNECTED refused, which is not the same failure as any of the
   // above and used to be reported as one of them. A dead Roblox Open Cloud key arrives as a 401
   // and was classified `signed_out` — "Your session has expired, sign in again" — sending somebody
-  // to re-authenticate their APPLE account when the thing that expired was a credential on
+  // to re-authenticate their STUDPILOT account when the thing that expired was a credential on
   // somebody else's service. The integration's own mapper fills this in (lib/roblox-key.ts).
   | 'integration'
   | 'rejected';
@@ -129,14 +129,14 @@ export function explainFailure(err: unknown): Explained {
 
   // A CONNECTED THIRD PARTY REFUSED, CHECKED BEFORE THE STATUS BRANCHES BELOW, because the status
   // is what gets this one wrong: a revoked Roblox key is a 401 and every 401 below this line means
-  // "your Apple session expired, sign in again". The narrow test — the provider named in the
+  // "your StudPilot session expired, sign in again". The narrow test — the provider named in the
   // server's own words — is deliberate; a broad one would swallow ordinary auth failures. The
   // titled, actionable version lives in lib/roblox-key.ts, which is where the panel gets it from.
   if (/\broblox\b|open cloud/i.test(lower)) {
     return {
       kind: 'integration',
       title: 'Your connected Roblox account refused that',
-      safety: 'Your Apple account and your work are unaffected — this is about the key you connected.',
+      safety: 'Your StudPilot account and your work are unaffected — this is about the key you connected.',
       next: 'Check the connection in Settings → Connections.',
       href: '/app/settings',
       retryable: false,
@@ -221,7 +221,7 @@ export function explainFailure(err: unknown): Explained {
 
   //[[ THE TWO REFUSALS THAT MUST NOT OFFER A RETRY.
   //
-  //   Both used to fall through to the generic 4xx below: "Apple could not make sense of that
+  //   Both used to fall through to the generic 4xx below: "StudPilot could not make sense of that
   //   request", `retryable: true` — a Try again button over a file that will be refused in exactly
   //   the same way every single time it is sent, and a headline that blames the client for
   //   something the person did on purpose.
@@ -244,7 +244,7 @@ export function explainFailure(err: unknown): Explained {
   if (status === 415) {
     return {
       kind: 'rejected',
-      title: 'Apple cannot read that kind of file',
+      title: 'StudPilot cannot read that kind of file',
       safety: REFUSED,
       next: null,
       retryable: false,
@@ -255,7 +255,7 @@ export function explainFailure(err: unknown): Explained {
   if (status === 503) {
     return {
       kind: 'not_configured',
-      title: 'That part of Apple is not switched on here',
+      title: 'That part of StudPilot is not switched on here',
       // The distinction that matters: this is a deployment that cannot do the thing, not a thing
       // that went wrong. Retrying will produce the same answer for as long as it stays that way.
       safety: REFUSED,
@@ -268,7 +268,7 @@ export function explainFailure(err: unknown): Explained {
   if (status === 502 || status === 504) {
     return {
       kind: 'upstream',
-      title: 'A service Apple depends on did not answer',
+      title: 'A service StudPilot depends on did not answer',
       safety: 'We cannot tell from here whether it finished. Check before repeating anything that costs money or changes your place.',
       next: null,
       help: DOC_TROUBLESHOOTING,
@@ -294,7 +294,7 @@ export function explainFailure(err: unknown): Explained {
     // a bug here rather than a mistake they made. The wording says so without being obscure.
     return {
       kind: 'rejected',
-      title: 'Apple could not make sense of that request',
+      title: 'StudPilot could not make sense of that request',
       safety: REFUSED,
       next: 'If it keeps happening, the detail below is worth reporting.',
       help: DOC_TROUBLESHOOTING,

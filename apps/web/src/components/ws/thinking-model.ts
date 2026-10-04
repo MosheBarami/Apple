@@ -25,7 +25,7 @@
  * is plain data and imports nothing itself, so that stays true.
  */
 import { labelForTool } from './tool-vocabulary.ts';
-import type { AgentPhase, RunIntent } from '@apple/shared';
+import type { AgentPhase, RunIntent } from '@studpilot/shared';
 import type { AgentStatus, ToolEvent } from '../../lib/use-project-socket';
 
 /* -------------------------------------------------------------- labels ---- */

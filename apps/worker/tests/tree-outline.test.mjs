@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(tmpdir(), `apple-tree-outline-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-tree-outline-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`], { cwd: WORKER, stdio: 'pipe' });
 const T = await import(`file://${out}`);

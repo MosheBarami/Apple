@@ -122,7 +122,7 @@ export function gradeMission(task, bundle, root) {
     const p = bundle?.proofs?.run;
     const observed = p?.kind === 'run-trace' && p.passed === false
       && typeof p.observer === 'string' && p.observer.trim().length >= 3
-      && !/^(apple|model|agent|self)$/i.test(p.observer.trim())
+      && !/^(studpilot|apple|model|agent|self)$/i.test(p.observer.trim())
       && p.runId === run.id && artifactValid(root, p)
       && traceValid(root, p, run.id, false);
     return {
@@ -140,7 +140,7 @@ export function gradeMission(task, bundle, root) {
     const observed = p?.kind === expectedKind(key)
       && typeof p.observer === 'string'
       && p.observer.trim().length >= 3
-      && !/^(apple|model|agent|self)$/i.test(p.observer.trim())
+      && !/^(studpilot|apple|model|agent|self)$/i.test(p.observer.trim())
       && p.runId === run?.id
       && artifactValid(root, p)
       && (key !== 'run' || traceValid(root, p, run?.id))

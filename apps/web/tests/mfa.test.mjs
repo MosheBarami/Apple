@@ -179,7 +179,7 @@ const ENROLL = {
   totp: {
     qr_code: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg"></svg>',
     secret: 'JBSWY3DPEHPK3PXP',
-    uri: 'otpauth://totp/Apple:someone@example.com?secret=JBSWY3DPEHPK3PXP',
+    uri: 'otpauth://totp/StudPilot:someone@example.com?secret=JBSWY3DPEHPK3PXP',
   },
 };
 

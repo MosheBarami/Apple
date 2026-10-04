@@ -96,7 +96,7 @@ test('get_instance reads the ENCODED property table, not a bare one', async () =
   assertNoLeakedWrapper(res, 'get_instance');
 });
 
-test('remove_effect reports nothing when the encoded typed tree contains no Apple effect marker', async () => {
+test('remove_effect reports nothing when the encoded typed tree contains no StudPilot effect marker', async () => {
   const { ctx } = stubCtx((op) => op.op === 'get_tree'
     ? { root: { path: 'game.Workspace.Torch', children: [] } }
     : { ok: true });

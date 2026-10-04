@@ -21,7 +21,7 @@ function storeCard(r) {
     : ctlOk ? ['bad', 'הפלאגין עדיין לא מופיע בחנות', 'הבדיקה עצמה עובדת (נכס הביקורת כן נמצא), אז הבעיה היא שהפלאגין שלנו לא מפורסם או ממתין לאישור של Roblox.']
       : ctl.length ? ['warn', 'אי אפשר לדעת כרגע', 'גם נכסי הביקורת לא ענו, כלומר כנראה יש תקלה זמנית אצל Roblox ולא אצלנו.'] : ['off', 'אין נתון', 'השרת לא שלח תוצאה.'];
   return html`<article class="card">
-    <div class="nc-h">${logo('roblox', 'md')}<div class="grow"><b>הפלאגין של Apple ב-Creator Store</b><small>${light(state, head)}</small></div>${r.url ? extBtn(r.url, 'בחנות', 'btn-sm btn-ghost') : ''}</div>
+    <div class="nc-h">${logo('roblox', 'md')}<div class="grow"><b>הפלאגין של StudPilot ב-Creator Store</b><small>${light(state, head)}</small></div>${r.url ? extBtn(r.url, 'בחנות', 'btn-sm btn-ghost') : ''}</div>
     <p class="explain">${meaning}</p>
     <dl class="kv kv-row"><div><dt>מספר הנכס שלנו</dt><dd><bdi class="mono">${r.assetId ?? '—'}</bdi></dd></div><div><dt>תשובת החנות</dt><dd class="mono">${ours ?? '—'}</dd></div>
       ${ctl.map((c) => html`<div><dt>נכס ביקורת <bdi class="mono">${c.assetId ?? c.id}</bdi></dt><dd>${light(ok2xx(c.httpStatus) ? 'ok' : 'bad', ok2xx(c.httpStatus) ? `נמצא (${c.httpStatus})` : `לא נמצא (${c.httpStatus ?? '—'})`)}</dd></div>`)}</dl>

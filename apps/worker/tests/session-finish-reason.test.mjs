@@ -399,7 +399,7 @@ test('a truncated direct artifact request keeps the run live and suppresses the 
     text: 'Done — your image is available as image_fake_123',
     neurons: 60,
   })] });
-  await start(h, 'create an image of a red apple');
+  await start(h, 'create an image of a red studpilot');
   await h.session.alarm();
 
   assert.equal(lastEnd(h), undefined);

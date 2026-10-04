@@ -535,7 +535,7 @@ export async function writeObjectHud(ctx: AgentCtx, name: string, hud: { counter
   const failedUi = await writeScreen(ctx, screen);
   if (failedUi) return `hud: ${clipText(failedUi)}`;
   const s = (v: string) => luau(v); // a Luau string literal, any language
-  const src = `-- ${name.replace(/[\r\n]/g, ' ')}'s screen: counts every move (AppleAnimatePlayed) and pops the counter. Written by Apple; edit freely.
+  const src = `-- ${name.replace(/[\r\n]/g, ' ')}'s screen: counts every move (AppleAnimatePlayed) and pops the counter. Written by StudPilot; edit freely.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local gui = Players.LocalPlayer:WaitForChild("PlayerGui"):WaitForChild(${s(`${name}HUD`)})
@@ -695,7 +695,7 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
         }
         clips[`${p.name}.${p.move!.as}`] = c;
       }
-      const source = `-- What ${named.name.replace(/[\r\n]/g, ' ')} does, played by AppleAnimate. Written by Apple's build_object; edit freely.\nreturn ${luau(clips)}\n`;
+      const source = `-- What ${named.name.replace(/[\r\n]/g, ' ')} does, played by AppleAnimate. Written by StudPilot's build_object; edit freely.\nreturn ${luau(clips)}\n`;
       const wrote = await ctx.execStudioOp({ op: 'edit_script', path: `${model}.AppleAnimations`, source, create: { className: 'ModuleScript', parent: model } }, 60_000);
       if (!wrote.ok) problems.push(`animations: ${clipText(wrote.error)}`);
       const player = await installAnimationPlayer(ctx);
@@ -713,7 +713,7 @@ export async function buildObject(ctx: AgentCtx, sent: Record<string, unknown>) 
 
   // Rigging is what makes it move: if that failed, the object stands but does nothing, which is not done.
   if (moving.length && problems.some((p) => p.startsWith('rig') || p.startsWith('animations') || p.startsWith('player'))) {
-    return { changed: true, projectMutated: true, object: model, error: `Built, but it cannot move yet: ${problems.join('; ')}. If Studio says an operation is unknown, the Apple plugin in Studio is older than this tool: tell the user to restart Studio.` };
+    return { changed: true, projectMutated: true, object: model, error: `Built, but it cannot move yet: ${problems.join('; ')}. If Studio says an operation is unknown, the StudPilot plugin in Studio is older than this tool: tell the user to restart Studio.` };
   }
   const checks = measureObject(plan);
   return {

@@ -1,4 +1,4 @@
-// §33: what Apple would actually be asked to do, before it is asked.
+// §33: what StudPilot would actually be asked to do, before it is asked.
 //
 // The worker builds the brief from a fresh scan and returns the exact request
 // text. Showing that text is the whole point of this dialog: the roadmap's Build
@@ -38,7 +38,7 @@ export function BriefDialog({ brief, onClose, onOpenConversation }: Props) {
   return (
     <Modal title={brief.title} onClose={onClose} wide>
       <p className="rm-brief__lead">
-        This is the request Apple would work from.
+        This is the request StudPilot would work from.
       </p>
 
       {!brief.ready && brief.blockedBy.length > 0 && (
@@ -49,7 +49,7 @@ export function BriefDialog({ brief, onClose, onOpenConversation }: Props) {
 
       {brief.context.length > 0 && (
         <section className="rm-brief__section">
-          <h3 className="rm-brief__key">What Apple already knows about this project</h3>
+          <h3 className="rm-brief__key">What StudPilot already knows about this project</h3>
           <ul className="rm-brief__list">
             {brief.context.map((line) => (
               <li key={line}>{line}</li>

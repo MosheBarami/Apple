@@ -207,7 +207,7 @@ function resolveLuau() {
   } catch {
     /* rokit not installed */
   }
-  const dir = mkdtempSync(join(tmpdir(), 'apple-luau-probe-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-luau-probe-'));
   const probe = join(dir, 'probe.luau');
   writeFileSync(probe, 'print("alive")\n');
   try {
@@ -231,7 +231,7 @@ const noLuau = LUAU
  * @returns {Record<string, {status: 'ok'|'err', detail: string}>}
  */
 function runScenarios(scenarioLuau) {
-  const dir = mkdtempSync(join(tmpdir(), 'apple-asset-gate-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-asset-gate-'));
   const file = join(dir, 'scenarios.luau');
   try {
     writeFileSync(file, `${STUBS}\n${MODULES}\n${scenarioLuau}\n`);

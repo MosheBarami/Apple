@@ -210,7 +210,7 @@ export function langflowConclusions(d, now = Date.now()) {
   } else {
     const imp = flows.filter((f) => f.imported).length;
     out.push({ k: 'up', tone: imp === n ? 'ok' : 'warn', title: `Langflow${d.version ? ` ${d.version}` : ''} רץ, ${imp} מתוך ${n} זרימות מיובאות`,
-      text: imp === n ? `כל הזרימות מהריפו נמצאות בפרויקט ${d.project?.name || 'Apple'}.` : 'חלק מהזרימות לא יובאו. להריץ node packages/langflow/sync.mjs sync.' });
+      text: imp === n ? `כל הזרימות מהריפו נמצאות בפרויקט ${d.project?.name || 'StudPilot'}.` : 'חלק מהזרימות לא יובאו. להריץ node packages/langflow/sync.mjs sync.' });
   }
   const drift = flows.filter((f) => f.current === false);
   const dirty = flows.filter((f) => f.dirty);

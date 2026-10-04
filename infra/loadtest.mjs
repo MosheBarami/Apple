@@ -12,16 +12,16 @@ for (const line of readFileSync(root + '/.env', 'utf8').split('\n')) {
 
 // The E2E account's credentials come from the environment, never from source.
 // See the note in infra/real-chat.mjs and docs/DECISIONS.md.
-const E2E_EMAIL = envCompat('APPLE_E2E_EMAIL');
-const E2E_PASSWORD = envCompat('APPLE_E2E_PASSWORD');
+const E2E_EMAIL = envCompat('STUDPILOT_E2E_EMAIL');
+const E2E_PASSWORD = envCompat('STUDPILOT_E2E_PASSWORD');
 // The synthetic load accounts share one password. Same rule as the E2E account:
 // it lives in .env, never in the tree.
-const LOAD_PASSWORD = envCompat('APPLE_LOAD_PASSWORD');
+const LOAD_PASSWORD = envCompat('STUDPILOT_LOAD_PASSWORD');
 if (!LOAD_PASSWORD) {
-  throw new Error('APPLE_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
+  throw new Error('STUDPILOT_LOAD_PASSWORD missing from .env — the load test needs the synthetic accounts');
 }
 if (!E2E_EMAIL || !E2E_PASSWORD) {
-  throw new Error('APPLE_E2E_EMAIL / APPLE_E2E_PASSWORD missing from .env — this script needs the E2E account');
+  throw new Error('STUDPILOT_E2E_EMAIL / STUDPILOT_E2E_PASSWORD missing from .env — this script needs the E2E account');
 }
 const BASE = process.env.API_BASE;
 const SUPA = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
@@ -33,7 +33,7 @@ const pct = (arr, p) => { if (!arr.length) return 0; const s = [...arr].sort((a,
 const stats = (name, arr, extra = '') => console.log(`  ${name.padEnd(22)} n=${String(arr.length).padStart(3)}  p50=${pct(arr,0.5)}ms  p95=${pct(arr,0.95)}ms  max=${pct(arr,1)}ms ${extra}`);
 const t = () => Date.now();
 
-console.log(`\n=== Apple load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
+console.log(`\n=== StudPilot load test: ${N} concurrent users, ${INFER} concurrent inferences ===\n`);
 
 // ---- phase 1: concurrent sign-in --------------------------------------------
 console.log('[1] concurrent sign-in');
@@ -44,7 +44,7 @@ const users = (await Promise.all(
     try {
       const r = await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
         method: 'POST', headers: { apikey: ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: `load${i}@apple.internal`, password: LOAD_PASSWORD }),
+        body: JSON.stringify({ email: `load${i}@studpilot.internal`, password: LOAD_PASSWORD }),
       });
       const d = await r.json();
       if (!d.access_token) { authFails.push(`user${i}: ${d.error_description ?? d.msg ?? r.status}`); return null; }
@@ -82,7 +82,7 @@ console.log('[3] concurrent WebSocket connections (all users at once)');
 const wsTimes = [], wsFails = [];
 const sockets = await Promise.all(projects.map((u) => new Promise((resolve) => {
   const t0 = t();
-  const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${u.projectId}/ws`, ['golem.v1', 'golem.jwt.' + u.jwt]);
+  const ws = new WebSocket(`${BASE.replace('https', 'wss')}/api/projects/${u.projectId}/ws`, ['studpilot.v1', 'studpilot.jwt.' + u.jwt]);
   const timer = setTimeout(() => { wsFails.push(`user${u.i}: hello timeout`); try { ws.close(); } catch {} resolve(null); }, 25000);
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
@@ -126,7 +126,7 @@ if (a && b) {
   isolation.crossProjectRest = r1.status;
   // A tries B's project via WS
   isolation.crossProjectWs = await new Promise((res) => {
-    const ws = new WebSocket(`${BASE.replace('https','wss')}/api/projects/${b.projectId}/ws`, ['golem.v1', 'golem.jwt.' + a.jwt]);
+    const ws = new WebSocket(`${BASE.replace('https','wss')}/api/projects/${b.projectId}/ws`, ['studpilot.v1', 'studpilot.jwt.' + a.jwt]);
     const to = setTimeout(() => res('no-response(good)'), 8000);
     ws.onmessage = (ev) => { clearTimeout(to); res('LEAK: ' + JSON.parse(ev.data).type); try { ws.close(); } catch {} };
     ws.onerror = () => { clearTimeout(to); res('rejected(good)'); };

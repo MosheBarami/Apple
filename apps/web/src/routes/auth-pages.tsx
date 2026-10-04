@@ -9,14 +9,14 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
-import { STUDIO_PLUGIN_STORE_LIVE } from '@apple/shared';
+import { STUDIO_PLUGIN_STORE_LIVE } from '@studpilot/shared';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../lib/mfa';
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
-import { AppleGlyph } from '../components/glyphs';
+import { StudPilotGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
   PASSWORD_MIN,
@@ -111,9 +111,9 @@ function AuthHero() {
           {/* Picks: React Bits "Orb" — a slow monochrome glow behind the mark; still under reduced motion. */}
           <span className="auth-hero-orb">
             <Orb />
-            <AppleGlyph size={28} />
+            <StudPilotGlyph size={28} />
           </span>
-          <span className="wordmark">Apple</span>
+          <span className="wordmark">StudPilot</span>
         </div>
         <p className="auth-hero-sub">
           Build directly in the Roblox Studio place you already have open.
@@ -655,7 +655,7 @@ export function SignupPage() {
         </CheckEmailCard>
       ) : (
         <form className="auth-card" onSubmit={onSubmit} noValidate>
-          {/* "Summon your apple" was the product's own vocabulary used where the product is not yet
+          {/* "Summon your studpilot" was the product's own vocabulary used where the product is not yet
               known. `Summon` is what this product calls starting a project — the dialog on the
               dashboard is named for it — and on the screen BEFORE the account exists it reads as a
               flourish rather than as an instruction. The heading on a form says what the form does. */}
@@ -667,7 +667,7 @@ export function SignupPage() {
               names the one thing Studio needs and where it comes from. */}
           <p className="auth-card-sub">
             {STUDIO_PLUGIN_STORE_LIVE
-              ? 'Free to start, no card. Building in Studio needs one free plugin, Apple Studio, from the Creator Store.'
+              ? 'Free to start, no card. Building in Studio needs one free plugin, StudPilot Studio, from the Creator Store.'
               : 'Free to start, no card. Chat works now; building inside Studio needs the plugin, and public installation is not open yet.'}
           </p>
           <FormError message={error} />
@@ -1195,7 +1195,7 @@ export function ConfirmEmailPage() {
       <div className="auth-card" role="status">
         <CardMark kind="done" />
         <h2 className="auth-card-title">Address confirmed</h2>
-        {/* "Sign in and your apple is waiting" was a flourish where a fact belongs: it tells a
+        {/* "Sign in and your studpilot is waiting" was a flourish where a fact belongs: it tells a
             first-time visitor nothing about what the next screen wants. */}
         <p className="auth-card-sub">Your address is verified. Sign in with the password you chose.</p>
         <Link to="/login" className="btn btn-primary btn-block">

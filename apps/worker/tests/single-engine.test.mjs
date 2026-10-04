@@ -1,10 +1,10 @@
 /**
  * ONE ENGINE, AND THE BRIDGE THAT KEEPS OLD CLIENTS WORKING (V3 gate G01).
  *
- * Apple is the only customer-facing engine: GLM 5.3 Flash on Workers AI. There is no model tier and
+ * StudPilot is the only customer-facing engine: GLM 5.3 Flash on Workers AI. There is no model tier and
  * no plan-gated model. The `productModel` wire field stays, and every value in it — `apple`, a
  * retired id (`apple-max`, `gemini-3.8-flash`, `gpt-5.6`, `gpt-5.6-luna`) or anything else an older
- * client or a stored row carries — is normalized to Apple and served, never refused.
+ * client or a stored row carries — is normalized to StudPilot and served, never refused.
  *
  * These tests execute the bundled shared package, gateway, provider adapter and SessionDO with local
  * stubs only. No provider or Roblox endpoint is contacted.
@@ -40,7 +40,7 @@ const providers = await import(`file://${bundle(join(WORKER, 'src', 'providers',
 const GLM = '@cf/zai-org/glm-5.3-flash';
 const LEGACY = ['apple-max', 'gemini-3.8-flash', 'gpt-5.6', 'gpt-5.6-luna'];
 /** What older clients and stored rows may carry besides the retired ids. */
-const GARBAGE = ['', 'APPLE', 'openai/gpt-4o', 'no-such-model', 42, {}, [], true];
+const GARBAGE = ['', 'STUDPILOT', 'APPLE', 'openai/gpt-4o', 'no-such-model', 42, {}, [], true];
 const REPLY = { choices: [{ finish_reason: 'stop', message: { content: 'ran' } }], usage: { prompt_tokens: 10, completion_tokens: 2 } };
 
 function result(rows = [], value = null) {
@@ -171,16 +171,16 @@ function makeSession({ plan = 'free', planOf = () => plan, quotaStatus = 200, ai
   return { session, store, sql, sent, calls, providerRuns, ws };
 }
 
-test('the registry is one engine: Apple, on GLM 5.3 Flash through Workers AI', () => {
+test('the registry is one engine: StudPilot, on GLM 5.3 Flash through Workers AI', () => {
   assert.deepEqual(shared.MODEL_REGISTRY.map((m) => m.id), ['apple']);
-  const apple = shared.registryModel('apple');
-  assert.equal(apple.displayName, 'Apple', 'the name is just "Apple", with no version number');
-  assert.equal(apple.providerModelId, GLM);
-  assert.equal(apple.vendor, 'Apple');
-  assert.equal(apple.reasoningEffort, 'low');
+  const studpilot = shared.registryModel('apple');
+  assert.equal(studpilot.displayName, 'StudPilot', 'the name is just "StudPilot", with no version number');
+  assert.equal(studpilot.providerModelId, GLM);
+  assert.equal(studpilot.vendor, 'StudPilot');
+  assert.equal(studpilot.reasoningEffort, 'low');
   assert.deepEqual(shared.PRODUCT_MODELS, ['apple']);
   assert.deepEqual(Object.keys(shared.PRODUCT_MODEL_INFO), ['apple']);
-  assert.equal(shared.PRODUCT_MODEL_INFO.apple.name, 'Apple');
+  assert.equal(shared.PRODUCT_MODEL_INFO.apple.name, 'StudPilot'); // keyed by the stored model id, labelled with the product name
 });
 
 test('no tier, no plan-gated model: the entitlement API is gone and no plan row names a model', () => {
@@ -196,7 +196,7 @@ test('no tier, no plan-gated model: the entitlement API is gone and no plan row 
   assert.deepEqual(shared.PLAN_IDS, ['free', 'builder', 'studio', 'enterprise']);
 });
 
-test('the bridge: Apple, every retired id and any other value normalize to Apple', () => {
+test('the bridge: StudPilot, every retired id and any other value normalize to StudPilot', () => {
   assert.deepEqual([...shared.LEGACY_MODEL_IDS], LEGACY);
   assert.equal(shared.normalizeModelId('apple'), 'apple');
   for (const id of LEGACY) {
@@ -207,13 +207,13 @@ test('the bridge: Apple, every retired id and any other value normalize to Apple
 });
 
 test('every gateway lane that answers a customer runs the registry\'s engine, at its full output room', () => {
-  const apple = shared.registryModel('apple');
-  assert.equal(providers.APPLE_MODEL_ID, apple.providerModelId, 'the provider constant drifted from the registry');
+  const studpilot = shared.registryModel('apple');
+  assert.equal(providers.STUDPILOT_MODEL_ID, studpilot.providerModelId, 'the provider constant drifted from the registry');
   assert.equal(providers.VISION_MODEL_ID, GLM);
   for (const key of ['plan', 'agent']) {
     assert.equal(DEFAULT_MODELS[key].id, GLM, key);
     // GLM can spend a small max_tokens entirely on reasoning_content; the budget is not lowered.
-    assert.ok(DEFAULT_MODELS[key].maxTokens >= apple.maxOutputTokens, `${key}: ${DEFAULT_MODELS[key].maxTokens}`);
+    assert.ok(DEFAULT_MODELS[key].maxTokens >= studpilot.maxOutputTokens, `${key}: ${DEFAULT_MODELS[key].maxTokens}`);
   }
   assert.equal(DEFAULT_MODELS.vision.id, GLM);
   for (const key of Object.keys(DEFAULT_MODELS)) {
@@ -223,7 +223,7 @@ test('every gateway lane that answers a customer runs the registry\'s engine, at
   }
 });
 
-test('a retired id on a free plan is admitted, run as Apple, and reaches GLM', async () => {
+test('a retired id on a free plan is admitted, run as StudPilot, and reaches GLM', async () => {
   for (const productModel of [...LEGACY, ...GARBAGE]) {
     const h = makeSession({ plan: 'free', aiRun: async () => REPLY });
     const res = await h.session.fetch(new Request('https://do/agent-run', {
@@ -254,7 +254,7 @@ test('a chat frame and an edit carrying a retired id are served, never refused',
   assert.equal(edit.sent.some((m) => m.type === 'error' && /model/.test(String(m.code))), false, 'the edit was refused for its model');
 });
 
-test('Apple can use Agent tools while its identity is persisted and returned in history', async () => {
+test('StudPilot can use Agent tools while its identity is persisted and returned in history', async () => {
   const h = makeSession({ plan: 'free' });
   await h.session.webSocketMessage(h.ws, JSON.stringify({
     type: 'chat', text: 'build a small tower', mode: 'agent', productModel: 'apple',
@@ -270,7 +270,7 @@ test('Apple can use Agent tools while its identity is persisted and returned in 
   assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), true);
 });
 
-test('a stored turn and a persisted run that name a retired id load and continue as Apple', async () => {
+test('a stored turn and a persisted run that name a retired id load and continue as StudPilot', async () => {
   const h = makeSession({ plan: 'free', aiRun: async () => REPLY });
   h.sql.messages.push({ id: 'old-turn', role: 'user', mode: 'agent', content: 'old', tool_trace: null, created_at: 1 });
   h.sql.models.set('old-turn', 'apple-max');
@@ -307,13 +307,13 @@ test('Plan and Agent share the one engine; the mode controls behaviour and tools
 //   `model` field naming an OpenRouter id; the worker no longer reads it. The property: such a frame
 //   runs on the registry model it names in `productModel`, takes the admission Credit like any other
 //   run, and nothing about the customer key reaches the run or the wire. ]]
-test('a frame that still names a model on the customer\'s own key runs on Apple and spends Credits', async () => {
+test('a frame that still names a model on the customer\'s own key runs on StudPilot and spends Credits', async () => {
   const h = makeSession({ plan: 'free' });
   await h.session.webSocketMessage(h.ws, JSON.stringify({
     type: 'chat', text: 'build a small tower', mode: 'agent', productModel: 'apple', model: 'openai/gpt-4o',
   }));
   const agent = h.store.get('agent');
-  assert.ok(agent, 'the run was refused instead of admitted on Apple');
+  assert.ok(agent, 'the run was refused instead of admitted on StudPilot');
   assert.equal(agent.productModel, 'apple');
   assert.equal('customerModel' in agent, false, 'no customer-key lane is carried by the run');
   assert.equal(h.calls.some((c) => c.name === 'QUOTA_DO' && c.path === '/spend'), true, 'the admission Credit was not taken');
@@ -334,7 +334,7 @@ test('a run persisted on a customer key before the removal ends in a sentence, w
   const agent = h.store.get('agent');
   h.store.set('agent', { ...agent, customerModel: { provider: 'openrouter', modelId: 'openai/gpt-4o', label: 'GPT-4o', free: false, keyOwnerId: 'owner-1' } });
   await h.session.alarm();
-  assert.equal(h.providerRuns.length, 0, 'the step ran — on Apple\'s Credits — although the run was started on a key');
+  assert.equal(h.providerRuns.length, 0, 'the step ran — on StudPilot\'s Credits — although the run was started on a key');
   const reply = h.sql.messages.filter((x) => x.role === 'assistant').map((x) => x.content).join('\n');
-  assert.match(reply, /old way Apple no longer supports/, `the run ended without saying why — ${reply.slice(0, 200)}`);
+  assert.match(reply, /old way StudPilot no longer supports/, `the run ended without saying why — ${reply.slice(0, 200)}`);
 });

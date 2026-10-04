@@ -1,6 +1,6 @@
 // How you want to be worked with — and where each answer is actually coming from.
 //
-// The memory panel above this one shows what Apple worked out for itself about this project. This
+// The memory panel above this one shows what StudPilot worked out for itself about this project. This
 // one shows the other half: the settings, the personal profile, and the project and team
 // instructions that live in the scoped store, layered org → you → this project.
 //
@@ -140,7 +140,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         // bug where the user changes the same thing five times and nothing happens.
         toast(`Not saved: ${out.rejected.map((r) => r.key).join(', ')}`, 'error');
       } else {
-        toast('Saved — Apple uses this from the next run', 'success');
+        toast('Saved — StudPilot uses this from the next run', 'success');
       }
       void qc.invalidateQueries({ queryKey: ['scope-memory', scope, scopeId] });
       void qc.invalidateQueries({ queryKey: ['personalisation', projectId] });
@@ -279,7 +279,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         </select>
       </label>
 
-      {/* --------------------------------------------------------- what Apple may touch -- */}
+      {/* --------------------------------------------------------- what StudPilot may touch -- */}
       {/*
         The worker has enforced `tool_permissions` on every step of every run for a long time —
         applyToolPermissions narrows the mode's toolset, and preferences.test.mjs pins that it can
@@ -300,7 +300,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         lib/tool-permissions.ts.
       */}
       <fieldset className="prefs__set" disabled={!canWrite}>
-        <legend className="field-label">What Apple may do here</legend>
+        <legend className="field-label">What StudPilot may do here</legend>
         <p className="prefs__note">
           Everything is allowed unless you block it. Blocks add up across your organisation, your
           account and this project — the strictest one wins, so a block set elsewhere cannot be
@@ -487,7 +487,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
             className="mem__fact"
             value={adding}
             maxLength={4000}
-            placeholder="Tell Apple how you want it to work…"
+            placeholder="Tell StudPilot how you want it to work…"
             aria-label="New instruction"
             disabled={!canWrite}
             onChange={(e) => setAdding(e.target.value)}
@@ -512,7 +512,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
         <div className="prefs__resolved">
           <span className="field-label">What this project&apos;s next run will use</span>
           {resolved.data.resolved.length === 0 ? (
-            <p className="mem__none">Nothing yet — Apple is running with its defaults.</p>
+            <p className="mem__none">Nothing yet — StudPilot is running with its defaults.</p>
           ) : (
             <ul className="mem__list">
               {resolved.data.resolved.map((r) => (
@@ -582,7 +582,7 @@ export function InstructionsPanel({ projectId }: { projectId: string }) {
 
       <p className="mem__note">
         A project setting overrides your account setting, and your account setting overrides your
-        organisation&apos;s — except for what Apple is allowed to DO, where the strictest rule wins
+        organisation&apos;s — except for what StudPilot is allowed to DO, where the strictest rule wins
         wherever it was set. Changes apply from the next run; they do not alter anything already built.
       </p>
     </div>

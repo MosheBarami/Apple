@@ -1,7 +1,7 @@
-// The TypeScript surface of @apple/sdk.
+// The TypeScript surface of @studpilot/sdk.
 //
 // HAND-WRITTEN, AND WHY. The runtime is plain JavaScript (../src/*.mjs) so that a browser,
-// a Worker, Node and the `apple` binary all load the same bytes with no build step. A
+// a Worker, Node and the `studpilot` binary all load the same bytes with no build step. A
 // declaration file is then the only way TypeScript callers get types — and it is a second
 // description of one thing, which is drift waiting to happen. Two tests hold it to the
 // implementation:
@@ -9,9 +9,9 @@
 //   tests/types.test.mjs  — the declared names and the runtime exports must be the same
 //                           set, and a deliberately WRONG call must fail to compile.
 //   tests/protocol-parity.test.mjs — the runtime allowlists must equal the unions in
-//                           @apple/shared.
+//                           @studpilot/shared.
 //
-// The wire types are IMPORTED from @apple/shared rather than restated. A client that
+// The wire types are IMPORTED from @studpilot/shared rather than restated. A client that
 // redeclared `MessageDto` would become a second definition of the wire format, and the two
 // would disagree the first time either changed.
 import type {
@@ -28,7 +28,7 @@ import type {
   ServerMsg,
   StudioEvent,
   StudioEventState,
-} from '@apple/shared';
+} from '@studpilot/shared';
 
 export type { CheckpointMeta, ClientMsg, ProductMode, MessageDto, PlanId, QuotaState, ServerMsg };
 
@@ -76,8 +76,8 @@ export function messageFromBody(body: unknown, status: number): string;
 
 // ---------------------------------------------------------------------- wire
 
-export const WS_SUBPROTOCOL: 'golem.v1';
-export const WS_JWT_PREFIX: 'golem.jwt.';
+export const WS_SUBPROTOCOL: 'studpilot.v1';
+export const WS_JWT_PREFIX: 'studpilot.jwt.';
 export const DEFAULT_BASE_URL: string;
 export const MODES: readonly ProductMode[];
 export const PRESENCE_ACTIVITIES: readonly ('viewing' | 'typing' | 'building')[];
@@ -85,9 +85,9 @@ export const CLIENT_MSG_TYPES: readonly ClientMsg['type'][];
 export const HEADERS: Readonly<{
   auth: 'Authorization';
   adminKey: 'X-Admin-Key';
-  studioToken: 'X-Golem-Token';
-  pluginVersion: 'X-Golem-Plugin-Version';
-  pluginProtocol: 'X-Golem-Plugin-Protocol';
+  studioToken: 'X-StudPilot-Token';
+  pluginVersion: 'X-StudPilot-Plugin-Version';
+  pluginProtocol: 'X-StudPilot-Plugin-Protocol';
 }>;
 export function isProjectId(value: unknown): value is string;
 export function projectPath(projectId: string, suffix?: string): string;
@@ -178,13 +178,13 @@ export interface ExportedTranscript {
   body: string;
 }
 
-export interface AppleClientOptions extends TransportOptions {
+export interface StudPilotClientOptions extends TransportOptions {
   transport?: Transport;
   adminKey?: string;
 }
 
-export class AppleClient {
-  constructor(options?: AppleClientOptions);
+export class StudPilotClient {
+  constructor(options?: StudPilotClientOptions);
   readonly baseUrl: string;
   readonly transport: Transport;
   health(): Promise<HealthResponse>;
@@ -214,6 +214,15 @@ export class AppleClient {
   adminStats(): Promise<{ counters: { day: string; key: string; value: number }[] }>;
   adminSpend(): Promise<unknown>;
 }
+
+// The former names of StudPilotClient and its options, kept for one release (removal: next major).
+// A const AND a type of the same name, so `new AppleClient(...)` and `let c: AppleClient` both still compile.
+/** @deprecated Use StudPilotClient. */
+export const AppleClient: typeof StudPilotClient;
+/** @deprecated Use StudPilotClient. */
+export type AppleClient = StudPilotClient;
+/** @deprecated Use StudPilotClientOptions. */
+export type AppleClientOptions = StudPilotClientOptions;
 
 // -------------------------------------------------------------------- studio
 
@@ -316,7 +325,7 @@ export class SessionStream {
   editAndResend(messageId: string, text: string): boolean;
   stop(): boolean;
   resume(): boolean;
-  /** Resume a run Apple paused because Studio disconnected. */
+  /** Resume a run StudPilot paused because Studio disconnected. */
   continueRun(): boolean;
   ping(): boolean;
   presence(activity: 'viewing' | 'typing' | 'building'): boolean;

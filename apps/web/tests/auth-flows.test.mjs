@@ -290,17 +290,17 @@ test('provider text is flattened and capped before it is put on the page', () =>
 /* ------------------------------------------------- 3b. where a mail link comes back --- */
 
 test('a mail link comes back to this app, under the router basename', () => {
-  assert.equal(emailRedirectTo('/reset', 'https://apple.dev'), 'https://apple.dev/app/reset');
-  assert.equal(emailRedirectTo('/confirm', 'https://apple.dev'), 'https://apple.dev/app/confirm');
-  assert.equal(emailRedirectTo('/', 'https://apple.dev'), 'https://apple.dev/app');
+  assert.equal(emailRedirectTo('/reset', 'https://studpilot.dev'), 'https://studpilot.dev/app/reset');
+  assert.equal(emailRedirectTo('/confirm', 'https://studpilot.dev'), 'https://studpilot.dev/app/confirm');
+  assert.equal(emailRedirectTo('/', 'https://studpilot.dev'), 'https://studpilot.dev/app');
 });
 
 test('a mail link can never be aimed off-origin', () => {
   // The consequence is worse here than for an in-page redirect: this value is baked into an email
   // that outlives the session that produced it.
   for (const evil of ['//evil.example', String.raw`/\evil.example`, 'https://evil.example/x', 'javascript:alert(1)', '']) {
-    const url = emailRedirectTo(evil, 'https://apple.dev');
-    assert.equal(url, 'https://apple.dev/app', JSON.stringify(evil));
+    const url = emailRedirectTo(evil, 'https://studpilot.dev');
+    assert.equal(url, 'https://studpilot.dev/app', JSON.stringify(evil));
   }
 });
 

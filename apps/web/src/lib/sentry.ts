@@ -38,7 +38,7 @@
 // lib/error-taxonomy.ts gives in its own header — and it makes "what happens with no DSN" a thing
 // a test can drive directly rather than a thing that depends on a build flag.
 
-export const SENTRY_CLIENT = 'apple-web/1.0';
+export const SENTRY_CLIENT = 'studpilot-web/1.0';
 export const SENTRY_VERSION = 7;
 
 /** Bounds accidental spillage into a message. The prevention is the allowlist; this is the belt. */
@@ -132,7 +132,7 @@ export const SCRUB_RULES: readonly ScrubRule[] = [
   // reason — `long_hex` would otherwise claim the tail of a pairing token and leave its head.
   { kind: 'private_key_block', pattern: /-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED |)?PRIVATE KEY-----(?:[\s\S]*?-----END (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED |)?PRIVATE KEY-----|[A-Za-z0-9+/=\s:,.-]*)/g },
   { kind: 'jwt', pattern: /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}/g },
-  { kind: 'apple_api_key', pattern: /\bgk_(?:live|test)_[0-9a-f]{24}_[0-9a-f]{48}\b/g },
+  { kind: 'studpilot_api_key', pattern: /\bgk_(?:live|test)_[0-9a-f]{24}_[0-9a-f]{48}\b/g },
   { kind: 'pairing_token', pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]{48}\b/gi },
   { kind: 'anthropic_key', pattern: /\bsk-ant-[A-Za-z0-9_-]{16,}/g },
   { kind: 'openai_key', pattern: /\bsk-[A-Za-z0-9_-]{12,}/g },

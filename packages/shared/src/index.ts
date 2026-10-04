@@ -1,4 +1,4 @@
-// @apple/shared — wire protocol + domain types shared by worker, web app, evals.
+// @studpilot/shared — wire protocol + domain types shared by worker, web app, evals.
 // The Studio plugin (Luau) mirrors these shapes; apps/plugin/src/Protocol.luau documents the mapping.
 
 import { MODEL_IDS, MODEL_REGISTRY, type ModelId } from './models.ts';
@@ -105,7 +105,7 @@ export type StudioOp =
   | { op: 'get_logs'; sinceClock?: number; maxEntries?: number }
   | { op: 'project_census' }
   /**
-   * The bounded Run-mode controls used by Apple's live verification loop: RunService Run/Pause/Stop.
+   * The bounded Run-mode controls used by StudPilot's live verification loop: RunService Run/Pause/Stop.
    * Current Studio also exposes asynchronous Play/Multiplayer automation through StudioTestService;
    * those are a different test-session lifecycle and are not represented by this Run-mode union.
    * `start` is a kept alias for `run`. Unknown actions are refused, never treated as stop.
@@ -129,7 +129,7 @@ export type StudioOp =
   | { op: 'strip_descendants'; root: string; classes: ('LocalScript' | 'Script' | 'ModuleScript' | 'Sound' | 'BillboardGui' | 'ProximityPrompt' | 'ClickDetector')[] }
   /** Classic surfaces after Resurface (cxmeel): a MaterialVariant per surface on every face. Maps are image ids. */
   | { op: 'apply_surface'; paths: string[]; surface: 'studs' | 'inlet' | 'universal' | 'weld' | 'glue' | 'smooth' | 'smooth_no_outlines'; maps?: SurfaceMaps }
-  /** Every part an Apple write adds gets studs ('studs', the default) or keeps what it was given ('keep'). */
+  /** Every part a StudPilot write adds gets studs ('studs', the default) or keeps what it was given ('keep'). */
   | { op: 'set_surface_default'; surface: 'studs' | 'keep'; maps?: SurfaceMaps }
   /** Joints after RigEdit Lite: join parts to an anchored root (Motor6D or Weld, keeping them in place), move a joint's
    *  pivot (hinge) without moving its part, and reset Motor6Ds to rest. */
@@ -173,7 +173,7 @@ export type StudioOp =
   | { op: 'generate_model'; prompt: string; intent?: string; maxTriangles?: number; predefinedSchema?: string; parent: string }
   | { op: 'inspect_model'; path: string; intent?: string } // QC gate over an existing model
   | { op: 'undo_waypoint'; name: string } // explicit ChangeHistoryService waypoint
-  // --- op families (apps/apple-plugin/src/ops, D-VISION-1 Phase A). Every one is OPT-IN: the worker
+  // --- op families (apps/studpilot-plugin/src/ops, D-VISION-1 Phase A). Every one is OPT-IN: the worker
   // offers a tool that needs one only when the paired plugin reports it supported.
   | {
       op: 'query_instances';
@@ -463,7 +463,7 @@ export interface OpResult {
    * which relayed it accurately and then INVENTED the fix: it told the user to open
    * "File > Project Settings > Security" and turn on "Allow Scripted Updates" — a menu, a page and
    * a setting that do not exist in Roblox Studio — and never mentioned the real remedy, which is
-   * pressing "Enable edits…" twice in the Apple panel two inches away.
+   * pressing "Enable edits…" twice in the StudPilot panel two inches away.
    *
    * A refusal that names no remedy is an invitation to invent one, and a model will always accept
    * it. So every refusal now carries either a remedy the product can vouch for, or the explicit
@@ -484,15 +484,15 @@ export interface OpResult {
  */
 export const REFUSAL_REMEDIES = {
   /** The consent gate is off. This is the one the model invented a fix for. */
-  edit_consent: 'In Studio, open the Apple panel and press “Enable edits…”, then “Allow edits for this connection”. Consent is per connection and turns off when you disconnect.',
+  edit_consent: 'In Studio, open the StudPilot panel and press “Enable edits…”, then “Allow edits for this connection”. Consent is per connection and turns off when you disconnect.',
   /** Studio is running a test, so the plugin will not write. */
-  leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — Apple only edits in edit mode.',
+  leave_test_mode: 'Stop the running test in Studio (the ⏹ Stop button) and ask again — StudPilot only edits in edit mode.',
   /** The asset is not in the signed-in user's inventory. */
-  take_asset_first: 'Apple could not load this model. Choose another one, or add it to your Roblox inventory and try again.',
+  take_asset_first: 'StudPilot could not load this model. Choose another one, or add it to your Roblox inventory and try again.',
   /** The requested target is outside the scope the plugin will write to. */
-  choose_allowed_target: 'Ask for a target inside the place Apple may write to — Workspace, ServerStorage, ServerScriptService, ReplicatedStorage, StarterGui, StarterPack or StarterPlayer.',
+  choose_allowed_target: 'Ask for a target inside the place StudPilot may write to — Workspace, ServerStorage, ServerScriptService, ReplicatedStorage, StarterGui, StarterPack or StarterPlayer.',
   /** The asset carried code, which this product will not insert on anyone's behalf. */
-  choose_scriptless_asset: 'Pick a different asset, or take that one yourself in Studio. Apple inserts geometry, never code it did not write.',
+  choose_scriptless_asset: 'Pick a different asset, or take that one yourself in Studio. StudPilot inserts geometry, never code it did not write.',
   /** Nothing the user can change. Said out loud so the model cannot fill the gap with a guess. */
   none: 'There is no setting that enables this. Do not suggest one — tell the user plainly that this build does not do it, and offer what it can do instead.',
 } as const;
@@ -695,7 +695,7 @@ export interface PluginOperationCapability {
   reason?: string;
 }
 export interface PluginCapabilityReportV1 {
-  schema: 'apple.studio-ops.v1';
+  schema: 'studpilot.studio-ops.v1';
   operations: PluginOperationCapability[];
 }
 export interface PluginPollRequest {
@@ -733,7 +733,7 @@ export interface PluginPollResponse {
 
 /**
  * There are no customer modes (V3 gate G01: no Plan/Agent/Autonomous selector): every request runs
- * the one Apple behaviour. `mode: 'agent'` stays on the wire only as a compatibility bridge for
+ * the one StudPilot behaviour. `mode: 'agent'` stays on the wire only as a compatibility bridge for
  * clients and workers that still send or require it; the server ignores the value it receives
  * (legacy `plan`, `autonomous` included) and stored `plan` rows are read back as `agent`.
  */
@@ -741,13 +741,13 @@ export type ProductMode = 'agent';
 
 /**
  * The engine a request ran on, deliberately separate from `ProductMode` (the legacy wire field).
- * There is one, Apple (./models.ts, V3 gate G01); the name is kept because `productModel` is a wire
+ * There is one, StudPilot (./models.ts, V3 gate G01); the name is kept because `productModel` is a wire
  * field. Values from older clients and stored rows are normalized
- * to Apple by `normalizeModelId`, never refused.
+ * to StudPilot by `normalizeModelId`, never refused.
  */
 export type ProductModel = ModelId;
 
-/** The customer engines, in display order: Apple alone. */
+/** The customer engines, in display order: StudPilot alone. */
 export const PRODUCT_MODELS: readonly ProductModel[] = MODEL_IDS;
 
 export const PRODUCT_MODEL_INFO: Record<ProductModel, { name: string; blurb: string }> = Object.fromEntries(
@@ -976,8 +976,8 @@ export function phaseForTool(tool: string): AgentPhase {
     // would have the workspace claim the place is being changed at the exact moment it is not.
     case 'propose_plan':
       return 'planning';
-    // Writing a file into Apple's own store, which is what `remembering` already covers: it is
-    // the phase for durable state that belongs to Apple rather than to the place. `building`
+    // Writing a file into StudPilot's own store, which is what `remembering` already covers: it is
+    // the phase for durable state that belongs to StudPilot rather than to the place. `building`
     // would say the agent changed the game, and it did not touch it.
     case 'workspace_write':
       return 'remembering';
@@ -1137,7 +1137,7 @@ export interface RunIntent {
   /** Where the request genuinely did not say. Surfaced rather than assumed. */
   questions: string[];
   /**
-   * Where the request did not say and Apple DECIDED ANYWAY — a mood read off "cozy", a focal
+   * Where the request did not say and StudPilot DECIDED ANYWAY — a mood read off "cozy", a focal
    * point nobody named outright.
    *
    * The opposite of `questions`, and kept apart from it for that reason: a question is still
@@ -1536,7 +1536,7 @@ export type ServerMsg =
    * WHAT THIS RUN WAS NOT ALLOWED TO DO, emitted once, at the first step.
    *
    * A tool permission REMOVES a tool from the set the model is offered, and until now nothing said
-   * so: the agent simply never used it, and "why did Apple not run that script" had no answer in
+   * so: the agent simply never used it, and "why did StudPilot not run that script" had no answer in
    * the product. Tools that the mode never had are not listed — denying delete_instances in Plan
    * mode withholds nothing, and reporting it would invent a restriction.
    *
@@ -1636,7 +1636,7 @@ export interface CheckpointMeta {
   /**
    * The person who asked for it, or null.
    *
-   * Null means two different true things and neither of them is "you": Apple took this one itself
+   * Null means two different true things and neither of them is "you": StudPilot took this one itself
    * (`auto`, `pre_agent`), or the row predates the column. It was inferred from `kind` before this
    * field existed, which told every member of a shared project that a teammate's checkpoint was
    * theirs — on exactly the row a restore is about to be argued over.
@@ -1839,7 +1839,7 @@ export interface GatewayResponse {
 /*
  * AND `entryUnit`, WHICH IS THE PIECE OF WORK THE LOW END OF `typicalCredits` WAS MEASURED ON.
  *
- * The pricing page published `Apple Max · 4 credits · "Builds features across your project" ·
+ * The pricing page published `StudPilot Max · 4 credits · "Builds features across your project" ·
  * ~57 requests a free day` about a hundred lines under `One build costs about 77 Credits`, which
  * the plan cards turn into three builds a free day. Both numbers are right and they are not about
  * the same work: the 4 is `ceil(111 / 30)` from COST-MODEL's targeted edit + read-back
@@ -1914,7 +1914,7 @@ export const PROTOCOL_VERSION = 1;
 // apps/site/src/lib/studio-plugin.ts rather than restating the id.
 //
 // Measured against the live Roblox APIs on 2026-08-31:
-//   economy.roblox.com/v2/assets/<id>/details       -> 200 (AssetTypeId 38, "Apple")
+//   economy.roblox.com/v2/assets/<id>/details       -> 200 (AssetTypeId 38, "StudPilot")
 //   roblox.com/library/<id>                         -> 307 -> create.roblox.com/store/asset/<id>
 //   apis.roblox.com/toolbox-service/.../<id>        -> 404
 // The 307 is why STUDIO_PLUGIN_URL uses create.roblox.com/store/asset: Roblox
@@ -1930,7 +1930,7 @@ export const PROTOCOL_VERSION = 1;
 // ---------------------------------------------------------------------------
 
 /**
- * The Apple Studio plugin's Roblox asset id. The one literal; derive, never retype.
+ * The StudPilot Studio plugin's Roblox asset id. The one literal; derive, never retype.
  *
  * Republished 2026-09-19 as a NEW asset on a different account. The previous id,
  * 132128477945417, is `Golem` on Herobrine583522 and its Creator Dashboard carries a standing
@@ -1940,7 +1940,7 @@ export const PROTOCOL_VERSION = 1;
  * docs/evidence/plugin-store-blocked-2026-09-19.md. Three publish attempts from that account also
  * returned a bare "Submission failed".
  *
- * The current id is `Apple Studio`, AssetTypeId 38, creator Shahar474 (5541122967), confirmed
+ * The current id is `StudPilot Studio`, AssetTypeId 38, creator Shahar474 (5541122967), confirmed
  * through economy.roblox.com rather than from the publish dialog that reported success.
  *
  * AND IT WAS REMOVED TOO, the same day, about seven hours after it was created. Roblox's appeals
@@ -1999,7 +1999,7 @@ export const STUDIO_PLUGIN_URL = `https://create.roblox.com/store/asset/${STUDIO
  *
  *   Rojo 7           6415005344       -> 200    <- control
  *   Moon Animator 2  4725618216       -> 200    <- control
- *   Apple Studio     107230158271368  -> 404
+ *   StudPilot Studio     107230158271368  -> 404
  *   Golem            132128477945417  -> 404
  *
  * Retiring a working instrument on a mistyped control is the same error as trusting a broken one:
@@ -2046,9 +2046,9 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED 2026-09-22 ~21:03 IDT, on three facts rather than the probe alone:
  *   1. re-probed at 18:02:59Z — ours 200 with the same shape as Rojo 7 (visibilityStatus 1,
  *      isAssetHashApproved, fiatProduct published + free), Moon Animator 2 200, the retired
- *      Apple id 404, an id that cannot exist 404;
- *   2. the store page, rendered signed out, shows "Apple Studio - Creator Store" with a
- *      "Get Plugin" button, and Creator Store search for "Apple Studio" returns exactly this id;
+ *      StudPilot id 404, an id that cannot exist 404;
+ *   2. the store page, rendered signed out, shows "StudPilot Studio - Creator Store" with a
+ *      "Get Plugin" button, and Creator Store search for "StudPilot Studio" returns exactly this id;
  *   3. the owner reports the new plugin approved.
  * If the probe returns 404 again, flip this back — every install affordance follows it.
  *
@@ -2062,8 +2062,8 @@ export const STUDIO_PLUGIN_LIVENESS_PROBE_URL = `https://apis.roblox.com/toolbox
  * FLIPPED AGAIN 2026-09-24 ~02:35 IDT: the appeal on the final build (3Jj4h4hPWRTA3QPDRlNRmejqPrP,
  * sent 2026-09-23 14:02 IDT) was upheld. Re-probed 2026-09-23T23:34:48Z: ours 200 (visibilityStatus 1,
  * isAssetHashApproved, published + free, updatedUtc 2026-09-23T11:00:54Z, 7 scripts — the final
- * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired Apple id 404. The
- * signed-out store page renders "Apple Studio - Creator Store" with a "Get Plugin" button, and the
+ * build), Rojo 7 and Moon Animator 2 both 200, the impossible id and the retired StudPilot id 404. The
+ * signed-out store page renders "StudPilot Studio - Creator Store" with a "Get Plugin" button, and the
  * Configure page no longer shows the violation notice. Evidence:
  * docs/autonomy/evidence/20260924T0000Z-store-listed-again/README.md.
  *
@@ -2266,7 +2266,7 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   free: {
     id: 'free',
     name: 'Free',
-    blurb: 'Enough to build something real and see whether Apple suits you.',
+    blurb: 'Enough to build something real and see whether StudPilot suits you.',
     priceUsdMonthly: 0,
     highlights: ['Every build mode', STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable', 'Checkpoints and restore'],
   },
@@ -2310,7 +2310,7 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
  *
  * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
  * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
- * anywhere behind the login — used hello@apple.build. A customer cannot tell which of those is
+ * anywhere behind the login — used hello@studpilot.build. A customer cannot tell which of those is
  * read, and writing to the wrong one looks, from their side, exactly like being ignored.
  *
  * Declared here so the two halves of the product cannot drift again, and asserted across both
@@ -2336,15 +2336,15 @@ export interface PlanSupport {
 export const PLAN_SUPPORT: Record<PlanId, PlanSupport> = {
   free: {
     channel: `Email ${SUPPORT_EMAIL}`,
-    promise: 'A human reads it. While Apple is in beta no reply time is promised, and busy weeks are slower.',
+    promise: 'A human reads it. While StudPilot is in beta no reply time is promised, and busy weeks are slower.',
   },
   builder: {
     channel: `Email ${SUPPORT_EMAIL}`,
-    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while StudPilot is in beta.',
   },
   studio: {
     channel: `Email ${SUPPORT_EMAIL}`,
-    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while Apple is in beta.',
+    promise: 'A human reads it, and paid accounts are answered first. No reply time is promised while StudPilot is in beta.',
   },
   enterprise: {
     channel: `Email ${SUPPORT_EMAIL} to start`,
@@ -2521,7 +2521,7 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
     label: 'Buy extra credits',
     note: CREDIT_PURCHASE_LIVE
       ? 'Purchased credits never expire and are spent only after the daily allowance.'
-      : 'Apple cannot sell Credits in this preview — there is no checkout for them on any plan.',
+      : 'StudPilot cannot sell Credits in this preview — there is no checkout for them on any plan.',
     values: everyPlan(() => (CREDIT_PURCHASE_LIVE ? true : 'Unavailable')),
   },
   {
@@ -2539,7 +2539,7 @@ export const PLAN_FEATURES: readonly PlanFeature[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
-// Apple's own public-API keys
+// StudPilot's own public-API keys
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -2647,7 +2647,7 @@ export interface AssetSourcePolicy {
 export const ASSET_SOURCE_DEFAULT: AssetSourcePolicy = { mode: 'remember', allow: ['creator_store', 'from_scratch'] };
 
 // ---------------------------------------------------------------------------------------------
-// What Apple is ALLOWED TO DO
+// What StudPilot is ALLOWED TO DO
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -2806,7 +2806,7 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   {
     name: 'set_mood',
     label: 'Change scene lighting',
-    why: 'Rewrites Lighting properties and Apple-owned atmosphere and post-processing effects.',
+    why: 'Rewrites Lighting properties and StudPilot-owned atmosphere and post-processing effects.',
     group: 'changes',
   },
   {
@@ -2817,8 +2817,8 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   },
   {
     name: 'remove_effect',
-    label: 'Remove Apple effects',
-    why: 'Deletes presentation effects that Apple previously attached to project objects.',
+    label: 'Remove StudPilot effects',
+    why: 'Deletes presentation effects that StudPilot previously attached to project objects.',
     group: 'changes',
   },
   {
@@ -2871,7 +2871,7 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   },
   {
     name: 'insert_library_model',
-    label: 'Insert models from Apple\'s model library',
+    label: 'Insert models from StudPilot\'s model library',
     why: 'Brings ready-made 3D models (props, buildings, trees, vehicles) into your place.',
     group: 'changes',
   },
@@ -2884,25 +2884,25 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   {
     name: 'run_and_check',
     label: 'Playtest the game',
-    why: 'Starts a playtest. Withhold it and Apple can no longer check its own work by running it.',
+    why: 'Starts a playtest. Withhold it and StudPilot can no longer check its own work by running it.',
     group: 'changes',
   },
   {
     name: 'play_check',
     label: 'Playtest as a player',
-    why: 'Starts a short Test session with one player in your Studio. Withhold it and Apple cannot check what a player sees on screen.',
+    why: 'Starts a short Test session with one player in your Studio. Withhold it and StudPilot cannot check what a player sees on screen.',
     group: 'changes',
   },
   {
     name: 'play_check_ui',
     label: 'Playtest and press buttons',
-    why: 'Starts a short Test session and clicks on-screen buttons as a player would. Withhold it and Apple cannot prove a menu or shop works.',
+    why: 'Starts a short Test session and clicks on-screen buttons as a player would. Withhold it and StudPilot cannot prove a menu or shop works.',
     group: 'changes',
   },
   {
     name: 'judge_game',
     label: 'Judge the finished game like a client',
-    why: 'Reads your whole place and starts up to three short Test sessions in your Studio that click buttons as a player would. Withhold it and Apple cannot check the finished game against what you asked for.',
+    why: 'Reads your whole place and starts up to three short Test sessions in your Studio that click buttons as a player would. Withhold it and StudPilot cannot check the finished game against what you asked for.',
     group: 'changes',
   },
   {
@@ -2980,19 +2980,19 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   {
     name: 'insert_ui_component',
     label: 'Add UI from the library',
-    why: 'Adds a ready-made menu, shop, button or HUD piece from Apple\'s UI library to StarterGui or a part.',
+    why: 'Adds a ready-made menu, shop, button or HUD piece from StudPilot\'s UI library to StarterGui or a part.',
     group: 'changes',
   },
   {
     name: 'insert_sound',
     label: 'Add sounds from the library',
-    why: 'Adds a Sound from Apple\'s library of Roblox audio to a part or SoundService.',
+    why: 'Adds a Sound from StudPilot\'s library of Roblox audio to a part or SoundService.',
     group: 'changes',
   },
   {
     name: 'insert_vfx',
     label: 'Add effects from the library',
-    why: 'Adds a ready-made particle, beam or glow effect from Apple\'s effect library to a part.',
+    why: 'Adds a ready-made particle, beam or glow effect from StudPilot\'s effect library to a part.',
     group: 'changes',
   },
   {
@@ -3025,7 +3025,7 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
   {
     name: 'generate_model',
     label: 'Generate 3D models',
-    why: 'Calls a 3D model service. The slowest and most expensive thing Apple can do.',
+    why: 'Calls a 3D model service. The slowest and most expensive thing StudPilot can do.',
     group: 'spends',
   },
   {
@@ -3128,7 +3128,7 @@ export function isRunFailure(v: unknown): v is RunFailure {
 // Attachment policy.
 //
 // Re-exported rather than defined here so the rules sit in one file with their reasons, and so
-// `import { MAX_ATTACHMENT_BYTES } from '@apple/shared'` reads the same in the browser, in the
+// `import { MAX_ATTACHMENT_BYTES } from '@studpilot/shared'` reads the same in the browser, in the
 // worker and in the Durable Object. A second copy of a ceiling is how a picker comes to accept a
 // file the server refuses.
 // ---------------------------------------------------------------------------
@@ -3139,10 +3139,10 @@ export * from './spilled-payload.ts';
 export * from './ui-theme.ts';
 
 /**
- * Talk, not work — a greeting, thanks, an acknowledgement, or a question about Apple itself.
+ * Talk, not work — a greeting, thanks, an acknowledgement, or a question about StudPilot itself.
  * One definition for both sides (moved from apps/worker/src/reasoning.ts on 2026-09-23): the worker
  * uses it to price such a turn like talk (F-019), and the web app uses it so a greeting does not open
- * the "where should Apple get assets from?" question before a word of conversation (F-048).
+ * the "where should StudPilot get assets from?" question before a word of conversation (F-048).
  * Anchored to the whole message, so "hi, build me a tower" is work.
  */
 export const CONVERSATIONAL_RE =
@@ -3150,7 +3150,7 @@ export const CONVERSATIONAL_RE =
 
 /** Questions ABOUT the assistant rather than about the project — also talk, not work. */
 export const META_QUESTION_RE =
-  /\b(?:who are you|what are you|what can you do|what do you do|how do you work|which model|what model|are you (?:an? )?(?:ai|bot|human)|help me understand you|what is apple|what's apple)\b/i;
+  /\b(?:who are you|what are you|what can you do|what do you do|how do you work|which model|what model|are you (?:an? )?(?:ai|bot|human)|help me understand you|what is studpilot|what's studpilot)\b/i;
 
 export function isSmallTalk(text: string): boolean {
   const trimmed = text.trim();

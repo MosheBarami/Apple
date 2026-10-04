@@ -18,7 +18,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ProjectSignature } from '../components/project-signature';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
-import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@apple/shared';
+import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@studpilot/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -614,7 +614,7 @@ function EditProjectModal({ project, onClose }: { project: ProjectRow; onClose: 
           />
         </label>
         <p className="field-hint">
-          The Studio pairing, chat history and everything Apple has built stay where they are.
+          The Studio pairing, chat history and everything StudPilot has built stay where they are.
         </p>
         <div className="modal-actions">
           <button type="button" className="btn" onClick={onClose} disabled={edit.isPending}>
@@ -951,7 +951,7 @@ export function DashboardPage() {
       <div className="page-head">
         <div className="shelf__intro">
           <h1 className="page-title">Projects</h1>
-          <p className="page-sub">Each project is one Roblox experience Apple builds with you.</p>
+          <p className="page-sub">Each project is one Roblox experience StudPilot builds with you.</p>
         </div>
         <button
           type="button"
@@ -1108,7 +1108,7 @@ export function DashboardPage() {
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
-          detail={<p className="es__body">Name a project, then describe your colorful cartoon game — an obby, a tycoon, a story world. Apple builds it in your Roblox place.</p>}
+          detail={<p className="es__body">Name a project, then describe your colorful cartoon game — an obby, a tycoon, a story world. StudPilot builds it in your Roblox place.</p>}
           action={
             <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
               Create a project
@@ -1190,14 +1190,14 @@ export function DashboardPage() {
 
       {projects.isSuccess && projects.data.length > 0 && (
         <footer className="page-foot">
-          <span className="eyebrow">Getting Apple into Studio</span>
+          <span className="eyebrow">Getting StudPilot into Studio</span>
           <p>
             {STUDIO_PLUGIN_STORE_LIVE
-              ? <>Get Apple Studio from the Creator Store, install it from Studio’s Toolbox, and click <strong>Apple</strong> in the Plugins tab. Then open a project here, press <strong>Connect Studio</strong>, type the 6-character code into Apple, and allow edits for that connection.</>
+              ? <>Get StudPilot Studio from the Creator Store, install it from Studio’s Toolbox, and click <strong>StudPilot</strong> in the Plugins tab. Then open a project here, press <strong>Connect Studio</strong>, type the 6-character code into StudPilot, and allow edits for that connection.</>
               : 'Public Studio installation is unavailable. You can use chat now; building in Studio requires an existing plugin connection.'}
           </p>
           <div className="page-foot-links">
-            {/* Destination comes from @apple/shared: the Creator Store page while the
+            {/* Destination comes from @studpilot/shared: the Creator Store page while the
                 listing is distributed (true since 2026-09-22), /docs/plugin if it is ever
                 withdrawn. Same-origin while not live, so the new tab and its rel are
                 conditional too. */}
@@ -1206,7 +1206,7 @@ export function DashboardPage() {
               target={STUDIO_PLUGIN_STORE_LIVE ? '_blank' : undefined}
               rel={STUDIO_PLUGIN_STORE_LIVE ? 'noopener noreferrer' : undefined}
             >
-              {STUDIO_PLUGIN_STORE_LIVE ? 'Get Apple Studio' : 'Studio installation status'}{' '}
+              {STUDIO_PLUGIN_STORE_LIVE ? 'Get StudPilot Studio' : 'Studio installation status'}{' '}
               {STUDIO_PLUGIN_STORE_LIVE && <span aria-hidden="true">↗</span>}
             </a>
             <a href="/docs" target="_blank" rel="noopener noreferrer">

@@ -8,7 +8,7 @@
 //      forty-seven, and the number is shown rather than described because "later messages" reads
 //      as two or three.
 //
-//   2. It does NOT undo what Apple already built. The conversation rewinds; the Roblox place does
+//   2. It does NOT undo what StudPilot already built. The conversation rewinds; the Roblox place does
 //      not. Someone fixing a typo in an old prompt reasonably expects one of two things to happen
 //      and the product has to say which. Checkpoints are the tool for reverting work, and keeping
 //      them separate is deliberate — a wording fix should never silently revert a working door.
@@ -87,7 +87,7 @@ export function EditMessageDialog({
           <ConfirmationRequest>
             {/* The part people assume and would otherwise only discover afterwards. */}
             <p className="text-muted-foreground text-sm">
-              Anything Apple already built in your place stays as it is — this rewinds the
+              Anything StudPilot already built in your place stays as it is — this rewinds the
               conversation, not the work. Use a checkpoint to revert what was built.
             </p>
           </ConfirmationRequest>

@@ -35,7 +35,7 @@ const manifest = {
   batches: [],
 };
 function batch(name, purpose, sql) {
-  const marker = `APPLE_SQL_${name.replaceAll(/[^A-Za-z0-9]/g, '_')}`;
+  const marker = `STUDPILOT_SQL_${name.replaceAll(/[^A-Za-z0-9]/g, '_')}`;
   const body = `-- ${marker}_BEGIN\n${sql.trim()}\n-- ${marker}_END\n`;
   writeFileSync(join(destination, name), body, { flag: 'wx' });
   manifest.batches.push({ name, purpose, marker, bytes: Buffer.byteLength(body), sha256: digest(body) });
@@ -69,7 +69,7 @@ do $migration_guard$ begin
   end if;
 end $migration_guard$;
 ${file.sql}
-insert into ${LEDGER_TABLE}(name,sha256,applied_by) values (${quote(file.name)},${quote(file.sha256)},'reviewed Apple rollout 2026-09-18');
+insert into ${LEDGER_TABLE}(name,sha256,applied_by) values (${quote(file.name)},${quote(file.sha256)},'reviewed StudPilot rollout 2026-09-18');
 commit;
 select name,sha256 from ${LEDGER_TABLE} where name=${quote(file.name)};`);
 }

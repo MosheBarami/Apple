@@ -10,13 +10,13 @@ import { classForOp } from '../studio-icon-model';
 /** A typed failure gives guidance without exposing the worker or Studio's raw text. */
 function failureGuidance(failure: string | null): string {
   switch (failure) {
-    case 'transport': return 'This step did not reach Studio. Check the Studio connection, then ask Apple to try again.';
+    case 'transport': return 'This step did not reach Studio. Check the Studio connection, then ask StudPilot to try again.';
     case 'timeout': return 'Studio did not confirm this step. Check your place before trying again; the change may already be there.';
-    case 'not_found': return 'Apple could not find what it needed. Check that it is still in your place, then ask Apple to try again.';
-    case 'conflict': return 'Your place changed before this step finished. Ask Apple to look again and adjust its plan.';
-    case 'refused': return 'Studio did not allow this step. Ask Apple what needs to change before trying again.';
-    case 'invalid': return 'Apple could not use this step as requested. Ask Apple to try another way.';
-    default: return 'Apple could not finish this step. Ask Apple to try another way.';
+    case 'not_found': return 'StudPilot could not find what it needed. Check that it is still in your place, then ask StudPilot to try again.';
+    case 'conflict': return 'Your place changed before this step finished. Ask StudPilot to look again and adjust its plan.';
+    case 'refused': return 'Studio did not allow this step. Ask StudPilot what needs to change before trying again.';
+    case 'invalid': return 'StudPilot could not use this step as requested. Ask StudPilot to try another way.';
+    default: return 'StudPilot could not finish this step. Ask StudPilot to try another way.';
   }
 }
 
@@ -60,10 +60,10 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
     }
   }, [nextBefore, projectId]);
 
-  if (first.isPending) return <p className="gx-empty">Reading what Apple did in Studio…</p>;
+  if (first.isPending) return <p className="gx-empty">Reading what StudPilot did in Studio…</p>;
   if (first.isError) return (
     <div role="alert">
-      <p>Apple could not load your Studio history. Your place has not been changed by opening this list.</p>
+      <p>StudPilot could not load your Studio history. Your place has not been changed by opening this list.</p>
       <button type="button" className="gx-btn gx-btn--outline" onClick={() => void first.refetch()}>Try again</button>
     </div>
   );
@@ -74,7 +74,7 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
   if (rows.length === 0) {
     return (
       <p className="gx-empty">
-        Nothing yet. Every change Apple makes inside Studio is recorded here — connect Studio and ask
+        Nothing yet. Every change StudPilot makes inside Studio is recorded here — connect Studio and ask
         for something.
       </p>
     );
@@ -108,7 +108,7 @@ export function StudioActivity({ projectId, onOpenRun }: { projectId: string; on
 
       {moreError && (
         <p className="gx-pop__note" role="alert" style={{ padding: 0 }}>
-          Apple could not load older activity. Your history may be longer than what is shown. Try again.
+          StudPilot could not load older activity. Your history may be longer than what is shown. Try again.
         </p>
       )}
 

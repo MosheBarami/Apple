@@ -1,4 +1,4 @@
-// The owner-autonomy hooks (.claude/skills/apple-owner-autonomy) are the enforcement, so they are tested
+// The owner-autonomy hooks (.claude/skills/studpilot-owner-autonomy) are the enforcement, so they are tested
 // against fixture repositories rather than trusted: each behaviour below has a case that must go the
 // other way, so a hook that always allows (or always blocks) fails here.
 import { test as base } from 'node:test';

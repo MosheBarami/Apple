@@ -7,7 +7,7 @@
  * answer to the question the type field implies: what happens when the bytes say one thing and
  * the Content-Type header says another.
  *
- * The rules live in @apple/shared because both ends enforce them, and both ends enforcing two
+ * The rules live in @studpilot/shared because both ends enforce them, and both ends enforcing two
  * different copies of a limit is how a browser accepts a file the server then refuses without
  * saying why. The same single-source rule MESSAGE_MAX_CHARS already carries.
  *
@@ -20,7 +20,7 @@
  *      refused on its leading bytes. Trusting the declared type is how an "allowlist" becomes a
  *      naming convention.
  *
- *   3. AN IMAGE IS REFUSED BY NAME. Apple cannot see images on this build, and an image accepted
+ *   3. AN IMAGE IS REFUSED BY NAME. StudPilot cannot see images on this build, and an image accepted
  *      into a message that silently drops it is worse than one that says so — the person spends
  *      the run believing it was looked at.
  *
@@ -45,7 +45,7 @@ import {
   foldAttachmentsIntoPrompt,
   sniffAttachmentFormat,
   validateAttachment,
-} from '@apple/shared';
+} from '@studpilot/shared';
 
 const enc = new TextEncoder();
 const bytes = (s) => enc.encode(s);

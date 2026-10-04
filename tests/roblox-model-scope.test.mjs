@@ -18,7 +18,7 @@ test('the model downloader refuses a generic CC0 pack before any network request
   assert.match(refusal({ source: 'polyhaven', licence: 'CC0-1.0', download: 'https://polyhaven.com/file.zip' }), /Roblox/i);
 });
 
-test('every downloaded model offered by Apple comes from an explicitly Roblox-native pack', () => {
+test('every downloaded model offered by StudPilot comes from an explicitly Roblox-native pack', () => {
   const byId = new Map(manifest.rows.map((row) => [row.id, row]));
   assert.ok(index.rows.length > 0, 'the Roblox model index is empty');
   for (const entry of index.rows) {

@@ -12,9 +12,9 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-account-export-legacy-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-account-export-legacy-${process.pid}.mjs`);
 const SUPA_FIXTURE = `
-  const state = globalThis.__APPLE_EXPORT_SUPA_FIXTURE ??= { calls: [], responses: [] };
+  const state = globalThis.__STUDPILOT_EXPORT_SUPA_FIXTURE ??= { calls: [], responses: [] };
   export const calls = state.calls;
   export const responses = state.responses;
   export async function supaRest(env, jwt, path, init) {
@@ -43,7 +43,7 @@ const {
   isMissingPostgrestColumn,
 } = await import(pathToFileURL(OUT).href);
 process.on('exit', () => rmSync(OUT, { force: true }));
-const { calls, responses } = globalThis.__APPLE_EXPORT_SUPA_FIXTURE;
+const { calls, responses } = globalThis.__STUDPILOT_EXPORT_SUPA_FIXTURE;
 
 const USER_ID = 'alice';
 const JWT = 'jwt-owned-by-alice';

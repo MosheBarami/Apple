@@ -5,7 +5,7 @@
 // actually done. It was also the only arithmetic in the product: there was no path anywhere that
 // gave a Credit back. So a run that reached the provider's output ceiling, or errored, or ran out
 // of steps, charged for every neuron it burned and then told the user, in the product's own words,
-// to "send another message and Apple will continue from here" — which starts a second run and
+// to "send another message and StudPilot will continue from here" — which starts a second run and
 // charges again. The customer paid twice for one build, and both sentences were true individually.
 //
 // The rule this module encodes is deliberately narrow, and narrow in the user's favour rather than
@@ -18,7 +18,7 @@
 // separated from the Durable Object that has to carry them out, so both can be tested by argument.
 import type { BuildOutcome } from './analytics';
 
-/** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @apple/shared. */
+/** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @studpilot/shared. */
 export type RunStopReason = 'done' | 'stopped' | 'error' | 'quota' | 'incomplete';
 
 export interface RefundInputs {

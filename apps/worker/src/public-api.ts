@@ -12,8 +12,8 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@apple/shared';
-import { WIRE_HEADERS, bothWire } from '@apple/shared';
+import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@studpilot/shared';
+import { WIRE_HEADERS, bothWire } from '@studpilot/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ import type { ApiScope } from './api-keys';
 // ---------------------------------------------------------------------------
 
 /**
- * Dated API versions, newest last. A client pins one with `Apple-Version: 2026-09-15`.
+ * Dated API versions, newest last. A client pins one with `StudPilot-Version: 2026-09-15`.
  *
  * Dates rather than `v2`, for the same reason Stripe uses them: the URL prefix `/v1` is the
  * COMPATIBILITY promise ("your code keeps working"), and the date is the CHANGE ledger ("this is
@@ -31,7 +31,9 @@ import type { ApiScope } from './api-keys';
 export const API_VERSIONS = ['2026-09-15'] as const;
 export type ApiVersion = (typeof API_VERSIONS)[number];
 export const CURRENT_API_VERSION: ApiVersion = API_VERSIONS[API_VERSIONS.length - 1]!;
-export const API_VERSION_HEADER = 'Apple-Version';
+export const API_VERSION_HEADER = 'StudPilot-Version';
+/** The header's former spelling (renamed 2026-10-04): still read, and echoed, so a client that pins it stays pinned. */
+export const LEGACY_API_VERSION_HEADER = API_VERSION_HEADER.replace('StudPilot', 'Apple');
 
 export type VersionVerdict = { ok: true; version: ApiVersion } | { ok: false; requested: string };
 
@@ -194,28 +196,30 @@ export function matchRoute(method: string, pathname: string): RouteMatch | undef
  * nothing. If a key is ever minted before this ships, add the aliases.
  */
 //
-// ONE ENGINE (V3 gate G01). Apple is published as `apple-chat`, its existing id. The provider id is
-// never published: a caller names Apple, never `@cf/…`.
-const APPLE = registryModel('apple')!;
+// ONE ENGINE (V3 gate G01). StudPilot is published as `studpilot-chat`, its existing id. The provider id is
+// never published: a caller names StudPilot, never `@cf/…`.
+const STUDPILOT = registryModel('apple')!;
 export const PUBLIC_MODELS: Record<string, { internal: string; description: string; productModel?: ProductModel }> = {
-  'apple-chat': { internal: 'plan', productModel: APPLE.id, description: `${APPLE.displayName}. ${APPLE.blurb}` },
+  'studpilot-chat': { internal: 'plan', productModel: STUDPILOT.id, description: `${STUDPILOT.displayName}. ${STUDPILOT.blurb}` },
 };
 
 /**
- * `apple-plan` named the retired Plan mode (V3 G01: no modes). A caller that still sends it is
- * answered by Apple as `apple-chat`, the same lane it always ran on; it is never refused and never
- * listed by GET /v1/models.
+ * The ids this API published before the rename to StudPilot: `apple-chat` was this model, and
+ * `apple-plan` named the retired Plan mode (V3 G01: no modes). A caller that still sends either is
+ * answered by StudPilot as `studpilot-chat`, the same lane it always ran on; neither is ever refused
+ * or listed by GET /v1/models. (The ids of the first rename were dropped without an alias, on the argument in
+ * the comment above; these are kept, because nothing shows that no key was minted against them.)
  */
-const LEGACY_PUBLIC_IDS: readonly string[] = ['apple-plan'];
+const LEGACY_PUBLIC_IDS: readonly string[] = ['apple-chat', 'apple-plan'];
 
 /**
  * The compatibility bridge for callers that still name a retired model (LEGACY_MODEL_IDS): served
- * by Apple and answered as `apple-chat`, so the response names what actually ran. Never refused,
+ * by StudPilot and answered as `studpilot-chat`, so the response names what actually ran. Never refused,
  * never listed by GET /v1/models.
  */
 function publicModelId(id: string): string | undefined {
   if (Object.hasOwn(PUBLIC_MODELS, id)) return id;
-  return (LEGACY_MODEL_IDS as readonly string[]).includes(id) || LEGACY_PUBLIC_IDS.includes(id) ? 'apple-chat' : undefined;
+  return (LEGACY_MODEL_IDS as readonly string[]).includes(id) || LEGACY_PUBLIC_IDS.includes(id) ? 'studpilot-chat' : undefined;
 }
 
 export function publicModelList(createdAt: number): Record<string, unknown> {
@@ -316,7 +320,7 @@ export function parseChatCompletionRequest(body: unknown): Parsed<ChatCompletion
     return fault(
       400,
       'tools_not_supported',
-      'This API does not expose the agent tool surface. Start a run with POST /v1/projects/{id}/runs to have Apple act on a place.',
+      'This API does not expose the agent tool surface. Start a run with POST /v1/projects/{id}/runs to have StudPilot act on a place.',
       'tools',
     );
   }
@@ -691,8 +695,8 @@ export interface UsageFacts {
  * fabricated headroom figure is worse than none, because a client will act on it.
  */
 export function usageHeaders(u: UsageFacts): Record<string, string> {
-  // Both spellings, because an API client written before the rename reads the old one and a new one
-  // reads the new. The same numbers under two names; nothing is counted twice.
+  // Every spelling, because an API client written before either rename reads an old one and a new one
+  // reads the new. The same numbers under three names (StudPilot, Apple, Golem); nothing is counted twice.
   const h: Record<string, string> = {
     ...bothWire(WIRE_HEADERS.usageInputTokens, String(Math.max(0, Math.trunc(u.inputTokens)))),
     ...bothWire(WIRE_HEADERS.usageOutputTokens, String(Math.max(0, Math.trunc(u.outputTokens)))),
@@ -792,18 +796,18 @@ export function idempotencyVerdict(stored: IdempotencyRecord | null, fingerprint
  * same messages always yield the same text, which is what makes it assertable in somebody else's
  * test suite.
  *
- * It is labelled everywhere it can be: `system_fingerprint: "apple-sandbox"`, an
+ * It is labelled everywhere it can be: `system_fingerprint: "studpilot-sandbox"`, an
  * `X-Golem-Sandbox: true` response header, and text that says so. A sandbox answer that could be
  * mistaken for a model answer is a trap, not a feature.
  */
-export const SANDBOX_FINGERPRINT = 'apple-sandbox';
+export const SANDBOX_FINGERPRINT = 'studpilot-sandbox';
 
 export function sandboxCompletion(req: ChatCompletionRequest): GatewayResponse {
   const last = [...req.messages].reverse().find((m) => m.role === 'user');
   const asked = typeof last?.content === 'string' ? last.content : '';
   const trimmed = asked.length > 200 ? `${asked.slice(0, 200)}…` : asked;
   const text =
-    `[apple sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Credits were spent. ` +
+    `[studpilot sandbox] This is a deterministic test-mode response from ${req.publicModel}; no model ran and no Credits were spent. ` +
     `You said: ${JSON.stringify(trimmed)}`;
   // Token counts are the character estimate the rest of the worker uses (~4 chars/token), so a
   // caller's cost arithmetic exercises the same shape it will see in live mode.
@@ -832,7 +836,7 @@ export function discoveryDocument(): Record<string, unknown> {
     openapi: '/v1/openapi.json',
     authentication: {
       scheme: 'bearer',
-      description: 'Authorization: Bearer gk_live_… (or gk_test_… for the sandbox). Mint keys in the Apple dashboard.',
+      description: 'Authorization: Bearer gk_live_… (or gk_test_… for the sandbox). Mint keys in the StudPilot dashboard.',
       modes: { live: 'Runs the model and spends Credits.', test: 'Deterministic sandbox; nothing runs and nothing is spent.' },
     },
     routes: PUBLIC_ROUTES.map((r) => ({
@@ -888,9 +892,9 @@ export function openApiDocument(origin: string): Record<string, unknown> {
   return {
     openapi: '3.1.0',
     info: {
-      title: 'Apple API',
+      title: 'StudPilot API',
       version: CURRENT_API_VERSION,
-      description: 'The public HTTP surface of Apple. OpenAI-compatible chat completions, plus project and run resources.',
+      description: 'The public HTTP surface of StudPilot. OpenAI-compatible chat completions, plus project and run resources.',
     },
     servers: [{ url: origin }],
     components: {

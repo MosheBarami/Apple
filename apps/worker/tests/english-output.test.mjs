@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { systemPrompt, ENGLISH_OUTPUT_RULE, MEMORY_UPDATE_PROMPT } from '../src/prompts.ts';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(tmpdir(), `apple-english-prefs-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-english-prefs-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'preferences.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });

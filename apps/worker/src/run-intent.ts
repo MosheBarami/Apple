@@ -36,7 +36,7 @@
  * ever pads a short one.
  */
 import { intentCheck } from './semantic';
-import type { RunIntent } from '@apple/shared';
+import type { RunIntent } from '@studpilot/shared';
 
 const MAX_INTENT_CHECKLIST = 16;
 const MAX_INTENT_QUESTIONS = 6;
@@ -84,14 +84,14 @@ export function runIntentFor(request: string): RunIntent | null {
   const summary = restate(request);
   const checklist = report.checklist.slice(0, MAX_INTENT_CHECKLIST);
   const questions = report.questions.slice(0, MAX_INTENT_QUESTIONS);
-  //[[ WHAT APPLE DECIDED FOR ITSELF, which is not the same list as what it left open.
+  //[[ WHAT STUDPILOT DECIDED FOR ITSELF, which is not the same list as what it left open.
   //
   //   `report.notes` is the extractor's record of every SOFT constraint — a mood read off
   //   "cozy", a focal point nobody named outright, an exclusion it chose to read as "restrained"
   //   rather than "absent". Those inferences steer the build, and this function used to compute
   //   them and drop them on the floor: `questions` reached the user, `notes` did not.
   //
-  //   The result was a run surface that told the user about the choices Apple DECLINED to make
+  //   The result was a run surface that told the user about the choices StudPilot DECLINED to make
   //   while hiding the ones it made — the same product whose roadmap surface prints its own
   //   honesty notes under "Reads as <genre>". Passed through verbatim rather than re-worded,
   //   because a second copy of semantic.ts's vocabulary is a second copy free to drift from it.

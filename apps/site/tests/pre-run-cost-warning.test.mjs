@@ -2,8 +2,8 @@
  * NO PAGE MAY PROMISE A WARNING BEFORE AN EXPENSIVE RUN STARTS.
  *
  * Two live pages did. /pricing answered "Can one request cost more than the price in the table?"
- * with "...a request never silently drains your day — Apple warns before starting work it estimates
- * will be expensive", and /docs/credits-and-limits said "If Apple estimates a run will be unusually
+ * with "...a request never silently drains your day — StudPilot warns before starting work it estimates
+ * will be expensive", and /docs/credits-and-limits said "If StudPilot estimates a run will be unusually
  * expensive, it says so before starting instead of silently draining your day."
  *
  * Neither had anything behind it. A run is admitted on a one-Credit spend whose only refusal is a
@@ -47,7 +47,7 @@ function pages() {
 /**
  * The shapes a pre-start cost warning takes in English.
  *
- * Deliberately not anchored on "expensive": the sentence could return as "before a big build Apple
+ * Deliberately not anchored on "expensive": the sentence could return as "before a big build StudPilot
  * checks with you" and be the same unkept guarantee. Each entry names what it is looking for so a
  * failure reads as an instruction rather than a regex.
  */
@@ -117,11 +117,11 @@ test('the guard has teeth: it fails on the two sentences that shipped', () => {
     [
       'pricing.astro (as deployed 2026-09-19)',
       '<p>You see the running total live in the workspace, and a request never silently drains your ' +
-        'day — Apple warns before starting work it estimates will be expensive.</p>',
+        'day — StudPilot warns before starting work it estimates will be expensive.</p>',
     ],
     [
       'credits-and-limits.astro (as deployed 2026-09-19)',
-      '<p>If Apple estimates a run will be unusually expensive, it says so before starting instead ' +
+      '<p>If StudPilot estimates a run will be unusually expensive, it says so before starting instead ' +
         'of silently draining your day.</p>',
     ],
   ];

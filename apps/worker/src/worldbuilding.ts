@@ -1,4 +1,4 @@
-// Art direction for the builder. Apple's failure mode is not correctness, it is taste:
+// Art direction for the builder. StudPilot's failure mode is not correctness, it is taste:
 // the engine happily renders a flat grey slab, four poles and three stacked cylinders.
 // Nothing errors; the scene is simply ugly. This module holds the canonical numbers
 // (proportions, palettes, lighting moods) and emits the compact rules block injected
@@ -286,9 +286,9 @@ export const PALETTES: Record<string, Palette> = {
 export const CARTOON_MOODS = ['sunny', 'day', 'golden', 'interior', 'night'] as const;
 export const CARTOON_PALETTES = ['brightPlay', 'candyArcade', 'oceanPlay', 'cozyVillage'] as const;
 
-const UNIVERSAL = `ART DIRECTION (mandatory for every new Apple build)
+const UNIVERSAL = `ART DIRECTION (mandatory for every new StudPilot build)
 
-STYLE — unless the user names another look, build Apple's default and first priority: modern, bright,
+STYLE — unless the user names another look, build StudPilot's default and first priority: modern, bright,
 saturated, colourful STUDDED Roblox (Plastic, Studs on top, Inlet below, bold colour blocking, the
 studded UI theme). When the user asks for a genre or art direction, follow it across world, UI, props,
 characters and VFX. Owner-supplied components are the first source. Use coherent materials,

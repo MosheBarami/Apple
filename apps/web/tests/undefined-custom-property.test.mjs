@@ -39,7 +39,7 @@ function sources(dir = 'src', match = /\.(css|tsx?|mjs)$/) {
     const rel = `${dir}/${entry}`;
     if (statSync(join(WEB, rel)).isDirectory()) {
       // Exact third-party AICSS source uses component-local runtime CSS variables populated by
-      // inline styles. Apple-owned token hygiene must not force edits to byte-pinned vendor CSS.
+      // inline styles. StudPilot-owned token hygiene must not force edits to byte-pinned vendor CSS.
       if (rel === 'src/components/aicss') continue;
       out.push(...sources(rel, match));
     }

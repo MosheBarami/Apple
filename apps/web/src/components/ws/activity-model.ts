@@ -1,5 +1,5 @@
 /**
- * The activity state machine: what Apple is *doing*, ordered, timed, terminated.
+ * The activity state machine: what StudPilot is *doing*, ordered, timed, terminated.
  *
  * WHAT THIS IS NOT. It is not chain of thought. Nothing here reads a prompt, a
  * system message, a transcript or a reasoning token. Every state it can emit is
@@ -26,7 +26,7 @@
  * Pure and DOM-free so `tests/activity-model.test.mjs` can run it under
  * `node --test`: this module imports types only.
  */
-import { phaseForTool, type AgentPhase } from '@apple/shared';
+import { phaseForTool, type AgentPhase } from '@studpilot/shared';
 import {
   ACTIVITY,
   ACTIVITY_LABEL,

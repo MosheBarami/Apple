@@ -32,9 +32,9 @@ export interface AppleUITheme {
   iconStyle: 'coin' | 'gem' | 'shield' | 'bolt' | 'crate';
 }
 
-// Game presentation is deliberately separate from Apple's black conversation UI.
+// Game presentation is deliberately separate from StudPilot's black conversation UI.
 // No external images, unverified asset IDs or paid fonts are embedded in the installed module.
-export const APPLE_UI_THEMES: readonly AppleUITheme[] = [
+export const STUDPILOT_UI_THEMES: readonly AppleUITheme[] = [
   { id: 'studio', label: 'Neutral', layout: 'rows', panel: '#141a20', card: '#202933', ink: '#f5f7fa', muted: '#bac5d0', accent: '#b3e997', accentInk: '#152311', outline: '#05080b', edge: '#3d4b5a', danger: '#ffb2a5', titleFont: 'GothamBold', radius: 16, stroke: 1, titleSize: 28, hudSide: 'right', currencyLabel: 'BALANCE', shopLabel: 'Upgrades', cardHeight: 144, iconStyle: 'crate' },
   { id: 'simulator', label: 'Simulator', layout: 'cards', panel: '#1269b7', card: '#e9f6ff', ink: '#123452', muted: '#405c73', accent: '#8be34b', accentInk: '#183516', outline: '#062a4d', edge: '#123452', danger: '#a12836', titleFont: 'GothamBlack', radius: 20, stroke: 3, titleSize: 32, hudSide: 'left', currencyLabel: 'COINS', shopLabel: 'Upgrade shop', cardHeight: 240, iconStyle: 'gem' },
   { id: 'tycoon', label: 'Tycoon', layout: 'cards', panel: '#17283a', card: '#243e52', ink: '#f4f8f9', muted: '#b9ceda', accent: '#72de8f', accentInk: '#153521', outline: '#06131f', edge: '#456b80', danger: '#ffb0a3', titleFont: 'GothamBold', radius: 12, stroke: 2, titleSize: 29, hudSide: 'left', currencyLabel: 'CASH', shopLabel: 'Build your business', cardHeight: 236, iconStyle: 'crate' },
@@ -49,17 +49,17 @@ export const APPLE_UI_THEMES: readonly AppleUITheme[] = [
   { id: 'adventure', label: 'Adventure', layout: 'cards', panel: '#e9dcc0', card: '#fbf5e6', ink: '#2d2418', muted: '#5c4d38', accent: '#ffc93c', accentInk: '#3a2a05', outline: '#140f08', edge: '#8a7454', danger: '#a8322a', titleFont: 'GothamBlack', radius: 10, stroke: 2, titleSize: 30, hudSide: 'left', currencyLabel: 'GOLD', shopLabel: 'Merchant', cardHeight: 236, iconStyle: 'coin' },
 ] as const;
 
-export const APPLE_UI_THEME_IDS = APPLE_UI_THEMES.map(({ id }) => id);
+export const STUDPILOT_UI_THEME_IDS = STUDPILOT_UI_THEMES.map(({ id }) => id);
 
 /** Emit literals only: none of the model's or customer's text is executable theme source. */
-export function appleUIThemeSource(): string {
+export function studpilotUIThemeSource(): string {
   const quote = (value: string) => JSON.stringify(value);
   const colour = (hex: string) => {
     if (!/^#[0-9a-f]{6}$/i.test(hex)) throw new Error('Invalid UI profile colour');
     const rgb = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
     return `Color3.fromRGB(${rgb.join(', ')})`;
   };
-  return 'local THEMES = {\n' + APPLE_UI_THEMES.map((theme) => {
+  return 'local THEMES = {\n' + STUDPILOT_UI_THEMES.map((theme) => {
     const brightPanel = theme.id === 'simulator' || theme.id === 'obby';
     const properties = Object.entries({ ...theme,
       cardHeight: theme.layout === 'cards' ? Math.max(theme.cardHeight, 272) : Math.max(theme.cardHeight, 184),

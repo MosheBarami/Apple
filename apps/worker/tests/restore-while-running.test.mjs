@@ -1,5 +1,5 @@
 /**
- * A RESTORE DOES NOT START WHILE APPLE IS BUILDING.
+ * A RESTORE DOES NOT START WHILE STUDPILOT IS BUILDING.
  *
  * A restore clears the place and rebuilds it from a snapshot. A run in flight is at that moment
  * sending its own changes to the same place. Editing a message and starting a chat both refuse

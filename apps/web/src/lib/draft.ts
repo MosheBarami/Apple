@@ -24,7 +24,7 @@
 //     SIGNED_OUT, which catches a token expiry and a session replaced by a different account as
 //     well as the button.
 
-import { MESSAGE_MAX_CHARS } from '@apple/shared';
+import { MESSAGE_MAX_CHARS } from '@studpilot/shared';
 
 const PREFIX = 'apple.draft.';
 

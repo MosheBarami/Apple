@@ -1,4 +1,4 @@
-// The Apple Test Lab (מעבדת בדיקות): every real gauntlet test of Apple, one card per round and test.
+// The StudPilot Test Lab (מעבדת בדיקות): every real gauntlet test of StudPilot, one card per round and test.
 //
 // Two sources, joined by round number:
 //   - the repo: docs/gauntlet/visual/rounds/round-N[-test]-compare.jpg (the side-by-side the owner
@@ -19,7 +19,7 @@ import { fetchJson, cached, section, run as exec, REPO } from '../http.mjs';
 import { WORKER_URL } from './cloudflare.mjs';
 import { envCompat } from '../../../lib/env-compat.mjs';
 
-const LABEL = 'Apple';
+const LABEL = 'StudPilot';
 const VISUAL = 'docs/gauntlet/visual';
 const ROUNDS_DIR = `${VISUAL}/rounds`;
 const WS = 'apps/web/src/components/ws';
@@ -33,7 +33,7 @@ const str = (x, n = 400) => (typeof x === 'string' && x ? (x.length > n ? `${x.s
 const read = (rel) => { try { return fs.readFileSync(path.join(REPO, rel), 'utf8'); } catch { return ''; } };
 
 export const TEST_LABEL = { map: 'מבחן המפה', models: 'מבחן המודלים', ui: 'מבחן ה-UI', other: 'Grow a Garden (ארכיון)' };
-const MODEL_LABEL = { 'apple-max': 'Apple MAX', apple: 'Apple' };
+const MODEL_LABEL = { 'apple-max': 'StudPilot MAX', studpilot: 'StudPilot' };
 
 // ---------------------------------------------------------------- the site's vocabulary ---
 /** tool-vocabulary.ts → { tools: {name:{kind,label}}, kinds: {kind:label} }. */
@@ -157,7 +157,7 @@ export function runOf({ user, reply, build, calls, project }, vocab, verbs) {
   const shots = [];
   for (const e of find('inspect_visually')) for (const vw of arr(e.detail.render?.views)) {
     const u = vw.pngDataUrl;
-    if (typeof u === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(u) && u.length < 400_000) shots.push({ src: u, label: `Apple · inspect_visually · ${str(vw.name, 40) || 'view'}` });
+    if (typeof u === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(u) && u.length < 400_000) shots.push({ src: u, label: `StudPilot · inspect_visually · ${str(vw.name, 40) || 'view'}` });
   }
   const usage = calls.length ? {
     calls: calls.length,
@@ -198,14 +198,14 @@ export function runOf({ user, reply, build, calls, project }, vocab, verbs) {
     } : null,
     play: play ? { verdict: str(play.verdict, 60), playerSees: str(play.playerSees, 1200), clientErrors: arr(play.clientErrors).map((x) => str(x, 300)).slice(0, 12),
       serverErrors: arr(play.serverErrors).map((x) => str(x, 300)).slice(0, 12), warnings: num(play.warnings), leaderstats: str(play.leaderstats, 200), note: str(play.note, 400) } : null,
-    appleShots: shots.slice(0, 6),
+    studpilotShots: shots.slice(0, 6),
   };
 }
 
 // ----------------------------------------------------------------------- cards and deltas ---
 // Recorded measures a later round can be compared on. better: which direction is an improvement.
 export const MEASURES = [
-  { key: 'selfScore', label: 'ציון הבדיקה החזותית של Apple', better: 'up' },
+  { key: 'selfScore', label: 'ציון הבדיקה החזותית של StudPilot', better: 'up' },
   { key: 'opsApplied', label: 'שינויים שהוחלו', better: 'up' },
   { key: 'opsFailed', label: 'שינויים שנכשלו', better: 'down' },
   { key: 'toolErrors', label: 'כלים שנכשלו', better: 'down' },
@@ -268,10 +268,10 @@ async function readDocs() {
 }
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
-const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
+const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': envCompat('STUDPILOT_ADMIN_KEY') } });
 
 async function readWorker(vocab, verbs) {
-  if (!envCompat('APPLE_ADMIN_KEY')) throw Object.assign(new Error('no key'), { reason: 'חסר APPLE_ADMIN_KEY בקובץ ‎.env, אז אין נתוני ריצה מה-worker' });
+  if (!envCompat('STUDPILOT_ADMIN_KEY')) throw Object.assign(new Error('no key'), { reason: 'חסר STUDPILOT_ADMIN_KEY בקובץ ‎.env, אז אין נתוני ריצה מה-worker' });
   const [builds, calls] = await Promise.all([
     get('/api/admin/logs?kind=build&days=30&limit=2000', 'יומן הבנייה'),
     get('/api/admin/logs?kind=model_call&days=30&limit=2000', 'יומן הקריאות למודל'),
@@ -310,7 +310,7 @@ async function build() {
     return {
       ...r,
       // Before a worker record exists, the prompt and model are the protocol's, and say so.
-      prompt: r.run?.prompt ?? null, protocolPrompt: promptFromDocs, protocolModel: 'Apple MAX',
+      prompt: r.run?.prompt ?? null, protocolPrompt: promptFromDocs, protocolModel: 'StudPilot MAX',
       date: r.run?.startedAt || r.evidenceAt, dateSource: r.run?.startedAt ? 'worker' : r.evidenceAt ? 'repo' : null,
     };
   });
@@ -340,7 +340,7 @@ export async function testsAction(body = {}) {
       method: 'POST',
       url: `${base()}/api/admin/agent-run/<project-id של Baseplate חדש>`,
       body: { text: prompt, mode: 'agent', autonomous: true, productModel: r.run?.productModel || 'apple-max' },
-      note: 'מעבדת הבדיקות לא מריצה את Apple: ריצה אמיתית עולה קרדיטים ומחייבת Studio מחובר עם Baseplate ריק. זו הקריאה המדויקת להפעלה ידנית, לפי הפרוטוקול ב-docs/gauntlet/visual/GAUNTLET.md.',
+      note: 'מעבדת הבדיקות לא מריצה את StudPilot: ריצה אמיתית עולה קרדיטים ומחייבת Studio מחובר עם Baseplate ריק. זו הקריאה המדויקת להפעלה ידנית, לפי הפרוטוקול ב-docs/gauntlet/visual/GAUNTLET.md.',
     },
   };
 }

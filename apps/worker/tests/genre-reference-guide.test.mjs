@@ -4,7 +4,7 @@
  * The corpus tests validate the full source data. These tests validate the Worker projection: it
  * bundles without Node APIs, stays under the tool-result budget, preserves exact provenance and
  * scoped authored observations, reports real coverage gaps, and never turns inspected references
- * into a claim that the game Apple creates has passed a visual review.
+ * into a claim that the game StudPilot creates has passed a visual review.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

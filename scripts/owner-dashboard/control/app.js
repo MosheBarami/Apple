@@ -21,11 +21,11 @@ import { catalog, REG } from './actions.js';
 // shell's own pages; platform pages use their id (control/skins/<id>.css, base when missing).
 const PAGES = [
   { id: 'hq', title: 'מרכז הפיקוד', glyph: 'hq', skin: 'base' },
-  { id: 'os', title: 'Apple OS', glyph: 'bolt', skin: 'base' },
+  { id: 'os', title: 'StudPilot OS', glyph: 'bolt', skin: 'base' },
   { id: 'overview', title: 'סקירת AI', glyph: 'overview', skin: 'base' },
   { id: 'explorer', title: 'מפת הריפו', glyph: 'explorer', skin: 'base' },
   { id: 'repos', title: 'מאגרי GitHub', glyph: 'repos', skin: 'base' },
-  { id: 'apple', title: 'Apple', brand: 'apple' },
+  { id: 'apple', title: 'StudPilot', brand: 'apple' },
   { id: 'tests', title: 'מעבדת בדיקות', glyph: 'flask' },
   { id: 'cloudflare', title: 'Cloudflare', brand: 'cloudflare' },
   { id: 'supabase', title: 'Supabase', brand: 'supabase' },
@@ -327,7 +327,7 @@ function head(p, state) {
   let links = []; try { links = d && d.ok !== false && p.links ? p.links(d) || [] : []; } catch { links = []; }
   return html`<header class="phead ${p.brand ? 'phead-b' : ''}">
     <div class="phead-t">${p.brand ? logo(p.brand, 'lg') : html`<span class="logo logo-lg logo-ui">${icon(p.glyph || p.id, 24)}</span>`}
-      <div class="phead-n"><p class="eyebrow">${pl ? pl.he : p.eyebrow || 'Apple · מרכז הפיקוד'}${pu ? html` · <span class="st st-${pu.state}"><i class="dot dot-${pu.state}"></i>${pu.line}</span>` : ''}</p>
+      <div class="phead-n"><p class="eyebrow">${pl ? pl.he : p.eyebrow || 'StudPilot · מרכז הפיקוד'}${pu ? html` · <span class="st st-${pu.state}"><i class="dot dot-${pu.state}"></i>${pu.line}</span>` : ''}</p>
         <h1 id="ptitle">${p.title}</h1>${p.sub ? html`<p class="psub">${p.sub}</p>` : ''}</div></div>
     <div class="phead-s">${links.map((l) => html`<a class="btn btn-sm btn-ghost" href="${l.url}" target="_blank" rel="noopener noreferrer">${l.label}${icon('ext', 13)}</a>`)}
       <button class="btn btn-sm" data-act="app:refresh" ${state === 'loading' ? 'disabled' : ''} aria-label="רענון עכשיו מהמקור">${icon('refresh', 14)}<span>רענון</span></button></div>
@@ -408,12 +408,12 @@ async function go() {
   const id = routeId(); const changed = id !== current;
   if (changed) teardown(current);
   current = id; const my = ++navSeq;
-  const meta = byId[id]; document.title = `${meta.title} · Apple HQ`;
+  const meta = byId[id]; document.title = `${meta.title} · StudPilot HQ`;
   markNav(); closeMenu();
   const [p] = await Promise.all([page(id), skinReady(id)]);
   if (my !== navSeq) return;
   for (const n of p.needs || []) listenPlatform(n);
-  document.title = `${p.title} · Apple HQ`;
+  document.title = `${p.title} · StudPilot HQ`;
   const c = cache[id];
   const run = () => {
     setSkin(id);

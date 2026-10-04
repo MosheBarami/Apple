@@ -1,5 +1,5 @@
 // Actual uploaded pixels, read only from the authenticated project's private attachment store.
-import { attachmentImageInfo } from '@apple/shared';
+import { attachmentImageInfo } from '@studpilot/shared';
 import type { Env } from './env';
 import { readAttachment } from './attachments.ts';
 import { bytesToBase64 } from './png.ts';

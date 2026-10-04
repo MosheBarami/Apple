@@ -2,7 +2,7 @@
  * create_instances AND THE AUDIO / ANIMATION / EXPLOSION CLASSES (plugin 1.5.0).
  *
  * Research note 07 found the Studio plugin could not create AudioPlayer, Wire, Animator, IKControl or Explosion at
- * all, so every audio and animation recipe had to go through a script. The plugin now allows them (apps/apple-plugin
+ * all, so every audio and animation recipe had to go through a script. The plugin now allows them (apps/studpilot-plugin
  * Commands.luau; its Luau suite runs the real engine, including the Explosion defaults). These tests drive the REAL
  * worker tool through a stubbed execStudioOp and pin what the worker owes the plugin:
  *
@@ -36,7 +36,7 @@ const FX = await import(bundle('fx-library.ts', 'fx-library'));
 const P = await import(bundle('studio-props.ts', 'studio-props'));
 rmSync(temp, { recursive: true, force: true });
 
-const COMMANDS = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8').replace(/--[^\n]*/g, '');
+const COMMANDS = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8').replace(/--[^\n]*/g, '');
 
 const ctxWith = (over = {}) => {
   const ops = [];
@@ -175,7 +175,7 @@ test('the worker forwards an Explosion exactly as written: the plugin owns the h
   assert.equal(r.data.error, undefined, r.resultForLlm);
   assert.equal(ops[0].items[0].props, undefined, 'the worker must not invent props the plugin would then have to tell from explicit ones');
   assert.deepEqual(ops[0].items[1].props, { BlastPressure: { t: 'number', v: 500000 }, DestroyJointRadiusPercent: { t: 'number', v: 1 }, BlastRadius: { t: 'number', v: 20 } });
-  // and the plugin side of the same promise, pinned where it can be read here (the executable proof is apple-plugin/tests/commands.test.mjs)
+  // and the plugin side of the same promise, pinned where it can be read here (the executable proof is studpilot-plugin/tests/commands.test.mjs)
   assert.match(COMMANDS, /className == "Explosion" then\s+if props\.BlastPressure == nil then props\.BlastPressure = 0 end\s+if props\.DestroyJointRadiusPercent == nil then props\.DestroyJointRadiusPercent = 0 end/);
 });
 

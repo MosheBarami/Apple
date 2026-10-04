@@ -34,7 +34,7 @@ const PAGES = Number(arg('--pages', 10)) || 10;
 const CACHED_ONLY = process.argv.includes('--cached-only');
 // --searched-only runs no new searches but still checks moderation for the cached decals' images.
 const SEARCHED_ONLY = process.argv.includes('--searched-only');
-const CACHE = join(tmpdir(), 'apple-ui-store-harvest');
+const CACHE = join(tmpdir(), 'studpilot-ui-store-harvest');
 if (process.argv.includes('--fresh')) rmSync(CACHE, { recursive: true, force: true });
 mkdirSync(CACHE, { recursive: true });
 

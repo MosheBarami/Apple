@@ -9,10 +9,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
+const esbuild = await import(process.env.STUDPILOT_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'client-judge-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@studpilot/shared': '../../packages/shared/src/index.ts' };
 const load = async (name) => {
   await esbuild.build({ entryPoints: [`src/${name}.ts`], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, `${name}.mjs`), alias });
   return import(pathToFileURL(join(dir, `${name}.mjs`)).href);
@@ -697,7 +697,7 @@ test('judgeConstruction: ok with nothing found, not ok with a list, not measured
   assert.deepEqual([R.judgeConstruction(facts({ items: [item()] })).ok, R.judgeConstruction(facts()).score], [true, 100]);
   const bad = R.judgeConstruction(facts({ items: [item({ floating: true, gapBelow: 12 }), item({ name: 'Part', path: 'game.Workspace.Part' })], notChecked: 4, itemsSeen: 30 }));
   assert.equal(bad.ok, false);
-  assert.match(bad.evidence.at(-1), /Checked 2 objects \(2 added by Apple, 0 imported\) of 30 in the world.*4 more were not checked.*inferred from the ground under the spawn/);
+  assert.match(bad.evidence.at(-1), /Checked 2 objects \(2 added by StudPilot, 0 imported\) of 30 in the world.*4 more were not checked.*inferred from the ground under the spawn/);
   assert.equal(bad.score, 84);
   const dark = R.judgeConstruction(facts({ asked: false }));
   assert.deepEqual([dark.ok, dark.measured], [false, false]);

@@ -187,7 +187,7 @@ export default {
       <section class="lf-app" aria-label="Langflow" data-k="app">
         <header class="lf-bar">
           <span class="lf-mark" aria-hidden="true">${icon('bolt', 14)}</span>
-          <nav class="lf-crumb" aria-label="מיקום"><bdi dir="ltr">${l.project?.name || 'Apple'}</bdi><span aria-hidden="true">/</span>${f ? html`<span class="lf-tile sm" style="--sw:${swatch(f.id || f.file)}">${lu('workflow', 12)}</span><b dir="ltr">${f.name}</b>` : ''}</nav>
+          <nav class="lf-crumb" aria-label="מיקום"><bdi dir="ltr">${l.project?.name || 'StudPilot'}</bdi><span aria-hidden="true">/</span>${f ? html`<span class="lf-tile sm" style="--sw:${swatch(f.id || f.file)}">${lu('workflow', 12)}</span><b dir="ltr">${f.name}</b>` : ''}</nav>
           <span class="lf-pill is-${pill[0]}"><i></i>${pill[1]}</span>
           ${l.queue ? html`<span class="lf-q">תור: <bdi class="mono">${l.queue.backend || '—'}</bdi> · ${rn('lf-q', l.queue.active, num(l.queue.active))} פעילות</span>` : ''}
         </header>

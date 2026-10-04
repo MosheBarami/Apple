@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // =============================================================================
-// Apple plan-economics simulator  —  INTERNAL MODEL ONLY.
+// StudPilot plan-economics simulator  —  INTERNAL MODEL ONLY.
 //
 // THIS FILE DOES NOT SET, CHANGE, OR PUBLISH PRICING.
 // The public plan (Free = 60 Credits/day, 900/month) and the shipped worker
@@ -56,7 +56,7 @@ import {
 } from '../../../apps/worker/src/pricing.ts';
 
 /**
- * Cloudflare's included allowance is per ACCOUNT, not per Apple user — at any real scale it rounds
+ * Cloudflare's included allowance is per ACCOUNT, not per StudPilot user — at any real scale it rounds
  * to nothing. The name is kept explicit here because the simulator repeatedly needs to reason about
  * that distinction, which `FREE_NEURONS_PER_DAY` alone does not convey.
  */
@@ -76,7 +76,7 @@ export const WORKERS_PAID_USD_PER_MONTH = 5.0;
 /** MEASURED — the hard monthly ceiling, derived from pricing.ts (never typed here):
  *  BILLABLE_NEURONS_PER_MONTH x $0.000011 of AI, plus $5.00 Workers Paid.
  *
- *  RESTATED 2026-10-01: on 2026-09-29 the owner lifted Apple's daily/monthly neuron cap ("no Apple
+ *  RESTATED 2026-10-01: on 2026-09-29 the owner lifted StudPilot's daily/monthly neuron cap ("no StudPilot
  *  cap", de1117b8). The constants are now 1,000,000,000/day and 30,000,000,000/month, so this is
  *  $330,000.00 of AI + $5.00 = $330,005.00. It is an arithmetic bound that does not bind in
  *  practice, not a forecast. The history below is why the figure was once $24.80 and $10.06.
@@ -638,13 +638,13 @@ function heading(t) {
 export function report() {
   const out = [];
 
-  out.push('APPLE PLAN-ECONOMICS SIMULATOR — INTERNAL MODEL ONLY');
+  out.push('STUDPILOT PLAN-ECONOMICS SIMULATOR — INTERNAL MODEL ONLY');
   out.push('Not public pricing. Does not change any plan, allowance, or spend gate.');
   out.push(
     `Free = the published plan (${PLANS.free.creditsPerDay} Credits/day, ${num(PLANS.free.creditsPerMonth)}/month). Pro and Max are hypothetical.`,
   );
   out.push(
-    `Billing: $0.011/1,000 neurons · 1 Credit = ${NEURONS_PER_CREDIT} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (Apple cap lifted by the owner 2026-09-29).`,
+    `Billing: $0.011/1,000 neurons · 1 Credit = ${NEURONS_PER_CREDIT} neurons · hard ceiling ${money(HARD_MAX_USD_PER_MONTH)}/month (StudPilot cap lifted by the owner 2026-09-29).`,
   );
 
   // --- task mix ---
@@ -816,7 +816,7 @@ export function report() {
   );
   out.push('');
   out.push(
-    `  The owner lifted Apple's spend cap on 2026-09-29, so this ceiling is an arithmetic bound, not a throttle: the plan allowances and the provider rate limit bind first.`,
+    `  The owner lifted StudPilot's spend cap on 2026-09-29, so this ceiling is an arithmetic bound, not a throttle: the plan allowances and the provider rate limit bind first.`,
   );
   out.push(
     `  A scenario only reaches the ceiling if its demand exceeds ${num(DAILY_NEURON_CEILING)} neurons/day; below that the bill is the demand, not the ceiling.`,

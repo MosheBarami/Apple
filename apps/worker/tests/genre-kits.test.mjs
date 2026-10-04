@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-kits-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-kits-${process.pid}.mjs`);
 // `--bundle` with no --platform and no --main-fields, and it resolves: genre-kits.ts reaches only
 // licences.ts, which has no imports at all. That is the design, not a coincidence — the kits must
 // be able to ask the licence question without dragging D1, Vectorize and the AI gateway in behind

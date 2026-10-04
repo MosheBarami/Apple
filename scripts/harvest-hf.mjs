@@ -113,7 +113,7 @@ const MAX_VERIFY = Number(argOf('--verify-sample', '300'));
 /** Pause between dataset-viewer pages. 7,614 rows is 77 pages, and 77 unpaced pages earns a 429. */
 const PAGE_PAUSE_MS = Number(argOf('--page-pause-ms', '350'));
 
-const SYSTEM = 'You are Apple, an expert Roblox engineer. You write correct, idiomatic Luau that runs on the Roblox engine.';
+const SYSTEM = 'You are StudPilot, an expert Roblox engineer. You write correct, idiomatic Luau that runs on the Roblox engine.';
 
 // ===========================================================================================
 // THE REGISTRY — every repository the survey named, with the claim we are checking.
@@ -219,7 +219,7 @@ const MODELS = [
 // ===========================================================================================
 
 // Internal-only: Hugging Face reads this for rate-limiting and nothing resolves us by it.
-const UA = { 'User-Agent': 'apple-harvest-hf/1.0 (+packages/training)' };
+const UA = { 'User-Agent': 'studpilot-harvest-hf/1.0 (+packages/training)' };
 
 /**
  * Fetch with backoff on the transient statuses, and a THROW on everything else.
@@ -342,7 +342,7 @@ function currencyGate(meta) {
  * signals that tell a corpus apart from a template expansion.
  *
  * `templateShare` and `inertShare` are the two that matter and neither is a style opinion:
- *   - templateShare: rows whose entire body is `Instance.new` plus property assignment. Apple does
+ *   - templateShare: rows whose entire body is `Instance.new` plus property assignment. StudPilot does
  *     not write those — `create_instances` and `set_properties` are structured tool calls, so a
  *     model trained on thousands of them is being taught to hand-roll the one thing the product
  *     already does correctly without it.

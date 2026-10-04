@@ -1,16 +1,16 @@
 /**
  * THE ONE ENGINE ON THE BINDING (V3 gate G01).
  *
- * Apple is the only customer engine: GLM 5.3 Flash on Workers AI, sent on the chat wire through
+ * StudPilot is the only customer engine: GLM 5.3 Flash on Workers AI, sent on the chat wire through
  * `env.AI.run`. The outside models (Gemini, Sol, Luna) and their Responses wire are gone. Every
  * provider response below is a synthetic fixture shaped after the documented chat wire; each
  * property is one a live call cannot silently break without a test here going red first:
  *
- *   - Apple is sent a chat `messages` body, never a Responses `input`, with tool calls structured;
+ *   - StudPilot is sent a chat `messages` body, never a Responses `input`, with tool calls structured;
  *   - reasoning effort and named tool choice reach GLM, and are not invented for Qwen;
  *   - usage decodes as reported, and a missing or malformed usage block still costs something;
  *   - a third-party id (reachable only through a KV override) is still refused without AI_GATEWAY_ID;
- *   - the session routes every stored model value to the mode key, so every lane runs Apple.
+ *   - the session routes every stored model value to the mode key, so every lane runs StudPilot.
  */
 
 import test from 'node:test';
@@ -42,7 +42,7 @@ const GLM = '@cf/zai-org/glm-5.3-flash';
 
 /** A conversation that exercises every translation: system, image, a prior tool call and its result. */
 const CONVERSATION = [
-  { role: 'system', content: 'You are Apple.' },
+  { role: 'system', content: 'You are StudPilot.' },
   { role: 'system', content: 'The place has a Baseplate.' },
   { role: 'user', content: [{ type: 'text', text: 'Match this.' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }] },
   { role: 'assistant', content: 'Looking first.', toolCalls: [{ id: 'call_7', name: 'get_children', arguments: '{"path":"Workspace"}' }] },
@@ -56,9 +56,9 @@ function encode(modelId, extra = {}) {
   }).payload;
 }
 
-test('Apple is sent a chat body: messages, never input, with the prior tool call structured', () => {
+test('StudPilot is sent a chat body: messages, never input, with the prior tool call structured', () => {
   const p = encode(GLM);
-  assert.equal('input' in p, false, 'Apple was sent a Responses input body');
+  assert.equal('input' in p, false, 'StudPilot was sent a Responses input body');
   assert.equal(p.messages.length, CONVERSATION.length);
   assert.deepEqual(p.messages[3].tool_calls, [{ id: 'call_7', type: 'function', function: { name: 'get_children', arguments: '{"path":"Workspace"}' } }]);
   assert.equal(p.messages[4].tool_call_id, 'call_7');
@@ -66,7 +66,7 @@ test('Apple is sent a chat body: messages, never input, with the prior tool call
   assert.deepEqual(p.tools, [{ type: 'function', function: TOOLS[0] }]);
 });
 
-test('a JSON schema request reaches Apple in the chat wire\'s response_format', () => {
+test('a JSON schema request reaches StudPilot in the chat wire\'s response_format', () => {
   const schema = { name: 'verdict', schema: { type: 'object' }, strict: true };
   assert.deepEqual(encode(GLM, { jsonSchema: schema }).response_format, { type: 'json_schema', json_schema: schema });
 });
@@ -105,7 +105,7 @@ test('a malformed usage block still costs something and is never NaN', () => {
   }
 });
 
-test('without AI_GATEWAY_ID a third-party id is refused before the binding, and Apple is not', () => {
+test('without AI_GATEWAY_ID a third-party id is refused before the binding, and StudPilot is not', () => {
   const env = {};
   // No product model is third-party any more; one can still arrive through a KV model override.
   assert.throws(() => WA.gatewayOpts(env, 'k', 0, undefined, 'anthropic/some-future-model'), /AI_GATEWAY_ID/);
@@ -119,7 +119,7 @@ test('with a gateway, the log names the model beside the kind of call', () => {
   assert.equal(o.gateway.id, 'gw');
 });
 
-test('the session routes every lane to its mode key, and the mode key runs Apple', () => {
+test('the session routes every lane to its mode key, and the mode key runs StudPilot', () => {
   for (const mode of ['plan', 'agent']) {
     assert.equal(S.gatewayModelFor(mode), mode);
     assert.equal(G.DEFAULT_MODELS[mode].id, GLM);

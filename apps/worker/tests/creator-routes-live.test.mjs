@@ -48,7 +48,7 @@ const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-creator-routes-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-creator-routes-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -62,7 +62,7 @@ const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extracta
 const jwk = { ...(await jose.exportJWK(publicKey)), kid: 'creator-test', alg: 'ES256', use: 'sig' };
 
 /** A signed token for one customer. Each test uses its own, because they share one database. */
-const tokenFor = (userId) => new jose.SignJWT({ email: `${userId}@apple.test`, role: 'authenticated' })
+const tokenFor = (userId) => new jose.SignJWT({ email: `${userId}@studpilot.test`, role: 'authenticated' })
   .setProtectedHeader({ alg: 'ES256', kid: 'creator-test' })
   .setIssuer(`${SUPABASE_URL}/auth/v1`)
   .setAudience('authenticated')
@@ -149,7 +149,7 @@ async function call(path, { method = 'GET', jwt, body, form } = {}) {
     payload = JSON.stringify(body);
   }
   const res = await APP.fetch(
-    new Request(`https://apple.test${path}`, { method, headers, ...(payload !== undefined ? { body: payload } : {}) }),
+    new Request(`https://studpilot.test${path}`, { method, headers, ...(payload !== undefined ? { body: payload } : {}) }),
     env(),
   );
   const text = await res.text();

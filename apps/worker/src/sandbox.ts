@@ -1,6 +1,6 @@
 // THE CODE-EXECUTION CONTRACT: what may run, where it may run, and what the ceiling actually is.
 //
-// Apple executes model-authored code in four runtimes, and until this file there was no single
+// StudPilot executes model-authored code in four runtimes, and until this file there was no single
 // place that said so. `run_luau` sent `timeoutMs: 10_000` to a plugin that has never read the
 // field; `run_spec` sent 20_000 to the same handler; the eval and training lanes shell out to
 // `node`, `python3` and `luau` with no ceiling at all. Four call sites, four different ideas of

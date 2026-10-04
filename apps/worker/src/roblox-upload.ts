@@ -1,7 +1,7 @@
 // Uploading one file into a Roblox account through Open Cloud, and nothing else.
 //
 // WHAT THIS FILE USED TO BE. It was the library's import path: it turned a catalogued asset into a
-// Roblox asset by uploading the bytes under APPLE'S OWN account, where Images, Decals and Meshes
+// Roblox asset by uploading the bytes under STUDPILOT'S OWN account, where Images, Decals and Meshes
 // are created Open Use and are therefore referenceable by id from every customer's experience.
 // That whole idea was removed on 2026-09-20. It only ever produced Images and Decals, Roblox
 // refuses to archive either, and so every asset it created was permanent in a real account — 299
@@ -39,7 +39,7 @@ export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
  * as a bare string with `"format": "enum"` and no members, so the spec alone cannot tell you this.
  *
  * THIS IS THE FULL SET, INCLUDING `Model`, AND THAT IS NOT A LOOSENING. Open Use — the property
- * that made an asset referenceable from every customer's experience — was a constraint on APPLE'S
+ * that made an asset referenceable from every customer's experience — was a constraint on STUDPILOT'S
  * SHARED ACCOUNT, and there is no longer a path that writes to one. Every caller here holds a
  * CUSTOMER'S OWN key and writes into that customer's own account, where a Model is perfectly
  * usable because they own it. That caller is `creator-dashboard.ts` and nothing else.

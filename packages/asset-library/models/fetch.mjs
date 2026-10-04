@@ -94,7 +94,7 @@ export function refusal(row) {
 }
 
 async function download(url, to) {
-  const res = await fetch(url, { redirect: 'follow', headers: { 'user-agent': 'apple-model-library/1.0 (+https://github.com)' } });
+  const res = await fetch(url, { redirect: 'follow', headers: { 'user-agent': 'studpilot-model-library/1.0 (+https://github.com)' } });
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const len = Number(res.headers.get('content-length') ?? 0);
   if (len > MAX_FILE_BYTES) throw new Error(`content-length ${len} over the per-file cap`);

@@ -1,19 +1,19 @@
 # Fresh public design
 
-This is the visual brief for the public Apple site (the marketing landing page and the shared
+This is the visual brief for the public StudPilot site (the marketing landing page and the shared
 documentation, pricing, status and legal chrome). It is intentionally independent from the signed-in
 workspace. The workspace can evolve on its own; the public site should make the product legible before
 someone signs in.
 
 ## Direction
 
-Apple is a small editorial studio for making Roblox ideas real. The page should feel like a printed
+StudPilot is a small editorial studio for making Roblox ideas real. The page should feel like a printed
 creative tool catalogue that happens to contain a live conversation: calm, tactile and precise, with
 one decisive colour. It should not look like a generic AI chat, a game launcher, or a dashboard.
 
 The landing is light-first and spacious. Its composition uses an asymmetric margin, oversized serif
 headlines, thin registration lines and hard paper edges. A representative chat preview is a page in
-the composition, not a simulated product screen floating in space. The copy says what Apple does in an
+the composition, not a simulated product screen floating in space. The copy says what StudPilot does in an
 open Roblox Studio place and labels illustrative content as illustrative.
 
 ## Palette
@@ -32,7 +32,7 @@ make a card feel placed on a desk. The accent is a signal, not an atmosphere.
 
 ## Type and layout
 
-- `Newsreader` carries display copy and the Apple wordmark; `DM Sans` carries utility and body copy;
+- `Newsreader` carries display copy and the StudPilot wordmark; `DM Sans` carries utility and body copy;
   `IBM Plex Mono` carries labels, costs, timestamps and file names.
 - Headline type remains below the site's 3.4rem display cap so it stays readable on phones and does
   not turn the page into a poster that hides the product.
@@ -52,7 +52,7 @@ runtime is used.
 
 ## Content and trust
 
-The landing derives mode and plan names, costs, credits and build counts from `@apple/shared`. Its
+The landing derives mode and plan names, costs, credits and build counts from `@studpilot/shared`. Its
 library figures point at the checked manifest fields (`library.total`, `library.withRobloxId` and
 `templates.usable`). The plugin link still follows the live-store flag. All sign-in, sign-up, docs,
 pricing, legal and source links remain real routes or the existing worker surface.
@@ -75,5 +75,5 @@ free tier; the pricing route remains the canonical source for the full plan tabl
 The landing implementation is deliberately self-contained in `apps/site/src/pages/index.astro` and
 `apps/site/src/styles/landing.css`. Shared public routes use `apps/site/src/styles/global.css`; the
 shared navigation and footer keep the same token names so there is one language across docs, pricing,
-status and legal pages. This document records the direction; it is not a claim that the full Apple
+status and legal pages. This document records the direction; it is not a claim that the full StudPilot
 product or its signed-in workspace has been redesigned.

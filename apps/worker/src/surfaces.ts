@@ -1,11 +1,11 @@
 /**
- * STUDS BY DEFAULT (owner, 2026-10-01): every part Apple makes, from every component and tool, is studded unless the
+ * STUDS BY DEFAULT (owner, 2026-10-01): every part StudPilot makes, from every component and tool, is studded unless the
  * user asked for another surface. The studs are Resurface's (cxmeel, https://github.com/cxmeel/resurface-plugin): a
  * MaterialVariant on Plastic with a stud colour map and normal map, one stud per tile, so a brick, a ball, a mesh or a
- * union all get classic studs on every face. The plugin's Surface family (apps/apple-plugin/src/ops/Surface.luau) does
+ * union all get classic studs on every face. The plugin's Surface family (apps/studpilot-plugin/src/ops/Surface.luau) does
  * the work; the image ids live here because the shipped plugin holds none.
  */
-import type { StudioOp, SurfaceMaps } from '@apple/shared';
+import type { StudioOp, SurfaceMaps } from '@studpilot/shared';
 
 /** Resurface's surface maps (src/Assets/MaterialVariants.luau), public images by cxmeel. */
 export const SURFACE_MAPS = {

@@ -5,7 +5,7 @@
  * session — a signed-in-looking app with fake projects, fake credits and a fake Studio. That is
  * right for a design reviewer on a dev server and wrong anywhere a customer can reach: the header
  * of mock.ts promised "nothing here runs in a normal production build", but the env flag was OR-ed
- * in OUTSIDE the `import.meta.env.DEV` check, so `VITE_APPLE_MOCK=1 vite build` shipped a
+ * in OUTSIDE the `import.meta.env.DEV` check, so `VITE_STUDPILOT_MOCK=1 vite build` shipped a
  * production bundle that never talked to the API.
  *
  * EXECUTED, not source-read: mock.ts is bundled twice with the two values Vite substitutes for
@@ -32,7 +32,7 @@ async function mockModeWhen({ dev, flag, query = '' }) {
     bundle: true, format: 'esm', platform: 'neutral', outfile: out, logLevel: 'silent',
     define: {
       'import.meta.env.DEV': String(dev),
-      'import.meta.env.VITE_APPLE_MOCK': flag === undefined ? 'undefined' : JSON.stringify(flag),
+      'import.meta.env.VITE_STUDPILOT_MOCK': flag === undefined ? 'undefined' : JSON.stringify(flag),
     },
   });
   globalThis.window = { location: { search: query } };
@@ -43,7 +43,7 @@ async function mockModeWhen({ dev, flag, query = '' }) {
   }
 }
 
-test('a production build with VITE_APPLE_MOCK=1 still talks to the real API', async () => {
+test('a production build with VITE_STUDPILOT_MOCK=1 still talks to the real API', async () => {
   assert.equal(await mockModeWhen({ dev: false, flag: '1' }), false);
 });
 

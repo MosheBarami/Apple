@@ -1,5 +1,5 @@
 /**
- * THE COMPOSER MICROPHONE SENDS A CHILD'S VOICE ONLY TO APPLE (D-VISION-1).
+ * THE COMPOSER MICROPHONE SENDS A CHILD'S VOICE ONLY TO STUDPILOT (D-VISION-1).
  *
  * The mic used the browser's Web Speech API. In Chrome that streams the recording to Google's
  * servers — a child's voice leaving through a party the product never chose. The mic now records in
@@ -47,7 +47,7 @@ test('a minute of 16 kHz speech fits the worker byte cap', () => {
   assert.ok(bytes <= 2_000_000, `${bytes} bytes would be refused with 413`);
 });
 
-test('transcribeVoice posts the WAV to Apple\'s worker, and returns the words', async () => {
+test('transcribeVoice posts the WAV to StudPilot\'s worker, and returns the words', async () => {
   const calls = [];
   const fetcher = async (url, init) => { calls.push({ url, init }); return Response.json({ heard: true, text: 'build me a red tower', provider: 'workers-ai' }); };
   const wav = new Blob([V.encodeWav(new Float32Array(1600))], { type: 'audio/wav' });

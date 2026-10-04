@@ -155,7 +155,7 @@ test('ci.yml still runs this checker against a BUILT page, after building it', (
   const ci = join(ROOT, '.github', 'workflows', 'ci.yml');
   assert.ok(existsSync(ci), `${ci} is gone — this checker may no longer run against a real page anywhere`);
   const yml = readFileSync(ci, 'utf8');
-  const build = yml.indexOf('pnpm --filter @apple/site build');
+  const build = yml.indexOf('pnpm --filter @studpilot/site build');
   const budget = yml.indexOf('node scripts/check-landing-budget.mjs');
   assert.ok(build > -1, 'ci.yml no longer builds the marketing site');
   assert.ok(budget > -1, 'ci.yml no longer runs the landing payload budget');

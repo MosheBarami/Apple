@@ -7,7 +7,7 @@ import { join, resolve, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const tmp = mkdtempSync(join(tmpdir(), 'apple-style-evidence-'));
+const tmp = mkdtempSync(join(tmpdir(), 'studpilot-style-evidence-'));
 const outfile = join(tmp, 'style-evidence.mjs');
 buildSync({
   entryPoints: [join(ROOT, 'apps/worker/src/style-visual-evidence.ts')],

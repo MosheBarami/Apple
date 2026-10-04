@@ -10,7 +10,7 @@
 // a list of prop nouns and refused a part by its name, which recognises subjects (the owner forbids that)
 // and never prevented a hand build anyway, since a renamed batch passed. What remains is decided from the
 // class names the plugin deals in and from the run:
-//   1. Hand-made meshes (MeshPart, SpecialMesh, UnionOperation, shape meshes) cannot be created by Apple's
+//   1. Hand-made meshes (MeshPart, SpecialMesh, UnionOperation, shape meshes) cannot be created by StudPilot's
 //      plugin at all, so they are refused with that reason, whatever the run has tried.
 //   2. A Model assembled from Parts, in one create_instances batch or in Luau, is held back until the run
 //      has TRIED the library (a search that found nothing, an insert that failed, or an insert that
@@ -67,7 +67,7 @@ function orderRefusal(order: LibraryOrder, what: string, tool: 'create_instances
 function meshRefusal(found: string[]): ModelRefusal {
   const unique = [...new Set(found)].slice(0, 8);
   return {
-    error: `Refused (${MODEL_DECISION}): ${unique.join('; ')}. Apple's plugin cannot create meshes, so this class is not available in any batch: ` +
+    error: `Refused (${MODEL_DECISION}): ${unique.join('; ')}. StudPilot's plugin cannot create meshes, so this class is not available in any batch: ` +
       'build the shape from Part, WedgePart, CornerWedgePart or TrussPart (Shape Ball or Cylinder on a Part), or take a mesh model with find_library_model + insert_library_model. Nothing was sent to Studio.',
     refused: unique,
   };
@@ -79,7 +79,7 @@ function holdsParts(item: Record<string, unknown>): boolean {
   return kids.some((k) => !!k && typeof k === 'object' && (BASEPARTS.has(String((k as Record<string, unknown>).className)) || holdsParts(k as Record<string, unknown>)));
 }
 
-/** A create_instances payload Apple cannot or should not build yet, or null. */
+/** A create_instances payload StudPilot cannot or should not build yet, or null. */
 export function refuseHandMadeModel(items: unknown, order?: LibraryOrder): ModelRefusal | null {
   const meshes: string[] = [];
   const assembled: string[] = [];
@@ -139,7 +139,7 @@ export function refuseNewHandMadeModelLuau(after: readonly string[], before: rea
 /** The AI 3D generators are closed to the agent: 3D comes from the library, then the Creator Store, then Parts. */
 export function refuseGeneratedModel(tool: string): ModelRefusal {
   return {
-    error: `Refused (${MODEL_DECISION}): Apple does not use an AI 3D generator (${tool}), which makes a model from scratch. ` +
+    error: `Refused (${MODEL_DECISION}): StudPilot does not use an AI 3D generator (${tool}), which makes a model from scratch. ` +
       `The asset order is ${ASSET_ORDER}: find_library_model, preview_library_models and insert_library_model, then find_verified_asset, then Parts (create_instances, build_object). Nothing was sent to Studio.`,
     refused: [`${tool} generates a 3D model from scratch`],
   };

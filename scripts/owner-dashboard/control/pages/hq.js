@@ -55,10 +55,10 @@ function vitals(v, d, plats) {
   const users = d.supabase?.authUsers ?? v.authUsers;
   return html`<section class="bento" aria-label="מספרי המפתח">
     ${stat({ key: 'hq-req', label: 'בקשות לאתר ב-24 שעות', value: v.requests24h, text: num(v.requests24h), platform: 'cloudflare', series: v.requestsSeries, sub: `${num(v.errors24h)} שגיאות · לפי שעה`, href: '#/cloudflare', wide: true })}
-    ${stat({ key: 'hq-spend', label: 'הוצאה על AI החודש', value: v.monthUsd, text: isNum(v.monthUsd) ? `$${num(v.monthUsd, 2)}` : '—', platform: 'apple', series: v.spendSeries, sub: v.maxMonthlyUsd ? `${pct(spendF)} מתקרה של $${num(v.maxMonthlyUsd, 2)}` : 'לפי יום', href: '#/apple', wide: true })}
+    ${stat({ key: 'hq-spend', label: 'הוצאה על AI החודש', value: v.monthUsd, text: isNum(v.monthUsd) ? `$${num(v.monthUsd, 2)}` : '—', platform: 'apple', series: v.spendSeries, sub: v.maxMonthlyUsd ? `${pct(spendF)} מתקרה של $${num(v.maxMonthlyUsd, 2)}` : 'לפי יום', href: '#/studpilot', wide: true })}
     ${stat({ key: 'hq-ci', label: 'בדיקות CI שעברו', value: ciRate == null ? null : Math.round(ciRate * 100), text: ciRate == null ? '—' : `${num(Math.round(ciRate * 100))}%`, platform: 'github', series: ci, sparkCls: ciRate != null && ciRate < 0.5 ? 'bad' : '', tone: ciRate != null && ciRate < 0.5 ? 'bad' : '', sub: ghOff ? 'GitHub לא מחובר, אין ריצות לקרוא' : `${num(ci.length)} הריצות האחרונות`, href: '#/github' })}
     ${stat({ key: 'hq-sentry', label: 'תקלות פתוחות', value: v.sentryOpen, platform: 'sentry', series: v.sentrySeries, sparkCls: 'bad', tone: v.sentryOpen ? 'warn' : 'good', sub: 'אירועים לפי שעה, 24 שעות', href: '#/sentry' })}
-    ${stat({ key: 'hq-calls', label: 'קריאות למודלים', value: v.modelCalls, platform: 'apple', sub: `${compact(v.tokens)} טוקנים · ${pct(v.cacheHit)} מהמטמון`, href: '#/apple' })}
+    ${stat({ key: 'hq-calls', label: 'קריאות למודלים', value: v.modelCalls, platform: 'apple', sub: `${compact(v.tokens)} טוקנים · ${pct(v.cacheHit)} מהמטמון`, href: '#/studpilot' })}
     ${stat({ key: 'hq-commits', label: 'קומיטים ב-14 יום', value: ghOff ? null : arr(v.commits14).reduce((a, b) => a + b, 0), text: ghOff ? '—' : undefined, platform: 'github', series: ghOff ? [] : v.commits14, sub: ghOff ? 'GitHub לא מחובר, אין מה לספור' : 'לפי יום', href: '#/github' })}
     ${stat({ key: 'hq-db', label: 'מסד הנתונים', value: v.dbBytes, text: bytes(v.dbBytes), platform: 'supabase', sub: `${num(users)} משתמשים רשומים`, href: '#/supabase', wide: true })}
     ${stat({ key: 'hq-sec', label: 'אזהרות אבטחה', value: v.securityWarn, platform: 'supabase', tone: v.securityWarn ? 'warn' : 'good', sub: 'מהבודק של Supabase', href: '#/supabase', wide: true })}
@@ -66,7 +66,7 @@ function vitals(v, d, plats) {
 }
 
 // ---------------------------------------------------------------- the architecture map
-// Nodes are the systems the product runs on (bindings read from apps/worker/wrangler.apple.jsonc:
+// Nodes are the systems the product runs on (bindings read from apps/worker/wrangler.studpilot.jsonc:
 // D1 golem-corpus, R2 apple-media, Vectorize golem-docs, Workers AI; the rest are the connected
 // platforms). Positions are a fixed drawing; health and traffic are live.
 const W = 124, H = 36;
@@ -251,7 +251,7 @@ function hover(e) {
 }
 
 export default {
-  id: 'hq', title: 'מרכז הפיקוד', nav: 'מרכז הפיקוד', glyph: 'hq', eyebrow: 'Apple · מרכז הפיקוד של הריפו',
+  id: 'hq', title: 'מרכז הפיקוד', nav: 'מרכז הפיקוד', glyph: 'hq', eyebrow: 'StudPilot · מרכז הפיקוד של הריפו',
   sub: 'כל המערכות של הפרויקט במסך אחד: מה קורה עכשיו, מה דורש אתכם, ומה אפשר לתקן בלחיצה',
   needs: ['pulse', 'github', 'sentry', 'hf', 'supabase', 'cloudflare', 'apple', 'connectors'],
   render(d, ctx) {

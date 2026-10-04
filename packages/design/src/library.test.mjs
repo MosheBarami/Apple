@@ -390,6 +390,6 @@ test('a rule from documentation does not claim to have been built', () => {
   for (const r of documented) {
     assert.equal(r.provenance.kind, 'learned-pattern');
     assert.match(r.provenance.source, /creator-docs/);
-    assert.match(r.provenance.validated, /not yet built in an Apple fixture/);
+    assert.match(r.provenance.validated, /not yet built in a StudPilot fixture/);
   }
 });

@@ -1,4 +1,4 @@
-# Apple — cost model and spend safety
+# StudPilot — cost model and spend safety
 
 Every number here is **measured in production**, not estimated. Reproduce any of it from the admin
 console (`/app/admin` → AI spend) or `GET /api/admin/spend`.
@@ -6,7 +6,7 @@ console (`/app/admin` → AI spend) or `GET /api/admin/spend`.
 ## Production model
 
 **`@cf/zai-org/glm-5.3-flash`** — the model used for the historical Plan/Agent, memory and vision measurements below.
-Current serving may route Apple and Apple MAX differently; these rows remain the measured cost record. $0.15/M input, $0.03/M cached input, $0.50/M output, 1M context, native tool calling,
+Current serving may route StudPilot and StudPilot MAX differently; these rows remain the measured cost record. $0.15/M input, $0.03/M cached input, $0.50/M output, 1M context, native tool calling,
 multimodal. It replaced gpt-oss-120b on 2026-08-30 and is both **better** (98.9 vs 96.8 on the
 Roblox eval suite) and **cheaper per token**.
 
@@ -83,7 +83,7 @@ happening, and the neuron figures above are what we actually pay.
        and three other documents restated that figure. It stopped being true when
        BILLABLE_NEURONS_PER_DAY went 15,000 -> 90,000 and BILLABLE_NEURONS_PER_MONTH went
        460,000 -> 1,800,000, because every build on the live product was being refused with
-       "Apple has reached today's shared building capacity" — see the decision comment above
+       "StudPilot has reached today's shared building capacity" — see the decision comment above
        BILLABLE_NEURONS_PER_DAY in apps/worker/src/pricing.ts. The constants, the enforcement and
        packages/evals/src/economics.test.mjs all moved together that day; only the documents did
        not, and the number they left behind was the OWNER'S WORST CASE, understated 2.5x.
@@ -92,7 +92,7 @@ happening, and the neuron figures above are what we actually pay.
        economics.test.mjs. ]]-->
 **Caps restored (2026-10-04, StudPilot plan §8, handoff task 0.5).** The ceiling first moved on
 2026-09-20 ($10.06 -> $24.80/month, because the old cap refused every build). On 2026-09-29 the
-owner lifted the limits altogether ("no Apple cap", commit de1117b8), which allowed $11,000 a day.
+owner lifted the limits altogether ("no StudPilot cap", commit de1117b8), which allowed $11,000 a day.
 The StudPilot plan restores them: `BILLABLE_NEURONS_PER_DAY` = 150,000 ($1.65 a day) and
 `BILLABLE_NEURONS_PER_MONTH` = 2,270,000 ($24.97 a month), the planner's defaults pending the
 owner's approval (task X3). `apps/worker/tests/spend-caps.test.mjs` holds the approved dollar
@@ -207,12 +207,12 @@ now that the same work costs less.
 | Free | 60 | 900 | ~3 full builds, ~16 small edits, or ~45 questions per day |
 | Pro (designed, not launched) | 400 | 6,000 | ~23 full builds/day |
 
-Whichever limit binds first applies. Apple's own housekeeping (memory distillation) counts against
+Whichever limit binds first applies. StudPilot's own housekeeping (memory distillation) counts against
 the global budget but is **not** charged to the user.
 
 ## Cost controls in the product
 
-- **Apple AI Gateway** (deployment binding `golem`): all inference routes through it — 200 req/min sliding rate limit,
+- **StudPilot AI Gateway** (deployment binding `golem`): all inference routes through it — 200 req/min sliding rate limit,
   response caching, per-call `kind` metadata, full logs. Cache hits cost **zero**; verified in the
   gateway log. Gateway-level retries are explicitly disabled.
 - **No automatic retries.** A retry is a second bill for the same work. Removed entirely.
@@ -256,9 +256,9 @@ the owner first.
 
 `cached_tokens` reported 0 on every identical call. The cause was **not** request shape and not the
 gateway: Workers AI prefix caching only engages when consecutive requests are routed to the same
-model instance, which requires an `x-session-affinity` header that Apple previously did not send
+model instance, which requires an `x-session-affinity` header that StudPilot previously did not send
 (https://developers.cloudflare.com/changelog/product/workers-ai/ — "Prefix caching and session
-affinity"). Apple now sends it, keyed on the session Durable Object id: per-project, opaque, never
+affinity"). StudPilot now sends it, keyed on the session Durable Object id: per-project, opaque, never
 shared across tenants. It is a routing hint rather than a cache key, so a collision costs a cache
 miss and can never produce a cross-tenant read. AI Gateway *response* caching, which would be a
 tenant risk, stays off (`cacheTtl: 0`) on every agent call.
@@ -271,7 +271,7 @@ tenant risk, stays off (`cacheTtl: 0`) on every agent call.
 | `@cf/zai-org/glm-5.3-flash` | `x-session-affinity` | cached 0 | cached 0 | cached 0 |
 | `@cf/moonshotai/kimi-k2.5` | `x-session-affinity` | cached 0 | **cached 2,688 / 2,723** | **cached 2,688 / 2,723** |
 
-Same code path, same gateway, same header. **Prefix caching works on Workers AI and Apple's plumbing
+Same code path, same gateway, same header. **Prefix caching works on Workers AI and StudPilot's plumbing
 is now correct — but the production model does not surface cached tokens.** This is a per-model
 property, not a misconfiguration: Cloudflare's changelog documents the feature against kimi-k2.5 and
 lists cached pricing on that model's page.

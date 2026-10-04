@@ -1,6 +1,6 @@
-// The composer's UI theme (V3 UI contract, Q6/Q19): the look of the INTERFACES Apple builds in a
+// The composer's UI theme (V3 UI contract, Q6/Q19): the look of the INTERFACES StudPilot builds in a
 // game. It never touches the world, the assets or the website, and `none` does not mean "no UI":
-// it means Apple chooses the UI style itself and still builds a full interface.
+// it means StudPilot chooses the UI style itself and still builds a full interface.
 export const UI_THEMES = ['studded', 'cartoony', 'none'] as const;
 export type UiTheme = (typeof UI_THEMES)[number];
 export const DEFAULT_UI_THEME: UiTheme = 'studded';

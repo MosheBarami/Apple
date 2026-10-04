@@ -26,7 +26,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-waitlist-exempt-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-waitlist-exempt-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

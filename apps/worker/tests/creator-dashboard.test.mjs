@@ -7,7 +7,7 @@
 // that customer having asked for that specific thing.
 //
 // `asset-import-account.test.mjs` makes that assertion for the IMPORT path, which has a legitimate
-// no-customer branch: Apple's own library work writes to Apple's own account. The Creator Dashboard
+// no-customer branch: StudPilot's own library work writes to StudPilot's own account. The Creator Dashboard
 // has NO such branch. Every call here acts on a customer's own Roblox account by definition, so a
 // missing customer key is not a case to fall back from — it is the end of the request.
 //
@@ -462,7 +462,7 @@ test('listing a person\'s experiences is absent on purpose, with the reason atta
 /* ======================= uploading into the CUSTOMER'S OWN account === */
 //
 // The library import path (asset-import.ts) has a legitimate no-customer branch and uploads to
-// Apple's own account behind ROBLOX_UPLOAD_AUTHORISED_FOR. This is the other path — a file the
+// StudPilot's own account behind ROBLOX_UPLOAD_AUTHORISED_FOR. This is the other path — a file the
 // customer asked to put in THEIR account — and it has no such branch. The fixtures come from
 // assets/v1.json: multipart `request` + `fileContent`, and a long-running Operation back.
 
@@ -588,7 +588,7 @@ test('a content type Roblox does not accept is refused before a byte is sent', a
 
 test('a .glb IS uploadable to the customer\'s own account, unlike the shared library path', async () => {
   // roblox-upload.ts refuses a Model for the LIBRARY because a Model is not Open Use and would 404
-  // for every customer but Apple. In the customer's own account that reason does not apply: they
+  // for every customer but StudPilot. In the customer's own account that reason does not apply: they
   // own it, so they can use it. Roblox's own table lists .glb under Model.
   const env = await envWith(['asset:write']);
   const f = recorder(200, UPLOAD_DONE_200);

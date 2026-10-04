@@ -100,7 +100,7 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
 
   // The components it pulls in get the narrower, attribute-scoped form of the same rule rather than
   // the absolute one. An SVG namespace URI — `xmlns="http://www.w3.org/2000/svg"`, which
-  // components/AppleMark.astro carries — is a constant string the XML spec requires and is fetched
+  // components/StudPilotMark.astro carries — is a constant string the XML spec requires and is fetched
   // by nobody; failing on it would be the guard reporting a namespace as a network dependency.
   // What matters is what the browser actually goes and loads, which is src, srcset and href.
   //[[ THE PATH IS MATCHED, NOT THE IMPORT STATEMENT, AND THAT DIFFERENCE WAS MEASURED.
@@ -138,7 +138,7 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
 });
 
 test('the landing derives visible model choices from the shared list, not a stale asset count', () => {
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@apple\/shared['"]/;
+  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@studpilot\/shared['"]/;
   assert.match(PAGE, modelImport,
     'the landing no longer reads the shared product model list');
   assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,

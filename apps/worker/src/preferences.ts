@@ -43,12 +43,12 @@ export const PREFERENCE_KEYS = [
   // already does. The values themselves are validated by notifications.ts.
   'notify_delivery',
   'notify_events',
-  // Whether Apple may keep what it works out about a project at all, and whether it has to ask
+  // Whether StudPilot may keep what it works out about a project at all, and whether it has to ask
   // first. It is a preference rather than a switch of its own because it is the same question as
   // every other one here — set it for yourself, or for one project, or for a whole organisation —
   // and because a compliance rule that could not be set at the org layer would not be a rule.
   'memory_mode',
-  // Where Apple is allowed to get assets from when it builds. The owner's rule: ask before
+  // Where StudPilot is allowed to get assets from when it builds. The owner's rule: ask before
   // building unless the answer has been settled once. It lives here rather than in a dialog's own
   // local state because "settled once" has to mean settled for this project, or this person, or
   // this organisation — which is the layering this file already does.
@@ -96,12 +96,12 @@ const RETIRED_PREFERENCE_KEYS: readonly string[] = ['language'];
 export const RESPONSE_LENGTHS = ['brief', 'normal', 'detailed'] as const;
 export type ResponseLength = (typeof RESPONSE_LENGTHS)[number];
 
-// The vocabulary lives in @apple/shared for the reason the asset-source one does, and with more at
+// The vocabulary lives in @studpilot/shared for the reason the asset-source one does, and with more at
 // stake: the settings panel now RENDERS a control per governed tool, and this module refuses any
 // name the registry does not have. Two arrays that agree today are not one array — the failure only
 // shows up when somebody edits one of them, and it shows up as a save that silently refuses a
 // permission the user believes they set. See tool-permissions.test.mjs.
-import { TOOL_PERMISSIONS, isToolPermission, type ToolPermission } from '@apple/shared';
+import { TOOL_PERMISSIONS, isToolPermission, type ToolPermission } from '@studpilot/shared';
 export { TOOL_PERMISSIONS, isToolPermission, type ToolPermission };
 export const TOOL_PERMISSION_ENTRIES_MAX = 64;
 
@@ -110,11 +110,11 @@ const inList = <T extends readonly string[]>(list: T, v: unknown): v is T[number
 export const isCodingStyle = (v: unknown): v is CodingStyle => inList(CODING_STYLES, v);
 export const isRobloxConvention = (v: unknown): v is RobloxConvention => inList(ROBLOX_CONVENTIONS, v);
 export const isResponseLength = (v: unknown): v is ResponseLength => inList(RESPONSE_LENGTHS, v);
-// The vocabulary lives in @apple/shared: the dialog offers these choices and this module
+// The vocabulary lives in @studpilot/shared: the dialog offers these choices and this module
 // validates what comes back, and a list in two places lets the dialog offer an option the worker
 // refuses. The narrowing rules below are the worker's, because they are about layered policy
 // rather than about what the words mean.
-import { ASSET_SOURCE_CHOICES, ASSET_SOURCE_DEFAULT, type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
+import { ASSET_SOURCE_CHOICES, ASSET_SOURCE_DEFAULT, type AssetSourceChoice, type AssetSourcePolicy } from '@studpilot/shared';
 
 export { ASSET_SOURCE_CHOICES, ASSET_SOURCE_DEFAULT, type AssetSourceChoice, type AssetSourcePolicy };
 
@@ -515,7 +515,7 @@ export function applyToolPermissions(base: ReadonlySet<string>, perms: Readonly<
 /**
  * WHAT THE NARROWING ACTUALLY TOOK, so it can be said out loud.
  *
- * `applyToolPermissions` removed tools and nothing recorded which — so "why did Apple not use
+ * `applyToolPermissions` removed tools and nothing recorded which — so "why did StudPilot not use
  * run_luau on that run" had no answer anywhere in the product, and a capability that is silently
  * not there is indistinguishable, from the user's side, from one that is broken.
  *

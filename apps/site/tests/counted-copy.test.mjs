@@ -88,7 +88,7 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
   }
 
   //[[ RE-AIMED 2026-09-21. THE CONTROL IS "THE PAGE LINKS INTO THE PRODUCT", NOT ONE PATH.
-  //   This required exactly `href="/app"`. The landing's primary button said "Open Apple" and
+  //   This required exactly `href="/app"`. The landing's primary button said "Open StudPilot" and
   //   pointed there — and /app redirects a logged-out browser to /app/login, so the biggest green
   //   button on the front page asked a first-time visitor to sign in to an account they did not
   //   have. It now says "Create an account" and points at /app/signup, matching Nav.astro on every
@@ -102,7 +102,7 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
 test('the model cards are data-driven and do not revive the removed hand-counted sections', () => {
   // Product model identity is supplied by the shared contract. Keep this independent from the
   // autonomy mode names and from the former count-bearing modes/how-it-works sections.
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@apple\/shared['"]/;
+  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@studpilot\/shared['"]/;
   assert.match(PAGE, modelImport,
     'the landing does not import the shared product model list');
   assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,

@@ -10,7 +10,7 @@
  * and nothing says why.
  *
  * AUTHORITY. A Discord user id is a number in a webhook body. Every command that reads or spends
- * an Apple account must refuse before it touches anything unless that Discord user has redeemed a
+ * a StudPilot account must refuse before it touches anything unless that Discord user has redeemed a
  * code minted by a signed-in owner of the account. `/link` and `/unlink` are the only commands
  * that may run without one, because they are how the link is made and broken.
  *
@@ -42,7 +42,7 @@ const SETTINGS_TSX = readFileSync(join(HERE, '..', '..', 'web', 'src', 'routes',
 
 const LINK = {
   discordUserId: '4242',
-  appleUserId: 'apple-user-1',
+  appleUserId: 'studpilot-user-1',
   projectId: '11111111-2222-3333-4444-555555555555',
   projectName: 'Lava Obby',
   linkedAt: 1,
@@ -110,7 +110,7 @@ function ports(over = {}) {
     watchRun: async (...a) => {
       calls.push(['watchRun', ...a]);
     },
-    projectUrl: (id) => `https://apple.test/app/projects/${id}`,
+    projectUrl: (id) => `https://studpilot.test/app/projects/${id}`,
   };
   return Object.assign(base, over);
 }
@@ -231,7 +231,7 @@ test('a refused start is reported in the loading message, not left spinning fore
   );
 });
 
-test('/build refuses a project Apple could not look at, instead of building into the dark', async () => {
+test('/build refuses a project StudPilot could not look at, instead of building into the dark', async () => {
   // A null health is a FAILURE TO LOOK, never a clean bill of health. Both guards above the start
   // are written `health && ...`, so an unreachable project skips BOTH of them and the run begins:
   // the "Studio is not connected" refusal that exists to protect the allowance, and the "already
@@ -280,7 +280,7 @@ test('an unlinked Discord user cannot read or spend anything', async () => {
     const p = ports({ findLink: async () => null });
     const out = await handleInteraction(cmd(name, [{ name: 'prompt', value: 'x' }]), p);
     assertMessage(out.body);
-    assert.match(out.body.data.content, /not connected to Apple/);
+    assert.match(out.body.data.content, /not connected to StudPilot/);
     // `rateLimit` is not "touching the account" — it is keyed on the Discord user id and reads
     // nothing of anybody's. It has to run for an unlinked caller precisely BECAUSE the refusal is
     // free: a stranger who is only ever told "not connected" must still be stoppable.
@@ -341,7 +341,7 @@ test('an enormous prompt cannot produce a message Discord will reject', async ()
   assert.ok(edits[0].length <= MAX_CONTENT);
 });
 
-test('an interaction Apple cannot attribute to a Discord user is refused', async () => {
+test('an interaction StudPilot cannot attribute to a Discord user is refused', async () => {
   const anonymous = { ...cmd('credits'), member: undefined, user: undefined };
   const p = ports();
   const out = await handleInteraction(anonymous, p);
@@ -360,7 +360,7 @@ test('a command that is not ours is answered, not ignored', async () => {
 /**
  * `okJson` in index.ts returns null when the Durable Object cannot be reached — the SAME null it
  * returns when the project is genuinely idle. Collapsing those two is the house's oldest bug:
- * "Nothing is building right now" is a statement about the project, and Apple is not entitled to
+ * "Nothing is building right now" is a statement about the project, and StudPilot is not entitled to
  * make it when it never managed to ask. The user acts on that sentence — they run `/build` on top
  * of a run they were told did not exist.
  */
@@ -371,7 +371,7 @@ test('/status does not report an unreachable project as idle', async () => {
   assert.doesNotMatch(
     out.body.data.content,
     /Nothing is building right now/,
-    'a project Apple could not reach must not be reported as idle',
+    'a project StudPilot could not reach must not be reported as idle',
   );
   assert.match(out.body.data.content, /could not reach/i, 'it must say that it failed to look');
 });
@@ -394,7 +394,7 @@ test('/status still reports a genuinely idle project as idle', async () => {
  * door is opened, because the session's own check refuses by broadcasting onto a WebSocket, and a
  * Discord interaction has no WebSocket. Without this gate the admission Credit is spent, the run
  * dies at step one, `/agent-run` still answers `started: true`, and the only thing the user ever
- * sees is a loading message that eventually says Apple could not see the build start.
+ * sees is a loading message that eventually says StudPilot could not see the build start.
  */
 test('/build with no Credits is refused before anything is started or spent', async () => {
   const p = ports({ quota: async () => ({ ...QUOTA, creditsRemaining: 0, allowanceRemaining: 0, credits: 0 }) });

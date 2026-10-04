@@ -2,10 +2,10 @@
  * Making things MOVE, the way the owner's tutorial does it ("How to Animate Models in Roblox Studio!", 2026-10-01) with the
  * RigEdit Lite plugin he supplied: rig the model (Motor6Ds from a static root outwards, each named after its part and
  * parented to the part it hangs from), put each pivot on its hinge, then play keyframes on a trigger. The one step
- * Apple cannot do is publish an animation asset, so the keyframes are played from code by the animate component
- * (packages/components/animate) and the game runs without Apple.
+ * StudPilot cannot do is publish an animation asset, so the keyframes are played from code by the animate component
+ * (packages/components/animate) and the game runs without StudPilot.
  *
- * rig_model     -> plugin ops rig_model + set_joint_pivot   (apps/apple-plugin/src/ops/Joints.luau)
+ * rig_model     -> plugin ops rig_model + set_joint_pivot   (apps/studpilot-plugin/src/ops/Joints.luau)
  * animate_model -> a ModuleScript AppleAnimations in the model + the AppleAnimate script in ServerScriptService
  */
 import type { AgentCtx } from './tools';
@@ -116,7 +116,7 @@ export async function animateModel(ctx: AgentCtx, a: Record<string, unknown>) {
     if ('error' in r) return r;
     rigged = r;
   }
-  const source = `-- What ${model.split('.').pop()} does, played by AppleAnimate (ServerScriptService). Written by Apple; edit freely.\n` +
+  const source = `-- What ${model.split('.').pop()} does, played by AppleAnimate (ServerScriptService). Written by StudPilot; edit freely.\n` +
     `-- Each clip: play = loop|click|prompt|touch|once, length in seconds, keys = { { t, ease?, <Joint> = { rot = {x,y,z} degrees, move = {x,y,z} studs } } }.\nreturn ${luau(read.clips)}\n`;
   const path = `${model}.AppleAnimations`;
   await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);

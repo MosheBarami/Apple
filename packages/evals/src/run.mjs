@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Apple eval runner. Single-turn: send each task's system+prompt to each model
+// StudPilot eval runner. Single-turn: send each task's system+prompt to each model
 // through the worker admin gateway, grade the response, aggregate, save JSON,
 // print a category table.
 //
@@ -13,7 +13,7 @@
 //        --tag NAME     run tag used in the results filename (default "run")
 //        --max-tokens N explicit output ceiling sent to the admin route
 //        --one-attempt  suppress the runner's compatibility retry
-//        --base-gate    enforce the frozen Apple MAX base-only preregistration
+//        --base-gate    enforce the frozen StudPilot MAX base-only preregistration
 //        --api-base URL / --admin-key KEY  override env vars
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -38,7 +38,7 @@ const DEFAULT_ATTEMPTS = 2;
  * The bundle digest uses the explicit algorithm emitted by sourceHashes(), so a byte change in any
  * task file refuses before a provider request rather than silently changing the registered test.
  */
-export const APPLE_MAX_BASE_GATE = Object.freeze({
+export const STUDPILOT_MAX_BASE_GATE = Object.freeze({
   modelKey: 'appleMaxBase',
   modelId: '@cf/qwen/qwen2.5-coder-32b-instruct',
   maxTokens: 2400,
@@ -107,7 +107,7 @@ function sha256File(path) {
  * list instead of the directory. Returns null when a named file is not on disk, which the caller
  * reports as drift -- a deleted task file must refuse the run, not hash around it.
  */
-export function baseGateBundleSha256(hashes = sourceHashes(), gate = APPLE_MAX_BASE_GATE) {
+export function baseGateBundleSha256(hashes = sourceHashes(), gate = STUDPILOT_MAX_BASE_GATE) {
   const subset = {};
   for (const name of gate.taskFiles) {
     if (!(name in hashes.taskFiles)) return null;
@@ -149,7 +149,7 @@ function weightedScore(records) {
 
 /** Refuse a paid base-gate run before its first request when its frozen controls drift. */
 export function validateBaseGateConfig(cfg, tasks, hashes = sourceHashes()) {
-  const gate = APPLE_MAX_BASE_GATE;
+  const gate = STUDPILOT_MAX_BASE_GATE;
   const errors = [];
   if (cfg.models.length !== 1 || cfg.models[0] !== gate.modelKey) errors.push(`--models must be exactly ${gate.modelKey}`);
   if (cfg.categories != null) errors.push('--categories is forbidden for the complete base gate');
@@ -175,8 +175,8 @@ export function validateBaseGateConfig(cfg, tasks, hashes = sourceHashes()) {
 }
 
 /** Evaluate every preregistered rejection criterion against the stored per-task records. */
-export function evaluateBaseGate(perTask, expectedModelId = APPLE_MAX_BASE_GATE.modelId) {
-  const gate = APPLE_MAX_BASE_GATE;
+export function evaluateBaseGate(perTask, expectedModelId = STUDPILOT_MAX_BASE_GATE.modelId) {
+  const gate = STUDPILOT_MAX_BASE_GATE;
   const records = Array.isArray(perTask) ? perTask : [];
   const uniqueTaskIds = new Set(records.map((record) => record?.taskId).filter((id) => typeof id === 'string'));
   const gradableFirstAttempts = records.filter(
@@ -254,7 +254,7 @@ export function evaluateBaseGate(perTask, expectedModelId = APPLE_MAX_BASE_GATE.
 }
 
 export function formatBaseGate(result) {
-  const lines = [`Apple MAX base gate: ${result.passed ? 'PASS — foundation eligible only' : 'REJECT'}`];
+  const lines = [`StudPilot MAX base gate: ${result.passed ? 'PASS — foundation eligible only' : 'REJECT'}`];
   for (const criterion of result.criteria) lines.push(`  ${criterion.passed ? 'PASS' : 'FAIL'} ${criterion.id}`);
   return lines.join('\n');
 }
@@ -535,7 +535,7 @@ async function main() {
       console.error('base-gate preflight refused before inference:\n  ' + errors.join('\n  '));
       process.exit(2);
     }
-    cfg.expectedModelId = APPLE_MAX_BASE_GATE.modelId;
+    cfg.expectedModelId = STUDPILOT_MAX_BASE_GATE.modelId;
     cfg.requireFinishReason = true;
   }
   const checker = resolveLuauChecker();

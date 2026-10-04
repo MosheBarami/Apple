@@ -51,7 +51,7 @@ function canonicalGenreIds() {
 
 // WAS: read `packages/corpus/data/chunks.jsonl` directly. That file is a gitignored 10 MB build
 // artefact, so in a fresh checkout this threw ENOENT rather than failing an assertion, `pnpm -r
-// test` bailed at @apple/corpus, and every package after it never ran. See chunk-witness.mjs for
+// test` bailed at @studpilot/corpus, and every package after it never ran. See chunk-witness.mjs for
 // why the fix is a tracked witness rather than either committing the corpus or skipping the test.
 function corpusByDocument() {
   const witness = readWitness();

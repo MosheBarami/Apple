@@ -1,4 +1,4 @@
-// צילומי Roblox Studio: every picture the repository keeps of what Apple built (GET /api/cc/studio-shots),
+// צילומי Roblox Studio: every picture the repository keeps of what StudPilot built (GET /api/cc/studio-shots),
 // grouped by the round, test or folder it belongs to. Each group says plainly what kind of picture it
 // is (a real Studio capture, a geometry render made without Studio, or someone else's game used as a
 // reference), with the note beside it; each caption comes from the file name or the log/README next
@@ -49,7 +49,7 @@ export default {
   title: 'צילומי Roblox Studio',
   nav: 'צילומי Studio',
   glyph: 'camera',
-  eyebrow: 'ריפו וידע · מה Apple בנה, בתמונות',
+  eyebrow: 'ריפו וידע · מה StudPilot בנה, בתמונות',
   sub: 'כל התמונות שנשמרו בריפו, לפי סבב, מבחן ותיקייה. לכל קבוצה כתוב אם זה צילום אמיתי מ-Studio, רינדור שנבנה בלי Studio, או תמונת ייחוס ממשחק אחר.',
   endpoint: '/api/cc/studio-shots',
   render(d) {

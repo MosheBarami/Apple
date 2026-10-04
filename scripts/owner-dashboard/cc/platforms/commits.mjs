@@ -15,7 +15,7 @@ import { spawn } from 'node:child_process';
 import { run, REPO } from '../http.mjs';
 
 const US = '\x1f', RS = '\x1e';
-const CACHE_FILE = path.join(os.tmpdir(), 'apple-hq-commit-cache-v2.json');
+const CACHE_FILE = path.join(os.tmpdir(), 'studpilot-hq-commit-cache-v2.json');
 const git = (args, timeout = 60000) => run('git', args, { timeout });
 
 // Which part of the product a path belongs to. First match wins.
@@ -24,7 +24,7 @@ export const AREAS = [
   ['worker', /^apps\/worker\//],
   ['web', /^apps\/web\//],
   ['site', /^apps\/site\//],
-  ['plugin', /^apps\/(apple-plugin|plugin)\//],
+  ['plugin', /^apps\/(studpilot-plugin|plugin)\//],
   ['training', /^packages\/training\//],
   ['corpus', /^packages\/corpus\//],
   ['library', /^packages\/asset-library\//],
@@ -59,7 +59,7 @@ function loadCache() {
     for (const [k, v] of Object.entries(j.stats || {})) stats.set(k, v);
   } catch { /* first run */ }
   // Line counts written by this module's first version (same meaning, one map).
-  if (!stats.size) try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'apple-hq-commit-stats.json'), 'utf8')))) stats.set(k, v); } catch { /* none */ }
+  if (!stats.size) try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'studpilot-hq-commit-stats.json'), 'utf8')))) stats.set(k, v); } catch { /* none */ }
 }
 function saveCache() {
   try { fs.writeFileSync(CACHE_FILE, JSON.stringify({ files: Object.fromEntries(touched), stats: Object.fromEntries(stats) })); } catch { /* memory only */ }

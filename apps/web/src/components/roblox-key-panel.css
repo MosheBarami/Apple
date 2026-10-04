@@ -11,7 +11,7 @@
  * colour is meant here — but the five states are mutually exclusive and at most one line carries
  * colour in any render. The distinction the whole panel turns on is kept in the colours too:
  * `rejected` is Roblox refusing the key, an answer, and the only --bad in the file; `failed` and
- * `unknown` are Apple failing to ASK, which is not an answer about anyone's account and is drawn
+ * `unknown` are StudPilot failing to ASK, which is not an answer about anyone's account and is drawn
  * as a caution. Red for a fetch that fell over would read as a verdict nobody actually got.
  */
 
@@ -55,7 +55,7 @@
 .rk__expiry { margin:0; font-size:12px; line-height:1.6; color:var(--faint); }
 .rk__expiry.is-soon { color:var(--warn); }
 
-/* ----------------------------------------------------- what Apple has done to your account --- */
+/* ----------------------------------------------------- what StudPilot has done to your account --- */
 
 .rk__trail { min-width:0; }
 /* The trail's own heading, as a micro-label: this is a log, not a second panel, and a 16px bold

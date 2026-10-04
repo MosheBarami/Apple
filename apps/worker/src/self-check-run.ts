@@ -94,7 +94,7 @@ export function judgeWorthIt(i: Omit<AnswerInput, 'extra'>): boolean {
 /** After a forced look: the observations, handed to the agent as data it must act on. `body` is already fenced. */
 export function forcedLookMessage(body: string): string {
   return (
-    "Before you answer, Apple looked at what you changed in the user's Studio viewport, from several angles including a player's eye level. " +
+    "Before you answer, StudPilot looked at what you changed in the user's Studio viewport, from several angles including a player's eye level. " +
     'These are observations, not a score; you decide what they mean.\n' +
     `${body}\n` +
     'If something you were asked for is not seen, or something looks wrong, fix it now with a tool call. ' +

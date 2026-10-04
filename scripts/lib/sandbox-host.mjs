@@ -101,7 +101,7 @@ runpy.run_path(program, run_name="__main__")
 /**
  * The environment a sandboxed program gets: four variables, none of them this machine's.
  *
- * `process.env` on a developer's box carries CLOUDFLARE_API_TOKEN, APPLE_ADMIN_KEY and whatever
+ * `process.env` on a developer's box carries CLOUDFLARE_API_TOKEN, STUDPILOT_ADMIN_KEY and whatever
  * else `.env` put there — infra/deploy-static.mjs requires one of those to exist — and handing
  * that to a model-authored program would make every other ceiling in this file beside the point.
  * An allowlist, not a denylist: the set of secret-shaped names is open-ended and the set a
@@ -158,7 +158,7 @@ export async function runSandbox(job) {
     throw new Error(`this host only runs the local-process backend; the job names ${job.backend}`);
   }
 
-  const dir = mkdtempSync(join(tmpdir(), 'apple-sandbox-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-sandbox-'));
   const file = join(dir, RUNTIME_FILE[job.runtime]);
   writeFileSync(file, job.source);
 

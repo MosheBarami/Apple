@@ -110,12 +110,12 @@ test('glass.css loads after every other global sheet, so it is the layer that pa
   const main = strip(readFileSync(join(WEB, 'src', 'main.tsx'), 'utf8'));
   const at = (name) => main.search(new RegExp(`import\\s+['"]\\./design/${name}\\.css['"]`));
   assert.notEqual(at('glass'), -1, 'main.tsx does not import design/glass.css');
-  assert.ok(at('glass') > at('apple-minimal') && at('glass') > at('system'), 'glass.css must be imported after system.css and apple-minimal.css');
+  assert.ok(at('glass') > at('studpilot-minimal') && at('glass') > at('system'), 'glass.css must be imported after system.css and studpilot-minimal.css');
 });
 
 test('every text ink clears 4.5:1 on the worst pixel of the aurora, bare and under each glass fill, in both themes', () => {
   const G = glass();
-  const APPLE = read('src', 'design', 'apple-minimal.css');
+  const STUDPILOT = read('src', 'design', 'studpilot-minimal.css');
   const NM = read('src', 'routes', 'nonworkspace-minimal.css');
   const themes = [
     ['dark', ':root', ':is(.page.shelf,.page.usage-page,.page.settings-page,.auth-page)'],
@@ -124,7 +124,7 @@ test('every text ink clears 4.5:1 on the worst pixel of the aurora, bare and und
   let measured = 0;
   for (const [theme, rootSel, nmSel] of themes) {
     const g = tokens(G, rootSel);
-    const a = tokens(APPLE, rootSel);
+    const a = tokens(STUDPILOT, rootSel);
     const n = tokens(NM, nmSel);
     const aurora = Object.keys(g).filter((k) => /^aurora-\d+$/.test(k));
     const fills = Object.keys(g).filter((k) => /^glass-fill/.test(k));
@@ -174,7 +174,7 @@ test('the ambient layer stops whenever the workspace marks it still (hidden tab 
       assert.ok(still.includes(`.studio-atmosphere.is-still${tail}`), `"${part}" animates but has no .is-still stop`);
     }
   }
-  // And the ambient layer is actually shown on the shell, over apple-minimal's !important hide.
+  // And the ambient layer is actually shown on the shell, over studpilot-minimal's !important hide.
   const shown = all.some((r) => /studio-atmosphere\b(?!__)/.test(r.selector) && /display\s*:\s*block\s*!important/.test(r.body));
   assert.ok(shown, 'the ambient layer is still hidden on the shell');
 });

@@ -14,7 +14,7 @@
 //
 // A KIT IS A BRIEF, NOT A BAG OF ASSETS. Every visual slot below says WHAT the genre needs and WHY,
 // and the thing itself is made at build time — drawn by generate_image into the customer's own
-// account, or built out of Parts. It used to be a query against Apple's curated library; the
+// account, or built out of Parts. It used to be a query against StudPilot's curated library; the
 // library was removed on 2026-09-20 and the briefs outlived it, because the `why` was always the
 // valuable half and the query was only how it got filled.
 //

@@ -6,7 +6,7 @@ import {
   PLAN_LIMITS,
   fullRateDays,
   monthlyCeilingBitesFirst,
-} from '@apple/shared';
+} from '@studpilot/shared';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
 // documentation contradicting the thing it documents.
@@ -28,12 +28,12 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 ---
 
 <DocsLayout
-  title="Credits & limits — Apple Docs"
-  description={`How Apple's Credits quota works: ${free.creditsPerDay} per day free, per-request costs, live metering, daily reset, and exactly what happens when you run out.`}
+  title="Credits & limits — StudPilot Docs"
+  description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free, per-request costs, live metering, daily reset, and exactly what happens when you run out.`}
   heading="Credits & limits"
 >
   <p>
-    Credits are Apple's unit of daily energy. Every AI request burns some; your balance refills to
+    Credits are StudPilot's unit of daily energy. Every AI request burns some; your balance refills to
     full once a day, <strong>up to a monthly ceiling</strong>. The system exists for one reason:
     real inference costs real compute, and a hard, transparent quota is what lets the free tier be
     genuinely free — no card, no trial clock, no surprise bill.
@@ -56,7 +56,7 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
   {/*
     TWO SENTENCES WERE REMOVED FROM THIS SECTION, AND BOTH WERE GUARANTEES NOBODY IMPLEMENTS.
 
-    "If Apple estimates a run will be unusually expensive, it says so before starting instead of
+    "If StudPilot estimates a run will be unusually expensive, it says so before starting instead of
     silently draining your day." There is no pre-run estimate anywhere a customer can see: the wire
     protocol has no cost-warning message, a run is admitted on a one-Credit spend whose only refusal
     is a zero balance, and the worker's own preferences.ts downgrades the `ask` tool permission to
@@ -176,9 +176,9 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
   */}
   <h2>The limit that is not yours</h2>
   <p>
-    Your allowance is not the only ceiling. Apple also caps what the <em>whole service</em> spends
+    Your allowance is not the only ceiling. StudPilot also caps what the <em>whole service</em> spends
     on inference in a day, shared by everyone using it, and that cap can be reached while your own
-    balance still has Credits in it. A run stopped by it says so in its own words — “Apple has
+    balance still has Credits in it. A run stopped by it says so in its own words — “StudPilot has
     reached today's shared building capacity” — and it resets at midnight UTC like everything else
     here. It exists so that one runaway build cannot take the free tier down for the rest of the
     day. <a href="/docs/troubleshooting">Troubleshooting</a> covers what a run that hits it costs
@@ -187,7 +187,7 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 
   <h2>Project files</h2>
   <p>
-    Apple keeps notes, plans and generated data in a workspace beside each project — Apple's own
+    StudPilot keeps notes, plans and generated data in a workspace beside each project — StudPilot's own
     storage, not your Roblox place — and you can open, add, rename and download those files from the
     Files drawer in the workspace. It holds <strong>text files only</strong>: .md, .txt, .json,
     .csv, .luau, .lua, .ts, .js, .yml and .yaml. Generated images are separate: download them
@@ -213,24 +213,24 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
     {GENERATED_IMAGE_MAX_BYTES / 1024 / 1024} MiB, with at most {GENERATED_PROJECT_COUNT} images
     and {GENERATED_PROJECT_BYTES / 1024 / 1024} MiB of encoded image data per project
     (encoding uses about a third more space than the downloaded file).
-    Download a copy to keep outside Apple. Older temporary images that have expired cannot be recovered.
+    Download a copy to keep outside StudPilot. Older temporary images that have expired cannot be recovered.
   </p>
   <p>
     Generation is refused before starting when project or service storage is full. Existing images
     are not removed to make room. Concurrent runs can still fill the space while an image is being
-    generated; if saving fails, Apple reports that failure instead of claiming delivery.
+    generated; if saving fails, StudPilot reports that failure instead of claiming delivery.
   </p>
 
   <h2>Other limits worth knowing</h2>
   <ul>
     <li><strong>Rate limiting:</strong> requests are queued per account, and under heavy load a request may briefly wait. No plan buys a place further up that queue — paying changes your allowance, not your turn.</li>
-    <li><strong>Checkpoints:</strong> Apple keeps your 25 most recent checkpoints per project. Taking the twenty-sixth deletes the oldest in the same write — by age, whether you took it yourself or Apple took it before a change. Restore the one you want before it falls off the end.</li>
+    <li><strong>Checkpoints:</strong> StudPilot keeps your 25 most recent checkpoints per project. Taking the twenty-sixth deletes the oldest in the same write — by age, whether you took it yourself or StudPilot took it before a change. Restore the one you want before it falls off the end.</li>
     <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
   </ul>
 
   <div class="callout">
     <p>
-      <strong>Making Credits go further:</strong> give Apple specific requests (“the door in Workspace.Lobby”) rather than vague ones. Nothing else moves the number much —
+      <strong>Making Credits go further:</strong> give StudPilot specific requests (“the door in Workspace.Lobby”) rather than vague ones. Nothing else moves the number much —
       the expensive request is almost always the one that had to be sent twice.
     </p>
   </div>

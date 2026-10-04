@@ -16,7 +16,7 @@
 // afterwards, because a create call cannot reference a sibling it is creating.
 import sfx from '../../../packages/asset-library/sfx/index.json';
 import vfx from '../../../packages/asset-library/vfx/index.json';
-import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@apple/shared';
+import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@studpilot/shared';
 import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';
 
@@ -125,7 +125,7 @@ export function refuseSoundId(props: Record<string, unknown> | undefined, discov
     const id = soundAssetId(value);
     if (id !== null && (librarySound(id) || discovered?.has(id))) continue;
     return {
-      error: `Refused (D-FXLIB-1): ${key} ${JSON.stringify(value)} is not a sound from Apple's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
+      error: `Refused (D-FXLIB-1): ${key} ${JSON.stringify(value)} is not a sound from StudPilot's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
     };
   }
   return null;
@@ -360,7 +360,7 @@ function pickSound(a: Args, discovered?: ReadonlySet<number>): SoundHit | { erro
     if (found) return found;
     // An audio id a search tool of this run returned (search_assets): found by Roblox, not guessed.
     if (id !== null && discovered?.has(id)) return { assetId: id, soundId: `rbxassetid://${id}`, name: `Sound ${id}`, category: 'misc', seconds: null, licence: 'Roblox Creator Store audio found by search_assets this run' };
-    return { error: `${JSON.stringify(a.assetId)} is not a sound in Apple's library. Use find_sound to pick one, or pass query instead.` };
+    return { error: `${JSON.stringify(a.assetId)} is not a sound in StudPilot's library. Use find_sound to pick one, or pass query instead.` };
   }
   const query = String(a.query ?? '').trim();
   if (!query) return { error: 'pass query (what it should sound like) or assetId (from find_sound)' };
@@ -372,7 +372,7 @@ export const findSound = {
   def: {
     name: 'find_sound',
     description:
-      `Search Apple's sound library: ${ROWS.length.toLocaleString('en-US')} Roblox audio ids from Roblox's own Creator Store (licensed partner audio from Roblox, APM, ProSoundEffects and Monstercat first, then free community uploads) — every one plays in any experience, nothing to upload. ` +
+      `Search the sound library: ${ROWS.length.toLocaleString('en-US')} Roblox audio ids from Roblox's own Creator Store (licensed partner audio from Roblox, APM, ProSoundEffects and Monstercat first, then free community uploads) — every one plays in any experience, nothing to upload. ` +
       'Plain words ("coin pickup", "sword swing", "rebirth", "horror sting", "rain loop", "button click"); category narrows it (the enum lists them). ' +
       `Returns assetId, name, category and seconds. Put one in the place with insert_sound; hear it first with play_library_sound. Nothing is changed by this call.`,
     parameters: {
@@ -478,7 +478,7 @@ export const findVfxTool = {
   def: {
     name: 'find_vfx',
     description:
-      `List Apple's Roblox effect presets that match plain words ("coin", "level up", "portal", "rain", "hit"). There are ${PRESETS.length}: ${PRESET_NAMES.join(', ')}. ` +
+      `List Roblox effect presets that match plain words ("coin", "level up", "portal", "rain", "hit"). There are ${PRESETS.length}: ${PRESET_NAMES.join(', ')}. ` +
       'Each is a finished, art-directed ParticleEmitter / Beam / Trail / Highlight / light set with engine textures — nothing to upload. Returns name, kind (burst = one-shot, loop, beam, trail, area, highlight), what it is and where it goes. Put one in with insert_vfx. Nothing is changed by this call.',
     parameters: { type: 'object', properties: { query: { type: 'string' } }, required: [] },
   } satisfies GatewayToolDef,

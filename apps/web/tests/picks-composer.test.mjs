@@ -2,7 +2,7 @@
 //
 // Each pick the composer lane used is listed with the file that carries it, the name it is cited by
 // there, and the line in the product surface (the composer) that mounts it. The model picker and its
-// two picks (motion--variants, ae-model-selector) went with V3 gate G01: Apple is the only engine.
+// two picks (motion--variants, ae-model-selector) went with V3 gate G01: StudPilot is the only engine.
 // The Plan | Agent switch and the Autonomous toggle went with G01 too (no mode selector), and with
 // them their four picks: motion--radix-toggle-group, animate-ui--highlight, animate-ui--toggle and
 // ui-layouts--button-rotating-gradient.

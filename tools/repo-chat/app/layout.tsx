@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Repo Chat",
-  description: "Ask anything about the Apple (RbxAI) repo and product. Read-only, grounded in the code.",
+  description: "Ask anything about the StudPilot (RbxAI) repo and product. Read-only, grounded in the code.",
   icons: { icon: "/favicon.svg" },
 };
 

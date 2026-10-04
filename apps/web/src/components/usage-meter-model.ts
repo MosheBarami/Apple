@@ -8,7 +8,7 @@
 //
 // THREE RULES, and they are the whole reason this is a separate file with its own tests.
 //
-// 1. THE ALLOWANCE IS NEVER RESTATED. `allowanceTotal` is read from PLAN_LIMITS in @apple/shared,
+// 1. THE ALLOWANCE IS NEVER RESTATED. `allowanceTotal` is read from PLAN_LIMITS in @studpilot/shared,
 //    the same table QuotaDO enforces. A meter with "60" written in it is a meter that lies the
 //    moment the table changes, and it would lie silently, in the user's favour or against them.
 //
@@ -38,7 +38,7 @@
 //    plenty". Both are claims this file cannot support. credits-model.ts set this precedent for
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
-import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@apple/shared';
+import { PLAN_LIMITS, PLAN_COPY, CREDITS_PER_BUILD, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE } from '@studpilot/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
 

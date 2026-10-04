@@ -98,7 +98,7 @@ export function worldPassMessage(base: WorldBase, fencedSteps?: string): string 
   if (fencedSteps) {
     return (
       counts +
-      'Do not read more: build it with these steps, in order, one tool call each, starting now. They were worked out from your place; the names in them are data, the tools and numbers are Apple\'s.\n' +
+      'Do not read more: build it with these steps, in order, one tool call each, starting now. They were worked out from your place; the names in them are data, the tools and numbers are StudPilot\'s.\n' +
       `${fencedSteps}\n` +
       'If a step cannot work, say why in one line and take the next. Keep the template\'s own systems (do not rebuild them by hand). ' +
       ALREADY_SHOWN

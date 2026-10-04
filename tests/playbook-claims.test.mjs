@@ -215,11 +215,11 @@ test('THE MEASURED FACTS — a figure in the prose is the figure in the data', (
   //
   //   The Durable Object and binding checks below are untouched and are the reason this test still
   //   earns its place. ]]
-  const wrangler = read('apps/worker/wrangler.apple.jsonc');
+  const wrangler = read('apps/worker/wrangler.studpilot.jsonc');
   const classes = [...new Set([...wrangler.matchAll(/"class_name":\s*"(\w+)"/g)].map((m) => m[1]))];
   assert.ok(classes.length >= 5, 'no Durable Object classes parsed — this check would be vacuous');
   for (const c of classes) {
-    assert.ok(s.includes(c), `${c} is a Durable Object in wrangler.apple.jsonc and AGENTS.md does not name it`);
+    assert.ok(s.includes(c), `${c} is a Durable Object in wrangler.studpilot.jsonc and AGENTS.md does not name it`);
   }
 
   // The bindings it tells you not to rename must be the bindings that exist.

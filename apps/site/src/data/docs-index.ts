@@ -1,5 +1,5 @@
 /**
- * A search index over Apple's own help pages, and the matcher that reads it.
+ * A search index over StudPilot's own help pages, and the matcher that reads it.
  *
  * THE DOCS COULD NOT BE SEARCHED. The nav is a hand-maintained list of links; there was no input,
  * no form and no index anywhere on the site. Finding "what happens if I close Studio mid-build"
@@ -9,7 +9,7 @@
  * AND THE ENDPOINT THAT LOOKS LIKE THE ANSWER IS NOT ONE. The worker has GET /api/docs/search, but
  * it queries the vendored ROBLOX creator-docs corpus, it requires a signed-in user, and it bills a
  * Credit per query. Pointing the docs nav at it would charge a visitor money to find out how to
- * install the plugin, and then answer from the wrong corpus. This index is Apple's pages only,
+ * install the plugin, and then answer from the wrong corpus. This index is StudPilot's pages only,
  * free, static, and built at deploy time.
  *
  * WHY EXTRACTION IS A PURE FUNCTION HERE rather than a script beside the build: its failure mode is

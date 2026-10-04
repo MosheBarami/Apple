@@ -85,7 +85,7 @@ test('the client carries it forward between settlements', () => {
 test('the turn draws no home-made cost line', () => {
   // The settled figure under a finished reply (item.creditsSpent, the message toolbar) stays; the live one
   // (status.creditsSpent) was the pill's.
-  assert.doesNotMatch(THINKING, /apple-status__cost|status\??\.creditsSpent/, 'a live cost line of our own is back beside the AI Elements');
+  assert.doesNotMatch(THINKING, /studpilot-status__cost|status\??\.creditsSpent/, 'a live cost line of our own is back beside the AI Elements');
   assert.match(THINKING, /item\.creditsSpent/, 'the settled cost under a finished reply is gone too');
 });
 

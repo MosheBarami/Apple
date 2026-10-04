@@ -1,4 +1,4 @@
-// Apple Test Lab API tests (cc/platforms/tests.mjs). No network: globalThis.fetch is a fake worker
+// StudPilot Test Lab API tests (cc/platforms/tests.mjs). No network: globalThis.fetch is a fake worker
 // admin API. The admin key is a sentinel that must never appear in a result, only projects named
 // "Gauntlet…" may be read, and the re-run action must only ever answer with a dry-run plan.
 //   node --test scripts/owner-dashboard/cc/tests.test.mjs
@@ -45,7 +45,7 @@ const GAUNTLET = `## CURRENT TARGET
 | File | What |
 |---|---|
 | \`gag.png\` | the real game |
-| \`apple-max-run1-candidate.png\` | **ours, round 1**: flat |
+| \`studpilot-max-run1-candidate.png\` | **ours, round 1**: flat |
 
 | Gap | Skill |
 |---|---|
@@ -59,7 +59,7 @@ test('GAUNTLET.md parses into tests, criteria, refs, the two prompts and the rou
   assert.deepEqual(g.tests.ui.criteria, ['thick outlines', 'gradient cards']);
   assert.deepEqual(g.tests.other.criteria, ['palette', 'set dressing']);
   assert.deepEqual(g.tests.other.refs, ['docs/gauntlet/visual/refs/gag.png']);
-  assert.equal(g.ours1, 'docs/gauntlet/visual/refs/apple-max-run1-candidate.png');
+  assert.equal(g.ours1, 'docs/gauntlet/visual/refs/studpilot-max-run1-candidate.png');
   assert.equal(g.prompts.simulator, 'Build a full simulator game. Make no mistakes');
   assert.equal(g.prompts.garden, 'Build Basically Grow A Garden');
 });
@@ -90,7 +90,7 @@ test('a trace entry becomes the site row: label, running label, target, failure 
 });
 
 const REPLY = {
-  role: 'assistant', id: 'run-5', mode: 'agent', productModel: 'apple-max', stopReason: 'done', creditsSpent: 584, content: 'Apple stopped here.',
+  role: 'assistant', id: 'run-5', mode: 'agent', productModel: 'apple-max', stopReason: 'done', creditsSpent: 584, content: 'StudPilot stopped here.',
   context: { usedChars: 49320, maxChars: 60000, dropped: { groups: 123, chars: 9 } },
   toolTrace: [
     { tool: 'propose_plan', summary: '✓ propose_plan', ok: true, detail: { blocks: [{ type: 'build_plan', title: 'Round 5', steps: [{ title: 'Map', detail: 'hills', tool: 'create_instances' }] }] } },
@@ -107,7 +107,7 @@ const CALLS = [{ runId: 'run-5', model: '@cf/zai-org/glm-5.3-flash', outcome: 'o
 test('a run joins the prompt, model, trace, cost, critique, playtest and only safe image data', () => {
   const r = runOf({ user: USER, reply: REPLY, build: BUILD, calls: CALLS, project: { id: 'p', name: 'Gauntlet Round 5' } }, VOCAB, VERBS);
   assert.equal(r.prompt, 'Build a full simulator game');
-  assert.equal(r.model, 'Apple MAX');
+  assert.equal(r.model, 'StudPilot MAX');
   assert.equal(r.durationMs, 817181);
   assert.equal(r.credits, 584);
   assert.equal(r.usd, 17516 * USD_PER_NEURON);
@@ -117,7 +117,7 @@ test('a run joins the prompt, model, trace, cost, critique, playtest and only sa
   assert.equal(r.knowledge[0].tool, 'search_docs');
   assert.equal(r.critique.score, 1);
   assert.equal(r.play.clientErrors.length, 2);
-  assert.equal(r.appleShots.length, 1, 'a non-data: URL image is dropped');
+  assert.equal(r.studpilotShots.length, 1, 'a non-data: URL image is dropped');
   assert.equal(r.thinking, null); assert.equal(r.skills, null);
   assert.equal(r.context.droppedGroups, 123);
 });
@@ -148,7 +148,7 @@ test('cards: one per round and test, newest first, each against the last round o
 test('tests() reads only Gauntlet projects, never leaks the key, and re-run is a dry-run plan only', async () => {
   const seen = [];
   const P5 = '0416b631-da5f-4ab2-8f1d-855c95febd61'; const PX = '11111111-2222-3333-4444-555555555555';
-  process.env.APPLE_ADMIN_KEY = KEY; process.env.API_BASE = 'https://worker.test';
+  process.env.STUDPILOT_ADMIN_KEY = KEY; process.env.API_BASE = 'https://worker.test';
   globalThis.fetch = async (url, init) => {
     seen.push({ url: String(url), method: init?.method || 'GET', key: init?.headers?.['x-admin-key'] });
     const u = new URL(url); const json = (x) => new Response(JSON.stringify(x), { status: 200 });

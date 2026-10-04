@@ -98,7 +98,8 @@ export function judgeFindings(request: string, cfg: ComposedConfig, world: strin
       : { area: 'twist', ok: false, said: 'Some enemies are not built (no costume or model).', fix: 'Run compose_game again with the enemies\' pieces.' });
   }
 
-  const a = rec(play?.apple);
+  // The plugin's play-check result names the composed game's probe `studpilot`; the unpublished plugin 1.5.0 sent it as `apple`.
+  const a = rec(play?.studpilot ?? play?.apple);
   if (!play || !a.composed) {
     out.push({ area: 'play', ok: false, said: 'The game could not be played in the check, so nothing about playing it is known.', fix: 'Make sure Studio is in edit mode and connected, then run judge_game again.' });
     return out;

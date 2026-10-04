@@ -44,10 +44,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'plugin-not-in-creator-store',
     title: 'Studio plugin installation is unavailable',
     impact:
-      'The Apple Studio plugin cannot be installed from the Roblox Creator Store right now, so new '
+      'The StudPilot Studio plugin cannot be installed from the Roblox Creator Store right now, so new '
       + 'customers can chat and plan but cannot build inside Studio yet.',
     workaround:
-      'Plan your game in the chat meanwhile. If Apple Studio was already installed, it may still '
+      'Plan your game in the chat meanwhile. If StudPilot Studio was already installed, it may still '
       + 'work in Studio; new public installs are unavailable while we check the Creator Store setting.',
     links: [{ label: 'Plugin availability', href: '/docs/plugin' }],
     openedAt: '2026-09-25',
@@ -57,10 +57,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'plugin-presence-not-detectable',
     title: 'An offline connection does not prove the plugin is missing',
     impact:
-      'Apple reports a live connection when a paired plugin communicates with it. Without that '
+      'StudPilot reports a live connection when a paired plugin communicates with it. Without that '
       + 'connection, the browser cannot distinguish an uninstalled plugin from a closed or disconnected Studio.',
     workaround:
-      'Open Studio and its Apple panel, then connect it to your project. If there is no Apple button '
+      'Open Studio and its StudPilot panel, then connect it to your project. If there is no StudPilot button '
       + 'in the Plugins tab, check the plugin availability page before trying to install it.',
     links: [
       { label: 'Troubleshoot a missing panel', href: '/docs/troubleshooting' },

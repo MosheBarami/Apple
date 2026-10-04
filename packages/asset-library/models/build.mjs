@@ -6,7 +6,7 @@
 // Writes, next to this file:
 //   manifest.json  every usable row: a model file in the store, or a Creator Store asset id, with
 //                  genre, kind, tags, licence, source, counts and size. Committed.
-//   index.json     the compact subset the worker bundles for insert_library_model: only rows Apple
+//   index.json     the compact subset the worker bundles for insert_library_model: only rows StudPilot
 //                  may insert (a script-free file, or a script-free Creator Store id from a trusted
 //                  creator). Committed.
 //   SUMMARY.md     the counts by genre, kind, licence and source. Committed.
@@ -220,7 +220,7 @@ const insertable = (r) => r.scan.clean && !r.branded && !((r.triangles ?? 0) > M
 // AssetService:LoadAssetAsync can load a free third-party model only when the owner has already
 // enabled third-party asset loading in this published experience. Keep those rows separate from
 // always-loadable Roblox-owned rows; a Studio permission error is a normal, non-mutating result.
-// The owner narrowed Apple to colorful cartoon games. Names must explicitly say so: a high vote
+// The owner narrowed StudPilot to colorful cartoon games. Names must explicitly say so: a high vote
 // count does not make an unrelated gray/realistic model match that visual brief. The three previews
 // still make the final choice, since a style word alone is not proof of visual quality.
 const CARTOON_STYLE = /\b(?:cartoon(?:y)?|low[ -]?poly|stylized?|stylised?|cute|kawaii|pastel|bright|vibrant|chibi|toy)\b/i;

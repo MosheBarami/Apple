@@ -241,15 +241,15 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
     rebirth: recipe.rebirth,
   };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ServerScriptService.AppleComponents', name: 'AppleGameConfig',
-    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what this game's systems read. Written by Apple's composer; edit freely.\nreturn ${luau(config)}\n` });
+    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what this game's systems read. Written by StudPilot's composer; edit freely.\nreturn ${luau(config)}\n` });
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage.AppleComponents', name: 'AppleClientConfig',
-    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what the screens show. Written by Apple's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, counter: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: { shop: 'Shop', plot: 'Plot' } })}\n` });
+    source: `-- ${recipe.title.replace(/[\r\n]/g, ' ')}: what the screens show. Written by StudPilot's composer; edit freely.\nreturn ${luau({ currency: recipe.currency, counter: recipe.currency, ...(recipe.symbol ? { symbol: recipe.symbol } : {}), words: { shop: 'Shop', plot: 'Plot' } })}\n` });
   // The upgrades screen is the simulator HUD's own Upgrades panel (AppleUpgradesClient reads these names); the money counter
   // is named for the currency, so a renamed currency is found by name everywhere.
   const upgradesConfig = { currency: recipe.currency, screen: 'AppleHUD', counter: recipe.currency, button: 'Upgrades', panel: 'UpgradesPanel', perPress: 1, upgrades: recipe.upgrades,
     ...(recipe.symbol ? { symbol: recipe.symbol } : {}) };
   steps.push({ kind: 'script', className: 'ModuleScript', parent: 'game.ReplicatedStorage', name: 'AppleUpgradesConfig',
-    source: `-- The game's upgrades (AppleUpgrades). Written by Apple's composer; edit freely.\nreturn ${luau(upgradesConfig)}\n` });
+    source: `-- The game's upgrades (AppleUpgrades). Written by StudPilot's composer; edit freely.\nreturn ${luau(upgradesConfig)}\n` });
 
   // 7. Studs on the map and on every library piece.
   if ((recipe.surface ?? 'studs') === 'studs') steps.push({ kind: 'surface', surface: 'studs', paths: ['game.Workspace.AppleMap', 'game.ServerStorage.AppleParts'] });

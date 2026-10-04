@@ -2,7 +2,7 @@
 // calls them with. Pure — nothing here touches a binding, so every decision below can be tested
 // against its own inputs rather than against a database someone had to arrange first.
 //
-// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things APPLE
+// WHY THIS IS A SUBSET AND NOT THE REGISTRY. The agent's tool registry is the set of things STUDPILOT
 // may do while a person is watching it work: it edits scripts, creates parts, runs Luau, inserts
 // assets, starts playtests. An MCP client is not that person and is not watching. It is some other
 // program — Claude, Cursor, a framework nobody here reviewed — holding a long-lived credential.
@@ -26,7 +26,7 @@
 // which means the change passes the gates the agent passes. There is deliberately no way to reach
 // a writing tool directly.
 import type { ApiScope } from './api-keys';
-import type { GatewayToolDef } from '@apple/shared';
+import type { GatewayToolDef } from '@studpilot/shared';
 
 // ---------------------------------------------------------------------------
 // protocol versions
@@ -58,10 +58,10 @@ export const MCP_META_SERVER_INFO = 'io.modelcontextprotocol/serverInfo';
 export const MCP_SERVER_INFO = { name: 'apple', version: '1.0.0' } as const;
 
 export const MCP_INSTRUCTIONS =
-  'Read-only access to a Roblox project Apple builds inside the user\'s own Studio session, including bounded offline creation guidance. ' +
+  'Read-only access to a Roblox project StudPilot builds inside the user\'s own Studio session, including bounded offline creation guidance. ' +
   'Every tool takes `project_id`, which must be a project this API key was granted. ' +
   'These tools only read: to change a place, start an agent run with POST /v1/projects/{id}/runs, ' +
-  'which puts the change through Apple\'s own checkpoints, asset policy and review.';
+  'which puts the change through StudPilot\'s own checkpoints, asset policy and review.';
 
 // ---------------------------------------------------------------------------
 // JSON-RPC codes
@@ -340,7 +340,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   get_verified_module: 'Hands over Luau this repository authored and executed against its own checks. It writes nothing and reaches nowhere, but it is excluded rather than exposed for the reason above AND one of its own: a key holder who could pull the module bodies out one id at a time would be using this surface as a source distribution channel, which is not what a project-scoped grant is for.',
   get_genre_kit: 'Reads a static kit — palette, Lighting values, library queries and pinned sound ids — so it writes nothing, spends nothing and reaches nowhere. It is excluded on the other rule this surface has: it names no project, so a key\'s grant has nothing to scope it by, exactly as with choose_asset_source. It is also the opening move of a build this surface cannot make.',
   inspect_model: 'Asset QC for a model this surface can neither generate nor insert. It belongs to the build pipeline, and the build pipeline is reached through an agent run.',
-  workspace_list: 'Reads Apple\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
+  workspace_list: 'Reads StudPilot\'s own per-project scratch storage rather than the Roblox place. No scope in API_SCOPES describes it, and reusing projects:read would silently widen every key already minted.',
   workspace_read: 'Same as workspace_list: a different resource from the place, needing a scope the credential model does not yet have.',
   workspace_write: 'Writes into that scratch storage, so it fails the read-only rule as well.',
   search_instances: 'Read-only, and excluded until MCP negotiates plugin capabilities: it stands on an OPT-IN plugin operation, and this surface does not filter tools by what the connected plugin reports, so it would be offered to plugins that refuse it.',
@@ -383,7 +383,7 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
 /** Every call names its project; the caller's key decides whether that name is allowed. */
 export const PROJECT_ID_SCHEMA = {
   type: 'string',
-  description: 'The Apple project to read. Must be one this API key was granted; GET /v1/projects lists them.',
+  description: 'The StudPilot project to read. Must be one this API key was granted; GET /v1/projects lists them.',
 } as const;
 
 export interface McpToolDescriptor {

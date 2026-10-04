@@ -841,7 +841,7 @@ export function AdminPage() {
   //
   //   This branch used to be folded into the one below as `me.isError || …is_admin !== true`, so a
   //   network blip, an expired session or a 500 from /api/me all told the reader "this area is for
-  //   Apple operators" — a claim about who they are, made by a page that never found out. Hiding
+  //   StudPilot operators" — a claim about who they are, made by a page that never found out. Hiding
   //   the panel is still right; offering one that will 403 is worse. Saying why, and offering to
   //   ask again, is the part that was missing. ]]
   if (me.isError) {
@@ -863,7 +863,7 @@ export function AdminPage() {
       <div className="page">
         <div className="empty-state">
           <h2>Nothing here</h2>
-          <p className="muted">This area is for Apple operators.</p>
+          <p className="muted">This area is for StudPilot operators.</p>
         </div>
       </div>
     );

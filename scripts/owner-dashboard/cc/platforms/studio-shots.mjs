@@ -36,7 +36,7 @@ const GROUPS = [
   { id: 'map-showcase', dir: 'docs/evidence/map-showcase', title: 'תצוגת מפות לפי ז\'אנר', kind: 'render', manifest: 'docs/evidence/map-showcase/manifest.json' },
   { id: 'eval-regression', dir: 'packages/evals/tasks-visual/regression', title: 'מבחן הרגרסיה החזותי', kind: 'render', notes: ['packages/evals/tasks-visual/regression/README.md', 'packages/evals/tasks-visual/regression/RESULTS.md'] },
   { id: 'eval-composition', dir: 'packages/evals/tasks-visual', title: 'מבחני הקומפוזיציה', kind: 'render', notes: ['packages/evals/tasks-visual/composition/generalization/REPORT.md'] },
-  { id: 'root', dir: '.', flat: true, match: /^\.tmp-(studio|apple|manage)-/, title: 'צילומים זמניים מ-Studio בשורש הריפו', kind: 'studio', notes: [] },
+  { id: 'root', dir: '.', flat: true, match: /^\.tmp-(studio|studpilot|manage)-/, title: 'צילומים זמניים מ-Studio בשורש הריפו', kind: 'studio', notes: [] },
 ];
 
 function listImages(g) {

@@ -12,25 +12,25 @@ if (args.length !== 0 && (args.length !== 2 || args[0] !== '--theme')) {
   throw new Error('Usage: node scripts/build-ui-proof-place.mjs [--theme <canonical-theme-id>]');
 }
 const requestedTheme = args[1] ?? 'studio';
-const directory = mkdtempSync(join(tmpdir(), 'apple-ui-engine-proof-'));
+const directory = mkdtempSync(join(tmpdir(), 'studpilot-ui-engine-proof-'));
 const bundle = join(directory, 'ui.mjs');
 execFileSync(join(root, 'apps/worker/node_modules/.bin/esbuild'), [join(root, 'apps/worker/src/ui-kit.ts'), '--bundle', '--format=esm', `--outfile=${bundle}`], { stdio: 'pipe' });
-const { APPLE_UI_SOURCE } = await import(pathToFileURL(bundle).href);
+const { STUDPILOT_UI_SOURCE } = await import(pathToFileURL(bundle).href);
 const themeBundle = join(directory, 'themes.mjs');
 execFileSync(join(root, 'apps/worker/node_modules/.bin/esbuild'), [join(root, 'apps/worker/src/ui-kit-themes.ts'), '--bundle', '--format=esm', `--outfile=${themeBundle}`], { stdio: 'pipe' });
-const { APPLE_UI_THEME_IDS } = await import(pathToFileURL(themeBundle).href);
-if (!APPLE_UI_THEME_IDS.includes(requestedTheme)) throw new Error(`Unknown UI proof theme: ${requestedTheme}`);
+const { STUDPILOT_UI_THEME_IDS } = await import(pathToFileURL(themeBundle).href);
+if (!STUDPILOT_UI_THEME_IDS.includes(requestedTheme)) throw new Error(`Unknown UI proof theme: ${requestedTheme}`);
 const files = {
-  'AppleUI.luau': APPLE_UI_SOURCE,
-  'Proof.server.luau': readFileSync(join(root, 'apps/worker/tests/fixtures/apple-ui-studio-server.luau'), 'utf8'),
-  'Proof.client.luau': readFileSync(join(root, 'apps/worker/tests/fixtures/apple-ui-studio-client.luau'), 'utf8'),
+  'AppleUI.luau': STUDPILOT_UI_SOURCE,
+  'Proof.server.luau': readFileSync(join(root, 'apps/worker/tests/fixtures/studpilot-ui-studio-server.luau'), 'utf8'),
+  'Proof.client.luau': readFileSync(join(root, 'apps/worker/tests/fixtures/studpilot-ui-studio-client.luau'), 'utf8'),
 };
 for (const [name, source] of Object.entries(files)) {
   const path = join(directory, name);
   writeFileSync(path, source, { flag: 'wx' });
   execFileSync('luau-compile', [path], { stdio: 'pipe' });
 }
-const project = { name: 'Apple UI isolated proof', tree: {
+const project = { name: 'StudPilot UI isolated proof', tree: {
   $className: 'DataModel',
   Workspace: { $className: 'Workspace',
     Baseplate: { $className: 'Part', $properties: { Anchored: true, Size: [128, 1, 128] } },

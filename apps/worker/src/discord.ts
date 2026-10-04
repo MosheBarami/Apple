@@ -1,4 +1,4 @@
-// Apple on Discord: an HTTP-interactions bot, not a gateway bot.
+// StudPilot on Discord: an HTTP-interactions bot, not a gateway bot.
 //
 // WHY HTTP AND NOT A GATEWAY. A gateway bot holds an open WebSocket to Discord forever, which
 // needs a process that never stops. This product has no such process — it is a Worker plus Durable
@@ -14,7 +14,7 @@
 // THE THREE-SECOND WALL. Discord kills an interaction that is not answered within three seconds.
 // A build takes minutes. So `/build` answers with a DEFERRED response (type 5) — a loading state —
 // and the message is edited afterwards. Everything else here answers immediately.
-import type { QuotaState, RunSnapshot } from '@apple/shared';
+import type { QuotaState, RunSnapshot } from '@studpilot/shared';
 
 // ---------------------------------------------------------------- wire constants
 // Values are Discord's, not ours. Named so a reader does not have to remember what 5 means.
@@ -89,7 +89,7 @@ export async function verifyDiscordSignature(
 // ---------------------------------------------------------------- the link
 
 /**
- * A Discord user bound to one Apple project.
+ * A Discord user bound to one StudPilot project.
  *
  * Deliberately a project and not just an account. A Discord interaction carries no Supabase JWT,
  * so the worker cannot ask Supabase "which projects does this person own?" — every read there goes
@@ -170,7 +170,7 @@ export interface InteractionResponse {
  *
  * Every reply echoes text the user typed — a prompt, a project name. With no `allowed_mentions`,
  * Discord parses mentions out of whatever we send, so `@everyone` inside a build prompt becomes a
- * ping issued by Apple. An empty `parse` list turns every mention in our output back into plain
+ * ping issued by StudPilot. An empty `parse` list turns every mention in our output back into plain
  * text, which is the only safe default for content we did not write.
  */
 export const NO_MENTIONS = { parse: [] as never[] };
@@ -198,7 +198,7 @@ export function thinking(): InteractionResponse {
  * would hide a real empty balance behind a fetch that did not happen.
  */
 export function balanceLine(q: QuotaState | null): string {
-  if (!q) return 'Apple could not read your balance just now.';
+  if (!q) return 'StudPilot could not read your balance just now.';
   const purchased = q.credits > 0 ? `, plus ${q.credits} purchased` : '';
   return `**${q.creditsRemaining} Credits** left — ${q.allowanceRemaining} from today's ${q.plan} allowance${purchased}.`;
 }
@@ -224,17 +224,17 @@ export const COMMANDS = [
   {
     name: 'link',
     type: 1,
-    description: 'Connect this Discord account to one of your Apple projects.',
+    description: 'Connect this Discord account to one of your StudPilot projects.',
     options: [
-      { type: 3, name: 'code', description: 'The code from your project page in Apple.', required: true, min_length: 4, max_length: 16 },
+      { type: 3, name: 'code', description: 'The code from your project page in StudPilot.', required: true, min_length: 4, max_length: 16 },
     ],
   },
-  { name: 'unlink', type: 1, description: 'Disconnect this Discord account from Apple.' },
+  { name: 'unlink', type: 1, description: 'Disconnect this Discord account from StudPilot.' },
   {
     name: 'build',
     type: 1,
-    description: 'Ask Apple to build something in your linked project.',
-    options: [{ type: 3, name: 'prompt', description: 'What should Apple build?', required: true, min_length: 3, max_length: 800 }],
+    description: 'Ask StudPilot to build something in your linked project.',
+    options: [{ type: 3, name: 'prompt', description: 'What should StudPilot build?', required: true, min_length: 3, max_length: 800 }],
   },
   { name: 'status', type: 1, description: 'How is the current build going?' },
   { name: 'credits', type: 1, description: 'How many Credits do you have left?' },
@@ -286,8 +286,8 @@ export interface Outcome {
  * button nobody can find is indistinguishable, from the user's side, from a bot that is broken.
  */
 const NOT_LINKED =
-  'This Discord account is not connected to Apple yet.\n' +
-  'In Apple, open **Settings** → **Connections** → **Discord**, choose your project and press ' +
+  'This Discord account is not connected to StudPilot yet.\n' +
+  'In StudPilot, open **Settings** → **Connections** → **Discord**, choose your project and press ' +
   '**Get a code**. Then run `/link` here with the code it shows. Codes last 10 minutes.';
 
 export async function handleInteraction(raw: unknown, ports: DiscordPorts): Promise<Outcome> {
@@ -295,11 +295,11 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
 
   if (i.type === INTERACTION.PING) return { status: 200, body: { type: CALLBACK.PONG } };
   if (i.type !== INTERACTION.APPLICATION_COMMAND) {
-    return { status: 200, body: say('Apple does not know what to do with that.') };
+    return { status: 200, body: say('StudPilot does not know what to do with that.') };
   }
 
   const discordUserId = invokerId(i);
-  if (!discordUserId) return { status: 200, body: say('Apple could not tell who you are on Discord.') };
+  if (!discordUserId) return { status: 200, body: say('StudPilot could not tell who you are on Discord.') };
   const name = i.data?.name ?? '';
 
   // BEFORE the link is even looked up, and before `/link` redeems anything.
@@ -314,7 +314,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
     return {
       status: 200,
       body: say(
-        `Too many commands too quickly. Apple is ignoring this Discord account for another ${allowed.retryAfterS} ${allowed.retryAfterS === 1 ? 'second' : 'seconds'}.`,
+        `Too many commands too quickly. StudPilot is ignoring this Discord account for another ${allowed.retryAfterS} ${allowed.retryAfterS === 1 ? 'second' : 'seconds'}.`,
       ),
     };
   }
@@ -347,7 +347,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
     const removed = await ports.removeLink(discordUserId);
     return {
       status: 200,
-      body: say(removed ? 'Disconnected. Apple will not act on commands from this Discord account.' : 'This Discord account was not connected to anything.'),
+      body: say(removed ? 'Disconnected. StudPilot will not act on commands from this Discord account.' : 'This Discord account was not connected to anything.'),
     };
   }
 
@@ -356,7 +356,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
 
   if (name === 'credits') {
     const q = await ports.quota(link.appleUserId);
-    if (!q) return { status: 200, body: say('Apple could not read your balance just now. Try again in a moment.') };
+    if (!q) return { status: 200, body: say('StudPilot could not read your balance just now. Try again in a moment.') };
     return { status: 200, body: say(`${balanceLine(q)}\nToday's allowance refills ${friendlyReset(q.resetsAtIso)}.`) };
   }
 
@@ -370,7 +370,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
       return {
         status: 200,
         body: say(
-          `**${link.projectName}** — Apple could not reach this project just now, so it cannot say whether anything is building.\nTry again in a moment: ${ports.projectUrl(link.projectId)}`,
+          `**${link.projectName}** — StudPilot could not reach this project just now, so it cannot say whether anything is building.\nTry again in a moment: ${ports.projectUrl(link.projectId)}`,
         ),
       };
     }
@@ -389,7 +389,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
 
   if (name === 'build') {
     const prompt = optionString(i, 'prompt');
-    if (!prompt) return { status: 200, body: say('Tell Apple what to build, for example `/build prompt: a lava obby with 6 stages`.') };
+    if (!prompt) return { status: 200, body: say('Tell StudPilot what to build, for example `/build prompt: a lava obby with 6 stages`.') };
     const applicationId = typeof i.application_id === 'string' ? i.application_id : '';
     const token = typeof i.token === 'string' ? i.token : '';
 
@@ -411,14 +411,14 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
          * check inside and broadcasts a `quota` error onto a WebSocket that a Discord interaction
          * does not have. The command's own reply would still say "starting", because `/agent-run`
          * answers `started: true` for a run that never began. The user is charged, told the build
-         * is under way, and then watches a loading message turn into "Apple could not see that
+         * is under way, and then watches a loading message turn into "StudPilot could not see that
          * build start" — which is true, and useless.
          */
         const q = await ports.quota(link.appleUserId);
         if (!q) {
           // A balance that could not be READ is not a balance of zero and not a balance that is
           // fine. Starting here would spend Credits nobody confirmed were there.
-          await edit('Apple could not read your Credit balance, so it did not start a build. Try again in a moment.');
+          await edit('StudPilot could not read your Credit balance, so it did not start a build. Try again in a moment.');
           return;
         }
         if (q.creditsRemaining <= 0) {
@@ -438,12 +438,12 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
         const health = await ports.projectHealth(link.projectId);
         if (!health) {
           await edit(
-            `**${link.projectName}** — Apple could not reach this project, so it cannot tell whether Studio is attached or whether a build is already running. Nothing was started.\nTry again in a moment: ${ports.projectUrl(link.projectId)}`,
+            `**${link.projectName}** — StudPilot could not reach this project, so it cannot tell whether Studio is attached or whether a build is already running. Nothing was started.\nTry again in a moment: ${ports.projectUrl(link.projectId)}`,
           );
           return;
         }
         if (!health.pluginConnected) {
-          await edit(`**${link.projectName}** — Roblox Studio is not connected, so there is nothing to build into.\nOpen Studio with the Apple plugin, then try again.`);
+          await edit(`**${link.projectName}** — Roblox Studio is not connected, so there is nothing to build into.\nOpen Studio with the StudPilot plugin, then try again.`);
           return;
         }
         if (health.agentStatus === 'running') {
@@ -452,7 +452,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
         }
         const started = await ports.startBuild(link.projectId, prompt);
         if (!started.ok) {
-          await edit(`Apple could not start that build: ${started.error}`);
+          await edit(`StudPilot could not start that build: ${started.error}`);
           return;
         }
         // The loading message is now owned by the progress pusher, which edits it as the run moves
@@ -463,7 +463,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
     };
   }
 
-  return { status: 200, body: say(`Apple has no \`/${name.slice(0, 40)}\` command.`) };
+  return { status: 200, body: say(`StudPilot has no \`/${name.slice(0, 40)}\` command.`) };
 }
 
 function friendlyReset(iso: string): string {

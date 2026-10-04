@@ -28,7 +28,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-artdir-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-artdir-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -83,7 +83,7 @@ function moodBridge(children = []) {
   });
 }
 
-test("set_mood replaces only Apple-owned effects and preserves the user's Lighting", async () => {
+test("set_mood replaces only StudPilot-owned effects and preserves the user's Lighting", async () => {
   const { ctx, ops } = moodBridge([
     { path: 'game.Lighting.UserCC', class: 'ColorCorrectionEffect', attributes: {} },
     { path: 'game.Lighting.UserSun', class: 'SunRaysEffect', attributes: {} },

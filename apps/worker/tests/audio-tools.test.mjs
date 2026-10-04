@@ -28,7 +28,7 @@ const WORKER = join(HERE, '..');
 const REPO = join(WORKER, '..', '..');
 const built = [];
 async function bundle(entry, tag) {
-  const out = join(tmpdir(), `apple-${tag}-${process.pid}.mjs`);
+  const out = join(tmpdir(), `studpilot-${tag}-${process.pid}.mjs`);
   await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', target: 'es2022', outfile: out });
   built.push(out);
   return import(pathToFileURL(out).href);

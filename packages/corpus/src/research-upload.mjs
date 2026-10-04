@@ -1,4 +1,4 @@
-// Send ONLY Apple's research notes to the index: add or update, never prune, never touch the docs chunks.
+// Send ONLY StudPilot's research notes to the index: add or update, never prune, never touch the docs chunks.
 // The full pipeline (upload.mjs) needs chunks.jsonl, which is built from raw/ sources that a given machine may not
 // have; this path needs only packages/corpus/research/. Same endpoint and body as upload.mjs step 3.
 //   API_BASE=https://… ADMIN_KEY=… node src/research-upload.mjs [--notes 15,16] [--dry]

@@ -136,7 +136,7 @@ test('creditsFor() rounds up and has a floor of 1', () => {
 //   because admission ran out mid-run. The caps became 90,000/day and 1,800,000/month. Nothing was
 //   relaxed here to make a test pass; the hand-worked numbers were recomputed from the new
 //   constants and the old ones are named above so the move stays visible. ]]
-// RESTATED 2026-10-01: the owner lifted Apple's cap on 2026-09-29 (de1117b8, owner: no Apple cap), so
+// RESTATED 2026-10-01: the owner lifted StudPilot's cap on 2026-09-29 (de1117b8, owner: no StudPilot cap), so
 // the hand-worked figures below are recomputed from 30,000,000,000 billable neurons/month. The
 // property is unchanged: this file does not move the ceiling, it derives it from the constants.
 // RESTATED 2026-10-04 (StudPilot handoff 0.5): the caps are restored to 150,000/day and
@@ -436,7 +436,7 @@ test('the shipped spend gates cap the bill at the hard maximum, always', () => {
   }
 });
 
-// RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): the gates now cross at exactly
+// RESTATED 2026-10-01 (de1117b8, owner: no StudPilot cap): the gates now cross at exactly
 // 30,000,000,000 / 1,000,000,000 = 30 days (they crossed at 20 days under 90,000 / 1,800,000). The
 // property is unchanged and both directions are still shown, derived from the constants.
 // RESTATED 2026-10-04 (caps restored, StudPilot handoff 0.5): 2,270,000 / 150,000 = 15.13 days, so a
@@ -462,7 +462,7 @@ test('the two spend gates compose, and the tighter one wins', () => {
   }
 });
 
-// RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): no built-in scenario reaches a 1,000,010,000
+// RESTATED 2026-10-01 (de1117b8, owner: no StudPilot cap): no built-in scenario reaches a 1,000,010,000
 // neuron/day ceiling any more (the largest, Max/heavy at 10,000 users, is ~35M). The property —
 // demand past the ceiling is unserved, not billed — is exercised with a population large enough to
 // cross it.
@@ -722,7 +722,7 @@ test('the three usage rows are the bill those constants actually produce', () =>
 });
 
 test('the day the monthly backstop overtakes the daily one is stated, and is the day it does', () => {
-  // RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): the crossover moved from day 20 to day 30,
+  // RESTATED 2026-10-01 (de1117b8, owner: no StudPilot cap): the crossover moved from day 20 to day 30,
   // where the daily and monthly gates coincide. The paragraph explaining the heavy row is where a
   // reader goes to understand which gate the figure comes from.
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

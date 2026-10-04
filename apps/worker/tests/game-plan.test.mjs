@@ -15,10 +15,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fakeStudio } from './fixtures/fake-studio.mjs';
 
-const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
+const esbuild = await import(process.env.STUDPILOT_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'game-plan-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@studpilot/shared': '../../packages/shared/src/index.ts' };
 await esbuild.build({ entryPoints: ['src/tools.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'), alias });
 await esbuild.build({ entryPoints: ['src/game-plan.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'plan.mjs'), alias });
 await esbuild.build({ entryPoints: ['../../packages/shared/src/index.ts'], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'shared.mjs') });

@@ -25,7 +25,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MESSAGE_MAX_CHARS, MESSAGE_WARN_CHARS } from '@apple/shared';
+import { MESSAGE_MAX_CHARS, MESSAGE_WARN_CHARS } from '@studpilot/shared';
 import { matchesShortcut, shortcutLabel } from '../src/lib/shortcuts.ts';
 import { ENTER_SEND, newlineBinding, sendBinding, sendHint } from '../src/lib/send-key.ts';
 import { DEFAULT_PREFS, SEND_KEYS, isSendKey, normalisePrefs } from '../src/lib/prefs.ts';
@@ -74,7 +74,7 @@ test('with ⌘Enter sending, a bare Enter is a new line and does not send', () =
   assert.equal(matchesShortcut(key('Enter', { shiftKey: true }), binding, true), false);
 });
 
-test('⌘Enter sends on Apple and Ctrl+Enter elsewhere — never the other platform’s modifier', () => {
+test('⌘Enter sends on StudPilot and Ctrl+Enter elsewhere — never the other platform’s modifier', () => {
   // Ctrl+Enter on a Mac is not a send gesture, and accepting it would fire mid-sentence for anyone
   // using Ctrl as a text-navigation modifier.
   const binding = sendBinding('mod-enter');

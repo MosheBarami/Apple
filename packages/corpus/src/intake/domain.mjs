@@ -10,7 +10,7 @@
 // it is decided by DENSITY rather than by presence. A modern, well-maintained
 // library can contain one `wait()` in a five-year-old file; calling it legacy for
 // that would make the tag useless, and the tag exists to answer "will learning from
-// this teach Apple an API that no longer behaves the way this code assumes?"
+// this teach StudPilot an API that no longer behaves the way this code assumes?"
 //
 // The markers are dated engine facts, not style preferences. `task.wait` versus
 // bare `wait()` is not a matter of taste — `wait()` is throttled to roughly 30Hz

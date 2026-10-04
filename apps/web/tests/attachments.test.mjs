@@ -27,7 +27,7 @@
  *   - A CANCEL IS NOT AN ERROR. Cancelling leaves no failed row and no message: the person already
  *     knows, they did it.
  *
- *   - A 413 IS NOT A GENERIC 4xx. "Apple could not make sense of that request. Try again." is
+ *   - A 413 IS NOT A GENERIC 4xx. "StudPilot could not make sense of that request. Try again." is
  *     exactly wrong for a file that is too big — retrying is guaranteed to fail — and that is what
  *     the taxonomy said before this.
  *
@@ -36,7 +36,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from '@apple/shared';
+import { MAX_ATTACHMENTS_PER_MESSAGE, MAX_ATTACHMENT_BYTES } from '@studpilot/shared';
 import {
   admitFiles,
   attachmentFailure,
@@ -195,7 +195,7 @@ test('a 413 says the file is too big and does not offer a retry that cannot work
 });
 
 test('a 415 says this kind of file will never work, and is not retryable either', () => {
-  const f = attachmentFailure(err(415, 'Apple can’t read images yet.'));
+  const f = attachmentFailure(err(415, 'StudPilot can’t read images yet.'));
   assert.equal(f.retryable, false);
   assert.match(f.message, /image/i);
 });
@@ -206,12 +206,12 @@ test('a network failure IS retryable, because the next attempt is a different at
 });
 
 test('the shared taxonomy learned 413 and 415, so every surface says the same thing', () => {
-  // Before this, both fell through to "Apple could not make sense of that request" with
+  // Before this, both fell through to "StudPilot could not make sense of that request" with
   // `retryable: true` — a Try again button over a file that can never be accepted.
   const tooBig = explainFailure(err(413, 'That file is larger than 32 KB.'));
   assert.equal(tooBig.retryable, false);
   assert.match(tooBig.title, /too (big|large)/i);
-  const wrongType = explainFailure(err(415, 'Apple can’t read images yet.'));
+  const wrongType = explainFailure(err(415, 'StudPilot can’t read images yet.'));
   assert.equal(wrongType.retryable, false);
   assert.match(wrongType.title, /kind of file|type/i);
 });

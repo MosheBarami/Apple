@@ -7,20 +7,20 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const worker = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dir = mkdtempSync(join(tmpdir(), 'apple-ui-themes-'));
+const dir = mkdtempSync(join(tmpdir(), 'studpilot-ui-themes-'));
 async function bundle(name) {
   const path = join(dir, name + '.mjs');
   execFileSync(join(worker, 'node_modules/.bin/esbuild'), [join(worker, `src/${name}.ts`), '--bundle', '--format=esm', `--outfile=${path}`], { stdio: 'pipe' });
   return import(pathToFileURL(path).href);
 }
-const { APPLE_UI_THEMES } = await bundle('ui-kit-themes');
+const { STUDPILOT_UI_THEMES } = await bundle('ui-kit-themes');
 const { GENRE_KIT_IDS } = await bundle('genre-kits');
-const { APPLE_UI_SOURCE } = await bundle('ui-kit');
-const prelude = readFileSync(join(worker, 'tests/fixtures/apple-ui-runtime.luau'), 'utf8');
+const { STUDPILOT_UI_SOURCE } = await bundle('ui-kit');
+const prelude = readFileSync(join(worker, 'tests/fixtures/studpilot-ui-runtime.luau'), 'utf8');
 let sequence = 0;
 function run(body) {
   const path = join(dir, `${sequence++}.luau`);
-  writeFileSync(path, `${prelude}\nlocal UI = (function()\n${APPLE_UI_SOURCE}\nend)()\n${body}`);
+  writeFileSync(path, `${prelude}\nlocal UI = (function()\n${STUDPILOT_UI_SOURCE}\nend)()\n${body}`);
   return execFileSync('luau', [path], { encoding: 'utf8', timeout: 5000 });
 }
 function luminance(hex) {
@@ -31,9 +31,9 @@ function luminance(hex) {
 const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + .05) / (Math.min(luminance(a), luminance(b)) + .05);
 
 test('every current genre has one explicit original profile, not an unknown-genre fallback', () => {
-  assert.equal(new Set(APPLE_UI_THEMES.map(t => t.id)).size, APPLE_UI_THEMES.length);
-  assert.deepEqual(APPLE_UI_THEMES.map(t => t.id).filter(id => id !== 'studio').sort(), [...GENRE_KIT_IDS].sort());
-  for (const theme of APPLE_UI_THEMES) {
+  assert.equal(new Set(STUDPILOT_UI_THEMES.map(t => t.id)).size, STUDPILOT_UI_THEMES.length);
+  assert.deepEqual(STUDPILOT_UI_THEMES.map(t => t.id).filter(id => id !== 'studio').sort(), [...GENRE_KIT_IDS].sort());
+  for (const theme of STUDPILOT_UI_THEMES) {
     assert.ok(contrast(theme.ink, theme.card) >= 4.5, `${theme.id}: card text contrast`);
     assert.ok(contrast(theme.muted, theme.card) >= 4.5, `${theme.id}: secondary text contrast`);
     assert.ok(contrast(theme.accentInk, theme.accent) >= 4.5, `${theme.id}: button text contrast`);
@@ -46,7 +46,7 @@ test('an unknown profile is refused before creating a ScreenGui', () => {
 });
 
 test('all genre profiles mount and expose their actual selected identity without inventing a balance', () => {
-  for (const theme of APPLE_UI_THEMES) {
+  for (const theme of STUDPILOT_UI_THEMES) {
     run(`local ui = UI.mount(playerGui, {theme=${JSON.stringify(theme.id)}, reducedMotion=true})
       assert(ui.themeId == ${JSON.stringify(theme.id)}, "requested theme was not selected")
       assert(find(ui.gui, "Balance").Text == "—")

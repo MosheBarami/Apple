@@ -1,4 +1,4 @@
-# Apple scripting curriculum
+# StudPilot scripting curriculum
 
 Master Mission §U names Roblox **scripting** as the highest-weight long-term capability, and §AJ
 asks for a benchmark that tracks Luau correctness, debugging, multi-file architecture, project

@@ -3,7 +3,7 @@
  *
  * Defect Dd8a983. Settings → Connections offers "Get a code", shows `/link 123456` with an expiry
  * countdown, and the only thing that can redeem it — `/api/discord/interactions` — refuses with 503
- * to Discord itself when DISCORD_PUBLIC_KEY is unset. Neither the apple nor the legacy worker has
+ * to Discord itself when DISCORD_PUBLIC_KEY is unset. Neither the studpilot nor the legacy worker has
  * ever had that key. So the user typed the code, nothing answered, they watched it expire, took
  * another, and concluded the product was broken. Unlike `/api/billing/config` there was no
  * capability in any response for the UI to degrade on.
@@ -23,7 +23,7 @@ import { PROJECTS } from './stubs/supa.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-discord-cap-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-discord-cap-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],

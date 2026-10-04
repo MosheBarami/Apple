@@ -1,7 +1,7 @@
 /**
  * REACHED AND FINISHED, ASSERTED TOGETHER — BECAUSE EITHER HALF ALONE READS AS SUCCESS.
  *
- * Measured 2026-09-20 against the deployed worker (free Apple Agent lane, GLM-5.3-flash,
+ * Measured 2026-09-20 against the deployed worker (free StudPilot Agent lane, GLM-5.3-flash,
  * Studio disconnected, so the agent is offered the 8-tool offline set of which two are the
  * knowledge tools). Of 10 measurable runs, 7 reached a real knowledge tool and 3 finished cleanly —
  * and the two sets did not intersect. Every run that called get_ui_construction or
@@ -69,7 +69,7 @@ await esbuild.build({
           export async function chat(env, req, opts) {
             const next = await env.__testChat(req, opts);
             if (next && next.__refuse) {
-              throw new RateLimitedError('Apple is handling a burst of requests right now. Nothing was charged — try that again in a moment.');
+              throw new RateLimitedError('StudPilot is handling a burst of requests right now. Nothing was charged — try that again in a moment.');
             }
             return next;
           }

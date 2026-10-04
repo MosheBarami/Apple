@@ -349,7 +349,7 @@ test('a sticky runtime blocker alone preserves recorded survivors on restart', a
   } finally { await cleanup(f, p); }
 });
 
-const PRODUCT_CONDITION = 'Complete the Apple Roblox Studio product: scripts/autonomy-review-gate.py exits 0 on fresh independent browser/Studio/gameplay evidence, with canonical full-owner objective honored, deterministic single-owner recovery, independent evaluations and current mission state; preserve STOP and account/provider boundaries.';
+const PRODUCT_CONDITION = 'Complete the StudPilot Roblox Studio product: scripts/autonomy-review-gate.py exits 0 on fresh independent browser/Studio/gameplay evidence, with canonical full-owner objective honored, deterministic single-owner recovery, independent evaluations and current mission state; preserve STOP and account/provider boundaries.';
 function nativeFixture(steps, overrides = {}) {
   return fixture(steps, { continuation_mode: 'native_goal', goal_condition: PRODUCT_CONDITION, ...overrides });
 }

@@ -3,7 +3,7 @@
  *
  * apps/site/tests/withdrawn-modes.test.mjs guards the opposite direction — no page may sell a mode
  * nobody can pick — and nothing guarded this one. /docs/faq answered "Is there an API or a way to
- * script Apple itself?" with "Not yet. The web workspace and Studio plugin are the two supported
+ * script StudPilot itself?" with "Not yet. The web workspace and Studio plugin are the two supported
  * surfaces at v0.1. If you have an automation use case, email us."
  *
  * The API had already shipped. `GET /v1` answers 401 with "Provide an API key as
@@ -86,7 +86,7 @@ test('no page tells a reader there is no API', () => {
     { id: 'no-api', re: /\bno\s+(public\s+)?api\b(?!\s*keys?\b)/i },
     { id: 'api-unavailable', re: /\bapi\b[^.?]{0,30}\b(is\s+)?not\s+(yet\s+)?(available|offered|exposed|exist)/i },
     { id: 'two-supported-surfaces', re: /\bthe\s+two\s+supported\s+surfaces\b/i },
-    { id: 'cannot-script', re: /\b(cannot|can't|no way to)\s+script\s+apple\b/i },
+    { id: 'cannot-script', re: /\b(cannot|can't|no way to)\s+script\s+studpilot\b/i },
   ];
   const found = [];
   for (const p of pages()) {
@@ -119,7 +119,7 @@ test('the FAQ points at the surface that exists, and at nothing that does not', 
     for (const p of pages()) {
       assert.doesNotMatch(
         visibleText(readFileSync(p, 'utf8')),
-        /\b(install|download|use)\b[^.]{0,30}\bthe\s+(apple\s+)?sdk\b/i,
+        /\b(install|download|use)\b[^.]{0,30}\bthe\s+(studpilot\s+)?sdk\b/i,
         `${p.slice(SITE.length + 1)} offers an SDK, and packages/sdk is private and published nowhere`,
       );
     }

@@ -12,7 +12,7 @@
  *     and the transcript did not have an equivalent return control.
  *
  *   * ANNOUNCEMENTS covered the WAIT and not the ANSWER. `thinking.tsx` has an sr-only polite
- *     region carrying the phase hint while a run is in flight, so a blind user knew Apple was
+ *     region carrying the phase hint while a run is in flight, so a blind user knew StudPilot was
  *     working; the reply itself arrived as text mutated into an existing node, which no live
  *     region reports, so the run went quiet and stayed quiet.
  *
@@ -230,7 +230,7 @@ test('nothing is said while the turn is still being written', () => {
 });
 
 test('a settled reply is announced once, with its text', () => {
-  assert.equal(replyAnnouncement(turn()), 'Apple replied. The door is built.');
+  assert.equal(replyAnnouncement(turn()), 'StudPilot replied. The door is built.');
 });
 
 test('a user turn is never announced', () => {
@@ -298,7 +298,7 @@ test('every non-success stop reason has something to say', () => {
 });
 
 test('a clean run is not described as an outcome', () => {
-  assert.equal(replyAnnouncement(turn({ stopReason: 'done' })), 'Apple replied. The door is built.');
+  assert.equal(replyAnnouncement(turn({ stopReason: 'done' })), 'StudPilot replied. The door is built.');
 });
 
 test('a partial reply that then failed announces both', () => {

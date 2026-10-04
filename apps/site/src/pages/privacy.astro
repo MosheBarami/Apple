@@ -3,14 +3,14 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 ---
 
 <LegalLayout
-  title="Privacy Policy — Apple"
-  description="What Apple stores (account email, projects, chat history, checkpoints), who processes it (Cloudflare, Supabase), and the one promise that matters: your content is never used for training."
+  title="Privacy Policy — StudPilot"
+  description="What StudPilot stores (account email, projects, chat history, checkpoints), who processes it (Cloudflare, Supabase), and the one promise that matters: your content is never used for training."
   heading="Privacy Policy"
   updated="August 2026"
 >
   <p>
-    Apple is built and operated by Apple Labs ("we", "us"). This policy describes what data we
-    collect when you use Apple, why we collect it, where it lives, and what we will never do with
+    StudPilot is built and operated by Apple Labs ("we", "us"). This policy describes what data we
+    collect when you use StudPilot, why we collect it, where it lives, and what we will never do with
     it. It is written to be read, not skimmed past.
   </p>
 
@@ -28,12 +28,12 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <ul>
     <li><strong>Account data.</strong> Your email address and a hashed password, used to sign you in and to contact you about your account. That's the entire signup form.</li>
     <li><strong>Projects.</strong> Project names, descriptions, and metadata about the Roblox place you connect (place name and id, as reported by the Studio plugin).</li>
-    <li><strong>Chat history.</strong> The messages you exchange with Apple, including attachments you add, and the record of tool actions Apple took (which scripts it edited, which instances it created). This is what lets a project remember its own past.</li>
-    <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place Apple works on, so you can roll back changes. Apple processes them to provide rollback; authorized operators can access production systems for debugging under access controls.</li>
+    <li><strong>Chat history.</strong> The messages you exchange with StudPilot, including attachments you add, and the record of tool actions StudPilot took (which scripts it edited, which instances it created). This is what lets a project remember its own past.</li>
+    <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place StudPilot works on, so you can roll back changes. StudPilot processes them to provide rollback; authorized operators can access production systems for debugging under access controls.</li>
     <li><strong>Usage data.</strong> A ledger of your Credits usage (which mode, when, how many), used to enforce daily quotas fairly and to keep the free tier viable. We also keep coarse, aggregated counters (e.g. total requests per day service-wide) that contain no content.</li>
     <li><strong>A request log.</strong> Which API route was called, when, how long it took and whether it failed — so a broken feature can be told from a slow one. Routes are recorded as routes, never as the raw path, so a project id is never in the log. Each entry carries your account id for 30 days unless you switch that off in Settings → Privacy, in which case the request is still counted with nobody's name on it.</li>
     <li><strong>Billing identifiers.</strong> If you subscribe or buy Credits, Stripe handles the payment and we keep the subscription state and invoice references it sends back. We never see or store your card.</li>
-    <li><strong>A Roblox Open Cloud key, if you give us one.</strong> Only so Apple can upload assets to your own Roblox account when you ask it to. It is encrypted at rest with a key the database does not hold, it is never returned to anyone — including you; the settings page shows a fingerprint and the last four characters — and deleting it from Settings removes it outright.</li>
+    <li><strong>A Roblox Open Cloud key, if you give us one.</strong> Only so StudPilot can upload assets to your own Roblox account when you ask it to. It is encrypted at rest with a key the database does not hold, it is never returned to anyone — including you; the settings page shows a fingerprint and the last four characters — and deleting it from Settings removes it outright.</li>
     <li><strong>A Discord account id, if you link one.</strong> Only so builds you start from Discord reach the right account.</li>
   </ul>
 
@@ -41,7 +41,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <ul>
     <li>No card numbers. Payments go to Stripe and card details never touch our servers.</li>
     <li>No advertising identifiers, no third-party tracking pixels, no analytics that follow you across the web.</li>
-    <li>No contents of your Roblox account beyond what the plugin sends for the place you explicitly connect, and — if you gave us an Open Cloud key — what you asked Apple to upload with it.</li>
+    <li>No contents of your Roblox account beyond what the plugin sends for the place you explicitly connect, and — if you gave us an Open Cloud key — what you asked StudPilot to upload with it.</li>
   </ul>
 
   <h2>Training — the promise</h2>
@@ -53,13 +53,13 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   </p>
 
   <h2>Who processes your data</h2>
-  <p>Everyone who receives any of it because of something Apple does, and what each one gets:</p>
+  <p>Everyone who receives any of it because of something StudPilot does, and what each one gets:</p>
   <ul>
-    <li><strong>Cloudflare</strong> — hosts the application, the API, and project session storage (including chat history and checkpoints). Requests to Apple pass through Cloudflare's network, and AI inference runs on Cloudflare's infrastructure.</li>
+    <li><strong>Cloudflare</strong> — hosts the application, the API, and project session storage (including chat history and checkpoints). Requests to StudPilot pass through Cloudflare's network, and AI inference runs on Cloudflare's infrastructure.</li>
     <li><strong>Supabase</strong> — hosts authentication and the account registry (your email, your project list). Access is scoped so that every query runs with your own credentials; our servers hold no master key to your rows.</li>
     <li><strong>Stripe</strong> — subscriptions and Credit purchases. Stripe receives your email and billing identifiers and holds your payment method; we receive back only the subscription state and invoice references. We never hold card details.</li>
-    <li><strong>Discord</strong> — only if you link a Discord account. It receives the replies Apple sends to the channel you started a build from, and we store the link between the two accounts until you unlink it.</li>
-    <li><strong>Roblox</strong> — only if you give Apple an Open Cloud key, and only for the uploads you ask for. What is sent is the asset being uploaded, to your own account, under your own key.</li>
+    <li><strong>Discord</strong> — only if you link a Discord account. It receives the replies StudPilot sends to the channel you started a build from, and we store the link between the two accounts until you unlink it.</li>
+    <li><strong>Roblox</strong> — only if you give StudPilot an Open Cloud key, and only for the uploads you ask for. What is sent is the asset being uploaded, to your own account, under your own key.</li>
   </ul>
   <p>
     AI inference runs on infrastructure we operate through these providers. Your prompts and
@@ -79,7 +79,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Automation run history</strong> — 90 days, so "what did this cost me last month" is still answerable.</li>
     <li><strong>Your Credits ledger</strong> — 35 days of daily detail, plus monthly totals.</li>
     <li><strong>New generated images</strong> — saved privately with the project until deletion. Existing expired images cannot be recovered.</li>
-    <li><strong>Temporary image previews and generated sound</strong> — one hour in cache. A running preview can remain cached for up to an hour after deletion, but deleted-project images cannot be opened through Apple.</li>
+    <li><strong>Temporary image previews and generated sound</strong> — one hour in cache. A running preview can remain cached for up to an hour after deletion, but deleted-project images cannot be opened through StudPilot.</li>
     <li><strong>Deleted-image protection</strong> — a deleted project identifier, without images or account details, remains to prevent late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files</strong> — 30 days in the trash, recoverable until then.</li>
   </ul>
@@ -93,7 +93,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     Settings → Privacy → <strong>Download my data</strong> gathers it into one file in one click.
     Your account database records and API-key metadata — never a secret key — and then every route
     the service holds about you, followed for you rather than listed at you: the full transcript of
-    every project, your checkpoints, your Credit spend, your inbox, what Apple was asked to
+    every project, your checkpoints, your Credit spend, your inbox, what StudPilot was asked to
     remember, your comments, reviews, share links and Studio pairings. The server's own signed
     export sits inside it untouched, sha256 and all.
   </p>
@@ -132,7 +132,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 
   <h2>Children</h2>
   <p>
-    Apple is a tool for building on Roblox, and Roblox's community includes young creators. Apple
+    StudPilot is a tool for building on Roblox, and Roblox's community includes young creators. StudPilot
     requires an email address to create an account, and we do not knowingly collect data from
     children below the age at which they can consent to online services in their country. If you
     believe a child has created an account in violation of this, contact us and we will delete it.
@@ -140,9 +140,9 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 
   <h2>Security</h2>
   <p>
-    All traffic to Apple is encrypted in transit (TLS). Authentication uses industry-standard
+    All traffic to StudPilot is encrypted in transit (TLS). Authentication uses industry-standard
     signed tokens; the Studio plugin authenticates with short-lived scoped session tokens, never
-    your password. No system is unbreakable — Apple is a beta — but we designed the architecture so
+    your password. No system is unbreakable — StudPilot is a beta — but we designed the architecture so
     that the blast radius of any single failure is small.
   </p>
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The migration runner these SQL files never had.
 //
-//   node infra/supabase/migrate.mjs --status  --docker apple-rls-123
+//   node infra/supabase/migrate.mjs --status  --docker studpilot-rls-123
 //   node infra/supabase/migrate.mjs --status  --url postgres://…
 //   node infra/supabase/migrate.mjs --apply   --url postgres://… --yes
 //   node infra/supabase/migrate.mjs --adopt 0001_init.sql … --url postgres://… --yes

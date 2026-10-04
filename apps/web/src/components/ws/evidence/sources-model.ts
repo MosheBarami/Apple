@@ -5,7 +5,7 @@
  * source records with paths, hashes or line ranges, so none are produced: a source here is a lookup
  * tool that FINISHED OK, named with the vocabulary's own sentence. Nothing here implies live browsing.
  */
-import { PRODUCT_MODEL_INFO, type StudioPlace } from '@apple/shared';
+import { PRODUCT_MODEL_INFO, type StudioPlace } from '@studpilot/shared';
 import { kindForTool, labelForTool } from '../tool-vocabulary.ts';
 
 export interface ToolLike {
@@ -23,7 +23,7 @@ export interface SourceRow {
   note?: string;
 }
 
-/** Lookups that read Apple's own knowledge and libraries. `browsing` is left out: not authorised provenance. */
+/** Lookups that read StudPilot's own knowledge and libraries. `browsing` is left out: not authorised provenance. */
 export function sourcesFromTools(tools: readonly ToolLike[] | undefined): SourceRow[] {
   const seen = new Set<string>();
   const rows: SourceRow[] = [];

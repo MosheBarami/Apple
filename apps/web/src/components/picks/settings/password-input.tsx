@@ -4,7 +4,7 @@
 // swaps the field between hidden and shown) and "Password Strength Hover Indicator" (five dots
 // under the field, and a checklist that opens when you hover or focus the info mark).
 //
-// THE CHECKLIST IS HONEST ABOUT WHICH LINE IS A RULE. Apple has one hard rule — a minimum length
+// THE CHECKLIST IS HONEST ABOUT WHICH LINE IS A RULE. StudPilot has one hard rule — a minimum length
 // (PASSWORD_MIN in lib/auth-flows.ts, plus refusing a common password or your own address, which
 // the form still reports as an error). The other lines are tips that make a password stronger,
 // and they are labelled as tips: a checklist that shows "1 uppercase letter" as a requirement

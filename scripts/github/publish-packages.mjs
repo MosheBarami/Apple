@@ -13,12 +13,12 @@
 //
 // THE SCOPE PROBLEM. GitHub Packages only accepts an npm package whose scope equals the OWNER of
 // the repository it is published for (owner MosheBarami => `@mosheberami/...`). The packages in this
-// tree are named @apple/* (soon @apple/*), so publishing them under their in-repo name is refused by
+// tree are named @studpilot/* (soon @studpilot/*), so publishing them under their in-repo name is refused by
 // the registry. The in-repo name is load-bearing (every `workspace:*` dependency and `--filter`
 // uses it), so this script never edits the source package.json. It STAGES a copy under a temp
 // directory whose manifest has the name rewritten to `@<owner>/<basename>`, `private` removed and a
 // `repository` field added (that field is what links the package to this repo on GitHub), then
-// runs `npm publish` there. The base name is kept: @apple/sdk -> @mosheberami/sdk.
+// runs `npm publish` there. The base name is kept: @studpilot/sdk -> @mosheberami/sdk.
 //
 // IT REFUSES, rather than papers over:
 //   - a publishable package with a `workspace:` / `file:` / `link:` dependency (it would be
@@ -38,7 +38,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCAN_PARENTS = ['apps', 'packages'];
 const LOCAL_DEP = /^(workspace|file|link|portal):/;
 
-/** `@apple/sdk` -> `sdk`. An unscoped name is returned as is. */
+/** `@studpilot/sdk` -> `sdk`. An unscoped name is returned as is. */
 export function baseName(name) {
   return name.includes('/') ? name.split('/').pop() : name;
 }
@@ -174,7 +174,7 @@ function main() {
   const repo = o.repo ?? detectRepo();
   const owner = repo.split('/')[0];
   const ctx = { owner, repo };
-  const outRoot = mkdtempSync(join(tmpdir(), 'apple-publish-'));
+  const outRoot = mkdtempSync(join(tmpdir(), 'studpilot-publish-'));
   let failed = false;
   try {
     for (const pkg of packages) {

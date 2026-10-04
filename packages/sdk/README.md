@@ -1,15 +1,15 @@
-# @apple/sdk
+# @studpilot/sdk
 
-Clients for the Apple REST + streaming API, in the three languages this product is used
+Clients for the StudPilot REST + streaming API, in the three languages this product is used
 from, plus the command line.
 
 | | where | entry point |
 |---|---|---|
-| JavaScript | `src/` | `import { AppleClient } from '@apple/sdk'` |
+| JavaScript | `src/` | `import { StudPilotClient } from '@studpilot/sdk'` |
 | TypeScript | `types/index.d.ts` | the same import, typed |
-| Python | `python/apple_sdk/` | `from apple_sdk import AppleClient` |
-| Luau (in Studio) | `luau/AppleClient.luau` | `local Client = require(script.AppleClient)` |
-| CLI | `bin/apple.mjs` | `apple health` |
+| Python | `python/studpilot_sdk/` | `from studpilot_sdk import StudPilotClient` |
+| Luau (in Studio) | `luau/StudPilotClient.luau` | `local Client = require(script.StudPilotClient)` |
+| CLI | `bin/studpilot.mjs` | `studpilot health` |
 
 They are four implementations of **one** protocol, not four protocols. Every route, header
 name, token shape and subprotocol comes from `apps/worker/src/index.ts` and
@@ -19,7 +19,7 @@ reshaped on the way through.
 ## Why the JavaScript is JavaScript
 
 `src/` is plain ESM with no build step, so a browser, a Cloudflare Worker, Node and the
-`apple` binary all load the same bytes. TypeScript callers get `types/index.d.ts`, which is
+`studpilot` binary all load the same bytes. TypeScript callers get `types/index.d.ts`, which is
 hand-written — and therefore a second description of one thing. Two tests keep the two
 honest:
 
@@ -32,9 +32,9 @@ honest:
 ## Using it
 
 ```js
-import { AppleClient, SessionStream } from '@apple/sdk';
+import { StudPilotClient, SessionStream } from '@studpilot/sdk';
 
-const client = new AppleClient({ token: process.env.APPLE_TOKEN });
+const client = new StudPilotClient({ token: process.env.STUDPILOT_TOKEN });
 const { messages } = await client.messages(projectId, { limit: 20 });
 
 const stream = new SessionStream({ baseUrl: client.baseUrl, projectId, token }).connect();
@@ -44,26 +44,43 @@ console.log(run.text, run.creditsSpent);
 ```
 
 ```python
-from apple_sdk import AppleClient
-client = AppleClient(token=os.environ["APPLE_TOKEN"])
+from studpilot_sdk import StudPilotClient
+client = StudPilotClient(token=os.environ["STUDPILOT_TOKEN"])
 print(client.health())
 ```
 
 ```lua
-local Client = require(script.AppleClient)
+local Client = require(script.StudPilotClient)
 local client = Client.new({ version = "0.2.0", protocol = 1 })
 local res = client:claim(code)
 ```
 
 ```
-apple health
-apple messages <project-id> --limit 20
-apple export <project-id> --format md
-apple purge <project-id> --yes
+studpilot health
+studpilot messages <project-id> --limit 20
+studpilot export <project-id> --format md
+studpilot purge <project-id> --yes
 ```
 
 The CLI's exit codes are part of its contract: `0` success, `1` the API answered with an
 error or could not be reached, `2` the command line was wrong.
+
+## The former names
+
+The product was called Apple, and a consumer written against the old names keeps working for one
+release. Each of these is removed in the next major version; new code uses the StudPilot names.
+
+| Was | Is now | Still works |
+|---|---|---|
+| `AppleClient` (JavaScript, TypeScript) | `StudPilotClient` | yes: the same class under its former name, and `AppleClientOptions` for its options |
+| `apple_sdk` (Python) | `studpilot_sdk` | yes: `import apple_sdk` re-exports everything and raises a `DeprecationWarning` |
+| `luau/AppleClient.luau` | `luau/StudPilotClient.luau` | yes: the old module requires the new one and returns it |
+| the `apple` command | `studpilot` | yes: both names are installed and run the same file |
+| `APPLE_TOKEN`, `APPLE_API_URL`, `APPLE_ADMIN_KEY` | `STUDPILOT_TOKEN`, `STUDPILOT_API_URL`, `STUDPILOT_ADMIN_KEY` | yes, and the older `GOLEM_TOKEN` / `GOLEM_API_URL` too; the `STUDPILOT_` name wins |
+
+The clients send the StudPilot spelling of the wire names (`studpilot.v1`, `studpilot.jwt.`, the
+`X-StudPilot-*` headers). The worker accepts the two former spellings as well, so this does not
+depend on which side is upgraded first.
 
 ## What it refuses to do
 

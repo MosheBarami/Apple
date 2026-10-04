@@ -236,7 +236,7 @@ test('a test script whose glob misses a test file in its own package is caught',
 /* ------------------------------------ a directory after `node --test` is a CI-only failure --- */
 
 test('a bare directory passed to `node --test` is caught, and the file-list form is not', () => {
-  // `@apple/lumen-isles` and `@apple/site` both shipped `"test": "node --test tests/"`. On the
+  // `@studpilot/lumen-isles` and `@studpilot/site` both shipped `"test": "node --test tests/"`. On the
   // local Node that discovers the directory and passes. On Node 22 — ci.yml's NODE_VERSION — the
   // runner resolves `tests/` as a module specifier and dies before one assertion runs:
   //

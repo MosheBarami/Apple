@@ -1,7 +1,7 @@
 /*
  * THE FRONT PAGE — structure only.
  *
- * Every colour, type, radius and motion value is a token from apple-minimal.css, which
+ * Every colour, type, radius and motion value is a token from studpilot-minimal.css, which
  * Landing.astro imports before this file. Nothing here redeclares a token and nothing here needs
  * `!important`: the two sheets no longer fight, so the cascade settles on source order alone.
  *
@@ -20,7 +20,7 @@
  * (components/picks/motion.ts): still under reduced motion, idle off screen, drawn in these tokens.
  */
 
-/* The mono token reaches every technical surface; the body face comes from apple-minimal.css. */
+/* The mono token reaches every technical surface; the body face comes from studpilot-minimal.css. */
 body {
   font-family: var(--font-body);
 }
@@ -69,7 +69,7 @@ a {
 }
 
 /* THE COMPOSER — the one object on the page that floats, so it is the one that casts. Its values
-   are the app's composer (apps/web/src/design/apple-minimal.css `.gx-composer__inner`). */
+   are the app's composer (apps/web/src/design/studpilot-minimal.css `.gx-composer__inner`). */
 .composer {
   width: min(100%, 680px);
   margin-top: 44px;

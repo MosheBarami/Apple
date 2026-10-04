@@ -1,6 +1,6 @@
 # Generated asset provenance and QC log
 
-Every 3D asset generated for Apple is recorded here with its source, licence, cost, QC verdict and
+Every 3D asset generated for StudPilot is recorded here with its source, licence, cost, QC verdict and
 — critically — whether it was **accepted or rejected**, with the reason. An asset a generator
 returned successfully is not an asset that is usable.
 
@@ -20,9 +20,9 @@ references it.
 | # | Task | Model | Credits | Running balance |
 |---|---|---|---|---|
 | — | opening balance | — | — | 2,180 |
-| 1 | `apple-hero` preview | meshy-6 text-to-3d | 20 | 2,160 |
-| 2 | `apple-hero` texture refine (PBR, 2K) | meshy-6 refine | 10 | 2,150 |
-| 3 | `apple-blocks` preview (retry after reject) | meshy-6 text-to-3d | 20 | 2,130 |
+| 1 | `studpilot-hero` preview | meshy-6 text-to-3d | 20 | 2,160 |
+| 2 | `studpilot-hero` texture refine (PBR, 2K) | meshy-6 refine | 10 | 2,150 |
+| 3 | `studpilot-blocks` preview (retry after reject) | meshy-6 text-to-3d | 20 | 2,130 |
 | 4 | `barrel` preview (capability probe) | meshy-6 text-to-3d | 20 | 2,110 |
 
 **Spend stopped at 70 credits of 2,180 (3.2%).** Three generations were enough to establish where
@@ -31,12 +31,12 @@ been waste, not thoroughness.
 
 ## Assets
 
-### `apple-hero` — REJECTED (visual quality)
+### `studpilot-hero` — REJECTED (visual quality)
 
 - Tasks: `01a054b9-2df3-736b-92a0-027e71268183` (preview), `01a054bd-09a0-76ae-99aa-a310b9795c15` (refine)
-- Prompt asked for: *"friendly stone apple carved from warm honey-coloured limestone blocks, blocky
+- Prompt asked for: *"friendly stone studpilot carved from warm honey-coloured limestone blocks, blocky
   humanoid form, deep chisel marks, glowing amber rune in the chest, moss in the crevices"*
-- Files: `apple-hero-preview.glb` (6.57 MB), `apple-hero-textured.glb` (18.02 MB + 7.35 MB PBR maps)
+- Files: `studpilot-hero-preview.glb` (6.57 MB), `studpilot-hero-textured.glb` (18.02 MB + 7.35 MB PBR maps)
 
 **Structural QC** — `node packages/evals/src/glb-inspect.mjs … --profile web_hero --height 2.0`:
 
@@ -69,15 +69,15 @@ and it is why the pipeline has a visual step and not only a metrics step.
 1. Pass `should_remesh: true` alongside `target_polycount`, or the count is silently ignored.
 2. `origin_at` requires `auto_size: true`; otherwise the pivot lands at the centre. Verify the pivot
    on every import rather than trusting the request.
-3. "Apple" reads to the generator as a fantasy creature. Character prompts must state the negative
+3. "StudPilot" reads to the generator as a fantasy creature. Character prompts must state the negative
    space explicitly (no face, no fingers, no toes) and describe construction, not personality.
 4. A generated character is not automatically better than a good procedural one. The site's
-   hand-built three.js apple is on-brand, weighs nothing and is animatable; a generated mesh has to
+   hand-built three.js studpilot is on-brand, weighs nothing and is animatable; a generated mesh has to
    beat that, not merely exist.
 
-### `apple-blocks` — REJECTED (prompt adherence)
+### `studpilot-blocks` — REJECTED (prompt adherence)
 
-- Task `01a054c1-0026-7353-98b5-edd1a7c0182a`, file `apple-blocks-preview.glb` (0.77 MB)
+- Task `01a054c1-0026-7353-98b5-edd1a7c0182a`, file `studpilot-blocks-preview.glb` (0.77 MB)
 - Retry with the negative space stated as explicitly as the 600-character limit allows:
   *"NO FACE: the head is a plain rectangular stone block, no eyes, no mouth, no skull, no features…
   blunt mitts with no fingers… flat rectangular feet with no toes… like carved building blocks, not
@@ -95,7 +95,7 @@ anatomy.** Two attempts with progressively more explicit negation both produced 
 is a property of the tool, not a bad roll, and it means **stylised blocky characters are not
 reachable by text-to-3D** at this quality bar.
 
-**Consequence for the asset strategy:** the site keeps its hand-built procedural three.js apple. It
+**Consequence for the asset strategy:** the site keeps its hand-built procedural three.js studpilot. It
 is on-brand, weighs nothing, animates, and is driven by a state machine — a generated mesh would
 have to beat all of that, and neither attempt came close to matching even its silhouette.
 
@@ -105,7 +105,7 @@ have to beat all of that, and neither attempt came close to matching even its si
 - Generated with `auto_size: true` + `origin_at: 'bottom'` + `should_remesh: true`.
 
 **Structural QC passed the geometry checks** — 2,931 triangles, 0.17 MB, and critically
-**`boundsMin.y = 0.00`: the pivot is exactly at the base.** This confirms the `apple-hero` pivot
+**`boundsMin.y = 0.00`: the pivot is exactly at the base.** This confirms the `studpilot-hero` pivot
 diagnosis: `origin_at` is ignored unless `auto_size: true` is also set. The fix works.
 
 **Visual QC: the form is correct — bulging staves, three hoop bands, a chipped rim — but the

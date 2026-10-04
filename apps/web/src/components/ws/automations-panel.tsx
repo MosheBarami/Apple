@@ -278,7 +278,7 @@ export function AutomationsPanel({ projectId }: { projectId: string }) {
   /** Every refusal arrives the same way: the worker's `error` string, placed on its own field. */
   const takeRejection = (err: unknown) => {
     setRejection(err instanceof ApiError ? refusalFor(err.message) : null);
-    if (!(err instanceof ApiError)) toast('Could not reach Apple. Check your connection.', 'error');
+    if (!(err instanceof ApiError)) toast('Could not reach StudPilot. Check your connection.', 'error');
   };
 
   const closeEditor = () => {
@@ -313,7 +313,7 @@ export function AutomationsPanel({ projectId }: { projectId: string }) {
       void qc.invalidateQueries({ queryKey: ['automation-runs', id] });
     },
     onError: (err) => {
-      if (!(err instanceof ApiError)) return toast('Could not reach Apple.', 'error');
+      if (!(err instanceof ApiError)) return toast('Could not reach StudPilot.', 'error');
       // `requeue` travels on the 409 body because "it was dropped" and "it will be retried" are
       // different facts, and the automation's own overlap policy decides which one is true.
       toast(fireRefusal(err.message, false), 'error');

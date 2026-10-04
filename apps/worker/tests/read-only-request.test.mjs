@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
 const bundle = (src) => {
-  const out = join(tmpdir(), `apple-${src.replace(/\W/g, '-')}-${process.pid}.mjs`);
+  const out = join(tmpdir(), `studpilot-${src.replace(/\W/g, '-')}-${process.pid}.mjs`);
   execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
     [join(WORKER, 'src', src), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`], { cwd: WORKER, stdio: 'pipe' });
   return out;

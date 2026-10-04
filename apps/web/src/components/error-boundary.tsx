@@ -31,7 +31,7 @@
 // when the network is the thing that broke.
 //
 // THE OWNER'S PICKS, 2026-09-23. The card's mark is Componentry's "ASCII Effect" in its glitch
-// variant — an apple drawn in characters that slips and scrambles every few seconds, which is what
+// variant — a studpilot drawn in characters that slips and scrambles every few seconds, which is what
 // the title says happened (picks/thinking/ascii-mark.tsx). And the error's own words, which are for
 // whoever sends the screenshot to support and not for a young creator reading the sentence, are
 // folded behind "Details" with Animate UI's Collapsible motion (picks/thinking/folded-details.tsx).
@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('Apple UI crashed:', error, info.componentStack);
+    console.error('StudPilot UI crashed:', error, info.componentStack);
     // The component stack is NOT sent. It names this product's own files, which is diagnostic, but
     // it is also the one string here that grows without bound and is composed from rendered
     // content in development builds. The error and its own stack are what Sentry groups on.
@@ -83,7 +83,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className={route ? 'crash-screen is-route' : 'crash-screen'} role="alert">
         <div className={route ? 'crash-card crash-card--route' : 'crash-card'}>
           <AsciiMark className="crash-mark" />
-          <h1>The apple stumbled</h1>
+          <h1>StudPilot stumbled</h1>
           <p>
             {route
               ? 'This screen broke — the rest of the app is still working, and your projects and data are safe.'

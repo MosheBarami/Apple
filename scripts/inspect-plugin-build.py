@@ -197,7 +197,8 @@ PATTERNS = [
     ("Supabase project URL", re.compile(rb"[a-z0-9]{16,}\.supabase\.(co|in)")),
     ("Supabase key variable", re.compile(rb"(?i)supabase[_a-z]*(key|secret|jwt)")),
     # The worker's admin gateway is what the eval harness spends real money through.
-    ("Golem admin credential", re.compile(rb"(?i)(x-golem-admin|golem[_-]?admin[_-]?key|admin[_-]?key\b)")),
+    # Spelled for every name the product has carried: the credential does not become shippable by a rename.
+    ("Admin credential", re.compile(rb"(?i)(x-(?:golem|apple|studpilot)-admin|(?:golem|apple|studpilot)[_-]?admin[_-]?key|admin[_-]?key\b)")),
     ("Admin gateway path", re.compile(rb"/api/admin/")),
     # A live pairing token is exactly `<project uuid>.<48 hex>` — the shape minted in
     # apps/worker/src/index.ts. A developer pasting one in to skip the pairing UI is
@@ -225,7 +226,8 @@ ALLOW = re.compile(
 # tunnel, a laptop on the LAN — and a blocklist by construction cannot catch those.
 ALLOWED_HOSTS = {
     "golem.moshe-barami111.workers.dev",  # the production worker; DEFAULT_API
-    "apple.moshe-barami111.workers.dev",  # verified Apple production origin
+    "apple.moshe-barami111.workers.dev",  # verified Apple production origin; the plugin's API origin until the cloud rename
+    "studpilot.app",  # the StudPilot production origin the plugin switches to with the cloud rename (allowed ahead of it)
     "127.0.0.1",  # session-configured owner gateway; plugin hard-codes this exact loopback IP
 }
 
@@ -275,6 +277,8 @@ MUST_FLAG = [
     ("AKIA" + "IOSFODNN7EXAMPLZ").encode(),
     ("https://" + "abcdefghijklmnop" + ".supabase.co").encode(),
     ('local h = {["X-Golem-' + 'Admin"] = "hunter2hunter2"}').encode(),
+    ('local h = {["X-StudPilot-' + 'Admin"] = "hunter2hunter2"}').encode(),
+    ("https://" + "studpilot.app.evil-staging.test/api").encode(),
     ('token = "' + "3f2504e0-4f89-11d3-9a0c-0305e82c3301" + "." + _HEX48 + '"').encode(),
     ("/Users/" + 'somedev/Desktop/RbxAI/apps/plugin').encode(),
     ("https://" + "evil-staging.internal-host.test/api").encode(),
@@ -286,10 +290,14 @@ MUST_FLAG = [
 MUST_NOT_FLAG = [
     b'local DEFAULT_API = "https://golem.moshe-barami111.workers.dev"',
     b'local APPLE_ORIGIN = "https://apple.moshe-barami111.workers.dev"',
+    b'local STUDPILOT_ORIGIN = "https://apple.moshe-barami111.workers.dev"',
+    b'local STUDPILOT_ORIGIN = "https://studpilot.app"',
+    b'local POLL_URL = "https://studpilot.app/api/studio/poll"',
     b'local gateway = "http://127.0.0.1:63747/v1/search"',
     b'codeBox.PlaceholderText = "Pairing code (e.g. K7M3QP)"',
     b'plugin:SetSetting("golem_session", HttpService:JSONEncode(session))',
     b'["X-Golem-Token"] = token or "",',
+    b'["X-StudPilot-Token"] = token or "",',
     b'local VERSION = Version.VERSION',
 ]
 

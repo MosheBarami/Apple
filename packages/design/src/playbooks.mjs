@@ -29,7 +29,7 @@
 //      every playbook that cites it, and `assertPlaybookIntegrity()` fails the
 //      build the moment a step cites an id that no longer exists.
 //
-//   2. Evidence signals are the names of APPLE-OWNED PRIMITIVES — `Theme.panel`,
+//   2. Evidence signals are the names of STUDPILOT-OWNED PRIMITIVES — `Theme.panel`,
 //      `Theme.well`, `Theme.counter` — not invented regexes. That is what makes
 //      the third state below meaningful rather than decorative.
 
@@ -43,7 +43,7 @@ const byId = new Map(RULES.map((r) => [r.id, r]));
 //   primitive — the owned primitive was used. The step was done the intended way.
 //   manual    — a raw equivalent is present. The step was ATTEMPTED, but it went
 //               around the library. This is the state that matters: §G's whole
-//               complaint is that Apple "defaults to inventing every Roblox GUI
+//               complaint is that StudPilot "defaults to inventing every Roblox GUI
 //               from a blank canvas", and `manual` is that defaulting, detected.
 //               It is a warning and not a failure, because hand-rolling is
 //               sometimes right and the correctness checks still run over it.
@@ -246,7 +246,7 @@ export function composePlaybook(id, { rules = RULES } = {}) {
   lines.push(`PLAYBOOK: ${pb.taskClass}.`);
   lines.push(
     'Work the steps in order. Each one names the constraints it exists to satisfy.',
-    'Where an Apple primitive is named, reach for it rather than rebuilding it.',
+    'Where a StudPilot primitive is named, reach for it rather than rebuilding it.',
     '',
   );
 

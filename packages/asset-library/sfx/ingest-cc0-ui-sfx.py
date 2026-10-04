@@ -48,7 +48,7 @@ def archive_for(pack):
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / pack["archive"]
     if not path.exists():
-        request = urllib.request.Request(pack["url"], headers={"User-Agent": "AppleRobloxAssetLibrary/1.0"})
+        request = urllib.request.Request(pack["url"], headers={"User-Agent": "StudPilotRobloxAssetLibrary/1.0"})
         with urllib.request.urlopen(request, timeout=30) as response:
             if response.url.split("/", 3)[2] != "opengameart.org":
                 raise ValueError("Unexpected download host")

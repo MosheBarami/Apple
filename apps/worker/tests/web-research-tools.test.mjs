@@ -179,7 +179,7 @@ test('Serper: one POST to the pinned host with the key in a header, results tier
   assert.equal(calls[0].url, 'https://google.serper.dev/search');
   assert.equal(calls[0].method, 'POST');
   assert.equal(calls[0].headers['x-api-key'], SERPER_KEY);
-  assert.match(calls[0].headers['user-agent'], /^AppleAgent\/1 /);
+  assert.match(calls[0].headers['user-agent'], /^StudPilotAgent\/1 /);
   assert.deepEqual(JSON.parse(calls[0].body), { q: 'humanoid walkspeed', num: 10 });
   assert.equal(r.provider, 'serper');
   assert.equal(r.searched, true);

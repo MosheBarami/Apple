@@ -19,7 +19,7 @@
  *   records every request identically.
  *
  *   THE TABLE MAY NOT BE A CUSTOMER LIST. Rows hold the SHA-256 of the address and never the
- *   address. A queue of "people locked out of Apple" sitting in plaintext is a phishing list with
+ *   address. A queue of "people locked out of StudPilot" sitting in plaintext is a phishing list with
  *   an operator's blessing, and the whole point of this row is that its subject is in trouble.
  *   The operator matches by hashing an address the person gave them through some other channel,
  *   which is what `findByEmail` is for.

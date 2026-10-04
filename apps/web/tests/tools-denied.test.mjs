@@ -1,4 +1,4 @@
-// "Why did Apple not run that script?"
+// "Why did StudPilot not run that script?"
 //
 // A tool permission removes a tool from the set the model is offered. Until now nothing said so:
 // the agent simply never used it, and a capability that is silently missing reads, from the user's
@@ -79,5 +79,5 @@ test('the turn explains a permission limit without adding a thinking line', () =
   // one plain reason without exposing a tool name or stacking a second thinking status.
   assert.match(TURN, /turned off in your settings/, 'the reply never says why an ability was missing');
   assert.doesNotMatch(RUN_STEPS, /turned off in your settings|deniedTools/, 'the live steps gained a persistent warning');
-  assert.doesNotMatch(TURN, /apple-status|<Thinking\b/, 'a second thinking line of our own is back');
+  assert.doesNotMatch(TURN, /studpilot-status|<Thinking\b/, 'a second thinking line of our own is back');
 });

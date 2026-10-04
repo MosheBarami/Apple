@@ -238,7 +238,7 @@ test('an unrecognised command gets no bucket of its own, so the key space cannot
   const d = makeDO();
   for (const name of ['not-a-command', 'all:4242', '../../link', 'x'.repeat(200)]) await d.rate('4242', name);
   const keys = [...d.storage.map.keys()].filter((k) => k.startsWith('rate:'));
-  assert.deepEqual(keys, ['rate:all:4242'], 'only the wide bucket may exist for commands Apple does not know');
+  assert.deepEqual(keys, ['rate:all:4242'], 'only the wide bucket may exist for commands StudPilot does not know');
 });
 
 test('an interaction with no Discord user id is refused rather than sharing one bucket', async () => {

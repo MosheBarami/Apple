@@ -59,7 +59,7 @@ const FULL = flag('--full');
 const NO_PRUNE = flag('--no-prune');
 const DRY = flag('--dry');
 
-if (!API_BASE) fail('API_BASE env var is not set. Example: API_BASE=https://apple-worker.example.workers.dev ADMIN_KEY=... node src/upload.mjs');
+if (!API_BASE) fail('API_BASE env var is not set. Example: API_BASE=https://studpilot-worker.example.workers.dev ADMIN_KEY=... node src/upload.mjs');
 if (!ADMIN_KEY) fail('ADMIN_KEY env var is not set. It must match the worker ADMIN_KEY secret.');
 if (!existsSync(CHUNKS_PATH)) fail(`${CHUNKS_PATH} not found — run "pnpm chunk" first.`);
 
@@ -115,7 +115,7 @@ function loadChunks() {
   });
   // The general craft cards ride along, so the index holds them and a prune never removes them.
   const cards = JSON.parse(readFileSync(path.join(ROOT, 'data', 'skill-cards.json'), 'utf8')).cards;
-  // Apple's research notes ride along too (research-chunks.mjs), for the same reason.
+  // StudPilot's research notes ride along too (research-chunks.mjs), for the same reason.
   return [...docs, ...skillCardChunks(cards), ...researchChunks()];
 }
 

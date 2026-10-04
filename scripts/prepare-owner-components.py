@@ -85,7 +85,7 @@ def persist(bundle,job,mapping,data,nid,dest):
  return dict(id='owner:'+nid,name=row['name'],className=row['class'],path=row['path'],sourceSha256=row['source_id'],componentSha256=SHA(data),byteLength=len(data),summary=row.get('summary') or row['name'],usage=(row.get('usage') or 'Reuse owner component')+'; script-free native subtree; source/hierarchy/properties retained as inert data; native visual review required.',dependencyIds=sorted(set('owner:'+r['targetNodeId'] for r in excluded)),unresolvedRefs=[r['nodeId']+'.'+r['property']+'->'+r['targetNodeId'] for r in excluded],scriptsPreserved=True,descriptionSha256=SHA(payload),blobFile=stem+'.rbxm',descriptionFile=stem+'.description.json')
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('ids',nargs='*');p.add_argument('--cached-export',type=pathlib.Path,action='append',default=[]);p.add_argument('--ready-file',default='/private/tmp/apple-owner-gateway-ready.json');p.add_argument('--output',type=pathlib.Path,required=True);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('ids',nargs='*');p.add_argument('--cached-export',type=pathlib.Path,action='append',default=[]);p.add_argument('--ready-file',default='/private/tmp/studpilot-owner-gateway-ready.json');p.add_argument('--output',type=pathlib.Path,required=True);a=p.parse_args()
  a.output.mkdir(parents=True,exist_ok=True);g=Gateway(a.ready_file);manifest=a.output/'manifest.jsonl';existing=set()
  if manifest.exists():
   for line in manifest.read_text().splitlines()[1:]:

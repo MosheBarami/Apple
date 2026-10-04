@@ -377,7 +377,7 @@ billable          = 240,000 − 10,000 free = 230,000 neurons/day
 
 **Sharding is arithmetically unjustifiable until the monthly ceiling exceeds roughly $77/month** —
 about 3.1× the hard maximum of $24.80 that this section was derived against. **STALE — NOT RE-DERIVED:** on
-2026-09-29 the owner lifted the Apple cap (de1117b8), so the ceiling is now 1,000,010,000 neurons and the
+2026-09-29 the owner lifted the StudPilot cap (de1117b8), so the ceiling is now 1,000,010,000 neurons and the
 ratio is `1,000,010,000 / 1,200 ≈ 833,000`, far above the required 200. The figures in this argument
 belong to the 100,000-neuron ceiling and need their author before they are relied on.
 

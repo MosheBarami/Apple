@@ -1,4 +1,4 @@
-// Fixed holdout for Apple's 2026-09-25 colorful-cartoon-only product scope.
+// Fixed holdout for StudPilot's 2026-09-25 colorful-cartoon-only product scope.
 // Do not edit this bank after a run; create v3 instead. Keep prompts out of training.
 export const BANK = 'cartoon-v2';
 

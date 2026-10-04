@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MODE_INFO } from '@apple/shared';
+import { MODE_INFO } from '@studpilot/shared';
 import { systemPrompt } from '../src/prompts.ts';
 
 // V3 G01 / Q25: there are no Plan, Agent or Autonomous modes. One behaviour answers every request,
@@ -16,7 +16,7 @@ const base = {
 };
 
 test('shared carries one request kind and no mode vocabulary', async () => {
-  const shared = await import('@apple/shared');
+  const shared = await import('@studpilot/shared');
   assert.deepEqual(Object.keys(MODE_INFO), ['agent']);
   assert.equal('PRODUCT_MODES' in shared, false);
   assert.equal('PRODUCT_MODE_INFO' in shared, false);

@@ -1,7 +1,7 @@
 // How much transcript one agent step may send, DERIVED from the model it is sent to.
 //
 // It was two constants in do/session.ts (60,000 / 42,000 chars), written when the model took 32k
-// tokens. Apple MAX now runs on a 1.3M-token model and round 4 of the gauntlet (2026-09-23) hit
+// tokens. StudPilot MAX now runs on a 1.3M-token model and round 4 of the gauntlet (2026-09-23) hit
 // 56,935 of 60,000 with 23 turn groups dropped — the model re-read what it had built and lost its
 // plan. The real ceilings are three, and the budget is the tightest of them:
 //

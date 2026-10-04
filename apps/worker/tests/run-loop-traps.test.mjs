@@ -59,7 +59,7 @@ await esbuild.build({
           // handler's own classification is what is exercised.
           export async function chat(env, req, opts) {
             const next = await env.__testChat(req, opts);
-            if (next && next.__refuse) throw new RateLimitedError('Apple is handling a burst of requests right now.');
+            if (next && next.__refuse) throw new RateLimitedError('StudPilot is handling a burst of requests right now.');
             if (next && next.__transient) {
               const e = new Error('workers-ai 503 temporarily unavailable');
               e.name = 'ProviderError';
@@ -270,7 +270,7 @@ test('EVERY PROVIDER WAIT IS ANNOUNCED TO THE CLIENT, and the run stays alive wh
     await h.session.alarm();
     assert.equal(h.store.get('agent').status, 'running', 'one refusal must not end the run');
     assert.equal(notices(h).length, 1, 'the wait sent nothing to the client — a waiting run looks exactly like a dead one');
-    assert.match(notices(h)[0].message, /Apple's builder is too busy right now/);
+    assert.match(notices(h)[0].message, /StudPilot's builder is too busy right now/);
     assert.match(notices(h)[0].message, /Trying again in \d+ seconds/);
     const statusAfter = h.sent.slice(h.sent.indexOf(notices(h)[0]) - 1).find((m) => m.type === 'agent_status');
     assert.ok(statusAfter, 'the Thinking card must be told the run is still going');
@@ -816,9 +816,9 @@ test('A PAIRED RUN OFFERED NOTHING THAT CHANGES THE PROJECT IS NOT NUDGED TO CHA
     assert.equal(h.store.get('agent').llm.some((m) => m.role === 'user' && OWES_WORK_NUDGE.test(m.content)), false,
       'a run with no tool that changes the project was told to change it');
     assert.ok(lastEnd(h), 'the run kept going after a reply it can never improve on');
-    assert.match(assistantRow(h).content, /Nothing in your place was changed: Apple was not able to make changes/,
+    assert.match(assistantRow(h).content, /Nothing in your place was changed: StudPilot was not able to make changes/,
       'the reply must say nothing changed, whatever the model wrote');
-    assert.match(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /Nothing in your place was changed: Apple was not able to make changes/,
+    assert.match(h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join(''), /Nothing in your place was changed: StudPilot was not able to make changes/,
       'and the person watching must be told, not only the stored row');
 
     // CONTROL: the same prose on a run that CAN build is still steered back to the work.
@@ -908,7 +908,7 @@ test('a read trimmed out of the transcript can be read again; the duplicate guar
   }
 });
 
-// Gauntlet round 4 (2026-09-23): Apple MAX on a 1.3M-token model was trimmed at a fixed 60,000 chars
+// Gauntlet round 4 (2026-09-23): StudPilot MAX on a 1.3M-token model was trimmed at a fixed 60,000 chars
 // and dropped 23 turn groups. The ceiling a step is told about is the one derived from its model
 // (prompt-budget.ts), and it is larger than the old constant.
 // The layout check (scene-flags-run.ts) makes three READS of its own after a step that built in the workspace and at the answer: the
@@ -1083,7 +1083,7 @@ test('when Studio drops mid-run the run pauses: no further model step, nothing r
     responses: [
       calls(['get_project_tree', { root: 'game.Workspace' }]),
       calls(['set_properties', { path: 'game.Lighting', props: { ClockTime: 18 } }]),
-      answer({ text: 'Studio disconnected; reconnect it from the Apple panel.' }),
+      answer({ text: 'Studio disconnected; reconnect it from the StudPilot panel.' }),
     ],
   });
   try {
@@ -1114,7 +1114,7 @@ const GENERIC_INCOMPLETE = /I did not change anything in your project/g;
 const STALL = /kept looking at your place instead of building/g;
 const REPEAT = /kept doing the same thing again and again/g;
 const REFUND = /You have not been charged for this run/g;
-const HEADING = /Apple could not change your place/g;
+const HEADING = /StudPilot could not change your place/g;
 const count = (text, re) => (String(text).match(re) ?? []).length;
 const streamed = (h) => h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
 const emptyTree = (op) => (op.op === 'get_tree' ? { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } } : { ok: true, data: {} });
@@ -1169,7 +1169,7 @@ test('F-045: a refusal the product can explain, on a run that changed nothing, I
     assert.equal(count(row.content, GENERIC_INCOMPLETE), 0, `the generic sentence contradicts the refusal: ${row.content}`);
     assert.equal(count(row.content, STALL), 0, `a second reason was given for the same ending: ${row.content}`);
     assert.equal(count(row.content, REFUND), 1, `the refund must be stated exactly once: ${row.content}`);
-    assert.ok(row.content.indexOf('Apple could not change') < row.content.indexOf('You have not been charged'),
+    assert.ok(row.content.indexOf('StudPilot could not change') < row.content.indexOf('You have not been charged'),
       'the reason comes before the money');
   } finally {
     h.stop();
@@ -1222,7 +1222,7 @@ test('F-045: a reply that spoke in more than one step is sent once, live and as 
   }
 });
 
-// F-064 round 5 (2026-09-23, run 2e381849, Apple MAX): 128 ops in, a check passed, eight steps of
+// F-064 round 5 (2026-09-23, run 2e381849, StudPilot MAX): 128 ops in, a check passed, eight steps of
 // reading, and the run ended "the change was made and checked" with half the request's list unbuilt.
 // Every plan step was ticked by its tool having run once, so nothing read as open. The request's own
 // list is the checklist: a run is steered to the next part nothing it built is named for.
@@ -1293,7 +1293,7 @@ test('F-064 control: a run whose listed parts are all built still ends on the id
   }
 });
 
-// F-064 round 4 (run a933ac87, Apple MAX, Autonomous OFF): three all-duplicate steps ended a run while
+// F-064 round 4 (run a933ac87, StudPilot MAX, Autonomous OFF): three all-duplicate steps ended a run while
 // the plan's "Audit and light the scene" was still open. Driven here through the real alarm loop, with
 // Autonomous off, rather than only through afterDuplicateStreak.
 const isStuckSteer = (m) => m.role === 'user' && /you are stuck/i.test(String(m.content));

@@ -8,7 +8,7 @@
  * would answer them. No channel, no hours, no reply expectation, on any tier, anywhere.
  *
  * AND THE ONE SUPPORT LINK IN THE APP POINTED SOMEWHERE ELSE. plans.tsx offered
- * hello@apple.build while every address on the marketing site was apple.labs.app@gmail.com. One of
+ * hello@studpilot.build while every address on the marketing site was apple.labs.app@gmail.com. One of
  * those two mailboxes is read by a human; a customer cannot tell which, and picking wrong looks
  * from their side exactly like being ignored.
  *

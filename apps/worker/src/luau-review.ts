@@ -24,14 +24,14 @@
  *     source's API vocabulary, `list_scripts` reports the class and the container, and only the
  *     two together can say that a LocalScript in ServerScriptService will never run.
  */
-import { parseLuau } from '@apple/evals/src/luau-ast.mjs';
-import { analyzeFile, analyzePlace } from '@apple/evals/src/luau-intel.mjs';
-import type { FileAnalysis, LuauFinding, PlaceAnalysis } from '@apple/evals/src/luau-intel.mjs';
-import { buildSymbolTable, crossReference, searchSymbols } from '@apple/evals/src/luau-symbols.mjs';
-import { buildDependencyGraph, indexPlace, requireOrder } from '@apple/evals/src/luau-graph.mjs';
-import type { DependencyGraph } from '@apple/evals/src/luau-graph.mjs';
-import { formatLuau, tokenDrift } from '@apple/evals/src/luau-format.mjs';
-import { inferContext, stripComments } from '@apple/evals/src/roblox-antipatterns.mjs';
+import { parseLuau } from '@studpilot/evals/src/luau-ast.mjs';
+import { analyzeFile, analyzePlace } from '@studpilot/evals/src/luau-intel.mjs';
+import type { FileAnalysis, LuauFinding, PlaceAnalysis } from '@studpilot/evals/src/luau-intel.mjs';
+import { buildSymbolTable, crossReference, searchSymbols } from '@studpilot/evals/src/luau-symbols.mjs';
+import { buildDependencyGraph, indexPlace, requireOrder } from '@studpilot/evals/src/luau-graph.mjs';
+import type { DependencyGraph } from '@studpilot/evals/src/luau-graph.mjs';
+import { formatLuau, tokenDrift } from '@studpilot/evals/src/luau-format.mjs';
+import { inferContext, stripComments } from '@studpilot/evals/src/roblox-antipatterns.mjs';
 import { parseInstancePath } from './effects.ts';
 
 export type { FileAnalysis, LuauFinding, PlaceAnalysis };

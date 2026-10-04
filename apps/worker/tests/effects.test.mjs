@@ -30,7 +30,7 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   { stdio: 'pipe' });
 const FX = await import(`file://${out}`);
 
-const toolOut = join(tmpdir(), `apple-fxtool-${process.pid}.mjs`);
+const toolOut = join(tmpdir(), `studpilot-fxtool-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'tools.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + toolOut],
   { cwd: WORKER, stdio: 'pipe' });
@@ -67,8 +67,8 @@ test('the catalogue is real and not empty', () => {
   }
 });
 
-test('every preset is representable by the current typed Apple plugin contract', () => {
-  const commands = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+test('every preset is representable by the current typed StudPilot plugin contract', () => {
+  const commands = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const tableKeys = (name) => {
     const block = new RegExp(`local ${name} = \\{([\\s\\S]*?)\\n\\}`, 'm').exec(commands);
     assert.ok(block, `${name} missing from current plugin`);

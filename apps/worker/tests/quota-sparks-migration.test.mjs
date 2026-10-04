@@ -7,7 +7,7 @@
  * had no `credits` one, and `state()` — which /state, the charge path and every refund call —
  * throws `no such column: credits` for that user.
  *
- * Found in production on 2026-09-20, on a real account, through Sentry APPLE-WORKER-6.
+ * Found in production on 2026-09-20, on a real account, through Sentry STUDPILOT-WORKER-6.
  *
  * THESE TESTS RUN REAL SQLITE. The other quota tests drive a hand-modelled SQL fake, which is right
  * for their questions and useless for this one: a fake that interprets the queries it is given

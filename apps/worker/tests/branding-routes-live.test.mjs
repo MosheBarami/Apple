@@ -19,7 +19,7 @@ import { d1 } from './stubs/d1.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-branding-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-branding-live-${process.pid}.mjs`);
 const REAL_GATEWAY = join(WORKER, 'src', 'gateway.ts');
 
 await esbuild.build({

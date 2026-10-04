@@ -590,7 +590,7 @@ test('an untracked file in a published directory is caught before it ships', () 
   // in a review, not in git log, not in any denominator. It ships and nothing says so.
   //
   // The old Golem OG card reappeared in apps/site/public untracked, and a rebuild put it back
-  // into dist — on the night two sessions spent establishing that the live site still says Apple.
+  // into dist — on the night two sessions spent establishing that the live site still says StudPilot.
   // Third artefact in one night that was in the TREE without being in the REPOSITORY.
   const r = withPlant(DIR, 'apps/site/public/robots.txt', (src) => src);
   assert.ok(r.addedNone, `a tracked file in public/ is fine; it added: ${r.added.join(' | ')}`);

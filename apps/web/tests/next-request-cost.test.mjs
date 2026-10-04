@@ -3,7 +3,7 @@
  *
  * Measured on the live product on 2026-09-20: /app/usage showed "Today's Credits 222 of 231",
  * thirty days of bars and a breakdown of what the Credits went on, and no figure anywhere for what
- * spending them costs. The model menu read "Apple — Free · limited daily usage". `typicalCredits`
+ * spending them costs. The model menu read "StudPilot — Free · limited daily usage". `typicalCredits`
  * appeared nine times in the shipped bundle and every one of them was inside an object literal
  * nothing rendered. The only per-request number a customer could read was on /pricing and
  * /docs/credits-and-limits — pages you leave the app to reach.
@@ -24,7 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { MODE_INFO } from '@apple/shared';
+import { MODE_INFO } from '@studpilot/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WEB, '..', '..');

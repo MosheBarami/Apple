@@ -1,6 +1,6 @@
 /**
  * THE CUSTOMER CHOOSES NO MODE (V3 gate G01; ACCEPTANCE.json removes "Plan/Agent/Autonomous
- * selectors" from the product contract). A request is described, Apple shows a short plan and
+ * selectors" from the product contract). A request is described, StudPilot shows a short plan and
  * builds it; planning and execution are internal stages. This catches a mode surface coming back
  * to the public site — a Plan/Agent/Autonomous picker, copy that asks the reader to choose one, a
  * /docs/modes page or a link to it — and the older architecture that used to sit behind one.
@@ -101,7 +101,7 @@ test('no page offers a Plan, Agent or Autonomous mode, and nothing links to /doc
 
 test('the mode-copy guard has teeth', () => {
   for (const shipped of [
-    'Apple has two product modes: <strong>Plan</strong> and <strong>Agent</strong>.',
+    'StudPilot has two product modes: <strong>Plan</strong> and <strong>Agent</strong>.',
     '<h2>5. Choose a mode and ask for your first build</h2>',
     '<button data-mode="autonomous"><span>Autonomous</span></button>',
     '<a href="/docs/modes">Modes</a>',
@@ -109,7 +109,7 @@ test('the mode-copy guard has teeth', () => {
   ]) {
     assert.notDeepEqual(modeCopyIn(textOf(shipped)), [], `the guard passes copy that shipped: ${shipped}`);
   }
-  for (const fine of ['Studio Run mode playtests', 'Describe the game; Apple shows a short plan and builds it.', 'an AI agent']) {
+  for (const fine of ['Studio Run mode playtests', 'Describe the game; StudPilot shows a short plan and builds it.', 'an AI agent']) {
     assert.deepEqual(modeCopyIn(textOf(fine)), [], `the guard flags ordinary copy: ${fine}`);
   }
 });

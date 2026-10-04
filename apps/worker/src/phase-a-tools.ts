@@ -8,10 +8,10 @@
 //
 // The bodies live here and the tools are registered ONE BY ONE in tools.ts, because three guards
 // find the tool table by parsing that literal (see the web-tools comment there).
-import type { GatewayToolDef, StudioOp, UiLayoutDevice } from '@apple/shared';
+import type { GatewayToolDef, StudioOp, UiLayoutDevice } from '@studpilot/shared';
 import { normaliseProps } from './studio-props';
 import { compileUi, UI_NODE_KINDS, UI_ANCHORS } from './ui-builder';
-import { APPLE_UI_THEME_IDS } from './ui-kit-themes';
+import { STUDPILOT_UI_THEME_IDS } from './ui-kit-themes';
 
 /** How a tool body reaches Studio: tools.ts passes its own `op`, tests pass a recorder. */
 export type OpCall = (op: StudioOp, timeoutMs?: number) => Promise<unknown>;
@@ -681,7 +681,7 @@ export const buildUi = {
       'The screen name must be new (an existing ScreenGui of that name is refused, not replaced). Images are not supported yet: use text glyphs. Every size is scale-based and text scales with a min/max, so the same tree fits every device.',
     parameters: S({
       screen: { type: 'string', description: 'the ScreenGui name, e.g. "ShopGui" (created in game.StarterGui)' },
-      theme: { type: 'string', enum: [...APPLE_UI_THEME_IDS] },
+      theme: { type: 'string', enum: [...STUDPILOT_UI_THEME_IDS] },
       tree: { description: 'one node, or a list of up to 8 top-level nodes', anyOf: [{ type: 'object' }, { type: 'array', items: { type: 'object' }, maxItems: 8 }] },
       safeArea: { type: 'boolean', description: 'keep content inside the device safe area and below the top bar (default true)' },
       devices: { type: 'array', items: { type: 'string', enum: [...DEVICES] }, maxItems: 5 },

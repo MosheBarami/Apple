@@ -26,7 +26,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
 
-const out = join(mkdtempSync(join(tmpdir(), 'apple-uicon-')), 'guide.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-uicon-')), 'guide.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'ui-construction-guide.ts'), '--bundle', '--format=esm', '--target=es2022', '--outfile=' + out],
   { stdio: 'pipe', cwd: WORKER });

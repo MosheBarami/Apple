@@ -1,11 +1,11 @@
-# Apple — Roblox simulator/tycoon style specification
+# StudPilot — Roblox simulator/tycoon style specification
 
 Derived from eight reference screenshots supplied 2026-08-31, by direct
 inspection. Those images are **evaluation references, not source material**.
 Nothing here describes a specific game, and nothing built from it may reproduce
 a layout, logo, character, icon set, thumbnail or wordmark seen in them. What is
 captured is the *category's* visual grammar — the shared language that makes an
-experience read instantly as "a Roblox simulator" — so Apple can produce
+experience read instantly as "a Roblox simulator" — so StudPilot can produce
 **original** work belonging to that category.
 
 This file is the source of truth for the visual half of the simulator benchmark.

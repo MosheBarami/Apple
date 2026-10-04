@@ -188,7 +188,7 @@ async function companionOp(op, { who = 'owner', timeoutMs, projectId = PROJECT_I
   const headers = { 'Content-Type': 'application/json' };
   if (who) headers.Authorization = `Bearer ${JWT[who]}`;
   const res = await APP.fetch(
-    new Request(`https://apple.test/api/projects/${projectId}/studio/op`, {
+    new Request(`https://studpilot.test/api/projects/${projectId}/studio/op`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ op, timeoutMs }),

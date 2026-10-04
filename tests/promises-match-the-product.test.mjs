@@ -10,8 +10,8 @@
  *    opposite two clicks away: no plan buys a place in the queue. Paying changes your allowance,
  *    not your turn.
  *
- * 2. The account settings offered a switch to "Contribute anonymised snippets to improve Apple",
- *    while both published privacy pages promise Apple never trains on a customer's work — the
+ * 2. The account settings offered a switch to "Contribute anonymised snippets to improve StudPilot",
+ *    while both published privacy pages promise StudPilot never trains on a customer's work — the
  *    policy states outright that no opt-in programme exists. A careful reader could not reconcile
  *    them, and whichever they believed, one of the two was lying to them.
  *

@@ -37,11 +37,11 @@ import type {
   StudioLinkSummary,
   ProductModel,
   PluginCapabilityReportV1,
-} from '@apple/shared';
-import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@apple/shared';
-import { isRefusalRemedyCode, type RefusalRemedyCode } from '@apple/shared';
-import { asUiTheme, uiThemeContextLine, type UiTheme } from '@apple/shared';
-import { WIRE_HEADERS, echoSubprotocol, readWire } from '@apple/shared';
+} from '@studpilot/shared';
+import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
+import { isRefusalRemedyCode, type RefusalRemedyCode } from '@studpilot/shared';
+import { asUiTheme, uiThemeContextLine, type UiTheme } from '@studpilot/shared';
+import { WIRE_HEADERS, echoSubprotocol, readWire } from '@studpilot/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -89,8 +89,8 @@ import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
 import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
-import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@apple/shared';
-import type { RunFailure } from '@apple/shared';
+import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@studpilot/shared';
+import type { RunFailure } from '@studpilot/shared';
 import { aim, changedProps, trimTranscriptReport } from '../transcript';
 import type { LibraryRun } from '../library-run';
 import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
@@ -223,7 +223,7 @@ function argumentsReadable(json: string | undefined): boolean {
 
 const STOPPED_IN_FLIGHT = Symbol('stopped in flight');
 const STOP_POLL_MS = 250;
-const ACCOUNT_NOT_APPROVED = 'Apple is in private pre-launch: building is open to approved accounts only. Ask the owner to approve this account.';
+const ACCOUNT_NOT_APPROVED = 'StudPilot is in private pre-launch: building is open to approved accounts only. Ask the owner to approve this account.';
 
 /**
  * The poll response, plus the one field the shared contract does not carry yet.
@@ -277,7 +277,7 @@ interface AgentState {
   fenceId?: string;
   /** Always `agent` for a new run; a run persisted by an older build may hold `plan` (see runStep). */
   mode: ProductMode;
-  /** The engine the run is on: always Apple. A run persisted by an older build may hold a retired id. */
+  /** The engine the run is on: always StudPilot. A run persisted by an older build may hold a retired id. */
   productModel?: ProductModel;
   /** Owner-approved Creator Store model for this run, selected from a shown preview. */
   approvedLibraryAssetId?: number;
@@ -352,7 +352,7 @@ interface AgentState {
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
-  sources?: import('@apple/shared').RunSource[];
+  sources?: import('@studpilot/shared').RunSource[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -718,10 +718,10 @@ const MAX_TEXT_CALL_STEERS = 2;
 const MODE_BASE_TOKENS: Record<ProductMode, number> = { agent: 4400 };
 
 /** A restore refused because a run is still changing the place. Plain words: the reader may be young. */
-const RESTORE_WHILE_RUNNING = 'Apple is still building. Press Stop first, then restore.';
+const RESTORE_WHILE_RUNNING = 'StudPilot is still building. Press Stop first, then restore.';
 
 /**
- * The additive `productModel` field, from a client frame or a stored row. Apple is the one engine
+ * The additive `productModel` field, from a client frame or a stored row. StudPilot is the one engine
  * (V3 gate G01), so every value — `apple`, a retired id such as `apple-max`, or anything an older
  * client sends — is normalized to it and never refused.
  */
@@ -730,7 +730,7 @@ function asProductModel(x: unknown): ProductModel | undefined {
   return normalizeModelId(x);
 }
 
-// Apple is the one engine, so the gateway key is the run mode (`agent`; a legacy persisted run may say `plan`).
+// StudPilot is the one engine, so the gateway key is the run mode (`agent`; a legacy persisted run may say `plan`).
 export function gatewayModelFor(mode: ProductMode): string {
   return mode;
 }
@@ -762,7 +762,7 @@ export function baseTokensFor(mode: ProductMode): number {
 /**
  * HOW LONG A RUN WAITS OUT A PROVIDER BURST, AND WHY IT WAITS AT ALL.
  *
- * Measured 2026-09-20 against the deployed worker (free Apple Agent lane, GLM-5.3-flash,
+ * Measured 2026-09-20 against the deployed worker (free StudPilot Agent lane, GLM-5.3-flash,
  * Studio disconnected): of the seven runs that reached a knowledge tool, five died with `busy` — a
  * Workers AI rate-limit refusal. The refusal was NOT provoked by the knowledge call. 389 of 600
  * model calls that day were refused and every one of them falls inside a single 17-minute window;
@@ -1156,7 +1156,7 @@ export class SessionDO extends DurableObject<Env> {
    * Read additive model metadata without changing the long-lived messages table schema.
    *
    * The column holds the id a turn was stored with. Retired ids (`apple-max`, `gpt-5.6`, ...) are
-   * normalized to Apple by asProductModel, so old sessions keep loading.
+   * normalized to StudPilot by asProductModel, so old sessions keep loading.
    */
   private productModelsFor(ids: readonly string[]): Map<string, { productModel: ProductModel }> {
     const out = new Map<string, { productModel: ProductModel }>();
@@ -1296,7 +1296,7 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * WHO IS ON THIS SOCKET.
    *
-   * `X-Apple-Role` (or the old spelling, read by readWire) is trusted for exactly one reason: a Durable Object is reachable only through
+   * `X-StudPilot-Role` (or an old spelling, read by readWire) is trusted for exactly one reason: a Durable Object is reachable only through
    * its stub, every worker path that forwards to `/ws` SETS this header (overwriting whatever the
    * browser sent), and `sessionStub` is itself confined to ownership-checked and admin-gated call
    * sites by a static check in packages/evals/src/security.test.mjs. The value is still validated
@@ -1574,7 +1574,7 @@ export class SessionDO extends DurableObject<Env> {
    * A REFUSAL GOES TO THE PERSON WHO CAUSED IT.
    *
    * `broadcast` reaches every socket on the project, and these are refusals of ONE person's
-   * request. "Apple is already working — stop the current run first." arriving on a colleague's
+   * request. "StudPilot is already working — stop the current run first." arriving on a colleague's
    * screen reads as something THEY did, and there is nothing on screen to tell them otherwise.
    * The role refusals two lines from the call sites have always been targeted; this brings the
    * busy ones into line with them.
@@ -1615,11 +1615,11 @@ export class SessionDO extends DurableObject<Env> {
   private async studioGate(): Promise<{ reason: StudioPauseReason; message: string } | null> {
     const paired = (await this.ctx.storage.get<string>('pluginTokenHash')) ?? this.activePluginTokenHash;
     if (!paired) {
-      return { reason: 'unpaired', message: 'Connect Roblox Studio first: open the Apple plugin in Studio and pair it with this project.' };
+      return { reason: 'unpaired', message: 'Connect Roblox Studio first: open the StudPilot plugin in Studio and pair it with this project.' };
     }
     const down = await this.studioLinkDown();
     if (down === 'disconnected') {
-      return { reason: down, message: 'Roblox Studio is not connected. Open the paired place in Studio with the Apple plugin running, then try again.' };
+      return { reason: down, message: 'Roblox Studio is not connected. Open the paired place in Studio with the StudPilot plugin running, then try again.' };
     }
     if (down === 'place_mismatch' && this.placeMismatch) return { reason: down, message: this.placeMismatch.message };
     return null;
@@ -1742,8 +1742,8 @@ export class SessionDO extends DurableObject<Env> {
     const queued = (await this.ctx.storage.get<QueuedSteer[]>(STEER_KEY)) ?? [];
     if (agent.status === 'stopping' || (await stopRequested(this.ctx.storage)) || queued.length >= 8) {
       const message = queued.length >= 8
-        ? 'Apple has not reached your earlier messages yet. Send this one once they have been applied.'
-        : 'Apple is stopping this run. Send your message again once it has stopped.';
+        ? 'StudPilot has not reached your earlier messages yet. Send this one once they have been applied.'
+        : 'StudPilot is stopping this run. Send your message again once it has stopped.';
       try {
         ws.send(JSON.stringify({ type: 'error', code: 'busy', message, terminal: false } satisfies ServerMsg));
       } catch {
@@ -2281,7 +2281,7 @@ export class SessionDO extends DurableObject<Env> {
           this.pluginCapabilityClient = null;
           await this.ctx.storage.delete([pluginCapabilitiesKey(staleHash), pluginCapabilitiesClientKey(staleHash)]);
         }
-        return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the Apple web app.' }, 401);
+        return json({ error: 'token expired', message: 'This pairing has expired. Pair again from the StudPilot web app.' }, 401);
       }
       const presented = await sha256hex(token);
       if (!(await timingSafeEqual(presented, expect))) {
@@ -2295,7 +2295,7 @@ export class SessionDO extends DurableObject<Env> {
               error: 'superseded',
               message:
                 'This project was paired again from another Studio window, so this one was disconnected. ' +
-                'Pair again from the Apple web app to bring it back here.',
+                'Pair again from the StudPilot web app to bring it back here.',
             },
             401,
           );
@@ -2484,7 +2484,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/memory' && req.method === 'PUT') {
-      //[[ CORRECT WHAT APPLE BELIEVES.
+      //[[ CORRECT WHAT STUDPILOT BELIEVES.
       //
       //   Memory is written by a model from the conversation, unreviewed, and then steers every
       //   later run. A fact that is wrong — "the doors use a custom DoorService" after the user
@@ -2512,7 +2512,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/memory/suggestions' && req.method === 'POST') {
-      //[[ ANSWERING WHAT APPLE ASKED TO REMEMBER.
+      //[[ ANSWERING WHAT STUDPILOT ASKED TO REMEMBER.
       //
       //   Under `review` the distiller writes into a queue instead of into memory, and this is the
       //   only door out of that queue. Two things are load-bearing:
@@ -2552,7 +2552,7 @@ export class SessionDO extends DurableObject<Env> {
       //   It also runs against every KIND of row. A user looking for "the door checkpoint" was
       //   searching a transcript for the name of a checkpoint; a user looking for the render the
       //   agent produced was searching prose for an artifact. The records this gathers — messages,
-      //   the tool steps that produced artifacts, checkpoints, the operation log, and what Apple
+      //   the tool steps that produced artifacts, checkpoints, the operation log, and what StudPilot
       //   remembers — are the five things a project actually contains.
       //
       //   MATCHING AND RANKING HAPPEN IN `runSearch`, NOT HERE. The SQL below narrows rows; it
@@ -2646,7 +2646,7 @@ export class SessionDO extends DurableObject<Env> {
           instanceCount: r.instance_count,
           sizeBytes: r.size_bytes,
           ...(r.coverage === 'exact' || r.coverage === 'supported-subset' ? { coverage: r.coverage, preservedObjects: r.preserved_objects ?? 0 } : {}),
-          /** Who took it, or null for one Apple took and for a row that predates the column. */
+          /** Who took it, or null for one StudPilot took and for a row that predates the column. */
           authorId: r.author_id,
           /** What it contains or why it was taken. Null when nobody wrote one. */
           description: r.description,
@@ -3266,7 +3266,7 @@ export class SessionDO extends DurableObject<Env> {
         //     2. The message must exist. A stale client — a tab open across a previous truncation
         //        — can ask to edit a row that is already gone, and the id of a deleted row must
         //        not silently become "truncate from the beginning".
-        //     3. It must be a USER message. Editing what Apple said and replaying from there
+        //     3. It must be a USER message. Editing what StudPilot said and replaying from there
         //        would let the transcript assert the assistant produced text it never produced. ]]
         if (mayNot('chat')) {
           refuse(
@@ -3338,7 +3338,7 @@ export class SessionDO extends DurableObject<Env> {
           //   Regenerate, which resend the prompt VERBATIM so that re-running has one definition.
           //   Storing those would tell someone who regenerated four times that their message has
           //   four earlier versions, all identical to the one in front of them. The rule lives in
-          //   @apple/shared because the web app increments its own count optimistically and the
+          //   @studpilot/shared because the web app increments its own count optimistically and the
           //   two must agree. ]]
           await this.startRun(
             bind,
@@ -3485,7 +3485,7 @@ export class SessionDO extends DurableObject<Env> {
       this.startRunInner(bind, text, mode, forcedEffort, origin, carryRevisionsFrom, productModel, initiatedBy, initiatorExpiresAt, uiTheme),
     );
     if (!attempt.ran) {
-      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'StudPilot is already working — stop the current run first.' });
     }
   }
 
@@ -3503,7 +3503,7 @@ export class SessionDO extends DurableObject<Env> {
   ) {
     const existing = await this.ctx.storage.get<AgentState>('agent');
     if (existing && existing.status !== 'idle') {
-      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
+      this.refuseOne(origin, { type: 'error', code: 'busy', message: 'StudPilot is already working — stop the current run first.' });
       return;
     }
     // The user's own pick from the preview card of an earlier run (asset-choice.ts): one approval, one admitted run (cleared below).
@@ -3514,11 +3514,11 @@ export class SessionDO extends DurableObject<Env> {
     const rejectedChoice = text === 'None of these look right. Find different visual options.' &&
       mode === 'agent' && pendingChoice?.mode === 'agent' && initiatedBy === bind.ownerId;
     if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset) {
-      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'That visual choice is no longer available. Ask Apple to find fresh options.' });
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'That visual choice is no longer available. Ask StudPilot to find fresh options.' });
       return;
     }
     if (text === 'None of these look right. Find different visual options.' && !rejectedChoice) {
-      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'Those visual options are no longer available. Ask Apple to search again.' });
+      this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'Those visual options are no longer available. Ask StudPilot to search again.' });
       return;
     }
     const effectiveRequest = selectedAsset && pendingChoice
@@ -3606,7 +3606,7 @@ export class SessionDO extends DurableObject<Env> {
     //   is NOT escaped — mangling it would corrupt the evidence the agent reasons from — so the
     //   tag carries a secret instead of relying on the content not containing one. ]]
     const fenceId = crypto.randomUUID().slice(0, 8);
-    //[[ WHAT THE PERSON ASKED FOR, as opposed to what Apple worked out for itself.
+    //[[ WHAT THE PERSON ASKED FOR, as opposed to what StudPilot worked out for itself.
     //
     //   Scoped memory lives in D1 rather than in this DO because it is not per-project: "answer me
     //   in Hebrew" is a fact about the person, and a preference that has to be re-taught in every
@@ -3648,7 +3648,7 @@ export class SessionDO extends DurableObject<Env> {
       //
       //   What it does NOT drop is `personalisation` below. Those are settings the person TYPED —
       //   the response length, the project's instructions, the team's rules. They are things
-      //   they told Apple, not things Apple noticed, and silently ignoring them would be a second,
+      //   they told StudPilot, not things StudPilot noticed, and silently ignoring them would be a second,
       //   unannounced setting hiding inside this one. ]]
       memorySummary: promptMemory.summary,
       memoryFacts: promptMemory.facts,
@@ -3755,7 +3755,7 @@ export class SessionDO extends DurableObject<Env> {
     // this line used to skip `setAlarm` entirely — leaving the run at `status: 'running'` with
     // nothing scheduled to advance it. The staleness bypass cannot rescue that one: it requires
     // `agent.step > 0`, and no step has run. The user got a message that never finished and
-    // three minutes of "Apple is already working" before a new run could start.
+    // three minutes of "StudPilot is already working" before a new run could start.
     //
     // The returned error was also being discarded. A checkpoint is the user's undo point, so
     // failing to take one is worth saying out loud — but it is not a reason to refuse to work,
@@ -3771,15 +3771,15 @@ export class SessionDO extends DurableObject<Env> {
         //   `intent.summary` when the local classifier produced one — it restates the request in
         //   the agent's own terms — and otherwise the user's own words, which are never worse. No
         //   model call: this runs before the first one. ]]
-        const checkpoint = await this.createCheckpoint('before Apple changes', 'pre_agent', {
-          description: `Apple was asked to: ${intent?.summary ?? text}`,
+        const checkpoint = await this.createCheckpoint('before StudPilot changes', 'pre_agent', {
+          description: `StudPilot was asked to: ${intent?.summary ?? text}`,
         }); // broadcasts internally
         if ('error' in checkpoint) {
           console.warn('[session] pre-run checkpoint failed:', String(checkpoint.error).slice(0, 200));
           this.broadcast({
             type: 'error',
             code: 'checkpoint',
-            message: "Apple couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
+            message: "StudPilot couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
           });
         }
       } catch (err) {
@@ -3787,7 +3787,7 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({
           type: 'error',
           code: 'checkpoint',
-          message: "Apple couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
+          message: "StudPilot couldn't save a copy of your place before starting, so this change can't be undone in one click. It is carrying on anyway.",
         });
       }
       // STUDS BY DEFAULT (surfaces.ts): every part this run adds is studded unless the user asked for another
@@ -3827,7 +3827,7 @@ export class SessionDO extends DurableObject<Env> {
       if ((await this.studioLinkDown()) || this.ctx.getWebSockets('client').length === 0) {
         agent.studioDropped = true;
         delete agent.pausedForStudio;
-        await this.finishRun(agent, 'incomplete', undefined, `Studio disconnected, so Apple stopped. ${agent.mutated ? 'Everything already built is saved in your place.' : 'Nothing in your place was changed.'} Reconnect Studio and ask again.`);
+        await this.finishRun(agent, 'incomplete', undefined, `Studio disconnected, so StudPilot stopped. ${agent.mutated ? 'Everything already built is saved in your place.' : 'Nothing in your place was changed.'} Reconnect Studio and ask again.`);
       }
       return;
     }
@@ -3906,8 +3906,8 @@ export class SessionDO extends DurableObject<Env> {
         const hours = Math.max(1, Math.round((resetsAt.getTime() - Date.now()) / 3_600_000));
         agent.finalText =
           (agent.finalText ? agent.finalText + '\n\n' : '') +
-          `Apple is very busy today and has reached its building limit, so I stopped here. Everything I finished is saved in your place. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}, and then you can pick up right where we left off.`;
-        this.broadcast({ type: 'error', code: 'capacity', message: `Apple is full for today. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}.` });
+          `StudPilot is very busy today and has reached its building limit, so I stopped here. Everything I finished is saved in your place. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}, and then you can pick up right where we left off.`;
+        this.broadcast({ type: 'error', code: 'capacity', message: `StudPilot is full for today. It opens up again in about ${hours} hour${hours === 1 ? '' : 's'}.` });
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -3954,7 +3954,7 @@ export class SessionDO extends DurableObject<Env> {
       delete agent.providerWaitSince;
       agent.finalText =
         (agent.finalText ? agent.finalText + '\n\n' : '') +
-        `Apple's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'} — ` +
+        `StudPilot's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'} — ` +
         `${cause === 'rate_limited' ? 'it is too busy right now' : 'the connection kept dropping'} — so I stopped ` +
         'here instead of waiting forever.' +
         (agent.mutated === true ? ' Everything already in your place is saved.' : '') +
@@ -3962,7 +3962,7 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({
         type: 'error',
         code: 'busy',
-        message: `Apple's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'}, so it stopped. Try again in a little while.`,
+        message: `StudPilot's builder has not answered for ${minutes} minute${minutes === 1 ? '' : 's'}, so it stopped. Try again in a little while.`,
       });
       // Two literal calls rather than a ternary: the code is part of a closed vocabulary and
       // run-failure-vocabulary.test.mjs reads each call site to prove it.
@@ -3977,9 +3977,9 @@ export class SessionDO extends DurableObject<Env> {
       type: 'notice',
       code: 'provider_wait',
       message:
-        `Apple's builder ${cause === 'rate_limited' ? 'is too busy right now' : 'did not answer'}. ` +
+        `StudPilot's builder ${cause === 'rate_limited' ? 'is too busy right now' : 'did not answer'}. ` +
         `Trying again in ${Math.max(1, Math.round(waitMs / 1000))} seconds; you do not need to do anything. ` +
-        `If it stays away for ${Math.round(PROVIDER_OUTAGE_MAX_MS / 60_000)} minutes, Apple stops and tells you.`,
+        `If it stays away for ${Math.round(PROVIDER_OUTAGE_MAX_MS / 60_000)} minutes, StudPilot stops and tells you.`,
     });
     await this.ctx.storage.setAlarm(agent.resumeAt);
   }
@@ -4045,9 +4045,9 @@ export class SessionDO extends DurableObject<Env> {
     this.lastActivity = agent.lastStepAt;
 
     // A run persisted before BYOK was removed may still name a customer key. That run cannot be
-    // continued on the key and must not silently move onto Apple's Credits, so it ends here.
+    // continued on the key and must not silently move onto StudPilot's Credits, so it ends here.
     if ((agent as { customerModel?: unknown }).customerModel) {
-      agent.finalText = agent.finalText || 'That message was started in an old way Apple no longer supports. Send it again and Apple will start fresh. Everything already made is saved.';
+      agent.finalText = agent.finalText || 'That message was started in an old way StudPilot no longer supports. Send it again and StudPilot will start fresh. Everything already made is saved.';
       await this.finishRun(agent, 'error', 'model_failed');
       return;
     }
@@ -4192,7 +4192,7 @@ export class SessionDO extends DurableObject<Env> {
     //[[ AND SAY WHAT WAS TAKEN.
     //
     //   Until now the narrowing was invisible from every side: the tool was removed from the set,
-    //   nothing was logged, nothing was broadcast, and "why did Apple not use run_luau on that
+    //   nothing was logged, nothing was broadcast, and "why did StudPilot not use run_luau on that
     //   run" had no answer anywhere in the product. A capability that is silently missing reads,
     //   from the user's side, exactly like a broken one.
     //
@@ -4267,7 +4267,7 @@ export class SessionDO extends DurableObject<Env> {
       creditsSpent: agent.creditsSpent,
     });
 
-    // TALK IS NOT PRICED LIKE BUILDING (F-019). A greeting, a thanks or a question about Apple itself,
+    // TALK IS NOT PRICED LIKE BUILDING (F-019). A greeting, a thanks or a question about StudPilot itself,
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
     // whole message, so "hi, build me a tower" is not talk. Any later step is offered the normal set.
@@ -4508,8 +4508,8 @@ export class SessionDO extends DurableObject<Env> {
       // Every cut step is billed and its call discarded: a run that cannot fit its next action in one step stops.
       if (agent.consecutiveCuts >= MAX_CONSECUTIVE_CUTS) {
         await this.finishRun(agent, 'incomplete', undefined, agent.mutated
-          ? `Apple stopped because the next step was too big for it to write in one go, even in smaller pieces. ${spaced(builtSummary(agent.made))}Ask for the rest one area at a time and it will carry on.`
-          : 'Apple stopped because the next step was too big for it to write in one go, even in smaller pieces, so nothing in your place was changed. Ask for a smaller part first and it will carry on.');
+          ? `StudPilot stopped because the next step was too big for it to write in one go, even in smaller pieces. ${spaced(builtSummary(agent.made))}Ask for the rest one area at a time and it will carry on.`
+          : 'StudPilot stopped because the next step was too big for it to write in one go, even in smaller pieces, so nothing in your place was changed. Ask for a smaller part first and it will carry on.');
         return;
       }
       const batchHint =
@@ -4540,8 +4540,8 @@ export class SessionDO extends DurableObject<Env> {
       const savedClause = kept ? ' Everything finished before it stopped is saved in your place.' : '';
       const providerNote =
         (finishReason === 'error'
-          ? 'Apple could not finish this step.'
-          : 'Apple did not get a clear answer for this step.') +
+          ? 'StudPilot could not finish this step.'
+          : 'StudPilot did not get a clear answer for this step.') +
         savedClause;
       const artifactNote = artifact.missing
         ? artifact.tool === 'generate_image'
@@ -4677,8 +4677,8 @@ export class SessionDO extends DurableObject<Env> {
       // since the model's prose is not evidence of what changed (agent.mutated is).
       if (askedForWork) {
         const note =
-          'Nothing in your place was changed: Apple was not able to make changes this time. Check that Roblox Studio ' +
-          'is connected and that Apple is allowed to change your place, then ask again.';
+          'Nothing in your place was changed: StudPilot was not able to make changes this time. Check that Roblox Studio ' +
+          'is connected and that StudPilot is allowed to change your place, then ask again.';
         const prior = agent.streamedText ?? '';
         agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
         agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -4751,7 +4751,7 @@ export class SessionDO extends DurableObject<Env> {
         const next = sequenceProgress(sequence, agent.trace);
         if (next.state !== 'next' || call.name !== next.tool) {
           await this.finishRun(agent, 'incomplete', undefined,
-            'Apple tried to do something you did not ask for, so it did not run it.');
+            'StudPilot tried to do something you did not ask for, so it did not run it.');
           return;
         }
       }
@@ -4914,7 +4914,7 @@ export class SessionDO extends DurableObject<Env> {
                 : `${safeToolName}: unavailable in this run`,
             resultForLlm: JSON.stringify({
               error: studioDown
-                ? `${safeToolName} did not run because Roblox Studio is not connected right now — the Apple plugin stopped answering. It is not a limit of this mode. Tell the user to reconnect Studio from the Apple panel, and do not claim any Studio change you did not see succeed.`
+                ? `${safeToolName} did not run because Roblox Studio is not connected right now — the StudPilot plugin stopped answering. It is not a limit of this mode. Tell the user to reconnect Studio from the StudPilot panel, and do not claim any Studio change you did not see succeed.`
                 : capabilityBlocked
                   ? `${safeToolName} is unavailable because the connected Studio reports a required operation unsupported, or does not report one it needs. It was not executed. Use the Studio tools still offered for this run.`
                   : `${safeToolName} is not available in this run and was not executed. Use only the tools offered for the current mode and permissions.`,
@@ -5243,16 +5243,16 @@ export class SessionDO extends DurableObject<Env> {
       pushHarness(agent.llm, UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''));
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
-        ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
+        ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and StudPilot will do it.`
         : agent.kitZone
-        ? `Your scene is built. ${spaced(builtSummary(agent.made))}Say what you would like changed and Apple will change it.`
+        ? `Your scene is built. ${spaced(builtSummary(agent.made))}Say what you would like changed and StudPilot will change it.`
         // A composed game ends on what the player can do in it, and on what the last check found (live 2026-10-01: the
         // owner got "kept doing the same thing again and again" instead of how to play the game that was built).
         : agent.composedForUser
-        ? `${agent.composedForUser}${agent.lastCheckProblem ? `\n\nOne thing is not right yet: ${agent.lastCheckProblem.replace(/\s*\(Studio's own[^)]*\)/, '')} Ask Apple to fix it.` : ''}`
+        ? `${agent.composedForUser}${agent.lastCheckProblem ? `\n\nOne thing is not right yet: ${agent.lastCheckProblem.replace(/\s*\(Studio's own[^)]*\)/, '')} Ask StudPilot to fix it.` : ''}`
         : agent.mutated
-        ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
-        : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
+        ? `StudPilot stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
+        : 'StudPilot stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
       agent.terminalNote = note;
       // What was repeated, on the row the owner reads (the sentence above is for the person, and stays as it was).
       const dup = agent.lastDuplicate;
@@ -5297,7 +5297,7 @@ export class SessionDO extends DurableObject<Env> {
     // build at the nudge; at the limit the run ends and says plainly what it did and did not do.
     if (idle.action === 'stall' && agent.lightingOnly && agent.mutated) {
       // A lighting change that is made and then only looked at is finished, not stalled.
-      const note = `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`;
+      const note = `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and StudPilot will do it.`;
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -5308,8 +5308,8 @@ export class SessionDO extends DurableObject<Env> {
     }
     if (idle.action === 'stall') {
       const note = agent.mutated
-        ? `Apple stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
-        : 'Apple stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
+        ? `StudPilot stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
+        : 'StudPilot stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
       agent.terminalNote = note;
       annotateLastTrace(agent, `stopped after ${agent.readsSinceChange ?? READ_STALL_LIMIT} reads with no change; last reads: ${lastReads(agent.trace, 3)}`);
       const prior = agent.streamedText ?? '';
@@ -5322,8 +5322,8 @@ export class SessionDO extends DurableObject<Env> {
     // A tool that keeps failing, whatever it is sent (owner benchmark 2026-10-02: dozens of billed retries on a map).
     if (failThisStep?.action === 'finish') {
       const note = agent.mutated
-        ? `Apple stopped because the same kind of step kept failing. ${spaced(builtSummary(agent.made))}Tell it what to try next and it will carry on from there.`
-        : 'Apple stopped because the same kind of step kept failing, and nothing in your place was changed. Send your message again, or say what to try differently.';
+        ? `StudPilot stopped because the same kind of step kept failing. ${spaced(builtSummary(agent.made))}Tell it what to try next and it will carry on from there.`
+        : 'StudPilot stopped because the same kind of step kept failing, and nothing in your place was changed. Send your message again, or say what to try differently.';
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -5337,7 +5337,7 @@ export class SessionDO extends DurableObject<Env> {
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
-      const note = `Apple stopped because it kept changing the same thing over and over. ${spaced(builtSummary(agent.made))}Tell it what should look different and it will carry on from there.`;
+      const note = `StudPilot stopped because it kept changing the same thing over and over. ${spaced(builtSummary(agent.made))}Tell it what should look different and it will carry on from there.`;
       agent.terminalNote = note;
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
@@ -5370,7 +5370,7 @@ export class SessionDO extends DurableObject<Env> {
       const gaps = gameGaps(agent, allowed.has('play_check'));
       pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER);
     } else if (idle.action === 'finish') {
-      const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
+      const note = 'StudPilot made the change and checked it, then had nothing left to do, so it stopped here.';
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5800,7 +5800,7 @@ export class SessionDO extends DurableObject<Env> {
     reason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete',
     /**
      * A CODE, never prose. It is broadcast to the browser on `msg_end`, and the app owns the
-     * sentence — see RUN_FAILURES in @apple/shared. Typing it as the closed set is what makes
+     * sentence — see RUN_FAILURES in @studpilot/shared. Typing it as the closed set is what makes
      * "just pass the message through" a compile error rather than a leak nobody notices.
      */
     error?: RunFailure,
@@ -5818,7 +5818,7 @@ export class SessionDO extends DurableObject<Env> {
      *
      * A run killed by the step cap and a run killed by the wall clock both end with `reason:
      * 'done'`, because `done` is what the browser's `msg_end.stopReason` union can carry: that
-     * union lives in @apple/shared and is rendered by apps/web, and widening it is a change to a
+     * union lives in @studpilot/shared and is rendered by apps/web, and widening it is a change to a
      * contract this file does not own. But the ANALYTICS vocabulary is this file's to widen, and
      * filing "stopped three steps in, unfinished, and paid for" under the same label as "it worked"
      * is what made every failure-rate number wrong in our own favour.
@@ -5971,8 +5971,8 @@ export class SessionDO extends DurableObject<Env> {
               'script or object to start from, and I will look there first.'
             // Candy Garden v2 (2026-09-29): 176 applied ops, and the reply said nothing was changed.
             : agent.mutated
-            ? `Apple stopped before it finished. ${spaced(builtSummary(agent.made))}` +
-              'Everything it made is in your place. Send another message and Apple will carry on from here.'
+            ? `StudPilot stopped before it finished. ${spaced(builtSummary(agent.made))}` +
+              'Everything it made is in your place. Send another message and StudPilot will carry on from here.'
             : 'I did not change anything in your project. I looked around but never made the edit you ' +
               'asked for, which is a fault on my side rather than a result. Nothing was modified, so ' +
               'there is nothing to undo — ask me again and I will build it.'
@@ -5984,7 +5984,7 @@ export class SessionDO extends DurableObject<Env> {
     //   The product settles Credits from measured compute after every model call — honest, and
     //   until now the only arithmetic it had. So a run that hit the provider's output ceiling, or
     //   errored, or ran out of steps, charged for every neuron and then said "send another message
-    //   and Apple will continue from here", which starts a second run and charges again. One build,
+    //   and StudPilot will continue from here", which starts a second run and charges again. One build,
     //   paid for twice, and every sentence involved individually true.
     //
     //   `refundVerdict` is narrow on purpose: only a run that left the user with NOTHING they can
@@ -6048,7 +6048,7 @@ export class SessionDO extends DurableObject<Env> {
     // fabrication — is worse than one. What was removed is written to the oplog rather than to the
     // reply: the user needs the truth, not a note about their assistant's imagination, and the next
     // person debugging this needs to know a replacement happened at all.
-    // A run that changed the place recovered from its refusal: the heading "Apple could not change
+    // A run that changed the place recovered from its refusal: the heading "StudPilot could not change
     // your place" would contradict the work it just reported (Candy Garden, 2026-09-29).
     const recovered = agent.mutated === true;
     const fiction = remedyCloses || recovered ? null : replacedFiction(contentWithRefund, agent.refusalRemedy);
@@ -6250,7 +6250,7 @@ export class SessionDO extends DurableObject<Env> {
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
     // A look the self-check ran on the agent's behalf is not substantive work: it must not tip a small run into distillation.
     if (agent.trace.filter((t) => t.tool !== LOOK_TOOL).length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
-      // Distillation is Apple's own housekeeping: it counts against the GLOBAL neuron budget
+      // Distillation is StudPilot's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
       if (budgetLeft.creditsRemaining <= 0) return;
@@ -6344,12 +6344,12 @@ export class SessionDO extends DurableObject<Env> {
       const access = await memoryAccessFor(this.env, bind.ownerId, [bind.projectId]);
       const [row] = preferencesToEntries({ asset_sources: policy }, 'project', bind.projectId);
       const put = row ? await putMemoryEntry(this.env, access, { ...row, source: 'user' }) : null;
-      if (!put?.ok) return { message: 'Apple could not save that. Try again.', retryable: true };
+      if (!put?.ok) return { message: 'StudPilot could not save that. Try again.', retryable: true };
     } catch {
-      return { message: 'Apple could not save that. Try again.', retryable: true };
+      return { message: 'StudPilot could not save that. Try again.', retryable: true };
     }
     if (!(await this.refreshPinnedPrefs())) {
-      return { message: 'Apple could not confirm that answer. Try again.', retryable: true };
+      return { message: 'StudPilot could not confirm that answer. Try again.', retryable: true };
     }
     // The same outcome the web dialog refuses: a higher layer narrowed the answer to nothing.
     if (answerOwed(this.pinnedPrefs?.asset_sources)) {
@@ -6398,7 +6398,7 @@ export class SessionDO extends DurableObject<Env> {
       await this.ctx.storage.put('memory', next);
       // best-effort sync to Supabase registry with the user's own JWT. The MIRROR carries active
       // memory only: a proposal nobody has accepted is not something the dashboard should report
-      // as what Apple knows.
+      // as what StudPilot knows.
       const jwt = this.liveJwt;
       const bind = await this.bind();
       if (jwt && bind) {
@@ -7386,7 +7386,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     // ----- what can be rolled back to. A manual checkpoint is attributed to the person who asked
-    //       for it and an automatic one to Apple, so the author filter means what it says on both.
+    //       for it and an automatic one to StudPilot, so the author filter means what it says on both.
     {
       const n = narrowing(filter, { columns: ['label', 'kind'] });
       const rows = this.sql
@@ -7447,7 +7447,7 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
 
-    // ----- what Apple remembers. Held in storage rather than SQL, and carrying one honest
+    // ----- what StudPilot remembers. Held in storage rather than SQL, and carrying one honest
     //       timestamp: the human correction if there was one, otherwise the newest message, since
     //       the model writes memory at the tail of a run. Never `Date.now()`, which would claim an
     //       edit that never happened and would drift into every "since yesterday" window.
@@ -7474,7 +7474,7 @@ export class SessionDO extends DurableObject<Env> {
 
   // ------------------------------------------------------------------ checkpoints
   /**
-   * @param meta.authorId the person who asked for it, or undefined when Apple took it itself. The
+   * @param meta.authorId the person who asked for it, or undefined when StudPilot took it itself. The
    * CALLER resolves this — the socket's own attachment or the worker's authenticated user — never
    * a value off the wire, or any member could sign a checkpoint with someone else's name.
    * @param meta.description what the snapshot contains or why it was taken, in the user's words
@@ -7497,7 +7497,7 @@ export class SessionDO extends DurableObject<Env> {
     if (!evidence.ok) return { error: evidence.error };
     const payload = JSON.stringify(snap.data);
     if (payload.length > MAX_SNAPSHOT_BYTES) {
-      return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). Apple still edits it normally — use Studio's own undo for large rollbacks.` };
+      return { error: `This project is too large to checkpoint (${Math.round(payload.length / 1e6)} MB). StudPilot still edits it normally — use Studio's own undo for large rollbacks.` };
     }
     const gz = await gzip(payload);
     const meta = (snap.data ?? {}) as { scriptCount?: number; instanceCount?: number };

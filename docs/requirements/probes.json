@@ -31,7 +31,7 @@
     "R28": { "tests": "permission|approve|tool.*(denied|permission)", "files": ["apps/web/src/lib/tool-permissions.ts"] },
     "R29": { "tests": "stop|cancel|abort", "files": ["apps/worker/src/stop-signal.ts"] },
     "R30": { "tests": "resume|retry|recover|failure", "files": ["apps/worker/src/op-failure.ts"] },
-    "R31": { "tests": "plugin|install|distribut|release", "files": ["apps/apple-plugin"] },
+    "R31": { "tests": "plugin|install|distribut|release", "files": ["apps/studpilot-plugin"] },
     "R32": { "tests": "pairing|place|consent|bind", "files": ["apps/worker/src/studio-place.ts"] },
     "R33": { "tests": "capabilit|enable|safe", "files": ["apps/worker/src/plugin-capabilities.ts"] },
     "R34": { "tests": "typed.*op|conflict|undo|restore", "files": ["apps/worker/src/op-attribution.ts"] },

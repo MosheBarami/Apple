@@ -7,12 +7,12 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const worker = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dir = mkdtempSync(join(tmpdir(), 'apple-ui-'));
+const dir = mkdtempSync(join(tmpdir(), 'studpilot-ui-'));
 const bundle = join(dir, 'prefabs.mjs');
 execFileSync(join(worker, 'node_modules/.bin/esbuild'), [join(worker, 'src/prefabs.ts'), '--bundle', '--format=esm', `--outfile=${bundle}`], { stdio: 'pipe' });
 const { PREFABS } = await import(`file://${bundle}`);
 const source = PREFABS.ui_kit.source;
-const prelude = readFileSync(join(worker, 'tests/fixtures/apple-ui-runtime.luau'), 'utf8');
+const prelude = readFileSync(join(worker, 'tests/fixtures/studpilot-ui-runtime.luau'), 'utf8');
 let counter = 0;
 function run(body, code = source) {
   const path = join(dir, `${counter++}.luau`);

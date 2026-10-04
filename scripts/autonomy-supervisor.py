@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Outer autonomy supervisor for Apple (docs/autonomy/RESEARCH-REPORT.md, "Outer supervisor").
+"""Outer autonomy supervisor for StudPilot (docs/autonomy/RESEARCH-REPORT.md, "Outer supervisor").
 
 Starts one FRESH agent process per session, rotates roles, enforces ceilings, honours the STOP switch,
 and never trusts a child's own word for completion. Durable state is on disk, not in any transcript.
@@ -191,7 +191,7 @@ supervisor re-checks it with scripts/autonomy-review-gate.py and ignores the cla
 
 STRANGER_PROMPT = """ROLE: FRESH ROBLOX CUSTOMER
 
-You have never seen the implementation of Apple. You are not reviewing code and you do not know why
+You have never seen the implementation of StudPilot. You are not reviewing code and you do not know why
 anything was built.
 
 {mission}
@@ -202,7 +202,7 @@ Use the production product exactly as a customer would, in the owner's signed-in
 paired Roblox Studio place. Do NOT read: repository implementation rationale, docs/autonomy/DECISIONS.md,
 docs/autonomy/HANDOFF.md, historical handoffs, prior reviewer reports.
 
-While using Apple ask continuously: What is confusing without an explanation? What exists but gives no
+While using StudPilot ask continuously: What is confusing without an explanation? What exists but gives no
 value? What should be automatic? What important capability is missing? What exposes an internal detail?
 What interrupts "tell the AI what I want -> see it built"? Did the AI actually change Studio when it
 claimed to? Can I recover naturally? Would I pay for this?

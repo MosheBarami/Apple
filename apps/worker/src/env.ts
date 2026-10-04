@@ -18,7 +18,7 @@ export interface Env {
   QUOTA_DO: DurableObjectNamespace;
   /** Explicit deployment identity; a request host must never choose the billing authority. */
   BILLING_WORKER_NAME?: 'apple' | 'golem';
-  /** Apple-only external binding to the legacy worker's existing QuotaDO namespace during migration. */
+  /** StudPilot-only external binding to the legacy worker's existing QuotaDO namespace during migration. */
   LEGACY_QUOTA_DO?: DurableObjectNamespace;
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;
@@ -94,7 +94,7 @@ export interface Env {
   //
   //   Its comment read "the resvg renderer, bound in wrangler.jsonc. Absent means this deployment
   //   cannot rasterise." No wrangler file in this repository has ever contained a `wasm_modules`
-  //   section — neither wrangler.jsonc nor wrangler.apple.jsonc — and the same change that added
+  //   section — neither wrangler.jsonc nor wrangler.studpilot.jsonc — and the same change that added
   //   the field recorded, in asset-import.ts, that wrangler rejects `wasm_modules` for this
   //   ES-module worker and that the static import it would need broke 33 test files.
   //

@@ -51,7 +51,7 @@ test('an active assistant turn keeps Stop available when the local running flag 
 test('the workspace puts it back in the box and says so, and never resends it by itself', () => {
   const effect = between(WS, 'useEffect(() => {\n    if (!lostChat) return;', '}, [lostChat, clearLostChat]);');
   assert.match(effect, /setSeed\(lostChat\.text\);/);
-  assert.match(effect, /didn't reach Apple/);
+  assert.match(effect, /didn't reach StudPilot/);
   assert.doesNotMatch(effect, /sendChat\(/, 'a resend could double-run a prompt that did arrive');
 });
 

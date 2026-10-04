@@ -11,7 +11,7 @@ export const CREATION_INTENTS = {
   image: {
     label: 'Image',
     placeholder: 'Describe an icon, texture, or concept image…',
-    note: 'Generated images are saved with this project. Download a copy to keep outside Apple. Nothing is uploaded to Roblox.',
+    note: 'Generated images are saved with this project. Download a copy to keep outside StudPilot. Nothing is uploaded to Roblox.',
   },
   model: {
     label: '3D',

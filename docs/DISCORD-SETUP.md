@@ -1,7 +1,7 @@
 # Making the Discord bot live
 
-> **Status 2026-09-24: live.** Application `AppleAI` (id 1549354044122865806) exists and its bot sits
-> in the Apple server (1549352480658169866) with Administrator. The worker has `DISCORD_PUBLIC_KEY`
+> **Status 2026-09-24: live.** Application `StudPilotAI` (id 1549354044122865806) exists and its bot sits
+> in the StudPilot server (1549352480658169866) with Administrator. The worker has `DISCORD_PUBLIC_KEY`
 > and `DISCORD_BOT_TOKEN`; the interactions endpoint is
 > `https://apple.moshe-barami111.workers.dev/api/discord/interactions` (Discord verified it);
 > `/link /unlink /build /status /credits` are registered. The server itself (Community, roles,
@@ -27,7 +27,7 @@ commit — the bot token lets anyone control the application.
 
 1. Go to <https://discord.com/developers/applications>. Sign in with your Discord account.
 2. Press **New Application** (top right).
-3. Give it a name — this is the name users see, e.g. `Apple`.
+3. Give it a name — this is the name users see, e.g. `StudPilot`.
 4. Tick the terms checkbox and press **Create**.
 
 ## 2. Copy the Public Key
@@ -67,7 +67,7 @@ These two names are exact; the worker reads these and no others
 (`apps/worker/src/env.ts`). If wrangler asks you to log in to Cloudflare, do that first.
 
 > This targets the `golem` worker, which is the one serving production. If you have moved traffic
-> to the `apple` worker, add `--config wrangler.apple.jsonc` to both commands and run them again —
+> to the `apple` worker, add `--config wrangler.studpilot.jsonc` to both commands and run them again —
 > secrets are per-worker and do not travel.
 
 Then redeploy so the worker picks them up:
@@ -152,5 +152,5 @@ public channel.
 
 It answers slash commands only — it cannot read ordinary chat messages and cannot speak unprompted.
 One Discord account links to one project at a time, and **the linked Discord account spends that
-Apple account's Credits**, so link only your own. `/unlink` in Discord and **Disconnect Discord** in
+StudPilot account's Credits**, so link only your own. `/unlink` in Discord and **Disconnect Discord** in
 Settings both break the link immediately, from either end.

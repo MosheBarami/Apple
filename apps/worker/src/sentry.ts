@@ -49,7 +49,7 @@ import type { Env } from './env';
 import { redact } from './redaction.ts';
 
 /** Identifies this client to Sentry in the auth header. Arbitrary, but it should name us. */
-export const SENTRY_CLIENT = 'apple-worker/1.0';
+export const SENTRY_CLIENT = 'studpilot-worker/1.0';
 
 /** Sentry's protocol version. 7 is current and is what the envelope endpoint expects. */
 export const SENTRY_VERSION = 7;

@@ -1,9 +1,9 @@
-// @apple/sdk — clients for the Apple REST + streaming API.
+// @studpilot/sdk — clients for the StudPilot REST + streaming API.
 //
 // The JavaScript entry point. Plain ESM with no build step, so a browser, a Worker, Node
-// and the `apple` CLI all load the same bytes; the TypeScript surface is the hand-written
+// and the `studpilot` CLI all load the same bytes; the TypeScript surface is the hand-written
 // declaration in ../types/index.d.ts, pinned to this file by tests/types.test.mjs.
-export { AppleClient, PLAN_IDS, filenameFromDisposition } from './client.mjs';
+export { StudPilotClient, AppleClient, PLAN_IDS, filenameFromDisposition } from './client.mjs';
 export { StudioClient, StudioSessionEnded, isStudioToken, pollWaitMs } from './studio.mjs';
 export {
   SessionStream,

@@ -1,4 +1,4 @@
-/* THE BRIEF — the request Apple would be given, read before it is given.
+/* THE BRIEF — the request StudPilot would be given, read before it is given.
  *
  * WHAT THIS PANEL IS FOR, AND WHAT THAT COSTS IT. It exists so that nobody presses Plan or Build
  * on an instruction they have not read. Reading is therefore the only thing it has to buy:
@@ -61,7 +61,7 @@
 
 /* ------------------------------------------------------------ the three sections --- */
 
-/* "What Apple already knows about this project" / "It would build" / "It is finished when". These
+/* "What StudPilot already knows about this project" / "It would build" / "It is finished when". These
    label the list under them; they are not titles competing with the milestone name in the header,
    so each is smaller and quieter than the lines it introduces. Deliberately NOT uppercased with
    tracking, which is how the app's other small labels are set: those are one or two words, and a

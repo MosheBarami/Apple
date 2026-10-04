@@ -25,8 +25,8 @@ function result() {
 }
 
 export default {
-  id: 'os', title: 'Apple OS', nav: 'Apple OS', endpoint: '/api/cc/os',
-  sub: 'מיומנויות, ידע, דוחות וניתוב שמבוססים על מצב Apple האמיתי',
+  id: 'os', title: 'StudPilot OS', nav: 'StudPilot OS', endpoint: '/api/cc/os',
+  sub: 'מיומנויות, ידע, דוחות וניתוב שמבוססים על מצב StudPilot האמיתי',
   render(d) {
     const f = d.facts || {}, a = f.acceptance || {};
     return html`
@@ -35,7 +35,7 @@ export default {
         <article class="card tile"><h2>חיבורים</h2><p>Whisper: ${d.voice?.whisper ? 'מקומי וזמין' : 'לא זמין'}</p><p>קול יוצא: ${d.voice?.kokoro ? 'Kokoro לאנגלית; קול המחשב לעברית' : d.voice?.speechOutput ? 'קול המחשב המקומי' : 'לא זמין'}</p></article>
       </div>
       <section class="card"><h2>בקשה או חיפוש</h2><p class="explain">כתבו מה צריך. בקשה מדויקת להצגת הדוח מתבצעת מיד מהמחשב הזה. הטקסט לא נשלח לשירות חיצוני. ״חפש״ קורא את מאגר הידע המקומי. אין כאן בנייה או פריסה.</p>
-        <div class="g g21"><input class="os-query" id="os-query" aria-label="בקשה ל־Apple OS" maxlength="4000" value="${work.query}" placeholder="למשל: הצג את דוח הבעלים האחרון" dir="auto">
+        <div class="g g21"><input class="os-query" id="os-query" aria-label="בקשה ל־StudPilot OS" maxlength="4000" value="${work.query}" placeholder="למשל: הצג את דוח הבעלים האחרון" dir="auto">
           <div class="os-actions"><button class="btn btn-ok" data-act="route" ${work.busy ? 'disabled' : ''}>נתב בקשה</button> <button class="btn" data-act="search" ${work.busy ? 'disabled' : ''}>חפש בידע</button></div></div>
         ${work.busy ? html`<p role="status">בודק…</p>` : result()}
       </section>
@@ -46,16 +46,16 @@ export default {
       <section class="card"><h2>מיומנויות ותהליכים</h2><p class="explain">פעיל פירושו שהפעולה קיימת ונבדקה. בתכנון פירושו שאין עדיין כפתור שמבצע אותה.</p>
         <ul class="flist">${(d.skills || []).map((s) => html`<li><span class="chip chip-${s.state === 'ready' ? 'ok' : 'off'}">${state(s.state)}</span><b>${s.title}</b><span>${s.input} → ${s.output}</span></li>`)}</ul>
       </section>
-      <section class="card"><h2>דפוסי עבודה מהשיחות</h2><p class="explain">ניתוח מקומי של שיחות Codex על Apple ב־30 הימים האחרונים. נשמרו רק ספירות נושאים לפי שיחה, בלי תוכן ההודעות.</p>
+      <section class="card"><h2>דפוסי עבודה מהשיחות</h2><p class="explain">ניתוח מקומי של שיחות Codex על StudPilot ב־30 הימים האחרונים. נשמרו רק ספירות נושאים לפי שיחה, בלי תוכן ההודעות.</p>
         ${d.discovery ? html`<p>${num(d.discovery.sessions)} שיחות רלוונטיות · ${num(d.discovery.requests)} קטעי בקשה נסרקו · נבדק ${d.discovery.analysedAt}</p>
-          <ul class="flist">${Object.entries(d.discovery.counts || {}).sort((a,b) => b[1] - a[1]).map(([k,v]) => html`<li><b>${topics[k] || k}</b><span>${num(v)} שיחות</span></li>`)}</ul>` : html`<p class="empty">עדיין לא נותח. הריצו פעם אחת מהמסוף: node scripts/apple-os/cli.mjs discover</p>`}
+          <ul class="flist">${Object.entries(d.discovery.counts || {}).sort((a,b) => b[1] - a[1]).map(([k,v]) => html`<li><b>${topics[k] || k}</b><span>${num(v)} שיחות</span></li>`)}</ul>` : html`<p class="empty">עדיין לא נותח. הריצו פעם אחת מהמסוף: node scripts/studpilot-os/cli.mjs discover</p>`}
       </section>
       <section class="card"><h2>זיכרון פרטי</h2><p>מאגר Markdown: <bdi dir="ltr">${d.vault?.path || '—'}</bdi></p><p>תיקיות raw / wiki / outputs: ${d.vault?.exists ? 'קיימות' : 'לא אותחלו'}</p><p class="explain">אפשר לפתוח את התיקייה ב־Obsidian כשהאפליקציה מותקנת. התוכן נשמר מקומית.</p></section>`;
   },
   actions: {
     route: (_el, ctx) => ask('route', ctx),
     search: (_el, ctx) => ask('search', ctx),
-    brief: (_el, ctx) => ctx.act({ title: 'להכין דוח Apple OS?', what: 'הדוח יכתוב קובץ Markdown חדש במאגר הפרטי, מנתונים מקומיים שנמדדים כעת.',
+    brief: (_el, ctx) => ctx.act({ title: 'להכין דוח StudPilot OS?', what: 'הדוח יכתוב קובץ Markdown חדש במאגר הפרטי, מנתונים מקומיים שנמדדים כעת.',
       undo: 'כן. אפשר למחוק את הקובץ המקומי.', path: '/api/cc/os/action', body: { kind: 'brief' }, okMsg: 'הדוח נוצר ומופיע בדף.' }),
   },
 };

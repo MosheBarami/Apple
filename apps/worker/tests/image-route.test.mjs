@@ -20,7 +20,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const INDEX = readFileSync(join(WORKER, 'src', 'index.ts'), 'utf8');
 
-const out = join(tmpdir(), `apple-image-route-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-image-route-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'imagegen.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });

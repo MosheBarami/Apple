@@ -1,4 +1,4 @@
-// What Apple believes about a project — and the two questions that decides.
+// What StudPilot believes about a project — and the two questions that decides.
 //
 // Memory is written by a model, from the conversation, and then steers every later run. That makes
 // it the one part of the product that can be confidently wrong about the user's own project and
@@ -328,7 +328,7 @@ export function decideSuggestedSummary(
  * What this run's prompt may carry.
  *
  * One function, so "memory is off" cannot be true of the write path and false of the read path —
- * which is the version of this setting that would leave a user watching Apple act on memory it
+ * which is the version of this setting that would leave a user watching StudPilot act on memory it
  * promised to stop keeping.
  */
 export function memoryForPrompt(m: unknown, mode: MemoryMode): { summary: string | null; facts: string[] } {

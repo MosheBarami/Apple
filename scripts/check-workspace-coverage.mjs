@@ -208,7 +208,7 @@ for (const dir of ALL) {
 
     //[[ A BARE DIRECTORY AFTER `node --test` RUNS ON MY MACHINE AND NOT ON THE RUNNER.
     //
-    //   `@apple/lumen-isles` and `@apple/site` both shipped `"test": "node --test tests/"`. On
+    //   `@studpilot/lumen-isles` and `@studpilot/site` both shipped `"test": "node --test tests/"`. On
     //   Node 26 that discovers the directory and passes. On Node 22 — which is `NODE_VERSION` in
     //   ci.yml — the runner resolves `tests/` as a module specifier and dies before a single
     //   assertion:

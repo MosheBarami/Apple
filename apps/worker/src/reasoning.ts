@@ -2,7 +2,7 @@
 //
 // The GLM migration set every path to `reasoning: low`. Uniform `low` is the wrong policy: it
 // spends the same on "what does this script do" as on "design and build a plaza", and thin
-// thinking on design work is how Apple shipped a grey slab with coloured poles and called it done.
+// thinking on design work is how StudPilot shipped a grey slab with coloured poles and called it done.
 //
 // The tiers are `low` and `high`. `medium` is DELIBERATELY UNUSED, and that is a measurement, not
 // a preference. Against the live service on 2026-08-30, GLM-5.3-flash, two samples per cell:
@@ -19,8 +19,8 @@
 // task) that consumes the whole output budget before it writes a word. `high` reasons briefly and
 // decisively — 161 characters — and costs 2.8% more than `low` while returning a better answer.
 // So escalating to `high` is nearly free, and `medium` is a trap.
-import { CONVERSATIONAL_RE, META_QUESTION_RE } from '@apple/shared';
-import type { ProductMode } from '@apple/shared';
+import { CONVERSATIONAL_RE, META_QUESTION_RE } from '@studpilot/shared';
+import type { ProductMode } from '@studpilot/shared';
 
 /** `medium` exists in the provider's API but is never selected — see the table above. */
 export type Effort = 'low' | 'medium' | 'high';
@@ -119,7 +119,7 @@ const AMBIGUOUS_RE = /\b(something|anything|whatever|surprise me|you decide|make
  * language's small talk into a build. The Unicode-aware `(?![\p{L}\p{N}])` with the `u` flag is
  * what makes the boundary mean the same thing in both scripts.
  */
-// CONVERSATIONAL_RE and META_QUESTION_RE live in @apple/shared (isSmallTalk) since 2026-09-23, so the
+// CONVERSATIONAL_RE and META_QUESTION_RE live in @studpilot/shared (isSmallTalk) since 2026-09-23, so the
 // web app asks nothing of a greeting either (F-048). The reasoning above still applies to them.
 
 /**
@@ -188,8 +188,8 @@ export function chooseEffort(s: ReasoningSignals): ReasoningChoice {
   //   spread into every later step. CONVERSATIONAL_RE matches bare approvals — "ok", "sure",
   //   "yes", and the Hebrew "בסדר", "אוקיי", "יופי" — because on their own they ARE talk.
   //
-  //   But "ok" is also how a person accepts a plan. Apple proposes, the user replies "ok", and
-  //   Apple builds: sixteen steps of real work, every one of them pinned to `low` by a verdict
+  //   But "ok" is also how a person accepts a plan. StudPilot proposes, the user replies "ok", and
+  //   StudPilot builds: sixteen steps of real work, every one of them pinned to `low` by a verdict
   //   about a two-letter message, with this return firing before any escalation below. The user
   //   asked for a build and the approval itself switched judgement off.
   //

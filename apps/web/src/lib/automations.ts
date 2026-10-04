@@ -211,9 +211,9 @@ export function fireRefusal(reason: string, requeue: boolean): string {
     //   busy or whether spending is switched off. Drawing either as "the project is busy" would
     //   turn "we could not look" into "we looked and here is what we saw". ]]
     case 'run_state_unreadable':
-      return 'Apple could not read whether this project is already building, so it did not start a second run.';
+      return 'StudPilot could not read whether this project is already building, so it did not start a second run.';
     case 'kill_switch_unreadable':
-      return 'Apple could not read whether building is switched on, so it did not start the run.';
+      return 'StudPilot could not read whether building is switched on, so it did not start the run.';
     default:
       return `The run was refused, for a reason this version does not recognise: ${reason}`;
   }

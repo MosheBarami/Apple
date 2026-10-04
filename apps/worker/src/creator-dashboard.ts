@@ -3,11 +3,11 @@
 // ---------------------------------------------------------------------------------------------
 // WHY THIS MODULE HAS NO PLATFORM CREDENTIAL IN IT ANYWHERE
 // ---------------------------------------------------------------------------------------------
-// Apple once created 299 assets in the owner's personal Roblox account because the only write
+// StudPilot once created 299 assets in the owner's personal Roblox account because the only write
 // credential in the product was a single shared one, configured once. Roblox refused to take them
 // back — an Image is "not an archivable asset type" — so that account keeps them permanently.
 //
-// `asset-import.ts` has a legitimate no-customer branch: Apple's own library work writes to Apple's
+// `asset-import.ts` has a legitimate no-customer branch: StudPilot's own library work writes to StudPilot's
 // own account, behind `ROBLOX_UPLOAD_AUTHORISED_FOR`. THIS MODULE HAS NO SUCH BRANCH, and that is
 // the design rather than an omission. Every call here acts on a customer's own account by
 // definition, so "no key connected" is not a case to fall back from — it is the end of the
@@ -87,7 +87,7 @@ export const VERIFIED_ENDPOINTS = [
  * What the owner asked for that Open Cloud does not offer, with the evidence, in the module rather
  * than in a document nobody opens.
  *
- * These are quoted back to the person in the API response, because "Apple cannot do this" is a
+ * These are quoted back to the person in the API response, because "StudPilot cannot do this" is a
  * fact about Roblox that a customer is entitled to have in words instead of discovering as a
  * missing button.
  */
@@ -611,7 +611,7 @@ export interface UploadAssetInput {
  *
  *   THE CONSENT IS THE SCOPE, TICKED PER ACCOUNT. `asset:write` was ticked by this person against
  *   this account, after a panel that says Roblox will not let them delete an Image afterwards. The
- *   `ROBLOX_UPLOAD_AUTHORISED_FOR` equality that guards Apple's own account is satisfied here by
+ *   `ROBLOX_UPLOAD_AUTHORISED_FOR` equality that guards StudPilot's own account is satisfied here by
  *   the creator id out of that same credential, which is the two facts — which account, and may
  *   you — arriving together rather than from two different places.
  *
@@ -866,7 +866,7 @@ export interface WriteLogRow {
 }
 
 /**
- * What Apple has done to this person's Roblox account, for this person.
+ * What StudPilot has done to this person's Roblox account, for this person.
  *
  * Keyed on userId like every other query in the credential path: there is deliberately no "read any
  * customer's trail" helper, for the same reason there is no "get any credential" one.

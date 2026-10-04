@@ -117,7 +117,7 @@ test('the worker MUTATING set matches the plugin table that opens undo recording
   const pluginSet = new Set([...table.matchAll(/(\w+)\s*=\s*true/g)].map((m) => m[1]));
   assert.ok(pluginSet.size >= 15, `parsed ${pluginSet.size} mutating ops from the plugin — parser check`);
   // The native owner import is a shipped op family; legacy fixtures never installed it.
-  const ownerFamily = readFileSync(join(ROOT, 'apps/apple-plugin/src/ops/OwnerCorpus.luau'), 'utf8');
+  const ownerFamily = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/ops/OwnerCorpus.luau'), 'utf8');
   const ownerMutating = ownerFamily.match(/mutating\s*=\s*\{([^}]*)\}/)?.[1] ?? '';
   for (const [, name] of ownerMutating.matchAll(/(\w+)\s*=\s*true/g)) pluginSet.add(name);
   const here = new Set(MUTATING_OPS);
@@ -152,7 +152,7 @@ test("every failure the worker itself produces has a declared kind, and none of 
  * explicit edit consent". The model relayed that accurately, then told the user to open
  * "File > Project Settings > Security" and enable "Allow Scripted Updates" — no such menu, page or
  * setting exists in Roblox Studio — and never mentioned the real remedy, two clicks away in the
- * Apple panel.
+ * StudPilot panel.
  *
  * The model was handed a refusal with no remedy and a user who wanted one. Every silence in a tool
  * result gets filled; the only question is by whom.
@@ -225,7 +225,7 @@ test('EVERY code in the vocabulary is attached to a refusal — not just the one
   // Studio, and because the failure being guarded is a code that appears nowhere — which a grep
   // answers exactly. The cost of adding a code is now one line in Commands.luau, which is the point.
   const { REFUSAL_REMEDIES } = await import('../../../packages/shared/src/index.ts');
-  const plugin = ['apps/apple-plugin/src/Commands.luau', 'apps/apple-plugin/src/Bridge.luau']
+  const plugin = ['apps/studpilot-plugin/src/Commands.luau', 'apps/studpilot-plugin/src/Bridge.luau']
     .map((relative) => readFileSync(join(ROOT, relative), 'utf8'))
     .join('\n');
   for (const code of Object.keys(REFUSAL_REMEDIES)) {
@@ -239,7 +239,7 @@ test('EVERY code in the vocabulary is attached to a refusal — not just the one
 });
 
 test('THE PLUGIN ACTUALLY SENDS THE CODE — the vocabulary is not a table nothing populates', () => {
-  const src = readFileSync(join(ROOT, 'apps/apple-plugin/src/Commands.luau'), 'utf8');
+  const src = readFileSync(join(ROOT, 'apps/studpilot-plugin/src/Commands.luau'), 'utf8');
   // Read at the refusal sites, not by counting the word: a remedy defined and never attached is
   // exactly the shape of a guard that cannot fail.
   // Matched as a SHAPE, not as the message's exact wording — the message deliberately changed once
@@ -268,7 +268,7 @@ test('a run that hit a refusal ends with the PRODUCT saying whose limit it is', 
   // The model's own account is kept — it usually contains something true about what it attempted,
   // and the user should see both and believe the signed one.
   assert.ok(out.startsWith(modelText), 'the model text was replaced rather than answered');
-  assert.match(out, /Apple's own limit, not a Roblox Studio setting/);
+  assert.match(out, /StudPilot's own limit, not a Roblox Studio setting/);
   assert.match(out, /Enable edits/);
   assert.match(out, /Allow edits for this connection/);
 });
@@ -285,8 +285,8 @@ test('the correction cannot be an empty flourish', () => {
   // Falsification: if REFUSAL_REMEDIES[code] were ever blank, this would ship a bold heading with
   // nothing after it — a product-authored sentence that says less than the silence it replaced.
   // Split on the heading's closing `**` rather than on one heading's wording: there are two
-  // headings now, because one of the remedies is Roblox's rule and not Apple's, and pinning this
-  // check to the Apple-voiced spelling would have quietly stopped covering the other one.
+  // headings now, because one of the remedies is Roblox's rule and not StudPilot's, and pinning this
+  // check to the StudPilot-voiced spelling would have quietly stopped covering the other one.
   for (const code of ['edit_consent', 'leave_test_mode', 'take_asset_first', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
     const out = replyWithRemedy('x', code);
     const after = out.split('**').slice(2).join('**');
@@ -294,20 +294,20 @@ test('the correction cannot be an empty flourish', () => {
   }
 });
 
-test('the heading does not blame Apple for a rule Roblox enforces', () => {
-  // The heading is signed by the product, so "this is Apple's own limit" is a claim, not a framing.
+test('the heading does not blame StudPilot for a rule Roblox enforces', () => {
+  // The heading is signed by the product, so "this is StudPilot's own limit" is a claim, not a framing.
   // `take_asset_first` exists because ROBLOX will not let a plugin load an asset the signed-in
-  // account does not own — Apple has no gate there, and the remedy text says as much. Before this
-  // split the reply would have asserted Apple's limit in bold and then explained Roblox's rule
+  // account does not own — StudPilot has no gate there, and the remedy text says as much. Before this
+  // split the reply would have asserted StudPilot's limit in bold and then explained Roblox's rule
   // directly underneath it. Both headings must still deny that a Studio setting exists, which is
   // the reason the heading was written in the first place.
   const roblox = replyWithRemedy('x', 'take_asset_first');
-  assert.doesNotMatch(roblox, /Apple's own limit/, 'an ownership refusal is not Apple imposing a limit');
+  assert.doesNotMatch(roblox, /StudPilot's own limit/, 'an ownership refusal is not StudPilot imposing a limit');
   assert.match(roblox, /Roblox's rule/);
   assert.match(roblox, /no Roblox Studio setting lifts it/, 'the fiction denial must survive the split');
   for (const code of ['edit_consent', 'leave_test_mode', 'choose_allowed_target', 'choose_scriptless_asset', 'none']) {
     const out = replyWithRemedy('x', code);
-    assert.match(out, /Apple's own limit, not a Roblox Studio setting/, `${code} is Apple's own gate and should still say so`);
+    assert.match(out, /StudPilot's own limit, not a Roblox Studio setting/, `${code} is StudPilot's own gate and should still say so`);
   }
 });
 
@@ -317,7 +317,7 @@ test('the heading does not blame Apple for a rule Roblox enforces', () => {
  * Appending the truth under a fabrication is not enough. A user reading
  *
  *   "Go to File > Place Settings > Security. Uncheck 'Require explicit edit consent for scripts'."
- *   "Actually this is Apple's own limit; press Enable edits… in the Apple panel."
+ *   "Actually this is StudPilot's own limit; press Enable edits… in the StudPilot panel."
  *
  * does not average them. They go looking for the settings page, because it is the instruction that
  * sounds like it was written by someone who checked. So a reply containing a named fiction is
@@ -331,7 +331,7 @@ test('a reply that invents a Studio settings page is REPLACED, not annotated', (
   const out = replyWithRemedy(FICTION, 'edit_consent');
   assert.doesNotMatch(out, /Place Settings/i, 'the fabricated settings page survived into the reply');
   assert.doesNotMatch(out, /Require explicit edit consent for scripts/i);
-  assert.match(out, /Apple's own limit/);
+  assert.match(out, /StudPilot's own limit/);
   assert.match(out, /Enable edits/);
   // The user still needs to know the state of their place.
   assert.match(out, /nothing to undo/i);
@@ -340,7 +340,7 @@ test('a reply that invents a Studio settings page is REPLACED, not annotated', (
 test('a reply with no fiction keeps the model\'s account and gains the correction', () => {
   const out = replyWithRemedy(HONEST, 'edit_consent');
   assert.ok(out.startsWith(HONEST), 'a truthful reply was thrown away');
-  assert.match(out, /Apple's own limit/);
+  assert.match(out, /StudPilot's own limit/);
 });
 
 test('the replacement needs BOTH a refusal and a fiction — neither alone', () => {
@@ -365,7 +365,7 @@ test('every fiction carries a real sample, and that sample triggers replacement'
     assert.ok(studioFictionIn(entry.sample), `${entry.pattern}: studioFictionIn misses its own sample`);
     const out = replyWithRemedy(entry.sample, 'edit_consent');
     assert.doesNotMatch(out, entry.pattern, `${entry.pattern}: the fabrication survived into the reply`);
-    assert.match(out, /Apple's own limit/, `${entry.pattern}: replaced with nothing useful`);
+    assert.match(out, /StudPilot's own limit/, `${entry.pattern}: replaced with nothing useful`);
   }
 });
 

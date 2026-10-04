@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-voice-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-voice-${process.pid}.mjs`);
 await esbuild.build({ entryPoints: [join(WORKER, 'src', 'voice-transcribe.ts')], bundle: true, format: 'esm', target: 'es2022', outfile: OUT, logLevel: 'silent' });
 const V = await import(pathToFileURL(OUT).href);
 process.on('exit', () => rmSync(OUT, { force: true }));

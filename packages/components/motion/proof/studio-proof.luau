@@ -547,7 +547,7 @@ for key, s in seen do
 	per[s.model] = p
 end
 for model, p in per do
-	print(("APPLEMOTION PROBE %s: %d of %d joints moved, largest swing %.2f"):format(model, p.moving, p.joints, p.max))
+	print(("STUDPILOTMOTION PROBE %s: %d of %d joints moved, largest swing %.2f"):format(model, p.moving, p.joints, p.max))
 end
 ]=====])
 local Motion = require(mod)
@@ -565,7 +565,7 @@ end
 local ok, biped = pcall(function() return game:GetService("Players"):CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15) end)
 if ok and biped then
 	biped.Name = "Biped"; biped.Parent = zoo; biped:PivotTo(CFrame.new(-8, 3, -18)); biped.HumanoidRootPart.Anchored = true
-else warn("APPLEMOTION could not build the R15 body: " .. tostring(biped)) end
+else warn("STUDPILOTMOTION could not build the R15 body: " .. tostring(biped)) end
 -- 2. A quadruped with generic joint names, like most library creatures.
 local quad = Instance.new("Model"); quad.Name = "Quadruped"; quad.Parent = zoo
 local base = CFrame.new(4, 0, -18)
@@ -586,5 +586,5 @@ end
 local plant = Instance.new("Model"); plant.Name = "Plant"; plant.Parent = zoo
 local fruit = part("Fruit", Vector3.new(3, 3, 3), CFrame.new(12, 1.6, -18), Color3.fromRGB(220, 40, 30), plant, Enum.PartType.Ball); fruit.Anchored = true
 local leaf = part("Leaf", Vector3.new(1.4, 0.3, 1.4), CFrame.new(12, 3.2, -18), Color3.fromRGB(40, 160, 60), plant); leaf.Anchored = true
-for _, m in zoo:GetChildren() do print("APPLEMOTION prepare " .. m.Name .. ": " .. table.concat(Motion.prepare(m), "; ")) end
-print("APPLEMOTION proof place ready")
+for _, m in zoo:GetChildren() do print("STUDPILOTMOTION prepare " .. m.Name .. ": " .. table.concat(Motion.prepare(m), "; ")) end
+print("STUDPILOTMOTION proof place ready")

@@ -1,5 +1,5 @@
-// Apple's own research notes (packages/corpus/research/NN-topic.md) as corpus chunks, so search_docs reaches them.
-// Each note is an original synthesis written for Apple, with a numbered source list; every chunk keeps its [S#]
+// StudPilot's own research notes (packages/corpus/research/NN-topic.md) as corpus chunks, so search_docs reaches them.
+// Each note is an original synthesis written for StudPilot, with a numbered source list; every chunk keeps its [S#]
 // citations and points its url at the first source it cites. See PROVENANCE.md, "Source 3".
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';

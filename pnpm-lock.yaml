@@ -21,7 +21,7 @@ importers:
         specifier: ^4.147.0
         version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
 
-  apps/apple-plugin: {}
+  apps/studpilot-plugin: {}
 
   apps/benchmark/crystal-canyon: {}
 
@@ -31,7 +31,7 @@ importers:
 
   apps/site:
     dependencies:
-      '@apple/shared':
+      '@studpilot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@astrojs/check':
@@ -49,7 +49,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@apple/shared':
+      '@studpilot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@radix-ui/react-use-controllable-state':
@@ -164,13 +164,13 @@ importers:
 
   apps/worker:
     dependencies:
-      '@apple/design':
+      '@studpilot/design':
         specifier: workspace:*
         version: link:../../packages/design
-      '@apple/evals':
+      '@studpilot/evals':
         specifier: workspace:*
         version: link:../../packages/evals
-      '@apple/shared':
+      '@studpilot/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       hono:
@@ -207,7 +207,7 @@ importers:
 
   packages/evals:
     dependencies:
-      '@apple/design':
+      '@studpilot/design':
         specifier: workspace:*
         version: link:../design
 

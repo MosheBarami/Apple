@@ -130,7 +130,7 @@ test('clone_instances refuses what it cannot place, without sending a place_copi
 test('a plugin without place_copies says so and names the way round it; a failure part-way says what landed', async () => {
   const old = ctxWith(cloneStub({ place: () => ({ ok: false, error: 'unknown Studio operation: place_copies', failure: 'refused' }) }));
   const r = await run(old.ctx, 'clone_instances', { paths: ['game.Workspace.A'], at: [[0, 0, 0]] });
-  assert.match(r.data.error, /cannot place copies at positions yet \(it does not know place_copies\); update the Apple plugin/);
+  assert.match(r.data.error, /cannot place copies at positions yet \(it does not know place_copies\); update the StudPilot plugin/);
   assert.match(r.data.error, /clone_instances with only `paths`/);
   let calls = 0;
   const half = ctxWith(cloneStub({ place: (op) => (++calls === 2 ? { ok: false, error: 'Studio is busy', failure: 'internal' } : { ok: true, data: { placed: op.items.map((i) => i.name), failed: [] } }) }));
@@ -374,7 +374,7 @@ test('a terrain or ground read that fails is said, not rendered as an empty scen
 
 // ------------------------------------------------------------------------------------- the plugin's own allowlist
 test('every property set_mood overrides can set is one the plugin\'s PROPERTY_ALLOW writes (the live plugin once refused names its source accepted)', () => {
-  const luau = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'Commands.luau'), 'utf8');
+  const luau = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
   const start = luau.indexOf('local PROPERTY_ALLOW = {');
   assert.ok(start > 0, 'the plugin allowlist moved — re-aim this test');
   const block = luau.slice(start, luau.indexOf('\n}\n', start));

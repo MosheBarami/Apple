@@ -18,8 +18,8 @@ const shortDate = (iso: string) =>
 ---
 
 <Base
-  title="Status — Apple"
-  description="Live operational status of the Apple service, checked directly against the API from your browser and refreshed every 30 seconds."
+  title="Status — StudPilot"
+  description="Live operational status of the StudPilot service, checked directly against the API from your browser and refreshed every 30 seconds."
 >
   <section class="section" aria-labelledby="status-title">
     <div class="wrap status-wrap">
@@ -41,7 +41,7 @@ const shortDate = (iso: string) =>
           <span class="status-orb" id="status-orb" aria-hidden="true"></span>
           <div>
             <p class="status-headline" id="status-headline">Checking…</p>
-            <p class="status-sub" id="status-sub">Reaching the Apple API.</p>
+            <p class="status-sub" id="status-sub">Reaching the StudPilot API.</p>
           </div>
         </div>
 
@@ -131,7 +131,7 @@ const shortDate = (iso: string) =>
 
 <style>
   /* Status is the one page whose colour means something, so the colour is spent on one small dot
-     and on nothing else: no glow, no tinted headline. Tokens from apple-minimal.css; --good,
+     and on nothing else: no glow, no tinted headline. Tokens from studpilot-minimal.css; --good,
      --warn and --bad are the status tones. */
   .status-wrap {
     max-width: 720px;
@@ -421,7 +421,7 @@ const shortDate = (iso: string) =>
 
   async function check() {
     clearTimeout(pollTimer);
-    setState('checking', 'Checking…', 'Reaching the Apple API.');
+    setState('checking', 'Checking…', 'Reaching the StudPilot API.');
     const started = performance.now();
     try {
       const controller = new AbortController();
@@ -457,7 +457,7 @@ const shortDate = (iso: string) =>
       if (!navigator.onLine) {
         setState('down', 'You appear to be offline', 'Your browser reports no network connection. This check will retry automatically.');
       } else {
-        setState('down', 'API unreachable', 'The Apple API did not answer from your browser. It may be a service outage — we are probably already staring at it.');
+        setState('down', 'API unreachable', 'The StudPilot API did not answer from your browser. It may be a service outage — we are probably already staring at it.');
       }
     }
 

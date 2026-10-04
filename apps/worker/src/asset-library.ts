@@ -9,7 +9,7 @@
 //
 // WHICH ACCOUNT. The upload goes through creator-dashboard's `uploadAsset`, exactly as
 // generate_model_external does: the customer's own connected key, into their own account, audited,
-// with a Robux ceiling of 0. There is no path here to Apple's account.
+// with a Robux ceiling of 0. There is no path here to StudPilot's account.
 import index from '../../../packages/asset-library/index.json';
 import type { Env } from './env';
 import { serveStatic } from './static';
@@ -179,7 +179,7 @@ export async function uploadLibraryAsset(
     file: bytes.slice().buffer,
     contentType: 'image/png',
     displayName: name,
-    description: `${hit.packName} by Kenney (www.kenney.nl), ${hit.license}. Added by Apple.`,
+    description: `${hit.packName} by Kenney (www.kenney.nl), ${hit.license}. Added by StudPilot.`,
     expectedPrice: 0,
   });
   if (!up.ok) return { error: up.error, stage: 'upload' };

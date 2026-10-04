@@ -24,7 +24,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const outs = [];
 async function load(name) {
-  const out = join(tmpdir(), `apple-cf-${name}-${process.pid}.mjs`);
+  const out = join(tmpdir(), `studpilot-cf-${name}-${process.pid}.mjs`);
   outs.push(out);
   await esbuild.build({ entryPoints: [join(WORKER, 'src', `${name}.ts`)], bundle: true, format: 'esm', target: 'es2022', platform: 'node', outfile: out, logLevel: 'error' });
   return import(pathToFileURL(out).href);

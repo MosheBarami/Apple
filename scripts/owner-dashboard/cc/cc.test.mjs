@@ -13,7 +13,7 @@ const SENTINEL = 'SECRET_SENTINEL';
 Object.assign(process.env, {
   CLOUDFLARE_API_TOKEN: `${SENTINEL}_123`, CLOUDFLARE_ACCOUNT_ID: 'acct-test', SUPABASE_ACCESS_TOKEN: `${SENTINEL}_SUPA`,
   HF_TOKEN: `${SENTINEL}_HF`, SENTRY_AUTH_TOKEN: `${SENTINEL}_SENTRY`, SENTRY_ORG: 'test-org', SENTRY_BASE: 'https://sentry.test',
-  APPLE_ADMIN_KEY: `${SENTINEL}_APPLE`,
+  STUDPILOT_ADMIN_KEY: `${SENTINEL}_STUDPILOT`,
 });
 
 const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gh-'));
@@ -143,7 +143,7 @@ test('dryRun returns the exact upstream call and sends nothing', async () => {
   const cases = [
     ['sentry/action', { kind: 'ignore', id: '77' }, 'PUT', 'https://sentry.test/api/0/organizations/test-org/issues/?id=77'],
     ['hf/action', { kind: 'restart', id: 'moshebarami/backrooms-api' }, 'POST', 'https://huggingface.co/api/spaces/moshebarami/backrooms-api/restart'],
-    ['cloudflare/action', { kind: 'logs', value: false }, 'PATCH', 'https://api.cloudflare.com/client/v4/accounts/<account>/workers/scripts/apple/script-settings'],
+    ['cloudflare/action', { kind: 'logs', value: false }, 'PATCH', 'https://api.cloudflare.com/client/v4/accounts/<account>/workers/scripts/studpilot/script-settings'],
     ['supabase/action', { kind: 'backup' }, 'POST', 'https://api.supabase.com/v1/projects/npqvyijsvzkuwddyhtpm/database/query'],
     ['review', { sha: 'abc1234', verdict: 'approve' }, 'WRITE', 'scripts/owner-dashboard/cc/review.json'],
   ];
@@ -167,7 +167,7 @@ test('sentry bookmark and cloudflare traces toggle send the right bodies (fake u
   assert.deepEqual(JSON.parse(put.body), { isBookmarked: true });
   await post('/api/cc/cloudflare/action', { kind: 'traces', value: false, confirm: true });
   const patch = calls.findLast((c) => c.method === 'PATCH');
-  assert.match(patch.url, /workers\/scripts\/apple\/script-settings$/);
+  assert.match(patch.url, /workers\/scripts\/studpilot\/script-settings$/);
   assert.equal(JSON.parse(patch.body).observability.traces.enabled, false);
 });
 

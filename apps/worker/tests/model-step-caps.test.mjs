@@ -16,7 +16,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MODEL_REGISTRY } from '@apple/shared';
+import { MODEL_REGISTRY } from '@studpilot/shared';
 import {
   MAX_NEURONS_PER_REQUEST,
   MODEL_PRICES,
@@ -29,7 +29,7 @@ import {
 
 const REFERENCE_PROMPT_TOKENS = 64_000;
 
-test('the registry is the one engine, Apple, so nothing below is vacuous', () => {
+test('the registry is the one engine, StudPilot, so nothing below is vacuous', () => {
   assert.deepEqual(MODEL_REGISTRY.map((m) => m.id), ['apple']);
 });
 
@@ -55,7 +55,7 @@ test('each model admits a reference step at its own price, and its cap is not a 
   }
 });
 
-test('Apple keeps the historical per-request cap; unlisted models keep the global one', () => {
+test('StudPilot keeps the historical per-request cap; unlisted models keep the global one', () => {
   for (const m of MODEL_REGISTRY) assert.equal(m.maxNeuronsPerStep, MAX_NEURONS_PER_REQUEST, m.id);
   assert.equal(maxNeuronsPerStepFor('@cf/qwen/qwen3-30b-a3b-fp8'), MAX_NEURONS_PER_REQUEST);
   assert.equal(maxNeuronsPerStepFor('@cf/black-forest-labs/flux-1-schnell'), MAX_NEURONS_PER_REQUEST);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { callModel, TransportError } from './transport.mjs';
-import { APPLE_MAX_BASE_GATE, evaluateBaseGate, parseArgs, runJob, sourceHashes, validateBaseGateConfig } from './run.mjs';
+import { STUDPILOT_MAX_BASE_GATE, evaluateBaseGate, parseArgs, runJob, sourceHashes, validateBaseGateConfig } from './run.mjs';
 import { loadTasks, TASKS_DIR } from './tasks.mjs';
 import { readdirSync } from 'node:fs';
 
@@ -220,11 +220,11 @@ test('result fingerprints retain every task file and the runner sources', () => 
 
 function passingGateRecords() {
   const categories = ['scripting-security', 'scripting-persistence', 'scripting-systems', 'scripting-gameplay'];
-  return Array.from({ length: APPLE_MAX_BASE_GATE.taskCount }, (_, index) => ({
+  return Array.from({ length: STUDPILOT_MAX_BASE_GATE.taskCount }, (_, index) => ({
     taskId: `task-${index}`,
     category: categories[index % categories.length],
-    model: APPLE_MAX_BASE_GATE.modelKey,
-    modelId: APPLE_MAX_BASE_GATE.modelId,
+    model: STUDPILOT_MAX_BASE_GATE.modelKey,
+    modelId: STUDPILOT_MAX_BASE_GATE.modelId,
     ok: true,
     complete: true,
     truncated: false,

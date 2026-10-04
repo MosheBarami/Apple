@@ -22,9 +22,9 @@ import { join } from 'node:path';
 const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
 
 const SRC = new URL('../../../apps/worker/src/reasoning.ts', import.meta.url).pathname;
-const out = join(mkdtempSync(join(tmpdir(), 'apple-reasoning-')), 'reasoning.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'studpilot-reasoning-')), 'reasoning.mjs');
 // `--bundle` and the explicit `--main-fields`: reasoning.ts gained its first VALUE import from
-// @apple/shared (the product-mode display names, so the effort explanation shown to a person stops
+// @studpilot/shared (the product-mode display names, so the effort explanation shown to a person stops
 // saying "clay"). Transpile-only left that import unresolved at run time. `--platform=neutral`
 // defaults mainFields to EMPTY, so a workspace package whose entry comes from `main` cannot be
 // resolved without naming them — the same trap the comment above records.
@@ -180,9 +180,9 @@ test('an escalated step still respects the high-effort budget', () => {
 
 /* ------------------------------------------------- the entitlement floor ---- */
 //
-// REMOVED BY OWNER DECISION 2026-10-01: 38efea2e "single engine Apple; remove model picker, tiers"
+// REMOVED BY OWNER DECISION 2026-10-01: 38efea2e "single engine StudPilot; remove model picker, tiers"
 // deleted ENTITLEMENT_FLOOR and the `productModel` signal, and c839d7af removed Plan mode. There is
-// no Apple MAX tier to floor and no Plan baseline to lift. What survives is that an unknown
+// no StudPilot MAX tier to floor and no Plan baseline to lift. What survives is that an unknown
 // `productModel` signal changes nothing — the policy no longer reads it.
 
 test('the entitlement floor is gone: productModel does not change the policy', () => {
@@ -208,7 +208,7 @@ test.skip('the reason string names the floor, so the admin trace says why', { sk
 // classifyRequest runs ONCE in startRun and its verdict is spread into every later step. That is
 // correct for "hi" and wrong for "ok": an approval is how a person ACCEPTS a plan, so the run that
 // follows it is a build — and it was pinned to `low` for all sixteen steps by a verdict about a
-// two-letter message, with the early return firing before the entitlement floor so Apple MAX could
+// two-letter message, with the early return firing before the entitlement floor so StudPilot MAX could
 // not lift it either.
 
 test('"ok" is still talk when nothing has happened yet', () => {
@@ -248,7 +248,7 @@ test('a real greeting is still cheap, on both tiers — the shortcut was not del
 
 /* --------------------------------------- the reason string a person reads ---- */
 
-test('the effort explanation speaks product language, not Apple specialist names', () => {
+test('the effort explanation speaks product language, not StudPilot specialist names', () => {
   const reasons = [
     chooseEffort(base('agent')).reason,
     chooseEffort(base('agent', { conversational: true })).reason,
@@ -257,7 +257,7 @@ test('the effort explanation speaks product language, not Apple specialist names
   // RESTATED 2026-10-01 (c839d7af, 38efea2e): the property is unchanged — no internal name reaches a
   // person. Plan/MAX fixtures are gone with the modes; the reason now reads `baseline`.
   for (const dead of ['clay', 'stone', 'rune', 'super-agent', 'super agent']) {
-    assert.ok(!reasons.includes(dead), `"${dead}" is Apple-era vocabulary and reached the UI: ${reasons}`);
+    assert.ok(!reasons.includes(dead), `"${dead}" is StudPilot-era vocabulary and reached the UI: ${reasons}`);
   }
   assert.match(chooseEffort(base('agent')).reason, /^baseline/);
   assert.match(chooseEffort(base('agent', { conversational: true })).reason, /conversational/);

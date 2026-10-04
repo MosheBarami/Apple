@@ -1,6 +1,6 @@
 // Where a build may take its assets from, and who gets to decide.
 //
-// The owner's rule: before Apple builds, ask whether it may use the curated library, the Creator
+// The owner's rule: before StudPilot builds, ask whether it may use the curated library, the Creator
 // Store, or invent geometry — and let that answer be settled once in settings instead of being
 // asked forever. That makes it a preference, so it inherits the layering every other preference
 // here has: set it for one project, for yourself, or for a whole organisation.
@@ -56,7 +56,7 @@ test('legacy ask rows do not strand an existing project behind the removed choos
 test('the two sources are exactly the two that still exist, and nothing else validates', () => {
   assert.deepEqual([...P.ASSET_SOURCE_CHOICES], ['creator_store', 'from_scratch']);
   for (const c of P.ASSET_SOURCE_CHOICES) assert.ok(P.isAssetSourcePolicy(pol('ask', [c])), c);
-  for (const bad of ['marketplace', 'toolbox', 'ANY', '', 'apple-library', 'apple_library']) {
+  for (const bad of ['marketplace', 'toolbox', 'ANY', '', 'studpilot-library', 'apple_library']) {
     assert.equal(P.isAssetSourcePolicy(pol('ask', [bad])), false, `"${bad}" is not a source`);
   }
   // AND A WHOLE STORED POLICY THAT NAMES IT IS INVALID, not merely narrowed. This is the migration

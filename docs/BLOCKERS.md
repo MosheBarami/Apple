@@ -68,8 +68,8 @@ suitable for an automated pixel-diff harness.
 
 | account | now supplied by | removed from source in |
 |---|---|---|
-| `e2e-test@apple.internal` | `APPLE_E2E_PASSWORD` | `d8cfafa` |
-| `load{i}@apple.internal` | `APPLE_LOAD_PASSWORD` | `5b6896a` |
+| `e2e-test@studpilot.internal` | `STUDPILOT_E2E_PASSWORD` | `d8cfafa` |
+| `load{i}@studpilot.internal` | `STUDPILOT_LOAD_PASSWORD` | `5b6896a` |
 
 **The values are deliberately not written here.** They were, until 2026-09-01, in
 this very table — which meant the document recording the leak was republishing it,
@@ -145,10 +145,10 @@ dashboard route is human-only regardless.
 Two password changes in the Supabase dashboard for project `npqvyijsvzkuwddyhtpm`
 (**Authentication → Users**):
 
-1. `e2e-test@apple.internal` — set a new password, then put it in the repo-root
-   `.env` as `APPLE_E2E_PASSWORD=` (that file is gitignored and has never been
+1. `e2e-test@studpilot.internal` — set a new password, then put it in the repo-root
+   `.env` as `STUDPILOT_E2E_PASSWORD=` (that file is gitignored and has never been
    committed — verified: `git log --all --full-history -- .env` is empty).
-2. the `load{i}@apple.internal` load-test accounts — same, into `APPLE_LOAD_PASSWORD=`.
+2. the `load{i}@studpilot.internal` load-test accounts — same, into `STUDPILOT_LOAD_PASSWORD=`.
 
 Nothing else needs updating. CI holds no secrets by design, so there is no GitHub
 Actions secret to change, and no deployed configuration reads either password.
@@ -270,7 +270,7 @@ do: re-read each licence string live, then fill `sha256`, `triangles`,
 `textureResolution`, `boundsStuds` and `robloxAssetId` **after importing to Studio**.
 
 That last step means downloading third-party binaries and uploading them to Roblox under
-Apple's own account. That is an outward-facing operation on a real account with real
+StudPilot's own account. That is an outward-facing operation on a real account with real
 credentials, and it is not one to take unilaterally.
 
 ### Steps for the owner
@@ -279,7 +279,7 @@ credentials, and it is not one to take unilaterally.
    read path and the seed manifest and let `find_verified_asset` be the only asset route
    — smaller and honest. Roughly 1,000 lines would go.
 2. If it is wanted: run an ingest that, per `SEED_MANIFEST_NOTE`, re-reads each licence
-   live, downloads the binaries, imports each to Studio, uploads under the Apple account,
+   live, downloads the binaries, imports each to Studio, uploads under the StudPilot account,
    and records `robloxAssetId` + `sha256`.
 3. Call `ensureAssetTables` then `upsertAssets` with the ingested records against
    `golem-corpus`.
@@ -299,15 +299,15 @@ Every asset acquisition falls through to the Creator Store — the path with unv
 creators and script-bearing models, which the insertion gate then has to catch. The
 library exists to avoid needing that gate so often, and has never once been available.
 
-**And every asset Apple places is recorded as unaccounted.** The attribution ledger keys
+**And every asset StudPilot places is recorded as unaccounted.** The attribution ledger keys
 on `asset_library.id`; with no library there is no key, so every placement writes the
 `unaccounted:` sentinel and the compliance report grades each one `missing_provenance`,
-which it treats as a blocker. That is correct as a fact — Apple checked the asset was
+which it treats as a blocker. That is correct as a fact — StudPilot checked the asset was
 free, publicly visible, script-free and from a trusted creator, and then genuinely did
 not know its licence — but the credits panel first rendered it as a red *"N assets cannot
 ship commercially"*, a determination nobody made. The panel now distinguishes a finding
 against an asset from the absence of one and says the second in amber. Until this blocker
-clears, the honest state of the credits surface for every project is "Apple cannot account
+clears, the honest state of the credits surface for every project is "StudPilot cannot account
 for these", and that is what it says.
 
 This does not invalidate `evidence/2026-09-01-rock-palette-supply.md`, which searched the
@@ -389,7 +389,7 @@ correction: it bears on whether the free tier delivers what the page promises.
 22:56Z against `https://golem.moshe-barami111.workers.dev`.**
 
 The marketing site is served by the worker out of D1, so the site only changes when it is
-deployed. Everything corrected on `feature/apple-product-experience` is still wrong in
+deployed. Everything corrected on `feature/studpilot-product-experience` is still wrong in
 production right now:
 
 ```
@@ -428,7 +428,7 @@ share an origin.
 > off-by-default choice — and this policy will be updated before it exists.**
 
 That program already exists in the product. `apps/web/src/routes/settings.tsx:146` renders
-a toggle — *"Contribute anonymised snippets to improve Apple — optional, off by default,
+a toggle — *"Contribute anonymised snippets to improve StudPilot — optional, off by default,
 revocable any time"* — writing `profiles.training_opt_in`, a column in
 `infra/supabase/migrations/0001_init.sql:9`. The policy's own precondition has been
 passed: the mechanism shipped and the policy was not updated.
@@ -534,7 +534,7 @@ Worker secret plus its SHA-256 in `public.membership_outbox_secret`).
 
 **Both halves are now in place, and both were measured, not assumed:**
 
-* `wrangler secret list --config apps/worker/wrangler.apple.jsonc` returns eight
+* `wrangler secret list --config apps/worker/wrangler.studpilot.jsonc` returns eight
   secrets on 2026-09-20 and `MEMBERSHIP_OUTBOX_TOKEN` is among them — it was
   seven, without it, on 2026-09-19.
 * `public.membership_outbox_secret` holds a row for consumer `apple`,

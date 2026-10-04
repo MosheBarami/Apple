@@ -14,7 +14,7 @@ const read = (...parts) => readFileSync(join(SITE, ...parts), 'utf8');
 const page = read('src', 'pages', 'index.astro');
 const base = read('src', 'layouts', 'Base.astro');
 const landing = read('src', 'layouts', 'Landing.astro');
-const minimal = read('src', 'styles', 'apple-minimal.css');
+const minimal = read('src', 'styles', 'studpilot-minimal.css');
 
 const withoutComments = (source) => source
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
@@ -23,7 +23,7 @@ const withoutComments = (source) => source
 
 test('the public layouts use the minimal surface and do not import the retired relaunch layer', () => {
   for (const [name, source] of [['Base.astro', base], ['Landing.astro', landing]]) {
-    assert.match(source, /styles\/apple-minimal\.css/,
+    assert.match(source, /styles\/studpilot-minimal\.css/,
       `${name} does not load the shared minimal visual system`);
     assert.doesNotMatch(source, /styles\/relaunch\.css/,
       `${name} still imports the retired relaunch treatment`);
@@ -70,7 +70,7 @@ test('the hero is product UI rather than a decorative scene', () => {
 //   --faint is the one declared exception, and it is exempt in one direction only: the app's value
 //   is below 4.5:1 on its own raised surfaces, and the site raises it (tests/contrast.test.mjs
 //   holds the site's value to 4.5:1 on every surface). ]]
-const APP = readFileSync(join(SITE, '..', 'web', 'src', 'design', 'apple-minimal.css'), 'utf8');
+const APP = readFileSync(join(SITE, '..', 'web', 'src', 'design', 'studpilot-minimal.css'), 'utf8');
 const SHARED_TOKENS = [
   'paper', 'paper-2', 'surface', 'surface-2', 'surface-3', 'ink', 'muted', 'line', 'line-strong',
   'accent', 'accent-soft', 'accent-ring',

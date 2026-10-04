@@ -1,4 +1,4 @@
-// A slow, breathing orb behind the Apple mark on the sign-in screens.
+// A slow, breathing orb behind the StudPilot mark on the sign-in screens.
 //
 // Pick: React Bits "Orb" (MIT + Commons Clause — re-implemented, not copied). Upstream is a WebGL
 // shader of a hue-shifting, noise-warped sphere that brightens under the pointer. The account

@@ -14,7 +14,7 @@
  * reads when the game runs. A verb is a verb on parts: no subject is named anywhere in this file, and the same call works for
  * any model whatever it depicts or wherever it came from.
  *
- * The harness gives information and checks (every path is resolved against the live tree, a Sound must come from Apple's
+ * The harness gives information and checks (every path is resolved against the live tree, a Sound must come from StudPilot's
  * library, a hinge must be a point on the box, each number is range-checked) and reports what it measured: after the write it
  * reads both scripts back and says whether they match. It does NOT decide what looks right; that is the agent's choice.
  *
@@ -142,7 +142,7 @@ interface Ctx {
   ctx: AgentCtx;
   /**
    * The record is one this tool wrote earlier and is being re-read, not a new request. Its structure is checked again (every path
-   * must still resolve, every number be in range); its sound is NOT re-judged against Apple's library, because a sound found by
+   * must still resolve, every number be in range); its sound is NOT re-judged against StudPilot's library, because a sound found by
    * search in an earlier run is no longer in this run's discovered set and re-judging would silently delete it on the next merge.
    */
   stored?: boolean;
@@ -331,7 +331,7 @@ export async function readBehaviour(c: Ctx, raw: unknown, index: number): Promis
       const value = obj(soundIdProp).v ?? soundIdProp;
       if (typeof value !== 'string' || !value) return { error: `${at}.sound: that Sound has no SoundId, so it would play nothing` };
       const refused = c.stored ? null : refuseSoundId({ SoundId: value }, c.ctx.discoveredAssetIds);
-      if (refused) return { error: `${at}.sound: its SoundId is not from Apple's library. ${refused.error}` };
+      if (refused) return { error: `${at}.sound: its SoundId is not from StudPilot's library. ${refused.error}` };
     }
   }
 

@@ -1,7 +1,7 @@
 {
   "": {
-    "he": "כל המוצר Apple במקום אחד: השרת בענן (apps/worker), אפליקציית האינטרנט (apps/web), אתר השיווק (apps/site), התוסף ל-Roblox Studio (apps/apple-plugin), ספריות משותפות (packages), תסריטי עבודה (scripts) ותיעוד (docs).",
-    "en": "The whole Apple product: the cloud worker, the web app, the marketing site, the Roblox Studio plugin, shared packages, scripts and docs.",
+    "he": "כל המוצר StudPilot במקום אחד: השרת בענן (apps/worker), אפליקציית האינטרנט (apps/web), אתר השיווק (apps/site), התוסף ל-Roblox Studio (apps/studpilot-plugin), ספריות משותפות (packages), תסריטי עבודה (scripts) ותיעוד (docs).",
+    "en": "The whole StudPilot product: the cloud worker, the web app, the marketing site, the Roblox Studio plugin, shared packages, scripts and docs.",
     "docs": [
       {
         "label": "Cloudflare Workers",
@@ -47,8 +47,8 @@
     ]
   },
   ".design-sync": {
-    "he": "קובץ הגדרה אחד שמקשר את מערכת העיצוב של Apple לפרויקט עיצוב חיצוני בשם \"Apple Design System\". לא ברור מהקובץ לאיזה כלי בדיוק.",
-    "en": "One config file linking Apple's design system to an external design project called \"Apple Design System\". Which tool exactly is not clear from the file.",
+    "he": "קובץ הגדרה אחד שמקשר את מערכת העיצוב של StudPilot לפרויקט עיצוב חיצוני בשם \"StudPilot Design System\". לא ברור מהקובץ לאיזה כלי בדיוק.",
+    "en": "One config file linking StudPilot's design system to an external design project called \"StudPilot Design System\". Which tool exactly is not clear from the file.",
     "docs": []
   },
   ".github": {
@@ -76,9 +76,9 @@
     "en": "The product's applications: the Roblox Studio plugin, the marketing site, the web app, the cloud server, and demo/benchmark games.",
     "docs": []
   },
-  "apps/apple-plugin": {
-    "he": "זה המוצר: התוסף \"Apple Studio\" ל-Roblox Studio (כתוב ב-Luau). הוא מתחבר לחשבון שלך ובונה/כותב בתוך המקום הפתוח ב-Studio. מתפרסם ב-Creator Store (נכס 107230158271368).",
-    "en": "The product: the \"Apple Studio\" Roblox Studio plugin (Luau). It pairs with your account and builds/writes inside the open Studio place. Published on the Creator Store (asset 107230158271368).",
+  "apps/studpilot-plugin": {
+    "he": "זה המוצר: התוסף \"StudPilot Studio\" ל-Roblox Studio (כתוב ב-Luau). הוא מתחבר לחשבון שלך ובונה/כותב בתוך המקום הפתוח ב-Studio. מתפרסם ב-Creator Store (נכס 107230158271368).",
+    "en": "The product: the \"StudPilot Studio\" Roblox Studio plugin (Luau). It pairs with your account and builds/writes inside the open Studio place. Published on the Creator Store (asset 107230158271368).",
     "docs": [
       {
         "label": "Roblox Studio plugins",
@@ -119,8 +119,8 @@
     ]
   },
   "apps/plugin": {
-    "he": "התוסף הישן (Apple). זה לא המוצר ולא מתפרסם: נשאר רק כקבצי בדיקה ונתוני ייחוס שבדיקות אחרות קוראות. המוצר האמיתי הוא apps/apple-plugin.",
-    "en": "The legacy (Apple) plugin. Not the product and never shipped: kept only as test fixtures and reference data. The real plugin is apps/apple-plugin.",
+    "he": "התוסף הישן (StudPilot). זה לא המוצר ולא מתפרסם: נשאר רק כקבצי בדיקה ונתוני ייחוס שבדיקות אחרות קוראות. המוצר האמיתי הוא apps/studpilot-plugin.",
+    "en": "The legacy (StudPilot) plugin. Not the product and never shipped: kept only as test fixtures and reference data. The real plugin is apps/studpilot-plugin.",
     "docs": [
       {
         "label": "Roblox Studio plugins",
@@ -188,8 +188,8 @@
     "docs": []
   },
   "docs/audit": {
-    "he": "דוחות ביקורת על הקוד: מה באמת עובד במוצר (\"ספר החשבונות\" של Apple), ספקי מודלים, מודלי בטיחות של Roblox ודוח האימון הראשון.",
-    "en": "Code audits: what really works in the product (the Apple ledger), inference providers, Roblox safety models, and the first training report.",
+    "he": "דוחות ביקורת על הקוד: מה באמת עובד במוצר (\"ספר החשבונות\" של StudPilot), ספקי מודלים, מודלי בטיחות של Roblox ודוח האימון הראשון.",
+    "en": "Code audits: what really works in the product (the StudPilot ledger), inference providers, Roblox safety models, and the first training report.",
     "docs": []
   },
   "docs/autonomy": {
@@ -327,8 +327,8 @@
     "docs": []
   },
   "packages/sdk": {
-    "he": "ערכות פיתוח ללקוחות שרוצים לחבר את Apple בקוד: JavaScript/TypeScript, Python ו-Luau, ועוד כלי שורת פקודה בשם apple.",
-    "en": "Client SDKs for the Apple REST + streaming API in JavaScript/TypeScript, Python and Luau, plus the apple CLI.",
+    "he": "ערכות פיתוח ללקוחות שרוצים לחבר את StudPilot בקוד: JavaScript/TypeScript, Python ו-Luau, ועוד כלי שורת פקודה בשם studpilot.",
+    "en": "Client SDKs for the StudPilot REST + streaming API in JavaScript/TypeScript, Python and Luau, plus the studpilot CLI.",
     "docs": []
   },
   "packages/shared": {
@@ -342,8 +342,8 @@
     ]
   },
   "packages/training": {
-    "he": "אימון המודל של Apple: בונה סטי נתונים שעברו בדיקת רישיון ואימות מכונה, ומריץ אימון LoRA מקומי (MLX).",
-    "en": "Apple's model training: builds licence-gated, machine-verified datasets and runs local LoRA fine-tuning (MLX).",
+    "he": "אימון המודל של StudPilot: בונה סטי נתונים שעברו בדיקת רישיון ואימות מכונה, ומריץ אימון LoRA מקומי (MLX).",
+    "en": "StudPilot's model training: builds licence-gated, machine-verified datasets and runs local LoRA fine-tuning (MLX).",
     "docs": [
       {
         "label": "Hugging Face Hub",

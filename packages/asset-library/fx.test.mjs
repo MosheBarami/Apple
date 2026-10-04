@@ -103,7 +103,7 @@ test('the categories and presets a game needs are present', () => {
 });
 
 test('preset textures are on the plugin allowlist, and every packTexture is a committed file', () => {
-  const commands = readFileSync(join(ROOT, 'apps', 'apple-plugin', 'src', 'Commands.luau'), 'utf8')
+  const commands = readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8')
     .replace(/--\[(=*)\[[\s\S]*?\]\1\]/g, '').replace(/--[^\n]*/g, '');
   const block = /CONTENT_PROPERTY\.Texture\.ParticleEmitter = \{([\s\S]*?)\n\}/.exec(commands);
   assert.ok(block, 'the plugin engine-texture list was not found — this test would check nothing');

@@ -1,13 +1,13 @@
 /**
  * THE APP'S THREE INKS ARE LEGIBLE ON EVERY SURFACE THEY SIT ON, IN BOTH THEMES.
  *
- * design/apple-minimal.css is the stylesheet that decides the product's colours — it loads last
+ * design/studpilot-minimal.css is the stylesheet that decides the product's colours — it loads last
  * and wins every tie — and until this file no test read it. Its --faint was #70737d (dark) and
  * #818791 (light): 4.44:1 on the dark page, 3.95:1 on the raised surface, 3.38:1 on the light
  * page. That token carries real text — the time under every turn, a code block's language, the
  * Edit control on your own message — and text needs 4.5:1.
  *
- * The public site had already raised it (apps/site/src/styles/apple-minimal.css, with the same
+ * The public site had already raised it (apps/site/src/styles/studpilot-minimal.css, with the same
  * measurement written down). The product and the site are meant to be one product with one set of
  * tokens, so the app now uses the site's value, and this test holds both halves: every ink clears
  * 4.5:1 on paper and on every surface, and the ramp still descends — faint stays dimmer than
@@ -22,12 +22,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CSS = readFileSync(join(WEB, 'src', 'design', 'apple-minimal.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+const CSS = readFileSync(join(WEB, 'src', 'design', 'studpilot-minimal.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
 
 /** The declarations inside the first rule whose selector is exactly `selector`. */
 function block(selector) {
   const at = CSS.search(new RegExp(`(^|\\})\\s*${selector.replace(/[[\]'()]/g, '\\$&')}\\s*\\{`));
-  assert.notEqual(at, -1, `no ${selector} block in apple-minimal.css`);
+  assert.notEqual(at, -1, `no ${selector} block in studpilot-minimal.css`);
   const open = CSS.indexOf('{', at + 1);
   return CSS.slice(open + 1, CSS.indexOf('}', open));
 }
@@ -87,7 +87,7 @@ test('the ramp still descends: ink, then muted, then faint', () => {
 });
 
 test('the app and the public site use one --faint', () => {
-  const site = join(WEB, '..', 'site', 'src', 'styles', 'apple-minimal.css');
+  const site = join(WEB, '..', 'site', 'src', 'styles', 'studpilot-minimal.css');
   if (!existsSync(site)) return; // the site is a sibling package; its absence is not this app's failure
   const SITE = readFileSync(site, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
   const siteFaint = [...SITE.matchAll(/--faint:\s*(#[0-9a-fA-F]{6})/g)].map((m) => m[1].toLowerCase());

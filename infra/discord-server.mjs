@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the Apple community server on Discord from a declaration, idempotently.
+// Builds the StudPilot community server on Discord from a declaration, idempotently.
 //
 //   (set -a; . ./.env; set +a; node infra/discord-server.mjs)
 //
@@ -64,7 +64,7 @@ async function api(method, path, body, { reason, allow404 } = {}) {
 
 const ROLES = [
   // Highest first. `hoist` shows the role as its own group in the member list.
-  { name: 'Apple Team', color: 0xff4d4d, hoist: true, mentionable: false,
+  { name: 'StudPilot Team', color: 0xff4d4d, hoist: true, mentionable: false,
     permissions: bits('KICK', 'BAN', 'MANAGE_CHANNELS', 'MANAGE_GUILD', 'AUDIT_LOG', 'MANAGE_MESSAGES', 'MENTION_EVERYONE',
       'MANAGE_NICKS', 'MANAGE_ROLES', 'MANAGE_WEBHOOKS', 'MANAGE_EXPRESSIONS', 'MANAGE_EVENTS', 'MANAGE_THREADS', 'MODERATE',
       'MUTE', 'DEAFEN', 'MOVE', 'PRIORITY_SPEAKER', 'VIEW', 'SEND', 'EMBED', 'ATTACH', 'HISTORY', 'REACT', 'CONNECT', 'SPEAK',
@@ -73,7 +73,7 @@ const ROLES = [
     permissions: bits('KICK', 'BAN', 'AUDIT_LOG', 'MANAGE_MESSAGES', 'MANAGE_NICKS', 'MANAGE_THREADS', 'MODERATE', 'MUTE',
       'DEAFEN', 'MOVE', 'VIEW', 'SEND', 'EMBED', 'ATTACH', 'HISTORY', 'REACT', 'CONNECT', 'SPEAK', 'STREAM', 'VAD',
       'APP_COMMANDS', 'PUBLIC_THREADS', 'PRIVATE_THREADS', 'SEND_IN_THREADS', 'EXTERNAL_EMOJIS', 'POLLS') },
-  { name: 'Apple MAX', color: 0xf5b700, hoist: true, mentionable: false, permissions: '0' },
+  { name: 'StudPilot MAX', color: 0xf5b700, hoist: true, mentionable: false, permissions: '0' },
   { name: 'Pro', color: 0x9b59ff, hoist: true, mentionable: false, permissions: '0' },
   { name: 'Creator', color: 0x2ecc71, hoist: false, mentionable: false, permissions: '0' },
   { name: 'Beta Tester', color: 0x00b8d9, hoist: false, mentionable: true, permissions: '0' },
@@ -101,59 +101,59 @@ const T = { TEXT: 0, VOICE: 2, CATEGORY: 4, NEWS: 5, STAGE: 13, FORUM: 15 };
 // `readonly`: members read and react, staff post. `staff`: invisible to everyone else.
 const LAYOUT = [
   { category: '📌 START HERE', rename: [], channels: [
-    { name: 'welcome', type: T.TEXT, readonly: true, topic: 'Start here: what Apple is and how to get going.' },
+    { name: 'welcome', type: T.TEXT, readonly: true, topic: 'Start here: what StudPilot is and how to get going.' },
     { name: 'rules', type: T.TEXT, readonly: true, topic: 'The server rules. Breaking them gets a timeout or a ban.' },
-    { name: 'announcements', type: T.NEWS, readonly: true, topic: 'Big news about Apple. Follow this channel to get it in your own server.' },
+    { name: 'announcements', type: T.NEWS, readonly: true, topic: 'Big news about StudPilot. Follow this channel to get it in your own server.' },
     { name: 'changelog', type: T.NEWS, readonly: true, topic: 'Every release of the site, the Studio plugin and the models.' },
     { name: 'faq', type: T.TEXT, readonly: true, topic: 'Answers to the questions everyone asks first.' },
-    { name: 'status', type: T.TEXT, readonly: true, topic: 'Is Apple up? Outages and maintenance are posted here.' },
+    { name: 'status', type: T.TEXT, readonly: true, topic: 'Is StudPilot up? Outages and maintenance are posted here.' },
   ] },
   { category: '💬 COMMUNITY', rename: ['Text Channels'], channels: [
-    { name: 'general', type: T.TEXT, topic: 'Talk about anything Roblox and Apple.' },
+    { name: 'general', type: T.TEXT, topic: 'Talk about anything Roblox and StudPilot.' },
     { name: 'introductions', type: T.TEXT, topic: 'New here? Say hi and tell us what you are building.' },
     { name: 'roblox-dev-chat', type: T.TEXT, topic: 'Luau, Studio, building, UI, monetisation: game dev talk.' },
     { name: 'off-topic', type: T.TEXT, topic: 'Everything else. Keep it friendly.' },
-    { name: 'showcase', type: T.FORUM, topic: 'Show a game you built with Apple: one post per game, with screenshots or a video.',
+    { name: 'showcase', type: T.FORUM, topic: 'Show a game you built with StudPilot: one post per game, with screenshots or a video.',
       tags: [['Simulator', '🌱'], ['Obby', '🧗'], ['Tycoon', '🏭'], ['RPG', '⚔️'], ['Horror', '👻'], ['Racing', '🏎️'], ['UI', '🎨'], ['Map', '🗺️'], ['Work in progress', '🚧']],
       reaction: '🔥' },
   ] },
-  { category: '🍎 APPLE', rename: [], channels: [
-    { name: 'ask-apple', type: T.TEXT, topic: 'Use the bot here: /build <idea>, /status, /credits, /link <code>, /unlink.', slowmode: 5 },
+  { category: '🍎 STUDPILOT', rename: [], channels: [
+    { name: 'ask-studpilot', type: T.TEXT, topic: 'Use the bot here: /build <idea>, /status, /credits, /link <code>, /unlink.', slowmode: 5 },
     { name: 'prompt-library', type: T.FORUM, topic: 'Share the prompts that built something great: paste the prompt, show the result.',
       tags: [['Full game', '🎮'], ['UI', '🎨'], ['Map', '🗺️'], ['Scripting', '📜'], ['VFX & SFX', '✨'], ['Tip', '💡']], reaction: '🍎' },
-    { name: 'ui-library', type: T.TEXT, topic: 'The Roblox UI library Apple builds with: kits, icons, genre styles. Requests welcome.' },
-    { name: 'model-updates', type: T.NEWS, readonly: true, topic: 'Training log for Apple and Apple MAX: every version, measured on the same held-out tests.' },
+    { name: 'ui-library', type: T.TEXT, topic: 'The Roblox UI library StudPilot builds with: kits, icons, genre styles. Requests welcome.' },
+    { name: 'model-updates', type: T.NEWS, readonly: true, topic: 'Training log for StudPilot and StudPilot MAX: every version, measured on the same held-out tests.' },
   ] },
   { category: '🛟 SUPPORT', rename: [], channels: [
     { name: 'help', type: T.FORUM, topic: 'Stuck? Open a post: what you did, what you expected, what happened. Add a screenshot.',
       tags: [['Studio plugin', '🔌'], ['Connecting Studio', '🔗'], ['Builds', '🏗️'], ['Account', '👤'], ['Billing', '💳'], ['Solved', '✅', true]], reaction: '👍' },
     { name: 'bug-reports', type: T.FORUM, topic: 'Found a bug? One post per bug: steps to reproduce, what you expected, screenshots.',
       tags: [['Website', '🌐'], ['Studio plugin', '🔌'], ['Builds', '🏗️'], ['Billing', '💳'], ['Confirmed', '🟠', true], ['Fixed', '✅', true], ['Cannot reproduce', '❔', true]], reaction: '🐞' },
-    { name: 'feature-requests', type: T.FORUM, topic: 'Ideas for Apple. Upvote with 👍: the most wanted ones get built first.',
+    { name: 'feature-requests', type: T.FORUM, topic: 'Ideas for StudPilot. Upvote with 👍: the most wanted ones get built first.',
       tags: [['Planned', '🗓️', true], ['Under review', '👀', true], ['Shipped', '🚀', true], ['Studio', '🔌'], ['Website', '🌐'], ['Models', '🧠']], reaction: '👍' },
-    { name: 'plugin-setup', type: T.TEXT, readonly: true, topic: 'How to install the Apple Studio plugin and connect it to your project.' },
+    { name: 'plugin-setup', type: T.TEXT, readonly: true, topic: 'How to install the StudPilot Studio plugin and connect it to your project.' },
   ] },
   { category: '🔊 VOICE', rename: ['Voice Channels'], channels: [
     { name: 'Lounge', type: T.VOICE, rename: ['General'] },
     { name: 'Build Together', type: T.VOICE },
     { name: 'Help Desk', type: T.VOICE },
-    { name: 'Apple Live', type: T.STAGE, topic: 'Live demos, Q&A and release streams.' },
+    { name: 'StudPilot Live', type: T.STAGE, topic: 'Live demos, Q&A and release streams.' },
   ] },
   { category: '🛡️ STAFF', staff: true, rename: [], channels: [
     { name: 'staff-chat', type: T.TEXT },
     { name: 'mod-log', type: T.TEXT, topic: 'AutoMod alerts and moderation actions.' },
-    { name: 'alerts', type: T.TEXT, topic: 'Automated alerts from the Apple backend.' },
+    { name: 'alerts', type: T.TEXT, topic: 'Automated alerts from the StudPilot backend.' },
     { name: 'discord-updates', type: T.TEXT, topic: 'Discord’s own community updates land here.' },
   ] },
 ];
 
 const WEBHOOKS = [
   // [channel, webhook name, .env key]
-  ['announcements', 'Apple', 'DISCORD_WEBHOOK_ANNOUNCEMENTS'],
-  ['changelog', 'Apple Releases', 'DISCORD_WEBHOOK_CHANGELOG'],
-  ['status', 'Apple Status', 'DISCORD_WEBHOOK_STATUS'],
-  ['model-updates', 'Apple Training', 'DISCORD_WEBHOOK_MODEL_UPDATES'],
-  ['alerts', 'Apple Alerts', 'DISCORD_WEBHOOK_ALERTS'],
+  ['announcements', 'StudPilot', 'DISCORD_WEBHOOK_ANNOUNCEMENTS'],
+  ['changelog', 'StudPilot Releases', 'DISCORD_WEBHOOK_CHANGELOG'],
+  ['status', 'StudPilot Status', 'DISCORD_WEBHOOK_STATUS'],
+  ['model-updates', 'StudPilot Training', 'DISCORD_WEBHOOK_MODEL_UPDATES'],
+  ['alerts', 'StudPilot Alerts', 'DISCORD_WEBHOOK_ALERTS'],
 ];
 
 const APP = `${SITE}/app`;
@@ -163,19 +163,19 @@ const MARK = '​'; // zero-width marker so a rerun recognises its own posts
 const COLOR = 0xe8423f;
 const MESSAGES = {
   welcome: [{
-    title: '🍎 Welcome to Apple',
+    title: '🍎 Welcome to StudPilot',
     description: [
-      'Apple builds Roblox games from a sentence. Describe the game, and Apple builds it in **Roblox Studio**: map, scripts, UI, sounds and effects.',
+      'StudPilot builds Roblox games from a sentence. Describe the game, and StudPilot builds it in **Roblox Studio**: map, scripts, UI, sounds and effects.',
       '',
       '**Get started in three steps**',
       `1. Make a free account: ${SITE}/app/signup`,
-      '2. Install the Apple Studio plugin (see <#plugin-setup>)',
+      '2. Install the StudPilot Studio plugin (see <#plugin-setup>)',
       '3. Open a project, type your idea, and watch Studio fill up',
       '',
       '**Find your way around**',
       '• <#rules>: read these first',
       '• <#announcements> and <#changelog>: what is new',
-      '• <#ask-apple>: build from Discord with `/build`',
+      '• <#ask-studpilot>: build from Discord with `/build`',
       '• <#help>: stuck? open a post',
       '• <#showcase>: show what you made',
       '• <#feature-requests>: tell us what to build next',
@@ -204,24 +204,24 @@ const MESSAGES = {
   faq: [{
     title: '❓ Frequently asked questions',
     fields: [
-      { name: 'What is Apple?', value: 'An AI that builds Roblox games directly in Roblox Studio through the Apple plugin: maps, scripts, UI, sounds and effects.' },
-      { name: 'Is it free?', value: `Yes. The Free plan uses the **Apple** model with daily Credits. **Pro** adds **Apple MAX**, and **Max** unlocks everything. See ${SITE}/pricing` },
-      { name: 'What is the difference between Apple and Apple MAX?', value: 'Apple MAX is the strongest model, for full games and complex systems. Apple is fast and great for smaller builds and edits.' },
-      { name: 'Does Apple change my game without asking?', value: 'Apple works in the project you connect. Every change is a checkpoint, and you can undo it from the project page.' },
-      { name: 'Can I build from Discord?', value: 'Yes. Link your account with `/link <code>` (the code is on your project page), then use `/build` in <#ask-apple>.' },
-      { name: 'Where do the UI images and models come from?', value: 'Apple uses free assets from the Roblox Creator Store and free (CC0) icon libraries, so your game stays yours.' },
+      { name: 'What is StudPilot?', value: 'An AI that builds Roblox games directly in Roblox Studio through the StudPilot plugin: maps, scripts, UI, sounds and effects.' },
+      { name: 'Is it free?', value: `Yes. The Free plan uses the **StudPilot** model with daily Credits. **Pro** adds **StudPilot MAX**, and **Max** unlocks everything. See ${SITE}/pricing` },
+      { name: 'What is the difference between StudPilot and StudPilot MAX?', value: 'StudPilot MAX is the strongest model, for full games and complex systems. StudPilot is fast and great for smaller builds and edits.' },
+      { name: 'Does StudPilot change my game without asking?', value: 'StudPilot works in the project you connect. Every change is a checkpoint, and you can undo it from the project page.' },
+      { name: 'Can I build from Discord?', value: 'Yes. Link your account with `/link <code>` (the code is on your project page), then use `/build` in <#ask-studpilot>.' },
+      { name: 'Where do the UI images and models come from?', value: 'StudPilot uses free assets from the Roblox Creator Store and free (CC0) icon libraries, so your game stays yours.' },
       { name: 'Something broke. What do I do?', value: 'Open a post in <#help> with what you did and a screenshot, or report a bug in <#bug-reports>.' },
     ],
   }],
   'plugin-setup': [{
-    title: '🔌 Installing the Apple Studio plugin',
+    title: '🔌 Installing the StudPilot Studio plugin',
     description: [
       '1. Open **Roblox Studio** and sign in.',
-      '2. Open the **Creator Store** (Toolbox → Plugins) and search **Apple Studio**, or open the plugin page from the app.',
-      '3. Press **Install**. The Apple button appears in the **Plugins** tab.',
+      '2. Open the **Creator Store** (Toolbox → Plugins) and search **StudPilot Studio**, or open the plugin page from the app.',
+      '3. Press **Install**. The StudPilot button appears in the **Plugins** tab.',
       `4. On ${APP}, open your project and press **Connect Studio**. You get a short pairing code.`,
-      '5. In Studio, press the Apple button, paste the code, and press **Connect**.',
-      '6. When the dock says **Connected**, type your idea in the app and Apple starts building.',
+      '5. In Studio, press the StudPilot button, paste the code, and press **Connect**.',
+      '6. When the dock says **Connected**, type your idea in the app and StudPilot starts building.',
       '',
       '**Plugin says "Connection hiccup"?** It reconnects by itself within a few seconds. If it stays, close and reopen the dock.',
       '**Still stuck?** Open a post in <#help> with the tag *Connecting Studio*.',
@@ -229,12 +229,12 @@ const MESSAGES = {
   }],
   status: [{
     title: '🟢 Status',
-    description: `Apple is up. Outages and maintenance are posted here as they happen.\nLive health check: ${SITE}/api/health`,
+    description: `StudPilot is up. Outages and maintenance are posted here as they happen.\nLive health check: ${SITE}/api/health`,
   }],
   'ui-library': [{
-    title: '🎨 The Apple UI library',
+    title: '🎨 The StudPilot UI library',
     description: [
-      'Apple builds game UI **only** from its library, not from scratch:',
+      'StudPilot builds game UI **only** from its library, not from scratch:',
       '• **77,000+** free UI images from the Roblox Creator Store, searchable by genre and role',
       '• **5,000+** free (CC0) icons and UI components',
       '• Genre kits: simulator, obby, tycoon, RPG, horror and more',
@@ -244,16 +244,16 @@ const MESSAGES = {
   }],
   'model-updates': [{
     title: '🧠 Model updates',
-    description: 'Every training version of Apple is posted here with its scores on the same held-out tests, so progress is measured, not claimed.',
+    description: 'Every training version of StudPilot is posted here with its scores on the same held-out tests, so progress is measured, not claimed.',
   }],
-  'ask-apple': [{
+  'ask-studpilot': [{
     title: '🤖 Build from Discord',
     description: [
-      '`/link <code>`: connect your Apple account (the code is on your project page)',
-      '`/build <idea>`: tell Apple what to build in your linked project',
+      '`/link <code>`: connect your StudPilot account (the code is on your project page)',
+      '`/build <idea>`: tell StudPilot what to build in your linked project',
       '`/status`: how the current build is going',
       '`/credits`: how many Credits you have left',
-      '`/unlink`: disconnect Discord from Apple',
+      '`/unlink`: disconnect Discord from StudPilot',
     ].join('\n'),
   }],
 };
@@ -268,7 +268,7 @@ function embedFor(e, byName) {
   const out = { color: COLOR, ...e };
   if (out.description) out.description = channelMention(out.description, byName);
   if (out.fields) out.fields = out.fields.map((f) => ({ ...f, value: channelMention(f.value, byName) }));
-  out.footer = { text: `Apple · ${SITE.replace(/^https?:\/\//, '')}${MARK}` };
+  out.footer = { text: `StudPilot · ${SITE.replace(/^https?:\/\//, '')}${MARK}` };
   return out;
 }
 
@@ -296,9 +296,9 @@ async function main() {
   for (const spec of ROLES) {
     const body = { name: spec.name, color: spec.color ?? 0, hoist: !!spec.hoist, mentionable: !!spec.mentionable, permissions: spec.permissions };
     const have = roleByName.get(spec.name);
-    if (!have) { roleByName.set(spec.name, await api('POST', `/guilds/${GUILD}/roles`, body, { reason: 'Apple server build' })); log(`+ role ${spec.name}`); }
+    if (!have) { roleByName.set(spec.name, await api('POST', `/guilds/${GUILD}/roles`, body, { reason: 'StudPilot server build' })); log(`+ role ${spec.name}`); }
     else if (have.color !== body.color || have.hoist !== body.hoist || have.mentionable !== body.mentionable || have.permissions !== body.permissions) {
-      await api('PATCH', `/guilds/${GUILD}/roles/${have.id}`, body, { reason: 'Apple server build' }); log(`~ role ${spec.name}`);
+      await api('PATCH', `/guilds/${GUILD}/roles/${have.id}`, body, { reason: 'StudPilot server build' }); log(`~ role ${spec.name}`);
     }
   }
   const everyone = roleByName.get('@everyone') ?? roles.find((r) => r.id === GUILD);
@@ -315,7 +315,7 @@ async function main() {
   const R = (n) => roles.find((r) => r.name === n)?.id ?? roleByName.get(n)?.id;
   roles = await api('GET', `/guilds/${GUILD}/roles`);
 
-  const TEAM = R('Apple Team'), MOD = R('Moderator');
+  const TEAM = R('StudPilot Team'), MOD = R('Moderator');
   const staffAllow = bits('VIEW', 'SEND', 'HISTORY', 'MANAGE_MESSAGES', 'MANAGE_THREADS', 'EMBED', 'ATTACH', 'CONNECT', 'SPEAK');
   const readonlyOverwrites = [
     { id: GUILD, type: 0, allow: bits('VIEW', 'HISTORY', 'REACT'), deny: bits('SEND', 'PUBLIC_THREADS', 'PRIVATE_THREADS', 'SEND_IN_THREADS') },
@@ -386,8 +386,8 @@ async function main() {
   const byName = new Map(channels.filter((c) => c.type !== T.CATEGORY).map((c) => [c.name, c]));
   const icon = readFileSync(resolve(ROOT, 'apps/site/public/icon-512.png')).toString('base64');
   const settings = {
-    name: 'Apple · AI Roblox Builder',
-    description: 'Apple builds Roblox games from a sentence. Get help, share your builds and follow every release.',
+    name: 'StudPilot · AI Roblox Builder',
+    description: 'StudPilot builds Roblox games from a sentence. Get help, share your builds and follow every release.',
     verification_level: 2,
     default_message_notifications: 1,
     explicit_content_filter: 2,
@@ -402,7 +402,7 @@ async function main() {
   if (!guild.icon) settings.icon = `data:image/png;base64,${icon}`;
   const needsSettings = guild.name !== settings.name || !community() || guild.description !== settings.description || guild.verification_level !== 2 || guild.explicit_content_filter !== 2 || guild.rules_channel_id !== settings.rules_channel_id || !guild.icon || guild.system_channel_id !== settings.system_channel_id;
   if (needsSettings) {
-    const g2 = await api('PATCH', `/guilds/${GUILD}`, settings, { reason: 'Apple server build' });
+    const g2 = await api('PATCH', `/guilds/${GUILD}`, settings, { reason: 'StudPilot server build' });
     guild.features = g2.features; guild.name = g2.name;
     log(`~ server settings (community: ${community()})`);
   }
@@ -431,13 +431,13 @@ async function main() {
   const block = (msg) => ({ type: 1, metadata: { custom_message: msg } });
   const exempt = [TEAM, MOD].filter(Boolean);
   const RULES = [
-    { name: 'Apple: slurs, sexual content, profanity', event_type: 1, trigger_type: 4, trigger_metadata: { presets: [1, 2, 3] }, actions: [block('That message was blocked by the server filter.'), alert], exempt_roles: exempt },
-    { name: 'Apple: spam', event_type: 1, trigger_type: 3, actions: [block('That looked like spam.'), alert], exempt_roles: exempt },
-    { name: 'Apple: mass mentions', event_type: 1, trigger_type: 5, trigger_metadata: { mention_total_limit: 5, mention_raid_protection_enabled: true }, actions: [block('Too many mentions in one message.'), alert, { type: 3, metadata: { duration_seconds: 600 } }], exempt_roles: exempt },
-    { name: 'Apple: scams and other servers', event_type: 1, trigger_type: 1, trigger_metadata: {
+    { name: 'StudPilot: slurs, sexual content, profanity', event_type: 1, trigger_type: 4, trigger_metadata: { presets: [1, 2, 3] }, actions: [block('That message was blocked by the server filter.'), alert], exempt_roles: exempt },
+    { name: 'StudPilot: spam', event_type: 1, trigger_type: 3, actions: [block('That looked like spam.'), alert], exempt_roles: exempt },
+    { name: 'StudPilot: mass mentions', event_type: 1, trigger_type: 5, trigger_metadata: { mention_total_limit: 5, mention_raid_protection_enabled: true }, actions: [block('Too many mentions in one message.'), alert, { type: 3, metadata: { duration_seconds: 600 } }], exempt_roles: exempt },
+    { name: 'StudPilot: scams and other servers', event_type: 1, trigger_type: 1, trigger_metadata: {
       keyword_filter: ['free robux*', '*robux generator*', 'free nitro*', '*nitro giveaway*', '*steamcommunity.ru*', '*discord-gift*', '*dlscord*', '*roblox-login*', '*rbx-free*'],
       regex_patterns: ['discord(app)?\\.(gg|com/invite)/[A-Za-z0-9-]+'],
-      allow_list: ['discord.gg/APPLE_INVITE', 'discord.com/invite/APPLE_INVITE'],
+      allow_list: ['discord.gg/STUDPILOT_INVITE', 'discord.com/invite/STUDPILOT_INVITE'],
     }, actions: [block('Links to other servers and "free Robux" offers are not allowed here.'), alert], exempt_roles: exempt },
   ];
   const existingRules = await api('GET', `/guilds/${GUILD}/auto-moderation/rules`);
@@ -447,7 +447,7 @@ async function main() {
   let invite = invites.find((i) => i.max_age === 0 && i.max_uses === 0 && i.channel?.id === ch.get('welcome').id && i.inviter?.id === me.id);
   if (!invite) { invite = await api('POST', `/channels/${ch.get('welcome').id}/invites`, { max_age: 0, max_uses: 0, unique: false }); log('+ permanent invite'); }
   for (const r of RULES) {
-    if (r.trigger_metadata?.allow_list) r.trigger_metadata.allow_list = r.trigger_metadata.allow_list.map((p) => p.replace('APPLE_INVITE', invite.code));
+    if (r.trigger_metadata?.allow_list) r.trigger_metadata.allow_list = r.trigger_metadata.allow_list.map((p) => p.replace('STUDPILOT_INVITE', invite.code));
     const have = existingRules.find((x) => x.name === r.name);
     // A server allows one mention-spam rule and Community servers ship Discord's own
     // "Block Mention Spam", which a bot cannot edit (404). It does the same job; keep it.
@@ -474,13 +474,13 @@ async function main() {
   const W = (name, description, emoji) => ({ channel_id: ch.get(name).id, description, emoji_name: emoji });
   await api('PATCH', `/guilds/${GUILD}/welcome-screen`, {
     enabled: true,
-    description: 'Apple builds Roblox games from a sentence. Start here:',
+    description: 'StudPilot builds Roblox games from a sentence. Start here:',
     welcome_channels: [
-      W('welcome', 'What Apple is and how to start', '🍎'),
+      W('welcome', 'What StudPilot is and how to start', '🍎'),
       W('rules', 'Read the rules', '📜'),
       W('help', 'Get help from the team and community', '🛟'),
       W('showcase', 'Show what you built', '🔥'),
-      W('ask-apple', 'Build from Discord with /build', '🤖'),
+      W('ask-studpilot', 'Build from Discord with /build', '🤖'),
     ],
   }).catch((e) => log('! welcome screen:', e.message));
   await api('PATCH', `/guilds/${GUILD}/widget`, { enabled: true, channel_id: ch.get('welcome').id }).catch((e) => log('! widget:', e.message));
@@ -501,7 +501,7 @@ async function main() {
   const onboarding = {
     enabled: true,
     mode: 0,
-    default_channel_ids: ['welcome', 'rules', 'announcements', 'faq', 'general', 'introductions', 'showcase', 'ask-apple', 'help', 'changelog'].map((n) => ch.get(n)?.id).filter(Boolean),
+    default_channel_ids: ['welcome', 'rules', 'announcements', 'faq', 'general', 'introductions', 'showcase', 'ask-studpilot', 'help', 'changelog'].map((n) => ch.get(n)?.id).filter(Boolean),
     prompts: [
       { type: 0, title: (promptTitle = 'What do you do on Roblox?'), single_select: false, required: false, in_onboarding: true, options: [
         opt('Scripting', 'Luau, systems, game logic', '📜', ['Scripter'], ['roblox-dev-chat']),
@@ -512,9 +512,9 @@ async function main() {
         opt('I am new', 'Just getting started with Roblox dev', '🌱', ['New to Roblox Dev'], ['faq', 'plugin-setup']),
       ] },
       { type: 0, title: (promptTitle = 'Which pings do you want?'), single_select: false, required: false, in_onboarding: true, options: [
-        opt('Announcements', 'Big news about Apple', '📣', ['Announcements Ping']),
+        opt('Announcements', 'Big news about StudPilot', '📣', ['Announcements Ping']),
         opt('Releases', 'Every new version of the site, plugin and models', '🚀', ['Updates Ping'], ['changelog', 'model-updates']),
-        opt('Events', 'Live demos and build jams', '🎉', ['Events Ping'], ['Apple Live']),
+        opt('Events', 'Live demos and build jams', '🎉', ['Events Ping'], ['StudPilot Live']),
       ] },
       { type: 0, title: (promptTitle = 'Want to test new features early?'), single_select: true, required: false, in_onboarding: true, options: [
         opt('Yes, make me a Beta Tester', 'Try features before everyone else and report bugs', '🧪', ['Beta Tester'], ['bug-reports', 'feature-requests']),
@@ -530,8 +530,8 @@ async function main() {
 
   // 11. Custom emoji.
   const emojis = await api('GET', `/guilds/${GUILD}/emojis`);
-  if (!emojis.find((e) => e.name === 'apple_ai')) {
-    await api('POST', `/guilds/${GUILD}/emojis`, { name: 'apple_ai', image: `data:image/png;base64,${icon}` }).then(() => log('+ emoji :apple_ai:')).catch((e) => log('! emoji:', e.message));
+  if (!emojis.find((e) => e.name === 'studpilot_ai')) {
+    await api('POST', `/guilds/${GUILD}/emojis`, { name: 'studpilot_ai', image: `data:image/png;base64,${icon}` }).then(() => log('+ emoji :studpilot_ai:')).catch((e) => log('! emoji:', e.message));
   }
 
   upsertEnv('DISCORD_GUILD_ID', GUILD);

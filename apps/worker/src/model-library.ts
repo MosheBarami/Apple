@@ -254,7 +254,7 @@ export async function uploadLibraryModel(env: Env, userId: string | undefined, m
     contentType,
     type: 'Model',
     displayName: m.name.replace(/\s+/g, ' ').trim().slice(0, 50) || 'Library model',
-    description: `${m.name}, ${m.licence}${m.attribution ? ` — ${m.attribution}` : ''}. Added by Apple from its model library.`.slice(0, 1000),
+    description: `${m.name}, ${m.licence}${m.attribution ? ` — ${m.attribution}` : ''}. Added by StudPilot from its model library.`.slice(0, 1000),
     expectedPrice: 0,
   });
   if (!up.ok) return { error: up.error, stage: 'upload' };

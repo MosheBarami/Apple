@@ -1,6 +1,6 @@
 // TALK INSTEAD OF TYPE — the composer's microphone. Four picks in one control:
 //
-//   AI Elements "speech-input"   record the voice (MediaRecorder) and have APPLE'S WORKER transcribe
+//   AI Elements "speech-input"   record the voice (MediaRecorder) and have STUDPILOT'S WORKER transcribe
 //                                it — English, transcribed then deleted, never stored (D-VISION-1).
 //                                Not the browser's Web Speech API: in Chrome that ships a child's
 //                                voice to Google. Hidden where the browser cannot record.

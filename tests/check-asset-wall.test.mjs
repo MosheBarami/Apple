@@ -63,7 +63,7 @@ function page(cards, { claim = null, lede = true, section = true } = {}) {
   const body = section
     ? '<section class="ap-section" id="library" aria-labelledby="library-title">'
       + '<h2 class="ap-display" id="library-title">Every asset says where it came from.</h2>'
-      + (lede ? `<p class="ap-lede">Apple does not invent art. ${n} of them below, picked across three packs.</p>` : '')
+      + (lede ? `<p class="ap-lede">StudPilot does not invent art. ${n} of them below, picked across three packs.</p>` : '')
       + `${wall}</section>`
     : '<section id="product"><h2>Nothing to see</h2></section>';
   return `<!doctype html><html><body><main>${body}</main></body></html>`;
@@ -270,7 +270,7 @@ test('CI still runs the wall checker against the built page', () => {
   assert.ok(existsSync(ci), `${ci} is gone — this guard may no longer run against a real page anywhere`);
   const yml = readFileSync(ci, 'utf8');
 
-  const build = yml.indexOf('pnpm --filter @apple/site build');
+  const build = yml.indexOf('pnpm --filter @studpilot/site build');
   const check = yml.indexOf('node scripts/check-asset-wall.mjs');
   assert.ok(check > -1,
     'ci.yml no longer runs scripts/check-asset-wall.mjs. The tests above run on FIXTURES; without '

@@ -206,7 +206,7 @@ async function prodOf(repo) {
 // ---- Screenshots ---------------------------------------------------------------------------------
 const GROUP_HE = {
   'gauntlet/refs': 'המשחק האמיתי (תמונות ייחוס)',
-  'gauntlet/rounds': 'השוואות Apple MAX מול המשחק האמיתי',
+  'gauntlet/rounds': 'השוואות StudPilot MAX מול המשחק האמיתי',
   'evidence/ui-showcase': 'מסכי UI שנבנו בסטודיו',
   'evidence/map-showcase': 'מפות שנבנו בסטודיו',
   'evidence/2026-09-22-browser-qa': 'בדיקות האתר והאפליקציה',
@@ -318,13 +318,13 @@ async function libraries(repo, facts) {
   const len = (p, key) => { const j = readJson(C(p)); const v = key ? j?.[key] : j; return Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.keys(v).length : null; };
   const files = (dir, re = /./, depth = 1) => { let n = 0; const d0 = path.join(repo, dir); walk(d0, (p) => { if (re.test(p) && path.relative(d0, p).split(path.sep).length <= depth) n++; }); return n; };
   const glyphs = countKeys(readText(path.join(repo, 'apps/site/src/components/ObjectIcon.astro')) || '', 'const GLYPHS = {');
-  const handlers = countKeys(readText(path.join(repo, 'apps/apple-plugin/src/Commands.luau')) || '', '\nHANDLERS = {');
+  const handlers = countKeys(readText(path.join(repo, 'apps/studpilot-plugin/src/Commands.luau')) || '', '\nHANDLERS = {');
   const witness = readJson(C('chunks-witness.json'));
   const shot = (p) => `/media/evidence/${p}`;
   const f = facts && !facts.error ? facts : null;
   const newPacks = readJson(path.join(repo, 'packages/asset-library/manifest.json'));
   return [
-    { id: 'tools', cat: 'סוכן', name: 'כלים של הסוכן', what: 'כל מה ש-Apple יכול לעשות בסטודיו: לקרוא, לבנות, לבדוק, להריץ ולתקן', count: f?.tools.length ?? null, unit: 'כלים', forAgent: true, sample: f?.tools.slice(0, 40), path: 'apps/worker/src/tools.ts' },
+    { id: 'tools', cat: 'סוכן', name: 'כלים של הסוכן', what: 'כל מה ש-StudPilot יכול לעשות בסטודיו: לקרוא, לבנות, לבדוק, להריץ ולתקן', count: f?.tools.length ?? null, unit: 'כלים', forAgent: true, sample: f?.tools.slice(0, 40), path: 'apps/worker/src/tools.ts' },
     { id: 'skills', cat: 'סוכן', name: 'מדריכי בנייה', what: 'מדריכים קצרים שהסוכן קורא לפני שהוא בונה משהו, לפי תחום', count: f?.skills ?? null, unit: 'מדריכים', forAgent: true, breakdown: f?.skillDomains, path: 'apps/worker/src/creator-skills.ts' },
     { id: 'mechanics', cat: 'סוכן', name: 'דפוסי מכניקה בדוקים', what: 'חנות, מטבעות, נקודות שמירה, לוח מובילים ועוד, כקוד שנבדק', count: f?.mechanics ?? null, unit: 'דפוסים', forAgent: true, path: 'apps/worker/src/mechanics.ts' },
     { id: 'kits', cat: 'UI', name: "ערכות UI לפי ז'אנר", what: 'צבעים, תאורה, צלילים ומסכים לכל סוג משחק', count: f?.kits.length ?? null, unit: 'ערכות', forAgent: true, sample: f?.kits, extra: `${len('kit-pins.json', 'pins') ?? '?'} צלילים נבחרים`, previews: [shot('ui-showcase/screen-hud--horror.png'), shot('ui-showcase/screen-shop--tycoon.png'), shot('map-showcase/map--racing.png')], path: 'apps/worker/src/genre-kits.ts' },
@@ -335,7 +335,7 @@ async function libraries(repo, facts) {
     { id: 'webIcons', cat: 'אייקונים', name: 'אייקוני האפליקציה', what: 'האייקונים של ממשק האפליקציה', count: f?.webIcons ?? null, unit: 'אייקונים', forSite: true, path: 'apps/web/src/components/icons.ts' },
     { id: 'siteGlyphs', cat: 'אייקונים', name: 'אייקוני האתר', what: 'אייקוני הקו של האתר השיווקי', count: glyphs, unit: 'אייקונים', forSite: true, path: 'apps/site/src/components/ObjectIcon.astro' },
     { id: 'components', cat: 'UI', name: 'רכיבי ממשק לאתר ולאפליקציה', what: 'כפתורים, צ\'אט, כרטיסים ועוד (כולל AI Elements של Vercel)', count: files('apps/web/src/components', /\.(tsx|ts)$/, 9), unit: 'קבצים', extra: `${files('apps/web/src/components/ai-elements', /\.tsx$/)} רכיבי AI Elements · ${files('apps/site/src/components', /./, 9)} רכיבי אתר`, forSite: true, path: 'apps/web/src/components' },
-    { id: 'plugin', cat: 'סוכן', name: 'פקודות התוסף בסטודיו', what: 'הפעולות שהתוסף מבצע בתוך הסטודיו בשביל הסוכן', count: handlers, unit: 'פקודות', extra: `${files('apps/apple-plugin/src/ops', /\.luau$/)} מודולים נוספים`, forAgent: true, path: 'apps/apple-plugin/src/Commands.luau' },
+    { id: 'plugin', cat: 'סוכן', name: 'פקודות התוסף בסטודיו', what: 'הפעולות שהתוסף מבצע בתוך הסטודיו בשביל הסוכן', count: handlers, unit: 'פקודות', extra: `${files('apps/studpilot-plugin/src/ops', /\.luau$/)} מודולים נוספים`, forAgent: true, path: 'apps/studpilot-plugin/src/Commands.luau' },
     { id: 'templates', cat: 'ידע', name: 'תבניות משחק', what: 'תבניות שנאספו ממאגרי קוד פתוחים', count: len('template-seeds.json', 'templates'), unit: 'תבניות', forAgent: true, path: 'packages/corpus/data/template-seeds.json' },
     { id: 'packages', cat: 'ידע', name: 'חבילות קוד של רובלוקס', what: 'אינדקס של חבילות Luau (Wally ועוד)', count: len('registry-packages.json', 'packages'), unit: 'חבילות', forAgent: true, path: 'packages/corpus/data/registry-packages.json' },
     { id: 'modules', cat: 'ידע', name: 'מודולים מאומתים', what: 'מודולי קוד שנבדקו ומותר להכניס למשחק', count: len('verified-modules.json', 'modules'), unit: 'מודולים', forAgent: true, path: 'packages/corpus/data/verified-modules.json' },
@@ -373,7 +373,7 @@ async function langflowOf(repo) {
 }
 
 async function vectorizeOf(repo) {
-  const r = await sh('npx', ['wrangler', 'vectorize', 'info', 'golem-docs', '--config', 'wrangler.apple.jsonc', '--json'], { cwd: path.join(repo, 'apps/worker'), timeout: 90000 });
+  const r = await sh('npx', ['wrangler', 'vectorize', 'info', 'golem-docs', '--config', 'wrangler.studpilot.jsonc', '--json'], { cwd: path.join(repo, 'apps/worker'), timeout: 90000 });
   const json = /\{[\s\S]*\}/.exec(r.stdout)?.[0];
   const j = json ? JSON.parse(json) : null;
   if (typeof j?.vectorCount !== 'number') throw new Error('wrangler did not report the index');

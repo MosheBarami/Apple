@@ -14,7 +14,7 @@ system, as library_assets.py indexed it). Each goes through the whole-library pi
   mapped      what it needs to work (remotes, modules, server scripts, controllers) was worked out
   styled      its game's look was scanned (studs, colour, materials)
 A game's percent weights its assets by instance count; the library's percent weights games the same way. What Studio
-showed in live Apple builds is kept apart (owner-library/live-builds.json): it covers only the games those builds used.
+showed in live StudPilot builds is kept apart (owner-library/live-builds.json): it covers only the games those builds used.
 """
 import json, os, sys, time
 
@@ -132,7 +132,7 @@ def main():
                 'family': fam['name'] if fam else None, 'primary': bool(fam) and fam['primary'] == sid, 'versions': len(fam['members']) if fam else 1,
                 'look': look_of(style.get(sid)), 'works': integ.get('works'), 'scripts': integ.get('scripts') or g.get('scripts') or 0,
                 'stripped': stripped, 'systems': does.get(sid[:12], [])[:4], 'liveBuilds': live.get(sid[:12], []), 'card': sid in carded}
-        write(os.path.join(GAME_DIR, safe(sid) + '.json'), {'schema': 'apple.owner-dashboard.game.v2', 'builtAt': built, 'stageOrder': STAGES,
+        write(os.path.join(GAME_DIR, safe(sid) + '.json'), {'schema': 'studpilot.owner-dashboard.game.v2', 'builtAt': built, 'stageOrder': STAGES,
                                                             **head, 'components': components})
         games.append(head)
 
@@ -153,7 +153,7 @@ def main():
         'repaired': sum(1 for s in sources.values() if s.get('fixes')), 'liveBuilds': len(builds), 'liveGames': len(live),
         'cards': len(carded), 'genres': genres, 'ready': sum(1 for b in builds if b.get('verdict') == 'ready'),
     }
-    write(OUT, {'schema': 'apple.owner-dashboard.games.v2', 'builtAt': built, 'stageOrder': STAGES, 'summary': summary, 'games': games, 'builds': builds})
+    write(OUT, {'schema': 'studpilot.owner-dashboard.games.v2', 'builtAt': built, 'stageOrder': STAGES, 'summary': summary, 'games': games, 'builds': builds})
     print(json.dumps(summary, ensure_ascii=False), f'{time.time() - t0:.0f}s', file=sys.stderr)
 
 

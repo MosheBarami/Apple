@@ -29,12 +29,12 @@ const UP = {
   'api.stripe.com/v1/charges': { data: [{ id: 'ch_1', amount: 999, currency: 'usd', status: 'succeeded', created: 1700000000, paid: true, livemode: false,
     billing_details: { email: 'buyer@example.com', name: 'Buyer Person' }, receipt_email: 'buyer@example.com' }] },
   'api.stripe.com/v1/customers': { data: [{ id: 'cus_1', email: 'buyer@example.com' }, { id: 'cus_2', email: 'b@example.com' }], has_more: true },
-  'api.stripe.com/v1/products': { data: [{ name: 'Apple Pro', active: true }] },
+  'api.stripe.com/v1/products': { data: [{ name: 'StudPilot Pro', active: true }] },
   'us.posthog.com/api/projects/4242/feature_flags': { count: 2, results: [
     { id: 7, key: 'new-ui', name: 'New UI', active: true, filters: { groups: [{ properties: [], rollout_percentage: 30 }] } },
     { id: 8, key: 'beta', name: 'Beta', active: false, filters: { groups: [{ properties: [{ key: 'email' }] }, {}] } }] },
-  'us.posthog.com/api/projects/4242/': { name: 'Apple', api_token: 'phc_public', owner: { email: 'owner@example.com' } },
-  'api.resend.com/domains': { data: [{ id: 'd1', name: 'apple.dev', status: 'verified', region: 'us-east-1', created_at: '2026-01-01' }] },
+  'us.posthog.com/api/projects/4242/': { name: 'StudPilot', api_token: 'phc_public', owner: { email: 'owner@example.com' } },
+  'api.resend.com/domains': { data: [{ id: 'd1', name: 'studpilot.dev', status: 'verified', region: 'us-east-1', created_at: '2026-01-01' }] },
   'api.vercel.com/v9/projects': { projects: [{ name: 'web', framework: 'nextjs', updatedAt: 1700000001, env: [{ value: 'x' }] }] },
   'api.vercel.com/v6/deployments': { deployments: [{ name: 'web', state: 'READY', target: 'production', created: 1700000002, url: 'web-abc.vercel.app',
     creator: { email: 'owner@example.com' } }] },
@@ -78,7 +78,7 @@ test('configured Stripe reads balance, charges, customers and products in test m
   assert.deepEqual(stripe.data, {
     livemode: false, balance: { available: [{ amount: 1500, currency: 'usd' }], pending: [{ amount: 200, currency: 'usd' }] },
     charges: [{ amount: 999, currency: 'usd', status: 'succeeded', created: 1700000000, paid: true }],
-    customers: { count: 2, has_more: true }, products: [{ name: 'Apple Pro', active: true }],
+    customers: { count: 2, has_more: true }, products: [{ name: 'StudPilot Pro', active: true }],
   });
   assert.deepEqual(calls.map((c) => c.url).sort(), ['https://api.stripe.com/v1/balance', 'https://api.stripe.com/v1/charges?limit=10',
     'https://api.stripe.com/v1/customers?limit=10', 'https://api.stripe.com/v1/products?limit=10']);
@@ -99,7 +99,7 @@ test('configured Vercel lists projects and deployments for the team', async () =
 test('configured PostHog reads the project name and its flags on the default host', async () => {
   set('POSTHOG_PERSONAL_API_KEY', 'POSTHOG_PROJECT_ID'); handler = upstream;
   const { posthog } = await byId();
-  assert.deepEqual(posthog.data, { project: 'Apple', count: 2, flags: [
+  assert.deepEqual(posthog.data, { project: 'StudPilot', count: 2, flags: [
     { id: 7, key: 'new-ui', name: 'New UI', active: true, rollout_percentage: 30 },
     { id: 8, key: 'beta', name: 'Beta', active: false, rollout_percentage: null }] });
   assert.deepEqual(calls.map((c) => c.url).sort(), ['https://us.posthog.com/api/projects/4242/',

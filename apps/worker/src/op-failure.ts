@@ -25,8 +25,8 @@
  * reason that says the classification is unknown. An optimistic default here re-runs a mutation
  * against somebody's place on the strength of a guess.
  */
-import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@apple/shared';
-import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@apple/shared';
+import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@studpilot/shared';
+import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@studpilot/shared';
 
 /**
  * The ops that change the user's place. Mirrors the `MUTATING` table in apps/plugin/src/Ops.luau,
@@ -176,7 +176,7 @@ export function retryHint(op: StudioOp | { op: string } | string | null | undefi
  * On 2026-09-19 the live product refused a write with "writes require explicit edit consent", and
  * the model relayed that correctly and then invented the fix: open "File > Project Settings >
  * Security" and enable "Allow Scripted Updates". No such menu, page or setting exists in Roblox
- * Studio. The real remedy was two clicks away in the Apple panel and went unmentioned.
+ * Studio. The real remedy was two clicks away in the StudPilot panel and went unmentioned.
  *
  * The model did not misread anything. It was handed a refusal with no remedy and a user who plainly
  * wanted one, and it filled the gap. Every silence in a tool result is filled eventually; the only
@@ -195,13 +195,13 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
   if (result.ok) return null;
   if (asFailureKind(result.failure) !== 'refused') return null;
   if (isRefusalRemedyCode(result.remedy)) return REFUSAL_REMEDIES[result.remedy];
-  // The plugin refused on purpose and sent no remedy: most often a class or property Apple's plugin does not write at all.
+  // The plugin refused on purpose and sent no remedy: most often a class or property StudPilot's plugin does not write at all.
   // The old text told the model to "say that you do not know how to enable it", which gave it nothing to DO and so it tried
   // the same write again. Say what to do, and keep the one thing that must never happen: inventing a Studio setting.
   return (
-    'Apple\'s plugin refused this on purpose and does not say a setting would lift it. Do not retry it and do not invent a ' +
+    'StudPilot\'s plugin refused this on purpose and does not say a setting would lift it. Do not retry it and do not invent a ' +
     'Studio setting for it: use another class, or leave that property out, and carry on with the rest of the work. If the ' +
-    'request truly needs it, tell the user plainly that Apple cannot do that part yet.'
+    'request truly needs it, tell the user plainly that StudPilot cannot do that part yet.'
   );
 }
 
@@ -209,10 +209,10 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
  * WHOSE LIMIT IT IS — a claim the heading makes in the product's own voice, so it has to be true of
  * the refusal it is attached to rather than true of most of them.
  *
- * The original heading said "this is Apple's own limit" about every remedy, which was correct for
- * as long as the only remedies that could actually reach a user were Apple's own gates. It stopped
+ * The original heading said "this is StudPilot's own limit" about every remedy, which was correct for
+ * as long as the only remedies that could actually reach a user were StudPilot's own gates. It stopped
  * being correct the moment `take_asset_first` became reachable: Roblox refuses to load an asset the
- * signed-in account does not own, Apple has no say in it, and the remedy's own sentence says so —
+ * signed-in account does not own, StudPilot has no say in it, and the remedy's own sentence says so —
  * so the signed heading and the instruction underneath it would have contradicted each other in one
  * paragraph, with the bolded half being the false one.
  *
@@ -225,11 +225,11 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
  */
 const ROBLOX_IMPOSED: ReadonlySet<RefusalRemedyCode> = new Set<RefusalRemedyCode>(['take_asset_first']);
 
-const APPLE_LIMIT_HEADING = "**Apple could not change your place, and this is Apple's own limit, not a Roblox Studio setting.**";
-const ROBLOX_LIMIT_HEADING = "**Apple could not change your place, and this one is Roblox's rule rather than Apple's — no Roblox Studio setting lifts it.**";
+const STUDPILOT_LIMIT_HEADING = "**StudPilot could not change your place, and this is StudPilot's own limit, not a Roblox Studio setting.**";
+const ROBLOX_LIMIT_HEADING = "**StudPilot could not change your place, and this one is Roblox's rule rather than StudPilot's — no Roblox Studio setting lifts it.**";
 
 function remedyHeading(remedy: RefusalRemedyCode): string {
-  return ROBLOX_IMPOSED.has(remedy) ? ROBLOX_LIMIT_HEADING : APPLE_LIMIT_HEADING;
+  return ROBLOX_IMPOSED.has(remedy) ? ROBLOX_LIMIT_HEADING : STUDPILOT_LIMIT_HEADING;
 }
 
 /**
@@ -247,7 +247,7 @@ function remedyHeading(remedy: RefusalRemedyCode): string {
  * list of four seen in the wild on 2026-09-19 — appending is not enough, and w35 is the row that
  * says so. Two accounts of one event, one of them false, is worse than one; and the false one is
  * the specific, numbered, actionable-looking one. A user reading "go to File > Place Settings >
- * Security" followed by "actually it is in the Apple panel" does not average them — they go looking
+ * Security" followed by "actually it is in the StudPilot panel" does not average them — they go looking
  * for the settings page, because it is the instruction that sounds like it was written by someone
  * who checked.
  *

@@ -17,7 +17,7 @@ import { d1 } from './stubs/d1.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
-const DIRECTORY = mkdtempSync(join(tmpdir(), 'apple-generated-image-tool-'));
+const DIRECTORY = mkdtempSync(join(tmpdir(), 'studpilot-generated-image-tool-'));
 
 function bundle(entry, name) {
   const output = join(DIRECTORY, `${name}.mjs`);
@@ -152,7 +152,7 @@ test('a save failure is an unsuccessful tool result with no delivery panel', asy
 
 test('WHAT THE MODEL IS TOLD ABOUT RETENTION MATCHES THE STORE THE TOOL ACTUALLY WRITES TO', () => {
   // This is a copy test because the copy is the product here. `generate_image`'s result carries no
-  // expiry field, and search_docs indexes Roblox's documentation rather than Apple's, so the tool
+  // expiry field, and search_docs indexes Roblox's documentation rather than StudPilot's, so the tool
   // DESCRIPTION is the model's only retention fact — and what the model is told is what the
   // customer is told. It promised an hour, taken from the KV path this tool no longer uses, while
   // /docs/credits-and-limits promised the customer the opposite. The sweep that made images durable

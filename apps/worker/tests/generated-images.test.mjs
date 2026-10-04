@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { d1 } from './stubs/d1.mjs';
-const directory = mkdtempSync(join(tmpdir(), 'apple-durable-images-'));
+const directory = mkdtempSync(join(tmpdir(), 'studpilot-durable-images-'));
 const output = join(directory, 'module.mjs');
 await build({ entryPoints: [new URL('../src/generated-images.ts', import.meta.url).pathname], bundle: true, format: 'esm', platform: 'node', outfile: output });
 const M = await import(output);

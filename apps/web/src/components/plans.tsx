@@ -3,7 +3,7 @@
 // Before this, /usage knew about two plans — Free and a Pro you could join a waitlist for — while
 // the ledger enforcing quotas already had four. The page was not merely incomplete; it disagreed
 // with the server, and a plan page that disagrees with the thing enforcing it is a page that lies.
-// Everything here reads from PLAN_LIMITS and PLAN_COPY in @apple/shared, which is the same table
+// Everything here reads from PLAN_LIMITS and PLAN_COPY in @studpilot/shared, which is the same table
 // QuotaDO applies, so the two cannot drift apart again.
 //
 // The allowance is stated in BUILDS as well as Credits. A five-figure Credit count means nothing on
@@ -23,7 +23,7 @@ import {
   formatMoney,
   CREDITS_PER_BUILD,
   type PlanId,
-} from '@apple/shared';
+} from '@studpilot/shared';
 
 /**
  * Whether this deployment can sell anything, as four states rather than two.

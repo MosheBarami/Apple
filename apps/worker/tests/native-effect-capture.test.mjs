@@ -7,7 +7,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 const root=join(dirname(fileURLToPath(import.meta.url)),'..'),dir=mkdtempSync(join(tmpdir(),'native-effect-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
-async function bundle(name){const file=join(dir,name+'.mjs');await build({entryPoints:[join(root,'src',name+'.ts')],bundle:true,format:'esm',platform:'node',outfile:file,alias:{'@apple/shared':join(root,'../../packages/shared/src/index.ts')}});return import(pathToFileURL(file).href);}
+async function bundle(name){const file=join(dir,name+'.mjs');await build({entryPoints:[join(root,'src',name+'.ts')],bundle:true,format:'esm',platform:'node',outfile:file,alias:{'@studpilot/shared':join(root,'../../packages/shared/src/index.ts')}});return import(pathToFileURL(file).href);}
 const T=await bundle('tools'),C=await bundle('plugin-capabilities'),PNG=await bundle('png');
 const nativePng=await PNG.encodePng(new Uint8Array(160*90*3).fill(128),160,90);
 const frame={source:'studio_viewport',encoding:'png',rgbBase64:PNG.bytesToBase64(nativePng),width:160,height:90,view:'viewport',subject:'game.Workspace',capturedAt:1};

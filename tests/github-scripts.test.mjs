@@ -17,12 +17,12 @@ const ruleset = JSON.parse(readFileSync(join(ROOT, '.github/rulesets/main.json')
 const ci = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8');
 
 test('scope is the lower-cased repository owner and the base name survives a rename', () => {
-  assert.equal(baseName('@apple/sdk'), 'sdk');
-  assert.equal(baseName('@apple/sdk'), 'sdk');
-  assert.equal(scopedName('@apple/sdk', 'MosheBarami'), '@moshebarami/sdk');
-  assert.equal(scopedName('@apple/sdk', '@MosheBarami'), '@moshebarami/sdk');
-  assert.throws(() => scopedName('@apple/sdk', ''), /usable GitHub owner/);
-  assert.throws(() => scopedName('@apple/sdk', 'bad owner'), /usable GitHub owner/);
+  assert.equal(baseName('@studpilot/sdk'), 'sdk');
+  assert.equal(baseName('@studpilot/sdk'), 'sdk');
+  assert.equal(scopedName('@studpilot/sdk', 'MosheBarami'), '@moshebarami/sdk');
+  assert.equal(scopedName('@studpilot/sdk', '@MosheBarami'), '@moshebarami/sdk');
+  assert.throws(() => scopedName('@studpilot/sdk', ''), /usable GitHub owner/);
+  assert.throws(() => scopedName('@studpilot/sdk', 'bad owner'), /usable GitHub owner/);
 });
 
 test('publishable packages are exactly those that opt in, and the worker is not one of them', () => {
@@ -45,13 +45,13 @@ test('validate refuses what cannot be published and accepts what can', () => {
 
 test('the staged manifest is renamed, public, linked to the repo and has no lifecycle scripts', () => {
   const out = stagedManifest(
-    { name: '@apple/sdk', version: '1.0.0', private: true, scripts: { prepublishOnly: 'x' }, bin: { apple: './bin/apple.mjs' } },
+    { name: '@studpilot/sdk', version: '1.0.0', private: true, scripts: { prepublishOnly: 'x' }, bin: { studpilot: './bin/studpilot.mjs' } },
     { owner: 'MosheBarami', repo: 'MosheBarami/Apple', directory: 'packages/sdk' },
   );
   assert.equal(out.name, '@moshebarami/sdk');
   assert.equal(out.private, undefined);
   assert.equal(out.scripts, undefined);
-  assert.deepEqual(out.bin, { apple: 'bin/apple.mjs' });
+  assert.deepEqual(out.bin, { studpilot: 'bin/studpilot.mjs' });
   assert.equal(out.publishConfig.registry, GITHUB_REGISTRY);
   assert.equal(out.repository.url, 'git+https://github.com/MosheBarami/Apple.git');
 });

@@ -5,8 +5,8 @@
 // links, a url, a kind, a title and the exact list of chunk ids it occupies in the local corpus.
 // The test that made those claims true read `packages/corpus/data/chunks.jsonl` directly — and
 // that file is a 10 MB gitignored BUILD ARTEFACT. It exists on a machine that has run `pnpm
-// --filter @apple/corpus chunk`; it does not exist in a fresh checkout. So on the runner the test
-// did not fail an assertion, it threw ENOENT, `pnpm -r test` bailed at @apple/corpus, and every
+// --filter @studpilot/corpus chunk`; it does not exist in a fresh checkout. So on the runner the test
+// did not fail an assertion, it threw ENOENT, `pnpm -r test` bailed at @studpilot/corpus, and every
 // package after it in the recursion never ran at all. CI had been red on this for days.
 //
 // THE TWO OBVIOUS FIXES ARE BOTH WRONG. Committing chunks.jsonl puts 10 MB of re-derivable cache

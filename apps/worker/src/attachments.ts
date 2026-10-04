@@ -27,7 +27,7 @@ import {
   type AttachmentVerdict,
   type ChatAttachment,
   type FoldableAttachment,
-} from '@apple/shared';
+} from '@studpilot/shared';
 
 /**
  * How long an attachment stays readable: seven days.

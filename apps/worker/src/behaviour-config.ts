@@ -22,7 +22,7 @@ function body(records: readonly BehaviourRecord[]): string {
 export function renderConfigSource(modelName: string, records: readonly BehaviourRecord[]): string {
   const name = modelName.replace(/[\r\n]/g, ' ').slice(0, 80);
   return (
-    `-- What the parts of ${name} do, and when. Written by Apple (add_behaviour); AppleBehave in ServerScriptService reads it when the game runs.\n` +
+    `-- What the parts of ${name} do, and when. Written by StudPilot (add_behaviour); AppleBehave in ServerScriptService reads it when the game runs.\n` +
     `-- Each behaviour is a verb (swing, slide, spin, bob, fade, light, sound, emit, bounce) done to a part when a trigger fires. Edit freely;\n` +
     `-- after a hand edit, add_behaviour will not merge into this file unless told to replace it.\n` +
     `${MARKER}${JSON.stringify(records)}\n` +

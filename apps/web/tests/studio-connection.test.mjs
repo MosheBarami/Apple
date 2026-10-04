@@ -90,7 +90,7 @@ test('there is no "installed" state anywhere in the connection layer', () => {
 test('the install link is derived from the shared config, not retyped', () => {
   const src = readFileSync(join(HERE, '..', 'src', 'components', 'pairing-dialog.tsx'), 'utf8');
   assert.match(src, /STUDIO_PLUGIN_INSTALL_HREF/);
-  assert.ok(!/create\.roblox\.com/.test(src), 'the URL must come from @apple/shared');
+  assert.ok(!/create\.roblox\.com/.test(src), 'the URL must come from @studpilot/shared');
   assert.ok(!/\d{12,}/.test(src), 'no asset id literal may appear here');
 });
 
@@ -122,7 +122,7 @@ test('no in-app install affordance points at the store while it is not distribut
 /**
  * WHAT THE OWNER SAW, 2026-09-19. A project paired four days earlier, expiry a month out, "last
  * seen 11m" printed in the pairing dialog on the same screen — and beside it the three-step
- * first-time setup card: "Studio plugin unavailable / Open the Apple plugin in Studio / Pair your
+ * first-time setup card: "Studio plugin unavailable / Open the StudPilot plugin in Studio / Pair your
  * project". He read it, correctly, as the product not knowing he had paired.
  *
  * `everConnected` starts false on every page load. It records what THIS TAB has seen since it
@@ -143,7 +143,7 @@ test('the pairing memory never overrides a live connection or an unanswered sock
   // Connected beats everything: the card must vanish, not become a nicer card.
   assert.equal(studioConnection('open', true, false, true), 'connected');
   // And a socket that has not answered yet is still "connecting" — claiming DISCONNECTED during a
-  // handshake would flash "Apple can't reach your place" at somebody whose place is fine.
+  // handshake would flash "StudPilot can't reach your place" at somebody whose place is fine.
   assert.equal(studioConnection('connecting', false, false, false), 'connecting');
   assert.equal(studioConnection('reconnecting', false, false, false), 'connecting');
 });

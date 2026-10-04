@@ -1,7 +1,7 @@
-// A customer's own Roblox Open Cloud key, stored so Apple can act on THEIR account instead of
+// A customer's own Roblox Open Cloud key, stored so StudPilot can act on THEIR account instead of
 // somebody else's.
 //
-// WHY THIS EXISTS, AND IT IS NOT A FEATURE REQUEST. Apple uploaded 299 assets into the owner's
+// WHY THIS EXISTS, AND IT IS NOT A FEATURE REQUEST. StudPilot uploaded 299 assets into the owner's
 // personal Roblox account because the only credential it had was a single shared one, configured
 // once, belonging to a real person. Roblox then refused to take them back — an Image is "not an
 // archivable asset type" — so that account keeps them permanently. A shared write credential means
@@ -37,7 +37,7 @@
 //    "They gave us a key" and "they agreed to this particular action" are different facts, which
 //    is the lesson the 299 uploads taught at the account level and which applies again here.
 import type { Env } from './env';
-import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@apple/shared';
+import { isRobloxScope, ROBLOX_SCOPES, type RobloxScope } from '@studpilot/shared';
 import { oncePerIsolate } from './schema-once';
 
 export interface CredentialEnv {
@@ -46,12 +46,12 @@ export interface CredentialEnv {
   CREDENTIAL_KEY?: string;
 }
 
-// The scope vocabulary lives in @apple/shared: the settings panel offers these choices and this
+// The scope vocabulary lives in @studpilot/shared: the settings panel offers these choices and this
 // module validates what comes back, and a list that existed in two places would let the panel
 // offer a scope the worker refuses. They are RECORDED from what the customer declares rather than
 // probed, because probing means making a real call against their account with a credential we have
 // not yet been told we may use.
-export { ROBLOX_SCOPES, isRobloxScope, type RobloxScope } from '@apple/shared';
+export { ROBLOX_SCOPES, isRobloxScope, type RobloxScope } from '@studpilot/shared';
 
 export interface StoredCredential {
   userId: string;
@@ -236,7 +236,7 @@ export async function putRobloxCredential(env: CredentialEnv, input: PutCredenti
   if (input.expiresAt !== undefined && input.expiresAt !== null && String(input.expiresAt).trim() !== '') {
     const raw = String(input.expiresAt).trim();
     const ms = Date.parse(raw);
-    if (!Number.isFinite(ms)) return { ok: false, error: `"${raw.slice(0, 40)}" is not a date Apple can read — use the date Roblox showed, as YYYY-MM-DD` };
+    if (!Number.isFinite(ms)) return { ok: false, error: `"${raw.slice(0, 40)}" is not a date StudPilot can read — use the date Roblox showed, as YYYY-MM-DD` };
     if (ms <= Date.now()) return { ok: false, error: 'that expiry date has already passed — a key Roblox has expired cannot be connected' };
     expiresAt = new Date(ms).toISOString();
   }
@@ -326,8 +326,8 @@ export interface UseResult {
 /**
  * Get the key for one user, for ONE named scope.
  *
- * The scope argument is not decoration. A credential stored so Apple could read the Creator Store
- * must not silently become a credential Apple uploads with, and the check that stops that has to
+ * The scope argument is not decoration. A credential stored so StudPilot could read the Creator Store
+ * must not silently become a credential StudPilot uploads with, and the check that stops that has to
  * happen where the key is handed out — not at the call site, where the next feature will forget.
  */
 export async function useRobloxCredential(env: CredentialEnv, userId: string, scope: RobloxScope): Promise<UseResult> {

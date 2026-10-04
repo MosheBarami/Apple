@@ -24,7 +24,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const PLUGIN_SRC = join(WORKER, '..', 'apple-plugin', 'src');
+const PLUGIN_SRC = join(WORKER, '..', 'studpilot-plugin', 'src');
 const temp = mkdtempSync(join(tmpdir(), 'phase-a-'));
 const bundle = (entry) => {
   const outfile = join(temp, `${entry}.mjs`);
@@ -324,8 +324,8 @@ const freshScreen = (op) => {
 };
 
 test('build_ui, for EVERY theme, emits only classes, properties, value types and enums the plugin accepts', async () => {
-  assert.ok(TH.APPLE_UI_THEME_IDS.length >= 5, 'the theme list parsed short');
-  for (const theme of TH.APPLE_UI_THEME_IDS) {
+  assert.ok(TH.STUDPILOT_UI_THEME_IDS.length >= 5, 'the theme list parsed short');
+  for (const theme of TH.STUDPILOT_UI_THEME_IDS) {
     const { ctx, calls } = studio(freshScreen);
     const out = await buildUi(ctx, { screen: 'ShopGui', theme, tree: SHOP });
     assert.equal(typeof out.built, 'string', `${theme}: ${JSON.stringify(out)}`);

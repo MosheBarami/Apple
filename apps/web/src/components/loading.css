@@ -56,7 +56,7 @@
 /* WHAT IS HAPPENING, in one line. Ink, 16px, and no larger: `.es__title` is 25px because an empty
    state is a dead end that has to restate where you are, and a wait is not — it is a caption on
    something already in motion. `text-wrap:pretty` because these end on the word that carries them
-   ("Apple is looking at your scene") and a one-word last line throws that away. */
+   ("StudPilot is looking at your scene") and a one-word last line throws that away. */
 .forge-label { margin:0; font-size:16px; line-height:1.4; letter-spacing:-.015em; color:var(--ink); text-wrap:pretty; }
 
 /* ------------------------------------------------------------------------- the steps --- */

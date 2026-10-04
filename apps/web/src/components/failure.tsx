@@ -25,7 +25,7 @@ export function Failure({
    *
    * ONE RENDERER, TWO VOCABULARIES. The Roblox panel is the case this exists for: a revoked Open
    * Cloud key is a 401, and `explainFailure` reads every 401 as "your session has expired, sign in
-   * again" — sending somebody to re-authenticate their Apple account over a credential on another
+   * again" — sending somebody to re-authenticate their StudPilot account over a credential on another
    * service. The shape of the answer, and the order it is read in, stays the same for both.
    */
   explain?: (err: unknown) => Explained;

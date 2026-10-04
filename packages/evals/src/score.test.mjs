@@ -32,7 +32,7 @@ function run(argv) {
 }
 
 function policyFile(policy) {
-  const dir = mkdtempSync(join(tmpdir(), 'apple-policy-'));
+  const dir = mkdtempSync(join(tmpdir(), 'studpilot-policy-'));
   const file = join(dir, 'policy.json');
   writeFileSync(file, JSON.stringify(policy));
   return { file, cleanup: () => rmSync(dir, { recursive: true, force: true }) };

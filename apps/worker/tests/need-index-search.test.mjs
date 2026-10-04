@@ -32,7 +32,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const ROOT = join(WORKER, '..', '..');
 
-const dir = mkdtempSync(join(tmpdir(), 'apple-need-index-'));
+const dir = mkdtempSync(join(tmpdir(), 'studpilot-need-index-'));
 const entry = join(dir, 'entry.ts');
 const out = join(dir, 'bits.mjs');
 writeFileSync(entry, [

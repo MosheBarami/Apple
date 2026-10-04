@@ -69,12 +69,12 @@ test('CONTROL: the address matcher finds a literal in code and ignores comments 
   assert.deepEqual(personalAddresses("const url = 'https://x.dev/'; const e = 'someone@mail.co';"), [1],
     'a URL before the literal must not hide it as a comment');
   assert.deepEqual(personalAddresses("const t = 'Name@Example.com';"), []);
-  assert.deepEqual(personalAddresses("const t = 'buyer@apple.test';"), []);
+  assert.deepEqual(personalAddresses("const t = 'buyer@studpilot.test';"), []);
 });
 
 // ------------------------------------------------------------------ the route, over HTTP
 
-const TMP = mkdtempSync(join(tmpdir(), 'apple-owner-credits-'));
+const TMP = mkdtempSync(join(tmpdir(), 'studpilot-owner-credits-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -129,7 +129,7 @@ const env = (over = {}) => ({
 
 async function grant(jwt, over) {
   doCalls = [];
-  const res = await APP.fetch(new Request('https://apple.test/api/me/owner-credits', {
+  const res = await APP.fetch(new Request('https://studpilot.test/api/me/owner-credits', {
     method: 'POST', headers: { Authorization: `Bearer ${jwt}` },
   }), env(over));
   return { status: res.status, unmeteredCalls: doCalls.filter((c) => c.path === '/set-unmetered') };

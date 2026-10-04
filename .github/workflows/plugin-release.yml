@@ -1,8 +1,8 @@
 name: Plugin release
 
 # ===========================================================================
-# WHAT THIS BUILDS: apps/apple-plugin, into apps/apple-plugin/release/apple-studio.rbxm.
-# WHERE IT GOES: the Creator Store asset "Apple Studio", 107230158271368 (creator Shahar474).
+# WHAT THIS BUILDS: apps/studpilot-plugin, into apps/studpilot-plugin/release/studpilot-studio.rbxm.
+# WHERE IT GOES: the Creator Store asset "Apple Studio" (the listing keeps that title until the owner retitles it), 107230158271368 (creator Shahar474).
 #
 # Retargeted 2026-09-22. Until then this job built `apps/plugin` — the legacy source, which compiles
 # text received over HTTP into a ModuleScript and requires it (`apps/plugin/src/Ops.luau:521`) — and
@@ -10,10 +10,10 @@ name: Plugin release
 # `apps/plugin` is kept only as test fixtures (see `apps/plugin/README.md`), and 132128477945417
 # answers 404 on toolbox-service. Never publish to it. `docs/PLUGIN-RELEASE.md` is the runbook.
 #
-# The version is read from `apps/apple-plugin/src/Bridge.luau` (PLUGIN_VERSION / PLUGIN_PROTOCOL),
+# The version is read from `apps/studpilot-plugin/src/Bridge.luau` (PLUGIN_VERSION / PLUGIN_PROTOCOL),
 # the constant the plugin sends on every request, and the build is the same `build.mjs` a person
 # runs locally and ci.yml runs on every PR: parse, rojo build, secret scan, then
-# `apps/apple-plugin/scripts/verify-artifact.py` over the BUILT bytes.
+# `apps/studpilot-plugin/scripts/verify-artifact.py` over the BUILT bytes.
 # ===========================================================================
 
 # ===========================================================================
@@ -24,7 +24,7 @@ name: Plugin release
 #         -> [HUMAN, in Roblox Studio] publish/update the Creator Store asset
 #
 #   USER (them, entirely inside Roblox)
-#       Creator Store -> Get Plugin -> Studio Plugins tab -> Apple -> pair with a code -> build
+#       Creator Store -> Get Plugin -> Studio Plugins tab -> StudPilot -> pair with a code -> build
 #
 # This workflow implements the first line and stops dead at the human step. It
 # produces a verified artifact and never touches Roblox.
@@ -137,7 +137,7 @@ jobs:
         id: version
         run: |
           set -euo pipefail
-          SRC=apps/apple-plugin/src/Bridge.luau
+          SRC=apps/studpilot-plugin/src/Bridge.luau
           VERSION=$(grep -oE '^local PLUGIN_VERSION = "[^"]+"' "$SRC" | head -1 | sed -E 's/.*"(.*)"/\1/')
           PROTOCOL=$(grep -oE '^local PLUGIN_PROTOCOL = "[0-9]+"' "$SRC" | head -1 | grep -oE '[0-9]+')
           if [ -z "$VERSION" ] || [ -z "$PROTOCOL" ]; then
@@ -175,7 +175,7 @@ jobs:
         # non-zero with "Unknown global 'game'" because no definitions file is
         # loaded. The script also refuses a require of a module that is not bundled,
         # and fails rather than skips when the analyzer is missing under CI.
-        run: node apps/apple-plugin/scripts/syntax-check.mjs
+        run: node apps/studpilot-plugin/scripts/syntax-check.mjs
 
       - name: Secret-inspection rules self-test
         # Run the scanner's own rules against known-positive and known-negative
@@ -188,9 +188,9 @@ jobs:
         # string across two files in two languages, and nothing but these suites
         # enforces that they still match (packages/evals/src/plugin-version.test.mjs).
         run: |
-          pnpm --filter @apple/studio-plugin test
-          pnpm --filter @apple/worker typecheck
-          pnpm --filter @apple/evals test
+          pnpm --filter @studpilot/studio-plugin test
+          pnpm --filter @studpilot/worker typecheck
+          pnpm --filter @studpilot/evals test
 
       # ------------------------------------------------------------- build --
       - name: Install Rojo
@@ -206,11 +206,11 @@ jobs:
         run: rojo --version
 
       - name: Build the plugin and verify the built bytes
-        # rojo build -> apps/apple-plugin/release/apple-studio.rbxm, then the
+        # rojo build -> apps/studpilot-plugin/release/studpilot-studio.rbxm, then the
         # secret scan, then verify-artifact.py, which reads the BUILT bytes for every
         # capability the source claims. The legacy artifact once shipped with zero
         # GenerateModelAsync while its source had generation, and every test was green.
-        run: node apps/apple-plugin/scripts/build.mjs
+        run: node apps/studpilot-plugin/scripts/build.mjs
 
       # ------------------------------------------------- refuse to ship junk --
       - name: Inspect the built artifact for secrets, at the version being recorded
@@ -224,7 +224,7 @@ jobs:
         env:
           EXPECT_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          python3 scripts/inspect-plugin-build.py apps/apple-plugin/release/apple-studio.rbxm \
+          python3 scripts/inspect-plugin-build.py apps/studpilot-plugin/release/studpilot-studio.rbxm \
             --expect-version "$EXPECT_VERSION"
 
       # ------------------------------------------------------------ record --
@@ -239,7 +239,7 @@ jobs:
           ROJO: ${{ env.ROJO_VERSION }}
         run: |
           set -euo pipefail
-          ARTIFACT=apps/apple-plugin/release/apple-studio.rbxm
+          ARTIFACT=apps/studpilot-plugin/release/studpilot-studio.rbxm
           SHA=$(sha256sum "$ARTIFACT" | cut -d' ' -f1)
           SIZE=$(stat -c%s "$ARTIFACT")
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
@@ -257,16 +257,16 @@ jobs:
             '{$version, $protocol, $sha256, $bytes, $commit, $builtAt, $rojo, $storeAssetId,
               published: false,
               publishNote: "Publishing is a human step in Roblox Studio. Open Cloud cannot update a Plugin asset."}' \
-            > apps/apple-plugin/release/apple-studio.manifest.json
-          cat apps/apple-plugin/release/apple-studio.manifest.json
+            > apps/studpilot-plugin/release/studpilot-studio.manifest.json
+          cat apps/studpilot-plugin/release/studpilot-studio.manifest.json
 
       - name: Upload plugin build
         uses: actions/upload-artifact@v4
         with:
-          name: apple-studio-${{ steps.version.outputs.version }}
+          name: studpilot-studio-${{ steps.version.outputs.version }}
           path: |
-            apps/apple-plugin/release/apple-studio.rbxm
-            apps/apple-plugin/release/apple-studio.manifest.json
+            apps/studpilot-plugin/release/studpilot-studio.rbxm
+            apps/studpilot-plugin/release/studpilot-studio.manifest.json
           if-no-files-found: error
           retention-days: 90
 
@@ -286,7 +286,7 @@ jobs:
           REASON: ${{ github.event.inputs.reason }}
         run: |
           {
-            echo "## Apple Studio plugin $VERSION"
+            echo "## StudPilot plugin $VERSION"
             echo ""
             echo "| | |"
             echo "|---|---|"
@@ -294,7 +294,7 @@ jobs:
             echo "| wire protocol | \`$PROTOCOL\` |"
             echo "| sha256 | \`$SHA256\` |"
             echo "| commit | \`$COMMIT\` |"
-            echo "| Creator Store asset | \`$STORE_ASSET_ID\` (Apple Studio) |"
+            echo "| Creator Store asset | \`$STORE_ASSET_ID\` (listed as Apple Studio) |"
             echo "| reason | $REASON |"
             echo "| published to Roblox | **no — see below** |"
             echo ""
@@ -308,12 +308,12 @@ jobs:
             echo ""
             echo "### To release it (human, in Roblox Studio)"
             echo ""
-            echo "1. Download the \`apple-studio-$VERSION\` artifact."
-            echo "2. Smoke-test it: put \`apple-studio.rbxm\` in your local Plugins folder, restart"
+            echo "1. Download the \`studpilot-studio-$VERSION\` artifact."
+            echo "2. Smoke-test it: put \`studpilot-studio.rbxm\` in your local Plugins folder, restart"
             echo "   Studio, pair with a code, allow edits, run one build. Remove the local file"
             echo "   afterwards so Studio does not load it beside the Creator Store copy."
-            echo "3. Drag \`apple-studio.rbxm\` into Explorer, right-click it -> **Publish as Plugin**."
-            echo "4. Choose **Overwrite an existing asset** and select **Apple Studio** (asset $STORE_ASSET_ID)."
+            echo "3. Drag \`studpilot-studio.rbxm\` into Explorer, right-click it -> **Publish as Plugin**."
+            echo "4. Choose **Overwrite an existing asset** and select **Apple Studio** (asset $STORE_ASSET_ID; the listing keeps its old title until the owner retitles it)."
             echo "   Creator must be **Me**, not a group — group overwrite is broken (DevForum 587851)."
             echo "   Never 132128477945417: that is the retired legacy asset and Roblox removed it."
             echo "5. Record the sha256 above against the published version."

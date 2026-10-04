@@ -4,12 +4,12 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 ---
 
 <DocsLayout
-  title="Privacy & data — Apple Docs"
-  description="A plain-language map of what Apple stores, where it lives, who can see it, and the never-trained-on promise — the practical companion to the Privacy Policy."
+  title="Privacy & data — StudPilot Docs"
+  description="A plain-language map of what StudPilot stores, where it lives, who can see it, and the never-trained-on promise — the practical companion to the Privacy Policy."
   heading="Privacy & data"
 >
   <p>
-    This page is the practical map of your data in Apple — what exists, where it lives, and who
+    This page is the practical map of your data in StudPilot — what exists, where it lives, and who
     can touch it. The legally binding version is the <a href="/privacy">Privacy Policy</a>; this
     page just says the same things the way an engineer would over coffee.
   </p>
@@ -21,12 +21,12 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     </p>
   </div>
 
-  <h2>What Apple stores, and why</h2>
+  <h2>What StudPilot stores, and why</h2>
   <ul>
     <li><strong>Your email + password hash</strong> — so you can sign in. This is the only personal information signup asks for.</li>
     <li><strong>Projects</strong> — names, descriptions, and the connected place's name and id, so the workspace can show what belongs where.</li>
-    <li><strong>Chat history</strong> — your conversations with Apple plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
-    <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place Apple works on, kept so rollback works across sessions.</li>
+    <li><strong>Chat history</strong> — your conversations with StudPilot plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
+    <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place StudPilot works on, kept so rollback works across sessions.</li>
     <li><strong>Usage ledger</strong> — when you spent Credits and on which mode, so quotas reset fairly.</li>
     <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Routes are logged as routes, never as raw paths, so no project id is in it. It carries your account id for 30 days unless you turn that off in Settings → Privacy; the request is still counted either way, with nobody's name on it.</li>
     <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
@@ -39,8 +39,8 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs the model inference.</li>
     <li><strong>Supabase</strong> runs authentication and the account registry (your email, your project list). Every row is protected so that only requests carrying <em>your</em> verified credentials can read it — our own servers hold no master key that bypasses this.</li>
     <li><strong>Stripe</strong> takes the payments. It gets your email and billing identifiers and holds the payment method; we get back the subscription state. No card number reaches us.</li>
-    <li><strong>Discord</strong> gets whatever Apple posts back to the channel you started a build from — only if you linked an account.</li>
-    <li><strong>Roblox</strong> gets the assets you ask Apple to upload, to your own account, under your own key — only if you gave one.</li>
+    <li><strong>Discord</strong> gets whatever StudPilot posts back to the channel you started a build from — only if you linked an account.</li>
+    <li><strong>Roblox</strong> gets the assets you ask StudPilot to upload, to your own account, under your own key — only if you gave one.</li>
   </ul>
 
   <h2>What the Studio plugin sees</h2>
@@ -64,7 +64,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>Who can read your data</h2>
   <ul>
     <li><strong>You.</strong></li>
-    <li><strong>Apple's systems</strong>, mechanically, to serve your requests.</li>
+    <li><strong>StudPilot's systems</strong>, mechanically, to serve your requests.</li>
     <li><strong>Authorized operators</strong> can access production systems for debugging under access controls. No data sales, no ad networks, no cross-site tracking.</li>
   </ul>
 
@@ -77,7 +77,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Credits ledger:</strong> 35 days of daily detail, plus monthly totals.</li>
     <li><strong>New generated images:</strong> saved privately with the project until you delete it. Download a copy from the image result. Existing expired images cannot be recovered.</li>
     <li><strong>Temporary image previews and generated sound:</strong> one hour in cache.</li>
-    <li><strong>Deletion during a running preview:</strong> an in-flight temporary image can remain in cache for up to an hour, but deleted-project images cannot be opened through Apple.</li>
+    <li><strong>Deletion during a running preview:</strong> an in-flight temporary image can remain in cache for up to an hour, but deleted-project images cannot be opened through StudPilot.</li>
     <li><strong>Deleted-image protection:</strong> a deleted project identifier is retained without its images or account details, to stop late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
   </ul>
@@ -88,7 +88,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     Settings → Privacy → <strong>Download my data</strong> gathers it into one file in one click.
     Your account database records and API-key metadata — never a secret key — and then every route
     the service holds about you, followed for you rather than listed at you: the full transcript of
-    every project, your checkpoints, your Credit spend, your inbox, what Apple was asked to
+    every project, your checkpoints, your Credit spend, your inbox, what StudPilot was asked to
     remember, your comments, reviews, share links and Studio pairings. The server's own signed
     export sits inside it untouched, sha256 and all.
   </p>
@@ -118,7 +118,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
   <h2>Beta honesty</h2>
   <p>
-    Apple is a beta run by a small team on a deliberately simple architecture — simple enough to
+    StudPilot is a beta run by a small team on a deliberately simple architecture — simple enough to
     audit, simple enough to explain on one page. If you find a hole in any of the above, please
     tell us before you tell the internet; we fix fast.
   </p>

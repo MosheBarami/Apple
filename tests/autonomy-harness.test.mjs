@@ -65,7 +65,7 @@ const ALLOWED_BASH = [
   'rm -rf ~/scratch-dir',
   'node infra/deploy-worker.mjs apple',
   'curl -s https://apis.roblox.com/toolbox-service/v1/items/details?assetIds=1',
-  'grep -c APPLE_ADMIN_KEY .env',
+  'grep -c STUDPILOT_ADMIN_KEY .env',
 ];
 
 test('the guard denies every forbidden command it names', { skip: GUARD_REMOVED }, () => {

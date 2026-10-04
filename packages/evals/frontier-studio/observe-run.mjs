@@ -90,8 +90,8 @@ export async function main(args) {
   if (mode !== 'observe') throw Error('Use init or observe');
   const manifest = JSON.parse(readFileSync(path, 'utf8'));
   if (manifest.origin !== ORIGIN || !UUID.test(manifest.projectId ?? '')) throw Error('Unapproved credential destination');
-  const key = envCompat('APPLE_ADMIN_KEY');
-  if (!key) throw Error('APPLE_ADMIN_KEY required');
+  const key = envCompat('STUDPILOT_ADMIN_KEY');
+  if (!key) throw Error('STUDPILOT_ADMIN_KEY required');
   const get = route => observationGet(key, route);
   const [info, messages, logs] = await Promise.all([
     get(`/api/admin/session-info/${manifest.projectId}`),

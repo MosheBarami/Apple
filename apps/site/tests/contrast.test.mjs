@@ -2,13 +2,13 @@
  * TEXT CONTRAST ON THE PUBLIC SITE, DERIVED FROM THE SHEET THAT ACTUALLY WINS.
  *
  * WHY THIS FILE EXISTS. apps/web/tests/contrast.test.mjs carried the site's contrast check, and it
- * read global.css and landing.css — while apple-minimal.css, imported after both, overrode every
+ * read global.css and landing.css — while studpilot-minimal.css, imported after both, overrode every
  * colour token they declared. It passed 15/15 over a page with 39 measured AA failures: `.micro`
  * labels at 4.42:1 in dark and 3.86:1 in light, all spending a `--faint` it never looked at, because
  * its ink filter was `^(ink|muted|text)`. A check aimed at a sheet that loses the cascade measures
  * a page nobody sees.
  *
- * Since the 2026-09-22 redesign apple-minimal.css is the site's ONE token source, loaded first by
+ * Since the 2026-09-22 redesign studpilot-minimal.css is the site's ONE token source, loaded first by
  * both layouts, and no other sheet declares a colour token (theme-on-every-route.test.mjs holds
  * that). So this reads that file, in both themes, and:
  *
@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
-const TOKENS = strip(readFileSync(join(SITE, 'src', 'styles', 'apple-minimal.css'), 'utf8'));
+const TOKENS = strip(readFileSync(join(SITE, 'src', 'styles', 'studpilot-minimal.css'), 'utf8'));
 
 /** Relative luminance, WCAG 2.x. */
 function luminance(hex) {
@@ -47,7 +47,7 @@ const contrast = (a, b) => {
 /** The declarations of one theme block, `--name: value`, resolving `var()` references. */
 function theme(selector) {
   const m = selector.exec(TOKENS);
-  assert.ok(m, `apple-minimal.css has no block for ${selector}`);
+  assert.ok(m, `studpilot-minimal.css has no block for ${selector}`);
   const open = TOKENS.indexOf('{', m.index);
   const body = TOKENS.slice(open + 1, TOKENS.indexOf('}', open));
   const raw = Object.fromEntries([...body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+);/gi)].map((d) => [d[1], d[2].trim()]));

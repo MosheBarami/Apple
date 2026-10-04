@@ -1,9 +1,9 @@
-// /docs/troubleshooting says its subject is "Every message the Apple Studio panel can show".
+// /docs/troubleshooting says its subject is "Every message the StudPilot Studio panel can show".
 // Two of the five messages it quoted were copied from apps/plugin — the retired plugin this site
 // tells people not to build — and did not exist in the shipped artifact at all:
 //
 //   page: "Invalid or expired code"                      shipped: "Invalid or expired pairing code."
-//   page: "Could not reach Apple — check your internet"   shipped: "Could not reach Apple — check
+//   page: "Could not reach StudPilot — check your internet"   shipped: "Could not reach StudPilot — check
 //                                                                   Studio's network permission."
 //
 // A reader copies the line out of the Studio panel, searches the page, and finds nothing — on the
@@ -26,9 +26,9 @@ const page = read('../src/pages/docs/troubleshooting.astro');
 // list is the one way to widen the guard, which is deliberate: it is a short, readable record of
 // every place a user-visible message the site quotes is allowed to come from.
 const SHIPPED = [
-  '../../apple-plugin/src/Bridge.luau',
-  '../../apple-plugin/src/init.server.luau',
-  '../../apple-plugin/src/Commands.luau',
+  '../../studpilot-plugin/src/Bridge.luau',
+  '../../studpilot-plugin/src/init.server.luau',
+  '../../studpilot-plugin/src/Commands.luau',
   '../../worker/src/plugin-version.ts',
   '../../worker/src/gateway.ts',
   '../../worker/src/do/session.ts',
@@ -71,7 +71,7 @@ for (const quote of headings) {
 }
 
 test('the two corrected quotes are the shipped wording, character for character', () => {
-  for (const exact of ['Invalid or expired pairing code', 'Could not reach Apple — check Studio’s network permission']) {
+  for (const exact of ['Invalid or expired pairing code', 'Could not reach StudPilot — check Studio’s network permission']) {
     assert.ok(page.includes(exact), `the page no longer carries "${exact}"`);
     assert.ok(SHIPPED.includes(exact), `"${exact}" is not what the shipped plugin says any more`);
   }
@@ -81,9 +81,18 @@ test('the two corrected quotes are the shipped wording, character for character'
 // The guard can fail.
 // ---------------------------------------------------------------------------
 test('the guard rejects the two strings that shipped on this page', () => {
-  for (const stale of ['Invalid or expired code', 'Could not reach Apple — check your internet']) {
-    assert.equal(norm(SHIPPED).includes(norm(stale)), false, `"${stale}" should not be in the shipped artifact`);
-    assert.equal(norm(LEGACY).includes(norm(stale)), true, `"${stale}" should be in the retired plugin`);
+  // Each stale string is [the wording the retired plugin still has, the wording as the product is now
+  // named]. apps/plugin keeps its old product name until it is deleted (handoff 3.2), so the retired
+  // plugin is searched for the first spelling; the shipped artifact must carry NEITHER spelling.
+  const stale = [
+    ['Invalid or expired code', 'Invalid or expired code'],
+    ['Could not reach Apple — check your internet', 'Could not reach StudPilot — check your internet'],
+  ];
+  for (const [retired, renamed] of stale) {
+    for (const s of new Set([retired, renamed])) {
+      assert.equal(norm(SHIPPED).includes(norm(s)), false, `"${s}" should not be in the shipped artifact`);
+    }
+    assert.equal(norm(LEGACY).includes(norm(retired)), true, `"${retired}" should be in the retired plugin`);
   }
 });
 

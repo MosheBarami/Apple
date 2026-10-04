@@ -9,7 +9,7 @@ import { supabase } from './platforms/supabase.mjs';
 import { cloudflare, workerHealth } from './platforms/cloudflare.mjs';
 import { sentry } from './platforms/sentry.mjs';
 import { hf } from './platforms/hf.mjs';
-import { apple } from './platforms/apple.mjs';
+import { studpilot } from './platforms/studpilot.mjs';
 import { discord } from './platforms/discord.mjs';
 import { langflow } from './platforms/langflow.mjs';
 import { status } from './platforms/status.mjs';
@@ -26,7 +26,7 @@ const FAILED = new Set(['failure', 'timed_out', 'startup_failure']);
 const CORE = { github: 'GitHub', supabase: 'Supabase', cloudflare: 'Cloudflare', sentry: 'Sentry' };
 
 /**
- * @param d  { github, supabase, cloudflare, sentry, hf, apple, discord, langflow, status, connectors, health }
+ * @param d  { github, supabase, cloudflare, sentry, hf, studpilot, discord, langflow, status, connectors, health }
  * @param o  { now, history } — history: { [key]: [[atMs, bytes], ...] } size samples, oldest first
  * @returns  insights sorted red-first: { id, sev, platform, title, why, evidence:[{k,v}], action }
  *           action: { type:'page', page, label } | { type:'act', id, page, label } | { type:'url', url, label }
@@ -44,7 +44,7 @@ export function derive(d = {}, { now = Date.now(), history = {} } = {}) {
   }
 
   // ---- the site itself
-  const h = d.health || d.cloudflare?.health || d.apple?.health;
+  const h = d.health || d.cloudflare?.health || d.studpilot?.health;
   if (h && h.httpStatus != null && h.httpStatus !== 200) add({ id: 'site-down', sev: 'bad', platform: 'apple', weight: 100,
     title: 'האתר לא עונה כמו שצריך', why: `בדיקת הבריאות של האתר החזירה ${h.httpStatus} במקום 200. משתמשים כנראה רואים שגיאה.`,
     evidence: [{ k: 'HTTP', v: String(h.httpStatus) }, { k: 'זמן תגובה', v: Number.isFinite(h.ms) ? `${nf(h.ms)} ms` : '—' }], action: { type: 'page', page: 'cloudflare', label: 'לדף Cloudflare' } });
@@ -172,21 +172,21 @@ export function derive(d = {}, { now = Date.now(), history = {} } = {}) {
   }
 
   // ---- AI spend (the site's own budget)
-  const ap = okv(d.apple) ? d.apple : null;
+  const ap = okv(d.studpilot) ? d.studpilot : null;
   const sp = ap?.spend;
   if (sp?.killed) add({ id: 'spend-killed', sev: 'bad', platform: 'apple', weight: 95, title: 'מתג החירום של ההוצאה פעיל',
     why: 'האתר עצר קריאות למודלים כי עבר את תקרת ההוצאה. משתמשים לא מקבלים תשובות מה-AI.', evidence: [{ k: 'הוצאה החודש', v: `$${nf(sp.monthUsd ?? 0, 2)}` }],
-    action: { type: 'page', page: 'apple', label: 'לדף Apple' } });
+    action: { type: 'page', page: 'apple', label: 'לדף StudPilot' } });
   else if (Number.isFinite(sp?.monthUsd) && sp?.maxMonthlyUsd > 0 && sp.monthUsd / sp.maxMonthlyUsd >= 0.8) add({ id: 'spend-month', sev: 'warn', platform: 'apple', weight: 30,
     title: `ההוצאה החודשית על AI הגיעה ל-${pctx(sp.monthUsd / sp.maxMonthlyUsd, 0)} מהתקרה`, why: 'כשמגיעים לתקרה האתר מפסיק לענות עם AI עד סוף החודש.',
-    evidence: [{ k: 'הוצאה', v: `$${nf(sp.monthUsd, 2)}` }, { k: 'תקרה', v: `$${nf(sp.maxMonthlyUsd, 2)}` }], action: { type: 'page', page: 'apple', label: 'לדף Apple' } });
+    evidence: [{ k: 'הוצאה', v: `$${nf(sp.monthUsd, 2)}` }, { k: 'תקרה', v: `$${nf(sp.maxMonthlyUsd, 2)}` }], action: { type: 'page', page: 'apple', label: 'לדף StudPilot' } });
   if (!sp?.killed && Number.isFinite(sp?.dayRemaining) && sp.dayRemaining < 0.2) add({ id: 'spend-day', sev: 'warn', platform: 'apple', weight: 25,
     title: `נשארו ${pctx(Math.max(0, sp.dayRemaining), 0)} מהתקציב היומי של AI`, why: 'כשהתקציב היומי נגמר, קריאות למודלים נעצרות עד חצות.',
-    evidence: [{ k: 'נוירונים היום', v: nf(sp.dayNeurons ?? 0) }, { k: 'נשאר', v: pctx(Math.max(0, sp.dayRemaining), 0) }], action: { type: 'page', page: 'apple', label: 'לדף Apple' } });
+    evidence: [{ k: 'נוירונים היום', v: nf(sp.dayNeurons ?? 0) }, { k: 'נשאר', v: pctx(Math.max(0, sp.dayRemaining), 0) }], action: { type: 'page', page: 'apple', label: 'לדף StudPilot' } });
   const b = ap?.billing;
   if (b?.production && b.keyMode === 'test') add({ id: 'stripe-test', sev: 'info', platform: 'stripe', weight: 8,
     title: 'התשלומים באתר עדיין במצב בדיקה', why: 'האתר בפרודקשן אבל מפתח Stripe הוא מפתח test, אז אף אחד לא מחויב באמת. המעבר ל-live הוא החלטה שלכם ב-Stripe.',
-    evidence: [{ k: 'מצב מפתח', v: 'test' }, { k: 'סביבה', v: 'production' }], action: { type: 'page', page: 'apple', label: 'לדף Apple' } });
+    evidence: [{ k: 'מצב מפתח', v: 'test' }, { k: 'סביבה', v: 'production' }], action: { type: 'page', page: 'apple', label: 'לדף StudPilot' } });
 
   // ---- Hugging Face spaces
   for (const s of okv(d.hf) ? arr(d.hf.spaces) : []) {
@@ -238,12 +238,12 @@ const val = async (fn) => { const s = await section(fn); return s.error ? { ok: 
 /** GET /api/cc/insights — reads the modules' own caches, so it costs nothing upstream most of the time. */
 export async function insights() {
   const [gh, sb, cf, st, h, ap, dc, lf, vs, cn, health] = await Promise.all([
-    val(github), val(supabase), val(cloudflare), val(sentry), val(hf), val(apple), val(discord), val(langflow), val(status), val(connectors),
+    val(github), val(supabase), val(cloudflare), val(sentry), val(hf), val(studpilot), val(discord), val(langflow), val(status), val(connectors),
     workerHealth()]);
   const now = Date.now();
   if (okv(sb)) remember('supabase:db', sb.dbSizeBytes, now);
   for (const db of okv(cf) ? arr(cf.d1) : []) remember(`d1:${db.name}`, db.sizeBytes, now);
-  const list = derive({ github: gh, supabase: sb, cloudflare: cf, sentry: st, hf: h, apple: ap, discord: dc, langflow: lf, status: vs, connectors: cn, health },
+  const list = derive({ github: gh, supabase: sb, cloudflare: cf, sentry: st, hf: h, studpilot: ap, discord: dc, langflow: lf, status: vs, connectors: cn, health },
     { now, history: HISTORY });
   return { ok: true, fetchedAt: new Date(now).toISOString(), insights: list,
     counts: { bad: list.filter((x) => x.sev === 'bad').length, warn: list.filter((x) => x.sev === 'warn').length, info: list.filter((x) => x.sev === 'info').length } };

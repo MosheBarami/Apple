@@ -186,7 +186,7 @@ function kpis(c) {
   const er = t.requests ? t.errors / t.requests : 0; const n = c.ai?.neuronsToday;
   const delta = y.requests ? t.requests / y.requests - 1 : null;
   return html`<section class="g g4 cfx-kpis" aria-label="מדדים">
-    ${stat({ key: 'cf-req', label: 'בקשות ל-apple · 24 שעות', value: t.requests, series: ph.map((x) => x.requests), sub: isNum(delta) ? `${delta >= 0 ? '+' : ''}${num(delta * 100, 0)}% לעומת היממה שלפני` : '' })}
+    ${stat({ key: 'cf-req', label: 'בקשות ל-studpilot · 24 שעות', value: t.requests, series: ph.map((x) => x.requests), sub: isNum(delta) ? `${delta >= 0 ? '+' : ''}${num(delta * 100, 0)}% לעומת היממה שלפני` : '' })}
     ${stat({ key: 'cf-err', label: 'שגיאות', value: t.errors, tone: er >= 0.05 ? 'bad' : er >= 0.01 ? 'warn' : 'good', series: ph.map((x) => x.errors), sparkCls: 'bad', sub: t.requests ? `${num(er * 100, 2)}% מהבקשות` : '' })}
     ${stat({ key: 'cf-cpu', label: 'זמן מעבד p99', value: t.cpuP99Ms, text: ms1(t.cpuP99Ms), unit: 'ms', sub: `חציון ${ms1(t.cpuP50Ms)} ms · עכשיו ${c.health?.ms != null ? `${num(c.health.ms)} ms` : '—'}` })}
     ${stat({ key: 'cf-ai', label: 'נוירונים של Workers AI היום', value: n, text: compact(n), tone: n > AI_FREE ? 'warn' : '', sub: `${isNum(n) ? num((n / AI_FREE) * 100, 0) : '—'}% מ-10,000 החינמיים ביום` })}
@@ -261,7 +261,7 @@ function deployments(w) {
 }
 function observability(c) {
   const s = c.settings || {};
-  return html`<section class="card cfx-card flush" aria-labelledby="cfx-ob-h">${head(html`<span id="cfx-ob-h">Observability של apple</span>`, 'מתג = חלון אישור, ואז שינוי ב-Worker החי. בפריסה הבאה wrangler.toml קובע שוב.')}
+  return html`<section class="card cfx-card flush" aria-labelledby="cfx-ob-h">${head(html`<span id="cfx-ob-h">Observability של studpilot</span>`, 'מתג = חלון אישור, ואז שינוי ב-Worker החי. בפריסה הבאה wrangler.toml קובע שוב.')}
     <div class="sw-row"><div class="li-m"><b>Workers Logs</b><span>כל שורה שה-Worker כותב נשמרת לחיפוש</span></div>${c.settings ? swBtn(cf.toggle('logs', !!s.logs), !!s.logs, 'Logs') : '—'}</div>
     <div class="sw-row"><div class="li-m"><b>Traces</b><span>כמה זמן לקח כל שלב בכל בקשה</span></div>${c.settings ? swBtn(cf.toggle('traces', !!s.traces), !!s.traces, 'Traces') : '—'}</div>
     <div class="sw-row"><div class="li-m"><b>דגימה</b><span>איזה חלק מהבקשות נשמר</span></div><b>${L(`${num((s.sampling ?? 0) * 100)}%`)}</b></div>
@@ -418,7 +418,7 @@ function analyticsTab(c) {
   const ws = arr(c.workers);
   const dl = (a, b) => (isNum(a) && b ? html`<span class="cfx-delta ${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${num(Math.abs(a / b - 1) * 100, 0)}%</span>` : '');
   const sum = (xs, f) => arr(xs).reduce((s, x) => s + (f(x) || 0), 0);
-  return html`<section class="card cfx-card" aria-labelledby="cfx-ph-h">${head(html`<span id="cfx-ph-h">בקשות ל-apple לפי שעה</span>`, '24 השעות האחרונות, UTC → שעון מקומי')}
+  return html`<section class="card cfx-card" aria-labelledby="cfx-ph-h">${head(html`<span id="cfx-ph-h">בקשות ל-studpilot לפי שעה</span>`, '24 השעות האחרונות, UTC → שעון מקומי')}
       <div class="cfx-draw">${bars(ph, keys, { h: 200, overlay: true, x: (r) => r.hour, xfmt: hourOf })}</div>${legend(keys)}</section>
     <section class="card cfx-card flush" aria-labelledby="cfx-cmp-h">${head(html`<span id="cfx-cmp-h">כל ה-Workers · היום מול אתמול</span>`)}
       <div class="cfx-tw"><table class="cfx-t"><thead><tr><th>Worker</th><th>בקשות</th><th>אתמול</th><th>שגיאות</th><th>אתמול</th><th>בקשות-משנה</th><th>CPU p99</th></tr></thead>

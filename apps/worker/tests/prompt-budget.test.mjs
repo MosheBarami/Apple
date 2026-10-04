@@ -1,6 +1,6 @@
 // The transcript budget is DERIVED from the model a step is sent to — its per-step reservation cap,
 // its context window and the run-state storage limit — never a hand-written constant. Gauntlet
-// round 4 (2026-09-23) ran Apple MAX (a 1.3M-token model) at a 60,000-char budget: 23 turn groups
+// round 4 (2026-09-23) ran StudPilot MAX (a 1.3M-token model) at a 60,000-char budget: 23 turn groups
 // dropped, and the model re-read its own work and lost its plan.
 //
 // The properties, each measured against the production functions rather than a spelling:
@@ -36,7 +36,7 @@ test.after(() => rmSync(TMP, { recursive: true, force: true }));
 const TOOLS_CHARS = 70_000; // the order of the full tool-definition payload
 const agent = B.DEFAULT_MODELS.agent;
 
-test('a full Apple step at the budget is admitted by the gateway\'s own estimate and cap', () => {
+test('a full StudPilot step at the budget is admitted by the gateway\'s own estimate and cap', () => {
   const b = B.promptBudgetForKey('agent', TOOLS_CHARS);
   const priced = B.modelById(agent.id);
   assert.ok(priced, 'the agent model is priced in the catalogue');
@@ -44,7 +44,7 @@ test('a full Apple step at the budget is admitted by the gateway\'s own estimate
   assert.ok(estimate <= B.maxNeuronsPerStepFor(agent.id), `estimate ${estimate} over the per-step cap`);
 });
 
-test('the Apple budget uses the room the gate allows, not a window-blind constant', () => {
+test('the StudPilot budget uses the room the gate allows, not a window-blind constant', () => {
   const b = B.promptBudgetForKey('agent', TOOLS_CHARS);
   // Round 4 was cut at 60,000 while the gate would have admitted about twice that.
   assert.ok(b.maxChars > 60_000, `budget ${b.maxChars}`);

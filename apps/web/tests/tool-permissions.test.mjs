@@ -36,7 +36,7 @@ import {
   blockedTools,
   withToolBlocked,
 } from '../src/components/ws/tool-permissions.ts';
-import { GOVERNED_TOOL_NAMES } from '@apple/shared';
+import { GOVERNED_TOOL_NAMES } from '@studpilot/shared';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const workerTools = read('../../worker/src/tools.ts');

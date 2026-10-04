@@ -2,11 +2,12 @@
   "extends": "../../../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": false,
     "types": [],
     "lib": ["ES2022", "DOM"],
     "paths": {
-      "@apple/shared": ["../../../shared/src/index.ts"]
+      "@studpilot/shared": ["../../../shared/src/index.ts"]
     }
   },
   "files": ["ok.ts", "bad.ts"]

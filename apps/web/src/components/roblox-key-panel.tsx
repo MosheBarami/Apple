@@ -2,7 +2,7 @@
  * CONNECT YOUR OWN ROBLOX ACCOUNT.
  *
  * This is the most consequential control in the product, and the reason it exists is a mistake:
- * Apple uploaded 299 assets into one person's Roblox account because the only write credential it
+ * StudPilot uploaded 299 assets into one person's Roblox account because the only write credential it
  * had was a single shared one. Roblox refused to give them back — an Image is "not an archivable
  * asset type" — so that account keeps them permanently.
  *
@@ -11,7 +11,7 @@
  *   IT DOES NOT PRE-TICK `asset:write`. The convenient default is the one that creates things in
  *   somebody's account, and a default is not a decision. Nothing is ticked until a person ticks it.
  *
- *   IT DOES NOT DESCRIBE A SCOPE BY ITS NAME. "asset:write" tells you nothing. "Apple can upload
+ *   IT DOES NOT DESCRIBE A SCOPE BY ITS NAME. "asset:write" tells you nothing. "StudPilot can upload
  *   images into your account, and Roblox does not let anyone delete an uploaded image afterwards"
  *   tells you what you are agreeing to. The words come from lib/roblox-key.ts.
  *
@@ -29,7 +29,7 @@
  */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ROBLOX_SCOPES, type RobloxScope } from '@apple/shared';
+import { ROBLOX_SCOPES, type RobloxScope } from '@studpilot/shared';
 import {
   checkRobloxKey, deleteRobloxKey, fetchRobloxKey, fetchRobloxWrites, putRobloxKey,
   type RobloxKeyHealth,
@@ -54,7 +54,7 @@ import { Checkbox } from './picks/settings/checkbox';
 import { RadioCards } from './picks/settings/radio-group';
 
 /**
- * WHAT APPLE HAS DONE TO YOUR ROBLOX ACCOUNT.
+ * WHAT STUDPILOT HAS DONE TO YOUR ROBLOX ACCOUNT.
  *
  * The worker has recorded every write since the first one. Nothing showed it to anybody, and a log
  * nobody can read is the same as no log — which is most of why the 299 assets in the owner's
@@ -71,7 +71,7 @@ function RobloxWriteTrail() {
   if (writes.isError) {
     return (
       <p className="rk__note">
-        Apple could not load the record of what it has done to your account. This is a connection
+        StudPilot could not load the record of what it has done to your account. This is a connection
         problem, not an answer — it does not mean nothing has happened.{' '}
         <button type="button" className="btn" onClick={() => void writes.refetch()}>Try again</button>
       </p>
@@ -80,12 +80,12 @@ function RobloxWriteTrail() {
 
   const rows = writes.data?.writes ?? [];
   if (!rows.length) {
-    return <p className="rk__note">Apple has not written anything to your Roblox account yet.</p>;
+    return <p className="rk__note">StudPilot has not written anything to your Roblox account yet.</p>;
   }
 
   return (
     <div className="rk__trail">
-      <h4 className="settings-sub">What Apple has done to your account</h4>
+      <h4 className="settings-sub">What StudPilot has done to your account</h4>
       <ul className="rk__writes">
         {rows.map((w, i) => (
           <li key={`${w.at}-${i}`} className={w.ok ? 'rk__write' : 'rk__write is-failed'}>
@@ -173,7 +173,7 @@ export function RobloxKeyPanel() {
     mutationFn: checkRobloxKey,
     onSuccess: (h) => setHealth(h),
     onError: (e: Error) =>
-      setHealth({ status: 'unknown', reason: `Apple could not run the check (${e.message}). The key was not changed.` }),
+      setHealth({ status: 'unknown', reason: `StudPilot could not run the check (${e.message}). The key was not changed.` }),
   });
 
   const toggle = (s: RobloxScope) =>
@@ -273,7 +273,7 @@ export function RobloxKeyPanel() {
             {disconnect.isPending ? 'Removing…' : 'Disconnect'}
           </button>
           <p className="rk__note">
-            Disconnecting stops Apple using the key. It does not remove anything already created in
+            Disconnecting stops StudPilot using the key. It does not remove anything already created in
             your account — revoke the key on Roblox as well if that is what you want.
           </p>
           <RobloxWriteTrail />
@@ -340,7 +340,7 @@ export function RobloxKeyPanel() {
         />
         <p className="rk__note">
           Roblox shows this date when you create the key, and there is no way to ask for it
-          afterwards. Recording it here is what lets Apple warn you before the key stops working.
+          afterwards. Recording it here is what lets StudPilot warn you before the key stops working.
         </p>
 
         <RadioCards
@@ -356,7 +356,7 @@ export function RobloxKeyPanel() {
         />
 
         <fieldset className="rk__scopes">
-          <legend className="rk__label">What Apple may do</legend>
+          <legend className="rk__label">What StudPilot may do</legend>
           {SCOPE_EXPLANATIONS.filter((e) => (ROBLOX_SCOPES as readonly string[]).includes(e.scope)).map((e) => (
             <label key={e.scope} className={`rk__scope${e.undoable ? '' : ' is-permanent'}${e.implemented ? '' : ' is-unused'}`}>
               <Checkbox checked={scopes.includes(e.scope)} onChange={() => toggle(e.scope)} />
@@ -373,7 +373,7 @@ export function RobloxKeyPanel() {
                 <span className="rk__scope-does">{e.does}</span>
                 {!e.implemented && (
                   <span className="rk__scope-does">
-                    Nothing in Apple asks for this today. Ticking it grants the permission anyway, so
+                    Nothing in StudPilot asks for this today. Ticking it grants the permission anyway, so
                     leave it off unless you have a reason.
                   </span>
                 )}
@@ -411,7 +411,7 @@ export function RobloxKeyPanel() {
       )}
 
       <p className="rk__note">
-        Create a key at create.roblox.com under Open Cloud → API Keys. Apple stores it encrypted and
+        Create a key at create.roblox.com under Open Cloud → API Keys. StudPilot stores it encrypted and
         never shows it again — not here, not to support, not in an error.
       </p>
     </div>

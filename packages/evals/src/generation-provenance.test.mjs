@@ -32,7 +32,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
-const dir = mkdtempSync(join(tmpdir(), 'apple-gen-prov-'));
+const dir = mkdtempSync(join(tmpdir(), 'studpilot-gen-prov-'));
 const src = (name) => new URL(`../../../apps/worker/src/${name}`, import.meta.url).pathname;
 
 const bundle = (name) => {

@@ -6,12 +6,13 @@
 // strings the client sends — a test that rebuilt the path itself would agree with a broken
 // client forever.
 //
-// THE LITERALS BELOW ARE CLOSED. `golem.v1`, `golem.jwt.` and the `X-Golem-` header family
-// are the wire identity of this product; renaming one breaks every client mid-session and
-// every already-installed Studio plugin, which updates only when a user clicks Update.
+// THE LITERALS BELOW ARE CLOSED. `studpilot.v1`, `studpilot.jwt.` and the `X-StudPilot-` header
+// family are the wire identity of this product (renamed 2026-10-04; the worker still accepts the
+// two former spellings, see packages/shared/src/legacy-wire.ts). Renaming one breaks every client
+// mid-session and every already-installed Studio plugin, which updates only when a user clicks Update.
 
 /** WebSocket subprotocol the worker echoes back on a successful upgrade. */
-export const WS_SUBPROTOCOL = 'golem.v1';
+export const WS_SUBPROTOCOL = 'studpilot.v1';
 
 /**
  * Prefix for the credential-carrying subprotocol.
@@ -20,24 +21,24 @@ export const WS_SUBPROTOCOL = 'golem.v1';
  * bearer token out of `Sec-WebSocket-Protocol` (apps/worker/src/auth.ts `bearerToken`).
  * That is the ONLY reason this exists; every non-socket call uses the header.
  */
-export const WS_JWT_PREFIX = 'golem.jwt.';
+export const WS_JWT_PREFIX = 'studpilot.jwt.';
 
 export const HEADERS = Object.freeze({
   auth: 'Authorization',
   adminKey: 'X-Admin-Key',
-  studioToken: 'X-Golem-Token',
-  pluginVersion: 'X-Golem-Plugin-Version',
-  pluginProtocol: 'X-Golem-Plugin-Protocol',
+  studioToken: 'X-StudPilot-Token',
+  pluginVersion: 'X-StudPilot-Plugin-Version',
+  pluginProtocol: 'X-StudPilot-Plugin-Protocol',
 });
 
 /**
- * Mirrors `ProductMode` in @apple/shared. There is one kind of request (V3 G01); `agent` is only
+ * Mirrors `ProductMode` in @studpilot/shared. There is one kind of request (V3 G01); `agent` is only
  * the wire value a chat frame still carries, and the server normalizes any legacy value to it.
  */
 export const MODES = Object.freeze(['agent']);
 
 /**
- * Client message types the session socket accepts. Mirrors `ClientMsg` in @apple/shared.
+ * Client message types the session socket accepts. Mirrors `ClientMsg` in @studpilot/shared.
  *
  * A TypeScript union is a COMPILE-TIME promise. This SDK is called from plain JavaScript,
  * from a CLI whose arguments are strings a user typed, and from Python — none of which the
@@ -56,13 +57,13 @@ export const CLIENT_MSG_TYPES = Object.freeze([
   'ping',
 ]);
 
-/** Activities a `presence` message may report. Mirrors the union in @apple/shared. */
+/** Activities a `presence` message may report. Mirrors the union in @studpilot/shared. */
 export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building']);
 
 /**
  * The public base URL of the production worker.
  *
- * `apple`, NOT the retired host. The old default was not merely off-brand — the legacy host serves /api/*
+ * The canonical origin, NOT the retired host. The old default was not merely off-brand — the legacy host serves /api/*
  * from a SEPARATE, OLDER deployment. Measured 2026-09-20: /api/health reported buildSha
  * 44d9ded-dirty there and e30b7f9-dirty on the canonical origin, 31 commits apart. And the page
  * redirect that moves a BROWSER to the canonical origin deliberately exempts /api/* — see
@@ -70,7 +71,7 @@ export const PRESENCE_ACTIVITIES = Object.freeze(['viewing', 'typing', 'building
  * never loses its body to a 308 — so an SDK caller is not carried across by it. Anyone handed this
  * package therefore talked to a month-old worker by default and had no way to notice.
  *
- * `PRODUCT_ORIGIN` in @apple/shared is the same string. It is repeated rather than imported
+ * `PRODUCT_ORIGIN` in @studpilot/shared is the same string. It is repeated rather than imported
  * because this package is consumed as plain files by the CLI and mirrored by the Python and Luau
  * clients, which cannot import TypeScript; protocol-parity.test.mjs asserts the three agree.
  */
@@ -110,7 +111,7 @@ export function socketUrl(baseUrl, projectId) {
 /**
  * The two subprotocols a session socket opens with, in order.
  *
- * `golem.v1` first because the worker echoes exactly that one back, and browsers abort the
+ * `studpilot.v1` first because the worker echoes exactly that one back, and browsers abort the
  * handshake when the echoed value is not among the requested ones.
  */
 export function socketProtocols(token) {

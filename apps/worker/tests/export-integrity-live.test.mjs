@@ -31,7 +31,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-export-live-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-export-live-${process.pid}.mjs`);
 
 await esbuild.build({
   entryPoints: [join(WORKER, 'src', 'index.ts')],
@@ -104,6 +104,8 @@ for (const format of ['json', 'md']) {
     const body = await res.text();
     const declared = res.headers.get('X-Golem-Export-SHA256');
     assert.ok(declared, 'no digest: a truncated transfer is undetectable by the recipient');
+    assert.equal(res.headers.get('X-Apple-Export-SHA256'), declared, 'the Apple spelling carries the same digest');
+    assert.equal(res.headers.get('X-StudPilot-Export-SHA256'), declared, 'the current spelling carries the same digest');
     assert.equal(declared, await sha256Hex(body), 'the digest must be of THIS body, not of the payload behind it');
   });
 }

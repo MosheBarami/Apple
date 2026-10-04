@@ -216,7 +216,7 @@ const twoParts = (name, cls = 'Model') => ({
   ],
 });
 // The run-unique holder Folder an insert creates is not a build (tools.ts insertAndProveClean).
-const created = (ops) => ops.filter((o) => o.op === 'create_instances' && !/^Apple_Insert_/.test(String(o.items?.[0]?.name ?? ''))).length;
+const created = (ops) => ops.filter((o) => o.op === 'create_instances' && !/^StudPilot_Insert_/.test(String(o.items?.[0]?.name ?? ''))).length;
 
 test('create_instances holds a part-built Model back until the library was tried, and sends nothing', async () => {
   const s = sample(() => true);
@@ -413,7 +413,7 @@ test('the upload cap refuses before any byte is read or sent', async (t) => {
 });
 
 test('a file row is uploaded as a Model into the user\'s own account at price 0, and only with a key', async () => {
-  // Pure upload-path fixture: this file is deliberately not present in Apple's searchable index.
+  // Pure upload-path fixture: this file is deliberately not present in StudPilot's searchable index.
   const m = { id: 'fixture/roblox-prop', name: 'Roblox prop', file: 'fixture/roblox-prop.glb', licence: 'CC0-1.0', attribution: null };
   const sent = [];
   const deps = (scopes) => ({

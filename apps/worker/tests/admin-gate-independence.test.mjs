@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const OUT = join(tmpdir(), `apple-admin-gate-${process.pid}.mjs`);
+const OUT = join(tmpdir(), `studpilot-admin-gate-${process.pid}.mjs`);
 
 // NOTE: auth is NOT stubbed here. The whole point is the real `verifyJwt`, with its real `new URL`
 // on the way in — a stub would answer null politely and the test would prove nothing.

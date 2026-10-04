@@ -127,19 +127,19 @@ if (DRY) {
 
 /* ------------------------------------------------------------------ the writes --- */
 
-const KEY = envCompat('APPLE_ADMIN_KEY') ?? (() => {
+const KEY = envCompat('STUDPILOT_ADMIN_KEY') ?? (() => {
   // .env is a convenience, not a requirement: the key may come from the environment, which is how
   // this file is driven against a throwaway origin in its own tests.
   try {
     const text = readFileSync(join(ROOT, '.env'), 'utf8');
-    for (const name of ['APPLE_ADMIN_KEY', legacyEnvName('APPLE_ADMIN_KEY')]) {
+    for (const name of ['STUDPILOT_ADMIN_KEY', legacyEnvName('STUDPILOT_ADMIN_KEY')]) {
       const m = text.match(new RegExp(`^${name}=(.*)$`, 'm'));
       if (m !== null) return m[1];
     }
     return null;
   } catch { return null; }
 })();
-if (!KEY) { console.error('rollback-static: APPLE_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
+if (!KEY) { console.error('rollback-static: STUDPILOT_ADMIN_KEY is not set and is not in .env'); process.exit(2); }
 
 const failures = [];
 let uploaded = 0;
@@ -154,7 +154,7 @@ for (const f of plan.restore) {
       stdio: ['ignore', 'pipe', 'pipe'],
       // The child reads .env only for values the environment does not already carry, so these two
       // win. That is what keeps a rollback aimed at the origin `--base` names and nowhere else.
-      env: { ...process.env, API_BASE: BASE, APPLE_ADMIN_KEY: KEY },
+      env: { ...process.env, API_BASE: BASE, STUDPILOT_ADMIN_KEY: KEY },
     });
     uploaded += 1;
   } catch (e) {

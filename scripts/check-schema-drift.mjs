@@ -3,7 +3,7 @@
 //
 // THE OUTAGE THIS COMES FROM. The owner signed in and the dashboard said:
 //
-//     Could not reach Apple — column projects.archived_at does not exist
+//     Could not reach StudPilot — column projects.archived_at does not exist
 //
 // Three migrations — archive, collaboration, membership lifecycle — were written, committed,
 // reviewed and shipped, and NONE of them had ever been applied to the live database. The

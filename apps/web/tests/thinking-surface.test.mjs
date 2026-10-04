@@ -44,7 +44,7 @@ test('the old status pill is gone, and nothing still points at it', () => {
     for (const entry of readdirSync(dir)) {
       const path = join(dir, entry);
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(?:ts|tsx|css)$/.test(entry) && /ws\/thinking['"]|\.\/thinking['".]|apple-status/.test(decomment(readFileSync(path, 'utf8')))) pointing.push(relative(SRC, path));
+      else if (/\.(?:ts|tsx|css)$/.test(entry) && /ws\/thinking['"]|\.\/thinking['".]|studpilot-status/.test(decomment(readFileSync(path, 'utf8')))) pointing.push(relative(SRC, path));
     }
   };
   walk(SRC);

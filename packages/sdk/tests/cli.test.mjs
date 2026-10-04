@@ -1,4 +1,4 @@
-// The `apple` CLI: the parser as a pure function, and the binary as a real process.
+// The `studpilot` CLI: the parser as a pure function, and the binary as a real process.
 //
 // BOTH LEVELS ON PURPOSE. The parser is where the refusals live and it is cheap to feed bad
 // input directly. The process is where exit codes live, and a script that calls this CLI
@@ -15,10 +15,10 @@ import { COMMANDS, UsageError, parseArgs } from '../src/cli-args.mjs';
 import { startServer } from './fake-server.mjs';
 import { LEGACY_NAME } from '../../../scripts/lib/legacy-name.mjs';
 
-const BIN = join(dirname(fileURLToPath(import.meta.url)), '../bin/apple.mjs');
+const BIN = join(dirname(fileURLToPath(import.meta.url)), '../bin/studpilot.mjs');
 const PROJECT = '3f2a1c9e-77b4-4c2a-9a1e-0b8d6e4f1234';
 
-function apple(args, env = {}) {
+function studpilot(args, env = {}) {
   return new Promise((resolve) => {
     execFile(process.execPath, [BIN, ...args], { env: { ...process.env, ...env } }, (err, stdout, stderr) => {
       resolve({ code: err?.code ?? 0, stdout, stderr });
@@ -101,7 +101,7 @@ test('chat has no mode or Autonomous flag: there is one kind of request (V3 G01)
 test('health prints the worker payload and exits 0', async () => {
   const s = await startServer({ 'GET /api/health': () => ({ body: { ok: true, version: '0.1.0', buildSha: 'abc123' } }) });
   try {
-    const r = await apple(['health', '--base-url', s.baseUrl]);
+    const r = await studpilot(['health', '--base-url', s.baseUrl]);
     assert.equal(r.code, 0, r.stderr);
     assert.equal(JSON.parse(r.stdout).buildSha, 'abc123');
   } finally {
@@ -109,10 +109,10 @@ test('health prints the worker payload and exits 0', async () => {
   }
 });
 
-test('the token comes from APPLE_TOKEN when no --token is given', async () => {
+test('the token comes from STUDPILOT_TOKEN when no --token is given', async () => {
   const s = await startServer({ 'GET /api/me': () => ({ body: { userId: 'u1' } }) });
   try {
-    const r = await apple(['me', '--base-url', s.baseUrl], { APPLE_TOKEN: 'from-env' });
+    const r = await studpilot(['me', '--base-url', s.baseUrl], { STUDPILOT_TOKEN: 'from-env' });
     assert.equal(r.code, 0, r.stderr);
     assert.equal(s.requests.at(-1).headers.authorization, 'Bearer from-env');
   } finally {
@@ -127,26 +127,49 @@ test('the pre-rename token variable still works, and is not advertised', async (
   // Either change alone reddens this.
   const s = await startServer({ 'GET /api/me': () => ({ body: { userId: 'u1' } }) });
   try {
-    // APPLE_TOKEN is REMOVED from the child's environment rather than set empty: the resolution
+    // STUDPILOT_TOKEN is REMOVED from the child's environment rather than set empty: the resolution
     // is `?? `, so an empty string is a value and would legitimately win over the fallback.
-    const r = await apple(['me', '--base-url', s.baseUrl], { APPLE_TOKEN: undefined, GOLEM_TOKEN: 'from-old-env' });
+    const r = await studpilot(['me', '--base-url', s.baseUrl], { STUDPILOT_TOKEN: undefined, APPLE_TOKEN: undefined, GOLEM_TOKEN: 'from-old-env' });
     assert.equal(r.code, 0, r.stderr);
     assert.equal(s.requests.at(-1).headers.authorization, 'Bearer from-old-env',
       'the pre-rename environment variable no longer resolves — that breaks a shell that works today');
   } finally {
     await s.close();
   }
-  const help = await apple([]);
-  assert.equal(help.code, 2, 'bare `apple` still prints usage and exits 2');
+  const help = await studpilot([]);
+  assert.equal(help.code, 2, 'bare `studpilot` still prints usage and exits 2');
   const printed = help.stdout + help.stderr;
-  assert.match(printed, /APPLE_TOKEN/, 'the help no longer names the variable it does document');
+  assert.match(printed, /STUDPILOT_TOKEN/, 'the help no longer names the variable it does document');
   assert.doesNotMatch(printed, LEGACY_NAME, 'the CLI help still prints the old product name');
+});
+
+test('the former token and URL prefixes resolve too, newest first, after STUDPILOT_', async () => {
+  // A shell that exported the previous product's variables (APPLE_*) must keep working as much as one
+  // that exported the oldest (GOLEM_*), and the current name must beat both. Each name is removed from the
+  // child's environment rather than set empty, because the resolution is `??` and '' is a value.
+  const s = await startServer({ 'GET /api/me': () => ({ body: { userId: 'u1' } }) });
+  const bare = { STUDPILOT_TOKEN: undefined, APPLE_TOKEN: undefined, GOLEM_TOKEN: undefined,
+    STUDPILOT_API_URL: undefined, APPLE_API_URL: undefined, GOLEM_API_URL: undefined };
+  const authSent = async (args, env) => {
+    const r = await studpilot(args, { ...bare, ...env });
+    assert.equal(r.code, 0, r.stderr);
+    return s.requests.at(-1).headers.authorization;
+  };
+  try {
+    const url = ['me', '--base-url', s.baseUrl];
+    assert.equal(await authSent(url, { APPLE_TOKEN: 'from-apple', GOLEM_TOKEN: 'from-golem' }), 'Bearer from-apple');
+    assert.equal(await authSent(url, { STUDPILOT_TOKEN: 'from-studpilot', APPLE_TOKEN: 'from-apple' }), 'Bearer from-studpilot');
+    // The base URL, with no --base-url flag at all.
+    assert.equal(await authSent(['me', '--token', 't'], { APPLE_API_URL: s.baseUrl }), 'Bearer t');
+  } finally {
+    await s.close();
+  }
 });
 
 test('an API error exits 1 and prints the server sentence on stderr', async () => {
   const s = await startServer({ 'GET /api/me': () => ({ status: 401, body: { error: 'unauthorized' } }) });
   try {
-    const r = await apple(['me', '--base-url', s.baseUrl, '--token', 'stale']);
+    const r = await studpilot(['me', '--base-url', s.baseUrl, '--token', 'stale']);
     assert.equal(r.code, 1);
     assert.match(r.stderr, /unauthorized/);
     assert.equal(r.stdout, '', 'nothing is printed to stdout on failure');
@@ -158,13 +181,13 @@ test('an API error exits 1 and prints the server sentence on stderr', async () =
 test('a usage error exits 2 and sends NO request', async () => {
   const s = await startServer({ [`POST /api/projects/${PROJECT}/purge`]: () => ({ body: { ok: true } }) });
   try {
-    const r = await apple(['purge', PROJECT, '--base-url', s.baseUrl, '--token', 't']);
+    const r = await studpilot(['purge', PROJECT, '--base-url', s.baseUrl, '--token', 't']);
     assert.equal(r.code, 2);
     assert.match(r.stderr, /--yes/);
     // The claim is that the purge did not happen, not merely that a message was printed.
     assert.equal(s.requests.length, 0, 'an unconfirmed purge reached the server');
 
-    const confirmed = await apple(['purge', PROJECT, '--yes', '--base-url', s.baseUrl, '--token', 't']);
+    const confirmed = await studpilot(['purge', PROJECT, '--yes', '--base-url', s.baseUrl, '--token', 't']);
     assert.equal(confirmed.code, 0, confirmed.stderr);
     assert.equal(s.requests.length, 1);
   } finally {
@@ -173,7 +196,7 @@ test('a usage error exits 2 and sends NO request', async () => {
 });
 
 test('export writes the file the server named', async () => {
-  const out = join(tmpdir(), `apple-cli-export-${process.pid}.md`);
+  const out = join(tmpdir(), `studpilot-cli-export-${process.pid}.md`);
   const s = await startServer({
     [`GET /api/projects/${PROJECT}/export`]: () => ({
       headers: { 'Content-Type': 'text/markdown', 'Content-Disposition': 'attachment; filename="tower.md"' },
@@ -181,7 +204,7 @@ test('export writes the file the server named', async () => {
     }),
   });
   try {
-    const r = await apple(['export', PROJECT, '--format', 'md', '--out', out, '--base-url', s.baseUrl, '--token', 't']);
+    const r = await studpilot(['export', PROJECT, '--format', 'md', '--out', out, '--base-url', s.baseUrl, '--token', 't']);
     assert.equal(r.code, 0, r.stderr);
     assert.equal(readFileSync(out, 'utf8'), '# tower\n\nbuilt.\n');
     assert.equal(JSON.parse(r.stdout).written, out);
@@ -215,11 +238,11 @@ test('every command in COMMANDS is implemented — a declared-but-missing one ex
       const args = [name, ...spec.args.map((a) => (a === 'projectId' ? PROJECT : 'q'))];
       if (spec.destructive) args.push('--yes');
       if (name === 'export') {
-        const out = join(tmpdir(), `apple-cli-all-${process.pid}.json`);
+        const out = join(tmpdir(), `studpilot-cli-all-${process.pid}.json`);
         written.push(out);
         args.push('--out', out);
       }
-      const r = await apple([...args, '--base-url', s.baseUrl, '--token', 't']);
+      const r = await studpilot([...args, '--base-url', s.baseUrl, '--token', 't']);
       assert.notEqual(r.code, 2, `${name} was declared but not implemented: ${r.stderr}`);
       assert.equal(r.code, 0, `${name} failed: ${r.stderr}`);
     }

@@ -1,5 +1,5 @@
 /**
- * WHERE MAY APPLE GET ASSETS FROM? Asked once, before the first build, and then remembered.
+ * WHERE MAY STUDPILOT GET ASSETS FROM? Asked once, before the first build, and then remembered.
  *
  * Three refusals shape it, and each one is the feature:
  *
@@ -16,7 +16,7 @@
  */
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
+import { type AssetSourceChoice, type AssetSourcePolicy } from '@studpilot/shared';
 import {
   SOURCE_EXPLANATIONS,
   availableChoices,
@@ -71,13 +71,13 @@ export function AssetSourceDialog({ policy, ceiling = null, onSave, onDone, onCa
       aria-modal="true"
       aria-labelledby="asrc-title"
       // NO click-through-to-dismiss. The scrim is not a cancel button here, because the cheapest
-      // gesture must not be the one that decides what Apple may use.
+      // gesture must not be the one that decides what StudPilot may use.
       onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
     >
       <div className="asrc">
-        <h2 className="asrc__title" id="asrc-title">Where should Apple get assets from?</h2>
+        <h2 className="asrc__title" id="asrc-title">Where should StudPilot get assets from?</h2>
         <p className="asrc__lede">
-          Pick as many as you like. This is remembered for this project — Apple asks once and then
+          Pick as many as you like. This is remembered for this project — StudPilot asks once and then
           gets on with it, and you can change it from the command palette whenever you want.
         </p>
 
@@ -128,12 +128,12 @@ export function AssetSourceDialog({ policy, ceiling = null, onSave, onDone, onCa
                 taken. The only move left is at the account or organisation layer, and saying so is
                 the difference between a rule and a dead dialog. */}
             Every source is switched off for your account or organisation, so there is nothing to
-            choose here. Someone has to turn one back on in Settings before Apple can build with
+            choose here. Someone has to turn one back on in Settings before StudPilot can build with
             anything but plain parts.
           </p>
         ) : sending.length === 0 && (
           <p className="asrc__warn" role="alert">
-            With none of these, Apple can only place plain parts. Pick at least one, or come back
+            With none of these, StudPilot can only place plain parts. Pick at least one, or come back
             when you have decided.
           </p>
         )}
@@ -156,8 +156,8 @@ export function AssetSourceDialog({ policy, ceiling = null, onSave, onDone, onCa
           <p className="asrc__warn" role="alert">
             {/* Says what is TRUE of both causes — a write that failed and a write that was
                 narrowed away by a higher layer. In neither case may the build start, and in
-                neither case has what Apple is allowed to use actually changed. */}
-            Apple's sources are unchanged — {(save.error as Error).message}
+                neither case has what StudPilot is allowed to use actually changed. */}
+            StudPilot's sources are unchanged — {(save.error as Error).message}
           </p>
         )}
       </div>

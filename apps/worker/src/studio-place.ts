@@ -27,7 +27,7 @@
  * is stored and what was reported, so it can be exercised directly. do/session.ts does the
  * persisting and the refusing; this file decides.
  */
-import type { StudioPlace } from '@apple/shared';
+import type { StudioPlace } from '@studpilot/shared';
 
 /** What the plugin said about the place it has open. Numbers are untrusted wire values. */
 export interface PlaceReport {
@@ -99,8 +99,8 @@ export function mismatchMessage(expected: StudioPlace, open: PlaceReport): strin
   const wanted = expected.placeName || `place ${expected.placeId}`;
   return (
     `This project is paired to "${wanted}", but Studio has "${openName}" open. ` +
-    `Apple will not build in a place the project is not paired to. ` +
-    `Reopen "${wanted}", or re-pair this Studio from the Apple web app to bind the project to "${openName}".`
+    `StudPilot will not build in a place the project is not paired to. ` +
+    `Reopen "${wanted}", or re-pair this Studio from the StudPilot web app to bind the project to "${openName}".`
   );
 }
 

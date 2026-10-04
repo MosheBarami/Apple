@@ -1,8 +1,8 @@
 /**
  * THE DRAWER THAT OPENS THE PROJECT'S FILES.
  *
- * Apple writes notes, plans and generated data into the project workspace, and until this panel
- * existed the only way to read one was to ask Apple to read it back to you. Everything decided here
+ * StudPilot writes notes, plans and generated data into the project workspace, and until this panel
+ * existed the only way to read one was to ask StudPilot to read it back to you. Everything decided here
  * is decided in `files-model.ts`; this file is markup, a query, and five actions.
  *
  * What it offers and what it does not:
@@ -12,7 +12,7 @@
  *   ADD A FILE, TEXT ONLY. This header used to say NO UPLOAD, on the grounds that there is no object
  *   store behind this worker — true of binary, and over-stated for text. The workspace IS a text
  *   store with a declared extension list and a per-file ceiling, so a .md or .csv can simply go in,
- *   and until it could the only way to get a design brief where Apple could read it was to paste the
+ *   and until it could the only way to get a design brief where StudPilot could read it was to paste the
  *   whole thing into the chat and spend a turn asking for it to be saved. The limits are printed
  *   next to the picker rather than discovered as a refusal, which is the part that was missing: a
  *   picker that silently accepts a subset would promise a feature the deployment does not have.
@@ -146,7 +146,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
    * (the roadmap's "Build" uses the same door), so this is a navigation to the page you are on with
    * the words attached — the composer fills, nothing is sent until you press send.
    */
-  const askApple = useCallback(
+  const askStudPilot = useCallback(
     (text: string) => {
       navigate(location.pathname, { state: { seed: text } });
       setNotice('Your question is in the message box. Close this panel to send it.');
@@ -253,7 +253,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
    * outcome was a confusing no.
    *
    * AN OCCUPIED PATH IS A QUESTION, NOT A FAILURE. The worker refuses rather than overwriting, and
-   * the retry that follows a yes carries `overwrite`, so replacing the plan Apple wrote is always
+   * the retry that follows a yes carries `overwrite`, so replacing the plan StudPilot wrote is always
    * something the user chose. The replaced text stays readable as a version, which is why the
    * question can be asked at all.
    */
@@ -448,8 +448,8 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
 
       {data.fileCount === 0 && (
         <p className="gx-empty">
-          Apple has not written any files in this project yet. It keeps notes, plans and generated data here —
-          they are Apple’s own storage, not your Roblox place.
+          StudPilot has not written any files in this project yet. It keeps notes, plans and generated data here —
+          they are StudPilot’s own storage, not your Roblox place.
         </p>
       )}
 
@@ -572,7 +572,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
           </ArtifactHeader>
 
           <ArtifactContent className="ft-body">
-            {/* AI Elements snippet: the path, ready to paste into a message to Apple. */}
+            {/* AI Elements snippet: the path, ready to paste into a message to StudPilot. */}
             <Snippet code={open}>
               <SnippetAddon>
                 <SnippetText>Path</SnippetText>
@@ -641,7 +641,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
               <FilePreview
                 path={open}
                 content={file.data.content}
-                onAsk={(line, code, question) => askApple(lineQuestion(open, line, code, question))}
+                onAsk={(line, code, question) => askStudPilot(lineQuestion(open, line, code, question))}
               />
             )}
 
@@ -723,7 +723,7 @@ export function FilesPanel({ projectId, canEdit }: { projectId: string; canEdit:
                       from={`Version ${compare}`}
                       to={`Version ${file.data.version}`}
                       diff={diff}
-                      onAsk={(line, code, question) => askApple(lineQuestion(open, line, code, question))}
+                      onAsk={(line, code, question) => askStudPilot(lineQuestion(open, line, code, question))}
                     />
                   );
                 })()}

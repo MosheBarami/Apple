@@ -436,7 +436,7 @@ test('the rendered layouts do not mount the retired cinematic layer', () => {
 test('both public layouts load the minimal visual system instead of relaunch.css', () => {
   const LANDING_LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8');
   for (const [name, source] of [['Base.astro', BASE_LAYOUT], ['Landing.astro', LANDING_LAYOUT]]) {
-    assert.match(source, /styles\/apple-minimal\.css/,
+    assert.match(source, /styles\/studpilot-minimal\.css/,
       `${name} does not load the shared minimal public-site styles`);
     assert.doesNotMatch(source, /styles\/relaunch\.css/,
       `${name} still loads the retired relaunch treatment`);

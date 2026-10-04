@@ -1,7 +1,7 @@
 // "Does the key I connected still work?" — asked on purpose, instead of discovered by a build.
 //
 // A stored Open Cloud key dies silently. Roblox expires keys, and a person can revoke one from
-// create.roblox.com without Apple being told; the row here stays exactly as it was, the settings
+// create.roblox.com without StudPilot being told; the row here stays exactly as it was, the settings
 // page keeps saying "Connected to Roblox account 11279664020, key ending a9f3", and the first
 // symptom is a build failing halfway with an upstream 401 quoted at somebody who did not ask for
 // it. This route is the way to find out BEFORE that.
@@ -30,7 +30,7 @@
 // API key has no whoami — the profile read above answers about the id in the URL, which is the id
 // the user typed, so it would answer identically for a key belonging to somebody else. OAuth has
 // a userinfo endpoint and API keys do not, so verifying ownership is an OAuth item, not this one.
-import type { RobloxScope } from '@apple/shared';
+import type { RobloxScope } from '@studpilot/shared';
 import { useRobloxCredential, describeRobloxCredential, type CredentialEnv } from './user-credentials';
 
 /** The scope whose whole purpose is the read this probe makes. Nothing else is borrowed. */
@@ -90,7 +90,7 @@ export async function checkRobloxCredential(
       status: 'unknown',
       reason:
         'This key was not connected with "Read your public profile", which is the one permission '
-        + 'Apple can check it with. Re-connect the key with that ticked and this will say whether '
+        + 'StudPilot can check it with. Re-connect the key with that ticked and this will say whether '
         + 'Roblox still accepts it.',
       checkedAt,
     };
@@ -105,11 +105,11 @@ export async function checkRobloxCredential(
       headers: { 'x-api-key': use.apiKey! },
     });
   } catch (e) {
-    // Apple could not reach Roblox. That is a fact about this minute, not about the key, and
+    // StudPilot could not reach Roblox. That is a fact about this minute, not about the key, and
     // saying "expired" here would send somebody to make a new key for no reason.
     return {
       status: 'unknown',
-      reason: `Apple could not reach Roblox to check (${String((e as Error)?.message ?? e).slice(0, 80)}). The key was not changed.`,
+      reason: `StudPilot could not reach Roblox to check (${String((e as Error)?.message ?? e).slice(0, 80)}). The key was not changed.`,
       checkedAt,
     };
   }

@@ -1,9 +1,9 @@
-// Where Apple may take assets from, asked once and then remembered.
+// Where StudPilot may take assets from, asked once and then remembered.
 //
-// The owner's rule: before Apple builds, ask where it may take assets from — and let that answer
+// The owner's rule: before StudPilot builds, ask where it may take assets from — and let that answer
 // be settled once in settings instead of being asked forever.
 //
-// IT WAS THREE CHOICES AND IS NOW TWO. `apple_library` — the curated Apple catalogue — was removed
+// IT WAS THREE CHOICES AND IS NOW TWO. `apple_library` — the curated StudPilot catalogue — was removed
 // from the shared vocabulary on 2026-09-20 along with the catalogue itself (see
 // ASSET_SOURCE_CHOICES in packages/shared). This file kept offering it: a card in the dialog, a
 // pre-ticked box in the default selection, and a title in the settings summary, all naming a source
@@ -20,8 +20,8 @@
 //   WHAT EACH CHOICE COSTS. A source is not a preference like a theme: the Creator Store spends
 //   nothing but inserts other people's work into your game, and "from scratch" spends credits and
 //   time on every asset. A person choosing needs the consequence, not the label.
-import type { AssetSourceChoice, AssetSourcePolicy } from '@apple/shared';
-import { ASSET_SOURCE_CHOICES } from '@apple/shared';
+import type { AssetSourceChoice, AssetSourcePolicy } from '@studpilot/shared';
+import { ASSET_SOURCE_CHOICES } from '@studpilot/shared';
 
 export interface SourceExplanation {
   choice: AssetSourceChoice;
@@ -38,14 +38,14 @@ export const SOURCE_EXPLANATIONS: readonly SourceExplanation[] = [
   {
     choice: 'creator_store',
     title: 'The Roblox Creator Store',
-    does: 'Apple searches the free Creator Store and references what it finds directly in your place.',
+    does: 'StudPilot searches the free Creator Store and references what it finds directly in your place.',
     costs: 'Free assets need no purchase or re-upload. Builds still use Credits; creator licences apply.',
     reach: 'Availability depends on Roblox permissions and the selected asset.',
   },
   {
     choice: 'from_scratch',
     title: 'Make it from scratch',
-    does: 'Apple builds the geometry in your place out of parts, so nothing comes from anywhere else.',
+    does: 'StudPilot builds the geometry in your place out of parts, so nothing comes from anywhere else.',
     costs: 'Credits and time on every asset, and simple shapes rather than detailed models.',
     reach: 'No external assets; limited by your Credits and what Studio can build.',
   },
@@ -64,11 +64,11 @@ export function explainSource(choice: AssetSourceChoice): SourceExplanation | nu
 }
 
 /**
- * Does Apple still owe this person the question?
+ * Does StudPilot still owe this person the question?
  *
  * TWO WAYS TO BE UNANSWERED, and the second is the one worth writing down. `ask` is obvious. But
  * `remember` with an empty allow list is NOT a settled preference — it is what a dismissed dialog
- * leaves behind, and treating it as an answer means Apple builds with no sources at all and the
+ * leaves behind, and treating it as an answer means StudPilot builds with no sources at all and the
  * person never finds out why everything it makes is grey boxes.
  */
 export function owesAnswer(policy: AssetSourcePolicy | null | undefined): boolean {
@@ -122,7 +122,7 @@ export function initialSelection(
 ): AssetSourceChoice[] {
   const open = availableChoices(ceiling);
   // A person who has chosen before sees their own answer again, not a blank form. A person who has
-  // not gets the ones that cost nothing — which, since the Apple library went, is `creator_store`
+  // not gets the ones that cost nothing — which, since the StudPilot library went, is `creator_store`
   // alone. `from_scratch` stays unticked deliberately: pre-ticking it would quietly opt somebody
   // into spending Credits and time on every asset before they had read what the box means.
   //
@@ -146,7 +146,7 @@ export interface SourceSummary {
 
 export function summarise(policy: AssetSourcePolicy | null | undefined): SourceSummary {
   if (!policy || policy.allow.length === 0) {
-    return { line: 'Apple has no asset sources yet — it will ask before the next build.', empty: true };
+    return { line: 'StudPilot has no asset sources yet — it will ask before the next build.', empty: true };
   }
   const names = policy.allow
     .map((c) => explainSource(c)?.title ?? c)
@@ -154,8 +154,8 @@ export function summarise(policy: AssetSourcePolicy | null | undefined): SourceS
   const list = names.length === 1
     ? names[0]
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  const suffix = policy.mode === 'ask' ? ' Apple will ask again next time.' : '';
-  return { line: `Apple may use ${list}.${suffix}`, empty: false };
+  const suffix = policy.mode === 'ask' ? ' StudPilot will ask again next time.' : '';
+  return { line: `StudPilot may use ${list}.${suffix}`, empty: false };
 }
 
 /** Reject anything that is not a real choice before it reaches the worker. */

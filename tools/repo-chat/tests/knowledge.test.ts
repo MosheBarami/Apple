@@ -23,7 +23,7 @@ describe("knowledge index (isolated temp repo)", () => {
     fs.mkdirSync(path.join(tmp, "repo/docs"), { recursive: true });
     fs.mkdirSync(path.join(tmp, "mem"));
     fs.writeFileSync(path.join(tmp, "repo/README.md"), "# Repo\n\nThe tool registry lives in tools.ts.\n");
-    fs.writeFileSync(path.join(tmp, "repo/docs/DECISIONS.md"), "# ADR\n\n## ADR-001 Brand\nWe picked the name Apple.\n");
+    fs.writeFileSync(path.join(tmp, "repo/docs/DECISIONS.md"), "# ADR\n\n## ADR-001 Brand\nWe picked the name StudPilot.\n");
     fs.writeFileSync(path.join(tmp, "repo/docs/secrets-notes.md"), "# hidden\nzzqxhidden\n");
     fs.writeFileSync(path.join(tmp, "mem/pref.md"), "---\nname: pref\n---\nOwner prefers hebrew replies.\n");
     process.env.REPO_ROOT = path.join(tmp, "repo");

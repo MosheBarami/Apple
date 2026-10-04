@@ -62,7 +62,7 @@ const TYPE_NOUN: Record<SearchType, string> = {
 // `teammate` is a result LABEL and not a filter chip: only checkpoints can carry it (messages
 // still store a role and not a user id), and a chip that matches one record type reads as broken.
 // Without the noun the raw token would render — see the `?? hit.author` fallback below.
-const AUTHOR_NOUN: Record<string, string> = { you: 'You', apple: 'Apple', system: 'System', teammate: 'Someone else' };
+const AUTHOR_NOUN: Record<string, string> = { you: 'You', apple: 'StudPilot', system: 'System', teammate: 'Someone else' };
 
 export function SearchPanel({
   projectId,

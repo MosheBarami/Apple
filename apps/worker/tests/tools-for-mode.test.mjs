@@ -84,7 +84,7 @@ test('PLAN can still do the thing it exists to do', () => {
   }
 });
 
-test('`remember` is the one write Plan is allowed, and it writes to Apple not the place', () => {
+test('`remember` is the one write Plan is allowed, and it writes to StudPilot not the place', () => {
   const allowed = toolsForMode('plan', true, ALL);
   assert.ok(allowed.has('remember'),
     'Plan cannot record what it learned, so planning twice costs twice');

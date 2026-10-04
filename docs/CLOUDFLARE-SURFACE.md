@@ -5,7 +5,7 @@ The owner's ask: *"אתה בנוסף תסקור את כל האפשרויות ה�
 he screenshotted and say, for each, whether it can be used.
 
 **Every row below is read from the API, not from the wrangler config.** That distinction is the
-point of the file: a binding in `wrangler.apple.jsonc` says what the code asks for, and the account
+point of the file: a binding in `wrangler.studpilot.jsonc` says what the code asks for, and the account
 says what exists. Where the API token has no permission for a product, the row says **COULD NOT
 MEASURE** and nothing else. A missing permission is not an absence of the product.
 

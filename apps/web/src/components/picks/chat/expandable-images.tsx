@@ -1,4 +1,4 @@
-// AN IMAGE APPLE MADE OPENS LARGER, FROM WHERE IT SITS.
+// AN IMAGE STUDPILOT MADE OPENS LARGER, FROM WHERE IT SITS.
 //
 // Two picks:
 //   * AI Elements "image" — generated images and Studio renders shown as images in the reply;

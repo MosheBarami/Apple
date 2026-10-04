@@ -1,4 +1,4 @@
-// What Apple believes about a project, and correcting it.
+// What StudPilot believes about a project, and correcting it.
 //
 // Memory is written by a model, from the conversation, with nobody reading it first — and it then
 // steers every later run. It is the one part of this product that can be confidently wrong about
@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
-const out = join(tmpdir(), `apple-memory-${process.pid}.mjs`);
+const out = join(tmpdir(), `studpilot-memory-${process.pid}.mjs`);
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [
   join(WORKER, 'src', 'memory.ts'), '--bundle', '--format=esm', '--target=es2022', `--outfile=${out}`,
 ], { cwd: WORKER, stdio: 'pipe' });
@@ -218,7 +218,7 @@ test('loading and failure are both named', () => {
 });
 
 test('the panel says that forgetting is not permanent', () => {
-  // Apple keeps noticing things. Someone who deletes a fact and sees it return needs to have been
+  // StudPilot keeps noticing things. Someone who deletes a fact and sees it return needs to have been
   // told that is how it works, rather than concluding the control is broken.
   assert.match(PANEL, /can\s*\n?\s*come back/);
 });

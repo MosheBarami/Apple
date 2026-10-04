@@ -1,7 +1,7 @@
 // Voice typing, the browser half: a recording becomes a 16 kHz mono WAV and goes to the worker,
 // which transcribes it and keeps nothing (apps/worker/src/voice-transcribe.ts). Replaces the
 // browser's own speech recognition, which in Chrome sends the voice to Google — for children's
-// voices the audio has to go only through Apple, and only to be transcribed (D-VISION-1).
+// voices the audio has to go only through StudPilot, and only to be transcribed (D-VISION-1).
 import { getAccessToken } from './supabase';
 
 export const VOICE_RATE = 16_000;
@@ -63,7 +63,7 @@ export async function transcribeVoice(wav: Blob, fetcher: typeof fetch = fetch):
       body: wav,
     });
   } catch {
-    throw new Error('Could not reach Apple to hear you. Check your connection and try again.');
+    throw new Error('Could not reach StudPilot to hear you. Check your connection and try again.');
   }
   const body = (await res.json().catch(() => null)) as (VoiceTranscript & { error?: string }) | null;
   if (!res.ok || !body) throw new Error(body?.error ?? 'Voice typing did not work. You can still type.');

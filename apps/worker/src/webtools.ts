@@ -824,7 +824,7 @@ type ResearchSecrets = { SERPER_API_KEY?: string; TAVILY_API_KEY?: string; CONTE
 const secrets = (env: Env): ResearchSecrets => env as Env & ResearchSecrets;
 
 /** Identifies the agent to the providers. No cookie and no forwarded user header is ever sent. */
-export const AGENT_USER_AGENT = 'AppleAgent/1 (+https://apple.moshe-barami111.workers.dev/bot)';
+export const AGENT_USER_AGENT = 'StudPilotAgent/1 (+https://apple.moshe-barami111.workers.dev/bot)';
 
 const SERPER_URL = 'https://google.serper.dev/search';
 const TAVILY_URL = 'https://api.tavily.com/search';
@@ -1287,7 +1287,7 @@ const ocrTool: WebTool = {
 function githubHeaders(env: Env): Record<string, string> {
   const headers: Record<string, string> = {
     accept: 'application/vnd.github+json',
-    'user-agent': 'apple-agent',
+    'user-agent': 'studpilot-agent',
     'x-github-api-version': '2022-11-28',
   };
   if (env.GITHUB_TOKEN) headers.authorization = `Bearer ${env.GITHUB_TOKEN}`;
@@ -1513,7 +1513,7 @@ function workspaceFor(ctx: WebToolCtx): WorkspaceStore | { error: string } {
 const workspaceListTool: WebTool = {
   contract: {
     name: 'workspace_list',
-    description: 'List the files in this project\'s scratch workspace. The workspace is Apple\'s own storage for notes, plans and generated data — it is not the Roblox place.',
+    description: 'List the files in this project\'s scratch workspace. The workspace is StudPilot\'s own storage for notes, plans and generated data — it is not the Roblox place.',
     args: { prefix: { type: 'string', description: 'Only list paths starting with this.', max: 200, default: '' } },
   },
   available: () => ({ ok: true }),
