@@ -1,58 +1,78 @@
 // THE WIRE NAMES, AND THE OLD SPELLINGS THAT MUST KEEP WORKING.
 //
-// The product is Apple. Before the rename its wire identity carried the old name: the WebSocket
-// subprotocol, the bearer-token subprotocol prefix, the Studio plugin's `X-<Brand>-*` request
-// headers, the capability schema, the generated-UI fence, an attribute written into places users
-// already built. Those spellings are in the wild, and two of them are in software this repository
-// cannot update: the PUBLISHED Studio plugin (Creator Store asset 107230158271368) changes only when
-// a user clicks Update, and a browser tab keeps running the bundle it loaded.
+// The product is StudPilot. It was called Apple, and before that Golem, and its wire identity carried
+// each name in turn: the WebSocket subprotocol, the bearer-token subprotocol prefix, the Studio
+// plugin's `X-<Brand>-*` request headers, the capability schema, the generated-UI fence. Those
+// spellings are in the wild, and two of them are in software this repository cannot update: the
+// PUBLISHED Studio plugin (Creator Store asset 107230158271368) changes only when a user clicks
+// Update, and a browser tab keeps running the bundle it loaded. Every published plugin build still
+// sends the oldest spelling (X-Golem-*, golem.studio-ops.v1).
 //
-// So the rename is two steps, never one flip:
-//   B1  the worker (and every reader) ACCEPTS BOTH spellings, answers in a way both can read, and
-//       counts every use of the old one. This file is that step.
-//   B2  clients start SENDING the new spelling, only after B1 is deployed.
-//   D   when the counters say nobody sends the old spelling any more, this file's legacy half is
-//       deleted and the guard's allowlist entry for it with it.
+// So a rename is two steps, never one flip:
+//   1  the worker (and every reader) ACCEPTS EVERY spelling, answers in a way each can read, and
+//      counts every use of an old one. This file is that step (compat `wire-all`).
+//   2  clients start SENDING the new spelling, only after step 1 is deployed.
+//   D  when the counters say nobody sends an old spelling any more, this file's legacy half is
+//      deleted and the guard's allowlist line for it with it.
 //
-// ONE WORD, ONE PLACE. The old spelling is not written out anywhere in product code: it is DERIVED
-// from the new one by `legacyOf` (the brand word swapped), so there is exactly one line in the
-// repository that says the old name for the wire. The tests that pin the old literals say it in the
-// open, in files the allowlist names, because a test that derived the old literal with the same
-// function would agree with a broken function forever.
+// ONE WORD, ONE PLACE. The old spellings are not written out anywhere in product code: they are
+// DERIVED from the new one by `legaciesOf` (the brand word swapped for each former name), so there
+// is exactly one line in the repository that says the old names for the wire. The tests that pin
+// the old literals say them in the open, because a test that derived the old literals with the
+// same function would agree with a broken function forever.
 
 /** The wire names the product speaks today. */
-export const WS_SUBPROTOCOL = 'apple.v1';
-export const WS_JWT_PREFIX = 'apple.jwt.';
-export const CAPABILITY_SCHEMA = 'apple.studio-ops.v1';
-export const UI_FENCE = 'apple-ui';
+export const WS_SUBPROTOCOL = 'studpilot.v1';
+export const WS_JWT_PREFIX = 'studpilot.jwt.';
+export const CAPABILITY_SCHEMA = 'studpilot.studio-ops.v1';
+export const UI_FENCE = 'studpilot-ui';
+/**
+ * Written into users' own places, so it is a place name, not a wire name: it keeps its 2026-10-02
+ * spelling until the blocks of handoff M4 write StudPilot names and read the old ones.
+ */
 export const BASE_VOLUME_ATTRIBUTE = 'AppleBaseVolume';
 
 /** Request/response header names. Case-insensitive on the wire; spelled once here. */
 export const WIRE_HEADERS = {
-  token: 'X-Apple-Token',
-  pluginVersion: 'X-Apple-Plugin-Version',
-  pluginProtocol: 'X-Apple-Plugin-Protocol',
-  role: 'X-Apple-Role',
-  grantExpiresAt: 'X-Apple-Grant-Expires-At',
-  exportSha256: 'X-Apple-Export-SHA256',
-  sandbox: 'X-Apple-Sandbox',
-  usageInputTokens: 'X-Apple-Usage-Input-Tokens',
-  usageOutputTokens: 'X-Apple-Usage-Output-Tokens',
-  usageCredits: 'X-Apple-Usage-Credits',
-  creditsRemaining: 'X-Apple-Credits-Remaining',
+  token: 'X-StudPilot-Token',
+  pluginVersion: 'X-StudPilot-Plugin-Version',
+  pluginProtocol: 'X-StudPilot-Plugin-Protocol',
+  role: 'X-StudPilot-Role',
+  grantExpiresAt: 'X-StudPilot-Grant-Expires-At',
+  exportSha256: 'X-StudPilot-Export-SHA256',
+  sandbox: 'X-StudPilot-Sandbox',
+  usageInputTokens: 'X-StudPilot-Usage-Input-Tokens',
+  usageOutputTokens: 'X-StudPilot-Usage-Output-Tokens',
+  usageCredits: 'X-StudPilot-Usage-Credits',
+  creditsRemaining: 'X-StudPilot-Credits-Remaining',
 } as const;
 
-/** The old spelling of a wire name: the same name with the brand word swapped. */
-export function legacyOf(name: string): string {
-  return name.replace(/apple/i, (m) => (m === 'Apple' ? 'Golem' : 'golem'));
+/** The former brand words, newest first. */
+const FORMER = ['Apple', 'Golem'] as const;
+
+/** The old spellings of a wire name, newest first: the same name with the brand word swapped. */
+export function legaciesOf(name: string): string[] {
+  return FORMER.map((old) => name.replace(/studpilot/i, (m) => (m === 'StudPilot' ? old : m === 'STUDPILOT' ? old.toUpperCase() : old.toLowerCase())));
 }
 
-/** Every wire name above has an old spelling; these are them, derived. */
+/** The OLDEST spelling of a wire name: what every published plugin build sends. */
+export function legacyOf(name: string): string {
+  const all = legaciesOf(name);
+  return all[all.length - 1] as string;
+}
+
+/** Every wire name above has old spellings; these are them, derived. */
+export const LEGACY_SUBPROTOCOLS = legaciesOf(WS_SUBPROTOCOL);
+export const LEGACY_JWT_PREFIXES = legaciesOf(WS_JWT_PREFIX);
+export const LEGACY_CAPABILITY_SCHEMAS = legaciesOf(CAPABILITY_SCHEMA);
+export const LEGACY_UI_FENCES = legaciesOf(UI_FENCE);
+/** The oldest of each, for callers that answer a client which named no spelling at all. */
 export const LEGACY_SUBPROTOCOL = legacyOf(WS_SUBPROTOCOL);
 export const LEGACY_JWT_PREFIX = legacyOf(WS_JWT_PREFIX);
 export const LEGACY_CAPABILITY_SCHEMA = legacyOf(CAPABILITY_SCHEMA);
 export const LEGACY_UI_FENCE = legacyOf(UI_FENCE);
-export const LEGACY_BASE_VOLUME_ATTRIBUTE = legacyOf(BASE_VOLUME_ATTRIBUTE);
+/** The place attribute's one older spelling (it was renamed once, from the oldest brand word). */
+export const LEGACY_BASE_VOLUME_ATTRIBUTE = BASE_VOLUME_ATTRIBUTE.replace(/^Apple/, FORMER[1]);
 
 /* ------------------------------------------------------------------ counters --- */
 
@@ -84,30 +104,32 @@ export function resetLegacyWireCounts(): void {
 
 export interface HeaderReader { get(name: string): string | null }
 
-/** The new header if present, else the old one (and the use is counted). Null when neither. */
+/** The new header if present, else the newest old one present (and the use is counted). Null when none. */
 export function readWire(h: HeaderReader, name: string): string | null {
   const v = h.get(name);
   if (v !== null) return v;
-  const old = h.get(legacyOf(name));
-  if (old !== null) noteLegacyWire(`header ${name}`);
-  return old;
+  for (const old of legaciesOf(name)) {
+    const o = h.get(old);
+    if (o !== null) { noteLegacyWire(`header ${name}`); return o; }
+  }
+  return null;
 }
 
-/** Remove both spellings. Used on headers a client must never be able to supply. */
+/** Remove every spelling. Used on headers a client must never be able to supply. */
 export function stripWire(h: Headers, name: string): void {
   h.delete(name);
-  h.delete(legacyOf(name));
+  for (const old of legaciesOf(name)) h.delete(old);
 }
 
-/** Set both spellings, so a reader that predates the rename and one that follows it agree. */
+/** Set every spelling, so readers from before either rename and after it agree. */
 export function setWire(h: Headers, name: string, value: string): void {
   h.set(name, value);
-  h.set(legacyOf(name), value);
+  for (const old of legaciesOf(name)) h.set(old, value);
 }
 
-/** `{ new: v, old: v }` for a response header object literal. */
+/** `{ new: v, old: v, older: v }` for a response header object literal. */
 export function bothWire(name: string, value: string): Record<string, string> {
-  return { [name]: value, [legacyOf(name)]: value };
+  return Object.fromEntries([name, ...legaciesOf(name)].map((n) => [n, value]));
 }
 
 /* ------------------------------------------------------------- subprotocols --- */
@@ -125,32 +147,33 @@ function protocolList(header: string | null | undefined): string[] {
 export function echoSubprotocol(header: string | null | undefined): string {
   for (const p of protocolList(header)) {
     if (p === WS_SUBPROTOCOL) return WS_SUBPROTOCOL;
-    if (p === LEGACY_SUBPROTOCOL) { noteLegacyWire(`subprotocol ${WS_SUBPROTOCOL}`); return LEGACY_SUBPROTOCOL; }
+    if (LEGACY_SUBPROTOCOLS.includes(p)) { noteLegacyWire(`subprotocol ${WS_SUBPROTOCOL}`); return p; }
   }
   return LEGACY_SUBPROTOCOL;
 }
 
-/** The bearer token carried in a subprotocol with either prefix, or null. */
+/** The bearer token carried in a subprotocol with any prefix, or null. */
 export function jwtFromSubprotocols(header: string | null | undefined): string | null {
   for (const p of protocolList(header)) {
     if (p.startsWith(WS_JWT_PREFIX)) return p.slice(WS_JWT_PREFIX.length);
-    if (p.startsWith(LEGACY_JWT_PREFIX)) { noteLegacyWire(`subprotocol ${WS_JWT_PREFIX}`); return p.slice(LEGACY_JWT_PREFIX.length); }
+    const old = LEGACY_JWT_PREFIXES.find((pre) => p.startsWith(pre));
+    if (old) { noteLegacyWire(`subprotocol ${WS_JWT_PREFIX}`); return p.slice(old.length); }
   }
   return null;
 }
 
 /* ----------------------------------------------------------------- the rest --- */
 
-/** Is this the capability schema, in either spelling? Callers normalise to CAPABILITY_SCHEMA. */
+/** Is this the capability schema, in any spelling? Callers normalise to CAPABILITY_SCHEMA. */
 export function isCapabilitySchema(v: unknown): boolean {
   if (v === CAPABILITY_SCHEMA) return true;
-  if (v === LEGACY_CAPABILITY_SCHEMA) { noteLegacyWire(`schema ${CAPABILITY_SCHEMA}`); return true; }
+  if (typeof v === 'string' && LEGACY_CAPABILITY_SCHEMAS.includes(v)) { noteLegacyWire(`schema ${CAPABILITY_SCHEMA}`); return true; }
   return false;
 }
 
-/** A generated-UI fence tag, in either spelling. */
+/** A generated-UI fence tag, in any spelling. */
 export function isUiFence(lang: string): boolean {
-  return lang === UI_FENCE || lang === LEGACY_UI_FENCE;
+  return lang === UI_FENCE || LEGACY_UI_FENCES.includes(lang);
 }
 
 /**
