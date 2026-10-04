@@ -175,8 +175,20 @@ export const DAILY_NEURON_CEILING = FREE_NEURONS_PER_DAY + BILLABLE_NEURONS_PER_
 export const MAX_NEURONS_PER_REQUEST = 1_200;
 
 /** The per-call reservation cap for a provider model id. */
+/**
+ * The owner's build-model comparison (2026-10-04): these models cost 6-10x glm-5.3-flash per token, so one ordinary step
+ * (tens of thousands of input tokens) is far above MAX_NEURONS_PER_REQUEST and could never run. They get a per-step cap
+ * that fits one step at their price; the run's credit budget still bounds the run. Only reachable through a deliberate
+ * `config:models` override — default routing is unchanged.
+ */
+const EXPERIMENT_STEP_CAPS: Readonly<Record<string, number>> = Object.freeze({
+  '@cf/zai-org/glm-5.3': 15_000,
+  '@cf/deepseek-ai/deepseek-v4-pro-0813': 15_000,
+  '@cf/moonshotai/kimi-k2.7-code': 15_000,
+});
+
 export function maxNeuronsPerStepFor(modelId: string): number {
-  return registryModelByProviderId(modelId)?.maxNeuronsPerStep ?? MAX_NEURONS_PER_REQUEST;
+  return registryModelByProviderId(modelId)?.maxNeuronsPerStep ?? EXPERIMENT_STEP_CAPS[modelId] ?? MAX_NEURONS_PER_REQUEST;
 }
 
 /**
