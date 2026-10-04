@@ -81,8 +81,17 @@ export function knownKey(v: unknown): string | undefined {
 export function currencyIconKey(...named: unknown[]): string {
   const text = lower(...named).replace(/[^a-z]+/g, ' ').trim();
   if (!text) return 'coin';
-  for (const [re, key] of CURRENCY_WORDS) if (re.test(text)) return key;
-  return 'star';
+  return matchCurrency(text) ?? 'star';
+}
+
+const matchCurrency = (text: string): string | undefined => CURRENCY_WORDS.find(([re]) => re.test(text))?.[1];
+
+/**
+ * The icon key a currency's words name, or undefined when they name nothing we know (a word in another script, "Cookies").
+ * The composer's money counter uses this: a name that says gems wears a gem, and one that says nothing keeps its first letter.
+ */
+export function currencyIconNamed(...named: unknown[]): string | undefined {
+  return matchCurrency(lower(...named).replace(/[^a-z]+/g, ' ').trim());
 }
 
 /** The studded glyph for a currency's words. */

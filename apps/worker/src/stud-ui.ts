@@ -9,9 +9,21 @@
  * the composer into StarterGui (real, editable instances in the creator's place) and by the agent's build_studded_ui tool.
  */
 import type { InstanceSpecLite } from './compose';
-import { isMoneyGlyph } from './ui-icons';
+import { GLYPHS, currencyIconNamed, isMoneyGlyph } from './ui-icons';
 
 export const STUD_IMAGE = 'rbxassetid://6927295847';
+
+/**
+ * The picture on a game's money counter: its own symbol, else the icon the currency's words name (Crystals and Gems wear a gem,
+ * Coins and Cash a coin), else the currency's first letter. Round 3 (2026-10-04): the first letter alone made "Crystals" a "C"
+ * (ui-icons.ts currencyIconNamed). A picture sits on a cream disc so a gem does not read as a coin; a symbol, a letter or a dollar
+ * sign is the gold token.
+ */
+export function moneySign(currency: string | undefined, symbol: string): { sign: string; picture: boolean } {
+  const named = symbol ? undefined : currencyIconNamed(currency);
+  const sign = symbol || (named ? GLYPHS[named] : undefined) || Array.from(currency ?? '')[0]?.toUpperCase() || '#';
+  return { sign, picture: !!named && !isMoneyGlyph(sign) };
+}
 
 /** A typed value the plugin understands as-is (compose-run.ts passes these through). */
 const udim2 = (xs: number, xo: number, ys: number, yo: number) => ({ t: 'UDim2', v: [xs, xo, ys, yo] });
@@ -162,7 +174,7 @@ export interface HudItem { id: string; name: string; price: number; blurb?: stri
 export function waveDefenseHud(items: HudItem[], words: Record<string, string>, money: { currency?: string; symbol?: string } = {}): InstanceSpecLite {
   // The game's own symbol (or the currency's first letter) on the coin and in every price: never a built-in "$".
   const symbol = money.symbol ?? '';
-  const sign = symbol || Array.from(money.currency ?? '')[0]?.toUpperCase() || '#';
+  const { sign, picture } = moneySign(money.currency, symbol);
   const card = (it: HudItem, i: number): InstanceSpecLite => studSurface(`Item_${it.id}`, { size: [0, 150, 0, 210] }, 'cream', {
     tile: 60, corner: 12, order: i,
     children: [
@@ -193,11 +205,11 @@ export function waveDefenseHud(items: HudItem[], words: Record<string, string>, 
           // The coin: a round gold token with the game's own sign (an emoji would not draw in the game font).
           {
             className: 'Frame', name: 'Icon',
-            props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: '#ffd23f', ZIndex: 2 },
+            props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: picture ? '#fff6dc' : '#ffd23f', ZIndex: 2 },
             children: [
               { className: 'UICorner', name: 'Round', props: { CornerRadius: udim(1, 0) } },
               { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } },
-              { className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } },
+              ...(picture ? [] : [{ className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } }]),
               studText('Sign', sign, { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
             ],
           },
@@ -470,7 +482,7 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
   // game's own symbol, or the currency's first letter.
   const counterName = currency.replace(/[.\s]/g, '') || 'Coins';
   const symbol = words.symbol ?? '';
-  const sign = symbol || Array.from(currency)[0]?.toUpperCase() || '#';
+  const { sign, picture } = moneySign(currency, symbol);
 
   // The first button (the shop, the thing to do first) is the primary action: taller than the others, which are the same weight as each other.
   const PRIMARY_H = 88;
@@ -521,11 +533,11 @@ export function plotSimHud(items: PlotSimItem[], upgrades: PlotSimUpgrade[], wor
         children: [
           {
             className: 'Frame', name: 'Icon',
-            props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: '#ffd23f', ZIndex: 2 },
+            props: { Size: udim2(0, 50, 0, 50), Position: udim2(0, 8, 0.5, 0), AnchorPoint: vec2(0, 0.5), BackgroundColor3: picture ? '#fff6dc' : '#ffd23f', ZIndex: 2 },
             children: [
               { className: 'UICorner', name: 'Round', props: { CornerRadius: udim(1, 0) } },
               { className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 3 } },
-              { className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } },
+              ...(picture ? [] : [{ className: 'UIGradient', name: 'Tint', props: { Color: gradient('#fff17a', '#f0a81a'), Rotation: 90 } }]),
               studText('Sign', sign, { size: [0.7, 0, 0.7, 0], pos: [0.5, 0, 0.5, 0], anchor: [0.5, 0.5] }, { z: 3 }),
             ],
           },

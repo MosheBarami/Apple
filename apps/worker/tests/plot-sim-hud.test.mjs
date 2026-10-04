@@ -130,7 +130,9 @@ test('plot sim HUD: money counter with its caption and per-second label; Shop, U
   assert.equal(at(s, 'Cash.PerSecond').props.Text, '+0/s');
   assert.equal(at(s, 'Cash.Value').props.Text, '0');
   assert.equal(at(s, 'Cash.Plus').className, 'ImageButton');
-  assert.equal(at(s, 'Cash.Icon.Sign').props.Text, 'C', 'the coin shows the currency\'s first letter, never a built-in "$"');
+  // RESTATED 2026-10-04 (round 3, a deliberate change): the counter showed the currency's first letter for every name, so "Crystals"
+  // was a "C". Its icon now comes from what the words name (the next test); "Cash" names a coin, so it is the coin's "$".
+  assert.equal(at(s, 'Cash.Icon.Sign').props.Text, '$', 'a currency that names money wears the coin');
   assert.equal(at(s, 'Coins'), undefined);
   const menu = at(s, 'Menu');
   assert.deepEqual(menu.children.filter((c) => c.className === 'ImageButton').map((c) => c.name), ['Shop', 'Upgrades', 'Rebirth']);
@@ -175,6 +177,27 @@ test('plot sim HUD: studded like the rest (stud tile, outline, gradient) and no 
     assert.equal(new Set(names).size, names.length, `${n.name} has two children with one name: ${names.join(',')}`);
   }
   for (const n of nodes.filter((x) => x.className === 'TextLabel')) assert.equal(n.props.Font.v, 'Enum.Font.FredokaOne', `${n.name} is in the game font`);
+});
+
+test('plot sim HUD: the money counter wears the icon the currency names (Crystals and Gems a gem, Coins and Cash a coin), else its first letter', () => {
+  const sign = (words) => at(U.plotSimHud([], [], words), `${words.currency}.Icon.Sign`).props.Text;
+  const disc = (words) => at(U.plotSimHud([], [], words), `${words.currency}.Icon`);
+  const GEM = '\u{1F48E}';
+  assert.equal(sign({ currency: 'Crystals' }), GEM, 'Crystals is a gem, not "C" (round 3)');
+  assert.equal(sign({ currency: 'Gems' }), GEM);
+  assert.equal(sign({ currency: 'Coins' }), '$');
+  assert.equal(sign({ currency: 'Cash' }), '$');
+  assert.equal(sign({ currency: 'Crystals', symbol: '◆' }), '◆', 'the game\'s own symbol wins');
+  assert.equal(sign({ currency: 'Cookies' }), 'C', 'a name that says nothing keeps its first letter');
+  // a gem sits on a cream disc with no gold tint, so it does not read as a coin; the coin and a letter are the gold token
+  assert.equal(disc({ currency: 'Crystals' }).props.BackgroundColor3, '#fff6dc');
+  assert.equal(disc({ currency: 'Crystals' }).children.some((c) => c.name === 'Tint'), false);
+  assert.equal(disc({ currency: 'Coins' }).props.BackgroundColor3, '#ffd23f');
+  assert.equal(disc({ currency: 'Coins' }).children.some((c) => c.name === 'Tint'), true);
+  // the lane-defense screen takes the same rule
+  const lane = (currency) => at(U.waveDefenseHud([{ id: 'a', name: 'A', price: 5, blurb: 'x' }], { wave: 'Wave' }, { currency }), 'Coins.Icon.Sign').props.Text;
+  assert.equal(lane('Crystals'), GEM);
+  assert.equal(lane('Cash'), '$');
 });
 
 test('plot sim HUD: words come from the game; it copes with no machines and a lot of them', () => {
