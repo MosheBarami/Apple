@@ -55,8 +55,10 @@ Free is now 5 credits a day and at most 30 a month: 3.25 times the old day and 1
   reached today's shared building capacity". The pricing page states this, derived from the same constant.
 - The monthly billable backstop (2,270,000 neurons, $24.97) covers about 16.8 accounts spending the full 30 credits
   (135,000 neurons each), before the free 10,000 neurons a day.
-- The pricing doc's global free-spend pool (default $10 a month, handoff 5.2) is not built. Until it is, these two caps are the
-  only bound. The owner should decide whether to raise them before the free plan is widely open.
+- The global free-spend pool is **$5 a month for all free users combined** (owner decision D-5, `planning/proof/OWNER-DECISIONS.md`;
+  about 100 credits, about 70 builds; when it is used up free building pauses until the next month, with a friendly message). It
+  supersedes the "default $10 a month" of the pricing doc and handoff 5.2. It is built in M6 and is not built now. Until it is,
+  these two caps are the only bound. The owner should decide whether to raise them before the free plan is widely open.
 
 **Paid daily caps are an assumption.** The pricing doc decides only the monthly pools. A paid plan needs a daily figure too, and
 the existing rule in `scripts/check-offer.mjs` (a plan may not grant more per day than the whole service can serve) caps it at
@@ -94,6 +96,15 @@ units would now be 150 times too large in the unit people read.
   forbids a visible invitation to buy credits while `CREDIT_PURCHASE_LIVE` is false, and nothing can sell one.
 - `/docs/credits-and-limits`, `/docs/getting-started`, `/terms` and the changelog read `PLAN_TABLE`, not the ledger table.
 
+**The profit test assumes one pool per payment, and the pool is not per payment.** The test recomputes the worst case for one
+payment and one pool. QuotaDO's month is the UTC calendar month (`quota-math.monthKey`), not the billing period, so a
+subscriber who pays mid-month can spend one pool before the month ends and a second one after it, both inside the first paid
+period. Measured with the same fee arithmetic and two pools: **Pro $9.99 for 200 credits loses $0.60, Max $24.99 for 600
+credits loses $6.03.** Charging is off, so nobody is exposed today. **It is an M6 must-fix**: align the pool to the billing
+period, or prorate the first one, before the first payment is taken. The assumption is stated in the header of
+`apps/worker/tests/plan-economics.test.mjs`, and a test there (`KNOWN GAP, OPEN, M6 MUST-FIX`) measures the exposure and asserts
+the premise, so it fails and has to be rewritten the day the pool changes basis.
+
 ## 4. What the app shows
 
 - Plan ladder (`plans.tsx`): Free, Pro, Max from `PLAN_TABLE`, credits with two decimals, no Enterprise "Get in touch" branch.
@@ -104,17 +115,17 @@ units would now be 150 times too large in the unit people read.
 
 ## 5. Deferred (M5 and M6, or owner)
 
+(Section 8 records what a review of this slice changed and what it left open.)
+
 - **Estimate before a build, exact charge after it** (plan 5.3, M6). Not built, and the site says nothing like it. Credits are
   already charged from measured usage, so "charged for the work it actually used" is true today.
-- **User-facing credit amounts still in ledger units** (so they read as 150 times too large next to the new balance): the per-run
-  "N Credits spent" chip (`ws/turn.tsx`, `ws/evidence/context-checkpoint-model.ts`), the automation spend panel, the admin
-  quota rows, the roadmap card cost ranges (`roadmap.ts` `creditsLow/High`), and the sentences the worker composes: the refund
-  sentences (`run-refund.ts`), the trace summary `... for N Credit(s)` (`do/session.ts`), the usage notifications, and the
-  `error-taxonomy` copy. Each needs the same `internalToCredits` conversion plus its tests; none is on a plan page.
-- The global free-spend pool (default $10 a month) and its enforcement (handoff 5.2).
+- ~~User-facing credit amounts still in ledger units~~ Fixed in the review of this slice (section 8, B). The `error-taxonomy`
+  copy carries no number.
+- The global free-spend pool ($5 a month for all free users combined, owner decision D-5) and its enforcement (M6, handoff 5.2).
 - The billing probe in `terms.astro`, `docs/billing.astro` and `lib/billing-probe.ts` (landing). Checkout stays off, so they
   report closed; they should be dropped the same way when M6 rebuilds those pages.
-- Owner: confirm the paid daily caps (section 2), and decide the caps against the new Free allowance (section 2).
+- Owner: confirm the paid daily caps, **Pro 20 and Max 30 credits a day, which are an assumption** (the pricing doc decides only the
+  monthly pools; section 2), and decide the caps against the new Free allowance (section 2).
 
 ## 6. Checkout stays off
 
@@ -130,3 +141,55 @@ new rules in `scripts/lib/offer-rules.mjs` (enforced limits = table x unit; a mo
 `usage-meter`, `usage-page-wiring`, `next-request-cost`, `picks-composer`, `picks-integration`; root `check-offer`,
 `probe-s1`; sdk `protocol-parity`. New: `apps/worker/tests/plan-economics.test.mjs` and `apps/site/tests/pricing-config.test.mjs`.
 `credit-purchase-claim`, `pricing-availability`, `workspace-limits` and `pre-run-cost-warning` pinned no figure and pass unchanged.
+
+## 8. What the review of this slice changed
+
+An independent review of commit `6390b4ca` (now `6a63a8ac`, trailer corrected) found six groups of defects. Each has a test that
+failed before the fix; the mutations are in the report.
+
+**A. Free allowance could be farmed (money).** A Free account with 5 ledger units left was admitted for 1, the model step ran, and
+settlement owed more than the 4 that remained. `splitSpend` is all-or-nothing, so it charged nothing; the run then ended `quota`,
+`quota` is a refundable ending, and the admission unit was handed back. Net 0, the reply delivered, and the same 5 units were
+there for the next request, until the service-wide ceiling. Now: a settlement is sent with `upTo` and QuotaDO charges what is left
+and answers `ok: false` with what it took (`/spend`; admission stays all-or-nothing); a run that ends because the person's own
+allowance could not pay for a step that ran is not refunded (`allowanceUsedUp` -> `refundVerdict` returns `allowance_used`);
+a global capacity stop (`BudgetError`, `CAPACITY_EXHAUSTED`) is still `quota` and still refunds a run that left nothing, because
+the person did not cause it. The same all-or-nothing hole existed in the public API (`index.ts`, `creditsSpent += owed` whatever
+the ledger said) and is fixed the same way. The bound is now one step's overrun: the compute of the step that was already running.
+
+**B. Credits, not ledger units, on every surface a person reads.** The chat footer, the "N Credits spent" chip, the automation
+spend panel and run rows, the roadmap and suggestion cost chips (`creditRangeLabel`), the run-finished and low-credit
+notifications, the Discord `/credits` and `/status` line (which also named the plan by its stored id, "builder"), the refund
+sentences, the branding copy ("Uses about 0.01 Credits": one generation is `BRANDING_COST_UNITS` = 1 ledger unit), and the usage
+page's "what your next request costs" line, which again says what a request is (`MODE_INFO.agent.entryUnit`, restored: one
+targeted edit, read back and verified, not a whole build). Admin screens keep ledger units and are labelled "ledger units".
+**The public API headers `X-StudPilot-Usage-Credits` and `X-StudPilot-Credits-Remaining` are unchanged in value and meaning**
+(whole ledger units; 150 is 1.00 credit in the app); the unit is now written in the OpenAPI description and beside `usageHeaders`.
+The SDK docstring for `searchDocs` says "one ledger unit".
+
+**C. Claims the product does not back, removed.** "You see the running total live in the workspace while it climbs", "the
+workspace counts what the run has spent while it runs" and "the thinking panel counts the Credits this run has spent, step by
+step": the app draws a request's cost once, under the finished reply, and nothing while it runs. "One Credit is taken when a
+request starts": a request is admitted for 1/150 of a credit. "Buy credits when you need more" on the app's Pro card while
+`CREDIT_PURCHASE_LIVE` is false (filtered, as the site filters it). "Credits, or a bigger plan, cover the gap" in the empty-credits
+notification (nothing can be bought). The changelog's "there is no Pro tier. The paid tiers are Builder and Studio" (the plans are
+Free, Pro and Max; there is no priority queue). `apps/site/tests/no-live-cost-claim.test.mjs` guards the first four and asserts its
+own premise.
+
+**D. Guards that could not fail.** `CREDIT_CLAIM` now reads one-digit and decimal claims ("5 Credits a day", "5.00 Credits a day",
+"7 credits per month"); it needed two characters, so Free's own "5 Credits a day" was unguarded. The plan-invention guard in
+`published-version-and-modes.test.mjs` was dead (`Pro` is listed, so its `if` never ran); it now runs on every page against the plan
+table, and a sibling refuses the removed priority-queue claim and ignores sentences that deny it. `order-summary.test.mjs` fed
+`PLAN_LIMITS` to a model the component feeds from `PLAN_TABLE`, so reverting the component could not fail it; it now renders the
+dialog. `pricing-config.test.mjs` checks each card's price, allowance and build count inside that card, the FAQ credit definition
+inside its answer, the shared-pool sentence inside its note, and the build-cost rows row by row.
+
+**Still open after the review (not fixed here, with reason):**
+
+- The profit test's one-pool assumption (section 2): an M6 must-fix.
+- **The roadmap cost chip prints `runs x MODE_INFO.typicalCredits`, the per-REQUEST range (4 to 18 ledger units, 0.03 to 0.12
+  credits), while a typical build costs about 1.40 credits (BUILD_COSTS).** The two measure different things, the usage page now
+  says which, and the roadmap chip is correct in unit and not comparable in scale to a build. Re-derive it with M6's estimate.
+- `apps/web/src/lib/generative-ui` `quotaToDocument` hands a raw `QuotaState` to the `usage_summary` block. Nothing calls it
+  (only `ui-lab` draws that block, from literals), and the block's numbers are unit-free, so it was left alone.
+- The SDK `usage` command prints what `/api/me/usage` sends, in ledger units, which is the public contract.

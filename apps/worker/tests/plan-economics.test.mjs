@@ -12,6 +12,12 @@
  *   2. THE MONEY. Worst-case profit after a 2.9% + $0.30 card fee is recomputed here from the table
  *      with its own arithmetic, and a paid plan or pack below $0 fails the build. Free is not
  *      exempt from being costed: its worst case is printed as a number a test pins.
+ *      ASSUMPTION, STATED: that arithmetic is for ONE pool per payment. QuotaDO's month is the UTC
+ *      CALENDAR month (quota-math.monthKey), not the billing period, so a subscriber who pays
+ *      mid-month can spend one pool before the month ends and a second after it, inside the first
+ *      paid period: Pro loses $0.60 and Max $6.03 in that worst case. The last test of section 3
+ *      measures it. Charging is off, so no one is exposed; it is an M6 MUST-FIX (align the pool to
+ *      the billing period, or prorate the first one), and that test is the one to change then.
  *   3. THE ENFORCEMENT. QuotaDO takes its limits from the same table: Free is 5 credits a day and 30
  *      a month, in ledger units, and a spend past the day is refused by the real DO code.
  *
@@ -119,7 +125,7 @@ test('THE UNIT: 150 ledger units is the neuron arithmetic rounded down to a mult
 
 // ---------------------------------------------------------------- 3. the money
 
-test('worst-case profit after the card fee matches the pricing doc and no paid plan is below $0', () => {
+test('worst-case profit of ONE pool per payment, after the card fee, matches the pricing doc and no paid plan is below $0', () => {
   const rows = [
     ['builder', PLAN_TABLE.builder.priceUsdMonthly, PLAN_TABLE.builder.creditsPerMonth],
     ['studio', PLAN_TABLE.studio.priceUsdMonthly, PLAN_TABLE.studio.creditsPerMonth],
@@ -135,6 +141,23 @@ test('worst-case profit after the card fee matches the pricing doc and no paid p
   }
   assert.equal(Math.round(worstCaseProfit(9.99, 100) * 100) / 100, 4.4);
   assert.equal(Math.round(worstCaseProfit(24.99, 300) * 100) / 100, 8.97);
+});
+
+test('KNOWN GAP, OPEN, M6 MUST-FIX: the pool is the UTC calendar month, so a mid-month subscriber can spend TWO pools in the first period', () => {
+  // The premise, read from the code: the monthly pool rolls over at the start of a calendar month
+  // in UTC, whenever the subscriber paid. A payment on 30 June buys a pool on 30 June and a fresh
+  // one a day and a half later, on 1 July, both inside the first paid period.
+  const payDay = Date.UTC(2026, 5, 30, 12);
+  const nextDay = Date.UTC(2026, 6, 1, 0, 0, 1);
+  assert.notEqual(math.monthKey(payDay), math.monthKey(nextDay), 'the pool no longer rolls over on the calendar month: re-derive this exposure');
+  assert.equal(math.monthKey(payDay), '2026-06');
+  // The exposure, with the same fee arithmetic as above and two pools instead of one.
+  const twoPools = (id) => worstCaseProfit(PLAN_TABLE[id].priceUsdMonthly, 2 * PLAN_TABLE[id].creditsPerMonth);
+  assert.equal(Math.round(twoPools('builder') * 100) / 100, -0.6, 'Pro, two pools in the first period');
+  assert.equal(Math.round(twoPools('studio') * 100) / 100, -6.03, 'Max, two pools in the first period');
+  // This is a RECORD OF AN OPEN DEFECT, not an endorsement: when M6 aligns the pool to the billing
+  // period (or prorates the first), the premise assertion above stops holding and this test is
+  // rewritten into the property "no paid plan is below $0 in its first period".
 });
 
 test('EVERY priced plan in the table is covered, not just the ones named above', () => {
