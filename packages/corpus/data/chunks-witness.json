@@ -36,11 +36,63 @@
         "kind": "api"
       }
     ],
+    "api-animationtrack": [
+      {
+        "vecId": "api-animationtrack-1",
+        "title": "AnimationTrack (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationTrack",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-animationtrack-2",
+        "title": "AnimationTrack (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationTrack",
+        "kind": "api"
+      }
+    ],
+    "api-animator": [
+      {
+        "vecId": "api-animator-1",
+        "title": "Animator (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Animator",
+        "kind": "api"
+      }
+    ],
+    "api-audioemitter": [
+      {
+        "vecId": "api-audioemitter-1",
+        "title": "AudioEmitter (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-audioemitter-2",
+        "title": "AudioEmitter (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioEmitter",
+        "kind": "api"
+      }
+    ],
+    "api-audioplayer": [
+      {
+        "vecId": "api-audioplayer-1",
+        "title": "AudioPlayer (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AudioPlayer",
+        "kind": "api"
+      }
+    ],
     "api-badgeservice": [
       {
         "vecId": "api-badgeservice-1",
         "title": "BadgeService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/BadgeService",
+        "kind": "api"
+      }
+    ],
+    "api-beam": [
+      {
+        "vecId": "api-beam-1",
+        "title": "Beam (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Beam",
         "kind": "api"
       }
     ],
@@ -98,6 +150,14 @@
         "kind": "api"
       }
     ],
+    "api-explosion": [
+      {
+        "vecId": "api-explosion-1",
+        "title": "Explosion (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Explosion",
+        "kind": "api"
+      }
+    ],
     "api-guiservice": [
       {
         "vecId": "api-guiservice-1",
@@ -117,6 +177,14 @@
         "vecId": "api-hapticeffect-1",
         "title": "HapticEffect (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/HapticEffect",
+        "kind": "api"
+      }
+    ],
+    "api-highlight": [
+      {
+        "vecId": "api-highlight-1",
+        "title": "Highlight (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Highlight",
         "kind": "api"
       }
     ],
@@ -254,6 +322,26 @@
         "kind": "api"
       }
     ],
+    "api-particleemitter": [
+      {
+        "vecId": "api-particleemitter-1",
+        "title": "ParticleEmitter (Class) 1/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-particleemitter-2",
+        "title": "ParticleEmitter (Class) 2/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-particleemitter-3",
+        "title": "ParticleEmitter (Class) 3/3",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/ParticleEmitter",
+        "kind": "api"
+      }
+    ],
     "api-policyservice": [
       {
         "vecId": "api-policyservice-1",
@@ -295,6 +383,14 @@
         "vecId": "api-socialservice-1",
         "title": "SocialService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/SocialService",
+        "kind": "api"
+      }
+    ],
+    "api-soundservice": [
+      {
+        "vecId": "api-soundservice-1",
+        "title": "SoundService (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/SoundService",
         "kind": "api"
       }
     ],
@@ -353,6 +449,14 @@
         "vecId": "api-textservice-1",
         "title": "TextService (Class)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/TextService",
+        "kind": "api"
+      }
+    ],
+    "api-trail": [
+      {
+        "vecId": "api-trail-1",
+        "title": "Trail (Class)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/Trail",
         "kind": "api"
       }
     ],
@@ -453,6 +557,56 @@
         "vecId": "g-6f54c948-4",
         "title": "Animation events — Duplicate events",
         "url": "https://create.roblox.com/docs/animation/events",
+        "kind": "guide"
+      }
+    ],
+    "docs-animation-inverse-kinematics": [
+      {
+        "vecId": "g-96ec3352-1",
+        "title": "Inverse Kinematics",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-2",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-3",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-4",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-5",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-6",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-7",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-96ec3352-8",
+        "title": "Inverse Kinematics — IKControl",
+        "url": "https://create.roblox.com/docs/animation/inverse-kinematics",
         "kind": "guide"
       }
     ],
@@ -633,6 +787,44 @@
         "vecId": "g-591c8e83-3",
         "title": "Audio — Audio effects",
         "url": "https://create.roblox.com/docs/audio",
+        "kind": "guide"
+      }
+    ],
+    "docs-audio-effects": [
+      {
+        "vecId": "g-d8da148d-1",
+        "title": "Audio effects",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-2",
+        "title": "Audio effects — Apply audio effects",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-3",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-4",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-5",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d8da148d-6",
+        "title": "Audio effects — Types",
+        "url": "https://create.roblox.com/docs/audio/effects",
         "kind": "guide"
       }
     ],
@@ -847,6 +1039,256 @@
         "vecId": "g-3c467923-14",
         "title": "Pathfinding — Limitations and failure factors",
         "url": "https://create.roblox.com/docs/characters/pathfinding",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-beams": [
+      {
+        "vecId": "g-8dd806f0-1",
+        "title": "Beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-2",
+        "title": "Beams — Create beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-3",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-4",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-5",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-6",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-8dd806f0-7",
+        "title": "Beams — Customize beams",
+        "url": "https://create.roblox.com/docs/effects/beams",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-highlighting": [
+      {
+        "vecId": "g-03cedd7e-1",
+        "title": "Highlighting objects",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-2",
+        "title": "Highlighting objects — Add highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-3",
+        "title": "Highlighting objects — Customize highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-4",
+        "title": "Highlighting objects — Customize highlights",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-5",
+        "title": "Highlighting objects — Performance tips",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-03cedd7e-6",
+        "title": "Highlighting objects — Performance tips",
+        "url": "https://create.roblox.com/docs/effects/highlighting",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-light-sources": [
+      {
+        "vecId": "g-80e54aef-1",
+        "title": "Light sources",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-2",
+        "title": "Light sources — Light types",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-3",
+        "title": "Light sources — Light types",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-80e54aef-4",
+        "title": "Light sources — Shared properties",
+        "url": "https://create.roblox.com/docs/effects/light-sources",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-particle-emitters": [
+      {
+        "vecId": "g-d5187756-1",
+        "title": "Particle emitters",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-2",
+        "title": "Particle emitters — Create particle emitters",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-3",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-4",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-5",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-6",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-7",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-8",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-9",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-10",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-11",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-12",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-13",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-14",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-15",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-d5187756-16",
+        "title": "Particle emitters — Customize particles",
+        "url": "https://create.roblox.com/docs/effects/particle-emitters",
+        "kind": "guide"
+      }
+    ],
+    "docs-effects-trails": [
+      {
+        "vecId": "g-a10a4481-1",
+        "title": "Trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-2",
+        "title": "Trails — Create trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-3",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-4",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-5",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-6",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-a10a4481-7",
+        "title": "Trails — Customize trails",
+        "url": "https://create.roblox.com/docs/effects/trails",
         "kind": "guide"
       }
     ],
