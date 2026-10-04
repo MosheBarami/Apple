@@ -63,6 +63,11 @@ const WILDCARD_OK = [
   // The restore kit: agent prompts, workflow results and archived workflow scripts of the 2026-10-02 handoff. Recorded
   // output and the programs that produced it; rewriting them falsifies what was said and run (docs/evidence's reasoning).
   /^docs\/handoff\//,
+  // The StudPilot planning record and the research notes of 2026-10-04 (tracked from 2026-10-04): the dossier and its
+  // sections describe the history of the name, and the research notes quote third-party names (Creator Store assets such
+  // as `FriendlyStoneGolem`). Superseded by scripts/check-old-names.mjs in StudPilot handoff task 1.2.
+  /^planning\//,
+  /^research\//,
   /^infra\/supabase\/migrations\/00(0[1-9]|1[0-3])_/,
   // The tools whose whole job is the old name: this guard and its allowlist, the codemod that
   // removed it, and their tests. They name the word on purpose, in the open.

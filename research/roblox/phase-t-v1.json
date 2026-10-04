@@ -1,0 +1,12 @@
+{
+  "version": "phase-t-v1",
+  "frozen": "2026-10-04",
+  "note": "GOAL.md Phase T: complete games from one-line ideas, one per genre family, each in a fresh chat on a clean Baseplate. Judged against research/roblox/PHASE-T.md. Do not edit an item after seeing its result: version the bank instead. Keep these prompts out of skills, RAG and system prompts.",
+  "items": [
+    { "id": "t1", "category": "game", "turns": ["a game where you mine glowing crystals, upgrade your pickaxe and rebirth to unlock deeper caves"] },
+    { "id": "t2", "category": "game", "turns": ["a 30-stage lava and ice obby with checkpoints, a timer and stages that get harder"] },
+    { "id": "t3", "category": "game", "turns": ["a co-op tower defense on a jungle path with 20 waves, 5 towers and a boss"] },
+    { "id": "t4", "category": "game", "turns": ["a short co-op horror run through an abandoned hospital, room by room, with a monster you hide from"] },
+    { "id": "t5", "category": "game", "turns": ["a bakery tycoon where you buy ovens and conveyors, hire helpers and expand the shop"] }
+  ]
+}

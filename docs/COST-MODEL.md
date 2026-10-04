@@ -76,8 +76,7 @@ happening, and the neuron figures above are what we actually pay.
 
 **Cost per quality-gated build:** ~16 steps at ~145 neurons plus 1–2 critiques ≈ **2,300 neurons
 ($0.025)**, against 511 ($0.0056) for the old build-blind path. The daily ceiling is
-now 1,000,010,000 neurons (see "Apple has no cap" below), so it is not a practical limit on how many
-builds run in a day.
+160,000 neurons (see "Caps restored" below), about 69 such builds a day service-wide.
 
 <!--[[ THE CEILING DID MOVE, ON 2026-09-20, AND THIS SAID OTHERWISE FOR A DAY.
        This paragraph read "The ceiling has not moved — the hard maximum is still $10.06/month",
@@ -91,14 +90,13 @@ builds run in a day.
        Every figure below is now derived from those constants and checked by
        "the documented hard maximum is the one the safeguards actually allow" in
        economics.test.mjs. ]]-->
-**Apple has no cap (owner decision, 2026-09-29, commit de1117b8).** The ceiling first moved on
+**Caps restored (2026-10-04, StudPilot plan §8, handoff task 0.5).** The ceiling first moved on
 2026-09-20 ($10.06 -> $24.80/month, because the old cap refused every build). On 2026-09-29 the
-owner lifted the daily and monthly neuron limits altogether: a 90,000-neuron day had stopped a
-build mid-run, and he chose "no Apple cap" so a build only stops at a real blocker. The two
-constants are now set high enough that they do not bind in practice
-(`BILLABLE_NEURONS_PER_DAY` = 1,000,000,000, `BILLABLE_NEURONS_PER_MONTH` = 30,000,000,000), so
-Cloudflare billing is the only spending bound, plus the per-request limit of 1,200 neurons. The
-figures below are what those constants arithmetically permit, not an expected bill.
+owner lifted the limits altogether ("no Apple cap", commit de1117b8), which allowed $11,000 a day.
+The StudPilot plan restores them: `BILLABLE_NEURONS_PER_DAY` = 150,000 ($1.65 a day) and
+`BILLABLE_NEURONS_PER_MONTH` = 2,270,000 ($24.97 a month), the planner's defaults pending the
+owner's approval (task X3). `apps/worker/tests/spend-caps.test.mjs` holds the approved dollar
+figures. The figures below are what those constants arithmetically permit, not an expected bill.
 
 **Art-direction prompt saving, re-measured 2026-09-25.** The older 7,406-character brief and its
 proposed 430-neuron saving were a historical estimate, not a current reduction. Moving the brief
@@ -149,30 +147,28 @@ Credit allowances are denominated in.
 |---|---|---|---|---|
 | **Low** — ~4 builds or ~100 questions/day service-wide | ~10,000 | 0 | $0.00 | **$5.00** |
 | **Medium** — ~15 builds/day | ~35,000 | 25,000 | $8.25 | **$13.25** |
-| **Heavy** — demand at the daily ceiling, every day | 1,000,010,000 (the ceiling) | 1,000,000,000 | $330,000.00 | **$330,005.00** |
+| **Heavy** — demand at the daily ceiling, every day | 160,000 (the ceiling) | 150,000 | $24.97 | **$29.97** |
 
-The heavy row is the arithmetic maximum, not a forecast. At the daily cap the AI spend would be
-**$11,000 a day**, so thirty such days is $330,000.00 — exactly the monthly backstop. The month's
-cap is reached on **day 30**, which is the same day the daily figure alone would reach it, so in a
-30-day month the two gates coincide. The Low and Medium rows are unchanged and are what the
-measured load looks like; nothing in the model produces the Heavy figure at today's usage.
+The heavy row is the arithmetic maximum, not a forecast. At the daily cap the AI spend is
+**$1.65 a day**, so thirty such days would be $49.50; the monthly backstop stops it at $24.97. The
+month's cap is reached on **day 15**, after which generation is refused until the month turns. The
+Low and Medium rows are unchanged and are what the measured load looks like.
 
-The caps still refuse generation beyond these figures, but they are far above any load the service
-has seen, so in practice the limits that bind are the per-user Credit allowances and the provider's
-requests-per-minute ceiling, not the spend gates.
+These caps bind: the measured load of early October 2026 (80,000 to 120,000 billable neurons on a
+busy day) sits inside the daily ceiling, and a month of such days reaches the monthly backstop.
 
 ### Exact hard maximum
 
-The monthly billable cap is **30,000,000,000 neurons = $330,000.00**. Added to the $5.00 platform fee:
+The monthly billable cap is **2,270,000 neurons = $24.97**. Added to the $5.00 platform fee:
 
-> ## Hard maximum: **$330,005.00 / month**
+> ## Hard maximum: **$29.97 / month**
 
 One caveat stated honestly: the ledger blocks on *reserved + settled* neurons, so the only way to
 exceed the cap is requests already in flight at the instant it is crossed. That is bounded by
 (concurrent requests × 1,200 neurons/request) — about **$0.40** in a pathological burst of 30
-simultaneous requests. `MAX_NEURONS_PER_REQUEST` was not touched when the caps were raised, so that
-bound is the same as it always was. The true ceiling is **$330,005.00, and under no circumstances
-above ~$330,005.40**.
+simultaneous requests. `MAX_NEURONS_PER_REQUEST` was not touched when the caps moved, so that
+bound is the same as it always was. The true ceiling is **$29.97, and under no circumstances
+above ~$30.37**.
 
 Non-AI resources (Durable Objects, D1, KV, Vectorize, Workers requests) sit far inside the
 allowances included with Workers Paid at this scale; the 30-user load test consumed a rounding
@@ -193,8 +189,8 @@ Four independent gates, each proven against production:
 | Gate | Value | Proven |
 |---|---|---|
 | Per-request ceiling | 1,200 neurons | a 190k-char prompt is refused before any call |
-| Daily ceiling | 1,000,010,000 neurons (10k free + 1,000,000,000 billable; lifted 2026-09-29, owner: no Apple cap) | proven at the old 25,000 figure; no longer reachable in practice |
-| Monthly billable cap | 30,000,000,000 neurons ($330,000.00; lifted 2026-09-29) | proven at the old 460,000 figure; no longer reachable in practice |
+| Daily ceiling | 160,000 neurons (10k free + 150,000 billable; restored 2026-10-04) | proven at the old 25,000 figure; the restored figure is unit-tested (`budget-admission.test.mjs`), not yet observed refusing in production |
+| Monthly billable cap | 2,270,000 neurons ($24.97; restored 2026-10-04) | proven at the old 460,000 figure; the restored figure is unit-tested, not yet observed refusing in production |
 | Kill switch | instant | flipped on → next call refused; flipped off → calls resume |
 
 All four are adjustable at runtime with no redeploy (`POST /api/admin/spend-limits`), and the admin

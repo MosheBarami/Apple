@@ -1,0 +1,1219 @@
+{
+ "base": "https://studpilot.app",
+ "measuredAt": "2026-10-04T14:59:58.464Z",
+ "totals": {
+  "projects": 201,
+  "initialized": 201,
+  "uninitialized": 0,
+  "errors": 0,
+  "messages": 980
+ },
+ "projects": {
+  "e66cd0fae8cd": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 1,
+   "oplogNewest": 1790178906688
+  },
+  "c766983f5630": {
+   "status": "ok",
+   "messages": 44,
+   "oplogRows": 9,
+   "oplogNewest": 1789904841765
+  },
+  "2b557b1b9a53": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "71a431a3c92d": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "98f3a6ba79f5": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "ce4e763aafdd": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "0ec1421c7aea": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "5b23b0858d56": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "6ddbcc1f816e": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "47b7adb7a5fb": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "21bc641dd37a": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "9f945c1df80d": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c626d2b79fec": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "bc44d5ebf660": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "16a0aaf829e2": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "9f9aaaa28184": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c53b50dc6ca7": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a96868f00451": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "1f91c8f42f7d": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "df461b45f4ef": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "f464e42dcd99": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "adf01b008a51": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "b7a418c7be14": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "ee9cf9ea6dd7": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "9d3e685ddc65": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "b2473bd2ec0e": {
+   "status": "ok",
+   "messages": null,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "e182b487e82c": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a41a792d42b4": {
+   "status": "ok",
+   "messages": 14,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "35315aa23869": {
+   "status": "ok",
+   "messages": 20,
+   "oplogRows": 20,
+   "oplogNewest": 1789990988160
+  },
+  "5c4d056ea1cf": {
+   "status": "ok",
+   "messages": 16,
+   "oplogRows": 25,
+   "oplogNewest": 1789910665620
+  },
+  "4ef28b95f2d8": {
+   "status": "ok",
+   "messages": 22,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a39be06d68d4": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789851700586
+  },
+  "83d58931934f": {
+   "status": "ok",
+   "messages": 20,
+   "oplogRows": 22,
+   "oplogNewest": 1789849030286
+  },
+  "932e31f71317": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "992dbc5ef44c": {
+   "status": "ok",
+   "messages": 20,
+   "oplogRows": 25,
+   "oplogNewest": 1790035204775
+  },
+  "592973f0b515": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "8fdece4d9a2e": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "2da862658b2c": {
+   "status": "ok",
+   "messages": 32,
+   "oplogRows": 5,
+   "oplogNewest": 1789932415894
+  },
+  "f6736fa41426": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a715e2124cec": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789946433324
+  },
+  "0bd09b4f4c7f": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789947515911
+  },
+  "088ca1b14136": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789947829497
+  },
+  "855062077e50": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "ff7f735a6323": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789949373533
+  },
+  "bbdb753d76ef": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "b3dd11fa969c": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 4,
+   "oplogNewest": 1789948847164
+  },
+  "88c1b9906159": {
+   "status": "ok",
+   "messages": 8,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "79e0ef35e1bf": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "13bd1e503574": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "306d4208272d": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "23e82e0a3e92": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a917504b2f7a": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "2c664fe40cf7": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "9eecf4778570": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "f272f0bb1acf": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "55f79e6b2e15": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "34b43a22f80e": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "7ad444c83333": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c870d96dcbcd": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "1630ff8a4952": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "6d1ed474a964": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "30bfc2b089d0": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "f692dc142e44": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "37fb74316717": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "6fc7db0f1d44": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "f993a232b207": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a3279574a737": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "ba3bc982231a": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "35377e1fcd24": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "5e35f1ac7820": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "94db52f215d6": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "447ac477c3d2": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "0868f1cd4325": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "7f398f1a5850": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "f1f922be3c8c": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "00b79c0dc8cf": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "4dd775d3091e": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "91a65048a7a1": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "fbf0b2dffe34": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "fac87f4dd110": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "cd0122f3798f": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "83b117129f56": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "43ad750718b9": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "2495b66ae6b3": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "6bf7af6600c9": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "d68d61b9776f": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "cde55f5c8910": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "0cfd08f05234": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c8858199fad9": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "78336cf457f2": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "869fb4d507f7": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "222cb8674ff1": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "1a61f4874d0f": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "198e9bb4e4e7": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "fe47c9753afb": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "bc679b67ab51": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c776c9af5d3d": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "96e773485a66": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "0ade4292ea9c": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "8226e1860e33": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "2c8d8b4de6bf": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "adf3edcaea5d": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "382cc7ecd033": {
+   "status": "ok",
+   "messages": 14,
+   "oplogRows": 25,
+   "oplogNewest": 1790125543432
+  },
+  "41e8b44717f5": {
+   "status": "ok",
+   "messages": 36,
+   "oplogRows": 25,
+   "oplogNewest": 1790114654965
+  },
+  "251c612d2987": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "fbbec8b6ad22": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790124748749
+  },
+  "d43fbff54bc9": {
+   "status": "ok",
+   "messages": 34,
+   "oplogRows": 25,
+   "oplogNewest": 1790159552146
+  },
+  "3a7c8876bef0": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "3919b3d58c1a": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 3,
+   "oplogNewest": 1790160650309
+  },
+  "b7fc0c9e6a13": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 1,
+   "oplogNewest": 1790176127077
+  },
+  "573ae0986f4b": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "d5dedb86e4c7": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790187274968
+  },
+  "fcb984e4af74": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790176092216
+  },
+  "b5105f8c8110": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790201414771
+  },
+  "fb44b6be55d1": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790185749973
+  },
+  "fded7317b4fa": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790183561314
+  },
+  "ef4ecf83115f": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790189259401
+  },
+  "df22a2d4e9ad": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790210997651
+  },
+  "6d881d0b91ee": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790346447327
+  },
+  "8e53c92729ae": {
+   "status": "ok",
+   "messages": 158,
+   "oplogRows": 25,
+   "oplogNewest": 1790423471273
+  },
+  "fc5ccfff542e": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 13,
+   "oplogNewest": 1790327585007
+  },
+  "cfde4d3bd3aa": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790328445407
+  },
+  "0b6a84763466": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 8,
+   "oplogNewest": 1790443803769
+  },
+  "87592c479285": {
+   "status": "ok",
+   "messages": 8,
+   "oplogRows": 25,
+   "oplogNewest": 1790441778806
+  },
+  "56b3f2fcf70d": {
+   "status": "ok",
+   "messages": 9,
+   "oplogRows": 25,
+   "oplogNewest": 1790640978159
+  },
+  "a2240adfb9a2": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790498307082
+  },
+  "4d0ca8c3d31b": {
+   "status": "ok",
+   "messages": 70,
+   "oplogRows": 25,
+   "oplogNewest": 1790482187638
+  },
+  "1b24ae075e18": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 23,
+   "oplogNewest": 1790609745831
+  },
+  "9ad59a5e4d67": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790665737017
+  },
+  "d09100425883": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790768814660
+  },
+  "3767623b6c90": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790732200633
+  },
+  "82324f125591": {
+   "status": "ok",
+   "messages": 38,
+   "oplogRows": 25,
+   "oplogNewest": 1790720930287
+  },
+  "59f7852761ac": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790733831511
+  },
+  "1c4d71d0d6f8": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790644207872
+  },
+  "cbc75c0fcf0d": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790771388257
+  },
+  "0b15d6fe012b": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790771041312
+  },
+  "ac8991e5406a": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790774107874
+  },
+  "94514bcd6d68": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790772318369
+  },
+  "76fa6a047514": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790774518502
+  },
+  "a6f1a9e5e98b": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790776654233
+  },
+  "a0d83fc86146": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790777884577
+  },
+  "1d0afe26a797": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790780895739
+  },
+  "2a94868ae0f6": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790777296294
+  },
+  "8fcf5ecce796": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790778795055
+  },
+  "69a804dfa49b": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "c52a1354486b": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790791153967
+  },
+  "62ccae94e355": {
+   "status": "ok",
+   "messages": 3,
+   "oplogRows": 25,
+   "oplogNewest": 1790798876558
+  },
+  "68ffb8aab344": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790801983748
+  },
+  "3fac3303ec85": {
+   "status": "ok",
+   "messages": 0,
+   "oplogRows": 0,
+   "oplogNewest": null
+  },
+  "a9de949b439f": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790834686030
+  },
+  "8cf9fa49c661": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790833903970
+  },
+  "c6d28cdec8ff": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790833133082
+  },
+  "918ceda76216": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790845929963
+  },
+  "f3e6f308618f": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790834431361
+  },
+  "8a8fb00b20a1": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790868924809
+  },
+  "b29cfe8b4717": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 6,
+   "oplogNewest": 1790859854534
+  },
+  "8350dcd2958b": {
+   "status": "ok",
+   "messages": 36,
+   "oplogRows": 25,
+   "oplogNewest": 1790864728643
+  },
+  "9660a8cd78c1": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790866900960
+  },
+  "3837e04a118f": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790865674069
+  },
+  "1979a13b65b4": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790870193817
+  },
+  "7fa43b54c8d1": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790871498059
+  },
+  "b63c40d1775e": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790870800798
+  },
+  "3e10dcac7922": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790871961199
+  },
+  "b5ce0ef8a045": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790874024550
+  },
+  "8595f00aed34": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790873963382
+  },
+  "759e36133e47": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790875318628
+  },
+  "1f1c408eda6a": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790877099732
+  },
+  "5010cb698084": {
+   "status": "ok",
+   "messages": 6,
+   "oplogRows": 25,
+   "oplogNewest": 1790878599248
+  },
+  "ff11031524f9": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790880568677
+  },
+  "f8107c1d3e27": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790879806426
+  },
+  "72ce023a7280": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790881156869
+  },
+  "3feb20eee3ca": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790881300199
+  },
+  "ac6aa22d582f": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 17,
+   "oplogNewest": 1790882019069
+  },
+  "0de2b81bfba8": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790882726632
+  },
+  "b6da528a7bd5": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790895158118
+  },
+  "e6c0efe9b516": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790883234095
+  },
+  "9c83b11946fb": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790883672555
+  },
+  "19cc3361c5dd": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790885774461
+  },
+  "4b1f9a0a7e3b": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790884067281
+  },
+  "8590dfcfcda6": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790887047041
+  },
+  "30df6db6c02c": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790886203628
+  },
+  "96fb548354a1": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790885107228
+  },
+  "b5cef47d647b": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790889060217
+  },
+  "68a53575f382": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790888078110
+  },
+  "e2457876d5b0": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790889699288
+  },
+  "c2b6c44bcd5c": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790890152126
+  },
+  "acb9971cf0fe": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790890809718
+  },
+  "cfaa4fdf37fe": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790892548632
+  },
+  "35749779b8a8": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790892090704
+  },
+  "9058b3a6d173": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790893554984
+  },
+  "44ef23664900": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790894042430
+  },
+  "c32fed121d36": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790891608557
+  },
+  "15c3ee92e945": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790893028562
+  },
+  "d510cdc31eab": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790901778175
+  },
+  "852cc8615cd9": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790929347419
+  },
+  "9c547f29e74d": {
+   "status": "ok",
+   "messages": 34,
+   "oplogRows": 25,
+   "oplogNewest": 1790927328893
+  },
+  "510f5eca0fa7": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790930327543
+  },
+  "0a3f76cfee22": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790932233684
+  },
+  "41740fd38437": {
+   "status": "ok",
+   "messages": 4,
+   "oplogRows": 25,
+   "oplogNewest": 1790929099066
+  },
+  "22f3587bb5e7": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1791113807537
+  },
+  "a2a0a2783435": {
+   "status": "ok",
+   "messages": 2,
+   "oplogRows": 25,
+   "oplogNewest": 1790950152669
+  }
+ }
+}

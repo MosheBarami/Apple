@@ -70,6 +70,18 @@
       "codemod": "skip"
     },
     {
+      "id": "studpilot-planning-and-research",
+      "scope": "content",
+      "paths": [
+        "planning/**",
+        "research/**"
+      ],
+      "token": "*",
+      "max": null,
+      "reason": "the StudPilot planning record (plan, handoff, the 2026-10-04 dossier and its sections) and the research notes, tracked from 2026-10-04: they describe the history of the name and quote third-party names such as the Creator Store asset FriendlyStoneGolem. Records, not product text.",
+      "removal": "superseded by scripts/check-old-names.mjs and planning/rename-allowlist.txt in StudPilot handoff task 1.2"
+    },
+    {
       "id": "tools",
       "scope": "content",
       "paths": [
@@ -241,11 +253,10 @@
         "docs/MISSION-PROMPT.md",
         "packages/evals/src/security.test.mjs",
         "scripts/gate-suite.mjs",
-        "CLAUDE.md",
-        "HANDOFF.md"
+        "CLAUDE.md"
       ],
       "token": "check\\-no\\-golem|docs/operations/GOLEM\\-REMOVAL\\-RUNBOOK\\.md|golem\\-chat|golem\\-plan|scripts/check\\-no\\-golem\\.mjs|scripts/golem\\-allowlist\\.json|scripts/rename\\-golem\\.mjs|tests/no\\-golem\\-guard\\.test\\.mjs|golem\\-rename\\-a\\-b1|golem\\-rename\\-b2|GOLEM_|check\\-no\\-golem\\.mjs",
-      "max": 31,
+      "max": 21,
       "reason": "prose and tests that NAME the guard, its allowlist, the codemod and the runbook by file name, or the retired public model aliases the API was renamed from",
       "removal": "the references go when the files they name go (phase D); the retired aliases are history and stay"
     },
@@ -461,7 +472,7 @@
         "packages/**/*.md"
       ],
       "token": "Golem|golem",
-      "max": 56,
+      "max": 54,
       "reason": "prose ABOUT the rename or the old product: \"formerly Golem\", \"renamed from Golem to Apple\", the Roblox asset that was named Golem and was removed, decision-log quotes",
       "removal": "never: rewriting them would make them false (\"formerly Apple\")"
     },

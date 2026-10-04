@@ -1,0 +1,6 @@
+{
+  "name": "progress-meter",
+  "version": "0.1.0",
+  "description": "#37 Apple's completion out of 100%: the owner's fixed meter as a live, techy progress pane and status line",
+  "author": { "name": "Moshe Barami" }
+}

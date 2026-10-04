@@ -139,19 +139,23 @@ test('creditsFor() rounds up and has a floor of 1', () => {
 // RESTATED 2026-10-01: the owner lifted Apple's cap on 2026-09-29 (de1117b8, owner: no Apple cap), so
 // the hand-worked figures below are recomputed from 30,000,000,000 billable neurons/month. The
 // property is unchanged: this file does not move the ceiling, it derives it from the constants.
-test('the hard monthly ceiling is $330,005.00 and is not moved by this file', () => {
-  // 30,000,000,000 billable neurons * $0.000011 = $330,000.00, plus $5.00 Workers Paid.
-  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 330_000, 1e-6, 'AI portion');
-  near(HARD_MAX_USD_PER_MONTH, 330_005, 1e-6, 'hard max');
+// RESTATED 2026-10-04 (StudPilot handoff 0.5): the caps are restored to 150,000/day and
+// 2,270,000/month, so the hand-worked figures are recomputed from those. Fired as intended: the
+// constants moved on purpose, and docs/COST-MODEL.md moved with them in the same commit.
+test('the hard monthly ceiling is $29.97 and is not moved by this file', () => {
+  // 2,270,000 billable neurons * $0.000011 = $24.97, plus $5.00 Workers Paid.
+  near(BILLABLE_NEURONS_PER_MONTH * USD_PER_NEURON, 24.97, 1e-6, 'AI portion');
+  near(HARD_MAX_USD_PER_MONTH, 29.97, 1e-6, 'hard max');
   assert.equal(WORKERS_PAID_USD_PER_MONTH, 5.0);
 });
 
 test('service gate constants match apps/worker/src/pricing.ts', () => {
   assert.equal(FREE_NEURONS_PER_DAY_ACCOUNT_WIDE, 10_000);
-  // RESTATED 2026-10-01: Apple's cap lifted (de1117b8, owner: no Apple cap; was 90,000 / 1,800,000).
-  assert.equal(BILLABLE_NEURONS_PER_DAY, 1_000_000_000);
-  assert.equal(BILLABLE_NEURONS_PER_MONTH, 30_000_000_000);
-  assert.equal(DAILY_NEURON_CEILING, 1_000_010_000);   // 10,000 free + 1,000,000,000 billable
+  // RESTATED 2026-10-04: caps restored (StudPilot handoff 0.5; were 1,000,000,000 / 30,000,000,000
+  // from 2026-09-29, and 90,000 / 1,800,000 before that).
+  assert.equal(BILLABLE_NEURONS_PER_DAY, 150_000);
+  assert.equal(BILLABLE_NEURONS_PER_MONTH, 2_270_000);
+  assert.equal(DAILY_NEURON_CEILING, 160_000);   // 10,000 free + 150,000 billable
   assert.equal(MAX_NEURONS_PER_REQUEST, 1_200);
 });
 
@@ -435,14 +439,16 @@ test('the shipped spend gates cap the bill at the hard maximum, always', () => {
 // RESTATED 2026-10-01 (de1117b8, owner: no Apple cap): the gates now cross at exactly
 // 30,000,000,000 / 1,000,000,000 = 30 days (they crossed at 20 days under 90,000 / 1,800,000). The
 // property is unchanged and both directions are still shown, derived from the constants.
+// RESTATED 2026-10-04 (caps restored, StudPilot handoff 0.5): 2,270,000 / 150,000 = 15.13 days, so a
+// 10-day month is still bound by the daily gate and a 30-day month now by the monthly one.
 test('the two spend gates compose, and the tighter one wins', () => {
   const cross = BILLABLE_NEURONS_PER_MONTH / BILLABLE_NEURONS_PER_DAY;
-  assert.equal(cross, 30, 'the gates cross at 30 days; if this moves, re-derive the cases below');
+  assert.ok(cross > 10 && cross < 30, `the gates cross at ${cross} days, outside (10, 30); re-derive the cases below`);
   //   10-day month: daily gate x 10 < monthly -> daily binds
   assert.equal(maxBillableNeuronsPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10);
   assert.ok(maxBillableNeuronsPerMonth(10) < BILLABLE_NEURONS_PER_MONTH);
   near(maxUsdPerMonth(10), BILLABLE_NEURONS_PER_DAY * 10 * USD_PER_NEURON + 5, 1e-6, '10 days of the daily gate + $5.00');
-  //   30-day month: the two coincide at the monthly backstop = the documented maximum
+  //   30-day month: past the crossover, the monthly backstop binds = the documented maximum
   assert.equal(maxBillableNeuronsPerMonth(30), BILLABLE_NEURONS_PER_MONTH);
   near(maxUsdPerMonth(30), HARD_MAX_USD_PER_MONTH, 1e-6, 'monthly backstop = the documented maximum');
   //   Past the crossover the monthly backstop binds and nothing exceeds it.
@@ -469,9 +475,12 @@ test('demand beyond the ceiling shows up as unserved, not as spend', () => {
   // demand, and not above the documented hard maximum.
   near(s.totalCappedUsdPerMonth, maxUsdPerMonth(), 1e-6, 'bill pinned at the gate');
   assert.ok(s.totalCappedUsdPerMonth <= HARD_MAX_USD_PER_MONTH + 1e-6);
-  // And the shipped scenario grid is under the ceiling: the cap no longer throttles it.
+  // RESTATED 2026-10-04: with the caps restored (StudPilot handoff 0.5) the largest shipped scenario
+  // is over the ceiling too, so it is throttled and its bill is pinned at the same gate. Under the
+  // lifted cap (2026-09-29 to 2026-10-04) this line asserted it was fully served.
   const grid = simulateScenario({ plan: 'max', activity: 'heavy', users: 10_000, sample: 60 });
-  assert.equal(grid.demandServedFraction, 1, 'the largest shipped scenario is fully served');
+  assert.ok(grid.demandServedFraction < 1, 'the largest shipped scenario is throttled by the restored cap');
+  assert.ok(grid.totalCappedUsdPerMonth <= HARD_MAX_USD_PER_MONTH + 1e-6, 'and its bill stays under the hard maximum');
 });
 
 // ---------------------------------------------------------------------------

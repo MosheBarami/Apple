@@ -1,0 +1,5908 @@
+[
+ {
+  "id": "3c58a7b2-9bfb-45e3-b00a-73461e91efc7",
+  "role": "user",
+  "mode": "agent",
+  "productModel": "apple",
+  "content": "make a cat that is also a toaster",
+  "toolTrace": null,
+  "createdAt": "2026-10-03T23:49:06.686Z",
+  "revisions": 0
+ },
+ {
+  "id": "4f221e75-7f3b-4ce5-b2d1-03c2daf9e71b",
+  "role": "assistant",
+  "mode": "agent",
+  "productModel": "apple",
+  "stopReason": "done",
+  "creditsSpent": 213,
+  "context": {
+   "usedChars": 51119,
+   "maxChars": 60082,
+   "dropped": {
+    "groups": 29,
+    "chars": 58737
+   }
+  },
+  "deniedTools": [],
+  "content": "Your cat-toaster is built: a studded orange cat whose body is the toaster — ears, whiskers, eyes, nose, paws and tail, with a side lever, a red heat dial, a crumb tray and a power cord. I read the two toast slots and the toast slices back in the place and confirmed they exist at the front of the body (the earlier camera view was just too far away to show them), and the slices have a pop-up animation with a click sound wired to clicking them — I did not play-test the click myself, so try it in Studio to see the slices bounce up.\n\nWhat I did not check: that there are 2 toasts.",
+  "toolTrace": [
+   {
+    "tool": "propose_plan",
+    "summary": "✓ propose_plan",
+    "ok": true,
+    "durationMs": 0,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "build_plan",
+       "title": "Cat-toaster",
+       "steps": [
+        {
+         "title": "Find cat and toaster pieces in the library",
+         "detail": "find_library_model for a cat and a toaster to see what ready pieces exist",
+         "tool": "find_library_model",
+         "status": "pending"
+        },
+        {
+         "title": "Insert the chosen pieces and merge them",
+         "detail": "insert_library_model for the best cat and toaster, then combine them into one model",
+         "tool": "insert_library_model",
+         "status": "pending"
+        },
+        {
+         "title": "Add the toaster details",
+         "detail": "add toast popping out of the cat's mouth, a lever, and a warm glow",
+         "tool": "build_object",
+         "status": "pending"
+        },
+        {
+         "title": "Check the result",
+         "detail": "audit_build to confirm the cat-toaster is solid and lit",
+         "tool": "audit_build",
+         "status": "pending"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "find_library_model",
+    "summary": "✓ find_library_model · cat",
+    "ok": true,
+    "durationMs": 284,
+    "detail": {
+     "source": "owner_local",
+     "results": [
+      {
+       "path": "/Lighting/zCustoms/Cat",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "d90b46bc7eb236831f07e3ee21ee7437e387c62301430281420b3237eccc5d86",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e",
+       "priority": "owner-first",
+       "ordinal": 27,
+       "id": "owner-local:01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:26475",
+       "component_sha": "d90b46bc7eb236831f07e3ee21ee7437e387c62301430281420b3237eccc5d86",
+       "parent_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:26420",
+       "summary": "Cat (HopperBin) from Fairy Tail Revelations EVENT.rbxl; original hierarchy /Lighting/zCustoms/Cat.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Cat",
+       "referent": "26475",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "HopperBin",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/Lighting/zCustoms/Cat/Script",
+       "code": {
+        "sha256": "3d82fe2c51d1504f837ec2d8a6ddbf06741740f957260471a899bdb5ea542742",
+        "execution": "inert-review-data"
+       },
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "e7f35114678d1db971e4d89e4ae1aa8201203e03a4850157e311868de4f00062",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e",
+       "script_sha": "3d82fe2c51d1504f837ec2d8a6ddbf06741740f957260471a899bdb5ea542742",
+       "priority": "owner-first",
+       "ordinal": 0,
+       "id": "owner-local:01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:26476",
+       "component_sha": "e7f35114678d1db971e4d89e4ae1aa8201203e03a4850157e311868de4f00062",
+       "parent_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:26475",
+       "summary": "Script (LocalScript) from Fairy Tail Revelations EVENT.rbxl; original hierarchy /Lighting/zCustoms/Cat/Script.",
+       "usage": "Reuse code after reviewing dependencies; place in original service/context; preserve client/server role.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Script",
+       "referent": "26476",
+       "verifiedGameplay": false,
+       "kind": "script",
+       "class": "LocalScript",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/Lighting/Cat",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "a9ddc449b01108b4548bbb5840567e46bc948266a8cbf62c59636ad8467182c4",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e",
+       "priority": "owner-first",
+       "ordinal": 180,
+       "id": "owner-local:01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:29771",
+       "component_sha": "a9ddc449b01108b4548bbb5840567e46bc948266a8cbf62c59636ad8467182c4",
+       "parent_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:26211",
+       "summary": "Cat (HopperBin) from Fairy Tail Revelations EVENT.rbxl; original hierarchy /Lighting/Cat.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Cat",
+       "referent": "29771",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "HopperBin",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/Lighting/Cat/Script",
+       "code": {
+        "sha256": "3d82fe2c51d1504f837ec2d8a6ddbf06741740f957260471a899bdb5ea542742",
+        "execution": "inert-review-data"
+       },
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "cdeff5aa4c66d4e91fe59585fd56a3af236419fa451c9c624ffd927b944ef4aa",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e",
+       "script_sha": "3d82fe2c51d1504f837ec2d8a6ddbf06741740f957260471a899bdb5ea542742",
+       "priority": "owner-first",
+       "ordinal": 0,
+       "id": "owner-local:01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:29772",
+       "component_sha": "cdeff5aa4c66d4e91fe59585fd56a3af236419fa451c9c624ffd927b944ef4aa",
+       "parent_id": "01b4cd77b69a84d77d754635eff1f5e7cf4772257f4b22522ac04ac68e95f98e:29771",
+       "summary": "Script (LocalScript) from Fairy Tail Revelations EVENT.rbxl; original hierarchy /Lighting/Cat/Script.",
+       "usage": "Reuse code after reviewing dependencies; place in original service/context; preserve client/server role.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Script",
+       "referent": "29772",
+       "verifiedGameplay": false,
+       "kind": "script",
+       "class": "LocalScript",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/Workspace/Part/Making Cat Ice Cream Make Me Happy!",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "d31696997c0a4af14e9b07e3f517d3733abb280ca9bf0fac505ecb78342c69e4",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f",
+       "priority": "owner-first",
+       "ordinal": 4,
+       "id": "owner-local:0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f:220",
+       "component_sha": "d31696997c0a4af14e9b07e3f517d3733abb280ca9bf0fac505ecb78342c69e4",
+       "parent_id": "0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f:212",
+       "summary": "Making Cat Ice Cream Make Me Happy! (RotateP) from Cave run 3.rbxl; original hierarchy /Workspace/Part/Making Cat Ice Cream Make Me Happy!.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Making Cat Ice Cream Make Me Happy!",
+       "referent": "220",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "RotateP",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/Workspace/Part/Making Cat Ice Cream Make Me Happy!/Anti Lag Script",
+       "code": {
+        "sha256": "0cbe5057a18c406cada62b3aa9d6f9135a89b3d38d02044a4e1848452718d7cc",
+        "execution": "inert-review-data"
+       },
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "d97e8206ecb983c2d6fde6ed81cb5794183edd05cbf393b918626f982afd8b1e",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f",
+       "script_sha": "0cbe5057a18c406cada62b3aa9d6f9135a89b3d38d02044a4e1848452718d7cc",
+       "priority": "owner-first",
+       "ordinal": 0,
+       "id": "owner-local:0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f:221",
+       "component_sha": "d97e8206ecb983c2d6fde6ed81cb5794183edd05cbf393b918626f982afd8b1e",
+       "parent_id": "0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f:220",
+       "summary": "Anti Lag Script (Script) from Cave run 3.rbxl; original hierarchy /Workspace/Part/Making Cat Ice Cream Make Me Happy!/Anti Lag Script.",
+       "usage": "Reuse code after reviewing dependencies; place in original service/context; preserve client/server role.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Anti Lag Script",
+       "referent": "221",
+       "verifiedGameplay": false,
+       "kind": "script",
+       "class": "Script",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      }
+     ],
+     "nextAfter": "0885bff696bff083d90f6fd8f594ae8d7d9d8f303534bab0450f2d7ec54e400f:221",
+     "priority": "full local owner corpus first",
+     "note": "Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair."
+    }
+   },
+   {
+    "tool": "find_library_model",
+    "summary": "✓ find_library_model · toaster",
+    "ok": true,
+    "durationMs": 284,
+    "detail": {
+     "source": "owner_local",
+     "results": [
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "3670dcc0830d5bf81d06b5aa26f3e94b90843e57433019f6be23e30c3ccef513",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 69,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "component_sha": "3670dcc0830d5bf81d06b5aa26f3e94b90843e57433019f6be23e30c3ccef513",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:41571",
+       "summary": "HW_Toaster (Model) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "HW_Toaster",
+       "referent": "45222",
+       "verifiedGameplay": false,
+       "kind": "model",
+       "class": "Model",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/ModelBase",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "e4370b417f9c66921a21696330e3c76cb9e377694eac1fe99f161a20f9727fed",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 1,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45223",
+       "component_sha": "e4370b417f9c66921a21696330e3c76cb9e377694eac1fe99f161a20f9727fed",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "summary": "ModelBase (Part) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/ModelBase.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "ModelBase",
+       "referent": "45223",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "Part",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "48714c999697c015fd728cee343d13f1de80d57d873dcc741a0b814918afc55f",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 0,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45224",
+       "component_sha": "48714c999697c015fd728cee343d13f1de80d57d873dcc741a0b814918afc55f",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "summary": "Part (Part) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Part",
+       "referent": "45224",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "Part",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "e999494d30198171aab964598868282e7ee733d99c330be4848e35aa1ca6ef7b",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 2,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45225",
+       "component_sha": "e999494d30198171aab964598868282e7ee733d99c330be4848e35aa1ca6ef7b",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "summary": "Part (Part) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Part",
+       "referent": "45225",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "Part",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "704df832f9d5557d00d728facdf0b28dd9376aebb765e7ded626a2b4d0a047c9",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 3,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45226",
+       "component_sha": "704df832f9d5557d00d728facdf0b28dd9376aebb765e7ded626a2b4d0a047c9",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "summary": "Part (Part) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Part",
+       "referent": "45226",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "Part",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      },
+      {
+       "path": "/GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part",
+       "properties": {
+        "encoding": "shallow-item-xml",
+        "sha256": "95e5a581f5751c4c6c0a2d0334277ba365ee04ae8b1eb35a155949f02133e6e1",
+        "containsAllIndexedProperties": true
+       },
+       "genre": "not-inferred",
+       "source_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc",
+       "priority": "owner-first",
+       "ordinal": 4,
+       "id": "owner-local:1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45227",
+       "component_sha": "95e5a581f5751c4c6c0a2d0334277ba365ee04ae8b1eb35a155949f02133e6e1",
+       "parent_id": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45222",
+       "summary": "Part (Part) from RoCitizens.rbxl; original hierarchy /GameModules/Workspace/Property/Classic Mansion/StaticAssets/Furniture/HW_Toaster/Part.",
+       "usage": "Reuse as a component of its source world; preserve transforms, descendant hierarchy and dependency links; inspect actual preview.",
+       "permission": "owner-attested-commercial-use",
+       "name": "Part",
+       "referent": "45227",
+       "verifiedGameplay": false,
+       "kind": "instance",
+       "class": "Part",
+       "visualReview": "requires-linked-native-evidence",
+       "preview": {
+        "status": "native-pixels-required",
+        "visualApproved": false,
+        "gameplayVerified": false
+       }
+      }
+     ],
+     "nextAfter": "1fae1780d724976f185907694352518ad4413edf2dd2a09dc3a22107d3c56abc:45227",
+     "priority": "full local owner corpus first",
+     "note": "Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair."
+    }
+   },
+   {
+    "tool": "viewport_info",
+    "summary": "✓ viewport_info",
+    "ok": true,
+    "durationMs": 170,
+    "detail": {
+     "camera": {
+      "viewportSize": [
+       1200,
+       623
+      ],
+      "cframe": [
+       12.338728904724121,
+       29.41337776184082,
+       1.4401332139968872,
+       0.9061832427978516,
+       -0.12228049337863922,
+       0.40482044219970703,
+       0,
+       0.9572816491127014,
+       0.2891574501991272,
+       -0.4228855073451996,
+       -0.26202964782714844,
+       0.8674724102020264
+      ],
+      "fov": 70
+     },
+     "workspaceTopLevel": [
+      {
+       "class": "Part",
+       "path": "game.Workspace.Baseplate",
+       "center": [
+        0,
+        -8,
+        0
+       ],
+       "size": [
+        2048,
+        16,
+        2048
+       ]
+      },
+      {
+       "class": "SpawnLocation",
+       "path": "game.Workspace.SpawnLocation",
+       "center": [
+        0,
+        1,
+        0
+       ],
+       "size": [
+        12,
+        1,
+        12
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "build_object",
+    "summary": "Could not build it",
+    "ok": false,
+    "durationMs": 355,
+    "error": "The object was not made: Enum.NormalId has no item front; valid items: Back, Bottom, Front, Left, Right, Top"
+   },
+   {
+    "tool": "build_object",
+    "summary": "Built it",
+    "ok": true,
+    "durationMs": 2442,
+    "detail": {
+     "changed": true,
+     "object": "game.Workspace.Toast-Cat",
+     "parts": 29,
+     "moving": 2,
+     "size": [
+      5.4,
+      6.3,
+      5.8
+     ],
+     "checks": {
+      "size": [
+       5.4,
+       6.3,
+       5.8
+      ],
+      "playerHeights": 1.3,
+      "proportions": {
+       "longest": 6.3,
+       "shortest": 5.4,
+       "ratio": 1.2
+      },
+      "nothingMoves": false,
+      "hiddenParts": [
+       "BodyBand",
+       "PawFL",
+       "PawFR",
+       "PawBL",
+       "PawBR"
+      ],
+      "floatingParts": [
+       "Nose",
+       "WhiskerL2",
+       "WhiskerR2",
+       "LeverArm",
+       "TailSeg2",
+       "Nameplate"
+      ],
+      "coveredText": [
+       "Nameplate"
+      ],
+      "lowContrastText": [],
+      "bottomY": 0
+     },
+     "sounds": [
+      "\"ding\" -> electronicpingshort"
+     ],
+     "built": "29 parts, studded; 2 of them move; made of: Body, BodyBand, Head, EarL, EarR, InnerEarL, InnerEarR, Muzzle, Nose, EyeL, EyeR, WhiskerL1, WhiskerL2, WhiskerR1, WhiskerR2, SlotL, SlotR, ToastL, ToastR, LeverArm, LeverKnob, PawFL, PawFR, PawBL, PawBR, TailSeg1, TailSeg2, TailTip, Nameplate; Nameplate reads \"TOAST-CAT\"; BodyBand is on Body, Head is on top of Body, EarL is on top of Body, EarR is on top of Body, InnerEarL is on top of Body, InnerEarR is on top of Body, Muzzle is on top of Body, Nose is on top of Body, EyeL is on top of Body, EyeR is on top of Body, WhiskerL1 is on top of Body, WhiskerL2 is on top of Body",
+     "note": "Information, not a verdict: `checks` are measured facts about what was built (parts hidden inside others, parts with nothing under them, covered or low-contrast words, proportions, whether anything moves). Nothing was added that the spec did not ask for. Look at it (play_check, a viewport capture), fix what you judge worth fixing with build_object again (replace: true, the whole fixed spec), add a stage, click response or counter with dress_object if THIS object calls for it, and tell the user only what is really there."
+    }
+   },
+   {
+    "tool": "build_object",
+    "summary": "Built it",
+    "ok": true,
+    "durationMs": 2093,
+    "detail": {
+     "changed": true,
+     "object": "game.Workspace.Toast-Cat",
+     "parts": 29,
+     "moving": 2,
+     "size": [
+      5.4,
+      6.3,
+      5.8
+     ],
+     "checks": {
+      "size": [
+       5.4,
+       6.3,
+       5.8
+      ],
+      "playerHeights": 1.3,
+      "proportions": {
+       "longest": 6.3,
+       "shortest": 5.4,
+       "ratio": 1.2
+      },
+      "nothingMoves": false,
+      "hiddenParts": [
+       "BodyBand",
+       "WhiskerL1",
+       "WhiskerL2",
+       "WhiskerR1",
+       "WhiskerR2",
+       "PawFL",
+       "PawFR",
+       "PawBL",
+       "PawBR"
+      ],
+      "floatingParts": [
+       "Nose",
+       "LeverArm",
+       "TailSeg2",
+       "Nameplate"
+      ],
+      "coveredText": [
+       "Nameplate"
+      ],
+      "lowContrastText": [],
+      "bottomY": 0
+     },
+     "sounds": [
+      "\"ding\" -> electronicpingshort"
+     ],
+     "built": "29 parts, studded; 2 of them move; made of: Body, BodyBand, Head, EarL, EarR, InnerEarL, InnerEarR, Muzzle, Nose, EyeL, EyeR, WhiskerL1, WhiskerL2, WhiskerR1, WhiskerR2, SlotL, SlotR, ToastL, ToastR, LeverArm, LeverKnob, PawFL, PawFR, PawBL, PawBR, TailSeg1, TailSeg2, TailTip, Nameplate; Nameplate reads \"TOAST-CAT\"; BodyBand is on Body, Head is on top of Body, EarL is on top of Body, EarR is on top of Body, InnerEarL is on top of Body, InnerEarR is on top of Body, Muzzle is on top of Body, Nose is on top of Body, EyeL is on top of Body, EyeR is on top of Body, WhiskerL1 is on top of Body, WhiskerL2 is on top of Body",
+     "note": "Information, not a verdict: `checks` are measured facts about what was built (parts hidden inside others, parts with nothing under them, covered or low-contrast words, proportions, whether anything moves). Nothing was added that the spec did not ask for. Look at it (play_check, a viewport capture), fix what you judge worth fixing with build_object again (replace: true, the whole fixed spec), add a stage, click response or counter with dress_object if THIS object calls for it, and tell the user only what is really there."
+    }
+   },
+   {
+    "tool": "build_object",
+    "summary": "Built it",
+    "ok": true,
+    "durationMs": 2078,
+    "detail": {
+     "changed": true,
+     "object": "game.Workspace.Toast-Cat",
+     "parts": 29,
+     "moving": 2,
+     "size": [
+      5.5,
+      6.3,
+      6.2
+     ],
+     "checks": {
+      "size": [
+       5.5,
+       6.3,
+       6.2
+      ],
+      "playerHeights": 1.3,
+      "proportions": {
+       "longest": 6.3,
+       "shortest": 5.5,
+       "ratio": 1.1
+      },
+      "nothingMoves": false,
+      "hiddenParts": [
+       "BaseTrim"
+      ],
+      "floatingParts": [
+       "Nose",
+       "WhiskerL2",
+       "WhiskerR2",
+       "LeverArm",
+       "TailSeg1",
+       "TailSeg2",
+       "Nameplate"
+      ],
+      "coveredText": [
+       "Nameplate"
+      ],
+      "lowContrastText": [],
+      "bottomY": 0
+     },
+     "sounds": [
+      "\"ding\" -> electronicpingshort"
+     ],
+     "built": "29 parts, studded; 2 of them move; made of: Body, BaseTrim, Head, EarL, EarR, InnerEarL, InnerEarR, Muzzle, Nose, EyeL, EyeR, WhiskerL1, WhiskerL2, WhiskerR1, WhiskerR2, SlotL, SlotR, ToastL, ToastR, LeverArm, LeverKnob, PawFL, PawFR, PawBL, PawBR, TailSeg1, TailSeg2, TailTip, Nameplate; Nameplate reads \"TOAST-CAT\"; BaseTrim is on Body, Head is on top of Body, EarL is on top of Body, EarR is on top of Body, InnerEarL is on top of Body, InnerEarR is on top of Body, Muzzle is on top of Body, Nose is on top of Body, EyeL is on top of Body, EyeR is on top of Body, WhiskerL1 is on top of Body, WhiskerL2 is on top of Body",
+     "note": "Information, not a verdict: `checks` are measured facts about what was built (parts hidden inside others, parts with nothing under them, covered or low-contrast words, proportions, whether anything moves). Nothing was added that the spec did not ask for. Look at it (play_check, a viewport capture), fix what you judge worth fixing with build_object again (replace: true, the whole fixed spec), add a stage, click response or counter with dress_object if THIS object calls for it, and tell the user only what is really there."
+    }
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built from 3 angles",
+    "ok": true,
+    "durationMs": 11357,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "front",
+      "side",
+      "eye"
+     ],
+     "observations": [
+      {
+       "about": "a cat-shaped toaster with a head, ears and whiskers",
+       "verdict": "seen",
+       "note": "Frame 1 (front) shows a white toaster shaped like a cat's head: two triangular ears on top, a face with eyes, a small nose/mouth, and thin …"
+      },
+      {
+       "about": "two toast slots on the body with toast peeking out",
+       "verdict": "seen",
+       "note": "Frame 1 shows two dark slots on the front of the body with brown toast slices sticking up out of them. Frame 2 shows the same slots from th…"
+      },
+      {
+       "about": "a lever on the side",
+       "verdict": "seen",
+       "note": "Frame 2 (side view) shows a lever with a dark knob protruding from the side of the toaster body."
+      },
+      {
+       "about": "a tail and paws",
+       "verdict": "seen",
+       "note": "Frame 2 shows a curved tail extending from the back of the body, and small paw shapes at the bottom. Frame 1 also shows the paws at the bas…"
+      },
+      {
+       "about": "a nameplate reading TOAST-CAT",
+       "verdict": "cannot_tell",
+       "note": "No nameplate with readable text is visible in any frame. There is a flat base under the toaster in frame 2, but no legible 'TOAST-CAT' text…"
+      }
+     ],
+     "answers": [
+      {
+       "question": "a cat-shaped toaster with a head, ears and whiskers",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "two toast slots on the body with toast peeking out",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "a lever on the side",
+       "answer": "seen",
+       "verdict": "seen"
+      }
+     ],
+     "issues": [
+      "In frame 3 (player eye level) the toaster cat sits on a small table, but the area around/under the table shows bare baseplate with no other…",
+      "In frame 1 the whiskers are very thin sticks and appear to pass through/overlap the snout area slightly",
+      "In frame 2 the tail attaches at the back and appears to intersect the body shell rather than meeting it cleanly at a joint"
+     ],
+     "notSeen": [],
+     "cannotTell": [
+      "a nameplate reading TOAST-CAT"
+     ],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Do not tell the user a cannot_tell item was seen; say it was not checked."
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.Toast-Cat.Nameplate",
+    "ok": true,
+    "durationMs": 394,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace[\"Toast-Cat\"].Nameplate",
+       "className": "Part",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "11.98, 2.2, 2.58"
+          },
+          {
+           "name": "Size",
+           "value": "2.2, 0.7, 0.2"
+          },
+          {
+           "name": "CFrame",
+           "value": "11.98, 2.2, 2.58, 1, 0, 0, 0, 1, 0, 0, 0, 1"
+          },
+          {
+           "name": "Anchored",
+           "value": "true"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Color",
+           "value": "0.96, 0.94, 0.9"
+          },
+          {
+           "name": "Material",
+           "value": "Enum.Material.Plastic"
+          },
+          {
+           "name": "Transparency",
+           "value": "0"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "rename_instance",
+    "summary": "✓ rename_instance · game.Workspace.Toast-Cat",
+    "ok": true,
+    "durationMs": 164,
+    "detail": {
+     "was": "Toast-Cat",
+     "path": "game.Workspace[\"Merged-Cat-Toaster\"]",
+     "name": "Merged-Cat-Toaster"
+    }
+   },
+   {
+    "tool": "create_instances",
+    "summary": "✓ create_instances",
+    "ok": true,
+    "durationMs": 221,
+    "detail": {
+     "created": [
+      "game.Workspace[\"Merged-Cat-Toaster\"].HeatDial",
+      "game.Workspace[\"Merged-Cat-Toaster\"].CrumbTray",
+      "game.Workspace[\"Merged-Cat-Toaster\"].PowerCord"
+     ],
+     "count": 3
+    }
+   },
+   {
+    "tool": "rename_instance",
+    "summary": "✓ rename_instance · game.Workspace.Merged-Cat-Toaster",
+    "ok": true,
+    "durationMs": 164,
+    "detail": {
+     "was": "Merged-Cat-Toaster",
+     "path": "game.Workspace.MergedCatToaster",
+     "name": "MergedCatToaster"
+    }
+   },
+   {
+    "tool": "create_instances",
+    "summary": "✗ create_instances — game.Workspace already contains a child named MergedCatToaster",
+    "ok": false,
+    "durationMs": 169,
+    "error": "game.Workspace already contains a child named MergedCatToaster"
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built from 3 angles",
+    "ok": true,
+    "durationMs": 13214,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "front",
+      "side",
+      "eye"
+     ],
+     "observations": [
+      {
+       "about": "1. a cat-shaped toaster with head, ears, whiskers, paws and tail",
+       "verdict": "cannot_tell",
+       "note": "Frames 1 and 2 show a small orange/tan object in the distance, but it is too small and far away to make out any cat features such as a head…"
+      },
+      {
+       "about": "2. two toast slots with toast peeking out",
+       "verdict": "cannot_tell",
+       "note": "The object is too distant and small in frames 1 and 2 to see any slots or toast. Frame 3 shows no object at all."
+      },
+      {
+       "about": "3. a lever on the side",
+       "verdict": "cannot_tell",
+       "note": "Frame 2 is a side view, but the object is so small that no lever or side detail can be identified."
+      },
+      {
+       "about": "4. a red heat dial",
+       "verdict": "cannot_tell",
+       "note": "No dial of any color can be distinguished at this distance; the object reads only as a small orange shape."
+      },
+      {
+       "about": "5. a metal crumb tray underneath",
+       "verdict": "cannot_tell",
+       "note": "The object sits on a small white/light patch, but at this size it cannot be confirmed whether that is a crumb tray, a base, or something el…"
+      },
+      {
+       "about": "6. a black power cord at the back",
+       "verdict": "cannot_tell",
+       "note": "The object is too small and far away to see any cord at the back."
+      }
+     ],
+     "answers": [
+      {
+       "question": "1. a cat-shaped toaster with head, ears, whiskers, paws and tail",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      },
+      {
+       "question": "2. two toast slots with toast peeking out",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      },
+      {
+       "question": "3. a lever on the side",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      }
+     ],
+     "issues": [
+      "In frame 3 (player eye level from the spawn), nothing of the build is visible at all — only sky and flat gray ground, so a player standing …",
+      "In frames 1 and 2 the object appears extremely small and far away, sitting on a small white patch on an otherwise empty gray plane; no deta…",
+      "The surrounding area is completely bare gray ground with no other scenery or context visible."
+     ],
+     "notSeen": [],
+     "cannotTell": [
+      "1. a cat-shaped toaster with head, ears, whiskers, paws and tail",
+      "2. two toast slots with toast peeking out",
+      "3. a lever on the side",
+      "4. a red heat dial",
+      "5. a metal crumb tray underneath",
+      "6. a black power cord at the back"
+     ],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Do not tell the user a cannot_tell item was seen; say it was not checked."
+    }
+   },
+   {
+    "tool": "focus_camera",
+    "summary": "✓ focus_camera · game.Workspace.MergedCatToaster",
+    "ok": true,
+    "durationMs": 185,
+    "detail": {
+     "focused": "game.Workspace.MergedCatToaster"
+    }
+   },
+   {
+    "tool": "capture_studio_viewport",
+    "summary": "✓ capture_studio_viewport",
+    "ok": true,
+    "durationMs": 1068,
+    "detail": {
+     "captured": true,
+     "source": "studio_viewport",
+     "encoding": "rgb24",
+     "width": 320,
+     "height": 166,
+     "subject": "game.Workspace",
+     "nativeWidth": 1200,
+     "nativeHeight": 623,
+     "resampled": true,
+     "targetFramed": false,
+     "judged": false,
+     "note": "Active Studio camera only. Target visibility and quality have not been judged."
+    }
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built from 2 angles",
+    "ok": true,
+    "durationMs": 19769,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "front",
+      "high"
+     ],
+     "observations": [
+      {
+       "about": "a cat-shaped toaster with head, ears, whiskers, paws and tail",
+       "verdict": "seen",
+       "note": "Frame 1 (front) shows a red toaster-shaped body with two pointed ears on top, a cat face with eyes and a mouth, and three whisker pieces st…"
+      },
+      {
+       "about": "two toast slots with toast peeking out",
+       "verdict": "seen",
+       "note": "Frame 2 (high) shows two long slot openings on the top of the toaster, each with a slice of bread peeking up out of it."
+      },
+      {
+       "about": "a lever on the side",
+       "verdict": "cannot_tell",
+       "note": "Frame 1 shows the front and a sliver of the sides; frame 2 shows the top and upper sides from above. No distinct lever is clearly identifia…"
+      },
+      {
+       "about": "a red heat dial",
+       "verdict": "not_seen",
+       "note": "The front face in frame 1 shows only the cat face features (eyes, mouth, whiskers) and no dial. The sides visible in frame 2 also show no d…"
+      },
+      {
+       "about": "a metal crumb tray underneath",
+       "verdict": "cannot_tell",
+       "note": "Frame 1 shows the bottom edge of the toaster from the front but the underside itself is not visible; frame 2 looks down from above, so the …"
+      },
+      {
+       "about": "a black power cord at the back",
+       "verdict": "cannot_tell",
+       "note": "Frame 2 is a high view but the back face is not clearly presented, and frame 1 is the front. No cord is visible, but the back is not adequa…"
+      }
+     ],
+     "answers": [
+      {
+       "question": "1. a cat-shaped toaster with head, ears, whiskers, paws and tail",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "2. two toast slots with toast peeking out",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "3. a lever on the side",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      }
+     ],
+     "issues": [
+      "In frame 2 the two toast slices appear to hover above the slot openings rather than sitting down inside them, with visible daylight between…",
+      "In frame 1 the whisker pieces stick straight out from the face and appear to touch or nearly overlap the edges of the toaster body on both …",
+      "In frame 2 the tail piece appears to attach at the upper back corner and juts out at an upward angle, looking disconnected from the body co…",
+      "In frame 1 the bottom edge of the toaster sits very close to the floor with no visible base or feet, so the body appears to rest directly o…"
+     ],
+     "notSeen": [
+      "a red heat dial"
+     ],
+     "cannotTell": [
+      "a lever on the side",
+      "a metal crumb tray underneath",
+      "a black power cord at the back"
+     ],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Fix what is not seen or wrong before you answer. Do not tell the user a cannot_tell item was seen; say it was not checked."
+    }
+   },
+   {
+    "tool": "spatial_query",
+    "summary": "✓ spatial_query · game.Workspace.MergedCatToaster",
+    "ok": true,
+    "durationMs": 174,
+    "detail": {
+     "bottomY": -0.5,
+     "path": "game.Workspace.MergedCatToaster",
+     "action": "bounds",
+     "topY": 6.25,
+     "center": [
+      12,
+      2.875,
+      -0.13749992847442627
+     ],
+     "size": [
+      5.4499993324279785,
+      6.75,
+      6.425000190734863
+     ]
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.MergedCatToaster.HeatDial",
+    "ok": true,
+    "durationMs": 168,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace.MergedCatToaster.HeatDial",
+       "className": "Part",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "14.55, 2.6, 0"
+          },
+          {
+           "name": "Size",
+           "value": "0.2, 0.7, 0.7"
+          },
+          {
+           "name": "CFrame",
+           "value": "14.55, 2.6, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1"
+          },
+          {
+           "name": "Anchored",
+           "value": "true"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Color",
+           "value": "0.85, 0.2, 0.2"
+          },
+          {
+           "name": "Material",
+           "value": "Enum.Material.Plastic"
+          },
+          {
+           "name": "Transparency",
+           "value": "0"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "transform_instances",
+    "summary": "✓ transform_instances",
+    "ok": true,
+    "durationMs": 167,
+    "detail": {
+     "scaled": false,
+     "pivots": 0,
+     "moved": true,
+     "rotated": false,
+     "parts": 1,
+     "transformed": 1
+    }
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built from 2 angles",
+    "ok": true,
+    "durationMs": 14427,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "side",
+      "front"
+     ],
+     "observations": [
+      {
+       "about": "1. a red heat dial visible on the side of the cat-toaster",
+       "verdict": "seen",
+       "note": "Frame 1 (side) shows a small red square block on the side of the tan toaster body, matching a heat dial placement."
+      },
+      {
+       "about": "2. the cat-toaster with head, ears, whiskers, slots and toast intact",
+       "verdict": "not_seen",
+       "note": "Head and ears are present (frames 1 and 2 show a tan cat head with two ears and a face on top of the toaster body). However, the whiskers a…"
+      }
+     ],
+     "answers": [
+      {
+       "question": "1. a red heat dial visible on the side of the cat-toaster",
+       "answer": "seen",
+       "verdict": "seen"
+      },
+      {
+       "question": "2. the cat-toaster with head, ears, whiskers, slots and toast intact",
+       "answer": "not_seen",
+       "verdict": "not_seen"
+      }
+     ],
+     "issues": [
+      "A large flat white panel with black radiating lines (whisker-like) is lying detached on the ground next to the model instead of being on it…",
+      "The whisker panel is vastly oversized relative to the cat-toaster body.",
+      "A thin black piece (power cord) sticks out from the base and appears to lie on/through the ground surface rather than plug into anything (f…",
+      "No toast or toaster slots are visible on the body in either frame; the top is occupied by the cat head."
+     ],
+     "notSeen": [
+      "2. the cat-toaster with head, ears, whiskers, slots and toast intact"
+     ],
+     "cannotTell": [],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Fix what is not seen or wrong before you answer. "
+    }
+   },
+   {
+    "tool": "get_project_tree",
+    "summary": "✓ get_project_tree · game.Workspace.MergedCatToaster",
+    "ok": true,
+    "durationMs": 610,
+    "detail": {
+     "root": {
+      "path": "game.Workspace.MergedCatToaster",
+      "name": "MergedCatToaster",
+      "childCount": 34,
+      "class": "Model",
+      "children": [
+       {
+        "path": "game.Workspace.MergedCatToaster.Root",
+        "name": "Root",
+        "childCount": 2,
+        "class": "Part",
+        "children": [
+         {
+          "path": "game.Workspace.MergedCatToaster.Root.ToastL",
+          "name": "ToastL",
+          "childCount": 0,
+          "class": "Motor6D",
+          "props": {
+           "Enabled": {
+            "v": true,
+            "t": "bool"
+           },
+           "Part1": {
+            "t": "Instance",
+            "v": "game.Workspace.MergedCatToaster.ToastL"
+           },
+           "Active": {
+            "v": true,
+            "t": "bool"
+           },
+           "MaxVelocity": {
+            "v": 0,
+            "t": "number"
+           },
+           "Part0": {
+            "t": "Instance",
+            "v": "game.Workspace.MergedCatToaster.Root"
+           }
+          }
+         },
+         {
+          "path": "game.Workspace.MergedCatToaster.Root.ToastR",
+          "name": "ToastR",
+          "childCount": 0,
+          "class": "Motor6D",
+          "props": {
+           "Enabled": {
+            "v": true,
+            "t": "bool"
+           },
+           "Part1": {
+            "t": "Instance",
+            "v": "game.Workspace.MergedCatToaster.ToastR"
+           },
+           "Active": {
+            "v": true,
+            "t": "bool"
+           },
+           "MaxVelocity": {
+            "v": 0,
+            "t": "number"
+           },
+           "Part0": {
+            "t": "Instance",
+            "v": "game.Workspace.MergedCatToaster.Root"
+           }
+          }
+         }
+        ],
+        "props": {
+         "CanQuery": {
+          "v": false,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.6392157077789307,
+           0.6352941393852234,
+           0.6470588445663452
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           1,
+           1
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": false,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 1,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.Body",
+        "name": "Body",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           5,
+           3,
+           3.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           1.5,
+           0.675000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           1.5,
+           0.675000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.BaseTrim",
+        "name": "BaseTrim",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.7882353067398071,
+           0.43529412150382996,
+           0.18039216101169586
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           5.400000095367432,
+           0.5,
+           3.9000000953674316
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           0.25,
+           0.675000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           0.25,
+           0.675000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.Head",
+        "name": "Head",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           2.799999952316284,
+           2.4000000953674316,
+           2.5999999046325684
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           4.199999809265137,
+           -0.125,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           4.199999809265137,
+           -0.125
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.EarL",
+        "name": "EarL",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           11.074999809265137,
+           5.699999809265137,
+           -0.125,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.8999999761581421,
+           1.100000023841858,
+           0.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           11.074999809265137,
+           5.699999809265137,
+           -0.125
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.EarR",
+        "name": "EarR",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           12.875,
+           5.699999809265137,
+           -0.125,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.8999999761581421,
+           1.100000023841858,
+           0.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           12.875,
+           5.699999809265137,
+           -0.125
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.InnerEarL",
+        "name": "InnerEarL",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9490196108818054,
+           0.6274510025978088,
+           0.7098039388656616
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           11.074999809265137,
+           5.599999904632568,
+           0.125,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.5,
+           0.699999988079071,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           11.074999809265137,
+           5.599999904632568,
+           0.125
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.InnerEarR",
+        "name": "InnerEarR",
+        "childCount": 0,
+        "class": "WedgePart",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9490196108818054,
+           0.6274510025978088,
+           0.7098039388656616
+          ],
+          "t": "Color3"
+         },
+         "CFrame": {
+          "v": [
+           12.875,
+           5.599999904632568,
+           0.125,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.5,
+           0.699999988079071,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Position": {
+          "v": [
+           12.875,
+           5.599999904632568,
+           0.125
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.Muzzle",
+        "name": "Muzzle",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.5,
+           0.8999999761581421,
+           0.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           3.9000000953674316,
+           1.4249999523162842,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           3.9000000953674316,
+           1.4249999523162842
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.Nose",
+        "name": "Nose",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9490196108818054,
+           0.6274510025978088,
+           0.7098039388656616
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.4000000059604645,
+           0.30000001192092896,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           4.150000095367432,
+           1.6749999523162842,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           4.150000095367432,
+           1.6749999523162842
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.EyeL",
+        "name": "EyeL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.3499999940395355,
+           0.5,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.324999809265137,
+           4.599999904632568,
+           1.225000023841858,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.324999809265137,
+           4.599999904632568,
+           1.225000023841858
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.EyeR",
+        "name": "EyeR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.3499999940395355,
+           0.5,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12.625,
+           4.599999904632568,
+           1.225000023841858,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12.625,
+           4.599999904632568,
+           1.225000023841858
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.WhiskerL1",
+        "name": "WhiskerL1",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           0.20000000298023224,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           10
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           10.324999809265137,
+           3.950000047683716,
+           1.524999976158142,
+           0.9848077297210693,
+           -0.1736481934785843,
+           0,
+           0.1736481934785843,
+           0.9848077297210693,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           10.324999809265137,
+           3.950000047683716,
+           1.524999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           10
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.WhiskerL2",
+        "name": "WhiskerL2",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           0.20000000298023224,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           -10
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           10.324999809265137,
+           3.75,
+           1.524999976158142,
+           0.9848077297210693,
+           0.1736481934785843,
+           0,
+           -0.1736481934785843,
+           0.9848077297210693,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           10.324999809265137,
+           3.75,
+           1.524999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           -10
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.WhiskerR1",
+        "name": "WhiskerR1",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           0.20000000298023224,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           -10
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           13.625,
+           3.950000047683716,
+           1.524999976158142,
+           0.9848077297210693,
+           0.1736481934785843,
+           0,
+           -0.1736481934785843,
+           0.9848077297210693,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           13.625,
+           3.950000047683716,
+           1.524999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           -10
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.WhiskerR2",
+        "name": "WhiskerR2",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.16862745583057404,
+           0.16862745583057404,
+           0.16862745583057404
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2999999523162842,
+           0.20000000298023224,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           10
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           13.625,
+           3.75,
+           1.524999976158142,
+           0.9848077297210693,
+           -0.1736481934785843,
+           0,
+           0.1736481934785843,
+           0.9848077297210693,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           13.625,
+           3.75,
+           1.524999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           10
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.SlotL",
+        "name": "SlotL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.29019609093666077,
+           0.19607843458652496,
+           0.13333334028720856
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2000000476837158,
+           0.20000000298023224,
+           0.6000000238418579
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.175000190734863,
+           3.049999952316284,
+           1.5750000476837158,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.175000190734863,
+           3.049999952316284,
+           1.5750000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.SlotR",
+        "name": "SlotR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.29019609093666077,
+           0.19607843458652496,
+           0.13333334028720856
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1.2000000476837158,
+           0.20000000298023224,
+           0.6000000238418579
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12.774999618530273,
+           3.049999952316284,
+           1.5750000476837158,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12.774999618530273,
+           3.049999952316284,
+           1.5750000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.ToastL",
+        "name": "ToastL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8509804010391235,
+           0.6274510025978088,
+           0.35686275362968445
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": false,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           0.8999999761581421,
+           0.3499999940395355
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           -8
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.175000190734863,
+           3.5999999046325684,
+           1.5750000476837158,
+           0.9902679920196533,
+           0.13917309045791626,
+           -1.408949098748646e-15,
+           -0.13917309045791626,
+           0.9902679920196533,
+           -9.653263922942837e-17,
+           -9.47311907330316e-16,
+           -1.5211825716430233e-24,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.175000190734863,
+           3.5999999046325684,
+           1.5750000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           -8
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.ToastR",
+        "name": "ToastR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8509804010391235,
+           0.6274510025978088,
+           0.35686275362968445
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": false,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           1,
+           0.8999999761581421,
+           0.3499999940395355
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           8
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12.774999618530273,
+           3.5999999046325684,
+           1.5750000476837158,
+           0.9902679920196533,
+           -0.13917309045791626,
+           -1.408949098748646e-15,
+           0.13917309045791626,
+           0.9902679920196533,
+           9.653263922942837e-17,
+           -9.47311907330316e-16,
+           1.5211825716430233e-24,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12.774999618530273,
+           3.5999999046325684,
+           1.5750000476837158
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           8
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.LeverArm",
+        "name": "LeverArm",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.7882353067398071,
+           0.8117647171020508,
+           0.8392156958580017
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.20000000298023224,
+           0.8999999761581421,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           14.524999618530273,
+           2,
+           0.675000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           14.524999618530273,
+           2,
+           0.675000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.LeverKnob",
+        "name": "LeverKnob",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.7882353067398071,
+           0.8117647171020508,
+           0.8392156958580017
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.4000000059604645,
+           0.4000000059604645,
+           0.4000000059604645
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           14.524999618530273,
+           2.5,
+           0.675000011920929,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           14.524999618530273,
+           2.5,
+           0.675000011920929
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Ball",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.PawFL",
+        "name": "PawFL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.699999988079071,
+           0.5,
+           0.8999999761581421
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           10.175000190734863,
+           0.25,
+           2.625,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           10.175000190734863,
+           0.25,
+           2.625
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.PawFR",
+        "name": "PawFR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.699999988079071,
+           0.5,
+           0.8999999761581421
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           13.774999618530273,
+           0.25,
+           2.625,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           13.774999618530273,
+           0.25,
+           2.625
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.PawBL",
+        "name": "PawBL",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.699999988079071,
+           0.5,
+           0.8999999761581421
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           10.175000190734863,
+           0.25,
+           -1.274999976158142,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           10.175000190734863,
+           0.25,
+           -1.274999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.PawBR",
+        "name": "PawBR",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.699999988079071,
+           0.5,
+           0.8999999761581421
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           13.774999618530273,
+           0.25,
+           -1.274999976158142,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           13.774999618530273,
+           0.25,
+           -1.274999976158142
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.TailSeg1",
+        "name": "TailSeg1",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.5,
+           0.5,
+           1.2999999523162842
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           -35,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           1.2999999523162842,
+           -1.625,
+           1,
+           0,
+           0,
+           0,
+           0.8191519975662231,
+           0.5735765099525452,
+           0,
+           -0.5735765099525452,
+           0.8191519975662231
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           1.2999999523162842,
+           -1.625
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           -35,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.TailSeg2",
+        "name": "TailSeg2",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8980392217636108,
+           0.5411764979362488,
+           0.23529411852359772
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.5,
+           0.5,
+           1.2999999523162842
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           -65,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           2.200000047683716,
+           -2.2249999046325684,
+           1,
+           0,
+           0,
+           0,
+           0.42261824011802673,
+           0.9063078165054321,
+           0,
+           -0.9063078165054321,
+           0.42261824011802673
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           2.200000047683716,
+           -2.2249999046325684
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           -65,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.TailTip",
+        "name": "TailTip",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.699999988079071,
+           0.699999988079071,
+           0.699999988079071
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           2.9000000953674316,
+           -2.7249999046325684,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           2.9000000953674316,
+           -2.7249999046325684
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Ball",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.Nameplate",
+        "name": "Nameplate",
+        "childCount": 1,
+        "class": "Part",
+        "children": [
+         {
+          "path": "game.Workspace.MergedCatToaster.Nameplate.Label",
+          "name": "Label",
+          "childCount": 1,
+          "class": "SurfaceGui",
+          "moreChildren": 1,
+          "props": {
+           "Enabled": {
+            "v": true,
+            "t": "bool"
+           },
+           "AutoLocalize": {
+            "v": true,
+            "t": "bool"
+           },
+           "ClipsDescendants": {
+            "v": false,
+            "t": "bool"
+           },
+           "ResetOnSpawn": {
+            "v": true,
+            "t": "bool"
+           },
+           "Face": {
+            "v": "Enum.NormalId.Front",
+            "t": "EnumItem"
+           },
+           "ZOffset": {
+            "v": 0,
+            "t": "number"
+           },
+           "SizingMode": {
+            "v": "Enum.SurfaceGuiSizingMode.PixelsPerStud",
+            "t": "EnumItem"
+           },
+           "LightInfluence": {
+            "v": 0,
+            "t": "number"
+           },
+           "MaxDistance": {
+            "v": 0,
+            "t": "number"
+           },
+           "CanvasSize": {
+            "v": [
+             800,
+             600
+            ],
+            "t": "Vector2"
+           },
+           "ZIndexBehavior": {
+            "v": "Enum.ZIndexBehavior.Global",
+            "t": "EnumItem"
+           },
+           "Active": {
+            "v": true,
+            "t": "bool"
+           },
+           "Brightness": {
+            "v": 1,
+            "t": "number"
+           },
+           "AlwaysOnTop": {
+            "v": false,
+            "t": "bool"
+           },
+           "PixelsPerStud": {
+            "v": 80,
+            "t": "number"
+           }
+          }
+         }
+        ],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.9607843160629272,
+           0.9372549057006836,
+           0.9019607901573181
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           2.200000047683716,
+           0.699999988079071,
+           0.20000000298023224
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           11.975000381469727,
+           2.200000047683716,
+           2.575000047683716,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           11.975000381469727,
+           2.200000047683716,
+           2.575000047683716
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Smooth",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+        "name": "AppleAnimations",
+        "childCount": 0,
+        "class": "ModuleScript",
+        "children": []
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.HeatDial",
+        "name": "HeatDial",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.8470588326454163,
+           0.20000000298023224,
+           0.20000000298023224
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Plastic",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.20000000298023224,
+           0.699999988079071,
+           0.699999988079071
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Inlet",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           14.850000381469727,
+           2.5999999046325684,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           14.850000381469727,
+           2.5999999046325684,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Studs",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.CrumbTray",
+        "name": "CrumbTray",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.5490196347236633,
+           0.5490196347236633,
+           0.5764706134796143
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Metal",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           2.5,
+           0.30000001192092896,
+           1.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Inlet",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0.15000000596046448,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           0.15000000596046448,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Studs",
+          "t": "EnumItem"
+         }
+        }
+       },
+       {
+        "path": "game.Workspace.MergedCatToaster.PowerCord",
+        "name": "PowerCord",
+        "childCount": 0,
+        "class": "Part",
+        "children": [],
+        "props": {
+         "CanQuery": {
+          "v": true,
+          "t": "bool"
+         },
+         "Color": {
+          "v": [
+           0.14901961386203766,
+           0.14901961386203766,
+           0.14901961386203766
+          ],
+          "t": "Color3"
+         },
+         "Anchored": {
+          "v": true,
+          "t": "bool"
+         },
+         "Locked": {
+          "v": false,
+          "t": "bool"
+         },
+         "Material": {
+          "v": "Enum.Material.Rubber",
+          "t": "EnumItem"
+         },
+         "Size": {
+          "v": [
+           0.30000001192092896,
+           0.30000001192092896,
+           1.5
+          ],
+          "t": "Vector3"
+         },
+         "BottomSurface": {
+          "v": "Enum.SurfaceType.Inlet",
+          "t": "EnumItem"
+         },
+         "CanCollide": {
+          "v": true,
+          "t": "bool"
+         },
+         "CollisionGroup": {
+          "v": "Default",
+          "t": "string"
+         },
+         "Massless": {
+          "v": false,
+          "t": "bool"
+         },
+         "CanTouch": {
+          "v": true,
+          "t": "bool"
+         },
+         "Reflectance": {
+          "v": 0,
+          "t": "number"
+         },
+         "Rotation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "Transparency": {
+          "v": 0,
+          "t": "number"
+         },
+         "CFrame": {
+          "v": [
+           12,
+           0.30000001192092896,
+           -2.5999999046325684,
+           1,
+           0,
+           0,
+           0,
+           1,
+           0,
+           0,
+           0,
+           1
+          ],
+          "t": "CFrame"
+         },
+         "Position": {
+          "v": [
+           12,
+           0.30000001192092896,
+           -2.5999999046325684
+          ],
+          "t": "Vector3"
+         },
+         "Orientation": {
+          "v": [
+           0,
+           0,
+           0
+          ],
+          "t": "Vector3"
+         },
+         "CastShadow": {
+          "v": true,
+          "t": "bool"
+         },
+         "Shape": {
+          "v": "Enum.PartType.Block",
+          "t": "EnumItem"
+         },
+         "TopSurface": {
+          "v": "Enum.SurfaceType.Studs",
+          "t": "EnumItem"
+         }
+        }
+       }
+      ],
+      "props": {
+       "PrimaryPart": {
+        "t": "Instance",
+        "v": "game.Workspace.MergedCatToaster.Root"
+       }
+      }
+     },
+     "nodeCount": 38,
+     "truncated": false,
+     "refsWritable": true
+    }
+   },
+   {
+    "tool": "search_instances",
+    "summary": "✓ search_instances · game.Workspace",
+    "ok": true,
+    "durationMs": 167,
+    "detail": {
+     "matches": [
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR2"
+      }
+     ],
+     "count": 4,
+     "scanned": 46
+    }
+   },
+   {
+    "tool": "search_instances",
+    "summary": "✗ search_instances · game.Workspace.MergedCatToaster — A search needs at least one of name, className, isA, tag, attribute or property. Nothing was sent to Studio.",
+    "ok": false,
+    "durationMs": 0,
+    "error": "A search needs at least one of name, className, isA, tag, attribute or property. Nothing was sent to Studio."
+   },
+   {
+    "tool": "search_instances",
+    "summary": "✓ search_instances · game.Workspace.MergedCatToaster",
+    "ok": true,
+    "durationMs": 250,
+    "detail": {
+     "matches": [
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Root"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Body"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.BaseTrim"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Head"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Muzzle"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Nose"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.EyeL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.EyeR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.SlotL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.SlotR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.ToastL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.ToastR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.LeverArm"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.LeverKnob"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawFL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawFR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawBL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawBR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailSeg1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailSeg2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailTip"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Nameplate"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.HeatDial"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.CrumbTray"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PowerCord"
+      }
+     ],
+     "count": 29,
+     "scanned": 39
+    }
+   },
+   {
+    "tool": "search_instances",
+    "summary": "✓ search_instances · game.Workspace",
+    "ok": true,
+    "durationMs": 183,
+    "detail": {
+     "matches": [
+      {
+       "className": "Part",
+       "path": "game.Workspace.Baseplate"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Root"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Body"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.BaseTrim"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Head"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Muzzle"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Nose"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.EyeL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.EyeR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerL2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.WhiskerR2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.SlotL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.SlotR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.ToastL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.ToastR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.LeverArm"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.LeverKnob"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawFL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawFR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawBL"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PawBR"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailSeg1"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailSeg2"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.TailTip"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.Nameplate"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.HeatDial"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.CrumbTray"
+      },
+      {
+       "className": "Part",
+       "path": "game.Workspace.MergedCatToaster.PowerCord"
+      }
+     ],
+     "count": 30,
+     "scanned": 46
+    }
+   },
+   {
+    "tool": "search_scripts",
+    "summary": "✓ search_scripts · Toast",
+    "ok": true,
+    "durationMs": 265,
+    "detail": {
+     "matches": [
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "-- What Toast-Cat does, played by AppleAnimate. Written by Apple's build_object; edit freely.",
+       "line": 1
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t[\"ToastL.pop\"] = {",
+       "line": 3
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastL = {",
+       "line": 9
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastL = {",
+       "line": 20
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastL = {",
+       "line": 31
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t[\"ToastR.pop\"] = {",
+       "line": 43
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastR = {",
+       "line": 49
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastR = {",
+       "line": 60
+      },
+      {
+       "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+       "text": "\t\t\t\tToastR = {",
+       "line": 71
+      }
+     ],
+     "truncated": false,
+     "query": "Toast"
+    }
+   },
+   {
+    "tool": "read_script",
+    "summary": "✓ read_script · game.Workspace.MergedCatToaster.AppleAnimations",
+    "ok": true,
+    "durationMs": 250,
+    "detail": {
+     "path": "game.Workspace.MergedCatToaster.AppleAnimations",
+     "source": "-- What Toast-Cat does, played by AppleAnimate. Written by Apple's build_object; edit freely.\nreturn {\n\t[\"ToastL.pop\"] = {\n\t\tplay = \"click\",\n\t\tlength = 0.45,\n\t\tkeys = {\n\t\t\t{\n\t\t\t\tt = 0,\n\t\t\t\tToastL = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t\t{\n\t\t\t\tt = 0.12,\n\t\t\t\tease = \"Quad\",\n\t\t\t\tToastL = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0.5,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t\t{\n\t\t\t\tt = 0.45,\n\t\t\t\tease = \"Bounce\",\n\t\t\t\tToastL = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t},\n\t\tsound = \"rbxassetid://12221990\",\n\t\tvolume = 0.7,\n\t},\n\t[\"ToastR.pop\"] = {\n\t\tplay = \"click\",\n\t\tlength = 0.45,\n\t\tkeys = {\n\t\t\t{\n\t\t\t\tt = 0,\n\t\t\t\tToastR = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t\t{\n\t\t\t\tt = 0.12,\n\t\t\t\tease = \"Quad\",\n\t\t\t\tToastR = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0.5,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t\t{\n\t\t\t\tt = 0.45,\n\t\t\t\tease = \"Bounce\",\n\t\t\t\tToastR = {\n\t\t\t\t\tmove = {\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t\t0,\n\t\t\t\t\t},\n\t\t\t\t},\n\t\t\t},\n\t\t},\n\t\tsound = \"rbxassetid://12221990\",\n\t\tvolume = 0.7,\n\t},\n}\n",
+     "class": "ModuleScript",
+     "lines": 84,
+     "baseHash": "414ae51f",
+     "startLine": 1,
+     "endLine": 84,
+     "totalLines": 84,
+     "complete": true,
+     "nextStartLine": null
+    }
+   },
+   {
+    "tool": "look",
+    "summary": "Looked at what was built",
+    "ok": true,
+    "durationMs": 7257,
+    "detail": {
+     "looked": true,
+     "source": "studio_viewport",
+     "views": [
+      "front"
+     ],
+     "observations": [
+      {
+       "about": "overall build",
+       "verdict": "seen",
+       "note": "Frame 1 (front view) shows a small orange/brown toaster-shaped body with a cat figure (ears, face) sitting on top of it, placed on a gray t…"
+      },
+      {
+       "about": "front detail",
+       "verdict": "cannot_tell",
+       "note": "The toaster body faces the camera in Frame 1, but at this size the front face detail is too small to confirm whether two toast slots are cu…"
+      },
+      {
+       "about": "toast slices",
+       "verdict": "cannot_tell",
+       "note": "No toast slices can be made out sitting in or rising from the top of the toaster body in Frame 1, but the resolution is too low to rule out…"
+      },
+      {
+       "about": "two toast slots visible on the front of the toaster body",
+       "verdict": "cannot_tell",
+       "note": "the look did not say anything about this"
+      }
+     ],
+     "answers": [
+      {
+       "question": "1. two toast slots visible on the front of the toaster body",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      },
+      {
+       "question": "2. toast slices sitting in the slots",
+       "answer": "cannot_tell",
+       "verdict": "cannot_tell"
+      }
+     ],
+     "issues": [],
+     "notSeen": [],
+     "cannotTell": [
+      "front detail",
+      "toast slices",
+      "two toast slots visible on the front of the toaster body"
+     ],
+     "cameraRestored": true,
+     "note": "Observations from real Studio viewport pictures, taken from the views listed. These are observations, not a score: decide what they mean. Do not tell the user a cannot_tell item was seen; say it was not checked."
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.MergedCatToaster.SlotL",
+    "ok": true,
+    "durationMs": 167,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace.MergedCatToaster.SlotL",
+       "className": "Part",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "11.18, 3.05, 1.58"
+          },
+          {
+           "name": "Size",
+           "value": "1.2, 0.2, 0.6"
+          },
+          {
+           "name": "CFrame",
+           "value": "11.18, 3.05, 1.58, 1, 0, 0, 0, 1, 0, 0, 0, 1"
+          },
+          {
+           "name": "Anchored",
+           "value": "true"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Color",
+           "value": "0.29, 0.2, 0.13"
+          },
+          {
+           "name": "Material",
+           "value": "Enum.Material.Plastic"
+          },
+          {
+           "name": "Transparency",
+           "value": "0"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "tool": "get_instance",
+    "summary": "✓ get_instance · game.Workspace.MergedCatToaster.ToastL",
+    "ok": true,
+    "durationMs": 167,
+    "detail": {
+     "v": 1,
+     "blocks": [
+      {
+       "type": "property_inspector",
+       "path": "game.Workspace.MergedCatToaster.ToastL",
+       "className": "Part",
+       "groups": [
+        {
+         "name": "Transform",
+         "rows": [
+          {
+           "name": "Position",
+           "value": "11.18, 3.6, 1.58"
+          },
+          {
+           "name": "Size",
+           "value": "1, 0.9, 0.35"
+          },
+          {
+           "name": "CFrame",
+           "value": "11.18, 3.6, 1.58, 0.99, 0.14, 0, -0.14, 0.99, 0, 0, 0, 1"
+          },
+          {
+           "name": "Anchored",
+           "value": "false"
+          }
+         ]
+        },
+        {
+         "name": "Appearance",
+         "rows": [
+          {
+           "name": "Color",
+           "value": "0.85, 0.63, 0.36"
+          },
+          {
+           "name": "Material",
+           "value": "Enum.Material.Plastic"
+          },
+          {
+           "name": "Transparency",
+           "value": "0"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "createdAt": "2026-10-03T23:55:28.924Z",
+  "revisions": 0
+ }
+]
