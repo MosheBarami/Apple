@@ -1,4 +1,4 @@
-// The TypeScript surface of @golem/sdk.
+// The TypeScript surface of @apple/sdk.
 //
 // HAND-WRITTEN, AND WHY. The runtime is plain JavaScript (../src/*.mjs) so that a browser,
 // a Worker, Node and the `apple` binary all load the same bytes with no build step. A
@@ -9,9 +9,9 @@
 //   tests/types.test.mjs  — the declared names and the runtime exports must be the same
 //                           set, and a deliberately WRONG call must fail to compile.
 //   tests/protocol-parity.test.mjs — the runtime allowlists must equal the unions in
-//                           @golem/shared.
+//                           @apple/shared.
 //
-// The wire types are IMPORTED from @golem/shared rather than restated. A client that
+// The wire types are IMPORTED from @apple/shared rather than restated. A client that
 // redeclared `MessageDto` would become a second definition of the wire format, and the two
 // would disagree the first time either changed.
 import type {
@@ -28,7 +28,7 @@ import type {
   ServerMsg,
   StudioEvent,
   StudioEventState,
-} from '@golem/shared';
+} from '@apple/shared';
 
 export type { CheckpointMeta, ClientMsg, ProductMode, MessageDto, PlanId, QuotaState, ServerMsg };
 

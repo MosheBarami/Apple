@@ -1,4 +1,4 @@
-// Golem worker entry: API routes + static serving + DO exports.
+// Apple worker entry: API routes + static serving + DO exports.
 import { putRobloxCredential, describeRobloxCredential, deleteRobloxCredential } from './user-credentials';
 import {
   getExperience, listOwnedAssets, listGamePasses, createGamePass, grantAssetPermission, listWrites,
@@ -304,10 +304,11 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@golem/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@golem/shared';
-import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@golem/shared';
-import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@golem/shared';
+import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@apple/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@apple/shared';
+import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@apple/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@apple/shared';
+import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@apple/shared';
 
 /**
  * The refusals that mean "this kind of file will never work here", as opposed to "this particular
@@ -824,6 +825,11 @@ app.get('/api/health', async (c) => {
     ok: true,
     version: VERSION,
     buildSha: c.env.BUILD_SHA ?? 'unknown',
+    // `wire-both`: this build ACCEPTS the old and the new wire spellings. Clients that send the new ones
+    // must not be released until the live /api/health says so (scripts/rename-golem.mjs --phase B2 checks).
+    compat: 'wire-both',
+    // How many requests this isolate had to read in the old spelling: the evidence for removing it (phase D).
+    legacyWire: legacyWireCounts(),
     time: new Date().toISOString(),
   });
 });
@@ -912,7 +918,8 @@ app.get('/api/projects/:id/ws', async (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('X-User-Id', ctx.user.userId);
   headers.set('X-User-Jwt', ctx.user.jwt);
-  headers.delete('X-Golem-Grant-Expires-At');
+  stripWire(headers, WIRE_HEADERS.grantExpiresAt);
+  stripWire(headers, WIRE_HEADERS.role); // never client-supplied, in either spelling
   return ctx.stub.fetch(new Request('https://do/ws', { headers, method: 'GET' }));
 });
 
@@ -1046,7 +1053,7 @@ app.post('/api/voice/transcribe', (c) => handleVoiceTranscribe(c.req.raw, c.env,
  *
  * This route is the reason the composer's paperclip was `disabled` with the title "Attachments
  * aren’t supported yet": there was nothing to post to. `ChatAttachment` had been declared in
- * @golem/shared since the protocol was written, and no code anywhere had ever set one of its
+ * @apple/shared since the protocol was written, and no code anywhere had ever set one of its
  * fields.
  *
  * `'build'` rather than `'read'`. Reading an attachment is part of reading the conversation, and
@@ -1713,7 +1720,7 @@ app.get('/api/projects/:id/export', async (c) => {
       // The digest of what was ACTUALLY SENT, so the client can tell a short file from a short
       // conversation. Nothing else on the wire can: JSON that will not parse and Markdown that
       // stops mid-sentence both save without complaint.
-      'X-Golem-Export-SHA256': await sha256hex(body),
+      ...bothWire(WIRE_HEADERS.exportSha256, await sha256hex(body)),
     },
   });
 });
@@ -2298,7 +2305,7 @@ app.get('/api/projects/:id/roadmap/next', async (c) => {
  *
  * The brief is regenerated from a fresh scan rather than from a roadmap the client sends back:
  * a client-supplied brief would let any caller hand the builder arbitrary instructions attributed
- * to Golem's own roadmap. Only the milestone id crosses the wire.
+ * to Apple's own roadmap. Only the milestone id crosses the wire.
  */
 app.post('/api/projects/:id/roadmap/brief', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
@@ -2395,8 +2402,8 @@ app.post('/api/studio/claim', async (c) => {
     method: 'POST',
     body: JSON.stringify({
       tokenHash: await sha256hex(token),
-      pluginVersion: c.req.header('X-Golem-Plugin-Version') ?? null,
-      pluginProtocol: c.req.header('X-Golem-Plugin-Protocol') ?? null,
+      pluginVersion: readWire(c.req.raw.headers, WIRE_HEADERS.pluginVersion),
+      pluginProtocol: readWire(c.req.raw.headers, WIRE_HEADERS.pluginProtocol),
       //[[ WHICH PLACE THIS PAIRING IS FOR, recorded at the moment it is made.
       //
       //   The plugin's session is a plugin-wide Studio setting, so without this the project is
@@ -2416,7 +2423,7 @@ app.post('/api/studio/claim', async (c) => {
 });
 
 app.post('/api/studio/poll', async (c) => {
-  const token = c.req.header('X-Golem-Token') ?? '';
+  const token = readWire(c.req.raw.headers, WIRE_HEADERS.token) ?? '';
   const dot = token.indexOf('.');
   if (dot < 1 || token.length > 200) return c.json({ error: 'invalid token' }, 401);
   const projectId = token.slice(0, dot);
@@ -2426,13 +2433,16 @@ app.post('/api/studio/poll', async (c) => {
   const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
   if (ipLimited(`poll:${ip}`, 400)) return c.json({ error: 'slow down' }, 429);
   const stub = sessionStub(c.env, projectId);
-  const headers = new Headers({ 'X-Golem-Token': token, 'Content-Type': 'application/json' });
+  // Both spellings on the hop into the Durable Object, so it works whichever bundle version the DO instance is
+  // still running while a deploy rolls out.
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  setWire(headers, WIRE_HEADERS.token, token);
   // Forward the plugin's self-report. This route rebuilds the header set rather than
   // passing the request through, so anything the DO needs has to be copied explicitly
   // — and only these two are, deliberately: nothing else the client sends is trusted.
-  for (const h of ['X-Golem-Plugin-Version', 'X-Golem-Plugin-Protocol']) {
-    const v = c.req.header(h);
-    if (v) headers.set(h, v);
+  for (const h of [WIRE_HEADERS.pluginVersion, WIRE_HEADERS.pluginProtocol]) {
+    const v = readWire(c.req.raw.headers, h);
+    if (v) setWire(headers, h, v);
   }
   return stub.fetch('https://do/plugin/poll', { method: 'POST', headers, body: await c.req.raw.text() });
 });
@@ -2622,7 +2632,7 @@ app.post('/api/billing/webhook', async (c) => {
   }
 
   // A request Host is not a billing role. Only Apple's deployment may resolve provider state;
-  // golem is an explicitly bound replica, not a second independent Stripe authority. Check both
+  // the legacy worker is an explicitly bound replica, not a second independent Stripe authority. Check both
   // prerequisites before an authority call can commit an otherwise undeliverable purchase.
   if (c.env.BILLING_WORKER_NAME !== BILLING_AUTHORITY_WORKER || !c.env.LEGACY_QUOTA_DO) {
     recordEvent({
@@ -3393,7 +3403,7 @@ app.get('/api/me/export', async (c) => {
       'Content-Length': String(bytes.byteLength),
       // Nothing caches a person's own data, anywhere, for any length of time.
       'Cache-Control': 'no-store',
-      'X-Golem-Export-SHA256': await sha256hex(body),
+      ...bothWire(WIRE_HEADERS.exportSha256, await sha256hex(body)),
     },
   });
 });
@@ -5304,7 +5314,7 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
       creditsSpent,
       creditsRemaining,
     }),
-    ...(sandbox ? { 'X-Golem-Sandbox': 'true' } : {}),
+    ...(sandbox ? bothWire(WIRE_HEADERS.sandbox, 'true') : {}),
   };
   void count(c.env, sandbox ? 'api_chat_sandbox' : 'api_chat');
 
@@ -5487,7 +5497,7 @@ app.post('/v1/projects/:id/runs', async (c) => {
       note: 'Test-mode key: no run was started and nothing in the place was touched.',
     };
     await remember(simulated);
-    return c.json(simulated, 202, { 'X-Golem-Sandbox': 'true' });
+    return c.json(simulated, 202, bothWire(WIRE_HEADERS.sandbox, 'true'));
   }
 
   const res = await stub.fetch('https://do/agent-run', traced(c, {
@@ -5977,13 +5987,14 @@ app.get('/api/shared/:id/ws', async (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('X-User-Id', ctx.user.userId);
   headers.set('X-User-Jwt', ctx.user.jwt);
-  headers.delete('X-Golem-Grant-Expires-At');
+  stripWire(headers, WIRE_HEADERS.grantExpiresAt);
+  stripWire(headers, WIRE_HEADERS.role);
   const grantExpiry = ctx.membership.expiresAtMs;
-  if (typeof grantExpiry === 'number' && Number.isFinite(grantExpiry)) headers.set('X-Golem-Grant-Expires-At', new Date(grantExpiry).toISOString());
+  if (typeof grantExpiry === 'number' && Number.isFinite(grantExpiry)) setWire(headers, WIRE_HEADERS.grantExpiresAt, new Date(grantExpiry).toISOString());
   //[[ SET, NEVER APPENDED — the browser's own headers were copied into this object one line above,
-  //   and a client that sent `X-Golem-Role: owner` would otherwise have written its own permission
+  //   and a client that sent `X-Apple-Role: owner` (or the old spelling) would otherwise have written its own permission
   //   slip. `set` replaces; the value here is the one the access decision produced. ]]
-  headers.set('X-Golem-Role', ctx.role);
+  setWire(headers, WIRE_HEADERS.role, ctx.role); // both spellings: the DO reads either, and an older DO instance only the old one
   return ctx.stub.fetch(new Request('https://do/ws', { headers, method: 'GET' }));
 });
 

@@ -22,7 +22,7 @@
 local Client = {}
 Client.__index = Client
 
--- The current product. This pointed at the golem host until 2026-09-19, which is a STALE
+-- The current product. This pointed at the old (legacy) host until 2026-09-19, which is a STALE
 -- deployment of an older build — so the shipped SDK's default sent callers to a diverging copy of
 -- the product whose auth answers differently. Old host still resolves; nothing here depends on it.
 Client.DEFAULT_API = "https://apple.moshe-barami111.workers.dev"

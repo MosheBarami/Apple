@@ -12,7 +12,8 @@
 // so the published schema cannot describe a route that is not there and a route cannot exist
 // without a declared scope. A path Hono serves but this table omits is answered 404 by the
 // middleware — an undeclared route is unreachable rather than unguarded.
-import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@golem/shared';
+import { LEGACY_MODEL_IDS, registryModel, type GatewayMessage, type GatewayResponse, type ProductModel } from '@apple/shared';
+import { WIRE_HEADERS, bothWire } from '@apple/shared';
 import type { ApiScope } from './api-keys';
 
 // ---------------------------------------------------------------------------
@@ -690,13 +691,15 @@ export interface UsageFacts {
  * fabricated headroom figure is worse than none, because a client will act on it.
  */
 export function usageHeaders(u: UsageFacts): Record<string, string> {
+  // Both spellings, because an API client written before the rename reads the old one and a new one
+  // reads the new. The same numbers under two names; nothing is counted twice.
   const h: Record<string, string> = {
-    'X-Golem-Usage-Input-Tokens': String(Math.max(0, Math.trunc(u.inputTokens))),
-    'X-Golem-Usage-Output-Tokens': String(Math.max(0, Math.trunc(u.outputTokens))),
-    'X-Golem-Usage-Credits': String(Math.max(0, Math.trunc(u.creditsSpent))),
+    ...bothWire(WIRE_HEADERS.usageInputTokens, String(Math.max(0, Math.trunc(u.inputTokens)))),
+    ...bothWire(WIRE_HEADERS.usageOutputTokens, String(Math.max(0, Math.trunc(u.outputTokens)))),
+    ...bothWire(WIRE_HEADERS.usageCredits, String(Math.max(0, Math.trunc(u.creditsSpent)))),
   };
   if (u.creditsRemaining !== null && Number.isFinite(u.creditsRemaining)) {
-    h['X-Golem-Credits-Remaining'] = String(Math.max(0, Math.trunc(u.creditsRemaining)));
+    Object.assign(h, bothWire(WIRE_HEADERS.creditsRemaining, String(Math.max(0, Math.trunc(u.creditsRemaining)))));
   }
   return h;
 }

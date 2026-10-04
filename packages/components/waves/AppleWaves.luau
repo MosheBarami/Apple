@@ -4,8 +4,8 @@
 	library (survey 2026-09-30), so this one is ours. The composer writes the settings into
 	ServerScriptService.AppleComponents.AppleGameConfig (a ModuleScript returning a table), section `waves`:
 	  { first = 12, between = 10, baseHealth = 20, rewardShare = "killer" | "everyone", clearBonus = 15,
-	    enemies = { Carrot = { health = 30, speed = 6, reward = 5, damage = 1 }, ... },
-	    list = { { { enemy = "Carrot", count = 6, every = 1.2 } }, ... } }       -- one entry per wave
+	    enemies = { Runner = { health = 30, speed = 6, reward = 5, damage = 1 }, ... },
+	    list = { { { enemy = "Runner", count = 6, every = 1.2 } }, ... } }       -- one entry per wave
 	After the last listed wave the game keeps going: each further wave repeats the last one with more
 	and tougher enemies (scaleWave), so a round never simply stops.
 	World: Workspace.AppleMap.Lanes.<lane> holds waypoint Parts named 1, 2, 3 ... (the last one is at the

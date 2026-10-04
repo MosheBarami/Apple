@@ -1,6 +1,6 @@
 # Roblox Art Direction Handbook
 
-**Purpose:** the world-building knowledge base Golem reasons from when generating Roblox scenes.
+**Purpose:** the world-building knowledge base Apple reasons from when generating Roblox scenes.
 **Audience:** the generation model (`@cf/zai-org/glm-5.3-flash`) and the engineers writing its prompts/tools.
 **Last verified:** 2026-08-30. Facts marked **[V]** were verified empirically against a live Roblox Studio
 (`placeId 123864611037141`) via `execute_luau` on 2026-08-30. Facts marked **[D]** come from
@@ -10,7 +10,7 @@ create.roblox.com docs. Unmarked numbers are craft conventions — defensible, b
 
 ## 0. How to use this document
 
-Golem's failure is not correctness, it is **taste**. The engine happily renders a flat platform, four grey
+Apple's failure is not correctness, it is **taste**. The engine happily renders a flat platform, four grey
 poles and three stacked bricks. Nothing errors. The scene is simply ugly.
 
 Every section below is written to be *actionable inside a tool call*: exact `Enum.Material` names, exact
@@ -45,7 +45,7 @@ specific, fixable axes. This list doubles as a regression checklist.
 | 7 | **Default lighting** | Untouched `Lighting` gives flat, shadowless, characterless illumination. | §8 |
 
 **Reframe for the model:** a greybox and a finished scene differ by roughly **10× the part count** and a
-material/colour/lighting pass. Golem currently ships greyboxes.
+material/colour/lighting pass. Apple currently ships greyboxes.
 
 ---
 
@@ -75,14 +75,14 @@ PrioritizeLightingQuality  = true                        scriptable = false
 Technology                 = <read error: property gone> scriptable = false
 ```
 
-**Consequence for Golem — this is an engineering constraint, not a style note:**
+**Consequence for Apple — this is an engineering constraint, not a style note:**
 
 - Any generated Luau containing `Lighting.Technology = Enum.Technology.Future` **will error**. The property
-  no longer exists on the instance. Golem must never emit it.
+  no longer exists on the instance. Apple must never emit it.
 - `Lighting.LightingStyle = ...` **also fails**, even at plugin security in Edit mode.
 - Therefore **art direction that depends on `Realistic` lighting cannot be delivered by a runtime script.**
   It must be set in the Studio Properties pane, or baked into the place file (`.rbxlx`) / Rojo project.
-- Golem should (a) never emit those assignments, and (b) surface a one-line note to the user:
+- Apple should (a) never emit those assignments, and (b) surface a one-line note to the user:
   *"For best results set Lighting → LightingStyle = Realistic in Studio; it cannot be set from a script."*
 
 The same restriction applies to streaming **[V]**: `StreamingMinRadius`, `StreamingTargetRadius`,
@@ -90,7 +90,7 @@ The same restriction applies to streaming **[V]**: `StreamingMinRadius`, `Stream
 `StreamingEnabled` reads as `true` but docs state it "cannot be set in a script" **[D]** — treat it as
 place-file configuration, not script output.
 
-### 2.2 What Golem *can* set from Luau — verified writable
+### 2.2 What Apple *can* set from Luau — verified writable
 
 All of these returned `scriptable = true` **[V]**, with the live values shown:
 
@@ -113,7 +113,7 @@ All of these returned `scriptable = true` **[V]**, with the live values shown:
 | `Lighting.FogColor` | `Color3.fromRGB(192, 192, 192)` | Color3 |
 
 Plus every post-processing / atmosphere **instance**, which are freely creatable and parentable to
-`Lighting`. That is where Golem's lighting art direction must live. See §8.
+`Lighting`. That is where Apple's lighting art direction must live. See §8.
 
 ---
 
@@ -195,7 +195,7 @@ third-person camera). Pick by role.
 
 ### 4.1 Grid discipline
 
-Roblox's curriculum is explicit: **transform snapping at 5 studs and 90°** **[D]**. Golem should emit
+Roblox's curriculum is explicit: **transform snapping at 5 studs and 90°** **[D]**. Apple should emit
 positions on that lattice for all structural geometry.
 
 ```lua
@@ -423,7 +423,7 @@ Use a `MaterialVariant` when:
 - You want a specific art style across the whole place — a variant can *override* a base material globally
   **[D]**.
 
-**Do not** use variants when Golem cannot upload textures. Variants need asset IDs. In a
+**Do not** use variants when Apple cannot upload textures. Variants need asset IDs. In a
 generate-Luau-only pipeline, prefer base materials + `Color` + geometry detail. Note it as an upgrade path.
 
 Texture budget **[D]**: tileable textures and trim sheets up to **1024×1024**; most minor images should be
@@ -445,7 +445,7 @@ The accent is the *only* place high chroma is allowed. Everything else must be m
 
 ### 7.2 Hard rules against the "saturated primaries on grey" look
 
-These are the mechanical rules that prevent Golem's current output. Enforce them in code.
+These are the mechanical rules that prevent Apple's current output. Enforce them in code.
 
 1. **Ban pure primaries and pure greys on large surfaces.** Never emit these for anything over ~4 studs:
    `(255,0,0)`, `(0,255,0)`, `(0,0,255)`, `(255,255,0)`, `(255,0,255)`, `(0,255,255)`, `(255,255,255)`,
@@ -597,7 +597,7 @@ Note `CrackedLava` is the only saturated one — it is an accent by design. Ever
 
 ## 8. Lighting
 
-Read §2 first — `LightingStyle` cannot be scripted. Everything here is scriptable and is where Golem's
+Read §2 first — `LightingStyle` cannot be scripted. Everything here is scriptable and is where Apple's
 lighting work must live.
 
 ### 8.1 Verified factory defaults for effect instances
@@ -819,7 +819,7 @@ make("ColorCorrectionEffect", { Brightness = 0, Contrast = 0.06, Saturation = 0.
 ### 8.4 Roblox's own shipped configurations — highest-authority reference
 
 These are exact values Roblox publishes for its own sample places. They are already present in this
-repo's retrieval corpus (`packages/corpus/data/chunks.jsonl`), so Golem can cite them. Treat them as the
+repo's retrieval corpus (`packages/corpus/data/chunks.jsonl`), so Apple can cite them. Treat them as the
 gold standard — they beat any invented preset.
 
 **Cool ocean morning** (Island Jump sample, `docs/tutorials/curriculums/core/building/customize-global-lighting`)
@@ -842,7 +842,7 @@ Bloom:       Intensity 1.5 · Size 56
 DepthOfField: FarIntensity 0.05
 ```
 `Bloom.Intensity 1.5 / Size 56` is far stronger than the `0.4 / 24` default **[V]** — Roblox's own art
-direction pushes bloom hard. Golem is almost certainly under-using it.
+direction pushes bloom hard. Apple is almost certainly under-using it.
 
 **Volcanic pre-dawn** (VFX volcano tutorial)
 ```
@@ -865,7 +865,7 @@ Under `LightingStyle = Realistic`, Roblox detects indoor spaces geometrically. T
 surround indoor spaces with `Part` objects **at least 1 stud thick** to stop outdoor light leaking in —
 and their own sample uses a **minimum of 2.5 studs**.
 
-**Consequence for Golem:** thin walls are not just an aesthetic problem (§3.2), they are a *lighting*
+**Consequence for Apple:** thin walls are not just an aesthetic problem (§3.2), they are a *lighting*
 problem. A 0.2-stud wall will leak sunlight into an interior and the room will look broken. Interior
 enclosures must be ≥ 1 stud, ideally 2–2.5.
 
@@ -885,7 +885,7 @@ barely larger than one avatar. Almost every generated scene under-ranges its lig
 
 ## 9. Detail density and the clutter pass
 
-**This is the step that separates a greybox from a scene, and it is the step Golem currently omits entirely.**
+**This is the step that separates a greybox from a scene, and it is the step Apple currently omits entirely.**
 
 ### 9.1 Trim and edges
 
@@ -930,7 +930,7 @@ After blockout, run a clutter pass. Target densities:
 | Horror / abandoned | 8–14 | Plus debris scatter |
 | Sci-fi corridor | 3–6 | Mostly wall-mounted |
 
-**Part-count expectations for a finished scene** (this is the number Golem is currently missing by ~10×):
+**Part-count expectations for a finished scene** (this is the number Apple is currently missing by ~10×):
 
 | Element | Realistic part count |
 |---|---|
@@ -972,7 +972,7 @@ is a hallmark of generated scenes.
 ### 10.2 The API — with a correction
 
 **There is no `Terrain:PaintRegion` method.** It does not exist. The repaint operation is
-**`Terrain:ReplaceMaterial`** **[D]**. Golem must not emit `PaintRegion`.
+**`Terrain:ReplaceMaterial`** **[D]**. Apple must not emit `PaintRegion`.
 
 Verified signatures **[D]**:
 
@@ -1068,7 +1068,7 @@ Working budgets (craft convention, not vendor-stated):
 6. **Streaming** (`StreamingEnabled`) — defaults `StreamingTargetRadius = 1024`, `StreamingMinRadius = 64`
    **[D]**; recommended `StreamingIntegrityMode = PauseOutsideLoadedArea` and
    `ModelStreamingBehavior = Improved` **[D]**. **All of these are place-file settings, not scriptable [V]** —
-   Golem must surface them as instructions, not code.
+   Apple must surface them as instructions, not code.
 7. **Lights:** limit range and angle, use fewer instances, disable `Light.Shadows` where unnecessary **[D]**.
 
 ```lua
@@ -1092,7 +1092,7 @@ end
 
 ## 12. Scene recipes
 
-Each recipe is a structured spec Golem can instantiate. Fields are deliberately uniform so they can be
+Each recipe is a structured spec Apple can instantiate. Fields are deliberately uniform so they can be
 templated. **`FAIL REVIEW IF`** lists the specific conditions that mean the output should be regenerated.
 
 ---
@@ -1235,7 +1235,7 @@ templated. **`FAIL REVIEW IF`** lists the specific conditions that mean the outp
 
 ## 13. Auto-reject rules — machine-checkable
 
-Golem should run these before returning any scene. Each is cheap to evaluate over the generated
+Apple should run these before returning any scene. Each is cheap to evaluate over the generated
 instance tree.
 
 ```lua
@@ -1276,7 +1276,7 @@ local FORBIDDEN = {
 
 ---
 
-## 14. Integration notes for Golem — root cause found
+## 14. Integration notes for Apple — root cause found
 
 While researching, I read the live production system prompt at
 **`/Users/moshe/Desktop/RbxAI/apps/worker/src/prompts.ts`**. The rejected output is a *predictable
@@ -1304,7 +1304,7 @@ is complying. Per §9.3 the realistic figure for a hero prop is **25–60 parts*
 
 The `IDENTITY` block covers Luau idioms, tool discipline, verification honesty, analysis precision,
 answering style and efficiency. **It says nothing about colour, material, lighting, scale, composition or
-detail density.** The only aesthetic word in 106 lines is "convincing". Golem is being graded on taste it
+detail density.** The only aesthetic word in 106 lines is "convincing". Apple is being graded on taste it
 was never given.
 
 ### 14.3 The efficiency block fights visual quality
@@ -1414,7 +1414,7 @@ seamlessly align and connect without overlap even when you rotate them."* Studio
 From Beyond The Dark: *"we settled on a 16 stud grid size to create most of the modular set. The grid size
 you use is arbitrary, but should be consistent throughout the project and across all artists."*
 
-Three more rules from that page, all directly usable by Golem:
+Three more rules from that page, all directly usable by Apple:
 
 - **Keep pieces simple.** *"The idea is to have a few very versatile pieces and not a lot of one-offs.
   The more pieces you have, the more time it takes… and the more it affects your overall memory and
@@ -1458,7 +1458,7 @@ Atmosphere.Density = 0.272 · Haze = 1 · Color = 85, 78, 54
 PointLight (lamp): Range = 48 · Brightness = 2 · Color = 255, 179, 73
 ```
 The doc's guidance on `Atmosphere.Color`: *"set it to a color value that is close to the average of the
-objects in the environment."* That is a rule Golem can execute — average the palette, tint the atmosphere.
+objects in the environment."* That is a rule Apple can execute — average the palette, tint the atmosphere.
 
 **Indoor, warm cabin** — [enhance-indoor-environments](https://create.roblox.com/docs/en-us/tutorials/use-case-tutorials/lighting/enhance-indoor-environments.md)
 ```
@@ -1531,7 +1531,7 @@ Primary source: **[The Level Design Book](https://book.leveldesignbook.com/)** �
 
 **Spatial composition beats shot composition.** The book argues explicitly against the common "rule of
 thirds in your screenshot" advice: a 3D level *"cannot guarantee a specific view"*, so hierarchy must be
-built into the 3D arrangement of masses, not into one camera angle. **Consequence for Golem: do not
+built into the 3D arrangement of masses, not into one camera angle. **Consequence for Apple: do not
 compose for a screenshot. Compose so the landmark reads from every approach.**
 
 **Four ways to build spatial contrast** (all four are cheap to generate):

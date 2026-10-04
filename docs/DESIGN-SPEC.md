@@ -1,4 +1,4 @@
-# Golem — approved visual direction
+# Apple — approved visual direction
 
 Transcribed from the two canonical reference images supplied 2026-08-31. Those
 images are the source of truth; this file is a faithful written transcription of
@@ -14,9 +14,9 @@ wins**.
 > **Rewritten 2026-09-14.** Sections 0 and 1 described a warm charcoal landing
 > with an amber accent, Inter throughout, and one screen that does not scroll.
 > None of that was on the page any more, and two separate changes had left it
-> behind: the warm palette went when Golem became Apple — `landing.css` says so
+> behind: the warm palette went when Apple became Apple — `landing.css` says so
 > in its own header, *"the previous warm palette (#0b0a09 ground, #c98a3c amber)
-> belonged to Golem and is gone"* — and the single screen went when the owner
+> belonged to Apple and is gone"* — and the single screen went when the owner
 > supplied a five-section design (docs/DECISIONS.md ADR-019, ADR-020).
 >
 > That matters more here than in most files, because of the line six paragraphs
@@ -247,7 +247,7 @@ Conversation-first. Two columns only: rail and conversation.
 ### Left rail (~320px)
 
 ```
-⬡ Golem                                     [▤]   ← collapse toggle
+⬡ Apple                                     [▤]   ← collapse toggle
 ┌──────────────────────────────────────┐
 │ ✎  New chat                    ⌘ K   │        outlined, full width
 └──────────────────────────────────────┘
@@ -267,7 +267,7 @@ Conversation-first. Two columns only: rail and conversation.
 └──────────────────────────────────────┘
 ┌──────────────────────────────────────┐
 │ (A) Alex Chen               ⌄    ⚙   │
-│     alex@golem.ai                    │
+│     alex@apple.ai                    │
 └──────────────────────────────────────┘
 ```
 
@@ -341,9 +341,9 @@ A rounded `--surface` box with a `--line-2` border.
 ┌────────────────────────────────────────────────────────┐
 │ Ask anything about your project...                     │
 │                                                        │
-│ [⬡ Golem 1.5 ⌄]  [⚖ Balanced]              📎  🎤  (↑) │
+│ [⬡ Apple 1.5 ⌄]  [⚖ Balanced]              📎  🎤  (↑) │
 └────────────────────────────────────────────────────────┘
-   Golem can make mistakes. Always review important information.
+   Apple can make mistakes. Always review important information.
 ```
 
 - Placeholder: `Ask anything about your project...`
@@ -352,7 +352,7 @@ A rounded `--surface` box with a `--line-2` border.
   **filled circular send button** with an up arrow.
 - Below the box, centred, `--faint`, ~12px: the mistakes disclaimer.
 
-> The reference renders the model chip as `Golem 1.5`. In this product that
+> The reference renders the model chip as `Apple 1.5`. In this product that
 > control is the **provider** picker and the mode chip is **Plan / Agent / Super
 > Agent** (ADR-018 — this line said Clay / Stone / Rune until 2026-09-01, which
 > are the internal specialist identities and must never appear in product UI).

@@ -7,7 +7,7 @@ const source = existsSync(sourceUrl) ? readFileSync(sourceUrl, 'utf8').replace(/
 
 test('Apple has an independent entry point and no legacy session restore', () => {
   assert.ok(source.length > 100);
-  assert.doesNotMatch(source, /GetSetting|golem_session|apps\/plugin|loadstring|LoadAsset|require\s*\(\s*\d/);
+  assert.doesNotMatch(source, /GetSetting|apple_session|apps\/plugin|loadstring|LoadAsset|require\s*\(\s*\d/);
   assert.match(source, /require\(script\.Bridge\)/);
   assert.match(source, /require\(script\.Commands\)/);
 });

@@ -21,7 +21,7 @@ import {
   attachmentRefusalMessage,
   validateAttachment,
   type ChatAttachment,
-} from '@golem/shared';
+} from '@apple/shared';
 import { explainFailure } from './error-taxonomy.ts';
 
 /** One file on its way up, or arrived, or stuck. */

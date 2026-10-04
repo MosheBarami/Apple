@@ -7,7 +7,7 @@
 // PURE ON PURPOSE. No env, no D1, no DO. The policy is resolved once where the user is known and
 // handed here as a value, which is what lets the decision be tested without standing up a Durable
 // Object — and what stops a per-call lookup appearing in the hot path of every tool.
-import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@golem/shared';
+import { ASSET_SOURCE_CHOICES, type AssetSourceChoice, type AssetSourcePolicy } from '@apple/shared';
 import { ASSET_SOURCES, type AssetSource, type AssetProvenanceSource } from './assets';
 
 // Re-exported so a test in this module's own suite can walk the real engine-source list rather
@@ -99,31 +99,38 @@ export function answerOwed(policy: AssetSourcePolicy | null | undefined): boolea
 export function assetSourceAnswerSteer(policy: AssetSourcePolicy | null | undefined): string | null {
   if (answerOwed(policy)) return null;
   if (allowedSources(policy).includes('creator_store')) {
-    return 'Apple status update: The owner answered the asset-source question during this run. '
+    return 'The owner answered the asset-source question during this run. '
       + 'The Roblox Creator Store is now allowed. Retry any pending insert_library_model with '
       + 'a Creator Store id returned by find_library_model. Do not keep re-reading the place '
-      + 'instead of attempting the pending insert; do not build a parts substitute.';
+      + 'instead of attempting the pending insert.';
   }
-  return 'Apple status update: The owner answered the asset-source question during this run. '
-    + 'The Roblox Creator Store is not allowed. Do not retry its inserts or build a parts '
-    + 'substitute; leave that prop unbuilt and explain the choice.';
+  return 'The owner answered the asset-source question during this run. '
+    + 'The Roblox Creator Store is not allowed. Do not retry its inserts; continue to the next '
+    + 'step in the asset order for that prop.';
 }
 
 /**
  * Why this source may not be used, or null when it may.
  *
- * The sentence names the switch AND what is still available, because the reader is an agent: told
- * only "not allowed", it reports a capability gap that is really a preference, and the person
- * reading the transcript concludes the product cannot do something it can.
+ * Every refusal reads as a SKIP, not a stop: the owner's asset order (2026-10-02) is library, Creator
+ * Store, adapt or combine, then build from Parts, so a source that is off or unanswered means "go on to
+ * the next step", never "leave it unbuilt". The sentence still names the switch AND what is available,
+ * because the reader is an agent: told only "not allowed", it reports a capability gap that is really a
+ * preference.
  *
  * `ask` puts the question to whoever is here (F-059) and says whether anybody was. It is called
  * only when the answer is OWED — a person who switched a source off has answered — and asking
  * changes nothing about what is allowed.
+ *
+ * `unread` is true when this project's settings could not be read at all (the read threw and nothing was
+ * ever loaded). That is a different fact from "nobody answered", and claiming no source is permitted
+ * would be a claim about a setting nobody saw.
  */
 export function sourceRefusal(
   policy: AssetSourcePolicy | null | undefined,
   source: AssetSource,
   ask?: () => boolean,
+  unread?: boolean,
 ): string | null {
   const allowed = allowedSources(policy);
   if (allowed.includes(source)) return null;
@@ -131,28 +138,29 @@ export function sourceRefusal(
   const choice = choiceFor(source);
   const name = choice ? CHOICE_NAME[choice] : source;
 
+  if (unread === true && !policy) {
+    return "could not read this project's asset settings (read failed); retry once. Nothing was decided about "
+      + `${name}, and no setting was changed.`;
+  }
+
   // NEVER ANSWERED and DELIBERATELY TURNED OFF are different facts with different fixes: one
   // person needs to answer a dialog, the other needs to change their mind.
   if (answerOwed(policy)) {
-    // F-059: the old fallback told the agent to build from parts while the library had every prop.
-    // Asking is not permission to substitute another source, even if the person never answers.
     if (ask?.() === true) {
-      return `this project has not said yet which asset sources Apple may use, so ${name} is not `
-        + 'available yet. Apple has just asked the person (the question is showing in the Apple web app '
-        + 'and in the Studio dock), and their answer applies to this run as soon as they give it. Do not '
-        + 'hand-build a replacement for this. Continue with work that needs no assets (scripts, '
-        + 'library UI, terrain, layout), and try this again after the person answers. If no answer '
-        + 'arrives by the end of the run, leave it unbuilt and explain which choice is missing.';
+      return `skipped: ${name} is not allowed yet. This project has not said which asset sources Apple may use. `
+        + 'Apple has just asked the person (the question is showing in the Apple web app and in the Studio dock) '
+        + 'and their answer applies from the moment they give it. Continue to the next step in the asset order '
+        + 'meanwhile; if the answer arrives and allows this source, a later attempt will use it.';
     }
-    return `this project currently has no permitted source for ${name}. Do not substitute parts `
-      + 'or another source; continue with work that needs no assets and leave this asset unbuilt.';
+    return `skipped: ${name} is not allowed: this project currently has no permitted source for it. `
+      + 'Continue to the next step in the asset order.';
   }
 
   const rest = allowed.length
     ? `What IS allowed here: ${[...new Set(allowed.map((s) => CHOICE_NAME[choiceFor(s) ?? 'from_scratch']))].join(', ')}.`
     : 'Nothing else is allowed either.';
-  return `${name} is switched off for this project, so it cannot be used. It can be turned back `
-    + `on in Settings under Connections. ${rest}`;
+  return `skipped: ${name} is switched off for this project, so it cannot be used. It can be turned back `
+    + `on in Settings under Connections. ${rest} Continue to the next step in the asset order.`;
 }
 
 /**
@@ -211,8 +219,9 @@ export function provenanceRefusal(
   policy: AssetSourcePolicy | null | undefined,
   provenance: AssetProvenanceSource,
   ask?: () => boolean,
+  unread?: boolean,
 ): string | null {
   const source = PROVENANCE_SOURCE[provenance];
   if (source === null) return null;
-  return sourceRefusal(policy, source, ask);
+  return sourceRefusal(policy, source, ask, unread);
 }

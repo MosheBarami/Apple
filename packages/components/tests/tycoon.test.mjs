@@ -27,7 +27,9 @@ v = T.visiblePads(u, { Dropper2 = true })
 eq(#v, 1); eq(v[1], "Washer", "the next pad after the first is bought")
 eq(#T.visiblePads(u, { Dropper2 = true, Washer = true, Dryer = true }), 0, "nothing left to buy")
 eq(T.passGate(5, 2, false), 10, "a washer doubles"); eq(T.passGate(10, 2, true), 10, "the same washer twice counts once")
-eq(T.short(25), "$25"); eq(T.short(1500), "$1.5K"); eq(T.short(2000000), "$2M")
+eq(T.short(25), "25"); eq(T.short(1500), "1.5K"); eq(T.short(2000000), "2M")
+eq(T.short(25, "Cash"), "25 Cash", "the currency is the game's own"); eq(T.short(1500, "מטבעות"), "1.5K מטבעות")
+eq(T.short(1500, "Cash", "$"), "$1.5K", "a symbol only when the config gives one"); eq(T.short(40, "Cash", ""), "40 Cash")
 print("ok")`,
   ].join('\n'));
   assert.equal(execFileSync('luau', [file], { encoding: 'utf8' }).trim(), 'ok');

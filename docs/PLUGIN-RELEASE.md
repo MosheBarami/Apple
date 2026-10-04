@@ -7,7 +7,7 @@
 `apps/plugin` is the legacy build. It is **test fixtures only**: nothing builds it into an artifact,
 nothing submits it, and its tracked `release/apple-plugin.rbxm` is a stale historical file — see
 `apps/plugin/README.md` for why the directory stays. The asset built from it, **`132128477945417`
-("Golem"), is retired and removed. Never publish to it.**
+("Apple"), is retired and removed. Never publish to it.**
 
 Everything below the line marked **HUMAN** is done by a person, in a browser and in Roblox Studio,
 signed into the owner's account. No agent performs any of it. Nothing in this repository uploads to

@@ -119,12 +119,24 @@ function Codes.redeem(player: Player, code: string): (boolean, string)
 		return false, MSG_NOT_READY
 	end
 
-	local entry = CodeTable[normalised]
+	-- An earlier spelling of a code resolves to the code itself, so one redemption is recorded
+	-- (and checked) under one id whichever spelling the player types.
+	local id = normalised
+	local entry = CodeTable[id]
+	if not entry then
+		for codeId, candidate in CodeTable do
+			if candidate.Aliases and table.find(candidate.Aliases, normalised) then
+				id = codeId
+				entry = candidate
+				break
+			end
+		end
+	end
 	if not entry then
 		return false, MSG_UNKNOWN
 	end
 
-	if profile.codes[normalised] then
+	if profile.codes[id] then
 		return false, MSG_ALREADY
 	end
 
@@ -133,7 +145,7 @@ function Codes.redeem(player: Player, code: string): (boolean, string)
 	-- is the thing that has to be wrong for a double-grant to happen — and the
 	-- failure mode of the wrong order (grant, then yield, then grant again) is
 	-- duplicated currency, which is the one bug this game cannot ship.
-	profile.codes[normalised] = true
+	profile.codes[id] = true
 
 	local reward = entry.Reward
 	if type(reward) == "table" and type(reward.coins) == "number" and reward.coins > 0 then

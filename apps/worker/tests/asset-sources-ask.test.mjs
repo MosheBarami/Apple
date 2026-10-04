@@ -3,6 +3,10 @@
 // project may use. The Studio plugin had no such question, the refusal told the agent to "build from
 // parts for now", and the run hand-built 150+ props out of Parts.
 //
+// 2026-10-02 (owner): the asset order is library, Creator Store, adapt or combine, then build from Parts. A
+// source that is off or unanswered is therefore a SKIP to the next step, not "leave it unbuilt": the
+// refusals below say "skipped" and "continue to the next step in the asset order".
+//
 // What must hold now:
 //   - AN ABSENT POLICY STILL ALLOWS NOTHING. Asking is not answering.
 //   - When the answer is owed and a person is reachable, the product puts the question to them (web
@@ -48,15 +52,38 @@ test('when a person was asked, the refusal says so and does not send the agent o
   const asked = P.sourceRefusal(null, 'creator_store', () => { calls += 1; return true; });
   assert.equal(calls, 1, 'the refusal must put the question to the person');
   assert.match(asked, /asked|question/i, 'the agent is not told the question was put to the person');
-  assert.match(asked, /this run|as soon as/i, 'the agent is not told the answer applies to the running build');
-  assert.doesNotMatch(asked, /Build from parts for now/i, 'the agent is still told to hand-build straight away');
-  assert.match(asked, /leave it unbuilt/i, 'an unanswered asset must stay unbuilt, not become a hand-built prop');
+  assert.match(asked, /moment|as soon as|this run/i, 'the agent is not told the answer applies to the running build');
+  assert.doesNotMatch(asked, /Build from parts for now/i, 'the agent is told to hand-build as if the order did not exist');
+  assert.match(asked, /^skipped:/, 'an unanswered source is a skip');
+  assert.match(asked, /next step in the asset order/i, 'the agent is not told where to go next');
+  assert.doesNotMatch(asked, /unbuilt|do not (hand-build|substitute)/i, 'an unanswered source must not leave the object out');
   // The unasked wording stays for a project nobody can be asked about right now.
   const alone = P.sourceRefusal(null, 'creator_store', () => false);
   assert.notEqual(alone, asked, 'nobody reachable and somebody asked read the same');
-  assert.match(alone, /leave this asset unbuilt/i, 'a restricted source must not become permission to hand-build');
+  assert.match(alone, /next step in the asset order/i, 'a restricted source is a skip, not a stop');
+  assert.doesNotMatch(alone, /unbuilt|do not (hand-build|substitute)/i);
   // The provenance path carries the same question.
   assert.equal(P.provenanceRefusal(null, 'search_result', () => true), asked);
+});
+
+test('settings that could not be READ are not reported as "no permitted source"', () => {
+  const unread = P.sourceRefusal(null, 'creator_store', () => true, true);
+  assert.match(unread, /could not read this project's asset settings \(read failed\); retry once/);
+  assert.doesNotMatch(unread, /no permitted source|not allowed/i, 'a read failure was reported as a decision');
+  // A policy that WAS read keeps its own wording, whatever the flag says.
+  assert.match(P.sourceRefusal(policy(['from_scratch']), 'creator_store', undefined, true), /switched off/);
+  assert.equal(P.sourceRefusal(policy(['creator_store']), 'creator_store', undefined, true), null);
+});
+
+test('every refusal of a source reads as a skip to the next step of the asset order', () => {
+  for (const [p, ask] of [[null, () => true], [null, () => false], [policy([]), undefined], [policy(['from_scratch']), undefined]]) {
+    const r = P.sourceRefusal(p, 'creator_store', ask);
+    assert.match(r, /^skipped:/, r);
+    assert.match(r, /next step in the asset order/i, r);
+    assert.doesNotMatch(r, /unbuilt|do not substitute|leave (it|this) /i, r);
+  }
+  assert.match(P.assetSourceAnswerSteer(policy(['from_scratch'])), /next step in the asset order/i);
+  assert.doesNotMatch(P.assetSourceAnswerSteer(policy(['from_scratch'])), /unbuilt|parts substitute/i);
 });
 
 test('a settled answer is never re-asked — allowed or deliberately switched off', () => {

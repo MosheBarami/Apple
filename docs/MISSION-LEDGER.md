@@ -39,11 +39,11 @@ Last reconciled: **2026-09-01** (third pass, after three independent critics).
 | 22 | Discovery expands beyond the seed manifest | **PROVEN** | The PROVEN rating was withdrawn because the Wally/Pesde enumeration was a one-off measurement that fed nothing: aggregate counts only, no list, no re-runnable code, and all 217 records still reading `origin: "seed-manifest"`. **`src/enumerate.mjs` now walks both indexes and emits one record per PACKAGE** — 6,410 packages, 1,082 with a resolvable GitHub URL, 1,071 of them novel — and `discover.mjs --includeRegistry` resolves and classifies them. The corpus is **217 → 289 records**, 51 registry candidates resolved: 41 COMMERCIAL_REUSABLE, 9 quarantined, 1 copyleft. It also corrects a figure the old rating cited: Pesde has **601** packages, not 781 — the one-off counted `scope.toml` metadata files as packages.** `run()` had accepted `includeRegistry` since the enumerator landed and the CLI called `run({ force, limit })`, so 1,071 novel candidates were reachable only from a test file — the same shape as five design checks that existed, passed their tests, and were not exported from their package. One argument. Ingested: the corpus went **289 → 1,240 sources, 170 → 1,019 resolved, and lawfully-reusable 109 → 769** (COPYLEFT 9 → 60, quarantine 169 → 409, 125 errored and counted rather than dropped). `discover-cli.test.mjs` now reads `run()`'s destructured signature and fails if any option it accepts cannot be set from the command line. What this does NOT claim: discovered is not fetched. **lawfully-reusable sources that teach nothing** are the honest measure of where the remaining value is — 747 records at the time of writing, 732 now that fifteen were fetched, which collapse to **497 distinct repositories**  *Superseded clauses about "1,020 unresolved candidates" were removed on 2026-09-01: they described the state before ingestion and contradicted this row's own PROVEN status. Live data is 1,019 resolved of 1,240, with 221 unresolved of which 125 errored.* |
 | 23 | Licences/provenance preserved | **PROVEN** | `data/sources.json` tracked; SHA + SPDX + evidence path per source |
 | 24 | Unsafe/exploit content quarantined | **PARTIAL** | 139 quarantined on licence, and **the security gate now runs**: 23 of 23 checkouts, 0 unsafe. Running it found a bug in the SCANNER rather than the corpus — a bare `HttpGet(` matched any function of that name and condemned `evaera/roblox-lua-promise` as an executor on its own Promise tutorial. Three independent attacks on the proposed fix each found a **working hole** (a numeric-array loader in `.json`, a hex blob in `.toml`, a numeric array in a `.md` fence), so the fix went narrow: `packed-line` now requires the long line to be OPAQUE rather than merely long. All three attacks and all three false positives are permanent tests. creator-docs' five remaining findings sit on a **SHA-pinned accepted register** — verified that changing the SHA re-flags all 18. Still true: 194 of 217 sources are unscanned because unfetched  **The gate has now excluded something, which is the thing it existed to do and had never done.** Re-run over 38 checkouts after a targeted fetch: `Quenty/NevermoreEngine` is UNSAFE as a `remote-payload-loader` — it ships a Studio bridge whose purpose is executing arbitrary code — and the verdict stands rather than being waved through on the library's 608-star reputation; it is deliberately NOT on the SHA-pinned `ACCEPTED` register, because that register is for human-reviewed exceptions and reviewing my own is what §4 exists to prevent. A false positive beside it was fixed narrowly (F-51: a `package-lock.json` disqualified `evaera/Cmdr`; lockfiles are now excluded upstream by four exact filenames, and the register's now-dead hand-written acceptance was removed rather than left to claim a review the scanner no longer reaches). `Roblox/react-luau` stays in REVIEW on a generated blob that cannot be recognised by name, which is a human decision rather than a gap. Retrieval is tested in BOTH directions against the same policy the ranker applies. **Why this is still PARTIAL:** 58 of 1,240 records carry a scan verdict, because a source cannot be scanned before it is fetched, and 497 lawfully-reusable repositories are still unfetched. The mechanism is proven; the coverage is not |
-| 25 | Golem stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
-| 26 | Corpus materially improves UI/world evals | **PARTIAL** | The audit's criticism was exact — "the word doing the work is *evals*, and there is no eval", because `packages/evals` did not import `@golem/design` at all. **Now it does**: `no_design_violation` is a check type beside `no_antipattern`, so the mechanised rules run against code a MODEL wrote rather than only against this repository's source. Five of the eleven are text-decidable and wired; the other six need measured geometry and say so rather than guessing. Wiring it exposed that **five of the eleven checks were never exported from the design package at all** — the first consumer to import it failed to load. F-37 and F-38 are now regression fixtures for generated code. A second check type now sits beside it: `playbook_complete`, the only check here that can fail model output for what it does **not** do. What is still not done: running either against an actual model, which is gate 14's blocker  **§8's three questions now all have answers**, which is the concrete form of this gate's claim: the corpus is judged by whether the simulator/tycoon build gets better, and §8 names what better means. Progression curves — ours grow 1.6–1.8 over 8–12 levels, a shipped MIT tycoon 1.15–1.28 over 250–500, which at twelve levels is 643× versus 4.7× on the last upgrade. Deprecated patterns in our own build — none, across 37 files, after a false positive in the tagger was fixed. StyleSheet/StyleRule — answered from the engine reference because no checked-out game uses the API, and it found **five existing rules hand-rolling conditions the engine already selects on** (`@ReducedMotionEnabledTrue`, `@PreferredInputGamepad`, `@PreferredInputTouch`, `@PreferredTextSize*`, `@ViewportDisplaySize*`). 107 → 113 rules, plus a `progression` component. **Still PARTIAL for the same reason:** none of this has been run against a model, which is gate 14's blocker  **And the corpus produced a scripting rule, on the mission's highest-priority track.** `slime-factory-tycoon`'s `Validate.finite` rejects NaN because it "breaks every comparison" — so a handler that type-checks AND range-checks a remote number still admits NaN, since every comparison against it is false while infinity is caught by the upper bound. Verified first: that shape matched **zero of the eighteen** existing rules. Now rule 19, `range-check-admits-nan`. Running all nineteen over our own server code then found two defects in the rules rather than in the code — F-52 (`datastore-without-pcall` flagged `DataService`'s retry helper, so the rule was grading the better answer worse, and `datastore-without-retry` four rules below asks for exactly the helper it penalised) and F-53 (`deprecated-api` counting `wait()` inside a string, in the rule that grades models). 18 → 19 rules |
+| 25 | Apple stops inventing every GUI from blank | **PROVEN** | a UI request now carries retrieved grammar into the system prompt; the default genuinely changed. Model-behaviour delta still unmeasured (gate 26) |
+| 26 | Corpus materially improves UI/world evals | **PARTIAL** | The audit's criticism was exact — "the word doing the work is *evals*, and there is no eval", because `packages/evals` did not import `@apple/design` at all. **Now it does**: `no_design_violation` is a check type beside `no_antipattern`, so the mechanised rules run against code a MODEL wrote rather than only against this repository's source. Five of the eleven are text-decidable and wired; the other six need measured geometry and say so rather than guessing. Wiring it exposed that **five of the eleven checks were never exported from the design package at all** — the first consumer to import it failed to load. F-37 and F-38 are now regression fixtures for generated code. A second check type now sits beside it: `playbook_complete`, the only check here that can fail model output for what it does **not** do. What is still not done: running either against an actual model, which is gate 14's blocker  **§8's three questions now all have answers**, which is the concrete form of this gate's claim: the corpus is judged by whether the simulator/tycoon build gets better, and §8 names what better means. Progression curves — ours grow 1.6–1.8 over 8–12 levels, a shipped MIT tycoon 1.15–1.28 over 250–500, which at twelve levels is 643× versus 4.7× on the last upgrade. Deprecated patterns in our own build — none, across 37 files, after a false positive in the tagger was fixed. StyleSheet/StyleRule — answered from the engine reference because no checked-out game uses the API, and it found **five existing rules hand-rolling conditions the engine already selects on** (`@ReducedMotionEnabledTrue`, `@PreferredInputGamepad`, `@PreferredInputTouch`, `@PreferredTextSize*`, `@ViewportDisplaySize*`). 107 → 113 rules, plus a `progression` component. **Still PARTIAL for the same reason:** none of this has been run against a model, which is gate 14's blocker  **And the corpus produced a scripting rule, on the mission's highest-priority track.** `slime-factory-tycoon`'s `Validate.finite` rejects NaN because it "breaks every comparison" — so a handler that type-checks AND range-checks a remote number still admits NaN, since every comparison against it is false while infinity is caught by the upper bound. Verified first: that shape matched **zero of the eighteen** existing rules. Now rule 19, `range-check-admits-nan`. Running all nineteen over our own server code then found two defects in the rules rather than in the code — F-52 (`datastore-without-pcall` flagged `DataService`'s retry helper, so the rule was grading the better answer worse, and `datastore-without-retry` four rules below asks for exactly the helper it penalised) and F-53 (`deprecated-api` counting `wait()` inside a string, in the rule that grades models). 18 → 19 rules |
 | 27 | UI Labs or equivalent isolated UI harness | **PROVEN** | `Stories.luau` renders states in isolation at 1.00 and 0.72 and MEASURES touch targets; found a real mobile trap · `evidence/2026-09-01-ui-stories-harness.md` |
 | 28 | Icon intelligence from strong free sources | **PROVEN** | 10 icon/asset rules extracted from `tijnepema/lucide-roblox` (MIT; SVGs ISC) and two agent-skill corpora, MEASURED in the checkout rather than read off prose — the square keyline is 18×18 at (3,3) in 134 files and the circle r10 deliberately overshoots it by one unit per side, which is the optical-vs-geometric-area correction stated as grammar. The shipped family stays original; what was taken is the construction rule, per §K |
-| 29 | Motion intelligence uses tested reusable patterns | **PROVEN** | 7 golem-authored rules (three from frame-by-frame samples) **plus 13 extracted from four independent MIT motion libraries** — Flipper, otter, roact-spring, RbxCameraShaker. The second source is what closes this: three libraries AGREEING that a retarget inherits velocity is grammar, and their DISAGREEMENT on what a stop does is recorded as a decision to be made rather than smoothed into a false consensus |
+| 29 | Motion intelligence uses tested reusable patterns | **PROVEN** | 7 apple-authored rules (three from frame-by-frame samples) **plus 13 extracted from four independent MIT motion libraries** — Flipper, otter, roact-spring, RbxCameraShaker. The second source is what closes this: three libraries AGREEING that a retarget inherits velocity is grammar, and their DISAGREEMENT on what a stop does is recorded as a decision to be made rather than smoothed into a false consensus |
 | 30 | Studs/classic a first-class art language | **PARTIAL** | 10 studs-classic + 9 retro-roblox rules, 12 sourced from creator-docs (CC-BY-4.0); no studs world built yet |
 | 31 | Broad non-simulator UI/game patterns represented | **PARTIAL** | **106 rules over 21 of 23 families.** `modern` closed from four component kits (synthetic Apache-2.0; onyx-ui, Iris, cyan-ui MIT) — and closed HONESTLY: the merge arrived claiming `modern` on 25 rules and `fantasy` on 3, the pinned coverage test caught it, and 19 `modern` claims plus all 3 `fantasy` claims were stripped as decoration on genre-neutral mechanics. Six rules keep `modern` because their content would differ in a cartoon-simulator. `fantasy` and `sci-fi` stay open  **The material for the remaining families is now on disk**: this session fetched Fusion, Roact, react-luau and vide (UI frameworks) and three full games including a legacy-era simulator, all licence-clear and security-scanned. None has been extracted from yet — extraction is still hand-driven, which the ten-track audit named, and it is now the binding constraint on this gate rather than discovery being |
 | 32 | Hugging Face pipeline measured and privacy-safe | **PARTIAL** | landscape characterised, licences read, duplicates identified; nothing uploaded/downloaded/trained · `evidence/2026-09-01-huggingface-luau-landscape.md` |
@@ -226,7 +226,7 @@ persistence and Studio pairing proven, the autonomous build path proven, no debu
 artifacts shipped, PR narrative reconciled against the evidence.
 
 **Productization did not wait for the merge.** §1 and §13 forbid stalling on a
-human-only blocker and forbid contaminating PR #1, so `feature/golem-product-experience`
+human-only blocker and forbid contaminating PR #1, so `feature/apple-product-experience`
 (PR #5) is stacked on this branch's head. It retargets to `main` when PR #1 merges;
 every commit on it is additive, so that rebase is a fast-forward.
 
@@ -235,16 +235,16 @@ every commit on it is additive, so that rebase is a fast-forward.
 The 40 gates above map the OLD mission's §AS. The new master mission adds one outcome
 that outranks all of them, because it is the question the rest only support:
 
-> Prove that **Golem itself builds**, not that Claude Code can manually build while
-> developing Golem.
+> Prove that **Apple itself builds**, not that Claude Code can manually build while
+> developing Apple.
 
 **Status: the capability is PROVEN; §9.1's two-exercise requirement is NOT met.** One
 exercise, on a non-simulator shape, 2026-09-01. The distinction matters and the bolded
-word is doing real work: what is proven is that Golem can build a working feature
+word is doing real work: what is proven is that Apple can build a working feature
 unaided. What is not established is that it generalises, which is precisely what a
 second exercise on a different shape would test. A fresh creation
 request went through the deployed Worker, real Supabase auth, the keyless
-`@cf/zai-org/glm-5.3-flash` path, the Golem router in product mode Agent, Golem's own
+`@cf/zai-org/glm-5.3-flash` path, the Apple router in product mode Agent, Apple's own
 tools, and the paired Studio plugin into live place 116648235878426. 18 tool calls,
 212 s, 49 Credits. Claude wrote the user's sentence and nothing else.
 
@@ -256,15 +256,15 @@ its remote there instead of inventing a parallel one.
 Then it was **run**: server booted clean, the client UI rendered, the character was
 put on the start pad (timer 7.53 → 9.02 across 1.5 s, in the running green) and on
 the finish pad (16.73 → 16.73, gold, `Best: 16.73s`). Server-authoritative
-throughout — Golem chose that split unprompted.
+throughout — Apple chose that split unprompted.
 
-**Five** defects in Golem's own output, all found by running it and none repaired by
+**Five** defects in Apple's own output, all found by running it and none repaired by
 hand: a 10-second client stall because the two halves disagree about where the remote
 lives; decorative trims z-fighting their platforms from `Trim3` onward; the run ending
 on the 16-step limit rather than concluding; the automatic pre-run checkpoint failing
 with *"The run this change belonged to has ended"*; and a dead `fmt` helper in the
 generated server script. The checkpoint one is now FIXED — it was a real attribution
-bug in `session.ts`, not a Golem defect, and `src/op-attribution.ts` carries the
+bug in `session.ts`, not an Apple defect, and `src/op-attribution.ts` carries the
 explanation. `evidence/2026-09-01-golden-creation-parkour.md`.
 
 **§9.1 wants two exercises across different game shapes. This is one.** The second is
@@ -425,7 +425,7 @@ Two further rulings that change how the rest of the mission is run:
 
 ## Session of 2026-09-01 (evening) — Phase H/I product work
 
-Branch `feature/golem-product-experience`, PR #5. Every item below has evidence in
+Branch `feature/apple-product-experience`, PR #5. Every item below has evidence in
 `docs/evidence/` and a guard that fails if it regresses.
 
 ### The canonical visual system (§16)
@@ -438,7 +438,7 @@ Branch `feature/golem-product-experience`, PR #5. Every item below has evidence 
 
 The C-series work fixed a live mislabel: `set_properties` was reported as "Building
 world", and because adjacent same-kind steps merge, "Set properties" was drawn *inside*
-the Building heading — the transcript said Golem was building the world while it
+the Building heading — the transcript said Apple was building the world while it
 recoloured a floor. C04 (searching docs) and C06 (reading scripts) were likewise
 collapsed into "Inspecting project". C10 and C12 are declared not-modelled with reasons.
 
@@ -463,7 +463,7 @@ candidates, most false positives, two real.
 
 Run 2026-09-02 at the Credit reset. An ore-mining tycoon loop, the simulator family against
 the first exercise's parkour: economy, per-player state, a carry limit, persistence, a HUD
-and a purchase. Golem checkpointed, wrote server, client and HUD Luau, playtested, read its
+and a purchase. Apple checkpointed, wrote server, client and HUD Luau, playtested, read its
 own output and iterated on `OreTycoonServer` twice more — then **hit the 16-step limit and
 stopped**.
 
@@ -500,7 +500,7 @@ earlier:
   in `search_asset_library` and not carried across;
 - the panel told **every user with a placed asset** that their game could not ship
   commercially, because with no library every asset is unaccounted and
-  `missing_provenance` is graded a blocker. Golem never made that determination.
+  `missing_provenance` is graded a blocker. Apple never made that determination.
 
 A third was a regression from this session's own C-series split: the reducer's
 announcement suppression compared kinds, which was the right test only while the web

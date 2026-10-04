@@ -15,7 +15,7 @@ test.after(() => rmSync(dir,{recursive:true,force:true}));
 async function bundle(name) {
   const out = join(dir,name+'.mjs');
   await esbuild.build({entryPoints:[join(root,'src',name+'.ts')],bundle:true,format:'esm',platform:'node',outfile:out,
-    alias:{'@golem/shared':join(root,'../../packages/shared/src/index.ts')}});
+    alias:{'@apple/shared':join(root,'../../packages/shared/src/index.ts')}});
   return import(pathToFileURL(out).href);
 }
 const C = await bundle('owner-corpus');
@@ -71,15 +71,16 @@ test('metadata alone is not insertable; verified native bytes are searchable onl
 test('real library tool prioritizes the owner corpus, then emits the exact native import behind a checkpoint',async()=>{
   const e=env(),c=await ingested(e),ops=[],events=[];
   const context=ctx(e,{createCheckpoint:async()=>{events.push('checkpoint');return{id:'cp'};},execStudioOp:async op=>{
-    events.push('import');ops.push(op);return{ok:true,data:{inserted:['game.ServerStorage.OakTree'],scriptsExecuted:0}};
+    events.push(op.op);ops.push(op);return{ok:true,data:{inserted:['game.Workspace.OakTree'],scriptsExecuted:0}};
   }});
   const found=await T.runTool(context,'find_library_model',JSON.stringify({query:'OakTree'}));
   const result=JSON.parse(found.resultForLlm);
   assert.equal(result.source,'owner_corpus');assert.equal(result.results[0].id,c.id);
   const imported=await T.runTool(context,'insert_library_model',JSON.stringify({id:c.id}));
   assert.equal(imported.ok,true);assert.equal(imported.mutatedProject,true);
-  assert.deepEqual(events,['checkpoint','import']);assert.equal(ops[0].op,'import_owner_component');
-  assert.equal(ops[0].componentSha256,c.componentSha256);assert.equal(ops[0].parent,'game.ServerStorage');
+  // checkpoint, the import, then one read of the wrapper so the inner model's path (not the Folder's) is what comes back.
+  assert.deepEqual(events,['checkpoint','import_owner_component','get_tree']);assert.equal(ops[0].op,'import_owner_component');
+  assert.equal(ops[0].componentSha256,c.componentSha256);assert.equal(ops[0].parent,'game.Workspace','insert_library_model defaults to game.Workspace, as its description says');
   assert.ok(JSON.stringify(ops[0]).length<2000,'durable queue must hold a token, not model bytes');
   const served=await C.readOwnerGrant(e,ops[0].contentToken);
   assert.deepEqual(Buffer.from(served.rbxmBase64,'base64'),Buffer.from(bytes));

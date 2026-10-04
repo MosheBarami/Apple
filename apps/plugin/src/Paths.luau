@@ -88,7 +88,7 @@ function Paths.fullPath(inst: Instance): string
 	return out
 end
 
--- typed value codec (mirrors PropValue in @golem/shared) --------------------
+-- typed value codec (mirrors PropValue in @apple/shared) --------------------
 export type PropValue = { t: string, v: any? }
 
 function Paths.decode(pv: any): any

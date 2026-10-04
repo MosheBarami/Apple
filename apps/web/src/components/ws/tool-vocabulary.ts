@@ -57,7 +57,7 @@ export const ACTIVITY = {
   // — telling a user "Searching the Roblox docs" while the agent reads a GitHub issue is a wrong
   // sentence, and the whole reason this table exists is that wrong sentences shipped.
   browsing: { canonical: null, label: 'Reading the web' },
-  // The project's scratch files, which are Golem's storage and not the Roblox place. C08 is
+  // The project's scratch files, which are Apple's storage and not the Roblox place. C08 is
   // "Editing project", and using it here would claim the agent touched the user's game.
   filing: { canonical: null, label: 'Working with project files' },
   // The honest fallback for a tool this build has never heard of.
@@ -97,6 +97,7 @@ export const TOOL = {
   // C02 — reading the world.
   get_project_tree: { kind: 'inspecting', label: 'Read the project tree', live: 'Looking around your game' },
   inspect_model: { kind: 'inspecting', label: 'Inspected a model', live: 'Taking a closer look' },
+  model_anatomy: { kind: 'inspecting', label: 'Looked the model over', live: 'Looking the model over' },
 
   // C06 — reading the code. Distinct from C02: a project's scripts and its
   // instance tree answer different questions and fail in different ways.
@@ -163,9 +164,6 @@ export const TOOL = {
   // call, named by its own `name`; `more_tools` widens the run's toolset when nothing offered fits.
   build_object: { kind: 'building', label: 'Built an object', live: 'Building it', on: 'Building the {}' },
   more_tools: { kind: 'planning', label: 'Reached for more abilities', live: 'Reaching for more abilities' },
-  // "Make it cooler" (ac2021d4): dresses the ready-made object already in the place; worded as the
-  // worker's own plainSummary words it.
-  cool_library_model: { kind: 'building', label: 'Made it cooler', live: 'Making it cooler' },
   // Arbitrary Luau against the place can do anything; `building` is the coarsest
   // honest answer rather than a specific claim about which.
   run_luau: { kind: 'building', label: 'Ran Luau', live: 'Making changes to your game' },
@@ -195,6 +193,7 @@ export const TOOL = {
   // C13
   render_view: { kind: 'rendering', label: 'Rendered the scene', live: 'Taking a picture of it' },
   capture_studio_viewport: { kind: 'rendering', label: 'Captured the Studio view', live: 'Taking a picture of Studio' },
+  look: { kind: 'rendering', label: 'Looked at what was built', live: 'Looking at what was built' },
   compose_thumbnail: { kind: 'rendering', label: 'Framed a store-page image', live: 'Making a thumbnail' },
   get_instance: { kind: 'inspecting', label: 'Read an instance back', live: 'Taking a closer look', on: 'Looking at the {}' },
   get_selection: { kind: 'inspecting', label: 'Checked what you have selected', live: 'Seeing what you picked' },
@@ -219,11 +218,14 @@ export const TOOL = {
   build_ui: { kind: 'building', label: 'Built a screen', live: 'Designing a screen' },
   insert_ui_component: { kind: 'building', label: 'Added a UI piece', live: 'Adding a button or panel' },
   animate_model: { kind: 'building', label: 'Made it move', live: 'Making it move' },
+  add_behaviour: { kind: 'building', label: 'Made it do something', live: 'Making it do something' },
   build_studded_ui: { kind: 'building', label: 'Drew the game screens', live: 'Drawing the game screens' },
   add_upgrades: { kind: 'building', label: 'Added working upgrades', live: 'Adding the upgrades' },
   insert_sound: { kind: 'building', label: 'Added a sound', live: 'Adding a sound' },
   insert_vfx: { kind: 'building', label: 'Added a visual effect', live: 'Adding a visual effect' },
   insert_library_model: { kind: 'building', label: 'Added a model from the library', live: 'Adding a model' },
+  preview_library_models: { kind: 'searching_assets', label: 'Looked at ready-made models', live: 'Looking at ready-made models' },
+  dress_object: { kind: 'building', label: 'Added extras to it', live: 'Adding extras' },
   insert_owner_component: { kind: 'building', label: 'Added a piece from the game library', live: 'Adding a piece' },
   query_owner_catalog: { kind: 'searching_assets', label: 'Looked in the game library', live: 'Finding the right pieces' },
   browse_owner_library: { kind: 'searching_assets', label: 'Looked in your game library', live: 'Looking through your games' },

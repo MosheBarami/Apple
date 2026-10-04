@@ -35,7 +35,7 @@ const require_ = createRequire(join(WORKER, 'package.json'));
 const jose = require_('jose');
 const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
-const TMP = mkdtempSync(join(tmpdir(), 'golem-support-routes-'));
+const TMP = mkdtempSync(join(tmpdir(), 'apple-support-routes-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
 writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
@@ -62,7 +62,7 @@ const sign = (sub, email) =>
     .setIssuedAt()
     .setExpirationTime('1h')
     .sign(privateKey);
-const JWT = await sign(USER_ID, 'reporter@golem.test');
+const JWT = await sign(USER_ID, 'reporter@apple.test');
 
 /** Every PostgREST request the routes made: method, path, query and body, as they left. */
 let rest = [];
@@ -141,7 +141,7 @@ async function call(path, { method = 'GET', jwt = JWT, body, headers = {} } = {}
   if (jwt) h.Authorization = `Bearer ${jwt}`;
   if (body !== undefined) h['Content-Type'] = 'application/json';
   const res = await APP.fetch(
-    new Request(`https://golem.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
+    new Request(`https://apple.test${path}`, { method, headers: h, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
     env(),
   );
   const text = await res.text();

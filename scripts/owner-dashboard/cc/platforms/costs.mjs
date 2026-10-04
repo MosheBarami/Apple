@@ -13,6 +13,7 @@ import { apple } from './apple.mjs';
 import { cloudflare, WORKER_URL } from './cloudflare.mjs';
 import * as groq from './groq.mjs'; // probeState is newer than some checkouts of groq.mjs
 import { supabase, FREE_DB_BYTES } from './supabase.mjs';
+import { envCompat } from '../../../lib/env-compat.mjs';
 
 const DAYS = 30;
 const FREE_NEURONS_PER_DAY = 10000; // Workers AI free allocation (the worker's own FREE_NEURONS_PER_DAY)
@@ -41,7 +42,7 @@ async function cfUsage(now) {
 
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
 const modelCalls = () => fetchJson(`${base()}/api/admin/logs?kind=model_call&days=${DAYS}&limit=2000`,
-  { label: 'Apple', what: 'יומן הקריאות למודל', headers: { 'x-admin-key': process.env.GOLEM_ADMIN_KEY } });
+  { label: 'Apple', what: 'יומן הקריאות למודל', headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
 
 /** Pure: everything the page shows from the raw sources. Exported for the tests. */
 export function derive({ ai = [], gw = [], calls = [], a = {}, cf = {}, groqProbe = null, sb = null, now = Date.now() } = {}) {
@@ -140,10 +141,10 @@ export function costs() {
   return cached('costs', async () => {
     const now = Date.now();
     const haveCf = Boolean(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID);
-    const haveAdmin = Boolean(process.env.GOLEM_ADMIN_KEY);
+    const haveAdmin = Boolean(envCompat('APPLE_ADMIN_KEY'));
     const [usage, logs, ap, cf, sb] = await Promise.all([
       haveCf ? section(() => cfUsage(now)) : { error: 'חסרים CLOUDFLARE_API_TOKEN או CLOUDFLARE_ACCOUNT_ID' },
-      haveAdmin ? section(modelCalls) : { error: 'חסר GOLEM_ADMIN_KEY' },
+      haveAdmin ? section(modelCalls) : { error: 'חסר APPLE_ADMIN_KEY' },
       apple().catch(() => null), cloudflare().catch(() => null), supabase().catch(() => null)]);
     if (usage.error && logs.error) return fail(usage.error, { errors: { cloudflare: usage.error, worker: logs.error } });
     const a = ap?.ok ? ap : {};

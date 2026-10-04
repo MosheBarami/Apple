@@ -38,6 +38,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..', '..');
@@ -56,7 +57,7 @@ try {
 //   gateway-config-versus-lane mistake wearing a hostname. For a paraphrase it is the SERVED MODEL
 //   that matters, and every entry records `servedBy` so a reader can check rather than trust. ]]
 const BASE = (process.env.NEED_INDEX_BASE || 'https://apple.moshe-barami111.workers.dev').replace(/\/+$/, '');
-const KEY = process.env.GOLEM_ADMIN_KEY || '';
+const KEY = envCompat('APPLE_ADMIN_KEY') || '';
 const flag = (n) => process.argv.includes(`--${n}`);
 const opt = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? d : process.argv[i + 1]; };
 //[[ --from/--to/--out exist because the gateway was congested enough that eighty sequential calls
@@ -235,7 +236,7 @@ async function main() {
     console.log('\n--- %d modules, 1 call each, model=%s maxTokens=%d', modules.length, MODEL, MAX_TOKENS);
     return;
   }
-  if (!KEY) { console.error('GOLEM_ADMIN_KEY missing'); process.exit(2); }
+  if (!KEY) { console.error('APPLE_ADMIN_KEY missing'); process.exit(2); }
 
   const entries = { ...(prior?.modules ?? {}) };
   const failures = [];

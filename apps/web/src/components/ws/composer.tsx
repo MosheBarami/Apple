@@ -19,7 +19,7 @@ import {
   type ChatAttachment,
   type UiTheme,
   type StudioEventSelection,
-} from '@golem/shared';
+} from '@apple/shared';
 import { Icon, PATH } from './primitives';
 import {
   PromptInput,

@@ -1,6 +1,6 @@
 // Speech in and speech out, behind an interface, on a budget.
 //
-// Two jobs and one shared discipline. The jobs are transcription (a user speaks to Golem instead
+// Two jobs and one shared discipline. The jobs are transcription (a user speaks to Apple instead
 // of typing) and synthesis (a line of NPC dialogue comes back as audio). The discipline is that
 // BOTH are billed per AUDIO MINUTE rather than per token, which breaks the assumption every other
 // spend path in this worker rests on:
@@ -308,14 +308,14 @@ export const VOICE_PRESETS: Readonly<Record<string, VoicePreset>> = {
   },
   spanish_narrator: {
     summary: 'The narrator delivery, spoken in Spanish.',
-    use: 'A Spanish-language build. The TEXT must already be Spanish — this selects the voice, it does not translate.',
+    use: 'A Spanish-language build; the text must already be Spanish.',
     lang: 'es',
     wordsPerMinute: 140,
     shape: (t) => breakLongSentences(slowDown(t), 14),
   },
   french_narrator: {
     summary: 'The narrator delivery, spoken in French.',
-    use: 'A French-language build. The TEXT must already be French — this selects the voice, it does not translate.',
+    use: 'A French-language build; the text must already be French.',
     lang: 'fr',
     wordsPerMinute: 140,
     shape: (t) => breakLongSentences(slowDown(t), 14),

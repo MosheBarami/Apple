@@ -5,8 +5,8 @@
     "This rubric measures whether a BUILT SCENE looks good, not whether the requested objects exist.",
     "Object existence is measured by exactly one dimension (prompt_fidelity, weight 6 of 100). A scene in which every requested object is present but nothing else is done well tops out around 6-20% and FAILS.",
     "Weights are deliberately concentrated in the dimensions that separate a professional build from a first-pass block-out: focal point, composition, ground treatment, surface detail, lighting, material and colour discipline.",
-    "Hard-fail conditions cap the total regardless of every other score. They encode the failure modes Golem currently exhibits: bare baseplate, one material, default lighting, no small props, no landmark.",
-    "Anchor 0 is written as the CURRENT observed Golem failure mode for that dimension, so a run that changes nothing scores 0s, not 2s.",
+    "Hard-fail conditions cap the total regardless of every other score. They encode the failure modes Apple currently exhibits: bare baseplate, one material, default lighting, no small props, no landmark.",
+    "Anchor 0 is written as the CURRENT observed Apple failure mode for that dimension, so a run that changes nothing scores 0s, not 2s.",
     "Anchor 4 is 'a competent professional Roblox environment artist shipped this', not 'perfect'."
   ],
   "gate": {

@@ -66,7 +66,7 @@ export function estimateNeuronsForModel(model: ProviderModel, promptChars: numbe
 
 /** Relative price of a model, used to rank providers in auto-selection. Lower is cheaper. */
 export function blendedPricePer1M(model: ProviderModel): number {
-  // A Golem step reads far more than it writes, so weight input 3:1 against output. The ranking
+  // An Apple step reads far more than it writes, so weight input 3:1 against output. The ranking
   // only has to be stable and defensible, not exact.
   return (model.inputCostPer1M * 3 + model.outputCostPer1M) / 4;
 }

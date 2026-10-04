@@ -22,9 +22,9 @@ import { join } from 'node:path';
 const ESBUILD = new URL('../../../apps/worker/node_modules/.bin/esbuild', import.meta.url).pathname;
 
 const SRC = new URL('../../../apps/worker/src/reasoning.ts', import.meta.url).pathname;
-const out = join(mkdtempSync(join(tmpdir(), 'golem-reasoning-')), 'reasoning.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'apple-reasoning-')), 'reasoning.mjs');
 // `--bundle` and the explicit `--main-fields`: reasoning.ts gained its first VALUE import from
-// @golem/shared (the product-mode display names, so the effort explanation shown to a person stops
+// @apple/shared (the product-mode display names, so the effort explanation shown to a person stops
 // saying "clay"). Transpile-only left that import unresolved at run time. `--platform=neutral`
 // defaults mainFields to EMPTY, so a workspace package whose entry comes from `main` cannot be
 // resolved without naming them — the same trap the comment above records.
@@ -248,7 +248,7 @@ test('a real greeting is still cheap, on both tiers — the shortcut was not del
 
 /* --------------------------------------- the reason string a person reads ---- */
 
-test('the effort explanation speaks product language, not Golem specialist names', () => {
+test('the effort explanation speaks product language, not Apple specialist names', () => {
   const reasons = [
     chooseEffort(base('agent')).reason,
     chooseEffort(base('agent', { conversational: true })).reason,
@@ -257,7 +257,7 @@ test('the effort explanation speaks product language, not Golem specialist names
   // RESTATED 2026-10-01 (c839d7af, 38efea2e): the property is unchanged — no internal name reaches a
   // person. Plan/MAX fixtures are gone with the modes; the reason now reads `baseline`.
   for (const dead of ['clay', 'stone', 'rune', 'super-agent', 'super agent']) {
-    assert.ok(!reasons.includes(dead), `"${dead}" is Golem-era vocabulary and reached the UI: ${reasons}`);
+    assert.ok(!reasons.includes(dead), `"${dead}" is Apple-era vocabulary and reached the UI: ${reasons}`);
   }
   assert.match(chooseEffort(base('agent')).reason, /^baseline/);
   assert.match(chooseEffort(base('agent', { conversational: true })).reason, /conversational/);

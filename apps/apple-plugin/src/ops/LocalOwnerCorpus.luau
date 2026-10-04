@@ -323,7 +323,7 @@ function LocalOwnerCorpus.build(api)
 		if not config then return nil,"refused",err end
 		if not nodeId(op.nodeId) or not sha(op.jobId) or not sha(op.nativeSha256) or not api.integer(op.byteLength) or op.byteLength < 1 or op.byteLength > MAX_BYTES
 			or not api.integer(op.nativeInstances) or op.nativeInstances < 1 or op.nativeInstances > MAX_NODES then return nil,"invalid","local import identity or byte/node cap invalid" end
-		local parent,canonical,parentErr,parentKind,remedy = api.resolvePath(self.game,self.options.services,op.parent,true)
+		local parent,canonical,parentErr,parentKind,remedy = api.resolvePath(self.game,self.options.services,op.parent,true, self)
 		if not parent then return nil,parentKind or "not_found",parentErr,remedy end
 		local refused,refusedRemedy = api.destinationRefusal(self.game,parent,canonical,"Folder")
 		if refused then return nil,"refused",refused,refusedRemedy end
@@ -430,7 +430,7 @@ function LocalOwnerCorpus.build(api)
 	-- paired-session consent fence (stillCurrent) still applies to both.
 	local LIBRARY_PORT, LIBRARY_MAX_BYTES, LIBRARY_MAX_NODES = 63747, 64 * 1024 * 1024, 250000
 	-- Read routes the "route" action forwards as they are; the gateway owns their meaning, the plugin only bounds them.
-	local LIBRARY_ROUTES = { deps = true, install = true, systems = true, blueprint = true, family = true, report = true, media = true, design = true }
+	local LIBRARY_ROUTES = { deps = true, install = true, systems = true, blueprint = true, family = true, report = true, media = true, design = true, find = true }
 	local function libraryConfig(self, stillCurrent)
 		local ok, yes = pcall(function() return type(stillCurrent) == "function" and stillCurrent() == true end)
 		if not ok or not yes then return nil end
@@ -496,7 +496,7 @@ function LocalOwnerCorpus.build(api)
 		elseif op.action == "route" then
 			-- Any gateway read route without an action of its own (install, systems, blueprint, design...): the route is allowlisted and
 			-- the params are bounded plain text or numbers, sorted so the same request always makes the same URL.
-			if type(op.route) ~= "string" or LIBRARY_ROUTES[op.route] ~= true then return nil, "invalid", "route must be deps, install, systems, blueprint, family, report, media or design" end
+			if type(op.route) ~= "string" or LIBRARY_ROUTES[op.route] ~= true then return nil, "invalid", "route must be deps, install, systems, blueprint, family, report, media, design or find" end
 			if op.params ~= nil and type(op.params) ~= "table" then return nil, "invalid", "params must be a table of names and values" end
 			local values, names = {}, {}
 			for key, value in op.params or {} do
@@ -540,7 +540,7 @@ function LocalOwnerCorpus.build(api)
 		if not libraryId(op.gameId) or not libraryText(op.path, 1024) or string.sub(op.path, 1, 1) ~= "/" or (op.mode ~= "self" and op.mode ~= "children")
 			or not libraryText(op.parent, 512) then return nil, "invalid", "gameId, absolute library path, mode self|children and parent required" end
 		local parentPath = if string.sub(op.parent, 1, 4) == "game" then op.parent else "game." .. op.parent
-		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true)
+		local parent, canonical, parentErr, parentKind, remedy = api.resolvePath(self.game, self.options.services, parentPath, true, self)
 		if not parent then return nil, parentKind or "not_found", parentErr, remedy end
 		-- Terrain is engine-owned, but a game's scripts expect its original children (Clouds, effect attachments) under it.
 		local refused, refusedRemedy

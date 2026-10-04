@@ -4,12 +4,10 @@
 import { benchClean, benchEvaluate } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
-import { isObjectRequest } from '../object-tool';
-import { isUpgradesRequest } from '../upgrades-tool';
 import { lastUserText } from '../user-request';
-import { afterReady, continueGameLine, refuseRebuild, saysReady, type BuiltGameRecord } from '../run-flow';
-import { ideaRecipe } from '../compose-tool';
-import { isPlotSimRequest } from '../compose-plotsim';
+import { afterReady, saysReady } from '../run-flow';
+import { LEDGER_KEY, ledgerBlock, ledgerEntryFor, liveEntries, withEntry, type LedgerEntry } from '../build-ledger';
+import { RESET_KEYS } from '../project-state';
 import { withoutToolTalk } from '../plain-reply';
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from '../env';
@@ -39,10 +37,11 @@ import type {
   StudioLinkSummary,
   ProductModel,
   PluginCapabilityReportV1,
-} from '@golem/shared';
-import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@golem/shared';
-import { isRefusalRemedyCode, type RefusalRemedyCode } from '@golem/shared';
-import { asUiTheme, uiThemeContextLine, type UiTheme } from '@golem/shared';
+} from '@apple/shared';
+import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@apple/shared';
+import { isRefusalRemedyCode, type RefusalRemedyCode } from '@apple/shared';
+import { asUiTheme, uiThemeContextLine, type UiTheme } from '@apple/shared';
+import { WIRE_HEADERS, echoSubprotocol, readWire } from '@apple/shared';
 
 /**
  * The edit history being moved onto the message that replaces an edited one.
@@ -70,39 +69,54 @@ import {
 import { promptWithAttachments } from '../attachments';
 import { artifactCompletion } from '../artifact-completion';
 import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, selectedInsertionCalls, type PendingAssetChoice, type SelectedAssetInsertion } from '../asset-choice';
-import { clearLineup, offerLibraryObjects, pickPrompt, pickedIndex, placeChosenObject, playCheckReading, pressesSeen, type PendingObjectChoice } from '../library-object';
+import { playCheckReading } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
 import { creditsForNeurons } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
-import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
+import { TOOLS, offeredWhenFocused, toolDefs, toolNames, targetOf, runTool, scrubEngineIdentity, recoverJsonObject, projectMutatingToolNames, type AgentCtx, type PlaytestBus, type PlanDefectKind } from '../tools';
 import { historySafeToolCalls } from '../tool-call-integrity';
 import { MCP_TOOL_NAMES } from '../mcp';
 import { nextPlanStep, planFromDetail, planDetail, settlePlan, type RunPlan } from '../run-plan';
 import { skillCardsForRun, skillSteerForStep } from '../skill-cards';
+import { WORLD_BUILDING_TOOLS, type SkillPushState } from '../skill-push';
 import { refundSentence, refundVerdict } from '../run-refund';
 import { toolsForMode } from '../router';
 import { recoverToolCall } from '../tool-recovery';
 import { notify } from '../notify';
 import { usageBand } from '../notifications';
 import { dayKey } from '../quota-math';
-import { chooseEffort, classifyRequest, forbidsChanges, tokensForEffort, type ReasoningSignals, type Effort } from '../reasoning';
-import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@golem/shared';
-import type { RunFailure } from '@golem/shared';
-import { aim, trimTranscriptReport } from '../transcript';
+import { chooseEffort, classifyRequest, forbidsChanges, tokensAfterCuts, MAX_CONSECUTIVE_CUTS, type ReasoningSignals, type Effort } from '../reasoning';
+import { phaseForTool, type AgentPhase, type RunSnapshot, type RunSnapshotTool, type StudioPauseReason } from '@apple/shared';
+import type { RunFailure } from '@apple/shared';
+import { aim, changedProps, trimTranscriptReport } from '../transcript';
+import type { LibraryRun } from '../library-run';
+import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction } from '../run-idle';
+import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, pushHarness, buildNudge, retuneNudge, READ_STALL_LIMIT, alternatesWithChecks, type LastChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction, EXTRA_CHECK_TOOLS } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
 import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
-import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary, isUpgradeRequest } from '../request-scope';
-import { objectUpgradeLine } from '../object-tool';
+import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../request-scope';
 import { persistWithShedding } from '../persist';
+// THE SELF-CHECK (M1, docs/autonomy/PHASE-3-4-PLAN.md): the switch, the run's evidence ledger, the decision at the
+// moment of answering, and the optional text judge. See self-check.ts for what each part is and why it exists.
+import { selfCheckMode } from '../self-check';
+import { newLedger, type EvidenceLedger } from '../evidence-ledger';
+import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-run';
+import { auditReply, type Finding } from '../claim-audit';
+import { judgeReply } from '../claim-audit-judge';
+import { LOOK_TOOL, runBlindCritique } from '../look-tool';
+import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, AREA_WORDS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
+import { decideJudgeGate, judgeFixMessage, readJudge, type JudgeVerdict } from '../judge-gate';
+import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, readStallNote, type WorldBase } from '../world-pass';
+import { noteFactsComposer, noteFactsTool, stepsBody, worldSteps, type MapFacts, type WorldFacts } from '../world-steps';
+import { readSceneFlags } from '../scene-flags-run';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { runIntentFor } from '../run-intent';
@@ -168,6 +182,44 @@ import {
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
 import { buildApproved } from '../owner-corpus.ts';
+import { toolTraceEntry } from '../trace-entry';
+
+/** Say, on the last persisted trace row, why the run was stopped (the owner reads the trace; the person reads the note). Bounded. */
+function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): void {
+  const last = agent.trace[agent.trace.length - 1];
+  if (last) last.summary = `${last.summary} · ${text}`.slice(0, 400);
+}
+
+/** The last few trace rows, as the rows describe themselves, for the note that a read-only stall ended the run. */
+/** The composer's `map` result as MapFacts, or undefined when it is not that shape (a composer with no map, an older result). */
+function mapFactsOf(v: unknown): MapFacts | undefined {
+  const m = v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
+  const p2 = (x: unknown): x is [number, number] => Array.isArray(x) && x.length === 2 && x.every((n) => typeof n === 'number' && Number.isFinite(n));
+  if (!m || typeof m.root !== 'string' || !Array.isArray(m.plots) || !Array.isArray(m.free)) return undefined;
+  const g = m.ground as { center?: unknown; half?: unknown } | undefined;
+  if (!g || !p2(g.center) || !p2(g.half)) return undefined;
+  const hub = m.hub as { path?: unknown; center?: unknown; half?: unknown } | undefined;
+  return {
+    root: m.root, ground: { center: g.center, half: g.half },
+    ...(hub && typeof hub.path === 'string' && p2(hub.center) && typeof hub.half === 'number' ? { hub: { path: hub.path, center: hub.center, half: hub.half } } : {}),
+    plots: (m.plots as { path?: unknown; at?: unknown }[]).filter((q) => typeof q.path === 'string' && p2(q.at)).map((q) => ({ path: q.path as string, at: q.at as [number, number] })).slice(0, 8),
+    free: (m.free as unknown[]).filter(p2).slice(0, 8),
+    ...(typeof m.frame === 'number' ? { frame: m.frame } : {}),
+  };
+}
+
+function lastReads(trace: readonly ToolTraceEntry[], n: number): string {
+  return trace.slice(-n).map((t) => t.summary.replace(/\s+/g, ' ').slice(0, 80)).join('; ') || 'none';
+}
+
+/** Tool calls run per step; the prompt tells the model the same number. */
+const MAX_CALLS_PER_STEP = 4;
+
+/** Are these tool-call arguments JSON (or JSON the worker can recover), rather than a payload cut off mid-way? */
+function argumentsReadable(json: string | undefined): boolean {
+  if (!json) return true;
+  try { JSON.parse(json); return true; } catch { return recoverJsonObject(json) !== undefined; }
+}
 
 const STOPPED_IN_FLIGHT = Symbol('stopped in flight');
 const STOP_POLL_MS = 250;
@@ -268,49 +320,27 @@ interface AgentState {
   builtGame?: boolean;
   /** judge_game said the game is ready in this run: project changes are refused and the answer is next (run-flow.ts). */
   judgedReady?: boolean;
-  /** An earlier run's build_game made this project's game: this run continues it and is refused a rebuild (run-flow.ts). */
-  continuesGame?: boolean;
-  /** A new idea the composer can build: compose_game is the first project change of this run (seen live: the model built by hand instead). */
-  composeFirst?: boolean;
-  /** "Make it cooler" on a ready-made object: the agent's first call is cool_library_model, with its own pick. */
-  coolFirst?: boolean;
+  /** The latest judge_game verdict of this run (judge-gate.ts): an answer over a "not ready" one is sent back, twice at most. */
+  lastJudge?: JudgeVerdict;
+  /** Times the run was sent back for the judge's findings. */
+  judgeFixPasses?: number;
+  /** A composer built a base and what the run has built on it since (world-pass.ts); undefined before any composer. */
+  worldBase?: WorldBase;
+  /** What the composer built (its map in numbers) and the tools used since: the facts the world pass's steps are made from (world-steps.ts). */
+  worldFacts?: WorldFacts;
+  /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary), and the change count then. */
+  critiqueSevere?: FlawArea[];
+  critiqueAtSeq?: number;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
    * more_tools lifts it for the rest of the run.
    */
   focused?: boolean;
-  /** A request for one thing: build_object is this run's first project change (object-tool.ts isObjectRequest). */
-  objectFirst?: boolean;
-  /** This run answers a one-object request (it stays true after build_object); only such a run is fenced after it. */
-  objectRun?: boolean;
-  /** build_object failures this run; the object fence lifts after three. */
-  objectFails?: number;
-  /** An upgrades request: add_upgrades is this run's first project change, then the run only checks and answers. */
-  upgradesFirst?: boolean;
-  /** This run answers an upgrades request (it stays true after add_upgrades). */
-  upgradesRun?: boolean;
-  /** build_object succeeded: the rest of the run checks and answers (live 2026-10-01: it kept adding its own sounds and scripts). */
-  objectBuilt?: boolean;
+  /** Deferred tools more_tools unlocked by name while the run is still focused (tools.ts DEFERRED_GROUPS). */
+  unlockedTools?: string[];
   /** compose_game built a plot simulator: the run plays it once and answers (the 93-step run rebuilt it by hand, 274 credits). */
   composedPlotSim?: boolean;
-  /** build_object built the one object asked for and said what it is (forUser): the run answers with that once played. */
-  composedObject?: boolean;
-  /** The model answered a built object without playing it, and was sent to play_check once. */
-  sentToPlayCheck?: boolean;
-  /**
-   * The owner picked one of the ready-made models offered for an object (library-object.ts), or none of them (null):
-   * the run places that one with no model call, or builds it with build_object.
-   */
-  objectPick?: { index: number | null; pending: PendingObjectChoice };
-  /** The library step of an object run (offer or place) has run; it runs once, before any model call. */
-  libraryStepDone?: boolean;
-  /** This run ended on an offer of ready-made models and waits for the owner's pick. */
-  objectOffered?: boolean;
-  /** A row of offered models from an earlier run is still standing and this run did not pick from it: take it down. */
-  staleLineup?: boolean;
-  /** This run makes the project's last built object cooler (isUpgradeRequest + the stored builtObject). */
-  upgradingObject?: boolean;
   /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
   composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
@@ -322,7 +352,7 @@ interface AgentState {
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
   uiTheme?: UiTheme;
   /** What this run's tools cited (sources.ts), numbered; sent to the web app with the answer. */
-  sources?: import('@golem/shared').RunSource[];
+  sources?: import('@apple/shared').RunSource[];
   seenCalls?: string[]; // "tool:argsHash" of calls already executed this run
   /**
    * Identical calls whose last attempt failed in a way op-failure.ts classified as SAFE TO REPEAT
@@ -359,6 +389,20 @@ interface AgentState {
   readsSinceChange?: number;
   /** Times a run that was about to stop was handed its owed work back (run-idle). */
   autonomousContinues?: number;
+  /** The one "nothing has changed yet" harness note was sent this run (run-idle.ts buildNudge). */
+  buildNudged?: boolean;
+  /** What this run has done with the model library (library-run.ts); the order gate and the insert failure hints read it. */
+  libraryRun?: LibraryRun;
+  /** Live Creator Store rows this run's find_library_model returned (tools.ts liveLibraryRows); a plain object, so a persisted run keeps it. */
+  liveLibraryRows?: Record<string, import('../creator-store-live').LiveModel>;
+  /**
+   * Studio ops this run has queued. A tool call that moved this counter REACHED Studio; one that did not was refused by the
+   * worker before anything was sent. That difference decides whether a repeat is a duplicate and whether a failure is worth
+   * a more expensive next step (both used to treat a free worker-side refusal like a failed build).
+   */
+  studioOps?: number;
+  /** Paths this run created (created-paths.ts): a delete of only these is let through the create-conflict fence. */
+  createdPaths?: string[];
   /** This run built something the player sees on screen (a ScreenGui, the ui_kit, build_ui). */
   hudBuilt?: boolean;
   /** play_check ran as a player in this run. */
@@ -369,6 +413,10 @@ interface AgentState {
   partSteers?: { missing: number; steers: number };
   /** Successful changes per target (tool + what it was aimed at) this run — run-idle.ts afterChange. */
   changesByTarget?: Record<string, number>;
+  /** The change the loop guard is counting right now, so its nudge and its stop can say WHAT repeated. */
+  lastChange?: LastChange;
+  /** The last call refused as a duplicate, so a duplicate-streak stop can name it. */
+  lastDuplicate?: { tool: string; aim: string };
   /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
   kitZone?: KitZone;
   /** Consecutive terrain writes since the last other change (terrain-streak.ts; round 6 made 951). */
@@ -389,6 +437,10 @@ interface AgentState {
    * that keeps failing the same way is stopped at MAX_SAME_FAILURES. Bounded like `retryableCalls`.
    */
   failedCalls?: { sig: string; error: string; count: number }[];
+  /** Consecutive failures per tool whatever the arguments (run-idle.ts afterToolOutcome); one success of the tool clears it. */
+  failStreaks?: Record<string, number>;
+  /** The last changes by target, for the back-and-forth guard (run-idle.ts afterChangeWindow). */
+  changeWindow?: { keys: string[]; since: number; nudges: number };
   /**
    * propose_plan's consecutive refusals and the kinds of the last one, carried across steps so the
    * tool can keep its promise that no run is refused more than twice in a row. See PlanState.
@@ -428,6 +480,8 @@ interface AgentState {
   priorStepFailed?: boolean;
   /** provider output cuts recovered inside this same run; diagnostic/escalation only, never a cap */
   lengthRecoveries?: number;
+  /** Output-ceiling cuts in a row (reasoning.ts MAX_CONSECUTIVE_CUTS); cleared by any step that is not cut. */
+  consecutiveCuts?: number;
   /** consecutive provider transport failures; reset after a successful model response */
   transientFailures?: number;
   /** the last visual critique failed its quality gate */
@@ -556,6 +610,11 @@ interface AgentState {
   plan?: RunPlan;
   /** Skill cards (skill-cards.ts) already given to this run, so none repeats and the run cap holds. */
   skillCardsShown?: string[];
+  /** Creator skills (skill-push.ts) pushed to this run: which, for which plan steps, and how many characters, so each bound holds across a restart. */
+  skillPush?: SkillPushState;
+  /** Layout checks run after a world-building step (scene-flags.ts), and the kinds of flag already sent to the agent, so each goes once. */
+  layoutChecks?: number;
+  layoutFlagsSent?: string[];
 }
 
 type AccessChange = RevocationReason | 'clear';
@@ -602,18 +661,14 @@ const MAX_DUPLICATE_STREAK = 3;
 const MAX_SAME_FAILURES = MAX_IDENTICAL_RETRIES + 1;
 /** G10: how long the HTTP Stop waits for the run to actually end before answering "still stopping". */
 const STOP_ACK_WAIT_MS = 8_000;
-/** A failed step's own error, from the result the model saw, capped for the stored trace. */
-function failureText(resultForLlm: string | undefined): string {
-  try {
-    const parsed = JSON.parse(resultForLlm ?? '') as { error?: unknown };
-    return String(parsed.error ?? resultForLlm ?? '').slice(0, 400);
-  } catch { return String(resultForLlm ?? '').slice(0, 400); }
-}
-
 /** G10: messages sent while a run works, held under their own key until the next step boundary. */
 const STEER_KEY = 'steerQueue';
 type QueuedSteer = { id: string; text: string; at: number };
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
+/** Where the run's evidence ledger lives: its own key, never inside the agent state (the transcript already presses its 128 KiB cap). */
+const SELF_CHECK_KEY = 'selfCheckLedger';
+/** Layout reads after world-building steps, per run (scene-flags.ts). */
+const MAX_LAYOUT_CHECKS = 3;
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 /** What the request's list and the plan's building steps named that nothing this run built is named for. */
@@ -1241,7 +1296,7 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * WHO IS ON THIS SOCKET.
    *
-   * `X-Golem-Role` is trusted for exactly one reason: a Durable Object is reachable only through
+   * `X-Apple-Role` (or the old spelling, read by readWire) is trusted for exactly one reason: a Durable Object is reachable only through
    * its stub, every worker path that forwards to `/ws` SETS this header (overwriting whatever the
    * browser sent), and `sessionStub` is itself confined to ownership-checked and admin-gated call
    * sites by a static check in packages/evals/src/security.test.mjs. The value is still validated
@@ -1252,7 +1307,7 @@ export class SessionDO extends DurableObject<Env> {
     const userId = req.headers.get('X-User-Id');
     if (!userId) return null;
     if (userId === bind.ownerId) return { userId, role: 'owner' };
-    const role = asCollabRole(req.headers.get('X-Golem-Role'));
+    const role = asCollabRole(readWire(req.headers, WIRE_HEADERS.role));
     return role === null ? null : { userId, role };
   }
 
@@ -1599,87 +1654,42 @@ export class SessionDO extends DurableObject<Env> {
    * so a reconnect cannot deliver them behind the user's back; the run waits for `continue`.
    */
   /**
-   * The library step of an object run (library-object.ts), once and before any model call (owner, 2026-10-02: models
-   * come from the library or the Creator Store first, the user picks from three, procedural only rarely). It offers
-   * ready-made models and ends the run, or places the one the owner picked, plays it once and ends the run, both with
-   * no model call. False means the run goes on: nothing fit, "none of these", Studio away, or the pick failed, and
-   * build_object makes it. A row offered earlier and not picked from is taken down first.
+   * Everything the project's work left in durable storage goes (project-state.ts says which keys), and the in-memory
+   * mirrors of those keys with it. The pairing and the project's identity stay. Used by /bench-reset; what a "start over" calls.
    */
-  private async libraryObjectStep(agent: AgentState): Promise<boolean> {
-    if (!(await this.pluginConnected())) return false;
-    // The user's tool permissions and the plugin's capabilities bind the harness too (review 2026-10-02): no library
-    // search or insert when either is switched off; the run then goes on to build_object, itself still filtered.
-    const allowed = this.pluginToolFilter(applyToolPermissions(toolsForMode(agent.mode, true, toolNames()), agent.toolPermissions)).allowed;
-    if (agent.readOnly || !allowed.has('find_library_model') || !allowed.has('insert_library_model')) return false;
-    const ctx = this.agentCtx(agent);
-    const row = (tool: string, ok: boolean, t0: number, summary: string, detail?: unknown) => {
-      const toolId = crypto.randomUUID();
-      this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool, summary: tool });
-      this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok, summary, detail });
-      agent.trace.push({ tool, summary, ok, durationMs: Date.now() - t0, ...(detail === undefined ? {} : { detail }) });
-    };
-    const pick = agent.objectPick;
-    if (!pick && agent.staleLineup) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); }
-    if (pick && pick.index === null) { await clearLineup(ctx); await this.ctx.storage.delete('pendingObjectChoice'); return false; }
-    // Automatic (owner, 2026-10-02: no more three options): the best ready-made model is found and placed in one run.
-    let chosen = pick && pick.index !== null ? { pending: pick.pending, index: pick.index } : null;
-    if (!chosen && agent.objectRun && agent.objectFirst && !agent.upgradingObject) {
-      const t0 = Date.now();
-      // Up to three candidates stand in a row out of sight of the answer; the AGENT picks the one that is the request
-      // (live 2026-10-02: "a rubber duck" took the first hit, a brown hunting duck). One short model call.
-      const offer = await offerLibraryObjects(ctx, agent.request ?? '', { quiet: true });
-      if (!offer?.options[0]) return false;
-      let best = offer.options[0];
-      if (offer.options.length > 1) {
-        const said = await llmChat(this.env, { model: gatewayModelFor(agent.mode), messages: [{ role: 'user', content: pickPrompt(agent.request ?? '', offer.options) }], maxTokens: 400 }, { kind: 'agent' }).catch(() => null);
-        const n = said ? pickedIndex(said.text, offer.options) : undefined;
-        best = offer.options.find((o) => o.index === n) ?? best;
-      }
-      row('find_library_model', true, t0, `✓ found ${best.name}${best.game ? ` from ${best.game}` : ''}`, { name: best.name, ...(best.game ? { where: best.game } : {}), ...(best.assetId ? { assetId: best.assetId } : {}) });
-      agent.mutated = true;
-      agent.made = addMade(agent.made, 'find_library_model');
-      chosen = { pending: { request: offer.request, name: offer.name, options: offer.options }, index: best.index };
-    }
-    if (chosen) {
-      const t0 = Date.now();
-      const placed = await placeChosenObject(ctx, chosen.pending, chosen.index) as Record<string, unknown>;
-      const ok = !('error' in placed);
-      // Named for what it is, a library insert (a "make a 3D model of X" run owes one).
-      row('insert_library_model', ok, t0, ok ? `✓ placed ${String((placed.library as { name?: unknown } | undefined)?.name ?? 'the model')}` : `✗ ${String(placed.error).slice(0, 120)}`, placed);
-      if (placed.changed === true || placed.projectMutated === true) { agent.mutated = true; agent.made = addMade(agent.made, 'insert_library_model'); }
-      if (!ok) return false;
-      await this.ctx.storage.delete('pendingObjectChoice');
-      if (await stopRequested(this.ctx.storage)) { await this.finishRun(agent, 'stopped'); return true; }
-      agent.objectFirst = false;
-      agent.objectBuilt = true;
-      // Played once by the harness, not the model: no model call for the whole pick.
-      const t1 = Date.now();
-      // The player walks into it (a check cannot click), so the press, the wobble's trigger and the counter are proved.
-      const object = typeof placed.object === 'string' ? placed.object : '';
-      const out = await runTool(ctx, 'play_check', JSON.stringify(object ? { touch: [`${object}.AppleBody`] } : {}));
-      row('play_check', out.ok, t1, out.summary, out.detail);
-      const reading = out.ok ? playCheckReading(out.detail) : undefined;
-      const presses = out.ok && object ? pressesSeen(out.detail, object.replace(/^game\.Workspace\./, '')) : undefined;
-      if (reading && !reading.problem && presses === 0) reading.problem = 'its counter stayed at 0 when the player walked into it, so a press did not register';
-      if (reading && !reading.problem && presses !== undefined) reading.seen = `walking into it pressed it (the counter read ${presses}), and ${reading.seen}`;
-      agent.playChecked = out.ok;
-      agent.lastCheckProblem = reading?.problem;
-      agent.lastCheckSeen = reading?.seen;
-      agent.finalText = `${String(placed.forUser ?? '')}${reading ? reading.problem ? `\n\nOne thing is not right yet: ${reading.problem.replace(/\s*\(Studio's own[^)]*\)/, '')}` : `\n\nI play-tested it: ${reading.seen}.` : ''}`;
-      await this.finishRun(agent, 'done');
-      return true;
-    }
-    // "Make it cooler" on a ready-made object: the kit goes around the model that is there, never a rebuild.
-    // The agent decides what "cooler" is for this object (owner, 2026-10-02: the harness put the same crown and
-    // sparkles on everything; "he doesn't focus on what the user asks"): its first call is cool_library_model.
-    if (agent.objectRun && agent.upgradingObject) {
-      const spec = await ctx.objectMemory?.load().catch(() => undefined) as Record<string, unknown> | undefined;
-      if (!spec?.library) return false;
-      agent.coolFirst = true;
-      agent.objectFirst = false;
-      return false;
-    }
-    return false;
+  private async resetProjectState(): Promise<void> {
+    for (const key of RESET_KEYS) await this.ctx.storage.delete(key);
+    this.opQueue = [];
+    this.assetSourcesAsked = null;
+    this.pluginSelection = null as never;
+  }
+
+  /**
+   * The ledger entries whose paths still stand in the live place. With Studio away nothing can be verified, so nothing is
+   * said (an entry that may be dead is not offered as information). Dead entries are dropped from storage.
+   */
+  private async liveLedger(studioConnected: boolean): Promise<LedgerEntry[]> {
+    const ledger = (await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? [];
+    if (!ledger.length || !studioConnected) return [];
+    const exists = (path: string) => this.execStudioOp({ op: 'get_instance', path }, 10_000).then((r) => r.ok).catch(() => false);
+    // The newest dozen, and the first three paths of each: enough to know it is still there.
+    const recent = ledger.slice(-12).map((e) => ({ ...e, rootPaths: e.rootPaths.slice(0, 3) }));
+    const { live } = await liveEntries(recent, exists);
+    const keep = ledger.filter((e) => live.some((l) => l.id === e.id));
+    if (keep.length !== ledger.length) await this.ctx.storage.put(LEDGER_KEY, keep);
+    return keep;
+  }
+
+  /** Writes what a successful project-changing tool call left standing to the ledger. */
+  private async recordBuild(agent: AgentState, tool: string, rawArgs: string, out: { detail?: unknown; resultForLlm: string }): Promise<void> {
+    let args: unknown = {};
+    try { args = JSON.parse(rawArgs || '{}'); } catch { /* the tool already refused bad JSON */ }
+    let result: unknown = out.detail;
+    if (!result || typeof result !== 'object') { try { result = JSON.parse(out.resultForLlm); } catch { result = null; } }
+    const entry = ledgerEntryFor(tool, args, result, agent.request ?? lastUserText(agent.llm) ?? '', Date.now(), crypto.randomUUID().slice(0, 6));
+    if (!entry) return;
+    const ledger = (await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? [];
+    await this.ctx.storage.put(LEDGER_KEY, withEntry(ledger, entry));
   }
 
   private async pauseForStudio(agent: AgentState, reason: StudioPauseReason): Promise<void> {
@@ -2101,7 +2111,7 @@ export class SessionDO extends DurableObject<Env> {
       if (who === null) return json({ error: 'forbidden' }, 403);
       // The worker may carry the already-validated grant deadline over a private header. Keep the
       // value only in memory and pin it onto the run; never persist the member's JWT or the header.
-      const rawGrantExpiry = req.headers.get('X-Golem-Grant-Expires-At');
+      const rawGrantExpiry = readWire(req.headers, WIRE_HEADERS.grantExpiresAt);
       const grantExpiresAt = rawGrantExpiry === null ? null : canonicalGrantExpiry(rawGrantExpiry);
       if (grantExpiresAt === undefined) return json({ error: 'bad_grant_expiry' }, 400);
       // the JWT is kept only in memory for the lifetime of this DO instance so a
@@ -2193,7 +2203,8 @@ export class SessionDO extends DurableObject<Env> {
         }
       }
       // browsers abort the handshake unless a requested subprotocol is echoed back
-      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': 'golem.v1' } });
+      // echo whichever version protocol the client listed: a fixed new value would abort an old client's handshake
+      return new Response(null, { status: 101, webSocket: client, headers: { 'Sec-WebSocket-Protocol': echoSubprotocol(req.headers.get('Sec-WebSocket-Protocol')) } });
     }
 
     if (path === '/plugin/register' && req.method === 'POST') {
@@ -2254,7 +2265,7 @@ export class SessionDO extends DurableObject<Env> {
     }
 
     if (path === '/plugin/poll' && req.method === 'POST') {
-      const token = req.headers.get('X-Golem-Token') ?? '';
+      const token = readWire(req.headers, WIRE_HEADERS.token) ?? '';
       const expect = await this.ctx.storage.get<string>('pluginTokenHash');
       let issuedAt = await this.ctx.storage.get<number>('pluginTokenIssuedAt');
       if (issuedAt === undefined) {
@@ -2671,9 +2682,7 @@ export class SessionDO extends DurableObject<Env> {
       const running = await this.ctx.storage.get<AgentState>('agent');
       if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
       if (!this.isBenchProject()) return json({ ok: false, error: 'not a benchmark project: no bench-baseline checkpoint' }, 409);
-      for (const key of ['agent', 'memory', 'memoryEditedAt', 'pendingObjectChoice', 'pendingAssetChoice', 'builtObject', 'builtGame',
-        'plannedGame', 'playtestRun', 'assetSourcesAwaitingRun', 'opQueue']) await this.ctx.storage.delete(key);
-      this.opQueue = [];
+      await this.resetProjectState();
       this.sql.exec('delete from message_models');
       this.sql.exec('delete from message_revisions');
       this.sql.exec('delete from messages');
@@ -3207,10 +3216,10 @@ export class SessionDO extends DurableObject<Env> {
           // pasted a credential or was refused for flooding and cannot see who, so nothing can be
           // followed up and no account can be looked at. `me` is the socket's verified identity —
           // not the project owner, who is frequently not the person typing.
-          // A pick from a waiting offer is a fixed sentence, not a flood: someone making objects in a row picks
+          // A pick from a waiting offer is a fixed sentence, not a flood: someone choosing in a row picks
           // "option 1" again and again (review 2026-10-02: the fourth in ten minutes was refused as a repeat).
           const answersOffer = (ASSET_CHOICE_MESSAGE.test(text) || text === 'None of these look right. Find different visual options.')
-            && Boolean(await this.ctx.storage.get('pendingObjectChoice'));
+            && Boolean(await this.ctx.storage.get('pendingAssetChoice'));
           if (!answersOffer && this.refuseAbusive(text, { actorId: me?.userId ?? null, projectId: bind.projectId })) return;
           //[[ THE FILES THE PERSON ATTACHED BECOME PART OF THE MESSAGE.
           //
@@ -3329,7 +3338,7 @@ export class SessionDO extends DurableObject<Env> {
           //   Regenerate, which resend the prompt VERBATIM so that re-running has one definition.
           //   Storing those would tell someone who regenerated four times that their message has
           //   four earlier versions, all identical to the one in front of them. The rule lives in
-          //   @golem/shared because the web app increments its own count optimistically and the
+          //   @apple/shared because the web app increments its own count optimistically and the
           //   two must agree. ]]
           await this.startRun(
             bind,
@@ -3497,31 +3506,22 @@ export class SessionDO extends DurableObject<Env> {
       this.refuseOne(origin, { type: 'error', code: 'busy', message: 'Apple is already working — stop the current run first.' });
       return;
     }
-    // The ready-made models offered for an object (library-object.ts): "Use visual option N" places one, "None of these"
-    // builds it. Only the project owner picks, as for the legacy choice below.
-    const pendingObject = await this.ctx.storage.get<PendingObjectChoice>('pendingObjectChoice') ?? null;
-    const objectPickIndex = mode === 'agent' && pendingObject && initiatedBy === bind.ownerId ? ASSET_CHOICE_MESSAGE.exec(text)?.[1] : undefined;
-    const objectPick = pendingObject && mode === 'agent' && initiatedBy === bind.ownerId
-      ? objectPickIndex && pendingObject.options.some((o) => o.index === Number(objectPickIndex)) ? { index: Number(objectPickIndex), pending: pendingObject }
-        : text === 'None of these look right. Find different visual options.' ? { index: null, pending: pendingObject } : undefined
-      : undefined;
-    const pendingChoice = objectPick ? null : await this.ctx.storage.get<PendingAssetChoice>('pendingAssetChoice') ?? null;
+    // The user's own pick from the preview card of an earlier run (asset-choice.ts): one approval, one admitted run (cleared below).
+    const pendingChoice = await this.ctx.storage.get<PendingAssetChoice>('pendingAssetChoice') ?? null;
     const selectedAsset = mode === 'agent' && pendingChoice?.mode === 'agent'
       ? selectedLibraryAsset(text, pendingChoice, initiatedBy, bind.ownerId)
       : null;
     const rejectedChoice = text === 'None of these look right. Find different visual options.' &&
       mode === 'agent' && pendingChoice?.mode === 'agent' && initiatedBy === bind.ownerId;
-    if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset && !objectPick) {
+    if (ASSET_CHOICE_MESSAGE.test(text) && !selectedAsset) {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'That visual choice is no longer available. Ask Apple to find fresh options.' });
       return;
     }
-    if (text === 'None of these look right. Find different visual options.' && !rejectedChoice && !objectPick) {
+    if (text === 'None of these look right. Find different visual options.' && !rejectedChoice) {
       this.refuseOne(origin, { type: 'error', code: 'forbidden', message: 'Those visual options are no longer available. Ask Apple to search again.' });
       return;
     }
-    const effectiveRequest = objectPick
-      ? objectPick.index === null ? `${objectPick.pending.request}\n\nNone of the ready-made models fit, so build it with build_object.` : objectPick.pending.request
-      : selectedAsset && pendingChoice
+    const effectiveRequest = selectedAsset && pendingChoice
       ? `${pendingChoice.request}\n\nThe project owner selected the preview of the ready-made model "${selectedAsset.name}" (library id ${selectedAsset.id}). Continue the unfinished build and use insert_library_model with that exact id. Do not search for another model for this same item.`
       : rejectedChoice && pendingChoice
       ? `${pendingChoice.request}\n\nThe project owner rejected these visual options: ${pendingChoice.options.map((o) => o.name).join(', ')}. Search for visually different ready-made models. Do not insert any model until one is chosen.`
@@ -3549,8 +3549,6 @@ export class SessionDO extends DurableObject<Env> {
     this.broadcast({ type: 'quota', quota: quota.state });
     // One approval is scoped to one admitted run. A new unrelated message invalidates old cards.
     await this.ctx.storage.delete('pendingAssetChoice');
-    // pendingObjectChoice is settled by the library step (placed, none, or not picked from), never here: a retried or
-    // edited pick must still find its offer, and a row nobody picked from must still be taken down (review 2026-10-02).
     // Mark the socket only after quota admission succeeded. A refused request must not leave a
     // collaborator's presence claiming that a build is in flight.
     if (origin) this.touch(origin, 'building');
@@ -3680,13 +3678,9 @@ export class SessionDO extends DurableObject<Env> {
 
     const skills = skillCardsForRun(effectiveRequest, mode === 'agent');
     const msgId = crypto.randomUUID();
-    // "make it a full game with plots" grows the game that is there, so it is composed, not refused as a rebuild (owner, 2026-10-01).
-    const continueLine = mode === 'agent' && !isPlotSimRequest(text) ? continueGameLine(await this.ctx.storage.get<BuiltGameRecord>('builtGame'), text) : undefined;
-    // "make it 100x cooler" on a place whose last build was one object upgrades that object in one build_object call
-    // (test 3, 2026-10-01: unguided, the run spent 266 credits on 54 calls and inserted a whole library place).
-    const lastObject = mode === 'agent' && !continueLine && isUpgradeRequest(text)
-      ? (await this.ctx.storage.get<{ spec?: Record<string, unknown> }>('builtObject'))?.spec : undefined;
-    const upgradeLine = lastObject ? objectUpgradeLine(lastObject) : undefined;
+    // What earlier runs of THIS project built that still stands in the place: information, labelled as possibly unrelated.
+    // Nothing here refuses or forces anything (a rebuild is never refused; the agent decides what the message is about).
+    const ledgerLine = mode === 'agent' ? ledgerBlock(await this.liveLedger(studioConnected)) : undefined;
     const agent: AgentState = {
       status: 'running',
       mode,
@@ -3697,16 +3691,10 @@ export class SessionDO extends DurableObject<Env> {
       // trimTranscript documents — the agent kept working with no record of the task.
       // The UI theme is per request, so it rides in this run's context and not in the system prompt
       // builder. UI-only: the world direction is unchanged by it.
-      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), continueLine, upgradeLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
-      ...(upgradeLine ? { objectFirst: true, objectRun: true, upgradingObject: true } : {}),
-      ...(objectPick ? { objectFirst: true, objectRun: true, objectPick } : pendingObject ? { staleLineup: true } : {}),
-      ...(continueLine ? { continuesGame: true } : {}),
-      // A game the composer can make (the orchard, or a simulator / tycoon / "make it a full game": compose-plotsim.ts)
-      // is made by compose_game first, from components and the library, never piece by piece.
-      ...(mode === 'agent' && !continueLine && (!('error' in ideaRecipe(text)) || isPlotSimRequest(text)) ? { composeFirst: true } : {}),
+      llm: [{ role: 'system', content: [sys, skills.block, uiThemeContextLine(asUiTheme(uiTheme)), ledgerLine].filter(Boolean).join('\n\n') }, ...history, { role: 'user', content: effectiveRequest, pinned: true }],
+      // No tool is forced: the run starts with the model, which searches, previews, builds or composes as the request
+      // calls for (owner, 2026-10-02: the harness never decides what fits).
       focused: true,
-      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && isObjectRequest(text) ? { objectFirst: true, objectRun: true } : {}),
-      ...(mode === 'agent' && !continueLine && 'error' in ideaRecipe(text) && !isPlotSimRequest(text) && isUpgradesRequest(text) ? { upgradesFirst: true, upgradesRun: true } : {}),
       uiTheme: asUiTheme(uiTheme),
       ...(selectedAsset ? { approvedLibraryAssetId: selectedAsset.assetId, selectedAssetInsertion: { id: selectedAsset.id } } : {}),
       ...(rejectedChoice && pendingChoice ? { rejectedLibraryAssetIds: rejectedLibraryAssets(pendingChoice) } : {}),
@@ -4042,7 +4030,7 @@ export class SessionDO extends DurableObject<Env> {
     if ((await this.ctx.storage.get<string>('assetSourcesAwaitingRun')) === agent.msgId) {
       const steer = assetSourceAnswerSteer(this.pinnedPrefs?.asset_sources);
       if (steer) {
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         await this.ctx.storage.delete('assetSourcesAwaitingRun');
       }
     }
@@ -4152,6 +4140,8 @@ export class SessionDO extends DurableObject<Env> {
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
     const modeBase = toolsForMode(agent.mode, offerStudio, toolNames());
+    // With the self-check off the run is exactly what it was before it existed: no look is offered either.
+    if (selfCheckMode(this.env) === 'off') modeBase.delete(LOOK_TOOL);
     // A request that forbade changes gets no tool that can make one — narrowing only, like the
     // permissions below. The playtest stays: it restores anything it disturbs, and it is often
     // exactly what such a request asks for.
@@ -4176,18 +4166,13 @@ export class SessionDO extends DurableObject<Env> {
       await this.finishRun(agent, 'incomplete');
       return;
     }
-    // An object run the same way (round 8 of test 2: the model's reply promised a wrapper "on top" that was under).
-    if ((agent.composedPlotSim || agent.composedObject) && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem) {
+    // Only with the self-check off: with it on, the answer goes through the gates (world pass, judge, look, critique) like any other,
+    // and this ending skipped all of them (t1 round 2: compose_game, judge_game "not ready", then the run ended here, never looked at).
+    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem && selfCheckMode(this.env) === 'off') {
       // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
       agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
       await this.finishRun(agent, 'done');
       return;
-    }
-    // Library first for one object (owner, 2026-10-02), before any model call: offer ready-made models, or place the
-    // one the owner picked. Either ends the run here; nothing to offer, or "none of these", goes on to build_object.
-    if (agent.mode === 'agent' && !agent.libraryStepDone && (agent.objectRun || agent.staleLineup)) {
-      agent.libraryStepDone = true;
-      if (await this.libraryObjectStep(agent)) return;
     }
     if (sequenceStep && sequenceStep.state !== 'next') {
       await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
@@ -4196,15 +4181,10 @@ export class SessionDO extends DurableObject<Env> {
           : 'The steps you asked for stopped because one of them did not work. Look at what was changed before you carry on.');
       return;
     }
-    // After the one thing is made the run only checks and answers: an object run may rebuild the object, an upgrades
-    // run may redo the upgrades, and neither adds the other (the re-test added an upgrades shop nobody asked for).
-    const AFTER_OBJECT = new Set(agent.upgradesRun
-      ? ['add_upgrades', 'play_check_ui', 'get_output_logs', 'get_project_tree']
-      : agent.composedPlotSim ? ['play_check', 'get_output_logs']
-      // One rebuild to fix what the check found, never a third build (test 3 round 6, 2026-10-01: three builds in a run).
-      : [...((agent.trace?.filter((t) => t.tool === 'build_object' && t.ok).length ?? 0) >= 2 ? [] : ['build_object']), 'play_check', 'get_output_logs', 'get_project_tree']);
+    // Nothing narrows the toolset after a build: the agent decides whether to check, fix or add (build_object's result carries
+    // measured notes, information for that decision). Only the focused set (deferred tools wait behind more_tools) applies.
     const focusedAllowed = new Set([...offeredCapabilityFilter.allowed].filter((tool) =>
-      agent.objectBuilt ? AFTER_OBJECT.has(tool) : agent.focused ? offeredWhenFocused(tool) : tool !== 'more_tools'));
+      agent.focused ? offeredWhenFocused(tool, agent.unlockedTools) : tool !== 'more_tools'));
     const offeredAllowed = sequenceStep?.state === 'next'
       ? new Set([...offeredCapabilityFilter.allowed].filter((tool) => tool === sequenceStep.tool))
       : focusedAllowed;
@@ -4248,12 +4228,6 @@ export class SessionDO extends DurableObject<Env> {
       visualDefectsFound: agent.visualDefectsFound,
       ...(agent.traits ?? {}),
     });
-    // An object run's design lives in build_object's spec, so long thinking buys time, not quality (owner, 2026-10-01:
-    // fast and cheap). Low effort, unless the run is recovering from a failed step. 'medium' is never used (ADR-013).
-    if ((agent.objectFirst || agent.upgradesFirst || agent.trace?.some((t) => t.tool === 'build_object' || t.tool === 'add_upgrades')) && !agent.priorStepFailed && choice.effort === 'high') {
-      choice.effort = 'low';
-      choice.reason = 'object build: the design is in build_object';
-    }
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
     if (choice.effort === 'high') agent.highEffortUsed = (agent.highEffortUsed ?? 0) + 1;
     const gatewayModel = gatewayModelFor(agent.mode);
@@ -4323,12 +4297,9 @@ export class SessionDO extends DurableObject<Env> {
         tools: talkOnly ? [] : toolDefs(offerStudio, offeredAllowed),
         ...(sequenceStep?.state === 'next' && offeredAllowed.has(sequenceStep.tool)
           ? { requiredTool: sequenceStep.tool }
-          : agent.coolFirst && !talkOnly && offeredAllowed.has('cool_library_model') ? { requiredTool: 'cool_library_model' }
-          : agent.composeFirst && !talkOnly && offeredAllowed.has('compose_game') ? { requiredTool: 'compose_game' }
-          : agent.objectFirst && !talkOnly && offeredAllowed.has('build_object') ? { requiredTool: 'build_object' }
-          : agent.upgradesFirst && !talkOnly && offeredAllowed.has('add_upgrades') ? { requiredTool: 'add_upgrades' } : {}),
+          : {}),
         reasoningEffort: choice.effort,
-        maxTokens: tokensForEffort(baseTokensFor(agent.mode), choice.effort),
+        maxTokens: tokensAfterCuts(baseTokensFor(agent.mode), choice.effort, agent.consecutiveCuts ?? 0),
       },
       // Same affinity key for every step of the run, so Workers AI can reuse the prefill for the
       // identical system-prompt-and-tools prefix instead of recomputing ~5,200 tokens each step.
@@ -4533,24 +4504,29 @@ export class SessionDO extends DurableObject<Env> {
       agent.priorStepFailed = true;
       const cuts = (agent.lengthRecoveries ?? 0) + 1;
       agent.lengthRecoveries = cuts;
+      agent.consecutiveCuts = (agent.consecutiveCuts ?? 0) + 1;
+      // Every cut step is billed and its call discarded: a run that cannot fit its next action in one step stops.
+      if (agent.consecutiveCuts >= MAX_CONSECUTIVE_CUTS) {
+        await this.finishRun(agent, 'incomplete', undefined, agent.mutated
+          ? `Apple stopped because the next step was too big for it to write in one go, even in smaller pieces. ${spaced(builtSummary(agent.made))}Ask for the rest one area at a time and it will carry on.`
+          : 'Apple stopped because the next step was too big for it to write in one go, even in smaller pieces, so nothing in your place was changed. Ask for a smaller part first and it will carry on.');
+        return;
+      }
       const batchHint =
         cuts >= 4
           ? 'Use exactly one small mutating tool call for the next piece, then continue in later steps.'
           : cuts >= 2
             ? 'Split large instance/script work into small tool calls of at most four logical items.'
             : 'Split any large tool payload into smaller calls instead of trying to describe the whole build at once.';
-      agent.llm.push({
-        role: 'user',
-        content:
-          'Your previous provider response hit its output ceiling before it became a complete action. ' +
+      pushHarness(agent.llm, 'Your previous provider response hit its output ceiling before it became a complete action. ' +
           'It was not shown to the user and did not end the run. Continue the SAME task from the ' +
           'successful tools/results already in the transcript. Do not repeat completed work. ' +
-          batchHint,
-      });
+          batchHint);
       await this.persistAgent(agent);
       await this.ctx.storage.setAlarm(Date.now() + 10);
       return;
     }
+    agent.consecutiveCuts = 0; // this step was not cut (the cut branch above returns)
     if (!res.toolCalls.length && finishReason !== 'stop') {
       //[[ "EVERYTHING COMPLETED BEFORE THE CUTOFF IS SAVED" IS A CLAIM, AND IT NEEDS A SUBJECT.
       //
@@ -4597,6 +4573,12 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: piece });
     }
 
+    // The tool context and the run's evidence ledger (when the self-check is on) serve both the tool loop below and the
+    // moment of answering, so they are made once, here.
+    const ctx = this.agentCtx(agent);
+    const ledger = selfCheckMode(this.env) === 'off' ? undefined : await this.ledgerFor(agent);
+    if (ledger) ctx.evidence = ledger;
+
     if (!res.toolCalls.length) {
       if (sequence) {
         await this.finishRun(agent, 'incomplete', undefined,
@@ -4621,15 +4603,11 @@ export class SessionDO extends DurableObject<Env> {
       if (rescued?.refused) {
         const steers = (agent.textCallSteers ?? 0) + 1;
         agent.textCallSteers = steers;
-        agent.llm.push({
-          role: 'user',
-          content:
-            `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
+        pushHarness(agent.llm, `Your last message was the ARGUMENTS for \`${rescued.refused}\` written as text, not a tool call. ` +
             'It was not run and the user did not see it. ' +
             (allowed.has(rescued.refused)
               ? 'Call the tool.'
-              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'),
-        });
+              : 'That tool is not offered in this run, so do not try it again: carry on with the tools you were given.'));
         if (steers <= MAX_TEXT_CALL_STEERS) {
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -4641,7 +4619,7 @@ export class SessionDO extends DurableObject<Env> {
           .some((tool) => tool.name === artifact.tool);
         if (!artifact.attempted && available) {
           agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-          agent.llm.push({ role: 'user', content: `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.` });
+          pushHarness(agent.llm, `The requested artifact has not been created in this run. Call ${artifact.tool} now. Do not invent an artifact ID or describe work as completed without a successful tool result.`);
           await this.persistAgent(agent);
           await this.ctx.storage.setAlarm(Date.now() + 10);
           return;
@@ -4673,12 +4651,8 @@ export class SessionDO extends DurableObject<Env> {
       const owesWork = askedForWork && canBuild;
       if (owesWork) {
         agent.nudges = Math.min(MAX_NUDGE_LEVEL, (agent.nudges ?? 0) + 1);
-        agent.llm.push({
-          role: 'user',
-          content:
-            'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
-            'with a tool call, in this turn. If you were mid-sentence, carry out that action.',
-        });
+        pushHarness(agent.llm, 'You have not changed the project yet. Do not describe what you are about to do — do it now ' +
+            'with a tool call, in this turn. If you were mid-sentence, carry out that action.');
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4713,12 +4687,12 @@ export class SessionDO extends DurableObject<Env> {
       // The person already asked for the whole request (V3: proceed automatically, no routine approval), so
       // "want me to…?" or "not fixed yet" is work, not an ending,
       // and a game with nothing on screen or a loop nobody played is not finished either.
-      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+      const gaps = gameGaps(agent, allowed.has('play_check'));
       // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
       // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
       const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
       if (partNext) {
-        agent.llm.push({ role: 'user', content: partNext });
+        pushHarness(agent.llm, partNext);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
@@ -4728,23 +4702,17 @@ export class SessionDO extends DurableObject<Env> {
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
-        agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER });
+        pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_CONTINUE_STEER);
         await this.persistAgent(agent);
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
       }
-      // A built object is answered from the build, never from the model's retelling (test 3 round 2, 2026-10-01: the
-      // model skipped the play check and wrote its own reply, so the composed ending never ran). Unchecked, it is
-      // sent to play once; checked, the run ends on what was built and what the check saw.
-      if (agent.composedObject && agent.composedForUser && !agent.lastCheckProblem && allowed.has('play_check')) {
-        if (!agent.playChecked && !agent.sentToPlayCheck) {
-          agent.sentToPlayCheck = true;
-          agent.llm.push({ role: 'user', content: 'Check it once in play now: call play_check. Write nothing else.' });
-          await this.persistAgent(agent);
-          await this.ctx.storage.setAlarm(Date.now() + 10);
-          return;
-        }
-        agent.finalText = agent.playChecked ? `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.` : agent.composedForUser;
+      // THE SELF-CHECK AT THE MOMENT OF ANSWERING (self-check-run.ts): look at the work before saying anything about it,
+      // send the reply's unsupported claims back, and say what is still unchecked in one plain line after the agent's words.
+      // Not for an answer the product composes itself (it is built from the build, not from the model's retelling).
+      // Also for an answer after a composer or a ready judge: a composed base is not the game, and "ready" says how it plays, not how it looks.
+      if (!owesWork && agent.mode === 'agent') {
+        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected, canBuild)) return;
       }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
@@ -4758,7 +4726,6 @@ export class SessionDO extends DurableObject<Env> {
     // A real call was made, so the text-payload steer's run of consecutive uses is over.
     agent.textCallSteers = 0;
 
-    const ctx = this.agentCtx(agent);
     // What propose_plan validates against: exactly the set this step will execute, so a plan can
     // never promise a tool the run was not given. And the plan tool's own run-level memory, so it
     // can keep its promise never to refuse more than twice in a row. See PlanState in tools.ts.
@@ -4773,9 +4740,12 @@ export class SessionDO extends DurableObject<Env> {
     let duplicatesThisStep = 0;
     let mutatedThisStep = false;
     let retuneThisStep: RetuneAction = 'none';
+    let windowNudge = false;
+    let failThisStep: { action: FailureAction; tool: string } | undefined;
+    const failCountedThisStep = new Set<string>();
     let verifiedThisStep = false;
     let pausedFor: StudioPauseReason | null = null;
-    for (const call of res.toolCalls.slice(0, 4)) {
+    for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
       if (await this.stopForAccess(agent)) return;
       if (sequence) {
         const next = sequenceProgress(sequence, agent.trace);
@@ -4796,7 +4766,7 @@ export class SessionDO extends DurableObject<Env> {
         const summary = `${call.name}: the owner's ${limit}-search limit was reached; this search was not run`;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary });
-        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0 });
+        agent.trace.push({ tool: call.name, summary, ok: false, durationMs: Date.now() - t0, error: summary });
         await this.finishRun(agent, 'incomplete', undefined,
           `You asked for at most ${limit} search${limit === 1 ? '' : 'es'}, and that is used up. I stopped without searching again; have a look at the options already found.`);
         return;
@@ -4819,6 +4789,7 @@ export class SessionDO extends DurableObject<Env> {
       if (repeated && !(retry && retry.retries < MAX_IDENTICAL_RETRIES && !failedAlike)) {
         // the model is looping — refuse the duplicate and steer it back to the work
         duplicatesThisStep += 1;
+        agent.lastDuplicate = { tool: call.name, aim: aim(call.arguments) };
         const planNext = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
         const planHint = planNext ? ` Your plan's next step is "${planNext.title}" (${planNext.tool}); do that now.` : '';
         const steer =
@@ -4833,25 +4804,21 @@ export class SessionDO extends DurableObject<Env> {
             (retry || failedAlike
               ? 'You have already retried this exact call and it failed every time, so it was not run again. Do not repeat it; change your approach.'
               : 'You already made this exact call earlier in this run and have the result above. Do not repeat it.') +
+            // When that earlier attempt failed, say how: "you already made this call" alone sends the model hunting for a result it never got.
+            (agent.failedCalls?.find((f) => f.sig === failSig)?.error ? ` Its last error was: ${agent.failedCalls.find((f) => f.sig === failSig)!.error}.` : '') +
             steer,
           toolCallId: call.id,
           name: call.name,
         });
         continue;
       }
-      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames())) ?? refuseRebuild(agent.continuesGame, call.name)
-        ?? (agent.composeFirst && call.name !== 'compose_game' && READ_ONLY_WITHHELD.has(call.name)
-          ? 'This idea is built with compose_game first (it makes the whole game from components); call compose_game {request} with the user\'s words.' : undefined)
-        ?? (agent.objectFirst && call.name !== 'build_object' && READ_ONLY_WITHHELD.has(call.name)
-          ? 'This is one object: build it with build_object first, in one call (creation skill any-idea-done-right has the spec and an example).' : undefined)
-        ?? (agent.upgradesFirst && call.name !== 'add_upgrades' && READ_ONLY_WITHHELD.has(call.name)
-          ? 'Upgrades are added with add_upgrades, in one call: it does the money, the screen and the scripts, and keeps the screen that is there.' : undefined)
+      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames()))
         ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
           ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
       if (readyRefusal) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : agent.continuesGame ? 'this project already has its game' : 'the game is composed first'})` });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : 'not run'})` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${readyRefusal}`, toolCallId: call.id, name: call.name });
         continue;
       }
@@ -4892,14 +4859,16 @@ export class SessionDO extends DurableObject<Env> {
         continue;
       }
       if (repeated && retry) retry.retries += 1;
-      else if (call.name !== 'propose_plan') agent.seenCalls.push(sig);
+      //[[ THE SIGNATURE IS STORED AFTER THE CALL, and only when it actually ran (below, with the trace entry). It used to be
+      //   stored here, before the tool had run, so a call the worker refused for its own reasons (a bad property, a limit, an
+      //   order gate) counted as "already made" and the model's corrected resend was refused as a duplicate of the call that
+      //   never happened. ]]
       //[[ BOUNDED, like uiTools two lines below. `sig` is `name:arguments`, and arguments is
       //   the raw JSON — a full script body for edit_script. Unbounded, this array alone can
       //   carry the persisted AgentState past the Durable Object's 128 KiB value limit, and
       //   the failure mode is not a lost dedupe: the put rejects, the alarm dies, and the
       //   retry re-runs the step's paid LLM call and its mutating tools. 40 is far more than
       //   the duplicate-call guard needs — it only ever compares against the current run. ]]
-      if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
       // Announce the stage this tool actually represents, immediately before it
       // runs. The phase is derived from the tool, so the UI never claims a
       // stage the agent has not entered.
@@ -4919,7 +4888,23 @@ export class SessionDO extends DurableObject<Env> {
       // terrain and lighting tools "aren't offered in this mode". Say what actually happened.
       const studioDown = !studioConnected && TOOLS[call.name]?.studio === true;
       if (studioDown) agent.studioDropped = true;
-      const out = allowed.has(call.name)
+      const ledgerSeq = ledger?.seq;
+      const opsBefore = agent.studioOps ?? 0;
+      // A response the provider cut off mid-call has arguments that are not JSON. The bare parse error told the model nothing
+      // about WHY, and it resent the same oversize payload; say what happened and how much to send.
+      const cutOff = agent.lastFinishReason === 'length' && allowed.has(call.name) && !argumentsReadable(call.arguments);
+      const cuts = cutOff ? (agent.lengthRecoveries = (agent.lengthRecoveries ?? 0) + 1) : 0;
+      const out = cutOff
+        ? {
+            summary: `${safeToolName}: the output was cut off, so it was not run`,
+            resultForLlm: JSON.stringify({
+              error: `Your output was cut off at the provider's limit, so this call's arguments were incomplete and nothing ran. Resend it as batches of at most ${cuts >= 4 ? 4 : cuts >= 2 ? 10 : 20} items, one call per batch.`,
+              executed: false,
+            }),
+            ok: false,
+            detail: undefined,
+          }
+        : allowed.has(call.name)
         ? await runTool(ctx, call.name, call.arguments)
         : {
             summary: studioDown
@@ -4938,23 +4923,25 @@ export class SessionDO extends DurableObject<Env> {
             ok: false,
             detail: undefined,
           };
-      const entry: ToolTraceEntry = {
-        tool: call.name,
-        summary: out.summary,
-        ok: out.ok,
-        durationMs: Date.now() - t0,
-        // `runTool` has already capped this payload for the live tool_end event; keep that same
-        // untrusted document in history, where the browser validates it before rendering. Without
-        // it, a refreshed transcript reduces a generated image to a text-only row.
-        detail: out.detail,
-        ...(out.ok ? {} : { error: failureText(out.resultForLlm) }),
-      };
+      if (ledger && ledger.seq !== ledgerSeq) await this.saveLedger(agent, ledger);
+      // `detail` is what `runTool` already capped for the live tool_end event: keep that same untrusted document in
+      // history, where the browser validates it before rendering (without it, a refreshed transcript reduces a generated
+      // image to a text-only row). A FAILED row also carries `error`, always (trace-entry.ts).
+      const entry: ToolTraceEntry = toolTraceEntry({ tool: call.name, summary: out.summary, ok: out.ok, resultForLlm: out.resultForLlm, detail: out.detail }, Date.now() - t0, scrubEngineIdentity);
       agent.trace.push(entry);
       executedThisStep += 1;
+      // Did this call actually run? A Studio tool that sent no op was refused by the worker first: that is not "already made".
+      const reachedStudio = (agent.studioOps ?? 0) > opsBefore;
+      if (allowed.has(call.name) && !cutOff && (reachedStudio || TOOLS[call.name]?.studio !== true) && !(repeated && retry) && call.name !== 'propose_plan') {
+        agent.seenCalls.push(sig);
+        if (agent.seenCalls.length > 40) agent.seenCalls.splice(0, agent.seenCalls.length - 40);
+      }
       agent.terrainStreak = nextTerrainStreak(agent.terrainStreak ?? 0, call.name, out.ok, out.mutatedProject === true);
       // Feed the outcome back to the reasoning policy: a failed tool or a failed visual gate
       // means the next step should think harder rather than repeat the same cheap attempt.
-      if (!out.ok) agent.priorStepFailed = true;
+      // Only a failure that reached Studio buys the careful (and expensive) next step. A refusal the worker made before sending
+      // anything is free to correct, and forcing high effort on it was measured at 131 s and 155 s of thinking per step.
+      if (!out.ok && reachedStudio) agent.priorStepFailed = true;
       // A composite tool can fail after an earlier sub-operation already changed Studio. runTool
       // reports that residual mutation explicitly even when `ok` is false; losing it here would
       // make refund/delivery bookkeeping claim nothing changed when the place did.
@@ -4963,10 +4950,25 @@ export class SessionDO extends DurableObject<Env> {
       if (out.mutatedProject === true) {
         agent.mutated = true;
         mutatedThisStep = true;
-        const retune = afterChange(agent.changesByTarget, `${call.name} ${aim(call.arguments)}`);
-        agent.changesByTarget = retune.counts;
+        // run_luau's target is inside its code, so two scripts in a row are not "the same target". Any other change
+        // that names no target (set_mood takes only a mood) still counts by its tool: re-tuning one Lighting look is
+        // exactly the loop this guard exists for (F-036; review of the credits branch, 2026-10-02).
+        const target = aim(call.arguments) || (call.name === 'run_luau' ? '' : '(no target)');
+        if (target) {
+          const changeAim = target === '(no target)' ? '' : target;
+          const retune = afterChange(agent.changesByTarget, `${call.name} ${target}`);
+          agent.changesByTarget = retune.counts;
+          agent.lastChange = { tool: call.name, aim: changeAim, props: changedProps(call.arguments), count: retune.count };
+          if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
+          // The owner reads the persisted trace: say WHAT repeated on the row that tripped the guard, not only that something did.
+          if (retune.action !== 'none') entry.summary = `${entry.summary} · ${call.name} on ${changeAim || 'the same target'}, ${retune.count} times in a row`.slice(0, 300);
+          // Back and forth between two things never repeats one target in a row (run-idle.ts afterChangeWindow).
+          const window = afterChangeWindow(agent.changeWindow, `${call.name} ${target}`);
+          agent.changeWindow = window.state;
+          if (window.action === 'finish') retuneThisStep = 'finish';
+          else if (window.action === 'nudge') windowNudge = true;
+        }
         agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
-        if (retune.action === 'finish' || (retune.action === 'nudge' && retuneThisStep === 'none')) retuneThisStep = retune.action;
       }
       if (out.ok && call.name === 'build_scene') {
         let kitArgs: Record<string, unknown> = {};
@@ -4975,19 +4977,15 @@ export class SessionDO extends DurableObject<Env> {
         if (!('error' in kit)) agent.kitZone = kitZone(kit.facts);
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
+      // A look at the work is a check too: reading after it is the idle the bound above already counts.
+      if (out.ok && EXTRA_CHECK_TOOLS.has(call.name) && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
-      // A built game is themed by renaming its models to the new names, which the recreate fence would refuse.
-      if (call.name === 'compose_game') agent.composeFirst = false; // tried: the fence lifts whatever the outcome
-      if (call.name === 'cool_library_model') {
-        agent.coolFirst = false;
-        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
-        if (out.ok && typeof said === 'string' && said.trim()) { agent.composedForUser = said.trim(); agent.endWithComposed = true; agent.objectBuilt = true; }
-      }
-      if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && isPlotSimRequest(agent.request ?? '')) {
+      // A composed plot simulator or tycoon that passed its play check is answered with what the composer built and what the
+      // check measured (the composer says which template it made; the request's words decide nothing here).
+      if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && ['plot-sim', 'tycoon'].includes(String((out.detail as { template?: unknown } | undefined)?.template ?? ''))) {
         agent.composedPlotSim = true;
-        agent.objectBuilt = true;
       }
       // A build refused because Studio is in a Play test cannot be helped by any other tool (every write is refused the
       // same way): the run ends on what to do (round 11 of the owner's test 1, 2026-10-01: 17 minutes of refused writes).
@@ -5005,27 +5003,27 @@ export class SessionDO extends DurableObject<Env> {
         agent.lastCheckProblem = reading.problem;
         agent.lastCheckSeen = reading.seen;
       }
-      // The fence holds until the object is built: a failed build_object is retried with the reason, never swapped
-      // for hand-made instances (owner's re-test, 2026-10-01). After three failures the run may try other tools.
-      if (call.name === 'build_object') {
-        agent.objectFails = out.ok ? 0 : (agent.objectFails ?? 0) + 1;
-        if (out.ok || agent.objectFails >= 3) agent.objectFirst = false;
-      }
-      // Only a run that IS one object ends at "check and answer" (owner's game request, 2026-10-01: a build_object
-      // inside a whole-game run locked out every other writer and the model built plots and screens as 1-part objects).
-      if (call.name === 'build_object' && out.ok && agent.objectRun) {
-        agent.objectBuilt = true;
-        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
-        if (typeof said === 'string' && said.trim()) { agent.composedForUser = said.trim(); agent.composedObject = true; }
-      }
-      if (call.name === 'add_upgrades' && (out.ok || (agent.trace?.filter((t) => t.tool === 'add_upgrades' && !t.ok).length ?? 0) >= 3)) agent.upgradesFirst = false;
-      if (call.name === 'add_upgrades' && out.ok && agent.upgradesRun) agent.objectBuilt = true; // the same fence: check once, then answer
       if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
         agent.builtGame = true;
-        // One project is one game: the next run on this project continues it (run-flow.ts continueGameLine).
-        await this.ctx.storage.put('builtGame', { at: Date.now(), request: (agent.request ?? lastUserText(agent.llm) ?? '').slice(0, 300) } satisfies BuiltGameRecord);
       }
+      // What this call left standing is written to the project's ledger (build-ledger.ts), for the next run to be told, as information.
+      if (out.mutatedProject === true) await this.recordBuild(agent, call.name, call.arguments, out);
       if (out.ok && saysReady(call.name, out.resultForLlm)) agent.judgedReady = true;
+      // The verdict itself, kept so an answer over a "not ready" one can be sent back (judge-gate.ts). The newest verdict wins.
+      if (out.ok && call.name === 'judge_game') {
+        const verdict = readJudge(out.resultForLlm);
+        if (verdict) agent.lastJudge = verdict;
+      }
+      // A composer built the BASE of a game; what the run builds on it after is counted (world-pass.ts).
+      if (out.mutatedProject === true && out.ok) {
+        if (COMPOSER_TOOLS.includes(call.name)) {
+          agent.worldBase = noteComposer(agent.worldBase);
+          agent.worldFacts = noteFactsComposer(mapFactsOf((out.detail as { map?: unknown } | undefined)?.map));
+        } else {
+          noteWorldTool(agent.worldBase, call.name);
+          noteFactsTool(agent.worldFacts, call.name);
+        }
+      }
       // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
       if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
@@ -5066,6 +5064,17 @@ export class SessionDO extends DurableObject<Env> {
           failed.push({ sig: failSig, error, count: prior && prior.error === error ? prior.count + 1 : 1 });
         }
         agent.failedCalls = failed.slice(-8);
+        // The same TOOL failing again with different arguments each time is invisible to the signature above.
+        // Counted once per STEP: up to 4 calls run in one step, and a batch that fails for one shared cause is one
+        // attempt, not four (review of the credits branch: two failing batches ended a run after 8 failed calls).
+        if (out.ok || !failCountedThisStep.has(call.name)) {
+          if (!out.ok) failCountedThisStep.add(call.name);
+          const outcome = afterToolOutcome(agent.failStreaks, call.name, out.ok);
+          agent.failStreaks = outcome.streaks;
+          if (outcome.action === 'finish' || (outcome.action === 'steer' && failThisStep?.action !== 'finish')) {
+            failThisStep = { action: outcome.action, tool: call.name };
+          }
+        }
       }
       if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
@@ -5093,7 +5102,7 @@ export class SessionDO extends DurableObject<Env> {
       //   agent reasons from. What the scan finds is reported in the tag's ATTRIBUTES, the one
       //   place content cannot reach because the tag carries the run's unguessable id, and on the
       //   tool row, so the user sees that a page tried it. ]]
-      const fenced = fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool: call.name, body: out.resultForLlm });
+      const fenced = this.fencedToolOutput(agent, call.name, out.resultForLlm);
       if (fenced.threats.length) {
         const note = describeThreats(fenced.findings);
         entry.summary = `${entry.summary} · ${note}`;
@@ -5154,6 +5163,20 @@ export class SessionDO extends DurableObject<Env> {
       }
     }
 
+    // At most four calls run per step; the rest get a result too, so the transcript stays well formed and the model is
+    // told to resend them rather than waiting for results that will never come.
+    if (res.toolCalls.length > MAX_CALLS_PER_STEP) {
+      const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
+      for (const call of res.toolCalls.slice(MAX_CALLS_PER_STEP)) {
+        if (answered.has(call.id)) continue;
+        agent.llm.push({
+          role: 'tool',
+          content: `[${call.name}] not run: at most ${MAX_CALLS_PER_STEP} calls per step; resend this one in your next step.`,
+          toolCallId: call.id,
+          name: call.name,
+        });
+      }
+    }
     // Checked again here, not only inside the tool loop: a stop that arrives after the last
     // tool's check would otherwise be overwritten by this step's tail persist below, and the
     // next alarm would carry on as though the button had never been pressed.
@@ -5166,7 +5189,7 @@ export class SessionDO extends DurableObject<Env> {
       // Every call of the turn gets a result, so the transcript stays well formed and the model
       // knows these were never attempted.
       const answered = new Set(agent.llm.filter((m) => m.role === 'tool').map((m) => m.toolCallId));
-      for (const call of res.toolCalls.slice(0, 4)) {
+      for (const call of res.toolCalls.slice(0, MAX_CALLS_PER_STEP)) {
         if (answered.has(call.id)) continue;
         agent.llm.push({
           role: 'tool',
@@ -5194,7 +5217,7 @@ export class SessionDO extends DurableObject<Env> {
     // Three in a row is a loop, not deliberation: end on what the run has, and say so.
     agent.duplicateStreak = executedThisStep === 0 && duplicatesThisStep > 0 ? (agent.duplicateStreak ?? 0) + 1 : 0;
     const planOpen = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
-    const streakGaps = gameGaps(agent.request, agent, allowed.has('play_check'));
+    const streakGaps = gameGaps(agent, allowed.has('play_check'));
     const streakParts = agent.duplicateStreak >= MAX_DUPLICATE_STREAK ? openParts(agent) : [];
     // Open work at the wall. Less than at the last move-on means the run built something in between.
     const streakOpen = agent.duplicateStreak >= MAX_DUPLICATE_STREAK
@@ -5217,10 +5240,7 @@ export class SessionDO extends DurableObject<Env> {
       agent.duplicateStreak = 0;
       agent.readsWithheldOnce = true;
       const next = planOpen ? ` Your plan's next step is "${fenceForQuote(planOpen.title)}" (${planOpen.tool}).` : '';
-      agent.llm.push({
-        role: 'user',
-        content: UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''),
-      });
+      pushHarness(agent.llm, UNSTICK_STEER + next + (streakGaps.length ? ` ${gameGapSteer(streakGaps)}` : '') + (streakParts.length ? ` ${partSteer(streakParts)}` : ''));
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and Apple will do it.`
@@ -5234,6 +5254,9 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
         : 'Apple stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
       agent.terminalNote = note;
+      // What was repeated, on the row the owner reads (the sentence above is for the person, and stays as it was).
+      const dup = agent.lastDuplicate;
+      annotateLastTrace(agent, `stopped: ${agent.duplicateStreak ?? MAX_DUPLICATE_STREAK} steps in a row repeated${dup ? ` ${dup.tool}${dup.aim ? ` on ${dup.aim}` : ''}` : ' a call already made'}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
@@ -5266,7 +5289,7 @@ export class SessionDO extends DurableObject<Env> {
           agent.readsSinceChange = 0;
           agent.readsWithheldOnce = true;
         }
-        agent.llm.push({ role: 'user', content: steer });
+        pushHarness(agent.llm, steer);
         idle.action = 'none';
       }
     }
@@ -5288,12 +5311,29 @@ export class SessionDO extends DurableObject<Env> {
         ? `Apple stopped because it kept looking at your place instead of building the rest. ${spaced(builtSummary(agent.made))}Send another message and it will carry on.`
         : 'Apple stopped because it kept looking at your place instead of building anything, so nothing was changed. Send your message again to try once more.';
       agent.terminalNote = note;
+      annotateLastTrace(agent, `stopped after ${agent.readsSinceChange ?? READ_STALL_LIMIT} reads with no change; last reads: ${lastReads(agent.trace, 3)}`);
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
       agent.streamedText = prior ? `${prior}\n\n${note}` : note;
       this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
       await this.finishRun(agent, 'incomplete');
       return;
+    }
+    // A tool that keeps failing, whatever it is sent (owner benchmark 2026-10-02: dozens of billed retries on a map).
+    if (failThisStep?.action === 'finish') {
+      const note = agent.mutated
+        ? `Apple stopped because the same kind of step kept failing. ${spaced(builtSummary(agent.made))}Tell it what to try next and it will carry on from there.`
+        : 'Apple stopped because the same kind of step kept failing, and nothing in your place was changed. Send your message again, or say what to try differently.';
+      agent.terminalNote = note;
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${note}` : note;
+      agent.streamedText = prior ? `${prior}\n\n${note}` : note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${note}` : note });
+      await this.finishRun(agent, 'incomplete');
+      return;
+    }
+    if (failThisStep?.action === 'steer') {
+      pushHarness(agent.llm, failureSteer(failThisStep.tool, agent.failStreaks?.[failThisStep.tool] ?? FAIL_STEER_AT));
     }
     // Changing the same thing over and over — F-036: 101 steps re-tuning one Lighting value.
     if (retuneThisStep === 'finish') {
@@ -5307,26 +5347,28 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (retuneThisStep === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have changed the same thing several times in a row. Stop tuning it: keep the best version you have, ' +
-          'finish anything else the request still needs, and then reply to the user.',
-      });
+      const last = agent.lastChange;
+      const isCheck = (name: string) => VERIFIERS.has(name) || name === 'render_view' || name.startsWith('check_');
+      pushHarness(agent.llm, last
+        ? retuneNudge(last, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name), alternatesWithChecks(agent.trace, last.tool, last.count, isCheck))
+        : 'You have changed the same thing several times in a row. Switch tool, target or approach, or keep the best version you have and reply to the user.');
     }
+    if (windowNudge && retuneThisStep !== 'nudge') {
+      pushHarness(agent.llm,
+        'Over your last 24 changes, 12 or more went to the same thing, with other changes in between. If you are going back and forth ' +
+        'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
+        'If each change really adds something new, carry on.');
+    }
+    // With a composed base the note restates the next step of the world pass (world-steps.ts), fenced as data; round 3 read for 30 steps.
+    const stallNote = idle.action === 'build' ? readStallNote(agent.worldBase ? this.fencedToolOutput(agent, 'world_steps', this.worldStepsFor(agent, ledger)[0] ?? '').text : undefined) : '';
     if (idle.action === 'build') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
-          'already know. If a detail is missing, choose a sensible default instead of reading again.',
-      });
+      pushHarness(agent.llm, stallNote);
     }
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
       agent.idleAfterVerify = 0;
-      const gaps = gameGaps(agent.request, agent, allowed.has('play_check'));
-      agent.llm.push({ role: 'user', content: gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER });
+      const gaps = gameGaps(agent, allowed.has('play_check'));
+      pushHarness(agent.llm, gaps.length ? gameGapSteer(gaps) : AUTONOMOUS_IDLE_STEER);
     } else if (idle.action === 'finish') {
       const note = 'Apple made the change and checked it, then had nothing left to do, so it stopped here.';
       const prior = agent.streamedText ?? '';
@@ -5337,18 +5379,11 @@ export class SessionDO extends DurableObject<Env> {
       return;
     }
     if (idle.action === 'answer') {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
-          'Only call another tool if one specific fact you need is still missing.',
-      });
+      pushHarness(agent.llm, 'You have read enough to answer. Reply to the user now with what you found, in plain words. ' +
+          'Only call another tool if one specific fact you need is still missing.');
     }
     if (idle.action === 'nudge') {
-      agent.llm.push({
-        role: 'user',
-        content: AUTONOMOUS_IDLE_STEER,
-      });
+      pushHarness(agent.llm, AUTONOMOUS_IDLE_STEER);
     }
     // If the model has spent several steps without changing anything, steer it. Mutation truth
     // comes from the tool implementation's co-located metadata through runTool, rather than a
@@ -5358,19 +5393,31 @@ export class SessionDO extends DurableObject<Env> {
     // "create the instances" could only invite a call to a tool they do not have — refused as
     // unavailable, a paid step each time.
     const built = agent.mutated === true;
-    if (!built && agent.step >= 2 && canBuild && studioConnected) {
-      agent.llm.push({
-        role: 'user',
-        content:
-          'You have spent several steps researching without changing the project. Stop investigating and build now with what you know: create the instances or edit the scripts the request needs. Build geometry from Parts rather than looking for assets.',
-      });
+    // ONCE per run, built from what happened (run-idle.ts buildNudge). It used to repeat every step and told the
+    // model, in the user's voice, to skip the asset search and build from Parts; the model quoted it back as
+    // something the user had said (owner benchmark 2026-10-02).
+    if (!built && !agent.buildNudged && agent.step >= 2 && canBuild && studioConnected) {
+      const text = buildNudge(agent.trace, agent.readsSinceChange ?? 0, (name) => Object.prototype.hasOwnProperty.call(TOOLS, name));
+      if (text) {
+        agent.buildNudged = true;
+        pushHarness(agent.llm, text);
+      }
     }
     // The plan's next step may call for a craft recipe the prompt did not carry (skill-cards.ts).
-    const skillSteer = canBuild ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? []) : null;
+    // The same note carries the researched creator skills ranked for that step (skill-push.ts): the small model does not go
+    // looking for them (t1 round 1: 0 reads in 90 calls). Bounded by count, characters and the transcript's own budget.
+    const skillSteer = canBuild
+      ? skillSteerForStep(agent.plan, agent.trace, agent.skillCardsShown ?? [], {
+          request: agent.request ?? '', state: agent.skillPush, context: { usedChars: agent.contextUsedChars, maxChars: agent.contextMaxChars },
+        })
+      : null;
     if (skillSteer) {
-      agent.llm.push({ role: 'user', content: skillSteer.message });
+      pushHarness(agent.llm, skillSteer.message);
       agent.skillCardsShown = [...(agent.skillCardsShown ?? []), ...skillSteer.ids];
+      if (skillSteer.skills) agent.skillPush = skillSteer.skills;
     }
+    // The layout flags (scene-flags.ts) once the plan has moved on from building the world: model-free, from the typed tree.
+    if (canBuild && studioConnected) await this.layoutCheckAfterWorldStep(agent, ctx, executedThisStep);
     this.captureProvenance(agent, ctx);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -5464,6 +5511,245 @@ export class SessionDO extends DurableObject<Env> {
     return true;
   }
 
+  // ------------------------------------------------------------------------------ the self-check ---
+
+  /** The run's ledger: the stored one when it belongs to THIS run, otherwise a fresh one. */
+  private async ledgerFor(agent: AgentState): Promise<EvidenceLedger> {
+    const stored = await this.ctx.storage.get<{ msgId?: string; ledger?: EvidenceLedger }>(SELF_CHECK_KEY);
+    return stored?.msgId === agent.msgId && stored.ledger?.v === 1 ? stored.ledger : newLedger();
+  }
+
+  private async saveLedger(agent: AgentState, ledger: EvidenceLedger): Promise<void> {
+    await this.ctx.storage.put(SELF_CHECK_KEY, { msgId: agent.msgId, ledger });
+  }
+
+  /**
+   * The agent has stopped calling tools and written its answer. Decide, with the ledger, whether it may go (see
+   * self-check-run.ts) and carry the decision out. Returns true when the run must take another step instead of ending.
+   */
+  private async selfCheckAtAnswer(
+    agent: AgentState,
+    ledger: EvidenceLedger,
+    ctx: AgentCtx,
+    allowed: ReadonlySet<string>,
+    studioConnected: boolean,
+    canBuild: boolean,
+  ): Promise<boolean> {
+    // What the run still owes before it may answer, and what it must admit once the bounds on that are used.
+    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected, ledger.mutationSeq, ledger);
+    const input = {
+      ledger,
+      reply: agent.finalText ?? '',
+      lookAvailable: allowed.has(LOOK_TOOL),
+      studioConnected,
+      can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
+      ...(owed ? { owed } : {}),
+      admit,
+    };
+    let decision = checkAtAnswer({ ...input, extra: owed ? undefined : await this.judgeFindings(agent, input) });
+    if (decision.action === 'steer' && decision.kind === 'world' && agent.worldBase) agent.worldBase.steers += 1;
+    if (decision.action === 'steer' && decision.kind === 'judge') agent.judgeFixPasses = (agent.judgeFixPasses ?? 0) + 1;
+    if (decision.action === 'force_look') {
+      // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
+      const out = await this.runSelfCheckLook(agent, ledger, ctx);
+      if (out.ok) {
+        pushHarness(agent.llm, forcedLookMessage(this.fencedToolOutput(agent, LOOK_TOOL, out.resultForLlm).text));
+        return this.takeAnotherStep(agent, ledger);
+      }
+      // A look that could not run gives the agent nothing to act on, so no extra model step is spent on it: decide again
+      // without it (the gate now steps aside) and let the final line say the work was not looked at.
+      decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
+    }
+    if (decision.action === 'steer') {
+      pushHarness(agent.llm, decision.message);
+      return this.takeAnotherStep(agent, ledger);
+    }
+    // THE BLIND CRITIQUE (blind-critique.ts): the answer is about to go. A reviewer who sees only the request and pictures of the
+    // place says what is wrong with them; a severe flaw sends the agent back for ONE fix pass, then it answers.
+    if (decision.action === 'finish' && await this.blindCritiqueAtAnswer(agent, ledger, ctx, allowed, studioConnected)) {
+      return this.takeAnotherStep(agent, ledger);
+    }
+    if (decision.action === 'finish' && decision.note) {
+      // The same way every other product note is added: after the agent's own words, never in place of them.
+      const prior = agent.streamedText ?? '';
+      agent.finalText = agent.finalText ? `${agent.finalText}\n\n${decision.note}` : decision.note;
+      agent.streamedText = prior ? `${prior}\n\n${decision.note}` : decision.note;
+      this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${decision.note}` : decision.note });
+    }
+    await this.saveLedger(agent, ledger);
+    return false;
+  }
+
+  /**
+   * What the run owes before it may answer, from its own state: the world the request describes when a composer built only a base
+   * (world-pass.ts), then the findings of its own latest "not ready" judge (judge-gate.ts). `owed` is the one steer to send now (the
+   * judge's findings go in fenced: they quote names from the place); `admit` are the plain lines for the final note once a bound
+   * is used, plus the critique's severe areas (a fixed vocabulary, never its words). `canFix` is false when nothing could be changed.
+   */
+  private owedAtAnswer(agent: AgentState, canFix: boolean, mutationSeq: number, ledger?: EvidenceLedger): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
+    const admit: string[] = [];
+    let owed: { kind: 'world' | 'judge'; message: string } | undefined;
+    const world = decideWorldPass(agent.worldBase, { canBuild: canFix, ...(agent.worldBase ? { steps: this.fencedToolOutput(agent, 'world_steps', stepsBody(this.worldStepsFor(agent, ledger))).text } : {}) });
+    if (world.action === 'steer') owed = { kind: 'world', message: world.message };
+    else if (world.action === 'admit') admit.push(world.line);
+    const judge = decideJudgeGate(agent.lastJudge, agent.judgeFixPasses ?? 0, { canBuild: canFix });
+    if (judge.action === 'steer' && !owed) owed = { kind: 'judge', message: judgeFixMessage(this.fencedToolOutput(agent, 'judge_game', judge.body).text) };
+    else if (judge.action === 'admit') admit.push(judge.line);
+    // The critique's severe flaws are admitted when the run changed nothing after hearing them (what it changed after is looked at, or
+    // said not to have been, by the gate). The areas are a fixed vocabulary: the reviewer's own words never reach the user's reply.
+    const severe = (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a));
+    if (severe.length && mutationSeq === agent.critiqueAtSeq) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.map((a) => AREA_WORDS[a]).join(', ')}) and I did not change anything in answer to them, so they are still there.`);
+    return { ...(owed ? { owed } : {}), admit };
+  }
+
+  /**
+   * The numbered calls the run still owes after a composer (world-steps.ts), from facts it holds: the composer's map, the models it
+   * inserted (the ledger's list, and where the library step left each), the tools it has used since, and the areas a fresh
+   * reviewer found serious. Pure reading; the caller fences the text before it reaches the transcript.
+   */
+  private worldStepsFor(agent: AgentState, ledger?: EvidenceLedger): string[] {
+    const stands = new Map((agent.libraryRun?.placed ?? []).map((p) => [p.path.replace(/^game\./, ''), p.at] as const));
+    const models = (ledger?.inserted ?? []).slice(-6).map((path) => ({ path, at: stands.get(path.replace(/^game\./, '')) }));
+    return worldSteps({
+      ...(agent.worldFacts?.map ? { map: agent.worldFacts.map } : {}),
+      models,
+      used: agent.worldFacts?.used ?? [],
+      assets: agent.worldBase?.assets ?? 0,
+      flawWords: (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a)).map((a) => AREA_WORDS[a]),
+    });
+  }
+
+  /** End the step here and take another: the check handed the agent something to act on. */
+  private async takeAnotherStep(agent: AgentState, ledger: EvidenceLedger): Promise<true> {
+    // A ready verdict ends the changes (afterReady) and offers no tools; a check that sends the run back to fix something outranks it.
+    agent.judgedReady = false;
+    await this.saveLedger(agent, ledger);
+    await this.persistAgent(agent);
+    await this.ctx.storage.setAlarm(Date.now() + 10);
+    return true;
+  }
+
+  /**
+   * THE BLIND CRITIQUE AT THE MOMENT OF ANSWERING. Returns true when a report was pushed to the agent and it must take its one fix
+   * pass; false when the run may answer. Bounded: ONE critique per run (`ledger.criticRounds`, counted before the call so a failure
+   * cannot be retried), only for a run that changed what the viewport shows, only with Studio connected and `look` offered.
+   * The critic is given the request and the frames and nothing else (blind-critique.ts); the layout flags (scene-flags.ts) ride
+   * along because they are measured, model-free and cost no pass of their own.
+   */
+  private async blindCritiqueAtAnswer(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx, allowed: ReadonlySet<string>, studioConnected: boolean): Promise<boolean> {
+    if (selfCheckMode(this.env) === 'off' || !criticFlagOn(this.env)) return false;
+    if ((ledger.criticRounds ?? 0) >= CRITIC_LIMITS.fixPasses) return false;
+    if (ledger.viewChangedSeq === 0 || !studioConnected || !allowed.has(LOOK_TOOL)) return false;
+    ledger.criticRounds = (ledger.criticRounds ?? 0) + 1;
+    await this.saveLedger(agent, ledger);
+
+    ctx.evidence = ledger;
+    const toolId = `selfcheck_${agent.step}_review`;
+    this.broadcast({ type: 'agent_status', phase: phaseForTool(LOOK_TOOL), step: agent.step, tool: LOOK_TOOL });
+    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
+    const t0 = Date.now();
+    const verdict = await runBlindCritique(ctx, agent.request ?? '');
+    await this.settleNeurons(agent, verdict.neurons);
+    const severe = verdict.ok && hasSevereFlaw(verdict.critique);
+    const summary = verdict.ok
+      ? `A fresh reviewer looked at the result: ${verdict.critique.flaws.length} flaw(s) found${severe ? ', some serious' : ''}`
+      : 'A fresh review of the result could not be made';
+    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: verdict.ok, summary });
+    agent.uiTools = agent.uiTools ?? [];
+    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: verdict.ok, summary, durationMs: Date.now() - t0 });
+    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
+
+    if (severe && verdict.ok) {
+      agent.critiqueSevere = [...new Set(verdict.critique.flaws.filter((f) => f.severity === 'severe').map((f) => f.area))];
+      agent.critiqueAtSeq = ledger.mutationSeq;
+    }
+    const flags = await this.newLayoutFlags(agent, ctx);
+    if (!severe && flags.length === 0) return false;
+    const body = [
+      ...(severe && verdict.ok ? [critiqueLines(verdict.critique)] : []),
+      ...(flags.length ? [`Layout flags (measured, no render):\n${flags.join('\n')}`] : []),
+    ].join('\n\n');
+    this.pushReport(agent, severe ? 'critique' : 'layout', body);
+    return true;
+  }
+
+  /** The layout flags (scene-flags.ts) of the place as it stands that this run has not been told yet, high ones only, as lines. Never throws. */
+  private async newLayoutFlags(agent: AgentState, ctx: AgentCtx): Promise<string[]> {
+    const read = await readSceneFlags((op, ms) => ctx.execStudioOp(op, ms), agent.request);
+    if ('error' in read) return [];
+    const sent = agent.layoutFlagsSent ?? [];
+    const fresh = read.flags.filter((f) => f.severity === 'high' && !sent.includes(f.kind));
+    if (fresh.length) agent.layoutFlagsSent = [...sent, ...fresh.map((f) => f.kind)];
+    return fresh.map((f) => `[${f.severity}] ${f.kind}: ${f.text}`);
+  }
+
+  /**
+   * After a step that built in the workspace, once the plan has moved on from building (or there is no plan): the layout flags
+   * (scene-flags.ts), model-free. A flag not yet sent goes to the agent as one fenced harness note, so it can fix the layout while
+   * the builder tools are still the ones it is using. Bounded: MAX_LAYOUT_CHECKS reads per run, each kind of flag sent once.
+   */
+  private async layoutCheckAfterWorldStep(agent: AgentState, ctx: AgentCtx, executedThisStep: number): Promise<void> {
+    if (selfCheckMode(this.env) === 'off' || executedThisStep === 0 || (agent.layoutChecks ?? 0) >= MAX_LAYOUT_CHECKS) return;
+    if (!agent.trace.slice(-executedThisStep).some((t) => t.ok && WORLD_BUILDING_TOOLS.includes(t.tool))) return;
+    const next = agent.plan ? nextPlanStep(agent.plan, agent.trace) : undefined;
+    if (next && WORLD_BUILDING_TOOLS.includes(next.tool)) return; // the plan is still building the world
+    agent.layoutChecks = (agent.layoutChecks ?? 0) + 1;
+    const flags = await this.newLayoutFlags(agent, ctx);
+    if (flags.length) this.pushReport(agent, 'layout', flags.join('\n'));
+  }
+
+  /** THE ONE PLACE a measured or model-made report enters the transcript: a fixed wrapper around a fenced body (blind-critique.ts reportMessage). */
+  private pushReport(agent: AgentState, kind: ReportKind, body: string): void {
+    pushHarness(agent.llm, reportMessage(kind, this.fencedToolOutput(agent, kind === 'critique' ? 'blind_critique' : 'layout_flags', body).text));
+  }
+
+  /**
+   * SELF_CHECK=full: the one cheap text call that reads the reply for claims the deterministic audit does not (claim-audit-judge.ts).
+   * Only for a reply that could be the last, and only ever adds findings. Its compute is counted into the run and settled now,
+   * because an answer that ends the run has no later step to settle it.
+   */
+  private async judgeFindings(agent: AgentState, input: Parameters<typeof checkAtAnswer>[0]): Promise<Finding[] | undefined> {
+    if (selfCheckMode(this.env) !== 'full' || !judgeWorthIt(input)) return undefined;
+    const existing = auditReply(input.reply, input.ledger).findings;
+    const judged = await judgeReply({ reply: input.reply, ledger: input.ledger, existing }, (req, opts) => llmChat(this.env, req as never, opts));
+    await this.settleNeurons(agent, judged.neurons);
+    return judged.findings;
+  }
+
+  /** Count model compute made outside a step into the run and settle it now (an answer that ends the run has no later step to do it). */
+  private async settleNeurons(agent: AgentState, neurons: number): Promise<void> {
+    if (!(neurons > 0)) return;
+    agent.neuronsUsed = (agent.neuronsUsed ?? 0) + neurons;
+    const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
+    if (owed > 0) {
+      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
+      if (settle.ok) agent.creditsSpent += owed;
+      this.recordSpendSplit(agent, settle);
+    }
+  }
+
+  /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
+  private async runSelfCheckLook(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx) {
+    ctx.evidence = ledger;
+    const toolId = `selfcheck_${agent.step}_look`;
+    const t0 = Date.now();
+    agent.phase = phaseForTool(LOOK_TOOL);
+    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, tool: LOOK_TOOL });
+    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
+    const out = await runTool(ctx, LOOK_TOOL, '{}');
+    agent.trace.push(toolTraceEntry({ tool: LOOK_TOOL, summary: out.summary, ok: out.ok, resultForLlm: out.resultForLlm, detail: out.detail }, Date.now() - t0, scrubEngineIdentity));
+    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
+    agent.uiTools = agent.uiTools ?? [];
+    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: out.ok, summary: out.summary, durationMs: Date.now() - t0, detail: out.detail });
+    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
+    return out;
+  }
+
+  /** Tool output as the model reads it: fenced as untrusted data under the run's own unguessable id. The ONE place it is built. */
+  private fencedToolOutput(agent: AgentState, tool: string, body: string) {
+    return fenceToolOutput({ fenceId: this.fenceIdFor(agent), tool, body });
+  }
+
   /**
    * Carry asset provenance from the step that discovered it onto the run that will use it.
    *
@@ -5514,7 +5800,7 @@ export class SessionDO extends DurableObject<Env> {
     reason: 'done' | 'stopped' | 'error' | 'quota' | 'incomplete',
     /**
      * A CODE, never prose. It is broadcast to the browser on `msg_end`, and the app owns the
-     * sentence — see RUN_FAILURES in @golem/shared. Typing it as the closed set is what makes
+     * sentence — see RUN_FAILURES in @apple/shared. Typing it as the closed set is what makes
      * "just pass the message through" a compile error rather than a leak nobody notices.
      */
     error?: RunFailure,
@@ -5532,7 +5818,7 @@ export class SessionDO extends DurableObject<Env> {
      *
      * A run killed by the step cap and a run killed by the wall clock both end with `reason:
      * 'done'`, because `done` is what the browser's `msg_end.stopReason` union can carry: that
-     * union lives in @golem/shared and is rendered by apps/web, and widening it is a change to a
+     * union lives in @apple/shared and is rendered by apps/web, and widening it is a change to a
      * contract this file does not own. But the ANALYTICS vocabulary is this file's to widen, and
      * filing "stopped three steps in, unfinished, and paid for" under the same label as "it worked"
      * is what made every failure-rate number wrong in our own favour.
@@ -5542,9 +5828,7 @@ export class SessionDO extends DurableObject<Env> {
     buildOutcome?: BuildOutcome,
   ) {
     const artifact = artifactCompletion(agent.request, agent.trace);
-    // An object offer waiting for the owner's pick has delivered what this run owes: the choice (review 2026-10-02:
-    // "make a 3D model of a keyboard" ended its offer as "No 3D model was made this time").
-    if (reason === 'done' && artifact.missing && !agent.objectOffered) reason = 'incomplete';
+    if (reason === 'done' && artifact.missing) reason = 'incomplete';
     agent.status = 'idle';
     // Clear the run attribution before the first await: any later out-of-run Studio op must not
     // inherit the finished run's id, even if this cleanup is interrupted midway through.
@@ -5569,6 +5853,7 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'asset_sources_owed', owed: false });
     }
     await this.ctx.storage.delete('assetSourcesAwaitingRun');
+    await this.ctx.storage.delete(SELF_CHECK_KEY);
     // Nothing this run queued may still be applied to the place now that it has ended.
     const abandoned = await this.dropOpsForEndedRuns(undefined);
     // A regrant that arrived while this run was still live is deliberately deferred until now.
@@ -5963,8 +6248,9 @@ export class SessionDO extends DurableObject<Env> {
     // The mode is checked BEFORE the model call, not inside the writer. `applyModelUpdate` would
     // discard the result anyway, but a run with memory switched off must not spend a neuron — or a
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
-    if (agent.trace.length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
-      // Distillation is Golem's own housekeeping: it counts against the GLOBAL neuron budget
+    // A look the self-check ran on the agent's behalf is not substantive work: it must not tip a small run into distillation.
+    if (agent.trace.filter((t) => t.tool !== LOOK_TOOL).length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
+      // Distillation is Apple's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
       if (budgetLeft.creditsRemaining <= 0) return;
@@ -6141,13 +6427,12 @@ export class SessionDO extends DurableObject<Env> {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
       // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
-      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored) } } : {}),
+      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored), clear: () => this.ctx.storage.delete('plannedGame') } } : {}),
       ...(agent ? { userRequest: () => lastUserText(agent.llm) } : {}),
-      ...(agent ? { objectMemory: {
-        load: async () => (await this.ctx.storage.get<{ spec?: unknown }>('builtObject'))?.spec,
-        save: (spec: unknown) => this.ctx.storage.put('builtObject', { spec, at: Date.now() }),
-        upgrading: agent.upgradingObject === true,
+      ...(agent ? { buildLedger: {
+        find: async (id: string) => ((await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? []).find((e) => e.id === id),
       } } : {}),
+      ...(agent ? { libraryRun: (agent.libraryRun ??= {}) } : {}),
       onceInRun: (key) => {
         if (!agent) return true;
         const seen = agent.onceKeys ?? (agent.onceKeys = []);
@@ -6161,22 +6446,39 @@ export class SessionDO extends DurableObject<Env> {
       // The run's user is the project owner (startRun records `bind.ownerId`); a tool that acts in
       // the user's own account (generate_model_external) needs it. No run, no user.
       userId: agent?.userId,
+      // For `look`: what the run was asked, and where a model call made inside a tool is counted (it reaches the Credits
+      // with the next step's settlement, like every other compute this run used).
+      ...(agent ? {
+        request: agent.request,
+        addNeurons: (n: number) => { agent.neuronsUsed = (agent.neuronsUsed ?? 0) + n; },
+      } : {}),
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       approvedLibraryAssetId: agent?.approvedLibraryAssetId,
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,
       assetChoiceAnchor: agent?.assetChoiceAnchor,
+      // The live Creator Store search (creator-store-live.ts) is on for a real run, and its rows live on the run beside libraryRun:
+      // a context built without this never reaches Roblox.
+      liveCreatorStore: true,
+      ...(agent ? { liveLibraryRows: (agent.liveLibraryRows ??= {}) } : {}),
       askAssetSources: () => this.askAssetSources(),
+      assetSettingsUnread: this.pinnedPrefs === null,
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
       localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
-      widenTools: () => { if (agent) agent.focused = false; },
+      widenTools: (tools) => {
+        if (!agent) return;
+        if (!tools?.length) agent.focused = false;
+        else agent.unlockedTools = [...new Set([...(agent.unlockedTools ?? []), ...tools])];
+      },
       addSources: (fresh) => { if (!agent) return []; agent.sources ??= []; return addSources(agent.sources, fresh); },
       // Read the run by reference: create_instances and delete_instances can arrive in one LLM
       // response, and a flag captured when the context was constructed would miss the conflict.
-      blockDirectDeletion: () => agent?.blockDeletesAfterCreateConflict === true,
+      // The fence protects what was in the place BEFORE this run; what the run created itself can still be removed.
+      blockDirectDeletion: (paths) => agent?.blockDeletesAfterCreateConflict === true && !coveredByCreated(agent.createdPaths, paths),
+      noteCreated: (paths) => { if (agent) agent.createdPaths = addCreated(agent.createdPaths, paths); },
       createCheckpoint: (label, kind) => this.createCheckpoint(label, kind, {}, agent),
       restoreCheckpoint: (id: string) => this.restoreCheckpoint(id, agent),
       // Frames go to the browser and nowhere else. They are deliberately not
@@ -6423,7 +6725,7 @@ export class SessionDO extends DurableObject<Env> {
   /**
    * A write that reaches Studio while a Test session is still closing is refused ("writes require Studio edit mode")
    * and provably did not run, so it waits for edit mode and goes again, up to about 12 seconds (owner's re-test,
-   * 2026-10-01: an upgrades request sent right after the keyboard's play check failed three times and told the user to
+   * 2026-10-01: an upgrades request sent right after a play check failed three times and told the user to
    * press Stop, while Studio was already stopping on its own).
    */
   private async execStudioOp(studioOp: StudioOp, timeoutMs = 30_000, run?: AgentState): Promise<OpResult> {
@@ -6482,6 +6784,8 @@ export class SessionDO extends DurableObject<Env> {
     // Queueing an op is activity: it un-parks the poll so the next one holds again rather than
     // sleeping through the work that is about to arrive.
     this.lastActivity = Date.now();
+    // Counted here, once the op is really queued: a tool call that moved this counter reached Studio (AgentState.studioOps).
+    if (run) run.studioOps = (run.studioOps ?? 0) + 1;
     await this.ctx.storage.put({ opQueue: this.opQueue, seq: this.seq });
     this.pollWaiter?.();
 
@@ -6502,6 +6806,7 @@ export class SessionDO extends DurableObject<Env> {
         resolve(r);
       });
     });
+    if (run && result.ok) run.createdPaths = rememberCreated(run.createdPaths, studioOp.op, result.data);
     if (run && studioOp.op === 'import_owner_library' && studioOp.replace === true && result.ok && !run.keepOwnerOriginal) {
       run.keepOwnerOriginal = true;
       await this.persistAgent(run);
@@ -7307,6 +7612,9 @@ export class SessionDO extends DurableObject<Env> {
       say('failed', { error: applied.error });
       return { ok: false, error: applied.error };
     }
+    // The place was put back: what the ledger says stands there, and a plan made for that place, no longer describe it.
+    await this.ctx.storage.delete(LEDGER_KEY);
+    await this.ctx.storage.delete('plannedGame');
     say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —

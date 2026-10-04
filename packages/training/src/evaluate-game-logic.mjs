@@ -7,6 +7,7 @@ import { GAME_LOGIC_CURRICULUM } from './game-logic-curriculum.mjs';
 import { detectContextDependencies } from './audit-dataset.mjs';
 import { execute, isRefusal } from '../../../scripts/lib/sandbox-host.mjs';
 import { readSpendLedger, reserveSpend } from './spend-ledger.mjs';
+import { envCompat } from '../../../scripts/lib/env-compat.mjs';
 
 const MODEL = '@cf/zai-org/glm-5.3-flash';
 const BASE = 'https://apple.moshe-barami111.workers.dev';
@@ -49,7 +50,7 @@ export async function evaluateGameLogic({ live = false, adminKey, output, budget
   if (!live) throw new Error('paid evaluation requires explicit --live; no request made');
   if (!budgetPath) throw new Error('existing total budget ledger is required');
   readSpendLedger(budgetPath);
-  if (!adminKey) throw new Error('GOLEM_ADMIN_KEY is required');
+  if (!adminKey) throw new Error('APPLE_ADMIN_KEY is required');
   if (!output || examples.length < 1 || examples.length > 10) throw new Error('new output directory and 1..10 examples required');
   if (examples.some((e) => Buffer.byteLength(e.prompt + SYSTEM) > 2000)) throw new Error('prompt exceeds bounded cost allocation');
   const directory = resolve(output);
@@ -105,5 +106,5 @@ export async function evaluateGameLogic({ live = false, adminKey, output, budget
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
   if (args.length !== 5 || args[0] !== '--live' || args[1] !== '--out' || args[3] !== '--budget') throw new Error('usage: evaluate-game-logic.mjs --live --out NEW_DIRECTORY --budget EXISTING_LEDGER');
-  console.log(JSON.stringify(await evaluateGameLogic({ live: true, adminKey: process.env.GOLEM_ADMIN_KEY, output: args[2], budgetPath: args[4] }), null, 2));
+  console.log(JSON.stringify(await evaluateGameLogic({ live: true, adminKey: envCompat('APPLE_ADMIN_KEY'), output: args[2], budgetPath: args[4] }), null, 2));
 }

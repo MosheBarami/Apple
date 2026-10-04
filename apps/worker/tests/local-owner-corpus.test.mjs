@@ -8,7 +8,7 @@ const esbuild=await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 import {createHash} from 'node:crypto';
 const dir=mkdtempSync(join(tmpdir(),'owner-local-worker-'));
 test.after(()=>rmSync(dir,{recursive:true,force:true}));
-await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@golem/shared':'../../packages/shared/src/index.ts'}});
+await esbuild.build({entryPoints:['src/tools.ts'],bundle:true,format:'esm',platform:'node',outfile:join(dir,'tools.mjs'),alias:{'@apple/shared':'../../packages/shared/src/index.ts'}});
 const T=await import(pathToFileURL(join(dir,'tools.mjs')).href);
 const raw='a'.repeat(64)+':42',id='owner-local:'+raw,sha='b'.repeat(64),jobId='c'.repeat(64);
 function context(exec,extra={}) {return {env:{},userId:'owner',localOwnerGateway:true,studioConnected:()=>true,execStudioOp:exec,createCheckpoint:async()=>({id:'cp'}),addMemoryFact:async()=>'',...extra};}
@@ -23,7 +23,7 @@ test('complete local library is searched first through paired plugin without a c
 test('ready receipt precedes checkpoint then exact native import; bytes remain local',async()=>{
  const calls=[];const ctx=context(async op=>{calls.push(op);if(op.op==='query_owner_local')return {ok:true,data:{status:'ready',jobId,nodeId:raw,name:'Waterfall',nativeSha256:sha,nativeBytes:88,nativeInstances:9,policy:'owner-loopback-scriptfree-v1',nativeScripts:0}};return {ok:true,data:{inserted:['game.Workspace.Waterfall'],scriptsExecuted:0}};},{createCheckpoint:async()=>{calls.push('checkpoint');return {id:'cp'};}});
  const {out}=await run(ctx,'insert_library_model',{id,parent:'game.Workspace'});
- assert.equal(out.ok,true);assert.equal(out.mutatedProject,true);assert.deepEqual(calls.map(c=>typeof c==='string'?c:c.op),['query_owner_local','checkpoint','import_owner_local']);
+ assert.equal(out.ok,true);assert.equal(out.mutatedProject,true);assert.deepEqual(calls.map(c=>typeof c==='string'?c:c.op),['query_owner_local','checkpoint','import_owner_local','get_tree']);
  assert.equal(calls[2].nodeId,raw);assert.equal(calls[2].jobId,jobId);assert.equal(calls[2].nativeSha256,sha);assert.equal(calls[2].parent,'game.Workspace');
  assert.ok(!JSON.stringify(calls).match(/127\.0\.0\.1|Bearer|base64|keyFile|rbxmBase64/));
 });
@@ -59,7 +59,7 @@ test('returned child IDs route directly back to local owner reads without a clou
 test('real agent context carries run owner into reads; admin context cannot impersonate that owner',async()=>{
  const sessionOut=join(dir,'session.mjs');
  await esbuild.build({entryPoints:['src/do/session.ts'],bundle:true,format:'esm',platform:'node',outfile:sessionOut,
-  alias:{'@golem/shared':'../../packages/shared/src/index.ts','cloudflare:workers':'./tests/stubs/cloudflare-workers.mjs'}});
+  alias:{'@apple/shared':'../../packages/shared/src/index.ts','cloudflare:workers':'./tests/stubs/cloudflare-workers.mjs'}});
  const {SessionDO}=await import(pathToFileURL(sessionOut).href);
  let calls=0;
  const host={env:{},boundProjectId:'project',pinnedPrefs:null,opQueue:[],pluginConnectedNow:()=>true,playtestBus:()=>undefined,

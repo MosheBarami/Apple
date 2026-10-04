@@ -11,7 +11,7 @@
 // is 4,000 characters in: the user sees a result list where nothing visibly matches what they
 // typed. The snippet has to be a window around the HIT.
 
-import { splitSpilledPayload } from '@golem/shared';
+import { splitSpilledPayload } from '@apple/shared';
 
 /** Wildcards in a LIKE pattern belong to SQL, not to whoever typed the query. */
 export function escapeLike(query: string, escape = '\\'): string {

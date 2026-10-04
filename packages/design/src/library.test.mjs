@@ -133,8 +133,8 @@ test('a validated rule outranks an identical unvalidated one', () => {
     id: 'z', component: 'panel', styleFamilies: ['cartoon-simulator'], platforms: ['desktop'],
     rule: 'x'.repeat(30), because: 'y'.repeat(30), prevents: 'z'.repeat(30),
   };
-  const validated = { ...base, id: 'a', provenance: { kind: 'golem-authored', source: 's', validated: 'rendered' } };
-  const written = { ...base, id: 'b', provenance: { kind: 'golem-authored', source: 's', validated: 'not yet built' } };
+  const validated = { ...base, id: 'a', provenance: { kind: 'apple-authored', source: 's', validated: 'rendered' } };
+  const written = { ...base, id: 'b', provenance: { kind: 'apple-authored', source: 's', validated: 'not yet built' } };
   const q = { component: 'panel' };
   assert.ok(score(validated, q).points > score(written, q).points, 'seen-to-work must beat written-down');
 });
@@ -390,6 +390,6 @@ test('a rule from documentation does not claim to have been built', () => {
   for (const r of documented) {
     assert.equal(r.provenance.kind, 'learned-pattern');
     assert.match(r.provenance.source, /creator-docs/);
-    assert.match(r.provenance.validated, /not yet built in a Golem fixture/);
+    assert.match(r.provenance.validated, /not yet built in an Apple fixture/);
   }
 });

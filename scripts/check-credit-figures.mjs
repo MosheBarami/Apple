@@ -77,7 +77,7 @@ let derived = 0;
 let stated = 0;
 
 // NEURONS_PER_CREDIT HAS NOW DONE EXACTLY WHAT PLAN_LIMITS DID BELOW: it moved to the shared
-// package, leaving `export { NEURONS_PER_CREDIT } from '@golem/shared'` in pricing.ts, and the
+// package, leaving `export { NEURONS_PER_CREDIT } from '@apple/shared'` in pricing.ts, and the
 // regex that read `NEURONS_PER_CREDIT = 30` there stopped matching. The guard said so and exited 1,
 // which is the whole reason it is written to fail loudly on a missing declaration rather than
 // treating an unparsed number as zero — the second time this move has happened and the second time
@@ -87,7 +87,7 @@ const perCredit = Number(/NEURONS_PER_CREDIT = (\d+)/.exec(read('packages/shared
 
 // PLAN_LIMITS LIVES IN packages/shared AND THE WORKER RE-EXPORTS IT. It used to be
 // declared in pricing.ts, and this line used to read it there. When the repricing moved
-// the table to the shared package — leaving `export { PLAN_LIMITS } from '@golem/shared'`
+// the table to the shared package — leaving `export { PLAN_LIMITS } from '@apple/shared'`
 // behind so every importer kept working — the regex stopped matching, `freeDay` became
 // NaN, and this guard exited 1 with "could not read". It had been red in CI since.
 //

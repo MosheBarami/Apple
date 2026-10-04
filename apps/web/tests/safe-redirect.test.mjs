@@ -18,7 +18,7 @@ const WEB = join(HERE, '..');
 // reaches for the same binary for the same reason; this follows that precedent
 // rather than adding a dependency to apps/web for one test.
 const ESBUILD = join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild');
-const out = join(mkdtempSync(join(tmpdir(), 'golem-safe-redirect-')), 'safe-redirect.mjs');
+const out = join(mkdtempSync(join(tmpdir(), 'apple-safe-redirect-')), 'safe-redirect.mjs');
 execFileSync(ESBUILD, [join(WEB, 'src', 'lib', 'safe-redirect.ts'), '--format=esm', '--outfile=' + out], {
   stdio: 'pipe',
   cwd: WEB,

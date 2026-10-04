@@ -1,235 +1,358 @@
 /**
- * Library-first objects (owner, 2026-10-02): "FOR 3D MODELS ALWAYS ... SEARCH THE CREATOR STORE OR THE LIBRARY ... and
- * just rarely generate procedurally"; the user picks from three; keyboards from the library too; owner library plus
- * Roblox-owned Creator Store rows only.
+ * Ready-made models for the agent to look at, choose and place; presentation only when asked (owner, 2026-10-02).
+ *
+ * The 2026-10-02 benchmark (13 items, matches mean 0.38 out of 2) showed the harness choosing by NAME and adding the same
+ * kit to everything: a knife for a treasure chest, a Doge head for a robot pet, party balloons for a hot air balloon.
+ * The contract now: the run starts with the model; the agent searches with its own words, previews candidates here
+ * (evidence, off the place), chooses in its own loop, places, and dresses only what it decides to. Capability, not taste:
+ * nothing here judges whether something is pretty or fits.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const WORKER = join(dirname(fileURLToPath(import.meta.url)), '..');
-const out = join(mkdtempSync(join(tmpdir(), 'library-object-')), 'l.mjs');
-execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [join(WORKER, 'src', 'library-object.ts'), '--bundle', '--format=esm', '--target=es2022', '--platform=node', '--outfile=' + out, '--external:cloudflare:*'], { cwd: WORKER, stdio: 'pipe' });
+const dir = mkdtempSync(join(tmpdir(), 'library-object-'));
+const entry = join(dir, 'entry.ts');
+writeFileSync(entry, `export * from '${join(WORKER, 'src', 'library-object.ts')}';\nexport * from '${join(WORKER, 'src', 'dress-object.ts')}';\nexport { TOOLS } from '${join(WORKER, 'src', 'tools.ts')}';\n`);
+const out = join(dir, 'l.mjs');
+execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'), [entry, '--bundle', '--format=esm', '--target=es2022', '--platform=node', '--outfile=' + out, '--external:cloudflare:*', '--log-level=error'], { cwd: WORKER, stdio: 'pipe' });
 const L = await import(`file://${out}`);
+const src = (f) => readFileSync(join(WORKER, 'src', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-test('what to search for: the whole name, the substance of "a stick of", then the head noun', () => {
-  assert.deepEqual(L.objectQueries('make me a stick of butter'), ['butter'], 'a stick is its shape, not the object');
-  assert.deepEqual(L.objectQueries('make an asmr keyboard'), ['asmr keyboard', 'keyboard']);
-  assert.deepEqual(L.objectQueries('a cup of hot coffee'), ['hot coffee', 'coffee']);
-  assert.deepEqual(L.objectQueries('build me a giant donut'), ['donut']);
-  assert.equal(L.objectNameOf('make me a stick of butter'), 'StickOfButter');
-  assert.equal(L.objectNameOf('make an asmr keyboard'), 'AsmrKeyboard');
-  assert.equal(L.singular('keyboards'), 'keyboard');
-  assert.equal(L.singular('boxes'), 'box');
-  assert.equal(L.singular('glass'), 'glass');
+// ------------------------------------------------------------------------------------------ a fake Studio ---
+
+const part = (x, y, z, sx, sy, sz, color = [1, 0, 0]) => ({ class: 'Part', name: 'P', props: { Size: { v: [sx, sy, sz] }, CFrame: { v: [x, y, z, 1, 0, 0, 0, 1, 0, 0, 0, 1] }, Color: { v: color } }, children: [] });
+const tree = (kids, name = 'Piece') => ({ root: { class: 'Model', name, children: kids } });
+/** Studio as the harness sees it: records every op, remembers what exists, answers each op the way the plugin does. */
+function studio(init = {}) {
+  const ops = [];
+  const exists = new Set(init.exists ?? []);
+  const ctx = {
+    env: {}, studioConnected: () => true,
+    createCheckpoint: async () => ({ id: 'cp' }),
+    execStudioOp: async (op) => {
+      ops.push(op);
+      switch (op.op) {
+        case 'get_instance': return exists.has(op.path) ? { ok: true, data: { path: op.path } } : { ok: false, error: `instance not found at ${op.path}` };
+        case 'create_instances': for (const i of op.items) exists.add(`${i.parent}.${i.name}`); return { ok: true, data: {} };
+        case 'delete_instances': for (const p of op.paths) for (const e of [...exists]) if (e === p || e.startsWith(`${p}.`)) exists.delete(e); return { ok: true, data: {} };
+        case 'import_owner_library': return init.importFails ? { ok: false, error: 'game not found' } : { ok: true, data: {} };
+        case 'get_tree': if (init.absent?.includes(op.root)) return { ok: false, error: 'instance not found' }; return { ok: true, data: init.trees?.(op.root) ?? tree([part(0, 3, 0, 6, 6, 6), { class: 'Script', name: 'S', children: [] }, { class: 'Sound', name: 'Snd', children: [] }]) };
+        case 'place_copies': for (const i of op.items) exists.add(`${i.parent}.${i.name}`); return { ok: true, data: { placed: op.items.map((i) => `${i.parent}.${i.name}`), failed: [] } };
+        case 'spatial_query': return op.action === 'overlap' ? { ok: true, data: { parts: [], count: 0 } } : { ok: true, data: { center: [0, 3, -26], size: init.size ?? [6, 6, 6], bottomY: 0 } };
+        case 'capture_studio_viewport': return init.noShot ? { ok: false, error: 'screenshots are not permitted' } : { ok: true, data: { source: 'studio_viewport', encoding: 'rgb24', rgbBase64: 'AAAA', width: 1, height: 1 } };
+        default: return { ok: true, data: {} };
+      }
+    },
+  };
+  return { ctx, ops, exists };
+}
+const GAME = 'a1b2c3d4e5f6';
+const created = (ops) => ops.filter((o) => o.op === 'create_instances').flatMap((o) => o.items.map((i) => `${i.parent}.${i.name}`));
+const allText = (ops) => JSON.stringify(ops);
+const writes = (ops) => ops.filter((o) => !['get_instance', 'get_tree', 'spatial_query'].includes(o.op));
+
+// -------------------------------------------------------------------------------------------------- names ---
+
+test('a name may be in any language; dots, brackets and control characters are taken out; nothing is derived from the request', () => {
+  assert.equal(L.safeObjectName('ברווז גומי'), 'ברווז גומי');
+  assert.equal(L.safeObjectName('Treasure Chest'), 'Treasure Chest');
+  assert.equal(L.safeObjectName('a.b[c]"d\n'), 'a b c d');
+  assert.equal(L.safeObjectName('x'.repeat(100)).length, 40);
+  assert.equal(L.safeObjectName(undefined), '');
+  assert.equal(L.safeObjectName('...'), '');
+  const lib = src('library-object.ts');
+  assert.equal(/MyObject/.test(lib), false, 'no shared default name');
 });
 
-// The owner library catalog's real answer for "butter" (live gateway, 2026-10-02), cut down.
-const item = (name, game, extra = {}) => ({ gameId: game.slice(0, 12).padEnd(12, 'x'), game, kind: 'model', name, className: 'Model', path: `/Workspace/${name}`, parts: 5, instances: 9, ...extra });
-const BUTTER = [
-  item('Butter', 'ASMR Pack', { className: 'MeshPart', parts: 1, contains: ['Decal', 'Script'] }),
-  item('Butter fly', 'Boho', { parts: 44 }),
-  item('Butterfly', 'Middle Ocean', { parts: 29 }),
-  item('Buttermilk Skin', 'Expedition', { parts: 1 }),
-  item('Butter', 'Bakery', { parts: 3 }),
-  item('Butter', 'ASMR Pack', { parts: 2, path: '/Workspace/Butter#2' }),
-  item('Butter Man', 'Food Fight', { contains: ['Humanoid', 'Head'] }),
-  item('Butter Statue', 'Museum', { parts: 900 }),
-];
-
-test('only what IS the object: whole-word name, exact first, one per game, no characters, nothing too big to copy', () => {
-  const picked = L.rankCatalog(BUTTER, 'butter', 3);
-  assert.deepEqual(picked.map((c) => `${c.name}/${c.game}`), ['Butter/ASMR Pack', 'Butter/Bakery'], 'no Butter fly while there is butter');
-  assert.ok(!picked.some((c) => /Butterfly|Buttermilk/.test(c.name)), 'a word inside another word is not the word');
-  assert.ok(!L.rankCatalog(BUTTER, 'butter', 10).some((c) => c.name === 'Butter Man'), 'a character is not an object');
-  assert.ok(!L.rankCatalog(BUTTER, 'butter', 10).some((c) => c.name === 'Butter Statue'), 'over 400 parts is not copied');
-  assert.equal(L.rankCatalog(BUTTER, 'butter', 10).filter((c) => c.game === 'ASMR Pack').length, 1, 'one per game');
-  assert.deepEqual(L.rankCatalog([item('Vanilla Donut', 'Candy Obby'), item('Donut Booth', 'Please Donate'), item('Donut', 'High School')], 'donut', 3).map((c) => c.name), ['Donut', 'Vanilla Donut']);
-  assert.deepEqual(L.rankCatalog([item('Donut Booth', 'Please Donate')], 'donut', 3).map((c) => c.name), ['Donut Booth'], 'offered when nothing else is a donut');
-  assert.deepEqual(L.rankCatalog(BUTTER, '', 3), []);
-  // Test 4 (2026-10-02): the library's only rubber duck is "Rubber Ducky".
-  assert.deepEqual(L.rankCatalog([item('Rubber Ducky', 'Tiny Town', { parts: 2 }), item('Duckling', 'Steal An Egg')], 'rubber duck', 3).map((c) => c.name), ['Rubber Ducky']);
-  assert.deepEqual(L.rankCatalog([item('Doggie', 'Pets'), item('Hotdog', 'Food')], 'dog', 3).map((c) => c.name), ['Doggie']);
+test('a Hebrew name is allocated as itself and does not collide with another Hebrew name (no shared default)', async () => {
+  const { ctx } = studio({ exists: ['game.Workspace.ברווז גומי'] });
+  const free = await L.allocateName(ctx, 'כלב רובוט', undefined);
+  assert.deepEqual(free, { name: 'כלב רובוט', path: 'game.Workspace.כלב רובוט' });
+  const other = await L.allocateName(ctx, 'מנורה', undefined);
+  assert.notEqual(other.name, free.name);
+  const taken = await L.allocateName(ctx, 'ברווז גומי', undefined);
+  assert.match(taken.error, /already exists/);
+  assert.match(taken.error, /another name/, 'the error tells the agent how to resolve it');
 });
 
-test('a picked model is sized to about three player heights, by its height when it is tall', () => {
-  assert.deepEqual(L.libraryFit([2, 1, 1]), { length: 15 });
-  assert.deepEqual(L.libraryFit([2, 6, 2]), { height: 15 });
-  // Test 5, 2026-10-02: the size words in the request are honoured.
-  assert.deepEqual(L.libraryFit([2, 1, 1], 'make me a giant pizza'), { length: 37.5 });
-  assert.deepEqual(L.libraryFit([2, 6, 2], 'a tiny tower'), { height: 6 });
-  assert.equal(L.sizeFactor('make me a rubber duck'), 1);
+test('a taken name is an error the agent resolves; it is replaced only when it says so, and only that path is deleted', async () => {
+  const { ctx, ops } = studio({ exists: ['game.Workspace.Chest'] });
+  assert.match((await L.allocateName(ctx, 'Chest', 'Fallback')).error, /already exists/);
+  assert.equal(ops.some((o) => o.op === 'delete_instances'), false, 'nothing is deleted unasked');
+  const replaced = await L.allocateName(ctx, 'Chest', 'Fallback', true);
+  assert.equal(replaced.path, 'game.Workspace.Chest');
+  assert.deepEqual(ops.filter((o) => o.op === 'delete_instances').map((o) => o.paths), [['game.Workspace.Chest']]);
 });
 
-test('the play check is said the same way by the tool loop and the library step', () => {
-  assert.deepEqual(L.playCheckReading({ verdict: 'observed', leaderstats: 'the player has no leaderstats folder', clientErrors: [], serverErrors: [] }), { seen: 'nothing errored' });
-  assert.deepEqual(L.playCheckReading({ verdict: 'observed', leaderstats: 'Coins 0 at the start → Coins 70 at the end', clientErrors: ['x'] }), { seen: 'Coins went from 0 to 70 during the test, and 1 error came up' });
-  assert.equal(L.playCheckReading({ verdict: 'no_screen_gui', playerSees: 'nothing on screen' }).problem, 'nothing on screen');
+test('with no name from the agent the piece\'s own name is used, never request words', async () => {
+  const { ctx } = studio();
+  assert.equal((await L.allocateName(ctx, undefined, 'Old Lamp')).name, 'Old Lamp');
+  assert.match((await L.allocateName(ctx, undefined, undefined)).error, /name the object/);
 });
 
-test('the session finds ready-made models, the agent picks one, and it is placed in the same run', () => {
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  const hook = session.indexOf('if (await this.libraryObjectStep(agent)) return;');
-  assert.ok(hook > 0, 'the library step is not called');
-  assert.ok(hook < session.indexOf('const AFTER_OBJECT'), 'it runs before the step prepares a model call');
-  const step = session.slice(session.indexOf('private async libraryObjectStep'), session.indexOf('private async pauseForStudio'));
-  // Owner, 2026-10-02: no three options; the best candidate is placed automatically, with no card and no wait.
-  // Live 2026-10-02: the first hit for "a rubber duck" was a brown hunting duck; the agent now picks by look.
-  assert.match(step, /offerLibraryObjects\(ctx, agent\.request \?\? '', \{ quiet: true \}\)/);
-  assert.match(step, /pickPrompt\(agent\.request/, 'the agent chooses which candidate is the request');
-  assert.ok(!/storage\.put\('pendingObjectChoice'|kind: 'asset_choices'/.test(step), 'no choice is offered any more');
-  assert.match(step, /placeChosenObject\(ctx, chosen\.pending, chosen\.index\)/);
-  assert.match(step, /runTool\(ctx, 'play_check'/, 'played once by the harness');
-  assert.match(step, /pick\.index === null\) \{ await clearLineup\(ctx\); await this\.ctx\.storage\.delete\('pendingObjectChoice'\); return false; \}/, '"none of these" builds it');
-  // Review 2026-10-02: the user's permissions and a read-only request bind the harness; the offer is kept until settled.
-  assert.match(step, /agent\.readOnly \|\| !allowed\.has\('find_library_model'\) \|\| !allowed\.has\('insert_library_model'\)/);
-  assert.match(step, /row\('insert_library_model', ok/, 'a "3D model of X" run owes an insert_library_model row');
-  assert.match(session, /&& !agent\.objectOffered\) reason = 'incomplete'/, 'an offer awaiting the pick is not a missing model');
-  assert.ok(!/storage\.delete\('pendingObjectChoice'\);\n/.test(session.slice(session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');"), session.indexOf("await this.ctx.storage.delete('pendingAssetChoice');") + 120)), 'not consumed at admission');
-  // Owner, 2026-10-02: the agent decides what "cooler" is for this object; the harness only requires that tool first.
-  assert.match(step, /agent\.coolFirst = true/, 'a library object is made cooler around itself, never rebuilt');
-  assert.match(readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8'), /return coolLibraryObject\(ctx, spec, a\)/, 'with the agent\'s own pick');
-  // Owner, 2026-10-02: the agent, not the harness, decides which candidate is the request: one short call, the pick.
-  assert.equal((step.match(/llmChat\(/g) ?? []).length, 1, 'one model call in the library step');
-  assert.match(step, /llmChat\(this\.env, \{[^}]*pickPrompt\([^}]*\}\], maxTokens: \d{3} \}/, 'and it is the pick, kept short');
-  // Only the owner picks, and a pick names an option that was offered.
-  assert.match(session, /mode === 'agent' && pendingObject && initiatedBy === bind\.ownerId \? ASSET_CHOICE_MESSAGE\.exec\(text\)/);
-  assert.match(session, /pendingObject\.options\.some\(\(o\) => o\.index === Number\(objectPickIndex\)\)/);
+// ------------------------------------------------------------------------------------------- candidates ---
+
+test('a candidate is named back as { id } or { gameId, path }, and refused otherwise', () => {
+  assert.deepEqual(L.candidateOf({ id: 'lib:abc' }), { source: 'store', name: 'Model', id: 'lib:abc' });
+  const own = L.candidateOf({ gameId: GAME, path: '/Workspace/Lamp#2', game: 'Some Game' });
+  assert.equal(own.source, 'owner');
+  assert.equal(own.name, 'Lamp');
+  assert.match(L.candidateOf({ gameId: 'zz', path: '/Workspace/X' }).error, /library game id/);
+  assert.match(L.candidateOf({ gameId: GAME, path: 'Workspace/X' }).error, /path/);
+  assert.match(L.candidateOf({}).error, /id|gameId/);
+  assert.match(L.candidateOf('x').error, /object/);
 });
 
-test('every candidate is script-free: ServerStorage import, strip, copy; Creator Store rows through their own gate', () => {
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
-  assert.match(src, /op: 'import_owner_library', gameId: c\.gameId!, path: c\.path!, mode: 'self', parent: into/);
-  assert.match(src, /const PARTS_FOLDER = 'game\.ServerStorage\.AppleParts'/, 'imported where no script runs');
-  assert.match(src, /op: 'strip_descendants', root: into, classes: \['LocalScript', 'Script', 'ModuleScript', 'Sound'\]/);
-  assert.match(src, /op: 'place_copies'/);
-  assert.match(src, /TOOLS\.insert_library_model!\.run\(ctx, \{ id: c\.id, parent: into \}\)/, 'store rows keep insertAndProveClean');
-  assert.match(src, /creatorStoreOnly: true, includeThirdParty: false/, 'Roblox-owned rows only (owner, 2026-10-02)');
-  assert.ok(!/libraryDependencies|importOwnerLibrary\(/.test(src), 'no dependency import: that brings live scripts into services');
+test('copyability is annotated per row with its reason; nothing is dropped, ranked or de-duplicated', () => {
+  const item = (name, game, extra = {}) => ({ gameId: GAME, game, kind: 'model', name, className: 'Model', path: `/Workspace/${name}`, parts: 5, instances: 9, ...extra });
+  const rows = [item('Alpha', 'G1'), item('Alpha', 'G1', { path: '/Workspace/Alpha#2' }), item('Person', 'G2', { contains: ['Humanoid'] }),
+    item('Huge', 'G3', { parts: 900 }), item('Empty', 'G4', { parts: 0 }), item('Sound', 'G5', { kind: 'sound' }), item('Gui', 'G6', { className: 'ScreenGui' })];
+  const out = L.annotateModels(rows);
+  assert.equal(out.length, rows.length, 'every row stays');
+  assert.deepEqual(out.map((r) => r.copyable), [true, true, false, false, false, false, false]);
+  assert.match(out[2].notCopyableBecause, /Humanoid/);
+  assert.match(out[3].notCopyableBecause, /900 parts.*too big/);
+  assert.match(out[4].notCopyableBecause, /no parts/);
+  assert.match(out[5].notCopyableBecause, /not a model/);
+  assert.match(out[6].notCopyableBecause, /ScreenGui/);
+  assert.equal(out[0].name, 'Alpha');
+  assert.equal(out[1].name, 'Alpha', 'a second row from one game is not hidden');
 });
 
-// Review 2026-10-02: Model:GetBoundingBox is oriented to the pivot; the stage and the click body need the world box.
-test('the world box of a turned part covers it on the world axes', () => {
-  // A 10 x 2 x 2 bar turned 90 degrees about Y (its length now along Z), centred at (0, 1, 0).
-  const turned = { props: { Size: { v: [10, 2, 2] }, CFrame: { v: [0, 1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0] } } };
-  const b = L.worldBox({ children: [turned, { props: { Size: { v: [1, 1, 1] }, CFrame: { v: [0, 50, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1] }, Transparency: { v: 1 } } }] });
-  assert.deepEqual(b.size.map((n) => Math.round(n * 1000) / 1000), [2, 2, 10], 'length on Z, and the invisible part left out');
-  assert.equal(b.bottomY, 0);
-  assert.equal(L.worldBox({}), null);
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
-  assert.ok(!/paths: \[model, stageName\]|paths: \[LINEUP, /.test(src), 'no multi-path delete: delete_instances is all-or-nothing');
+test('a models search through browse_owner_library carries the annotation, other kinds are returned as the plugin gave them', async () => {
+  const { ctx } = studio();
+  const items = [{ gameId: GAME, kind: 'model', name: 'Alpha', className: 'Model', path: '/Workspace/Alpha', parts: 5, instances: 9 }];
+  const seen = [];
+  ctx.localOwnerGateway = true; ctx.userId = 'u';
+  ctx.execStudioOp = async (op) => { seen.push(op); return { ok: true, data: { items } }; };
+  const models = await L.TOOLS.browse_owner_library.run(ctx, { kind: 'model', q: 'chest' });
+  assert.equal(models.error, undefined);
+  assert.equal(models.items[0].copyable, true);
+  const ui = await L.TOOLS.browse_owner_library.run(ctx, { kind: 'ui', q: 'x' });
+  assert.equal('copyable' in (ui.items?.[0] ?? {}), false);
 });
 
-// Test 3 on the library flow (2026-10-02): "100x cooler" was only orbs and a glow; the library's GoldenCrown never
-// matched "crown" because CamelCase names were one word.
-test('CamelCase names are words, and the cool kit crowns a library object without breaking its rig', () => {
-  assert.deepEqual(L.rankCatalog([item('GoldenCrown', 'Fighters', { parts: 24 }), item('Crownfire', 'Escape')], 'crown', 3).map((c) => c.name), ['GoldenCrown']);
-  assert.deepEqual(L.rankCatalog([item('PurpleTopHat', 'Meepcity', { parts: 2 })], 'top hat', 3).map((c) => c.name), ['PurpleTopHat']);
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
-  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
-  assert.match(kit, /rig_model', root: `\$\{model\}\.Crown\.CrownRoot`, joint: 'weld'/, 'the crown is welded to its own root');
-  assert.match(kit, /rig_model', root: `\$\{model\}\.AppleBody`, parts: \[`\$\{model\}\.Crown\.CrownRoot`\], joint: 'weld'/, 'its root to the body, listed');
-  assert.ok(!/rig_model', root: `\$\{model\}\.AppleBody`, joint: 'weld'/.test(kit), 'never a second whole-model weld pass (it would join the motor root)');
-  assert.match(kit, /path: `\$\{model\}\.AppleBody`, props: \{ Anchored: \{ t: 'bool', v: false \} \}/, 'the body is let go again');
-  assert.match(kit, /strip_descendants', root: folderPath, classes: \['LocalScript', 'Script', 'ModuleScript', 'Sound'\]/, 'the crown is script-free too');
+// ------------------------------------------------------------------------------------------ the preview ---
+
+test('preview_library_models is registered, a read-style tool the agent calls with its own candidates', () => {
+  const def = L.TOOLS.preview_library_models.def;
+  assert.equal(def.name, 'preview_library_models');
+  assert.match(def.description, /nothing is placed or chosen for you/);
+  assert.deepEqual(def.parameters.required, ['models']);
+  assert.equal(L.TOOLS.preview_library_models.mutatesProject, undefined, 'it leaves nothing behind');
+  assert.equal(L.TOOLS.cool_library_model, undefined, 'the baked-in cooler is gone');
 });
 
-// Test 3, round 2 (2026-10-02): cooled twice, the new crown stood on the old one, 3 studs over the butter.
-test('a second "cooler" clears the first one before measuring, and measures the body', () => {
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8');
-  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
-  const firstMeasure = kit.indexOf('await bounds(');
-  const clearCrown = kit.indexOf('`${model}.Crown`');
-  assert.ok(firstMeasure > 0 && clearCrown > 0, 'both found');
-  assert.ok(clearCrown < firstMeasure, 'the old crown goes before the object is measured');
-  assert.match(kit.slice(firstMeasure - 30, firstMeasure + 60), /bounds\(ctx\.execStudioOp, body\)/, 'measured by its own body');
-  for (const stale of ['${body}.CrownRoot', '${body}.LevelUpAuraFX', '${model}.Glow', '${model}Cool']) {
-    assert.ok(kit.indexOf(stale) < firstMeasure, `${stale} cleared first`);
+test('a preview stages in ServerStorage only, measures, strips scripts, and cleans up; nothing reaches Workspace', async () => {
+  const { ctx, ops, exists } = studio();
+  const r = await L.previewLibraryModels(ctx, [{ gameId: GAME, path: '/Workspace/Chest', name: 'Chest', game: 'Pirates' }, { gameId: GAME, path: '/Workspace/Barrel' }]);
+  assert.equal(r.previews.length, 2);
+  const first = r.previews[0];
+  assert.equal(first.name, 'Chest');
+  assert.equal(first.game, 'Pirates');
+  assert.deepEqual(first.size, [6, 6, 6]);
+  assert.match(first.sizeNote, /about 6 studs at its longest \(1\.2 player heights; a player is 5 studs tall\)/);
+  assert.equal(first.dominantColourName, 'red');
+  assert.equal(first.scriptsAndSoundsLeftOut, 2);
+  assert.equal(first.parts, 1);
+  assert.ok(first.gameId && first.path, 'the agent gets the reference back to place it');
+  for (const path of created(ops)) assert.match(path, /^game\.ServerStorage\./, `a preview wrote to ${path}`);
+  assert.ok(ops.some((o) => o.op === 'strip_descendants' && o.root.startsWith('game.ServerStorage.AppleParts.ApplePreview') && o.classes.includes('Script')), 'scripts and sounds are stripped');
+  assert.equal(ops.some((o) => o.op === 'place_copies' || o.op === 'camera_focus' || o.op === 'capture_studio_viewport'), false, 'no snapshot, no row, no camera');
+  assert.deepEqual([...exists].filter((p) => p.startsWith('game.ServerStorage') || p.startsWith('game.Workspace')), [], 'everything staged is taken away again');
+  assert.equal(r.snapshot, undefined);
+  assert.match(r.note, /nothing chosen|Nothing is placed and nothing is chosen/i);
+});
+
+test('a preview reports what blocks a piece as a fact and lists candidates that could not be staged, choosing none', async () => {
+  const withPerson = studio({ trees: () => tree([part(0, 3, 0, 2, 6, 2), { class: 'Humanoid', name: 'H', children: [] }]) });
+  const r = await L.previewLibraryModels(withPerson.ctx, [{ gameId: GAME, path: '/Workspace/Person' }]);
+  assert.match(r.previews[0].blockedBecause, /Humanoid/);
+  const broken = studio({ importFails: true });
+  const f = await L.previewLibraryModels(broken.ctx, [{ gameId: GAME, path: '/Workspace/Gone', name: 'Gone' }]);
+  assert.deepEqual(f.previews, []);
+  assert.match(f.failed[0].because, /could not be imported/);
+  assert.match((await L.previewLibraryModels(broken.ctx, [])).error, /1 to 6/);
+  assert.match((await L.previewLibraryModels(broken.ctx, [{}])).error, /id|gameId/);
+});
+
+test('a preview with a snapshot stands the row in Workspace for one picture and takes it down, even when Studio gives no pixels', async () => {
+  for (const noShot of [false, true]) {
+    const { ctx, ops, exists } = studio({ noShot });
+    const frames = [];
+    ctx.emitFrame = (f) => frames.push(f);
+    const r = await L.previewLibraryModels(ctx, [{ gameId: GAME, path: '/Workspace/A', name: 'A' }, { gameId: GAME, path: '/Workspace/B', name: 'B' }], { snapshot: true });
+    assert.ok(created(ops).includes('game.Workspace.ApplePreviewLineup'), 'a row was stood up for the picture');
+    assert.ok(ops.some((o) => o.op === 'capture_studio_viewport'));
+    assert.equal(frames.length, noShot ? 0 : 1, 'the picture goes to the user');
+    assert.match(r.snapshot.note, noShot ? /no viewport pixels/ : /taken down/);
+    assert.deepEqual([...exists].filter((p) => p.startsWith('game.Workspace') || p.startsWith('game.ServerStorage')), [], 'the row and the staging are gone');
+    assert.equal(r.previews.length, 2, 'the measured evidence stands either way');
   }
 });
 
-// Test 3, round 3 (2026-10-02): a few seconds into Play the cooled butter was a white blob (the level-up aura left on,
-// sparkles at scale 2.5 and twice the rate, two lights). The model the user picked must stay visible.
-test('the cool kit twinkles without hiding the model', () => {
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
-  const kit = src.slice(src.indexOf('export async function coolLibraryObject'));
-  assert.ok(!/vfxPlan\('level_up_aura'/.test(kit), 'no level-up aura left on (a few-second burst for a player)');
-  // The effect is the agent's pick now (owner, 2026-10-02); whichever it is, it stays small and few.
-  const m = kit.match(/vfxPlan\(pick\.effect, [^)]*\{ scale: ([\d.]+), rate: [^}]*\? ([\d.]+) : ([\d.]+) \}/);
-  assert.ok(m, 'the effect found');
-  assert.ok(Number(m[1]) <= 2 && Number(m[2]) <= 1 && Number(m[3]) <= 1, `effects stay small and few (scale ${m[1]}, rates ${m[2]}/${m[3]})`);
-  const bright = kit.match(/name: 'CoolLight'[^}]*Brightness: \{ t: 'number' as const, v: ([\d.]+) \}/);
-  assert.ok(bright && Number(bright[1]) <= 1, 'a soft light');
+// ------------------------------------------------------------------------------------------ placing ---
+
+test('placing is pure placement: no stage, no wobble, no counter, no light, no ground or spawn change, no camera, no mood', async () => {
+  const { ctx, ops } = studio();
+  const r = await L.placeLibraryPiece(ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/Chest', name: 'Chest' }), { name: 'Treasure Chest' });
+  assert.equal(r.object, 'game.Workspace.Treasure Chest');
+  assert.deepEqual(r.size, [6, 6, 6]);
+  assert.match(r.sizeNote, /player heights/);
+  const text = allText(writes(ops));
+  for (const banned of ['Stage', 'AppleBody', 'AppleAnimations', 'StarterGui', 'Baseplate', 'SpawnLocation', 'Lighting']) assert.equal(text.includes(banned), false, `placement touched ${banned}`);
+  assert.equal(ops.some((o) => ['camera_focus', 'rig_model', 'edit_script', 'set_props', 'apply_surface'].includes(o.op)), false);
+  assert.match(r.note, /nothing else added/i);
+  const place = ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace');
+  assert.equal(place.items[0].name, 'Treasure Chest');
+  assert.equal('length' in place.items[0] || 'height' in place.items[0], false, 'its own size unless the agent asked for another');
+  assert.ok(ops.some((o) => o.op === 'strip_descendants'), 'script-free');
 });
 
-// Test 4 (2026-10-02): "make me a rubber duck" with the butter already there stood candidate 2 inside the butter's
-// stage, and the pick would have landed in it too.
-test('a second object finds empty ground beside the first, never in it', () => {
-  assert.equal(L.LANE_STEPS[0], 0, 'the middle first');
-  assert.ok(L.LANE_STEPS.includes(32) && L.LANE_STEPS.includes(-32), 'both sides');
-  assert.equal(L.blocksLane([], 0, []), false, 'empty ground');
-  assert.equal(L.blocksLane(['game.Workspace.StickOfButterStage.Stage'], 1, []), true, 'the butter is in the way');
-  assert.equal(L.blocksLane(['Workspace.ApplePicks.Pick1.Part'], 1, ['game.Workspace.ApplePicks']), false, 'the row itself is not');
-  assert.equal(L.blocksLane(['game.Workspace.RubberDuck.Body'], 1, ['game.Workspace.RubberDuck']), false, 'nor the thing being remade');
-  assert.equal(L.blocksLane(['game.Workspace.RubberDuckStage.Rim'], 1, ['game.Workspace.RubberDuck']), true, 'a longer name is another thing');
-  assert.equal(L.blocksLane(Array(50).fill('game.Workspace.ApplePicks.P'), 51, ['game.Workspace.ApplePicks']), true, 'more than were listed');
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
-  const offer = src.slice(src.indexOf('export async function offerLibraryObjects'), src.indexOf('export interface PendingObjectChoice'));
-  const place = src.slice(src.indexOf('export async function placeChosenObject'), src.indexOf('export function playCheckReading'));
-  assert.ok(offer.indexOf('freeLaneX(') > 0 && offer.indexOf('freeLaneX(') < offer.indexOf("name: 'ApplePicks'"), 'the row looks for room before it stands up');
-  assert.ok(!/SLOTS\[index - 1\]/.test(offer), 'slots are moved to the free lane');
-  assert.ok(place.indexOf('freeLaneX(') > 0 && place.indexOf('freeLaneX(') < place.indexOf("op: 'place_copies'"), 'the pick looks for room before it moves');
-  assert.ok(!/const at: V3 = \[0, 2, -26\]/.test(place), 'never the fixed middle');
+test('the size is the agent\'s: size, height or scale, one of them, and a scale needs a measured piece', async () => {
+  const run = async (size, init) => { const s = studio(init); const r = await L.placeLibraryPiece(s.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X', size }); return { r, place: s.ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace')?.items[0] }; };
+  assert.equal((await run({ size: 30 })).place.length, 30);
+  assert.equal((await run({ height: 9 })).place.height, 9);
+  assert.equal((await run({ scale: 2 })).place.length, 12, 'twice its own 6 studs');
+  assert.deepEqual(L.placeSizeOf({ size: 5, scale: 2 }), { error: 'give one of size (longest side in studs), height or scale, not several' });
+  assert.match(L.placeSizeOf({ scale: 0 }).error, /scale must be/);
+  assert.deepEqual(L.placeSizeOf({}), {});
+  const big = await run({ scale: 2 }, { trees: () => ({ truncated: true, root: { class: 'Model', children: [] } }) });
+  assert.match(big.r.error, /scale needs the size/);
 });
 
-// play_check cannot click (open since test 2). A library object's body is touchable, the check walks the player into
-// it, and the counter on the screen it reads afterwards proves the press (2026-10-02).
-test('the play check presses a picked object by walking into it and reads its counter', () => {
-  const sees = 'The player\'s screen: ScreenGui "StickOfButterHUD" (enabled): visible text "0" [Value], "Presses" [Caption] | ScreenGui "RubberDuckHUD" (enabled): visible text "3" [Value], "Presses" [Caption], "Click it!" [Text].';
-  assert.equal(L.pressesSeen({ playerSees: sees }, 'RubberDuck'), 3, 'its own screen, not the first object');
-  assert.equal(L.pressesSeen({ playerSees: sees }, 'StickOfButter'), 0);
-  assert.equal(L.pressesSeen({ playerSees: sees }, 'Pizza'), undefined, 'no screen, no reading');
-  assert.equal(L.pressesSeen({}, 'RubberDuck'), undefined);
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
-  assert.match(src, /name: 'AppleBody', props: \{[^}]*CanTouch: true/, 'the body can be walked into');
-  const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
-  const pick = session.slice(session.indexOf('const placed = await placeChosenObject'), session.indexOf("await this.finishRun(agent, 'done');", session.indexOf('const placed = await placeChosenObject')));
-  assert.match(pick, /runTool\(ctx, 'play_check', JSON\.stringify\(object \? \{ touch: \[`\$\{object\}\.AppleBody`\] \}/, 'the check walks into the body');
-  assert.match(pick, /presses === 0\) reading\.problem =/, 'a counter left at 0 is said as a problem');
+test('a placed model goes where the agent says, or beside what is there; a character is never placed; a taken name is refused', async () => {
+  const at = studio();
+  await L.placeLibraryPiece(at.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X', at: [10, 0, 20] });
+  assert.deepEqual(at.ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace').items[0].at, [10, 0, 20]);
+  const beside = studio();
+  await L.placeLibraryPiece(beside.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X' });
+  assert.ok(beside.ops.some((o) => o.op === 'spatial_query' && o.action === 'overlap'), 'the free lane is looked for when no place is given');
+  const person = studio({ trees: () => tree([part(0, 3, 0, 2, 6, 2), { class: 'Humanoid', name: 'H', children: [] }]) });
+  assert.match((await L.placeLibraryPiece(person.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/P', name: 'P' }), { name: 'P' })).error, /Humanoid/);
+  const taken = studio({ exists: ['game.Workspace.X'] });
+  const refused = await L.placeLibraryPiece(taken.ctx, L.candidateOf({ gameId: GAME, path: '/Workspace/X', name: 'X' }), { name: 'X' });
+  assert.match(refused.error, /already exists/);
+  assert.equal(taken.ops.some((o) => o.op === 'delete_instances' && o.paths[0] === 'game.Workspace.X'), false, 'it did not delete what it did not make');
 });
 
-// Leftovers from a piece's own game (a price tag over the crown, a "Buy" prompt) go too, in their own call after the
-// script strip, so an older plugin that refuses the new classes still takes every script out (2026-10-02).
-test('library pieces lose their leftover tags and prompts, scripts first', () => {
-  const src = readFileSync(join(WORKER, 'src', 'library-object.ts'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
-  assert.match(src, /classes: \['BillboardGui', 'ProximityPrompt', 'ClickDetector'\]/);
-  for (const root of ['into', 'folderPath']) {
-    const scripts = src.indexOf(`op: 'strip_descendants', root: ${root}, classes: ['LocalScript'`);
-    const leftovers = src.indexOf(`await stripLeftovers(ctx, ${root})`);
-    assert.ok(scripts > 0 && leftovers > scripts, `${root}: scripts out, then the leftovers`);
+test('insert_library_model places an owner-library piece by { gameId, path } with the same pure placement, and refuses a bad size', async () => {
+  const { ctx, ops } = studio();
+  const r = await L.TOOLS.insert_library_model.run(ctx, { gameId: GAME, path: '/Workspace/Lamp', name: 'Lamp', size: 8 });
+  assert.equal(r.object, 'game.Workspace.Lamp');
+  assert.equal(ops.find((o) => o.op === 'place_copies' && o.items[0].parent === 'game.Workspace').items[0].length, 8);
+  assert.match((await L.TOOLS.insert_library_model.run(ctx, { gameId: GAME, path: '/Workspace/Lamp', size: 8, height: 3 })).error, /not several/);
+  assert.match((await L.TOOLS.insert_library_model.run(ctx, {})).error, /give \{ id \}/);
+  const params = L.TOOLS.insert_library_model.def.parameters.properties;
+  for (const k of ['id', 'gameId', 'path', 'name', 'size', 'height', 'scale', 'replace']) assert.ok(k in params, k);
+  assert.deepEqual(L.TOOLS.insert_library_model.def.parameters.required ?? [], []);
+});
+
+// ---------------------------------------------------------------------------------------------- dressing ---
+
+test('an empty dress_object call is an error that asks the agent to choose; nothing is added by default', async () => {
+  const { ctx, ops } = studio();
+  const r = await L.dressObject(ctx, { target: 'game.Workspace.Chest' });
+  assert.match(r.error, /choose at least one/);
+  assert.equal(ops.length, 0, 'it did not even look at the place');
+  assert.match((await L.dressObject(ctx, { target: 'game.Workspace.Chest', click: false })).error, /choose at least one/);
+  assert.match((await L.dressObject(ctx, { stage: true })).error, /target must be/);
+  const gone = studio({ absent: ['game.Workspace.Missing'] });
+  assert.match((await L.dressObject(gone.ctx, { target: 'game.Workspace.Missing', stage: true })).error, /not in the place/);
+});
+
+test('dress_object adds only what is asked for: a stage alone makes no click response, counter or text', async () => {
+  const { ctx, ops } = studio({ exists: ['game.Workspace.Chest'] });
+  const r = await L.dressObject(ctx, { target: 'game.Workspace.Chest', stage: { color: '#4f8cff', height: 2 } });
+  assert.equal(r.changed, true);
+  assert.match(r.added[0], /stage 2 studs high under it/);
+  assert.match(r.notAdded, /click, counter, attach/);
+  const text = allText(writes(ops));
+  for (const banned of ['AppleBody', 'AppleAnimations', 'StarterGui', 'Click it', 'wobble', 'squish', 'Baseplate', 'Lighting']) assert.equal(text.includes(banned), false, `a stage-only call wrote ${banned}`);
+  assert.deepEqual(ops.find((o) => o.op === 'transform_instances').move, [0, 2, 0], 'the object is raised to stand on it');
+  assert.ok(created(ops).includes('game.Workspace.ChestStage'));
+});
+
+test('click is the agent\'s motion with the agent\'s sound; an unknown motion is an error, never a silent wobble', async () => {
+  const { ctx, ops } = studio({ exists: ['game.Workspace.Chest'] });
+  const bad = await L.dressObject(ctx, { target: 'game.Workspace.Chest', click: {} });
+  assert.match(bad.error, /click\.motion must be one of/);
+  const r = await L.dressObject(ctx, { target: 'game.Workspace.Chest', click: { motion: 'spin' } });
+  assert.equal(r.changed, true, JSON.stringify(r));
+  assert.match(r.added[0], /spins when clicked or walked into \(no sound \(none asked for\)\)/);
+  const script = ops.find((o) => o.op === 'edit_script' && /AppleAnimations/.test(o.path));
+  assert.match(script.source, /AppleBody\.spin/);
+  assert.equal(/sound/.test(script.source), false, 'no sound the agent did not choose');
+  assert.equal(allText(ops).includes('Click it'), false);
+  assert.equal(created(ops).some((p) => /HUD/.test(p)), false, 'no counter unless asked');
+  const withSound = studio({ exists: ['game.Workspace.Chest'] });
+  const s = await L.dressObject(withSound.ctx, { target: 'game.Workspace.Chest', click: { motion: 'pop', sound: 123456 } });
+  assert.match(withSound.ops.find((o) => o.op === 'edit_script' && /AppleAnimations/.test(o.path)).source, /rbxassetid:\/\/123456/);
+  assert.match(s.added[0], /sound id 123456/);
+});
+
+test('a counter needs the click it counts, and is drawn only when asked for, in the user\'s own words', async () => {
+  const { ctx } = studio({ exists: ['game.Workspace.Chest'] });
+  assert.match((await L.dressObject(ctx, { target: 'game.Workspace.Chest', counter: { label: 'x' } })).error, /ask for click in the same call/);
+  const both = studio({ exists: ['game.Workspace.חזה'] });
+  const r = await both.ctx.execStudioOp ? await L.dressObject(both.ctx, { target: 'game.Workspace.חזה', click: { motion: 'bob' }, counter: { label: 'פתיחות', hint: 'לחצו עליו' } }) : null;
+  assert.equal(r.changed, true, JSON.stringify(r));
+  assert.ok(r.added.some((a) => /counter "פתיחות"/.test(a)));
+  const hudScript = both.ops.find((o) => o.op === 'edit_script' && /HUDScript/.test(o.path));
+  assert.ok(hudScript, 'the screen script is written');
+  assert.match(hudScript.path, /חזהHUDScript/);
+});
+
+test('dress_object does not decorate with a light or an effect of its own: those are insert_vfx and create_instances on any part', () => {
+  const props = L.TOOLS.dress_object.def.parameters.properties;
+  assert.deepEqual(Object.keys(props).sort(), ['attach', 'click', 'counter', 'stage', 'target']);
+  assert.match(L.TOOLS.dress_object.def.description, /insert_vfx or create_instances/);
+  const code = src('dress-object.ts');
+  for (const gone of ['sparkle', 'CoolOrb', 'CoolLight', 'egg_glow', 'crown', 'vfxPlan']) assert.equal(code.includes(gone), false, `${gone} is back`);
+});
+
+test('dress_object is registered with its own label, phase and MCP note, and cool_library_model is gone everywhere', () => {
+  assert.equal(L.TOOLS.dress_object.def.name, 'dress_object');
+  assert.deepEqual(L.TOOLS.dress_object.def.parameters.required, ['target']);
+  for (const f of ['tools.ts', 'mcp.ts', 'run-idle.ts', 'do/session.ts']) assert.equal(/cool_library_model|coolLibraryObject|coolChoice/.test(src(f)), false, f);
+  const shared = readFileSync(join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts'), 'utf8');
+  assert.equal(/cool_library_model/.test(shared), false);
+  for (const tool of ['dress_object', 'preview_library_models']) {
+    assert.ok(shared.includes(`'${tool}'`), `${tool} is in the shared registry`);
+    assert.ok(src('mcp.ts').includes(`${tool}:`), `${tool} has its MCP exclusion note`);
   }
-  const plugin = readFileSync(join(WORKER, '..', 'apple-plugin', 'src', 'ops', 'Compose.luau'), 'utf8');
-  assert.match(plugin, /local STRIPPABLE = \{[^}]*BillboardGui = true, ProximityPrompt = true, ClickDetector = true/, 'the plugin takes them');
+  assert.ok(src('run-idle.ts').includes('dress_object:'), 'run-idle names it');
 });
 
-test('"cooler" is what the agent picked for this object, with a crown only as the fallback', () => {
-  assert.deepEqual(L.coolChoice({ wear: 'chef hat', effect: 'fire' }), { queries: ['chef hat', 'hat'], effect: 'fire', own: true });
-  assert.deepEqual(L.coolChoice({ wear: 'sunglasses', effect: 'warp drive' }).effect, 'sparkle_shimmer', 'an unknown effect is not written');
-  assert.deepEqual(L.coolChoice(undefined), { queries: ['crown', 'golden crown'], effect: 'sparkle_shimmer', own: false });
+// ------------------------------------------------------------------------------------ the run starts with the model ---
+
+test('no library step runs before the first model call, and nothing in the run loop picks, offers or forces', () => {
+  const session = src('do/session.ts');
+  assert.equal(/libraryObjectStep|offerLibraryObjects|placeChosenObject|pickPrompt|pickedIndex|clearLineup|pendingObjectChoice|staleLineup/.test(session), false);
+  assert.ok(session.search(/\bllmChat\(/) > 0, 'the loop still calls the model');
+  for (const f of ['library-object.ts', 'dress-object.ts']) {
+    const s = src(f);
+    assert.equal(/objectQueries|rankCatalog|storeCandidates|objectWords|objectNameOf|libraryFit|sizeFactor/.test(s), false, `${f} matches by name again`);
+  }
 });
 
-test('the agent picks the candidate that looks like the request', () => {
-  assert.equal(L.colourName('#f5cd30'), 'yellow');
-  assert.equal(L.colourName('#7a5030'), 'brown');
-  const opts = [{ index: 1, name: 'Duck', game: "Hunter's Life", colour: '#7a5030', size: [6, 5, 3], parts: 40 }, { index: 2, name: 'Duck', game: 'Twisted Murderer', colour: '#f5cd30', size: [5, 5, 4], parts: 12 }];
-  const q = L.pickPrompt('make me a rubber duck', opts);
-  assert.match(q, /1\. "Duck" from the game Hunter's Life, mostly brown/);
-  assert.match(q, /2\. "Duck" from the game Twisted Murderer, mostly yellow/);
-  assert.equal(L.pickedIndex('2', opts), 2);
-  assert.equal(L.pickedIndex('A rubber duck is yellow, so 1 is wrong. Answer: 2', opts), 2);
-  assert.equal(L.pickedIndex('7', opts), undefined, 'a number that is not an option is not a pick');
+test('previewing and placing never decorate: the files hold no motion, stage, counter, mood or crown outside dress_object', () => {
+  const lib = src('library-object.ts');
+  for (const word of ['wobble', 'AppleBody', 'writeObjectHud', 'set_mood', 'groundAndSpawn', 'contrastStage', 'Baseplate', 'SpawnLocation', 'camera_focus']) {
+    if (word === 'camera_focus') continue; // the snapshot row's own framing, inside the preview only
+    assert.equal(lib.includes(word), false, `library-object.ts holds ${word}`);
+  }
 });
+
+// Phase 2 (owner, 2026-10-02): the library pick reads the user's WHOLE request through the classified library, not just its last word.
+const G1 = '0123456789ab', G2 = 'abcdef012345', G3 = 'fedcba987654';
+const hit = (name, gameId, extra = {}) => ({ id: 'h' + name, gameId, kind: 'model', className: 'Model', path: `/Workspace/${name}`, name, type: 'model', subtype: 'creature',
+  description: `${name} (yellow small creature), 15 parts`, look: 'studded', parts: 15, instances: 22, scripts: 0, humanoid: false, animated: false, copies: 1,
+  size: { studs: [2, 2.5, 5.1], class: 'small' }, colours: [{ name: 'yellow', hex: '#ffb000', share: 0.5 }, { name: 'black', hex: '#080809', share: 0.3 }],
+  quality: { score: 84, band: 'A', reasons: [] }, provenance: { game: 'Pet Park' }, ...extra });

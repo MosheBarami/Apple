@@ -1,6 +1,6 @@
 # Crystal Canyon — architecture contract
 
-The Golem simulator/tycoon benchmark. Original work built to the category
+The Apple simulator/tycoon benchmark. Original work built to the category
 grammar in `docs/ROBLOX-STYLE-SPEC.md`. Nothing here is copied from any
 existing experience.
 

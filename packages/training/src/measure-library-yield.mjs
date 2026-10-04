@@ -56,7 +56,7 @@ const ROOT = resolve(import.meta.dirname, '../../..');
 //   would measure the re-implementation; bundling the real file with the repo's own esbuild
 //   measures what production runs.
 const bundled = await (async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'golem-yield-'));
+  const dir = mkdtempSync(join(tmpdir(), 'apple-yield-'));
   execFileSync(join(ROOT, 'node_modules/.pnpm/node_modules/.bin/esbuild'),
     [join(ROOT, 'apps/worker/src/verified-modules.ts'), '--bundle', '--format=esm',
       '--platform=node', `--outfile=${join(dir, 'vm.mjs')}`, '--log-level=error']);

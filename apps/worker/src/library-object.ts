@@ -1,16 +1,12 @@
 /**
- * Library-first objects (owner, 2026-10-02: "FOR 3D MODELS ALWAYS MAKE HIM SEARCH THE CREATOR STORE OR THE LIBRARY FOR
- * MODELS (and make them studded if needed) and just rarely generate procedurally"; asked who picks, the owner chose
- * "the user picks from 3 previews", keyboards from the library too, and the owner library plus Roblox-owned Creator
- * Store models only).
+ * Ready-made models for the agent to look at, choose and place (owner, 2026-10-02: models come from the owner library
+ * or the Roblox-owned Creator Store first, procedural rarely; and, after the benchmark that put a knife on a treasure
+ * chest and party balloons on a hot air balloon: the harness never picks what fits).
  *
- * One object request is answered in two runs and no model call:
- *   1. offerLibraryObjects: search the owner library catalog (ranked by the paired gateway), then the bundled
- *      Roblox-owned Creator Store index; up to three ready-made models stand side by side in the place, numbered 1-3,
- *      and the chat shows a card with a Studio snapshot of them. The run ends there.
- *   2. placeChosenObject, on "Use visual option N and continue.": that copy is moved onto a stage in front of the
- *      spawn, sized to about three player heights, made to wobble on a click with a library sound, given a counter on
- *      the player's screen, and the others are removed. "None of these look right" builds it with build_object.
+ * The agent searches with its own words (find_library_model, browse_owner_library), previews what it found here
+ * (previewLibraryModels: evidence, off the place), chooses in its own loop with the conversation in context, and places
+ * (placeLibraryPiece) or builds another way when none fits. Nothing in this file chooses a candidate, derives a name from
+ * the request, or decorates a placed model: dress_object (dress-object.ts) is the opt-in presentation.
  *
  * Every candidate is a copy WITHOUT scripts or sounds: an owner-library piece is imported into ServerStorage (where no
  * script runs), stripped, and placed as a copy (place_copies destroys scripts and sounds and anchors the parts); a
@@ -19,58 +15,15 @@
  */
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite } from './compose';
-import { luau } from './compose';
 import { typed } from './compose-run';
-import { findLibraryModels } from './model-library';
-import { LIBRARY_IMPORT_MS, libraryMaterials, librarySafetyCopy } from './local-owner-corpus';
-import { contrastStage, COOL_ORB_COLOURS, groundAndSpawn, motionClip, PLAYER_HEIGHT, withRiders, writeObjectHud, type ObjectPart } from './object-tool';
-import { findSounds, vfxPlan } from './fx-library';
-import { installAnimationPlayer } from './animate-tool';
-import { userWantsOwnSurface } from './surfaces';
+import { GAME_ID, LIBRARY_IMPORT_MS, libraryMaterials, librarySafetyCopy } from './local-owner-corpus';
 import { rgbBase64ToDataUrl } from './png';
 import { imagePathFor, storeImage } from './imagegen';
 
 type V3 = [number, number, number];
 
-/** Words that are not the object: the request's verbs, articles and size words. */
-const STOP = new Set(['a', 'an', 'the', 'me', 'us', 'my', 'our', 'some', 'one', 'please', 'make', 'build', 'create', 'give', 'spawn', 'get',
-  'add', 'i', 'want', 'need', 'can', 'you', 'could', 'would', 'for', 'with', 'to', 'and', 'in', 'on', 'it', 'that', 'this', 'really', 'very',
-  'super', 'giant', 'big', 'huge', 'small', 'tiny', 'little', 'cute', 'nice', 'new', 'just', 'like', 'pls', 'plz', 'thing']);
-const words = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
-/** A catalog name's words, CamelCase split: "GoldenCrown" -> golden, crown (test 3, 2026-10-02: no crown matched). */
-const nameWordsOf = (t: string) => words(t.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2'));
-/** "keyboards" -> keyboard, "boxes" -> box. Pure. */
-export function singular(w: string): string {
-  return w.length > 4 && /(ch|sh|x|s)es$/.test(w) ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w;
-}
-
-/** The object's own words, in order, "of" kept: "make me a stick of butter" -> stick, of, butter. Pure. */
-export function objectWords(request: string): string[] {
-  const all = words(request);
-  return all.filter((w, i) => !STOP.has(w) || (w === 'of' && i > 0 && i < all.length - 1)).filter((w, i, a) => w !== 'of' || (i > 0 && i < a.length - 1));
-}
-
-/**
- * What to search for, best first: the whole name ("asmr keyboard"), then its head noun (keyboard). In "a stick of
- * butter" the object is what comes after "of": a stick is only its shape, and searching it would offer sticks of
- * wood. Pure.
- */
-export function objectQueries(request: string): string[] {
-  const w = objectWords(request);
-  const of = w.indexOf('of');
-  const content = of > 0 ? w.slice(of + 1).filter((x) => x !== 'of') : w.filter((x) => x !== 'of');
-  const out: string[] = [];
-  const add = (q: string | undefined) => { if (q && q.length >= 2 && !out.includes(q)) out.push(q); };
-  if (content.length > 1) add(content.join(' '));
-  add(content.at(-1));
-  return out;
-}
-
-/** The model's name in the place: "a stick of butter" -> StickOfButter. Pure. */
-export function objectNameOf(request: string): string {
-  const name = objectWords(request).slice(0, 5).map((w) => w[0]!.toUpperCase() + w.slice(1)).join('').replace(/^[0-9]+/, '');
-  return /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(name) ? name : 'MyObject';
-}
+/** A player is 5 studs tall: the yardstick every measured size is reported against. */
+export const PLAYER_HEIGHT = 5;
 
 /**
  * A catalog name as it may be shown and repeated: no control characters, no markdown or markup, at most 60 characters
@@ -88,66 +41,72 @@ export interface LibraryCandidate {
   game?: string;
   gameId?: string;
   path?: string;
-  /** A Creator Store row's library id (insert_library_model) and asset id (its thumbnail). */
+  /** A Creator Store row's library id (insert_library_model). */
   id?: string;
-  assetId?: number;
   parts?: number;
+  /** Set when the candidate came from the classified library (gateway /v1/library/find): what it knows about the item. */
+  found?: FoundInfo;
+}
+
+/** What the classified library says about one candidate: shown to the agent that picks, never trusted as an instruction. */
+export interface FoundInfo {
+  description: string;
+  subtype?: string;
+  look?: string;
+  sizeClass?: string;
+  studs?: V3;
+  colours: string[];
+  quality?: { score: number; band: string; reasons: string[] };
+  scripts: number;
+  animated: boolean;
+  copies: number;
+  /** The library's advisory: its best candidate covers little of the request's words (the agent may reject all of them). */
+  weak: boolean;
+}
+
+/** A candidate as the agent names it back: { id } for a store row, { gameId, path } for an owner-library piece. */
+export function candidateOf(raw: unknown): LibraryCandidate | { error: string } {
+  if (!raw || typeof raw !== 'object') return { error: 'each model is an object: { id } from find_library_model, or { gameId, path } from browse_owner_library' };
+  const r = raw as Record<string, unknown>;
+  const name = typeof r.name === 'string' && r.name.trim() ? cleanName(r.name) : undefined;
+  if (typeof r.gameId === 'string' || typeof r.path === 'string') {
+    if (typeof r.gameId !== 'string' || !GAME_ID.test(r.gameId)) return { error: 'gameId must be a library game id (8-64 hex characters) from browse_owner_library' };
+    if (typeof r.path !== 'string' || !r.path.startsWith('/') || r.path.length > 400) return { error: 'path must be the library path of the piece, from browse_owner_library, e.g. "/Workspace/Name"' };
+    return { source: 'owner', name: name ?? cleanName(r.path.split('/').filter(Boolean).pop()?.replace(/#\d+$/, '') ?? 'Model'), gameId: r.gameId, path: r.path, ...(typeof r.game === 'string' ? { game: cleanName(r.game) } : {}) };
+  }
+  if (typeof r.id === 'string' && r.id.trim()) return { source: 'store', name: name ?? 'Model', id: r.id.trim() };
+  return { error: 'give { id } (from find_library_model) or { gameId, path } (from browse_owner_library)' };
 }
 
 interface CatalogItem { gameId?: unknown; game?: unknown; kind?: unknown; name?: unknown; className?: unknown; path?: unknown; parts?: unknown; instances?: unknown; contains?: unknown }
 const PIECE_CLASSES = new Set(['Model', 'MeshPart', 'Part', 'UnionOperation', 'Tool', 'WedgePart']);
+const MAX_PARTS = 400, MAX_INSTANCES = 1500;
 
 /**
- * The catalog hits that ARE the object, best first: the name holds the query's head word as a whole word ("Butter",
- * "Vanilla Donut"; never "Butterfly" or "Buttermilk"), an exact name first, then the head word last in the name, then
- * anywhere. One per source game, at most `limit`. Characters (a Humanoid inside), empty pieces and pieces too big to
- * copy are left out. Pure.
+ * Why a catalog row cannot be copied into a place as a script-free object, or null when it can: a character (a Humanoid
+ * inside), an empty piece, a class that is not a piece, one too big to copy. A mechanical safety fact, never a taste. Pure.
  */
-export function rankCatalog(items: CatalogItem[], query: string, limit = 3): LibraryCandidate[] {
-  const head = singular(words(query).at(-1) ?? '');
-  const qWords = words(query).map(singular);
-  if (!head) return [];
-  const scored: { c: LibraryCandidate; score: number; order: number }[] = [];
-  items.forEach((i, order) => {
-    if (i.kind !== 'model' || typeof i.gameId !== 'string' || typeof i.path !== 'string' || typeof i.name !== 'string') return;
-    if (!PIECE_CLASSES.has(String(i.className))) return;
-    const parts = Number(i.parts ?? 0), instances = Number(i.instances ?? 0);
-    if (!(parts >= 1) || parts > 400 || instances > 1500) return;
-    if (Array.isArray(i.contains) && i.contains.some((c) => c === 'Humanoid')) return;
-    // A diminutive is the same word ("Rubber Ducky" for a rubber duck, "Doggie"); a longer word is another thing
-    // ("Butterfly" is not butter).
-    const nameWords = nameWordsOf(i.name.replace(/#\d+$/, '')).map(singular).map((w) => [`${head}y`, `${head}ie`, `${head}${head.at(-1)}y`, `${head}${head.at(-1)}ie`].includes(w) ? head : w);
-    if (!nameWords.includes(head)) return;
-    const exact = nameWords.join(' ') === qWords.join(' ') || nameWords.join(' ') === head;
-    const score = exact ? 3 : nameWords.at(-1) === head ? 2 : 1;
-    scored.push({ c: { source: 'owner', name: cleanName(i.name.replace(/#\d+$/, '')), game: typeof i.game === 'string' ? cleanName(i.game) : undefined, gameId: i.gameId, path: i.path, parts }, score, order });
+export function copyBlocker(i: CatalogItem): string | null {
+  if (i.kind !== 'model') return `kind is ${String(i.kind ?? 'unknown')}, not a model`;
+  if (!PIECE_CLASSES.has(String(i.className))) return `a ${String(i.className ?? 'unknown')} is not a copyable piece`;
+  const parts = Number(i.parts ?? 0), instances = Number(i.instances ?? 0);
+  if (!(parts >= 1)) return 'it holds no parts';
+  if (parts > MAX_PARTS) return `${parts} parts is more than ${MAX_PARTS}, too big to copy`;
+  if (instances > MAX_INSTANCES) return `${instances} instances is more than ${MAX_INSTANCES}, too big to copy`;
+  if (Array.isArray(i.contains) && i.contains.some((c) => c === 'Humanoid')) return 'it holds a Humanoid (a character, not an object)';
+  return null;
+}
+
+/**
+ * The library's own answer for a models search with a copyability note on every row, so the agent sees what can be placed
+ * and why a row cannot, and chooses with all of it in view. Nothing is dropped, ranked or de-duplicated here. Pure.
+ */
+export function annotateModels<T extends CatalogItem>(items: T[]): (T & { copyable: boolean; notCopyableBecause?: string })[] {
+  return items.map((i) => {
+    const why = copyBlocker(i);
+    return { ...i, copyable: why === null, ...(why ? { notCopyableBecause: why } : {}) };
   });
-  scored.sort((a, b) => b.score - a.score || a.order - b.order);
-  // A name where the word is not last ("Butter fly", "Donut Booth") is another thing, offered only when nothing is the
-  // thing itself: one honest option beats a butterfly.
-  const best = scored[0]?.score ?? 0;
-  const out: LibraryCandidate[] = [];
-  for (const s of scored.filter((x) => best < 2 || x.score >= 2)) {
-    if (out.some((o) => o.gameId === s.c.gameId)) continue; // different looks, not three copies from one game
-    out.push(s.c);
-    if (out.length >= limit) break;
-  }
-  return out;
 }
-
-/** Roblox-owned Creator Store rows whose name holds the head word (the bundled index; no third-party rows). Pure. */
-export function storeCandidates(query: string, limit = 3): LibraryCandidate[] {
-  const head = singular(words(query).at(-1) ?? '');
-  if (!head) return [];
-  const found = findLibraryModels({ query, creatorStoreOnly: true, includeThirdParty: false, limit: 10 }) as { results?: { id: string; name: string; assetId?: number }[] };
-  return (found.results ?? [])
-    .filter((r) => typeof r.assetId === 'number' && words(r.name).map(singular).includes(head))
-    .slice(0, limit)
-    .map((r) => ({ source: 'store' as const, name: cleanName(r.name), id: r.id, assetId: r.assetId }));
-}
-
-/** Where the numbered candidates stand: a row in front of the spawn. */
-export const LINEUP = 'game.Workspace.ApplePicks';
 
 /** Where along x a new thing may stand in front of the spawn: the middle first, then 8 studs at a time either side. */
 export const LANE_STEPS = [0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40, 48, -48, 56, -56, 64, -64];
@@ -166,8 +125,8 @@ export function blocksLane(parts: unknown, count: unknown, ignore: string[]): bo
 
 /**
  * The x nearest the middle where a box `width` by `depth` centred at z stands on empty ground (nothing from the floor up
- * to 40 studs), or 0 when there is none or Studio cannot say. A second object stood in the first one (test 4, the duck
- * on the butter's stage, 2026-10-02).
+ * to 40 studs), or 0 when there is none or Studio cannot say. Only used when the agent gave no place: a second thing
+ * must not stand in the first one.
  */
 export async function freeLaneX(ctx: AgentCtx, width: number, depth: number, z: number, ignore: string[]): Promise<number> {
   for (const x of LANE_STEPS) {
@@ -178,181 +137,61 @@ export async function freeLaneX(ctx: AgentCtx, width: number, depth: number, z: 
   }
   return 0;
 }
+
 const PARTS_FOLDER = 'game.ServerStorage.AppleParts';
-const SLOTS: V3[] = [[-18, 0, -30], [0, 0, -30], [18, 0, -30]];
-const PICK_LENGTH = 12;
-
-/** What the owner is shown: the options, the snapshot, and the sentence. */
-export interface ObjectOffer {
-  request: string;
-  name: string;
-  options: (LibraryCandidate & { index: number; colour?: string; size?: V3; parts?: number })[];
-  image?: string;
-  text: string;
-}
-
 type Exec = AgentCtx['execStudioOp'];
 const vec = (v: unknown): V3 | null => Array.isArray(v) && v.length === 3 && v.every((n) => Number.isFinite(Number(n))) ? v.map(Number) as V3 : null;
-async function bounds(exec: Exec, path: string): Promise<{ center: V3; size: V3; bottomY: number } | null> {
+export async function bounds(exec: Exec, path: string): Promise<{ center: V3; size: V3; bottomY: number } | null> {
   const b = await exec({ op: 'spatial_query', action: 'bounds', path }, 15_000).catch(() => null);
   const d = (b?.ok ? b.data : null) as { center?: unknown; size?: unknown; bottomY?: unknown } | null;
   const center = vec(d?.center), size = vec(d?.size);
   return center && size && Number.isFinite(Number(d?.bottomY)) ? { center, size, bottomY: Number(d!.bottomY) } : null;
 }
 
-/** The owner-library catalog, through the paired plugin (the owner's Mac only). */
-async function catalog(ctx: AgentCtx, q: string): Promise<CatalogItem[]> {
-  const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q, kind: 'model', limit: 25 }, 60_000).catch(() => null);
-  return out?.ok ? ((out.data as { items?: CatalogItem[] }).items ?? []) : [];
+// ------------------------------------------------------------------------------------------------ names ---
+
+/**
+ * A name an instance may carry and a path may name: any language, letters and digits, spaces, "_" and "-", at most 40
+ * characters. Dots, brackets, quotes and control characters are removed because they break paths. Empty when nothing is left.
+ * Pure.
+ */
+export function safeObjectName(raw: unknown): string {
+  return String(raw ?? '').replace(/[\x00-\x1f\x7f.[\]\\"'`]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40).trim();
 }
 
-/** Up to three candidates for the request: owner library first, then Roblox-owned Creator Store rows. */
-export async function findObjectCandidates(ctx: AgentCtx, request: string): Promise<LibraryCandidate[]> {
-  const found: LibraryCandidate[] = [];
-  const has = (c: LibraryCandidate) => found.some((f) => (f.gameId && f.gameId === c.gameId) || (f.id && f.id === c.id));
-  for (const q of objectQueries(request)) {
-    for (const c of rankCatalog(await catalog(ctx, q), q, 3)) if (found.length < 3 && !has(c)) found.push(c);
-    if (found.length >= 3) break;
+/**
+ * A free name for a new thing in Workspace. The agent supplies the name; with none, the piece's own name is used, never
+ * words of the request. A name that is taken is an error the agent resolves (another name, or `replace: true` to remove
+ * the thing that is there): nothing the run did not make is ever deleted unasked. Not a decision about taste: only a path.
+ */
+export async function allocateName(ctx: AgentCtx, wanted: unknown, fallback: unknown, replace = false): Promise<{ name: string; path: string } | { error: string }> {
+  const name = safeObjectName(wanted) || safeObjectName(fallback);
+  if (!name) return { error: 'name the object: a short name in any language (letters, digits, spaces, "_", "-")' };
+  const path = `game.Workspace.${name}`;
+  const there = await ctx.execStudioOp({ op: 'get_instance', path }, 10_000).catch(() => null);
+  if (there?.ok) {
+    if (!replace) return { error: `${path} already exists in the place (made earlier, by the user or by this run). Choose another name, or pass replace: true to remove it and put this there.` };
+    const gone = await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => null);
+    if (!gone?.ok) return { error: `${path} could not be replaced: ${String(gone?.error ?? 'delete refused').slice(0, 160)}` };
   }
-  if (found.length < 3) {
-    for (const q of objectQueries(request)) {
-      for (const c of storeCandidates(q, 3)) if (found.length < 3 && !has(c)) found.push(c);
-      if (found.length >= 3) break;
+  return { name, path };
+}
+
+// -------------------------------------------------------------------------------------------- measuring ---
+
+/** The volume-weighted colour of a tree's parts, as #rrggbb ('#ffffff' when unknown). */
+export function mainColourOf(tree: unknown): string {
+  const by = new Map<string, number>();
+  const walk = (n: { props?: Record<string, { v?: unknown }>; children?: unknown[] }) => {
+    const size = vec(n.props?.Size?.v), col = n.props?.Color?.v;
+    if (size && Array.isArray(col) && col.length === 3 && (Number(n.props?.Transparency?.v ?? 0) < 0.9)) {
+      const hex = '#' + (col as number[]).map((c) => Math.max(0, Math.min(255, Math.round(c * 255))).toString(16).padStart(2, '0')).join('');
+      by.set(hex, (by.get(hex) ?? 0) + size[0] * size[1] * size[2]);
     }
-  }
-  return found;
-}
-
-/** A big number floating over a candidate, so the owner can tell 1 from 2 in Studio. */
-function numberTag(index: number, at: V3): InstanceSpecLite {
-  return {
-    className: 'Part', name: `Tag${index}`,
-    props: { Size: [1, 1, 1], Position: at, Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1 },
-    children: [{ className: 'BillboardGui', name: 'Number', props: { Size: { t: 'UDim2', v: [0, 90, 0, 90] }, AlwaysOnTop: true, LightInfluence: 0 },
-      children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [1, 0, 1, 0] }, BackgroundTransparency: 1, Text: String(index), TextScaled: true, Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' }, TextColor3: '#ffffff' },
-        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }] }] }],
+    for (const c of n.children ?? []) walk(c as typeof n);
   };
-}
-
-/**
- * A library piece's leftovers from its own game: a price tag or icon floating over it, a "Buy" prompt, a click nothing
- * answers once its script is out. Its own call after the script strip, so a plugin that does not know these classes
- * refuses only this one (the scripts are out either way).
- */
-async function stripLeftovers(ctx: AgentCtx, root: string): Promise<void> {
-  await ctx.execStudioOp({ op: 'strip_descendants', root, classes: ['BillboardGui', 'ProximityPrompt', 'ClickDetector'] }, 30_000).catch(() => undefined);
-}
-
-/** Removes the numbered row and the imported pieces behind it. */
-export async function clearLineup(ctx: AgentCtx): Promise<void> {
-  // One path at a time: delete_instances refuses the whole list when one path is missing (review 2026-10-02: the row
-  // was never taken down because its pick folders were already gone).
-  for (const path of [LINEUP, `${PARTS_FOLDER}.ApplePick1`, `${PARTS_FOLDER}.ApplePick2`, `${PARTS_FOLDER}.ApplePick3`]) {
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
-  }
-}
-
-/**
- * Stands up to three candidates in the place, numbered, and returns what the chat card shows, or null when the
- * library has nothing that is the object (the run then builds it). Nothing here costs a model call.
- */
-export async function offerLibraryObjects(ctx: AgentCtx, request: string, opts: { auto?: boolean; quiet?: boolean } = {}): Promise<ObjectOffer | null> {
-  const candidates = await findObjectCandidates(ctx, request);
-  if (!candidates.length) return null;
-  // A safety copy first, as for every library import: Studio undo, or the checkpoint, takes the row back out.
-  const copy = await librarySafetyCopy(ctx, 'before showing ready-made models');
-  if ('error' in copy) return null;
-  await clearLineup(ctx);
-  // The row goes where nothing stands (three 12-stud picks 18 apart, with room round them).
-  const own = objectNameOf(request);
-  const rowX = await freeLaneX(ctx, 58, 16, SLOTS[0]![2], [LINEUP, `game.Workspace.${own}`, `game.Workspace.${own}Stage`]);
-  const slots = SLOTS.map(([x, y, z]) => [x + rowX, y, z] as V3);
-  const made = await ctx.execStudioOp({ op: 'create_instances', items: [
-    { ...typed({ className: 'Model', name: 'ApplePicks' }), parent: 'game.Workspace' },
-  ] }, 20_000);
-  if (!made.ok) return null;
-  const folder = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
-  // A folder made here is taken away again at the end: a later compose_game makes its own AppleParts.
-  const madeFolder = !folder?.ok;
-  if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
-  const placed: ObjectOffer['options'] = [];
-  const tags: InstanceSpecLite[] = [];
-  for (const c of candidates) {
-    // Automatic (owner, 2026-10-02: "remove entirely the 3 options and do an automatic as before"): the best-ranked
-    // candidate that comes in clean is the one; the others are never imported.
-    if (opts.auto && placed.length) break;
-    const index = placed.length + 1;
-    const slot = slots[index - 1]!;
-    const into = `${PARTS_FOLDER}.ApplePick${index}`;
-    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: `ApplePick${index}` }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
-    let from = into;
-    if (c.source === 'owner') {
-      // The game's own materials first, so a piece that names one does not draw as bare plastic (only missing ones).
-      await libraryMaterials(ctx, c.gameId!).catch(() => undefined);
-      // ServerStorage: no script runs there; the strip and the copy below take every script and sound out.
-      const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: into, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
-      if (!imported?.ok) continue;
-      await ctx.execStudioOp({ op: 'strip_descendants', root: into, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
-      await stripLeftovers(ctx, into);
-    } else {
-      // A Creator Store row passes insert_library_model's own gate (source policy, in-place scan, zero scripts proved).
-      const { TOOLS } = await import('./tools');
-      const inserted = await TOOLS.insert_library_model!.run(ctx, { id: c.id, parent: into }).catch(() => ({ error: 'insert failed' })) as Record<string, unknown>;
-      const paths = Array.isArray(inserted.inserted) ? inserted.inserted.filter((p): p is string => typeof p === 'string') : [];
-      if ('error' in inserted || paths.length !== 1) continue;
-      from = paths[0]!;
-    }
-    const copied = await ctx.execStudioOp({ op: 'place_copies', items: [{ from, parent: LINEUP, name: `Pick${index}`, at: slot, length: PICK_LENGTH, along: 'x' }] }, 60_000).catch(() => null);
-    const ok = copied?.ok && ((copied.data as { placed?: unknown[] })?.placed?.length ?? 1) > 0;
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [into] }, 20_000).catch(() => undefined);
-    if (!ok) continue;
-    let b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${index}`);
-    // A tall thin thing fitted by its length would tower over the row: fitted by its height instead.
-    if (b && b.size[1] > 2 * Math.max(b.size[0], b.size[2]) && b.size[1] > PICK_LENGTH) {
-      const again = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: `${LINEUP}.Pick${index}`, parent: LINEUP, name: `Pick${index}Tall`, at: slot, height: PICK_LENGTH, along: 'x' }] }, 60_000).catch(() => null);
-      if (again?.ok) {
-        await ctx.execStudioOp({ op: 'delete_instances', paths: [`${LINEUP}.Pick${index}`] }, 20_000).catch(() => undefined);
-        await ctx.execStudioOp({ op: 'rename_instance', path: `${LINEUP}.Pick${index}Tall`, name: `Pick${index}` }, 20_000).catch(() => undefined);
-        b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${index}`);
-      }
-    }
-    tags.push(numberTag(index, [slot[0], (b ? b.bottomY + b.size[1] : 8) + 3, slot[2]]));
-    // What it looks like, in words the agent can choose by ("a rubber duck" is the yellow one, live 2026-10-02: the
-    // first hit was a brown hunting duck).
-    let colour: string | undefined, parts: number | undefined;
-    if (!opts.auto) {
-      const tree = await ctx.execStudioOp({ op: 'get_tree', root: `${LINEUP}.Pick${index}`, maxDepth: 8, maxNodes: 300 }, 30_000).catch(() => null);
-      if (tree?.ok) {
-        const root = (tree.data as { root?: unknown }).root;
-        colour = mainColourOf(root);
-        let n = 0; const count = (x: { children?: unknown[] }) => { n++; for (const c of x.children ?? []) count(c as typeof x); };
-        if (root && typeof root === 'object') count(root as { children?: unknown[] });
-        parts = n;
-      }
-    }
-    placed.push({ ...c, index, ...(colour ? { colour } : {}), ...(b ? { size: b.size } : {}), ...(parts ? { parts } : {}) });
-  }
-  if (madeFolder) await ctx.execStudioOp({ op: 'delete_instances', paths: [PARTS_FOLDER] }, 20_000).catch(() => undefined);
-  if (!placed.length) { await clearLineup(ctx); return null; }
-  if (opts.auto || opts.quiet) return { request, name: objectNameOf(request), options: placed, text: '' };
-  await ctx.execStudioOp({ op: 'create_instances', items: tags.map((t) => ({ ...typed(t), parent: LINEUP })) }, 20_000).catch(() => undefined);
-  // The snapshot for the card: the active Studio camera on the row. No snapshot is still a choice (the row is in Studio).
-  let image: string | undefined;
-  await ctx.execStudioOp({ op: 'camera_focus', path: LINEUP }, 10_000).catch(() => undefined);
-  const shot = await ctx.execStudioOp({ op: 'capture_studio_viewport' }, 45_000).catch(() => null);
-  const frame = shot?.ok ? shot.data as { encoding?: string; rgbBase64?: string; width?: number; height?: number } : null;
-  if (frame?.rgbBase64 && frame.width && frame.height && ctx.projectId) {
-    // Stored like a generated image and served by its project route, so the card links to it instead of carrying it.
-    try {
-      const png = frame.encoding === 'png' ? frame.rgbBase64 : (await rgbBase64ToDataUrl(frame.rgbBase64, frame.width, frame.height)).replace(/^data:image\/png;base64,/, '');
-      image = imagePathFor(ctx.projectId, await storeImage(ctx.env, png, ctx.projectId));
-    } catch { image = undefined; }
-  }
-  const what = objectWords(request).join(' ') || 'object';
-  const listed = placed.map((p) => `${p.index}. ${p.name}${p.game ? ` (from ${p.game})` : ' (Roblox)'}`).join('; ');
-  const text = `I found ${placed.length === 1 ? 'a ready-made model' : `${placed.length} ready-made models`} for your ${what} and stood ${placed.length === 1 ? 'it' : 'them'} in your place, numbered: ${listed}. `
-    + `Pick the one you want and I will put it on a stage, make it react when clicked and add a counter. If none of them is right, choose "None of these" and I will build one.`;
-  return { request, name: objectNameOf(request), options: placed, ...(image ? { image } : {}), text };
+  if (tree && typeof tree === 'object') walk(tree as Parameters<typeof walk>[0]);
+  return [...by.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '#ffffff';
 }
 
 const NAMED: [string, [number, number, number]][] = [['yellow', [245, 205, 48]], ['orange', [240, 140, 40]], ['red', [200, 40, 40]], ['pink', [240, 130, 180]],
@@ -365,38 +204,6 @@ export function colourName(hex: string | undefined): string {
   if (!m) return 'unknown colour';
   const c = [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
   return NAMED.map(([n, v]) => [n, v.reduce((a, x, i) => a + (x - c[i]!) ** 2, 0)] as const).sort((a, b) => a[1] - b[1])[0]![0];
-}
-
-/** The question the agent answers to pick the candidate that IS the request, one line per candidate. Pure. */
-export function pickPrompt(request: string, options: ObjectOffer['options']): string {
-  const lines = options.map((o) => `${o.index}. "${o.name}"${o.game ? ` from the game ${o.game}` : ' (Roblox)'}, mostly ${colourName(o.colour)}${o.size ? `, ${Math.round(Math.max(...o.size))} studs at its longest` : ''}${o.parts ? `, ${o.parts} parts` : ''}`);
-  return `The user asked: "${request}". These ready-made models were found:\n${lines.join('\n')}\nWhich one is most clearly what the user asked for (think of what it really looks like: its colour, the game it comes from)? Answer with its number only.`;
-}
-
-/** The number the agent answered, if it names an option. Pure. */
-export function pickedIndex(text: string, options: { index: number }[]): number | undefined {
-  // The last number said: a reply that thinks aloud ("1 is brown, 2 is yellow... 2") ends on its answer.
-  const all = [...text.matchAll(/\b(\d)\b/g)];
-  const n = Number(all[all.length - 1]?.[1]);
-  return options.some((o) => o.index === n) ? n : undefined;
-}
-
-/** What the session keeps between the offer and the pick. */
-export interface PendingObjectChoice { request: string; name: string; options: (LibraryCandidate & { index: number })[] }
-
-/** The volume-weighted colour of a tree's parts, as #rrggbb ('#ffffff' when unknown). */
-function mainColourOf(tree: unknown): string {
-  const by = new Map<string, number>();
-  const walk = (n: { props?: Record<string, { v?: unknown }>; children?: unknown[] }) => {
-    const size = vec(n.props?.Size?.v), col = n.props?.Color?.v;
-    if (size && Array.isArray(col) && col.length === 3 && (Number(n.props?.Transparency?.v ?? 0) < 0.9)) {
-      const hex = '#' + (col as number[]).map((c) => Math.max(0, Math.min(255, Math.round(c * 255))).toString(16).padStart(2, '0')).join('');
-      by.set(hex, (by.get(hex) ?? 0) + size[0] * size[1] * size[2]);
-    }
-    for (const c of n.children ?? []) walk(c as typeof n);
-  };
-  if (tree && typeof tree === 'object') walk(tree as Parameters<typeof walk>[0]);
-  return [...by.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '#ffffff';
 }
 
 /**
@@ -429,128 +236,283 @@ export function worldBox(tree: unknown): { center: V3; size: V3; bottomY: number
   return { center: [(l[0] + u[0]) / 2, (l[1] + u[1]) / 2, (l[2] + u[2]) / 2], size: [u[0] - l[0], u[1] - l[1], u[2] - l[2]], bottomY: l[1] };
 }
 
-/** The target size: about three player heights along its longest side, height first for a tall thing. Pure. */
-export function libraryFit(size: V3, request = ''): { length?: number; height?: number } {
-  const across = Math.max(size[0], size[2]);
-  const k = 3 * PLAYER_HEIGHT * sizeFactor(request);
-  return size[1] > across * 1.2 ? { height: k } : { length: k };
+interface TreeNode { class?: unknown; name?: unknown; children?: unknown[] }
+/** What a staged piece holds, counted from its tree: parts, scripts and sounds (taken out afterwards), a Humanoid. Pure. */
+export function inventoryOf(root: unknown): { parts: number; scripts: number; sounds: number; humanoid: boolean } {
+  const out = { parts: 0, scripts: 0, sounds: 0, humanoid: false };
+  const walk = (n: TreeNode) => {
+    const c = String(n.class ?? '');
+    if (/Part$|^Part$|^UnionOperation$|^MeshPart$/.test(c)) out.parts++;
+    else if (c === 'Script' || c === 'LocalScript' || c === 'ModuleScript') out.scripts++;
+    else if (c === 'Sound') out.sounds++;
+    else if (c === 'Humanoid') out.humanoid = true;
+    for (const k of n.children ?? []) walk(k as TreeNode);
+  };
+  if (root && typeof root === 'object') walk(root as TreeNode);
+  return out;
+}
+
+/** A size in words against the player: "about 12 studs at its longest, 2.4 player heights". Pure. */
+export function sizeWords(size: V3): string {
+  const longest = Math.max(...size);
+  return `about ${Math.round(longest)} studs at its longest (${Math.round(longest / PLAYER_HEIGHT * 10) / 10} player heights; a player is ${PLAYER_HEIGHT} studs tall)`;
+}
+
+// -------------------------------------------------------------------------------------------- staging ---
+
+/** A piece's leftovers from its own game: a price tag, a "Buy" prompt, a click nothing answers once its script is out. */
+async function stripLeftovers(ctx: AgentCtx, root: string): Promise<void> {
+  await ctx.execStudioOp({ op: 'strip_descendants', root, classes: ['BillboardGui', 'ProximityPrompt', 'ClickDetector'] }, 30_000).catch(() => undefined);
 }
 
 /**
- * How much bigger or smaller the request asks for (test 5, 2026-10-02: "a giant pizza" came out 15 studs, the size of
- * the duck beside it). Pure.
+ * Brings one candidate into `into` (a folder in ServerStorage, where no script runs) and strips scripts, sounds and
+ * leftovers. Returns the path to copy from, and what the piece held before it was stripped, or { error }.
  */
-export function sizeFactor(request: string): number {
-  const w = new Set(words(request));
-  if (['giant', 'huge', 'enormous', 'massive', 'gigantic', 'colossal', 'humongous', 'mega'].some((x) => w.has(x))) return 2.5;
-  if (['big', 'large', 'tall'].some((x) => w.has(x))) return 1.6;
-  if (['tiny', 'mini', 'miniature'].some((x) => w.has(x))) return 0.4;
-  if (['small', 'little'].some((x) => w.has(x))) return 0.6;
-  return 1;
-}
-
-/** "RubberDuck" -> "Rubber Duck". Pure. */
-const spaced = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
-
-/**
- * The picked candidate becomes the object: moved onto a stage in front of the spawn and sized, the others removed,
- * a whole-model wobble on a click with a library sound (two-level rig: every part welded to one invisible body that
- * a single Motor6D turns, so repeated part names never matter), a counter and a hint, the camera and the studded
- * mood. Returns the build_object-shaped result the session ends the run with, or { error } (the run then builds it).
- */
-export async function placeChosenObject(ctx: AgentCtx, pending: PendingObjectChoice, index: number) {
-  const pick = pending.options.find((o) => o.index === index);
-  if (!pick) return { error: 'That option is not there any more.' };
-  const from = `${LINEUP}.Pick${index}`;
-  const before = await bounds(ctx.execStudioOp, from);
-  if (!before) return { error: 'The picked model is no longer in the place.' };
-  const name = /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(pending.name) ? pending.name : 'MyObject';
-  const model = `game.Workspace.${name}`;
-  const stageName = `game.Workspace.${name}Stage`;
-  for (const path of [model, stageName]) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
-  const fit = libraryFit(before.size, pending.request);
-  // Beside what is already there, never in it: the size it will have (its long side along x) on its stage, with a gap.
-  const k = fit.length ? fit.length / Math.max(before.size[0], before.size[2], 0.1) : fit.height! / Math.max(before.size[1], 0.1);
-  const wide = Math.max(before.size[0], before.size[2]) * k, deep = Math.min(before.size[0], before.size[2]) * k;
-  const x = await freeLaneX(ctx, wide + 18, deep + 18, -26, [LINEUP, model, stageName]);
-  const at: V3 = [x, 2, -26];
-  const copied = await ctx.execStudioOp({ op: 'place_copies', items: [{ from, parent: 'game.Workspace', name, at, ...fit, along: 'x' }] }, 60_000);
-  if (!copied.ok) return { error: `The picked model could not be moved: ${String(copied.error ?? '').slice(0, 200)}` };
-  await clearLineup(ctx);
-  // The world box of its visible parts (worldBox), or the model's own box when the tree is too big to read whole.
-  const tree = await ctx.execStudioOp({ op: 'get_tree', root: model, maxDepth: 12, maxNodes: 400 }, 30_000).catch(() => null);
-  const whole = tree?.ok && !(tree.data as { truncated?: unknown }).truncated;
-  const b = (whole ? worldBox((tree!.data as { root?: unknown }).root) : null) ?? await bounds(ctx.execStudioOp, model);
-  if (!b) return { error: 'The placed model has no measurable size.', changed: true, projectMutated: true };
-  const [sx, sy, sz] = b.size, [cx, , cz] = b.center;
-  const problems: string[] = [];
-
-  // The stage under it, a colour that stands apart from the model's own, then the ground, the spawn and the studs.
-  const stageColor = contrastStage(mainColourOf(tree?.ok ? (tree.data as { root?: unknown }).root : null));
-  const pad = 6;
-  await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Model', name: `${name}Stage`, children: [
-    { className: 'Part', name: 'Stage', props: { Size: [sx + pad * 2, 2, sz + pad * 2], Position: [cx, 1, cz], Anchored: true, Color: stageColor, Material: 'Plastic' } },
-    { className: 'Part', name: 'Rim', props: { Size: [sx + pad * 2 + 2, 1, sz + pad * 2 + 2], Position: [cx, 0.5, cz], Anchored: true, Color: '#8e5b32', Material: 'Plastic' } },
-  ] }), parent: 'game.Workspace' }] }, 30_000).catch(() => undefined);
-  // The original request decides the surface, not the "Use visual option" message that picked it.
-  await groundAndSpawn(ctx, userWantsOwnSurface(pending.request) ? null : [stageName]);
-
-  // The rig: an invisible body around the whole model that every part is welded to, turned by one Motor6D on a root.
-  const body: ObjectPart = { name: 'AppleBody', shape: 'block', size: [sx + 0.2, sy + 0.2, sz + 0.2], at: [0, 0, 0], color: '#ffffff', move: { as: 'wobble', on: 'click', sound: 'squish' } };
-  const mk = (spec: InstanceSpecLite) => ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed(spec), parent: model }] }, 20_000);
-  // Touchable: walking into it presses it too (AppleAnimate's step-on for a part's own click clip), which is also how
-  // the play check presses it, since a check cannot click.
-  const madeBody = await mk({ className: 'Part', name: 'AppleBody', props: { Size: body.size, Position: b.center, Anchored: true, CanCollide: false, CanTouch: true, CanQuery: true, Transparency: 1 } });
-  let moves = false;
-  if (madeBody.ok) {
-    const welded = await ctx.execStudioOp({ op: 'rig_model', root: `${model}.AppleBody`, joint: 'weld' }, 60_000);
-    const madeRoot = welded.ok ? await mk({ className: 'Part', name: 'AppleRoot', props: { Size: [1, 1, 1], Position: [cx, b.bottomY + 0.5, cz], Anchored: true, CanCollide: false, CanTouch: false, CanQuery: false, Transparency: 1 } }) : welded;
-    const motor = madeRoot.ok ? await ctx.execStudioOp({ op: 'rig_model', root: `${model}.AppleRoot`, parts: [`${model}.AppleBody`], joint: 'motor' }, 60_000) : madeRoot;
-    if (motor.ok) {
-      await ctx.execStudioOp({ op: 'set_joint_pivot', joint: `${model}.AppleRoot.AppleBody`, at: [cx, b.bottomY, cz] }, 20_000).catch(() => undefined);
-      const sound = findSounds('squish', { limit: 1, maxSeconds: 4 })[0]?.soundId;
-      const clips = { 'AppleBody.wobble': { ...motionClip(body), ...(sound ? { sound, volume: 0.7 } : {}) } };
-      const wrote = await ctx.execStudioOp({ op: 'edit_script', path: `${model}.AppleAnimations`, source: `-- What ${name} does, played by AppleAnimate. Written by Apple; edit freely.\nreturn ${luau(clips)}\n`, create: { className: 'ModuleScript', parent: model } }, 60_000);
-      const player = wrote.ok ? await installAnimationPlayer(ctx) : 'animations not written';
-      moves = wrote.ok && !player;
-      if (!moves) problems.push(`motion: ${String(wrote.ok ? player : wrote.error).slice(0, 160)}`);
-    } else problems.push(`rig: ${String(motor.error ?? '').slice(0, 160)}`);
-  } else problems.push(`body: ${String(madeBody.error ?? '').slice(0, 160)}`);
-
-  if (moves) {
-    const hud = await writeObjectHud(ctx, name, { counter: `${spaced(name)} presses`, hint: 'Click it!' });
-    if (hud) problems.push(hud);
+async function stage(ctx: AgentCtx, c: LibraryCandidate, into: string): Promise<{ from: string; held: ReturnType<typeof inventoryOf> } | { error: string }> {
+  let from = into;
+  if (c.source === 'owner') {
+    // The game's own materials first, so a piece that names one does not draw as bare plastic (only missing ones).
+    await libraryMaterials(ctx, c.gameId!).catch(() => undefined);
+    const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: into, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
+    if (!imported?.ok) return { error: `could not be imported: ${String(imported?.error ?? 'no answer from Studio').slice(0, 160)}` };
+  } else {
+    // A Creator Store row passes insert_library_model's own gate (source policy, in-place scan, zero scripts proved).
+    const { TOOLS } = await import('./tools');
+    const inserted = await TOOLS.insert_library_model!.run(ctx, { id: c.id, parent: into }).catch(() => ({ error: 'insert failed' })) as Record<string, unknown>;
+    const paths = Array.isArray(inserted.inserted) ? inserted.inserted.filter((p): p is string => typeof p === 'string') : [];
+    if ('error' in inserted) return { error: String(inserted.error).slice(0, 200) };
+    if (paths.length !== 1) return { error: 'was inserted as several pieces; place it with insert_library_model instead' };
+    from = paths[0]!;
   }
-  await ctx.execStudioOp({ op: 'camera_focus', path: model }, 10_000).catch(() => undefined);
-  const { TOOLS } = await import('./tools');
-  await TOOLS.set_mood!.run(ctx, { mood: 'studded' }).catch(() => undefined);
-  await ctx.objectMemory?.save({ name, request: pending.request, library: { source: pick.source, name: pick.name, game: pick.game, gameId: pick.gameId, path: pick.path, id: pick.id }, size: [sx, sy, sz] }).catch(() => undefined);
+  const tree = await ctx.execStudioOp({ op: 'get_tree', root: from, maxDepth: 12, maxNodes: 600 }, 30_000).catch(() => null);
+  const held = inventoryOf(tree?.ok ? (tree.data as { root?: unknown }).root : null);
+  await ctx.execStudioOp({ op: 'strip_descendants', root: into, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
+  await stripLeftovers(ctx, into);
+  return { from, held };
+}
 
-  const what = objectWords(pending.request).join(' ') || 'object';
-  const longest = Math.round(Math.max(sx, sy, sz));
-  const from_ = pick.source === 'owner' ? `your library ("${pick.name}"${pick.game ? ` from ${pick.game}` : ''})` : `the Roblox Creator Store ("${pick.name}")`;
-  const forUser = [
-    `Your ${what} is a ready-made model from ${from_}, about ${longest} studs, on a stage in front of the spawn. Its own scripts and sounds were left out.`,
-    moves ? 'Click it and it wobbles with a squish. A counter on your screen counts every press.' : '',
-  ].filter(Boolean).join('\n');
+/** Makes AppleParts in ServerStorage when it is not there, and says whether this call made it (it is taken away again). */
+async function ensureParts(ctx: AgentCtx): Promise<boolean> {
+  const folder = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
+  if (folder?.ok) return false;
+  await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
+  return true;
+}
+const gone = (ctx: AgentCtx, path: string) => ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+
+/** A big number floating over a candidate, so a snapshot can tell 1 from 2. */
+function numberTag(index: number, at: V3): InstanceSpecLite {
   return {
-    changed: true, projectMutated: true, object: model, library: { source: pick.source, name: pick.name, ...(pick.game ? { game: pick.game } : {}) },
-    size: [Math.round(sx), Math.round(sy), Math.round(sz)], moving: moves ? 1 : 0, ...(problems.length ? { problems } : {}),
-    built: `a ready-made ${pick.name} from ${pick.source === 'owner' ? 'the owner library' : 'the Creator Store'}, scripts and sounds left out, on a stage${moves ? '; clicking it makes it wobble with a squish; a counter and a hint are on the player\'s screen' : ''}`,
-    forUser,
+    className: 'Part', name: `Tag${index}`,
+    props: { Size: [1, 1, 1], Position: at, Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1 },
+    children: [{ className: 'BillboardGui', name: 'Number', props: { Size: { t: 'UDim2', v: [0, 90, 0, 90] }, AlwaysOnTop: true, LightInfluence: 0 },
+      children: [{ className: 'TextLabel', name: 'Text', props: { Size: { t: 'UDim2', v: [1, 0, 1, 0] }, BackgroundTransparency: 1, Text: String(index), TextScaled: true, Font: { t: 'EnumItem', v: 'Enum.Font.FredokaOne' }, TextColor3: '#ffffff' },
+        children: [{ className: 'UIStroke', name: 'Outline', props: { Color: '#111111', Thickness: 4 } }] }] }],
   };
 }
 
+/** The temporary lineup a snapshot is taken of: always taken down again. */
+const LINEUP = 'game.Workspace.ApplePreviewLineup';
+const SLOT_GAP = 18;
+const PICK_LENGTH = 12;
+
+export interface ModelPreview {
+  index: number;
+  name: string;
+  source: 'owner' | 'store';
+  game?: string;
+  id?: string;
+  gameId?: string;
+  path?: string;
+  parts?: number;
+  /** Measured, studs [x, y, z], and said against the player. */
+  size?: V3;
+  sizeNote?: string;
+  dominantColour?: string;
+  dominantColourName?: string;
+  /** Scripts and sounds the piece carried (they are always left out of a placed copy). */
+  scriptsAndSoundsLeftOut?: number;
+  /** A fact that stops it being placed as an object (a Humanoid inside, too big to read whole), never a verdict on fit. */
+  blockedBecause?: string;
+  note?: string;
+}
+
 /**
- * The number on an object's counter after a play check walked the player into it (its "${name}HUD" screen's Value),
- * or undefined when the screen was not read. Pure.
+ * Evidence for choosing: each named candidate staged off the place (ServerStorage only; scripts and sounds stripped) and
+ * measured: part count, size, dominant colour. With `snapshot`, the candidates also stand in a numbered row in Workspace
+ * for one viewport capture shown to the user, and the row is taken down before this returns. Nothing the agent sees is
+ * left behind; nothing here chooses.
  */
-export function pressesSeen(detail: unknown, name: string): number | undefined {
-  const sees = (detail as { playerSees?: unknown } | null)?.playerSees;
-  if (typeof sees !== 'string') return undefined;
-  const screen = sees.split(' | ').find((line) => line.includes(`ScreenGui "${name}HUD" (enabled)`));
-  const value = screen ? /"(\d+)" \[Value\]/.exec(screen) : null;
-  return value ? Number(value[1]) : undefined;
+export async function previewLibraryModels(ctx: AgentCtx, raw: unknown[], opts: { snapshot?: boolean } = {}) {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 6) return { error: 'models must list 1 to 6 candidates: { id } from find_library_model or { gameId, path } from browse_owner_library' };
+  const candidates: LibraryCandidate[] = [];
+  for (const r of raw) {
+    const c = candidateOf(r);
+    if ('error' in c) return c;
+    candidates.push(c);
+  }
+  if (opts.snapshot) {
+    // The row stands in the place for a moment; a safety copy first, as for every library import.
+    const copy = await librarySafetyCopy(ctx, 'before previewing ready-made models');
+    if ('error' in copy) return { error: copy.error };
+  }
+  const madeFolder = await ensureParts(ctx);
+  const previews: ModelPreview[] = [];
+  const failed: { name: string; because: string }[] = [];
+  const staged: { index: number; into: string; from: string }[] = [];
+  try {
+    for (const c of candidates) {
+      const index = previews.length + 1;
+      const into = `${PARTS_FOLDER}.ApplePreview${index}`;
+      await gone(ctx, into);
+      await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: `ApplePreview${index}` }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
+      const s = await stage(ctx, c, into);
+      if ('error' in s) { failed.push({ name: c.name, because: s.error }); await gone(ctx, into); continue; }
+      const tree = await ctx.execStudioOp({ op: 'get_tree', root: s.from, maxDepth: 12, maxNodes: 600 }, 30_000).catch(() => null);
+      const root = tree?.ok ? (tree.data as { root?: unknown }).root : null;
+      const truncated = Boolean(tree?.ok && (tree.data as { truncated?: unknown }).truncated);
+      const box = truncated ? null : worldBox(root);
+      const hex = mainColourOf(root);
+      const inv = inventoryOf(root);
+      const blocked = s.held.humanoid ? 'it holds a Humanoid (a character, not an object)' : s.held.parts > MAX_PARTS ? `${s.held.parts} parts is more than ${MAX_PARTS}, too big to copy` : undefined;
+      previews.push({
+        index, name: c.name, source: c.source, ...(c.game ? { game: c.game } : {}), ...(c.id ? { id: c.id } : {}), ...(c.gameId ? { gameId: c.gameId, path: c.path } : {}),
+        parts: s.held.parts || inv.parts,
+        ...(box ? { size: box.size.map((n) => Math.round(n * 10) / 10) as V3, sizeNote: sizeWords(box.size) } : { note: 'size not measured (the piece is too big to read whole)' }),
+        dominantColour: hex, dominantColourName: colourName(hex),
+        scriptsAndSoundsLeftOut: s.held.scripts + s.held.sounds,
+        ...(blocked ? { blockedBecause: blocked } : {}),
+      });
+      staged.push({ index, into, from: s.from });
+    }
+    let snapshot: { image?: string; note: string } | undefined;
+    if (opts.snapshot && staged.length) snapshot = await lineupSnapshot(ctx, staged);
+    return {
+      previews, ...(failed.length ? { failed } : {}), ...(snapshot ? { snapshot } : {}),
+      note: 'Measured evidence, nothing placed and nothing chosen. Choose with the request in view: place one with insert_library_model ({ id } or { gameId, path }, and size/height/scale if it should differ from its own size), or build it another way if none fits (build_object, compose_game, ask the user).',
+    };
+  } finally {
+    for (const s of staged) await gone(ctx, s.into);
+    await gone(ctx, `${PARTS_FOLDER}.ApplePreview${previews.length + 1}`);
+    if (madeFolder) await gone(ctx, PARTS_FOLDER);
+    await gone(ctx, LINEUP);
+  }
+}
+
+/** Stands the staged pieces in a numbered row, captures the viewport for the user, takes the row down. */
+async function lineupSnapshot(ctx: AgentCtx, staged: { index: number; from: string }[]): Promise<{ image?: string; note: string }> {
+  try {
+    await gone(ctx, LINEUP);
+    const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Model', name: 'ApplePreviewLineup' }), parent: 'game.Workspace' }] }, 20_000);
+    if (!made.ok) return { note: 'snapshot not taken: the lineup could not be made' };
+    const rowX = await freeLaneX(ctx, SLOT_GAP * staged.length, 16, -30, [LINEUP]);
+    const tags: InstanceSpecLite[] = [];
+    let placed = 0;
+    for (const [n, s] of staged.entries()) {
+      const slot: V3 = [rowX + (n - (staged.length - 1) / 2) * SLOT_GAP, 0, -30];
+      const copied = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: s.from, parent: LINEUP, name: `Pick${s.index}`, at: slot, length: PICK_LENGTH, along: 'x' }] }, 60_000).catch(() => null);
+      if (!copied?.ok) continue;
+      placed++;
+      const b = await bounds(ctx.execStudioOp, `${LINEUP}.Pick${s.index}`);
+      tags.push(numberTag(s.index, [slot[0], (b ? b.bottomY + b.size[1] : 8) + 3, slot[2]]));
+    }
+    if (!placed) return { note: 'snapshot not taken: nothing could be stood in the row' };
+    await ctx.execStudioOp({ op: 'create_instances', items: tags.map((t) => ({ ...typed(t), parent: LINEUP })) }, 20_000).catch(() => undefined);
+    await ctx.execStudioOp({ op: 'camera_focus', path: LINEUP }, 10_000).catch(() => undefined);
+    const shot = await ctx.execStudioOp({ op: 'capture_studio_viewport' }, 45_000).catch(() => null);
+    const frame = shot?.ok ? shot.data as { source?: string; encoding?: string; rgbBase64?: string; width?: number; height?: number } : null;
+    if (!frame?.rgbBase64 || !frame.width || !frame.height) return { note: 'snapshot not taken: Studio gave no viewport pixels. The measured evidence above stands.' };
+    ctx.emitFrame?.(frame as Parameters<NonNullable<AgentCtx['emitFrame']>>[0]);
+    let image: string | undefined;
+    if (ctx.projectId) {
+      try {
+        const png = frame.encoding === 'png' ? frame.rgbBase64 : (await rgbBase64ToDataUrl(frame.rgbBase64, frame.width, frame.height)).replace(/^data:image\/png;base64,/, '');
+        image = imagePathFor(ctx.projectId, await storeImage(ctx.env, png, ctx.projectId));
+      } catch { image = undefined; }
+    }
+    return { ...(image ? { image } : {}), note: 'The row was shown to the user (numbers match the previews) and has been taken down. You read the measured evidence, not the pixels.' };
+  } finally {
+    await gone(ctx, LINEUP);
+  }
+}
+
+// ------------------------------------------------------------------------------------------- placing ---
+
+/**
+ * What the agent asked for in the size of a placed piece. At most one: `size` (its longest side in studs), `height`, or
+ * `scale` (times its own size). None: it keeps the size it was made in, and the result reports it against the player.
+ */
+export interface PlaceSize { size?: number; height?: number; scale?: number }
+
+export function placeSizeOf(a: Record<string, unknown>): PlaceSize | { error: string } {
+  const out: PlaceSize = {};
+  for (const [k, lo, hi] of [['size', 0.1, 2000], ['height', 0.1, 2000], ['scale', 0.001, 1000]] as const) {
+    if (a[k] === undefined) continue;
+    const n = Number(a[k]);
+    if (!(n >= lo && n <= hi)) return { error: `${k} must be between ${lo} and ${hi}` };
+    out[k] = n;
+  }
+  if (Object.keys(out).length > 1) return { error: 'give one of size (longest side in studs), height or scale, not several' };
+  return out;
+}
+
+/**
+ * Places one candidate as a script-free copy: staged off the place, copied into Workspace at the size the agent asked
+ * for (its own size when it asked for none), named as the agent named it, standing where the agent said, or beside what
+ * is already there. Pure placement: no stage, no motion, no counter, no light, no ground or spawn change, no camera move.
+ * Reports the measured box. Anything beyond that is the agent's own call (dress_object and the other tools).
+ */
+export async function placeLibraryPiece(ctx: AgentCtx, c: LibraryCandidate, a: { name?: unknown; at?: unknown; replace?: unknown; size?: PlaceSize }) {
+  const copy = await librarySafetyCopy(ctx, 'before placing a ready-made model');
+  if ('error' in copy) return { error: copy.error };
+  const named = await allocateName(ctx, a.name, c.name, a.replace === true);
+  if ('error' in named) return named;
+  const madeFolder = await ensureParts(ctx);
+  const into = `${PARTS_FOLDER}.ApplePlace`;
+  try {
+    await gone(ctx, into);
+    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'ApplePlace' }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
+    const s = await stage(ctx, c, into);
+    if ('error' in s) return { error: `${c.name} ${s.error}` };
+    if (s.held.humanoid) return { error: `${c.name} holds a Humanoid (a character, not an object); it was not placed` };
+    const tree = await ctx.execStudioOp({ op: 'get_tree', root: s.from, maxDepth: 12, maxNodes: 600 }, 30_000).catch(() => null);
+    const root = tree?.ok ? (tree.data as { root?: unknown }).root : null;
+    const own = tree?.ok && !(tree.data as { truncated?: unknown }).truncated ? worldBox(root) : null;
+    // The size asked for becomes the length or height place_copies fits by; a scale needs the piece's own size to be known.
+    let fit: { length?: number; height?: number } = {};
+    if (a.size?.height !== undefined) fit = { height: a.size.height };
+    else if (a.size?.size !== undefined) fit = { length: a.size.size };
+    else if (a.size?.scale !== undefined) {
+      if (!own) return { error: 'scale needs the size of the piece, which could not be measured; pass size (longest side in studs) instead' };
+      fit = { length: Math.max(own.size[0], own.size[2], 0.1) * a.size.scale };
+    }
+    const width = fit.length ?? Math.max(own?.size[0] ?? 8, own?.size[2] ?? 8);
+    const depth = fit.length ? fit.length * (own ? Math.min(own.size[0], own.size[2]) / Math.max(own.size[0], own.size[2], 0.1) : 1) : Math.min(own?.size[0] ?? 8, own?.size[2] ?? 8);
+    let at: V3;
+    const given = Array.isArray(a.at) && a.at.length === 3 && a.at.every((n) => Number.isFinite(Number(n))) ? a.at.map(Number) as V3 : null;
+    if (given) at = given;
+    else {
+      // The agent said nowhere: beside what is already there, never in it.
+      const x = await freeLaneX(ctx, width + 12, depth + 12, -26, [named.path]);
+      at = [x, 0, -26];
+    }
+    const placed = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: s.from, parent: 'game.Workspace', name: named.name, at, ...fit }] }, 60_000).catch(() => null);
+    if (!placed?.ok) return { error: `${c.name} could not be placed: ${String(placed?.error ?? 'no answer from Studio').slice(0, 200)}` };
+    const b = await bounds(ctx.execStudioOp, named.path);
+    return {
+      changed: true, projectMutated: true,
+      object: named.path,
+      placedAt: at,
+      ...(b ? { size: b.size.map((n) => Math.round(n * 10) / 10) as V3, sizeNote: sizeWords(b.size), center: b.center, bottomY: b.bottomY } : { sizeNote: 'size not measured' }),
+      library: { source: c.source, name: c.name, ...(c.game ? { game: c.game } : {}) },
+      scriptsAndSoundsLeftOut: s.held.scripts + s.held.sounds,
+      note: 'Placed as a script-free copy, nothing else added: no stage, motion, counter, light or camera change, and the ground and spawn are as they were. Use dress_object to add any of those, play_check to see it, and tell the user what is really there.',
+    };
+  } finally {
+    await gone(ctx, into);
+    if (madeFolder) await gone(ctx, PARTS_FOLDER);
+  }
 }
 
 /** What one play_check measured, said for the answer (shared with the session's tool loop). Pure. */
@@ -564,134 +526,4 @@ export function playCheckReading(detail: unknown): { problem?: string; seen: str
   // A game with no money says nothing about money (round 8 of test 2: "the player has no leaderstats folder").
   const money = ls ? `${ls[1]} went from ${ls[2]} to ${ls[3]} during the test` : typeof d.leaderstats === 'string' && !/^the player has no/i.test(d.leaderstats) ? d.leaderstats : '';
   return { ...(problem ? { problem } : {}), seen: `${money ? `${money}, and ` : ''}${errors ? `${errors} error${errors === 1 ? '' : 's'} came up` : 'nothing errored'}` };
-}
-
-/**
- * "Make it 100x cooler" on a ready-made object (test 3, 2026-10-01; library objects 2026-10-02): the same kit
- * build_object adds, put around the model that is there instead of rebuilding it — the library's sparkle shimmer and a
- * warm light on its body, four neon orbs circling above it on a spinning hub, and a lit stage rim. No model call.
- */
-/** Effects that can stay on an object (the bursts, the weather and the portal cannot). */
-export const COOL_EFFECTS = ['sparkle_shimmer', 'fire', 'smoke', 'fireflies', 'snow', 'heal'] as const;
-
-/**
- * What "cooler" means for THIS object, as the agent chose it (owner, 2026-10-02: every object got the same crown and
- * sparkles; "he doesn't focus on what the user asks"). Unknown or missing picks fall back to a crown and sparkles. Pure.
- */
-export function coolChoice(choice: unknown): { queries: string[]; effect: (typeof COOL_EFFECTS)[number]; own: boolean } {
-  const c = (choice && typeof choice === 'object' ? choice : {}) as Record<string, unknown>;
-  const wear = String(c.wear ?? '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 3).join(' ');
-  const effect = (COOL_EFFECTS as readonly string[]).includes(String(c.effect)) ? String(c.effect) as (typeof COOL_EFFECTS)[number] : 'sparkle_shimmer';
-  return wear ? { queries: [wear, wear.split(' ').pop()!].filter((q, i, a) => a.indexOf(q) === i), effect, own: true } : { queries: ['crown', 'golden crown'], effect, own: false };
-}
-
-export async function coolLibraryObject(ctx: AgentCtx, spec: { name?: unknown; request?: unknown }, choice?: unknown) {
-  const pick = coolChoice(choice);
-  const name = String(spec.name ?? '');
-  if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(name)) return { error: 'The object is not recorded.' };
-  const model = `game.Workspace.${name}`;
-  const body = `${model}.AppleBody`;
-  // What an earlier "cooler" added goes first, then the object is measured by its own body: measured with an earlier
-  // crown still on, the new crown stood on top of the old one, 3 studs over the butter (live 2026-10-02).
-  for (const path of [`${model}Cool`, `${model}.Crown`, `${body}.CrownRoot`, `${body}.SparkleShimmerFX`, `${body}.FireFX`, `${body}.SmokeFX`, `${body}.FirefliesFX`, `${body}.SnowFX`, `${body}.HealFX`, `${body}.CoolLight`, `${body}.LevelUpAuraFX`, `${model}.Glow`]) {
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
-  }
-  const b = await bounds(ctx.execStudioOp, body) ?? await bounds(ctx.execStudioOp, model);
-  if (!b) return { error: `${name} is no longer in the place.` };
-  const problems: string[] = [];
-  // A few twinkles and a soft light, never a haze: at scale 2.5, rate 2 with the level-up aura on top, the butter turned
-  // into a white blob a few seconds into Play (live 2026-10-02), and the model the user picked could not be seen.
-  const fx = vfxPlan(pick.effect, { path: body, className: 'Part' }, { scale: 1.5, rate: pick.effect === 'sparkle_shimmer' ? 0.5 : 1 });
-  const light = { className: 'PointLight', name: 'CoolLight', parent: body, props: { Brightness: { t: 'number' as const, v: 1 }, Range: { t: 'number' as const, v: 12 }, Color: { t: 'Color3' as const, v: [1, 0.85, 0.5] as [number, number, number] } } };
-  const sparkled = await ctx.execStudioOp({ op: 'create_instances', items: [...('error' in fx ? [] : fx.items), light] }, 60_000).catch(() => null);
-  if (!sparkled?.ok) problems.push('sparkles');
-
-  // The orbs: their own small model, a hub spinning on a loop with four neon balls riding it.
-  const [cx, , cz] = b.center, y = b.bottomY + b.size[1] + 3;
-  const r = Math.max(4, Math.min(12, Math.max(b.size[0], b.size[2]) / 2));
-  const cool = `${model}Cool`;
-  const orbs = ([[r, 0], [0, r], [-r, 0], [0, -r]] as [number, number][]).map(([dx, dz], i) => ({
-    className: 'Part', name: `CoolOrb${i + 1}`,
-    props: { Shape: { t: 'EnumItem', v: 'Enum.PartType.Ball' }, Size: [1.8, 1.8, 1.8], Position: [cx + dx, y, cz + dz], Anchored: false, CanCollide: false, Color: COOL_ORB_COLOURS[i]!, Material: 'Neon' },
-  }) as InstanceSpecLite);
-  const made = await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Model', name: `${name}Cool`, children: [
-    { className: 'Part', name: 'Root', props: { Size: [1, 1, 1], Position: [cx, y, cz], Anchored: true, CanCollide: false, CanQuery: false, Transparency: 1 } },
-    { className: 'Part', name: 'CoolHalo', props: { Size: [1, 1, 1], Position: [cx, y, cz], Anchored: false, CanCollide: false, CanQuery: false, Transparency: 1 } },
-    ...orbs,
-  ] }), parent: 'game.Workspace' }] }, 30_000).catch(() => null);
-  let spins = false;
-  if (made?.ok) {
-    const names = ['CoolHalo', 'CoolOrb1', 'CoolOrb2', 'CoolOrb3', 'CoolOrb4'];
-    const rigged = await ctx.execStudioOp({ op: 'rig_model', root: `${cool}.Root`, parts: names.map((n) => `${cool}.${n}`), joint: 'motor' }, 60_000);
-    if (rigged.ok) {
-      // Each orb hinges at the hub, so the same turn carries it round in a circle.
-      for (const n of names.slice(1)) await ctx.execStudioOp({ op: 'set_joint_pivot', joint: `${cool}.Root.${n}`, at: [cx, y, cz] }, 20_000).catch(() => undefined);
-      const halo: ObjectPart = { name: 'CoolHalo', shape: 'block', size: [1, 1, 1], at: [0, 0, 0], color: '#ffffff', move: { as: 'spin', on: 'loop' } };
-      const clips = { 'CoolHalo.spin': withRiders(motionClip(halo), 'CoolHalo', names.slice(1)) };
-      const wrote = await ctx.execStudioOp({ op: 'edit_script', path: `${cool}.AppleAnimations`, source: `-- ${name}'s orbs, played by AppleAnimate. Written by Apple; edit freely.\nreturn ${luau(clips)}\n`, create: { className: 'ModuleScript', parent: cool } }, 60_000);
-      spins = wrote.ok && !(await installAnimationPlayer(ctx));
-    }
-  }
-  if (!spins) problems.push('orbs');
-
-  // A real crown from the library on top (library first, owner 2026-10-02), welded to the body so it wobbles with it:
-  // the crown's parts to its own invisible root, that root to the body (a second weld pass over the whole object would
-  // also join the motor's root and break the rig). Scripts and sounds out, as for every library piece.
-  let crowned = false;
-  const crownPick = (await (async () => {
-    // The agent's pick for this object first; else "crown" (the library's GoldenCrown reads silver and green).
-    for (const q of pick.queries) {
-      const hit = rankCatalog(await catalog(ctx, q), q, 1)[0];
-      if (hit) return hit;
-    }
-    return undefined;
-  })());
-  if (crownPick?.gameId && crownPick.path && b.size.every((n) => n > 0)) {
-    const folderPath = `${PARTS_FOLDER}.AppleCrown`;
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [folderPath] }, 20_000).catch(() => undefined);
-    const parts = await ctx.execStudioOp({ op: 'get_instance', path: PARTS_FOLDER }, 10_000).catch(() => null);
-    const madeFolder = !parts?.ok;
-    if (madeFolder) await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleParts' }), parent: 'game.ServerStorage' }] }, 20_000).catch(() => undefined);
-    await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Folder', name: 'AppleCrown' }), parent: PARTS_FOLDER }] }, 20_000).catch(() => undefined);
-    const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: crownPick.gameId, path: crownPick.path, mode: 'self', parent: folderPath, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
-    if (imported?.ok) {
-      await ctx.execStudioOp({ op: 'strip_descendants', root: folderPath, classes: ['LocalScript', 'Script', 'ModuleScript', 'Sound'] }, 30_000).catch(() => undefined);
-      await stripLeftovers(ctx, folderPath);
-      // Big enough to read from the spawn (a 60% crown on the 7-stud butter was a speck, 90% still a thin ring): a little
-      // over the short side, never more than half the long one.
-      const crownWidth = Math.max(5, Math.min(Math.max(b.size[0], b.size[2]) / 2, Math.min(b.size[0], b.size[2]) * 1.1));
-      const top: V3 = [cx, b.bottomY + b.size[1] - 0.2, cz];
-      const placed = await ctx.execStudioOp({ op: 'place_copies', items: [{ from: folderPath, parent: model, name: 'Crown', at: top, length: crownWidth }] }, 60_000).catch(() => null);
-      const cb = placed?.ok ? await bounds(ctx.execStudioOp, `${model}.Crown`) : null;
-      if (cb) {
-        const root = await ctx.execStudioOp({ op: 'create_instances', items: [{ ...typed({ className: 'Part', name: 'CrownRoot', props: { Size: [1, 1, 1], Position: cb.center, Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1 } }), parent: `${model}.Crown` }] }, 20_000);
-        const inner = root.ok ? await ctx.execStudioOp({ op: 'rig_model', root: `${model}.Crown.CrownRoot`, joint: 'weld' }, 60_000) : root;
-        const outer = inner.ok ? await ctx.execStudioOp({ op: 'rig_model', root: `${model}.AppleBody`, parts: [`${model}.Crown.CrownRoot`], joint: 'weld' }, 60_000) : inner;
-        // rig_model anchors its root; the body is moved by its motor, so it is let go again.
-        await ctx.execStudioOp({ op: 'set_props', path: `${model}.AppleBody`, props: { Anchored: { t: 'bool', v: false } } }, 20_000).catch(() => undefined);
-        crowned = outer.ok;
-      }
-      if (!crowned) await ctx.execStudioOp({ op: 'delete_instances', paths: [`${model}.Crown`] }, 20_000).catch(() => undefined);
-    }
-    await ctx.execStudioOp({ op: 'delete_instances', paths: [madeFolder ? PARTS_FOLDER : folderPath] }, 20_000).catch(() => undefined);
-  }
-
-  // A glow outline on the whole model (the library's preset). No level-up aura: it is a few-second burst for a player,
-  // and left on it was a column of light that washed the object out.
-  const glow = vfxPlan('egg_glow', { path: model, className: 'Model' });
-  const shone = 'error' in glow ? null : await ctx.execStudioOp({ op: 'create_instances', items: glow.items }, 60_000).catch(() => null);
-  // An outline only: the preset's fill washed the model out and hid its own print (the butter's "BUTTER", live 2026-10-02).
-  if (shone?.ok) await ctx.execStudioOp({ op: 'set_props', path: `${model}.Glow`, props: { FillTransparency: { t: 'number', v: 1 } } }, 20_000).catch(() => undefined);
-
-  await ctx.execStudioOp({ op: 'set_props', path: `game.Workspace.${name}Stage.Rim`, props: { Color: { t: 'Color3', v: [0.71, 0.3, 1] }, Material: { t: 'EnumItem', v: 'Enum.Material.Neon' } } }, 20_000).catch(() => undefined);
-  await ctx.objectMemory?.save({ ...spec, cool: true }).catch(() => undefined);
-  const what = objectWords(String(spec.request ?? '')).join(' ') || 'object';
-  const fxWords: Record<string, string> = { sparkle_shimmer: 'it sparkles', fire: 'flames flicker on it', smoke: 'it smokes', fireflies: 'fireflies drift round it', snow: 'snow falls on it', heal: 'a soft green glow rises from it' };
-  const added = [crowned ? `it wears ${pick.own ? `a ${crownPick!.name}` : 'a crown'} from your library ("${crownPick!.name}"${crownPick!.game ? ` from ${crownPick!.game}` : ''})` : '',
-    sparkled?.ok ? fxWords[pick.effect] : '', shone?.ok ? 'it glows' : '',
-    spins ? 'four neon orbs circle above it' : '', 'the rim of its stage lights up'].filter(Boolean);
-  return {
-    changed: true, projectMutated: true, object: model, ...(problems.length ? { problems } : {}),
-    forUser: `Your ${what} is cooler now: ${added.slice(0, -1).join(', ')}${added.length > 1 ? ' and ' : ''}${added.at(-1)}. The model itself is the same one you picked.`,
-  };
 }

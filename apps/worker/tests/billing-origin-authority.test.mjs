@@ -4,7 +4,7 @@
  * Apple owns the signed Stripe endpoint. Its per-user QuotaDO resolves the current Stripe
  * subscription while that user's events are serialised, applies the result locally, and returns one
  * bounded mutation. The route sends that exact mutation through an external Durable Object binding
- * to the existing golem QuotaDO. A failed second write is a failed webhook delivery: Stripe retries,
+ * to the existing legacy QuotaDO. A failed second write is a failed webhook delivery: Stripe retries,
  * the authority reports a replay, and the replica is attempted again.
  *
  * Run with: node --test tests/billing-origin-authority.test.mjs

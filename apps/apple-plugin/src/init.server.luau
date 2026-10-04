@@ -267,7 +267,7 @@ local permission = text("Access: inspect only", 15, false)
 local edits = control("Enable edits…")
 local disclosure = text("Edits stay off until you allow them. This build supports bounded place operations, Run-mode playtests and short player Test sessions. It cannot publish, upload assets or execute arbitrary received Luau inside the plugin.", 13, true)
 local activity = text("No actions yet", 13, true)
-local version = text("Apple Studio · 1.4.3 · independent preview", 12, true)
+local version = text("Apple Studio · 1.5.0 · independent preview", 12, true)
 -- Resurface License §1: prominent credit and a link (THIRD_PARTY_NOTICES.md).
 text("Classic studs by Resurface (cxmeel) · github.com/cxmeel/resurface-plugin", 12, true)
 version.LayoutOrder = 100
@@ -380,7 +380,7 @@ bridge = Bridge.new({
 		return {
 			kind = "state", placeName = game.Name, placeId = game.PlaceId,
 			gameId = game.GameId, isRunMode = RunService:IsRunMode(),
-			selectionCount = #Selection:Get(), pluginVersion = "1.4.3",
+			selectionCount = #Selection:Get(), pluginVersion = "1.5.0",
 		}
 	end,
 	onStatus = function(message: string)

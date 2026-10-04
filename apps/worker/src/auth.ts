@@ -1,6 +1,7 @@
 // Supabase JWT verification via JWKS (ES256). The worker never holds auth secrets.
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { Env, AuthedUser } from './env';
+import { jwtFromSubprotocols } from '@apple/shared';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let jwksUrl = '';
@@ -34,9 +35,8 @@ export function bearerToken(req: Request): string | null {
   // WebSocket clients cannot set headers from the browser; allow token via subprotocol
   const proto = req.headers.get('Sec-WebSocket-Protocol');
   if (proto) {
-    const parts = proto.split(',').map((s) => s.trim());
-    const tok = parts.find((p) => p.startsWith('golem.jwt.'));
-    if (tok) return tok.slice('golem.jwt.'.length);
+    const tok = jwtFromSubprotocols(proto); // either prefix: the published plugin and open tabs still send the old one
+    if (tok) return tok;
   }
   return null;
 }

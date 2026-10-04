@@ -78,9 +78,10 @@ test('a non-finite number is refused, because NaN is not a number the wire can c
 });
 
 test('CHILDREN ARE WHERE THIS MATTERS MOST, and a refusal says which one', () => {
+  // A class this file cannot read a bare array for (a GUI Frame's Position is a UDim2, never three numbers): still refused.
   const items = [
     { className: 'Model', name: 'House', props: { Name: 'House' }, children: [
-      { className: 'Part', name: 'Wall', props: { Position: [0, 5, 0], Anchored: true } },
+      { className: 'Frame', name: 'Wall', props: { Position: [0, 5, 0], Anchored: true } },
     ] },
   ];
   const r = M.normaliseItems(items);
@@ -102,11 +103,96 @@ test('a clean item list comes back with its props rewritten and nothing else cha
   assert.equal(items[0].props.Anchored, true);
 });
 
-test('the exact payload from the failed op is now caught before it leaves the worker', () => {
-  // Reconstructed from op_4_mu8vhmsn: a create_instances whose Position was not tagged.
+test('the exact payload from the failed op no longer fails: a bare Position and Size on a Part can only be Vector3', () => {
+  // Reconstructed from op_4_mu8vhmsn: a create_instances whose Position was not tagged. It used to be refused here (and
+  // before that in Studio); the largest refusal class measured live was exactly this, on a property whose type is not in doubt.
   const r = M.normaliseItems([{ className: 'Part', name: 'Ground', props: { Position: [0, 0, 0], Size: [100, 1, 100] } }]);
-  assert.equal(r.refusals.length, 2, 'the op that failed in Studio must fail here instead');
-  assert.match(r.refusals[0].message, /only you know which you meant/);
+  assert.equal(r.refusals.length, 0, JSON.stringify(r.refusals));
+  assert.deepEqual(r.items[0].props.Position, { t: 'Vector3', v: [0, 0, 0] });
+  assert.deepEqual(r.items[0].props.Size, { t: 'Vector3', v: [100, 1, 100] });
+  assert.deepEqual(r.coerced.map((c) => c.name).sort(), ['items[0].props.Position', 'items[0].props.Size']);
+});
+
+test('what is still ambiguous is refused, with its location, and the how-to is said once', () => {
+  // The same bare array on a class this file cannot read it for, an unreadable object, and a colour the rule cannot settle.
+  const r = M.normaliseItems([
+    { className: 'Frame', name: 'A', props: { Size: [1, 2, 3] } },
+    { className: 'Part', name: 'B', props: { Color: [0.5, 128, 0] } },
+    { className: 'Part', name: 'C', props: { Position: { x: 1 } } },
+  ]);
+  assert.deepEqual(r.refusals.map((x) => x.name), ['items[0].props.Size', 'items[1].props.Color', 'items[2].props.Position']);
+  const text = M.describeRefusals(r.refusals);
+  assert.match(text, /items\[0\]\.props\.Size \(an array of 3\)/);
+  assert.match(text, /items\[2\]\.props\.Position \(an object with no "t"\)/);
+  assert.equal((text.match(/Every property is tagged with its type/g) ?? []).length, 1, 'the how-to was repeated per property');
+  // Many bad values still fit one tool result (the ceiling is 3000 characters).
+  const many = Array.from({ length: 100 }, (_, i) => ({ className: 'Frame', name: `F${i}`, props: { Size: [1, 2, 3] } }));
+  const long = M.describeRefusals(M.normaliseItems(many).refusals);
+  assert.ok(long.length < 2900, `the refusal text is ${long.length} characters`);
+  assert.match(long, /and \d+ more/);
+});
+
+test('bare values are coerced only where the property and class leave one reading', () => {
+  const t = (className, props) => M.normaliseProps(props, className);
+  assert.deepEqual(t('Part', { Color: [1, 0.5, 0] }).props.Color, { t: 'Color3', v: [1, 0.5, 0] });
+  assert.deepEqual(t('Part', { Color: [255, 128, 0] }).props.Color, { t: 'Color3', v: [1, 128 / 255, 0] }, '0..255 whole numbers are read as 0..255');
+  assert.equal(t('Part', { Color: [255, 0.5, 0] }).refusals.length, 1, 'a mix of fractions and 0..255 cannot be settled');
+  assert.equal(t('Part', { Color: [300, 0, 0] }).refusals.length, 1);
+  assert.deepEqual(t('PointLight', { Color: [1, 0.9, 0.6] }).props.Color, { t: 'Color3', v: [1, 0.9, 0.6] });
+  assert.equal(t('ParticleEmitter', { Color: [1, 0.9, 0.6] }).refusals.length, 1, 'a ParticleEmitter colour is a ColorSequence, not a Color3');
+  assert.deepEqual(t('Part', { Material: 'Plastic', Shape: 'Ball', TopSurface: 'Studs' }).props, {
+    Material: { t: 'EnumItem', v: 'Enum.Material.Plastic' }, Shape: { t: 'EnumItem', v: 'Enum.PartType.Ball' }, TopSurface: { t: 'EnumItem', v: 'Enum.SurfaceType.Studs' },
+  });
+  assert.deepEqual(t('Part', { Material: 'Enum.Material.Neon' }).props.Material, { t: 'EnumItem', v: 'Enum.Material.Neon' });
+  assert.deepEqual(t('Part', { Name: 'x' }).props.Name, { t: 'string', v: 'x' }, 'a string that is not one of those properties stays a string');
+  assert.equal(t(undefined, { Size: [1, 2, 3] }).refusals.length, 1, 'without a class nothing is guessed');
+});
+
+test('a plain part nobody anchored is Anchored; an explicit Anchored, and seats, are left as written', () => {
+  const r = M.normaliseItems([
+    { className: 'Part', name: 'A' },
+    { className: 'WedgePart', name: 'B', props: { Material: 'Plastic' } },
+    { className: 'Part', name: 'C', props: { Anchored: false } },
+    { className: 'VehicleSeat', name: 'D' },
+    { className: 'Model', name: 'M', children: [{ className: 'TrussPart', name: 'T' }] },
+  ]);
+  assert.deepEqual(r.items[0].props, { Anchored: { t: 'bool', v: true } });
+  assert.deepEqual(r.items[1].props.Anchored, { t: 'bool', v: true });
+  assert.deepEqual(r.items[2].props.Anchored, { t: 'bool', v: false }, 'an explicit false was overwritten');
+  assert.equal(r.items[3].props, undefined, 'a seat may need physics');
+  assert.equal(r.items[4].props, undefined);
+  assert.deepEqual(r.items[4].children[0].props, { Anchored: { t: 'bool', v: true } });
+});
+
+test('one create_instances call over the plugin limits is split in order; a single item over a limit is named, not split', () => {
+  const post = (i) => ({ className: 'Part', name: `Post${i}` });
+  const batches = M.planCreateBatches(Array.from({ length: 250 }, (_, i) => post(i)));
+  assert.deepEqual(batches.map((b) => b.length), [120, 120, 10]);
+  assert.equal(batches.flat()[0].name, 'Post0'); assert.equal(batches.flat()[249].name, 'Post249');
+  const tree = (i) => ({ className: 'Model', name: `T${i}`, children: Array.from({ length: 30 }, (_, j) => ({ className: 'Part', name: `p${j}` })) });
+  assert.deepEqual(M.planCreateBatches(Array.from({ length: 30 }, (_, i) => tree(i))).map((b) => b.length), [12, 12, 6], '31 nodes each: 400 nodes fit 12 per call');
+  const fat = { className: 'Model', name: 'Fat', children: Array.from({ length: 41 }, (_, j) => ({ className: 'Part', name: `p${j}` })) };
+  assert.match(M.createLimitIssues([post(1), fat])[0], /items\[1\] has 41 children; the limit is 40/);
+  const huge = { className: 'Model', name: 'Huge', children: Array.from({ length: 10 }, (_, a) => ({ className: 'Model', name: `g${a}`, children: Array.from({ length: 40 }, (_, b) => ({ className: 'Part', name: `q${b}` })) })) };
+  assert.match(M.createLimitIssues([huge])[0], /items\[0\] holds 411 instances; one call may create at most 400/);
+  assert.deepEqual(M.createLimitIssues([post(1)]), []);
+});
+
+test('one path spelling: a bare service-rooted path in any Studio tool argument is rooted at game', () => {
+  const r = M.normaliseStudioPaths({
+    path: 'Workspace.Lamp', paths: ['workspace.A', 'game.Workspace.B', 'Lighting'], parent: 'ServerStorage.Kit', template: 'Workspace["Odd Name"]',
+    targets: ['StarterGui.Hud'], moves: [{ path: 'Workspace.X', newParent: 'Workspace.Y' }], query: 'Workspace.NotAPath', name: 'Workspace',
+  });
+  assert.equal(r.path, 'game.Workspace.Lamp');
+  assert.deepEqual(r.paths, ['game.Workspace.A', 'game.Workspace.B', 'game.Lighting']);
+  assert.equal(r.parent, 'game.ServerStorage.Kit');
+  assert.equal(r.template, 'game.Workspace["Odd Name"]');
+  assert.deepEqual(r.targets, ['game.StarterGui.Hud']);
+  assert.deepEqual(r.moves, [{ path: 'game.Workspace.X', newParent: 'game.Workspace.Y' }]);
+  assert.equal(r.query, 'Workspace.NotAPath', 'only path-valued keys are rewritten');
+  assert.equal(r.name, 'Workspace');
+  assert.equal(M.rootStudioPath('/Workspace/Farm'), '/Workspace/Farm', 'a library path is not a Studio path');
+  assert.equal(M.rootStudioPath('MyFolder.X'), 'MyFolder.X', 'only the services are rooted: nothing else is guessed');
 });
 
 // ---- item SHAPE (2026-09-22, vis-01 street lamp after D-RUN-1) --------------------------------------
@@ -170,8 +256,11 @@ test('an item with NO className is refused in the worker, before any round trip 
 });
 
 test('control: an item already in wire shape is passed through with its fields unchanged', () => {
-  const item = { className: 'Part', name: 'Floor', parent: 'game.Workspace.Town', props: { Size: { t: 'Vector3', v: [4, 1, 4] } } };
+  const item = { className: 'Part', name: 'Floor', parent: 'game.Workspace.Town', props: { Size: { t: 'Vector3', v: [4, 1, 4] }, Anchored: { t: 'bool', v: false } } };
   const r = M.normaliseItems([item]);
   assert.equal(r.refusals.length, 0);
   assert.deepEqual(r.items[0], item);
+  // The one default the harness adds is Anchored on a plain part that did not say.
+  const bare = { className: 'Part', name: 'Floor', parent: 'game.Workspace.Town', props: { Size: { t: 'Vector3', v: [4, 1, 4] } } };
+  assert.deepEqual(M.normaliseItems([bare]).items[0], { ...bare, props: { ...bare.props, Anchored: { t: 'bool', v: true } } });
 });

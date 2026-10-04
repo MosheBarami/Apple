@@ -102,7 +102,7 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
 test('the model cards are data-driven and do not revive the removed hand-counted sections', () => {
   // Product model identity is supplied by the shared contract. Keep this independent from the
   // autonomy mode names and from the former count-bearing modes/how-it-works sections.
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@golem\/shared['"]/;
+  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@apple\/shared['"]/;
   assert.match(PAGE, modelImport,
     'the landing does not import the shared product model list');
   assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,

@@ -71,6 +71,10 @@ function AppleGameUI.start()
 	local cfg = if cfgModule then require(cfgModule) :: any else {}
 	local words: { [string]: string } = cfg.words or {}
 	local currency: string = cfg.currency or "Coins"
+	-- The money counter's name in the screen and the symbol printed before a price: the game's own, from the client config
+	-- (the composer names the counter for the currency, so a renamed currency is found; no symbol means none).
+	local counterName: string = cfg.counter or "Coins"
+	local symbol: string = cfg.symbol or ""
 	local State = require(comps:WaitForChild("AppleClientState")) :: any
 	local soundsModule = comps:FindFirstChild("AppleSounds")
 	local Sounds = if soundsModule then require(soundsModule) :: any else { play = function(_: string) end }
@@ -175,7 +179,7 @@ function AppleGameUI.start()
 		for _, p in panels do button(p:FindFirstChild("Close"), close) end
 		button(find("Menu.Shop"), function() open(find("ShopPanel")) end)
 		button(find("Menu.Upgrade"), function() open(find("UpgradePanel")) end)
-		button(find("Coins.Plus"), function()
+		button(find(counterName .. ".Plus"), function()
 			open(find("ShopPanel"))
 			say(words.earn or "Beat enemies and clear waves to earn more!", true)
 		end)
@@ -185,13 +189,13 @@ function AppleGameUI.start()
 		end)
 
 		-- Money: counts up to the new amount; a gain pops "+N" beside it.
-		local value = find("Coins.Value")
+		local value = find(counterName .. ".Value")
 		local shownMoney = money()
 		setText(value, AppleGameUI.short(shownMoney))
 		local counter = Instance.new("NumberValue")
 		counter.Value = shownMoney
 		counter.Changed:Connect(function(v) setText(value, AppleGameUI.short(v)) end)
-		local coins = find("Coins")
+		local coins = find(counterName)
 		local function pop(amount: number)
 			if not coins or not coins:IsA("GuiObject") then return end
 			local label = Instance.new("TextLabel")
@@ -353,7 +357,7 @@ function AppleGameUI.start()
 					catalog:GetAttribute("UpgradeCost") or 0.8, catalog:GetAttribute("UpgradeGrowth") or 1.8)
 				setText(row:FindFirstChild("Level"), ("LV %d"):format(level))
 				local buy = row:FindFirstChild("Buy")
-				setText(buy and buy:FindFirstChild("Label"), if cost then "$" .. AppleGameUI.short(cost) else "MAX")
+				setText(buy and buy:FindFirstChild("Label"), if cost then symbol .. AppleGameUI.short(cost) else "MAX")
 				local locked = (entry:GetAttribute("Unlock") or 0) > top
 				if not cost or locked or have < cost then tint(buy, { 215, 221, 226 }, { 143, 154, 163 }) else tint(buy, { 95, 211, 255 }, { 31, 111, 255 }) end
 			end
@@ -377,7 +381,7 @@ function AppleGameUI.start()
 				local blurb = entry:GetAttribute("Blurb")
 				setText(card:FindFirstChild("Info"), if blurb and blurb ~= "" then blurb else ("%d dmg  -  %d range"):format(entry:GetAttribute("Damage") or 0, entry:GetAttribute("Range") or 0))
 				local buy = card:FindFirstChild("Buy")
-				setText(buy and buy:FindFirstChild("Label"), "$" .. AppleGameUI.short(entry:GetAttribute("Price") or 0))
+				setText(buy and buy:FindFirstChild("Label"), symbol .. AppleGameUI.short(entry:GetAttribute("Price") or 0))
 				viewport(card:FindFirstChild("Icon"), id)
 				button(buy, function()
 					local entryNow = catalog:FindFirstChild(id)

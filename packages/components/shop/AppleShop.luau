@@ -13,12 +13,17 @@
 ]]
 local AppleShop = {}
 
+--[[ Pure: what a shortfall says, in the game's own currency ("Not enough crystals."), never "money". ]]
+function AppleShop.notEnough(currency: string?): string
+	return if type(currency) == "string" and currency ~= "" then ("Not enough %s."):format(currency:lower()) else "Not enough yet."
+end
+
 --[[ Pure: why a purchase is refused, or nil when it may go ahead. ]]
-function AppleShop.refusal(item: any, tileOwner: number?, playerId: number, occupied: boolean, balance: number): string?
+function AppleShop.refusal(item: any, tileOwner: number?, playerId: number, occupied: boolean, balance: number, currency: string?): string?
 	if item == nil then return "That item is not sold here." end
 	if tileOwner ~= playerId then return "Place it on your own plot." end
 	if occupied then return "That spot is taken." end
-	if balance < (item.price or 0) then return "Not enough money." end
+	if balance < (item.price or 0) then return AppleShop.notEnough(currency) end
 	return nil
 end
 
@@ -221,12 +226,12 @@ function AppleShop.start(config: any, economy: any)
 		local item = items[id]
 		local plot = plotOf(player)
 		local owner = if plot and tile:IsDescendantOf(plot) then player.UserId else nil
-		local why = AppleShop.refusal(item, owner, player.UserId, tile:GetAttribute("Occupied") == true, economy.get(player))
+		local why = AppleShop.refusal(item, owner, player.UserId, tile:GetAttribute("Occupied") == true, economy.get(player), economy.CURRENCY)
 		if why then return false, why end
 		if AppleShop.locked(item, reached(player)) then return false, ("Unlocks at wave %d."):format(item.unlock) end
 		local template = templates:FindFirstChild(id)
 		if not template then return false, "That item is not sold here." end
-		if not economy.spend(player, item.price or 0, "buy " .. id) then return false, "Not enough money." end
+		if not economy.spend(player, item.price or 0, "buy " .. id) then return false, AppleShop.notEnough(economy.CURRENCY) end
 		put(player, id, item, template, tile)
 		return true, (item.name or id) .. " placed!"
 	end
@@ -238,7 +243,7 @@ function AppleShop.start(config: any, economy: any)
 		local level = levelOf(player, id)
 		local cost = AppleShop.upgradeCost(item, level, rules)
 		if not cost then return false, (item.name or id) .. " is at its top level." end
-		if not economy.spend(player, cost, "upgrade " .. id) then return false, "Not enough money." end
+		if not economy.spend(player, cost, "upgrade " .. id) then return false, AppleShop.notEnough(economy.CURRENCY) end
 		level += 1
 		economy.setData(player, "Lv_" .. id, level)
 		for _, m in placed:GetChildren() do

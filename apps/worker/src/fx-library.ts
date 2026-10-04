@@ -16,7 +16,7 @@
 // afterwards, because a create call cannot reference a sibling it is creating.
 import sfx from '../../../packages/asset-library/sfx/index.json';
 import vfx from '../../../packages/asset-library/vfx/index.json';
-import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@golem/shared';
+import type { GatewayToolDef, InstanceSpec, PropValue, StudioOp } from '@apple/shared';
 import type { LibraryRule } from './library-guard';
 import type { OpCall } from './phase-a-tools';
 
@@ -112,19 +112,23 @@ export function soundAssetId(value: unknown): number | null {
 }
 
 /**
- * A SoundId written by hand (set_properties): allowed only for a library id, or an id a search tool
+ * A SoundId (or an AudioPlayer's Asset) written by hand: allowed only for a library id, or an id a search tool
  * of this run returned. Anything else plays silence without an error, which is why it is refused.
  */
 export function refuseSoundId(props: Record<string, unknown> | undefined, discovered?: ReadonlySet<number>): { error: string } | null {
-  if (!props || !('SoundId' in props)) return null;
-  const raw = props.SoundId;
-  const value = raw && typeof raw === 'object' && 'v' in (raw as Record<string, unknown>) ? (raw as { v: unknown }).v : raw;
-  if (value === '') return null;
-  const id = soundAssetId(value);
-  if (id !== null && (librarySound(id) || discovered?.has(id))) return null;
-  return {
-    error: `Refused (D-FXLIB-1): SoundId ${JSON.stringify(value)} is not a sound from Apple's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
-  };
+  if (!props) return null;
+  for (const key of ['SoundId', 'Asset'] as const) {
+    if (!(key in props)) continue;
+    const raw = props[key];
+    const value = raw && typeof raw === 'object' && 'v' in (raw as Record<string, unknown>) ? (raw as { v: unknown }).v : raw;
+    if (value === '') continue;
+    const id = soundAssetId(value);
+    if (id !== null && (librarySound(id) || discovered?.has(id))) continue;
+    return {
+      error: `Refused (D-FXLIB-1): ${key} ${JSON.stringify(value)} is not a sound from Apple's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
+    };
+  }
+  return null;
 }
 
 // --- effects -----------------------------------------------------------------------------------
@@ -369,8 +373,8 @@ export const findSound = {
     name: 'find_sound',
     description:
       `Search Apple's sound library: ${ROWS.length.toLocaleString('en-US')} Roblox audio ids from Roblox's own Creator Store (licensed partner audio from Roblox, APM, ProSoundEffects and Monstercat first, then free community uploads) — every one plays in any experience, nothing to upload. ` +
-      'Plain words ("coin pickup", "sword swing", "rebirth", "horror sting", "rain loop", "button click"); category narrows to one of: ' +
-      `${SOUND_CATEGORIES.join(', ')}. Returns assetId, name, category and seconds. Put one in the place with insert_sound; hear it first with play_library_sound. Nothing is changed by this call.`,
+      'Plain words ("coin pickup", "sword swing", "rebirth", "horror sting", "rain loop", "button click"); category narrows it (the enum lists them). ' +
+      `Returns assetId, name, category and seconds. Put one in the place with insert_sound; hear it first with play_library_sound. Nothing is changed by this call.`,
     parameters: {
       type: 'object',
       properties: {
@@ -447,7 +451,7 @@ export const playLibrarySound = {
   def: {
     name: 'play_library_sound',
     description:
-      'Play one library sound out loud in Studio, for the person at the keyboard only (SoundService:PlayLocalSound). Nothing is added to the place. Use it to let them hear a choice before insert_sound, by query or by assetId from find_sound.',
+      'Play one library sound out loud in Studio, for the person at the computer only (SoundService:PlayLocalSound). Nothing is added to the place. Use it to let them hear a choice before insert_sound, by query or by assetId from find_sound.',
     parameters: {
       type: 'object',
       properties: {
@@ -489,9 +493,9 @@ export const insertVfx = {
     name: 'insert_vfx',
     description:
       'The ONLY way to put particles, beams or trails in the place (D-FXLIB-1): builds one library effect preset on target. ' +
-      `preset: ${PRESET_NAMES.join(', ')} (find_vfx describes each). target: the part it plays on (a player's HumanoidRootPart for auras, the egg for egg_glow); area effects (snow, rain, fireflies) take a big part or game.Workspace. ` +
-      'One-shot presets (coin_burst, explosion, magic_hit, water_splash, confetti, pet_hatch, hit_sparks) are placed switched off; a script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")). mode "loop" keeps a one-shot running so it can be seen in Studio. ' +
-      'color [r,g,b] 0-255 recolours it, scale 0.25-4 resizes, rate 0.1-4 thins or thickens a looping one. Re-inserting the same preset on the same target replaces it. Creating a ParticleEmitter, Beam, Trail, Fire, Smoke or Sparkles any other way is refused.',
+      `preset: one of the enum (find_vfx describes each). target: the part it plays on (a player's HumanoidRootPart for auras, the object a highlight outlines); area effects (snow, rain, fireflies) take a big part or game.Workspace. ` +
+      'One-shot presets (coin_burst, explosion, magic_hit, water_splash, confetti, pet_hatch, hit_sparks) are placed off; a script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")). mode "loop" keeps a one-shot running to see it in Studio. ' +
+      'color [r,g,b] 0-255 recolours, scale 0.25-4 resizes, rate 0.1-4 thins or thickens a loop. The same preset on the same target replaces it. A ParticleEmitter, Beam, Trail, Fire, Smoke or Sparkles made any other way is refused.',
     parameters: {
       type: 'object',
       properties: {

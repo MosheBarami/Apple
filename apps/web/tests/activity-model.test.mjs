@@ -193,7 +193,7 @@ test('reading the project and reading its scripts are different activities', () 
 test('searching the Roblox docs is not inspecting the user project', () => {
   // C04. `search_docs` reads Roblox's documentation, which is not in the place at
   // all — calling that "Inspecting project" told the user the wrong thing about
-  // where Golem was looking.
+  // where Apple was looking.
   assert.equal(kindForTool('search_docs'), 'searching_knowledge');
   assert.equal(kindForTool('get_project_tree'), 'inspecting');
 });

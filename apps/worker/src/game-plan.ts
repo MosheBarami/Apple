@@ -1,4 +1,4 @@
-import type { PropValue } from '@golem/shared';
+import type { PropValue } from '@apple/shared';
 import type { AgentCtx } from './tools';
 import {
   GAME_ID, connectMenus, libraryDefaultParent, libraryFolders, libraryImportRaw, libraryMaterials, libraryReady, librarySafetyCopy, MENUS_CONNECTED,
@@ -54,7 +54,7 @@ export interface Design {
   studioNotes: string[]; walkthrough: string[]; checklist: string[];
 }
 export interface Patch { path: string; edits: ScriptEdit[]; why: string }
-interface Stored { design: Design; request: string; seed: number; at: number }
+interface Stored { design: Design; request: string; seed: number; at: number; /** The id plan_game returned: build_game and judge_game pass it back, so a plan is used only by a call that names it. */ planId?: string }
 /** A plan older than this is another conversation's: build_game asks for a fresh one. */
 const PLAN_LIFETIME_MS = 3 * 60 * 60_000;
 
@@ -232,14 +232,28 @@ const within = (path: string, ancestor: string): boolean => path === ancestor ||
 /* ------------------------------------------------------------------------------------- keeping the design --- */
 
 const memory = new Map<string, Stored>();
-const memoryKey = (ctx: AgentCtx) => ctx.projectId ?? '-';
-async function keepPlan(ctx: AgentCtx, stored: Stored) {
-  if (ctx.plannedGame) { await ctx.plannedGame.save(stored).catch(() => undefined); return; }
-  memory.set(memoryKey(ctx), stored);
+/**
+ * A plan belongs to the project it was made in (the session's own storage), and to the call that names its id. The shared
+ * in-memory fallback keyed '-' (every project without an id shared one slot) is gone: without a project there is no place to keep
+ * a plan, and plan_game says so.
+ */
+async function keepPlan(ctx: AgentCtx, stored: Stored): Promise<boolean> {
+  if (ctx.plannedGame) { await ctx.plannedGame.save(stored).catch(() => undefined); return true; }
+  if (!ctx.projectId) return false;
+  memory.set(ctx.projectId, stored);
   if (memory.size > 8) memory.delete(memory.keys().next().value!);
+  return true;
 }
-async function recallPlan(ctx: AgentCtx): Promise<Stored | undefined> {
-  const saved = ctx.plannedGame ? await ctx.plannedGame.load().catch(() => undefined) : memory.get(memoryKey(ctx));
+/** The plan is spent when its game is built: a later call cannot rebuild from it. */
+async function clearPlan(ctx: AgentCtx): Promise<void> {
+  if (ctx.plannedGame?.clear) await ctx.plannedGame.clear().catch(() => undefined);
+  if (ctx.projectId) memory.delete(ctx.projectId);
+}
+/** The kept plan, only for the call that names its id (planId); a plan nobody names is nobody's. */
+async function recallPlan(ctx: AgentCtx, planId?: unknown): Promise<Stored | undefined> {
+  if (typeof planId !== 'string' || !planId) return undefined;
+  const saved = ctx.plannedGame ? await ctx.plannedGame.load().catch(() => undefined) : ctx.projectId ? memory.get(ctx.projectId) : undefined;
+  if (rec(saved).planId !== planId) return undefined;
   const r = rec(saved), design = rec(r.design);
   const fresh = typeof r.at === 'number' && Date.now() - r.at < PLAN_LIFETIME_MS;
   if (!fresh || !GAME_ID.test(String(rec(design.core).gameId ?? '')) || !Array.isArray(design.imports)) return undefined;
@@ -251,8 +265,8 @@ async function recallPlan(ctx: AgentCtx): Promise<Stored | undefined> {
  * The first steps of the game's loop, when the game was built from a library core whose loop runs as saved: what a player does to earn.
  * The judge's quick test cannot plant, aim or wait out a wave; this is what it says a player should try instead of calling the loop missing.
  */
-export async function plannedLoop(ctx: AgentCtx): Promise<string[] | undefined> {
-  const stored = await recallPlan(ctx);
+export async function plannedLoop(ctx: AgentCtx, planId?: unknown): Promise<string[] | undefined> {
+  const stored = await recallPlan(ctx, planId);
   const d = stored?.design;
   return d && (d.core.runs ?? 0) >= 3 && d.walkthrough.length ? d.walkthrough.slice(0, 4) : undefined;
 }
@@ -338,9 +352,10 @@ export async function planGame(ctx: AgentCtx, a: Record<string, unknown>) {
   const design = readDesign(rec(out.data));
   if ('error' in design) return { error: `${design.error} Tell the user in one plain sentence that the library has nothing for that kind of game yet; nothing was built.` };
   // The library takes the first 200 characters; the judge is given the user's whole request.
-  await keepPlan(ctx, { design, request: clean(words || a.request, 1000) || request, seed, at: Date.now() });
+  const planId = crypto.randomUUID().slice(0, 8);
+  if (!(await keepPlan(ctx, { design, request: clean(words || a.request, 1000) || request, seed, at: Date.now(), planId }))) return { error: 'There is no project to keep the plan in, so nothing was planned.' };
   return {
-    planned: true, plan: digest(design, seed), forUser: planWords(design),
+    planned: true, planId, plan: digest(design, seed), forUser: planWords(design),
     note: 'The full plan is saved. Read the digest: the title, theme, pitch and currency name are yours to change (pass them as design {title, theme, currency} to build_game); the parts, screens and texts are fixed. Then call build_game. Name no tools, paths, counts or ids to the user.',
   };
 }
@@ -676,12 +691,12 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
 
   // The design is the one plan_game kept; the model only supplies the names it changed (or, with no kept plan, a whole design).
   const given = rec(a.design);
-  const kept = await recallPlan(ctx);
+  const kept = await recallPlan(ctx, a.planId);
   let stored: Stored;
   if (kept) stored = { ...kept, design: withNames(kept.design, given) };
   else {
     const whole = 'core' in given ? readDesign(given) : undefined;
-    if (!whole) return { error: 'There is no saved plan yet. Call plan_game with the user\'s request first (the same seed gives the same plan again), then build_game.' };
+    if (!whole) return { error: 'There is no saved plan under that planId. Call plan_game with the user\'s request first (the same seed gives the same plan again), then build_game with the planId it returned.' };
     if ('error' in whole) return { error: whole.error + ' Call plan_game again.' };
     stored = { design: whole, request: whole.pitch || whole.title, seed: 0, at: Date.now() };
   }
@@ -792,6 +807,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   if (imported === 0) return { error: `${disconnected ? plainProblem('disconnected') : 'Apple could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0] };
   // Scripts that can call out to the internet come in dozens (every plant model carries one): a few say it, the count says how many.
   const flagged = suspicious.slice(0, 8);
+  await clearPlan(ctx);
   const checklist = await themeTheContent(ctx, design, request, fixes.left, lit === 'refused' ? 'Studio refused the theme lighting; set the Lighting values by hand.' : '', dangling);
   return {
     built: true, changed: true, title: design.title, genre: design.genre, seed,

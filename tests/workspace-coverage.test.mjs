@@ -236,7 +236,7 @@ test('a test script whose glob misses a test file in its own package is caught',
 /* ------------------------------------ a directory after `node --test` is a CI-only failure --- */
 
 test('a bare directory passed to `node --test` is caught, and the file-list form is not', () => {
-  // `@golem/lumen-isles` and `@golem/site` both shipped `"test": "node --test tests/"`. On the
+  // `@apple/lumen-isles` and `@apple/site` both shipped `"test": "node --test tests/"`. On the
   // local Node that discovers the directory and passes. On Node 22 — ci.yml's NODE_VERSION — the
   // runner resolves `tests/` as a module specifier and dies before one assertion runs:
   //
@@ -284,4 +284,10 @@ test('a bare directory passed to `node --test` is caught, and the file-list form
   } finally {
     rmSync(bare.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   }
+});
+
+test('a non-node test script that names a directory is not read as node --test (python unittest -s tests)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../scripts/check-workspace-coverage.mjs', import.meta.url), 'utf8');
+  assert.match(src, /\/\\bnode\\s\+--test\\b\/\.test\(script\) \? script\.split/, 'the directory rule must apply only to node --test scripts');
 });

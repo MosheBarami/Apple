@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Golem eval runner. Single-turn: send each task's system+prompt to each model
+// Apple eval runner. Single-turn: send each task's system+prompt to each model
 // through the worker admin gateway, grade the response, aggregate, save JSON,
 // print a category table.
 //

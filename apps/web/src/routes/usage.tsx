@@ -1,6 +1,6 @@
 // /usage — Credits today, 30 days of history, and the plan.
 //
-// Every number on this page comes from the live quota or from @golem/shared.
+// Every number on this page comes from the live quota or from @apple/shared.
 // Credits are billed from the compute a run actually consumes, so the per-mode
 // figures are the measured typical range, not a price list.
 import { useEffect, useRef, useState } from 'react';
@@ -19,7 +19,7 @@ import {
   formatMoney,
   isPlanId,
   type PlanId,
-} from '@golem/shared';
+} from '@apple/shared';
 import { ModelMark } from '../components/ws/model-mark';
 import {
   billingChangeLine,

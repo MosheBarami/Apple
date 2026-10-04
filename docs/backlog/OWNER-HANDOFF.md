@@ -32,7 +32,7 @@ Derived, not asserted: `PLAN_LIMITS.free.creditsPerDay = 60`, `CREDITS_PER_BUILD
 **Rows it unblocks.** 1 — `G-OFFER-1`. It also decides whether S1's published free quota can be
 stated at all, since a page advertising a free tier that finishes nothing is a page that misleads.
 
-**Already built on this side.** The whole ladder is shared (`PLAN_LIMITS` in `@golem/shared`, read
+**Already built on this side.** The whole ladder is shared (`PLAN_LIMITS` in `@apple/shared`, read
 by `QuotaDO` and by every surface), the arithmetic is derived rather than restated
 (`buildsPerDay`/`buildsPerMonth`), and the checker that measures the violation exists and is red.
 The only missing input is the number, which §12.5 reserves to you.
@@ -174,7 +174,7 @@ believes) — import it. They had to agree: a grader whose mask differs from the
 grader whose scores do not predict the product.
 
 **Why the design package.** It is the only package both consumers already depend on, so the shared
-module needed no new workspace wiring. A dedicated `@golem/pixels` package would carry a better
+module needed no new workspace wiring. A dedicated `@apple/pixels` package would carry a better
 name; that is recorded as reversible, and moving it later is an import rewrite in two files.
 
 **What keeps it closed.** `tests/pixel-primitives.test.mjs` asserts each name is defined exactly

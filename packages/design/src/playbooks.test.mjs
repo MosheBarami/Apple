@@ -105,7 +105,7 @@ test('the playbook does not simply fail everything: real code passes it', () => 
 });
 
 test('a step done without the owned primitive reads as re-invention, not as absence', () => {
-  // §G's complaint is that Golem "defaults to inventing every Roblox GUI from a
+  // §G's complaint is that Apple "defaults to inventing every Roblox GUI from a
   // blank canvas". `manual` is that defaulting, detected — and it must stay
   // distinct from `missing`, because the two call for different responses.
   const handRolled = [

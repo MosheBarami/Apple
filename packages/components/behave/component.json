@@ -1,0 +1,22 @@
+{
+  "id": "behave",
+  "name": "AppleBehave",
+  "role": "system",
+  "summary": "Gives a model behaviour from data, so a library or Creator Store piece that arrived without scripts or sounds can open, spin, bob, glow, play a sound, burst particles, fade or launch a player when something triggers it. Verbs done to parts (swing, slide, spin, bob, fade, light, sound, emit, bounce), triggers (click, prompt, touch, near, auto), modes (toggle, pulse, hold, once). Nothing in it knows what a model is.",
+  "files": {
+    "AppleBehave.luau": {
+      "class": "Script",
+      "parent": "ServerScriptService",
+      "name": "AppleBehave"
+    }
+  },
+  "needs": {
+    "model": "a Model (or a single part) in Workspace",
+    "behaviours": "a ModuleScript named AppleBehaviours inside it returning { v = 1, behaviours = { { id, verb, target, trigger, mode, ...verb parameters } } }; written by add_behaviour from reviewed verbs, never from received code"
+  },
+  "gives": {
+    "motion": "moving parts are anchored and composed from the pose they had at the start: rotations about their own hinges in order, then translations",
+    "interaction": "ClickDetector, ProximityPrompt, Touched or a proximity poll starts a behaviour; behaviours may share one trigger",
+    "state": "Model attribute AppleBehave_<id> is true while a state behaviour is on; AppleBehave_<id>_fired counts the firings of a one-shot"
+  }
+}

@@ -1,4 +1,4 @@
-# Golem Asset Strategy — Recommendation
+# Apple Asset Strategy — Recommendation
 
 Sections D (curated asset library design) and E (decision). Evidence, source URLs and the
 model licence table live in [`3d-asset-pipeline.md`](./3d-asset-pipeline.md).
@@ -34,7 +34,7 @@ procedural geometry cannot do, and a small verified library for everything else.
 
 The nuance that changes the usual answer: runtime 3D generation **is** viable — but only
 through `GenerationService`, which is free, first-party, live-verified working from
-Golem's plugin (20.1 s, 6k triangles, 10 req/min), and carries **zero marginal cost per
+Apple's plugin (20.1 s, 6k triangles, 10 req/min), and carries **zero marginal cost per
 user**. Every *self-hosted or per-generation open model* route is either ~10× over budget,
 an uncapped per-user variable cost, or legally unusable. See
 [`3d-asset-pipeline.md` §C5](./3d-asset-pipeline.md#c5-could-any-of-this-run-inside-1025month-honest-answer-no).
@@ -45,9 +45,9 @@ an uncapped per-user variable cost, or legally unusable. See
 
 ## D0. The core insight that makes this free
 
-Golem stores **Roblox asset IDs and metadata, never asset bytes.**
+Apple stores **Roblox asset IDs and metadata, never asset bytes.**
 
-Roblox already hosts and CDN-serves the geometry and textures. Golem's job is to remember
+Roblox already hosts and CDN-serves the geometry and textures. Apple's job is to remember
 *which ID is which thing*, *where it came from*, and *whether it is safe to use*. That is
 a few kilobytes per asset — which is why **R2 is not needed** and its absence is not a
 blocker.
@@ -59,7 +59,7 @@ The second unlock, from
 > **Open Use** — Any creator or game can use the asset.
 > — <https://create.roblox.com/docs/en-us/projects/assets/privacy.md>
 
-So a **Mesh** or **Image** asset uploaded once under Golem's Roblox account is usable by
+So a **Mesh** or **Image** asset uploaded once under Apple's Roblox account is usable by
 *every* customer's experience, by ID, with no ownership relationship and **without** the
 per-place "Allow Loading Third Party Assets" toggle. A **Model** asset does not get this
 treatment.
@@ -67,7 +67,7 @@ treatment.
 > **Design rule #1: the library is keyed on Mesh (`typeId 40`) and Image/Decal asset IDs.
 > Never Model IDs.**
 >
-> **Design rule #2: Golem never re-hosts asset bytes. If it cannot be referenced by a
+> **Design rule #2: Apple never re-hosts asset bytes. If it cannot be referenced by a
 > Roblox asset ID, it does not go in the library.**
 
 ## D1. Layers of the system
@@ -75,8 +75,8 @@ treatment.
 ```
 ┌─ Layer 0  PROCEDURAL          Luau generator modules. Zero assets. Zero cost.
 │                               Ships as ProceduralModel + generator, or as plain build code.
-├─ Layer 1  GOLEM KIT           ~150–400 Mesh + Image asset IDs uploaded once by the owner
-│                               from CC0 sources, under Golem's Roblox account.
+├─ Layer 1  APPLE KIT           ~150–400 Mesh + Image asset IDs uploaded once by the owner
+│                               from CC0 sources, under Apple's Roblox account.
 │                               Open Use → every customer can reference them.
 ├─ Layer 2  GENERATED           GenerationService:GenerateModelAsync in the user's Studio.
 │                               Free, session-scoped, persisted to the *user's* account.
@@ -104,7 +104,7 @@ I checked each licence claim myself. Results:
    uniformly CC0, verified at source. They alone can supply a complete stylistically
    coherent kit.
 2. **CC-BY is allowed but must be tracked**, because attribution has to survive into
-   whatever Golem builds. If a CC-BY asset is used, Golem must emit a credits object into
+   whatever Apple builds. If a CC-BY asset is used, Apple must emit a credits object into
    the generated place (a `StringValue`/`ModuleScript` in `ReplicatedStorage`, plus a
    line in the place description). Simpler alternative: **exclude CC-BY entirely from v1**
    and take only CC0. Recommended for v1.
@@ -117,11 +117,11 @@ I checked each licence claim myself. Results:
 ## D3. Provenance record — exact schema
 
 Two D1 tables plus one Vectorize index. This is the authoritative record for every asset
-Golem can reference.
+Apple can reference.
 
 ```sql
 -- ============================================================
--- Every asset Golem is allowed to reference, with full provenance.
+-- Every asset Apple is allowed to reference, with full provenance.
 -- Storage: metadata only. No geometry, no textures, no bytes.
 -- ============================================================
 CREATE TABLE asset_library (
@@ -237,7 +237,7 @@ asserted.
 
 ## D4. Semantic search
 
-Golem already runs hybrid RAG (Vectorize `golem-docs` + D1 FTS5, bge-small 384d). Reuse it
+Apple already runs hybrid RAG (Vectorize `golem-docs` + D1 FTS5, bge-small 384d). Reuse it
 verbatim — no new technology.
 
 - **New Vectorize index `golem-assets`**, 384 dimensions (bge-small, already wired).
@@ -345,7 +345,7 @@ For each need: first / second / third choice, and the verification step that gat
    Everything else has a good procedural or built-in answer. This is where the library
    budget should be spent.
 2. **Lighting and materials are free and move perceived quality more than geometry.**
-   If Golem does only one thing, it should be: set `Material` correctly on every part and
+   If Apple does only one thing, it should be: set `Material` correctly on every part and
    configure `Atmosphere` + `Future` lighting on every place.
 
 ## E2. Verification procedure — "never guess asset IDs"
@@ -407,7 +407,7 @@ No auth. Rate limit headers observed: `x-ratelimit-limit: 100, 100;w=60`. Return
 | 10 | Depicts the right thing | thumbnail fetched and confirmed — see step 3b |
 
 **Assertion 5 is non-negotiable.** Free Roblox models are the classic vector for backdoor
-scripts. Golem must never auto-insert an asset containing a script. If a script-bearing
+scripts. Apple must never auto-insert an asset containing a script. If a script-bearing
 asset is genuinely wanted, it goes to a human.
 
 **Step 3b — Visual confirmation.** Fetch
@@ -457,7 +457,7 @@ fact; a library that never re-checks will rot.
                               Enum.AssetType.Mesh,
                               {CreatorId = <Studio user id>,
                                CreatorType = Enum.AssetCreatorType.User,
-                               Name = …, Description = "Generated by Golem"})
+                               Name = …, Description = "Generated by Apple"})
      ei  = AssetService:CreateEditableImageAsync(part.TextureContent)
      ok, res, imgId   = pcall(AssetService.CreateAssetAsync, AssetService, ei,
                               Enum.AssetType.Image, {…same…})
@@ -477,7 +477,7 @@ API key, no Open Cloud round trip.
 is visible in the user's own place immediately and only the *shareable asset* is gated.
 
 **Assets are created under the customer's own Roblox account**, which is the correct
-ownership model — Golem never becomes the rights-holder, never carries the storage, and
+ownership model — Apple never becomes the rights-holder, never carries the storage, and
 never has to warrant title.
 
 **Two things to test before relying on this** (both flagged UNVERIFIED in
@@ -553,7 +553,7 @@ Allocation, consistent with the owner's stated intent:
 ### Guardrail to implement regardless
 
 Hard-code a per-project and per-day cap on `GenerateModelAsync` calls (the observed
-platform limit is 10/min; Golem should sit well under it, e.g. 3 per project, 30/day
+platform limit is 10/min; Apple should sit well under it, e.g. 3 per project, 30/day
 account-wide), enforced in the Worker's Credits/Quota DO. Free today ≠ free forever;
 the cap means a pricing change is a config edit, not an incident.
 
@@ -589,16 +589,16 @@ explicitly approved**:
    or any open 3D model. $245/month always-on; ~$10/month with unusable cold starts.
 4. **Hugging Face PRO** ($9/month) for ZeroGPU priority.
 5. **Cloudflare R2** — deliberately not needed. The design stores IDs, not bytes.
-6. **A Roblox Creator Store seller account**, or Creator Store distribution of Golem's
+6. **A Roblox Creator Store seller account**, or Creator Store distribution of Apple's
    library. Requires government-ID verification and a Stripe onboarding, and is not needed
    because Mesh/Image assets are Open Use by default.
-7. **Roblox ID verification for the Golem account** — would only be needed to (a) raise
+7. **Roblox ID verification for the Apple account** — would only be needed to (a) raise
    Creator Store distribution limits from 10 to 200 per 30 days, or (b) enable
    `EditableMesh`/`EditableImage` in *published* experiences. Neither is required by the
    recommended design, but (b) becomes relevant if the E3 UNVERIFIED tests fail.
 8. **Registering a Roblox OAuth 2.0 application** (fallback persistence path). Free, but it
    is a public-facing registration in the owner's name and needs a decision.
-9. **Legal review of two things**, if Golem ever makes IP warranties to paying customers:
+9. **Legal review of two things**, if Apple ever makes IP warranties to paying customers:
    - the Roblox Terms of Use position on ownership of `GenerationService` output
      (Roblox publishes no dedicated page; `/ai/safety-best-practices` and
      `/ai/data-and-privacy` both 404);

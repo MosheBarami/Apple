@@ -1,3 +1,5 @@
+import { WIRE_HEADERS, readWire } from '@apple/shared';
+
 /**
  * What the worker will, and will not, refuse to talk to.
  *
@@ -77,7 +79,7 @@ export const MIN_PLUGIN_PROTOCOL = 1;
  * (132128477945417) is removed.
  *
  * The source (`PLUGIN_VERSION` in apps/apple-plugin/src/Bridge.luau) may be AHEAD
- * of this — it is 1.1.0 while those changes are unpublished — and never behind it.
+ * of this — it is 1.5.0 while those changes are unpublished — and never behind it.
  * A newer client reads as newer and gets silence; packages/evals/src/plugin-version.test.mjs
  * enforces the ordering.
  */
@@ -130,8 +132,8 @@ export function parseProtocol(raw: string | null | undefined): number | null {
 /** Pull the plugin's self-report off a request. Missing or malformed reads as unknown. */
 export function readPluginHeaders(h: Headers): { version: string | null; protocol: number | null } {
   return {
-    version: sanitizeVersion(h.get('X-Golem-Plugin-Version')),
-    protocol: parseProtocol(h.get('X-Golem-Plugin-Protocol')),
+    version: sanitizeVersion(readWire(h, WIRE_HEADERS.pluginVersion)),
+    protocol: parseProtocol(readWire(h, WIRE_HEADERS.pluginProtocol)),
   };
 }
 

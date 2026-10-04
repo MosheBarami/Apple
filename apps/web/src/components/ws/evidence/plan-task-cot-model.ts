@@ -3,7 +3,7 @@
  * Pure: reads only the reduced ActivityRun and the worker's run_intent. Nothing here is invented;
  * an absent input yields null and the renderer draws nothing.
  */
-import type { RunIntent } from '@golem/shared';
+import type { RunIntent } from '@apple/shared';
 import type { ActivityRun, ActivityStep, StepState } from '../activity-model';
 
 /* ---------------------------------------------------------------- Task --- */

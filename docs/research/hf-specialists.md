@@ -1,7 +1,7 @@
 # Open-Model & Hugging Face Specialist Research
 
 **Date:** 2026-08-30
-**Question:** Can a specialist open-weight model or adapter beat `@cf/zai-org/glm-5.3-flash` on any narrow Golem sub-task, within ~$10/month and no new paid services?
+**Question:** Can a specialist open-weight model or adapter beat `@cf/zai-org/glm-5.3-flash` on any narrow Apple sub-task, within ~$10/month and no new paid services?
 **Verdict:** **No. Do not fine-tune anything. Prompting + tooling + retrieval wins decisively at our scale — and the fine-tune question is the wrong question, because our eval cannot see the defect the owner rejected.**
 
 ---
@@ -9,9 +9,9 @@
 ## 0. BLUF — the five findings that decide this
 
 1. **Our eval is saturated and blind.** GLM-5.3-flash scores **98.9%**; `gpt-oss-120b` scores **96.8%** on the identical harness. The 2.1-point spread is *smaller than run-to-run variance on the same model* (`glm-prod` 97.4% vs `glm-final` 98.9% = 1.5 points). No model swap can be demonstrated to help, because the instrument has no resolution left.
-2. **The eval has zero visual categories.** All 8 task files are code/API/tooling. Golem scores 98.9% *while producing scenes the owner rejected*. The defect is on an unmeasured axis. **A fine-tune optimises the measured axis. That is precisely the wrong move.**
+2. **The eval has zero visual categories.** All 8 task files are code/API/tooling. Apple scores 98.9% *while producing scenes the owner rejected*. The defect is on an unmeasured axis. **A fine-tune optimises the measured axis. That is precisely the wrong move.**
 3. **We already own a vision model.** `@cf/zai-org/glm-5.3-flash` is **natively multimodal** (Vision: Yes), **MIT-licensed**, 1,048,576-token context, native function calling, at **$0.15/M in, $0.50/M out, $0.03/M cached**. No candidate on Workers AI beats it on the combination of price + vision + tools + context.
-4. **The BYO-LoRA path is empirically closed.** Both public Roblox/Luau LoRA adapters on the Hub violate Cloudflare's hard limits (rank and/or file size and/or base-model mismatch). Every LoRA-capable *text* base on Workers AI is either more expensive with a 32× smaller context (`qwen2.5-coder-32b`) or has a 3.5K–15K context that cannot hold a Golem prompt.
+4. **The BYO-LoRA path is empirically closed.** Both public Roblox/Luau LoRA adapters on the Hub violate Cloudflare's hard limits (rank and/or file size and/or base-model mismatch). Every LoRA-capable *text* base on Workers AI is either more expensive with a 32× smaller context (`qwen2.5-coder-32b`) or has a 3.5K–15K context that cannot hold an Apple prompt.
 5. **No specialist exists.** Three targeted Hub searches for Roblox/game-scene visual-critique models and screenshot datasets returned **zero results**. There is nothing to adopt; anything would have to be built from scratch, from a dataset that does not exist.
 
 ---
@@ -50,7 +50,7 @@ From `packages/evals/results/*.json` (`overall.score`):
 
 The 98.9% figure is confirmed. But so is the problem: **three different architectures land within 2.1 points, and the same model varies 1.5 points across runs.** Per-category, `glm-final` is at 100% in six of eight categories. There is 1.1 points of headroom in total. A fine-tune cannot demonstrate a win against a ceiling.
 
-> **Implication:** any claim that "model X beats GLM on Golem tasks" is currently unfalsifiable. Before *any* model work, the eval needs a visual/world-quality category with real headroom. That is a prerequisite, not a follow-up.
+> **Implication:** any claim that "model X beats GLM on Apple tasks" is currently unfalsifiable. Before *any* model work, the eval needs a visual/world-quality category with real headroom. That is a prerequisite, not a follow-up.
 
 ### 1.3 What the eval actually measures
 
@@ -88,7 +88,7 @@ This is worth recording carefully because the obvious search result is **wrong f
 - **`moondream3.1-9B-A2B` — the model actually on Workers AI — uses a different, newer licence:** `license_name: moondream-model-license-1.0`, at <https://moondream.ai/licenses/model/1.0>.
 - Reading that licence directly: §2 grants permission to *"use the Model Materials in commercial products, applications, and SaaS offerings"* and as *"an integrated component of a product, application, workflow, or Domain-Specific Service, including a commercial product or SaaS offering."* §3 restricts only *"a General-Purpose Hosted Model Service."* It is Elastic-License-2.0-derived, **not** BSL.
 
-**Conclusion: Moondream 3.1 is licence-clean for Golem** (we would be a Domain-Specific Service using it as a component, not reselling inference). It is rejected on **cost and capability**, not on licence. Do not let a stale BSL memory be the reason — the reason is that it costs double and can't call tools.
+**Conclusion: Moondream 3.1 is licence-clean for Apple** (we would be a Domain-Specific Service using it as a component, not reselling inference). It is rejected on **cost and capability**, not on licence. Do not let a stale BSL memory be the reason — the reason is that it costs double and can't call tools.
 
 ### Does a Roblox-specific visual critic exist?
 
@@ -128,7 +128,7 @@ Both are Apache-2.0 (licence is fine). Both are unusable. Note the base mismatch
 |---|---|---|---|---|
 | `@cf/qwen/qwen2.5-coder-32b-instruct` | **0.66** (4.4× ours) | **1.00** (2× ours) | **32,768** (32× smaller) | `model_type: qwen` is **not** in the documented allowlist — BYO-LoRA here is undocumented despite the capability tag |
 | `@cf/meta/llama-3.2-11b-vision-instruct` | 0.049 | 0.68 | 128,000 | Only viable vision+LoRA base; `task_type: CAUSAL_LM` implies text-path adapters only |
-| `@cf/mistralai/mistral-7b-instruct-v0.2-lora` | — | — | **15,000** | Cannot hold a Golem prompt |
+| `@cf/mistralai/mistral-7b-instruct-v0.2-lora` | — | — | **15,000** | Cannot hold an Apple prompt |
 | `@cf/google/gemma-7b-it-lora` | — | — | **3,500** | Unusable |
 | `@cf/google/gemma-3-12b-it`, `gemma-7b-it`, `mistral-7b-instruct-v0.1/v0.2` | — | — | — | **Deprecated** |
 
@@ -165,7 +165,7 @@ These are the payload of this research. Each is implementable against GLM-5.3-fl
 
 **SpatialGrammar** ([arXiv 2604.27555](https://arxiv.org/abs/2604.27555), Tang et al., 30 Apr 2026) represents layouts as **bird's-eye-view grid placements that deterministically compile to valid 3D geometry**, encoding physical priors *into the representation itself* so constraints are verifiable at generation time. It uses **compiler feedback to iteratively refine scenes and enforce collision constraints**. Two variants: `SG-Agent` (closed-loop refinement, **no training**) and `SG-Mini` (a 104M model on compiler-validated synthetic data).
 
-**Why this is the answer to Golem's actual defect.** Golem currently emits free-form `Part` positions, so nothing can reject "four grey poles with yellow cubes on top." If instead the model emits a constrained scene DSL — anchors, footprints, alignment, adjacency, material slots — and a **validator** rejects unanchored/floating/interpenetrating/untextured output before it ever renders, the failure mode becomes *impossible to express* rather than *hopefully avoided*. Note that `SG-Agent` gets its gains **with no fine-tuning at all** — the win comes from representation + compiler feedback, exactly the "prompting + tooling" thesis.
+**Why this is the answer to Apple's actual defect.** Apple currently emits free-form `Part` positions, so nothing can reject "four grey poles with yellow cubes on top." If instead the model emits a constrained scene DSL — anchors, footprints, alignment, adjacency, material slots — and a **validator** rejects unanchored/floating/interpenetrating/untextured output before it ever renders, the failure mode becomes *impossible to express* rather than *hopefully avoided*. Note that `SG-Agent` gets its gains **with no fine-tuning at all** — the win comes from representation + compiler feedback, exactly the "prompting + tooling" thesis.
 
 Corroborating: **RoomPlanner** ([arXiv 2511.17048](https://arxiv.org/abs/2511.17048)) translates relational phrases into geometric constraints optimised to eliminate collisions. **OptiScene** ([arXiv 2506.07570](https://arxiv.org/abs/2506.07570)) and **CasLayout** ([arXiv 2604.27361](https://huggingface.co/papers/2604.27361)) reach the same conclusion — explicit relational/constraint structure beats raw coordinate emission.
 
@@ -173,7 +173,7 @@ Corroborating: **RoomPlanner** ([arXiv 2511.17048](https://arxiv.org/abs/2511.17
 
 **Imaginarium** ([arXiv 2510.15564](https://huggingface.co/papers/2510.15564)) generates a reference image, then derives a scene graph and 3D layout from it. **Scenethesis** ([arXiv 2505.02836](https://huggingface.co/papers/2505.02836)) pairs LLM planning with vision-guided refinement.
 
-**Directly actionable for us:** Workers AI already hosts FLUX (`@cf/black-forest-labs/flux-1-schnell`, `flux-2-klein-4b`). Golem can generate a *concept image* of the requested scene, then feed it to GLM-5.3-flash's vision as an explicit visual target for layout and palette. This attacks "arbitrary bright colours" at the root: the palette gets derived from a coherent reference rather than invented per-part.
+**Directly actionable for us:** Workers AI already hosts FLUX (`@cf/black-forest-labs/flux-1-schnell`, `flux-2-klein-4b`). Apple can generate a *concept image* of the requested scene, then feed it to GLM-5.3-flash's vision as an explicit visual target for layout and palette. This attacks "arbitrary bright colours" at the root: the palette gets derived from a coherent reference rather than invented per-part.
 
 ### 5.3 Make the critique loop actually work — and know why it usually doesn't
 
@@ -190,7 +190,7 @@ Reinforcing techniques:
 
 ## 6. The thing nobody needs to train: Roblox's own asset pipeline
 
-Golem's defect is *untextured primitives*. Roblox ships first-party fixes that are free and that we are simply not using:
+Apple's defect is *untextured primitives*. Roblox ships first-party fixes that are free and that we are simply not using:
 
 - **Material Generator** and **Texture Generator** in Studio produce tileable PBR maps from text prompts. *(Caveat: the official docs page I read does not confirm Open Cloud/API access — it documents Studio UI usage only. Treat programmatic access as unverified and test it before planning around it.)*
 - **Open Cloud Creator Store API** ([docs](https://create.roblox.com/docs/projects/assets/api)) allows querying Studio assets — meshes, models, audio — **programmatically from outside Studio** via the Toolbox Service. This is the real "asset selection" capability: retrieve a real modelled trophy instead of stacking three primitives.
@@ -240,13 +240,13 @@ At our volume the *inference cost difference between every candidate is noise*. 
 
 In order:
 
-1. **Add a visual eval category with real headroom.** Golden scenes + programmatic checks: fraction of parts with a non-default `Material`, count of unanchored/floating parts, palette coherence, presence of lighting. Until this exists, *no model claim about Golem's actual defect is testable* — including the claim that GLM is good enough.
+1. **Add a visual eval category with real headroom.** Golden scenes + programmatic checks: fraction of parts with a non-default `Material`, count of unanchored/floating parts, palette coherence, presence of lighting. Until this exists, *no model claim about Apple's actual defect is testable* — including the claim that GLM is good enough.
 2. **Constrain the output representation** (SpatialGrammar). Emit a scene DSL, compile it deterministically, and reject invalid scenes before render. This makes "four grey poles" unrepresentable rather than merely discouraged.
 3. **Wire up asset retrieval** — Open Cloud Creator Store API + Studio material/texture generation. This is what actually kills untextured primitives.
 4. **Use GLM-5.3-flash's own vision as a checklist verifier**, with LookBack-style re-verification and decomposed, falsifiable questions. Never ask it whether something is beautiful.
 5. **Optionally, image-first palette grounding** via FLUX on Workers AI.
 
-**Revisit fine-tuning only if** step 1 shows a persistent, reproducible gap that steps 2–4 fail to close, *and* we have accumulated a proprietary dataset of (scene, human verdict) pairs from real Golem usage. That dataset — which no one else has — would be the only defensible reason to train. Today it does not exist, and training without it would optimise a saturated eval while the owner's actual complaint goes unmeasured.
+**Revisit fine-tuning only if** step 1 shows a persistent, reproducible gap that steps 2–4 fail to close, *and* we have accumulated a proprietary dataset of (scene, human verdict) pairs from real Apple usage. That dataset — which no one else has — would be the only defensible reason to train. Today it does not exist, and training without it would optimise a saturated eval while the owner's actual complaint goes unmeasured.
 
 ---
 

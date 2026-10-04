@@ -8,10 +8,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fetchJson, cached, uncache, ok, fail, section, run as exec, REPO } from '../http.mjs';
 import { WORKER_URL, workerHealth } from './cloudflare.mjs';
+import { envCompat } from '../../../lib/env-compat.mjs';
 
 const LABEL = 'Apple';
 const base = () => (process.env.API_BASE || WORKER_URL).replace(/\/+$/, '');
-const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': process.env.GOLEM_ADMIN_KEY } });
+const get = (p, what) => fetchJson(`${base()}${p}`, { label: LABEL, what, headers: { 'x-admin-key': envCompat('APPLE_ADMIN_KEY') } });
 const arr = (x) => (Array.isArray(x) ? x : []);
 const num = (x) => (Number.isFinite(Number(x)) && x !== null && x !== '' && typeof x !== 'boolean' ? Number(x) : null);
 
@@ -75,7 +76,7 @@ export const NOT_EXPOSED = [
 ];
 
 export function apple() {
-  if (!process.env.GOLEM_ADMIN_KEY) return Promise.resolve(ok({ configured: false, need: ['GOLEM_ADMIN_KEY'], notExposed: NOT_EXPOSED }));
+  if (!envCompat('APPLE_ADMIN_KEY')) return Promise.resolve(ok({ configured: false, need: ['APPLE_ADMIN_KEY'], notExposed: NOT_EXPOSED }));
   return cached('apple', async () => {
     const [analytics, spend, wiring, stats, builds, errLog, calls, models, routing, census, product, health, st] = await Promise.all([
       section(() => get('/api/admin/analytics?days=7', 'האנליטיקה')),

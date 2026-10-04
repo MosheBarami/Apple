@@ -393,8 +393,12 @@ test('G10: a message sent during a run is queued and reaches the model at the ne
     const req = h.chatCalls[1]?.req;
     assert.ok(req, 'the run never took its next step');
     const users = req.messages.filter((m) => m.role === 'user').map((m) => String(m.content));
-    assert.ok(users.at(-1).includes('also make the tower blue'), 'the direction did not reach the next step');
-    assert.ok(/do not redo completed steps/i.test(users.at(-1)), 'the direction must keep completed work');
+    // The recorded request shares its message array with the run, so a message the run appends AFTER this step (the
+    // self-check's look observations, when the answer is about to end the run) is also in it: find the direction, do
+    // not assume it is the last user message.
+    const direction = users.find((u) => u.includes('also make the tower blue'));
+    assert.ok(direction, 'the direction did not reach the next step');
+    assert.ok(/do not redo completed steps/i.test(direction), 'the direction must keep completed work');
     assert.equal(h.sent.filter((m) => m.type === 'steer' && m.state === 'applied').length, 1);
     assert.ok(h.sql.messages.some((m) => m.role === 'user' && m.content === 'also make the tower blue'), 'the direction is not in the conversation');
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 1, 'the completed change was repeated');
@@ -475,6 +479,10 @@ test('G10: Stop ends a paused run promptly — the stop brings its alarm forward
   }
 });
 
+// The layout check (scene-flags-run.ts) makes three READS of its own after a step that built in the workspace and at the answer: the
+// whole Workspace tree, the Lighting rig and a terrain read. They are the harness reading, not the agent, and they add nothing.
+const isLayoutRead = (op) => op.op === 'terrain_read' || (op.op === 'get_tree' && ((op.root === 'game.Workspace' && op.maxNodes === 1200) || (op.root === 'game.Lighting' && op.maxNodes === 200)));
+
 // ================================================== G10: repeated unchanged failure ===
 
 test('G10: the same call failing the same way is stopped at the bound, even with changes in between', async () => {
@@ -494,7 +502,7 @@ test('G10: the same call failing the same way is stopped at the bound, even with
     await send(h, chat('tidy up the place'));
     for (let i = 0; i < 10 && !lastEnd(h); i++) await h.session.alarm();
     assert.ok(h.chatCalls.length >= 8, 'the run ended before the fourth attempt — this checks nothing');
-    assert.equal(h.ops.filter((op) => op.op === 'get_tree').length, 3, 'a call that failed the same way three times ran again');
+    assert.equal(h.ops.filter((op) => op.op === 'get_tree' && !isLayoutRead(op)).length, 3, 'a call that failed the same way three times ran again');
     const last = toolTexts(h.chatCalls[7].req).at(-1);
     assert.match(last, /failed every time/);
     assert.equal(h.ops.filter((op) => op.op === 'set_props').length, 3, 'the work between the failures was not kept');

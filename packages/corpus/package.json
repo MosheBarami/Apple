@@ -1,9 +1,9 @@
 {
-  "name": "@golem/corpus",
+  "name": "@apple/corpus",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Builds Golem's RAG corpus from license-compatible Roblox/Luau sources.",
+  "description": "Builds Apple's RAG corpus from license-compatible Roblox/Luau sources.",
   "scripts": {
     "fetch": "node src/fetch.mjs",
     "chunk": "node src/chunk.mjs",
@@ -17,7 +17,8 @@
     "hash": "node src/hash.mjs",
     "enumerate": "node src/enumerate.mjs --emit-seeds",
     "tag": "node src/tag.mjs",
-    "bootstrap": "node src/bootstrap.mjs"
+    "bootstrap": "node src/bootstrap.mjs",
+    "research-upload": "node src/research-upload.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1"

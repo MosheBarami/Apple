@@ -165,7 +165,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
     null,
     {},
     { version: '99.0.0' },
-    { schema: 'golem.studio-ops.v2', operations: [{ op: 'run_code', status: 'unsupported', reason: 'new schema' }] },
+    { schema: 'legacy.studio-ops.v2', operations: [{ op: 'run_code', status: 'unsupported', reason: 'new schema' }] },
     { schema: C.PLUGIN_CAPABILITY_SCHEMA, operations: [] },
   ]) {
     const filtered = C.filterToolsForPlugin(candidates, requirements, raw);

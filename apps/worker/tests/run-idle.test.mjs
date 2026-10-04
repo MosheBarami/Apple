@@ -57,9 +57,9 @@ test('a prose step resets the count; a check and a change in one step does not c
 test('the run loop feeds every step through afterStep and acts on its answer', () => {
   // The property: every step's facts reach afterStep. Further facts may be added (canBuild was, 2026-09-23).
   assert.match(SESSION, /const idle = afterStep\(agent, \{\s*mutated: mutatedThisStep,\s*verified: verifiedThisStep,\s*calls: executedThisStep \+ duplicatesThisStep,\s*answerOnly: agent\.readOnly === true,[^}]*\}\);/);
-  assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'answer'\) \{\s*pushHarness\(agent\.llm, /);
   assert.match(SESSION, /if \(idle\.action === 'finish'\) \{[\s\S]{0,700}await this\.finishRun\(agent, 'done'\);/);
-  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*pushHarness\(agent\.llm, /);
   // Both facts come from the tool loop itself, not from a name list kept beside it.
   assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;/);
   assert.match(SESSION, /if \(out\.ok && VERIFIERS\.has\(call\.name\) && agent\.mutated\) verifiedThisStep = true;/);
@@ -124,7 +124,7 @@ test('after a passing check the stricter after-verify bound decides, not this on
 test('the run loop passes canBuild, ends a stalled run as incomplete, and tells a reading run to build', () => {
   assert.match(SESSION, /answerOnly: agent\.readOnly === true,\s*canBuild,\s*\}\);/);
   assert.match(SESSION, /if \(idle\.action === 'stall'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
-  assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(idle\.action === 'build'\) \{\s*pushHarness\(agent\.llm, /);
   // The trim's budget is pinned behaviourally in run-loop-traps.test.mjs (derived from the model) and
   // prompt-budget.test.mjs, not by spelling here.
 });
@@ -150,9 +150,13 @@ test('the same target changed again and again is told to stop tuning, then ended
 });
 
 test('the run loop counts each successful change by its target and acts on the answer', () => {
-  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;\s*const retune = afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{aim\(call\.arguments\)\}`\);/);
+  assert.match(SESSION, /if \(out\.mutatedProject === true\) \{\s*agent\.mutated = true;\s*mutatedThisStep = true;/);
+  // The key is the tool and what it was aimed at (a change with no aim still counts by its tool, run_luau aside); what the
+  // aim was is also kept (agent.lastChange) so the nudge can name it.
+  assert.match(SESSION, /afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
+  assert.match(SESSION, /agent\.lastChange = \{ tool: call\.name, aim: changeAim, props: changedProps\(call\.arguments\), count: retune\.count \};/);
   assert.match(SESSION, /if \(retuneThisStep === 'finish'\) \{[\s\S]{0,900}await this\.finishRun\(agent, 'incomplete'\);/);
-  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{\s*agent\.llm\.push\(/);
+  assert.match(SESSION, /if \(retuneThisStep === 'nudge'\) \{[\s\S]{0,600}pushHarness\(agent\.llm, /);
 });
 
 // 2026-09-23: bound endings said "What it built is in your place" and nothing about what that was.
@@ -215,7 +219,7 @@ test('no project-changing tool reaches the user under its own name', async () =>
   const dir = mkdtempSync(join(tmpdir(), 'run-idle-tools-'));
   try {
     await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@golem/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+      alias: { '@apple/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
     const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
     const { builtSummary, addMade, madeKey } = await import('../src/run-idle.ts');
     const writers = T.projectMutatingToolNames();
@@ -262,24 +266,34 @@ test('the run loop hands every run its owed work back, bounded, instead of endin
   // idle bound: a run is steered, bounded, before the finish branch can end it
   assert.match(SESSION, /if \(idle\.action === 'finish' && \(agent\.autonomousContinues \?\? 0\) < AUTONOMOUS_CONTINUES\) \{[\s\S]{0,400}AUTONOMOUS_IDLE_STEER[\s\S]{0,40}\} else if \(idle\.action === 'finish'\)/);
   // the nudge must not tell a run to "reply to the user now"
-  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*agent\.llm\.push\(\{\s*role: 'user',\s*content: AUTONOMOUS_IDLE_STEER/);
+  assert.match(SESSION, /if \(idle\.action === 'nudge'\) \{\s*pushHarness\(agent\.llm, AUTONOMOUS_IDLE_STEER/);
 });
 
-test('a built game with nothing on screen or an unplayed loop is not finished; other requests owe nothing', async () => {
-  const { gameGaps, gameGapSteer } = await import('../src/run-idle.ts');
-  const ask = 'Build Basically Grow A Garden Type Game include 6 plots make the full game make no mistakes';
-  assert.deepEqual(gameGaps(ask, {}, true), ['hud', 'playtest']);
-  assert.deepEqual(gameGaps(ask, { hudBuilt: true }, true), ['playtest']);
-  assert.deepEqual(gameGaps(ask, { hudBuilt: true, playChecked: true }, true), []);
+test('a built game with nothing on screen or an unplayed loop is not finished: said from what the run BUILT, not from words of the request', async () => {
+  const { gameGaps, gameGapSteer, builtAGame } = await import('../src/run-idle.ts');
+  // RESTATED phase 1: a regex over genre words in the request decided that "a game" owed a HUD and a playtest (a request in
+  // another language, or for a genre not on the list, owed nothing; a script fix that said "game" owed both).
+  const game = { builtGame: true };
+  assert.deepEqual(gameGaps(game, true), ['hud', 'playtest']);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, true), ['playtest']);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true, playChecked: true }, true), []);
   // a run that cannot play is not told to
-  assert.deepEqual(gameGaps('make an obby', { hudBuilt: true }, false), []);
-  // not a game: a prop, or no request at all
-  assert.deepEqual(gameGaps('build a wooden bridge over the river', {}, true), []);
-  assert.deepEqual(gameGaps(undefined, {}, true), []);
+  assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, false), []);
+  // scripts together with other kinds of change are game-shaped, whatever language the request was in
+  const handBuilt = { made: { edit_script: 2, create_instances: 3, build_object: 1 } };
+  assert.equal(builtAGame(handBuilt), true);
+  assert.deepEqual(gameGaps(handBuilt, true), ['hud', 'playtest']);
+  // not a game: a prop, a script fix, nothing built
+  assert.equal(builtAGame({ made: { build_object: 1 } }), false);
+  assert.equal(builtAGame({ made: { edit_script: 4 } }), false, 'a script fix is not a game');
+  assert.deepEqual(gameGaps({}, true), []);
+  assert.deepEqual(gameGaps({ made: { build_object: 2, dress_object: 1 } }, true), [], 'a built object owes no HUD');
   const steer = gameGapSteer(['hud', 'playtest']);
   assert.match(steer, /ScreenGui/);
   assert.match(steer, /play_check/);
   assert.doesNotMatch(steer, /garden|plot|seed/i, 'the steer teaches one game instead of games');
+  const code = (await import('node:fs')).readFileSync(new URL('../src/run-idle.ts', import.meta.url), 'utf8');
+  assert.equal(/GAME_REQUEST/.test(code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'no genre-word list decides what a request owes');
 });
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
@@ -287,7 +301,7 @@ test('the run loop records the HUD and the playtest, and steers an unfinished ga
   // The property: a play_check that worked marks the run as played; so does a judge_game that played (sessions other than 0).
   assert.match(SESSION, /out\.ok && \(call\.name === 'play_check' \|\| \(call\.name === 'judge_game' && [^\n]*sessions[^\n]*\)\) agent\.playChecked = true/);
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
-  const uses = SESSION.match(/gameGaps\(agent\.request, agent, allowed\.has\('play_check'\)\)/g) ?? [];
+  const uses = SESSION.match(/gameGaps\(agent, allowed\.has\('play_check'\)\)/g) ?? [];
   assert.equal(uses.length, 3, 'the prose, idle and duplicate-streak endings must all check the game');
   assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
 });
@@ -299,4 +313,110 @@ test('an owner game recreate or StarterGui import brings its own HUD, so no gene
   assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/Workspace/Farm"}'), false);
   assert.equal(buildsHud('insert_ui_component', '{}'), true);
   assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
+});
+
+test('CREDITS: failures are counted per tool across ANY arguments; one success of that tool clears them', async () => {
+  const { afterToolOutcome, FAIL_STEER_AT, FAIL_END_AT } = await import('../src/run-idle.ts');
+  let s = {};
+  const actions = [];
+  for (let i = 0; i < FAIL_END_AT; i++) { const r = afterToolOutcome(s, 'create_instances', false); s = r.streaks; actions.push(r.action); }
+  assert.deepEqual(actions.map((a, i) => (a === 'none' ? null : i + 1)).filter(Boolean), [FAIL_STEER_AT, FAIL_STEER_AT * 2, FAIL_END_AT], 'steer at 3 and 6, end at 8');
+  assert.equal(actions.at(-1), 'finish');
+  // One failure in four never reaches the first steer.
+  let t = {};
+  for (let i = 0; i < 40; i++) { const r = afterToolOutcome(t, 'set_properties', i % 4 !== 0); t = r.streaks; assert.equal(r.action, 'none', `a mostly-successful tool was steered at call ${i}`); }
+  // Another tool's failures are its own count, and its success clears only its own.
+  let u = afterToolOutcome({}, 'a', false).streaks;
+  u = afterToolOutcome(u, 'b', false).streaks;
+  u = afterToolOutcome(u, 'b', true).streaks;
+  assert.deepEqual(u, { a: 1 });
+});
+
+test('CREDITS: the run loop feeds the failure count only with calls that ran', () => {
+  assert.match(SESSION, /if \(allowed\.has\(call\.name\)\) \{[\s\S]{0,900}afterToolOutcome\(agent\.failStreaks, call\.name, out\.ok\)/);
+});
+
+test('CREDITS: a change window catches alternation between two targets, nudges first, ends on the second nudge', async () => {
+  const { afterChangeWindow, CHANGE_WINDOW, WINDOW_NUDGE } = await import('../src/run-idle.ts');
+  let state; const actions = [];
+  for (let i = 0; i < 100; i++) { const r = afterChangeWindow(state, i % 2 ? 'set_props B' : 'set_props A'); state = r.state; actions.push(r.action); if (r.action === 'finish') break; }
+  const nudgeAt = actions.indexOf('nudge') + 1;
+  assert.equal(nudgeAt, 2 * WINDOW_NUDGE - 1, 'the 12th change to one of two alternating targets is the first to reach 12 in the window');
+  assert.equal(actions.filter((a) => a === 'nudge').length, 1, 'told once');
+  assert.equal(actions.at(-1), 'finish', 'and ended when it carries on');
+  assert.ok(actions.length <= 3 * CHANGE_WINDOW, `${actions.length} changes before the end`);
+  // Work spread over many targets, or a script that is only one change in six, is never counted.
+  let spread; for (let i = 0; i < 200; i++) { const r = afterChangeWindow(spread, `create_instances Tree${i}`); spread = r.state; assert.equal(r.action, 'none'); }
+  let mixed; for (let i = 0; i < 200; i++) { const r = afterChangeWindow(mixed, i % 6 === 0 ? 'edit_script Client' : `create_instances Part${i}`); mixed = r.state; assert.equal(r.action, 'none'); }
+  assert.ok(state.keys.length <= CHANGE_WINDOW, 'only the window is remembered');
+});
+
+// Restated 2026-10-02 after review: skipping EVERY targetless change also skipped set_mood (its only argument is a mood),
+// re-opening the F-036 loop of re-tuning one Lighting look. Only run_luau, whose target lives in its code, is skipped.
+test('CREDITS: the run loop skips only run_luau when a change names no target', () => {
+  assert.match(SESSION, /const target = aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
+});
+
+test('CREDITS: the visual inspection tool no longer says to repeat it "until it passes"', () => {
+  const tools = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
+  const at = tools.indexOf("name: 'inspect_visually'");
+  assert.ok(at > 0, 'inspect_visually was not found — this test would check nothing');
+  const description = tools.slice(at, at + 1500);
+  assert.doesNotMatch(description, /until it passes/, 'a repeat-until-pass instruction has no progress test, and each inspection renders and calls a vision model');
+  assert.match(description, /do not score better, stop and say so/);
+});
+
+test('review 2026-10-02: a back-and-forth bout that ended does not turn a later, unrelated bout into an immediate end', async () => {
+  const R = await import('../src/run-idle.ts');
+  let st; const actions = [];
+  const feed = (k) => { const r = R.afterChangeWindow(st, k); st = r.state; actions.push(r.action); };
+  for (let i = 0; i < 30; i++) feed(i % 2 ? 'set_props A' : 'set_props B');   // first bout: nudged
+  assert.ok(actions.includes('nudge'));
+  assert.ok(!actions.includes('finish') || actions.indexOf('finish') > actions.indexOf('nudge'));
+  for (let i = 0; i < 30; i++) feed(`create_instances piece${i}`);           // ordinary spread-out work clears it
+  actions.length = 0;
+  for (let i = 0; i < 30; i++) feed(i % 2 ? 'set_props C' : 'set_props D');   // a second, unrelated bout
+  const firstAct = actions.find((a) => a !== 'none');
+  assert.equal(firstAct, 'nudge', 'the second bout must be warned first, not ended');
+});
+
+test('review 2026-10-02: an A, A, B loop still ends, and a changeless tool (set_mood) still counts as one target', async () => {
+  const R = await import('../src/run-idle.ts');
+  let st; const actions = [];
+  for (let i = 0; i < 80; i++) { const r = R.afterChangeWindow(st, i % 3 === 2 ? 'set_props B' : 'set_props A'); st = r.state; actions.push(r.action); }
+  assert.ok(actions.includes('finish'), 'the minority key reset the count, so an A, A, B loop never ended');
+  const { readFileSync } = await import('node:fs');
+  const session = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');
+  assert.match(session, /aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\)/, 'targetless changes other than run_luau must count');
+  assert.ok(session.includes(`Over your last ${R.CHANGE_WINDOW} changes, ${R.WINDOW_NUDGE} or more`), 'the steer states numbers other than the guard uses');
+});
+
+test('the self-check\'s look counts as a check after a change, so reading after it is the idle this file bounds', async () => {
+  const { EXTRA_CHECK_TOOLS, afterStep, IDLE_AFTER_VERIFY_NUDGE } = await import('../src/run-idle.ts');
+  assert.ok(EXTRA_CHECK_TOOLS.has('look'));
+  // Derived from the registry, not asserted by hand: every extra check is a real tool and changes nothing (a check that changes the
+  // place would be a change, and a change clears the check).
+  const esbuild = await import('esbuild');
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { pathToFileURL } = await import('node:url');
+  const dir = mkdtempSync(join(tmpdir(), 'run-idle-checks-'));
+  try {
+    await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
+      alias: { '@apple/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
+    const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
+    for (const name of EXTRA_CHECK_TOOLS) {
+      assert.ok(T.toolNames().includes(name), `${name} is not a registered tool`);
+      assert.ok(!T.projectMutatingToolNames().includes(name), `${name} changes the place, so it cannot be a check`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  // And it behaves as a check: after a change and a check, only reading is counted toward the nudge.
+  let state = {};
+  state = afterStep(state, { mutated: true, verified: false, calls: 1 });
+  state = afterStep(state, { mutated: false, verified: true, calls: 1 });
+  for (let i = 0; i < IDLE_AFTER_VERIFY_NUDGE; i++) state = afterStep(state, { mutated: false, verified: false, calls: 1 });
+  assert.equal(state.action, 'nudge');
 });

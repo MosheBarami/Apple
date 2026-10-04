@@ -248,7 +248,7 @@ test('the parser reads the vendored corpus, and the failures are not Lua', (t) =
   // described as "re-fetchable from raw/manifest.json" and a recipe nobody has is not a recipe),
   // so the directory is in every clone and `existsSync` was true in every clone. The early return
   // never fired, the find matched nothing, and the assertion below failed with "yielded 0 Lua
-  // files" — which took `pnpm -r test` down at @golem/evals on the runner while passing on any
+  // files" — which took `pnpm -r test` down at @apple/evals on the runner while passing on any
   // machine that had fetched the corpus.
   //
   // ZERO is the discriminator, and nothing else is. Zero means the fetch never ran. Any count at
@@ -261,7 +261,7 @@ test('the parser reads the vendored corpus, and the failures are not Lua', (t) =
     : [];
   if (files.length === 0) {
     t.diagnostic(`${corpus} holds no Lua at all — the corpus is not fetched in this checkout, so `
-      + 'NOTHING below was measured here. Fetch it with `pnpm --filter @golem/corpus fetch`.');
+      + 'NOTHING below was measured here. Fetch it with `pnpm --filter @apple/corpus fetch`.');
     return;
   }
   assert.ok(files.length > 500, `the corpus directory exists but yielded ${files.length} Lua files`);

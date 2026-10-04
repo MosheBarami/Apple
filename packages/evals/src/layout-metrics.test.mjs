@@ -14,8 +14,8 @@ const FIX = join(dirname(fileURLToPath(import.meta.url)), '..', 'tasks-visual', 
 const scene = (n) => JSON.parse(readFileSync(join(FIX, n, 'scene.json'), 'utf8'));
 
 test('the rejected plaza is flagged as a grid clone; the rule-built one is not', () => {
-  const bad = layoutMetrics(scene('golem-plaza-baseline'), { kind: 'plaza' });
-  const good = layoutMetrics(scene('golem-plaza-improved'), { kind: 'plaza' });
+  const bad = layoutMetrics(scene('apple-plaza-baseline'), { kind: 'plaza' });
+  const good = layoutMetrics(scene('apple-plaza-improved'), { kind: 'plaza' });
   console.log(`      rejected: lattice ${bad.latticeScore}, rotationEntropy ${bad.rotationEntropy}, spacingCV ${bad.neighbourSpacingCV}`);
   console.log(`      improved: lattice ${good.latticeScore}, rotationEntropy ${good.rotationEntropy}, spacingCV ${good.neighbourSpacingCV}`);
   assert.ok(bad.flags.some((f) => f.startsWith('grid clone')), 'the rejected plaza should be flagged a grid clone');
@@ -23,8 +23,8 @@ test('the rejected plaza is flagged as a grid clone; the rule-built one is not',
 });
 
 test('spacing moves from pathological into the healthy band', () => {
-  const bad = layoutMetrics(scene('golem-plaza-baseline'), { kind: 'plaza' });
-  const good = layoutMetrics(scene('golem-plaza-improved'), { kind: 'plaza' });
+  const bad = layoutMetrics(scene('apple-plaza-baseline'), { kind: 'plaza' });
+  const good = layoutMetrics(scene('apple-plaza-improved'), { kind: 'plaza' });
   const [lo, hi] = LAYOUT_BANDS.healthySpacingCV;
   assert.ok(bad.neighbourSpacingCV > hi, `rejected CV ${bad.neighbourSpacingCV} should sit above the healthy band`);
   assert.ok(good.neighbourSpacingCV >= lo && good.neighbourSpacingCV <= hi, `improved CV ${good.neighbourSpacingCV} should sit inside ${lo}-${hi}`);
@@ -33,7 +33,7 @@ test('spacing moves from pathological into the healthy band', () => {
 test('tiled paving counts as structure, not as hundreds of props', () => {
   // Before the flat-on-floor rule every paving tile was a prop, which flagged a well-dressed
   // scene as cluttered purely because its floor was tiled rather than one slab.
-  const good = layoutMetrics(scene('golem-plaza-improved'), { kind: 'plaza' });
+  const good = layoutMetrics(scene('apple-plaza-improved'), { kind: 'plaza' });
   assert.ok(good.structural >= 40, `expected the paving to be classified structural, got ${good.structural}`);
 });
 
@@ -65,7 +65,7 @@ test('a wide flat build is called out as a plate', () => {
 });
 
 test('an unknown scene kind skips the density band rather than inventing one', () => {
-  const m = layoutMetrics(scene('golem-plaza-improved'), { kind: 'not-a-real-kind' });
+  const m = layoutMetrics(scene('apple-plaza-improved'), { kind: 'not-a-real-kind' });
   assert.ok(!m.flags.some((f) => f.startsWith('sparse') || f.startsWith('cluttered')));
   assert.ok(typeof m.propDensity === 'number', 'the number is still reported, only the band is skipped');
 });

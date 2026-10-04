@@ -2,7 +2,10 @@
  * THE JUDGE FOR A COMPOSED GAME (owner, 2026-09-30: the old judge "measured the wrong things"). It fails on exactly what
  * the owner named:
  *   1. a map that is a copied world (the composer lays out a NEW one: Workspace holds AppleMap and the game's own folders);
- *   2. a twist that was not built (every enemy is a body wearing a costume; a vegetable idea has vegetable enemies);
+ *   2. a twist that was not built: the agent states what each enemy is MEANT to be (judge_game's `design`), and the judge
+ *      compares that with what exists (the enemies in the config, whether each wears a costume or is a model, and the names
+ *      of the pieces it wears). It holds no list of nouns of its own: it used to know vegetables and fruit, so a request about
+ *      anything else was judged by the one thing it knew;
  *   3. a creature that does not move (the play check's probe watches every creature's joints while it plays);
  *   4. assets that do not load (load failures in the play logs);
  * and on the loop itself: a player can buy and place, a wave comes, and beating it pays.
@@ -14,7 +17,18 @@ type Rec = Record<string, unknown>;
 const rec = (v: unknown): Rec => (v && typeof v === 'object' ? (v as Rec) : {});
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
-export interface ComposedConfig { title: string; enemies: string[]; creatures: string[]; costumed: number; items: string[] }
+export interface ComposedConfig { title: string; enemies: string[]; creatures: string[]; costumed: number; items: string[]; /** enemy -> the staging folder of the costume it wears (ServerStorage.AppleParts.<key>) */ costumeKeys: Record<string, string> }
+
+/** What the agent says it meant to build: each enemy's name and what it is meant to be, in its own words. */
+export interface StatedDesign { enemies: { name: string; is?: string }[] }
+
+/** The design the agent passed, read. Pure. */
+export function readDesign(raw: unknown): StatedDesign | null {
+  const o = rec(raw);
+  const enemies = (Array.isArray(o.enemies) ? o.enemies : []).slice(0, 12).map((e) => rec(e)).filter((e) => typeof e.name === 'string' && e.name.trim())
+    .map((e) => ({ name: String(e.name).trim().slice(0, 40), ...(typeof e.is === 'string' && e.is.trim() ? { is: e.is.trim().slice(0, 80) } : {}) }));
+  return enemies.length ? { enemies } : null;
+}
 
 /** What the game's config says, read from its Luau text (the composer writes it; compose.ts luau()). Pure. */
 export function readConfig(source: string): ComposedConfig | null {
@@ -35,18 +49,18 @@ export function readConfig(source: string): ComposedConfig | null {
   const enemiesText = enemiesAt < 0 ? '' : wavesText.slice(enemiesAt, wavesText.indexOf('\n\t\t},', enemiesAt));
   const enemies = keysAt(enemiesText, '\\t\\t\\t');
   const items = [...section('shop').matchAll(/\n\t\t\t\tid = "([^"]+)"/g)].map((m) => m[1]!);
-  return { title, enemies, creatures, costumed, items };
+  const costumeKeys: Record<string, string> = {};
+  for (const m of creaturesText.matchAll(/\n\t\t(?:\["([^"]+)"\]|([A-Za-z_]\w*)) = \{[^}]*?costume = "ServerStorage\.AppleParts\.([A-Za-z0-9_]+)"/g)) costumeKeys[m[1] ?? m[2]!] = m[3]!;
+  return { title, enemies, creatures, costumed, items, costumeKeys };
 }
-
-const VEG_IDEA = /\b(veg(etable|gie)s?|carrots?|tomato(es)?|pumpkins?|eggplants?|broccoli|potato(es)?|corn|cabbages?)\b/i;
-const VEG_NAME = /carrot|tomato|pumpkin|eggplant|broccoli|potato|corn|cabbage|pepper|onion|cucumber|beet|radish|lettuce|veg/i;
-const FRUIT_IDEA = /\bfruits?\b|apples?|bananas?|oranges?|berries|melons?/i;
-const FRUIT_NAME = /apple|banana|orange|berry|melon|grape|cherry|peach|pear|lemon|mango|pineapple|coconut|fruit/i;
 
 export interface Finding { area: string; ok: boolean; said: string; fix?: string }
 
 /** The findings for a composed game from what was read and played. Pure, so every rule is tested. */
-export function judgeFindings(request: string, cfg: ComposedConfig, world: string[], play: Rec | null, logs: { errors: string[]; loadFailures: string[] }): Finding[] {
+/** Whole lowercase words of a text, in any language. */
+const wordsOf = (t: string): string[] => (t.normalize('NFC').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+
+export function judgeFindings(request: string, cfg: ComposedConfig, world: string[], play: Rec | null, logs: { errors: string[]; loadFailures: string[] }, design?: StatedDesign | null, pieceNames: Record<string, string[]> = {}): Finding[] {
   const out: Finding[] = [];
   const foreign = world.filter((n) => !['Camera', 'Terrain', 'AppleMap', 'AppleEnemies', 'AppleDefenders', 'AppleGallery'].includes(n));
   out.push(world.includes('AppleMap') && foreign.length === 0
@@ -54,13 +68,35 @@ export function judgeFindings(request: string, cfg: ComposedConfig, world: strin
     : { area: 'map', ok: false, said: world.includes('AppleMap') ? `The world holds things the game did not make: ${foreign.slice(0, 5).join(', ')}.` : 'There is no map.',
       fix: world.includes('AppleMap') ? `Delete ${foreign.slice(0, 5).map((n) => `game.Workspace.${n}`).join(', ')} (delete_instances).` : 'Run compose_game again with the same request.' });
 
+  // The twist: what the agent said it meant to build, against what exists. No noun list: names and words are compared as given.
   const allCostumed = cfg.creatures.length > 0 && cfg.costumed >= cfg.creatures.length && cfg.enemies.every((e) => cfg.creatures.includes(e));
-  const wantVeg = VEG_IDEA.test(request), wantFruit = FRUIT_IDEA.test(request) && !wantVeg;
-  const named = wantVeg ? cfg.enemies.every((e) => VEG_NAME.test(e)) : wantFruit ? cfg.enemies.every((e) => FRUIT_NAME.test(e)) : true;
-  out.push(allCostumed && named
-    ? { area: 'twist', ok: true, said: `The enemies are made for the idea: ${cfg.enemies.join(', ').toLowerCase()}.` }
-    : { area: 'twist', ok: false, said: allCostumed ? `The idea asks for ${wantVeg ? 'vegetables' : 'fruit'}, but some enemies are not: ${cfg.enemies.join(', ')}.` : 'Some enemies are not built for the idea.',
-      fix: 'Run compose_game again with the user\'s exact words.' });
+  const norm = (t: string) => t.normalize('NFC').toLowerCase().trim();
+  if (design) {
+    const built = new Set(cfg.enemies.map(norm)), stated = new Set(design.enemies.map((e) => norm(e.name)));
+    const missingEnemies = design.enemies.filter((e) => !built.has(norm(e.name))).map((e) => e.name);
+    const unstated = cfg.enemies.filter((e) => !stated.has(norm(e)));
+    // What each enemy wears, by the names of its pieces, against the words the agent used for what it is.
+    const looks = design.enemies.filter((e) => e.is && built.has(norm(e.name))).map((e) => {
+      const worn = pieceNames[cfg.costumeKeys[cfg.enemies.find((x) => norm(x) === norm(e.name)) ?? ''] ?? ''] ?? [];
+      const have = new Set(worn.flatMap(wordsOf));
+      const meant = wordsOf(e.is!).filter((w) => w.length > 2);
+      return { name: e.name, is: e.is!, worn, shared: meant.filter((w) => have.has(w)).length > 0 || !worn.length || !meant.length };
+    });
+    const mismatched = looks.filter((l) => !l.shared);
+    out.push(allCostumed && !missingEnemies.length && !unstated.length && !mismatched.length
+      ? { area: 'twist', ok: true, said: `The enemies match the design you stated: ${cfg.enemies.join(', ')}.` }
+      : { area: 'twist', ok: false,
+        said: [!allCostumed ? 'Some enemies are not built (no costume or model).' : '',
+          missingEnemies.length ? `You stated enemies the game does not have: ${missingEnemies.join(', ')}.` : '',
+          unstated.length ? `The game has enemies you did not state: ${unstated.join(', ')}.` : '',
+          ...mismatched.map((l) => `${l.name} is meant to be "${l.is}", but it wears ${l.worn.length ? l.worn.map((w) => `"${w}"`).join(', ') : 'a piece with no name'}.`)].filter(Boolean).join(' '),
+        fix: 'Rebuild with compose_game so the enemies are what you stated (the right library pieces), or correct the design you passed.' });
+  } else {
+    // Not compared, and said so: a check that did not run is never a pass in disguise.
+    out.push(allCostumed
+      ? { area: 'twist', ok: true, said: `Not compared with a design: none was stated. The enemies are ${cfg.enemies.join(', ')}; judge_game { design: { enemies: [{ name, is }] } } checks them against what you meant.` }
+      : { area: 'twist', ok: false, said: 'Some enemies are not built (no costume or model).', fix: 'Run compose_game again with the enemies\' pieces.' });
+  }
 
   const a = rec(play?.apple);
   if (!play || !a.composed) {
@@ -113,7 +149,7 @@ export function verdictOf(findings: Finding[]): { verdict: 'ready' | 'not ready'
 const LOAD = /failed to load|not authorized|not approved|animation failed/i;
 
 /** The composed-game judge, or null when the place was not composed (the older judge handles it). */
-export async function judgeComposed(call: OpCall, request: string): Promise<Rec | null> {
+export async function judgeComposed(call: OpCall, request: string, designRaw?: unknown): Promise<Rec | null> {
   const read = rec(await call({ op: 'read_script', path: 'game.ServerScriptService.AppleComponents.AppleGameConfig' }, 20_000));
   const source = typeof read.source === 'string' ? read.source : '';
   const cfg = source ? readConfig(source) : null;
@@ -126,6 +162,16 @@ export async function judgeComposed(call: OpCall, request: string): Promise<Rec 
     for (const c of Array.isArray(r.children) ? r.children : []) walk(c, depth + 1);
   };
   walk(tree.root ?? tree.tree ?? tree, 0);
+  // What the enemies wear, by the names of the pieces staged for them (only read when a design was stated to compare with).
+  const design = readDesign(designRaw);
+  const pieceNames: Record<string, string[]> = {};
+  if (design) {
+    const parts = rec(await call({ op: 'get_tree', root: 'game.ServerStorage.AppleParts', maxDepth: 2, maxNodes: 200 }, 30_000));
+    for (const f of (Array.isArray(rec(parts.root).children) ? rec(parts.root).children as unknown[] : [])) {
+      const o = rec(f);
+      if (typeof o.name === 'string') pieceNames[o.name] = (Array.isArray(o.children) ? o.children : []).map((c) => String(rec(c).name ?? '')).filter(Boolean);
+    }
+  }
   const play = rec(await call({ op: 'play_check', seconds: 15 }, 100_000));
   const played = 'error' in play ? null : play;
   const lines = (v: unknown) => (Array.isArray(v) ? v : []).map((e) => String(rec(e).message ?? e));
@@ -133,7 +179,7 @@ export async function judgeComposed(call: OpCall, request: string): Promise<Rec 
   const warn = played ? [...lines(played.clientWarnings), ...lines(played.serverWarnings)] : [];
   const loadFailures = [...all, ...warn].filter((l) => LOAD.test(l));
   const errors = all.filter((l) => !LOAD.test(l));
-  const findings = judgeFindings(request, cfg, [...world], played, { errors, loadFailures });
+  const findings = judgeFindings(request, cfg, [...world], played, { errors, loadFailures }, design, pieceNames);
   const { verdict, score } = verdictOf(findings);
   const bad = findings.filter((f) => !f.ok);
   return {

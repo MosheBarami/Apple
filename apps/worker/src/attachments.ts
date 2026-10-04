@@ -27,7 +27,7 @@ import {
   type AttachmentVerdict,
   type ChatAttachment,
   type FoldableAttachment,
-} from '@golem/shared';
+} from '@apple/shared';
 
 /**
  * How long an attachment stays readable: seven days.

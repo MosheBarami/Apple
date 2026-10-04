@@ -21,7 +21,7 @@ function scratch() {
   const dir = mkdtempSync(join(tmpdir(), 'resolution-'));
   DIRS.push(dir);
   mkdirSync(join(dir, 'scripts'), { recursive: true });
-  mkdirSync(join(dir, 'apps', 'web', 'node_modules', '@golem'), { recursive: true });
+  mkdirSync(join(dir, 'apps', 'web', 'node_modules', '@apple'), { recursive: true });
   mkdirSync(join(dir, 'packages', 'shared'), { recursive: true });
   mkdirSync(join(dir, '.claude', 'worktrees', 'wt', 'packages', 'shared'), { recursive: true });
   writeFileSync(join(dir, 'packages', 'shared', 'index.ts'), 'export const x = 1;\n');
@@ -42,7 +42,7 @@ test('a healthy checkout reports SOUND, and says how many links it looked at', (
   // The control for everything below. Without a denominator, "no findings" and "no symlinks
   // examined" print the same word.
   const dir = scratch();
-  symlinkSync(join(dir, 'packages', 'shared'), join(dir, 'apps', 'web', 'node_modules', '@golem', 'shared'), 'dir');
+  symlinkSync(join(dir, 'packages', 'shared'), join(dir, 'apps', 'web', 'node_modules', '@apple', 'shared'), 'dir');
   const r = run(dir);
   assert.equal(r.exit, 0, r.out);
   assert.match(r.out, /RESOLUTION SOUND/);
@@ -52,25 +52,25 @@ test('a healthy checkout reports SOUND, and says how many links it looked at', (
 /* ------------------------------------------------------------ the corruption --- */
 
 test('THE DEFECT: a workspace link resolving into a worktree is caught', () => {
-  // What happened tonight. @golem/shared in three packages and @golem/design in two were pointing
+  // What happened tonight. @apple/shared in three packages and @apple/design in two were pointing
   // into a worktree, so every typecheck and test in the main tree was reading a frozen copy at an
   // old commit while reporting on this one.
   const dir = scratch();
   symlinkSync(
     join(dir, '.claude', 'worktrees', 'wt', 'packages', 'shared'),
-    join(dir, 'apps', 'web', 'node_modules', '@golem', 'shared'),
+    join(dir, 'apps', 'web', 'node_modules', '@apple', 'shared'),
     'dir',
   );
   const r = run(dir);
   assert.equal(r.exit, 1, r.out);
   assert.match(r.out, /RESOLVES INTO A WORKTREE/);
-  assert.match(r.out, /apps\/web\/node_modules\/@golem\/shared/);
+  assert.match(r.out, /apps\/web\/node_modules\/@apple\/shared/);
   assert.match(r.out, /RESOLUTION BROKEN — 1 finding/);
 });
 
 test('a dangling link is caught — a link to nothing is not a dependency', () => {
   const dir = scratch();
-  symlinkSync(join(dir, 'packages', 'gone'), join(dir, 'apps', 'web', 'node_modules', '@golem', 'shared'), 'dir');
+  symlinkSync(join(dir, 'packages', 'gone'), join(dir, 'apps', 'web', 'node_modules', '@apple', 'shared'), 'dir');
   const r = run(dir);
   assert.equal(r.exit, 1, r.out);
   assert.match(r.out, /DANGLING/);
@@ -84,7 +84,7 @@ test('THE ALLOWLIST CONTROL: an unexpected escape IS reported', () => {
   const dir = scratch();
   const outside = mkdtempSync(join(tmpdir(), 'resolution-outside-'));
   DIRS.push(outside);
-  symlinkSync(outside, join(dir, 'apps', 'web', 'node_modules', '@golem', 'shared'), 'dir');
+  symlinkSync(outside, join(dir, 'apps', 'web', 'node_modules', '@apple', 'shared'), 'dir');
   const r = run(dir);
   assert.equal(r.exit, 1, r.out);
   assert.match(r.out, /ESCAPES THE CHECKOUT/);

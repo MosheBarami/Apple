@@ -54,7 +54,7 @@ test('THE PLAN LADDER IS ACTUALLY RENDERED — it had zero callers', () => {
 test('the ladder reads the enforced table, so it cannot drift from the server again', () => {
   assert.match(plans, /PLAN_LIMITS/, 'allowances come from the enforced table');
   assert.match(plans, /PLAN_IDS/, 'and every tier the server knows is listed');
-  assert.match(plans, /from '@golem\/shared'/, 'from shared, not a local copy');
+  assert.match(plans, /from '@apple\/shared'/, 'from shared, not a local copy');
   // No tier count, no price and no allowance may be written into this file as a literal.
   assert.doesNotMatch(plans, /\bcreditsPerMonth:\s*\d/, 'an allowance literal would be a second source of truth');
 });

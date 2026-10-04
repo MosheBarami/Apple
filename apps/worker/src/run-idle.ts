@@ -8,6 +8,15 @@
 // A new change clears the check, so a run that is still fixing things is never counted: only a run
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
+import { fenceForQuote } from './run-parts.ts';
+/**
+ * Tools that are CHECKS without being verifiers. A plan's verification step is the agent's own choice among the verifiers in
+ * verifiers.ts, and the self-check's `look` is not one of them (it answers "what does it look like", never "is it good"). But a
+ * successful look after a change IS the run having checked that change, so reading afterwards is the idle this file bounds.
+ * Registered here, beside the bound it feeds; tests/run-idle.test.mjs derives that each is a real tool that changes nothing.
+ */
+export const EXTRA_CHECK_TOOLS: ReadonlySet<string> = new Set(['look']);
+
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
 /**
@@ -28,8 +37,52 @@ export const ANSWER_ONLY_NUDGE = 5;
  * ever passed, so neither bound above started. This one counts read-only steps since the last change
  * in any run that can build, tells the model to build at the nudge, and ends the run at the limit.
  */
-export const READ_STALL_NUDGE = 10;
+export const READ_STALL_NUDGE = 6;
 export const READ_STALL_LIMIT = 20;
+// The nudge was 10 until round 3 (2026-10-04): a run after a composer read for 30 steps, and the generic note at the tenth did not
+// move it. It is 6 now, and after a composer the note restates the next concrete step of the world pass (world-pass.ts readStallNote).
+// Still well under the limit, which ends the run.
+
+/**
+ * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`
+ * role, so a steer from the harness reads as the person speaking. Owner benchmark 2026-10-02: the model
+ * reasoned that the user had told it to build from Parts instead of looking for assets, while the person's
+ * only message was one line; the sentence was the harness's own nudge. A turn the person really sent
+ * ("New direction from the user …", session.ts applySteers) is the only one that goes without it.
+ */
+export const HARNESS_PREFIX = '[Harness note, not the user] ';
+
+/** The one place a harness turn is pushed, so the prefix cannot drift. */
+export function pushHarness(llm: { push(m: { role: 'user'; content: string }): unknown }, text: string): void {
+  llm.push({ role: 'user', content: HARNESS_PREFIX + text });
+}
+
+/**
+ * The note for a run that can build and has changed nothing, or null while it is too early to say. Fires after
+ * a real failure or three read-only steps (the caller latches it, once per run). It reports what happened and
+ * restates the asset order; it does not tell the model what to build or to skip the library.
+ *
+ * It is written into a user-role turn, so it carries nothing it could not safely carry: the tool must be one
+ * of the registry's own names (`isTool`), and a tool's error text, which can quote Studio or a web page, goes
+ * in only through fenceForQuote (one line, no quote or backtick, bounded) inside its own quotation.
+ */
+export function buildNudge(
+  trace: readonly { tool: string; ok: boolean; error?: string; summary?: string }[],
+  readOnlySteps: number,
+  isTool: (name: string) => boolean,
+): string | null {
+  const failed = trace.filter((t) => !t.ok);
+  if (!failed.length && readOnlySteps < 3) return null;
+  const head = (t: { tool: string; error?: string; summary?: string }) => {
+    const said = fenceForQuote(t.error ?? t.summary ?? '').slice(0, 160);
+    const tool = isTool(t.tool) ? t.tool : 'a tool';
+    return said ? `${tool}: "${said}"` : tool;
+  };
+  const last = [...new Set(failed.slice(-3).map(head))];
+  return 'Nothing has changed in the project yet. ' +
+    (last.length ? `Last failures: ${last.join(' | ')}. ` : `${readOnlySteps} read-only steps so far. `) +
+    'Asset order: library, Creator Store, adapt or combine, then build from Parts. Next pick the step that fits.';
+}
 
 export interface IdleState {
   /** A verifier passed after the latest change to the place. */
@@ -88,10 +141,119 @@ export const RETUNE_LIMIT = 12;
 
 export type RetuneAction = 'none' | 'nudge' | 'finish';
 
-export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction } {
+export function afterChange(counts: Record<string, number> | undefined, key: string): { counts: Record<string, number>; action: RetuneAction; count: number } {
   const n = (counts?.[key] ?? 0) + 1;
   const action: RetuneAction = n >= RETUNE_LIMIT ? 'finish' : n === RETUNE_NUDGE ? 'nudge' : 'none';
-  return { counts: { [key]: n }, action };
+  return { counts: { [key]: n }, action, count: n };
+}
+
+/** What repeated: the change the loop guard counted, kept on the run so the nudge and the stop can name it. */
+export interface LastChange {
+  tool: string;
+  aim: string;
+  props: string[];
+  count: number;
+}
+
+/**
+ * Did checks sit between the repeated edits (an audit, a render, a check_*)? Looks back over the entries that cover the last
+ * `count` changes by `tool` and asks whether at least half of those gaps held a check. The measured shape (a terrain build,
+ * 2026-10-02): ten alternating "Checking the build" and "Tweaking lots of things at once" steps ended by the loop guard.
+ */
+export function alternatesWithChecks(trace: readonly { tool: string }[], tool: string, count: number, isCheck: (name: string) => boolean): boolean {
+  if (count < 3) return false;
+  let seen = 0;
+  let checks = 0;
+  for (let i = trace.length - 1; i >= 0 && seen < count; i--) {
+    const t = trace[i]!.tool;
+    if (t === tool) seen += 1;
+    else if (isCheck(t)) checks += 1;
+  }
+  return seen >= count && checks >= Math.ceil((count - 1) / 2);
+}
+
+/**
+ * The note at the nudge: which tool, on what, setting what, how many times in a row, and what to do about it. It is written
+ * into a user-role turn, so the tool is held to the registry's own names and every word the model's arguments supplied goes
+ * through fenceForQuote, as in buildNudge.
+ */
+export function retuneNudge(c: LastChange, isTool: (name: string) => boolean, alternating: boolean): string {
+  const tool = isTool(c.tool) ? c.tool : 'a tool';
+  const target = fenceForQuote(c.aim).slice(0, 120);
+  const props = c.props.map((p) => fenceForQuote(p)).filter(Boolean).slice(0, 8);
+  return `You have applied ${tool}${target ? ` to "${target}"` : ''}${props.length ? ` (setting ${props.join(', ')})` : ''} ${c.count} times in a row, and it succeeded each time. ` +
+    'If the result still looks wrong, name what you see and switch tool, target or approach. ' +
+    (alternating ? 'Checking between edits did not change the outcome. ' : '') +
+    'If it looks right, keep the best version you have, finish anything else the request still needs, and then reply to the user.';
+}
+
+
+/**
+ * Changing two things back and forth. afterChange forgets everything when the target changes, so tweak A, read, tweak B,
+ * read never reaches its limit (scripted S3 and S3b: 400 steps, 1,107 Credits). This keeps the last CHANGE_WINDOW
+ * changes. When one target holds WINDOW_NUDGE of them the model is told, once per WINDOW_NUDGE changes; the second
+ * time the window is still dominated, the run ends on what it built. Work spread over many targets never counts, and a
+ * target that is one change in a few is building, not retuning. A change aimed at nothing (a script's own code names its
+ * target inside the code) is not counted at all: twelve different run_luau scripts in a row ended successful
+ * script-built maps through afterChange, which is the capability this window must not cut.
+ */
+export const CHANGE_WINDOW = 24;
+export const WINDOW_NUDGE = 12;
+export const WINDOW_FINISH_AT_NUDGES = 2;
+
+export interface ChangeWindow { keys: string[]; since: number; nudges: number }
+
+export function afterChangeWindow(state: ChangeWindow | undefined, key: string): { state: ChangeWindow; action: RetuneAction } {
+  const keys = [...(state?.keys ?? []), key].slice(-CHANGE_WINDOW);
+  const since = (state?.since ?? WINDOW_NUDGE) + 1; // changes since the last nudge
+  const dominated = keys.filter((k) => k === key).length >= WINDOW_NUDGE;
+  // Once NO target holds WINDOW_NUDGE of the window, that bout is over: a later, unrelated one starts again with a nudge,
+  // not an end (review of the credits branch). A key that merely is not the dominant one (A, A, B) does not reset it.
+  const counts = new Map<string, number>();
+  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+  const anyDominated = [...counts.values()].some((n) => n >= WINDOW_NUDGE);
+  const nudgesSoFar = anyDominated ? (state?.nudges ?? 0) : 0;
+  if (!dominated || since < WINDOW_NUDGE) return { state: { keys, since, nudges: nudgesSoFar }, action: 'none' };
+  const nudges = nudgesSoFar + 1;
+  return { state: { keys, since: 0, nudges }, action: nudges >= WINDOW_FINISH_AT_NUDGES ? 'finish' : 'nudge' };
+}
+
+
+/**
+ * A tool that keeps failing, whatever it is sent. Measured 2026-10-02 (owner benchmark, map runs of 434 and
+ * 584 Credits): the model hand-computed coordinates for ~75 parts and retried failed calls dozens of times.
+ * Each retry changed its numbers, so the identical-call guard (MAX_SAME_FAILURES, which is keyed on tool +
+ * arguments) never saw a repeat, and every failed step was billed. This counts consecutive failures per TOOL
+ * across any arguments; one success of that tool clears its count. At FAIL_STEER_AT (and again at twice that)
+ * the model is told the calls failed the same way and to read state or change approach; at FAIL_END_AT the
+ * run ends on what it built. The tool is never withheld: that would change the offered tools and void the
+ * cached prefix, and the agent decides what to try next.
+ */
+export const FAIL_STEER_AT = 3;
+export const FAIL_END_AT = 8;
+
+export type FailureAction = 'none' | 'steer' | 'finish';
+
+/**
+ * The steer for a tool that keeps failing. It carries a count and a REGISTERED tool name (the run loop only counts calls
+ * that were in the offered set) and nothing else: the error text stays in the tool results, where it is fenced as
+ * untrusted output, and is not quoted into a user-role turn (packages/evals security.test.mjs A5 reviews this push).
+ */
+export function failureSteer(tool: string, failures: number): string {
+  return `Your last ${failures} calls to ${tool} failed the same way, with different arguments each time (the errors are in the results above). ` +
+    'Another variation of the same call will most likely fail too: read the current state to see what is really there, or change your approach ' +
+    '(a different tool, or smaller steps), instead of retrying with new numbers.';
+}
+
+export function afterToolOutcome(streaks: Record<string, number> | undefined, tool: string, ok: boolean): { streaks: Record<string, number>; action: FailureAction } {
+  const next = { ...streaks };
+  if (ok) { delete next[tool]; return { streaks: next, action: 'none' }; }
+  // Bounded like addMade: a tool name is a registry name, so this only guards a corrupted persisted record.
+  if (!Object.prototype.hasOwnProperty.call(next, tool) && Object.keys(next).length >= 40) return { streaks: next, action: 'none' };
+  const n = (next[tool] ?? 0) + 1;
+  next[tool] = n;
+  const action: FailureAction = n >= FAIL_END_AT ? 'finish' : n === FAIL_STEER_AT || n === FAIL_STEER_AT * 2 ? 'steer' : 'none';
+  return { streaks: next, action };
 }
 
 
@@ -114,7 +276,7 @@ const MADE: Record<string, string | [string, string]> = {
   insert_sound: ['sound', 'sounds'], design_sound: 'the sound mix', assign_sounds: 'the sound mix',
   insert_asset: ['model', 'models'], insert_library_model: ['model', 'models'], insert_owner_component: ['model', 'models'],
   generate_model: ['model', 'models'], generate_model_external: ['model', 'models'],
-  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts', add_upgrades: 'the upgrades', animate_model: 'the moving parts', build_object: 'new objects', cool_library_model: 'the object\'s new look',
+  insert_ui_component: 'the on-screen parts', build_ui: 'the on-screen parts', build_studded_ui: 'the on-screen parts', add_upgrades: 'the upgrades', animate_model: 'the moving parts', add_behaviour: ['behaviour', 'behaviours'], build_object: 'new objects', dress_object: 'the object\'s stage, motion and extras',
   collision_groups: 'what things can pass through',
   create_rig: ['character', 'characters'],
 };
@@ -207,7 +369,7 @@ export function leavesWorkOpen(text: string | null | undefined): boolean {
 }
 
 export const AUTONOMOUS_CONTINUE_STEER =
-  'The user already asked for this whole request to be finished, so do not ask them anything. ' +
+  'This run is autonomous: nobody is waiting to answer a question, so do not ask one. ' +
   'Your last reply names work that is still missing, broken or unverified. Do that work now with tool ' +
   'calls — fix the defects your checks reported, then playtest the game loop the request asked for. ' +
   'Reply to the user only when nothing the request needs is left, and end that reply with a statement, not a question.';
@@ -219,19 +381,28 @@ export const AUTONOMOUS_IDLE_STEER =
   'playtested), make that change now. If nothing is left, reply to the user with the final summary and no ' +
   'tool calls, ending with a statement, not a question.';
 
-// A request to build a game, as opposed to a prop, a script or a question about one.
-const GAME_REQUEST = /\b(game|simulator|tycoon|obby|roleplay|rpg|shooter|battlegrounds?|survival|horror|racing|tower defen[cs]e)\b/i;
+/**
+ * Whether THIS RUN built something game-shaped, judged by what it built and not by the words of the request: a composed or saved
+ * game (builtGame), or scripts together with at least two other kinds of change. (A keyword list of game genres used to decide
+ * that a request "owed" a HUD and a playtest: a request in another language, or for a genre not on the list, owed nothing, and a
+ * script fix that said "game" owed both.)
+ */
+export function builtAGame(run: { builtGame?: boolean; made?: Record<string, number> }): boolean {
+  if (run.builtGame === true) return true;
+  const kinds = Object.keys(run.made ?? {});
+  return (run.made?.edit_script ?? 0) >= 1 && kinds.length >= 3;
+}
 
 /**
  * What a built game still lacks that a player notices in the first minute: nothing on screen (no
- * currency, no action buttons) or a loop nobody has played. Only what this run can supply is owed.
+ * currency, no action buttons) or a loop nobody has played. Said from what the run built; the agent decides whether it matters.
+ * Only what this run can supply is owed.
  */
 export function gameGaps(
-  request: string | null | undefined,
-  run: { hudBuilt?: boolean; playChecked?: boolean },
+  run: { hudBuilt?: boolean; playChecked?: boolean; builtGame?: boolean; made?: Record<string, number> },
   canPlay: boolean,
 ): ('hud' | 'playtest')[] {
-  if (!request || !GAME_REQUEST.test(request)) return [];
+  if (!builtAGame(run)) return [];
   const gaps: ('hud' | 'playtest')[] = [];
   if (!run.hudBuilt) gaps.push('hud');
   if (canPlay && !run.playChecked) gaps.push('playtest');

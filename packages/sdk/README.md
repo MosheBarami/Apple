@@ -1,11 +1,11 @@
-# @golem/sdk
+# @apple/sdk
 
 Clients for the Apple REST + streaming API, in the three languages this product is used
 from, plus the command line.
 
 | | where | entry point |
 |---|---|---|
-| JavaScript | `src/` | `import { AppleClient } from '@golem/sdk'` |
+| JavaScript | `src/` | `import { AppleClient } from '@apple/sdk'` |
 | TypeScript | `types/index.d.ts` | the same import, typed |
 | Python | `python/apple_sdk/` | `from apple_sdk import AppleClient` |
 | Luau (in Studio) | `luau/AppleClient.luau` | `local Client = require(script.AppleClient)` |
@@ -32,7 +32,7 @@ honest:
 ## Using it
 
 ```js
-import { AppleClient, SessionStream } from '@golem/sdk';
+import { AppleClient, SessionStream } from '@apple/sdk';
 
 const client = new AppleClient({ token: process.env.APPLE_TOKEN });
 const { messages } = await client.messages(projectId, { limit: 20 });

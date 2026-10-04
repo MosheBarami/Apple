@@ -202,7 +202,7 @@ function readText(rel) {
  * Every workspace package's name mapped to its entry file, read from the manifests rather than
  * hard-coded — so a new package is followed the day it exists.
  *
- * Without this, `import { X } from '@golem/shared'` resolves to nothing and EVERY file in
+ * Without this, `import { X } from '@apple/shared'` resolves to nothing and EVERY file in
  * packages/shared and packages/design looks unimported. That is the checker's blind spot reported
  * as the repository's defect, which is the worst kind of finding: confident, specific and wrong.
  */
@@ -218,7 +218,7 @@ const WORKSPACE = (() => {
       const entry = pkg.main ?? pkg.module ?? 'src/index.ts';
       map.set(pkg.name, `${dir}/${entry}`);
 
-      // SUBPATH EXPORTS. `@golem/design` publishes ./rules, ./retrieve, ./checks, ./playbooks and
+      // SUBPATH EXPORTS. `@apple/design` publishes ./rules, ./retrieve, ./checks, ./playbooks and
       // ./pixels, and reading only `main` left every one of those specifiers unresolvable — so each
       // module they point at looked imported by nothing, and the count of unresolved in-repo
       // specifiers was inflated by exactly those imports. A shared module that has just been
@@ -297,7 +297,7 @@ function resolveSpecifier(fromRel, spec, { virtualBase = false } = {}) {
 
   //[[ A DEEP PATH INTO A WORKSPACE PACKAGE IS STILL A WORKSPACE IMPORT.
   //
-  //   `apps/worker/src/luau-review.ts` imports seven modules as `@golem/evals/src/luau-*.mjs`.
+  //   `apps/worker/src/luau-review.ts` imports seven modules as `@apple/evals/src/luau-*.mjs`.
   //   packages/evals declares no `exports` map, so neither the exact-name branch above nor the
   //   subpath branch saw them, and ten specifiers — the entire Luau intelligence cluster the
   //   PRODUCT calls on every review — were dropped. The consequence is worse than a miscount: those
@@ -371,7 +371,7 @@ const IMPORT_RE = /(?:^|\n)\s*(?:import|export)[^;]{0,4000}?from\s*['"]([^'"]+)[
 //
 // A resolver that silently drops a whole class of specifier does not report an error — it reports
 // FEWER EDGES, and the findings that follow are confident and wrong. Restoring the workspace blind
-// spot takes `@golem/shared` from 47 resolved importers to 6, and NOTHING else in the output moves,
+// spot takes `@apple/shared` from 47 resolved importers to 6, and NOTHING else in the output moves,
 // because the file has relative importers too. A test asserting "shared is not reported as dead"
 // therefore passed with the bug in place and with it removed: green, and measuring nothing.
 //
@@ -387,7 +387,7 @@ for (const rel of importerSources) {
     const spec = m[1] ?? m[2] ?? m[3];
     const target = resolveSpecifier(rel, spec, { virtualBase });
     if (target) { importers.get(target)?.add(rel); resolvedEdges += 1; }
-    else if (spec.startsWith('.') || spec.startsWith('@golem/')) unresolved.push({ rel, spec });
+    else if (spec.startsWith('.') || spec.startsWith('@apple/')) unresolved.push({ rel, spec });
   }
 }
 const unresolvedSpecifiers = unresolved.length;

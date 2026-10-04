@@ -30,7 +30,7 @@
 // API key has no whoami — the profile read above answers about the id in the URL, which is the id
 // the user typed, so it would answer identically for a key belonging to somebody else. OAuth has
 // a userinfo endpoint and API keys do not, so verifying ownership is an OAuth item, not this one.
-import type { RobloxScope } from '@golem/shared';
+import type { RobloxScope } from '@apple/shared';
 import { useRobloxCredential, describeRobloxCredential, type CredentialEnv } from './user-credentials';
 
 /** The scope whose whole purpose is the read this probe makes. Nothing else is borrowed. */

@@ -90,7 +90,7 @@ test('there is no "installed" state anywhere in the connection layer', () => {
 test('the install link is derived from the shared config, not retyped', () => {
   const src = readFileSync(join(HERE, '..', 'src', 'components', 'pairing-dialog.tsx'), 'utf8');
   assert.match(src, /STUDIO_PLUGIN_INSTALL_HREF/);
-  assert.ok(!/create\.roblox\.com/.test(src), 'the URL must come from @golem/shared');
+  assert.ok(!/create\.roblox\.com/.test(src), 'the URL must come from @apple/shared');
   assert.ok(!/\d{12,}/.test(src), 'no asset id literal may appear here');
 });
 

@@ -14,7 +14,7 @@
  *
  * The bodies are pure functions over the op channel (`OpCall`), so tests drive them against a stand-in Studio.
  */
-import type { GatewayToolDef, StudioOp } from '@golem/shared';
+import type { GatewayToolDef, StudioOp } from '@apple/shared';
 import { playCheckUiOp, type OpCall } from './phase-a-tools';
 import {
   type GuiNode, type MenuCluster, arr, all, clip, coveringPieces, guiFrom, hasText, hasVisuals, isButton, labelOf, lastName, menuClusters, num, outOfSight, overlaps, pathParts, pickButtons, pickFlow, readable, rec, shown,
@@ -50,16 +50,18 @@ const MAX_SOURCE_LOOKUPS = 12;
 export const JUDGE_GAME_DEF: GatewayToolDef = {
   name: 'judge_game',
   description:
-    'Score the game you built the way a PAYING CLIENT would, before you tell the user it is done. It reads the whole place and plays it in up to 3 short Test sessions (real button clicks, walking onto collectable parts), then answers seven questions with exact evidence and a fix for each: ' +
-    'placeholders (default/"loading"/"nil"/fake-number/developer-note/other-language text, Robux products that are not the owner\'s), ui_coherence (overlaps of the pieces that stay on screen, two menu sets, two different looks, a crowded or bare start screen, layout at phone and desktop size), buttons_work (every visible button pressed: which do nothing), ' +
-    'progression (can the player earn AND spend, from leaderstats or from the money counter on the HUD; what a test cannot press, like proximity prompts, is said, not counted as absent), errors (script errors while playing, and code loaded from a Roblox asset id), construction (floating/overlapping/buried/far parts, spawn on solid ground), fit_uniqueness (features the request did not ask for such as pets in a garden game, features it DID ask for that nothing in the game mentions, duplicate systems, leftover admin/event/duels/codes, a source game\'s name or website still showing). ' +
+    'Score the game you built the way a PAYING CLIENT would, before you tell the user it is done. It reads the whole place, plays up to 3 short Test sessions (real clicks, walking onto collectables), and answers seven questions, each with evidence and a fix: ' +
+    'placeholders (default/"loading"/"nil"/fake-number/developer-note/other-language text, Robux products that are not the owner\'s), ui_coherence (overlapping on-screen pieces, two menu sets or looks, a crowded or bare start screen, phone and desktop layout), buttons_work (every visible button pressed: which do nothing), ' +
+    'progression (can the player earn AND spend, from leaderstats or from the money counter on the HUD; what a test cannot press, like proximity prompts, is said, not counted as absent), errors (script errors while playing, and code loaded from a Roblox asset id), construction (floating/overlapping/buried/far parts, spawn on solid ground), fit_uniqueness (unasked features like pets in a garden game, asked-for features nothing in the game mentions, duplicate systems, leftover admin/event/duels/codes, a source game\'s name or website showing). ' +
     'Returns {verdict: "ready"|"not ready", score 0-100, criteria:[{id, ok, measured, score, evidence[], fix}], forUser (2-4 plain sentences), fixes (ordered), notVerified}. Only "ready" means every question is a yes; a part that could not be observed is never a yes. ' +
-    'Pass `request` = the user\'s request in plain English. Fix the listed problems in order (fit_uniqueness first: deleting what does not belong removes other problems too) and run it again until it says ready. ' +
-    'The score is capped at 79 while any question is a no. It takes Studio over for up to about 3 minutes (like play_check_ui). sessions: 0-3 (default 3); 0 reads without playing, so buttons, progression and errors are then not measured and the verdict cannot be ready.',
+    'Pass `request` = the user\'s request in plain English. Fix the problems in order (fit_uniqueness first: deleting what does not belong removes other problems too) and rerun until it says ready. ' +
+    'The score is capped at 79 while any question is a no. It takes Studio over for up to ~3 minutes (like play_check_ui). sessions 0-3 (default 3); 0 reads without playing: buttons, progression and errors go unmeasured and it cannot be ready.',
   parameters: {
     type: 'object',
     properties: {
-      request: { type: 'string', description: 'What the user asked for, in plain English, in their words (e.g. "an original brainrot game with a lobby and plots"). Decides which features are unrequested.' },
+      request: { type: 'string', description: 'What the user asked for, in plain English, in their words. Decides which features are unrequested.' },
+      design: { type: 'object', description: 'Composed game: enemies [{ name, is }] you meant to build.' },
+      planId: { type: 'string', description: 'From plan_game.' },
       ownProductIds: { type: 'array', items: { type: 'number' }, maxItems: 50, description: 'Robux product / game pass ids that belong to the game owner; any other id written in a script is reported.' },
       sessions: { type: 'number', description: '0-3, default 3: how many play sessions to run (each ~10-40 s).' },
     },

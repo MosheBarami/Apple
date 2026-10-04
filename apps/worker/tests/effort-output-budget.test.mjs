@@ -27,7 +27,7 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'reasoning.ts'), '--bundle', '--format=esm', '--target=es2022',
    '--alias:cloudflare:workers=' + join(WORKER, 'tests', 'stubs', 'cloudflare-workers.mjs'),
    '--outfile=' + out], { stdio: 'pipe', cwd: WORKER });
-const { tokensForEffort } = await import(out);
+const { tokensForEffort, tokensAfterCuts, MAX_CONSECUTIVE_CUTS } = await import(out);
 
 const GATEWAY = readFileSync(join(WORKER, 'src', 'gateway.ts'), 'utf8');
 const SESSION = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
@@ -85,4 +85,16 @@ test('asking past the ceiling stays free — the clamp precedes the reservation'
     'gateway.ts now estimates the neuron reservation BEFORE clamping the request to the model '
     + 'ceiling. Asking past the ceiling is no longer free, and tokensForEffort asks past it on '
     + 'every high-effort step.');
+});
+
+test('CREDITS: a step after an output-ceiling cut is never asked for less than the full budget, and the cuts are bounded', () => {
+  for (const [, base] of modeBases()) {
+    for (const effort of ['low', 'medium', 'high']) {
+      assert.equal(tokensAfterCuts(base, effort, 0), tokensForEffort(base, effort), 'a step that follows no cut keeps its own budget');
+      assert.ok(tokensAfterCuts(base, effort, 1) >= tokensForEffort(base, 'high'), `${effort} after a cut asked for less than the full budget`);
+      assert.ok(tokensAfterCuts(base, effort, 1) >= tokensForEffort(base, effort), 'a cut must never lower a budget');
+    }
+  }
+  assert.ok(MAX_CONSECUTIVE_CUTS >= 3 && MAX_CONSECUTIVE_CUTS <= 8, 'the bound is a judgement: enough to try the split-smaller nudges, few enough to stop paying');
+  assert.match(SESSION, /tokensAfterCuts\(baseTokensFor\(agent\.mode\), choice\.effort, agent\.consecutiveCuts/, 'the step must size its budget through the cut-aware function');
 });

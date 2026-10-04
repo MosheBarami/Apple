@@ -25,8 +25,8 @@
  * reason that says the classification is unknown. An optimistic default here re-runs a mutation
  * against somebody's place on the strength of a guess.
  */
-import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@golem/shared';
-import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@golem/shared';
+import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@apple/shared';
+import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@apple/shared';
 
 /**
  * The ops that change the user's place. Mirrors the `MUTATING` table in apps/plugin/src/Ops.luau,
@@ -122,11 +122,11 @@ export function retryEligibility(op: StudioOp | { op: string } | string | null |
             kind,
             retryable: false,
             reason:
-              'Studio did not answer, so this change may already have been applied; repeating it could apply it twice',
+              'Studio did not answer, so this change may already have been applied; read the tree to check before retrying, because repeating it could apply it twice',
           }
         : { kind, retryable: true, reason: 'Studio did not answer a read, which changes nothing when repeated' };
     case 'not_found':
-      return { kind, retryable: false, reason: 'the target is not there; repeating the same request finds it again' };
+      return { kind, retryable: false, reason: 'the target is not there; read the tree for the correct path, then use that path' };
     case 'conflict':
       return { kind, retryable: false, reason: 'the place is not in the state this op required' };
     case 'refused':
@@ -139,12 +139,34 @@ export function retryEligibility(op: StudioOp | { op: string } | string | null |
 }
 
 /**
+ * A conflict is two different problems with two different repairs, and the kind alone cannot tell them apart: the names
+ * inside one call collide (rename one of them HERE), or the parent already has that name (pick a new name, or edit what is
+ * there). This one reads the plugin's own sentence, so it is a hint and never a decision: an unrecognised sentence gets
+ * the generic reason, and nothing that matters (retryability) depends on it.
+ */
+export function conflictAdvice(error: string | undefined): string | null {
+  if (!error) return null;
+  if (/two (created|moved) instances would share|two nested children are named|would contain two children|would create duplicate sibling/i.test(error)) {
+    return 'two names in this call collide: rename one of them in this call and send it again';
+  }
+  const existing = /^(.+?) already (?:contains a child named|has a|has a child named) (.+?)\.?$/i.exec(error.trim());
+  if (existing) return `${existing[1]} already has "${existing[2]}": pick a new name, or edit the existing instance instead of creating it again`;
+  if (/already (contains|has|uses)/i.test(error)) return 'the parent already has that name: pick a new name, or edit the existing instance instead of creating it again';
+  if (/path is ambiguous/i.test(error)) return 'two siblings share that name, so the path is ambiguous: rename one of them, then address it by its unique path';
+  return null;
+}
+
+/**
  * One line for the agent, so the model is told the classification rather than left to infer it
  * from the prose it is already being shown.
  */
-export function retryHint(op: StudioOp | { op: string } | string | null | undefined, result: Pick<OpResult, 'ok' | 'failure'>): string | null {
+export function retryHint(op: StudioOp | { op: string } | string | null | undefined, result: Pick<OpResult, 'ok' | 'failure'> & { error?: string }): string | null {
   if (result.ok) return null;
   const v = retryEligibility(op, result);
+  if (v.kind === 'conflict') {
+    const advice = conflictAdvice(result.error);
+    if (advice) return `Do not retry this as-is: ${advice}.`;
+  }
   return v.retryable ? `This can be retried: ${v.reason}.` : `Do not retry this as-is: ${v.reason}.`;
 }
 
@@ -173,10 +195,13 @@ export function remedyHint(result: Pick<OpResult, 'ok' | 'failure' | 'remedy'>):
   if (result.ok) return null;
   if (asFailureKind(result.failure) !== 'refused') return null;
   if (isRefusalRemedyCode(result.remedy)) return REFUSAL_REMEDIES[result.remedy];
+  // The plugin refused on purpose and sent no remedy: most often a class or property Apple's plugin does not write at all.
+  // The old text told the model to "say that you do not know how to enable it", which gave it nothing to DO and so it tried
+  // the same write again. Say what to do, and keep the one thing that must never happen: inventing a Studio setting.
   return (
-    'This build does not report what would resolve this refusal. Say that you do not know how to ' +
-    'enable it rather than guessing at a Studio setting; a wrong instruction costs the user more ' +
-    'than an honest "I am not sure".'
+    'Apple\'s plugin refused this on purpose and does not say a setting would lift it. Do not retry it and do not invent a ' +
+    'Studio setting for it: use another class, or leave that property out, and carry on with the rest of the work. If the ' +
+    'request truly needs it, tell the user plainly that Apple cannot do that part yet.'
   );
 }
 

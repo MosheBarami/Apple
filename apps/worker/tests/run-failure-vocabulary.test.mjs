@@ -34,7 +34,7 @@ function errorCallArgs() {
 }
 
 test('the closed vocabulary exists and is shared, not retyped on each side', () => {
-  assert.match(SHARED, /export const RUN_FAILURES/, 'the codes must be declared once, in @golem/shared');
+  assert.match(SHARED, /export const RUN_FAILURES/, 'the codes must be declared once, in @apple/shared');
   assert.match(SHARED, /export type RunFailure\b/);
   assert.match(SESSION, /RUN_FAILURES|RunFailure/, 'session.ts must use the shared vocabulary rather than string literals');
 });

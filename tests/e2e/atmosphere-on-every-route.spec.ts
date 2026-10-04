@@ -252,12 +252,15 @@ test.describe('the calm site', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/pricing');
     // The cards reveal with a stagger (8px of travel); measured mid-reveal they are a pixel apart
-    // in height and read as two rows. Settle first — the failsafe is 2.6s plus a 420ms fade.
-    await page.waitForTimeout(3500);
-    const desk = await page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => {
+    // in height and read as two rows. Settle first — the failsafe is 2.6s plus a 420ms fade. A fixed
+    // 3.5s wait was not enough on a loaded machine (2026-10-04: red twice under a full parallel run,
+    // green alone), so the measure waits until the reveal has finished, for up to 10s.
+    const measure = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => {
       const r = e.getBoundingClientRect();
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
     }));
+    await expect.poll(async () => new Set((await measure()).map((c) => c.top)).size, { timeout: 10_000 }).toBe(1);
+    const desk = await measure();
     expect(desk.length, 'the plan rail holds no cards').toBe(3);
     expect(new Set(desk.map((c) => c.top)).size, `the cards do not share a row at 1440: ${JSON.stringify(desk)}`).toBe(1);
     expect(new Set(desk.map((c) => c.left)).size, 'the cards overlap in one column').toBe(3);

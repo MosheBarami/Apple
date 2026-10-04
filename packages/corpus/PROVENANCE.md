@@ -1,10 +1,10 @@
 # Corpus Provenance
 
-Golem's RAG corpus is built exclusively from license-compatible public sources.
+Apple's RAG corpus is built exclusively from license-compatible public sources.
 `src/fetch.mjs` records the exact commit SHA of every source in `raw/manifest.json`
 on each fetch; `data/chunks.jsonl` carries a `url` per chunk that links back to the
 canonical published page, satisfying attribution requirements at retrieval time
-(chunk sources are surfaced as links in the Golem UI).
+(chunk sources are surfaced as links in the Apple UI).
 
 Initial fetch date: **2026-08-30**. Re-fetch by running `pnpm fetch` (shallow
 update; the SHA in `raw/manifest.json` is refreshed).
@@ -56,6 +56,21 @@ API chunks.
 license file in the checkout, `src/chunk.mjs` **skips the source entirely** and
 prints a note — nothing with an unverified license enters the corpus.
 
+## Source 3 — Apple research notes (`packages/corpus/research/NN-topic.md`)
+
+- **What:** original syntheses written for Apple (2026-10-04 onward), one per topic of `research/roblox/BRIEF.md`:
+  viral hits, discovery, genre design, Luau architecture, world visuals, UI/UX, animation/audio/VFX, monetisation and
+  policy, the tools ecosystem, and a from-scratch playbook.
+- **Licence basis:** Apple's own text. Facts are restated in Apple's words, with at most a few quoted words and no
+  copied passages. Every fact carries a numbered citation `[S#]` to its public source (Roblox Creator Docs, the
+  DevForum, Roblox's blog and RDC, developer talks, press). The source list sits at the end of each note.
+- **Chunks:** `src/research-chunks.mjs` splits each note on `##`/`###` (≤2,400 chars), `kind: 'research'`,
+  `docSlug: research-<note>`. Each chunk's `url` is the first source it cites (else the note's first source), and its
+  `[S#]` markers stay in the text.
+- **Upload:** `upload.mjs` carries them with the docs chunks, so a prune keeps them. `src/research-upload.mjs` sends
+  only these (add or update, no prune) for machines without `raw/`.
+- **Third-party figures** (player counts, revenue) are labelled as such in the notes, with their date.
+
 ## Explicitly excluded
 
 - `content/en-us/assets/` media (not needed; huge LFS payload).
@@ -65,7 +80,7 @@ prints a note — nothing with an unverified license enters the corpus.
 
 ## Storage
 
-Chunks are uploaded to the Golem worker (`/api/admin/embed-batch`): text into
+Chunks are uploaded to the Apple worker (`/api/admin/embed-batch`): text into
 D1 (`chunks` + `chunks_fts` FTS5) for keyword search, and Workers AI embeddings
 into Vectorize for the `embed=true` subset. `raw/` and `data/` are gitignored;
 nothing from the corpus is committed to this repository.

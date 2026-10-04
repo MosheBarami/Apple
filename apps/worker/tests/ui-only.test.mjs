@@ -347,9 +347,12 @@ test('keyless shop icons use the skin palette instead of an opaque black image p
   assert.ok(icons.every((sp) => sp.props.BackgroundColor3.v.some((n) => n > 0.1)), 'opaque black placeholder tiles are not a usable UI icon');
 });
 
-test('ids: shared and cached images work, while insert never starts a permanent upload', async () => {
+test('ids: shared images work, there is no user-scoped read, and insert never starts a permanent upload', async () => {
+  // PHASE 1: the resolver used to read KV `ui-image:<userId>:<asset>`, a key nothing writes. A read of a user-scoped key that no
+  // one fills can only ever return another run's leftovers, so the read is gone and a missing id stays missing.
+  const reads = [];
   const kv = new Map([['ui-image:u1:kenney-ui-pack/red/button_round_depth_gloss.png', '222']]);
-  const env = { KV: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } } };
+  const env = { KV: { get: async (k) => { reads.push(k); return kv.get(k) ?? null; }, put: async (k, v) => { kv.set(k, v); } } };
   const uploads = [];
   const deps = {
     describeCredential: async () => ({ scopes: ['asset:write'] }),
@@ -358,8 +361,10 @@ test('ids: shared and cached images work, while insert never starts a permanent 
   };
   const resolve = U.uiImageResolver(env, 'u1', deps);
   const out = await resolve(['kenney-ui-pack/red/button_round_depth_gloss.png', 'kenney-ui-pack/blue/button_rectangle_depth_gloss.png']);
-  assert.equal(out.ids['kenney-ui-pack/red/button_round_depth_gloss.png'], '222');
+  assert.equal(reads.length, 0, 'no KV read at all, user-scoped or otherwise');
+  assert.equal(out.ids['kenney-ui-pack/red/button_round_depth_gloss.png'], undefined, 'a value some earlier run left under a user key is not used');
   assert.ok(out.missing.some((m) => m.asset === 'kenney-ui-pack/blue/button_rectangle_depth_gloss.png'));
+  assert.equal(out.missing.length, 2);
   assert.equal(uploads.length, 0);
   assert.equal(kv.has('ui-image:u1:kenney-ui-pack/blue/button_rectangle_depth_gloss.png'), false);
   const none = await U.uiImageResolver({}, undefined, {})(['kenney-ui-pack/blue/button_rectangle_depth_gloss.png']);

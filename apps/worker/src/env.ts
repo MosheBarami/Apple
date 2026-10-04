@@ -18,7 +18,7 @@ export interface Env {
   QUOTA_DO: DurableObjectNamespace;
   /** Explicit deployment identity; a request host must never choose the billing authority. */
   BILLING_WORKER_NAME?: 'apple' | 'golem';
-  /** Apple-only external binding to golem's existing QuotaDO namespace during migration. */
+  /** Apple-only external binding to the legacy worker's existing QuotaDO namespace during migration. */
   LEGACY_QUOTA_DO?: DurableObjectNamespace;
   PAIRING_DO: DurableObjectNamespace;
   ADMIN_DO: DurableObjectNamespace;
@@ -27,6 +27,18 @@ export interface Env {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   ENVIRONMENT: string;
+  /**
+   * THE SELF-CHECK BEFORE ANSWERING (M1 of docs/autonomy/PHASE-3-4-PLAN.md): `off` | `on` | `full`. A plain Worker var, not a
+   * secret. `off` is the run exactly as it was (the `look` tool is not even offered); `on` adds the evidence ledger, the look,
+   * the completion gate and the deterministic claim audit; `full` also runs the one cheap text judge over the final reply.
+   * UNSET: `on` everywhere except ENVIRONMENT=production, where it is `off` until the owner turns it on (the Q21 line is owed).
+   * To switch it in production: `wrangler deploy --var SELF_CHECK:on` (or set it in wrangler.jsonc "vars"). See self-check.ts.
+   */
+  SELF_CHECK?: string;
+  /** The blind critique before answering (blind-critique.ts): on unless `off`, `0`, `false` or `no`. Only effective while SELF_CHECK is on. */
+  SELF_CHECK_CRITIC?: string;
+  /** How long, in ms (0 to 2000, default 350), the look waits after aiming the viewport camera before it captures. Tuning, not a switch. */
+  SELF_CHECK_SETTLE_MS?: string;
   /**
    * Purpose-scoped secret used only to claim and acknowledge membership-access outbox rows. The
    * raw value is a Worker secret; Supabase stores its SHA-256 digest (migration 0009). Without it,
@@ -196,6 +208,11 @@ export interface Env {
   MODEL_UPLOAD_WORKFLOW?: Workflow<import('./model-upload').ModelUploadParams>;
   /** Images binding: display-sized WebP copies of generated images (image-resize.ts). */
   IMAGES?: ImagesBinding;
+  /**
+   * Kill switch for milestone M4 (re-adding behaviour to library models): "off", "0" or "false" makes add_behaviour refuse and
+   * turns off the behaviour lint refusals in edit_script (behaviour-tool.ts, behaviour-review.ts). Unset means on.
+   */
+  BEHAVIOUR_V2?: string;
 }
 
 export interface AuthedUser {

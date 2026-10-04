@@ -1,21 +1,26 @@
 /**
- * compose_game: the user's idea becomes a NEW game made from components (compose.ts), in their Studio (compose-run.ts).
- * It replaces plan_game/build_game, which copied a whole saved game and cut it down (rejected by the owner, 2026-09-30).
+ * compose_game: a NEW game made from components on a map made for it, in the user's Studio (compose.ts, compose-run.ts). It
+ * replaces plan_game/build_game, which copied a whole saved game and cut it down (rejected by the owner, 2026-09-30).
  *
- * The idea picks a template and its pieces (ideaRecipe). An idea no template can build yet is refused in plain words:
- * a game that ignores the idea's twist is worse than no game.
+ * THE AGENT CHOOSES AND FILLS THE TEMPLATE (owner directive "generalize-not-patch", 2026-10-02). The tool used to read the
+ * request itself: a regex routed an idea to a template, tables of trades supplied the machines (laundry, bakery, pizza...),
+ * a hero object found in the place decided the subject, and library searches picked the look of every machine by comparing
+ * names. Every game came out as whatever an earlier benchmark had been about. Now the agent names the `template`, supplies
+ * everything that makes THIS game what it is (names, the chain, the machines, the economy, the library pieces it chose), and
+ * the tool validates what only arithmetic and structure can say, reports what is missing by name, and builds. An idea no
+ * template can express is not refused: the tool lists what each template makes and cannot make, and the agent builds it
+ * another way.
  */
 import type { AgentCtx } from './tools';
-import { composeSteps, type Recipe } from './compose';
+import { composeSteps } from './compose';
 import { PLAY_TEST_STOP, runSteps } from './compose-run';
-import { orchardRecipe } from './recipes';
 import { libraryReady, librarySafetyCopy } from './local-owner-corpus';
 import { userWantsOwnSurface } from './surfaces';
-import { isTycoonRequest, tycoonForUser, tycoonRecipe, tycoonSteps, tycoonTheme, type TycoonRecipe } from './compose-tycoon';
-import { isPlotSimRequest, pieceName, plotSimRecipe, plotSimSteps, heroSpot, type PlotSimRecipe } from './compose-plotsim';
-import type { LibRef } from './compose';
-
-export type IdeaPlan = { recipe: Recipe; template: string } | { error: string };
+import { tycoonEconomy, tycoonForUser, tycoonRecipe, tycoonSteps, tycoonTheme, tycoonUnlocks } from './compose-tycoon';
+import { heroSpot, plotSimMapFacts, plotSimSteps, readPlotSim } from './compose-plotsim';
+import { placementSpots } from './world-steps';
+import { LANE_NEEDS, readLaneDefense } from './compose-lane';
+import { bounds } from './library-object';
 
 /** A stable seed from the idea's words, so the same idea lays out the same map and a new idea a new one. */
 export function ideaSeed(text: string): number {
@@ -24,299 +29,264 @@ export function ideaSeed(text: string): number {
   return h >>> 0;
 }
 
-const LANE_DEFENSE = /\b(defen[cd]|protect|guard|tower|siege|invad|attack(ers)?|waves?|hold (off|back))\b/i;
-const VEG = /\b(veg(etable|gie|etables|gies)?|carrots?|tomato(es)?|pumpkins?|eggplants?|broccoli|potato(es)?|corn|cabbages?)\b/i;
-const FRUIT_HOME = /\b(orchard|farm|garden|fruit trees?|apple trees?|crops?|harvest)\b/i;
+/** What each template makes and cannot make, and what it needs from the agent. Information for choosing. */
+export const TEMPLATES = [
+  {
+    template: 'tycoon',
+    makes: 'a base per player where droppers drop an item onto a conveyor, machines over the belt turn it into the next thing and multiply its worth, a seller pays the owner, and buy pads unlock the next dropper or machine',
+    cannot: 'combat, waves, shared worlds, anything without a belt-and-machines chain',
+    needs: 'tycoon { title, currency, item { name, color, shape?, size?, material? }, dropper, machines[1-4] { name, becomes, color, times?, look? { gameId, path } }, seller { name, look? } }; optional: players, prices, symbol',
+  },
+  {
+    template: 'plot-sim',
+    makes: 'a hub with claimable plots around it, a shop of machines that earn every second on your plot, upgrades, rebirth and a studded HUD',
+    cannot: 'a belt chain, combat, anything without plots and a shop',
+    needs: 'plotSim { title, subject, currency, machines[1-6] { name, price, income, look { gameId, path } or from "Workspace.<Model>" }, upgrades[1-9] { label, kind, amount, cost } }; optional: players, rebirth, symbol, scenery[], hero',
+  },
+  {
+    template: 'lane-defense',
+    makes: 'enemies that walk a road to a base in waves while the player buys defenders and places them on plots beside the road',
+    cannot: 'anything without a road, waves and placed defenders',
+    needs: LANE_NEEDS,
+  },
+] as const;
 
-/** The template and pieces for an idea, or why none fits yet. */
-export function ideaRecipe(idea: string): IdeaPlan {
-  const text = idea.trim();
-  if (!text) return { error: 'There is no idea to build yet.' };
-  const seed = ideaSeed(text);
-  if (LANE_DEFENSE.test(text) && (VEG.test(text) || FRUIT_HOME.test(text))) {
-    const recipe = orchardRecipe(seed);
-    if (!FRUIT_HOME.test(text) && /garden/i.test(text)) recipe.title = 'Garden Siege';
-    return { recipe, template: 'lane-defense/orchard' };
+/** Models this run placed directly in the workspace, as the `from` a machine takes ("Workspace.<Model>"). Newest last, at most 6. */
+export function insertedFromCandidates(ctx: Pick<AgentCtx, 'evidence'>): string[] {
+  const out: string[] = [];
+  for (const path of ctx.evidence?.inserted ?? []) {
+    // An insert names a model "Thing (2)" when the name is taken; the ledger keeps that as game.Workspace["Thing (2)"].
+    const m = /^game\.Workspace\.([^.[\]]{1,40})$/.exec(path) ?? /^game\.Workspace\["([^"\\.[\]]{1,40})"\]$/.exec(path);
+    if (m && !out.includes(`Workspace.${m[1]}`)) out.push(`Workspace.${m[1]}`);
   }
-  return { error: 'The components for that kind of game are not ready yet, so nothing was built. The ones that are: defending a place from waves of vegetables (an orchard, a farm, a garden).' };
+  return out.slice(-6);
+}
+
+/** The same, kept to the ones still in the place: the run may have renamed or deleted a model since the ledger saw it. */
+export async function liveInsertedFrom(ctx: AgentCtx): Promise<string[]> {
+  const out: string[] = [];
+  for (const from of insertedFromCandidates(ctx)) if (await bounds(ctx.execStudioOp, `game.${from}`)) out.push(from);
+  return out;
+}
+
+/**
+ * A plot simulator's machines that name no model (no `look`, no `from`) take the models this run inserted, one each in turn: the run
+ * searched and inserted real models and then described machines without them (round 3: "from 0 library pieces"). Only a machine the
+ * agent left bare is filled; one that names its own model is never changed. Returns the plotSim to build and what was filled.
+ */
+export function withInsertedLooks(plotSim: unknown, candidates: readonly string[]): { plotSim: unknown; filled: { index: number; from: string }[] } {
+  const g = plotSim && typeof plotSim === 'object' ? (plotSim as Record<string, unknown>) : null;
+  if (!g || !Array.isArray(g.machines) || !candidates.length) return { plotSim, filled: [] };
+  const filled: { index: number; from: string }[] = [];
+  const machines = g.machines.map((m, index) => {
+    const o = m && typeof m === 'object' ? (m as Record<string, unknown>) : null;
+    if (!o || o.look || (typeof o.from === 'string' && o.from)) return m;
+    const from = candidates[filled.length % candidates.length]!;
+    filled.push({ index, from });
+    return { ...o, from };
+  });
+  return { plotSim: { ...g, machines }, filled };
+}
+
+/** What the result says about the models this run inserted: which the game uses, and for the rest how to use them. Pure. */
+export function insertedReport(models: readonly string[], used: readonly string[], map: ReturnType<typeof plotSimMapFacts> | undefined): Record<string, unknown> | undefined {
+  if (!models.length) return undefined;
+  const unused = models.filter((m) => !used.includes(m));
+  const spots = map ? placementSpots(map, Math.min(8, map.plots.length + 4)) : [];
+  return {
+    used: models.filter((m) => used.includes(m)),
+    unused,
+    ...(unused.length
+      ? { note: `These models you inserted are NOT part of the game yet: ${unused.map((m) => `"${m}"`).join(', ')}. They still stand where you left them. Copy them onto the map with clone_instances (paths [${unused.slice(0, 4).map((m) => `"game.${m}"`).join(', ')}]${spots.length ? `, at [${spots.map((p) => `[${p.join(', ')}]`).join(', ')}]` : ', within a rect'}), or, to make one a machine, call compose_game again with existing "replace" and machines[i].from set to it.` }
+      : {}),
+  };
+}
+
+/** The sentence that names them. Plain words; the names are the run's own placements. */
+export function fromCandidatesText(from: string[]): string {
+  return `You inserted ${from.length === 1 ? 'this model' : 'these models'} in this run; pass ${from.length === 1 ? 'it' : 'one'} as machines[i].from (a different one per machine, or one for all): ${from.map((f) => `"${f}"`).join(', ')}.`;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
-  const blocked = libraryReady(ctx);
-  if (blocked) return { error: blocked };
-  const idea = String(a.request ?? '').trim() || ctx.userRequest?.() || '';
-  const plan = ideaRecipe(idea);
-  // A simulator / tycoon / "make it a full game" idea is the plot simulator (compose-plotsim.ts), unless it is the
-  // orchard lane defense the first template already answers.
-  // A tycoon is a tycoon (owner, 2026-10-02: "a laundry tycoon" came out as the keyboard's plot simulator): droppers,
-  // a belt, machines that change the item, buy pads, all named from the request by the agent's own theme.
-  if ('error' in plan && isTycoonRequest(idea)) return composeTycoon(ctx, idea, a.tycoon);
-  if ('error' in plan && isPlotSimRequest(idea)) return composePlotSim(ctx, idea);
-  // No template is not a refusal (owner, 2026-10-01: every request gets done): the agent builds it with its own tools.
-  if ('error' in plan) {
-    return {
-      changed: false, template: 'none',
-      note: 'No ready game template fits this idea, so nothing was built by this tool. Build it yourself now with your tools, completely, in the studded style: read_creation_skill any-idea-done-right (and map-improve, props-rig-animate as needed). Do not tell the user it cannot be done.',
-    };
-  }
-  const copy = await librarySafetyCopy(ctx, 'before building your game');
-  if ('error' in copy) return { error: copy.error };
-  const { recipe } = plan;
-  // Studs on everything unless the user asked for a surface of their own (owner, 2026-10-01; surfaces.ts).
-  recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
-  const steps = composeSteps(recipe);
-  const report = await runSteps(ctx, steps);
-  // A build that could not write (a Play test, or Studio gone) says so and ends here; it is not "done".
-  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
-  const built = (report.counts.import ?? 0) > 0 || (report.counts.script ?? 0) > 0;
-  if (report.critical.length) {
-    return {
-      changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`,
-      forUser: `I started building ${recipe.title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet. I will not call it done.`,
-      problems: report.problems.slice(0, 12),
-    };
-  }
-  const enemies = recipe.enemies.map((e) => e.name.toLowerCase());
-  const forUser = report.stopped
-    ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`
-    : `I built ${recipe.title}: a new map with a winding road to your ${recipe.words.base?.toLowerCase() ?? 'base'}, four plots to plant on, and waves of walking vegetables (${enemies.join(', ')}). ` +
-      `Buy ${recipe.defenders.map((d) => d.name).join(', ')} in the ${recipe.words.shop ?? 'shop'}, plant them next to the road, and they throw fruit at the veggies; every veggie you beat pays ${recipe.currency.toLowerCase()}. ` +
-      `The waves keep coming, bigger each time. Press Play to try it.`;
-  return {
-    changed: built,
-    game: recipe.title,
-    template: plan.template,
-    built: report.counts,
-    ...(report.missing.length ? { missingPieces: report.missing } : {}),
-    ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
-    forUser,
-    note: 'Now run judge_game {request} as a player would, fix only what it lists, and answer from forUser in your own friendly words. Name no tools, paths or counts.',
-  };
-}
-
-type TreeNode = { name?: string; class?: string; path?: string; children?: TreeNode[]; props?: Record<string, unknown> };
-const triple = (raw: unknown): [number, number, number] | null => {
-  const v = (raw as { v?: unknown } | undefined)?.v;
-  return Array.isArray(v) && v.length === 3 && v.every((n) => typeof n === 'number') ? v as [number, number, number] : null;
-};
-
-/** What the place already holds that the simulator should build on: its object (the hero) and its economy. */
-async function readPlace(ctx: AgentCtx): Promise<{ hero?: string; hasComponents: boolean }> {
-  const ws = await ctx.execStudioOp({ op: 'get_tree', root: 'game.Workspace', maxDepth: 2, maxNodes: 600 }, 30_000).catch(() => null);
-  const kids = ws?.ok ? ((ws.data as { root?: TreeNode }).root?.children ?? []) : [];
-  // build_object's signature: a Model with an AppleAnimations module. The biggest one is the game's centrepiece.
-  const heroes = kids.filter((k) => k.class === 'Model' && (k.children ?? []).some((c) => c.name === 'AppleAnimations') && k.name !== 'AppleMap');
-  heroes.sort((x, y) => (y.children?.length ?? 0) - (x.children?.length ?? 0));
-  const comps = await ctx.execStudioOp({ op: 'get_tree', root: 'game.ServerScriptService.AppleComponents', maxDepth: 0, maxNodes: 1 }, 20_000).catch(() => null);
-  return { ...(heroes[0]?.name ? { hero: heroes[0].name } : {}), hasComponents: Boolean(comps?.ok) };
-}
-
-/** Things that are the same kind of machine to a player: searched when the library has too few of the subject itself. */
-const KIN: Record<string, string[]> = {
-  keyboard: ['piano', 'typewriter', 'synth', 'keytar'], piano: ['keyboard', 'organ', 'synth'], car: ['truck', 'kart', 'bus'],
-  computer: ['laptop', 'monitor', 'console'], drill: ['excavator', 'digger', 'miner'], oven: ['stove', 'grill', 'fryer'],
-};
-
-/**
- * A subject that is a trade, not a thing, is searched as the things it runs on (owner's test, 2026-10-02: "laundry"
- * found one faucet; the library has washing machines, dryers and washers).
- */
-const THINGS: Record<string, string[]> = {
-  laundry: ['washing machine', 'dryer', 'washer'], bakery: ['oven', 'bread', 'cake'], pizza: ['pizza oven', 'pizza'],
-  farm: ['tractor', 'barn', 'silo'], mining: ['drill', 'excavator', 'minecart'], coffee: ['coffee machine', 'espresso'],
-};
-
-/** Library models of the subject, then of its kin, one per source game: different looks for the machine ladder. */
-async function subjectModels(ctx: AgentCtx, subject: string, limit: number): Promise<LibRef[]> {
-  // Half the subject itself, half its kin, then the subject again for what is left: the library's keyboards are four
-  // flat desk props, its grand pianos are the machines a player wants to buy (owner's screenshots, 2026-10-01).
-  const things = THINGS[subject];
-  if (things) {
-    // Small pieces count here (a Bloxburg dryer is 9 parts): they are fitted to a plot tile either way.
-    const out: LibRef[] = [];
-    // The piece is the thing itself, not a thing named after it ("Dryer Chair" is a chair).
-    const isThe = (t: string, path: string) => pieceName(path).toLowerCase().split(' ').pop() === t.split(' ').pop();
-    for (const t of things) {
-      for (const r of await libraryModels(ctx, t, limit, 8)) {
-        if (out.length < limit && isThe(t, r.path) && !out.some((o) => o.game === r.game && o.path === r.path)) out.push(r);
-      }
-    }
-    if (out.length) return out;
-  }
-  const own = await libraryModels(ctx, subject, limit);
-  const kin = KIN[subject] ?? [];
-  const out = own.slice(0, kin.length ? Math.ceil(limit / 2) : limit);
-  for (const k of kin) {
-    if (out.length >= limit) break;
-    for (const r of await libraryModels(ctx, k, limit - out.length, 20)) if (!out.some((o) => o.game === r.game)) out.push(r);
-  }
-  for (const r of own) if (out.length < limit && !out.includes(r)) out.push(r);
-  return out.slice(0, limit);
-}
-
-/** One street light from the library (one lamp, not a set of them): the roads between the hub and the plots were bare. */
-async function streetLight(ctx: AgentCtx): Promise<LibRef | undefined> {
-  const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q: 'street light', kind: 'model', limit: 20 }, 60_000).catch(() => null);
-  if (!out?.ok) return undefined;
-  const items = ((out.data as { items?: { gameId?: string; path?: string; kind?: string; parts?: number }[] }).items ?? [])
-    .filter((i) => i.kind === 'model' && typeof i.gameId === 'string' && typeof i.path === 'string' && (i.parts ?? 0) >= 20 && (i.parts ?? 0) <= 150)
-    .filter((i) => /street ?light( \d+)?$/i.test(i.path!.split('/').pop() ?? ''));
-  const best = items.find((i) => /stud/i.test(i.path!)) ?? items[0];
-  return best ? { game: best.gameId!, path: best.path! } : undefined;
-}
-
-/** What the user is told when a build could not write to Studio. */
+/** What stopped a build, in the user's words. */
 function stoppedText(why: string): string {
   return why === PLAY_TEST_STOP
     ? 'Studio is in a Play test, so nothing could be built. Stop the test (the red square at the top of Studio), then ask again.'
     : 'Studio disconnected while the game was being built, so it is only partly there. Reconnect and ask again to finish it.';
 }
 
-/** The top of the hub's plaza (studded-map.ts hubItems: an 0.8-stud plaza on the ground). */
-const HUB_PLAZA_TOP = 0.8;
-
-/** Library models of the subject (the owner library first): the machines beyond the hero's own tiers. */
-async function libraryModels(ctx: AgentCtx, q: string, limit: number, minParts = 15): Promise<LibRef[]> {
-  const out = await ctx.execStudioOp({ op: 'query_owner_library', action: 'list', q, kind: 'model', limit: 20 }, 60_000).catch(() => null);
-  if (!out?.ok) return [];
-  const items = ((out.data as { items?: { gameId?: string; path?: string; kind?: string; parts?: number }[] }).items ?? [])
-    .filter((i) => i.kind === 'model' && typeof i.gameId === 'string' && typeof i.path === 'string' && (i.parts ?? 0) >= minParts);
-  const seen = new Set<string>();
-  const refs: LibRef[] = [];
-  for (const i of items) {
-    if (seen.has(i.gameId!)) continue; // one per source game: different looks, not four copies of one
-    seen.add(i.gameId!);
-    refs.push({ game: i.gameId!, path: i.path! });
-    if (refs.length >= limit) break;
-  }
-  return refs;
+/** What a composed game earlier left in the place: facts, so the agent chooses `extend` or `replace`. */
+async function readExisting(ctx: AgentCtx): Promise<{ map: boolean; components: string[] }> {
+  const map = await ctx.execStudioOp({ op: 'get_instance', path: 'game.Workspace.AppleMap' }, 15_000).catch(() => null);
+  const comps = await ctx.execStudioOp({ op: 'get_tree', root: 'game.ServerScriptService.AppleComponents', maxDepth: 1, maxNodes: 80 }, 20_000).catch(() => null);
+  const kids = comps?.ok ? ((comps.data as { root?: { children?: { name?: string }[] } }).root?.children ?? []) : [];
+  return { map: map?.ok === true, components: comps?.ok ? kids.map((k) => String(k.name ?? '')).filter(Boolean).slice(0, 20) : [] };
 }
 
-/** One library look for a thing: the piece must be the thing itself ("Dryer Chair" is a chair), small pieces allowed. */
-async function lookFor(ctx: AgentCtx, search: string | undefined): Promise<LibRef | undefined> {
-  if (!search) return undefined;
-  const words = search.toLowerCase().split(' ').filter(Boolean);
-  const last = words[words.length - 1];
-  // The whole name first, then its last word alone ("clothes dryer" finds the library's "Dryer"), the piece still
-  // having to BE that thing.
-  for (const q of words.length > 1 && last && last.length >= 5 ? [search, last] : [search]) {
-    for (const r of await libraryModels(ctx, q, 6, 6)) if (pieceName(r.path).toLowerCase().split(' ').pop() === last) return r;
-  }
-  return undefined;
-}
+/** The earlier composed game's own folders: removed only when the agent said `existing: "replace"`. */
+const COMPOSED_PATHS = ['game.Workspace.AppleMap', 'game.ServerScriptService.AppleComponents', 'game.ReplicatedStorage.AppleComponents', 'game.ServerStorage.AppleParts',
+  'game.ServerStorage.AppleDefenders', 'game.ServerStorage.AppleEnemies', 'game.ServerStorage.AppleTycoonParts', 'game.StarterGui.AppleHUD', 'game.StarterGui.TycoonHUD'];
 
-async function composeTycoon(ctx: AgentCtx, idea: string, given: unknown) {
-  const place = await readPlace(ctx);
-  const theme = tycoonTheme(idea, given);
-  const [machines, seller] = await Promise.all([
-    Promise.all(theme.machines.map((m) => lookFor(ctx, m.search))),
-    lookFor(ctx, theme.seller.search),
-  ]);
-  const recipe: TycoonRecipe = tycoonRecipe(idea, ideaSeed(idea), theme, { machines, ...(seller ? { seller } : {}) }, place.hasComponents);
-  const copy = await librarySafetyCopy(ctx, 'before building your game');
-  if ('error' in copy) return { error: copy.error };
-  recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
-  const report = await runSteps(ctx, tycoonSteps(recipe));
-  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
-  const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.TycoonHUD' }, 20_000).catch(() => null);
-  if (!hud?.ok) report.critical.push("the game's screen is not in StarterGui");
-  const bases = await ctx.execStudioOp({ op: 'get_instance', path: 'game.Workspace.AppleMap.Tycoons.1.Conveyor' }, 20_000).catch(() => null);
-  if (!bases?.ok) report.critical.push('the bases were not built');
-  const built = (report.counts.script ?? 0) > 0;
-  if (report.critical.length) {
-    return { changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`, problems: report.problems.slice(0, 12),
-      forUser: `I started building ${recipe.title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet.` };
+export async function composeGame(ctx: AgentCtx, a: Record<string, unknown>) {
+  const blocked = libraryReady(ctx);
+  if (blocked) return { error: blocked };
+  const idea = String(a.request ?? '').trim() || ctx.userRequest?.() || '';
+  const template = String(a.template ?? '');
+  // No template named, or one that is not offered: not a refusal, a menu. The agent builds it another way if none fits.
+  if (!TEMPLATES.some((t) => t.template === template)) {
+    return {
+      changed: false, template: 'none', templates: TEMPLATES,
+      note: `Pass template (${TEMPLATES.map((t) => t.template).join(' | ')}) and its argument object. If none of these can make the user's idea, nothing was built by this tool: build it with your other tools (search the library, preview, build_object, dress_object) and do not tell the user it cannot be done.`,
+    };
   }
-  return {
-    changed: built, game: recipe.title, template: 'tycoon', built: report.counts,
-    chain: [theme.item.name, ...theme.machines.map((m) => m.becomes)],
-    ...(report.missing.length ? { missingPieces: report.missing } : {}),
-    ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
-    forUser: tycoonForUser(recipe, report),
-    note: 'The tycoon is built from components; do not rebuild any of it by hand. Check it once in play (play_check), fix only what is broken, and answer from forUser in your own friendly words. Name no tools, paths or counts.',
-  };
-}
+  // What an earlier composed game left: said, and the agent decides.
+  const existing = await readExisting(ctx);
+  const choice = String(a.existing ?? '');
+  if ((existing.map || existing.components.length) && choice !== 'extend' && choice !== 'replace') {
+    return {
+      changed: false, template, existing,
+      note: 'The place already holds a composed game or components (the map and the scripts listed). Nothing was changed. Pass existing: "extend" to build on what is there (its economy and components stay) or existing: "replace" to remove that game first. Pick the one the user\'s message calls for; it may have nothing to do with the earlier game.',
+    };
+  }
+  const hasComponents = choice === 'extend' && existing.components.length > 0;
+  const seed = ideaSeed(idea || template);
+  const surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
+  const clearDefaultGround = a.clearDefaultGround === true;
 
-async function composePlotSim(ctx: AgentCtx, idea: string) {
-  const place = await readPlace(ctx);
-  const draft = plotSimRecipe(idea, ideaSeed(idea), { ...place, library: [], hubProps: [], hasComponents: place.hasComponents });
-  // Library first (owner, 2026-10-01: "if you find assets it's better than generating one from parts"): up to four
-  // other models of the subject, the hub's stands, and scenery for the island.
-  const [library, shop, trees, rocks, stage, lamp] = await Promise.all([
-    subjectModels(ctx, draft.subject, place.hero ? 4 : 6),
-    libraryModels(ctx, 'shop', 1, 5),
-    libraryModels(ctx, 'tree', 2, 5),
-    libraryModels(ctx, 'rock', 1, 2),
-    place.hero ? ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${place.hero}Stage.Stage` }, 20_000).catch(() => null) : Promise.resolve(null),
-    streetLight(ctx),
-  ]);
-  const stageSize = stage?.ok ? triple((stage.data as { props?: Record<string, unknown> }).props?.Size) : null;
-  const hubProps: PlotSimRecipe['hubProps'] = [
-    // No sell stand: a plot simulator sells nothing, and a SELL stand that does nothing is a fake (owner's critique).
-    ...(shop[0] ? [{ key: 'HubShop', ref: shop[0], at: 'shop' as const, height: 12 }] : []),
-  ];
-  const recipe = plotSimRecipe(idea, ideaSeed(idea), { ...place, library, hubProps, hasComponents: place.hasComponents });
-  recipe.decor = [
-    // Two kinds of tree when the library has them: sixteen copies of one tree read as copies.
-    ...trees.map((ref, k) => ({ key: k ? `DecorTree${k + 1}` : 'DecorTree', ref, height: 18, count: trees.length > 1 ? 8 : 16 })),
-    ...(rocks[0] ? [{ key: 'DecorRock', ref: rocks[0], height: 5, count: 10 }] : []),
-  ];
-  if (stageSize) recipe.heroSize = [stageSize[0], stageSize[2]];
-  if (lamp) recipe.roadside = { key: 'RoadLamp', ref: lamp, height: 12 };
-  if (!recipe.machines.length) {
-    return { changed: false, template: 'none', note: `No ${recipe.subject} is in the place and the owner library has no ${recipe.subject} model, so there is nothing to sell yet. Build the ${recipe.subject} first with build_object, then call compose_game again.` };
-  }
-  const copy = await librarySafetyCopy(ctx, 'before building your game');
-  if ('error' in copy) return { error: copy.error };
-  recipe.surface = userWantsOwnSurface(idea) ? 'keep' : 'studs';
-  const report = await runSteps(ctx, plotSimSteps(recipe));
-  // A build that could not write (a Play test, or Studio gone) says so and ends here; it is not "done".
-  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
-  // The hero moves onto the hub's centre, with its stage: the game is built around what the player already made.
-  if (recipe.hero) {
-    const root = await ctx.execStudioOp({ op: 'get_instance', path: `game.Workspace.${recipe.hero}.Root` }, 20_000).catch(() => null);
-    const at = root?.ok ? triple((root.data as { props?: Record<string, unknown> }).props?.Position) : null;
-    if (at) {
-      const [hx, hz] = heroSpot(recipe);
-      // The hub's plaza is the stage now: the object's own stage goes and the object comes down onto the plaza, so the
-      // hub is not plates on plates (owner's critique, 2026-10-01: plaza, rim, yellow stage and case stacked).
-      const drop = stageSize ? -(stageSize[1] - HUB_PLAZA_TOP) : 0;
-      const moved = await ctx.execStudioOp({ op: 'transform_instances', paths: [`game.Workspace.${recipe.hero}`], move: [hx - at[0], drop, hz - at[2]] }, 30_000).catch(() => null);
-      if (!moved?.ok) report.problems.push(`the ${recipe.subject} could not be moved onto the hub`);
-      else if (stageSize) await ctx.execStudioOp({ op: 'delete_instances', paths: [`game.Workspace.${recipe.hero}Stage`] }, 20_000).catch(() => undefined);
-    } else report.problems.push(`the ${recipe.subject}'s position could not be read, so it stays where it was`);
-  }
-  // The screen is what makes it playable: read it back rather than trust the create (live 2026-10-01: refused, unnoticed).
-  const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.AppleHUD' }, 20_000).catch(() => null);
-  if (!hud?.ok && !report.critical.some((c) => c.startsWith("the game's screen"))) report.critical.push("the game's screen is not in StarterGui");
-  const built = (report.counts.script ?? 0) > 0;
-  if (report.critical.length) {
-    return { changed: built, error: `The game was not finished: ${report.critical.join('; ')}.`, problems: report.problems.slice(0, 12),
-      forUser: `I started building ${recipe.title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet.` };
-  }
-  const libNames = recipe.machines.filter((m) => m.ref).length;
-  const forUser = report.stopped
-    ? `Studio disconnected while ${recipe.title} was being built, so it is only partly there. Reconnect and ask again to finish it.`
-    // Short lines a player reads at a glance (round 8 of the owner's test 1: one long sentence with two brackets in a row).
-    : [
-      recipe.hero
-        ? `Your ${recipe.subject} is now **${recipe.title}**: a hub with your ${recipe.subject} in the middle and ${recipe.players} plots around it, one for each player.`
-        : `**${recipe.title}** is ready: a hub and ${recipe.players} plots around it, one for each player.`,
-      `- Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning Coins.`,
-      `- The Shop (button, or the SHOP pad in the hub) sells ${recipe.machines.length} machine${recipe.machines.length === 1 ? '' : 's'}: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second; pressing your own pays extra.`,
+  let mapFacts: ReturnType<typeof plotSimMapFacts> | undefined; let modelsUsed: string[] = []; let modelsMine: string[] = []; let autoFrom: string[] = [];
+  let steps; let title = ''; let forUser = ''; let extra: Record<string, unknown> = {}; let afterRun: ((report: { problems: string[]; critical: string[] }) => Promise<void>) | undefined;
+  let verify: (() => Promise<string[]>) | undefined;
+  if (template === 'tycoon') {
+    const t = tycoonTheme(a.tycoon);
+    if ('error' in t) return { changed: false, template, error: t.error, missing: t.missing };
+    const recipe = tycoonRecipe(seed, t.theme, hasComponents);
+    recipe.surface = surface; recipe.clearDefaultGround = clearDefaultGround;
+    steps = tycoonSteps(recipe); title = recipe.title;
+    const unlocks = tycoonUnlocks(t.theme);
+    extra = {
+      game: recipe.title, template: 'tycoon', chain: [t.theme.item.name, ...t.theme.machines.map((m) => m.becomes)],
+      economy: { pads: tycoonEconomy(t.theme, unlocks), note: 'Information: seconds to afford each pad in order with one dropper (item worth 1). Pass tycoon.prices to change the curve.' },
+      ...(t.notes.length ? { notes: t.notes } : {}),
+      ...(t.theme.prices ? {} : { defaults: ['pad prices: the documented defaults'] }),
+    };
+    forUser = tycoonForUser(recipe, { missing: [] });
+    verify = async () => {
+      const out: string[] = [];
+      const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.TycoonHUD' }, 20_000).catch(() => null);
+      if (!hud?.ok) out.push("the game's screen is not in StarterGui");
+      const bases = await ctx.execStudioOp({ op: 'get_instance', path: 'game.Workspace.AppleMap.Tycoons.1.Conveyor' }, 20_000).catch(() => null);
+      if (!bases?.ok) out.push('the bases were not built');
+      return out;
+    };
+  } else if (template === 'plot-sim') {
+    // The models this run inserted and still stands in the place: a machine the agent left bare takes one (withInsertedLooks).
+    const mine = await liveInsertedFrom(ctx);
+    const given = withInsertedLooks(a.plotSim, mine);
+    const p = readPlotSim(given.plotSim, seed, hasComponents);
+    if ('error' in p) {
+      // A machine with no look, in a run that already placed models: those are the candidates (the agent searched, inserted, and then forgot to use them).
+      const lacksLook = p.missing.some((m) => /\.look\b|\.from\b/.test(m));
+      const own = lacksLook ? mine : [];
+      return { changed: false, template, error: own.length ? `${p.error} ${fromCandidatesText(own)}` : p.error, missing: p.missing };
+    }
+    const recipe = p.recipe;
+    // A `from` that names nothing in the place builds a shop of machines with no model: said now, with the models that do exist.
+    for (const [i, m] of recipe.machines.entries()) {
+      if (m.from && !(await bounds(ctx.execStudioOp, `game.${m.from}`))) {
+        return { changed: false, template, error: `machines[${i}].from: game.${m.from} is not in the place (or has no measurable size). ${mine.length ? fromCandidatesText(mine) : 'Insert a model first (insert_library_model), or name one that exists.'}`, missing: [`machines[${i}].from`] };
+      }
+    }
+    modelsUsed = [...recipe.machines.map((m) => m.from), recipe.hero ? `Workspace.${recipe.hero}` : undefined].filter((v): v is string => !!v);
+    modelsMine = mine;
+    autoFrom = given.filled.map((f) => `machines[${f.index}] "${recipe.machines[f.index]?.name ?? ''}" uses ${f.from}`);
+    recipe.surface = surface;
+    // The hero is the agent's own naming: measured here so the hub is made to hold it, and moved onto the hub after.
+    let hb: Awaited<ReturnType<typeof bounds>> = null;
+    if (recipe.hero) {
+      hb = await bounds(ctx.execStudioOp, `game.Workspace.${recipe.hero}`);
+      if (!hb) return { changed: false, template, error: `hero: game.Workspace.${recipe.hero} is not in the place (or has no measurable size). Name an object that exists, or leave hero out.` };
+      recipe.heroSize = [Math.max(hb.size[0], 1), Math.max(hb.size[2], 1)];
+    }
+    mapFacts = plotSimMapFacts(recipe); // after the hero is measured: the hub is made to hold it
+    steps = plotSimSteps(recipe); title = recipe.title;
+    extra = {
+      game: recipe.title, template: 'plot-sim',
+      machines: recipe.machines.map((m) => `${m.name} (${m.price}, +${m.income}/s${m.ref ? ', from the library' : m.from ? ', a model from your place' : ''})`),
+      economy: { machines: p.economy, note: 'Information: seconds for each machine to pay for itself.' },
+      ...(p.notes.length ? { notes: p.notes } : {}), ...(p.defaults.length ? { defaults: p.defaults } : {}),
+    };
+    const libNames = recipe.machines.filter((m) => m.ref).length;
+    forUser = [
+      recipe.hero ? `Your ${recipe.subject} is now **${recipe.title}**: a hub with it in the middle and ${recipe.players} plots around it, one for each player.` : `**${recipe.title}** is set up: a hub and ${recipe.players} plots around it, one for each player.`,
+      `- Every player starts on their own plot with a free ${recipe.machines[0]?.name ?? recipe.subject} already earning ${recipe.currency}.`,
+      `- The Shop (button, or the SHOP pad in the hub) sells ${plural(recipe.machines.length, 'machine')}: ${recipe.machines.map((m) => m.name).join(', ')}${libNames ? ` (${libNames} from your library)` : ''}. Each earns every second, and clicking or tapping one of your machines presses it for an instant payout that upgrades raise.`,
       `- Upgrades make every press and every second worth more; Rebirth starts you over with a permanent boost.`,
     ].join('\n');
+    verify = async () => {
+      const hud = await ctx.execStudioOp({ op: 'get_instance', path: 'game.StarterGui.AppleHUD' }, 20_000).catch(() => null);
+      return hud?.ok ? [] : ["the game's screen is not in StarterGui"];
+    };
+    afterRun = async (report) => {
+      if (!recipe.hero || !hb) return;
+      // The hero moves onto the hub's centre and stands on its plaza. Its own stage (if the agent made one) stays: the agent decides.
+      const [hx, hz] = heroSpot(recipe);
+      const moved = await ctx.execStudioOp({ op: 'transform_instances', paths: [`game.Workspace.${recipe.hero}`], move: [hx - hb.center[0], 0.8 - hb.bottomY, hz - hb.center[2]] }, 30_000).catch(() => null);
+      if (!moved?.ok) report.problems.push(`${recipe.hero} could not be moved onto the hub`);
+    };
+  } else {
+    const l = readLaneDefense(a.laneDefense, seed);
+    if ('error' in l) return { changed: false, template, error: l.error, missing: l.missing };
+    const recipe = l.recipe;
+    recipe.surface = surface; recipe.clearDefaultGround = clearDefaultGround;
+    steps = composeSteps(recipe); title = recipe.title;
+    extra = { game: recipe.title, template: 'lane-defense', ...(l.notes.length ? { notes: l.notes } : {}), ...(l.defaults.length ? { defaults: l.defaults } : {}) };
+    forUser = `I built ${recipe.title}: a new map with a winding road to your ${recipe.words.base?.toLowerCase() ?? 'base'}, plots to place defenders on, and waves of enemies (${recipe.enemies.map((e) => e.name).join(', ')}). ` +
+      `Buy ${recipe.defenders.map((d) => d.name).join(', ')} in the ${recipe.words.shop ?? 'shop'}, place them beside the road, and every enemy you beat pays ${recipe.currency}. The waves keep coming, bigger each time. Press Play to try it.`;
+  }
+  const copy = await librarySafetyCopy(ctx, 'before building your game');
+  if ('error' in copy) return { error: copy.error };
+  if (choice === 'replace') {
+    for (const path of COMPOSED_PATHS) await ctx.execStudioOp({ op: 'delete_instances', paths: [path] }, 20_000).catch(() => undefined);
+  }
+  const report = await runSteps(ctx, steps);
+  // A build that could not write (a Play test, or Studio gone) says so and ends here; it is not "done".
+  if (report.stopped) return { changed: (report.counts.script ?? 0) > 0, error: stoppedText(report.stopped), forUser: stoppedText(report.stopped) };
+  if (verify) report.critical.push(...await verify());
+  if (afterRun) await afterRun(report);
+  const built = (report.counts.import ?? 0) > 0 || (report.counts.script ?? 0) > 0;
+  if (report.critical.length) {
+    return {
+      changed: built, template, error: `The game was not finished: ${report.critical.join('; ')}.`, problems: report.problems.slice(0, 12),
+      forUser: `I started building ${title}, but part of it did not come out (${report.critical[0]}), so it is not playable yet. I will not call it done.`,
+    };
+  }
   return {
-    changed: built, game: recipe.title, template: 'plot-sim', built: report.counts,
-    machines: recipe.machines.map((m) => `${m.name} ($${m.price}, +${m.income}/s${m.ref ? ', from the library' : m.from ? ', your own' : ''})`),
+    changed: built,
+    ...extra,
+    built: report.counts,
     ...(report.missing.length ? { missingPieces: report.missing } : {}),
     ...(report.problems.length ? { problems: report.problems.slice(0, 12) } : {}),
+    // What the world pass builds on: the map's bounds, the hub and the plots (world-steps.ts), measured from the layout just built.
+    ...(mapFacts ? { map: mapFacts } : {}),
+    ...(autoFrom.length ? { machinesFromYourModels: autoFrom } : {}),
+    ...(insertedReport(modelsMine, modelsUsed, mapFacts) ? { yourModels: insertedReport(modelsMine, modelsUsed, mapFacts) } : {}),
+    ...(clearDefaultGround ? {} : { scene: 'The default Baseplate was left as it was (pass clearDefaultGround: true to remove it and build ground that fits the setting); the default SpawnLocation was switched off and its decal removed, the map has its own spawn. Lighting was not changed (set_mood is yours).' }),
     forUser,
-    note: 'The game is built from components; do not rebuild any of it by hand. Check it once in play (play_check), fix only what is broken, and answer from forUser in your own friendly words. Name no tools, paths or counts.',
+    note: BASE_NOTE,
   };
 }
+
+/**
+ * What the agent is told after a composer succeeds: this is a starting kit, not the game (t1 round 2: the plot-sim template was
+ * answered as the whole game, an island and four flat plots for an idea about crystals and caves). Fixed words, no subject; the
+ * at-answer check (world-pass.ts) holds the run to it.
+ */
+export const BASE_NOTE =
+  'This is the BASE of the game, not the finished game: the template\'s map, economy, shop, screens and scripts. The template makes the same map for any idea, so the world, setting, objects and progression the request describes are NOT built yet. ' +
+  'Build them now on top of it: re-read the request; find real assets (find_library_model, then insert_library_model; clone_instances for copies) and place them; dress and fill the map; add what the request names that the template does not provide; use the creator skills you were given. ' +
+  'If the default Baseplate still shows, replace it (clearDefaultGround, terrain, ground that fits the setting). Keep the template\'s own systems; do not rebuild them by hand. ' +
+  'Then check it (judge_game), fix what it lists, and answer: how it plays from forUser, plus what you added. Name no tools, paths or counts. An answer before the world is built is sent back.';
 
 export function composeSummary(_args: Record<string, unknown>, result: unknown, failed: boolean): string {
   if (failed) return 'Could not build the game';

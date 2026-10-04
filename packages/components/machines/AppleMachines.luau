@@ -60,9 +60,11 @@ function AppleMachines.rebirthCost(rules: Rebirth, rebirths: any): number
 	return math.floor(rules.cost * rules.growth ^ n)
 end
 
---[[ Pure: why a rebirth is refused, or nil when it may go ahead. ]]
-function AppleMachines.rebirthRefusal(balance: number, cost: number): string?
-	if balance < cost then return "You need more money to rebirth." end
+--[[ Pure: why a rebirth is refused, or nil when it may go ahead. The shortfall is named in the game's own currency, never "money". ]]
+function AppleMachines.rebirthRefusal(balance: number, cost: number, currency: string?): string?
+	if balance < cost then
+		return if type(currency) == "string" and currency ~= "" then ("You need more %s to rebirth."):format(currency:lower()) else "You need more to rebirth."
+	end
 	return nil
 end
 
@@ -87,6 +89,7 @@ function AppleMachines.start(config: any, economy: any)
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local ServerStorage = game:GetService("ServerStorage")
 	local Players = game:GetService("Players")
+	local TweenService = game:GetService("TweenService")
 	if not economy then warn("AppleMachines: there is no economy, so nothing can be paid"); return end
 
 	local machines: { [string]: Machine } = if type(config.machines) == "table" then config.machines else {}
@@ -180,6 +183,105 @@ function AppleMachines.start(config: any, economy: any)
 		if pay > 0 then economy.grant(player, pay, "press") end
 	end)
 
+	-- THE ACTIVE ACTION: every machine on a plot can be pressed (a click, a tap, or the prompt beside it). The server counts the press
+	-- (ServerStorage.AppleAnimatePressed, which AppleUpgrades and the machine's own perPress above pay from), the player's own machine
+	-- answers with a bounce, a spark burst, a sound and a floating "+N", and a visitor's press does nothing. Without this nothing in the
+	-- world was pressable, so "+N per press" upgrades paid for an action that could not be taken (owner's recording, 2026-10-04).
+	local lastPress: { [Player]: number } = {}
+	local lastModel: { [Player]: Instance } = {}
+	local function targetPart(model: Instance): BasePart?
+		if model:IsA("BasePart") then return model end
+		if model:IsA("Model") and model.PrimaryPart then return model.PrimaryPart end
+		return model:FindFirstChildWhichIsA("BasePart", true)
+	end
+	local function feedback(model: Instance, amount: number)
+		local part = targetPart(model)
+		if not part then return end
+		local pop = Instance.new("BillboardGui")
+		pop.Name = "PressPop"
+		pop.Size = UDim2.new(0, 120, 0, 40)
+		pop.StudsOffset = Vector3.new(0, part.Size.Y / 2 + 2, 0)
+		pop.AlwaysOnTop = true
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.TextScaled = true
+		label.Font = Enum.Font.FredokaOne
+		label.TextColor3 = Color3.fromRGB(255, 244, 194)
+		label.TextStrokeTransparency = 0
+		label.Text = "+" .. tostring(amount)
+		label.Parent = pop
+		pop.Parent = part
+		TweenService:Create(pop, TweenInfo.new(0.7, Enum.EasingStyle.Quad), { StudsOffset = pop.StudsOffset + Vector3.new(0, 4, 0) }):Play()
+		TweenService:Create(label, TweenInfo.new(0.7), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+		task.delay(0.8, function() pop:Destroy() end)
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Rate = 0
+		sparks.Lifetime = NumberRange.new(0.3, 0.6)
+		sparks.Speed = NumberRange.new(8, 14)
+		sparks.SpreadAngle = Vector2.new(180, 180)
+		sparks.Size = NumberSequence.new(0.5, 0)
+		sparks.LightEmission = 1
+		sparks.Parent = part
+		sparks:Emit(10)
+		task.delay(1, function() sparks:Destroy() end)
+		local sound = Instance.new("Sound")
+		sound.SoundId = "rbxassetid://4612375051"
+		sound.Volume = 0.4
+		sound.Parent = part
+		sound:Play()
+		task.delay(1.5, function() sound:Destroy() end)
+		if model:IsA("Model") then
+			local from = model:GetPivot()
+			model:PivotTo(from * CFrame.new(0, 0.5, 0))
+			task.delay(0.08, function() if model.Parent then model:PivotTo(from) end end)
+		end
+	end
+	-- Every payer of a press (the machine's own perPress, AppleUpgrades) grants separately: one burst shows their sum.
+	local owed: { [Player]: number } = {}
+	economy.Changed:Connect(function(player: Player, _amount: number, delta: number, reason: string)
+		if reason ~= "press" or delta <= 0 then return end
+		local first = owed[player] == nil
+		owed[player] = (owed[player] or 0) + delta
+		if not first then return end
+		task.delay(0.05, function()
+			local total = owed[player] or 0
+			owed[player] = nil
+			local model = lastModel[player]
+			if model and model.Parent and total > 0 then feedback(model, total) end
+		end)
+	end)
+	local function press(player: Player, model: Instance)
+		if not AppleMachines.isOwn(ownerOf(model), player.UserId) then return end
+		local now = os.clock()
+		if now - (lastPress[player] or 0) < 0.12 then return end
+		lastPress[player] = now
+		lastModel[player] = model
+		pressed:Fire(player, model, "press")
+	end
+	local function makePressable(model: Instance)
+		if model:GetAttribute("Item") == nil then return end
+		local part = targetPart(model)
+		if not part or part:FindFirstChild("ApplePress") then return end
+		local click = Instance.new("ClickDetector")
+		click.Name = "ApplePress"
+		click.MaxActivationDistance = 40
+		click.MouseClick:Connect(function(player: Player) press(player, model) end)
+		click.Parent = part
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "ApplePressPrompt"
+		prompt.ActionText = "Press"
+		prompt.ObjectText = tostring(model:GetAttribute("Item"))
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Triggered:Connect(function(player: Player) press(player, model) end)
+		prompt.Parent = part
+	end
+	placed.ChildAdded:Connect(function(model) task.defer(makePressable, model) end)
+	for _, model in placed:GetChildren() do task.defer(makePressable, model) end
+	Players.PlayerRemoving:Connect(function(player) lastPress[player] = nil; lastModel[player] = nil end)
+
 	local remote = ReplicatedStorage:FindFirstChild("AppleRebirth") or Instance.new("RemoteFunction")
 	remote.Name = "AppleRebirth"
 	remote.Parent = ReplicatedStorage
@@ -189,7 +291,7 @@ function AppleMachines.start(config: any, economy: any)
 		busy[player] = true
 		local n = rebirthsOf(player)
 		local cost = AppleMachines.rebirthCost(rules, n)
-		local why = AppleMachines.rebirthRefusal(economy.get(player), cost)
+		local why = AppleMachines.rebirthRefusal(economy.get(player), cost, economy.CURRENCY)
 		if why then
 			busy[player] = nil
 			return false, why

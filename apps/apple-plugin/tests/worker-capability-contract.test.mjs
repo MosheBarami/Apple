@@ -168,14 +168,20 @@ const WITHHELD_BY_DESIGN = [
   'run_luau', 'run_spec',
 ].sort();
 
-/** The visual/layout gate: four tools, all of them standing on the one operation `render_view`. */
-const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'render_view'];
+/**
+ * The visual/layout gate: five tools standing on the one operation `render_view`. `look` (the self-check, M1) joined it: with no
+ * alternatives passed it needs render_view like the rest. The worker's session DOES pass alternatives, and there a plugin with native
+ * capture and no renderer keeps the look (tests/look-tool.test.mjs in apps/worker holds that).
+ */
+const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'look', 'render_view'];
 
 test('the report the plugin emits parses — it never lands in compatibility mode', { skip }, async () => {
   const { C } = await workerModules();
   const { bundled, noRenderer } = pluginReports();
   for (const [label, report] of [['bundled', bundled], ['no-renderer', noRenderer]]) {
-    assert.equal(report.schema, C.PLUGIN_CAPABILITY_SCHEMA, `${label}: schema must be the one the worker reads`);
+    // RESTATED (the wire rename): the plugin may report the schema in either spelling; what matters is that the worker
+    // reads it and normalises it to the one it speaks.
+    assert.equal(C.normalisePluginCapabilities(report)?.schema, C.PLUGIN_CAPABILITY_SCHEMA, `${label}: schema must be one the worker reads`);
     const parsed = C.parsePluginCapabilities(report);
     assert.ok(parsed, `${label}: the worker REJECTED this plugin's own report, so every tool would silently be offered`);
     // Round-tripping through the canonical DTO is what SessionDO persists, and it must survive.
@@ -318,16 +324,39 @@ test('the shipped plugin refuses the pattern the removed Creator Store asset con
     /\bloadstring\s*\(/,
     /pcall\s*\(\s*require\s*,/,
     /:\s*GetObjects\s*\(/,
-    // InsertService left this list with insert_asset — see the review above. GetObjects stays:
-    // it takes a URL and is the shape that fetches arbitrary content, where LoadAsset takes an id
-    // that Roblox resolves. The two are not the same call wearing different names.
+    // InsertService left this list with insert_asset — see the review above. GetObjects stays, with the single
+    // id-only call carved out below: in general it takes a URL and is the shape that fetches arbitrary content.
     /\bCreateAssetAsync\s*\(/,
     /rbxassetid:\/\//,
   ];
+  // THE ONE EXCEPTION (2026-10-04, owner-directed: free Creator Store models were unreachable). A plugin can load a
+  // free public model it does not own only through DataModel:GetObjects: InsertService:LoadAsset and
+  // AssetService:LoadAssetAsync both answer "User is not authorized to access Asset." (measured in Studio). So exactly
+  // ONE call, of exactly this shape, is allowed: a URL built from a positive whole number that handleInsertAsset has
+  // already validated, never from received text. It must be the only caller's input, and the detached-tree script
+  // refusal must sit between that call and the first Parent assignment. Every other file, and every other GetObjects
+  // or rbxassetid:// shape in Commands.luau, is still forbidden below.
+  const ALLOWED_LOADER = 'gameRef:GetObjects("rbxassetid://" .. string.format("%d", assetId))';
   for (const name of ['Commands.luau', 'Bridge.luau', 'GenerationService.luau', 'init.server.luau', 'Render.luau', 'PlayCheck.luau', 'ops/init.luau', ...OP_FAMILY_FILES.map((f) => `ops/${f}`)]) {
     const raw = readFileSync(join(HERE, '..', 'src', name), 'utf8');
-    const src = raw.replace(/--\[\[[\s\S]*?\]\]/g, ' ').replace(/--[^\n]*/g, ' ');
+    let src = raw.replace(/--\[\[[\s\S]*?\]\]/g, ' ').replace(/--[^\n]*/g, ' ');
     assert.ok(src.length > 200, `${name}: comment stripping ate the source — this test would check nothing`);
+    if (name === 'Commands.luau') {
+      assert.equal(src.split(ALLOWED_LOADER).length - 1, 1, 'Commands.luau must hold exactly one GetObjects call, of the allowed shape');
+      src = src.replace(ALLOWED_LOADER, ' ');
+      const helper = src.indexOf('local function loadFreeAssetDetached(');
+      const handler = src.indexOf('local function handleInsertAsset(');
+      assert.ok(helper > 0 && handler > helper, 'the loader helper must be defined once, before handleInsertAsset');
+      const body = src.slice(handler, src.indexOf('local function handleSetProps(', handler));
+      assert.equal(src.split('loadFreeAssetDetached(').length - 1, 2, 'the loader helper has one definition and one caller');
+      const call = body.indexOf('loadFreeAssetDetached(');
+      const scan = body.indexOf('LuaSourceContainer');
+      const adopt = body.indexOf('child.Parent = parent');
+      assert.ok(call > 0 && scan > call && adopt > scan, 'the script scan must sit between the load and the first Parent assignment');
+      assert.match(body, /assetId % 1 ~= 0/, 'the id must be validated as a whole number before it becomes a URL');
+      const validated = body.indexOf('assetId % 1 ~= 0');
+      assert.ok(validated >= 0 && validated < call, 'the id is validated before the loader is called');
+    }
     for (const forbidden of CALLS) {
       assert.doesNotMatch(src, forbidden, `${name} calls ${forbidden}, which is the shape that got the previous asset removed`);
     }

@@ -7,7 +7,7 @@
     "lib": ["ES2022", "DOM"],
     "baseUrl": ".",
     "paths": {
-      "@golem/shared": ["../../../shared/src/index.ts"]
+      "@apple/shared": ["../../../shared/src/index.ts"]
     }
   },
   "files": ["ok.ts", "bad.ts"]

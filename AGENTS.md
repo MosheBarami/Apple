@@ -25,10 +25,15 @@ number shown burning down in the workspace.
 Live at `https://apple.moshe-barami111.workers.dev`. The owner is one person, non-technical, who
 reads Hebrew and reads neither `docs/` nor code.
 
-**Two names.** The product is **Apple**. The infrastructure is still **golem** — worker name, D1
-database, KV namespaces, wire literals (`golem.v1`, `X-Golem-`, `golem_session`, `@golem/`).
-That is deliberate: renaming a binding or a wire literal breaks live sessions and stored rows.
-Rename neither. `scripts/check-rebrand.mjs` polices the user-visible half only.
+**One name.** The product and all its names are **Apple** (owner decision 2026-10-02: the old name is
+wiped out of every aspect). The word `golem` must not appear in tracked files except where
+`scripts/golem-allowlist.json` lists it, which is only compatibility shims that read old wire and storage
+values, history records and third-party data. Do not add entries without a removal condition.
+`node scripts/check-no-golem.mjs` is the guard (it runs in CI); `docs/operations/GOLEM-REMOVAL-RUNBOOK.md`
+says what is left in the cloud and in what order it is removed. Renaming never flips a name in one step: a
+binding, a storage key or a wire literal is renamed WITH backward compatibility (read both, write the new
+one), because the published Studio plugin and open browser tabs still speak the old spelling.
+`scripts/check-rebrand.mjs` is the deployed-artefact half.
 
 ---
 
@@ -129,7 +134,7 @@ long-poll queue for the plugin, the agent run loop), `QuotaDO`, `BudgetDO`, `Pai
 `<kind>/<projectId>/<id>` so a project's bytes are one `list({ prefix })` from deletion).
 `MEDIA` is optional: `mediaStore()` answers `null` where it is unbound and the caller keeps
 its KV path, so a deployment from an older config degrades instead of failing its first write.
-Apple-only and optional in `env.ts` (golem runs the older path without them): `PRODUCT_EVENTS`
+Apple-only and optional in `env.ts` (the legacy worker runs the older path without them): `PRODUCT_EVENTS`
 (Analytics Engine, product events with no person in them, `analytics-engine.ts`), `NOTIFY_QUEUE`
 (notifications written by a queue consumer with retries, `notify-queue.ts`), `MODEL_UPLOAD_WORKFLOW`
 (the `ModelUploadWorkflow` Workflow class, which finishes a slow 3D upload and tells the user,

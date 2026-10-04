@@ -1,6 +1,6 @@
 // The SDK's runtime allowlists against the TypeScript unions they copy.
 //
-// WHY A COPY EXISTS AT ALL. `@golem/shared` is TypeScript. This SDK is plain JavaScript that
+// WHY A COPY EXISTS AT ALL. `@apple/shared` is TypeScript. This SDK is plain JavaScript that
 // Node, a browser, a CLI and a Worker all load with no build step, and a TypeScript union
 // does not exist at runtime anyway — `MODES` has to be a real array or nothing can check a
 // mode that arrived from a CLI flag or from Python.
@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WS_JWT_PREFIX, WS_SUBPROTOCOL, socketProtocols } from '../src/wire.mjs';
+import { echoSubprotocol, jwtFromSubprotocols } from '../../shared/src/legacy-wire.ts';
 import { CLIENT_MSG_TYPES, DEFAULT_BASE_URL, MODES } from '../src/wire.mjs';
 import { STOP_REASONS } from '../src/stream.mjs';
 import { PLAN_IDS } from '../src/client.mjs';
@@ -84,15 +85,16 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
   // that sends 'apple.v1' to a worker expecting 'golem.v1' does not fail loudly, it fails as a
   // handshake that never completes. Compare the SDK's constants to the worker's, so a rename on
   // EITHER side reddens.
-  const prefixLine = /const tok = parts\.find\(\(p\) => p\.startsWith\('([^']+)'\)\);/.exec(auth);
-  assert.ok(prefixLine, 'bearerToken no longer reads a subprotocol — re-read auth.ts');
-  assert.equal(prefixLine[1], WS_JWT_PREFIX, 'the worker slices a prefix the SDK does not send');
-  assert.equal(WS_JWT_PREFIX, 'golem.jwt.', 'and the shared value is the one the wire is pinned to');
-
-  const echoLine = /'Sec-WebSocket-Protocol': '([^']+)'/.exec(session);
-  assert.ok(echoLine, 'the DO no longer echoes a subprotocol — re-read do/session.ts');
-  assert.equal(echoLine[1], WS_SUBPROTOCOL, 'the worker echoes a subprotocol the SDK does not offer');
-  assert.equal(WS_SUBPROTOCOL, 'golem.v1', 'and the shared value is the one the wire is pinned to');
+  // RESTATED (the wire rename): the worker no longer carries its own literals. It reads the bearer token and
+  // chooses the echo through the shared readers, which accept BOTH spellings. So the parity that matters is
+  // behavioural: what the SDK offers must be accepted by those readers, and the echo must be one of the offers
+  // (a browser aborts the handshake on any other).
+  assert.match(auth, /jwtFromSubprotocols\(proto\)/, 'bearerToken must read the subprotocol through the shared reader');
+  assert.match(session, /'Sec-WebSocket-Protocol': echoSubprotocol\(req\.headers\.get\('Sec-WebSocket-Protocol'\)\)/,
+    'the DO must echo what the client listed, not a fixed value');
+  const sent = socketProtocols('tok-123');
+  assert.equal(jwtFromSubprotocols(sent.join(', ')), 'tok-123', 'the worker cannot read the token the SDK sends');
+  assert.ok(sent.includes(echoSubprotocol(sent.join(', '))), 'the worker would echo a subprotocol the SDK did not offer');
 
   // The handshake array the SDK actually sends must be built from those same two constants.
   const offered = socketProtocols('tok-123');
@@ -118,9 +120,9 @@ test('the WebSocket subprotocol literals match the ones the worker echoes', () =
 test('every SDK client defaults to the canonical origin, never the legacy host', () => {
   const canonical = declaration('export const PRODUCT_ORIGIN =').match(/'([^']+)'/)?.[1];
   assert.equal(canonical, 'https://apple.moshe-barami111.workers.dev',
-    'PRODUCT_ORIGIN in @golem/shared is not what this test was written against — re-read it');
+    'PRODUCT_ORIGIN in @apple/shared is not what this test was written against — re-read it');
   const legacy = declaration('export const LEGACY_PRODUCT_HOST =').match(/'([^']+)'/)?.[1];
-  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @golem/shared — re-aim this test');
+  assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @apple/shared — re-aim this test');
 
   // (1) The JavaScript default, via the value the client actually resolves against.
   assert.equal(DEFAULT_BASE_URL, canonical);
@@ -168,7 +170,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
  * scripts/check-workspace-coverage.mjs ("no runtime behaviour of its own"), and this file already
  * exists to keep that file's text from drifting away from its declarations.
  */
-test('every backticked *Mode name in @golem/shared is a type that exists', () => {
+test('every backticked *Mode name in @apple/shared is a type that exists', () => {
   // Every backtick-quoted SPAN, then the *Mode identifiers inside it. NOT
   // /`([A-Z][A-Za-z]*Mode)`/ — the defect's own form is `mode: AppleMode`, where the backtick sits
   // before `mode:`, so a pattern anchored to the identifier's own backticks walks straight past it.

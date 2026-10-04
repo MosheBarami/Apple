@@ -19,9 +19,9 @@
 // HONESTY. Detection is three-valued on purpose. `present` and `absent` are claims about the
 // project; `unknown` is the answer when the scan hit a cap and genuinely could not see (a code-only
 // signal in a project whose scripts were truncated). An `unknown` milestone is never presented as
-// the confident next step — it is offered with `verify` telling the user Golem could not tell.
-import type { StudioOp, OpResult, ProductMode } from '@golem/shared';
-import { creditRangeForRuns } from '@golem/shared';
+// the confident next step — it is offered with `verify` telling the user Apple could not tell.
+import type { StudioOp, OpResult, ProductMode } from '@apple/shared';
+import { creditRangeForRuns } from '@apple/shared';
 import { APPLE_UI_SOURCE } from './ui-kit';
 import { parseCensus } from './playtest';
 
@@ -818,7 +818,7 @@ interface MilestoneSpec {
   why: string;
   impact: string;
   complexity: Complexity;
-  /** Golem effort, in the units the product actually bills in */
+  /** Apple effort, in the units the product actually bills in */
   mode: ProductMode;
   runs: number;
   dependsOn: readonly string[];
@@ -845,7 +845,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'Place a SpawnLocation on solid ground at the entrance to the main play area.',
       'Aim the spawn so the first thing in frame is the landmark the game is about.',
-      'Take the landmark and the props around the spawn from the model library: find_library_model with a plain noun, then insert_library_model where it stands. Never build a prop from parts (D-MODELLIB-2).',
+      'Take the landmark and the props around the spawn from the model library: find_library_model with a plain noun, then insert_library_model where it stands; what the library does not have comes next in the asset order (Creator Store, then Parts in full detail).',
       'Give the spawn area a floor, a boundary and a readable path onward.',
     ],
     acceptance: ['A player spawns on the ground, not in the air.', 'The landmark is visible from the spawn without moving the camera.'],
@@ -995,7 +995,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     build: [
       'insert_ui_component("shop_window") — the library shop with item cards; never draw a shop by hand (D-UIONLY-1).',
       'Set each card\'s Text from the real server catalog, and wire its buy button to a rate-limited server purchase handler. Return true only after the server confirms; update the displayed balance from server data. Missing wiring must remain unavailable, never simulate a purchase.',
-      'Build a shop the player walks to, with the purchasable items shown in the world. Take the stall or building and the items on display from find_library_model and insert_library_model never from parts (D-MODELLIB-2).',
+      'Build a shop the player walks to, with the purchasable items shown in the world. Take the stall or building and the items on display from find_library_model and insert_library_model and, for what the library does not have, the next steps of the asset order (Creator Store, then Parts in full detail).',
       'Take the purchase decision on the server and deduct there.',
     ],
     acceptance: ['A purchase deducts on the server and cannot be repeated for free.'],
@@ -1215,7 +1215,7 @@ const CATALOGUE: readonly MilestoneSpec[] = [
     dependsOn: ['sim_zones', 'save_progress'], genres: ['simulator'], satisfiedBy: ['pets'],
     build: [
       'Add eggs with a server-side rarity roll and a pet that follows the player. Take the pet and egg models from find_library_model (kind "pet") and insert_library_model (D-MODELLIB-1).',
-      'Put insert_vfx("egg_glow") on each egg and insert_vfx("pet_hatch") on the hatch spot; the hatch script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")) (D-FXLIB-1).',
+      'Put a glow preset (find_vfx) on each egg and insert_vfx("pet_hatch") on the hatch spot; the hatch script fires each emitter with emitter:Emit(emitter:GetAttribute("AppleEmitCount")) (D-FXLIB-1).',
       'Apply the pet multiplier on the server and persist the inventory.',
     ],
     acceptance: ['Rarity is rolled server-side.', 'Pets survive a rejoin.'],

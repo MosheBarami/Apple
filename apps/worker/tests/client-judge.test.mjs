@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url';
 const esbuild = await import(process.env.APPLE_TEST_ESBUILD || 'esbuild');
 const dir = mkdtempSync(join(tmpdir(), 'client-judge-'));
 test.after(() => rmSync(dir, { recursive: true, force: true }));
-const alias = { '@golem/shared': '../../packages/shared/src/index.ts' };
+const alias = { '@apple/shared': '../../packages/shared/src/index.ts' };
 const load = async (name) => {
   await esbuild.build({ entryPoints: [`src/${name}.ts`], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, `${name}.mjs`), alias });
   return import(pathToFileURL(join(dir, `${name}.mjs`)).href);

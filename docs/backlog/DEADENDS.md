@@ -104,7 +104,7 @@ would ship the exact numbers the owner has not settled (§12.5).
 
 **Found:** imported by nothing in the tree.
 
-**Verified:** nothing anywhere imports `@golem/design`. The package is a retrievable UI grammar —
+**Verified:** nothing anywhere imports `@apple/design`. The package is a retrievable UI grammar —
 validated rules for composing a generated interface instead of inventing one from a blank
 ScreenGui — and the product never asks it anything.
 
@@ -718,7 +718,7 @@ stop being askable because the UI stopped drawing chips.
 **What it is:** a CLI, the remote twin of `generate_eval.py`. It produces the same output shape
 from the SERVED models through `/api/admin/model-test`, so `score-eval.mjs` scores it unchanged.
 Bases that do not fit on this Mac can only be measured this way. It is run by hand with
-`GOLEM_ADMIN_KEY`, like `score-eval.mjs` above.
+`APPLE_ADMIN_KEY`, like `score-eval.mjs` above.
 
 **Caller being added:** a `scripts` entry in `packages/training/package.json`, which is what makes
 it a declared entry point for this checker. That manifest belongs to the knowledge lane, so the
@@ -872,7 +872,7 @@ held tools.ts while this module was written.
 - `apps/web/scripts/vendor-ai-elements.mjs` — WIRE; `pnpm --filter web vendor:ai-elements` copies the
   genuine Vercel AI Elements from an upstream checkout (how the chat's components were installed on
   2026-10-01). Operator-run; CI does not execute it.
-- `packages/components/proof/compose-proof.mjs` — WIRE; `pnpm --filter @golem/components proof:compose`
+- `packages/components/proof/compose-proof.mjs` — WIRE; `pnpm --filter @apple/components proof:compose`
   writes the Studio proof of the composer (the run-steps harness served on 127.0.0.1:8765). Operator-run;
   CI does not execute it.
 - `apps/worker/src/proof-entry.ts` — WIRE; the bundle entry compose-proof.mjs builds, reached through it.

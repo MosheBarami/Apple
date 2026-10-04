@@ -39,7 +39,7 @@ end
 
 function Joints.build(api)
 	local function part(self: any, path: any, label: string): (BasePart?, string?)
-		local target = api.resolvePath(self.game, self.options.services, path, false)
+		local target = api.resolvePath(self.game, self.options.services, path, false, self)
 		if not target then return nil, "nothing at " .. tostring(path) end
 		if not target:IsA("BasePart") then return nil, label .. " must be a part" end
 		if not api.writableTarget(self.game, target) then return nil, "that place is not one Apple edits" end
@@ -108,7 +108,7 @@ function Joints.build(api)
 	end
 
 	local function jointAt(self: any, path: any): (any?, string?)
-		local j = api.resolvePath(self.game, self.options.services, path, false)
+		local j = api.resolvePath(self.game, self.options.services, path, false, self)
 		if not j then return nil, "nothing at " .. tostring(path) end
 		if not (j:IsA("Motor6D") or j:IsA("Weld")) then return nil, "that is not a Motor6D or Weld" end
 		if not api.writableTarget(self.game, j) then return nil, "that place is not one Apple edits" end

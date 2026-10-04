@@ -16,7 +16,7 @@
 //                  and ui-implementation (66.7 vs 100).
 // So: inspection/orchestration steps route cheap with no measured quality loss; steps that
 // actually author Luau or build UI stay on the flagship, where the gap is real.
-import type { ProductMode } from '@golem/shared';
+import type { ProductMode } from '@apple/shared';
 
 /**
  * NOTE — model routing was removed in the GLM-5.3-flash migration.
@@ -49,7 +49,7 @@ import type { ProductMode } from '@golem/shared';
  * put edit_script, set_properties, create_instances, delete_instances or run_luau back into this
  * list, Plan stops being a mode that cannot damage a project and becomes a mode that promises not
  * to — and the product has said something to the user that is no longer enforced anywhere.
- * `remember` is the one write here and it is deliberate: it writes to Golem's own memory of the
+ * `remember` is the one write here and it is deliberate: it writes to Apple's own memory of the
  * project, never to the project itself.
  *
  * (Tool definitions are also re-sent on every single call, so a mode's toolset is a per-step token
@@ -102,7 +102,7 @@ const PLAN_TOOLS = [
   //
   // `workspace_write` is deliberately NOT here. It writes nothing into the place either, but the
   // rule this list enforces is about what a user can hand Plan without thinking, and "it only
-  // writes to Golem's own files" is a distinction the user did not agree to. Plan reads.
+  // writes to Apple's own files" is a distinction the user did not agree to. Plan reads.
   'web_fetch',
   'browse_page',
   'web_search',

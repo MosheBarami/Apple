@@ -32,7 +32,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MAX_ATTACHMENTS_PER_MESSAGE } from '@golem/shared';
+import { MAX_ATTACHMENTS_PER_MESSAGE } from '@apple/shared';
 import { attachmentKvKey, promptWithAttachments } from '../src/attachments.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

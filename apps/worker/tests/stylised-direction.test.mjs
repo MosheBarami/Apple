@@ -19,7 +19,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -93,19 +93,27 @@ test('functional areas are built with a base, a rim, a fence, a sign and props',
   for (const cue of [/thick/i, /rim/i, /fence/i, /sign/i, /props/i, /insert_library_model/]) assert.match(areas, cue);
 });
 
-// D-MODELLIB-2: organic shapes are library models, never clusters of balls.
-test('organic shapes are library models, never primitives', () => {
+// D-MODELLIB-2 (revised 2026-10-02): organic shapes follow the asset order, library first; built from Parts
+// they are judged by silhouette (a single ball or block is a placeholder). Restated after the leakage cleanup: the brief gives the
+// agent the criterion, not a recipe of parts, so the test pins the criterion and no longer a named shape.
+test('organic shapes follow the asset order, library first, and a single primitive is not enough', () => {
   const organic = section(worldBuildingBrief(PLOT_GAME), 'ORGANIC SHAPES');
-  assert.match(organic, /find_library_model/);
-  assert.match(organic, /never balls or blocks/);
-  assert.match(organic, /tree/i);
-  assert.match(organic, /fruit|foliage/i);
+  assert.match(organic, /asset order, library first/);
+  assert.match(organic, /single ball or block reads as a placeholder/);
+  assert.match(organic, /silhouette/);
+  assert.match(organic, /plants|fruit|rocks/i);
+  assert.doesNotMatch(organic, /never (assemble|build)[^.]*from Parts/i, 'the brief forbids the last step of the order');
 });
 
-test('the sky is Lighting and a Clouds object, never Parts', () => {
+// A Clouds object cannot be created: the plugin's create allowlist refuses it (apps/apple-plugin
+// tests/commands.test.mjs pins that). No prompt may tell the agent to create one.
+test('the sky is Lighting; no brief tells the agent to create a Clouds object the plugin refuses', () => {
   const lighting = section(worldBuildingBrief(PLOT_GAME), 'LIGHTING');
-  assert.match(lighting, /Clouds/);
-  assert.match(lighting, /Terrain/);
+  assert.match(lighting, /Never build sun, sky or clouds from Parts/);
+  // Every scene brief lives in this one file, so read it whole instead of guessing which request text selects which scene.
+  const source = readFileSync(join(WORKER, 'src', 'worldbuilding.ts'), 'utf8');
+  assert.ok(source.length > 5000, 'the brief source was not read');
+  assert.doesNotMatch(source, /(Use|Put|Add|Create)( a| an)?( \w+)? Clouds( object)? (under|in)/i, 'a brief still teaches the model to create Clouds');
 });
 
 // ------------------------------------------------------------ scene kinds ---
