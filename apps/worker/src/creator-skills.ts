@@ -322,6 +322,7 @@ export const CREATOR_SKILL_REFERENCES = Object.freeze({
   effTrails: official('docs-effects-trails', 'g-a10a4481-1', "Trails", 'https://create.roblox.com/docs/effects/trails'),
   effBeams: official('docs-effects-beams', 'g-8dd806f0-1', "Beams", 'https://create.roblox.com/docs/effects/beams'),
   effHighlight: official('docs-effects-highlighting', 'g-03cedd7e-1', "Highlighting objects", 'https://create.roblox.com/docs/effects/highlighting'),
+  robloxPlus: official('docs-production-monetization-roblox-plus', 'g-974fad7b-1', "Roblox Plus", 'https://create.roblox.com/docs/production/monetization/roblox-plus'),
   // END researched-refs
 } as const);
 
@@ -1849,6 +1850,15 @@ const FOUNDATION_SEEDS: readonly SkillSeed[] = [
     ],
     verification: ['Two clients see the effect once each; the actor sees it immediately.', 'Spam the request: the server limits broadcasts.'],
     failureModes: ['Server-side effects that raise load and ping.', 'Accepting client-supplied effect positions as hit proof.'] },
+  { id: 'monetize-tip-jar-robux-transfer', title: 'Add an optional tip jar with the Robux transfer prompt', domain: 'game_design', summary: 'A small, no-reward tip option using the transfer API, with receipts handled once and the Plus and cap limits explained to the player.', refs: ['robloxPlus'], keywords: ['tip jar', 'donation', 'robux transfer', 'PromptRobuxTransferAsync', 'BindReceiptHandler', 'support creator'],
+    steps: [
+      'Only as a side feature: the sender needs Roblox Plus, the creator receives 10 percent (the recipient 90 percent), so it is not a core income source; tips must give the tipper nothing in return and an experience must never be only a donation app.',
+      'After a client request the server calls MarketplaceService:PromptRobuxTransferAsync(sender, receiverUserId, amount) with amounts in the documented 10 to 500 per transaction range.',
+      'Handle receipts with MarketplaceService:BindReceiptHandler(Enum.ReceiptType.RobuxTransferSender or RobuxTransferReceiver, handler); the receipt carries PlayerId and TransferRequestId, and the handler returns Enum.ReceiptDecision.Processed or NotProcessedYet; record the id so it runs once.',
+      'Tell the player about the Plus requirement and the caps (5,000 a day and 10,000 a month with two-step verification); under-18 senders need parental approval.',
+    ],
+    verification: ['A failed prompt leaves no state change and shows a clear message.', 'Replaying the same receipt records one thank-you only.'],
+    failureModes: ['Granting items for tips, which turns it into a sale or a banned donation scheme.', 'Treating the tip as meaningful income.'] },
   // END researched-seeds
 ];
 
