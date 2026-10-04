@@ -401,6 +401,18 @@ function findScriptClass(items: unknown, depth = 0): string | null {
   return null;
 }
 
+/** The first AudioPlayer.Asset (or SoundId) in a create_instances item list, children included, that is not a library or discovered sound id; or null. */
+function firstUnknownSoundId(items: unknown, discovered: ReadonlySet<number> | undefined, depth = 0): { error: string } | null {
+  if (!Array.isArray(items) || depth > 12) return null;
+  for (const it of items) {
+    const rec = it && typeof it === 'object' ? (it as Record<string, unknown>) : {};
+    const props = rec.props && typeof rec.props === 'object' && !Array.isArray(rec.props) ? (rec.props as Record<string, unknown>) : undefined;
+    const refused = refuseSoundId(props, discovered) ?? firstUnknownSoundId(rec.children, discovered, depth + 1);
+    if (refused) return refused;
+  }
+  return null;
+}
+
 const S = (props: Record<string, unknown>, required: string[] = []): unknown => ({
   type: 'object',
   properties: props,
@@ -2981,17 +2993,17 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'create_instances',
       description:
-        'Create instances (parts, models, folders, lights...). Item: {className, name, parent, props?, children?}. Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Anchored":{"t":"bool","v":true}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. If propIssues comes back the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you.',      parameters: S({
+        'Create instances (parts, models, lights...). Props are typed: {"Position":{"t":"Vector3","v":[0,5,0]}, "Material":{"t":"EnumItem","v":"Enum.Material.Neon"}, "Color":{"t":"Color3","v":[1,0.5,0]}}. Types: string,number,bool,Vector3,Vector2,CFrame,Color3,UDim2,UDim,EnumItem,BrickColor,Content,NumberRange,NumberSequence,ColorSequence,Rect,Instance,nil. A propIssues result means the instances WERE created: fix them with set_properties. Per call: 120 items, 400 instances, 40 children each, 12 levels, 48 props each (longer lists are split for you). origin {at:[x,y,z], yaw?} builds in local space around (0,0,0) and places the batch; group {className:"Model"|"Folder", name, primaryPart?} wraps it (up to 120 items); build once, repeat with clone_instances. Plain parts (Part, WedgePart, CornerWedgePart, TrussPart) are Anchored unless Anchored is false; bare Size/Position/Orientation/Color arrays and Material/Shape names on parts are typed for you. Also creates AudioPlayer (Asset: a library sound id), AudioEmitter, Wire (SourceInstance/TargetInstance: paths of existing instances), the Audio effects, Animator, Animation, IKControl and Explosion (BlastPressure and DestroyJointRadiusPercent default to 0).',      parameters: S({
         items: {
           type: 'array',
           minItems: 1,
           items: {
             type: 'object',
             properties: {
-              className: { type: 'string', description: 'Roblox class to create, e.g. "Part", "Model", "PointLight", "ScreenGui"' },
+              className: { type: 'string', description: 'Roblox class, e.g. "Part"' },
               name: { type: 'string' },
-              parent: { type: 'string', description: 'Path of an EXISTING instance, e.g. "Workspace" or "Workspace.StreetLamp". Defaults to "Workspace".' },
-              props: { type: 'object', description: 'Typed properties, e.g. {"Size":{"t":"Vector3","v":[1,4,1]}}' },
+              parent: { type: 'string', description: 'Path of an existing instance, e.g. "Workspace.StreetLamp". Default "Workspace".' },
+              props: { type: 'object', description: 'Typed properties' },
               attributes: { type: 'object' },
               children: { type: 'array', description: 'Nested items with the same fields (no parent)', items: { type: 'object' } },
             },
@@ -3027,6 +3039,9 @@ export const TOOLS: Record<string, ToolImpl> = {
       // D-FXLIB-1: Sounds and particle effects come from insert_sound / insert_vfx.
       const handMadeFx = refuseLibraryItems(a.items, FX_RULE);
       if (handMadeFx) return Promise.resolve(handMadeFx);
+      // An AudioPlayer's Asset is held to the same rule as a Sound's SoundId: an id that does not exist plays silence without an error.
+      const silentAsset = firstUnknownSoundId(a.items, ctx.discoveredAssetIds);
+      if (silentAsset) return Promise.resolve(silentAsset);
       // A script class is not on the plugin's create allowlist, and its refusal named no way forward (benchmark o05, 2026-10-04).
       const scriptItem = findScriptClass(a.items);
       if (scriptItem) return Promise.resolve({ error: `${scriptItem} is created with edit_script, not create_instances: set create_class (Script, LocalScript or ModuleScript), create_parent and source. Nothing was sent.` });

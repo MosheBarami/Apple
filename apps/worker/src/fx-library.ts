@@ -112,19 +112,23 @@ export function soundAssetId(value: unknown): number | null {
 }
 
 /**
- * A SoundId written by hand (set_properties): allowed only for a library id, or an id a search tool
+ * A SoundId (or an AudioPlayer's Asset) written by hand: allowed only for a library id, or an id a search tool
  * of this run returned. Anything else plays silence without an error, which is why it is refused.
  */
 export function refuseSoundId(props: Record<string, unknown> | undefined, discovered?: ReadonlySet<number>): { error: string } | null {
-  if (!props || !('SoundId' in props)) return null;
-  const raw = props.SoundId;
-  const value = raw && typeof raw === 'object' && 'v' in (raw as Record<string, unknown>) ? (raw as { v: unknown }).v : raw;
-  if (value === '') return null;
-  const id = soundAssetId(value);
-  if (id !== null && (librarySound(id) || discovered?.has(id))) return null;
-  return {
-    error: `Refused (D-FXLIB-1): SoundId ${JSON.stringify(value)} is not a sound from Apple's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
-  };
+  if (!props) return null;
+  for (const key of ['SoundId', 'Asset'] as const) {
+    if (!(key in props)) continue;
+    const raw = props[key];
+    const value = raw && typeof raw === 'object' && 'v' in (raw as Record<string, unknown>) ? (raw as { v: unknown }).v : raw;
+    if (value === '') continue;
+    const id = soundAssetId(value);
+    if (id !== null && (librarySound(id) || discovered?.has(id))) continue;
+    return {
+      error: `Refused (D-FXLIB-1): ${key} ${JSON.stringify(value)} is not a sound from Apple's library. An id that does not exist plays silence and reports nothing, so sounds come from find_sound / insert_sound({"query":"<what it should sound like>","parent":"<path>"}). Nothing was changed.`,
+    };
+  }
+  return null;
 }
 
 // --- effects -----------------------------------------------------------------------------------

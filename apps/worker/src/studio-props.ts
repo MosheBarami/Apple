@@ -154,11 +154,41 @@ export function describeRefusals(refusals: readonly { name: string; short: strin
   return `${shown.join('; ')}${more > 0 ? `; and ${more} more` : ''}.${needsGuide ? ` ${TAGGING_GUIDE}` : ''}`;
 }
 
+/**
+ * The properties that can only hold an instance, so a bare path string for one is a reference and nothing else: the two
+ * ends of a Wire, an emitter or listener's PositionInstance, and the IKControl chain (apps/apple-plugin INSTANCE_REF_PROPERTY).
+ * The plugin resolves the path under an allowlisted service and refuses it when nothing is there or it is outside them.
+ * `Value` (an ObjectValue's, but also a StringValue's) and the older reference names are deliberately not in this list.
+ */
+const REFERENCE_PROPS = new Set(['SourceInstance', 'TargetInstance', 'PositionInstance', 'EndEffector', 'ChainRoot', 'Target', 'Pole']);
+
+/** A reference given as a bare path, a `{path}` object or a tagged Instance, as the tagged Instance the plugin reads, rooted at `game`; or null. */
+function asReference(value: unknown): TaggedValue | null {
+  let path: unknown = value;
+  let rest: Record<string, unknown> = {};
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const v = value as { t?: unknown; v?: unknown; path?: unknown };
+    if (v.t === 'Instance' && typeof v.v === 'string') {
+      path = v.v;
+      rest = { ...(value as Record<string, unknown>) };
+    } else if (v.t === undefined && typeof v.path === 'string') path = v.path;
+    else return null;
+  }
+  if (typeof path !== 'string' || path.length === 0 || ENUM_TEXT.test(path)) return null;
+  return { ...rest, t: 'Instance', v: rootStudioPath(path) };
+}
+
 /** Tag what can be tagged; name what cannot. `className` lets a bare Size or Color on a Part be read as what it can only be. */
 export function normaliseProps(props: unknown, className?: string): PropNormalisation {
   const out: PropNormalisation = { props: {}, normalised: [], refusals: [], coerced: [] };
   if (typeof props !== 'object' || props === null || Array.isArray(props)) return out;
   for (const [name, value] of Object.entries(props as Record<string, unknown>)) {
+    const reference = REFERENCE_PROPS.has(name) ? asReference(value) : null;
+    if (reference) {
+      out.props[name] = reference;
+      if (!isTagged(value) || (value as TaggedValue).v !== reference.v) out.coerced!.push({ name, t: 'Instance' });
+      continue;
+    }
     if (isTagged(value)) {
       out.props[name] = value;
       continue;
