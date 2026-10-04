@@ -86,8 +86,8 @@
   "d1_databases": [
     {
       "binding": "CORPUS",
-      "database_name": "golem-corpus",
-      "database_id": "32c9471e-a7d7-49ee-a8fe-0a7def2c68bd"
+      "database_name": "studpilot-corpus",
+      "database_id": "4534b1cf-f0fb-406f-a6f1-0cb379ef07f2"
     }
   ],
   //[[ GENERATED MEDIA LIVES IN R2, NOT IN A KV KEY WITH AN HOUR TO LIVE.
@@ -107,7 +107,7 @@
   "r2_buckets": [
     {
       "binding": "MEDIA",
-      "bucket_name": "apple-media"
+      "bucket_name": "studpilot-media"
     }
   ],
   "kv_namespaces": [
@@ -119,7 +119,7 @@
   "vectorize": [
     {
       "binding": "VEC",
-      "index_name": "golem-docs"
+      "index_name": "studpilot-docs"
     }
   ],
   //[[ THE REST OF CLOUDFLARE (D-VISION-1). Every one is optional in env.ts.
@@ -130,19 +130,19 @@
   "analytics_engine_datasets": [
     {
       "binding": "PRODUCT_EVENTS",
-      "dataset": "apple_product_events"
+      "dataset": "studpilot_product_events"
     }
   ],
   "queues": {
     "producers": [
       {
         "binding": "NOTIFY_QUEUE",
-        "queue": "apple-notifications"
+        "queue": "studpilot-notifications"
       }
     ],
     "consumers": [
       {
-        "queue": "apple-notifications",
+        "queue": "studpilot-notifications",
         "max_batch_size": 10,
         "max_batch_timeout": 2,
         "max_retries": 6
@@ -151,7 +151,7 @@
   },
   "workflows": [
     {
-      "name": "apple-model-upload",
+      "name": "studpilot-model-upload",
       "binding": "MODEL_UPLOAD_WORKFLOW",
       "class_name": "ModelUploadWorkflow"
     }
@@ -170,7 +170,7 @@
     // D-PAY-2: signed-in emails admitted to Stripe TEST-mode checkout in production (comma-separated).
     "BILLING_TEST_ADMINS": "moshe.barami111@gmail.com",
     "MEMBERSHIP_OUTBOX_CONSUMER": "apple",
-    "AI_GATEWAY_ID": "golem",
+    "AI_GATEWAY_ID": "studpilot",
     // Public account id; with the CF_ANALYTICS_TOKEN secret it lets /api/admin/product-analytics read Analytics Engine.
     "CF_ACCOUNT_ID": "e9b8acf2e89a1de289a1ee4abb0f3f8d",
     "BUILD_SHA": "616d84b"

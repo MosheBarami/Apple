@@ -197,12 +197,12 @@ export interface Env {
   // ---------------------------------------------------------------------------
   /** Turnstile widget secret (turnstile.ts). Unset: unauthenticated routes are not challenged. */
   TURNSTILE_SECRET?: string;
-  /** Analytics Engine dataset `apple_product_events` (analytics-engine.ts). */
+  /** Analytics Engine dataset `studpilot_product_events` (analytics-engine.ts). */
   PRODUCT_EVENTS?: AnalyticsEngineDataset;
   /** Account id and an "Account Analytics: Read" token, for reading that dataset back over SQL. */
   CF_ACCOUNT_ID?: string;
   CF_ANALYTICS_TOKEN?: string;
-  /** Queue `apple-notifications` (notify-queue.ts). */
+  /** Queue `studpilot-notifications` (notify-queue.ts). */
   NOTIFY_QUEUE?: Queue<unknown>;
   /** Workflow that finishes a slow 3D model upload and notifies the user (model-upload.ts). */
   MODEL_UPLOAD_WORKFLOW?: Workflow<import('./model-upload').ModelUploadParams>;

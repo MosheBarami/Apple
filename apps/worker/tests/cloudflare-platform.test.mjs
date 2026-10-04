@@ -148,7 +148,7 @@ test('analytics engine: rows are shaped with unknown kept as null and credits de
   assert.equal(r.ok, true);
   assert.equal(r.days, 90, 'window clamped to the dataset retention');
   assert.match(sql, /INTERVAL '90' DAY/);
-  assert.match(sql, /FROM apple_product_events/);
+  assert.match(sql, /FROM studpilot_product_events/);
   assert.equal(r.rows[0].avgDurationMs, 250);
   assert.equal(r.rows[0].credits, 10);
   assert.equal(r.rows[1].avgDurationMs, null, 'no timed sample: unknown, not 0 ms');
