@@ -74,6 +74,20 @@
         "kind": "api"
       }
     ],
+    "api-assetservice": [
+      {
+        "vecId": "api-assetservice-1",
+        "title": "AssetService (Class) 1/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "api"
+      },
+      {
+        "vecId": "api-assetservice-2",
+        "title": "AssetService (Class) 2/2",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "api"
+      }
+    ],
     "api-audioemitter": [
       {
         "vecId": "api-audioemitter-1",
@@ -1008,6 +1022,32 @@
         "kind": "guide"
       }
     ],
+    "docs-art-modeling-texture-specifications": [
+      {
+        "vecId": "g-9c72fa01-1",
+        "title": "Texture specifications",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-2",
+        "title": "Texture specifications",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-3",
+        "title": "Texture specifications — Surface appearance",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-9c72fa01-4",
+        "title": "Texture specifications — Surface appearance",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "guide"
+      }
+    ],
     "docs-audio": [
       {
         "vecId": "g-591c8e83-1",
@@ -1025,6 +1065,50 @@
         "vecId": "g-591c8e83-3",
         "title": "Audio — Audio effects",
         "url": "https://create.roblox.com/docs/audio",
+        "kind": "guide"
+      }
+    ],
+    "docs-audio-assets": [
+      {
+        "vecId": "g-3235b127-1",
+        "title": "Audio assets",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-2",
+        "title": "Audio assets — Find audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-3",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-4",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-5",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-6",
+        "title": "Audio assets — Import audio",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-3235b127-7",
+        "title": "Audio assets — Visibility",
+        "url": "https://create.roblox.com/docs/audio/assets",
         "kind": "guide"
       }
     ],
@@ -5752,6 +5836,154 @@
         "kind": "guide"
       }
     ],
+    "docs-projects-assets-api": [
+      {
+        "vecId": "g-4e3539f5-1",
+        "title": "Creator Store queries",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-2",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-3",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-4",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-5",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-6",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-4e3539f5-7",
+        "title": "Creator Store queries — Marketplace API",
+        "url": "https://create.roblox.com/docs/projects/assets/api",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-manager": [
+      {
+        "vecId": "g-e12eeced-1",
+        "title": "Asset Manager",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-2",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-3",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-4",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-5",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-6",
+        "title": "Asset Manager — Current",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-7",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-8",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-9",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-10",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-11",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-12",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-13",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-14",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-15",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-16",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-e12eeced-17",
+        "title": "Asset Manager — V2 Beta",
+        "url": "https://create.roblox.com/docs/projects/assets/manager",
+        "kind": "guide"
+      }
+    ],
     "docs-projects-assets-packages": [
       {
         "vecId": "g-d002ca16-1",
@@ -5847,6 +6079,92 @@
         "vecId": "g-d002ca16-16",
         "title": "Packages — Compare package versions",
         "url": "https://create.roblox.com/docs/projects/assets/packages",
+        "kind": "guide"
+      }
+    ],
+    "docs-projects-assets-privacy": [
+      {
+        "vecId": "g-76cdadeb-1",
+        "title": "Asset privacy",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-2",
+        "title": "Asset privacy",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-3",
+        "title": "Asset privacy — What Asset Privacy controls",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-4",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-5",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-6",
+        "title": "Asset privacy — Restrict permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-7",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-8",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-9",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-10",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-11",
+        "title": "Asset privacy — Grant permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-12",
+        "title": "Asset privacy — View permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-13",
+        "title": "Asset privacy — Revoke permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "guide"
+      },
+      {
+        "vecId": "g-76cdadeb-14",
+        "title": "Asset privacy — Open permissions",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
         "kind": "guide"
       }
     ],
@@ -9874,6 +10192,22 @@
         "kind": "guide"
       }
     ],
+    "research-05-world-visuals": [
+      {
+        "vecId": "research-05-ad749077ea301930",
+        "title": "World building and art direction (Lighting, Atmosphere, post-processing, Terrain, materials, scale, budgets) — Recipes (each becomes a skill) — Recipe 9: Custom material pack with MaterialVariant",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "research"
+      }
+    ],
+    "research-07-anim-audio-vfx": [
+      {
+        "vecId": "research-07-f1a9f57fe42ee25b",
+        "title": "Animation, audio and VFX (Animator, new Audio API, particles, beams, trails, highlights, game feel) — Key facts — Music and sound rights",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      }
+    ],
     "research-14-genre-obby-racing-platform": [
       {
         "vecId": "research-14-76a92207ac8f0ed9",
@@ -9899,6 +10233,68 @@
         "vecId": "research-20-2397c57934c69b48",
         "title": "Systems Cookbook: correct, modern Luau for the systems every Roblox game needs — Recipes (each becomes a skill) — Recipe 14: Admin and moderator tools (roles, chat commands, bans, audit log) (3)",
         "url": "https://create.roblox.com/docs/reference/engine/classes/Players",
+        "kind": "research"
+      }
+    ],
+    "research-23-asset-and-audio-sourcing": [
+      {
+        "vecId": "research-23-8dd4ce2639d8b00a",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — E. Asset privacy, permissions and the Asset Manager (timeline) (2)",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-0a7cfdd97714532d",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — F. Audio import, distribution and playback",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-9e3df3afd7382d93",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — G. Programmatic access: what code can do (and limits) (2)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-ff30b354d5f89678",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Key facts — H. Textures, materials, MaterialVariants",
+        "url": "https://create.roblox.com/docs/art/modeling/texture-specifications",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-b5f212e97aa79c87",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Own audio: upload, permission, and verify",
+        "url": "https://create.roblox.com/docs/audio/assets",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-cd0fd404079da045",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Grant a universe access to many restricted assets (owner-approved batch)",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-10902efeb6a2bc1c",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Recipes (each becomes a skill) — Handoff checklist for the owner",
+        "url": "https://create.roblox.com/docs/projects/assets/privacy",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-b905568dc06f4dde",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Luau reference snippets",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-3b861b443645bfb5",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Luau reference snippets (3)",
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AssetService",
+        "kind": "research"
+      },
+      {
+        "vecId": "research-23-0ebdc12990ae1625",
+        "title": "Asset and audio sourcing: Creator Store search, licensing, privacy, textures and what an AI builder may fetch — Open questions / unverified",
+        "url": "https://create.roblox.com/docs/audio/assets",
         "kind": "research"
       }
     ]
