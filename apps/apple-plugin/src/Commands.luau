@@ -173,6 +173,28 @@ local CREATE_CLASSES = {
 	FlangeSoundEffect = true,
 	PitchShiftSoundEffect = true,
 	ReverbSoundEffect = true,
+	-- The audio-object API (Audio* classes plus Wire) and animation plumbing, added in 1.5.0 (research note
+	-- 07, property names checked against the Roblox creator-docs class pages). They load nothing by
+	-- themselves: the content properties among them, AudioPlayer.Asset and Animation.AnimationId, take
+	-- only an rbxassetid id (CONTENT_PROPERTY), and a Wire reaches its ends by a path under an
+	-- allowlisted service (INSTANCE_REF_PROPERTY). Explosion is here but kills Humanoids by default, so
+	-- buildSpec creates it with BlastPressure and DestroyJointRadiusPercent at 0 unless the op sets them.
+	AudioPlayer = true,
+	AudioEmitter = true,
+	AudioListener = true,
+	AudioDeviceOutput = true,
+	Wire = true,
+	AudioFader = true,
+	AudioCompressor = true,
+	AudioReverb = true,
+	AudioEqualizer = true,
+	AudioFilter = true,
+	AudioLimiter = true,
+	Animator = true,
+	AnimationController = true,
+	Animation = true,
+	IKControl = true,
+	Explosion = true,
 	ParticleEmitter = true,
 	Beam = true,
 	Trail = true,
@@ -591,6 +613,54 @@ local PROPERTY_ALLOW = {
 	OffsetStudsU = true,
 	OffsetStudsV = true,
 
+	-- 1.5.0: audio objects, Animator/Animation/IKControl, Explosion, and the SoundService listener setting.
+	Asset = true,
+	AutoLoad = true,
+	AutoPlay = true,
+	Looping = true,
+	TimePosition = true,
+	AcousticSimulationEnabled = true,
+	AudioInteractionGroup = true,
+	DistanceAttenuationBounds = true,
+	DistanceAttenuationMode = true,
+	PositionInstance = true,
+	PositionType = true,
+	SourceInstance = true,
+	SourceName = true,
+	TargetInstance = true,
+	TargetName = true,
+	Bypass = true,
+	MakeupGain = true,
+	DecayRatio = true,
+	EarlyDelayTime = true,
+	HighCutFrequency = true,
+	LateDelayTime = true,
+	LowShelfFrequency = true,
+	LowShelfGain = true,
+	ReferenceFrequency = true,
+	MidRange = true,
+	FilterType = true,
+	Frequency = true,
+	Gain = true,
+	Q = true,
+	MaxLevel = true,
+	AnimationId = true,
+	PreferLodEnabled = true,
+	ChainRoot = true,
+	EndEffector = true,
+	EndEffectorOffset = true,
+	Pole = true,
+	Priority = true,
+	SmoothTime = true,
+	Target = true,
+	Type = true,
+	Weight = true,
+	BlastPressure = true,
+	BlastRadius = true,
+	DestroyJointRadiusPercent = true,
+	ExplosionType = true,
+	DefaultListenerLocation = true,
+
 	Value = true,
 }
 
@@ -877,6 +947,53 @@ local READ_PROPERTIES = {
 	StudsPerTileV = true,
 	OffsetStudsU = true,
 	OffsetStudsV = true,
+	-- 1.5.0: audio objects, Animator/Animation/IKControl, Explosion, and the SoundService listener setting.
+	Asset = true,
+	AutoLoad = true,
+	AutoPlay = true,
+	Looping = true,
+	TimePosition = true,
+	AcousticSimulationEnabled = true,
+	AudioInteractionGroup = true,
+	DistanceAttenuationBounds = true,
+	DistanceAttenuationMode = true,
+	PositionInstance = true,
+	PositionType = true,
+	SourceInstance = true,
+	SourceName = true,
+	TargetInstance = true,
+	TargetName = true,
+	Bypass = true,
+	MakeupGain = true,
+	DecayRatio = true,
+	EarlyDelayTime = true,
+	HighCutFrequency = true,
+	LateDelayTime = true,
+	LowShelfFrequency = true,
+	LowShelfGain = true,
+	ReferenceFrequency = true,
+	MidRange = true,
+	FilterType = true,
+	Frequency = true,
+	Gain = true,
+	Q = true,
+	MaxLevel = true,
+	AnimationId = true,
+	PreferLodEnabled = true,
+	ChainRoot = true,
+	EndEffector = true,
+	EndEffectorOffset = true,
+	Pole = true,
+	Priority = true,
+	SmoothTime = true,
+	Target = true,
+	Type = true,
+	Weight = true,
+	BlastPressure = true,
+	BlastRadius = true,
+	DestroyJointRadiusPercent = true,
+	ExplosionType = true,
+	DefaultListenerLocation = true,
 	Value = true,
 }
 
@@ -898,7 +1015,9 @@ local CONTENT_PROPERTY = {
 	HoverImage = { ImageButton = true },
 	PressedImage = { ImageButton = true },
 	SoundId = { Sound = true },
-	AnimationId = true,
+	-- An animation id only on an Animation, and an audio id only on an AudioPlayer (the rbxassetid scheme and digits).
+	AnimationId = { Animation = true },
+	Asset = { AudioPlayer = true },
 	Video = true,
 	SkyboxBk = true,
 	SkyboxDn = true,
@@ -977,6 +1096,13 @@ local ENUM_ALLOW = {
 	AlignType = true,
 	OrientationAlignmentMode = true,
 	VelocityConstraintMode = true,
+	DistanceAttenuationMode = true,
+	EmitterPositionType = true,
+	ListenerPositionType = true,
+	AudioFilterType = true,
+	IKControlType = true,
+	ExplosionType = true,
+	ListenerLocation = true,
 	-- Read by every checkpoint of a place with UI (Candy Garden v2's labels and buttons), so a
 	-- restore refused them until they were allowed here too.
 	TextXAlignment = true,
@@ -993,6 +1119,14 @@ local INSTANCE_REF_PROPERTY = {
 	Adornee = true,
 	PrimaryPart = true,
 	SoundGroup = true,
+	-- Wire ends, an emitter or listener position, and the IKControl chain (each a path under an allowlisted service).
+	SourceInstance = true,
+	TargetInstance = true,
+	PositionInstance = true,
+	EndEffector = true,
+	ChainRoot = true,
+	Target = true,
+	Pole = true,
 	Value = true,
 }
 
@@ -1753,7 +1887,7 @@ local function validatePropertyName(property: any, allowContent: boolean?): (str
 	end
 	if CONTENT_PROPERTY[name] and allowContent ~= true then
 		if type(CONTENT_PROPERTY[name]) == "table" then
-			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture/ParticleEmitter/Beam/Trail, which may also name an engine particle texture from the effect library), or a library audio id on a Sound (SoundId, as find_sound returned it); any other external content is refused"):format(name)
+			return nil, ("property %s takes only an uploaded image id, exactly as upload_ui_asset returned it (the rbxassetid scheme and digits, nothing else), on an object that displays it (Image: ImageLabel/ImageButton, HoverImage/PressedImage: ImageButton, Texture: Decal/Texture/ParticleEmitter/Beam/Trail, which may also name an engine particle texture from the effect library), or a library audio id on a Sound (SoundId) or an AudioPlayer (Asset), as find_sound returned it, or an animation id on an Animation (AnimationId); any other external content is refused"):format(name)
 		end
 		return nil, ("property %s carries external content and is refused"):format(name)
 	end
@@ -2168,6 +2302,12 @@ local function buildSpec(options: any, gameRef: any, spec: any, parentOverride: 
 	end
 	local props, _, propErr = validateProps(spec.props, "instance props", true, false, gameRef, options.services, className)
 	if propErr then return nil, propErr end
+	-- An Explosion's own defaults kill Humanoids and break joints the moment it is parented. A request that does not
+	-- say otherwise gets the harmless one; a value the op names (even a large one) is honoured as written.
+	if className == "Explosion" then
+		if props.BlastPressure == nil then props.BlastPressure = 0 end
+		if props.DestroyJointRadiusPercent == nil then props.DestroyJointRadiusPercent = 0 end
+	end
 	local attrs, attrErr = validateAttributes(spec.attributes, "instance attributes")
 	if attrErr then return nil, attrErr end
 	if #state.created >= MAX_CREATE_NODES then return nil, "instance tree exceeds the total create limit" end

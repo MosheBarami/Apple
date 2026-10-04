@@ -25,7 +25,10 @@ local POLL_URL = APPLE_ORIGIN .. "/api/studio/poll"
 -- 1.4.1 (2026-09-25): the dock asks once for free Roblox asset consent without a source selector.
 -- 1.4.2 (2026-09-26): duplicate-name read references retain object identity without write authority.
 -- 1.4.3 (2026-09-26): model transforms keep offset and nested pivots aligned with geometry.
-local PLUGIN_VERSION = "1.4.3"
+-- 1.5.0 (2026-10-04): create_instances may create the audio objects (AudioPlayer, AudioEmitter, AudioListener,
+-- AudioDeviceOutput, Wire and the Audio effects), Animator, AnimationController, Animation, IKControl and
+-- Explosion; a Wire/IKControl end is a path reference; an Explosion is created harmless unless the op says otherwise.
+local PLUGIN_VERSION = "1.5.0"
 local PLUGIN_PROTOCOL = "1"
 
 -- The worker currently serves at most ten operations.  These limits are client-side guardrails

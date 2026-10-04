@@ -453,6 +453,131 @@ spec("an image id written by the model survives a checkpoint round trip", functi
     gui:Destroy(); c:destroy()
 end)
 
+spec("1.5.0: every audio, animation and Explosion class is creatable through create_instances", function()
+    local host = Instance.new("Part"); host.Name = "AudioHost"; host.Parent = workspace
+    local c = newCommands()
+    local classes = { "AudioPlayer", "AudioEmitter", "AudioListener", "AudioDeviceOutput", "AudioFader", "AudioCompressor", "AudioReverb",
+        "AudioEqualizer", "AudioFilter", "AudioLimiter", "Animator", "AnimationController", "Animation", "IKControl", "Explosion", "Wire" }
+    for _, className in classes do
+        local r = run(c, "new-" .. className, { op = "create_instances", items = {{ className = className, name = "N" .. className, parent = "game.Workspace.AudioHost" }} }, true)
+        eq(r.ok, true, className .. ": " .. tostring(r.error))
+        eq(host:FindFirstChild("N" .. className).ClassName, className, className .. " class")
+    end
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: audio and animation properties are typed, and the ids are the only content they take", function()
+    local host = Instance.new("Part"); host.Name = "AudioProps"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "audio-props", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Music", parent = "game.Workspace.AudioProps", props = {
+            Asset = { t = "string", v = "rbxassetid://123456" }, Volume = { t = "number", v = 0.4 }, Looping = { t = "bool", v = true },
+            AutoLoad = { t = "bool", v = true }, PlaybackSpeed = { t = "number", v = 1 } } },
+        { className = "AudioReverb", name = "Room", parent = "game.Workspace.AudioProps", props = {
+            DecayTime = { t = "number", v = 1.2 }, WetLevel = { t = "number", v = -10 }, Bypass = { t = "bool", v = false } } },
+        { className = "Animation", name = "Wave", parent = "game.Workspace.AudioProps", props = { AnimationId = { t = "string", v = "rbxassetid://987654" } } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    eq(host.Music.Asset, "rbxassetid://123456"); eq(host.Music.Volume, 0.4); eq(host.Music.Looping, true)
+    eq(host.Room.DecayTime, 1.2); eq(host.Wave.AnimationId, "rbxassetid://987654")
+    -- anything but an rbxassetid id is refused, and the id belongs to its own class only
+    local before = #host:GetChildren()
+    local bad = {
+        { "AudioPlayer", "Asset", "rbxasset://sounds/impact_water.mp3" },
+        { "AudioPlayer", "Asset", "https://example.com/a.mp3" },
+        { "AudioPlayer", "AnimationId", "rbxassetid://5" },
+        { "Animation", "Asset", "rbxassetid://5" },
+        { "AudioPlayer", "AssetId", "rbxassetid://5" },
+    }
+    for index, case in bad do
+        local r = run(c, "audio-bad-" .. index, { op = "create_instances", items = {{ className = case[1], name = "Bad" .. index, parent = "game.Workspace.AudioProps",
+            props = { [case[2]] = { t = "string", v = case[3] } } }} }, true)
+        eq(r.ok, false, case[1] .. "." .. case[2] .. " " .. case[3] .. " must be refused")
+    end
+    eq(#host:GetChildren(), before, "a refused item creates nothing")
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: a Wire is joined to its ends by a path under an allowed service, and a missing or outside end is refused", function()
+    local host = Instance.new("Part"); host.Name = "WireHost"; host.Parent = workspace
+    local c = newCommands()
+    local first = run(c, "wire-ends", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Player", parent = "game.Workspace.WireHost" },
+        { className = "AudioEmitter", name = "Emitter", parent = "game.Workspace.WireHost" },
+    } }, true)
+    eq(first.ok, true, tostring(first.error))
+    local wired = run(c, "wire-make", { op = "create_instances", items = {{ className = "Wire", name = "PlayerToEmitter", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.WireHost.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.WireHost.Emitter" },
+        SourceName = { t = "string", v = "Output" }, TargetName = { t = "string", v = "Input" } } }} }, true)
+    eq(wired.ok, true, tostring(wired.error))
+    local wire = host:FindFirstChild("PlayerToEmitter")
+    eq(wire.SourceInstance, host.Player, "SourceInstance"); eq(wire.TargetInstance, host.Emitter, "TargetInstance")
+    eq(wire.SourceName, "Output"); eq(wire.TargetName, "Input")
+    local count = #host:GetChildren()
+    local missing = run(c, "wire-missing", { op = "create_instances", items = {{ className = "Wire", name = "Dangling", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.WireHost.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.WireHost.NoSuchEmitter" } } }} }, true)
+    eq(missing.ok, false, "a missing end must be refused"); has(missing.error, "not found")
+    local outside = run(c, "wire-outside", { op = "create_instances", items = {{ className = "Wire", name = "Outside", parent = "game.Workspace.WireHost", props = {
+        SourceInstance = { t = "Instance", v = "game.Players.Someone" } } }} }, true)
+    eq(outside.ok, false, "a path outside the allowed services must be refused")
+    eq(#host:GetChildren(), count, "refused wires create nothing")
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: an Explosion is created harmless unless the op sets its blast, and an explicit value is honoured", function()
+    local host = Instance.new("Part"); host.Name = "BlastHost"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "blast-default", { op = "create_instances", items = {
+        { className = "Explosion", name = "Plain", parent = "game.Workspace.BlastHost", props = { BlastRadius = { t = "number", v = 12 } } },
+        { className = "Explosion", name = "Loud", parent = "game.Workspace.BlastHost", props = { BlastPressure = { t = "number", v = 500000 }, DestroyJointRadiusPercent = { t = "number", v = 1 } } },
+        { className = "Explosion", name = "Half", parent = "game.Workspace.BlastHost", props = { BlastPressure = { t = "number", v = 250 } } },
+        { className = "Explosion", name = "Nested", parent = "game.Workspace.BlastHost", children = {} },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    eq(host.Plain.BlastPressure, 0, "default BlastPressure"); eq(host.Plain.DestroyJointRadiusPercent, 0, "default DestroyJointRadiusPercent"); eq(host.Plain.BlastRadius, 12)
+    eq(host.Loud.BlastPressure, 500000, "explicit pressure is honoured"); eq(host.Loud.DestroyJointRadiusPercent, 1, "explicit joint percent is honoured")
+    eq(host.Half.BlastPressure, 250); eq(host.Half.DestroyJointRadiusPercent, 0, "only the unset one is defaulted")
+    -- a child Explosion inside a created tree gets the same defaults
+    local tree = run(c, "blast-child", { op = "create_instances", items = {{ className = "Model", name = "Rig", parent = "game.Workspace.BlastHost", children = {
+        { className = "Explosion", name = "Pop" } } }} }, true)
+    eq(tree.ok, true, tostring(tree.error))
+    eq(host.Rig.Pop.BlastPressure, 0); eq(host.Rig.Pop.DestroyJointRadiusPercent, 0)
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: an audio graph and an Explosion's explicit blast survive a checkpoint round trip", function()
+    local host = Instance.new("Folder"); host.Name = "AudioCheckpoint"; host.Parent = workspace
+    local c = newCommands()
+    local made = run(c, "audio-cp-made", { op = "create_instances", items = {
+        { className = "AudioPlayer", name = "Player", parent = "game.Workspace.AudioCheckpoint", props = { Asset = { t = "string", v = "rbxassetid://424242" }, Volume = { t = "number", v = 0.7 } } },
+        { className = "AudioDeviceOutput", name = "Out", parent = "game.Workspace.AudioCheckpoint" },
+        { className = "Explosion", name = "Boom", parent = "game.Workspace.AudioCheckpoint", props = { BlastPressure = { t = "number", v = 777 } } },
+    } }, true)
+    eq(made.ok, true, tostring(made.error))
+    local wired = run(c, "audio-cp-wire", { op = "create_instances", items = {{ className = "Wire", name = "Link", parent = "game.Workspace.AudioCheckpoint", props = {
+        SourceInstance = { t = "Instance", v = "game.Workspace.AudioCheckpoint.Player" }, TargetInstance = { t = "Instance", v = "game.Workspace.AudioCheckpoint.Out" } } }} }, true)
+    eq(wired.ok, true, tostring(wired.error))
+    local snap = run(c, "audio-cp-snapshot", { op = "snapshot", root = "game.Workspace.AudioCheckpoint", includeScripts = true, checkpointId = "cp-audio" }, false)
+    eq(snap.ok, true, tostring(snap.error)); eq(snap.data.complete, true, "the new classes are restorable, so the checkpoint is complete"); eq(snap.data.restorable, true)
+    host.Player.Volume = 0.1; host.Boom.BlastPressure = 5
+    host.Link:Destroy()
+    local restored = run(c, "audio-cp-restore", { op = "restore", root = "game.Workspace.AudioCheckpoint", checkpointId = "cp-audio", snapshot = snap.data }, true, function() return true end)
+    eq(restored.ok, true, tostring(restored.error))
+    eq(host.Player.Volume, 0.7); eq(host.Player.Asset, "rbxassetid://424242"); eq(host.Boom.BlastPressure, 777)
+    eq(host.Link.SourceInstance, host.Player, "the restored wire is joined to the restored player"); eq(host.Link.TargetInstance, host.Out)
+    host:Destroy(); c:destroy()
+end)
+
+spec("1.5.0: SoundService takes the listener settings through set_props", function()
+    Enum.ListenerLocation = { Camera = "Enum.ListenerLocation.Camera", Character = "Enum.ListenerLocation.Character" }
+    local c = newCommands()
+    local r = run(c, "listener", { op = "set_props", path = "game.SoundService", props = {
+        DefaultListenerLocation = { t = "EnumItem", v = "Enum.ListenerLocation.Camera" }, AcousticSimulationEnabled = { t = "bool", v = true } } }, true)
+    eq(r.ok, true, tostring(r.error))
+    eq(services.SoundService.DefaultListenerLocation, "Enum.ListenerLocation.Camera"); eq(services.SoundService.AcousticSimulationEnabled, true)
+    c:destroy()
+end)
+
 spec("a class Apple cannot hold or recreate still makes checkpoints incomplete", function()
     local root = Instance.new("Folder"); root.Name = "UnsupportedOrdinaryCheckpoint"; root.Parent = workspace
     local union = Instance.new("UnionOperation"); union.Name = "Carved"; union.Parent = root
