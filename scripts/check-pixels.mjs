@@ -146,7 +146,7 @@ function designSystem() {
 }
 
 const SYSTEM_STACKS = [
-  /^-?studpilot-system/i, /^system-ui/i, /^BlinkMacSystemFont/i,
+  /^-?apple-system/i, /^system-ui/i, /^BlinkMacSystemFont/i,
   /^Times/i, /^serif$/i, /^sans-serif$/i, /^Arial/i, /^Helvetica$/i,
 ];
 
