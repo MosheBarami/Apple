@@ -34,7 +34,7 @@ These were already false or were made false by the Roblox lane. Each is now corr
 
 | Claim | Evidence | Guard |
 |---|---|---|
-| Operator "Apple Labs", contact `apple.labs.app@gmail.com` | **policy** (BLOCKED N6: the legal name and inbox are the owner's). Left exactly as it was. | `OO` |
+| Operator "StudPilot", contact `support@studpilot.app` | **policy** (owner decision D-13, 2026-10-05; before any money is charged an adult or a company must become the named operator, BLOCKED N9). `OPERATOR_NAME` and `SUPPORT_EMAIL` in `packages/shared/src/index.ts` are the values. | `OO`, `tests/support-expectations.test.mjs` |
 | Email sign-up asks for an email and a password, nothing else; the password is hashed | `auth-pages.tsx:644` (`signUp` with email and password), `:749` (the Roblox button); hashing is Supabase Auth's | `PC` birth-date test reads this form |
 | The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:2148` | none new (carried over) |
 | Projects: names, descriptions, place name and id | `0001_init.sql:13-26` | none new |
@@ -94,7 +94,7 @@ The data page repeats the privacy rows above in shorter form; the same guards re
 | Free while in beta; the Free plan is 5 Credits a day and up to 30 a month; paid plans start later and cannot be bought yet | `packages/shared/src/index.ts:2290-2293` (`PLAN_TABLE`), rendered into the page by `terms.astro` (`{PLAN_TABLE.free.creditsPerDay}` and `.creditsPerMonth`, `fullRateDays`); pricing page headline "Free while in beta. Paid plans start later" (`pricing.astro:266`); checkout state is probed from `/api/billing/config` (`index.ts:3042`) at build time, and an unreachable probe means "closed" | `PC`, `pricing-config.test.mjs` |
 | Improvement data and Roblox data are as the Privacy Policy says, and the Policy controls | **policy** | `PC` |
 | Beta, as-is, liability, acceptable use, governing law | **policy** (legal text, carried over) | none |
-| "Operated by Apple Labs" | **policy** (BLOCKED N6), unchanged | `OO` |
+| "Operated by StudPilot" | **policy** (owner decision D-13), the same on /privacy, /terms and the footer byline | `OO` |
 
 ## 4. The Settings row (`improvement-opt-out`)
 
@@ -136,7 +136,7 @@ a migration. `packages/training/src/consent-staging.mjs` was not touched; its he
 - **AI Gateway logs hold every prompt and reply (`collectLog: true`) and nothing deletes them.** The pages now say so. Switching the log off for text
   calls (as voice already does), or setting a retention in the Cloudflare dashboard, would let the pages say less. Owner decision; it costs the spend
   attribution the log provides.
-- The legal operator name and inbox (BLOCKED N6) are unchanged everywhere; `OO` is green.
+- The legal operator name and inbox (BLOCKED N6) were unchanged everywhere when this was written; owner decision D-13 has since set them (section 9); `OO` is green.
 - The receipt text in `erasure.ts` says "under Connections in your Roblox account settings"; the Settings card says "Connected apps". The pages say
   "the apps authorized on your Roblox account" so as not to name a menu this branch cannot check.
 - `docs/` (SECURITY.md, FAILURES) and `packages/training/src/consent-staging.mjs` still carry the old "never trains" wording as history; they are outside
@@ -202,7 +202,7 @@ code does and the code is unchanged, or **open** with the reason.
 
 ### Left alone, as before
 
-The operator line (Apple Labs, the Gmail inbox) is untouched; `OO` is green.
+The operator line was untouched in that cycle (it changed afterwards, owner decision D-13: see section 9); `OO` is green.
 
 
 ## 8. Fix cycle 2
@@ -245,4 +245,4 @@ the minor item about the receipt's "old consent flag that nothing reads any more
 
 ### Left alone
 
-The operator line (Apple Labs, the Gmail inbox) is untouched; `OO` is green (the site suite above).
+The operator line was untouched in that cycle (it changed afterwards, owner decision D-13: see section 9); `OO` is green (the site suite above).

@@ -8,9 +8,11 @@
  * would answer them. No channel, no hours, no reply expectation, on any tier, anywhere.
  *
  * AND THE ONE SUPPORT LINK IN THE APP POINTED SOMEWHERE ELSE. plans.tsx offered
- * hello@studpilot.build while every address on the marketing site was apple.labs.app@gmail.com. One of
+ * hello@studpilot.build while every address on the marketing site was a Gmail address. One of
  * those two mailboxes is read by a human; a customer cannot tell which, and picking wrong looks
- * from their side exactly like being ignored.
+ * from their side exactly like being ignored. (Since 2026-10-05 there is one, support@studpilot.app,
+ * and the three legal pages are held to it as well: a privacy policy whose contact address is not
+ * the one a human reads is the same defect in the document where it matters most.)
  *
  * WHAT IS DELIBERATELY NOT ASSERTED: a response time. The owner has not committed to one and this
  * product is in beta — a checker that demanded an SLA would be demanding that someone invent a
@@ -59,6 +61,9 @@ test('there is one support mailbox, and both halves of the product use it', () =
     ['apps', 'site', 'src', 'pages', 'status.astro'],
     ['apps', 'site', 'src', 'pages', 'docs', 'faq.astro'],
     ['apps', 'site', 'src', 'pages', 'docs', 'troubleshooting.astro'],
+    ['apps', 'site', 'src', 'pages', 'privacy.astro'],
+    ['apps', 'site', 'src', 'pages', 'terms.astro'],
+    ['apps', 'site', 'src', 'pages', 'docs', 'privacy-and-data.astro'],
   ];
   for (const parts of files) {
     const src = read(...parts);
@@ -70,6 +75,11 @@ test('there is one support mailbox, and both halves of the product use it', () =
         S.SUPPORT_EMAIL,
         `${parts.join('/')} points support at ${m[1]}, not the one mailbox a human reads`,
       );
+    }
+    // A mailto of the right address is not enough for the legal pages: each has to NAME it, so
+    // dropping the contact line altogether (which the loop above cannot see) fails too.
+    if (parts.includes('privacy.astro') || parts.includes('terms.astro') || parts.includes('privacy-and-data.astro')) {
+      assert.ok(src.includes(S.SUPPORT_EMAIL), `${parts.join('/')} no longer names ${S.SUPPORT_EMAIL}`);
     }
   }
 });
