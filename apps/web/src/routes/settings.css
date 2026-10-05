@@ -400,11 +400,11 @@
    image is black on TRANSPARENT; on the dark theme this product defaults to, it was black on
    #232221 and no phone camera could read it — two-step verification could be started and never
    finished.
-   `--accent-on-fill` is the ground rather than a raw #fff because rule 1 admits no hex in a
-   declaration, and it is the only token in the ramp that is near-white in BOTH themes: it is the
-   ink that has to sit on `--accent-fill`, which is a dark green on either side, so it cannot
-   become dark without the primary button becoming unreadable first. */
-.settings-card .mfa-qr { display:block; width:168px; height:168px; max-width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--accent-ink); }
+   `--qr-ground` is the ground: a token meant for this, white in BOTH themes. It was `--accent-ink`
+   once, which is near-white only while the accent is dark; with the violet accent `--accent-ink`
+   is near-black in the dark theme, and the black code sat on near-black again (measured 1.06:1).
+   packages/design/src/web/drawn.test.mjs measures the black-on-ground pair in both themes. */
+.settings-card .mfa-qr { display:block; width:168px; height:168px; max-width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--qr-ground); }
 
 /* ------------------------------------------------------ the page's state lines --- */
 

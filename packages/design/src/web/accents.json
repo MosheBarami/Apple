@@ -20,18 +20,18 @@
         "dark": {
           "textOnBase": 6.51,
           "textWorst": 5.02,
-          "ringWorst": 5.02,
+          "ringWorst": 3.45,
           "labelOnAccent": 6.54,
           "labelOnStrong": 9.25,
-          "strongOnWash": 6.45
+          "strongOnWash": 6.44
         },
         "light": {
           "textOnBase": 5.74,
           "textWorst": 5.12,
-          "ringWorst": 5.12,
+          "ringWorst": 3.3,
           "labelOnAccent": 6.1,
           "labelOnStrong": 7.81,
-          "strongOnWash": 6.21
+          "strongOnWash": 6.2
         }
       }
     },
@@ -53,15 +53,15 @@
         "dark": {
           "textOnBase": 10.89,
           "textWorst": 8.39,
-          "ringWorst": 8.39,
+          "ringWorst": 5.34,
           "labelOnAccent": 10.24,
           "labelOnStrong": 12.77,
-          "strongOnWash": 8.92
+          "strongOnWash": 8.96
         },
         "light": {
           "textOnBase": 5.75,
           "textWorst": 5.12,
-          "ringWorst": 5.12,
+          "ringWorst": 3.25,
           "labelOnAccent": 6.11,
           "labelOnStrong": 8.25,
           "strongOnWash": 6.57
@@ -86,18 +86,18 @@
         "dark": {
           "textOnBase": 6.79,
           "textWorst": 5.23,
-          "ringWorst": 5.23,
+          "ringWorst": 3.53,
           "labelOnAccent": 6.72,
           "labelOnStrong": 8.93,
-          "strongOnWash": 6.34
+          "strongOnWash": 6.36
         },
         "light": {
           "textOnBase": 5.87,
           "textWorst": 5.23,
-          "ringWorst": 5.23,
+          "ringWorst": 3.68,
           "labelOnAccent": 6.24,
           "labelOnStrong": 8.15,
-          "strongOnWash": 6.36
+          "strongOnWash": 6.35
         }
       }
     }

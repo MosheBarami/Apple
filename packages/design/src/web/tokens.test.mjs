@@ -22,8 +22,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AA, ACCENTS_JSON_PATH, OLD_ACCENT_LITERALS, SURFACES, STATUS_INKS, TEXT_INKS, TOKENS_CSS_PATH,
-  aaFailures, contrast, declarations, measureAccent, readTokensCss, stripComments, surfacesOf,
-  theme, themeBlocks, topLevelRules,
+  aaFailures, accentRingOf, contrast, declarations, measureAccentExact, readTokensCss, roundRatios, stripComments,
+  surfacesOf, theme, themeBlocks, topLevelRules,
 } from './css-tokens.mjs';
 import { ROOT, readText, walkText } from './tests/repo-walk.mjs';
 
@@ -154,23 +154,37 @@ test('every candidate clears AA in both themes, and the ratios recorded in accen
   let measured = 0;
   for (const c of ACCENTS.candidates) {
     for (const mode of ['dark', 'light']) {
-      const m = measureAccent(c[mode], surfaces[mode]);
-      measured += Object.keys(m).length;
-      assert.deepEqual(aaFailures(m), [], `${c.name}/${mode} is below WCAG AA`);
-      assert.deepEqual(c.measured?.[mode], m, `${c.name}/${mode}: the recorded ratios are stale; run \`node packages/design/src/web/measure-accents.mjs --write\``);
+      // The verdict is on the EXACT ratios; the record is those ratios to two places.
+      const exact = measureAccentExact(c[mode], surfaces[mode], accentRingOf(BLOCKS[mode]));
+      measured += Object.keys(exact).length;
+      assert.deepEqual(aaFailures(exact), [], `${c.name}/${mode} is below WCAG AA`);
+      assert.deepEqual(c.measured?.[mode], roundRatios(exact), `${c.name}/${mode}: the recorded ratios are stale; run \`node packages/design/src/web/measure-accents.mjs --write\``);
     }
   }
   assert.equal(measured, 3 * 2 * 6, 'the measurement count drifted; a ratio is not being measured');
 });
 
-test('the guard has teeth: a candidate that is too dim, or too bright for its label, is reported', () => {
-  const surfaces = surfacesOf(THEMES.dark);
-  const dim = measureAccent({ accent: '#4a3a90', 'accent-strong': '#5a4aa0', 'accent-ink': '#0c0816', 'accent-wash': 'rgba(74, 58, 144, 0.14)' }, surfaces);
+test('the guard has teeth: a candidate that is too dim, too bright for its label, or one hundredth short is reported', () => {
+  const dark = surfacesOf(THEMES.dark);
+  const light = surfacesOf(THEMES.light);
+  const ringD = accentRingOf(BLOCKS.dark);
+  const ringL = accentRingOf(BLOCKS.light);
+  const dim = measureAccentExact({ accent: '#4a3a90', 'accent-strong': '#5a4aa0', 'accent-ink': '#0c0816', 'accent-wash': 'rgba(74, 58, 144, 0.14)' }, dark, ringD);
   const failures = aaFailures(dim);
   assert.ok(failures.some((f) => /accent as text on the base/.test(f)), 'a dim accent was not reported as unreadable text');
   assert.ok(failures.some((f) => /label on the accent button/.test(f)), 'a dim accent with a dark label was not reported');
-  const white = measureAccent({ accent: '#ffe08a', 'accent-strong': '#fff0b8', 'accent-ink': '#ffffff', 'accent-wash': 'rgba(255, 224, 138, 0.14)' }, surfaces);
+  const white = measureAccentExact({ accent: '#ffe08a', 'accent-strong': '#fff0b8', 'accent-ink': '#ffffff', 'accent-wash': 'rgba(255, 224, 138, 0.14)' }, dark, ringD);
   assert.ok(aaFailures(white).some((f) => /label on the accent button/.test(f)), 'a white label on a pale accent was not reported');
+  // THE RING CAN FIRE ON ITS OWN. This accent is readable text on every surface of the light theme
+  // (4.5:1 or more), and the ring the token file draws from it is not (2.99:1 at 75%). While the ring
+  // was measured as the solid accent, no candidate could fail the ring without failing the text.
+  const ringOnly = measureAccentExact({ accent: '#1070a8', 'accent-strong': '#0b5a85', 'accent-ink': '#ffffff', 'accent-wash': 'rgba(16, 112, 168, 0.1)' }, light, ringL);
+  assert.deepEqual(aaFailures(ringOnly).map((f) => f.replace(/ is .*/, '')), ['focus ring on its worst surface'], 'a readable accent whose ring is under 3:1 must fail on the ring alone');
+  assert.ok(ringOnly.textWorst >= AA.text && ringOnly.ringWorst < AA.ring, 'the fixture is not the case it claims to be');
+  // ONE HUNDREDTH SHORT IS SHORT. #4878c8 on --paper is 4.4967:1, which rounds to 4.50 and used to pass.
+  const near = measureAccentExact({ accent: '#4878c8', 'accent-strong': '#6b94dc', 'accent-ink': '#ffffff', 'accent-wash': 'rgba(72, 120, 200, 0.14)' }, dark, ringD);
+  assert.equal(roundRatios(near).textOnBase, 4.5, 'the fixture no longer rounds up to the threshold');
+  assert.ok(aaFailures(near).some((f) => /accent as text on the base is 4\.496/.test(f)), 'a ratio of 4.4967 passed because it rounds to 4.50');
   assert.equal(rejectedFamily('#ff8a4c'), 'ember orange', 'the retired ember is not recognised as rejected');
   assert.equal(rejectedFamily('#2f7df6'), 'azure blue', 'azure is not recognised as rejected');
   assert.equal(rejectedFamily('#34d399'), 'green', 'green is not recognised as rejected');

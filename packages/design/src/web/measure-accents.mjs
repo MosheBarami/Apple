@@ -10,7 +10,7 @@
  * files and fails when the record is stale.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ACCENTS_JSON_PATH, aaFailures, measureAccent, surfacesOf, theme, themeBlocks } from './css-tokens.mjs';
+import { ACCENTS_JSON_PATH, aaFailures, accentRingOf, measureAccentExact, roundRatios, surfacesOf, theme, themeBlocks } from './css-tokens.mjs';
 
 const write = process.argv.includes('--write');
 const accents = JSON.parse(readFileSync(ACCENTS_JSON_PATH, 'utf8'));
@@ -24,9 +24,10 @@ let failed = 0;
 for (const candidate of accents.candidates) {
   candidate.measured = {};
   for (const mode of ['dark', 'light']) {
-    const m = measureAccent(candidate[mode], surfaces[mode]);
+    const exact = measureAccentExact(candidate[mode], surfaces[mode], accentRingOf(blocks[mode]));
+    const m = roundRatios(exact); // rounded to RECORD; the verdict below is on the exact numbers
     candidate.measured[mode] = m;
-    const bad = aaFailures(m);
+    const bad = aaFailures(exact);
     failed += bad.length;
     console.log(`${candidate.name.padEnd(8)} ${mode.padEnd(5)} ${JSON.stringify(m)}${bad.length ? `  BELOW AA: ${bad.join('; ')}` : ''}`);
   }

@@ -2,7 +2,7 @@
 
 A new visual system for both apps: a dark, professional base in the family of Cursor and Linear, with
 ONE bright accent, a new logo, and one token file. Layouts are not touched here. That is the site and
-app rebuild (M6); this step swaps the visual system underneath them so both apps keep rendering.
+app rebuild (M2, which the owner moved here; the handoff copy on this branch still numbers it M6); this step swaps the visual system underneath them so both apps keep rendering.
 
 Every number below was measured in this clone on 2026-10-05. Where a command produced it, the
 command is beside it.
@@ -19,7 +19,8 @@ space, type or motion token.
 | Surfaces (dark, default) | `--paper #0a0b0d`, `--paper-2 #0e1013`, `--surface #131519`, `--surface-2 #1a1d22`, `--surface-3 #23262c` |
 | Ink | `--ink #f4f5f7`, `--ink-2 #d2d5db`, `--muted #9da2ad`, `--faint #8d929d` |
 | Edges | `--hairline`, `--line`, `--line-strong` (solid), `--control-fill`, `--control-line`, `--quiet-line`, `--quiet-ink` |
-| Accent family | `--accent`, `--accent-strong`, `--accent-ink` (text on accent), `--accent-wash`, `--accent-ring` |
+| Accent family | `--accent`, `--accent-strong`, `--accent-ink` (text on accent), `--accent-wash`, `--accent-ring` (the focus ring: the accent at 75%, measured at 3.25:1 or better over every surface, section 10) |
+| Fixed ground | `--qr-ground #ffffff`, the same in both themes: the surface a camera reads (the two-step-verification QR) |
 | Status | `--good`, `--warn`, `--bad`, `--info` (green is for status only) |
 | Radii | `--r-xs 4`, `--r-sm 6`, `--r-md 8`, `--r-lg 12`, `--r-xl 16`, `--r-pill` |
 | Space | `--space-1` to `--space-8` on a 4 px grid |
@@ -42,20 +43,21 @@ in it are written by `node packages/design/src/web/measure-accents.mjs --write`,
 if one is below AA or if the record is stale. None is green, azure blue or ember orange: those hues are
 rejected by a test (`planning/sections/10-web-brand-design.md` 10.3 is where the owner rejected them).
 
-The six measured columns: **text** is the accent as text on `--paper`; **worst** is the accent as text
-on the worst of the five surfaces (this also covers the focus ring, which needs 3:1; all three
-candidates clear it by at least 5:1); **label** is `--accent-ink` on `--accent`; **hover** is
-`--accent-ink` on `--accent-strong`; **chip** is `--accent-strong` as text on the accent wash over
-`--surface-2`.
+The measured columns: **text** is the accent as text on `--paper`; **worst** is the accent as text on
+the worst of the five surfaces; **ring** is the focus ring as the token file draws it (`--accent-ring`,
+the accent at 75% alpha, composited over each surface), on the worst of the five, and needs 3:1;
+**label** is `--accent-ink` on `--accent`; **hover** is `--accent-ink` on `--accent-strong`; **chip** is
+`--accent-strong` as text on the accent wash over `--surface-2`. All ratios are compared UNROUNDED
+(a 4.4967 is below 4.5, and rounds to 4.50); the two places shown are only the record.
 
-| Candidate | Theme | accent / strong / ink | text | worst | label | hover | chip |
-|---|---|---|---|---|---|---|---|
-| 1 violet | dark | `#a67cff` / `#bfa2ff` / `#0c0816` | 6.51 | 5.02 | 6.54 | 9.25 | 6.45 |
-| 1 violet | light | `#7240d8` / `#5f2fc4` / `#ffffff` | 5.74 | 5.12 | 6.10 | 7.81 | 6.21 |
-| 2 cyan | dark | `#22d3ee` / `#67e8f9` / `#03161b` | 10.89 | 8.39 | 10.24 | 12.77 | 8.92 |
-| 2 cyan | light | `#0b6b82` / `#085669` / `#ffffff` | 5.75 | 5.12 | 6.11 | 8.25 | 6.57 |
-| 3 magenta | dark | `#ec62d2` / `#f58ae2` / `#17061a` | 6.79 | 5.23 | 6.72 | 8.93 | 6.34 |
-| 3 magenta | light | `#b0178f` / `#92107a` / `#ffffff` | 5.87 | 5.23 | 6.24 | 8.15 | 6.36 |
+| Candidate | Theme | accent / strong / ink | text | worst | ring | label | hover | chip |
+|---|---|---|---|---|---|---|---|---|
+| 1 violet | dark | `#a67cff` / `#bfa2ff` / `#0c0816` | 6.51 | 5.02 | 3.45 | 6.54 | 9.25 | 6.44 |
+| 1 violet | light | `#7240d8` / `#5f2fc4` / `#ffffff` | 5.74 | 5.12 | 3.30 | 6.10 | 7.81 | 6.20 |
+| 2 cyan | dark | `#22d3ee` / `#67e8f9` / `#03161b` | 10.89 | 8.39 | 5.34 | 10.24 | 12.77 | 8.96 |
+| 2 cyan | light | `#0b6b82` / `#085669` / `#ffffff` | 5.75 | 5.12 | 3.25 | 6.11 | 8.25 | 6.57 |
+| 3 magenta | dark | `#ec62d2` / `#f58ae2` / `#17061a` | 6.79 | 5.23 | 3.53 | 6.72 | 8.93 | 6.36 |
+| 3 magenta | light | `#b0178f` / `#92107a` / `#ffffff` | 5.87 | 5.23 | 3.68 | 6.24 | 8.15 | 6.35 |
 
 Every text token (ink, status, syntax) clears 4.5:1 on every one of the five surfaces in both themes,
 the lowest being 4.86:1 in dark (`--faint` on `--surface-3`) and 4.96:1 in light (`--warn` on
@@ -65,7 +67,7 @@ To switch candidate: copy its eight values into `tokens.css` and set `"default"`
 `tokens.test.mjs` fails until the two agree. The favicon is generated from the token file, so
 `pnpm brand` follows.
 
-**Which one ships is an owner decision** (handoff 6.1 renders all three on the landing hero and picks
+**Which one ships is an owner decision** (the rebuild step, 6.1 in this branch's handoff copy, renders all three on the landing hero and picks
 the one the blind critic rates highest). Nothing in this step picked it by taste; candidate 1 is the
 default because the task made it so.
 
@@ -162,7 +164,7 @@ column on a phone); a planted `display: block` on the rail turns it red.
 ## 7. Not done here
 
 - The page layouts. Both apps keep their old anatomy in the new colours; the owner's rule that a
-  redesign keeping the old layouts fails is the M6 rebuild's, not this step's.
+  redesign keeping the old layouts fails is the M2 rebuild's, not this step's.
 - Choosing the accent (section 2).
 - About twenty owner-picked interaction components still carry their own spring curves, and the
   landing's flow-line canvas (an owner pick) is unchanged. They are interactions, not the visual
@@ -250,5 +252,101 @@ committed; the list is the record.
 | `node scripts/check-unstyled-classes.mjs` | 14 classes with no rule, the same 14 at `HEAD`: not caused by this change |
 | `node scripts/check-pixels.mjs --base <local preview> --baseline <none>` | 83 frames; rules 1 to 3 (one colour, bare system font, no token) fired on none; the 2 findings are `/discord`, which redirects to an external invite and times out offline; rule 4 not evaluated |
 
-Not run: Lighthouse, a real-device check, and the blind critic's rating of the landing (a milestone M6
+Not run: Lighthouse, a real-device check, and the blind critic's rating of the landing (a milestone M2
 bar). The three accent candidates have not been rendered on the landing hero yet.
+
+## 10. Review fixes (2026-10-05, after an independent review of this branch)
+
+An independent review found defects in the first pass. Each is fixed with a test that failed before
+the fix; the tests are listed here with the mutation that turned each red. Every number was measured in
+this clone after the change.
+
+### 10.1 The two-step-verification QR could not be scanned (a defect that broke users)
+
+`.settings-card .mfa-qr` took its ground from `--accent-ink`. That token is the ink for a label on the
+accent button: near-white while the accent was dark, `#0c0816` (near-black) in the dark theme once the
+accent became violet. The provider's QR is black on transparent, so the code sat on near-black:
+**1.06:1 black on the old ground in the dark theme** (21.00:1 in light, which is why nobody saw it in
+a light-theme check).
+
+Fix: a token meant for it, `--qr-ground: #ffffff` in the theme-independent block of `tokens.css`
+(the same white in both themes), and the rule spends it. `drawn.test.mjs` resolves the ground through
+the token file in both themes and requires it opaque and at least 7:1 against black: **21.00:1 in dark
+and 21.00:1 in light.** Chromium on the built CSS draws `rgb(255, 255, 255)` behind `.mfa-qr` in both
+themes.
+
+### 10.2 The projects page's primary button did not answer the pointer
+
+`dashboard.css` made the hover a `color-mix` of `--sh-accent` into `--sh-accent-deep`, which had been two
+different steps of the old accent and were both `var(--accent)` now. The mix of a colour with itself is
+that colour. That rule is the one that wins (the built CSS places it after the quiet layer's
+`--accent-strong` hover, 111,061 against 75,144 bytes into the bundle), so the button never changed.
+
+Fix: the hover background is `var(--accent-strong)`. Measured in Chromium on the built CSS, the
+projects-page button: dark rest `rgb(166, 124, 255)`, hover `rgb(191, 162, 255)`; light rest
+`rgb(114, 64, 216)`, hover `rgb(95, 47, 196)`. `drawn.test.mjs` finds every hover rule of a primary
+button in both apps (11 selector parts in 6 files that set a background; 8 of them pair with a resting
+rule of the same selector, 12 hover/rest pairs), and fails when a pair resolves to the same colour, in
+either theme. The
+label on the hovered button is `--accent-ink` on `--accent-strong`: 9.25:1 dark, 7.81:1 light.
+
+### 10.3 The focus-ring gate measured something nothing draws
+
+`measureAccent` measured the SOLID accent as the focus ring, which is the same number as the accent's
+text contrast (`ringWorst == textWorst`), so the 3:1 check could never fire on its own. The outlines the
+apps actually drew used `--accent-ring`, the accent at 45% alpha: **2.09:1 on the worst surface in dark
+and 1.97:1 in light** (measured by composing the token over each surface). Six rules drew a ring at
+that strength: `picks/composer/file-picker.css`, `picks/tech/line-thread.css`,
+`picks/chat/context-menu.css`, the composer card and the sign-in fields in `system.css` and `auth.css`
+(their border colour, beside the 14% halo), and `picks/composer/composer-fx.css`.
+
+Fix, at the token. `--accent-ring` is now the accent at 75%. That is the lowest round figure that
+clears 3:1 over all five surfaces for all three candidates in both themes (70% leaves cyan-light at
+2.98:1). Measured ring ratios, worst surface: violet 3.45 dark / 3.30 light, cyan 5.34 / 3.25, magenta
+3.53 / 3.68 (table in section 2). The gate now measures the ring the token file draws:
+`measureAccentExact` evaluates the theme block's own `--accent-ring` over each surface, so a candidate
+can fail the ring on its own (a fixture accent at 4.5:1 text and 2.99:1 ring does, in the test).
+
+What is measured of the shipped code: `focus.test.mjs` reads both apps' 178 stylesheets, takes the 114
+rules whose selector names a focus pseudo-class and the 46 of them that draw a ring (an `outline`, an
+`outline-color`, or a ring-shaped `box-shadow` layer), resolves each colour through the token file for
+the theme (var chains, `color-mix`, rgba), composites it over each of the five surfaces and requires
+the rule's strongest indicator (a ring, or the border colour it sets) to reach 3:1 on every surface in
+both themes. With the old 45% ring token the same test names the six rules above; with the token file
+as it is, none fail except one the test exempts by proof: the composer card's soft ring in
+`composer-fx.css`, an owner pick that is 1.22:1 dark and 1.25:1 light on its own. What carries the
+composer's focus is Tailwind's `border-ring` from `components/ui/input-group.tsx`; the test asserts that
+class is still there, that `--color-ring` (the token Tailwind reads, set to `--accent-ring`) reaches 3:1
+on every surface in both themes, and that the exemption is still needed (it fails the moment the soft
+ring passes by itself).
+
+AA compares unrounded ratios now (`measureAccentExact`, `roundRatios` only to record). `#4878c8` on
+`--paper` is 4.4967:1, which rounds to 4.50 and used to pass; a fixture in the teeth test holds it. The
+recorded `strongOnWash` ratios moved by 0.01 to 0.04 because the chip's wash is composited without
+rounding to a whole channel first.
+
+Not covered by this check: the Tailwind utility classes of the vendored shadcn components under
+`components/ui/` (byte-pinned to their upstream hashes by `ai-elements-provenance.test.mjs`, so not
+editable here). They draw with `--color-ring`, which passes. One of them, the `ScrollArea` viewport
+(`scroll-area.tsx`), draws only `ring-ring/50` (a 3 px ring at half of `--accent-ring`, 1.84:1 dark and
+1.74:1 light) beside `outline-none`; it is not fixed here and is listed in the final report.
+
+### 10.9 Mutations of the review fixes: every new or restated test went red, then green
+
+Each row: one planted break (the anchor was asserted to occur exactly once; the file was restored byte
+for byte and the hash compared), and the test that went red. The harness is not committed.
+
+| Item | Planted break | Test that went red |
+|---|---|---|
+| 3 | `tokens.css` dark `--accent-ring` back to 45% | `dark: every focus ring either app draws reaches 3:1 on every surface`; `the exempt composer ring is still a wash...`; `the guard has teeth: it reads the shapes that shipped...`; `every candidate clears AA in both themes, and the ratios recorded in accents.json are the measured ones` |
+| 3 | `picks/composer/file-picker.css` outline weakened to a 30% mix | `dark:` and `light: every focus ring either app draws reaches 3:1 on every surface` |
+| 3 | `system.css` `.gx-drawer:focus` draws only the halo | the same two |
+| 3 | `apps/site` `base.css` global focus outline weakened to a 30% mix | the same two |
+| 3 | `ui/input-group.tsx` loses its `border-ring` on focus | `the exempt composer ring is still a wash that needs its proof, and the proof holds in both themes` |
+| 3 | `css-tokens.mjs` `aaFailures` decides on a rounded ratio | `the guard has teeth: a candidate that is too dim, too bright for its label, or one hundredth short is reported` |
+| 3 | `css-tokens.mjs` measures the ring as the solid accent again | `every candidate clears AA ... recorded ... measured`; `the guard has teeth: a candidate that is too dim...` |
+| 1 | `settings.css` `.mfa-qr` ground back to `--accent-ink` | `dark: the QR ground is opaque and reads against black at 7:1 or better` (1.06:1) |
+| 1 | `--qr-ground` set to `#808080` | the same, dark and light (5.32:1) |
+| 1 | `--qr-ground` made translucent | the same, dark and light |
+| 2 | `dashboard.css` hover back to the mix of two accents | `dark:` and `light: a primary button's hover background differs from its resting background...` |
+| 2 | `apps/site` `base.css` `.btn-primary:hover` background set to the rest colour | the same two |
