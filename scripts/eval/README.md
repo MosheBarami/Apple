@@ -23,38 +23,45 @@ baseline.mjs        ->  planning/proof/<milestone>/baseline.md
 | `lib/verdict.mjs` | The pass rule, a pure function (unit-tested clause by clause). |
 | `lib/studio-mcp.mjs` | A minimal MCP stdio client for `StudioMCP`, with a timeout on every request. |
 | `lib/dev-set.mjs` | Reads the 60 frozen requests by id. It has no way to write. |
-| `luau/world-state.luau` | Capture, reset, verify and measure the place (sent through `execute_luau`). |
+| `luau/world-state.luau` | Capture, reset, verify, measure and show a switched-off UI in the place (sent through `execute_luau`). |
+| `lib/world.mjs` | Builds that Luau, reading the property list from the plugin's own write allowlist (`PROPERTY_ALLOW` in `Commands.luau`). |
+| `lib/capture-plan.mjs` | Pure rules: the cameras, world / UI / terrain, which pictures a piece is planned to have, the play-test evidence. |
 
 Nothing here is deployed, nothing is published to Roblox, and no secret is printed or written. The admin key is read
 from the environment (`STUDPILOT_ADMIN_KEY`) or an env file (`--env-file`, `$STUDPILOT_ENV_FILE`, or the repo's `.env`).
 
 ## One-time setup
 
-1. **A Studio that is signed in.** The harness never signs in, creates an account or opens a place itself. On
-   2026-10-05 Studio on this Mac was getting 401 from Roblox on every call (its session had expired), and a second
-   Studio started by `open -a RobloxStudio <file>` logged `Authenticated : NO` and never opened the file. Sign in to
-   Studio yourself first.
+1. **A Studio that is signed in (the owner does this).** The harness never signs in, creates an account or opens a place
+   itself. On 2026-10-05 Studio on this Mac was getting 401 from Roblox on every call: its session had expired. A second
+   Studio started by `open -a RobloxStudio <file>` logged `Authenticated : NO` and never opened the file. So the owner
+   signs in to Roblox Studio on this Mac first, by hand, and keeps it signed in for the whole batch.
 2. **A local Baseplate place, never published.** `node packages/evals/frontier-studio/make-baseplate.mjs` writes a fresh
    `.rbxlx` and prints a JSON manifest with its `placePath` (it needs `rojo`). Open it: `open -a RobloxStudio <that file>`. Do not use "Save to Roblox"
    or "Publish": the pairing is tied to the open place (`apps/worker/src/studio-place.ts`), so every reset must clear the
-   SAME place, never open a new file. Keep this Studio window open for the whole batch.
+   SAME place, never open a new file. The owner opens it in the signed-in Studio and keeps that window open for the whole
+   batch.
 3. **Install the plugin.** `node apps/studpilot-plugin/scripts/build.mjs` writes
    `apps/studpilot-plugin/release/studpilot-studio.rbxm` (it installs and publishes nothing). Copy it into
    `~/Documents/Roblox/Plugins/` and remove any older StudPilot plugin file from that folder (one named after a former
    product name), so two copies do not load. Restart Studio, or reopen the place.
-4. **Deploy the worker once** if `POST /api/admin/pairing/:id` is not live yet (it is new in the M3 harness branch;
-   `node infra/deploy-worker.mjs studpilot`, an owner or orchestrator step, then check `buildSha` at `/api/health`).
-   Until then, mint the code in the web app signed in as the test user instead.
-5. **Mint a code and enter it.** `node scripts/eval/pair.mjs` (defaults: the test project and user below). Type the
-   6-character code into the plugin's pairing box within ten minutes. It is single-use and a credential for those ten
-   minutes: do not paste it anywhere. It refuses a project whose session has a different owner (403) or no owner on
-   record yet (409: open the project once in the web app).
+4. **Deploy the worker once** if `POST /api/admin/pairing/:id` or `POST /api/admin/conversation-reset/:id` is not live yet
+   (both are new in the M3 harness branch; `node infra/deploy-worker.mjs studpilot`, an owner or orchestrator step, then
+   check `buildSha` at `/api/health`). Until the pairing route is live, mint the code in the web app signed in as the test
+   user instead; a real run cannot start without the conversation route (a dry run does not need it).
+5. **Mint a code, and the owner types it into the plugin.** `node scripts/eval/pair.mjs` (defaults: the test project and
+   user below) prints a 6-character code. A person types it into the plugin's pairing box in Studio within ten minutes:
+   computer-use access to Studio was refused in the session that built this, so nothing automated can type it. It is
+   single-use and a credential for those ten minutes: do not paste it anywhere. It refuses a project whose session has a
+   different owner (403) or no owner on record yet (409: open the project once in the web app). Closing Studio ends the
+   pairing; a new code is needed after that.
 6. **Record the pristine place.** With the place still untouched:
    `node scripts/eval/run-piece.mjs --init-baseline --milestone M3`. This writes
-   `planning/proof/M3/place-baseline.json`: every instance under the 13 services the plugin can write to, the scalar
-   properties a run can change (Lighting, SoundService, gravity, the Baseplate and SpawnLocation) and whether the Terrain
-   is empty. It is the harness's definition of "clean" and every manifest carries its sha256. It warns if the place does
-   not look pristine.
+   `planning/proof/M3/place-baseline.json` (format 2): every instance under the 13 services the plugin can write to, and
+   for each of them, and for the services, every property the plugin may write (read from `Commands.luau`, plus Gravity and
+   ShowDevelopmentGui) and every attribute, and whether the Terrain is empty. It is the harness's definition of "clean" and
+   every manifest carries its sha256. It warns if the place does not look pristine. A baseline of the earlier format (it
+   recorded only the services' properties and the parts directly in Workspace) is refused at preflight: record it again.
 7. **Prove it on nothing.** `node scripts/eval/run-piece.mjs U01 --dry-run --milestone M3-dry --proof-root <a scratch dir>`.
    A dry run resets, photographs the empty Baseplate and play-tests it, starts no run and grants no credit. Read its
    output: the play test of an empty place must show 0 errors, and the `viewport` it reports is the real picture size (see
@@ -79,29 +86,65 @@ Steps, each timed in `timing.json`:
    progress; spend before; the month's spend under `--max-month-usd` (default 20, the owner's test ceiling) and the
    kill switch off; the baseline file exists. Any refusal stops here, before anything is spent.
 2. **reset**: stop play if it is on; `reset` the place to the baseline, then `verify` it. The reset destroys everything
-   under the 13 services that the baseline does not list, puts the recorded properties back, rebuilds a Baseplate or
-   SpawnLocation a run deleted, and clears the Terrain if it was empty. It never touches the camera, the Terrain or
-   engine-made `TouchTransmitter`s. If `verify` still finds a difference, the piece stops (no credits granted) and
-   names a sample of what is left. What a reset cannot recreate (a deleted Sky, the Baseplate's `Texture`) is reported as
-   missing rather than hidden; reload the place file and run `--init-baseline` again.
-3. **credits**: the plan is set to free and 3000 ledger units (20 credits; `--grant` to change) are granted once with
+   under the 13 services that the baseline does not list, puts back every recorded property and attribute of EVERY kept
+   instance (the Baseplate, the SpawnLocation, Lighting and its Sky, Atmosphere and effects, the services themselves; a
+   spawn a run disabled, a locked Baseplate, a changed ColorGrading contrast, an attribute a run set on Workspace), rebuilds a
+   Baseplate or SpawnLocation a run deleted, and clears the Terrain if it was empty. It never touches the camera, the
+   Terrain or engine-made `TouchTransmitter`s. Engine-owned `RBX...` attributes are not tracked (nobody can set them). If
+   `verify` still finds a difference, the piece stops (no credits granted) and names a sample of what is left. A property
+   that was readable and no longer is counts as a difference, never as "unchanged". What a reset cannot recreate (a deleted
+   Sky, the Baseplate's `Texture`) is reported as missing rather than hidden; reload the place file and run
+   `--init-baseline` again. Not tracked: properties whose values are of a type the script does not record (a Font, an
+   instance reference), and anything outside the 13 services.
+3. **conversation** (real runs only; a dry run leaves the chat alone and says so): `POST /api/admin/conversation-reset/<project>`
+   with the owner named in the body. The product has no clear-chat button (New chat starts another project), so the route
+   does what its own actions already do, in one step: the messages and their model picks go, as `edit_resend` on the first
+   message discards them; the memory the chats produced is emptied, as the memory editor can; the build ledger and the game
+   plan go, as they do when a place is put back. The pairing, the checkpoints, the op log, the place and the settings stay
+   (this is not `bench-reset`, which M4 removes and which also clears Lighting). It refuses a wrong owner (403), an owner
+   who may not build (403) and a run in progress (409), and the piece then stops before anything is spent. The runner
+   re-reads the message count and refuses to go on unless it is 0; the run is measured against that count. The manifest
+   records it under `conversation` (what was removed, memory and ledger cleared or already empty) and `baseline.md` prints
+   how many pieces ran in a fresh chat. One thing it cannot reach: the dashboard's mirror of the memory (`memory_summary`,
+   `memory_facts` in Supabase), which is only a display copy (the agent reads the session's own).
+4. **credits**: the plan is set to free and 3000 ledger units (20 credits; `--grant` to change) are granted once with
    event id `eval-<milestone>-<id>-<time>`. A displayed credit is 150 ledger units (`INTERNAL_PER_CREDIT`).
-4. **agent-run**: the request text exactly as written, nothing else. Polls `session-info` every 5 s. After 15 minutes
-   (`--timeout-minutes`) it sends `agent-stop`; the piece then records `endedBy: timeout` and cannot pass.
-5. **messages**: the reply, the tool trace (steps), the stop reason and `creditsSpent` of this run.
-6. **measure**: what the run added: instances and parts, their bounding box, the screen UIs (a ScreenGui with nothing in
-   it is not a UI), the spawn. World, UI, both, or none.
-7. **captures**, with `screen_capture`:
+5. **agent-run**: the request text exactly as written, nothing else. Polls `session-info` every 5 s. A poll that fails with
+   something a retry can fix (no answer, a 5xx, a 429) is tried again up to four times; a poll that cannot be read at all
+   (or any other way out of the runner while the run is live) STOPS the run (`agent-stop`, then waits for it to go idle) and
+   records it under `manifest.run.stop` (why, whether the stop was accepted, whether the run went idle); the piece cannot
+   pass. After 15 minutes (`--timeout-minutes`) it does the same and records `endedBy: timeout`; a run that never showed
+   itself as running is stopped too, so a late start cannot run on unseen. If a stop is not confirmed the runner says so and
+   you stop the run by hand (`POST /api/admin/agent-stop/<project>`).
+6. **messages**: the reply, the tool trace (steps), the stop reason and `creditsSpent` of this run.
+7. **measure**: what the run added: instances and parts, the box to frame, the screen UIs (a ScreenGui with nothing in it is
+   not a UI), the terrain it edited, and where the player spawns. World, UI, both, or none. Terrain counts as world: a piece
+   built from terrain alone is a world piece, framed on the terrain's own box (`Terrain.MaxExtents`, in 4-stud voxels);
+   if the engine cannot say where the terrain is, a 256-stud window around the spawn is used and the manifest says it is a
+   guess (`cameraPlan.basis: terrain-fallback`). The box ignores parts that are nearly invisible (Transparency 0.95 or more)
+   and ground-sized slabs (over 300 studs on a side) unless nothing else is left (`framing` records the counts and the
+   basis). The spawn is an enabled SpawnLocation the run added, else the pristine enabled one, else the origin
+   (`spawn.source` says which).
+8. **captures**, with `screen_capture`; a picture is saved under the name its bytes call for (`.jpg` for a JPEG, never
+   `.png`), and bytes that are neither a PNG nor a JPEG are a recorded failure and are not saved:
    - world pieces (and an empty place): four cameras computed from the bounds: `overview` (2.6 R away, 55 degrees
      up), `three-quarter` (1.3 times the distance that fits the piece in a 70 degree view, 25 up, 45 round), `close-up`
      (0.9 R, at least 10 studs, 12 up, looking 40% of the way up the box), `spawn-eye` (4.5 studs above the spawn top,
      looking level at the piece). R is half the box diagonal, at least 4 studs. The exact positions are in
      `manifest.build.cameraPlan`.
    - UI pieces: one picture of the Studio viewport, named by the pixels actually captured (`ui-1920x1080.png` only if it
-     really is 1920x1080).
-8. **play-test**: start play, wait for the server datamodel, 3 frames about 2 s apart, read the console and the typed
+     really is 1920x1080). A ScreenGui the run left switched off (a panel opened by a button) is switched on for the picture
+     and put back right after (`manifest.ui` says which, and if the restore failed; the next reset destroys it anyway).
+   The pictures a piece is PLANNED to have follow from its kind (`plannedShotNames`): the four cameras for a world piece or
+   an empty place, `ui` for a UI piece, both for both. The verdict asks for exactly those.
+9. **play-test**: start play, wait for the server datamodel, 3 frames about 2 s apart, read the console and the typed
    `LogService` history from the server and the client, stop play and wait for edit mode. Errors counted: the larger of the
-   console text (an error line, a stack counted once) and the typed counts.
+   console text (an error line, a stack counted once) and the typed counts. A count of 0 is recorded ONLY with evidence the
+   place ran: play started, the server datamodel answered, the typed server log was read and the console was read. If any of
+   those is missing the errors are `null` (not established) and the manifest lists what was missing; an error that WAS seen
+   still counts. The client log and the picture frames are not required (a LocalScript's errors reach the console, and the
+   rubric scores a piece without play frames). `console.txt` is never an empty file standing in for a console that was not
+   read: it then says `(the console was not read: <why>)`, and the claim auditor is told what that means.
 
 Everything goes to `planning/proof/<milestone>/<id>/`: `request.txt`, `reply.md`, `steps.json`, `credits.json`,
 `timing.json`, `console.txt`, `shots/*.png` and `manifest.json` (every file's sha256, the deployed buildSha, the Studio
@@ -138,7 +181,11 @@ Every verdict records the rubric's version and sha256, and `baseline.md` says so
 A piece passes when all hold (`lib/verdict.mjs`): the lower of the two critic scores is 8 or more in every applicable
 area (N/A only if both critics mark it); neither lists a severe flaw; the play test shows 0 errors; every scripted
 functional check passes; the claim audit finds 0 unsupported claims. Two clauses are the harness's own, and only make a
-piece harder to pass: the run ended normally (not a timeout, a stop or an error), and each critic viewed every picture.
+piece harder to pass: the run ended normally (not a timeout, a stop or an error; a missing run record is not a normal ending),
+and each critic viewed every picture. Two more, also only ever harder: every picture the piece was planned to have exists
+(a failed capture makes the piece `unevaluable` and the critics' scores of an incomplete set are not counted), and the UI
+area is not N/A on a UI piece (both critics marking it N/A when the harness found a screen UI, or the request is in the UI
+category, leaves it unscored and the piece `unevaluable`). The play test counts 0 only with the evidence above.
 
 **Functional checks.** Per-request scripted checks do not exist before the block engine (M5), so every manifest says
 `functionalChecks: {defined: false}`. An empty list of checks is vacuously "all passed"; reading it that way would pass
@@ -146,7 +193,9 @@ every piece through that clause and inflate the rate. So "none defined" is NOT a
 `unevaluable`, `pass` is false, and its reasons say "functional checks: none are defined for this request yet". As a
 result the strict pass rate in `baseline.md` is 0 by construction in M3. Beside it, labelled as not the plan's rate,
 `baseline.md` prints how many pieces meet the other four clauses (`passIgnoringFunctionalChecks`), so the baseline still
-says something about quality. The pass rate is passing / attempted (a piece whose agent run was made), rounded down,
+says something about quality. That figure counts a piece only when the functional checks are the ONLY clause not
+established: a piece whose claim audit never ran, whose play test is not established or whose pictures are incomplete is
+not in it. The pass rate is passing / attempted (a piece whose agent run was made), rounded down,
 never up.
 
 ## What is not verified, and what the harness does not do
@@ -156,23 +205,28 @@ Read these before trusting a number.
 - **Not yet run against a live place.** On 2026-10-05 no place could be opened (Studio's Roblox session had expired and
   signing in is a human step), so these were proved only against a stand-in: the Studio MCP client against the real
   server (`tools/list`, `list_roblox_studios`, `get_studio_state`: "Place is not open"), the Luau scripts against a
-  small DataModel stand-in under the real `luau`, and the whole runner against a fake MCP server. Still to be settled by
-  the first live dry run: the format and size of what `screen_capture` returns (the harness accepts an MCP image item, a
-  data URL, JSON or bare base64 and records which), whether `screen_capture` works while the place is playing (its
+  small DataModel stand-in under the real `luau` (in which reading a property a class does not have raises, as the real
+  engine does), and the whole runner against a fake MCP server. Still to be settled by the first live dry run: the
+  format and size of what `screen_capture` returns (the harness accepts an MCP image item, a data URL, JSON or bare
+  base64, and saves PNG or JPEG under the matching name), whether `screen_capture` works while the place is playing (its
   description says "edit-time"; the manifest records each play frame's error, and critics are told to judge from the
-  stills when the frames are absent), the exact shape of `get_console_output`, and the real behaviour of the Luau.
+  stills when the frames are absent), the exact shape of `get_console_output`, and the real behaviour of the Luau: above
+  all that `Terrain.MaxExtents` is the box of the terrain that exists (the idiom `Terrain:CopyRegion(Terrain.MaxExtents)`
+  saves all of it; if it is not, the terrain falls back to the guessed window and the manifest says so), that reading
+  roughly 335 property names per instance class is fast enough, and that a capture of the pristine place followed by an
+  immediate verify says clean.
 - **Picture size.** The harness cannot resize the Studio viewport and has not found a reliable way to. UI pieces are
   captured at the real size and named by it; `manifest.ui.met` says whether that was 1920x1080 or 1280x720, and the
   other size is not captured. The M5a requirement ("clean at 1920x1080 and 1280x720") needs a person to size the Studio
   window and panels, or a later check in code (`check_ui_layout`), not this harness. Never read a UI shot's name as a
   claim about a size it does not carry.
-- **The conversation is not cleared between pieces.** Each request goes to the same project, so the agent sees the
-  earlier requests and replies as history, which can raise cost and change behaviour. The manifest records
-  `plugin.messagesBefore`. The only existing way to clear a project's chat is `POST /api/admin/bench-reset/:id`, which
-  belongs to the old owner benchmark that M4 removes, works only on a project with a `bench-baseline` checkpoint, and also
-  clears Lighting through the plugin (which would fight the baseline). The harness does not call it. Decide before the
-  60-piece baseline: a purpose-built "fresh chat" admin route (it would be a destructive route and needs a guard), a new
-  project per piece (each needs a new pairing), or accept it and say so beside the numbers.
+- **The conversation IS cleared between pieces, by a purpose-built admin route, and it is destructive.** The route is
+  described under step 3 above. Its guards: the caller names the project's owner and the session confirms it; it acts only
+  for an owner who may build and only while the agent is idle; the audit row is filed first. It still deletes a project's
+  chat on the strength of the admin key, so run it only against the test project. It is not deployed until the worker is
+  (an orchestrator or owner step): until then `run-piece.mjs` stops a real run at the `conversation` step ("the deployed worker
+  has no conversation-reset route yet"), nothing spent. Options that were considered: a new project per piece (each needs a new pairing, a human step), and
+  `bench-reset` (refused: it clears checkpoints and Lighting and M4 removes it).
 - **No button-press log.** Plan 4.2 lists one; nothing presses buttons in M3, so critics judge UI state cues from stills.
 - **Console noise.** The text heuristic reads error lines from a console that has no level column; the typed `LogService`
   counts are the better signal and the verdict uses the larger of the two. The dry run on the empty Baseplate is the
@@ -189,3 +243,10 @@ Read these before trusting a number.
   file and re-run `--init-baseline` (the old baseline stays valid only for the same pristine place).
 - `owner mismatch` from `pair.mjs`: `--user` is not the project's owner.
 - `a run is already in progress`: wait, or `POST /api/admin/agent-stop/<project>` via a short script; do not start a second.
+- `the project's conversation could not be cleared (HTTP 404: the deployed worker has no conversation-reset route yet)`: deploy
+  the worker (step 4 of the setup). `HTTP 403: owner mismatch`: `--user` is not the project's owner. `HTTP 403`
+  with `account_not_approved`: the owner is not on the build-approved list. `HTTP 409`: a run is live on the project.
+- `the baseline file is format 1`: the baseline predates the per-instance properties; run `--init-baseline` again on the
+  pristine place.
+- `the run's status could not be read ... stopped`: the admin API stopped answering; the run was stopped and
+  `manifest.run.stop` says whether it went idle. If the message says NOT confirmed idle, stop it by hand.
