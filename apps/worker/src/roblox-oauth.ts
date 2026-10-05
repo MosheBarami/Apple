@@ -24,6 +24,11 @@
 //     opens the link, so an attacker could finish a flow on their own Roblox account and send the landing
 //     link to a victim (login CSRF, the same attack as above one step later). It is stored under a random
 //     one-time handle and the handle goes in a cookie that only this browser holds and only /redeem receives;
+//   - both flow cookies are `__Host-` prefixed on https (Secure, Path=/, no Domain), because a cookie with an ordinary name
+//     can be planted by a response over plain http before HSTS is known, or by a sibling subdomain, and a planted state or
+//     handle reopens the same login CSRF. Only the registered http://localhost dev origin keeps the bare names;
+//   - the rate limits are per kind of request, and the two steps that come AFTER the person has consented at Roblox
+//     (callback, redeem) are keyed by their own single-use state or handle, never by the address a school lab shares;
 //   - an account is found by `sub`. A username is display text that Roblox lets people change and reuse, so
 //     linking by it would let a second person take an account over;
 //   - the synthetic address is a KEYED digest of the `sub` (HMAC under CREDENTIAL_KEY). A Roblox id is public,
@@ -31,7 +36,7 @@
 //     real Roblox user would be locked out for good. And an existing user with the address is still adopted
 //     only when the admin-written app_metadata names the same `sub`, else the sign-in fails closed;
 //   - the Roblox refresh token is single use. Before the worker spends it, it claims a lease on the row, and
-//     it stores the replacement by compare-and-swap on `version`, so two requests can never both spend it;
+//     it stores the replacement by compare-and-swap on `version` and `generation`, so two requests can never both spend it;
 //   - every response carries no-store and no-referrer, error pages say one fixed sentence (nothing the
 //     provider sent is reflected), and nothing here logs a query string, a token or a response body.
 import { Hono } from 'hono';
@@ -53,6 +58,8 @@ const HANDLE_PREFIX = 'roblox-oauth:handle:';
 const HANDLE_TTL_SECONDS = 300;
 const HANDLE_COOKIE = 'rbx_oauth_handle';
 const REDEEM_PATH = '/auth/roblox/redeem';
+/** The shape of a state (in the authorize URL) and of a handle (in the cookie): random base64url, never shorter than this. */
+const FLOW_TOKEN = /^[A-Za-z0-9_-]{20,128}$/;
 /** The only origins a redirect_uri may be built from: the product, and the registered dev server. */
 const DEV_ORIGIN = 'http://localhost:5173';
 /** RFC 2606 `.invalid` can never be delivered to, so no mail goes anywhere by accident. */
@@ -98,9 +105,11 @@ export function ensureRobloxOAuthTables(env: Pick<Env, 'CORPUS'>): Promise<void>
     // One Roblox account per StudPilot account. Nothing in M2 links a second one, and the index makes
     // sure nothing can by accident.
     await env.CORPUS.prepare('create unique index if not exists roblox_identities_user on roblox_identities(user_id)').run();
-    // `version` is the compare-and-swap counter; `lease_until` (epoch ms) is held while a refresh is at Roblox.
+    // `version` is the compare-and-swap counter; `lease_until` (epoch ms) is held while a refresh is at Roblox. `generation` is
+    // minted at every sign-in and kept by every refresh: `version` restarts at 1 when a disconnect deletes the row, so on its
+    // own it cannot tell this grant from an earlier one, and the cache and the compare-and-swap would believe a stale one.
     await env.CORPUS.prepare(
-      `create table if not exists roblox_oauth_tokens(user_id text primary key, sealed_refresh text not null, sub text not null, scopes text not null, version integer not null, rotated_at text not null, lease_until integer)`,
+      `create table if not exists roblox_oauth_tokens(user_id text primary key, sealed_refresh text not null, sub text not null, scopes text not null, version integer not null, generation text not null, rotated_at text not null, lease_until integer)`,
     ).run();
   }, env.CORPUS);
 }
@@ -149,13 +158,28 @@ function readCookie(req: Request, name: string): string {
   return '';
 }
 
-/** HttpOnly, SameSite=Lax, and Secure on https (the dev origin is plain http, where some browsers refuse a Secure cookie). */
-const cookieAttrs = (path: string, secure: boolean): string => `Path=${path}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
-const stateCookie = (state: string, secure: boolean): string => `${STATE_COOKIE}=${state}; Max-Age=${STATE_TTL_SECONDS}; ${cookieAttrs('/auth/roblox', secure)}`;
-const clearedStateCookie = (secure: boolean): string => `${STATE_COOKIE}=; Max-Age=0; ${cookieAttrs('/auth/roblox', secure)}`;
-/** Scoped to the redeem route alone: no other request this browser makes carries it. */
-const handleCookie = (handle: string, secure: boolean): string => `${HANDLE_COOKIE}=${handle}; Max-Age=${HANDLE_TTL_SECONDS}; ${cookieAttrs(REDEEM_PATH, secure)}`;
-const clearedHandleCookie = (secure: boolean): string => `${HANDLE_COOKIE}=; Max-Age=0; ${cookieAttrs(REDEEM_PATH, secure)}`;
+/**
+ * THE TWO FLOW COOKIES, AND WHO CAN PLANT THEM. A cookie is bound to a browser, not to a site that is allowed to set it: a
+ * response over plain http before HSTS is known, or any sibling subdomain, can set a cookie with an ordinary name on this
+ * host, and a state or handle planted that way reopens login CSRF (the victim is signed in as the attacker). On https the
+ * names therefore carry the `__Host-` prefix, which a browser accepts only when the cookie is Secure, has Path=/ and no
+ * Domain, so neither of those can set it. Only the registered http://localhost dev origin, where a Secure cookie is not
+ * reliable, keeps the bare names (and the narrow paths, having no prefix to lean on). `__Secure-` would not do for a
+ * path-scoped cookie: a sibling subdomain can still set one with Domain=studpilot.app.
+ *
+ * The prefixed name is the ONLY one read in production, so a request that carries just the bare name has no state and no handle.
+ */
+const HOST_PREFIX = '__Host-';
+const isDevOrigin = (req: Request): boolean => new URL(req.url).origin === DEV_ORIGIN;
+const flowCookieName = (base: string, dev: boolean): string => (dev ? base : HOST_PREFIX + base);
+/** Path=/ is what `__Host-` demands. The dev cookies keep the narrow paths they always had. */
+const flowCookieAttrs = (devPath: string, dev: boolean): string => (dev ? `Path=${devPath}; HttpOnly; SameSite=Lax` : 'Path=/; HttpOnly; SameSite=Lax; Secure');
+const stateCookie = (state: string, dev: boolean): string => `${flowCookieName(STATE_COOKIE, dev)}=${state}; Max-Age=${STATE_TTL_SECONDS}; ${flowCookieAttrs('/auth/roblox', dev)}`;
+const clearedStateCookie = (dev: boolean): string => `${flowCookieName(STATE_COOKIE, dev)}=; Max-Age=0; ${flowCookieAttrs('/auth/roblox', dev)}`;
+const handleCookie = (handle: string, dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=${handle}; Max-Age=${HANDLE_TTL_SECONDS}; ${flowCookieAttrs(REDEEM_PATH, dev)}`;
+const clearedHandleCookie = (dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=; Max-Age=0; ${flowCookieAttrs(REDEEM_PATH, dev)}`;
+const readStateCookie = (req: Request): string => readCookie(req, flowCookieName(STATE_COOKIE, isDevOrigin(req)));
+const readHandleCookie = (req: Request): string => readCookie(req, flowCookieName(HANDLE_COOKIE, isDevOrigin(req)));
 
 /** Said to the person, and the only words an error ever carries: no provider text is reflected. */
 const MESSAGES = {
@@ -438,10 +462,10 @@ async function storeRefreshToken(env: Env, userId: string, who: RobloxProfile, t
   if (!tokens.refreshToken) return;
   const sealed = await sealSecret(env, tokens.refreshToken);
   await env.CORPUS.prepare(
-    `insert into roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, rotated_at, lease_until) values (?, ?, ?, ?, 1, ?, null)
+    `insert into roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, generation, rotated_at, lease_until) values (?, ?, ?, ?, 1, ?, ?, null)
      on conflict(user_id) do update set sealed_refresh = excluded.sealed_refresh, sub = excluded.sub, scopes = excluded.scopes,
-       version = roblox_oauth_tokens.version + 1, rotated_at = excluded.rotated_at, lease_until = null`,
-  ).bind(userId, sealed, who.sub, tokens.scope, new Date().toISOString()).run();
+       version = roblox_oauth_tokens.version + 1, generation = excluded.generation, rotated_at = excluded.rotated_at, lease_until = null`,
+  ).bind(userId, sealed, who.sub, tokens.scope, randomToken(16), new Date().toISOString()).run();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -479,7 +503,7 @@ async function start(req: Request, env: Env): Promise<Response> {
     code_challenge: await s256(verifier),
     code_challenge_method: 'S256',
   });
-  return redirect(authorize, [stateCookie(state, url.protocol === 'https:')]);
+  return redirect(authorize, [stateCookie(state, isDevOrigin(req))]);
 }
 
 function parseRecord(raw: string | null): StateRecord | null {
@@ -496,7 +520,7 @@ async function callback(req: Request, env: Env): Promise<Response> {
   const cfg = configOf(env);
   if (!cfg) return page(503, MESSAGES.unavailable);
   const url = new URL(req.url);
-  const clear = [clearedStateCookie(url.protocol === 'https:')];
+  const clear = [clearedStateCookie(isDevOrigin(req))];
   const fail = (status: number, stage: string, reference?: string): Response => {
     note(stage);
     return page(status, MESSAGES.failed, clear, reference);
@@ -505,12 +529,12 @@ async function callback(req: Request, env: Env): Promise<Response> {
   const state = url.searchParams.get('state') ?? '';
   const code = url.searchParams.get('code') ?? '';
   // Burn the state before anything else is looked at: whatever happens next, this one cannot be used again.
-  const validShape = /^[A-Za-z0-9_-]{20,128}$/.test(state);
+  const validShape = FLOW_TOKEN.test(state);
   const raw = validShape ? await env.KV.get(STATE_PREFIX + state) : null;
   if (raw !== null) await env.KV.delete(STATE_PREFIX + state);
   const record = parseRecord(raw);
   if (!record) return fail(400, 'state unknown or already used');
-  if (readCookie(req, STATE_COOKIE) !== state) return fail(400, 'state not bound to this browser');
+  if (readStateCookie(req) !== state) return fail(400, 'state not bound to this browser');
   if (!code || url.searchParams.has('error')) return fail(400, 'no code');
 
   const tokens = await exchangeCode(cfg, code, record.verifier, record.redirectUri);
@@ -530,7 +554,7 @@ async function callback(req: Request, env: Env): Promise<Response> {
     const handle = randomToken(32);
     const waiting: HandleRecord = { tokenHash: hashed, next: record.returnTo };
     await env.KV.put(HANDLE_PREFIX + handle, JSON.stringify(waiting), { expirationTtl: HANDLE_TTL_SECONDS });
-    return redirect(LANDING_PATH, [...clear, handleCookie(handle, url.protocol === 'https:')]);
+    return redirect(LANDING_PATH, [...clear, handleCookie(handle, isDevOrigin(req))]);
   } catch {
     return fail(502, 'storage');
   }
@@ -548,16 +572,15 @@ interface HandleRecord {
  */
 async function redeem(req: Request, env: Env): Promise<Response> {
   const cfg = configOf(env);
-  const secure = new URL(req.url).protocol === 'https:';
-  const clear = [clearedHandleCookie(secure)];
+  const clear = [clearedHandleCookie(isDevOrigin(req))];
   if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });        // nothing read, nothing cleared: it can still be redeemed once the secrets are back
   const origin = ownOrigin(req);
   if (!origin || req.headers.get('Origin') !== origin) {
     note('redeem from another origin');
     return jsonReply(403, { error: MESSAGES.failed });
   }
-  const handle = readCookie(req, HANDLE_COOKIE);
-  const raw = /^[A-Za-z0-9_-]{20,128}$/.test(handle) ? await env.KV.get(HANDLE_PREFIX + handle) : null;
+  const handle = readHandleCookie(req);
+  const raw = FLOW_TOKEN.test(handle) ? await env.KV.get(HANDLE_PREFIX + handle) : null;
   if (raw !== null) await env.KV.delete(HANDLE_PREFIX + handle);
   let waiting: Partial<HandleRecord> | null = null;
   try {
@@ -573,6 +596,41 @@ async function redeem(req: Request, env: Env): Promise<Response> {
 }
 
 /**
+ * THE LIMITS, one bucket per kind of request, because they protect different things and a school lab shares one address.
+ *
+ * - `status` runs on every visit to the sign-in page: 120 a minute for the address.
+ * - `start` is the only request a person can be refused before they have spent anything: 60 a minute for the address, so a
+ *   lab of thirty can sign in together.
+ * - `callback` and `redeem` come AFTER the person has consented at Roblox, and a refusal there throws that sign-in away. So
+ *   they are keyed by their own state or handle (5 a minute: one use, and a reload or two), never by the shared address; a
+ *   state and a handle are single use anyway, which is the replay protection, and the bucket only bounds how hard one
+ *   already-spent value can be hammered. A request with no usable state or handle is never a legitimate one, and shares a
+ *   per-address bucket of its own (60 a minute) that no real flow touches.
+ *
+ * `ipLimited` is per isolate and evicts the least active key first under a flood, so none of this is a global ceiling:
+ * flooding is for Cloudflare's own rate limiting in front of the worker.
+ */
+function limitFor(req: Request, ip: string): { key: string; limit: number } {
+  const path = new URL(req.url).pathname;
+  if (path.endsWith('/status')) return { key: `rbx-status:${ip}`, limit: 120 };
+  if (path.endsWith('/start')) return { key: `rbx-start:${ip}`, limit: 60 };
+  if (path.endsWith('/callback')) {
+    const state = new URL(req.url).searchParams.get('state') ?? '';
+    return FLOW_TOKEN.test(state) ? { key: `rbx-callback:${state}`, limit: 5 } : { key: `rbx-callback-stray:${ip}`, limit: 60 };
+  }
+  if (path.endsWith('/redeem')) {
+    // Only a request from the app's own origin spends the handle's bucket, so another page (or a sibling subdomain, whose
+    // requests do carry the cookie) cannot use up a person's allowance and make their real redeem fail.
+    const handle = readHandleCookie(req);
+    const own = ownOrigin(req);
+    return FLOW_TOKEN.test(handle) && own !== null && req.headers.get('Origin') === own
+      ? { key: `rbx-redeem:${handle}`, limit: 5 }
+      : { key: `rbx-redeem-stray:${ip}`, limit: 60 };
+  }
+  return { key: `rbx-other:${ip}`, limit: 60 };
+}
+
+/**
  * The routes under /auth/roblox. The limiter is the worker's own (index.ts `ipLimited`) and is handed in,
  * because that function lives in the router and this file may not import it back.
  */
@@ -580,10 +638,8 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
   const routes = new Hono<{ Bindings: Env }>();
 
   routes.use('*', async (c, next) => {
-    const ip = c.req.header('CF-Connecting-IP') ?? 'unknown';
-    // The status check runs on every visit to the sign-in page; start and callback run once per attempt.
-    const busy = c.req.path.endsWith('/status') ? limited(`rbx-status:${ip}`, 120) : limited(`rbx-oauth:${ip}`, 20);
-    if (busy) return page(429, MESSAGES.busy);
+    const { key, limit } = limitFor(c.req.raw, c.req.header('CF-Connecting-IP') ?? 'unknown');
+    if (limited(key, limit)) return page(429, MESSAGES.busy);
     return next();
   });
 
@@ -597,7 +653,7 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
       } catch {
         // Nothing from the error is kept: its message can carry a URL, and a URL here carries a code.
         note('unexpected failure');
-        return page(500, MESSAGES.failed, [clearedStateCookie(new URL(c.req.url).protocol === 'https:')]);
+        return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
       }
     });
   }
@@ -606,7 +662,7 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
       return await redeem(c.req.raw, c.env);
     } catch {
       note('unexpected failure');
-      return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(new URL(c.req.url).protocol === 'https:')]);
+      return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(isDevOrigin(c.req.raw))]);
     }
   });
   return routes;
@@ -623,17 +679,19 @@ export type RefreshResult =
 interface TokenRow {
   sealed_refresh: string;
   version: number;
+  generation: string;
   scopes: string;
 }
 
 /**
  * The access token last handed out for each person, in this isolate's memory only. Roblox gives a new one per refresh and
  * every refresh spends the single-use refresh token, so callers that arrive together should share one rather than
- * each spend a rotation. An entry is used only while it is unexpired AND the stored row is still the version it was
- * issued under, so a new sign-in (version bump) voids it, and a disconnect (no row) is answered `not_connected` before
- * the cache is consulted. Bounded, oldest out.
+ * each spend a rotation. An entry is used only while it is unexpired AND the stored row is still the version AND the
+ * generation it was issued under: a new sign-in (version bump, new generation) voids it, a disconnect (no row) is answered
+ * `not_connected` before the cache is consulted, and a disconnect followed by sign-ins that bring the row back to the same
+ * version number is another generation, so a token from the revoked grant is never served. Bounded, oldest out.
  */
-const accessTokens = new Map<string, { accessToken: string; scope: string; version: number; until: number }>();
+const accessTokens = new Map<string, { accessToken: string; scope: string; version: number; generation: string; until: number }>();
 const ACCESS_TOKEN_CACHE_MAX = 256;
 
 /**
@@ -652,20 +710,20 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   const cfg = configOf(env);
   if (!cfg) return { ok: false, reason: 'unavailable' };
   await ensureRobloxOAuthTables(env);
-  const row = await env.CORPUS.prepare('select sealed_refresh, version, scopes from roblox_oauth_tokens where user_id = ?')
+  const row = await env.CORPUS.prepare('select sealed_refresh, version, generation, scopes from roblox_oauth_tokens where user_id = ?')
     .bind(userId).first<TokenRow>();
   if (!row) return { ok: false, reason: 'not_connected' };
   const cached = accessTokens.get(userId);
-  if (cached && cached.version === row.version && cached.until > now) {
+  if (cached && cached.version === row.version && cached.generation === row.generation && cached.until > now) {
     return { ok: true, accessToken: cached.accessToken, scope: cached.scope, version: cached.version };
   }
 
   const claim = await env.CORPUS.prepare(
-    'update roblox_oauth_tokens set lease_until = ? where user_id = ? and version = ? and (lease_until is null or lease_until < ?)',
-  ).bind(now + REFRESH_LEASE_MS, userId, row.version, now).run();
+    'update roblox_oauth_tokens set lease_until = ? where user_id = ? and version = ? and generation = ? and (lease_until is null or lease_until < ?)',
+  ).bind(now + REFRESH_LEASE_MS, userId, row.version, row.generation, now).run();
   if (Number(claim.meta?.changes ?? 0) === 0) return { ok: false, reason: 'busy' };
   const release = (): Promise<unknown> =>
-    env.CORPUS.prepare('update roblox_oauth_tokens set lease_until = null where user_id = ? and version = ?').bind(userId, row.version).run();
+    env.CORPUS.prepare('update roblox_oauth_tokens set lease_until = null where user_id = ? and version = ? and generation = ?').bind(userId, row.version, row.generation).run();
 
   const refreshToken = await openSecret(env, row.sealed_refresh);
   if (!refreshToken) {
@@ -688,15 +746,15 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
 
   const swap = await env.CORPUS.prepare(
     `update roblox_oauth_tokens set sealed_refresh = ?, scopes = ?, version = version + 1, rotated_at = ?, lease_until = null
-     where user_id = ? and version = ?`,
-  ).bind(await sealSecret(env, tokens.refreshToken), tokens.scope, new Date(now).toISOString(), userId, row.version).run();
+     where user_id = ? and version = ? and generation = ?`,
+  ).bind(await sealSecret(env, tokens.refreshToken), tokens.scope, new Date(now).toISOString(), userId, row.version, row.generation).run();
   if (Number(swap.meta?.changes ?? 0) === 0) {
     // The row moved on while we were at Roblox. The replacement we hold belongs to no row; do not leave it live.
     await revokeAtRoblox(cfg, tokens.refreshToken);
     return { ok: false, reason: 'busy' };
   }
   if (accessTokens.size >= ACCESS_TOKEN_CACHE_MAX) accessTokens.delete(accessTokens.keys().next().value as string);
-  accessTokens.set(userId, { accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1, until: now + tokens.expiresIn * 1000 - ACCESS_TOKEN_MARGIN_MS });
+  accessTokens.set(userId, { accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1, generation: row.generation, until: now + tokens.expiresIn * 1000 - ACCESS_TOKEN_MARGIN_MS });
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
 }
 

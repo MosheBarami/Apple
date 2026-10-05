@@ -261,6 +261,7 @@ export const USER_EXPORT: readonly ExportTable[] = [
         'to hand out: it is the one credential that lets StudPilot act in this Roblox account, and it ' +
         'would travel in a file.',
       lease_until: 'a lock held for a few seconds while a refresh is at Roblox; internal bookkeeping, not a fact about the person',
+      generation: 'a random label that tells a cached access token which sign-in it belongs to; internal bookkeeping, not a fact about the person',
     },
   },
 ];
