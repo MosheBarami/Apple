@@ -174,6 +174,25 @@ export function clockTime(input: string | number | Date, s: FormatSettings = act
 }
 
 /**
+ * The time of day when `input` is today, and the date with it when it is not: "4:27 PM" this afternoon, "Oct 3, 4:27 PM" on an earlier day,
+ * "Oct 3, 2025, 4:27 PM" in an earlier year. For a heading in a list that can span days, where two "4:27 PM" would name two different
+ * afternoons. "Today" is the user's chosen zone's today (the same zone every other timestamp is shown in), and `now` is a parameter so a
+ * test can fix it.
+ */
+export function clockOrDate(input: string | number | Date, now: number = Date.now(), s: FormatSettings = active): string {
+  const then = new Date(input).getTime();
+  if (Number.isNaN(then)) return '';
+  const part = (opts: Intl.DateTimeFormatOptions, at: number) => dateFormat(opts, s).format(at);
+  const dayOf = (at: number) => part({ year: 'numeric', month: 'numeric', day: 'numeric' }, at);
+  if (dayOf(then) === dayOf(now)) return clockTime(then, s);
+  const sameYear = part({ year: 'numeric' }, then) === part({ year: 'numeric' }, now);
+  return part(
+    { ...(sameYear ? {} : { year: 'numeric' }), month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: s.hour12 },
+    then,
+  );
+}
+
+/**
  * A full date and time, in the user's chosen region and zone.
  *
  * This is what the `title` on a timestamp should say, and the reason it takes a `timeZoneName` is

@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
 import { REQUEST_SHOWN, groupCheckpointsByRequest, requestHeading, requestsFromMessages } from '../src/lib/checkpoint-history.ts';
+import { clockOrDate } from '../src/lib/format.ts';
 
 const T = 1_700_000_000_000;
 const cp = (id, at, kind = 'pre_agent', extra = {}) => ({ id, label: `cp ${id}`, createdAt: T + at, kind, scriptCount: 2, instanceCount: 40, sizeBytes: 100, ...extra });
@@ -174,19 +175,54 @@ const Page = await loadPage({
   entry: 'src/components/ws/checkpoint-history.tsx',
   name: 'checkpoint-history-page',
   real: ['lib/checkpoint-author.ts'],
-  fakes: { 'lib/format.ts': { clockTime: '() => "t"', fullStamp: '() => "full"', formatSettings: '() => ({ locale: "en" })' } },
+  fakes: { 'lib/format.ts': { clockOrDate: '() => "t"', fullStamp: '() => "full"', formatSettings: '() => ({ locale: "en" })' } },
+  // The row is a component the stub renderer does not expand, so it is exported for the test alone (the app does not change), and called here.
+  expose: { 'components/ws/checkpoint-history.tsx': ['CheckpointRow'] },
 });
 
-test('pressing Restore hands the page THAT checkpoint, and the component restores nothing itself', () => {
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1). It called `rows[1].props.onRestore(...)` itself, so it could never see the button (it asserted there
+//   were none) and a Restore wired to nothing left it green. The property is the same, "pressing Restore hands the page THAT checkpoint", and it
+//   is now asked of the button: each row is expanded, its button named "Restore" is found, and ITS onClick is pressed. ]]
+test('pressing the Restore BUTTON of a row hands the page THAT checkpoint, and the component restores nothing itself', () => {
   const pressed = [];
-  const tree = Page.CheckpointHistory({ groups, userId: 'me', memberNames: {}, restoreStatus: null, restoreBusy: false, studioConnected: true, onRestore: (c) => pressed.push(c.id) });
-  const buttons = findAll(tree, (n) => n.type === 'button' && textOf(n) === 'Restore');
-  assert.equal(buttons.length, 0, 'rows are components in the stub renderer: the buttons are one level down');
+  const props = { groups, userId: 'me', memberNames: {}, restoreStatus: null, restoreBusy: false, studioConnected: true, onRestore: (c) => pressed.push(c.id) };
+  const tree = Page.CheckpointHistory(props);
   const rows = findAll(tree, (n) => n.props?.c !== undefined);
   assert.deepEqual(rows.map((r) => r.props.c.id), ['a', 'o', 'm'], 'one row per checkpoint, in group order');
-  for (const row of rows) assert.equal(typeof row.props.onRestore, 'function');
-  rows[1].props.onRestore(rows[1].props.c);
-  assert.deepEqual(pressed, ['o']);
+  assert.equal(findAll(tree, (n) => n.type === 'button').length, 0, 'rows are components in the stub renderer: the buttons are one level down');
+  for (const row of rows) {
+    const buttons = findAll(Page.CheckpointRow(row.props), (n) => n.type === 'button' && textOf(n) === 'Restore');
+    assert.equal(buttons.length, 1, `row ${row.props.c.id}: exactly one Restore button`);
+    assert.equal(typeof buttons[0].props.onClick, 'function', `row ${row.props.c.id}: the Restore button is wired to nothing`);
+    buttons[0].props.onClick();
+  }
+  assert.deepEqual(pressed, ['a', 'o', 'm'], 'each button restored its own checkpoint, once');
+  // Held buttons do not restore: a disabled button has no press, and the page is never asked.
+  const held = Page.CheckpointRow({ ...rows[0].props, studioConnected: false });
+  assert.equal(findAll(held, (n) => n.type === 'button' && textOf(n) === 'Restore')[0].props.disabled, true);
+});
+
+/* ------------------------------------------------------------------ a heading's time says its day when it is not today --- */
+
+test('A REQUEST HEADING SHOWS THE TIME ALONE WHEN IT IS TODAY, AND THE DATE WITH IT WHEN IT IS NOT, so two requests at 4:27 PM on different days read differently', () => {
+  const S = { locale: 'en-US', timeZone: 'UTC', hour12: true };
+  const now = Date.UTC(2026, 9, 5, 18, 0, 0);
+  const at = (y, mo, d, h, mi) => Date.UTC(y, mo - 1, d, h, mi);
+  assert.equal(clockOrDate(at(2026, 10, 5, 16, 27), now, S), '4:27 PM', 'today: the time alone');
+  assert.equal(clockOrDate(at(2026, 10, 3, 16, 27), now, S), 'Oct 3, 4:27 PM', 'an earlier day this year: the date and the time');
+  assert.equal(clockOrDate(at(2025, 12, 31, 16, 27), now, S), 'Dec 31, 2025, 4:27 PM', 'an earlier year says the year');
+  assert.notEqual(clockOrDate(at(2026, 10, 4, 16, 27), now, S), clockOrDate(at(2026, 10, 3, 16, 27), now, S), 'two afternoons are not one');
+  assert.equal(clockOrDate('not a date', now, S), '', 'never invented');
+  // The day is the person's own zone's day: 23:30 UTC on the 4th is the 5th in Tokyo, where "now" (the 5th) makes it today.
+  const tokyo = { locale: 'en-US', timeZone: 'Asia/Tokyo', hour12: false };
+  assert.equal(clockOrDate(at(2026, 10, 4, 23, 30), at(2026, 10, 5, 6, 0), tokyo), '08:30', 'today in Tokyo');
+  assert.equal(clockOrDate(at(2026, 10, 4, 23, 30), at(2026, 10, 5, 6, 0), { ...tokyo, timeZone: 'UTC' }), 'Oct 4, 23:30', 'yesterday in UTC');
+});
+
+test('the history heading is drawn with that function, not with the time alone', () => {
+  const src = readFileSync(join(WEB, 'src', 'components', 'ws', 'checkpoint-history.tsx'), 'utf8').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(src, /\{clockOrDate\(group\.request\.at\)\}/);
+  assert.doesNotMatch(src, /clockTime\(/, 'a heading is drawn with the time alone again');
 });
 
 /* ------------------------------------------------------------------ the page (source) --- */

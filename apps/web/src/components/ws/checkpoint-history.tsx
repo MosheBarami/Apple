@@ -3,7 +3,7 @@
 // returned: who took it, when, what it holds, and a Restore. Nothing is invented to fill a group.
 import type { CheckpointMeta } from '@studpilot/shared';
 import { checkpointAuthorView } from '../../lib/checkpoint-author';
-import { clockTime, formatSettings, fullStamp } from '../../lib/format';
+import { clockOrDate, formatSettings, fullStamp } from '../../lib/format';
 import { fidelityLine, restoreSentence, restoreTone, type RestoreStatus } from '../../lib/restore-status';
 import type { HistoryGroup } from '../../lib/checkpoint-history';
 import './checkpoint-history.css';
@@ -76,7 +76,9 @@ export function CheckpointHistory({ groups, ...row }: CheckpointHistoryProps) {
                 <>
                   <span className="gx-history__request" dir="auto">{group.request.text}</span>
                   <time className="gx-history__when" dateTime={new Date(group.request.at).toISOString()} title={fullStamp(group.request.at)}>
-                    {clockTime(group.request.at)}
+                    {/* The time alone when it is today, with the date when it is not: a history spans days, and two requests
+                        at "4:27 PM" are two different afternoons. */}
+                    {clockOrDate(group.request.at)}
                   </time>
                 </>
               ) : group.kind === 'saved' ? (
