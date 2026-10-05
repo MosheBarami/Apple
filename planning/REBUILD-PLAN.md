@@ -71,4 +71,6 @@ go to `THIRD_PARTY_NOTICES.md`.
 - #35 (site): its Playwright contrast check fails on /catalog. R5 replaces those pages, so there is no fix cycle;
   its text, legal and docs changes are taken into R5.
 - #36 (M3 harness): still needed to measure the old agent as the baseline; merge once green.
-- M4 (the cleanup branch): continues, because it shrinks what R2 has to port.
+- M4 (the cleanup branch, #38): stages 1 and 2 done (vision, the whole-game path and the owner library removed).
+  Stages 3 and 4 move to the new agent: the Flue StudPilot agent's instructions stay at 10,000 characters or fewer
+  and it is offered 25 tools or fewer per run, each with a test (R2 and R3), because the old loop is retired in R6.
