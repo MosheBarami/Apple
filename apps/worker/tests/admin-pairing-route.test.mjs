@@ -189,6 +189,18 @@ test('a project id or owner id that is not a UUID is a 400 before any Durable Ob
   }
 });
 
+test('the ids are lower-cased and trimmed before a Durable Object is named: an upper-case id must not address another session', async () => {
+  // UUID_RE is case-insensitive but a Durable Object name is not, and the user routes name the session by the database's
+  // lower-case id: an upper-case project id would reach a different, never-initialised session and answer a misleading 409.
+  fresh();
+  const r = await mint(PROJECT.toUpperCase(), { userId: ` ${OWNER.toUpperCase()} ` });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const addressed = calls.filter((c) => c.addressed !== undefined && c.ns === 'SESSION_DO').map((c) => c.addressed);
+  assert.deepEqual(addressed, [PROJECT], 'the session is named by the lower-case id');
+  assert.deepEqual(calls.find((c) => c.path === '/owner-check').body, { userId: OWNER }, 'the owner is asked about in lower case');
+  assert.deepEqual(calls.find((c) => c.ns === 'PAIRING_DO' && c.path === '/create').body, { projectId: PROJECT, userId: OWNER, projectName: 'Tower Defence' }, 'and the minted code carries the lower-case ids');
+});
+
 test('the 429 for too many live codes is passed through unchanged', async () => {
   fresh();
   pairing = { status: 429, body: { error: 'too many active codes' } };
@@ -279,7 +291,7 @@ function sessionWith(bind) {
     getWebSockets: () => [],
     acceptWebSocket() {},
   };
-  return new SessionDO(ctx, {});
+  return Object.assign(new SessionDO(ctx, {}), { store });
 }
 const ownerCheck = async (s, userId) => {
   const res = await s.fetch(new Request('https://do/owner-check', { method: 'POST', body: JSON.stringify({ userId }) }));
@@ -307,4 +319,10 @@ test('SESSION: a session that was never initialised answers 400, never adopts a 
   const r = await ownerCheck(s, OWNER);
   assert.equal(r.status, 400);
   assert.match(r.json.error, /not initialized/);
+  assert.equal(s.store.size, 0, 'durable storage is still empty: no bind was written on behalf of the caller');
+  // and a second call, by someone else, is refused the same way: the first did not adopt anyone
+  const other = await ownerCheck(s, STRANGER);
+  assert.equal(other.status, 400);
+  assert.equal(s.store.size, 0);
+  assert.equal(s.store.has('bind'), false);
 });

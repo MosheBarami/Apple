@@ -1996,7 +1996,11 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
   //                      project holding a live grant, and `grantStudio` is called only inside
   //                      StudioGate.openProject, after withOwnedProject succeeded, with the id that
   //                      check RESOLVED. Both halves are asserted below.
-  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub']);
+  //   sessionOfNamedOwner REVIEWED 2026-10-05 (M3 evaluation harness). It addresses a session by a project id that came
+  //                      from a request, and hands the stub back only after THAT session has said the named user owns it
+  //                      (`/owner-check`: another owner is 403, no owner on record is 409). That is safe only because its
+  //                      callers are admin-key routes, so the assertion under the list holds both halves to the code.
+  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub', 'sessionOfNamedOwner']);
   for (const s of sites) {
     const ok =
       reviewed.has(s.owner) ||
@@ -2006,6 +2010,19 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
       s.owner === '/api/health';
     assert.equal(ok, true, `sessionStub is reached from ${s.owner} (index.ts:${s.at}), which is neither ownership-checked nor admin-gated`);
   }
+
+  // THE TWO HALVES THAT MAKE sessionOfNamedOwner SAFE. Every caller is an admin route (the key gate is what protects the
+  // project id the request names), and the stub is handed back only after the session's own owner check has passed.
+  const calls = [...src.matchAll(/sessionOfNamedOwner\(/g)].map((m) => ({
+    owner: owners.filter((o) => o.start < m.index && m.index < o.end)[0]?.name ?? 'module',
+  })).filter((c) => c.owner !== 'sessionOfNamedOwner');
+  assert.ok(calls.length >= 2, 'no caller of sessionOfNamedOwner was found — this test would check nothing');
+  for (const c of calls) assert.ok(c.owner.startsWith('/api/admin/'), `sessionOfNamedOwner is called from ${c.owner}, which is not an admin-key route`);
+  const sono = owners.find((o) => o.name === 'sessionOfNamedOwner');
+  assert.ok(sono, 'sessionOfNamedOwner is gone — re-review how the admin pairing and conversation-reset routes confirm the owner');
+  const sonoBody = src.slice(sono.start, sono.end);
+  assert.ok(sonoBody.indexOf("'https://do/owner-check'") > 0 && sonoBody.indexOf("'https://do/owner-check'") < sonoBody.indexOf('ok: true, stub'),
+    'the stub must be handed back only after the session answered the owner check');
 
   // THE CHECK THAT MAKES grantedProjectStub SAFE, held to the code the same way: the id is tested
   // against the grant BEFORE a session is materialised, and the refusal is a null, not a stub.
@@ -2409,6 +2426,14 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // refuses during a run, and it refuses any project without a `bench-baseline` checkpoint, so the key cannot
       // wipe a customer's project with it (apps/worker/tests/bench-reset-scope.test.mjs).
       'POST /api/admin/bench-reset/:id',
+      // Reviewed 2026-10-05 (M3 evaluation harness): the second entry that DELETES tenant data, and the narrower one. It
+      // empties one project's conversation (the messages `edit_resend` on the first message discards), the memory the
+      // chats produced, and the build ledger and game plan a restore forgets, so the next request sees no earlier one. It
+      // keeps the pairing, the checkpoints, the place and the settings. The caller must NAME the owner and the session
+      // confirms it (`/owner-check`: a different owner is 403, none on record 409), the session acts only for an owner
+      // who may build (the `/agent-run` gate) and only while no run is live, both ids are UUIDs before a Durable Object
+      // is named, and the audit row is filed before the delete (apps/worker/tests/admin-conversation-reset.test.mjs).
+      'POST /api/admin/conversation-reset/:id',
       // Reviewed 2026-10-05 (M3 evaluation harness): mints a Studio pairing code for one project and one NAMED owner, so
       // the harness needs no password sign-in. The session is the authority on ownership (`/owner-check`: a different
       // owner is 403, a session with no owner on record is 409), both ids are validated as UUIDs before a Durable Object
@@ -2516,6 +2541,7 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
   assert.deepEqual(byBodyUser.sort(), [
     'GET /api/admin/account/:userId',
     'GET /api/admin/billing-reconcile',
+    'POST /api/admin/conversation-reset/:id',
     'POST /api/admin/grant-credits',
     'POST /api/admin/pairing/:id',
     'POST /api/admin/quota-reset',
