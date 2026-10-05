@@ -10,6 +10,10 @@
 //     the real build for the stub's marker).
 //   - Every stub piece says it is a SPECIMEN (`specimen: true`), and the panel draws that word on the panel and on every card.
 //
+//   - PRODUCTION DOES NOT OFFER THE PANEL AT ALL (`PIECES_OFFERED`). A drawer that can only say "appears here after a build" while no
+//     build produces a piece is a dead end with a sentence that is false today, so the workspace draws no button, no palette command
+//     and no drawer for it until M5 wires it to real block parameters (decisions 12.5). Development and tests keep the specimen panel.
+//
 // The normalisers below decide what a control may hold. They are pure, so they are tested as functions.
 import { useEffect, useState } from 'react';
 
@@ -32,6 +36,14 @@ export interface Piece {
   /** True for sample data. The panel says SPECIMEN on a piece that carries it. Real pieces (M5) never do. */
   specimen?: true;
 }
+
+/**
+ * Whether the workspace offers the Pieces panel (a topbar button, a palette command and a drawer). Only where there are pieces to show:
+ * development and tests, which load the specimens. A production build folds this to `false`, so the three entry points, the drawer and
+ * the panel behind them are not reachable and are dropped from the bundle (scripts/check-app-bundle.mjs greps the real build for the
+ * panel's words). M5 replaces this with the fact that a block has parameters to show.
+ */
+export const PIECES_OFFERED: boolean = import.meta.env.DEV;
 
 /* ----------------------------------------------------------------------------------------- what a control holds --- */
 

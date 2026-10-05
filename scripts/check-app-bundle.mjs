@@ -92,7 +92,12 @@ const MUST_BE_SPLIT = ['admin', 'settings', 'usage', 'roadmap', 'workspace'];
 //   (apps/web/src/lib/pieces-stub.ts) that are reached only through a dynamic import behind `import.meta.env.DEV`. A production
 //   build must contain none of them: a sample piece shown to a customer would be a build result that never happened. The marker
 //   and a sample name are strings nothing else in the app contains; bundling the stub back in makes both reappear.
-const MUST_BE_ABSENT = ['ui-lab', 'studpilot-pieces-stub-v1', 'Sample shop screen'];
+//
+//   THE PANEL'S ENTRY POINTS JOINED IT THE SAME DAY (M2 fix cycle 1). Production has no pieces before M5, so the workspace offers no
+//   Pieces button, palette command or drawer there (`PIECES_OFFERED` in lib/pieces.ts is `import.meta.env.DEV`), and the panel's own
+//   words must not be in the bundle either: "Pieces and their settings" is the button's and the command's name, and "sample pieces with
+//   sample values" is the panel's specimen note. Either one appearing means a way into a dead end shipped.
+const MUST_BE_ABSENT = ['ui-lab', 'studpilot-pieces-stub-v1', 'Sample shop screen', 'Pieces and their settings', 'sample pieces with sample values'];
 
 if (!existsSync(DIST)) {
   console.error(`no build found at ${DIST} — run \`pnpm --filter @studpilot/web build\` first`);

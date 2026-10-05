@@ -38,20 +38,22 @@ async function bundleWhen(dev, entry = join(WEB, 'src', 'lib', 'pieces.ts')) {
   return { out, source: readFileSync(out, 'utf8') };
 }
 
-test('a PRODUCTION bundle of the pieces module contains no sample piece, and loadPieces() answers nothing', async () => {
+test('a PRODUCTION bundle of the pieces module contains no sample piece, loadPieces() answers nothing, and the panel is not OFFERED', async () => {
   const { out, source } = await bundleWhen(false);
   assert.equal(source.includes(MARKER), false, 'the stub’s marker is in the production bundle');
   for (const name of SAMPLE_NAMES) assert.equal(source.includes(name), false, `"${name}" is in the production bundle`);
   assert.equal(/pieces-stub/.test(source), false, 'the production bundle still names the stub module');
-  const { loadPieces } = await import(pathToFileURL(out).href);
+  const { loadPieces, PIECES_OFFERED } = await import(pathToFileURL(out).href);
   assert.deepEqual(await loadPieces(), []);
+  assert.equal(PIECES_OFFERED, false, 'production offers the Pieces panel (a button and a command into a drawer that can only say "none yet")');
 });
 
 test('CONTROL: a DEVELOPMENT bundle has the sample pieces, so the production half is not passing on a stub that never loads', async () => {
   const { out, source } = await bundleWhen(true);
   assert.equal(source.includes(MARKER), true, 'the development bundle has no stub at all');
   for (const name of SAMPLE_NAMES) assert.equal(source.includes(name), true, `${name}`);
-  const { loadPieces } = await import(pathToFileURL(out).href);
+  const { loadPieces, PIECES_OFFERED } = await import(pathToFileURL(out).href);
+  assert.equal(PIECES_OFFERED, true, 'development does not offer the panel, so the specimen panel could never be reached');
   const pieces = await loadPieces();
   assert.equal(pieces.length, 3);
   assert.ok(pieces.every((piece) => piece.specimen === true), 'every sample piece says it is a specimen');
@@ -102,5 +104,7 @@ test('the real build is checked too: check-app-bundle.mjs fails when the stub’
   const list = /const MUST_BE_ABSENT = \[([^\]]*)\]/.exec(script)?.[1] ?? '';
   assert.ok(list.includes(`'${MARKER}'`), 'the production build is not searched for the stub marker');
   assert.ok(list.includes("'Sample shop screen'"), 'nor for a sample name');
+  assert.ok(list.includes("'Pieces and their settings'"), 'nor for the name of the entry points (the topbar button and the palette command)');
+  assert.ok(list.includes("'sample pieces with sample values'"), 'nor for the panel’s specimen note');
   assert.match(script, /for \(const route of MUST_BE_ABSENT\)/, 'and the list is actually read');
 });

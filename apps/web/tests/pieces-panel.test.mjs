@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
+import ts from 'typescript';
 import { STUB_PIECES, PIECES_STUB_MARKER } from '../src/lib/pieces-stub.ts';
 
 // The helpers live in lib/pieces.ts, which imports React for its hook; bundled for node like the components are.
@@ -306,9 +307,25 @@ test('the panel makes no request and touches no storage; a change is held in its
 
 /* ------------------------------------------------------------------ where it is reachable (workspace source) --- */
 
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1, owner decision: the Pieces entry points are not shown in production before M5). These two tests read the
+//   topbar button, the palette command and the drawer as always present. The property they keep is "the panel is reachable in the build that has
+//   pieces, and the drawer is a real one"; the property added is the one the decision made: EVERY way in (the button, the palette command, the
+//   drawer's mount) sits behind PIECES_OFFERED, which is `import.meta.env.DEV`, so a production build offers none of them. Found by walking the
+//   syntax tree for every `setDrawer('pieces')` and every <PiecesDrawer />, so a fourth way in that forgets the gate goes red too. ]]
 const ws = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+const wsFull = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
+const wsTree = ts.createSourceFile('workspace.tsx', wsFull, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const walk = (root) => { const all = []; const visit = (n) => { all.push(n); ts.forEachChild(n, visit); }; visit(root); return all; };
+/** True when `node` can only run or draw when PIECES_OFFERED is true: it sits in the `&&` right side or the true branch of a test that names it. */
+const behindGate = (node) => {
+  for (let child = node, up = node.parent; up; child = up, up = up.parent) {
+    if (ts.isBinaryExpression(up) && up.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && up.right === child && /\bPIECES_OFFERED\b/.test(up.left.getText())) return true;
+    if (ts.isConditionalExpression(up) && up.whenTrue === child && /\bPIECES_OFFERED\b/.test(up.condition.getText())) return true;
+  }
+  return false;
+};
 
-test('the panel is reachable three ways, and the drawer is a real one: a button, a palette command, and the remembered-drawer list', () => {
+test('the panel is reachable in a build that has pieces, three ways, and the drawer is a real one: a button, a palette command, and the remembered-drawer list', () => {
   assert.match(ws, /<button[^>]*onClick=\{\(\) => setDrawer\('pieces'\)\}[^>]*aria-label="Pieces and their settings"/, 'the topbar button');
   assert.match(ws, /id: 'ws-pieces',\s*title: 'Pieces and their settings'[\s\S]{0,200}run: \(\) => setDrawer\('pieces'\)/, 'the palette command');
   // A drawer missing from the list restores as "none": the union and the list must both know it.
@@ -317,6 +334,47 @@ test('the panel is reachable three ways, and the drawer is a real one: a button,
   assert.match(ws, /const DRAWERS = \[[^\]]*'pieces'[^\]]*\] as const/);
 });
 
+test('PRODUCTION OFFERS NO WAY IN: the button, the palette command and the drawer all sit behind PIECES_OFFERED, and PIECES_OFFERED is the build\'s DEV flag', () => {
+  const opens = walk(wsTree).filter((n) => ts.isCallExpression(n) && n.expression.getText() === 'setDrawer' && n.arguments[0]?.getText() === "'pieces'");
+  const mounts = walk(wsTree).filter((n) => (ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText() === 'PiecesDrawer');
+  assert.equal(opens.length, 2, 'the way-in count changed: the topbar button and the palette command are the two, and a third needs a gate and a line here');
+  assert.equal(mounts.length, 1, 'the drawer mounts the panel once');
+  for (const node of [...opens, ...mounts]) assert.equal(behindGate(node), true, `${node.getText().slice(0, 60)} can run in a production build`);
+  // The flag is the build's own constant, from the one module that decides it, and nothing else decides it.
+  assert.match(wsFull, /import \{ PIECES_OFFERED \} from '\.\.\/lib\/pieces';/);
+  const piecesSrc = readFileSync(join(WEB, 'src', 'lib', 'pieces.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(piecesSrc, /export const PIECES_OFFERED: boolean = import\.meta\.env\.DEV;/);
+  // The CONTROL: in the production shape the bundle sees (`import.meta.env.DEV` false), it is false; so none of the ways in is offered.
+  assert.equal(lib.PIECES_OFFERED, false);
+  // A drawer left open and remembered from a build that had pieces restores as closed where the panel is not offered.
+  assert.match(ws, /stored === 'pieces' && !PIECES_OFFERED/);
+});
+
 test('the drawer mounts the panel only while it is open, so edits do not outlive the drawer that was closed to abandon them', () => {
-  assert.match(ws, /<Drawer open=\{drawer === 'pieces'\} onClose=\{\(\) => setDrawer\(null\)\} title="Pieces">\s*\{drawer === 'pieces' && <PiecesDrawer \/>\}\s*<\/Drawer>/);
+  assert.match(ws, /<Drawer open=\{drawer === 'pieces'\} onClose=\{\(\) => setDrawer\(null\)\} title="Pieces">\s*\{PIECES_OFFERED && drawer === 'pieces' && <PiecesDrawer \/>\}\s*<\/Drawer>/);
+});
+
+/* ------------------------------------------------------------------ the drawer waits for the answer --- */
+
+// usePieces and PiecesDrawer, run: `loaded` is false until the answer is in, so the panel never claims "none" before it knows, and an answer that
+// arrives after the drawer is closed sets nothing.
+const Drawer = await loadPage({ entry: 'src/components/ws/pieces-panel.tsx', name: 'pieces-drawer', real: ['lib/pieces.ts'] });
+
+test('THE DRAWER SHOWS A LOADING LINE, NOT "NONE", UNTIL THE ANSWER IS IN; then the panel', async () => {
+  const page = Drawer.mountStub(() => Drawer.PiecesDrawer());
+  assert.match(page.result.props.className, /skeleton/, 'before the answer: the loading line');
+  assert.equal(page.result.props['aria-busy'], 'true');
+  assert.notEqual(page.result.type, Drawer.PiecesPanel, 'the panel (and its empty sentence) is drawn before the pieces were asked for');
+  await page.settle();
+  assert.equal(page.result.type, Drawer.PiecesPanel, 'after the answer: the panel');
+  assert.deepEqual(page.result.props.pieces, [], 'production has no pieces');
+});
+
+test('an answer that arrives after the drawer was closed sets nothing', async () => {
+  const page = Drawer.mountStub(() => Drawer.PiecesDrawer());
+  // settle() commits the effect (the hook asks for the pieces) before its first await; the drawer is closed before the answer comes back.
+  const settled = page.settle();
+  page.unmount();
+  await settled;
+  assert.equal(page.setsAfterUnmount, 0, 'the hook set state after it was unmounted');
 });

@@ -56,6 +56,7 @@ import { useShareInvite } from '../lib/use-invite-link';
 import { groupCheckpointsByRequest, requestsFromMessages } from '../lib/checkpoint-history';
 import { CheckpointHistory, HISTORY_NOTE } from '../components/ws/checkpoint-history';
 import { PiecesDrawer } from '../components/ws/pieces-panel';
+import { PIECES_OFFERED } from '../lib/pieces';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -196,7 +197,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   //   claiming to show something it is not is worse than one that forgot. ]]
   const [drawer, setDrawerState] = useState<Drawer>(() => {
     const stored = readViewChoice<DrawerName>(`drawer.${projectId}`, DRAWERS, 'none');
-    return stored === 'none' ? null : stored;
+    // A drawer this build does not offer (Pieces, in production) restores as closed, not as an open drawer with nothing in it.
+    if (stored === 'none' || (stored === 'pieces' && !PIECES_OFFERED)) return null;
+    return stored;
   });
   const setDrawer = useCallback(
     (next: Drawer) => {
@@ -612,13 +615,17 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       hint: shortcutLabel(SHORTCUTS.checkpoints),
       run: () => setDrawer('checkpoints'),
     },
-    {
-      id: 'ws-pieces',
-      title: 'Pieces and their settings',
-      section: 'Project',
-      keywords: ['pieces', 'settings', 'parameters', 'numbers', 'colours', 'colors'],
-      run: () => setDrawer('pieces'),
-    },
+    // Offered only where there are pieces to show (lib/pieces.ts: PIECES_OFFERED). A production build has none before M5, and a command
+    // that opens a drawer that can only say "none yet" is a dead end.
+    ...(PIECES_OFFERED
+      ? [{
+          id: 'ws-pieces',
+          title: 'Pieces and their settings',
+          section: 'Project',
+          keywords: ['pieces', 'settings', 'parameters', 'numbers', 'colours', 'colors'],
+          run: () => setDrawer('pieces'),
+        }]
+      : []),
     {
       id: 'ws-history',
       title: 'What StudPilot did in Studio',
@@ -937,16 +944,19 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             <Icon d={PATH.people} />
           </button>
           {/* The settings of what was built: each piece's numbers, colours, switches and words. An icon button beside the project's
-              other drawers; the palette carries the words. Built against a stub until M5 (pieces-panel.tsx). */}
-          <button
-            type="button"
-            className="gx-icon-btn"
-            onClick={() => setDrawer('pieces')}
-            aria-label="Pieces and their settings"
-            title="Pieces"
-          >
-            <Icon d={PATH.settings} />
-          </button>
+              other drawers; the palette carries the words. Built against a stub until M5 (pieces-panel.tsx), so it is drawn only where
+              there are pieces (PIECES_OFFERED): in production no button, no palette command and no drawer exist before M5. */}
+          {PIECES_OFFERED && (
+            <button
+              type="button"
+              className="gx-icon-btn"
+              onClick={() => setDrawer('pieces')}
+              aria-label="Pieces and their settings"
+              title="Pieces"
+            >
+              <Icon d={PATH.settings} />
+            </button>
+          )}
           {/* A link to StudPilot's sign-up page to send to a friend (lib/growth.ts: nothing records it yet, nothing is earned). An icon button
               among the project's others; Settings > Share has the same link in full. */}
           <button
@@ -1325,8 +1335,9 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       </Drawer>
 
       <Drawer open={drawer === 'pieces'} onClose={() => setDrawer(null)} title="Pieces">
-        {/* Mounted only while open: the panel holds edits the person has not saved anywhere, and closing the drawer abandons them. */}
-        {drawer === 'pieces' && <PiecesDrawer />}
+        {/* Mounted only while open: the panel holds edits the person has not saved anywhere, and closing the drawer abandons them.
+            Never where the panel is not offered (PIECES_OFFERED), so a production build does not carry it. */}
+        {PIECES_OFFERED && drawer === 'pieces' && <PiecesDrawer />}
       </Drawer>
 
       <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">
