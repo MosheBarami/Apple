@@ -31,6 +31,7 @@ import { fetchCheckpoints, fetchMessages, stopRun } from './api';
 // One definition of what a client-minted id looks like, and one place that reconciles it with the
 // server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
 import { adoptUserMessageId, localId } from './message-identity';
+import { appendFrame } from './studio-shots';
 import {
   MOCK_MODE,
   mockCheckpoints,
@@ -957,8 +958,11 @@ export function useProjectSocket(
         break;
       case 'studio_frame':
         // Uncompressed RGB is heavy, so only the most recent handful are kept
-        // in memory. They are never persisted.
-        setFrames((list) => [...list, msg.frame].slice(-MAX_FRAMES));
+        // in memory. They are never persisted. The worker replays the frames it still
+        // holds each time a socket attaches during a playtest, so a capture this page
+        // already has is not added twice (it would repeat in the strip and push the
+        // run's older frames out of the newest eight).
+        setFrames((list) => appendFrame(list, msg.frame, MAX_FRAMES));
         break;
       case 'playtest_state':
         // Straight through. The worker owns every field on this record —

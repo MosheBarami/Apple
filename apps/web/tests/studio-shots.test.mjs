@@ -6,13 +6,17 @@
  *
  *   1. WHICH FRAMES. Only the ones stamped for this turn's own run; the last eight; oldest left, newest right; never one from an
  *      earlier run or one the worker could not attribute.
+ *   1b. EACH CAPTURE ONCE. The worker replays the frames it holds each time a socket attaches during a playtest, so a reconnect must not
+ *      repeat the strip or push the run's older frames out of the newest eight (M2 fix cycle 1).
  *   2. WHAT IT SAYS. A Studio capture is a "Studio screenshot"; anything else is a "Preview render", so a preview is never read as
- *      a screenshot. With no frame yet the strip says "Studio screenshots appear here while StudPilot builds" and draws no picture.
+ *      a screenshot. With no frame the strip says what is true of THIS turn: still coming, how to get them (connect Studio), or nothing
+ *      at all once a finished request took none. No finished turn keeps a sentence about "while StudPilot builds".
  *   3. WHERE IT SHOWS. On the latest assistant turn while it runs, once it has a frame, or when it was a build at all. A plain chat
- *      reply, and every earlier turn, gets nothing.
+ *      reply, and every earlier turn, gets nothing. The offer to the latest turn only is held where it is made (workspace.tsx).
  *   4. THE PERSON ONLY, IN MEMORY ONLY. The strip and its dialog persist nothing and send nothing: no storage, no request, no
  *      model. (What the worker does with a frame is its own; this page says only what this page does.)
- *   5. CLICK TO ENLARGE, with the keyboard: a thumbnail is a real button with a name, and the dialog moves earlier and later.
+ *   5. CLICK TO ENLARGE, with the keyboard: a thumbnail is a real button with a name, and the dialog moves earlier and later with two
+ *      buttons that look like buttons in the workspace, show when they are disabled and carry the focus ring.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +24,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
-import { SHOT_LIMIT, SHOTS_EMPTY, SHOTS_KEPT, shotCaption, shotKind, shotKindLabel, shotsForTurn } from '../src/lib/studio-shots.ts';
+import { SHOT_LIMIT, SHOTS_CONNECT, SHOTS_EMPTY, SHOTS_KEPT, SHOTS_NONE_TAKEN, appendFrame, sameFrame, shotCaption, shotKind, shotKindLabel, shotsEmptyLine, shotsForTurn } from '../src/lib/studio-shots.ts';
+import ts from 'typescript';
 
 const T0 = 1_700_000_000_000;
 const frame = (n, extra = {}) => ({
@@ -51,6 +56,44 @@ test('the last eight, oldest first and newest last, placed by the worker’s cap
   assert.deepEqual(ties.map((f) => f.view), ['a', 'b'], 'two with one time keep the order they arrived in');
 });
 
+/* ------------------------------------------------------------------ each capture once --- */
+
+const copy = (f) => JSON.parse(JSON.stringify(f));
+
+test('A REPLAYED RING IS NOT A SECOND STRIP: a capture that arrives again is shown once, in its place', () => {
+  const ring = [frame(1), frame(2), frame(3)];
+  const replay = ring.map(copy);
+  assert.deepEqual(shotsForTurn([...ring, ...replay], 'run-1').map((f) => f.capturedAt), [T0 + 1000, T0 + 2000, T0 + 3000]);
+  // The worst case the review named: the page's newest eight, then the ring replayed, must not push older frames out.
+  const six = Array.from({ length: 6 }, (_, i) => frame(i + 1));
+  const held = six.reduce((list, f) => appendFrame(list, f, 8), []);
+  const afterReconnect = six.map(copy).reduce((list, f) => appendFrame(list, f, 8), held);
+  assert.equal(afterReconnect.length, 6, 'the replay added copies');
+  assert.deepEqual(afterReconnect.map((f) => f.capturedAt), six.map((f) => f.capturedAt));
+});
+
+test('two different pictures are never taken for one: same second and view but different pixels, or different playtest counters, both stay', () => {
+  assert.equal(shotsForTurn([frame(1, { rgbBase64: 'AAAA' }), frame(1, { rgbBase64: 'BBBB' })], 'run-1').length, 2, 'different pixels');
+  assert.equal(shotsForTurn([frame(1, { view: 'eye' }), frame(1, { view: 'top' })], 'run-1').length, 2, 'different view');
+  const play = (seq, extra = {}) => frame(1, { playtestRunId: 'p1', seq, ...extra });
+  assert.equal(shotsForTurn([play(1), play(2)], 'run-1').length, 2, 'two counters of one playtest');
+  assert.equal(shotsForTurn([play(1), copy(play(1))], 'run-1').length, 1, 'one counter, replayed');
+  assert.equal(shotsForTurn([play(1), play(1, { playtestRunId: 'p2' })], 'run-1').length, 2, 'the same counter in another playtest');
+  assert.equal(sameFrame(frame(1), frame(1)), true);
+  assert.equal(sameFrame(frame(1), frame(2)), false);
+  assert.equal(sameFrame(frame(1), frame(1, { msgId: 'run-2' })), false, 'the same capture time under another run');
+});
+
+test('appendFrame keeps the newest eight, returns the very same list for a capture it holds, and never changes its input', () => {
+  const nine = Array.from({ length: 9 }, (_, i) => frame(i + 1));
+  const grown = nine.reduce((list, f) => appendFrame(list, f, 8), []);
+  assert.deepEqual(grown.map((f) => f.capturedAt), nine.slice(1).map((f) => f.capturedAt), 'the oldest left');
+  assert.equal(appendFrame(grown, copy(grown[3]), 8), grown, 'a held capture is not a change (the same list, so nothing re-renders)');
+  const before = JSON.stringify(grown);
+  appendFrame(grown, frame(20), 8);
+  assert.equal(JSON.stringify(grown), before);
+});
+
 test('choosing the frames does not change what the page holds', () => {
   const held = [frame(2), frame(1)];
   const before = JSON.stringify(held);
@@ -70,6 +113,16 @@ test('a Studio capture is a screenshot; anything else is a preview render, and t
   assert.equal(shotCaption({ source: 'studio_viewport', capturedAt: 5 }, () => ''), 'Studio screenshot', 'no time is never invented');
 });
 
+test('WHAT THE EMPTY STRIP SAYS follows the run and Studio, and a finished turn keeps no promise about "while it builds"', () => {
+  assert.equal(shotsEmptyLine({ running: true, studioConnected: true }), SHOTS_EMPTY, 'on its way');
+  assert.equal(shotsEmptyLine({ running: true, studioConnected: false }), SHOTS_CONNECT, 'waiting will not fill it: say what to do');
+  assert.equal(shotsEmptyLine({ running: false, studioConnected: false }), SHOTS_NONE_TAKEN, 'over, with nothing, and Studio is the reason to act on');
+  assert.equal(shotsEmptyLine({ running: false, studioConnected: true }), null, 'over, Studio was there: nothing true and useful to add');
+  for (const finished of [SHOTS_NONE_TAKEN]) assert.doesNotMatch(finished, /while StudPilot builds|appear here/, 'a finished turn must not say screenshots are coming');
+  assert.match(SHOTS_CONNECT, /^Connect Studio/);
+  assert.match(SHOTS_NONE_TAKEN, /Connect Studio/);
+});
+
 test('the words are exact, short and plain', () => {
   assert.equal(SHOTS_EMPTY, 'Studio screenshots appear here while StudPilot builds');
   assert.doesNotMatch(SHOTS_KEPT, /\b(model|AI|never|guarantee)\b/i, 'it claims only what this page does');
@@ -86,16 +139,19 @@ const ui = await bundle(`
 `, { name: 'studio-shots', resolveDir: WEB });
 const render = (el) => renderWith(ui.renderToStaticMarkup, el);
 
-test('NO FRAME YET: the one sentence and no picture, no placeholder image', () => {
-  const html = render(ui.h(ui.StudioShots, { frames: [] }));
+test('NO FRAME YET: the one sentence for this turn and no picture, no placeholder image', () => {
+  const html = render(ui.h(ui.StudioShots, { frames: [], running: true, studioConnected: true }));
   assert.equal(text(html), SHOTS_EMPTY);
   assert.doesNotMatch(html, /<canvas|<img|<button|<svg/, 'nothing that could be mistaken for a result');
   assert.match(html, /aria-label="Studio screenshots from this run"/);
+  assert.equal(text(render(ui.h(ui.StudioShots, { frames: [], running: true, studioConnected: false }))), SHOTS_CONNECT, 'Studio off: what to do');
+  assert.equal(text(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: false }))), SHOTS_NONE_TAKEN);
+  assert.equal(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: true })), '', 'a finished request with nothing to say draws no box at all');
 });
 
 test('WITH FRAMES: one named button each, in time order, a canvas for raw pixels and an image for a PNG', () => {
   const frames = [frame(1), frame(2, { encoding: 'png', rgbBase64: 'iVBORw0KGgo=' }), frame(3, { source: 'software_render' })];
-  const html = render(ui.h(ui.StudioShots, { frames }));
+  const html = render(ui.h(ui.StudioShots, { frames, running: false, studioConnected: true }));
   const buttons = [...html.matchAll(/<button[^>]*aria-label="([^"]*)"/g)].map((m) => m[1]);
   assert.equal(buttons.length, 3);
   assert.match(buttons[0], /^Enlarge screenshot 1 of 3: Studio screenshot/);
@@ -114,17 +170,20 @@ const turn = (item, extra = {}) => render(ui.h(ui.Turn, { status: null, isLast: 
 } }));
 const strip = (html) => element(html, /<section class="shots"/);
 
-test('A LIVE RUN with no frame yet shows the strip’s own sentence; once frames arrive it shows them', () => {
-  const live = turn({ streaming: true }, { frames: [] });
-  assert.equal(text(strip(live)), SHOTS_EMPTY);
-  const full = turn({ streaming: true }, { frames: [frame(1), frame(2)] });
+test('A LIVE RUN with no frame yet shows the strip’s own sentence (what to do when Studio is off); once frames arrive it shows them', () => {
+  assert.equal(text(strip(turn({ streaming: true }, { frames: [], studioConnected: true }))), SHOTS_EMPTY);
+  assert.equal(text(strip(turn({ streaming: true }, { frames: [], studioConnected: false }))), SHOTS_CONNECT);
+  assert.equal(text(strip(turn({ streaming: true }, { frames: [] }))), SHOTS_CONNECT, 'a caller that does not say is told to connect, never promised screenshots');
+  const full = turn({ streaming: true }, { frames: [frame(1), frame(2)], studioConnected: true });
   assert.equal((strip(full).match(/shots__thumb/g) ?? []).length, 2);
 });
 
-test('A FINISHED BUILD keeps its screenshots, and one with none says where they would be', () => {
+test('A FINISHED BUILD keeps its screenshots; one with none says what to do when Studio is off, and nothing under it when Studio was there', () => {
   const tool = { toolId: 't1', tool: 'create_instances', summary: 'x', ok: true, done: true, startedAt: T0, durationMs: 5, startObserved: true };
-  assert.equal((strip(turn({ tools: [tool] }, { frames: [frame(1)] })).match(/shots__thumb/g) ?? []).length, 1);
-  assert.equal(text(strip(turn({ tools: [tool] }, { frames: [] }))), SHOTS_EMPTY);
+  assert.equal((strip(turn({ tools: [tool] }, { frames: [frame(1)], studioConnected: true })).match(/shots__thumb/g) ?? []).length, 1);
+  assert.equal(text(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false }))), SHOTS_NONE_TAKEN);
+  assert.equal(strip(turn({ tools: [tool] }, { frames: [], studioConnected: true })), null, 'a finished turn that took no screenshot keeps no "appear here while it builds" sentence');
+  assert.doesNotMatch(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false })), /while StudPilot builds/);
 });
 
 test('a plain chat reply (no tools, not running) gets no strip at all, and neither does an earlier turn', () => {
@@ -133,12 +192,12 @@ test('a plain chat reply (no tools, not running) gets no strip at all, and neith
 });
 
 test('frames from another run are not shown under this turn', () => {
-  const html = turn({ streaming: true }, { frames: [frame(1, { msgId: 'run-0' }), frame(2, { msgId: undefined })] });
+  const html = turn({ streaming: true }, { frames: [frame(1, { msgId: 'run-0' }), frame(2, { msgId: undefined })], studioConnected: true });
   assert.equal(text(strip(html)), SHOTS_EMPTY, 'neither an earlier run’s frame nor an unattributed one is this turn’s');
 });
 
 test('the strip carries nothing technical: no tool name, path, view name or JSON', () => {
-  const html = turn({ streaming: true }, { frames: [frame(1, { view: 'eye', subject: 'game.Workspace' })] });
+  const html = turn({ streaming: true }, { frames: [frame(1, { view: 'eye', subject: 'game.Workspace' })], studioConnected: true });
   const seen = `${text(strip(html))}\n${[...strip(html).matchAll(/\s(?:title|aria-label|alt)="([^"]*)"/g)].map((m) => m[1]).join('\n')}`;
   assert.doesNotMatch(seen, /game\.|Workspace|\beye\b|[{}]|render_view|capture_studio/);
 });
@@ -153,7 +212,7 @@ const Strip = await loadPage({
 });
 
 async function shown(frames) {
-  const page = Strip.mountStub(() => Strip.StudioShots({ frames }));
+  const page = Strip.mountStub(() => Strip.StudioShots({ frames, running: false, studioConnected: true }));
   await page.settle();
   const thumbs = () => findAll(page.result, (n) => n.type === 'button' && n.props.className === 'shots__thumb');
   const dialog = () => findAll(page.result, (n) => n.props?.title !== undefined && typeof n.props.onClose === 'function')[0] ?? null;
@@ -200,7 +259,7 @@ test('the dialog moves Earlier and Later, holds at both ends, and closes', async
 test('a screenshot that scrolled out of the newest eight while it was open stays open, and cannot be stepped from', async () => {
   const eight = Array.from({ length: 8 }, (_, i) => frame(i + 1));
   let current = eight;
-  const page = Strip.mountStub(() => Strip.StudioShots({ frames: current }));
+  const page = Strip.mountStub(() => Strip.StudioShots({ frames: current, running: false, studioConnected: true }));
   await page.settle();
   const dialog = () => findAll(page.result, (n) => n.props?.title !== undefined && typeof n.props.onClose === 'function')[0] ?? null;
   findAll(page.result, (n) => n.type === 'button' && n.props.className === 'shots__thumb')[0].props.onClick();
@@ -228,10 +287,14 @@ test('the strip, its dialog and its model touch no storage and make no request',
   assert.ok(strip.length > 500 && model.length > 300, 'the scan read real source');
 });
 
-test('the socket hook keeps at most the strip’s limit, and persists nothing', () => {
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1). It pinned `.slice(-MAX_FRAMES)` in the hook's own case. The cap and the repeat check moved into
+//   `appendFrame` (lib/studio-shots.ts) so a replayed ring can be run, not read; the property is the same and stronger: the hook keeps at
+//   most MAX_FRAMES (8, the strip's own limit), through the function whose cap and repeat check the tests above run, and persists nothing. ]]
+test('the socket hook keeps at most the strip’s limit, through appendFrame, and persists nothing', () => {
   const hook = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8');
   assert.match(hook, /const MAX_FRAMES = 8;/);
-  assert.match(hook, /\.slice\(-MAX_FRAMES\)/);
+  assert.equal(Number(/const MAX_FRAMES = (\d+);/.exec(hook)?.[1]), SHOT_LIMIT, 'the hook and the strip disagree about how many frames there are');
+  assert.match(hook, /setFrames\(\(list\) => appendFrame\(list, msg\.frame, MAX_FRAMES\)\)/, 'a frame is added some way other than appendFrame, which keeps the cap and drops a repeat');
   const around = hook.slice(hook.indexOf("case 'studio_frame':"), hook.indexOf("case 'playtest_state':"));
   assert.ok(around.length > 100, 'could not read the frame case out of the hook');
   assert.doesNotMatch(around.replace(/\/\/.*$/gm, ''), /localStorage|sessionStorage|indexedDB|fetch\(/, 'a frame is stored or sent from the socket hook');
@@ -239,6 +302,56 @@ test('the socket hook keeps at most the strip’s limit, and persists nothing', 
 
 test('the strip is mounted by the turn, and is the only thing that draws frames there', () => {
   const src = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
-  assert.match(src, /<StudioShots frames=\{shots\} \/>/);
+  // Restated 2026-10-05 (M2 fix cycle 1): the strip is also told whether the run is still going and whether Studio is connected, so its
+  // empty sentence is true of this turn. The property is unchanged: it is handed this run's frames and nothing else draws them.
+  assert.match(src, /<StudioShots frames=\{shots\} running=\{item\.streaming\} studioConnected=\{studioConnected \?\? false\} \/>/);
   assert.doesNotMatch(src, /PlaytestCard|<canvas|paintFrame/, 'the turn draws frames some other way');
+});
+
+/* ------------------------------------------------------------------ the offer is made to the latest turn only (workspace) --- */
+
+// A turn draws the strip whenever it is handed `frames`, so "every earlier turn gets nothing" lives in ONE place: the workspace hands them to
+// the latest assistant turn and to no other. Walked in the syntax tree, so it is the property and not the spelling that is held.
+test('THE FRAMES ARE OFFERED TO THE LATEST ASSISTANT TURN ONLY: `frames` on <Turn> is `frames` when the turn is the latest assistant message and undefined otherwise', () => {
+  const src = ts.createSourceFile('workspace.tsx', readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const all = []; const visit = (n) => { all.push(n); ts.forEachChild(n, visit); }; visit(src);
+  const turns = all.filter((n) => ts.isJsxSelfClosingElement(n) && n.tagName.getText() === 'Turn');
+  assert.equal(turns.length, 1, 'the workspace mounts <Turn> in one place; a second mount needs its own guard and a line here');
+  const attr = turns[0].attributes.properties.find((a) => ts.isJsxAttribute(a) && a.name.getText() === 'frames');
+  assert.ok(attr?.initializer && ts.isJsxExpression(attr.initializer), 'the Turn is not handed `frames` as an expression');
+  const expr = attr.initializer.expression;
+  assert.ok(expr && ts.isConditionalExpression(expr), 'frames is handed to every turn: it must be conditional on the turn being the latest assistant message');
+  const test = expr.condition;
+  assert.ok(ts.isBinaryExpression(test) && test.operatorToken.kind === ts.SyntaxKind.EqualsEqualsEqualsToken, 'the condition is not a strict comparison');
+  assert.deepEqual([test.left.getText(), test.right.getText()].sort(), ['item.id', 'lastAssistantId']);
+  assert.equal(expr.whenTrue.getText(), 'frames');
+  assert.equal(expr.whenFalse.getText(), 'undefined', 'an earlier turn is handed something other than nothing');
+  // And lastAssistantId really is the latest ASSISTANT message, not the latest message.
+  const def = all.find((n) => ts.isVariableDeclaration(n) && n.name.getText() === 'lastAssistantId');
+  assert.ok(def, 'lastAssistantId is not defined where the Turn is');
+  assert.match(def.initializer.getText(), /\.reverse\(\)\.find\(\(m\) => m\.role === 'assistant'\)\?\.id/);
+});
+
+/* ------------------------------------------------------------------ the enlarge dialog's buttons --- */
+
+const shotsCss = readFileSync(join(WEB, 'src', 'components', 'ws', 'studio-shots.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+test('EARLIER AND LATER LOOK LIKE BUTTONS IN THE WORKSPACE, SHOW WHEN THEY ARE DISABLED, AND CARRY THE FOCUS RING', async () => {
+  // The shared `.btn` chrome is scoped to the shelf, usage and settings pages; in the workspace it drew 18px of bare text. The workspace's own
+  // outline button is `gx-btn gx-btn--outline`, and the dialog's two buttons use it (the same class as the checkpoints drawer's Restore).
+  const { page, thumbs, dialog } = await shown([frame(1), frame(2)]);
+  thumbs()[0].props.onClick();
+  await page.settle();
+  const nav = findAll(dialog(), (n) => n.type === 'button');
+  assert.deepEqual(nav.map((b) => textOf(b)), ['Earlier', 'Later']);
+  for (const b of nav) {
+    assert.match(b.props.className, /\bgx-btn\b/);
+    assert.match(b.props.className, /\bgx-btn--outline\b/);
+    assert.match(b.props.className, /\bshots__nav\b/);
+    assert.doesNotMatch(b.props.className, /(^|\s)btn(\s|$)/, 'the shelf-scoped `.btn` is back, and in the workspace it draws nothing');
+  }
+  // The two states the generic button rules would have drawn, written for this subtree: disabled is quiet and says so, focus has the ring.
+  assert.match(shotsCss, /\.shots__nav:disabled\s*\{[^}]*cursor:\s*not-allowed[^}]*background:\s*transparent[^}]*border-color:\s*var\(--quiet-line\)[^}]*color:\s*var\(--quiet-ink\)/);
+  assert.match(shotsCss, /\.shots__nav:focus-visible\s*\{\s*outline:\s*2px solid var\(--accent-ring\);\s*outline-offset:\s*2px;\s*\}/);
+  assert.doesNotMatch(shotsCss, /outline:\s*(none|0)\b/, 'a rule removes a focus ring');
 });

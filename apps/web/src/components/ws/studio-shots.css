@@ -46,3 +46,10 @@
 .shots__caption { margin: var(--space-3) 0 0; color: var(--ink-2); font-size: var(--text-sm); }
 .shots__kept { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
 .shots__bad { display: block; padding: var(--space-3); color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
+
+/* The enlarged view's Earlier and Later. The generic button rules (system.css) skip the conversation's subtree (`.aie`), which is where this
+   dialog sits, so the two states a button must show are written here, in tokens: a disabled one is quiet and says it cannot be pressed, and
+   a focused one has the ring every other control of the product has. */
+.shots__nav { min-width: 72px; }
+.shots__nav:disabled { cursor: not-allowed; background: transparent; border-color: var(--quiet-line); color: var(--quiet-ink); }
+.shots__nav:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }

@@ -150,6 +150,7 @@ export function Turn({
   status,
   phaseMarks,
   frames,
+  studioConnected,
   isLast,
   onEdit,
   editable,
@@ -187,6 +188,7 @@ export function Turn({
   frames?: StudioFrame[];
   /** Accepted and not drawn (owner decision D-THINK-1). Kept so callers need not change. */
   playtest?: PlaytestRun | null;
+  /** Whether Studio is connected now. Read only by the screenshots strip, for what it says when it has no frame (what to do about it). */
   studioConnected?: boolean;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
@@ -204,7 +206,8 @@ export function Turn({
   // its reply can land word by word, while a reloaded conversation simply sits there.
   const [arrivedLive] = useState(item.streaming);
   // The screenshots of THIS run, for the person only. Offered to the latest assistant turn (`frames` is undefined for every other),
-  // and drawn while it runs, once it has any, or when it was a build at all (a plain chat reply gets no empty strip).
+  // and drawn while it runs, once it has any, or when it was a build at all (a plain chat reply gets no empty strip). What the strip says
+  // when it has none follows the run and Studio (lib/studio-shots.ts shotsEmptyLine), so a finished turn keeps no sentence about "while it builds".
   const shots = useMemo(() => (frames ? shotsForTurn(frames, item.id) : []), [frames, item.id]);
   const showShots = item.role === 'assistant' && frames !== undefined && (item.streaming || shots.length > 0 || item.tools.length > 0);
 
@@ -378,8 +381,9 @@ export function Turn({
             ends or a tool starts — with that step's tools after it as one Task. */}
         <RunSteps item={item} tools={item.tools} streaming={item.streaming} />
 
-        {/* STUDIO SCREENSHOTS (M2 2.3): the last few frames of this run, for the person only. Empty states its own sentence. */}
-        {showShots && <StudioShots frames={shots} />}
+        {/* STUDIO SCREENSHOTS (M2 2.3): the last few frames of this run, for the person only. With none it says what is true of this
+            turn (still coming, how to get them, or nothing at all once a finished request took none). */}
+        {showShots && <StudioShots frames={shots} running={item.streaming} studioConnected={studioConnected ?? false} />}
 
         {/* THE REPLY APPEARS ONCE, when the run ends and msg_end settles it to the stored answer
             (owner, 2026-09-30): the steps' in-between narration is not the reply. It answers in the
