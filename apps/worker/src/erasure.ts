@@ -29,6 +29,7 @@ import { ensureApiKeyTables } from './api-keys';
 import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
+import { ensureRobloxOAuthTables, revokeStoredRobloxGrant } from './roblox-oauth';
 import { ensureMemoryTables } from './memory-store';
 import { ensureNotificationTables } from './notification-store';
 import { ensureProvenanceTables } from './provenance';
@@ -91,9 +92,10 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     store: 'postgres',
     target: 'auth.users — your sign-in identity',
     why:
-      'Removing a login takes a Supabase service-role credential, and this worker holds none by ' +
-      'design: it acts only with your own token so row-level security applies to every query it ' +
-      'makes. Your data is gone; the empty account can still sign in until an operator removes it.',
+      'Removing a login takes a Supabase secret key. This worker holds one only to sign people in with ' +
+      'Roblox and never uses it to delete an account; every other query it makes carries your own token ' +
+      'so row-level security applies. Your data is gone; the empty account can still sign in until an ' +
+      'operator removes it.',
   },
   {
     store: 'postgres',
@@ -370,6 +372,7 @@ export async function eraseAccountData(
     ensureApiKeyTables(env).catch(() => {}),
     ensureCredentialTable(env).catch(() => {}),
     ensureWriteTable(env).catch(() => {}),
+    ensureRobloxOAuthTables(env).catch(() => {}),
   ]);
   steps.push(await d1Sweep(env, 'memory_entries (user)', `delete from memory_entries where scope = 'user' and scope_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'memory_audit (user)', `delete from memory_audit where scope = 'user' and scope_id = ?`, user.userId));
@@ -383,10 +386,44 @@ export async function eraseAccountData(
   steps.push(await d1Sweep(env, 'api_keys', `delete from api_keys where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'user_credentials', `delete from user_credentials where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'creator_write_log', `delete from creator_write_log where user_id = ?`, user.userId));
+  //[[ THE ROBLOX SIGN-IN, and the grant is revoked at Roblox BEFORE our copy of the token is deleted: the
+  //   sealed refresh token is the only handle there is to revoke it with. A failed revoke does not stop
+  //   the deletion (the data this product holds must go either way), but the receipt says it happened. ]]
+  const grant = await revokeStoredRobloxGrant(env, user.userId);
+  const tokens = await d1Sweep(env, 'roblox_oauth_tokens', `delete from roblox_oauth_tokens where user_id = ?`, user.userId);
+  if (tokens.status === 'erased' && grant !== 'none') {
+    tokens.detail = grant === 'revoked'
+      ? 'The Roblox authorization was revoked at Roblox.'
+      : 'Roblox could not be asked to revoke the authorization. StudPilot no longer holds the token; you can remove StudPilot under Connections in your Roblox account settings.';
+  }
+  steps.push(tokens);
+  // `roblox_identities` is NOT swept here: see the end of this function.
 
   // 3. Postgres: the projects, which cascade, and then a CHECK that they really went.
   steps.push(await erasePostgresProjects(env, user));
   steps.push(await minimiseProfile(env, user));
+
+  //[[ THE ROBLOX LINK IS THE LAST THING SWEPT, AND ONLY WHEN EVERYTHING ELSE WENT.
+  //
+  //   An account that signs in only with Roblox has no password, so the route lets it export or delete only inside ten minutes of a
+  //   Roblox re-authentication, and that proof is a column of this very row (`reauth_at`); the re-authentication itself needs the
+  //   row too, since it never makes an account. This sweep used to come before the Postgres steps. When one of them failed the
+  //   route answered 207 "run it again", the row was already gone, and the retry answered 403 `reauth_required` that no
+  //   re-authentication could ever satisfy: the part that failed could not be finished. So the row stays while any other step has
+  //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one. ]]
+  const othersFailed = steps.some((s) => s.status === 'failed');
+  const holdsLink = othersFailed && (await robloxLinkHeld(env, user.userId));
+  steps.push(
+    holdsLink
+      ? {
+          store: 'd1',
+          target: 'roblox_identities',
+          status: 'failed',
+          rows: null,
+          detail: 'Not removed yet, on purpose: it is what lets this account confirm it is the person asking, and it goes in the run that finishes everything else. Run the deletion again.',
+        }
+      : await d1Sweep(env, 'roblox_identities', `delete from roblox_identities where user_id = ?`, user.userId),
+  );
 
   const failed = steps.filter((s) => s.status === 'failed');
   return {
@@ -403,6 +440,15 @@ export async function eraseAccountData(
         : `${failed.length} of ${steps.length} stores could not be cleared: ${failed.map((s) => s.target).join(', ')}. ` +
           `Everything else listed as erased is gone for good. Ask support to finish the rest; nothing here will retry on its own.`,
   };
+}
+
+/** Is there a Roblox link to keep for this person? A lookup that throws is answered "yes": a link that could not be looked at is kept, not swept, and the receipt still goes out. */
+async function robloxLinkHeld(env: Pick<Env, 'CORPUS'>, userId: string): Promise<boolean> {
+  try {
+    return (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ?').bind(userId).first()) !== null;
+  } catch {
+    return true;
+  }
 }
 
 async function erasePostgresProjects(env: Env, user: AuthedUser): Promise<ErasureStep> {

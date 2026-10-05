@@ -239,6 +239,33 @@ export const USER_EXPORT: readonly ExportTable[] = [
         'credential is the one thing about a person that must not.',
     },
   },
+  {
+    // Which Roblox account signs in to this one. The Roblox user id and username are public on Roblox, and
+    // they are this person's own.
+    store: 'd1',
+    table: 'roblox_identities',
+    access: 'worker',
+    ownerColumn: 'user_id',
+    fields: ['roblox_sub', 'user_id', 'username', 'created_at'],
+    excluded: {
+      reauth_at: 'when this account last confirmed it is them with Roblox, for the ten-minute window that gates export and deletion; internal bookkeeping, not a fact about the person',
+    },
+  },
+  {
+    store: 'd1',
+    table: 'roblox_oauth_tokens',
+    access: 'worker',
+    ownerColumn: 'user_id',
+    fields: ['user_id', 'sub', 'scopes', 'version', 'rotated_at'],
+    excluded: {
+      sealed_refresh:
+        'THE SECRET. The Roblox refresh token, sealed with a key this file does not carry. Sealed is not safe ' +
+        'to hand out: it is the one credential that lets StudPilot act in this Roblox account, and it ' +
+        'would travel in a file.',
+      lease_until: 'a lock held for a few seconds while a refresh is at Roblox; internal bookkeeping, not a fact about the person',
+      generation: 'a random label that tells a cached access token which sign-in it belongs to; internal bookkeeping, not a fact about the person',
+    },
+  },
 ];
 
 /**

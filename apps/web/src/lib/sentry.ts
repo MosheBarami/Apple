@@ -140,6 +140,7 @@ export const SCRUB_RULES: readonly ScrubRule[] = [
   { kind: 'aws_access_key_id', pattern: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g },
   { kind: 'google_api_key', pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g },
   { kind: 'slack_token', pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}/g },
+  { kind: 'oauth_token', pattern: /\b(?:RBX-[A-Za-z0-9_-]{20,}|(?:access_token|refresh_token|id_token|client_secret|code_verifier|token_hash)["']?\s*[:=]\s*["']?[A-Za-z0-9._~+/%-]{8,})/g },
   { kind: 'bearer_credential', pattern: /\bauthorization\s*[:=]\s*(?:bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{8,}/gi },
   { kind: 'email', pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}\b/g },
   { kind: 'long_hex', pattern: /\b[A-Fa-f0-9]{32,}\b/g },

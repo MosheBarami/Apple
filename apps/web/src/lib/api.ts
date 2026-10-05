@@ -4,6 +4,7 @@ import { PRICE_CURRENCY, WIRE_HEADERS, readWire, type RobloxScope, type AssetSou
 import type { ChatAttachment, CheckpointMeta, MessageDto, MessageRevisionDto, PairingCodeDto, QuotaState, PlanId, StudioLinkSummary } from '@studpilot/shared';
 import type { ApiKeyMode, ApiScope } from '@studpilot/shared';
 import type { ApiKeyView } from './api-keys.ts';
+import type { RobloxConnection, RobloxDisconnectResult } from './roblox-signin.ts';
 import type { MilestoneBrief, NextResponse, RoadmapResponse } from '../components/roadmap/model';
 import type { AttributionResponse } from '../components/ws/credits-model';
 import type { FilesResponse, FileVersion } from '../components/ws/files-model';
@@ -2079,6 +2080,15 @@ export const putRobloxKey = (body: {
 
 export const deleteRobloxKey = (): Promise<{ removed: boolean }> =>
   request('/api/me/roblox-key', { method: 'DELETE' });
+
+/**
+ * The Roblox account that signs in to this one (a different thing from the Open Cloud key above), and the
+ * way to disconnect it. The server decides what a disconnect removes: see lib/roblox-signin.ts.
+ */
+export const fetchRobloxConnection = (): Promise<RobloxConnection> => request('/api/me/roblox/connection');
+
+export const disconnectRobloxSignIn = (): Promise<RobloxDisconnectResult> =>
+  request('/api/me/roblox/disconnect', { method: 'POST' });
 
 export interface RobloxWrite {
   at: string;

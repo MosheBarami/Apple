@@ -231,13 +231,20 @@ test('every column of every exported Postgres table is sent or withheld with a r
   }
 });
 
-test('every column of the exported D1 table is sent or withheld with a reason', () => {
-  for (const spec of SPEC.USER_EXPORT.filter((t) => t.store === 'd1')) {
-    const src = readFileSync(join(WORKER, 'src', 'api-keys.ts'), 'utf8');
-    const m = new RegExp(`create table if not exists ${spec.table}\\(([^)]*)\\)`, 'i').exec(src);
-    assert.ok(m, `${spec.table}: could not read its CREATE TABLE`);
+test('every column of every exported D1 table is sent or withheld with a reason', () => {
+  const d1Specs = SPEC.USER_EXPORT.filter((t) => t.store === 'd1');
+  // api_keys, roblox_identities and roblox_oauth_tokens. The file each is created in comes from the D1 walk
+  // above, not from a name written here, so a table added to the export is read from where it is made.
+  assert.ok(d1Specs.length >= 3, `only ${d1Specs.length} D1 tables are exported`);
+  for (const spec of d1Specs) {
+    const file = D1.get(spec.table);
+    assert.ok(file, `${spec.table} is exported and nothing in apps/worker/src creates it`);
+    const src = readFileSync(join(WORKER, file), 'utf8');
+    const m = new RegExp(`create table if not exists ${spec.table}\\s*\\(([^)]*)\\)`, 'i').exec(src);
+    assert.ok(m, `${spec.table}: could not read its CREATE TABLE in ${file}`);
     const cols = m[1].split(',').map((c) => c.trim().split(/\s+/)[0]).filter(Boolean);
-    assert.ok(cols.length > 5, `${spec.table}: only ${cols.length} columns parsed`);
+    // A parse that found fewer columns than the export sends is a broken parse, not a small table.
+    assert.ok(cols.length >= spec.fields.length, `${spec.table}: only ${cols.length} columns parsed`);
     assert.deepEqual(SPEC.auditExportSpec(spec.table, cols), []);
   }
 });

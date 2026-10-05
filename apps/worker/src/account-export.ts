@@ -29,6 +29,7 @@
 //      stopped at the relational database would be the smallest true part of the answer.
 import type { Env, AuthedUser } from './env';
 import { supaRest } from './supa';
+import { ensureRobloxOAuthTables } from './roblox-oauth';
 import { NON_POSTGRES_STORES, USER_EXPORT, type ExportTable, type NonPostgresStore } from './user-export';
 
 /*
@@ -325,6 +326,9 @@ export async function collectAccountExport(
 ): Promise<AccountExport> {
   const specs = opts.specs ?? USER_EXPORT;
   const tables: Record<string, TableResult> = {};
+  // These D1 tables are made on first use, so for anyone who never signed in with Roblox they do not exist
+  // yet, and reading a missing table would mark every export incomplete.
+  await ensureRobloxOAuthTables(env).catch(() => {});
   for (const spec of specs) {
     tables[spec.table] = spec.store === 'postgres' ? await readPostgresTable(env, user, spec) : await readD1Table(env, user, spec);
   }

@@ -414,6 +414,17 @@ export const isSensitiveAction = (v: unknown): v is SensitiveAction =>
   typeof v === 'string' && (SENSITIVE_ACTIONS as readonly string[]).includes(v);
 
 /**
+ * The action Settings is asked to RESUME when the browser comes back from a Roblox re-authentication: `?resume=<action>`. Only a
+ * real gated action counts, so a crafted link can name nothing else; and it resumes nothing by itself: Settings still asks the
+ * server whether this account confirmed it is them, and the action still has its own confirmation.
+ */
+export function resumeActionFrom(search: unknown): SensitiveAction | null {
+  if (typeof search !== 'string') return null;
+  const value = new URLSearchParams(search).get('resume');
+  return isSensitiveAction(value) ? value : null;
+}
+
+/**
  * When did this person last prove who they are?
  *
  * Accepts the shapes it is actually handed: an ISO string from `user.last_sign_in_at`, epoch

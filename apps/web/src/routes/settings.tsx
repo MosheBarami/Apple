@@ -25,7 +25,10 @@ import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
 import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
+import { RobloxConnectionCard } from '../components/roblox-connection-card';
 import { useAuth } from '../lib/auth';
+import { accountIdentity, isRobloxAccount } from '../lib/account-identity';
+import { useRobloxUsername } from '../lib/use-roblox-username';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
 import { ConfirmDialog } from '../components/confirm-dialog';
@@ -53,6 +56,7 @@ import {
   freshestAuth,
   needsReauth,
   passwordProblem,
+  resumeActionFrom,
   PASSWORD_MIN,
   authErrorMessage,
   type SensitiveAction,
@@ -64,6 +68,7 @@ import {
   deleteAccount,
   fetchDeletionStatus,
   fetchNotifications,
+  fetchRobloxConnection,
   fetchScopeMemory,
   markNotificationsRead,
   grantOwnerCredits,
@@ -877,7 +882,7 @@ const SECTION_INDEX = [
     label: 'Security',
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
-  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'roblox-key', 'api-keys', 'discord'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -1650,6 +1655,10 @@ export function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const userId = session?.user.id ?? '';
+  // A Roblox-only account has no email address to show or change (what it has is a placeholder nothing can be delivered to) and
+  // no password to change: Security says so instead of offering forms that cannot work, and names the Roblox username.
+  const robloxName = useRobloxUsername(session?.user);
+  const identity = accountIdentity(session?.user, session?.user.email, robloxName);
 
   useEffect(() => {
     if (session?.user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return;
@@ -1725,12 +1734,37 @@ export function SettingsPage() {
    * from a render two states ago.
    */
   const guard = (action: SensitiveAction) => {
+    // A Roblox-only account has no password and is not asked by comparing timestamps. Whether it has confirmed it is them with
+    // Roblox is the SERVER's record, answered in the server's own time: the session's `last_sign_in_at` is not it (any sign-in
+    // sets that, and a still-open roblox.com session satisfies a sign-in by itself) and neither is the device's clock (a device
+    // minutes off would be asked again after every confirmation, for ever). Anything but a clear yes is a no, and asks.
+    if (isRobloxAccount(session?.user)) {
+      void fetchRobloxConnection().then(
+        (connection) => (connection.reauthFresh === true ? setPending(action) : setReauthFor(action)),
+        () => setReauthFor(action),
+      );
+      return;
+    }
     if (needsReauth(action, lastAuth)) {
       setReauthFor(action);
       return;
     }
     setPending(action);
   };
+
+  // BACK FROM ROBLOX. A Roblox-only account that pressed Export (or Delete, ...) was sent to confirm it is them and returns here with
+  // `?resume=<action>`: the action carries on without a second press. The address is cleaned first so a reload does not repeat it,
+  // and the gate is asked as always (a link that names an action opens nothing; the server's record does).
+  useEffect(() => {
+    const action = resumeActionFrom(window.location.search);
+    if (action === null) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('resume');
+    window.history.replaceState(window.history.state, '', url);
+    if (isRobloxAccount(session?.user)) guard(action);
+    // Once, on arrival: `guard` is rebuilt every render and would run the action again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* --- two-step verification --------------------------------------------- */
 
@@ -1753,7 +1787,7 @@ export function SettingsPage() {
 
   /* --- email -------------------------------------------------------------- */
 
-  const verification = emailVerification(session?.user);
+  const verification = identity.roblox ? 'unknown' : emailVerification(session?.user);
   const [newEmail, setNewEmail] = useState('');
   const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
 
@@ -2045,7 +2079,7 @@ export function SettingsPage() {
       <div className="settings-head">
         <div className="settings-head__who">
           <h1 className="settings-title">Settings</h1>
-          <p className="settings-signed">Signed in as {session?.user.email}</p>
+          <p className="settings-signed">{identity.signedInAs}</p>
         </div>
         <label className="settings-find" htmlFor="settings-search">
           <span className="gx-sr">Search settings</span>
@@ -2136,7 +2170,7 @@ export function SettingsPage() {
           visible={shows('email-address')}
           title="Email address"
           control={
-            emailSentTo ? null : (
+            emailSentTo || identity.roblox ? null : (
               <form
                 className="settings-inline"
                 onSubmit={(e) => {
@@ -2168,13 +2202,19 @@ export function SettingsPage() {
           }
         >
           <p className="settings-current">
-            <strong>{session?.user.email}</strong>{' '}
+            <strong>{identity.label}</strong>{' '}
             {/* Three states, not two. An absent user object is not an unverified address, and a
                 badge that says otherwise accuses someone of something on the strength of a
                 missing field. */}
             {verification === 'verified' && <span className="pill pill-good">Verified</span>}
             {verification === 'unverified' && <span className="pill pill-warn">Not confirmed</span>}
           </p>
+          {identity.roblox && (
+            <p className="settings-note">
+              This account signs in with Roblox and has no email address, so there is no address to confirm or change here.
+              Sign in with Roblox is how you get back in; the Connections section below says what that means.
+            </p>
+          )}
           {verification === 'unverified' && (
             <p className="settings-note settings-note-warn">
               This address has not been confirmed yet.{' '}
@@ -2202,6 +2242,7 @@ export function SettingsPage() {
           title="Password"
           controlStacks
           control={
+            identity.roblox ? null : (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -2256,11 +2297,19 @@ export function SettingsPage() {
                 {changePassword.isPending ? 'Saving…' : 'Change password'}
               </button>
             </form>
+            )
           }
         >
-          <p className="settings-note">
-            At least {PASSWORD_MIN} characters. Changing it asks you to confirm who you are first.
-          </p>
+          {identity.roblox ? (
+            <p className="settings-note">
+              This account has no password: it signs in with Roblox, and confirms it is you by asking Roblox again before an
+              action like exporting or deleting your data.
+            </p>
+          ) : (
+            <p className="settings-note">
+              At least {PASSWORD_MIN} characters. Changing it asks you to confirm who you are first.
+            </p>
+          )}
         </Row>
 
         <Row id="two-step" visible={shows('two-step')}>
@@ -2292,7 +2341,10 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="connections" title="Connections" visible={sectionShows('roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'roblox-key', 'api-keys', 'discord')}>
+        <Row id="roblox-signin" visible={shows('roblox-signin')}>
+          <RobloxConnectionCard userId={userId} />
+        </Row>
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>

@@ -60,6 +60,13 @@ export const SETTING_FIELDS: readonly SettingField[] = [
   // returned it would reveal a row this page does not have — the exact failure the registry exists
   // to prevent. tests/settings-search.test.mjs checks that it is reachable there instead.
   {
+    id: 'roblox-signin',
+    title: 'Sign in with Roblox',
+    section: 'Connections',
+    // What somebody types who wants to stop using Roblox to get in, or to know which Roblox account it is.
+    keywords: ['roblox', 'sign in', 'log in', 'login', 'disconnect', 'unlink', 'revoke', 'username', 'oauth', 'connect'],
+  },
+  {
     id: 'roblox-key',
     title: 'Your Roblox account',
     section: 'Connections',

@@ -29,7 +29,7 @@ interface AuthState {
   stepOwed: SignInStep | null;
 }
 
-const AuthContext = createContext<AuthState>({
+export const AuthContext = createContext<AuthState>({
   session: null,
   loading: true,
   signOut: async () => {},

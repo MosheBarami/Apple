@@ -16,6 +16,21 @@ import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
+import { clearAccountState } from '../lib/account-state';
+import { isRobloxAccount } from '../lib/account-identity';
+import {
+  EXISTING_ROBLOX_SESSION_LINE,
+  ROBLOX_NEW_ACCOUNT_LINE,
+  ROBLOX_SIGNIN_FAILED,
+  createRobloxAccount,
+  declineRobloxAccount,
+  existingSessionLine,
+  redeemRobloxSignIn,
+  robloxStartHref,
+  useRobloxConfigured,
+  useRobloxLanding,
+  type RobloxLandingState,
+} from '../lib/roblox-signin';
 import { StudPilotGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -316,6 +331,27 @@ function PasswordField({
   );
 }
 
+/**
+ * "Continue with Roblox", drawn only when `configured` (the worker said it can finish a sign-in). A plain link: the
+ * whole flow is browser navigations, and the page that comes back is /auth/roblox below.
+ */
+export function RobloxSignInView({ configured, from }: { configured: boolean; from: string }) {
+  if (!configured) return null;
+  return (
+    <>
+      <p className="auth-switch">or</p>
+      <a className="btn btn-block" href={robloxStartHref(from)}>
+        Continue with Roblox
+      </a>
+      <p className="field-hint">StudPilot reads your Roblox user ID and username, nothing else.</p>
+    </>
+  );
+}
+
+export function RobloxSignIn({ from }: { from: string }) {
+  return <RobloxSignInView configured={useRobloxConfigured()} from={from} />;
+}
+
 /* ------------------------------------------------------------------- sign in --- */
 
 /**
@@ -542,6 +578,7 @@ export function LoginPage() {
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <RobloxSignIn from={from} />
         <p className="auth-switch">
           {/* Carries the address they have already typed, so the next screen does not ask for it
               again. A "forgot password" link that restarts the form is how people give up. */}
@@ -709,6 +746,7 @@ export function SignupPage() {
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
+          <RobloxSignIn from={from} />
           <p className="auth-switch">
             Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
           </p>
@@ -1014,6 +1052,126 @@ function ExpiredLinkCard({
         <Link to="/login">Back to sign in</Link>
       </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ roblox sign-in --- */
+
+/** What /auth/roblox shows for each state of lib/roblox-signin.ts. Pure, so it is rendered and read in tests. */
+export function RobloxLandingView({
+  state,
+  onSwitch,
+  onStay,
+  onContinue,
+  onBack,
+}: {
+  state: RobloxLandingState;
+  onSwitch: () => void;
+  onStay: () => void;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  if (state.kind === 'failed') {
+    return (
+      <div className="auth-card" role="alert">
+        <CardMark kind="alert" />
+        <h2 className="auth-card-title">We could not sign you in</h2>
+        <p className="auth-card-sub">{ROBLOX_SIGNIN_FAILED}</p>
+        {/* The worker's own fixed code, for somebody to quote to whoever looks after this: never provider text. */}
+        {state.reference && (
+          <p className="field-hint">
+            Reference: <code>{state.reference}</code>
+          </p>
+        )}
+        <Link to="/login" className="btn btn-primary btn-block">
+          Back to sign in
+        </Link>
+      </div>
+    );
+  }
+  if (state.kind === 'confirm-new') {
+    // NOTHING HAS BEEN MADE YET. Somebody who already has an email account here and presses "Continue with Roblox" would otherwise
+    // get a second, empty account, believe their projects were gone, and be given a second free allowance. Continue is the only thing
+    // that makes the account; Go back withdraws the Roblox authorization it was given and makes nothing.
+    return (
+      <div className="auth-card" role="group" aria-labelledby="roblox-new-title">
+        <h2 className="auth-card-title" id="roblox-new-title">Create a new account?</h2>
+        <p className="auth-card-sub">{ROBLOX_NEW_ACCOUNT_LINE}</p>
+        <p className="field-hint">
+          Signed in to Roblox as <strong>{state.username}</strong>.
+        </p>
+        <button type="button" className="btn btn-primary btn-block" onClick={onContinue}>
+          Continue
+        </button>
+        <button type="button" className="btn btn-block" onClick={onBack}>
+          Go back
+        </button>
+      </div>
+    );
+  }
+  if (state.kind === 'choice') {
+    // A Roblox account that is already signed in here is the person confirming it is them (Settings sends a password-less
+    // account here instead of asking for a password), so the card says what continuing does instead of "switch".
+    const confirming = state.roblox;
+    return (
+      <div className="auth-card" role="group" aria-labelledby="roblox-choice-title">
+        <h2 className="auth-card-title" id="roblox-choice-title">{confirming ? 'Confirm it is you?' : 'Sign in as your Roblox account?'}</h2>
+        <p className="auth-card-sub">{confirming ? EXISTING_ROBLOX_SESSION_LINE : existingSessionLine(state.email)}</p>
+        <button type="button" className="btn btn-primary btn-block" onClick={onSwitch}>
+          {confirming ? 'Continue with Roblox' : 'Switch to my Roblox account'}
+        </button>
+        <button type="button" className="btn btn-block" onClick={onStay}>
+          {confirming ? 'Cancel' : 'Stay signed in'}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="auth-card" role="status">
+      <h2 className="auth-card-title">Signing you in…</h2>
+      <p className="auth-card-sub">One moment.</p>
+    </div>
+  );
+}
+
+/**
+ * Where /auth/roblox/callback sends the browser: `/app/auth/roblox`, with nothing in the URL. The one-time sign-in
+ * token waits behind a cookie only this browser holds, and lib/roblox-signin.ts redeems it with a POST. If somebody is
+ * already signed in here, this asks before replacing their session instead of doing it.
+ *
+ * Outside both guards, like /confirm: this page is what makes the session, so a guard that asks for one
+ * first would send the person away from the only page that can give it to them.
+ */
+export function RobloxCallbackPage() {
+  const navigate = useNavigate();
+  const { state, switchNow, continueNew, goBack } = useRobloxLanding(
+    {
+      currentAccount: async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        const user = data.session?.user;
+        return user ? { id: user.id, email: user.email ?? null, roblox: isRobloxAccount(user) } : null;
+      },
+      redeem: () => redeemRobloxSignIn(),
+      create: () => createRobloxAccount(),
+      decline: () => declineRobloxAccount(),
+      verifyOtp: (args) => supabase.auth.verifyOtp(args),
+      accountSwitched: clearAccountState,
+    },
+    (next) => navigate(next, { replace: true }),
+    // "Go back" from the first-sight card: back to the sign-in page, where signing in with an email is on offer.
+    () => navigate('/login', { replace: true }),
+  );
+  return (
+    <AuthShell>
+      <RobloxLandingView
+        state={state}
+        onSwitch={switchNow}
+        onStay={() => navigate('/', { replace: true })}
+        onContinue={continueNew}
+        onBack={goBack}
+      />
+    </AuthShell>
   );
 }
 

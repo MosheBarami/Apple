@@ -279,6 +279,18 @@ test('the event has nowhere to put a person, a session or a transcript', async (
   h.client.uninstall();
 });
 
+test('an OAuth token or a sign-in token hash is scrubbed from a message, wherever it is written', () => {
+  // The browser handles the sign-in token hash in the redeem answer ({"token_hash":…}), and Roblox's own tokens are
+  // prefixed RBX-. Mirrors the worker's oauth_token rule (apps/worker/src/redaction.ts), but is deliberately the
+  // wider net a log wants: the worker's rule also blocks egress, so it only matches credential shapes.
+  for (const shape of ['RBX-' + 'Ab12Cd34Ef56Gh78Ij90Kl12', 'token_hash=Zx9Qw8Er7Ty6Ui5Op4', '{"refresh_token":"Zx9Qw8Er7Ty6Ui5Op4"}']) {
+    const out = S.redactText(`verify failed ${shape} done`);
+    assert.match(out, /\[redacted:oauth_token\]/, `${shape} was not scrubbed`);
+    assert.equal(/Ab12Cd34|Zx9Qw8Er/.test(out), false, `the value survived in ${shape}`);
+  }
+  assert.equal(S.redactText('the token_hash is read from the fragment'), 'the token_hash is read from the fragment');
+});
+
 test('the scrub is recursive, so a field added to the event later is still covered', () => {
   const scrubbed = S.scrubEvent({ a: { b: [{ deep: `see ${JWT}` }] }, n: 5, keep: null });
   assert.equal(JSON.stringify(scrubbed).includes(JWT), false, 'a nested string was not scrubbed');

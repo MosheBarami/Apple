@@ -50,6 +50,7 @@ export const DISCLOSURE_KINDS = [
   'aws_access_key_id',
   'google_api_key',
   'slack_token',
+  'oauth_token',
   'private_key_block',
   'bearer_credential',
   'long_hex',
@@ -223,6 +224,27 @@ export const DISCLOSURE_RULES: readonly DisclosureRule[] = [
     confidence: 'high',
     pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}/g,
     why: 'a Slack token',
+  },
+  {
+    kind: 'oauth_token',
+    cls: 'secret',
+    confidence: 'high',
+    // Two shapes, because an OAuth token turns up in two places. Roblox's own tokens and client secrets are
+    // prefixed `RBX-`, so they are found wherever they land. The rest are named in a form body, a URL
+    // fragment or a JSON object (`refresh_token=…`, `"client_secret":"…"`), where the NAME says the value is
+    // a credential: the sign-in token hash in a redeem answer is one.
+    //
+    // THE NAME ALONE IS NOT ENOUGH, and this rule is `high`, which the egress gate blocks on. This used to
+    // match any eight characters after the name, so `local refresh_token = response.refresh_token` (ordinary
+    // Luau, which an agent reads all day) was read as a credential and the tool that read it was refused.
+    // The VALUE must now look like one, in one of two ways: a hex digest of 32 or more characters (a sign-in
+    // token hash), or an opaque run of 24 or more characters that mixes upper case, lower case and a digit
+    // (random base64url, which is what a refresh token, a secret and a PKCE verifier are). A `.` ends the run
+    // (so `response.refresh_token` and `process.env.X` are two short words), and a snake_case, camelCase or
+    // SHOUTING identifier lacks one of the three classes. A compact JWT value is the `jwt` rule's.
+    pattern:
+      /\b(?:RBX-[A-Za-z0-9_-]{20,}|(?:access_token|refresh_token|id_token|client_secret|code_verifier|token_hash)["']?\s*[:=]\s*["']?(?:[A-Fa-f0-9]{32,}\b|(?=[A-Za-z0-9_~+/%=-]*[0-9])(?=[A-Za-z0-9_~+/%=-]*[a-z])(?=[A-Za-z0-9_~+/%=-]*[A-Z])[A-Za-z0-9_~+/%=-]{24,}))/g,
+    why: 'an OAuth token, client secret or sign-in token hash',
   },
   {
     kind: 'bearer_credential',

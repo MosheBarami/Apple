@@ -235,6 +235,11 @@ slow 3D upload and tells the user) and `IMAGES` (display-sized WebP copies of ge
 PostgREST, so **RLS is the thing deciding**, not the worker. `infra/supabase/tests/rls-isolation.mjs` proves tenants
 cannot read each other, and it is the strongest evidence in the repo.
 
+**Sign in with Roblox** (`apps/worker/src/roblox-oauth.ts`, routes under `/auth/roblox`) is the one place the worker holds
+a Supabase secret key (`SUPABASE_SECRET_KEY`), for the Auth admin API only; everything else still travels with the
+caller's JWT. It answers 503 until `ROBLOX_OAUTH_CLIENT_ID`, `ROBLOX_OAUTH_CLIENT_SECRET`, `SUPABASE_SECRET_KEY` and
+`CREDENTIAL_KEY` are all set. Design and the switch-on steps: `planning/proof/M2/ROBLOX-SIGNIN.md`.
+
 **Migrations are applied by hand.** `infra/supabase/migrations/` holds them; `infra/supabase/migrate.mjs` runs
 them. Two once sat unapplied while the code that needed them shipped, and the dashboard showed loading skeletons
 forever. **If a query 400s on a missing column, look here first.**

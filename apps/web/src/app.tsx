@@ -8,7 +8,7 @@ import { CommandProvider } from './lib/commands';
 import { ThemeProvider } from './lib/theme';
 import { AuthGuard, AuthProvider, GuestGuard } from './lib/auth';
 import { AppLayout } from './components/layout';
-import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, SignupPage } from './routes/auth-pages';
+import { ConfirmEmailPage, ForgotPasswordPage, LoginPage, RecoveryRequestPage, ResetPasswordPage, RobloxCallbackPage, SignupPage } from './routes/auth-pages';
 import { DashboardPage } from './routes/dashboard';
 // LAZY, on a measurement rather than a hunch. `scripts/check-app-bundle.mjs` budgets the entry
 // graph at 70 kB gzipped, a figure measured when the entry WAS 54.2 kB. It then went unenforced —
@@ -148,6 +148,11 @@ export function App() {
                   <Route path="/recovery" element={<RecoveryRequestPage />} />
                   <Route path="/reset" element={<ResetPasswordPage />} />
                   <Route path="/confirm" element={<ConfirmEmailPage />} />
+                  {/* WHERE A ROBLOX SIGN-IN LANDS, and outside both guards for the reason /confirm is: the worker
+                      redirects here (with nothing in the URL), this page redeems the one-time token the worker is
+                      holding for this browser and turns it into the session, and GuestGuard would bounce it away
+                      first while AuthGuard would send it to /login. */}
+                  <Route path="/auth/roblox" element={<RobloxCallbackPage />} />
                   <Route
                     element={
                       <AuthGuard>

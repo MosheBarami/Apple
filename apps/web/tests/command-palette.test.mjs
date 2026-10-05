@@ -202,9 +202,15 @@ test('every signed-in route is a child of the shell, so every one of them has th
   // is that this person has no working session anywhere. Wrapping the last door in a shell whose
   // every query needs the credential they are writing in about having lost would render a rail of
   // failures around the form.
+  //
+  // /auth/roblox is the fourth of the /confirm kind, reviewed when it was added (Sign in with Roblox, M2):
+  // the worker redirects here (with nothing in the URL), and this page redeems the one-time token it is holding
+  // for this browser and trades it for the session. The visitor has no session until it finishes, so a shell
+  // around it would fire the rail's queries with no credential, and AuthGuard would send the person to /login
+  // before the token was used.
   assert.deepEqual(
     outside.sort(),
-    ['/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup', '/studio-preview'],
+    ['/auth/roblox', '/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup', '/studio-preview'],
     `these routes are outside the shell and therefore have no command palette: ${outside.join(', ')}`,
   );
   // And the signed-in surfaces really are in there, so the assertion above cannot pass by the
