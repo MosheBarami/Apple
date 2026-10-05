@@ -29,7 +29,7 @@
  * made three published sentences false ("our servers hold no master key", "the only personal information signup asks for",
  * "children below the age of consent") and the same sweep found others that were already false: the pages said a prompt is "not
  * retained by the inference layer" while providers/workers-ai.ts logs every text call in Cloudflare AI Gateway with
- * `collectLog: true`, and named five recipients of data where the worker's source calls fourteen hosts that receive it. So this half derives from
+ * `collectLog: true`, and named five recipients of data where the worker's source calls thirteen hosts that receive it. So this half derives from
  * the source and fails when the two disagree, in the direction that matters (the page says something the code does not do):
  *
  *   THE ROBLOX DATA LIST IS THE COLUMNS THE CODE STORES, read from the CREATE TABLE statements, and every column is accounted
@@ -44,9 +44,11 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { visibleText } from './lib/visible-copy.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -188,6 +190,22 @@ function sourceFiles(dir, exts, out = []) {
 const code = (file) =>
   readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 const WORKER_SRC = sourceFiles(join(WORKER, 'src'), ['.ts']);
+/**
+ * `code`, for the worker's own files: only comments that START A LINE (or trail after whitespace) are removed. `code` strips from any "/*" to the next "*\/",
+ * and index.ts has the string '/api/*' in it, so `code` ate the middleware that applies the analytics consent filter and a test about it saw nothing.
+ */
+const wcode = (file) =>
+  readFileSync(file, 'utf8').replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, ' ').replace(/^[ \t]*\/\/.*$/gm, '').replace(/[ \t]\/\/ .*$/gm, '');
+
+/** A worker module, bundled and imported, so a claim is checked against what the code EVALUATES TO and not against how its source is wrapped or named. */
+const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
+const BUNDLES = mkdtempSync(join(tmpdir(), 'privacy-claims-'));
+process.on('exit', () => rmSync(BUNDLES, { recursive: true, force: true }));
+async function bundleWorker(rel, name) {
+  const out = join(BUNDLES, name);
+  execFileSync(ESBUILD, [join(WORKER, 'src', rel), '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module', '--outfile=' + out], { stdio: 'pipe' });
+  return import(pathToFileURL(out).href);
+}
 
 /* ---------------------------------------------------------------- the Roblox data that is held --- */
 
@@ -224,7 +242,10 @@ test('the Roblox data the pages list is the columns the code stores: read from t
   // The scopes asked for are the scopes named, and nothing asks for more.
   const scope = /const SIGNIN_SCOPE = '([^']+)'/.exec(oauth)?.[1];
   assert.equal(scope, 'openid profile', 'the sign-in scope changed: the pages say which permissions are asked for');
-  for (const [where, text] of BOTH) for (const word of scope.split(' ')) assert.ok(text.includes(word), `${where} does not name the "${word}" permission`);
+  // THE SENTENCE, not the words: "profile" also occurs in "your profile picture" (the Google and Discord line), so a page that named only openid passed.
+  const RAW = [['/privacy', policy], ['/docs/privacy-and-data', docs]];
+  assert.deepEqual(scope.split(' '), ['openid', 'profile'], 'the permissions changed: re-aim the sentence below');
+  for (const [where, raw] of RAW) assert.match(raw, /<code>openid<\/code>\s+and\s+<code>profile<\/code>/, `${where} does not name the openid and profile permissions together, as the two it asks for`);
   assert.ok(!/asset:(read|write)/.test(code(join(WORKER, 'src', 'roblox-oauth.ts'))), 'the code asks for an asset scope, which the pages say it does not');
 });
 
@@ -233,8 +254,13 @@ test('what is held outside those two tables is on the pages too: the placeholder
   const hold = Number(/const HANDLE_TTL_SECONDS = (\d+)/.exec(oauth)?.[1]);
   const window = Number(/const REAUTH_WINDOW_MS = (\d+) \* 60_000/.exec(oauth)?.[1]);
   const lease = Number(/const REFRESH_LEASE_MS = (\d+)_000/.exec(oauth)?.[1]);
+  const stateTtl = Number(/const STATE_TTL_SECONDS = (\d+)/.exec(oauth)?.[1]);
+  const cookies = [...oauth.matchAll(/const (?:STATE|HANDLE)_COOKIE = '([a-z_]+)'/g)].map((m) => m[1]);
   const WORDS = { 5: 'five', 10: 'ten' };
-  assert.ok(domain && hold && window && lease, 'could not read the address domain, the hold, the window or the lease out of roblox-oauth.ts');
+  assert.ok(domain && hold && window && lease && stateTtl, 'could not read the address domain, the hold, the window, the lease or the state hold out of roblox-oauth.ts');
+  assert.equal(cookies.length, 2, `the sign-in sets ${cookies.length} flow cookies (${cookies.join(', ')}): the pages say two`);
+  assert.equal(stateTtl / 60, 10, 'the sign-in state is no longer held ten minutes: the pages say ten');
+  assert.equal(hold / 60, 5, 'the handle is no longer held five minutes: the pages say five');
   assert.ok(WORDS[hold / 60] && WORDS[window], `no word for ${hold / 60} or ${window} minutes: extend WORDS`);
   for (const [where, text] of BOTH) {
     assert.ok(text.includes(domain), `${where} does not name the placeholder address domain ${domain}`);
@@ -242,6 +268,10 @@ test('what is held outside those two tables is on the pages too: the placeholder
     assert.ok(new RegExp(`up to ${WORDS[hold / 60]} minutes`, 'i').test(text), `${where} does not say a first sight is held for up to ${WORDS[hold / 60]} minutes`);
     assert.ok(new RegExp(`good for ${WORDS[window]} minutes`, 'i').test(text), `${where} does not say a confirmation is good for ${WORDS[window]} minutes`);
     assert.ok(new RegExp(`lock held for up to ${lease} seconds`, 'i').test(text), `${where} does not say the refresh lock is held for up to ${lease} seconds`);
+    // The flow cookies and the short-lived records the sign-in makes: "everything we hold because you signed in with Roblox" has to include them.
+    assert.match(text, /two cookies that StudPilot's own address sets|two cookies StudPilot's own address sets/, `${where} does not disclose the two sign-in cookies`);
+    assert.match(text, /one lasting ten minutes and one lasting five|one lasts ten minutes, one five/, `${where} does not give the cookies' lifetimes`);
+    assert.match(text, /hash of the one-time sign-in token/, `${where} does not disclose the sign-in token hash held for a returning account`);
   }
 });
 
@@ -255,7 +285,8 @@ test('Roblox data is never used for AI training, stated on every page, and the w
 
   // The mechanism: refreshRobloxAccessToken, the one function that uses the stored token, deletes it when Roblox says invalid_grant.
   assert.match(oauth, /async function robloxSaysGrantGone[\s\S]{0,400}=== 'invalid_grant'/);
-  assert.match(oauth, /async function wipeDeadGrant[\s\S]{0,500}delete from roblox_oauth_tokens where user_id = \? and version = \? and generation = \?/);
+  // (The version and generation binding of that delete is held by behaviour, not by its SQL text: roblox-oauth.test.mjs "ACCESS LOST deletes only the row that was refreshed".)
+  assert.match(oauth, /async function wipeDeadGrant[\s\S]{0,500}delete from roblox_oauth_tokens/);
   const at = oauth.indexOf('export async function refreshRobloxAccessToken');
   const refresh = oauth.slice(at, oauth.indexOf('\nexport ', at + 10));
   assert.match(refresh, /if \(await robloxSaysGrantGone\(res\)\) \{\s*await wipeDeadGrant\(env, userId, row\);/, 'the refresh no longer wipes the token when Roblox says the grant is gone');
@@ -263,6 +294,9 @@ test('Roblox data is never used for AI training, stated on every page, and the w
   // THE LIMITATION THE PAGES ADMIT IS TRUE ONLY WHILE NOTHING CALLS THE REFRESH. The day M5c calls it, "nothing uses it yet" is false and must go.
   const callers = WORKER_SRC.filter((f) => !f.endsWith('roblox-oauth.ts') && /refreshRobloxAccessToken/.test(code(f)));
   assert.deepEqual(callers, [], 'something now calls refreshRobloxAccessToken: the pages still say nothing uses the Roblox token yet. Reword them, and say what the connection is used for');
+  // INSIDE roblox-oauth.ts TOO, where a new caller is most likely to appear: the function is named once (its definition) and nothing there calls it.
+  assert.equal([...code(join(WORKER, 'src', 'roblox-oauth.ts')).matchAll(/\brefreshRobloxAccessToken\b/g)].length, 1,
+    'roblox-oauth.ts now calls refreshRobloxAccessToken (or names it twice): the pages still say nothing uses the Roblox token yet');
   for (const [where, text] of BOTH) assert.match(text, /nothing uses it yet/, `${where} no longer says the token is not used yet`);
 });
 
@@ -286,25 +320,35 @@ test('13 AND OLDER: no "parent\'s permission" or "age of consent", the sign-up f
 /* ------------------------------------------------------------------------------ improvement data --- */
 
 test('improvement data: anonymised, opt-out, never Roblox data, NOT collected yet, and the in-app string says what the pages say', () => {
-  const RULE = 'never includes data from Roblox, an Open Cloud key, credentials or payment details';
+  // THE WHOLE SENTENCE, on every surface that defines the rule. The first version matched "anonymised" and "opt-out" anywhere on the page, and the
+  // callout at the top of each page supplied both, so a body that said "identifiable" and "mandatory" passed.
+  const RULE = 'Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key, credentials or payment details';
   const NOT_ACTIVE = 'Collection is not active yet';
   const inApp = prose(settingsSrc.slice(settingsSrc.indexOf('<Row id="improvement-opt-out"'), settingsSrc.indexOf('</Row>', settingsSrc.indexOf('<Row id="improvement-opt-out"'))));
   assert.ok(inApp.length > 200, 'could not read the improvement-data row out of settings.tsx: this test would check nothing');
   for (const [where, text] of [...BOTH, ['Settings > Privacy', inApp]]) {
     assert.ok(text.includes(RULE), `${where} does not state the rule: "${RULE}"`);
     assert.ok(text.includes(NOT_ACTIVE), `${where} does not say "${NOT_ACTIVE}"`);
-    assert.match(text, /anonymised/, `${where} does not say anonymised`);
-    assert.match(text, /opt-out|opt out/i, `${where} does not say opt-out`);
   }
   for (const [where, text] of BOTH) {
-    assert.match(text, /Before (collection|it) starts,? (we will email|every account holder is emailed)/, `${where} does not promise to email account holders first`);
-    // ANCHORED to the promise: "no email address" is also said elsewhere on both pages, so a bare match proves nothing about THIS sentence.
-    assert.match(text, /Before (collection|it) starts,? (we will email every account holder|every account holder is emailed)[\s\S]{0,260}no email address/, `${where} says account holders are emailed without saying that a Roblox-only account has no email address`);
+    // THE PROMISE ABOUT THE DAY COLLECTION STARTS, IN THE FUTURE TENSE, because the in-app half has no mechanism yet. It says "tell", not "email":
+    // an account that signs in only with Roblox has a placeholder address nothing can deliver to. The phrase is the owner's wording of the commitment.
+    assert.match(text, /[Bb]efore collection starts we will tell every account holder: by email, and in the app for accounts with no email address/, `${where} does not make the future-tense commitment to tell every account holder, by email and in the app`);
+    assert.match(text, /That in-app notice does not exist yet; it will be built first/, `${where} does not admit the in-app notice is not built`);
+    // And the opt-out is described as saved, with nothing reading it yet; "will be honoured" is a promise with no reader and is gone.
+    assert.match(text, /nothing reads it yet, because nothing is collected/, `${where} does not say nothing reads the choice yet`);
+    assert.match(text, /will not (be )?switch(ed)? collection on until the code that would collect reads (that|it)|will not be switched on until the code that would collect reads it/, `${where} does not commit to the opt-out being read before collection starts`);
+    assert.doesNotMatch(text, /will be honou?red when collection starts/i, `${where} still promises the choice "will be honoured": nothing reads it`);
     assert.match(text, /Settings → Privacy → (<strong>)?Improvement data/, `${where} does not say where the opt-out is`);
+  }
+  // The same two promises in the policy-change sections of the policy and the terms: future tense, and the missing notice admitted.
+  for (const [where, text] of [['/privacy', PRIVACY], ['/terms', TERMS]]) {
+    assert.match(text, /we will (tell|email)[^.]{0,80}(account holders|accounts)[\s\S]{0,400}we will tell those accounts in the app\. That in-app notice does not exist yet; it will be built before the first change that needs it/, `${where} does not say, in the future tense, that Roblox-only accounts will be told in the app, and that the notice is not built`);
+    assert.doesNotMatch(text, /notice (is|will be) shown in the app|(it|they) (is|are) told in the app/i, `${where} still states the in-app notice as if it existed`);
   }
   // "Not active" is a claim about code: the gate that would process customer work is closed.
   assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/, 'the gate is open while the pages say collection is not active');
-  // And the old claims that this replaced are gone from the pages.
+  // And the old claims that this replaced are gone from the pages. (The any-wording scan is the last test in this file.)
   for (const [where, text] of [...BOTH, ['/terms', TERMS]]) {
     assert.doesNotMatch(text, /never trains|never used to train|no fine-print exception|not "?anonymi[sz]ed"? derivatives/i, `${where} still carries the blanket promise`);
   }
@@ -345,12 +389,18 @@ test('EVERY HOST THE WORKER CALLS IS CLASSIFIED: a recipient of user data, named
     'api.assemblyai.com': 'AssemblyAI', 'api.cloudflare.com': 'Cloudflare', 'api.github.com': 'GitHub', 'api.stripe.com': 'Stripe',
     'api.tavily.com': 'Tavily', 'apis.roblox.com': 'Roblox', 'challenges.cloudflare.com': 'Turnstile', 'context7.com': 'Context7',
     'discord.com': 'Discord', 'google.serper.dev': 'Serper', 'router.huggingface.co': 'Hugging Face',
-    'tencent-hunyuan3d-2.hf.space': 'Hugging Face', 'thumbnails.roblox.com': 'Roblox', 'worker.invalid': 'Sentry',
+    'tencent-hunyuan3d-2.hf.space': 'Tencent', 'thumbnails.roblox.com': 'Roblox',
   };
-  const PUBLIC = new Set(['asset-library.internal', 'model-library.internal', 'create.roblox.com', 'game-icons.net', 'polyhaven.com', 'github.com', 'studpilot.app']);
+  // `worker.invalid` is a LABEL, not a recipient: sentry.ts uses it as the fallback origin in an event's request.url. Sentry's real host comes from
+  // the DSN (envelopeEndpoint, asserted below), so it is guarded by that code and by PROCESSORS, not by a placeholder.
+  const PUBLIC = new Set(['asset-library.internal', 'model-library.internal', 'create.roblox.com', 'game-icons.net', 'polyhaven.com', 'github.com', 'studpilot.app', 'worker.invalid']);
+  const sentry = code(join(WORKER, 'src', 'sentry.ts'));
+  assert.match(sentry, /function envelopeEndpoint\b/, 'sentry.ts no longer derives its endpoint from the DSN: re-aim this guard');
+  assert.match(sentry.slice(sentry.indexOf('function envelopeEndpoint')), /dsn/i, 'the Sentry endpoint is no longer read from the DSN');
   const seen = new Set();
   for (const f of WORKER_SRC) for (const m of code(f).matchAll(/https:\/\/([a-z0-9][a-z0-9.-]*\.[a-z]{2,}|[a-z0-9.-]+\.(?:internal|invalid))/gi)) seen.add(m[1].toLowerCase());
   assert.ok(seen.size >= 15, `only ${seen.size} hosts were read out of the worker: this test would check nothing`);
+  assert.equal(Object.keys(RECIPIENT).length, 13, 'the recipient hosts are thirteen: a new one is a decision about the pages');
   const unclassified = [...seen].filter((h) => !(h in RECIPIENT) && !PUBLIC.has(h));
   assert.deepEqual(unclassified, [], `the worker calls ${unclassified.join(', ')}: decide whether it receives user data (then name it on both pages and add it here) or is public content`);
   const stale = [...Object.keys(RECIPIENT), ...PUBLIC].filter((h) => !seen.has(h));
@@ -375,11 +425,25 @@ test('the model-call log is disclosed for as long as the code collects it, with 
 
 /* ------------------------------------------------------------------------------ deletion residue --- */
 
-test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged on both pages, and the Roblox data that stays is in the receipt too', () => {
-  const at = erasure.indexOf('export const ACCOUNT_RESIDUE');
-  const block = erasure.slice(at, erasure.indexOf('];', at));
-  const targets = [...block.matchAll(/target: '([^']+)'/g)].map((m) => m[1]);
-  assert.ok(targets.length >= 9, `only ${targets.length} residue entries were read out of erasure.ts`);
+const RECEIPT = await bundleWorker('erasure.ts', 'erasure.mjs');
+const EXPORT = await bundleWorker('account-export.ts', 'account-export.mjs');
+
+/** The part of a page that is about what survives a deletion: from its marker to the next heading, as a reader meets it. */
+function survivorSection(raw, marker) {
+  const at = raw.indexOf(marker);
+  assert.ok(at > 0, `the page no longer has the "${marker}" paragraph`);
+  const rest = raw.slice(at);
+  const end = rest.search(/<h2>/);
+  return prose(end === -1 ? rest : rest.slice(0, end));
+}
+const SURVIVORS = [['/privacy', survivorSection(policy, 'Some things survive deletion')], ['/docs/privacy-and-data', survivorSection(docs, 'Some things outlive that')]];
+
+test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTION of both pages, and what the receipt says about the Roblox data is what the pages say', () => {
+  const residue = RECEIPT.ACCOUNT_RESIDUE;
+  const targets = residue.map((r) => r.target);
+  assert.ok(targets.length >= 12, `only ${targets.length} residue entries were read out of erasure.ts`);
+  // Each acknowledgement is looked for in the SECTION about what survives, not on the whole page: a bullet deleted from that list used to be
+  // satisfied by a sentence in the retention list or the callout ("the model-call log described above", "temporary image previews, one hour").
   const ACKNOWLEDGED_AS = [
     ['in-flight temporary image previews', /temporary image previews/i],
     ['generated_image_tombstones', /deleted[- ]project (id|identifier)/i],
@@ -391,18 +455,29 @@ test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged on both pages, and the
     ['QuotaDO', /subscription records/i],
     ['AI Gateway', /AI Gateway log|model-call log/i],
     ['AdminDO', /request log,? for up to 30 days/i],
+    ['DiscordDO', /Discord link/i],
+    ['account_deletions', /record of this deletion/i],
+    ['SessionDO of projects other people own', /comments, reviews and messages you added/i],
   ];
   for (const target of targets) {
     assert.ok(ACKNOWLEDGED_AS.some(([key]) => target.includes(key)), `the receipt lists "${target}" as surviving a deletion and this test knows no sentence for it: add one to the pages, then here`);
   }
   for (const [key] of ACKNOWLEDGED_AS) assert.ok(targets.some((t) => t.includes(key)), `"${key}" is no longer in the residue: the pages still say it survives`);
-  for (const [where, text] of BOTH) {
-    for (const [key, re] of ACKNOWLEDGED_AS) assert.match(text, re, `${where} does not acknowledge what ${key} keeps after a deletion`);
+  for (const [where, text] of SURVIVORS) {
+    assert.ok(text.length > 300, `${where}: the survivor section is empty or was not found`);
+    for (const [key, re] of ACKNOWLEDGED_AS) assert.match(text, re, `${where}: the section about what survives a deletion does not acknowledge what ${key} keeps`);
     assert.doesNotMatch(text, /two things (survive|outlive)/i, `${where} still says only two things survive a deletion`);
     assert.match(text, /Roblox user id and username/, `${where} does not say a Roblox account's sign-in identity still holds the Roblox id and username`);
   }
-  // The page says it because the receipt does: the sign-in identity entry names the Roblox data.
-  assert.match(block, /still holds your Roblox user id and\s+' \+\s+'username/, 'the receipt no longer says a Roblox account still holds the id and username');
+  // THE RECEIPT'S OWN WORDS, read from the evaluated residue (not from the source's line breaks): the sign-in identity entry names the Roblox data, and the
+  // "one exception" to row-level security is no longer claimed. Two narrow database functions are named, as the pages name them.
+  const identity = residue.find((r) => r.target.includes('auth.users'));
+  assert.match(identity.why, /Roblox user id and\s+username/, 'the receipt no longer says a Roblox account still holds the id and username');
+  assert.match(identity.why, /a few narrow database functions that carry nobody's token/, 'the receipt no longer names the exceptions to row-level security');
+  assert.doesNotMatch(identity.why, /every other query it makes carries your own token/, 'the receipt still says every other query carries your own token');
+  const profile = residue.find((r) => r.target.includes('public.profiles'));
+  assert.doesNotMatch(profile.why, /training consent withdrawn/i, 'the receipt still talks about a training consent that nothing creates');
+  assert.doesNotMatch(profile.why, /\bconsent\b[^.]*\bwithdrawn\b/i, 'the receipt still says a consent was withdrawn');
 });
 
 test('what deletion does with the Roblox data is what the code does: revoke first, delete the token, the link last and only when everything else went', () => {
@@ -416,11 +491,47 @@ test('what deletion does with the Roblox data is what the code does: revoke firs
     assert.match(text, /asks? Roblox to withdraw (its|StudPilot's) access/i, `${where} does not say Roblox is asked to withdraw its access`);
     assert.match(text, /If Roblox cannot be reached, our copy (of the token )?is (still )?deleted/i, `${where} does not say what happens when Roblox cannot be reached`);
     assert.match(text, /not offered while Roblox is the only way you sign in/, `${where} does not say Disconnect is not offered to a Roblox-only account`);
+    assert.match(text, /log of writes made with it/, `${where} does not say deletion also removes the log of writes made with the key`);
   }
-  // Disconnect deletes nothing unless Roblox confirms, and keeps the link for a Roblox-only account: both read out of the code.
-  const disconnect = oauth.slice(oauth.indexOf('export async function disconnectRoblox'));
-  assert.match(disconnect, /if \(!\(await revokeAtRoblox\(cfg, token\)\)\) \{[\s\S]{0,300}return \{ status: 502/);
-  assert.match(disconnect, /const linkRemoved = onlyWayIn\s*\? false/);
+  // WHAT DISCONNECT DOES is held by behaviour in roblox-oauth.test.mjs ("DISCONNECT revokes the grant ...", "... with Roblox unreachable changes nothing",
+  // "... keeps the sign-in link while Roblox is the account's only way in", "... with no token left to withdraw"). Here: the pages' claim that the sign-in
+  // identity in Supabase is KEPT is true only while Disconnect never calls the Auth admin API.
+  const at = oauth.indexOf('export async function disconnectRoblox');
+  const disconnect = code(join(WORKER, 'src', 'roblox-oauth.ts')).slice(code(join(WORKER, 'src', 'roblox-oauth.ts')).indexOf('export async function disconnectRoblox'));
+  assert.ok(at > 0 && disconnect.length > 500, 'could not read disconnectRoblox out of roblox-oauth.ts');
+  const body = disconnect.slice(0, disconnect.indexOf('\nexport ', 20));
+  assert.doesNotMatch(body, /\badmin\(/, 'Disconnect now calls the Supabase Auth admin API: the pages say the sign-in identity is kept');
+  for (const [where, text] of [...BOTH, ['/terms', TERMS]]) {
+    assert.match(text, /sign-in identity[^.]{0,120}(Roblox user id and,? as its display name,? your Roblox username|Roblox user id and username|Roblox user id and\s+username)|Your sign-in identity in Supabase, with your Roblox user id and username, is kept/, `${where} does not say Disconnect keeps the sign-in identity with the Roblox id and username`);
+  }
+});
+
+test('"Go back" asks Roblox to withdraw, and the pages say it does NOT tell you when Roblox could not be reached exactly while the code does not', () => {
+  // declineAccount ignores the result of the revoke and answers `declined: true` either way. The pages say so. The day the answer carries the outcome
+  // and the sign-in page shows it, these sentences must change in the same commit (this is the other half of that change, not an obstacle to it).
+  const decline = oauth.slice(oauth.indexOf('async function declineAccount'), oauth.indexOf('\n/**', oauth.indexOf('async function declineAccount')));
+  assert.ok(decline.length > 300, 'could not read declineAccount out of roblox-oauth.ts');
+  assert.match(decline, /revokeAtRoblox\(cfg, token\)/, 'Go back no longer asks Roblox to withdraw the authorization');
+  const tells = /jsonReply\(200, \{ declined: true,/.test(decline);
+  for (const [where, text] of BOTH) {
+    assert.match(text, /asks Roblox to withdraw the authorization that was just given/, `${where} does not say Go back asks Roblox to withdraw the authorization`);
+    assert.equal(/does not show you a message about that|you are not shown a message about that/.test(text), !tells,
+      tells ? `${where} says Go back shows no message, but the answer now carries the outcome` : `${where} no longer says Go back shows no message when Roblox could not be reached, which the code does not show`);
+  }
+});
+
+test('"Disconnect is not shown to any account yet" is true only while a Roblox account cannot get a real address and nothing links Roblox to an email account', () => {
+  const inserts = WORKER_SRC.flatMap((f) => [...code(f).matchAll(/insert into roblox_identities/g)].map(() => f.slice(WORKER.length + 1)));
+  assert.deepEqual(inserts, ['src/roblox-oauth.ts'], 'something else now links a Roblox id to an account');
+  const card = read(ROOT, 'apps', 'web', 'src', 'lib', 'roblox-signin.ts');
+  assert.match(code(join(ROOT, 'apps', 'web', 'src', 'lib', 'roblox-signin.ts')), /if \(c\.signInOnly\) \{[\s\S]{0,900}canDisconnect: false/, 'the card no longer refuses Disconnect to an account whose only way in is Roblox');
+  const emailRow = settingsSrc.slice(settingsSrc.indexOf('<Row id="email-address"'), settingsSrc.indexOf('</Row>', settingsSrc.indexOf('<Row id="email-address"')));
+  // The CONTROL's own condition (the text before its first tag) names the Roblox account: the row also mentions it in a note, which is not the form being hidden.
+  assert.ok(emailRow.length > 300 && /control=\{[^<]*identity\.roblox[^<]*</.test(emailRow), 'the email-address row no longer hides the change form from a Roblox account: the pages say the app offers no way to add an address');
+  assert.ok(card.length > 0);
+  for (const [where, text] of [...BOTH, ['/terms', TERMS]]) {
+    assert.match(text, /every account that signs in with Roblox|every Roblox account|Today that is every account that signs in with Roblox/, `${where} does not say Disconnect is, today, not available to any Roblox account`);
+  }
 });
 
 /* ------------------------------------------------------------------------------------ retention --- */
@@ -430,10 +541,21 @@ test('the sound and preview windows on the pages are the windows in retention.ts
   const previewSeconds = /generatedImageSeconds: (\d+)/.exec(retention)?.[1];
   assert.ok(audioDays && previewSeconds, 'could not read the media windows out of retention.ts');
   assert.equal(previewSeconds, '3600', 'the preview window is no longer an hour: the pages say one hour');
+  // THE 365 DAYS IS A CLAIM ABOUT A SETTING IN A DASHBOARD. Nothing in this repository creates the R2 lifecycle rule or reads it back
+  // (audio-store.ts says the same), and R2 does not expire objects by itself, so the pages state the number as the aim and the rule as a setting
+  // outside this software, never as something the software does.
+  const infra = [...sourceFiles(join(ROOT, 'infra'), ['.mjs', '.ts', '.sh', '.json', '.yml', '.yaml', '.sql']), join(WORKER, 'wrangler.studpilot.jsonc')];
+  const LIFECYCLE_RULE = /PutBucketLifecycle|bucket lifecycle|lifecycle (?:add|set|put)|\blifecycle\b[^\n]{0,60}\br2\b|\br2\b[^\n]{0,60}\blifecycle\b/i;
+  const creators = infra.filter((f) => LIFECYCLE_RULE.test(code(f)));
+  assert.deepEqual(creators.map((f) => f.slice(ROOT.length + 1)), [], 'something in the repository now creates an R2 lifecycle rule: the pages say nothing here creates or checks it. Reword them to say what does, and what checks it');
+  assert.ok(infra.length > 10, 'could not read the infra files: this test would check nothing');
   for (const [where, text] of BOTH) {
-    assert.ok(new RegExp(`Generated sound[^.]{0,80}${audioDays} days`).test(text), `${where} must say generated sound is kept ${audioDays} days (the R2 window), not an hour`);
+    assert.match(text, new RegExp(`Generated sound[\\s\\S]{0,500}${audioDays} days`), `${where} must give the ${audioDays}-day aim for generated sound (the R2 window), not an hour`);
     assert.match(text, /one hour on a deployment with no storage bucket/, `${where} does not say the one-hour window belongs to a deployment with no bucket`);
-    assert.match(text, /lifecycle rule/, `${where} does not admit the ${audioDays} days is a dashboard rule the code cannot see`);
+    assert.match(text, /lifecycle rule in StudPilot's Cloudflare account/, `${where} does not say the ${audioDays} days is a rule in the Cloudflare account`);
+    assert.match(text, /(setting outside this software|outside this software)/, `${where} does not say the rule is outside this software`);
+    assert.match(text, /(nothing here creates it or checks it|neither creates nor checks it)/, `${where} does not admit that nothing in this software creates or checks the rule`);
+    assert.doesNotMatch(text, new RegExp(`(kept|saved privately) (privately )?for ${audioDays} days`), `${where} states the ${audioDays} days as a fact`);
   }
 });
 
@@ -441,17 +563,176 @@ test('the sound and preview windows on the pages are the windows in retention.ts
 
 test('the terms: 13+, Roblox account linking with disconnect, free while in beta, paid plans later, and no link to a page that is going away', () => {
   assert.match(TERMS, /Signing in with Roblox/);
-  assert.match(TERMS, /Disconnect Roblox[^.]{0,80}asks Roblox to revoke it/, 'the terms do not say Disconnect revokes the grant at Roblox');
+  assert.match(TERMS, /Disconnect Roblox[^.]{0,80}asks Roblox to revoke it, then removes the token and the link StudPilot holds; your sign-in identity, which carries your Roblox user id and username, is kept/, 'the terms do not say what Disconnect revokes, removes and keeps');
   assert.match(TERMS, /free while it is in beta/i);
   assert.match(TERMS, /Paid plans start later/i, 'the terms do not say what the pricing page says: paid plans start later');
   assert.match(TERMS, /Plan & billing tab of your account's Usage and Credits page/, 'the terms no longer point at the page that shows purchase availability');
   for (const [where, text] of [['/privacy', PRIVACY], ['/terms', TERMS]]) {
     assert.doesNotMatch(text, /changelog/i, `${where} still points at the changelog, a page a later lane removes`);
-    assert.match(text, /(the date at the top changes)[\s\S]{0,200}email account holders/, `${where} lost the promise to email account holders before a change takes effect`);
+    assert.match(text, /(the date at the top changes)[\s\S]{0,200}(email account holders|tell account holders by email)/, `${where} lost the promise to tell account holders by email before a change takes effect`);
   }
   // The Free allowance quoted is the plan table's, because the page renders it from there.
   assert.match(terms, /\{PLAN_TABLE\.free\.creditsPerDay\} Credits a day/);
   assert.match(terms, /\{PLAN_TABLE\.free\.creditsPerMonth\} a month/);
+});
+
+/* ------------------------------------------------------- fix cycle 1: claims the first review found untrue --- */
+
+const rel = (f) => f.slice(WORKER.length + 1);
+const BOTH_AND_SETTINGS = [...BOTH, ['Settings > Privacy', prose(settingsSrc.slice(settingsSrc.indexOf('<Row id="analytics-opt-out"'), settingsSrc.indexOf('</Row>', settingsSrc.indexOf('<Row id="analytics-opt-out"'))))]];
+
+test('THE ANALYTICS OPT-OUT COVERS THE REQUEST AND ERROR ENTRIES ONLY, every surface says so, and none says a project id is never in the log', () => {
+  // The opt-out is applied in ONE place, the /api/* middleware. The per-run `build` event and every `model_call` event carry the account id, the project id and
+  // the run id with no consent filter, and are stored beside the request entries for the same 30 days. If a later change routes them through the same filter,
+  // these sentences become wrong in the other direction: reword them then.
+  const users = WORKER_SRC.filter((f) => /\banalyticsActorId\(/.test(wcode(f)) && !f.endsWith('analytics-consent.ts')).map(rel);
+  assert.deepEqual(users, ['src/index.ts'], 'the consent filter is applied somewhere else now: the pages say it covers only request and error entries');
+  assert.equal([...wcode(join(WORKER, 'src', 'index.ts')).matchAll(/\banalyticsActorId\(/g)].length, 1, 'index.ts applies the consent filter more than once: re-read what it now covers');
+  const session = wcode(join(WORKER, 'src', 'do', 'session.ts'));
+  const build = session.slice(session.indexOf("kind: 'build'"), session.indexOf("kind: 'build'") + 1400);
+  assert.ok(build.length > 600 && /actorId:/.test(build) && /projectId:/.test(build) && !/analyticsActorId/.test(build), 'the per-run build event no longer carries the account id and project id unfiltered');
+  const gw = wcode(join(WORKER, 'src', 'gateway.ts'));
+  const call = gw.slice(gw.indexOf("kind: 'model_call'"), gw.indexOf("kind: 'model_call'") + 500);
+  assert.ok(call.length > 300 && /actorId: opts\.actorId/.test(call) && /projectId: opts\.projectId/.test(call), 'the model_call event no longer carries the account id and project id as the pages say');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /covers only those request and error entries/, `${where} does not say the analytics switch covers only the request and error entries`);
+    assert.match(text, /one entry (for each|per) agent run and one (for each|per) model call/, `${where} does not say the log also holds an entry per agent run and per model call`);
+    assert.match(text, /whatever the switch says/, `${where} does not say those entries carry the account id whatever the switch says`);
+    assert.doesNotMatch(text, /a project id is never in the log|so no project id is in it|never as the raw path, so a project id/i, `${where} still says no project id is ever in the log`);
+  }
+  const row = BOTH_AND_SETTINGS[2][1];
+  assert.match(row, /request and error entries only/, 'the Settings analytics row does not say the switch covers only request and error entries');
+  assert.match(row, /one entry for each agent run and each model call/, 'the Settings analytics row does not say run and model-call entries carry the account id');
+  const exportNote = RECEIPT.ACCOUNT_RESIDUE.find((r) => r.target.includes('AdminDO'));
+  assert.match(exportNote.why, /agent-run events/, 'the receipt does not say run events carry the account id');
+  assert.match(exportNote.why, /covers only the request and error entries/, 'the receipt does not say the analytics opt-out covers only the request and error entries');
+  const events = EXPORT.elsewhereFor().find((e) => e.name === 'events');
+  assert.match(events.where, /not off the entries for agent runs/, 'the export file still tells the person the request log carries no actor id once analytics are off');
+});
+
+test('the exceptions to row-level security are the secret key AND the purpose-token database functions (share links, membership changes), named on both pages; every other query carries a person\'s token', () => {
+  const rpcs = [...new Set(WORKER_SRC.flatMap((f) => [...wcode(f).matchAll(/systemRpc(?:<[^>]*>)?\(\s*env,\s*'([a-z_]+)'/g)].map((m) => m[1])))].sort();
+  // One serves share-link guests; the four others are the membership outbox (is it ready, claim, acknowledge, fail). The pages name those two purposes.
+  assert.deepEqual(rpcs, ['ack_membership_access_outbox', 'claim_membership_access_outbox', 'fail_membership_access_outbox', 'membership_access_outbox_ready', 'project_for_link_grant'],
+    'the worker calls a different set of database functions with no person\'s token: the pages name two purposes, share links and membership changes');
+  // Every OTHER Postgres REST call carries an Authorization header (the caller's JWT): system-rpc.ts is the declared exception.
+  let seen = 0;
+  for (const f of WORKER_SRC.filter((f) => !f.endsWith('system-rpc.ts'))) {
+    const body = wcode(f);
+    for (const m of body.matchAll(/SUPABASE_URL\}\/rest\/v1/g)) {
+      seen += 1;
+      assert.match(body.slice(Math.max(0, m.index - 700), m.index + 500), /Authorization/, `${rel(f)} calls Postgres REST at offset ${m.index} with no Authorization header: a third way of acting as the worker itself`);
+    }
+  }
+  assert.ok(seen >= 3, `only ${seen} Postgres REST calls were read: this test would check nothing`);
+  for (const [where, text] of BOTH) {
+    assert.match(text, /Two narrow exceptions exist/i, `${where} does not say there are two exceptions to row-level security (the secret key, and the purpose-token functions)`);
+    assert.match(text, /share link/, `${where} does not name the share-link function`);
+    assert.match(text, /membership changes/, `${where} does not name the membership function`);
+    assert.doesNotMatch(text, /one exception exists|The one exception/i, `${where} still calls the secret key the one exception`);
+  }
+});
+
+test('WHAT THE OPEN CLOUD KEY IS USED FOR is every scope the app marks implemented, and the stored details and the write log are disclosed with their lifetimes', () => {
+  const keySrc = read(ROOT, 'apps', 'web', 'src', 'lib', 'roblox-key.ts');
+  const live = [...keySrc.matchAll(/scope: '([a-z.:-]+)',[\s\S]*?implemented: (true|false)/g)].filter((m) => m[2] === 'true').map((m) => m[1]).sort();
+  assert.deepEqual(live, ['asset-permissions:write', 'asset:read', 'asset:write', 'game-pass:read', 'game-pass:write', 'universe:read', 'user.inventory-item:read', 'user.social:read'],
+    'the set of Open Cloud scopes the product really uses changed: the pages list what the key is used for, so list the change');
+  const SAYS = {
+    'asset:read': /looking up (the assets you own|your assets)/,
+    'user.inventory-item:read': /looking up (the assets you own|your assets)/,
+    'universe:read': /an experience/,
+    'game-pass:read': /its game passes/,
+    'game-pass:write': /creating a game pass/,
+    'asset-permissions:write': /(letting another experience, group or person use your assets|granting other people's experiences, groups or accounts use of your assets)/,
+    'asset:write': /uploading a file/,
+    'user.social:read': /reading your public profile/,
+  };
+  assert.deepEqual(Object.keys(SAYS).sort(), live, 'a scope has no sentence in this test');
+  for (const [where, text] of BOTH) {
+    for (const [scope, re] of Object.entries(SAYS)) assert.match(text, re, `${where} does not say the key is used for ${scope}`);
+    assert.match(text, /a log of every write it made to your Roblox account/, `${where} does not disclose the log of writes made to the Roblox account`);
+    assert.match(text, /Roblox creator id/, `${where} does not disclose the stored creator id`);
+    assert.match(text, /the log of writes stays until you delete your account/, `${where} does not say how long the write log is kept`);
+    assert.doesNotMatch(text, /Only so StudPilot can upload assets|the only thing that can use it is the uploader/, `${where} still says the key is used only to upload`);
+  }
+  // THE LIFETIMES, from the code: deleting the key leaves the log; deleting the account removes both.
+  const creds = wcode(join(WORKER, 'src', 'user-credentials.ts'));
+  const del = creds.slice(creds.indexOf('export async function deleteRobloxCredential'), creds.indexOf('export interface UseResult'));
+  assert.ok(del.length > 100 && !/creator_write_log/.test(del), 'deleting the key now touches the write log, or the function was not found: the pages say the log stays until the account is deleted');
+  assert.match(wcode(join(WORKER, 'src', 'erasure.ts')), /delete from creator_write_log where user_id = \?/, 'account deletion no longer removes the write log');
+  assert.match(wcode(join(WORKER, 'src', 'erasure.ts')), /delete from user_credentials where user_id = \?/, 'account deletion no longer removes the stored key');
+});
+
+test('Roblox also receives the Creator Store search words, and the 3D picture goes to a Space that Tencent runs: both are on the pages', () => {
+  assert.match(wcode(join(WORKER, 'src', 'creator-store-live.ts')), /apis\.roblox\.com\/toolbox-service\/v2\/assets:search/, 'the live Creator Store search no longer goes to Roblox');
+  assert.match(wcode(join(WORKER, 'src', 'tools.ts')), /searchLiveModels\(ctx\.env, query/, 'the agent\'s own words are no longer what is searched');
+  assert.match(wcode(join(WORKER, 'src', 'do', 'session.ts')), /liveCreatorStore: true/, 'the live search is no longer on for a real run');
+  assert.match(wcode(join(WORKER, 'src', 'hf.ts')), /tencent-hunyuan3d-2\.hf\.space/, 'the 3D route no longer goes to the Tencent Space');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /Creator Store search[^.]{0,40}(receives|gets) the search words the agent wrote/, `${where} does not say Roblox's Creator Store search receives the agent's search words`);
+    assert.match(text, /Space that Tencent runs on Hugging Face/, `${where} does not name who runs the 3D Space`);
+  }
+});
+
+test('"every AI model request goes through AI Gateway" is not claimed: the Hugging Face and AssemblyAI routes are direct, and the pages say so', () => {
+  const hf = wcode(join(WORKER, 'src', 'hf.ts'));
+  assert.match(hf, /router\.huggingface\.co/, 'the Hugging Face route moved');
+  assert.doesNotMatch(hf, /gatewayOpts|gateway:\s*\{/, 'hf.ts now uses the gateway: the pages say that route is direct');
+  const voice = wcode(join(WORKER, 'src', 'voice-transcribe.ts'));
+  const at = voice.indexOf('api.assemblyai.com');
+  assert.ok(at > 0, 'the AssemblyAI route moved');
+  assert.doesNotMatch(voice.slice(Math.max(0, at - 400), at + 400), /gatewayOpts|gateway:\s*\{/, 'the AssemblyAI call now goes through the gateway: the pages say it is direct');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /do(es)? not go through (Cloudflare )?AI Gateway/, `${where} does not say which model routes bypass AI Gateway`);
+    assert.match(text, /Hugging Face[^.]{0,120}AssemblyAI/, `${where} does not name the Hugging Face and AssemblyAI routes as the ones outside AI Gateway`);
+    assert.doesNotMatch(text, /Each request StudPilot sends to an AI model goes through|each request to an AI model goes through Cloudflare AI Gateway/i, `${where} still says every model request goes through AI Gateway`);
+  }
+});
+
+test('WHAT THE EXPORT LEAVES OUT is read from the worker\'s own list, and every kind the worker marks "not offered as a download" is named on both pages', () => {
+  const notOffered = EXPORT.elsewhereFor().filter((e) => /^not offered as a/.test(e.where)).map((e) => e.name).sort();
+  const SAYS = {
+    recovery_requests: /hashed record of account-recovery requests/,
+    applied_events: /which payment events and refunds were already applied/,
+    applied_refunds: /which payment events and refunds were already applied/,
+    billing_authority_replays: /cache of recent billing decisions/,
+    events: /the request log/,
+    generated_image_tombstones: /deleted project ids held back/,
+    'PairingDO storage': /live Studio pairing code/,
+    'idem:<keyId>:': /replies saved for your own API keys/,
+  };
+  assert.deepEqual(Object.keys(SAYS).sort(), notOffered, 'the worker\'s list of stores the export does not offer changed: say so on both pages, then here');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /The file is not everything, and it lists at the top, store by store, what it leaves out and why/, `${where} does not say the export is not everything`);
+    for (const [name, re] of Object.entries(SAYS)) assert.match(text, re, `${where} does not name what the export leaves out for ${name}`);
+    assert.match(text, /\bbytes\b/, `${where} does not say bytes stay out`);
+    assert.match(text, /branding settings/, `${where} does not say project branding is listed rather than included`);
+    assert.doesNotMatch(text, /Two kinds of thing stay out|Two things stay out/, `${where} still says only two kinds of thing stay out`);
+  }
+});
+
+test('THE NIGHTLY SWEEP is described as the three stores it runs, and the pages do not say it enforces every dated window', () => {
+  const sweeps = [...wcode(join(WORKER, 'src', 'retention-sweep.ts')).matchAll(/results\.push\(await one\('([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(sweeps, ['memory_entries', 'notifications', 'automation_runs'], 'the nightly sweep runs a different set of stores: re-describe it on the data page');
+  assert.match(DOCS, /Each window is enforced where the data lives, not by one sweep/);
+  assert.match(DOCS, /a nightly sweep removes old notifications, automation runs and remembered facts that have passed their date/);
+  assert.doesNotMatch(DOCS, /nightly sweep is what enforces/i, 'the data page still says the nightly sweep enforces the dated windows');
+});
+
+test('THE DISCORD LINK, the deletion record and what you wrote on other people\'s projects are disclosed as collected and as surviving deletion, exactly while the erasure does not remove them', () => {
+  const link = /interface LinkRecord \{([\s\S]*?)\}/.exec(read(WORKER, 'src', 'discord.ts'))?.[1] ?? '';
+  // The record holds the Discord user id, the account id (a stored identifier with a former name, so it is counted, not spelled), the project id and name, and when it was made.
+  const fields = [...link.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
+  assert.equal(fields.length, 5, `the Discord link record now holds ${fields.join(', ')}: re-describe what is kept`);
+  for (const f of ['discordUserId', 'projectId', 'projectName', 'linkedAt']) assert.ok(fields.includes(f), `the Discord link record no longer holds ${f}`);
+  for (const [where, text] of BOTH) assert.match(text, /Discord user id, your account id and the id and name of the project/, `${where} does not say what the Discord link holds`);
+  const erase = erasure.slice(erasure.indexOf('export async function eraseAccountData'), erasure.indexOf('async function robloxLinkHeld'));
+  assert.ok(erase.length > 1500, 'could not read eraseAccountData out of erasure.ts');
+  assert.equal(/discord/i.test(erase), false, 'the erasure now touches the Discord link: move the Discord entry out of ACCOUNT_RESIDUE and out of the pages\' survivor lists');
+  assert.ok(RECEIPT.ACCOUNT_RESIDUE.some((r) => r.target.includes('DiscordDO')), 'the receipt no longer lists the Discord link as surviving');
+  assert.equal(WORKER_SRC.some((f) => /delete from account_deletions/.test(wcode(f))), false, 'something now deletes the deletion record: the pages say it is kept with no end date');
+  for (const [where, text] of BOTH) assert.match(text, /kept with your account id(?: and no end date)?/, `${where} does not say the deletion record is kept`);
 });
 
 /* ------------------------------------------------------------- no blanket promise anywhere in the product --- */

@@ -1292,6 +1292,39 @@ test('ACCESS LOST: when Roblox answers invalid_grant the stored token is deleted
   s.db.close();
 });
 
+test('ACCESS LOST needs Roblox to say so with a 4xx: invalid_grant on a 429 or a 5xx is a busy Roblox, not a dead grant, and the stored token is left exactly as it was', async () => {
+  // THE STATUS GUARD IN robloxSaysGrantGone HAD NO TEST OF ITS OWN: the 5xx case above sends an empty body and the 429 case a rate-limit
+  // body, so a guard reduced to "any error body that says invalid_grant" passed. The page says a lost grant is found out from Roblox's
+  // answer; a proxy error that happens to carry the word must not delete a working grant.
+  const s = await connected();
+  const before = { ...s.row() };
+  for (const status of [429, 500, 502, 503]) {
+    s.world.roblox.failToken = { status, body: { error: 'invalid_grant' } };
+    assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' }, `status ${status}`);
+    assert.deepEqual({ ...s.row() }, before, `an invalid_grant body on a ${status} says nothing about the grant, so the stored token is left exactly as it was`);
+  }
+  // POSITIVE CONTROL: the same body on a 400 is Roblox's word that the grant is gone.
+  s.world.roblox.failToken = { status: 400, body: { error: 'invalid_grant' } };
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
+  assert.equal(s.row(), undefined, 'the same body on a 400 deletes the token');
+  s.db.close();
+});
+
+test('ACCESS LOST deletes only the row that was refreshed: a sign-in that lands while Roblox is answering invalid_grant keeps its new token', async () => {
+  // THE VERSION BINDING IN wipeDeadGrant WAS HELD ONLY BY A REGEX ON ITS SQL. Dropping `and version = ?` left every behavioural test green
+  // (the generation case is the REFRESH LEASE RELEASE test above). Here the row moves to the NEXT VERSION of the SAME generation while
+  // the refresh is at Roblox, which is what a rotation by another request looks like, and the dead grant's verdict must not reach it.
+  const s = await connected();
+  s.world.roblox.refresh.get(s.world.roblox.lastRefreshIssued).state = 'used';           // Roblox will say invalid_grant (the 400 path)
+  s.world.roblox.duringRefresh = () => {
+    s.db.raw.prepare("update roblox_oauth_tokens set version = version + 1, sealed_refresh = 'NEXT-VERSION', lease_until = null where user_id = ?").run(s.userId);
+  };
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
+  assert.equal(s.row()?.sealed_refresh, 'NEXT-VERSION', 'a verdict about version 1 did not delete version 2');
+  assert.equal(s.row().version, 2);
+  s.db.close();
+});
+
 test('a Roblox 429 is "unavailable" (try later), not "refused": the grant is not dead, the caller is only too fast', async () => {
   const s = await connected();
   s.world.roblox.failToken = { status: 429, body: { error: 'rate_limit_exceeded' } };
@@ -1380,6 +1413,18 @@ test('DISCONNECT revokes the grant at Roblox with the stored token, then deletes
   assert.equal(again.status, 200);
   assert.deepEqual(await again.json(), { revoked: null, tokenRemoved: false, linkRemoved: false, signInKept: false });
   assert.equal(s.world.roblox.revokeCalls.length, 1, 'the second call has nothing to revoke');
+  s.db.close();
+});
+
+test('DISCONNECT with no token left to withdraw (Roblox already reported the access lost) removes the link, asks Roblox nothing, and says there was nothing to revoke', async () => {
+  // The pages say Disconnect asks Roblox to withdraw the access "if StudPilot holds a token", and that the link goes either way.
+  const s = await connected();
+  s.db.raw.prepare('delete from roblox_oauth_tokens where user_id = ?').run(s.userId);          // what the invalid_grant wipe leaves behind
+  const res = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { revoked: null, tokenRemoved: false, linkRemoved: true, signInKept: false });
+  assert.deepEqual(s.world.roblox.revokeCalls, [], 'there was no token to send');
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 0);
   s.db.close();
 });
 

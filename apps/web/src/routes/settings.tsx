@@ -410,10 +410,12 @@ const READ_ME =
   'everything that document pointed at — your conversations in full, your checkpoints, your Credit ' +
   'spend, your inbox, what StudPilot was asked to remember, your comments, reviews, share links and ' +
   'Studio pairings — each under the route it came from. `complete` is a claim about those and only ' +
-  'those: it is true when every route answered. Two kinds of thing are NOT in here whatever it says, ' +
-  'and both are listed in `notInThisFile` with the route that serves them: bytes (images, audio, ' +
-  'workspace files, checkpoint snapshots), which cannot be lines of JSON, and live credentials, ' +
-  'which would be dangerous in a downloaded file.';
+  'those: it is true when every route answered. Some things are NOT in here whatever it says, and all ' +
+  'are listed in `notInThisFile`, with the route that serves each one where there is one: bytes (images, ' +
+  'audio, checkpoint snapshots, workspace file history), which cannot be lines of JSON; live credentials ' +
+  '(a Studio pairing code), which would be dangerous in a downloaded file; and internal records that are ' +
+  'not offered as a download (the request log, hashed account-recovery requests, applied payment events ' +
+  'and refunds, a billing cache, deleted project ids, replies saved for your API keys).';
 
 export function assembleAccountExport(
   base: AccountExportV1,
@@ -2557,7 +2559,9 @@ export function SettingsPage() {
           <p className="settings-note">
             StudPilot records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
-            counted either way — an opt-out removes your name from the row, not the row.
+            counted either way — an opt-out removes your name from the row, not the row. This covers request and error
+            entries only: the same log also holds one entry for each agent run and each model call, and those carry your
+            account id and the project id for the same 30 days whatever this says.
           </p>
           <p className="settings-note settings-note-quiet">
             Switched on, your account id is kept out. Takes effect within a minute.
@@ -2585,7 +2589,7 @@ export function SettingsPage() {
             </button>
           }
         >
-          <p className="settings-note">One file with everything StudPilot keeps about you.</p>
+          <p className="settings-note">One file with what StudPilot keeps about you. It lists at the top what it leaves out.</p>
           {/* The long answers fold away (picks: multi-layout accordion) — one click, not the first read. */}
           <Accordion
             items={[
@@ -2606,10 +2610,14 @@ export function SettingsPage() {
                 title: 'What stays out',
                 children: (
                   <p className="settings-note settings-note-quiet">
-                    Two things stay out of it and the file says so at the top, next to the route that serves each: bytes —
-                    images, audio, your workspace files and checkpoint snapshots, which cannot be lines of JSON — and a live
-                    Studio pairing code, which would be a working key to your project sitting in a downloaded file. Everything
-                    else about those pairings is in there.
+                    The file lists at the top, next to the route that serves each one where there is one, everything it leaves
+                    out: bytes — images, audio, checkpoint snapshots and the history of your workspace files, which cannot be
+                    lines of JSON — and a live Studio pairing code, which would be a working key to your project sitting in a
+                    downloaded file (everything else about those pairings is in there). Some things are kept only as internal
+                    records and are not offered as a download: the request log, hashed account-recovery requests, which payment
+                    events and refunds were already applied, a bounded cache of recent billing decisions, deleted project ids
+                    held back to stop images being recreated, and the replies saved for your own API keys. Project branding has
+                    a route of its own and is listed, not included.
                   </p>
                 ),
               },

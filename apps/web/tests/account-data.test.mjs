@@ -168,6 +168,29 @@ test('the improvement-data switch writes the preference the worker validates, at
   assert.match(row, /storedPrefs\.isError/, 'a failed read must not render as "not opted out"');
 });
 
+/* ------------------------------------------------ the export is not described as "everything" or as "two things" --- */
+
+test('the Settings copy and the file\u2019s own readMe do not call the export everything, or say only two kinds of thing stay out', () => {
+  const readMe = /const READ_ME =([\s\S]*?);\n\nexport function assembleAccountExport/.exec(page)?.[1] ?? '';
+  assert.ok(readMe.length > 300, 'could not read READ_ME out of settings.tsx');
+  const rows = copy.slice(copy.indexOf('<Row id="download-my-data"'), copy.indexOf('</Row>', copy.indexOf('<Row id="download-my-data"')));
+  assert.ok(rows.length > 500, 'the download row is not on the page');
+  for (const [where, text] of [['READ_ME', readMe], ['the download row', rows]]) {
+    assert.doesNotMatch(text, /Two kinds of thing|Two things stay out|everything StudPilot keeps about you/i, `${where} still says the export is everything, or that two kinds of thing stay out`);
+  }
+  // What the file leaves out, named: the internal records the worker marks "not offered as a download", and branding.
+  for (const [where, text] of [['READ_ME', readMe], ['the download row', rows]]) {
+    assert.match(text, /request log/, `${where} does not name the request log among what stays out`);
+    assert.match(text, /recovery/i, `${where} does not name the account-recovery records`);
+  }
+  assert.match(rows, /Project branding has\s+a route of its own/, 'the download row does not say branding is listed rather than included');
+  // The worker's own note on the request log no longer says it carries no actor id once analytics are off (the run entries still do).
+  const note = /\n\s+events: '([^']+)'/.exec(readFileSync(join(WEB, '..', 'worker', 'src', 'account-export.ts'), 'utf8'))?.[1] ?? '';
+  assert.ok(note.length > 40, 'could not read the request-log note out of account-export.ts');
+  assert.match(note, /not off the entries for agent runs/, 'the export note on the request log is the old one');
+  assert.doesNotMatch(note, /carries no actor id at all/, 'the export note still says the request log carries no actor id once analytics are off');
+});
+
 /* ------------------------------------------- a failed read must never become a delete-everything save --- */
 
 test('A SWITCH SAVES ON TOP OF WHAT WAS LOADED, AND REFUSES WHEN NOTHING WAS: a blank base would delete every other preference', () => {
