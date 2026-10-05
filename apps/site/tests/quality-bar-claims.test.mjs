@@ -18,15 +18,16 @@ import { SITE, blocksOf, distPage, realPages, regionsWith, textOf } from './lib/
 const ROOT = join(SITE, '..', '..');
 const harness = () => existsSync(join(ROOT, 'scripts', 'eval')) || existsSync(join(ROOT, 'planning', 'critic-rubric.md'));
 
-/** What the critic is said to do, in the present tense. */
-const DOES = /\bcritic\b[^.!?]{0,40}\b(?:sees?|rates?|scores?|judges?|reads?|looks?|reviews?|grades?|knows?|checks?)\b/i;
-/** The words that make such a sentence a statement about the future or about something unbuilt. */
-const FUTURE = /\bwill\b|\bwould\b|being (?:built|made|written)|\bnot (?:yet )?(?:built|running|made|there)\b|\bnot built\b|\bno critic\b|\bnothing has been rated\b|\bhas(?:n't| not)\b|\byet\b|\bto be\b|\bis (?:still )?being\b/i;
+/** What the critic is said to do: the critic and a verb of doing within one clause. */
+const DOES = /\bcritic\b[^.!?:;]{0,40}\b(?:sees?|rates?|scores?|judges?|reads?|looks?|reviews?|grades?|knows?|checks?)\b/gi;
+/** The words that make that stretch a statement about the future or about something unbuilt: a modal right there, not somewhere else in the sentence. */
+const FUTURE = /\bwill\b|\bwould\b|\bto be\b|being (?:built|made|written)|\bnot (?:yet )?(?:built|running|made)\b|\bhas(?:n't| not)\b|\byet\b/i;
 /** A rating that implies a piece was tried. */
 const TRIED = /\b(?:has|have|had) not passed\b|\bnone has passed\b|\bno piece has passed\b|\bfailed (?:the|that) bar\b|\bpieces? (?:has|have) failed\b/i;
 
 const sentences = (text) => text.split(/(?<=[.!?])\s+/);
-const present = (text) => sentences(text).filter((s) => DOES.test(s) && !FUTURE.test(s));
+/** The sentences that say the critic does something in the present tense. "A piece will go in the catalog only when ...: a blind critic rates it" is one: the modal is not on the critic. */
+const present = (text) => sentences(text).filter((s) => [...s.matchAll(DOES)].some((m) => !FUTURE.test(m[0])));
 
 test('the scanners can see: the sentences that shipped are present-tense critic claims, and the reworded ones are not', () => {
   for (const shipped of [
@@ -34,6 +35,7 @@ test('the scanners can see: the sentences that shipped are present-tense critic 
     'A piece goes in this catalog only when it passes the quality bar: a blind critic rates it 8 or better in every area.',
     'The bar is a blind critic that rates a piece 8 or better in every area, no play-test errors, and no false claims.',
     'or better in every area the critic looks at, with no serious flaw.',
+    'A piece will go in this catalog only when it passes the quality bar: a blind critic rates it 8 or better in every area.',
   ]) assert.equal(present(shipped).length, 1, `not seen as a present-tense critic claim: "${shipped}"`);
   for (const ok of [
     'The bar is a fresh blind critic. It will see only the request and screenshots of the result.',
