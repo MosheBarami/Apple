@@ -34,7 +34,8 @@
 .pieces__text { width: 12.5rem; max-width: 100%; }
 .pieces__hex { width: 6rem; font-family: var(--font-mono); }
 /* The picker is a swatch the size of the field beside it: the browser's own swatch, with its own padding and border taken off. */
-.pieces__swatch { width: 2.5rem; height: var(--h-md); padding: 3px; cursor: pointer; }
+/* Three selectors deep on purpose: the system sheet gives every bare input 12px of side padding at (0,2,1), which would squeeze the swatch into a bar. */
+.pieces input[type='color'].pieces__swatch { width: 2.5rem; height: var(--h-md); padding: 3px; cursor: pointer; }
 .pieces__swatch::-webkit-color-swatch-wrapper { padding: 0; }
 .pieces__swatch::-webkit-color-swatch { border: 0; border-radius: var(--r-xs); }
 .pieces__swatch::-moz-color-swatch { border: 0; border-radius: var(--r-xs); }
