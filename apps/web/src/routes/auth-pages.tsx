@@ -5,7 +5,7 @@
 // account. Sign in instead." — which turned the sign-up form into a free membership lookup for
 // anyone with a list of addresses. A message table inside a component is a message table nothing
 // can test, so the table moved out and the screens below only render what the model decided.
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
@@ -16,6 +16,7 @@ import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
+import { ROBLOX_SIGNIN_FAILED, completeRobloxSignIn, fetchRobloxConfigured, robloxStartHref } from '../lib/roblox-signin';
 import { StudPilotGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -316,6 +317,33 @@ function PasswordField({
   );
 }
 
+/**
+ * "Continue with Roblox", offered only when the worker says it can finish a sign-in (lib/roblox-signin.ts).
+ * A plain link: the whole flow is browser navigations, and the page that comes back is /auth/roblox below.
+ */
+function RobloxSignIn({ from }: { from: string }) {
+  const [configured, setConfigured] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void fetchRobloxConfigured().then((ok) => {
+      if (current) setConfigured(ok);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+  if (!configured) return null;
+  return (
+    <>
+      <p className="auth-switch">or</p>
+      <a className="btn btn-block" href={robloxStartHref(from)}>
+        Continue with Roblox
+      </a>
+      <p className="field-hint">StudPilot reads your Roblox user ID and username, nothing else.</p>
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------- sign in --- */
 
 /**
@@ -542,6 +570,7 @@ export function LoginPage() {
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
+        <RobloxSignIn from={from} />
         <p className="auth-switch">
           {/* Carries the address they have already typed, so the next screen does not ask for it
               again. A "forgot password" link that restarts the form is how people give up. */}
@@ -709,6 +738,7 @@ export function SignupPage() {
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
+          <RobloxSignIn from={from} />
           <p className="auth-switch">
             Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
           </p>
@@ -1014,6 +1044,53 @@ function ExpiredLinkCard({
         <Link to="/login">Back to sign in</Link>
       </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ roblox sign-in --- */
+
+/**
+ * Where /auth/roblox/callback sends the browser: `/app/auth/roblox#token_hash=…`. The fragment is read once
+ * and removed from the address bar before anything else happens, because the token hash is single use and
+ * has no business in history, in a screenshot or in what a reload would try again.
+ *
+ * Outside both guards, like /confirm: this page is what makes the session, so a guard that asks for one
+ * first would send the person away from the only page that can give it to them.
+ */
+export function RobloxCallbackPage() {
+  const navigate = useNavigate();
+  const [fragment] = useState(() => window.location.hash);
+  const started = useRef(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    void completeRobloxSignIn(fragment, (args) => supabase.auth.verifyOtp(args)).then((outcome) => {
+      if (outcome.kind === 'signed-in') navigate(outcome.next, { replace: true });
+      else setFailed(true);
+    });
+  }, [fragment, navigate]);
+
+  return (
+    <AuthShell>
+      {failed ? (
+        <div className="auth-card" role="alert">
+          <CardMark kind="alert" />
+          <h2 className="auth-card-title">We could not sign you in</h2>
+          <p className="auth-card-sub">{ROBLOX_SIGNIN_FAILED}</p>
+          <Link to="/login" className="btn btn-primary btn-block">
+            Back to sign in
+          </Link>
+        </div>
+      ) : (
+        <div className="auth-card" role="status">
+          <h2 className="auth-card-title">Signing you in…</h2>
+          <p className="auth-card-sub">One moment.</p>
+        </div>
+      )}
+    </AuthShell>
   );
 }
 

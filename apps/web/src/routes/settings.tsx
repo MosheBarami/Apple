@@ -25,6 +25,7 @@ import { countdownTo } from '../lib/format';
 import { Failure } from '../components/failure';
 import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
+import { RobloxConnectionCard } from '../components/roblox-connection-card';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
@@ -877,7 +878,7 @@ const SECTION_INDEX = [
     label: 'Security',
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
-  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'roblox-key', 'api-keys', 'discord'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -2292,7 +2293,10 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="connections" title="Connections" visible={sectionShows('roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'roblox-key', 'api-keys', 'discord')}>
+        <Row id="roblox-signin" visible={shows('roblox-signin')}>
+          <RobloxConnectionCard userId={userId} />
+        </Row>
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>
