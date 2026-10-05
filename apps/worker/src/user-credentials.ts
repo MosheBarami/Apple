@@ -100,6 +100,11 @@ export async function sha256hex(s: string): Promise<string> {
  * checked at four call sites and the one that forgot would silently write plaintext.
  */
 async function wrappingKey(env: CredentialEnv): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', keyBytes(env), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+/** The 32 validated bytes of CREDENTIAL_KEY, or a thrown sentence that says what to do. */
+function keyBytes(env: CredentialEnv): Uint8Array {
   if (!env.CREDENTIAL_KEY) {
     throw new Error(
       'CREDENTIAL_KEY is not set — refusing to store a customer credential in cleartext. '
@@ -110,7 +115,28 @@ async function wrappingKey(env: CredentialEnv): Promise<CryptoKey> {
   if (raw.byteLength !== 32) {
     throw new Error(`CREDENTIAL_KEY must decode to exactly 32 bytes, got ${raw.byteLength}`);
   }
-  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  return raw;
+}
+
+const hmacKey = (raw: ArrayBuffer | Uint8Array): Promise<CryptoKey> =>
+  crypto.subtle.importKey('raw', raw as ArrayBuffer, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+
+/**
+ * A KEYED, one-way identifier for `value`: 128 bits, as 32 hex characters. HMAC-SHA-256 of the value under a
+ * subkey that is itself HMAC(CREDENTIAL_KEY, "studpilot:<purpose>"), so the same value under another purpose
+ * is another identifier and the raw key is never used for two jobs (it also seals credentials, above).
+ *
+ * WHAT IT IS FOR: a name that must be stable and unique per input yet cannot be COMPUTED by anyone who only
+ * knows the input. The Roblox sign-in address is derived this way: Roblox ids are public, and an address
+ * derived from one without a secret could be registered by anybody through the open sign-up, locking that
+ * Roblox user out. Throws when CREDENTIAL_KEY is missing or malformed (like `sealSecret`) rather than
+ * falling back to an unkeyed digest. Rotating the key changes every identifier, so use it only for names
+ * a stored link can stand in for.
+ */
+export async function keyedId(env: CredentialEnv, purpose: string, value: string): Promise<string> {
+  const subkey = await crypto.subtle.sign('HMAC', await hmacKey(keyBytes(env)), enc.encode(`studpilot:${purpose}`));
+  const mac = await crypto.subtle.sign('HMAC', await hmacKey(subkey), enc.encode(value));
+  return [...new Uint8Array(mac).slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /** `<base64 iv>.<base64 ciphertext>` — self-describing, so a rotation can tell the formats apart. */

@@ -24,7 +24,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as esbuild from 'esbuild';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -72,11 +72,22 @@ const CLIENT_ID = '5523165872353873834';
 const CLIENT_SECRET = 'RBX-fixture-client-secret-' + 'c'.repeat(20);
 const SB_SECRET = 'sb_secret_' + 'f'.repeat(24);
 const KEY_B64 = Buffer.alloc(32, 7).toString('base64');
-const SYNTHETIC = (sub) => `roblox-${sub}@users.studpilot.invalid`;
+/**
+ * The address the worker derives for a Roblox id, recomputed HERE with node:crypto and not with the worker's code, so the
+ * derivation is pinned: HMAC-SHA-256 of the id under a subkey (HMAC of a fixed purpose label under CREDENTIAL_KEY),
+ * first 128 bits as hex. An outsider has no CREDENTIAL_KEY, so cannot compute it from the public Roblox id.
+ */
+const SYNTHETIC = (sub, keyB64 = KEY_B64) => {
+  const subkey = createHmac('sha256', Buffer.from(keyB64, 'base64')).update('studpilot:roblox-signin-address').digest();
+  return `roblox-${createHmac('sha256', subkey).update(sub).digest('hex').slice(0, 32)}@users.studpilot.invalid`;
+};
+/** What the address WAS before it was keyed: computable by anybody from a public Roblox id. */
+const LEGACY = (sub) => `roblox-${sub}@users.studpilot.invalid`;
 const SUB_A = '1234567';
 const SUB_B = '7654321';
 
 const sha256url = (s) => createHash('sha256').update(s).digest('base64url');
+const sha256hex = (s) => createHash('sha256').update(s).digest('hex');
 const rand = (n = 16) => randomBytes(n).toString('hex');
 
 /** Roblox and the Supabase Auth admin API, as one fetch. Every call is recorded; an unknown one fails the test. */
@@ -84,14 +95,14 @@ function makeWorld() {
   const roblox = {
     codes: new Map(), access: new Map(), refresh: new Map(),
     burned: false, tokenCalls: [], revokeCalls: [], lastRefreshIssued: null,
-    failToken: null, failRevoke: null, duringRefresh: null,
+    failToken: null, failRevoke: null, duringRefresh: null, userinfo: null,
     issueCode({ sub, username, challenge, redirectUri }) {
       const code = `code_${rand()}`;
       roblox.codes.set(code, { sub, username, challenge, redirectUri, used: false });
       return code;
     },
   };
-  const sb = { users: new Map(), links: new Map(), createCalls: 0, headers: [] };
+  const sb = { users: new Map(), links: new Map(), createCalls: 0, ghosts: 0, headers: [] };
   const calls = [];
   const unexpected = [];
 
@@ -133,11 +144,16 @@ function makeWorld() {
     if (url.pathname === '/oauth/v1/userinfo' && method === 'GET') {
       const who = roblox.access.get((headers.get('authorization') ?? '').replace(/^Bearer /, ''));
       if (!who) return json(401, { error: 'invalid_token' });
+      if (roblox.userinfo) return json(200, roblox.userinfo(who));
       return json(200, { sub: who.sub, name: `Display ${who.username}`, nickname: `Display ${who.username}`, preferred_username: who.username, created_at: 1500000000 });
     }
     if (url.pathname === '/oauth/v1/token/revoke' && method === 'POST') {
       roblox.revokeCalls.push(form.get('token'));
-      if (roblox.failRevoke) return json(roblox.failRevoke, { error: 'server_error' });
+      if (roblox.failRevoke) {
+        // A bare number is a status with no useful body; {status, body} is Roblox saying something specific.
+        const fail = typeof roblox.failRevoke === 'number' ? { status: roblox.failRevoke, body: { error: 'server_error' } } : roblox.failRevoke;
+        return json(fail.status, fail.body);
+      }
       const rec = roblox.refresh.get(form.get('token'));
       if (rec) rec.state = 'revoked';
       return json(200, {});
@@ -158,11 +174,20 @@ function makeWorld() {
     const one = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
     if (one && method === 'GET') {
       const user = sb.users.get(decodeURIComponent(one[1]));
-      return user ? json(200, user) : json(404, { msg: 'not found' });
+      // GoTrue's own answer for an id it does not hold; the worker only believes a 404 that says this.
+      return user ? json(200, user) : json(404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
     }
     if (url.pathname === '/auth/v1/admin/generate_link' && method === 'POST') {
-      const user = userByEmail(body.email);
-      if (!user || body.type !== 'magiclink') return json(404, { msg: 'not found' });
+      if (body.type !== 'magiclink') return json(400, { msg: 'unsupported link type' });
+      let user = userByEmail(body.email);
+      if (!user) {
+        // HOW GOTRUE REALLY BEHAVES: a magic link for an address nobody holds SIGNS THAT ADDRESS UP and mints the
+        // link for the brand-new user. It does not answer 404. So a worker that asks for a link for the wrong
+        // address does not fail; it signs the person in as an empty stranger. `ghosts` counts those.
+        user = { id: randomUUID(), email: body.email, email_confirmed_at: null, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, createdByLink: true };
+        sb.users.set(user.id, user);
+        sb.ghosts += 1;
+      }
       const hashed = `ht_${rand(20)}`;
       sb.links.set(hashed, user.id);
       return json(200, { ...user, action_link: `${SB}/auth/v1/verify?token=${hashed}&type=magiclink`, email_otp: '123456', hashed_token: hashed, redirect_to: '', verification_type: 'magiclink' });
@@ -250,7 +275,23 @@ async function signIn(env, world, who, opts) {
   return { flow, ...(await finish(env, world, flow, who)) };
 }
 
-const fragmentOf = (res) => new URLSearchParams((res.headers.get('Location') ?? '').split('#')[1] ?? '');
+/** The handle cookie a callback response set (not the line that clears it), as the browser would send it back. */
+const handleCookieOf = (res) => (res.headers.getSetCookie().find((c) => c.startsWith('rbx_oauth_handle=') && !/Max-Age=0/.test(c)) ?? '').split(';')[0];
+
+/** The SPA's call: POST /auth/roblox/redeem from the app's own origin, carrying whatever cookie this browser holds. */
+function redeemRequest(env, { cookie, origin = PROD, ip = freshIp(), method = 'POST' } = {}) {
+  return hit(`${PROD}/auth/roblox/redeem`, { method, headers: { 'CF-Connecting-IP': ip, ...(origin ? { Origin: origin } : {}), ...(cookie ? { Cookie: cookie } : {}) } }, env);
+}
+
+/** What the SPA gets back for the browser that finished `callbackRes`: { token_hash, next } once, or an error. */
+const redeemFor = (env, callbackRes, opts = {}) => redeemRequest(env, { cookie: handleCookieOf(callbackRes), ...opts });
+
+/** The sign-in token hash a finished callback hands the browser, fetched the way the SPA does. */
+async function tokenHashOf(env, callbackRes) {
+  const res = await redeemFor(env, callbackRes);
+  assert.equal(res.status, 200, 'the browser that finished the callback can redeem its handle');
+  return (await res.json()).token_hash;
+}
 const rowsOf = (db, sql, ...params) => db.raw.prepare(sql).all(...params);
 const userIdOf = (db, sub) => rowsOf(db, 'select user_id from roblox_identities where roblox_sub = ?', sub)[0]?.user_id;
 /** Rows in a table the worker makes on first use: zero when it was never made, which is also "nothing created". */
@@ -263,7 +304,8 @@ test('POSITIVE CONTROL: a first sign-in works end to end, so the refusals below 
   const { db, world, env } = scene();
   const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
   assert.equal(res.status, 302);
-  assert.match(res.headers.get('Location'), /^\/app\/auth\/roblox#token_hash=ht_/);
+  assert.equal(res.headers.get('Location'), '/app/auth/roblox', 'the redirect carries nothing: the token waits behind a cookie');
+  assert.match(await tokenHashOf(env, res), /^ht_/, 'and the browser that holds the cookie can fetch it');
   assert.equal(countRows(db.raw, 'select count(*) from roblox_identities'), 1);
   assert.deepEqual(world.unexpected, []);
   db.close();
@@ -292,6 +334,31 @@ test('the authorize request carries the registered client id, the sign-in scope 
   // The verifier itself never goes to the browser.
   assert.equal(flow.location.includes(stored.verifier), false);
   assert.equal(flow.res.headers.get('Location').includes('client_secret'), false);
+  db.close();
+});
+
+test('two flows get different states and different verifiers, and every one of them is drawn from crypto.getRandomValues', async () => {
+  const { db, kv, env } = scene();
+  const draws = [];
+  const real = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+  globalThis.crypto.getRandomValues = (array) => { const out = real(array); draws.push(Buffer.from(out.buffer, out.byteOffset, out.byteLength)); return out; };
+  let a;
+  let b;
+  try {
+    a = await startFlow(env);
+    b = await startFlow(env);
+  } finally {
+    delete globalThis.crypto.getRandomValues;
+  }
+  const verifierOf = (flow) => JSON.parse(kv.rows.get(`roblox-oauth:state:${flow.state}`)).verifier;
+  assert.notEqual(a.state, b.state, 'two flows must not share a state');
+  assert.notEqual(verifierOf(a), verifierOf(b), 'or a verifier');
+  assert.notEqual(a.challenge, b.challenge);
+  for (const flow of [a, b]) {
+    // The state is 32 random bytes and the verifier 48: each is exactly the base64url of one draw from the CSPRNG.
+    assert.ok(draws.some((d) => d.length === 32 && d.toString('base64url') === flow.state), 'the state is not a getRandomValues draw');
+    assert.ok(draws.some((d) => d.length === 48 && d.toString('base64url') === verifierOf(flow)), 'the verifier is not a getRandomValues draw');
+  }
   db.close();
 });
 
@@ -434,19 +501,20 @@ test('a return path that is not an app screen is dropped, never followed', async
     assert.equal(JSON.parse(kv.rows.get(`roblox-oauth:state:${flow.state}`) ?? 'null'), null, 'the state is burned by the callback');
     assert.equal(res.status, 302, `a bad return path must not break sign-in: ${bad.slice(0, 30)}`);
     const location = res.headers.get('Location');
-    assert.match(location, /^\/app\/auth\/roblox#token_hash=/, `leaves the product for ${bad.slice(0, 30)}`);
-    assert.equal(fragmentOf(res).has('next'), false, `${bad.slice(0, 30)} was carried into the redirect`);
+    assert.equal(location, '/app/auth/roblox', `leaves the product for ${bad.slice(0, 30)}`);
+    assert.equal((await (await redeemFor(env, res)).json()).next, '/', `${bad.slice(0, 30)} was carried to the landing page`);
     assert.equal(location.includes('evil'), false);
     db.close();
   }
 });
 
-test('a return path that is an app screen travels in the fragment', async () => {
+test('a return path that is an app screen travels with the handle, never in the URL', async () => {
   const token = 'T'.repeat(24);
   for (const good of ['/usage', '/settings', '/projects/3f1c2a9e-1111-4222-8333-abcdefabcdef', '/projects/abc/roadmap', `/join?token=${token}`]) {
     const { db, world, env } = scene();
     const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { returnTo: good });
-    assert.equal(fragmentOf(res).get('next'), good);
+    assert.equal(res.headers.get('Location'), '/app/auth/roblox', 'the URL carries no part of it');
+    assert.equal((await (await redeemFor(env, res)).json()).next, good);
     db.close();
   }
 });
@@ -461,16 +529,16 @@ test('FIRST SIGHT creates exactly one Supabase user, with a synthetic address no
   assert.equal(world.sb.users.size, 1);
   const user = [...world.sb.users.values()][0];
   assert.equal(user.email, SYNTHETIC(SUB_A));
-  assert.match(user.email, /@users\.studpilot\.invalid$/);
+  assert.match(user.email, /^roblox-[0-9a-f]{32}@users\.studpilot\.invalid$/);
   assert.equal(user.confirmedByAdmin, true, 'email_confirm is set, so no confirmation mail is waiting on an undeliverable address');
   assert.equal(user.app_metadata.roblox_sub, SUB_A);
   assert.equal(user.user_metadata.display_name, 'Builder1', 'the profile is named for the Roblox username, not for the synthetic address');
   const rows = rowsOf(db, 'select * from roblox_identities');
   assert.equal(rows.length, 1);
   assert.deepEqual({ sub: rows[0].roblox_sub, user: rows[0].user_id, name: rows[0].username }, { sub: SUB_A, user: user.id, name: 'Builder1' });
-  // No mail is sent: the only Supabase calls are the three admin ones.
-  assert.deepEqual([...new Set(world.calls.filter((c) => c.url.startsWith(SB)).map((c) => new URL(c.url).pathname.replace(/[0-9a-f-]{36}/, ':id')))].sort(),
-    ['/auth/v1/admin/generate_link', '/auth/v1/admin/users', '/auth/v1/admin/users/:id']);
+  // No mail is sent: the only Supabase calls are admin ones, and a first sight needs just the two.
+  assert.deepEqual(world.calls.filter((c) => c.url.startsWith(SB)).map((c) => `${c.method} ${new URL(c.url).pathname}`),
+    ['POST /auth/v1/admin/users', 'POST /auth/v1/admin/generate_link']);
   db.close();
 });
 
@@ -484,8 +552,52 @@ test('the same Roblox account signing in again is the same user, and a changed u
   assert.equal(world.sb.users.size, 1);
   assert.equal(userIdOf(db, SUB_A), userId);
   assert.equal(rowsOf(db, 'select username from roblox_identities where roblox_sub = ?', SUB_A)[0].username, 'NewName');
-  assert.equal(world.sb.links.get(fragmentOf(second.res).get('token_hash')), userId, 'the sign-in token is for the same user');
+  assert.equal(world.sb.links.get(await tokenHashOf(env, second.res)), userId, 'the sign-in token is for the same user');
   db.close();
+});
+
+/** [what is hostile about it, what Roblox sent, what is kept]. The name is stored, shown in Settings and named in the profile. */
+const HOSTILE_NAMES = [
+  ['a right-to-left override that reorders what follows', 'Evil\u202Etxt.exe', 'Eviltxt.exe'],
+  ['zero-width characters and a joiner that make two names look alike', 'Ad\u200bmin\u200d\ufeff', 'Admin'],
+  ['isolates and embeddings', 'a\u2066b\u2067c\u2068d\u2069e\u202ag\u202c', 'abcdeg'],
+  ['C0 controls, newlines, DEL and NUL', 'a\u0000b\nc\rd\te\u007ff', 'abcdef'],
+  ['C1 controls and the Unicode line separators', 'x\u0085y\u2028z\u2029', 'xyz'],
+  ['padding and runs of space', '   two   words   ', 'two words'],
+  ['500 characters', 'x'.repeat(500), 'x'.repeat(100)],
+  ['150 emoji, cut on a code point and never inside a surrogate pair', '😀'.repeat(150), '😀'.repeat(100)],
+  ['markup, which is only ever text here', '<img src=x onerror=alert(1)>', '<img src=x onerror=alert(1)>'],
+];
+
+test('HOSTILE USERNAMES: invisible, reordering and control characters are stripped and the length is capped, before the name is stored or sent on', async () => {
+  for (const [what, sent, kept] of HOSTILE_NAMES) {
+    const { db, world, env } = scene();
+    const { res } = await signIn(env, world, { sub: SUB_A, username: sent });
+    assert.equal(res.status, 302, `${what}: a hostile name must not break sign-in`);
+    assert.equal(rowsOf(db, 'select username from roblox_identities')[0].username, kept, `${what}: the stored name`);
+    assert.equal([...world.sb.users.values()][0].user_metadata.display_name, kept, `${what}: the profile name`);
+    assert.equal(kept.isWellFormed(), true, `${what}: no lone surrogate`);
+    assert.equal((await res.text()).includes('Evil'), false, `${what}: nothing of it is reflected in a page`);
+    // A rename to the same hostile text is cleaned the same way.
+    await signIn(env, world, { sub: SUB_A, username: `${sent}!` });
+    assert.equal(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(rowsOf(db, 'select username from roblox_identities')[0].username), false, `${what}: the renamed name`);
+    db.close();
+  }
+});
+
+test('a profile whose every name is invisible falls back to a plain name made from the id, and the first usable name wins', async () => {
+  const { db, world, env } = scene();
+  world.roblox.userinfo = (who) => ({ sub: who.sub, preferred_username: '\u200b\u200d \u202e', nickname: '\u2800\u3164', name: '\u0000' });
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'ignored' });
+  assert.equal(res.status, 302);
+  assert.equal(rowsOf(db, 'select username from roblox_identities')[0].username, `roblox-${SUB_A}`);
+  db.close();
+
+  const next = scene();
+  next.world.roblox.userinfo = (who) => ({ sub: who.sub, preferred_username: '\u200b', nickname: 'Display Name', name: 'Ignored' });
+  await signIn(next.env, next.world, { sub: SUB_B, username: 'ignored' });
+  assert.equal(rowsOf(next.db, 'select username from roblox_identities')[0].username, 'Display Name', 'an empty preferred_username does not hide a usable nickname');
+  next.db.close();
 });
 
 test('a different Roblox account with the same username is a different user, and cannot reach the first', async () => {
@@ -496,8 +608,8 @@ test('a different Roblox account with the same username is a different user, and
   const userA = userIdOf(db, SUB_A);
   const userB = userIdOf(db, SUB_B);
   assert.notEqual(userA, userB);
-  assert.equal(world.sb.links.get(fragmentOf(a.res).get('token_hash')), userA);
-  assert.equal(world.sb.links.get(fragmentOf(b.res).get('token_hash')), userB, 'B is signed in as B, never as A');
+  assert.equal(world.sb.links.get(await tokenHashOf(env, a.res)), userA);
+  assert.equal(world.sb.links.get(await tokenHashOf(env, b.res)), userB, 'B is signed in as B, never as A');
   db.close();
 });
 
@@ -520,23 +632,84 @@ test('two callbacks for the same new sub at once still make one user and one lin
   assert.equal(world.sb.users.size, 1, 'Supabase holds one user for the synthetic address');
   assert.equal(countRows(db.raw, 'select count(*) from roblox_identities'), 1);
   const userId = userIdOf(db, SUB_A);
-  for (const d of done) assert.equal(world.sb.links.get(fragmentOf(d.res).get('token_hash')), userId);
+  for (const d of done) assert.equal(world.sb.links.get(await tokenHashOf(env, d.res)), userId);
   db.close();
 });
 
-test('an address somebody registered by hand is NEVER adopted: the account would be theirs', async () => {
-  // Anyone can sign up with roblox-<sub>@users.studpilot.invalid. If the worker adopted that user, they
-  // would hold a password to the account the real owner then signs in to.
+/* ------------------------------------------------- the address is keyed, so it cannot be squatted --- */
+
+test('the synthetic address is a keyed digest of the Roblox id: not computable from the public id, and the id is not in it', async () => {
+  const { db, world, env } = scene();
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const email = [...world.sb.users.values()][0].email;
+  assert.equal(email, SYNTHETIC(SUB_A), 'HMAC-SHA-256 of the id under a subkey of CREDENTIAL_KEY, recomputed here independently');
+  assert.equal(email.includes(SUB_A), false, 'the public Roblox id is not in the address');
+  // Everything an outsider could compute from the public id alone.
+  const local = (guess) => `roblox-${guess}@users.studpilot.invalid`;
+  for (const guess of [LEGACY(SUB_A), local(sha256hex(SUB_A).slice(0, 32)), local(sha256hex(`roblox-${SUB_A}`).slice(0, 32)), local(createHash('sha1').update(SUB_A).digest('hex').slice(0, 32))]) {
+    assert.notEqual(email, guess, `${guess} is computable without the key`);
+  }
+  assert.notEqual(SYNTHETIC(SUB_B), email, 'another person, another address');
+  db.close();
+
+  // Another deployment key, another address: the address is a function of the secret, not only of the id.
+  const otherKey = Buffer.alloc(32, 9).toString('base64');
+  const other = scene({ CREDENTIAL_KEY: otherKey });
+  await signIn(other.env, other.world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal([...other.world.sb.users.values()][0].email, SYNTHETIC(SUB_A, otherKey));
+  assert.notEqual(SYNTHETIC(SUB_A, otherKey), email);
+  other.db.close();
+});
+
+test('the keyed identifier is separated by its purpose label: the same key and value under another purpose is another identifier', async () => {
+  const env = { CREDENTIAL_KEY: KEY_B64 };
+  const a = await C.keyedId(env, 'roblox-signin-address', SUB_A);
+  assert.equal(a, SYNTHETIC(SUB_A).slice('roblox-'.length, 'roblox-'.length + 32));
+  assert.notEqual(await C.keyedId(env, 'some-other-purpose', SUB_A), a);
+  assert.equal(await C.keyedId(env, 'roblox-signin-address', SUB_A), a, 'and it is deterministic');
+  await assert.rejects(C.keyedId({}, 'roblox-signin-address', SUB_A), /CREDENTIAL_KEY/, 'with no key there is no identifier, rather than an unkeyed one');
+});
+
+test('SQUATTING: the OLD public address, pre-registered through the open sign-up, no longer locks the Roblox user out', async () => {
+  // Before the address was keyed it was roblox-<sub>@users.studpilot.invalid, computable from the public Roblox id.
+  // Anyone could register it by hand and the real Roblox user would then be refused for ever.
+  const { db, world, env } = scene();
+  const squatter = { id: randomUUID(), email: LEGACY(SUB_A), app_metadata: {}, user_metadata: {} };
+  world.sb.users.set(squatter.id, squatter);
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(res.status, 302, 'the Roblox user signs in');
+  const userId = userIdOf(db, SUB_A);
+  assert.notEqual(userId, squatter.id, 'and is never given the squatter’s account');
+  assert.equal(world.sb.users.get(userId).email, SYNTHETIC(SUB_A));
+  assert.equal(world.sb.links.get(await tokenHashOf(env, res)), userId);
+  assert.deepEqual(world.sb.users.get(squatter.id), squatter, 'the squatter’s user was not touched');
+  db.close();
+});
+
+test('an address that is somehow taken by a user with no roblox_sub is NEVER adopted, and fails CLOSED with its own status, code and log line', async () => {
   const { db, world, env } = scene();
   const squatter = { id: randomUUID(), email: SYNTHETIC(SUB_A), app_metadata: {}, user_metadata: {} };
   world.sb.users.set(squatter.id, squatter);
+  LOGS.length = 0;
   const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
-  assert.equal(res.status, 502);
-  assert.equal(fragmentOf(res).has('token_hash'), false);
+  assert.equal(res.status, 409, 'not the generic 502: an operator can tell this from a Roblox or Supabase outage');
+  const html = await res.text();
+  assert.ok(html.includes(GENERIC), 'the person still gets the one fixed sentence');
+  assert.ok(html.includes('roblox_address_taken'), 'and a reference they can quote');
+  assert.equal(handleCookieOf(res), '', 'no sign-in handle is issued');
   assert.equal(identityCount(db), 0);
-  assert.ok((await res.text()).includes(GENERIC), 'the person gets the generic error and nothing is delivered for the squatter’s account');
+  assert.ok(LOGS.includes('[roblox-oauth] synthetic address taken'), `the operator-visible log line is missing: ${JSON.stringify(LOGS.slice(-3))}`);
   assert.deepEqual(world.sb.users.get(squatter.id), squatter, 'the squatter’s user was not touched');
+  assert.equal(world.sb.ghosts, 0);
+
+  // ... and an ordinary failure is still its own, different answer.
+  const generic = scene();
+  generic.world.roblox.failToken = { status: 400, body: { error: 'invalid_grant' } };
+  const failed = await signIn(generic.env, generic.world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(failed.res.status, 502);
+  assert.equal((await failed.res.text()).includes('roblox_address_taken'), false);
   db.close();
+  generic.db.close();
 });
 
 test('a user this worker made for the same sub, left behind by a sign-in that stopped halfway, is adopted', async () => {
@@ -550,27 +723,174 @@ test('a user this worker made for the same sub, left behind by a sign-in that st
   db.close();
 });
 
-/* ------------------------------------------------------- no session is minted here --- */
+/* ---------------------------------------------------- the link to a Supabase user can go stale --- */
 
-test('the sign-in token reaches the browser in the URL fragment, and the worker mints no session', async () => {
+test('STALE LINK: an identity row whose Supabase user no longer exists is dropped with its token row, and the sign-in goes on as a first sight', async () => {
   const { db, world, env } = scene();
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const gone = userIdOf(db, SUB_A);
+  world.sb.users.delete(gone);                       // an operator deleted the user in the Supabase dashboard
+  const again = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(again.res.status, 302, 'the person is not locked out by a link to nobody');
+  const now = userIdOf(db, SUB_A);
+  assert.notEqual(now, gone);
+  assert.equal(world.sb.users.size, 1);
+  assert.equal(world.sb.users.get(now).email, SYNTHETIC(SUB_A));
+  assert.equal(world.sb.users.get(now).app_metadata.roblox_sub, SUB_A);
+  assert.equal(world.sb.links.get(await tokenHashOf(env, again.res)), now);
+  assert.equal(countRows(db.raw, 'select count(*) from roblox_oauth_tokens where user_id = ?', gone), 0, 'the dead user’s token row is gone');
+  assert.equal(countRows(db.raw, 'select count(*) from roblox_oauth_tokens where user_id = ?', now), 1, 'and the new user holds the new token');
+  assert.equal(countRows(db.raw, 'select count(*) from roblox_identities'), 1);
+  db.close();
+});
+
+test('a 404 that is not GoTrue’s "user not found" (a wrong URL, a proxy page) does NOT drop the link, and an unreachable Auth creates nobody', async () => {
+  const { db, world, env } = scene();
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const userId = userIdOf(db, SUB_A);
+  const inner = world.fetch;
+  for (const answer of [() => new Response('<html>Not Found</html>', { status: 404 }), () => new Response('{}', { status: 500 }), () => { throw new TypeError('network'); }]) {
+    globalThis.fetch = async (u, i = {}) => (/\/auth\/v1\/admin\/users\/[^/]+$/.test(String(u)) && (i.method ?? 'GET') === 'GET' ? answer() : inner(u, i));
+    const created = world.sb.createCalls;
+    const res = await (await finish(env, world, await startFlow(env), { sub: SUB_A, username: 'Builder1' })).res;
+    assert.equal(res.status, 502, 'cannot tell, so no sign-in');
+    assert.equal(userIdOf(db, SUB_A), userId, 'the link is untouched');
+    assert.equal(world.sb.createCalls, created, 'and no second account was made for the same Roblox user');
+  }
+  db.close();
+});
+
+/* ------------------------------------------- the user changed their address; the link follows it --- */
+
+test('a Roblox sign-in still works after the person changed their email: the link is minted for the CURRENT address of the SAME user', async () => {
+  const { db, world, env } = scene();
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const userId = userIdOf(db, SUB_A);
+  world.sb.users.get(userId).email = 'real-person@example.com';       // they set a real address under Security
+  const again = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(again.res.status, 302);
+  // The mock behaves like GoTrue: a magic link for an address nobody holds SIGNS IT UP. A worker that asked for the
+  // synthetic address here would sign the person in as an empty stranger instead of failing.
+  assert.equal(world.sb.ghosts, 0, 'no link was asked for an address nobody holds');
+  assert.equal(world.sb.users.size, 1);
+  assert.equal(world.sb.links.get(await tokenHashOf(env, again.res)), userId, 'the token is for the same user');
+  db.close();
+});
+
+/* --------------------------- the sign-in token is bound to the browser that finished the callback --- */
+
+test('the callback puts NO token in any URL, header or body: it sets a one-time handle cookie, and the token waits in KV behind it', async () => {
+  const { db, kv, world, env } = scene();
   const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
-  const location = res.headers.get('Location');
-  assert.equal(location.split('#')[0], '/app/auth/roblox', 'the path carries nothing: a fragment never reaches a server log');
-  assert.equal(location.includes('?'), false);
-  const hash = fragmentOf(res).get('token_hash');
-  assert.ok(world.sb.links.has(hash));
-  const body = await res.text();
-  assert.equal(body.includes(hash), false, 'the token is not in the body either');
-  // Supabase issues the session when the SPA calls verifyOtp; the worker never touches the endpoints that do.
-  assert.deepEqual(world.calls.filter((c) => /\/auth\/v1\/(token|verify|signup|otp)\b/.test(c.url)), []);
+  const hash = [...world.sb.links.keys()][0];
+  assert.equal(res.headers.get('Location'), '/app/auth/roblox', 'no query, no fragment: nothing a link could carry');
+  assert.equal(await res.text(), '', 'and the body is empty');
+  assert.equal(JSON.stringify([...res.headers.entries()]).includes(hash), false, 'the token hash is in no response header either');
+
+  const cookie = res.headers.getSetCookie().find((c) => c.startsWith('rbx_oauth_handle=') && !/Max-Age=0/.test(c));
+  assert.ok(cookie, 'the callback sets a handle cookie');
+  assert.match(cookie, /; HttpOnly/);
+  assert.match(cookie, /; Secure/);
+  assert.match(cookie, /; SameSite=Lax/);
+  assert.match(cookie, /; Path=\/auth\/roblox\/redeem(;|$)/, 'sent to the redeem route and nowhere else');
+  assert.match(cookie, /; Max-Age=300/);
+  const handle = cookie.split(';')[0].split('=')[1];
+  assert.ok(handle.length >= 40, 'an unguessable handle');
+  assert.equal(handle.includes(hash), false, 'and it is not the token');
+  const stored = JSON.parse(kv.rows.get(`roblox-oauth:handle:${handle}`));
+  assert.equal(stored.tokenHash, hash, 'the token is in KV, keyed by the handle');
+  assert.equal(kv.ttls.get(`roblox-oauth:handle:${handle}`), 300, 'for five minutes at most');
+  assert.deepEqual(world.calls.filter((c) => /\/auth\/v1\/(token|verify|signup|otp)\b/.test(c.url)), [], 'and the worker mints no session');
+  db.close();
+});
+
+test('REDEEM: the browser that holds the cookie gets the token hash and the return path ONCE, and the cookie and the KV entry are gone', async () => {
+  const { db, kv, world, env } = scene();
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { returnTo: '/usage' });
+  const cookie = handleCookieOf(res);
+  const handle = cookie.split('=')[1];
+  const first = await redeemRequest(env, { cookie });
+  assert.equal(first.status, 200);
+  assert.deepEqual(await first.json(), { token_hash: [...world.sb.links.keys()][0], next: '/usage' });
+  assert.ok(first.headers.getSetCookie().some((c) => /^rbx_oauth_handle=;/.test(c) && /Max-Age=0/.test(c) && /Path=\/auth\/roblox\/redeem/.test(c)), 'the cookie is cleared');
+  assert.equal(kv.rows.has(`roblox-oauth:handle:${handle}`), false, 'the KV entry is burned');
+  const replay = await redeemRequest(env, { cookie });
+  assert.equal(replay.status, 400, 'a second redeem, even with the same cookie, gets nothing');
+  assert.equal((await replay.text()).includes('ht_'), false);
+  db.close();
+});
+
+test('LOGIN CSRF: an attacker who finishes their own sign-in cannot sign a victim in as the attacker, by any link they can build', async () => {
+  const { db, kv, world, env } = scene();
+  // The attacker runs the whole flow in THEIR browser, so they hold everything the callback answered with.
+  const attacker = await signIn(env, world, { sub: SUB_B, username: 'Attacker' });
+  const attackerHash = [...world.sb.links.keys()].at(-1);
+  const attackerHandle = handleCookieOf(attacker.res).split('=')[1];
+  // What they can hand the victim: the landing URL (nothing secret in it) or the callback URL replayed (its state is burned).
+  assert.equal(attacker.res.headers.get('Location').includes(attackerHash), false);
+  assert.equal(attacker.res.headers.get('Location').includes(attackerHandle), false);
+  const victimHeaders = [
+    ['no cookie at all', ''],
+    ['a guessed handle', 'rbx_oauth_handle=' + 'z'.repeat(43)],
+    ['the state cookie of some flow', 'rbx_oauth_state=' + attacker.flow.state],
+    ['a handle in the wrong cookie name', 'rbx_oauth_handle2=' + attackerHandle],
+  ];
+  for (const [what, cookie] of victimHeaders) {
+    const res = await redeemRequest(env, { cookie });
+    assert.equal(res.status, 400, `${what} must not redeem anything`);
+    assert.equal((await res.text()).includes(attackerHash), false, `${what} was handed the attacker’s token`);
+  }
+  assert.equal(kv.rows.has(`roblox-oauth:handle:${attackerHandle}`), true, 'and the victim’s attempts did not burn the attacker’s handle: it is the attacker’s browser that holds it');
+  // The only browser that can redeem it is the one that has the cookie.
+  assert.equal((await redeemFor(env, attacker.res)).status, 200);
+  db.close();
+});
+
+test('REDEEM is a same-origin POST: another origin, or no Origin, is refused WITHOUT spending the handle', async () => {
+  const { db, kv, world, env } = scene();
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const cookie = handleCookieOf(res);
+  const handle = cookie.split('=')[1];
+  for (const origin of ['https://evil.example', 'http://localhost:5173', 'https://studpilot.app.evil.example', 'null', '']) {
+    const r = await redeemRequest(env, { cookie, origin });
+    assert.equal(r.status, 403, `Origin "${origin}" must be refused`);
+    assert.equal((await r.text()).includes('ht_'), false);
+    assert.equal(kv.rows.has(`roblox-oauth:handle:${handle}`), true, `Origin "${origin}" must not burn the handle`);
+  }
+  const get = await redeemRequest(env, { cookie, method: 'GET' });
+  assert.notEqual(get.status, 200, 'a GET does not redeem');
+  assert.equal((await get.text()).includes('ht_'), false);
+  assert.equal(kv.rows.has(`roblox-oauth:handle:${handle}`), true);
+  assert.equal((await redeemRequest(env, { cookie })).status, 200, 'and the real thing still works afterwards');
+  db.close();
+});
+
+test('a handle that has outlived its time is refused', async () => {
+  const { db, kv, world, env } = scene();
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  kv.rows.delete(`roblox-oauth:handle:${handleCookieOf(res).split('=')[1]}`);      // KV's TTL fired
+  const late = await redeemFor(env, res);
+  assert.equal(late.status, 400);
+  assert.equal((await late.text()).includes('ht_'), false);
+  db.close();
+});
+
+test('with a secret missing REDEEM answers 503 and reads nothing', async () => {
+  const { db, kv, world, env } = scene();
+  const { res } = await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const cookie = handleCookieOf(res);
+  const before = kv.rows.size;
+  delete env.SUPABASE_SECRET_KEY;
+  const off = await redeemRequest(env, { cookie });
+  assert.equal(off.status, 503);
+  assert.equal(kv.rows.size, before, 'the handle was not read or burned');
   db.close();
 });
 
 test('the Supabase secret key goes in `apikey`, and only a JWT-shaped legacy key is also sent as the bearer', async () => {
   const modern = scene();
   await signIn(modern.env, modern.world, { sub: SUB_A, username: 'Builder1' });
-  assert.ok(modern.world.sb.headers.length >= 3);
+  assert.ok(modern.world.sb.headers.length >= 2, 'a first sight makes two admin calls: create, then mint');
   for (const h of modern.world.sb.headers) assert.deepEqual(h, { apikey: SB_SECRET, authorization: null });
   modern.db.close();
 
@@ -585,7 +905,7 @@ test('the Supabase secret key goes in `apikey`, and only a JWT-shaped legacy key
     return inner(u, i);
   };
   await signIn(legacy.env, legacy.world, { sub: SUB_A, username: 'Builder1' });
-  assert.ok(seen.length >= 3);
+  assert.ok(seen.length >= 2);
   for (const h of seen) assert.deepEqual(h, { apikey: legacyKey, authorization: `Bearer ${legacyKey}` });
   legacy.db.close();
 });
@@ -623,6 +943,25 @@ test('signing in again replaces the stored token and bumps the version, so a ref
   db.close();
 });
 
+test('RE-SIGN-IN REPLACES the stored token and does NOT revoke the previous one: a deliberate choice, pinned', async () => {
+  // Revoking the previous token would be wrong if Roblox ties the tokens of one authorization together (the new
+  // sign-in's token would die with it) and gains nothing if it does not: the previous token is held nowhere here,
+  // so nobody can use it. So it is replaced, not revoked. proof/M2/ROBLOX-SIGNIN.md section 6 says what to watch.
+  const { db, world, env } = scene();
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const first = world.roblox.lastRefreshIssued;
+  await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
+  const second = world.roblox.lastRefreshIssued;
+  assert.notEqual(first, second);
+  const rows = rowsOf(db, 'select sealed_refresh from roblox_oauth_tokens');
+  assert.equal(rows.length, 1);
+  assert.equal(await C.openSecret({ CREDENTIAL_KEY: KEY_B64 }, rows[0].sealed_refresh), second, 'the new token is the one stored');
+  assert.deepEqual(world.roblox.revokeCalls, [], 'the previous token was not sent to be revoked');
+  assert.equal(world.roblox.refresh.get(second).state, 'live', 'so the new one is alive');
+  assert.equal(world.roblox.refresh.get(first).state, 'live', 'and the old one is left as Roblox has it, held by nothing here');
+  db.close();
+});
+
 /* ----------------------------------------------------------------------- rotation --- */
 
 async function connected(extra) {
@@ -649,7 +988,7 @@ test('ROTATION: a refresh spends the stored token, stores the replacement, and t
   assert.equal(await C.openSecret({ CREDENTIAL_KEY: KEY_B64 }, s.row().sealed_refresh), replacement);
   assert.equal(s.row().lease_until, null, 'the lease is released');
 
-  const two = await R.refreshRobloxAccessToken(s.env, s.userId);
+  const two = await R.refreshRobloxAccessToken(s.env, s.userId, Date.now() + 20 * 60_000);       // the 15-minute access token has lapsed
   assert.equal(two.ok, true);
   assert.equal(s.world.roblox.tokenCalls.at(-1).refresh_token, replacement);
   assert.equal(s.world.roblox.burned, false, 'a spent token was never presented twice');
@@ -666,8 +1005,9 @@ test('CONCURRENT REFRESH: two requests at once spend the token once; the other i
   assert.equal(s.world.roblox.tokenCalls.length - before, 1, 'Roblox saw exactly one refresh');
   assert.equal(s.world.roblox.burned, false);
   assert.equal(s.row().version, 2);
-  // And the loser can simply try again.
+  // And the loser can simply try again, and is served the token the winner just got, without a second spend.
   assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).ok, true);
+  assert.equal(s.world.roblox.tokenCalls.length - before, 1, 'still one refresh at Roblox');
   s.db.close();
 });
 
@@ -681,6 +1021,17 @@ test('COMPARE-AND-SWAP: if the row moves while Roblox is answering, the stale re
   assert.deepEqual(result, { ok: false, reason: 'busy' });
   assert.equal(s.row().sealed_refresh, 'REPLACED-BY-SIGN-IN', 'the newer write was not overwritten');
   assert.deepEqual(s.world.roblox.revokeCalls, [s.world.roblox.lastRefreshIssued], 'the token that belongs to no row is not left live at Roblox');
+  s.db.close();
+});
+
+test('the refresh lease is 30 seconds: the row says exactly when it lapses, and Roblox is called only while it is held', async () => {
+  const s = await connected();
+  const now = Date.now();
+  const seen = [];
+  s.world.roblox.duringRefresh = () => { seen.push(s.row().lease_until); };
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId, now)).ok, true);
+  assert.deepEqual(seen, [now + 30_000], 'a lease claimed at t lapses at t + 30 s: long enough for Roblox to answer, short enough to heal a dead request');
+  assert.equal(s.row().lease_until, null, 'and it is released when the refresh is done');
   s.db.close();
 });
 
@@ -706,6 +1057,48 @@ test('a refresh Roblox refuses releases the lease and changes nothing else', asy
   s.world.roblox.failToken = { status: 503, body: {} };
   assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' });
   assert.equal((await R.refreshRobloxAccessToken(s.env, 'nobody')).reason, 'not_connected');
+  s.db.close();
+});
+
+test('a Roblox 429 is "unavailable" (try later), not "refused": the grant is not dead, the caller is only too fast', async () => {
+  const s = await connected();
+  s.world.roblox.failToken = { status: 429, body: { error: 'rate_limit_exceeded' } };
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' });
+  assert.equal(s.row().lease_until, null, 'and the lease is released');
+  assert.equal(s.row().version, 1);
+  s.world.roblox.failToken = null;
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).ok, true, 'so the same grant refreshes once Roblox lets it');
+  s.db.close();
+});
+
+test('ACCESS TOKEN CACHE: inside its 15 minutes a second request is served without calling Roblox; it lapses; a sign-in or a disconnect voids it', async () => {
+  const s = await connected();
+  const t0 = Date.now();
+  const first = await R.refreshRobloxAccessToken(s.env, s.userId, t0);
+  assert.equal(first.ok, true);
+  const calls = s.world.roblox.tokenCalls.length;
+
+  const soon = await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 5 * 60_000);
+  assert.deepEqual(soon, first, 'the same token and version');
+  assert.equal(s.world.roblox.tokenCalls.length, calls, 'Roblox was not called, so no rotation was spent');
+  assert.equal(s.row().version, 2);
+
+  const late = await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 15 * 60_000);
+  assert.equal(late.ok, true);
+  assert.notEqual(late.accessToken, first.accessToken, 'a lapsed token is not handed out');
+  assert.equal(s.world.roblox.tokenCalls.length, calls + 1);
+
+  // A new sign-in bumps the version: the cached token was issued under the old row and must not be served.
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+  const callsAfterSignIn = s.world.roblox.tokenCalls.length;
+  const afterSignIn = await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 15 * 60_000 + 1000);
+  assert.equal(afterSignIn.ok, true);
+  assert.notEqual(afterSignIn.accessToken, late.accessToken);
+  assert.equal(s.world.roblox.tokenCalls.length, callsAfterSignIn + 1, 'a sign-in voids the cache');
+
+  // A disconnect removes the row, and nothing is served from memory for an account that is not connected.
+  assert.equal((await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env)).status, 200);
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 15 * 60_000 + 2000), { ok: false, reason: 'not_connected' });
   s.db.close();
 });
 
@@ -747,11 +1140,79 @@ test('DISCONNECT with Roblox unreachable changes nothing, because the sealed tok
   assert.equal(res.status, 502);
   assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 1);
   assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 1);
-  // And when Roblox says the token is already dead, that is a revoked grant.
-  s.world.roblox.failRevoke = 400;
+  // And when Roblox says, in its documented words, that the token is already dead, that is a revoked grant.
+  s.world.roblox.failRevoke = { status: 400, body: { error: 'invalid_token' } };
   const dead = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
   assert.equal(dead.status, 200);
+  assert.equal((await dead.json()).revoked, true);
   assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 0);
+  s.db.close();
+});
+
+test('a 400 from the revoke endpoint is "already revoked" ONLY for invalid_token: every other answer is a failure that changes nothing', async () => {
+  for (const failure of [
+    { status: 400, body: { error: 'invalid_request' } },
+    { status: 400, body: { error: 'invalid_client' } },
+    { status: 400, body: { error: 'unsupported_token_type' } },
+    { status: 400, body: {} },
+    { status: 400, body: null },
+    { status: 401, body: { error: 'invalid_client' } },
+    { status: 403, body: { error: 'invalid_token' } },       // the word is only believed on a 400
+    { status: 429, body: { error: 'rate_limited' } },
+  ]) {
+    const s = await connected();
+    s.world.roblox.failRevoke = failure;
+    const res = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+    assert.equal(res.status, 502, `${failure.status} ${JSON.stringify(failure.body)} must not count as revoked`);
+    const refusal = await res.json();
+    assert.equal(typeof refusal.error, 'string');
+    assert.equal(refusal.code, 'revoke_failed');
+    assert.equal('revoked' in refusal, false, 'a refusal carries no success field, not even a false one');
+    assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 1, `${failure.status}: the only handle must survive`);
+    assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 1);
+    s.db.close();
+  }
+});
+
+test('DISCONNECT when Roblox cannot even be ASKED (a secret is missing) answers an error, claims nothing, and deletes NOTHING', async () => {
+  const s = await connected();
+  const refresh = s.world.roblox.lastRefreshIssued;
+  s.world.roblox.revokeCalls.length = 0;
+  delete s.env.ROBLOX_OAUTH_CLIENT_SECRET;
+  const res = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+  assert.equal(res.status, 503);
+  const body = await res.json();
+  assert.equal(body.code, 'unavailable');
+  assert.match(body.error, /nothing was changed/i);
+  assert.equal('revoked' in body, false, 'a refusal does not carry a success field');
+  assert.equal(body.tokenRemoved, undefined);
+  assert.deepEqual(s.world.roblox.revokeCalls, [], 'Roblox was not called');
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 1, 'the sealed token is the only handle, so it stays');
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 1);
+  // Put the secret back and the very same disconnect now works: nothing was lost.
+  s.env.ROBLOX_OAUTH_CLIENT_SECRET = CLIENT_SECRET;
+  const again = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+  assert.equal(again.status, 200);
+  assert.deepEqual(s.world.roblox.revokeCalls, [refresh]);
+  s.db.close();
+});
+
+test('DISCONNECT when the sealed token cannot be OPENED answers an error with its own code and deletes NOTHING', async () => {
+  const s = await connected();
+  s.world.roblox.revokeCalls.length = 0;
+  const realKey = s.env.CREDENTIAL_KEY;
+  s.env.CREDENTIAL_KEY = Buffer.alloc(32, 8).toString('base64');       // a rotated key: the row can no longer be read
+  const res = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.equal(body.code, 'token_unreadable');
+  assert.equal(typeof body.error, 'string');
+  assert.equal('revoked' in body, false);
+  assert.deepEqual(s.world.roblox.revokeCalls, []);
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 1);
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 1);
+  s.env.CREDENTIAL_KEY = realKey;
+  assert.equal((await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env)).status, 200);
   s.db.close();
 });
 
@@ -852,6 +1313,20 @@ test('account erasure still deletes the rows when Roblox cannot be asked, and th
   s.db.close();
 });
 
+test('account erasure does not call a 400 that is not invalid_token a revocation: the receipt says Roblox could not be asked', async () => {
+  ROWS.clear();
+  const s = scene();
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+  const alice = userIdOf(s.db, SUB_A);
+  s.world.roblox.failRevoke = { status: 400, body: { error: 'invalid_request' } };
+  const res = await hit(`${PROD}/api/me/delete`, { method: 'POST', headers: { ...as(alice).headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE MY ACCOUNT' }) }, s.env);
+  const tokens = (await res.json()).steps.find((x) => x.target === 'roblox_oauth_tokens');
+  assert.equal(tokens.status, 'erased');
+  assert.match(tokens.detail, /could not be asked to revoke/, 'a 400 that is not invalid_token is not "revoked"');
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens'), 0, 'the erasure still removes our copy');
+  s.db.close();
+});
+
 /* ------------------------------------------------------------------- configuration --- */
 
 test('with any one secret missing the routes answer 503 and nothing is called or stored', async () => {
@@ -885,6 +1360,9 @@ test('every response under /auth/roblox is no-store and no-referrer, success or 
   seen.push(['callback ok', ok.res]);
   seen.push(['callback replay', (await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' })).res]);
   seen.push(['status', await hit(`${PROD}/auth/roblox/status`, { headers: { 'CF-Connecting-IP': freshIp() } }, env)]);
+  seen.push(['redeem ok', await redeemFor(env, ok.res)]);
+  seen.push(['redeem replay', await redeemFor(env, ok.res)]);
+  seen.push(['redeem from another origin', await redeemFor(env, ok.res, { origin: 'https://evil.example' })]);
   const off = scene({ SUPABASE_SECRET_KEY: undefined });
   seen.push(['not configured', await hit(`${PROD}/auth/roblox/start`, { headers: { 'CF-Connecting-IP': freshIp() } }, off.env)]);
   for (const [name, res] of seen) {
@@ -918,7 +1396,11 @@ test('NO SECRET, TOKEN, CODE, STATE OR QUERY STRING IS WRITTEN TO ANY LOG LINE, 
   const ok = await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });
   secrets.add(flow.state); secrets.add(ok.code); secrets.add(world.roblox.lastRefreshIssued);
   secrets.add(world.roblox.tokenCalls[0].code_verifier);
-  secrets.add(fragmentOf(ok.res).get('token_hash'));
+  secrets.add(handleCookieOf(ok.res).split('=')[1]);
+  const redeemed = await redeemFor(env, ok.res);
+  secrets.add((await redeemed.json()).token_hash);
+  await redeemFor(env, ok.res);                                          // a replay
+  await redeemFor(env, ok.res, { origin: 'https://evil.example' });      // a hostile origin
   for (const at of world.roblox.access.keys()) secrets.add(at);
   // replay, forged state, failed exchange, a provider error, a throw inside the handler
   await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });

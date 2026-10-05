@@ -6,8 +6,9 @@
 // that person by the Roblox `sub` and by nothing else. Roblox gives no email and Supabase has no Roblox
 // provider, so the account is a Supabase user with a synthetic address that nothing can deliver to, made
 // and signed in through the Auth admin API. The worker never signs a JWT: it asks Supabase for a one-time
-// token hash, hands it to the SPA in the URL FRAGMENT (which no server log sees), and the SPA trades it
-// for a real session with verifyOtp. docs: planning/proof/M2/ROBLOX-SIGNIN.md.
+// token hash, keeps it in KV behind a random handle that only the browser which finished the callback holds
+// (an HttpOnly cookie), and the SPA redeems it once with a same-origin POST and trades it for a real session
+// with verifyOtp. No token is ever in a URL. docs: planning/proof/M2/ROBLOX-SIGNIN.md.
 //
 // THE TRUST CHANGE THIS FILE CARRIES. Until now the worker held no Supabase secret and every database call
 // travelled with the caller's own JWT. SUPABASE_SECRET_KEY is the first credential that can act as anyone.
@@ -19,11 +20,16 @@
 //   - the state is also bound to the browser that asked for it by a cookie, because a state that lives only
 //     in KV lets an attacker start a flow, finish it on their own Roblox account, and hand the callback URL to
 //     somebody else, who would then be signed in as the attacker (login CSRF);
+//   - the sign-in token the callback mints is NOT put in the redirect. A token in a link signs in whoever
+//     opens the link, so an attacker could finish a flow on their own Roblox account and send the landing
+//     link to a victim (login CSRF, the same attack as above one step later). It is stored under a random
+//     one-time handle and the handle goes in a cookie that only this browser holds and only /redeem receives;
 //   - an account is found by `sub`. A username is display text that Roblox lets people change and reuse, so
 //     linking by it would let a second person take an account over;
-//   - an existing Supabase user with the synthetic address is adopted only when the admin-written
-//     app_metadata names the same `sub`. A person cannot write app_metadata, but they could sign up with the
-//     synthetic address themselves, and adopting that user would hand them the account;
+//   - the synthetic address is a KEYED digest of the `sub` (HMAC under CREDENTIAL_KEY). A Roblox id is public,
+//     so an address derived from it alone could be registered by anybody through the open sign-up, and the
+//     real Roblox user would be locked out for good. And an existing user with the address is still adopted
+//     only when the admin-written app_metadata names the same `sub`, else the sign-in fails closed;
 //   - the Roblox refresh token is single use. Before the worker spends it, it claims a lease on the row, and
 //     it stores the replacement by compare-and-swap on `version`, so two requests can never both spend it;
 //   - every response carries no-store and no-referrer, error pages say one fixed sentence (nothing the
@@ -32,7 +38,7 @@ import { Hono } from 'hono';
 import { PRODUCT_ORIGIN } from '@studpilot/shared';
 import type { AuthedUser, Env } from './env';
 import { oncePerIsolate } from './schema-once';
-import { openSecret, sealSecret } from './user-credentials';
+import { keyedId, openSecret, sealSecret } from './user-credentials';
 
 const OAUTH = 'https://apis.roblox.com/oauth/v1';
 /** Sign-in asks for identity only. The asset scopes arrive with uploads (M5c), with their own consent. */
@@ -42,12 +48,21 @@ const STATE_TTL_SECONDS = 600;
 const STATE_COOKIE = 'rbx_oauth_state';
 const CALLBACK_PATH = '/auth/roblox/callback';
 const LANDING_PATH = '/app/auth/roblox';
+/** The sign-in token waits here between the callback and the SPA's redeem, behind a handle only one browser holds. */
+const HANDLE_PREFIX = 'roblox-oauth:handle:';
+const HANDLE_TTL_SECONDS = 300;
+const HANDLE_COOKIE = 'rbx_oauth_handle';
+const REDEEM_PATH = '/auth/roblox/redeem';
 /** The only origins a redirect_uri may be built from: the product, and the registered dev server. */
 const DEV_ORIGIN = 'http://localhost:5173';
 /** RFC 2606 `.invalid` can never be delivered to, so no mail goes anywhere by accident. */
 const SYNTHETIC_EMAIL_DOMAIN = 'users.studpilot.invalid';
+/** Domain-separates the keyed digest the address is made from (user-credentials.ts `keyedId`). Never change it: addresses derive from it. */
+const ADDRESS_PURPOSE = 'roblox-signin-address';
 const OUTBOUND_TIMEOUT_MS = 10_000;
 const REFRESH_LEASE_MS = 30_000;
+/** Roblox access tokens live 15 minutes; one is handed out from memory until a minute before that. */
+const ACCESS_TOKEN_MARGIN_MS = 60_000;
 
 export type IpLimiter = (key: string, limit?: number, windowMs?: number) => boolean;
 
@@ -134,9 +149,13 @@ function readCookie(req: Request, name: string): string {
   return '';
 }
 
-const cookieAttrs = (secure: boolean): string => `Path=/auth/roblox; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
-const stateCookie = (state: string, secure: boolean): string => `${STATE_COOKIE}=${state}; Max-Age=${STATE_TTL_SECONDS}; ${cookieAttrs(secure)}`;
-const clearedStateCookie = (secure: boolean): string => `${STATE_COOKIE}=; Max-Age=0; ${cookieAttrs(secure)}`;
+/** HttpOnly, SameSite=Lax, and Secure on https (the dev origin is plain http, where some browsers refuse a Secure cookie). */
+const cookieAttrs = (path: string, secure: boolean): string => `Path=${path}; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`;
+const stateCookie = (state: string, secure: boolean): string => `${STATE_COOKIE}=${state}; Max-Age=${STATE_TTL_SECONDS}; ${cookieAttrs('/auth/roblox', secure)}`;
+const clearedStateCookie = (secure: boolean): string => `${STATE_COOKIE}=; Max-Age=0; ${cookieAttrs('/auth/roblox', secure)}`;
+/** Scoped to the redeem route alone: no other request this browser makes carries it. */
+const handleCookie = (handle: string, secure: boolean): string => `${HANDLE_COOKIE}=${handle}; Max-Age=${HANDLE_TTL_SECONDS}; ${cookieAttrs(REDEEM_PATH, secure)}`;
+const clearedHandleCookie = (secure: boolean): string => `${HANDLE_COOKIE}=; Max-Age=0; ${cookieAttrs(REDEEM_PATH, secure)}`;
 
 /** Said to the person, and the only words an error ever carries: no provider text is reflected. */
 const MESSAGES = {
@@ -157,11 +176,12 @@ function reply(status: number, body: BodyInit | null, extra: Record<string, stri
   return new Response(body, { status, headers });
 }
 
-function page(status: number, message: string, cookies: readonly string[] = []): Response {
+/** `reference` is a fixed code from REFERENCES, never provider text: it lets a person quote what an operator can search for. */
+function page(status: number, message: string, cookies: readonly string[] = [], reference?: string): Response {
   const html =
     '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<title>StudPilot</title></head><body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px">'
-    + `<p>${message}</p><p><a href="/app/login">Back to StudPilot</a></p></body></html>`;
+    + `<p>${message}</p>${reference ? `<p>Reference: <code>${reference}</code></p>` : ''}<p><a href="/app/login">Back to StudPilot</a></p></body></html>`;
   return reply(status, html, {
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
@@ -169,6 +189,12 @@ function page(status: number, message: string, cookies: readonly string[] = []):
 }
 
 const redirect = (location: string, cookies: readonly string[] = []): Response => reply(302, null, { Location: location }, cookies);
+
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const jsonReply = (status: number, body: unknown, cookies: readonly string[] = []): Response => reply(status, JSON.stringify(body), JSON_HEADERS, cookies);
+
+/** The fixed codes an error page may show. An operator searches the log for the matching stage word. */
+const REFERENCES = { addressTaken: 'roblox_address_taken' } as const;
 
 /** The one log line this file writes: a fixed word for where it stopped, never a value. */
 const note = (stage: string): void => console.warn(`[roblox-oauth] ${stage}`);
@@ -209,6 +235,8 @@ interface TokenSet {
   accessToken: string;
   refreshToken: string | null;
   scope: string;
+  /** How long the access token lives, in seconds (Roblox says 900). */
+  expiresIn: number;
 }
 
 async function tokensFrom(res: Response | null): Promise<TokenSet | null> {
@@ -216,7 +244,13 @@ async function tokensFrom(res: Response | null): Promise<TokenSet | null> {
   const body = await jsonOf(res);
   const accessToken = str(body?.access_token);
   if (!accessToken) return null;
-  return { accessToken, refreshToken: str(body?.refresh_token) || null, scope: str(body?.scope) || SIGNIN_SCOPE };
+  const expiresIn = Number(body?.expires_in);
+  return {
+    accessToken,
+    refreshToken: str(body?.refresh_token) || null,
+    scope: str(body?.scope) || SIGNIN_SCOPE,
+    expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? Math.min(expiresIn, 900) : 900,
+  };
 }
 
 const exchangeCode = (cfg: Config, code: string, verifier: string, redirectUri: string): Promise<TokenSet | null> =>
@@ -241,18 +275,34 @@ async function userinfo(accessToken: string): Promise<RobloxProfile | null> {
   // The sub becomes part of an email address and a primary key. A Roblox user id is a number; anything
   // else is refused rather than escaped.
   if (!/^\d{1,20}$/.test(sub)) return null;
-  const name = (str(body?.preferred_username) || str(body?.nickname) || str(body?.name)).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 100);
-  return { sub, username: name || `roblox-${sub}` };
+  // The first of the three that is still something once cleaned: an empty-looking username must not hide a usable display name.
+  const name = [body?.preferred_username, body?.nickname, body?.name].map((n) => cleanName(str(n))).find((n) => n !== '');
+  return { sub, username: name ?? `roblox-${sub}` };
 }
 
 /**
- * Revoke a stored refresh token at Roblox. True when the grant is dead afterwards: the call succeeded, or
- * Roblox answered 400 because the token was already revoked or expired. Anything else (a 401 for the
- * client credentials, a 5xx, no answer) means it may still be live.
+ * Display text from Roblox, made safe to store, put in a profile and show in Settings. Removes what cannot be seen or
+ * that reorders what can: control characters (Cc, which include newlines and the C1 range), format characters (Cf: zero-width
+ * and joiners, bidirectional overrides, isolates and embeddings), the line and paragraph separators, lone surrogates, and
+ * the blank "letters" (Braille blank, Hangul fillers). Runs of space become one, the ends are trimmed, and the length is
+ * capped at 100 CODE POINTS, so a cut never lands inside a surrogate pair. An empty result is the caller's cue to fall back.
+ */
+export function cleanName(raw: string): string {
+  const visible = raw.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Cs}\u2800\u3164\u115f\u1160\uffa0]/gu, '').replace(/\s+/g, ' ').trim();
+  return Array.from(visible).slice(0, 100).join('').trim();
+}
+
+/**
+ * Revoke a stored refresh token at Roblox. True when the grant is dead afterwards: the call succeeded, or Roblox
+ * answered 400 `invalid_token` (its documented answer for a token that is already revoked or expired). Any other
+ * 400 (`invalid_request`, `invalid_client`: our own request or credentials were wrong, so the token may well be
+ * live), a 401, a 429, a 5xx or no answer at all means it may still be live, and is false.
  */
 async function revokeAtRoblox(cfg: Config, refreshToken: string): Promise<boolean> {
   const res = await postToRoblox('/token/revoke', { token: refreshToken, client_id: cfg.clientId, client_secret: cfg.clientSecret });
-  return res !== null && (res.ok || res.status === 400);
+  if (!res) return false;
+  if (res.ok) return true;
+  return res.status === 400 && str((await jsonOf(res))?.error) === 'invalid_token';
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -297,14 +347,19 @@ async function mintLink(env: Env, cfg: Config, email: string): Promise<{ hashedT
   return hashedToken && userId ? { hashedToken, userId, robloxSub: String(meta.roblox_sub ?? '') } : null;
 }
 
-/**
- * The token hash for a user we already know. The address is read fresh because the person may have
- * changed it since the account was made; the link is for that address and must belong to that user.
- */
-async function signInTokenFor(env: Env, cfg: Config, userId: string): Promise<string | null> {
-  const user = await admin(env, cfg, 'GET', `/users/${encodeURIComponent(userId)}`);
-  const email = str(user?.json?.email);
-  if (!email) return null;
+/** One Supabase user as Auth holds them now: their address, 'gone' when Auth says there is no such user, null when we cannot tell. */
+async function authUser(env: Env, cfg: Config, userId: string): Promise<{ email: string } | 'gone' | null> {
+  const res = await admin(env, cfg, 'GET', `/users/${encodeURIComponent(userId)}`);
+  if (!res) return null;
+  // Only GoTrue's own "no such user" counts as gone. A bare 404 (a wrong SUPABASE_URL, a proxy's error page) says
+  // nothing about this user, and acting on it would delete the link of everybody who signs in.
+  if (res.status === 404) return /user_not_found|user.{0,12}not.{0,12}found/i.test(`${str(res.json?.error_code)} ${str(res.json?.msg)}`) ? 'gone' : null;
+  const email = str(res.json?.email);
+  return res.status === 200 && email ? { email } : null;
+}
+
+/** The token hash for `userId`, minted for `email`, which must be that user's CURRENT address. Null if the link is for anyone else. */
+async function signInTokenFor(env: Env, cfg: Config, userId: string, email: string): Promise<string | null> {
   const link = await mintLink(env, cfg, email);
   return link && link.userId === userId ? link.hashedToken : null;
 }
@@ -313,28 +368,53 @@ async function signInTokenFor(env: Env, cfg: Config, userId: string): Promise<st
 // linking
 // ---------------------------------------------------------------------------------------------
 
-/** The StudPilot user for this Roblox account: found by `sub`, or made once. Null when it cannot be said safely. */
-async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<string | null> {
+/**
+ * The address a Roblox user's Supabase account is made with. A keyed digest of the `sub`, not the `sub`: Roblox ids
+ * are public, and `roblox-<sub>@...` could be registered by anybody through the open sign-up before the real
+ * Roblox user ever arrived, locking them out for good. It is only the address: the account is found by the link
+ * in D1 and, for an interrupted sign-in, by `app_metadata.roblox_sub`.
+ */
+const syntheticEmail = async (env: Env, sub: string): Promise<string> =>
+  `roblox-${await keyedId(env, ADDRESS_PURPOSE, sub)}@${SYNTHETIC_EMAIL_DOMAIN}`;
+
+/** `address_taken`: the address exists and is not ours. `link`: it could not be said safely (Auth unreachable, a malformed answer). */
+type Linked = { ok: true; userId: string; email: string } | { ok: false; code: 'link' | 'address_taken' };
+
+/** The StudPilot user for this Roblox account: found by `sub`, or made once. Never one it cannot vouch for. */
+async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<Linked> {
   await ensureRobloxOAuthTables(env);
   const known = await env.CORPUS.prepare('select user_id, username from roblox_identities where roblox_sub = ?')
     .bind(who.sub).first<{ user_id: string; username: string }>();
   if (known) {
-    // The name is display text. Following a change keeps the same user; it never selects one.
-    if (known.username !== who.username) {
-      await env.CORPUS.prepare('update roblox_identities set username = ? where roblox_sub = ?').bind(who.username, who.sub).run();
+    const user = await authUser(env, cfg, known.user_id);
+    if (user === null) return { ok: false, code: 'link' };       // cannot tell: making a second account would be worse than failing
+    if (user !== 'gone') {
+      // The name is display text. Following a change keeps the same user; it never selects one.
+      if (known.username !== who.username) {
+        await env.CORPUS.prepare('update roblox_identities set username = ? where roblox_sub = ?').bind(who.username, who.sub).run();
+      }
+      return { ok: true, userId: known.user_id, email: user.email };
     }
-    return known.user_id;
+    // The link points at a Supabase user that was deleted (by an operator, in the dashboard). Left alone it would
+    // refuse this person for ever, so it goes, with the token row that belonged to that user, and the sign-in
+    // goes on as a first sight. The token is deleted, not revoked: this sign-in has just obtained a new
+    // authorization for the same Roblox account and revoking the old token could end it too (proof section 6).
+    await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ?').bind(known.user_id).run();
+    await env.CORPUS.prepare('delete from roblox_identities where roblox_sub = ? and user_id = ?').bind(who.sub, known.user_id).run();
+    note('stale link dropped');
   }
 
-  const email = `roblox-${who.sub}@${SYNTHETIC_EMAIL_DOMAIN}`;
+  const email = await syntheticEmail(env, who.sub);
   const made = await createAuthUser(env, cfg, email, who);
   let userId: string;
-  if (made === null) return null;
+  if (made === null) return { ok: false, code: 'link' };
   if (made === 'exists') {
-    // Either a sign-in that stopped halfway last time, or somebody who signed up with this address on
-    // purpose. Only the first has our app_metadata on it.
+    // Either a sign-in that stopped halfway last time, or somebody who got hold of this address. Only the first
+    // has our app_metadata on it, and the address is keyed, so the second should be impossible: if it happens
+    // it is reported as its own failure rather than as a generic one.
     const link = await mintLink(env, cfg, email);
-    if (!link || link.robloxSub !== who.sub) return null;
+    if (!link) return { ok: false, code: 'link' };
+    if (link.robloxSub !== who.sub) return { ok: false, code: 'address_taken' };
     userId = link.userId;
   } else {
     userId = made;
@@ -344,10 +424,16 @@ async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<strin
   await env.CORPUS.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at) values (?, ?, ?, ?) on conflict(roblox_sub) do nothing')
     .bind(who.sub, userId, who.username, new Date().toISOString()).run();
   const row = await env.CORPUS.prepare('select user_id from roblox_identities where roblox_sub = ?').bind(who.sub).first<{ user_id: string }>();
-  return row?.user_id ?? null;
+  return row ? { ok: true, userId: row.user_id, email } : { ok: false, code: 'link' };
 }
 
-/** A fresh sign-in replaces the stored refresh token. The version bump also voids any refresh in flight. */
+/**
+ * A fresh sign-in REPLACES the stored refresh token, and the previous one is deliberately NOT revoked. The version
+ * bump voids any refresh in flight and the cached access token. Revoking the previous token would end the new
+ * authorization too if Roblox ties the tokens of one authorization together, and gains nothing if it does not:
+ * the previous token is held nowhere in this system once the row is overwritten, so nobody here can use it.
+ * Section 6 of planning/proof/M2/ROBLOX-SIGNIN.md says what to check on the first live run.
+ */
 async function storeRefreshToken(env: Env, userId: string, who: RobloxProfile, tokens: TokenSet): Promise<void> {
   if (!tokens.refreshToken) return;
   const sealed = await sealSecret(env, tokens.refreshToken);
@@ -411,9 +497,9 @@ async function callback(req: Request, env: Env): Promise<Response> {
   if (!cfg) return page(503, MESSAGES.unavailable);
   const url = new URL(req.url);
   const clear = [clearedStateCookie(url.protocol === 'https:')];
-  const fail = (status: number, stage: string): Response => {
+  const fail = (status: number, stage: string, reference?: string): Response => {
     note(stage);
-    return page(status, MESSAGES.failed, clear);
+    return page(status, MESSAGES.failed, clear, reference);
   };
 
   const state = url.searchParams.get('state') ?? '';
@@ -433,16 +519,57 @@ async function callback(req: Request, env: Env): Promise<Response> {
   if (!who) return fail(502, 'userinfo');
 
   try {
-    const userId = await userFor(env, cfg, who);
-    if (!userId) return fail(502, 'account link');
-    await storeRefreshToken(env, userId, who, tokens);
-    const hashed = await signInTokenFor(env, cfg, userId);
+    const linked = await userFor(env, cfg, who);
+    // A different status, stage and reference from the generic failure, so an operator can tell it at a glance.
+    if (!linked.ok) return linked.code === 'address_taken' ? fail(409, 'synthetic address taken', REFERENCES.addressTaken) : fail(502, 'account link');
+    await storeRefreshToken(env, linked.userId, who, tokens);
+    const hashed = await signInTokenFor(env, cfg, linked.userId, linked.email);
     if (!hashed) return fail(502, 'sign-in token');
-    const fragment = query(record.returnTo === '/' ? { token_hash: hashed } : { token_hash: hashed, next: record.returnTo });
-    return redirect(`${LANDING_PATH}#${fragment}`, clear);
+    // The token never goes in the URL. It waits in KV behind a random handle, and the handle goes only to THIS browser,
+    // in a cookie that only /redeem receives: a link made from this response signs in nobody who does not hold the cookie.
+    const handle = randomToken(32);
+    const waiting: HandleRecord = { tokenHash: hashed, next: record.returnTo };
+    await env.KV.put(HANDLE_PREFIX + handle, JSON.stringify(waiting), { expirationTtl: HANDLE_TTL_SECONDS });
+    return redirect(LANDING_PATH, [...clear, handleCookie(handle, url.protocol === 'https:')]);
   } catch {
     return fail(502, 'storage');
   }
+}
+
+interface HandleRecord {
+  tokenHash: string;
+  next: string;
+}
+
+/**
+ * The SPA's landing page calls this (POST, same origin, no body) to turn the handle cookie into the sign-in token.
+ * It answers once: the handle is read and burned, and the cookie is cleared whatever the outcome. The Origin check
+ * runs first and spends nothing, so a hostile page cannot make a real person's sign-in fail by poking at it.
+ */
+async function redeem(req: Request, env: Env): Promise<Response> {
+  const cfg = configOf(env);
+  const secure = new URL(req.url).protocol === 'https:';
+  const clear = [clearedHandleCookie(secure)];
+  if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });        // nothing read, nothing cleared: it can still be redeemed once the secrets are back
+  const origin = ownOrigin(req);
+  if (!origin || req.headers.get('Origin') !== origin) {
+    note('redeem from another origin');
+    return jsonReply(403, { error: MESSAGES.failed });
+  }
+  const handle = readCookie(req, HANDLE_COOKIE);
+  const raw = /^[A-Za-z0-9_-]{20,128}$/.test(handle) ? await env.KV.get(HANDLE_PREFIX + handle) : null;
+  if (raw !== null) await env.KV.delete(HANDLE_PREFIX + handle);
+  let waiting: Partial<HandleRecord> | null = null;
+  try {
+    waiting = raw ? (JSON.parse(raw) as Partial<HandleRecord>) : null;
+  } catch {
+    waiting = null;
+  }
+  if (!waiting?.tokenHash || typeof waiting.next !== 'string') {
+    note('handle unknown or already used');
+    return jsonReply(400, { error: MESSAGES.failed }, clear);
+  }
+  return jsonReply(200, { token_hash: waiting.tokenHash, next: waiting.next }, clear);
 }
 
 /**
@@ -474,6 +601,14 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
       }
     });
   }
+  routes.post('/redeem', async (c) => {
+    try {
+      return await redeem(c.req.raw, c.env);
+    } catch {
+      note('unexpected failure');
+      return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(new URL(c.req.url).protocol === 'https:')]);
+    }
+  });
   return routes;
 }
 
@@ -490,6 +625,16 @@ interface TokenRow {
   version: number;
   scopes: string;
 }
+
+/**
+ * The access token last handed out for each person, in this isolate's memory only. Roblox gives a new one per refresh and
+ * every refresh spends the single-use refresh token, so callers that arrive together should share one rather than
+ * each spend a rotation. An entry is used only while it is unexpired AND the stored row is still the version it was
+ * issued under, so a new sign-in (version bump) voids it, and a disconnect (no row) is answered `not_connected` before
+ * the cache is consulted. Bounded, oldest out.
+ */
+const accessTokens = new Map<string, { accessToken: string; scope: string; version: number; until: number }>();
+const ACCESS_TOKEN_CACHE_MAX = 256;
 
 /**
  * A fresh 15-minute access token for one person, spending and replacing their refresh token.
@@ -510,6 +655,10 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   const row = await env.CORPUS.prepare('select sealed_refresh, version, scopes from roblox_oauth_tokens where user_id = ?')
     .bind(userId).first<TokenRow>();
   if (!row) return { ok: false, reason: 'not_connected' };
+  const cached = accessTokens.get(userId);
+  if (cached && cached.version === row.version && cached.until > now) {
+    return { ok: true, accessToken: cached.accessToken, scope: cached.scope, version: cached.version };
+  }
 
   const claim = await env.CORPUS.prepare(
     'update roblox_oauth_tokens set lease_until = ? where user_id = ? and version = ? and (lease_until is null or lease_until < ?)',
@@ -533,7 +682,8 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   if (!tokens?.refreshToken) {
     await release();
     // A 4xx is Roblox saying this grant is no good (revoked, expired, already used); anything else may be tried again.
-    return { ok: false, reason: res && res.status >= 400 && res.status < 500 ? 'refused' : 'unavailable' };
+    // A 429 is the exception among the 4xx: the grant is fine, the caller was too fast.
+    return { ok: false, reason: res && res.status >= 400 && res.status < 500 && res.status !== 429 ? 'refused' : 'unavailable' };
   }
 
   const swap = await env.CORPUS.prepare(
@@ -545,6 +695,8 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
     await revokeAtRoblox(cfg, tokens.refreshToken);
     return { ok: false, reason: 'busy' };
   }
+  if (accessTokens.size >= ACCESS_TOKEN_CACHE_MAX) accessTokens.delete(accessTokens.keys().next().value as string);
+  accessTokens.set(userId, { accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1, until: now + tokens.expiresIn * 1000 - ACCESS_TOKEN_MARGIN_MS });
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
 }
 
@@ -566,31 +718,43 @@ export async function revokeStoredRobloxGrant(env: Env, userId: string): Promise
 }
 
 export interface DisconnectResult {
-  status: 200 | 502;
-  body: { revoked: boolean | null; tokenRemoved: boolean; linkRemoved: boolean; signInKept: boolean } | { error: string };
+  status: 200 | 500 | 502 | 503;
+  body:
+    | { revoked: true | null; tokenRemoved: boolean; linkRemoved: boolean; signInKept: boolean }
+    | { error: string; code: 'unavailable' | 'token_unreadable' | 'revoke_failed' };
 }
 
 /**
  * Disconnect Roblox. Idempotent: a second call finds nothing and says so.
  *
- * The grant is revoked at Roblox first, and if Roblox cannot be asked nothing is deleted, because the sealed
- * token is the only handle there is to revoke it with. Then the token row goes, and so does the identity
- * link, EXCEPT while the account's only way in is Roblox (its address is still the synthetic one): without
- * the link the next Roblox sign-in would open a new, empty account and this one would be unreachable. In
- * that case the access to Roblox is gone and the sign-in link stays, and the answer says so.
+ * The grant is revoked at Roblox first, and NOTHING is deleted unless that is confirmed, because the sealed token is the
+ * only handle there is to revoke it with. That includes the cases where Roblox cannot even be asked: a missing secret
+ * (503) or a sealed token that cannot be opened, e.g. after a key rotation (500). Each answers an error that says nothing
+ * was changed and carries no success field, never `revoked: false` inside a 200. Then the token row goes, and so does
+ * the identity link, EXCEPT while the account's only way in is Roblox (its address is still the synthetic one): without
+ * the link the next Roblox sign-in would open a new, empty account and this one would be unreachable. In that case the
+ * access to Roblox is gone and the sign-in link stays, and the answer says so.
  */
 export async function disconnectRoblox(env: Env, user: AuthedUser): Promise<DisconnectResult> {
   await ensureRobloxOAuthTables(env);
   const row = await env.CORPUS.prepare('select sealed_refresh from roblox_oauth_tokens where user_id = ?').bind(user.userId).first<{ sealed_refresh: string }>();
-  let revoked: boolean | null = null;
+  let revoked: true | null = null;
   if (row) {
     const cfg = configOf(env);
-    const token = cfg ? await openSecret(env, row.sealed_refresh) : null;
-    revoked = cfg && token ? await revokeAtRoblox(cfg, token) : false;
-    if (cfg && token && !revoked) {
-      note('revoke');
-      return { status: 502, body: { error: 'Roblox could not be reached, so nothing was changed. Try again in a minute.' } };
+    if (!cfg) {
+      note('disconnect without credentials');
+      return { status: 503, body: { error: 'Roblox sign-in is not available right now, so StudPilot could not ask Roblox to withdraw its access. Nothing was changed. Try again later.', code: 'unavailable' } };
     }
+    const token = await openSecret(env, row.sealed_refresh);
+    if (!token) {
+      note('disconnect token unreadable');
+      return { status: 500, body: { error: 'StudPilot could not read the stored Roblox connection, so it could not ask Roblox to withdraw its access. Nothing was changed. Contact support.', code: 'token_unreadable' } };
+    }
+    if (!(await revokeAtRoblox(cfg, token))) {
+      note('revoke');
+      return { status: 502, body: { error: 'Roblox could not be reached, so nothing was changed. Try again in a minute.', code: 'revoke_failed' } };
+    }
+    revoked = true;
   }
   const tokenRemoved = Number((await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ?').bind(user.userId).run()).meta?.changes ?? 0) > 0;
   const onlyWayIn = isSynthetic(user.email);
