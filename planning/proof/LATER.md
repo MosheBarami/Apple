@@ -20,3 +20,4 @@
 
 ## site (m2-site)
 - Fix cycle 2's checker did not finish (stopped by the owner's new rules); its findings, if any, were not collected.
+- CodeQL on #38 (2026-10-06) re-surfaced 23 pre-existing alerts (unchanged lines on main), 20 in tests; product ones: `json()` in session.ts (stack-trace exposure, flagged on a JSON helper), `isSmallTalk` regexes in packages/shared (polynomial regex on user text). Review when touching those files.
