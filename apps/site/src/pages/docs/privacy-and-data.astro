@@ -42,7 +42,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <ul>
     <li><strong>Email and password</strong>, through Supabase.</li>
     <li><strong>Roblox</strong>, where the sign-in page shows "Continue with Roblox". It makes its own StudPilot account; it does not attach to an email account you have.</li>
-    <li><strong>Google or Discord — not offered yet.</strong> If you sign in with Google or Discord, when offered, Supabase receives from that provider what you allow on its consent screen, typically your email address, your name or username and a profile picture link.</li>
+    <li><strong>Google or Discord, where the sign-in page offers them.</strong> The button appears only when StudPilot's sign-in service has that provider switched on; if you do not see it, none of this applies to you. If you sign in with Google or Discord, Supabase receives from that provider what you allow on its consent screen, typically your email address, your name or username and a profile picture link. The provider also learns that you signed in to StudPilot.</li>
   </ul>
 
   <h2>Sign in with Roblox: what is held</h2>
@@ -197,9 +197,10 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>Age</h2>
   <p>
     StudPilot is for people aged 13 and older, and Roblox's sign-in service is for accounts held by
-    people aged 13 and older. Email sign-up asks for a date of birth and turns away anyone under 13;
-    Roblox, Google and Discord already require 13 and older, so they do not ask again. If you believe an
-    account belongs to someone under 13, tell us and we will delete it.
+    people aged 13 and older. Email sign-up asks for a date of birth and turns away anyone under 13.
+    Signing up with Roblox, or with Google or Discord where they are offered, does not ask for one again;
+    Google and Discord apply their own age rules. If you believe an account belongs to someone under 13,
+    tell us and we will delete it.
   </p>
 
   <h2>Beta honesty</h2>

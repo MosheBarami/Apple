@@ -335,7 +335,13 @@ test('13 AND OLDER: no "parent\'s permission" or "age of consent"; the sign-up f
     assert.match(text, /checked in your browser and is never sent (to us )?or stored/, `${where} does not say the date is checked in the browser and is never sent or stored`);
     assert.match(text, /(one|a) note[^.]{0,30}that you passed/, `${where} does not say what is kept instead of the date`);
     assert.match(text, /turns? away anyone under 13/, `${where} does not say email sign-up turns away anyone under 13`);
-    assert.match(text, /Roblox, Google and Discord already require/, `${where} does not say the other ways in rely on their own age rules`);
+    // RESTATED 2026-10-05 (M2 fix cycle 1): it asserted "Roblox, Google and Discord already require" 13 and older. That is a claim about what
+    // Google's and Discord's rules say, which nothing here can show (Google offers supervised accounts to children under 13), and it is
+    // external (LEGAL-CLAIMS.md). The pages say what StudPilot does (sign-up through another provider does not ask the date again) and that
+    // those providers apply their own age rules; Roblox's own 13+ statement is the one already sourced to Roblox.
+    assert.match(text, /Signing up with Roblox, or with Google or Discord where they are offered, does not ask for (a date of birth|one) again/, `${where} does not say the other ways in do not ask the date again`);
+    assert.match(text, /Google and Discord apply their own age rules/, `${where} does not say the other providers apply their own age rules`);
+    assert.doesNotMatch(text, /(Google|Discord)[^.]{0,80}\b(already )?requires?\b[^.]{0,60}\b(13|thirteen)\b/i, `${where} states what Google or Discord require, which this page cannot show`);
     assert.doesNotMatch(text, /(we|StudPilot) (store|keep|save|record)s? (your |the )?(date of birth|birth ?date|birthday)|date of birth (is|are) (stored|kept|saved|recorded|sent)/i, `${where} says the date of birth is kept or sent, and the code sends only the pass flag`);
     assert.doesNotMatch(text, /entire sign-?up form|only personal information[^.]{0,40}sign-?up asks for/i, `${where} still says sign-up asks for nothing but an address and a password`);
   }
@@ -381,13 +387,17 @@ test('improvement data: anonymised, opt-out, never Roblox data, NOT collected ye
 
 /* ------------------------------------------------------------------------------------ identity --- */
 
-//[[ RESTATED 2026-10-05 (M2 step 2.3, item C1). It asserted that no file in apps/web/src calls signInWithOAuth, because no provider was on. The
-//   app calls it now, from ONE component that draws a button only for a provider the Supabase project's own settings say is on
-//   (apps/web/src/lib/auth-providers.ts; apps/web/tests/auth-providers.test.mjs runs it). Both providers are still off at the project (owner
-//   item N2), so the pages still say "not offered yet", and this test holds the link between the two: the only call site is the gated
-//   component, and the Connections cards (linkIdentity) read the same gate. When a provider is switched on, the pages are re-aimed in the
-//   same change; until then they must keep describing it conditionally. ]]
-test('Google and Discord sign-in are described conditionally, and the app calls the provider APIs only behind the project\'s own answer', () => {
+//[[ RESTATED 2026-10-05 (M2 step 2.3, item C1), and AGAIN in fix cycle 1. First: it asserted that no file in apps/web/src calls signInWithOAuth, because
+//   no provider was on. The app calls it now, from ONE component that draws a button only for a provider the Supabase project's own settings
+//   say is on (apps/web/src/lib/auth-providers.ts; apps/web/tests/auth-providers.test.mjs runs it).
+//   Then the review found the pages promising "We will update this policy before either is switched on" while the button appears BY ITSELF the day
+//   the owner switches a provider on at Supabase: a dashboard action no commit accompanies, so no test could ever have gone red in the right order,
+//   and the old comment here ("re-aimed in the same change") was not something this test could make true. The pages now describe the sign-in
+//   WITHOUT STATING THE PROVIDER'S STATE: what the buttons are, that they appear only when the sign-in service has the provider on, and what
+//   Supabase receives if you use one. That is true before and after the switch, so there is no order to get wrong. What this test holds is the
+//   link that makes that sentence true: the only call sites are the gated component and the Connections cards, and the gate is the project's own
+//   `external.<provider> === true`. ]]
+test('Google and Discord sign-in are described without stating whether they are on, and the app calls the provider APIs only behind the project\'s own answer', () => {
   const webFiles = sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']);
   assert.ok(webFiles.length > 50, 'the scan found almost no web source: this test would check nothing');
   const callers = (needle) => webFiles.filter((f) => needle.test(code(f))).map((f) => f.slice(join(ROOT, 'apps', 'web', 'src').length + 1)).sort();
@@ -395,10 +405,18 @@ test('Google and Discord sign-in are described conditionally, and the app calls 
   for (const file of callers(/\.(signInWithOAuth|linkIdentity)\(/)) {
     assert.match(code(join(ROOT, 'apps', 'web', 'src', file)), /useEnabledProviders\(/, `${file} calls a provider API without reading the project's list of enabled providers`);
   }
+  // The gate the sentence "appears only when the sign-in service has that provider switched on" describes: only an explicit `true` from the project.
+  const gate = code(join(ROOT, 'apps', 'web', 'src', 'lib', 'auth-providers.ts'));
+  assert.match(gate, /\(external as Record<string, unknown>\)\[provider\] === true/, 'the buttons are no longer gated on the project saying the provider is on');
   for (const [where, text] of BOTH) {
-    assert.match(text, /If you sign in with Google or Discord, when offered/, `${where} does not describe Google and Discord conditionally`);
-    assert.match(text, /Google or Discord — not offered yet/, `${where} does not say neither is offered yet`);
-    assert.match(text, /Supabase receives/, `${where} does not say what Supabase receives`);
+    assert.match(text, /Google or Discord, where the sign-in page offers them/, `${where} does not describe Google and Discord as where the page offers them`);
+    assert.match(text, /appears only when StudPilot's sign-in service has that provider switched on/, `${where} does not say the button appears only when the provider is switched on`);
+    assert.match(text, /if you do not see (the button|it), none of this applies to you/, `${where} does not say what a reader who sees no button can conclude`);
+    assert.match(text, /If you sign in with Google or Discord, Supabase receives from that provider/, `${where} does not say what Supabase receives`);
+    assert.match(text, /details you allow on its consent screen|what you allow on its consent screen/, `${where} does not say Supabase receives only what the provider's consent screen allows`);
+    assert.match(text, /The provider also learns that you signed in to StudPilot/, `${where} does not say what the provider learns`);
+    // Nothing that states the provider's state today, or promises an order that a dashboard switch cannot keep.
+    assert.doesNotMatch(text, /not offered yet|not yet offered|will update this policy before|before either is switched on|when offered, Supabase/i, `${where} states whether the providers are on, or promises an order the runtime gate cannot keep`);
   }
 });
 

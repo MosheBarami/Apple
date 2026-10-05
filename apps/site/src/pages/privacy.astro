@@ -45,7 +45,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <ul>
     <li><strong>Email and password.</strong> Handled by Supabase (see below).</li>
     <li><strong>Roblox,</strong> where the sign-in and sign-up pages show "Continue with Roblox". Roblox tells us who you are; what we keep is listed in the next section. A Roblox sign-in makes its own StudPilot account: it does not attach to an email account you already have.</li>
-    <li><strong>Google or Discord — not offered yet.</strong> If you sign in with Google or Discord, when offered, Supabase receives from that provider the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity. We will update this policy before either is switched on.</li>
+    <li><strong>Google or Discord, where the sign-in page offers them.</strong> A "Continue with Google" or "Continue with Discord" button appears only when StudPilot's sign-in service has that provider switched on; if you do not see the button, none of this applies to you. If you sign in with Google or Discord, Supabase receives from that provider the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity. The provider also learns that you signed in to StudPilot.</li>
   </ul>
 
   <h2>Sign in with Roblox</h2>
@@ -250,9 +250,9 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     StudPilot is for people aged 13 and older. Signing in with Roblox needs a Roblox account, and
     Roblox's sign-in service is for accounts held by people aged 13 and older. We do not knowingly
     keep personal data about anyone under 13. Email sign-up asks for a date of birth and turns away
-    anyone under 13; Roblox, Google and Discord already require their account holders to be 13 or older,
-    so signing up with one of them does not ask again. The check goes by the date you give and is not an
-    identity check. If you believe an account belongs to someone under 13,
+    anyone under 13. Signing up with Roblox, or with Google or Discord where they are offered, does not ask
+    for a date of birth again; Google and Discord apply their own age rules. The check goes by the date
+    you give and is not an identity check. If you believe an account belongs to someone under 13,
     tell us at the address below and we will delete the account and its data, including its sign-in
     identity.
   </p>
