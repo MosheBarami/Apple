@@ -2,7 +2,7 @@
 
 Handoff M2 step 2.4 and plan section 7. Branch `studpilot/m2-legal`, rebased onto main `555dc18b` (main plus the Roblox sign-in lane). Sections 1 to 6
 were written first; **section 7 (fix cycle 1) records what the review found untrue in them and what changed, and section 8 (fix cycle 2) records what the second
-review found**; where a row below differs from section 7 or 8, the later section is the later word.
+review found**, and **section 9 (owner decisions D-13 and D-14 of 2026-10-05) is the latest word**; where a row below differs from section 7, 8 or 9, the later section is the later word.
 Written 2026-10-05. **Nothing here is deployed.** The pages are `apps/site/src/pages/privacy.astro`, `terms.astro` and
 `docs/privacy-and-data.astro`, plus the Settings > Privacy row `improvement-opt-out` in `apps/web/src/routes/settings.tsx`.
 
@@ -252,7 +252,9 @@ The operator line was untouched in that cycle (it changed afterwards, owner deci
 
 The owner approved the legal review (N7) only after these fixes. Same rule as before: every sentence on `privacy.astro`, `terms.astro`,
 `docs/privacy-and-data.astro` and Settings > Privacy is true of the code, and the guards are restated to the property, never weakened.
-Evidence is `file:line` on branch `studpilot/m2-owner-update`. Written in parts, one per commit; the part for each commit is complete.
+Evidence is `file:line` on branch `studpilot/m2-owner-update`. Written in parts, one per commit; the part for each commit is complete. **Where a row of sections 1 to 8 differs from this section, this section is the later word**: in particular the rows about the sign-in
+identity and the Discord link surviving a deletion (F4, F10, C1-3, the Discord row of section 2), the Supabase key "not used to delete accounts" and "not used for any table" (F1, section 2, section 6), the model-call log
+"not deleted by StudPilot" (F2, section 5 item 7), and "nothing uses the Roblox token yet; the id and username stay" (section 2, section 6).
 
 ### 9.1 D-13: the operator is StudPilot, the contact is support@studpilot.app
 
@@ -383,3 +385,37 @@ If the owner wants introspection alone to be sufficient, it is one line in `chec
 - **A Roblox-only account cannot confirm itself in Settings after a wipe until it has signed in with Roblox again** (the re-authentication flow never makes or relinks an account, and relinking needs the first-sight path). The page says so; making the re-authentication flow relink would need a lookup of the user by address that does not create one, which GoTrue's `generate_link` is not.
 - "Cannot be turned back into your Roblox id" is true of anybody without CREDENTIAL_KEY (an HMAC); somebody who held the key could test numeric ids against the code. The pages say the code is made with a secret key only StudPilot's server holds.
 - Rotating CREDENTIAL_KEY changes every address and every code, so an account could no longer be found by either (this was already true of the address).
+
+
+### 9.5 D-14: the /privacy short version is six plain bullets, and Google and Discord are described conditionally
+
+**The six bullets (`apps/site/src/pages/privacy.astro`, the first block after the opening paragraph).** Exactly six, in the owner's order, in words a 13-year-old reads easily. The data page keeps its own callout (the owner asked for /privacy only).
+
+| # | Bullet | Evidence (what it is true of) | Guard (`PC` "THE SHORT VERSION IS EXACTLY SIX PLAIN BULLETS") |
+|---|---|---|---|
+| 1 | "We keep what StudPilot needs to work: your sign-in (your email, or your Roblox id and username), your projects, your chats and your checkpoints. The full list is below." | `projects`, `messages`, `checkpoints` and `profiles` in `0001_init.sql`; `roblox_identities(roblox_sub, user_id, username, ...)` in `roblox-oauth.ts`; the sign-up form calls `signUp(` in `auth-pages.tsx` | each table read out of the migration, the Roblox columns out of the `CREATE TABLE`, the sign-up call; every other bullet word is checked for plainness |
+| 2 | "We never sell your data." | **policy** (no code can show a negative). Code-side corollary: no advertising or tracking host is loaded or called in anything that ships, and every host the worker calls is classified as a named recipient or public content | the sentence is exact; no tracker host in `apps/site/src`, `apps/web/src`, `apps/worker/src` or `apps/site/public` (a regex of about twenty hosts, run over comment-stripped source); the host-classification test |
+| 3 | "Data that comes from Roblox is never used for AI training." | **policy**, with the mechanism that nothing reads Roblox data into training: `consent-staging.mjs` `CUSTOMER_WORK_TRAINING_ENABLED = false`; Roblox Third-Party App Policy as the source is **external** | the sentence is exact (it is the sentence the other pages use); the gate is closed |
+| 4 | "You can download your data or delete your account whenever you want, in Settings. Deleting removes your projects, chats and sign-in. The few things that stay are listed below." | `GET /api/me/export`, `POST /api/me/delete` (`index.ts`); Settings rows "Download my data" and "Delete my account" (`settings.tsx`); `eraseAccountData` sweeps the stores, deletes the projects and deletes the sign-in; `ACCOUNT_RESIDUE` is the list | both routes and both Settings titles exist; the three deletion steps are in `erasure.ts`; the residue is non-empty and the page has its "Some things survive deletion" list |
+| 5 | "StudPilot is for people aged 13 and older." | **policy**; Roblox's own 13+ rule is **external** | the sentence is exact; the earlier 13+ test (no parent wording, no birth-date claim) |
+| 6 | "Questions? Email support@studpilot.app." | `SUPPORT_EMAIL` in `packages/shared`; the mailbox is read only once BLOCKED E1 (Email Routing) is done. The bullet promises nothing about a reply | the address is read from `packages/shared` and must be the text and the `mailto:` |
+
+Plain words are a checked property: no bullet is longer than 30 words, the six together score at or below grade 8 on a Flesch-Kincaid yardstick (they score 4.8 today; the yardstick is run on fixtures so it can fail), and none of eight jargon words appears.
+
+**Google and Discord (D-11).** The providers are being switched on in Supabase and the buttons are another lane's, so the sentence is true before and after: "Google or Discord, if you choose one. If you sign in with Google or Discord, Supabase receives from that provider
+the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity." Removed: "not offered yet", "when offered" and "We will update this policy before either is switched on"
+(the promise nobody scheduled, which also became false the day the providers were enabled). Guard `PC` "GOOGLE AND DISCORD SIGN-IN are described conditionally ...": the conditional sentence is required, the three retired phrases are refused, and the sentence stays true of the code:
+every `signInWithOAuth` call in `apps/web/src` must name only Google or Discord and pass no `scopes` or `queryParams` (so the provider's default consent screen is what Supabase receives), and nothing in the worker may start an OAuth sign-in. None exists today, so the guard
+is vacuous until the buttons land, and fires then. **Policy / external:** what Google and Discord actually send on their default consent screens, and that the providers are enabled and verified live (the owner's N2 lines, not yet in `.env`), are outside the repository.
+
+### 9.6 What is policy rather than code (this section's additions)
+
+1. The operator is StudPilot, and the mailbox exists (9.1; BLOCKED N9 and E1).
+2. "We never sell your data" (9.5); Roblox data never trains AI (9.5, 9.4); 13 and older (9.5).
+3. That the AI Gateway log is kept 30 days and not 31 (9.3), and that Cloudflare honours the delete call (external).
+4. That all Roblox-derived data is wiped on loss of access is the owner's reading of the Roblox Third-Party App Policy (9.4); the code wipes what it stores because of the OAuth grant, and the Open Cloud key is **not** covered (an owner decision).
+5. That deleting the usage ledger's key is acceptable accounting (9.2): the ledger is kept under an id that belongs to no account.
+
+### 9.7 Suites on branch `studpilot/m2-owner-update` (2026-10-05)
+
+See the end of the commit series; the exact counts are in the report that came with it.

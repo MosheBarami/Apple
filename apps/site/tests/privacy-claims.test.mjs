@@ -373,6 +373,96 @@ test('13 AND OLDER: no "parent\'s permission" or "age of consent", the sign-up f
   for (const [where, text] of [...BOTH, ['/terms', TERMS]]) assert.doesNotMatch(text, /date of birth|birth ?date|birthday/i, `${where} claims a birth-date gate that sign-up does not have`);
 });
 
+/* ------------------------------------------------------------------------------ the short version --- */
+
+/**
+ * HOW EASY IS IT TO READ: the Flesch-Kincaid grade level, with a vowel-group syllable count. Rough, but it is the same yardstick every time, and the owner's rule
+ * is "plain words a 13-year-old reads easily", so the six bullets must score at or below grade 8 and no bullet may run past 30 words.
+ */
+export function fleschKincaidGrade(text) {
+  const words = text.replace(/[^A-Za-z' -]/g, ' ').split(/\s+/).filter(Boolean);
+  const sentences = Math.max(1, text.split(/[.!?]+(?:\s|$)/).filter((t) => t.trim().length > 0).length);
+  const syllables = (w) => {
+    const word = w.toLowerCase().replace(/[^a-z]/g, '');
+    if (word.length <= 3) return 1;
+    const groups = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '').match(/[aeiouy]{1,2}/g);
+    return Math.max(1, groups ? groups.length : 1);
+  };
+  const total = words.reduce((n, w) => n + syllables(w), 0);
+  return 0.39 * (words.length / sentences) + 11.8 * (total / Math.max(1, words.length)) - 15.59;
+}
+
+/** The items of the first `callout` block of a page, as a reader sees them. */
+function shortVersion(raw) {
+  const start = raw.indexOf('<div class="callout">');
+  const block = raw.slice(start, raw.indexOf('</div>', start));
+  return [...block.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => prose(m[1]).replace(/\s+([.,!?])/g, '$1'));
+}
+
+test('THE SHORT VERSION IS EXACTLY SIX PLAIN BULLETS, in the owner\'s order, each true of the code and each guarded: what we collect, never sold, Roblox data never trains AI, download or delete anytime, 13+, contact', async () => {
+  const bullets = shortVersion(policy);
+  assert.equal(bullets.length, 6, `the short version has ${bullets.length} bullets: it is exactly six (D-14)`);
+  const [collect, sold, roblox, rights, age, contact] = bullets;
+
+  // 1. WHAT WE COLLECT: every thing named is a thing the code keeps. Read from the migrations, the Roblox tables and the sign-up form.
+  assert.match(collect, /your sign-in \(your email, or your Roblox id and username\), your projects, your chats and your checkpoints/);
+  const sql = readFileSync(join(ROOT, 'infra', 'supabase', 'migrations', '0001_init.sql'), 'utf8');
+  for (const table of ['projects', 'messages', 'checkpoints']) assert.match(sql, new RegExp(`create table public\\.${table}\\b`), `${table} is named in the short version and the database no longer has it`);
+  assert.match(sql, /create table public\.profiles[\s\S]*?display_name/, 'the account row is gone');
+  assert.match(oauth, /create table if not exists roblox_identities\(roblox_sub text primary key, user_id text not null, username text not null/, 'the Roblox id and username are no longer kept');
+  assert.match(code(join(ROOT, 'apps', 'web', 'src', 'routes', 'auth-pages.tsx')), /signUp\(/, 'the sign-up form no longer takes an email');
+  assert.match(collect, /The full list is below\./);
+
+  // 2. NEVER SOLD. Nothing in the code can show a negative, so this is policy (planning/proof/M2/LEGAL-CLAIMS.md), with its code-side corollary: no advertising or tracking host is
+  //    loaded or called anywhere that ships, and every host the worker calls is classified as a named recipient or public content (the host test above).
+  assert.equal(sold, 'We never sell your data.');
+  const TRACKERS = /(?:https?:)?\/\/[^"'`\s)]*?(?:doubleclick\.net|googlesyndication\.com|googletagmanager\.com|google-analytics\.com|facebook\.net|connect\.facebook\.com|hotjar\.com|mixpanel\.com|segment\.(?:io|com)|amplitude\.com|fullstory\.com|clarity\.ms|taboola\.com|outbrain\.com|criteo\.(?:com|net)|scorecardresearch\.com|plausible\.io|posthog\.com)|adsbygoogle/i;
+  const shipped = [...sourceFiles(join(SITE, 'src'), ['.astro', '.ts', '.tsx', '.js']), ...sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']), ...WORKER_SRC, ...sourceFiles(join(SITE, 'public'), ['.html', '.js', '.json'])];
+  assert.ok(shipped.length > 300, `only ${shipped.length} shipped files were read`);
+  const trackers = shipped.filter((f) => TRACKERS.test(code(f))).map((f) => f.slice(ROOT.length + 1));
+  assert.deepEqual(trackers, [], 'an advertising or tracking host appears in shipped code: "We never sell your data" and "no advertising identifiers, no third-party tracking pixels" would need a second look');
+
+  // 3. ROBLOX DATA NEVER TRAINS AI: the same sentence the rest of the pages use, and the gate that would train on anything is closed.
+  assert.equal(roblox, 'Data that comes from Roblox is never used for AI training.');
+  assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/);
+
+  // 4. DOWNLOAD OR DELETE ANYTIME: both routes exist, both are on the Settings page under the names the pages use, and what deletion removes is what the receipt says it removes.
+  assert.match(rights, /download your data or delete your account whenever you want, in Settings/);
+  const index = wcode(join(WORKER, 'src', 'index.ts'));
+  assert.match(index, /app\.get\('\/api\/me\/export'/, 'the data export route is gone');
+  assert.match(index, /app\.post\('\/api\/me\/delete'/, 'the account deletion route is gone');
+  assert.match(settingsSrc, /title="Download my data"/, 'Settings no longer has "Download my data"');
+  assert.match(settingsSrc, /title="Delete my account"/, 'Settings no longer has "Delete my account"');
+  assert.match(rights, /Deleting removes your projects, chats and sign-in\. The few things that stay are listed below\./);
+  assert.match(erasure, /deleteSignInIdentity\(env, user\.userId\)/, 'deletion no longer removes the sign-in');
+  assert.match(erasure, /await d1Sweep\(env, 'memory_entries \(user\)'/, 'deletion no longer sweeps the stores');
+  assert.match(erasure, /erasePostgresProjects\(env, user\)/, 'deletion no longer deletes the projects (and, through them, the chats and checkpoints)');
+  assert.ok(RECEIPT.ACCOUNT_RESIDUE.length >= 1, 'nothing stays after a deletion, so "the few things that stay are listed below" is empty');
+  assert.match(PRIVACY, /Some things survive deletion/, '"the few things that stay are listed below": the list is gone');
+
+  // 5. 13+: the same sentence, and the sign-up form still does not claim a birth-date gate (the full guard is above).
+  assert.equal(age, 'StudPilot is for people aged 13 and older.');
+
+  // 6. CONTACT: the one address in packages/shared, as a mailto, and the bullet promises nothing about a reply.
+  const SHARED = await import(pathToFileURL(join(ROOT, 'packages', 'shared', 'src', 'index.ts')).href);
+  assert.equal(SHARED.SUPPORT_EMAIL, 'support@studpilot.app');
+  assert.equal(contact, `Questions? Email ${SHARED.SUPPORT_EMAIL}.`);
+  assert.match(policy, new RegExp(`<li>Questions\\? Email <a href="mailto:${SHARED.SUPPORT_EMAIL.replace('.', '\\.')}">${SHARED.SUPPORT_EMAIL.replace('.', '\\.')}</a>\\.</li>`), 'the contact bullet is not a mailto link to the support address');
+
+  // PLAIN WORDS: no bullet runs past 30 words, and together they read at grade 8 or below (the same yardstick on every run).
+  for (const [i, bullet] of bullets.entries()) assert.ok(bullet.split(/\s+/).length <= 30, `bullet ${i + 1} has ${bullet.split(/\s+/).length} words: ${bullet}`);
+  const grade = fleschKincaidGrade(bullets.join(' '));
+  assert.ok(grade <= 8, `the short version reads at grade ${grade.toFixed(1)}: plain words a 13-year-old reads easily means grade 8 or below`);
+  for (const word of ['Supabase', 'row-level', 'AI Gateway', 'refresh token', 'placeholder', 'lifecycle', 'identity provider', 'Durable']) assert.equal(bullets.join(' ').includes(word), false, `"${word}" is not a plain word for the short version`);
+});
+
+test('the reading-level yardstick can fail: it scores the owner\'s six bullets as plain, and the policy\'s own long sentences as hard', () => {
+  assert.ok(fleschKincaidGrade('We never sell your data. You can download your data whenever you want.') < 6);
+  const hard = 'Account deletion unlinks Discord, clears the stores, and removes your sign-in identity last, only if every step before it worked, which Supabase confirms through its Auth administration interface.';
+  assert.ok(fleschKincaidGrade(hard) > 14, `a hard sentence scored ${fleschKincaidGrade(hard).toFixed(1)}`);
+  assert.ok(fleschKincaidGrade('The Roblox refresh token, encrypted at rest with a key the database does not hold, is never returned to anyone.') > 9);
+});
+
 /* ------------------------------------------------------------------------------ improvement data --- */
 
 test('improvement data: anonymised, opt-out, never Roblox data, NOT collected yet, and the in-app string says what the pages say', () => {
@@ -412,14 +502,28 @@ test('improvement data: anonymised, opt-out, never Roblox data, NOT collected ye
 
 /* ------------------------------------------------------------------------------------ identity --- */
 
-test('Google and Discord sign-in are described conditionally while the app does not offer them', () => {
-  const offered = WORKER_SRC.length > 0 && sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']).some((f) => /signInWithOAuth/.test(code(f)));
-  assert.equal(offered, false, 'the app now calls signInWithOAuth: a provider is offered, so the pages must say which, and this test must be re-aimed');
+test('GOOGLE AND DISCORD SIGN-IN are described conditionally, so the pages are true whether or not the app offers them: what Supabase receives, no "not offered yet", no promise to update the policy first', () => {
+  // Owner decision D-11: both providers are about to be switched on in Supabase, and the sign-in buttons are another lane's. The sentence must therefore be true BEFORE and AFTER:
+  // it says what Supabase receives IF you sign in with Google or Discord, and says nothing about whether the app offers it (the earlier wording, "not offered yet ... when
+  // offered ... we will update this policy before either is switched on", became false the day the providers are enabled, and promised an update nobody scheduled).
   for (const [where, text] of BOTH) {
-    assert.match(text, /If you sign in with Google or Discord, when offered/, `${where} does not describe Google and Discord conditionally`);
-    assert.match(text, /Google or Discord — not offered yet/, `${where} does not say neither is offered yet`);
-    assert.match(text, /Supabase receives/, `${where} does not say what Supabase receives`);
+    assert.match(text, /If you sign in with Google or Discord, Supabase receives from that provider (the details )?(you allow|what you allow) on its consent screen, typically your email address, your name or username and a (link to your )?profile picture( link)?/, `${where} does not say what Supabase receives if you sign in with Google or Discord`);
+    assert.match(text, /Google or Discord, if you choose one/, `${where} does not make the Google or Discord line conditional on a choice`);
+    assert.doesNotMatch(text, /not offered yet|when offered|before either is switched on|we will update (this|the) polic[a-z]* before/i, `${where} still says Google or Discord is not offered yet, or promises an update before it is`);
   }
+  // WHAT SUPABASE RECEIVES IS WHAT THE PROVIDER'S DEFAULT CONSENT SCREEN GIVES, until the app asks for more. So when the app does call signInWithOAuth, it may name only Google or
+  // Discord and may not ask for extra scopes or query parameters: either would make "typically your email address, your name or username and a profile picture" untrue.
+  const calls = [];
+  for (const f of sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx'])) {
+    const body = code(f);
+    for (const m of body.matchAll(/signInWithOAuth\(\s*\{([\s\S]*?)\}\s*\)/g)) calls.push({ file: f.slice(ROOT.length + 1), args: m[1] });
+  }
+  for (const call of calls) {
+    assert.match(call.args, /provider:\s*['"](google|discord)['"]/, `${call.file}: signInWithOAuth names a provider other than Google or Discord, which the pages do not describe`);
+    assert.doesNotMatch(call.args, /\bscopes\b|queryParams/, `${call.file}: signInWithOAuth asks for extra scopes or parameters, so the pages' "typically your email address, your name or username and a profile picture" may be untrue`);
+  }
+  // THE CONDITIONAL IS ALSO TRUE WHILE NOTHING CALLS IT: no other file may start an OAuth sign-in with a provider the pages do not name.
+  for (const f of WORKER_SRC) assert.doesNotMatch(code(f), /signInWithOAuth|\/auth\/v1\/authorize\?provider=/, `${rel(f)} starts an OAuth sign-in from the worker: describe it`);
 });
 
 test('the Supabase secret key is described by what it does: used in one file, for the Auth admin calls the pages name, and the "no master key" claim is gone', () => {
