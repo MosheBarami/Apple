@@ -5,11 +5,12 @@ import {createReadStream} from 'node:fs';
 import {createInterface} from 'node:readline';
 import {resolve,dirname} from 'node:path';
 import {createHash} from 'node:crypto';
+import {PRODUCT_ORIGIN} from './lib/product-origin.mjs';
 const [manifestPath] = process.argv.slice(2);
 if (!manifestPath) throw new Error('Usage: STUDPILOT_OWNER_JWT=<signed-in JWT> node scripts/ingest-owner-corpus.mjs <manifest.json>');
 const token = process.env.STUDPILOT_OWNER_JWT;
 if (!token) throw new Error('STUDPILOT_OWNER_JWT must contain the signed-in owner JWT (never an admin key)');
-const origin = new URL(process.env.STUDPILOT_OWNER_ORIGIN ?? 'https://apple.moshe-barami111.workers.dev');
+const origin = new URL(process.env.STUDPILOT_OWNER_ORIGIN ?? PRODUCT_ORIGIN);
 if (origin.protocol !== 'https:' && !['localhost','127.0.0.1'].includes(origin.hostname)) throw new Error('HTTPS required');
 // JSONL: first line {"ownerAttested":true}, then one component per line.
 // Use this for exhaustive exports: only one bounded batch is resident in memory.

@@ -36,6 +36,11 @@ function scratch() {
     try { cpSync(join(ROOT, rel), dest); } catch { /* a path that vanished mid-copy */ }
   }
   execFileSync('git', ['init', '-q'], { cwd: dir });
+  // ~11,000 files is past git's auto-gc threshold (6,700 loose objects), so a later git call here could
+  // start gc or maintenance. Three CI runs (2026-10-04) each had one checker run hang past 300 s, a
+  // different test each time; that work is the leading suspect, so it is switched off in the fixture.
+  execFileSync('git', ['config', 'gc.auto', '0'], { cwd: dir });
+  execFileSync('git', ['config', 'maintenance.auto', 'false'], { cwd: dir });
   execFileSync('git', ['add', '-A'], { cwd: dir });
   execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'base'], { cwd: dir });
   return dir;
@@ -61,10 +66,13 @@ const RUN_TIMEOUT_MS = 300_000;
 function runRaw(dir) {
   const proc = spawnSync('node', [join(dir, CHECKER)], { cwd: dir, encoding: 'utf8', timeout: RUN_TIMEOUT_MS });
   if (proc.error || proc.signal) {
+    // If this ever fires again, say what was still running: the hang has not been reproduced locally.
+    let alive = '';
+    try { alive = execFileSync('ps', ['-eo', 'pid,ppid,etime,args'], { encoding: 'utf8' }).split('\n').filter((l) => /git|node/.test(l)).slice(0, 30).join('\n'); } catch { /* no ps */ }
     throw new Error(
       `the checker did not finish: ${proc.error?.message ?? `killed by ${proc.signal}`} after ${RUN_TIMEOUT_MS} ms. `
       + 'That is a timeout, not a verdict — nothing was measured here, so do not read it as the '
-      + 'checker having missed the planted defect.',
+      + `checker having missed the planted defect. Processes alive at the timeout:\n${alive}`,
     );
   }
   return { exit: proc.status, out: `${proc.stdout ?? ''}${proc.stderr ?? ''}` };

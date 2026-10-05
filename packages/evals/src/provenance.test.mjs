@@ -63,14 +63,14 @@ const originalAsset = ({ id, name, kind, tags, createdAt, robloxAssetId = null, 
   name,
   kind,
   source: 'procedural',
-  sourceUrl: 'https://apple.moshe-barami111.workers.dev',
+  sourceUrl: 'https://studpilot.app',
   // `NONE-PROCEDURAL` is the canonical id `normaliseLicence` resolves this string to, and it is
   // what makes the record a real one rather than a plausible-looking shape: a licence string the
   // table cannot resolve is graded `unrecognised_licence` and BLOCKS a commercial publish, so a
   // fixture with invented wording would have quietly turned these tests into the opposite of what
   // they claim to check.
   licence: 'none-procedural',
-  licenceUrl: 'https://apple.moshe-barami111.workers.dev',
+  licenceUrl: 'https://studpilot.app',
   commercialUse: true,
   attributionRequired: false,
   author: 'StudPilot',

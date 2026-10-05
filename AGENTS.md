@@ -109,9 +109,10 @@ This tree uses the right column. The cutover (handoff step 1.3) is recorded step
 
 The old resources are deleted 7 days after their replacement is verified by counts (handoff M1). Binding names in
 code (`CORPUS`, `KV`, `VEC`, `MEDIA` and the rest of section 4) never change; only the resources behind them do. The
-plugin's API base is still the old `workers.dev` host until step 1.5, which moves it to `studpilot.app` and keeps
-the old base as a fallback. The Creator Store listing keeps the title "Apple Studio" until the owner retitles it
-(deferred).
+plugin's API base is `https://studpilot.app` (step 1.5, `PRODUCT_ORIGIN` in `packages/shared`; scripts read it through
+`scripts/lib/product-origin.mjs`); `Bridge.luau` falls back to the old `apple` host for ONE release when a request to the
+primary never gets an answer (an HTTP status is an answer and is not retried). The Creator Store listing keeps the
+title "Apple Studio" until the owner retitles it (deferred).
 
 ---
 

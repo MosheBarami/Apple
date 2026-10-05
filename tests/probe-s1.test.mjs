@@ -12,7 +12,8 @@
 // rather than remembered.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -63,7 +64,7 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   // PRODUCT_ORIGIN out would make the probe die one line earlier, for a reason this test is not
   // about, and the assertion below would be measuring the wrong refusal.
   writeFileSync(join(dir, 'packages', 'shared', 'src', 'index.ts'),
-    "export const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';\n"
+    "export const PRODUCT_ORIGIN = 'https://studpilot.app';\n"
     + "export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';\n"
     + 'export const nothing = 1;\n');
 
@@ -74,6 +75,35 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   assert.notEqual(r.status, 0, `must not exit 0 with clause 4 underivable:\n${out}`);
   assert.ok(!out.includes(TOKEN), `a refused run must not print the success token:\n${out}`);
   assert.match(out, /cannot read PLAN_LIMITS\.free/, out);
+});
+
+test('clause 2 exempts platform spellings only: a former workers.dev host in a page is a finding', async () => {
+  // Pages carry https://studpilot.app in canonical, og:url and twitter:image now, so the probe has no
+  // closed-list hostname to let through. Run against two pages that differ only in the canonical host;
+  // both carry the platform spellings (the system font stack, the iOS icon), which must stay exempt.
+  const page = (host) => `<!doctype html><html><head><link rel="canonical" href="${host}/">`
+    + '<link rel="apple-touch-icon" href="/i.png"><style>body{font-family:-apple-system,sans-serif}</style></head>'
+    + '<body><h1>StudPilot</h1></body></html>';
+  const clause2 = async (host) => {
+    const server = createServer((_req, res) => { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(page(host)); });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const out = join(mkdtempSync(join(tmpdir(), 'probe-s1-clause2-')), 'out');
+    DIRS.push(dirname(out));
+    try {
+      const r = await new Promise((resolve) => {
+        const child = spawn(process.execPath, [PROBE, '--base', `http://127.0.0.1:${server.address().port}`, '--out', out], { cwd: ROOT });
+        let text = '';
+        child.stdout.on('data', (d) => { text += d; });
+        child.stderr.on('data', (d) => { text += d; });
+        child.on('close', () => resolve(text));
+      });
+      const m = /clause 2\s+user-visible \w+: (\d+)/.exec(r);
+      assert.ok(m, `the probe printed no clause 2 count:\n${r}`);
+      return Number(m[1]);
+    } finally { server.close(); }
+  };
+  assert.equal(await clause2('https://studpilot.app'), 0, 'the platform spellings or the product host were counted');
+  assert.ok(await clause2('https://apple.moshe-barami111.workers.dev') > 0, 'a page that points at a former host passed clause 2');
 });
 
 test('an unrecognised flag is refused rather than ignored', () => {

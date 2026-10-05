@@ -102,27 +102,32 @@ test('the mutation lands: removing either invocation reddens the two tests above
 const scriptFiles = () => execFileSync('git', ['ls-files', 'scripts/*.mjs', 'scripts/lib/*.mjs'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26 })
   .split('\n').filter(Boolean).filter((rel) => existsSync(join(ROOT, rel)));
 
-test('no script sends a request to the legacy worker', () => {
-  const { LEGACY_PRODUCT_HOST } = { LEGACY_PRODUCT_HOST: 'golem.moshe-barami111.workers.dev' };
-  // A SCHEME IS WHAT MAKES IT A TARGET. probe-s1.mjs legitimately holds the bare hostname as a
-  // token it EXEMPTS while reading a page, and confusing "names the host" with "sends to the
-  // host" is how a guard ends up either blind or crying wolf.
-  const target = new RegExp(`https?://${LEGACY_PRODUCT_HOST.replace(/\./g, '\\.')}`);
+test('no script sends a request to a former host', () => {
+  // Both former workers.dev hosts. They are stand-ins until 2027-01-02 (infra/legacy-proxy) that
+  // forward /api/* to the product, so a script aimed at one works today and fails on the day the
+  // stand-in is deleted, with nothing in the script to say why.
+  const FORMER_HOSTS = ['golem.moshe-barami111.workers.dev', 'apple.moshe-barami111.workers.dev'];
+  // A SCHEME IS WHAT MAKES IT A TARGET. A script may legitimately hold the bare hostname as a token
+  // it recognises, and confusing "names the host" with "sends to the host" is how a guard ends up
+  // either blind or crying wolf.
+  const target = new RegExp(`https?://(?:${FORMER_HOSTS.map((h) => h.replace(/\./g, '\\.')).join('|')})`);
   const scanned = scriptFiles();
   assert.ok(scanned.length > 20, `only ${scanned.length} script(s) were scanned — the enumeration has gone blind`);
   const offenders = scanned.filter((rel) => target.test(executable(readFileSync(join(ROOT, rel), 'utf8'), ['//', '*', '/*'])));
-  assert.deepEqual(offenders, [], `these scripts still address the pre-rename deployment: ${offenders.join(', ')}`);
+  assert.deepEqual(offenders, [], `these scripts still address a former host: ${offenders.join(', ')}`);
 
-  // The extractor sees a planted offender, and does not see the same string in a comment.
-  assert.ok(target.test(executable("const B = 'https://golem.moshe-barami111.workers.dev';\n", ['//'])),
-    'the scan cannot see a legacy target at all — the empty result above means nothing');
-  assert.equal(target.test(executable('// it used to be https://golem.moshe-barami111.workers.dev\n', ['//'])), false,
-    'the scan flags a comment, so it would fail on any script that explains this history');
+  // The extractor sees a planted offender on either host, and does not see the same string in a comment.
+  for (const host of FORMER_HOSTS) {
+    assert.ok(target.test(executable(`const B = 'https://${host}';\n`, ['//'])),
+      `the scan cannot see ${host} at all — the empty result above means nothing`);
+    assert.equal(target.test(executable(`// it used to be https://${host}\n`, ['//'])), false,
+      'the scan flags a comment, so it would fail on any script that explains this history');
+  }
 });
 
 test('the product origin is derived from the shared package, with no fallback to a literal', async () => {
   const mod = await import(join(ROOT, 'scripts/lib/product-origin.mjs'));
-  assert.equal(mod.PRODUCT_ORIGIN, 'https://apple.moshe-barami111.workers.dev');
+  assert.equal(mod.PRODUCT_ORIGIN, 'https://studpilot.app');
   const src = readFileSync(join(ROOT, 'scripts/lib/product-origin.mjs'), 'utf8');
   // A DEFAULT IS HOW THE STALE COPY SURVIVES THE NEXT RENAME: read the declaration, fail to find
   // it, quietly use the value typed here, and every script is back to holding its own copy with

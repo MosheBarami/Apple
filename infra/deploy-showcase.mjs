@@ -26,7 +26,7 @@
  *
  *   set -a && . ./.env && set +a
  *   node infra/deploy-showcase.mjs
- *   node infra/deploy-showcase.mjs --base https://apple.moshe-barami111.workers.dev --prefix /showcase
+ *   node infra/deploy-showcase.mjs --base https://studpilot.app --prefix /showcase
  */
 import { readFileSync, mkdtempSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

@@ -1960,18 +1960,23 @@ export const PROTOCOL_VERSION = 1;
  * WHERE THIS PRODUCT LIVES. One definition.
  *
  * It was a module-local const in asset-library.ts and a literal in Bridge.luau, prompts.ts, the
- * site and three tests. That was survivable while there was one host. There are two: the worker is
- * still deployed under its old name at golem.moshe-barami111.workers.dev, and until tonight that
- * host served a complete, crawlable copy of the product — same bytes, same bundle, no redirect. The
- * legacy host now 308s its page routes here, and the destination is read from this constant rather
- * than typed beside the redirect, because a redirect pointing somewhere slightly different from the
- * canonical origin is a loop waiting to happen.
+ * site and three tests. That was survivable while there was one host. It is now https://studpilot.app
+ * (the Worker named studpilot, custom domain). The two former workers.dev hosts are stand-ins
+ * until 2027-01-02 (infra/legacy-proxy): API paths pass through to the product unchanged, a page
+ * load is a 301 here. Nothing the product ships may name them as the product; the one exception
+ * is the Studio plugin's fallback for ONE release (Bridge.luau), because a published plugin has
+ * to keep working while the person grants Studio's network permission for the new host.
+ *
+ * The legacy-host redirect in apps/worker/src/index.ts reads this constant rather than typing the
+ * destination beside the redirect, because a redirect pointing somewhere slightly different from
+ * the canonical origin is a loop waiting to happen.
  */
-export const PRODUCT_ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+export const PRODUCT_ORIGIN = 'https://studpilot.app';
 
 /**
- * The hostname the product used to answer on. Named so a guard can assert it is not serving pages,
- * rather than everyone agreeing to remember it.
+ * The hostname the product used to answer on (the golem host; the apple host went the same way).
+ * Named so a guard can assert it is not serving pages, rather than everyone agreeing to remember
+ * it. Both are stand-ins that vanish on 2027-01-02, so nothing may be written to depend on them.
  */
 export const LEGACY_PRODUCT_HOST = 'golem.moshe-barami111.workers.dev';
 

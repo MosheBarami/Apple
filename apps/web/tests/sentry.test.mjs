@@ -22,7 +22,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -180,6 +180,24 @@ test('the envelope is three lines with a readable event id, and carries the buil
   assert.equal(event.tags.boundary, 'route');
   assert.equal(event.tags.runtime, 'browser');
   h.client.uninstall();
+});
+
+test('the release is named studpilot@<sha>, and no sha stays `unknown` instead of a fake name', async () => {
+  assert.equal(S.sentryRelease('cafe123'), 'studpilot@cafe123');
+  assert.equal(S.sentryRelease('  cafe123\n'), 'studpilot@cafe123');
+  for (const none of [undefined, '', '   ']) assert.equal(S.sentryRelease(none), undefined);
+  // End to end through the module, with the helper's output as the app passes it.
+  const sent = [];
+  const win = fakeWindow();
+  const common = { now: () => 1_770_000_000_000, eventId: () => 'a'.repeat(32), target: win,
+    location: { origin: 'https://app.example', pathname: '/' },
+    send: async (url, init) => { sent.push(JSON.parse(init.body.trim().split('\n')[2])); return { ok: true, status: 200 }; } };
+  await S.installSentry({ dsn: DSN, release: S.sentryRelease('cafe123') }, common).captureException(new Error('boom'));
+  await S.installSentry({ dsn: DSN, release: S.sentryRelease(undefined) }, common).captureException(new Error('boom'));
+  assert.deepEqual(sent.map((e) => e.release), ['studpilot@cafe123', 'unknown']);
+  // …and the entry point really asks for it. A helper nothing calls names no release at all.
+  const main = readFileSync(join(WEB, 'src', 'main.tsx'), 'utf8');
+  assert.match(main, /release: sentryRelease\(import\.meta\.env\.VITE_BUILD_SHA\)/);
 });
 
 test('the route is labelled, so a project id never becomes a transaction name', async () => {

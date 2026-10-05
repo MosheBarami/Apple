@@ -524,7 +524,13 @@ app.use('*', sentryMiddleware(routeLabel));
 //   the day something non-GET does arrive at a page route.
 //
 //   Derived from PRODUCT_ORIGIN rather than typed, so the destination cannot drift from the one
-//   definition of where this product lives. ]]
+//   definition of where this product lives.
+//
+//   SINCE THE MOVE TO https://studpilot.app the former workers.dev hosts run the stand-in Worker in
+//   infra/legacy-proxy, which makes this same split (pages 301, /api /v1 /ws /auth /mcp through) and
+//   reaches this Worker through a service binding as studpilot.app. So this middleware answers only
+//   if a request ever arrives here under LEGACY_PRODUCT_HOST itself; it is kept because it is the
+//   one place the split is written against the shared constants, and it is harmless otherwise. ]]
 //[[ PLAINTEXT HTTP SERVED THE WHOLE PRODUCT, WITH NO REDIRECT AND NO HSTS.
 //
 //   `curl -o /dev/null -w '%{http_code}' http://apple.moshe-barami111.workers.dev/` answered 200.

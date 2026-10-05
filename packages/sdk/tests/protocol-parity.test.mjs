@@ -148,25 +148,24 @@ test('every SDK client sends the worker\'s current spelling of the Studio header
 /*
  * THE DEFAULT HOST, IN ALL THREE CLIENTS AND THE SHARED PACKAGE.
  *
- * The JS and Python clients shipped with `https://golem.moshe-barami111.workers.dev` as their
- * default while the Luau client already used `apple`. That is not a cosmetic split: the legacy
- * host serves /api/* from a SEPARATE, OLDER deployment — measured 2026-09-20, /api/health gave
- * buildSha 44d9ded-dirty there against e30b7f9-dirty on the canonical origin, 31 commits apart —
- * and the page redirect that moves a browser across deliberately EXEMPTS /api/*, so no SDK caller
- * was ever carried over. Anyone handed this package talked to a month-old worker and had no way to
- * see it.
+ * The product lives at https://studpilot.app. The two former workers.dev hosts are stand-ins until
+ * 2027-01-02 (infra/legacy-proxy): they pass /api/* through and 301 a page load. An SDK that still
+ * holds one keeps working until then, but a default shipped to a stranger must not name something
+ * with an end date, and the three clients must not drift apart the way they once did (JS and Python
+ * on one host, Luau on another, for a month, with a guard that listed none of the files that were
+ * wrong).
  *
- * The existing guard, apps/worker/tests/legacy-host.test.mjs's 'no shipped client points at the
- * legacy host', lists three client files and neither of the two that were wrong. It passed the
- * whole time. This one is anchored to the DECLARATIONS, in this package's own suite, so the
- * package that ships the defaults is the package that fails.
+ * This is anchored to the DECLARATIONS, in this package's own suite, so the package that ships the
+ * defaults is the package that fails.
  */
-test('every SDK client defaults to the canonical origin, never the legacy host', () => {
+test('every SDK client defaults to the canonical origin, never a former host', () => {
   const canonical = declaration('export const PRODUCT_ORIGIN =').match(/'([^']+)'/)?.[1];
-  assert.equal(canonical, 'https://apple.moshe-barami111.workers.dev',
+  assert.equal(canonical, 'https://studpilot.app',
     'PRODUCT_ORIGIN in @studpilot/shared is not what this test was written against — re-read it');
   const legacy = declaration('export const LEGACY_PRODUCT_HOST =').match(/'([^']+)'/)?.[1];
   assert.ok(legacy, 'LEGACY_PRODUCT_HOST is gone from @studpilot/shared — re-aim this test');
+  // Both former hosts: the one the shared package names, and the one every client used until now.
+  const formerHosts = [legacy, 'apple.moshe-barami111.workers.dev'];
 
   // (1) The JavaScript default, via the value the client actually resolves against.
   assert.equal(DEFAULT_BASE_URL, canonical);
@@ -177,13 +176,13 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
   assert.ok(pyDefault, 'the Python client no longer declares DEFAULT_BASE_URL — re-aim this test');
   assert.equal(pyDefault[1], canonical);
 
-  // (3) The Luau default, which was already right and must stay right.
+  // (3) The Luau default.
   const luau = readFileSync(join(ROOT, 'packages/sdk/luau/StudPilotClient.luau'), 'utf8');
   const luauDefault = /Client\.DEFAULT_API = "([^"]+)"/.exec(luau);
   assert.ok(luauDefault, 'the Luau client no longer declares DEFAULT_API — re-aim this test');
   assert.equal(luauDefault[1], canonical);
 
-  // (4) And nothing shipped by this package may name the legacy host at all. The wire literals
+  // (4) And nothing shipped by this package may name a former host at all. The wire literals
   //     `studpilot.v1` / `studpilot.jwt.` / `X-StudPilot-` are a different question and are pinned above.
   for (const rel of [
     'packages/sdk/src/wire.mjs',
@@ -199,7 +198,7 @@ test('every SDK client defaults to the canonical origin, never the legacy host',
     const text = readFileSync(join(ROOT, rel), 'utf8');
     // The comment explaining WHY the default moved has to be allowed to name the old host.
     const code = text.split('\n').filter((l) => !/^\s*(\/\/|#|--|\*|\/\*)/.test(l)).join('\n');
-    assert.ok(!code.includes(legacy), `${rel} still points a shipped client at ${legacy}`);
+    for (const host of formerHosts) assert.ok(!code.includes(host), `${rel} still points a shipped client at ${host}`);
   }
 });
 

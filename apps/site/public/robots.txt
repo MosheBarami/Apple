@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /app
 
-Sitemap: https://apple.moshe-barami111.workers.dev/sitemap-index.xml
+Sitemap: https://studpilot.app/sitemap-index.xml

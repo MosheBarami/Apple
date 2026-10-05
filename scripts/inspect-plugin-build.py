@@ -226,8 +226,8 @@ ALLOW = re.compile(
 # tunnel, a laptop on the LAN — and a blocklist by construction cannot catch those.
 ALLOWED_HOSTS = {
     "golem.moshe-barami111.workers.dev",  # the production worker; DEFAULT_API
-    "apple.moshe-barami111.workers.dev",  # verified Apple production origin; the plugin's API origin until the cloud rename
-    "studpilot.app",  # the StudPilot production origin the plugin switches to with the cloud rename (allowed ahead of it)
+    "apple.moshe-barami111.workers.dev",  # the former host: Bridge.luau's fallback for ONE release (a stand-in until 2027-01-02)
+    "studpilot.app",  # the product origin: the plugin's API origin (Bridge.luau STUDPILOT_ORIGIN)
     "127.0.0.1",  # session-configured owner gateway; plugin hard-codes this exact loopback IP
 }
 

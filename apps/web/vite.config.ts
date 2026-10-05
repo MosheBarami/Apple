@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/library-preview': {
-        target: 'https://apple.moshe-barami111.workers.dev',
+        target: 'https://studpilot.app',
         changeOrigin: true,
       },
     },

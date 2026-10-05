@@ -6,8 +6,10 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { TASKS } from './missions-cartoon-v2.mjs';
 import { envCompat } from '../../../scripts/lib/env-compat.mjs';
+import { PRODUCT_ORIGIN } from '../../../scripts/lib/product-origin.mjs';
 
-const ORIGIN = 'https://apple.moshe-barami111.workers.dev';
+// The one origin the admin key may be sent to: the product's, read from the shared declaration.
+const ORIGIN = PRODUCT_ORIGIN;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 export function summarize(manifest, info, messages, events, now = Date.now(), coverage = {}) {
   const rows = messages.filter(m => Date.parse(m.createdAt) >= Date.parse(manifest.createdAt));

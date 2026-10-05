@@ -223,7 +223,7 @@ local function showSources(owed: boolean, message: string?)
 	if owed then widget.Enabled = true end
 end
 showSources(false, nil)
-		text("Pair with a project at apple.moshe-barami111.workers.dev. While connected, StudPilot may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
+		text("Pair with a project at studpilot.app. While connected, StudPilot may read this place’s objects and scripts, the current selection, Studio Output messages, and snapshots of the active 3D viewport over HTTPS.", 14, true)
 
 order += 1
 local code = Instance.new("TextBox")

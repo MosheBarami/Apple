@@ -46,29 +46,29 @@ const ctx = { waitUntil: () => {}, passThroughOnException: () => {} };
 const call = (url, init) => app.fetch(new Request(url, init), env, ctx);
 
 test('A PLAINTEXT REQUEST IS REDIRECTED, not served', async () => {
-  const res = await call('http://apple.moshe-barami111.workers.dev/');
+  const res = await call('http://studpilot.app/');
   assert.equal(res.status, 308, `plaintext http answered ${res.status} — this is the defect`);
-  assert.equal(res.headers.get('Location'), 'https://apple.moshe-barami111.workers.dev/');
+  assert.equal(res.headers.get('Location'), 'https://studpilot.app/');
 });
 
 test('308 AND NOT 301, so a POST to the API keeps its method and body', async () => {
   // A 301 turns a POST into a GET. The caller then gets "no such endpoint" for what was really a
   // wrong scheme, which is the error that costs somebody an afternoon.
-  const res = await call('http://apple.moshe-barami111.workers.dev/v1/chat/completions', {
+  const res = await call('http://studpilot.app/v1/chat/completions', {
     method: 'POST', body: '{}', headers: { 'content-type': 'application/json' },
   });
   assert.equal(res.status, 308);
-  assert.equal(res.headers.get('Location'), 'https://apple.moshe-barami111.workers.dev/v1/chat/completions');
+  assert.equal(res.headers.get('Location'), 'https://studpilot.app/v1/chat/completions');
 });
 
 test('the path and query survive the redirect — a share link must still land where it was pointed', async () => {
-  const res = await call('http://apple.moshe-barami111.workers.dev/join?token=abc123&x=1');
-  assert.equal(res.headers.get('Location'), 'https://apple.moshe-barami111.workers.dev/join?token=abc123&x=1');
+  const res = await call('http://studpilot.app/join?token=abc123&x=1');
+  assert.equal(res.headers.get('Location'), 'https://studpilot.app/join?token=abc123&x=1');
 });
 
 test('HSTS IS ON EVERY RESPONSE, including the API half that carries a key', async () => {
   for (const path of ['/', '/api/health', '/v1/models']) {
-    const res = await call(`https://apple.moshe-barami111.workers.dev${path}`);
+    const res = await call(`https://studpilot.app${path}`);
     const hsts = res.headers.get('Strict-Transport-Security');
     assert.ok(hsts, `${path} carries no Strict-Transport-Security — a header only on the pages is a header the API does not have`);
     assert.match(hsts, /max-age=31536000/, `${path}: ${hsts}`);
@@ -79,6 +79,6 @@ test('HSTS IS ON EVERY RESPONSE, including the API half that carries a key', asy
 test('preload is NOT asserted, and that is deliberate', async () => {
   // `preload` is a one-way door: it asks browser vendors to hardcode the hostname, and removal
   // takes months. This product may not keep this hostname.
-  const res = await call('https://apple.moshe-barami111.workers.dev/');
+  const res = await call('https://studpilot.app/');
   assert.doesNotMatch(res.headers.get('Strict-Transport-Security') ?? '', /preload/);
 });

@@ -22,10 +22,9 @@
 local Client = {}
 Client.__index = Client
 
--- The current product. This pointed at the old (legacy) host until 2026-09-19, which is a STALE
--- deployment of an older build — so the shipped SDK's default sent callers to a diverging copy of
--- the product whose auth answers differently. Old host still resolves; nothing here depends on it.
-Client.DEFAULT_API = "https://apple.moshe-barami111.workers.dev"
+-- The product's own domain. The former workers.dev hosts are stand-ins until 2027-01-02 that pass
+-- /api/* through to it, so a default must not name one.
+Client.DEFAULT_API = "https://studpilot.app"
 
 -- Header names are wire identity. This client sends the StudPilot spelling (renamed 2026-10-04); the
 -- worker still accepts the two former spellings (packages/shared/src/legacy-wire.ts), because an

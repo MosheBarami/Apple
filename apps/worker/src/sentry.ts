@@ -398,7 +398,8 @@ export async function reportToSentry(
         ctx,
         eventId,
         timestampMs: at,
-        release: typeof env.BUILD_SHA === 'string' && env.BUILD_SHA ? env.BUILD_SHA : 'unknown',
+        // `studpilot@<sha>`, the name the Sentry project groups releases under. No sha is `unknown`, never `studpilot@unknown`.
+        release: typeof env.BUILD_SHA === 'string' && env.BUILD_SHA ? `studpilot@${env.BUILD_SHA}` : 'unknown',
         environment: typeof env.ENVIRONMENT === 'string' && env.ENVIRONMENT ? env.ENVIRONMENT : 'unknown',
       }),
     );

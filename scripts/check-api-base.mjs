@@ -17,6 +17,11 @@
 // scripts/lib/product-origin.mjs solved this for five SCRIPTS. It was never applied to infra/ or
 // packages/, which read the raw variable, and nothing anywhere refused a stale value. This does.
 //
+// SINCE THE MOVE TO https://studpilot.app (2026-10-04) the former workers.dev hosts are stand-ins that
+// forward /api/* to the product, so a stale value no longer measures an older build. It still measures
+// through a proxy that is deleted on 2027-01-02, and it still reports a host that is not the product,
+// so the rule is unchanged: API_BASE is the product origin.
+//
 //   node scripts/check-api-base.mjs
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -66,14 +71,15 @@ if (!declared) {
     problems.push(`API_BASE is "${value}", which is not a URL. Every tool below sends nowhere useful.`);
   } else if (host === LEGACY_PRODUCT_HOST.replace(/^https?:\/\//, '')) {
     problems.push(
-      `API_BASE points at ${host}, the PRE-RENAME worker. It is still deployed and it still answers, `
-      + 'which is what makes this dangerous rather than obvious: its page routes 308 to the product '
-      + 'so a page fetch looks current, while /api/* does not redirect and lands on the old '
-      + `deployment. Set it to ${PRODUCT_ORIGIN}.`,
+      `API_BASE points at ${host}, a FORMER host. It is a stand-in that forwards /api/* to the product `
+      + 'and 301s a page load, which is what makes it look right: every tool below works, through a '
+      + 'proxy that is deleted on 2027-01-02, and the day it goes they all fail at once. '
+      + `Set it to ${PRODUCT_ORIGIN}.`,
     );
   } else if (value !== PRODUCT_ORIGIN.replace(/\/+$/, '')) {
     problems.push(`API_BASE is ${value}; the product is ${PRODUCT_ORIGIN}. Every tool below is `
-      + 'measuring something other than the product.');
+      + 'aimed at something other than the product (a former workers.dev host only forwards /api/* '
+      + 'until 2027-01-02).');
   }
 }
 

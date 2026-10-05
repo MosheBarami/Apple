@@ -83,6 +83,18 @@ test('admin observation refuses redirects before credentials can be forwarded', 
   assert.equal(calls,1);
 });
 
+test('the admin key is sent to the product origin and to nothing else', async () => {
+  // The one credential destination this tool approves: https://studpilot.app, read from the shared
+  // declaration. A former workers.dev host is a stand-in that is deleted on 2027-01-02.
+  const seen = [];
+  await observationGet('private-key', '/api/admin/logs', async (url, options) => {
+    seen.push(url);
+    assert.equal(options.headers['x-admin-key'], 'private-key');
+    return { ok: true, json: async () => ({}) };
+  });
+  assert.deepEqual(seen, ['https://studpilot.app/api/admin/logs']);
+});
+
 test('101 messages at a cursor boundary cannot silently become complete coverage', async () => {
   const all=Array.from({length:101},(_,i)=>({id:String(i),createdAt:'2026-09-26T12:01:00Z'}));
   const window=all.slice(0,100);
