@@ -16,6 +16,24 @@ hosts. The API token cannot edit widgets (10000 "Authentication error", measured
 4. Optionally rename the widget to `studpilot-auth`. The site key does not change.
 5. Click **Save**. Nothing else is needed; the code already uses this site key.
 
+### O2. Sign in with Roblox once (3 minutes; it closes the M2 Roblox check)
+Sign in with Roblox is live on studpilot.app. Two things can't be checked without your Roblox login: that Roblox
+accepts the redirect, and that the whole round trip works.
+1. Open https://create.roblox.com/dashboard/credentials → **OAuth 2.0 Apps** → **StudPilot**. Check these values and
+   fix any that differ, then click **Save**:
+   - Redirect URL: `https://studpilot.app/auth/roblox/callback`
+   - Entry link: `https://studpilot.app/`
+   - Privacy policy: `https://studpilot.app/privacy`
+   - Terms of service: `https://studpilot.app/terms`
+   - Category: **Creation & Productivity Tools**
+2. Open a private browser window at https://studpilot.app/app/login and click **Continue with Roblox**.
+3. Sign in to Roblox and click **Allow**.
+4. The first time, StudPilot asks you to confirm that a new account will be made. Confirm it. You land in the app,
+   signed in.
+5. Tell Claude Code "roblox ok", or paste the error text. It then checks the connection in Settings, a second sign-in,
+   and Disconnect.
+Roblox allows at most 10 users until the app passes review (X9).
+
 ## Before charging money
 
 ### X5. An adult holds the Stripe account
