@@ -55,9 +55,15 @@ go to `THIRD_PARTY_NOTICES.md`.
 
 - **R1, the shell (built).** `apps/studio`: a Flue agent with Kumo and `@flue/react`, reading a place through
   `StudioGate`.
-- **R2, the Studio side.** Port roblox-ai-studio's ScriptOps, InstanceOps, LogOps, PlaytestOps and TestOps
-  into the plugin, behind the allowlist, with one undo waypoint per call. Tool schemas follow robloxstudio-mcp.
-  `StudioGate` gains the write tools; the UI asks for approval before each write.
+- **R2, the Studio side.** Checked against our plugin (2026-10-05): it already has what ScriptOps,
+  InstanceOps and LogOps do (get_tree, get_instance, list/read/search scripts, edit_script, create/set/delete,
+  get_logs), plus run_mode and play_check for playtests. roblox-ai-studio's `run_tests` (TestOps) and `RunLuau`
+  execute received text through `loadstring` with full plugin authority, which our plugin refuses on purpose
+  (`run_code` is UNSUPPORTED: it could reach account, upload and publish services). So they are not ported;
+  the Test Engineer tests through play_check and get_logs. What R2 does: `StudioGate` serves the post-M4 write
+  tools through a new SessionDO route (checkpointed like an agent run), the UI asks for approval before each
+  write (agents-starter's approval cards), and tool names and schemas follow robloxstudio-mcp where they overlap.
+  Built on top of #38 (M4).
 - **R3, the team.** Coordinator, Planner, Coder, Reviewer and Test Engineer as Flue subagents, with the
   `run_tests` QA loop. The M4 rule still holds: blocks are chosen only by the model.
 - **R4, the app.** `/app` rebuilt with Kumo; plus the in-Studio chat panel from roblox-ai-studio talking to
