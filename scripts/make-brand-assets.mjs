@@ -18,6 +18,14 @@
  * on disk; a request to anything but file:// fails the run, which is how "no webfont, no CDN" is
  * enforced rather than hoped for.
  *
+ * THE CARD MUST HAVE ITS TOKENS. A page whose stylesheet fails to load is not an error to a browser: it is
+ * drawn unstyled (white, serif), and a check of the PNG's pixels passes it, since any anti-aliased text
+ * has more distinct colours than a blank-frame check asks for. So the card is checked at its source
+ * (every stylesheet it links exists, one is the token file the manifest hashes, every token it spends is
+ * declared) and as the browser loaded it (no file request failed, every token it spends resolves to a
+ * value, and the page is painted in the dark --paper). A card that fails any of these is reported and its
+ * PNG is not written.
+ *
  * A PNG is opaque to review, so the sources are the reviewable artefacts and this turns them into the
  * shipped ones. Every step asserts against rendered pixels: a generator is exactly the tool that
  * reports success over a blank frame, a zero-byte file or a mark that never painted.
@@ -42,7 +50,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 // A static import, so the dead-end gate sees a product module behind the recipe (a computed dynamic import is invisible to it).
-import { FAVICON_COPIES, MANIFEST_FILE, PNGS, WEB_FAVICON_FILE, brandSources, iconSvg, manifestOf, manifestProblems, sha256, withWebFavicon } from '../packages/design/src/web/brand-recipe.mjs';
+import { FAVICON_COPIES, MANIFEST_FILE, PNGS, WEB_FAVICON_FILE, brandSources, cardLinks, cardProblems, iconSvg, manifestOf, manifestProblems, sha256, withWebFavicon } from '../packages/design/src/web/brand-recipe.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -142,6 +150,10 @@ for (const [i, asset] of ASSETS.entries()) {
   }
 }
 
+// THE CARD'S SOURCE, BEFORE ANY BROWSER: a link to no file, no link to the token file, a token nobody declares.
+const cardSourceProblems = cardProblems(ROOT);
+for (const c of cardSourceProblems) problems.push(c);
+
 const manifestPath = join(ROOT, MANIFEST_FILE);
 const stored = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : null;
 
@@ -183,10 +195,32 @@ for (const asset of ASSETS) {
     return route.abort();
   });
 
+  // A file the page asked for and the disk did not have: the stylesheet of a card whose href is wrong.
+  const failedLoads = [];
+  page.on('requestfailed', (req) => { if (req.url().startsWith('file://')) failedLoads.push(req.url()); });
+
   if (src) await page.goto(pathToFileURL(src).href, { waitUntil: 'networkidle' });
   else await page.setContent(asset.inlineHtml, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   if (stray.length) problems.push(`${asset.name}: tried to fetch ${stray.slice(0, 3).join(', ')}; the brand assets use the system font stack and the files on disk`);
+
+  // THE CARD AS THE BROWSER LOADED IT. Every token the card spends must have a value on the page (an unresolved
+  // var() falls back without a word), no file may have failed to load, and the page must be painted in --paper.
+  let cardBroken = cardSourceProblems.length > 0 && src !== null;
+  if (src) {
+    const spent = cardLinks(ROOT).spends;
+    const drawn = await page.evaluate((names) => {
+      const root = getComputedStyle(document.documentElement);
+      return { unresolved: names.filter((n) => root.getPropertyValue(n).trim() === ''), background: getComputedStyle(document.body).backgroundColor };
+    }, spent);
+    const paper = `rgb(${[1, 3, 5].map((i) => parseInt(sources.paper.slice(i, i + 2), 16)).join(', ')})`;
+    const seen = [];
+    if (failedLoads.length) seen.push(`a file did not load (${failedLoads.slice(0, 2).map((u) => relative(ROOT, fileURLToPath(u))).join(', ')})`);
+    if (drawn.unresolved.length) seen.push(`${drawn.unresolved.join(', ')} resolve${drawn.unresolved.length === 1 ? 's' : ''} to nothing on the page`);
+    if (drawn.background !== paper) seen.push(`the page is painted ${drawn.background}, not the dark --paper ${paper}`);
+    for (const reason of seen) problems.push(`${asset.name}: the card was drawn without its tokens: ${reason}; the PNG was not written`);
+    if (seen.length) cardBroken = true;
+  }
 
   // NOTHING IS CLIPPED. A headline one word too long silently runs off a fixed-size card.
   const overflow = await page.evaluate(() => ({
@@ -229,9 +263,11 @@ for (const asset of ASSETS) {
         }
       }
     }
-  } else if (!same) {
+  } else if (!same && !cardBroken) {
     mkdirSync(dirname(outPath), { recursive: true });
     writeFileSync(outPath, buf);
+  } else if (cardBroken) {
+    verdict = 'NOT WRITTEN (the card was drawn without its tokens)';
   }
   report.push(`${asset.out.split('/').slice(-2).join('/')}  ${asset.width}x${asset.height}  ${(buf.length / 1024).toFixed(1)} kB  sha=${sha(buf)}  colours=${uniq.distinct}  ${verdict}`);
 }
@@ -249,11 +285,6 @@ if (CHECK) {
     for (const b of bad) problems.push(`${MANIFEST_FILE}: ${b}`);
     report.push(`${MANIFEST_FILE.split('/').slice(-2).join('/')}  ${Object.keys(now.inputs).length} inputs, ${Object.keys(now.outputs).length} outputs hashed  ${bad.length ? 'STALE' : 'current'}`);
   }
-} else {
-  const text = JSON.stringify(manifestOf(ROOT, process.platform), null, 2) + '\n';
-  const had = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
-  if (had !== text) writeFileSync(manifestPath, text);
-  report.push(`${MANIFEST_FILE.split('/').slice(-2).join('/')}  manifest  ${had === text ? 'unchanged' : had ? 'CHANGED' : 'NEW'}`);
 }
 
 /* ------------------------------------------------------------------ every shipped SVG must parse */
@@ -292,6 +323,15 @@ if (CHECK) {
 }
 
 await browser.close();
+
+// THE MANIFEST IS WRITTEN LAST, AND ONLY BY A RUN THAT FOUND NOTHING WRONG. It records what each PNG was made from; a run
+// that refused to write a PNG (a card drawn without its tokens) must not also record the broken card as the PNG's source.
+if (!CHECK) {
+  const text = JSON.stringify(manifestOf(ROOT, process.platform), null, 2) + '\n';
+  const had = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null;
+  if (problems.length === 0 && had !== text) writeFileSync(manifestPath, text);
+  report.push(`${MANIFEST_FILE.split('/').slice(-2).join('/')}  manifest  ${problems.length ? 'NOT WRITTEN (the run failed)' : had === text ? 'unchanged' : had ? 'CHANGED' : 'NEW'}`);
+}
 
 /** Decode two PNGs in a browser context: { size } when their dimensions differ, else { mean, far } (see SAME_PICTURE). */
 async function pixelDiff(br, a, b) {

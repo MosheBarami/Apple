@@ -13,10 +13,10 @@
  * edited by hand all fail in `pnpm -r test`, on any machine.
  */
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { theme, themeBlocks } from './css-tokens.mjs';
+import { sharedBlock, stripComments, theme, themeBlocks } from './css-tokens.mjs';
 
 export const REPO = fileURLToPath(new URL('../../../../', import.meta.url));
 
@@ -75,6 +75,46 @@ export const faviconHref = (svg) => 'data:image/svg+xml,' + svg.trim().replace(/
 /** `html` (the text of WEB_FAVICON_FILE) with its favicon replaced by `svg`; null when it has no inline favicon. */
 export function withWebFavicon(html, svg) {
   return WEB_FAVICON_RE.test(html) ? html.replace(WEB_FAVICON_RE, (_, a, b) => a + faviconHref(svg) + b) : null;
+}
+
+/**
+ * What the share card LINKS and SPENDS, read from its source: the stylesheets it loads, the custom properties it
+ * reads with `var()`, and the ones it declares itself. A page whose stylesheet fails to load does not fail: the
+ * browser draws it unstyled (white, serif) and a generator that only looks at the PNG's pixels reports success over
+ * a wrong share image, because any anti-aliased text has more than the few colours a "did it render" check wants.
+ */
+export function cardLinks(root = REPO) {
+  const html = readFileSync(join(root, OG_SOURCE), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ');
+  const hrefs = [...html.matchAll(/<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["']/gi)].map((m) => m[1]);
+  const css = stripComments(html);
+  return {
+    hrefs,
+    spends: [...new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)].map((m) => m[1]))].sort(),
+    declares: new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((m) => m[1])),
+  };
+}
+
+/**
+ * Everything wrong with how the share card reaches its tokens, as sentences (empty is clean), without a browser:
+ * a stylesheet link that points at no file, no link to the token file the manifest hashes, and a token the card
+ * spends that neither the token file nor the card declares (an unresolved `var()` silently falls back).
+ */
+export function cardProblems(root = REPO) {
+  const out = [];
+  const { hrefs, spends, declares } = cardLinks(root);
+  const dir = dirname(join(root, OG_SOURCE));
+  const tokenFile = resolve(root, TOKENS_FILE);
+  if (hrefs.length === 0) out.push(`${OG_SOURCE} links no stylesheet, so the card is drawn in the browser's defaults`);
+  for (const href of hrefs) {
+    if (/^[a-z]+:/i.test(href)) { out.push(`${OG_SOURCE} links ${href}, which is not a file on disk`); continue; }
+    if (!existsSync(resolve(dir, href))) out.push(`${OG_SOURCE} links ${href}, which does not exist (it resolves to ${resolve(dir, href)})`);
+  }
+  if (hrefs.length && !hrefs.some((h) => resolve(dir, h) === tokenFile)) out.push(`${OG_SOURCE} does not link ${TOKENS_FILE}, the file the manifest hashes it with`);
+  const blocks = themeBlocks(readFileSync(tokenFile, 'utf8'));
+  const known = new Set([...blocks.dark, ...blocks.light, ...sharedBlock(readFileSync(tokenFile, 'utf8'))].map((d) => d.name));
+  for (const name of spends) if (!known.has(name) && !declares.has(name)) out.push(`${OG_SOURCE} spends ${name}, which ${TOKENS_FILE} does not declare`);
+  if (spends.length < 5) out.push(`only ${spends.length} token(s) were found in ${OG_SOURCE}; the scan is blind`);
+  return out;
 }
 
 /**

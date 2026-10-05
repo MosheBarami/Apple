@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   FAVICON_COPIES, MANIFEST_FILE, MARK_FILE, OG_SOURCE, PNGS, TOKENS_FILE, WEB_FAVICON_FILE,
-  brandSources, iconSvg, manifestOf, manifestProblems, readManifest, withWebFavicon,
+  brandSources, cardLinks, cardProblems, iconSvg, manifestOf, manifestProblems, readManifest, withWebFavicon,
 } from './brand-recipe.mjs';
 import { ROOT, readText, walkText } from './tests/repo-walk.mjs';
 
@@ -208,6 +208,45 @@ test('the guard has teeth: a swapped PNG, a moved mark, an edited card or a move
     // 5. a PNG the manifest does not know, and one it lists that the generator dropped
     assert.ok(manifestProblems({ ...STORED, outputs: { ...STORED.outputs, 'apps/site/public/old.png': { input: 'icon', sha256: '0' } } }, manifestOf(tmp, STORED.renderedOn)).some((m) => /no longer writes/.test(m)), 'a stale manifest entry was not reported');
     assert.deepEqual(probe(), [], 'the fixture was not restored');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+/* ------------------------------------------------------------------ the share card must have its tokens */
+
+test('the share card reaches its tokens: its stylesheet link resolves to the token file, and every token it spends is declared', () => {
+  // The generator reported "BRAND ASSETS OK" and wrote a white, serif, unstyled og.png when this link was broken, because
+  // the manifest hashes og.html and tokens.css by PATH from the recipe, not the file the browser actually loaded.
+  const { hrefs, spends } = cardLinks(ROOT);
+  assert.ok(hrefs.length >= 1, 'no stylesheet link was found in the card; the scan is blind');
+  assert.ok(spends.length >= 8, `only ${spends.length} tokens found in the card; the scan is blind`);
+  assert.deepEqual(cardProblems(ROOT), [], 'the share card does not reach its tokens');
+});
+
+test('the guard has teeth: a broken stylesheet link, a missing link, and a token nobody declares are each reported', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'brand-card-'));
+  try {
+    for (const rel of [TOKENS_FILE, OG_SOURCE]) { mkdirSync(dirname(join(tmp, rel)), { recursive: true }); cpSync(abs(rel), join(tmp, rel)); }
+    const [cardPath, tokensPath] = [join(tmp, OG_SOURCE), join(tmp, TOKENS_FILE)];
+    const [card, tokens] = [readFileSync(cardPath, 'utf8'), readFileSync(tokensPath, 'utf8')];
+    assert.deepEqual(cardProblems(tmp), [], 'the copy of the card is not clean; the fixture is wrong');
+
+    writeFileSync(cardPath, card.replace(/(<link[^>]*href="[^"]*)tokens\.css/, '$1tokens-moved.css'));
+    const broken = cardProblems(tmp);
+    assert.ok(broken.some((m) => /tokens-moved\.css, which does not exist/.test(m)) && broken.some((m) => /does not link/.test(m)), `a link to a file that is not there was not reported: ${broken.join(' | ')}`);
+
+    writeFileSync(cardPath, card.replace(/<link[^>]*>/, ''));
+    assert.ok(cardProblems(tmp).some((m) => /links no stylesheet/.test(m)), 'a card with no stylesheet link was not reported');
+
+    assert.notEqual(card.replace(/(<link[^>]*href="[^"]*)tokens\.css/, '$1tokens-moved.css'), card, 'the fixture did not move the link');
+    writeFileSync(cardPath, card.replace('var(--paper)', 'var(--paperx)'));
+    assert.ok(cardProblems(tmp).some((m) => /spends --paperx/.test(m)), 'a token the card spends and nobody declares was not reported');
+
+    // The other end: the token file renames a token the card still spends.
+    writeFileSync(cardPath, card);
+    writeFileSync(tokensPath, tokens.replaceAll('--faint:', '--faintx:'));
+    assert.ok(cardProblems(tmp).some((m) => /spends --faint,/.test(m)), 'a token renamed in the token file was not reported');
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
