@@ -5,7 +5,6 @@
   "name": "studpilot-studio",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  "account_id": "cc341a7db4d748139f161fdc292e6e84",
   // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/* here with the prefix
   // removed (same origin,
   // so the signed-in Supabase session carries over). No workers.dev route.
