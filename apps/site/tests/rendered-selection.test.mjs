@@ -174,7 +174,8 @@ const PIXEL_SUBJECTS = ['span.cta__label', 'span.shiny__label', 'button.composer
 
 async function open(page, base, route, mode) {
   await page.goto(base + route, { waitUntil: 'load' });
-  await page.evaluate((m) => { try { localStorage.setItem('apple-theme', m); } catch { /* the page falls back to the colour scheme */ } document.documentElement.dataset.theme = m; }, mode);
+  // The theme is the attribute the stylesheets key on; it is set after the page's own scripts have run, so nothing resets it.
+  await page.evaluate((m) => { document.documentElement.dataset.theme = m; }, mode);
   await page.addStyleTag({ content: NO_MOTION });
   await page.waitForTimeout(120);
 }
