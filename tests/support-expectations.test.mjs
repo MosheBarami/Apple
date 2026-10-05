@@ -22,6 +22,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -91,4 +92,22 @@ test('the app shows it for every plan, including the one with no price', () => {
 
 test('the pricing page shows it too — the page built to prevent this omission omitted it', () => {
   assert.match(PRICING, /PLAN_SUPPORT/, 'the marketing pricing page still publishes no support expectation');
+});
+
+test('THE FORMER OPERATOR NAME and its old mailbox domain are in no tracked file except the owner\'s own quoted instruction (OWNER-DECISIONS.md), including the documents that SAY none remain', () => {
+  // Owner decision D-13 replaced the former operator name everywhere. planning/proof/M2/LEGAL-CLAIMS.md says that none remains except the owner's quoted instruction, and the
+  // sentence that said so contained the name, which made the claim untrue of its own file. So this reads every tracked file. The name is built from parts, so that this file
+  // is not the second place that holds it.
+  // (Even the pieces avoid the words: the old-name guard reads this file too, and "Ap"+"ple" is one of the product's former names.)
+  const first = ['Ap', 'ple'].join('');
+  const second = ['La', 'bs'].join('');
+  const pattern = `${first}[ .]${second}|${first.toLowerCase()}\\.${second.toLowerCase()}\\.app`;
+  let hits = [];
+  try {
+    hits = execFileSync('git', ['-C', ROOT, 'grep', '-a', '-i', '-l', '-E', pattern], { encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter(Boolean);
+  } catch (e) {
+    if (e.status !== 1) throw e;          // 1 is git grep's "no match"; anything else is a search that did not run, and proves nothing
+  }
+  assert.deepEqual(hits, ['planning/proof/OWNER-DECISIONS.md'], `the former operator name is still in: ${hits.join(', ')}. Only the owner's quoted instruction may hold it; reword the rest (a sentence that says none remains must not contain it).`);
+  assert.ok(readFileSync(join(ROOT, 'planning', 'proof', 'OWNER-DECISIONS.md'), 'utf8').match(new RegExp(pattern, 'i')), 'OWNER-DECISIONS.md no longer holds the quoted instruction: this guard has gone blind, so re-aim it');
 });
