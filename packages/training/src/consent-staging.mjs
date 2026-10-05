@@ -89,6 +89,13 @@ export const DEFAULT_MAX_CONSENT_AGE_MS = 24 * 60 * 60 * 1000;
  * Turning this on is a product decision that requires the opt-in surface, the policy wording and
  * this constant to change together. tests/promises-match-the-product.test.mjs holds the three to
  * each other so one cannot move alone.
+ *
+ * 2026-10-05 (planning/STUDPILOT-FINAL-PLAN.md section 7): the published rule is now "Roblox data is never used for AI training;
+ * anonymised, opt-out improvement data is not collected yet". This gate is what makes "not collected yet" true. It still takes its
+ * consent proof from `profiles.training_opt_in` (an opt-IN column) and does NOT read the opt-out the Settings switch writes
+ * (`improvement_opt_out`), so opening it as it stands would stage the work of people who opted out. It must not be opened until
+ * it reads that preference and the in-app notice for accounts with no email address exists; the same test requires both before this
+ * constant may be true.
  */
 export const CUSTOMER_WORK_TRAINING_ENABLED = false;
 
@@ -444,7 +451,7 @@ export function validateEnvelope(envelope, { now = undefined, maxConsentAgeMs = 
       errors: [{
         code: 'training_on_customer_work_disabled',
         path: 'product',
-        message: 'Apple does not train on customer work. No envelope can be staged while that promise is published, whatever profiles.training_opt_in holds.',
+        message: 'Customer work is not collected for improvement data or training yet: this gate is closed, whatever profiles.training_opt_in holds. It opens only once the pipeline honours improvement_opt_out and every account holder has been told (tests/promises-match-the-product.test.mjs).',
       }],
       counts: { messages: 0, toolSteps: 0 },
     };

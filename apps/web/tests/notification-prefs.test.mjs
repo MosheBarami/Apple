@@ -235,18 +235,24 @@ test('the save carries the preferences already stored, because the route deletes
   //   The property belongs to all of them: the route REPLACES the scope, so any save that does not
   //   carry the stored base deletes this person's language, response length, coding style and
   //   Roblox conventions, silently.
+  //
+  //   RESTATED when the base moved into lib/stored-preferences.ts (`preferencesToSave`): the saver no longer spells `...base`,
+  //   it asks for the LOADED preferences plus its change, and refuses when nothing was loaded (a failed read used to give a
+  //   blank base, and a blank base deletes everything the person had set). The property is the same one, held where it can
+  //   also be exercised: every saver goes through the helper, and the helper spreads what the server says is stored.
   const body = code(page);
-  const calls = [...body.matchAll(/savePreferences\(\s*'user',\s*userId,\s*\{([\s\S]{0,500}?)\}\s*\)/g)];
+  const all = [...body.matchAll(/savePreferences\(\s*'user'/g)];
+  const calls = [...body.matchAll(/savePreferences\(\s*'user',\s*userId,\s*preferencesToSave\(\s*\w+\.data,\s*\{([\s\S]{0,500}?)\}\s*\)\s*\)/g)];
   assert.ok(calls.length >= 1, 'could not find a save call — this test is measuring nothing');
-  for (const [i, call] of calls.entries()) {
-    assert.match(call[1], /\.\.\.base/,
-      `saver ${i + 1} of ${calls.length} does not carry the stored preferences, so it deletes every key it omits`);
-  }
+  assert.equal(calls.length, all.length,
+    `${all.length - calls.length} saver(s) on this page do not go through preferencesToSave, so they can save over a blank base and delete every key they omit`);
+  const helper = readFileSync(join(WEB, 'src', 'lib', 'stored-preferences.ts'), 'utf8');
+  assert.match(code(helper), /\.\.\.stored\b/, 'the helper no longer carries the stored preferences into the save');
+  assert.match(code(helper), /loaded\?\.preferences\?\.prefs/, 'the base has to be what the server says is stored');
   // And the notification panel's own save carries the two keys it owns.
   const notify = calls.find((c) => /notify_delivery/.test(c[1]));
   assert.ok(notify, 'no saver writes notify_delivery');
   assert.match(notify[1], /notify_events/);
-  assert.match(body, /preferences\.prefs/, 'the base has to be what the server says is stored');
 });
 
 test('what the server refused is printed, instead of falling back to a default in silence', () => {

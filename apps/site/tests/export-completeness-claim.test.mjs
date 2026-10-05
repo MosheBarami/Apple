@@ -90,7 +90,7 @@ test('a store the button collects is not published as something to fetch yoursel
   }
 });
 
-test('the two things that really do stay out are named on both pages', () => {
+test('bytes and the live pairing code, the two things the file is mostly missing, are named on both pages, with what a failed route looks like (the full list of exclusions is held by privacy-claims.test.mjs)', () => {
   for (const [where, text] of Object.entries(PAGES)) {
     const at = text.search(/Download my data/);
     const section = text.slice(at, at + 1800);

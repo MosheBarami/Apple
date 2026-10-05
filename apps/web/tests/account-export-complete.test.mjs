@@ -223,6 +223,27 @@ test('bytes are listed with the route that serves them, never inlined and never 
   }
 });
 
+test('WORKSPACE FILES: the listing is in the file, their text is declared out, and the file says both', async () => {
+  // `/files` answers with names, sizes and dates (and the trash entries): no file text. The file used to claim that route covered the two workspace
+  // stores, so it never said their text was absent, and the pages said only the "history" of the files was left out.
+  const { doc } = await run();
+  assert.ok(doc.followed['files:p-1'], 'the listing of the workspace files must still be fetched and kept');
+  assert.equal(accountExportCoverage().has('ws:<project>:'), false, 'the listing does not contain the text of the files, so it must not count as covering them');
+  assert.equal(accountExportCoverage().has('wst:<project>:'), false, 'nor the text of the deleted ones');
+  for (const store of ['ws:<project>:', 'wst:<project>:', 'wsv:<project>:']) {
+    const entry = doc.notInThisFile.find((o) => o.store === store);
+    assert.ok(entry, `${store} is not declared in notInThisFile: the file says nothing about its text being absent`);
+    assert.match(entry.why, /not (in this file|what is in)|history is fetched/, `${store} is listed without saying what is and is not in the file`);
+  }
+  for (const store of ['ws:<project>:', 'wst:<project>:']) {
+    assert.match(doc.notInThisFile.find((o) => o.store === store).why, /not what is in/, `${store}: the entry does not say the listing has no file text`);
+  }
+  // The file's own readMe says it, in the words the pages use, and does not file the workspace files under "bytes" (their text is text).
+  assert.match(doc.readMe, /lists your workspace files by name, size and date[^.]*but does not contain what is in them/, 'the readMe does not say the file lists workspace files but not their text');
+  assert.doesNotMatch(doc.readMe, /bytes \([^)]*workspace file/, 'the readMe still files workspace files under bytes');
+  assert.doesNotMatch(doc.readMe, /workspace file history/, 'the readMe still says only the history of the workspace files is left out');
+});
+
 /* --------------------------------------------------------------- the coverage --- */
 
 test('the stores the old file could only point at are followed now', () => {

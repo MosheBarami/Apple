@@ -77,6 +77,7 @@ import {
   type ErasureReceipt,
 } from '../lib/api';
 import { historyState, occurrenceNote, unreadSecurityIds } from '../lib/security-history';
+import { preferencesLoaded, preferencesToSave } from '../lib/stored-preferences.ts';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../lib/notification-inbox.ts';
 import {
   DEFAULT_DELIVERY,
@@ -221,7 +222,10 @@ const PROJECT_SOURCES: readonly ExportSource[] = [
   { key: 'checkpoints', covers: ['checkpoints'], path: (p) => `/api/projects/${encodeURIComponent(p)}/checkpoints` },
   { key: 'attribution', covers: ['oplog', 'project_asset_use'], path: (p) => `/api/projects/${encodeURIComponent(p)}/attribution` },
   { key: 'automations', covers: ['automations', 'automation_runs'], path: (p) => `/api/projects/${encodeURIComponent(p)}/automations` },
-  { key: 'files', covers: ['ws:<project>:', 'wst:<project>:'], path: (p) => `/api/projects/${encodeURIComponent(p)}/files` },
+  // FOLLOWED, AND COVERING NOTHING. `/files` answers with a listing (name, size, saved date, and the trash entries with their deleted and expiry dates):
+  // it carries no file text. It used to claim `ws:<project>:` and `wst:<project>:`, so the file said nothing about their text being absent, and the
+  // pages said only the history was left out. Both stores are now printed under `notInThisFile` (OMISSION_WHY says what the listing does give).
+  { key: 'files', covers: [], path: (p) => `/api/projects/${encodeURIComponent(p)}/files` },
   { key: 'studio', covers: ['studio_pairings'], path: (p) => `/api/projects/${encodeURIComponent(p)}/studio/diagnostics?limit=200` },
   { key: 'memory', covers: ['memory_entries'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/export` },
   { key: 'memory_audit', covers: ['memory_audit'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/audit` },
@@ -248,6 +252,8 @@ const PROJECT_SOURCES: readonly ExportSource[] = [
  * what it should do — the worker is the thing that knows.
  */
 const OMISSION_WHY: Record<string, string> = {
+  'ws:<project>:': 'The text of your workspace files is not in this file. Every file is listed per project under `followed` (its name, size and when it was saved), but not what is in it; the zip route here serves the text.',
+  'wst:<project>:': 'The text of deleted workspace files is not in this file. The trash is listed per project under `followed` (name, size, when it was deleted and when it goes for good), but not what is in each file.',
   checkpoint_chunks: 'Bytes, not text. A checkpoint snapshot is a binary object; it is restored from the workspace rather than read.',
   'wsv:<project>:': 'One route per file path, and a download cannot guess which paths you want. Every current file is listed per project under `followed`; its history is fetched per path from the route here.',
   generated_images: 'Bytes, not text. The conversation that produced each image IS in this file and carries its id; the image itself is fetched one id at a time.',
@@ -409,10 +415,14 @@ const READ_ME =
   'everything that document pointed at — your conversations in full, your checkpoints, your Credit ' +
   'spend, your inbox, what StudPilot was asked to remember, your comments, reviews, share links and ' +
   'Studio pairings — each under the route it came from. `complete` is a claim about those and only ' +
-  'those: it is true when every route answered. Two kinds of thing are NOT in here whatever it says, ' +
-  'and both are listed in `notInThisFile` with the route that serves them: bytes (images, audio, ' +
-  'workspace files, checkpoint snapshots), which cannot be lines of JSON, and live credentials, ' +
-  'which would be dangerous in a downloaded file.';
+  'those: it is true when every route answered. Some things are NOT in here whatever it says, and all ' +
+  'are listed in `notInThisFile`, with the route that serves each one where there is one: bytes (images, ' +
+  'audio, checkpoint snapshots), which cannot be lines of JSON; the text of your workspace files and their ' +
+  'earlier versions (this file lists your workspace files by name, size and date, and the deleted ones in the ' +
+  'trash, but does not contain what is in them); live credentials ' +
+  '(a Studio pairing code), which would be dangerous in a downloaded file; and internal records that are ' +
+  'not offered as a download (the request log, hashed account-recovery requests, applied payment events ' +
+  'and refunds, a billing cache, deleted project ids, replies saved for your API keys).';
 
 export function assembleAccountExport(
   base: AccountExportV1,
@@ -895,7 +905,7 @@ const SECTION_INDEX = [
     group: 'Your data',
     id: 'privacy',
     label: 'Privacy',
-    fields: ['training-promise', 'analytics-opt-out', 'download-my-data'],
+    fields: ['improvement-opt-out', 'analytics-opt-out', 'download-my-data'],
   },
   { group: 'Your data', id: 'danger', label: 'Danger zone', fields: ['reset-settings', 'delete-account'] },
 ] as const;
@@ -1113,13 +1123,11 @@ function NotificationSettings({
   const save = useMutation({
     mutationFn: async () => {
       // Everything already stored, plus the two keys this section owns. See the header: what is
-      // not sent is deleted.
-      const base = stored.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, {
-        ...base,
+      // not sent is deleted, so a blank base is refused (lib/stored-preferences.ts), never saved.
+      return savePreferences('user', userId, preferencesToSave(stored.data, {
         notify_delivery: withQuietHours(delivery, window.hours),
         notify_events: events,
-      });
+      }));
     },
     onSuccess: (out) => {
       setDirty(false);
@@ -1295,7 +1303,7 @@ function NotificationSettings({
       <button
         type="button"
         className="btn btn-primary"
-        disabled={!dirty || save.isPending || window.problem !== null || stored.isPending}
+        disabled={!dirty || save.isPending || window.problem !== null || !preferencesLoaded(stored)}
         // Four ways to be disabled and four different things to do about it. Without this the
         // button is dead for a reason nobody on the page states.
         title={
@@ -1303,11 +1311,13 @@ function NotificationSettings({
             ? undefined
             : stored.isPending
               ? 'Still reading your settings'
-              : window.problem !== null
-                ? 'Fix the quiet window first'
-                : !dirty
-                  ? 'Nothing has changed yet'
-                  : undefined
+              : !preferencesLoaded(stored)
+                ? 'Your saved settings could not be read. Reload the page'
+                : window.problem !== null
+                  ? 'Fix the quiet window first'
+                  : !dirty
+                    ? 'Nothing has changed yet'
+                    : undefined
         }
         onClick={() => save.mutate()}
       >
@@ -1932,9 +1942,9 @@ export function SettingsPage() {
 
   const setAnalyticsOptOut = useMutation({
     mutationFn: async (optOut: boolean) => {
-      // Everything already stored plus the one key this row owns: what is not sent is deleted.
-      const base = storedPrefs.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, { ...base, analytics_opt_out: optOut });
+      // Everything already stored plus the one key this row owns: what is not sent is deleted, so a read that never
+      // answered is refused (lib/stored-preferences.ts) rather than saved over everything.
+      return savePreferences('user', userId, preferencesToSave(storedPrefs.data, { analytics_opt_out: optOut }));
     },
     onSuccess: (out) => {
       void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
@@ -1943,6 +1953,25 @@ export function SettingsPage() {
         out.preferences.analytics_opt_out
           ? 'Your account id will be left off analytics, within a minute.'
           : 'Analytics will be attributed to your account again.',
+        'success',
+      );
+    },
+    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
+  });
+
+  // The same shape as the analytics switch, one key over. Collection is not active, so what is confirmed is that the choice is KEPT.
+  const setImprovementOptOut = useMutation({
+    mutationFn: async (optOut: boolean) => {
+      // The loaded preferences plus this one key, or a refusal: see the analytics switch above.
+      return savePreferences('user', userId, preferencesToSave(storedPrefs.data, { improvement_opt_out: optOut }));
+    },
+    onSuccess: (out) => {
+      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
+      // What came back, not what was sent.
+      toast(
+        out.preferences.improvement_opt_out
+          ? 'Saved: you are opted out of improvement data.'
+          : 'Saved: you are not opted out of improvement data.',
         'success',
       );
     },
@@ -2472,23 +2501,45 @@ export function SettingsPage() {
       </Section>
 
 
-      <Section id="privacy" title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
-        {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
-            Both published privacy pages say StudPilot never trains on a customer's projects — the
-            policy states outright that no opt-in programme exists. This row offered exactly that
-            opt-in, in the account settings of the same product. A careful reader could not
-            reconcile the two, and whichever they believed, one of them was lying to them.
-            Owner's decision, 2026-09-20: the promise is the true one. The stronger commitment is
-            the one worth keeping, so the switch goes rather than the sentence. `training_opt_in`
-            stays in the database untouched — dropping a column is a migration, and nothing reads
-            it now. */}
-        <Row id="training-promise" visible={shows('training-promise')}>
-          <p className="settings-lead">StudPilot never trains on your work.</p>
+      <Section id="privacy" title="Privacy" visible={sectionShows('improvement-opt-out', 'analytics-opt-out', 'download-my-data')}>
+        {/* THE OLD "NEVER TRAINS" STATEMENT IS GONE, AND SO IS THE CONTRADICTION IT CAUSED.
+            This row said StudPilot never trains on your work and that no setting could change it. The owner's decision
+            (planning/STUDPILOT-FINAL-PLAN.md section 7) is different and the published privacy page now says the same thing: StudPilot
+            may one day collect ANONYMISED improvement data, as an OPT-OUT, never including data from Roblox, an Open Cloud key,
+            credentials or payment details. Collection is NOT active (CUSTOMER_WORK_TRAINING_ENABLED is false in
+            packages/training), so this switch records a choice that is kept for when it is. It is not a training opt-IN: the control
+            named trainingOptIn must not exist (tests/promises-match-the-product.test.mjs holds the page, this row and that gate
+            to each other). `profiles.training_opt_in` stays in the database untouched; nothing here reads it. */}
+        <Row id="improvement-opt-out"
+          visible={shows('improvement-opt-out')}
+          title="Improvement data"
+          control={
+            <label className="switch-row switch-row--toggle">
+              <Switch
+                name="improvementOptOut"
+                id="improvement-opt-out"
+                checked={storedPrefs.data?.preferences.prefs.improvement_opt_out ?? false}
+                onChange={(e) => setImprovementOptOut.mutate(e.target.checked)}
+                disabled={!preferencesLoaded(storedPrefs) || setImprovementOptOut.isPending}
+              />
+              <span className="gx-sr">Opt out of improvement data</span>
+            </label>
+          }
+        >
           <p className="settings-note">
-            Your projects, your prompts and the code StudPilot writes for you are yours. They are not used to
-            train models, and there is no setting here that would change that — the commitment is the
-            product's, not a preference you have to remember to keep switched off.
+            Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key, credentials or payment details.
+            Collection is not active yet: before it starts we will tell every account holder and update the privacy policy.
           </p>
+          <p className="settings-note settings-note-quiet">
+            Switched on, you are opted out. Your choice is kept for when collection starts.
+          </p>
+          {/* A FAILED READ IS NOT "NOT OPTED OUT", for the reason the analytics row gives. */}
+          {storedPrefs.isError && (
+            <p className="settings-note settings-note-warn" role="alert">
+              This setting could not be read just now, so the switch above may not show what is stored. Reload the page
+              before changing it.
+            </p>
+          )}
         </Row>
 
 
@@ -2506,7 +2557,7 @@ export function SettingsPage() {
                 id="analytics-opt-out"
                 checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
                 onChange={(e) => setAnalyticsOptOut.mutate(e.target.checked)}
-                disabled={storedPrefs.isPending || setAnalyticsOptOut.isPending}
+                disabled={!preferencesLoaded(storedPrefs) || setAnalyticsOptOut.isPending}
               />
               <span className="gx-sr">Keep my account id out of analytics</span>
             </label>
@@ -2515,10 +2566,14 @@ export function SettingsPage() {
           <p className="settings-note">
             StudPilot records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
-            counted either way — an opt-out removes your name from the row, not the row.
+            counted either way — an opt-out removes your name from the row, not the row. This covers only the entry for
+            each request and the error entry for a request that failed: the same log also holds one entry for each agent
+            run and each model call, and an error entry for a chat message that trips the abuse check, and those carry
+            your account id and the project id for the same 30 days whatever this says.
           </p>
           <p className="settings-note settings-note-quiet">
-            Switched on, your account id is kept out. Takes effect within a minute.
+            Switched on, your account id is kept out of the request entry and the failed-request error entry described
+            above, and nothing else. Takes effect within a minute.
           </p>
           {/* A FAILED READ IS NOT "OFF". Rendering an unchecked box over a fetch that never
               answered would show somebody their opt-out had been forgotten. */}
@@ -2543,7 +2598,7 @@ export function SettingsPage() {
             </button>
           }
         >
-          <p className="settings-note">One file with everything StudPilot keeps about you.</p>
+          <p className="settings-note">One file with what StudPilot keeps about you. It lists at the top what it leaves out.</p>
           {/* The long answers fold away (picks: multi-layout accordion) — one click, not the first read. */}
           <Accordion
             items={[
@@ -2564,10 +2619,15 @@ export function SettingsPage() {
                 title: 'What stays out',
                 children: (
                   <p className="settings-note settings-note-quiet">
-                    Two things stay out of it and the file says so at the top, next to the route that serves each: bytes —
-                    images, audio, your workspace files and checkpoint snapshots, which cannot be lines of JSON — and a live
-                    Studio pairing code, which would be a working key to your project sitting in a downloaded file. Everything
-                    else about those pairings is in there.
+                    The file lists at the top, next to the route that serves each one where there is one, everything it leaves
+                    out: bytes — images, audio and checkpoint snapshots, which cannot be lines of JSON — and the text of your
+                    workspace files and their earlier versions (the file lists those files by name, size and date, and the deleted
+                    ones in the trash, but not what is in them), and a live Studio pairing code, which would be a working key to
+                    your project sitting in a downloaded file (everything else about those pairings is in there). Some things are kept only as internal
+                    records and are not offered as a download: the request log, hashed account-recovery requests, which payment
+                    events and refunds were already applied, a bounded cache of recent billing decisions, deleted project ids
+                    held back to stop images being recreated, and the replies saved for your own API keys. Project branding has
+                    a route of its own and is listed, not included.
                   </p>
                 ),
               },

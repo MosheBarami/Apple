@@ -1247,17 +1247,81 @@ test('a lease left by a request that died expires, and a live lease is respected
   s.db.close();
 });
 
-test('a refresh Roblox refuses releases the lease and changes nothing else', async () => {
+test('a refresh Roblox refuses WITHOUT saying the grant is dead releases the lease and changes nothing else', async () => {
+  // THIS TEST USED TO REFUSE WITH `invalid_grant` AND EXPECT THE ROW TO STAY. That is now the other half of the pair below: Roblox's
+  // word that the grant is gone deletes the token. What must still leave the row alone is every refusal that says nothing about
+  // the grant: our own credentials wrong (the grant may be alive), a request Roblox did not understand, a body nobody can read.
   const s = await connected();
-  const sealed = s.row().sealed_refresh;
-  s.world.roblox.failToken = { status: 400, body: { error: 'invalid_grant' } };
-  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
-  assert.equal(s.row().lease_until, null);
-  assert.equal(s.row().sealed_refresh, sealed);
-  assert.equal(s.row().version, 1);
+  const before = { ...s.row() };
+  for (const failure of [
+    { status: 401, body: { error: 'invalid_client' } },
+    { status: 400, body: { error: 'invalid_request' } },
+    { status: 400, body: 'not an object' },
+    { status: 403, body: {} },
+  ]) {
+    s.world.roblox.failToken = failure;
+    assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' }, JSON.stringify(failure));
+    assert.deepEqual({ ...s.row() }, before, `${JSON.stringify(failure)} says nothing about the grant, so the stored token is left exactly as it was`);
+  }
   s.world.roblox.failToken = { status: 503, body: {} };
   assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' });
+  assert.deepEqual({ ...s.row() }, before);
   assert.equal((await R.refreshRobloxAccessToken(s.env, 'nobody')).reason, 'not_connected');
+  s.db.close();
+});
+
+test('ACCESS LOST: when Roblox answers invalid_grant the stored token is deleted at once, the link stays, nothing is revoked, and signing in again starts a fresh grant', async () => {
+  // Roblox Third-Party App Policy (planning/STUDPILOT-FINAL-PLAN.md section 7): wipe the Roblox data when access is lost. The person
+  // removes StudPilot in their Roblox settings, or the token expires: Roblox then refuses the stored refresh token with invalid_grant.
+  const s = await connected();
+  const t0 = Date.now();
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId, t0)).ok, true, 'POSITIVE CONTROL: the grant works while Roblox honours it');
+  s.world.roblox.refresh.get(s.world.roblox.lastRefreshIssued).state = 'revoked';
+  const calls = s.world.roblox.tokenCalls.length;
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 20 * 60_000), { ok: false, reason: 'refused' });
+  assert.equal(s.world.roblox.tokenCalls.length, calls + 1, 'Roblox was asked, and said the grant is gone');
+  assert.equal(s.row(), undefined, 'the sealed refresh token is deleted, not left to be refused again');
+  assert.equal(rowsOf(s.db, 'select * from roblox_identities where user_id = ?', s.userId).length, 1, 'the sign-in link (Roblox user id and username) is not what a lost grant removes');
+  assert.deepEqual(s.world.roblox.revokeCalls, [], 'a grant Roblox has already withdrawn is not revoked again');
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 20 * 60_000 + 1000), { ok: false, reason: 'not_connected' });
+  assert.equal(s.world.roblox.tokenCalls.length, calls + 1, 'and nothing is sent to Roblox for an account that holds no token');
+
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(s.row().version, 1, 'a new sign-in makes a new grant');
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 21 * 60_000)).ok, true, 'which refreshes');
+  s.db.close();
+});
+
+test('ACCESS LOST needs Roblox to say so with a 4xx: invalid_grant on a 429 or a 5xx is a busy Roblox, not a dead grant, and the stored token is left exactly as it was', async () => {
+  // THE STATUS GUARD IN robloxSaysGrantGone HAD NO TEST OF ITS OWN: the 5xx case above sends an empty body and the 429 case a rate-limit
+  // body, so a guard reduced to "any error body that says invalid_grant" passed. The page says a lost grant is found out from Roblox's
+  // answer; a proxy error that happens to carry the word must not delete a working grant.
+  const s = await connected();
+  const before = { ...s.row() };
+  for (const status of [429, 500, 502, 503]) {
+    s.world.roblox.failToken = { status, body: { error: 'invalid_grant' } };
+    assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' }, `status ${status}`);
+    assert.deepEqual({ ...s.row() }, before, `an invalid_grant body on a ${status} says nothing about the grant, so the stored token is left exactly as it was`);
+  }
+  // POSITIVE CONTROL: the same body on a 400 is Roblox's word that the grant is gone.
+  s.world.roblox.failToken = { status: 400, body: { error: 'invalid_grant' } };
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
+  assert.equal(s.row(), undefined, 'the same body on a 400 deletes the token');
+  s.db.close();
+});
+
+test('ACCESS LOST deletes only the row that was refreshed: a sign-in that lands while Roblox is answering invalid_grant keeps its new token', async () => {
+  // THE VERSION BINDING IN wipeDeadGrant WAS HELD ONLY BY A REGEX ON ITS SQL. Dropping `and version = ?` left every behavioural test green
+  // (the generation case is the REFRESH LEASE RELEASE test above). Here the row moves to the NEXT VERSION of the SAME generation while
+  // the refresh is at Roblox, which is what a rotation by another request looks like, and the dead grant's verdict must not reach it.
+  const s = await connected();
+  s.world.roblox.refresh.get(s.world.roblox.lastRefreshIssued).state = 'used';           // Roblox will say invalid_grant (the 400 path)
+  s.world.roblox.duringRefresh = () => {
+    s.db.raw.prepare("update roblox_oauth_tokens set version = version + 1, sealed_refresh = 'NEXT-VERSION', lease_until = null where user_id = ?").run(s.userId);
+  };
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
+  assert.equal(s.row()?.sealed_refresh, 'NEXT-VERSION', 'a verdict about version 1 did not delete version 2');
+  assert.equal(s.row().version, 2);
   s.db.close();
 });
 
@@ -1349,6 +1413,18 @@ test('DISCONNECT revokes the grant at Roblox with the stored token, then deletes
   assert.equal(again.status, 200);
   assert.deepEqual(await again.json(), { revoked: null, tokenRemoved: false, linkRemoved: false, signInKept: false });
   assert.equal(s.world.roblox.revokeCalls.length, 1, 'the second call has nothing to revoke');
+  s.db.close();
+});
+
+test('DISCONNECT with no token left to withdraw (Roblox already reported the access lost) removes the link, asks Roblox nothing, and says there was nothing to revoke', async () => {
+  // The pages say Disconnect asks Roblox to withdraw the access "if StudPilot holds a token", and that the link goes either way.
+  const s = await connected();
+  s.db.raw.prepare('delete from roblox_oauth_tokens where user_id = ?').run(s.userId);          // what the invalid_grant wipe leaves behind
+  const res = await hit(`${PROD}/api/me/roblox/disconnect`, postAs(s.userId, 'real@example.com'), s.env);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { revoked: null, tokenRemoved: false, linkRemoved: true, signInKept: false });
+  assert.deepEqual(s.world.roblox.revokeCalls, [], 'there was no token to send');
+  assert.equal(countRows(s.db.raw, 'select count(*) from roblox_identities'), 0);
   s.db.close();
 });
 

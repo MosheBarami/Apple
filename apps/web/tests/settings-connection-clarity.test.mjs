@@ -26,18 +26,26 @@ test('Discord unknown state is not presented as disconnected or allowed to mint 
   assert.match(settings, /disabled=\{!projectId\s*\|\|\s*mint\.isPending\s*\|\|\s*link\.isPending\s*\|\|\s*link\.isError\}/);
   assert.match(settings, /Code pending — not connected yet/);
 });
-test('privacy copy states the promise outright, with no control beside it', () => {
-  // THIS TEST USED TO ASSERT THE OPPOSITE, and it was right at the time: the page offered an
-  // optional contribution, so the copy had to distinguish "off by default" from "never". The owner
-  // ruled on 2026-09-20 that the never-train promise the published privacy pages make is the true
-  // one, and the switch was removed — which left this guard pinning the wording of a decision the
-  // product had reversed. That is the failure mode this repository keeps naming: a test that
-  // outlives the choice it was written for stops protecting anything and starts blocking the fix.
-  //
-  // Re-aimed at what must now hold: the page STATES the promise, and offers no way to change it.
-  assert.match(settings, /StudPilot never trains on your work/);
+test('privacy copy states the improvement-data rule, with the opt-out switch beside it, and offers no training opt-IN', () => {
+  // THIS TEST HAS NOW BEEN RE-AIMED TWICE, and both times it was right to be. It first asserted an optional contribution (copy that
+  // distinguished "off by default" from "never"). The owner then ruled (2026-09-20) that "never trains" was the true promise and the
+  // switch went, and this test pinned the wording of that sentence. The owner has since decided differently again (plan section 7):
+  // anonymised improvement data is an OPT-OUT that is NOT collected yet, and never includes Roblox data. The sentence "StudPilot never
+  // trains on your work" is no longer true to say, so it is pinned ABSENT, and what is pinned present is the rule, the not-active
+  // statement and a switch that opts OUT. tests/promises-match-the-product.test.mjs holds this row to the published pages and the gate.
+  assert.doesNotMatch(settings, /StudPilot never trains on your work/, 'the old promise is back on the settings page');
   assert.doesNotMatch(settings, /Training contribution is off by default/);
-  assert.doesNotMatch(settings, /name="trainingOptIn"/, 'a control here would contradict the sentence above it');
+  assert.doesNotMatch(settings, /name="trainingOptIn"/, 'a training opt-IN is not what this row offers');
+  assert.doesNotMatch(settings, /id="training-opt-in"/);
+  const at = settings.indexOf('<Row id="improvement-opt-out"');
+  assert.ok(at > 0, 'the improvement-data row is not on the page');
+  const row = settings.slice(at, settings.indexOf('</Row>', at));
+  assert.match(row, /anonymised/);
+  assert.match(row, /opt-out/);
+  assert.match(row, /never includes data from Roblox, an Open Cloud key, credentials or payment details/);
+  assert.match(row, /Collection is not active yet/, 'the row must say plainly that nothing is collected');
+  assert.match(row, /kept for when collection starts/, 'and that the choice is kept');
+  assert.match(row, /<Switch[\s\S]*?name="improvementOptOut"/, 'the opt-out is a switch');
 });
 
 test('asset-source choices are absent from customer settings', () => {

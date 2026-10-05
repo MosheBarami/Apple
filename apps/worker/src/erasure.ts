@@ -93,16 +93,20 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     target: 'auth.users — your sign-in identity',
     why:
       'Removing a login takes a Supabase secret key. This worker holds one only to sign people in with ' +
-      'Roblox and never uses it to delete an account; every other query it makes carries your own token ' +
-      'so row-level security applies. Your data is gone; the empty account can still sign in until an ' +
-      'operator removes it.',
+      'Roblox and never uses it to delete an account. Its other database queries carry your own token, so ' +
+      'row-level security applies, apart from a few narrow database functions that carry nobody\'s token: one ' +
+      'for visitors who open a share link, the rest for passing on membership changes. Your data is gone; the ' +
+      'empty account can still sign in until an operator removes it. An account made with Roblox also still ' +
+      'holds your Roblox user id and username there (they are how the account is found at sign-in); the ' +
+      'operator removes them with it.',
   },
   {
     store: 'postgres',
     target: 'public.profiles — the account row itself',
     why:
-      'Its display name has been cleared and training consent withdrawn, which is everything in the ' +
-      'row that describes you. The row is anchored to the sign-in identity above and goes when that does.',
+      'Its display name has been cleared and its consent flag reset to off, which is everything in the row ' +
+      'that describes you. Nothing acts on that flag while the training gate is closed, although a data ' +
+      'export still includes it. The row is anchored to the sign-in identity above and goes when that does.',
   },
   {
     store: 'postgres',
@@ -133,11 +137,45 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
       'long as the law requires, which is a decision about money rather than about privacy.',
   },
   {
+    store: 'cloudflare',
+    target: 'AI Gateway — the log of model calls',
+    why:
+      'Every request to a Cloudflare-hosted model (voice recordings aside) is logged by Cloudflare AI Gateway with its prompt and reply, labelled with the kind ' +
+      'of call and the model, not with an account id (a project identifier travels with the call as a routing hint). This ' +
+      'route does not reach it, and how long entries stay is a setting of the gateway in Cloudflare, not something this ' +
+      'worker deletes.',
+  },
+  {
     store: 'do',
     target: 'AdminDO — the request log',
     why:
-      'Request and audit events carry an actor id for at most 30 days and are then evicted by the ' +
-      'log\'s own retention sweep. Deleting them selectively would break the audit trail they exist for.',
+      'Request, error, audit, model-call and agent-run events can carry your account id for at most 30 days ' +
+      '(run and model-call events carry the project id too, and so does the error event for a chat message ' +
+      'that trips the abuse check; the analytics opt-out covers only the entry for each request and the ' +
+      'error entry for a request that failed) and are then evicted by the log\'s own retention sweep. ' +
+      'Deleting them selectively would break the audit trail they exist for.',
+  },
+  {
+    store: 'do',
+    target: 'DiscordDO — the link to a Discord account',
+    why:
+      'If you linked a Discord account, the link (your Discord user id, your account id, and the id and ' +
+      'name of the project it was made for) stays until you unlink it, in Settings or with /unlink in ' +
+      'Discord. This route does not remove it, so unlink first if you want it gone.',
+  },
+  {
+    store: 'd1',
+    target: 'account_deletions — the record of this deletion',
+    why:
+      'The receipt you are reading is kept, with your account id, so it can be shown again and so a ' +
+      'part-finished deletion can be completed. Nothing deletes it on a schedule.',
+  },
+  {
+    store: 'do',
+    target: 'SessionDO of projects other people own — what you wrote there',
+    why:
+      'Comments, reviews and conversation messages you added to a project someone else owns belong to ' +
+      'that project and are administered by its owner. Deleting your account does not reach into it.',
   },
 ];
 
@@ -473,14 +511,14 @@ async function erasePostgresProjects(env: Env, user: AuthedUser): Promise<Erasur
  * This is minimisation, not deletion, and the receipt says so in `ACCOUNT_RESIDUE` rather than
  * counting it as the row having gone.
  */
-async function minimiseProfile(env: Env, user: AuthedUser): Promise<ErasureStep> {
+export async function minimiseProfile(env: Env, user: AuthedUser): Promise<ErasureStep> {
   const res = await supaRest<unknown[]>(env, user.jwt, `/profiles?id=eq.${encodeURIComponent(user.userId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ display_name: null, training_opt_in: false }),
     prefer: 'return=representation',
   });
   return res.ok
-    ? { store: 'postgres', target: 'profiles — display name cleared, training consent withdrawn', status: 'erased', rows: Array.isArray(res.data) ? res.data.length : null }
+    ? { store: 'postgres', target: 'profiles — display name cleared, consent flag reset to off', status: 'erased', rows: Array.isArray(res.data) ? res.data.length : null }
     : { store: 'postgres', target: 'profiles — display name', status: 'failed', rows: null, detail: `patch returned ${res.status}` };
 }
 

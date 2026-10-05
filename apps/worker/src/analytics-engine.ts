@@ -7,9 +7,13 @@
 // SQL. So every event that already flows through `flushEvents` is ALSO written here, one data point
 // each; nothing that reads AdminDO changes.
 //
-// NO PERSON IN IT. AdminDO carries an actor id under the consent rules in analytics-consent.ts;
-// this dataset carries none — no user id, no project id, no message text. It answers "how much",
+// NO PERSON IN IT, WITH ONE LEAK. AdminDO carries an actor id under the consent rules in analytics-consent.ts;
+// this dataset has no column for one — no user id, no project id, no message text. It answers "how much",
 // not "who", which is what makes it safe to keep for three months without a consent question.
+// THE LEAK: an error's `scope` is copied into blob2, and the membership-outbox failure names its scope
+// `membership-access:<project>:<user>:<version>` (index.ts), so a project id and the start of a user id (scope is
+// cut at 60 characters) can reach this dataset. The privacy pages say so; apps/site/tests/privacy-claims.test.mjs
+// holds them to it. Keep ids out of error scopes and the pages can say less.
 //
 // AN UNREADABLE NUMBER IS NOT A ZERO (the rule at the top of analytics.ts). A data point's doubles
 // cannot be null, so every measured value travels with a 0/1 "known" double beside it, and the read

@@ -974,6 +974,29 @@ const accessTokens = new Map<string, { accessToken: string; scope: string; versi
 const ACCESS_TOKEN_CACHE_MAX = 256;
 
 /**
+ * Did Roblox answer a refresh with its word that the GRANT is dead? `invalid_grant` (RFC 6749 section 5.2: the refresh token is
+ * invalid, expired or revoked) and nothing else. A 401 `invalid_client` means OUR credentials were wrong, so the grant may be
+ * perfectly alive and must not be deleted for it; a 429 or a 5xx says nothing about the grant at all.
+ */
+async function robloxSaysGrantGone(res: Response | null): Promise<boolean> {
+  if (!res || res.ok || res.status < 400 || res.status >= 500 || res.status === 429) return false;
+  return str((await jsonOf(res))?.error) === 'invalid_grant';
+}
+
+/**
+ * Delete the stored token of a grant Roblox no longer honours. Bound to the `version` and `generation` that were refreshed, so a
+ * person who signed in again while Roblox was answering keeps the new grant: that row is not this one. With the row gone the access
+ * token cached from the grant is never served (`not_connected` is answered before the cache is read, as after a disconnect). What
+ * stays is the Roblox user id and username in `roblox_identities`, which are the sign-in link (a Roblox-only account could not get
+ * back in without them); they go on disconnect (when Roblox is not the only way in) and on account deletion.
+ */
+async function wipeDeadGrant(env: Env, userId: string, row: TokenRow): Promise<void> {
+  await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ? and version = ? and generation = ?')
+    .bind(userId, row.version, row.generation).run();
+  note('grant gone, token deleted');
+}
+
+/**
  * A fresh 15-minute access token for one person, spending and replacing their refresh token.
  *
  * ROBLOX REFRESH TOKENS ARE SINGLE USE, so "read it, call Roblox, write the new one" is a race: two requests
@@ -1017,8 +1040,15 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   });
   const tokens = await tokensFrom(res);
   if (!tokens?.refreshToken) {
+    // ACCESS LOST. Roblox saying `invalid_grant` is its word that the grant is gone (the person removed StudPilot in their Roblox
+    // settings, it expired, or the token was spent). StudPilot's rule (Roblox Third-Party App Policy: Roblox data is deleted when
+    // access is lost) is that nothing is kept for it, so the stored token is deleted here, in the one function that ever uses it.
+    if (await robloxSaysGrantGone(res)) {
+      await wipeDeadGrant(env, userId, row);
+      return { ok: false, reason: 'refused' };
+    }
     await release();
-    // A 4xx is Roblox saying this grant is no good (revoked, expired, already used); anything else may be tried again.
+    // A 4xx is Roblox saying this request was refused (our credentials were wrong, the grant is no good); anything else may be tried again.
     // A 429 is the exception among the 4xx: the grant is fine, the caller was too fast.
     return { ok: false, reason: res && res.status >= 400 && res.status < 500 && res.status !== 429 ? 'refused' : 'unavailable' };
   }

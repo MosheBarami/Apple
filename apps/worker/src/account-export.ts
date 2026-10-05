@@ -137,7 +137,7 @@ const WHERE_ELSE: Readonly<Record<string, string>> = {
     'not offered as a separate download — it holds only which runs have already had their Credits returned, so a retried refund cannot pay you twice. The refund itself appears as a negative row in your usage at GET /api/me/usage',
   billing_authority_replays:
     'not offered as a separate download — this is bounded service-internal replay state for recent normalized billing decisions. Your current subscription and billing change history are available at GET /api/billing/history; this cache does not contain raw Stripe payloads or credentials',
-  events: 'not offered as a download — the request log is operational, and it carries no actor id at all once analytics are switched off',
+  events: 'not offered as a download — the request log is operational. It can carry your account id for up to 30 days; the analytics opt-out leaves it off the entry for each request and the error entry for a request that failed, not off the entries for agent runs, model calls or chat messages that trip the abuse check',
   collab_comments: 'GET /api/shared/{projectId}/comments',
   collab_mentions: 'GET /api/notifications — a mention reaches you as an inbox row',
   collab_reactions: 'GET /api/shared/{projectId}/comments — reactions travel with the comment',

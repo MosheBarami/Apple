@@ -5,7 +5,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
 <DocsLayout
   title="Privacy & data — StudPilot Docs"
-  description="A plain-language map of what StudPilot stores, where it lives, who can see it, and the never-trained-on promise — the practical companion to the Privacy Policy."
+  description="A plain-language map of what StudPilot stores, where it lives, who can see it, what it holds when you sign in with Roblox, and how Roblox data and improvement data are handled — the practical companion to the Privacy Policy."
   heading="Privacy & data"
 >
   <p>
@@ -16,31 +16,81 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
   <div class="callout">
     <p>
-      <strong>The core promise: your projects stay yours, and are never used to train models.</strong>
-      Not your scripts, not your chats, not your checkpoints. There is no fine-print exception.
+      <strong>The core rules: your projects stay yours, and data that comes from Roblox is never used
+      for AI training.</strong> StudPilot collects no improvement data today. If it ever does, that
+      data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key,
+      credentials or payment details. StudPilot is for people aged 13 and older.
     </p>
   </div>
 
   <h2>What StudPilot stores, and why</h2>
   <ul>
-    <li><strong>Your email + password hash</strong> — so you can sign in. This is the only personal information signup asks for.</li>
+    <li><strong>Your email + password hash</strong> — so you can sign in. This is the only personal information email sign-up asks for. If you sign in with Roblox instead, there is no email and no password; see the Roblox section below.</li>
     <li><strong>Projects</strong> — names, descriptions, and the connected place's name and id, so the workspace can show what belongs where.</li>
     <li><strong>Chat history</strong> — your conversations with StudPilot plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
     <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place StudPilot works on, kept so rollback works across sessions.</li>
     <li><strong>Usage ledger</strong> — when you spent Credits and on which mode, so quotas reset fairly.</li>
-    <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Routes are logged as routes, never as raw paths, so no project id is in it. It carries your account id for 30 days unless you turn that off in Settings → Privacy; the request is still counted either way, with nobody's name on it.</li>
+    <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Ordinary request entries log the route, not the raw path, so they carry no project id. They carry your account id for 30 days unless you turn that off in Settings → Privacy → Analytics; the request is still counted either way, with nobody's name on it. That switch covers only the entry for each request and the error entry for a request that failed: the log also holds one entry per agent run and one per model call, which carry your account id, the project id and the run id for the same 30 days whatever the switch says, and the error entry written when a chat message trips the abuse check (sent in a burst, repeated, oversized, or containing what looks like a pasted credential or an injection attempt), which carries your account id and the project id.</li>
+    <li><strong>Product event data points</strong> — StudPilot also writes each event to Cloudflare Workers Analytics Engine as one data point: a request, a model call, an agent run, an error or an audit event, with its route or feature name, its outcome, how long it took and, where they apply, token, step and cost counts. A data point holds no message text and no account id or project id of its own; the exception is an error's label, which can contain a project id and the start of an account id (for example when delivery of a project membership change fails). Cloudflare keeps these data points for about three months, and StudPilot's code has no way to delete them.</li>
+    <li><strong>A log of model calls</strong> — each request to a Cloudflare-hosted model (text, images, sound, speech) goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id (a project identifier travels with the call as a routing hint). Voice recordings are sent with logging off. The optional Hugging Face route (images and 3D models) and AssemblyAI (speech, where it is set up) are direct calls that do not go through AI Gateway.</li>
     <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
-    <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters, which is what a key looks like when the only thing that can use it is the uploader.</li>
-    <li><strong>A Discord account id, if you linked one</strong> — so a build started in Discord reaches the right account.</li>
+    <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters. StudPilot uses it only on your own Roblox account, only when you or an agent run you started asks, and only within the permissions you ticked: checking the key and reading your public profile; looking up your assets, an experience and its game passes; uploading a file (one you give it, or a model or image it made for you); and, if you ticked those permissions, creating a game pass or granting other people's experiences, groups or accounts use of your assets. Beside the key it keeps your Roblox creator id, the permissions and when it was last used, and a log of every write it made to your Roblox account (what, when, to what, and Roblox's answer). Deleting the key removes the key and those details; the log of writes stays until you delete your account.</li>
+    <li><strong>A Discord link, if you made one</strong> — so a build started in Discord reaches the right account. It holds your Discord user id, your account id and the id and name of the project you linked, until you unlink it.</li>
   </ul>
+
+  <h2>What you sign in with</h2>
+  <ul>
+    <li><strong>Email and password</strong>, through Supabase.</li>
+    <li><strong>Roblox</strong>, where the sign-in page shows "Continue with Roblox". It makes its own StudPilot account; it does not attach to an email account you have.</li>
+    <li><strong>Google or Discord — not offered yet.</strong> If you sign in with Google or Discord, when offered, Supabase receives from that provider what you allow on its consent screen, typically your email address, your name or username and a profile picture link.</li>
+  </ul>
+
+  <h2>Sign in with Roblox: what is held</h2>
+  <p>
+    Roblox is an identity provider here, and, with your consent on Roblox's own screen, a connection
+    you can remove. StudPilot asks only for the <code>openid</code> and <code>profile</code>
+    permissions and keeps only your Roblox user id and username from the answer. It never sees your
+    Roblox password, and Roblox sends no email address. Held in StudPilot's database:
+  </p>
+  <ul>
+    <li><strong>Your Roblox user id, your Roblox username and the time the link was made,</strong> next to your StudPilot account id. The id is how your account is found at sign-in; the username is shown in Settings → Connections.</li>
+    <li><strong>A Roblox refresh token, encrypted</strong> with a key the database does not hold, never returned to anyone and never in your data export. It is a pass Roblox gives StudPilot, and it exists so StudPilot can ask Roblox to withdraw its access when you disconnect, delete your account, or choose "Go back" on first sign-in.</li>
+    <li><strong>The permissions Roblox granted</strong> and <strong>technical bookkeeping</strong> for the token, so two requests do not use it at once: a version counter, a lock held for up to 30 seconds during a refresh, and when it was last replaced.</li>
+    <li><strong>The time you last confirmed with Roblox that it is you.</strong> An account with no password confirms this way before it exports or deletes its data; the confirmation is good for ten minutes.</li>
+    <li><strong>In Supabase,</strong> a placeholder address ending in users.studpilot.invalid (made up, because Roblox gives us none), your Roblox user id and your Roblox username as the display name.</li>
+    <li><strong>Up to five minutes</strong> in short-term storage while you decide whether to create the account on first sign-in; "Go back" deletes it and asks Roblox to withdraw the authorization that was just given. If Roblox cannot be reached it is not withdrawn, and you are not shown a message about that, so check the apps authorized on your Roblox account if you want to be sure.</li>
+    <li><strong>During a sign-in only,</strong> two cookies StudPilot's own address sets (not readable by scripts on the page; one lasts ten minutes, one five) and matching short-term records: for ten minutes the state of the sign-in you started (a random value, a one-time secret and the page you were heading to), and for five minutes, if you already have an account, a hash of the one-time sign-in token.</li>
+  </ul>
+  <p>
+    <strong>Roblox data is never used for AI training</strong> — not the sign-in data, not anything
+    received through a Roblox authorization or an Open Cloud key — and it is never part of improvement
+    data. If Roblox reports the access lost, StudPilot deletes the stored token the next time it tries
+    to use it; nothing uses it yet beyond withdrawing access, so today our copy stays until you
+    disconnect, delete your account or sign in again. Uploads to your Roblox account are not built yet.
+  </p>
+
+  <h2>Improvement data</h2>
+  <p>
+    Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key,
+    credentials or payment details. Collection is not active yet: nothing about your projects, chats or
+    checkpoints is collected for it, and the code that would process customer work for that purpose is
+    switched off. You can opt out now in Settings → Privacy → Improvement data. The choice is saved with
+    your settings; nothing reads it yet, because nothing is collected, and collection will not be
+    switched on until the code that would collect reads it. Before collection starts we will tell every
+    account holder: by email, and in the app for accounts with no email address, such as one that signs
+    in only with Roblox. That in-app notice does not exist yet; it will be built first. The Privacy
+    Policy will be updated too.
+  </p>
 
   <h2>Where it lives</h2>
   <ul>
-    <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs the model inference.</li>
-    <li><strong>Supabase</strong> runs authentication and the account registry (your email, your project list). Every row is protected so that only requests carrying <em>your</em> verified credentials can read it — our own servers hold no master key that bypasses this.</li>
+    <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs text, image, sound and speech inference through AI Gateway. Its Turnstile bot check guards the sign-in, sign-up, password-reset and account-recovery forms, and Cloudflare sees what that check collects.</li>
+    <li><strong>Supabase</strong> runs authentication and the account registry (your email or placeholder address, your display name, your project list). Rows are protected so that requests carrying <em>your</em> verified credentials can read what is yours. Two narrow exceptions exist. For Sign in with Roblox, StudPilot's server holds a Supabase secret key that it uses only to create the account for a new Roblox sign-in, read that account's sign-in address and issue the one-time sign-in link; it is not used for your projects or any other table, and not to delete accounts. And a few database functions run with no person's credentials, checked by a secret the database holds instead, each doing one narrow thing: one gives a project's name, place name and remembered notes to someone who opened a share link to it, and the others pass membership changes (who gained or lost access to which project, in what role) on to the running project.</li>
     <li><strong>Stripe</strong> takes the payments. It gets your email and billing identifiers and holds the payment method; we get back the subscription state. No card number reaches us.</li>
     <li><strong>Discord</strong> gets whatever StudPilot posts back to the channel you started a build from — only if you linked an account.</li>
-    <li><strong>Roblox</strong> gets the assets you ask StudPilot to upload, to your own account, under your own key — only if you gave one.</li>
+    <li><strong>Roblox</strong> tells us who you are when you sign in, and is asked to withdraw its access when you disconnect or delete your account. If you gave an Open Cloud key, it also gets the requests listed above (uploads, lookups, and game passes and asset permissions if you allowed them), to your own account, under your own key. And whenever the agent looks for a ready-made model, Roblox's Creator Store search gets the search words the agent wrote, with StudPilot's own access and nothing of yours.</li>
+    <li><strong>Sentry</strong> gets error reports from the web app and the API: the kind of error, a scrubbed message and where it happened, never a request body, header, cookie or query string.</li>
+    <li><strong>Tool services</strong>, only when the agent uses the matching tool: web search (Serper or Tavily) gets the search words, documentation lookup (Context7) the question, GitHub's API the public repository being read; Hugging Face and its image provider fal-ai get an image description on the optional Hugging Face route, and for a 3D model the picture goes to a Space that Tencent runs on Hugging Face. Voice input is turned into text by a Cloudflare speech model, or by AssemblyAI where it is configured; the recording is never stored.</li>
   </ul>
 
   <h2>What the Studio plugin sees</h2>
@@ -56,9 +106,9 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>What inference sees</h2>
   <p>
     When you send a request, the model receives your message and the project context needed to
-    answer it. That context serves the request and is not retained by the inference layer
-    afterwards. Model routing happens on our infrastructure — your code is not shipped to
-    third-party AI companies' training pipelines.
+    answer it. The model runs on Cloudflare's Workers AI through AI Gateway, which logs the call,
+    prompt and reply included, as described above. StudPilot's code does not delete those entries, and
+    how long Cloudflare keeps them depends on the log settings of StudPilot's gateway.
   </p>
 
   <h2>Who can read your data</h2>
@@ -72,16 +122,29 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <ul>
     <li><strong>Checkpoints:</strong> the newest 25 per project. The twenty-sixth pushes the oldest out in the same write.</li>
     <li><strong>The request log:</strong> 30 days, or 5,000 entries, whichever comes first.</li>
+    <li><strong>Analytics Engine data points:</strong> about three months, kept by Cloudflare; not deleted by StudPilot's code.</li>
     <li><strong>Notifications:</strong> 30 days once read, 90 if never read.</li>
     <li><strong>Automation runs:</strong> 90 days.</li>
     <li><strong>Credits ledger:</strong> 35 days of daily detail, plus monthly totals.</li>
     <li><strong>New generated images:</strong> saved privately with the project until you delete it. Download a copy from the image result. Existing expired images cannot be recovered.</li>
-    <li><strong>Temporary image previews and generated sound:</strong> one hour in cache.</li>
+    <li><strong>Generated sound:</strong> saved privately (one hour on a deployment with no storage bucket). The aim is 365 days, by a lifecycle rule in StudPilot's Cloudflare account; that rule is a setting outside this software, which neither creates nor checks it, so the number is not a promise. It goes when you delete the project or your account.</li>
+    <li><strong>Temporary image previews:</strong> one hour in cache.</li>
     <li><strong>Deletion during a running preview:</strong> an in-flight temporary image can remain in cache for up to an hour, but deleted-project images cannot be opened through StudPilot.</li>
     <li><strong>Deleted-image protection:</strong> a deleted project identifier is retained without its images or account details, to stop late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
+    <li><strong>The Roblox sign-in:</strong> your Roblox user id and username while the account exists or until you disconnect Roblox; the token until you disconnect, delete your account, sign in again, or Roblox reports the access lost and StudPilot next uses it.</li>
+    <li><strong>A Roblox Open Cloud key:</strong> the key and its details until you delete it in Settings or delete your account; the log of writes made with it until you delete your account.</li>
+    <li><strong>A Discord link:</strong> until you unlink it. Deleting your account does not remove it.</li>
+    <li><strong>The record of a deletion:</strong> kept with your account id and no end date, so the receipt can be shown again.</li>
+    <li><strong>The model-call log:</strong> not deleted by StudPilot's code.</li>
   </ul>
-  <p>A nightly sweep is what enforces the ones with a date on them, not a promise that somebody will remember.</p>
+  <p>
+    Each window is enforced where the data lives, not by one sweep: checkpoints are trimmed when a new
+    one is written, the request log is pruned as new entries arrive, the Credits ledger is trimmed by the
+    store that holds it, previews and the trash expire on a timer in storage, and a nightly sweep removes
+    old notifications, automation runs and remembered facts that have passed their date. The 365 days for
+    sound is the one window set outside this software.
+  </p>
 
   <h2>Taking it with you</h2>
   <p>
@@ -90,30 +153,52 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     the service holds about you, followed for you rather than listed at you: the full transcript of
     every project, your checkpoints, your Credit spend, your inbox, what StudPilot was asked to
     remember, your comments, reviews, share links and Studio pairings. The server's own signed
-    export sits inside it untouched, sha256 and all.
+    export sits inside it untouched, sha256 and all. A Roblox sign-in adds your Roblox user id,
+    username and granted permissions; the stored token is never in it.
   </p>
   <p>
-    Two kinds of thing stay out, and the file names each one at the top with the route that serves
-    it: <strong>bytes</strong> — generated images, generated audio, your workspace files and
-    checkpoint snapshots, none of which can be lines of JSON — and a <strong>live Studio pairing
-    code</strong>, which would be a working key to your project sitting in a downloaded file. If a
-    route does not answer, the file says which one instead of quietly dropping it. Read that list
-    before you delete anything.
+    The file is not everything, and it lists at the top, store by store, what it leaves out and why,
+    with the route that serves each one where there is one. Most of that is <strong>bytes</strong> —
+    generated images, generated audio and checkpoint snapshots, none of which can be lines of JSON.
+    The file lists your workspace files (name, size and date, and the deleted ones in the trash) but
+    does not contain their text or their earlier versions. Also left out is a <strong>live Studio pairing code</strong>,
+    which would be a working key to your project sitting in a downloaded file. Some things are kept
+    only as internal records and are not offered as a download: the request log, a hashed record of
+    account-recovery requests, which payment events and refunds were already applied, a bounded cache
+    of recent billing decisions, the deleted project ids held back to stop images being recreated, and
+    the replies saved for your own API keys. A project's branding settings have a route of their own
+    and are listed rather than included. If a route does not answer, the file says which one instead
+    of quietly dropping it. Read that list before you delete anything.
   </p>
 
   <h2>Deleting things</h2>
   <ul>
     <li><strong>A checkpoint:</strong> delete it in the workspace sidebar.</li>
     <li><strong>A project:</strong> deleting a project deletes its conversation, checkpoints, memory, notifications, automations, workspace files, generated media and any share links that opened it.</li>
-    <li><strong>Your account:</strong> Settings → Danger zone → delete account. It erases every store we can reach and hands you a receipt of what it cleared.</li>
+    <li><strong>Roblox:</strong> Settings → Connections → Disconnect Roblox asks Roblox to withdraw StudPilot's access if StudPilot holds a token, changes nothing if Roblox does not confirm, and otherwise removes the token and the link. Your sign-in identity in Supabase, with your Roblox user id and username, is kept. It is not offered while Roblox is the only way you sign in, because the account would have no way back in. Today that is every Roblox account (the app offers no way to add an email address to one), so the button is not shown to any account yet; such an account can remove StudPilot in its Roblox settings or delete the account.</li>
+    <li><strong>Your account:</strong> Settings → Danger zone → delete account. It erases every store we can reach, including the key, the log of writes made with it and the Roblox sign-in, asks Roblox to withdraw its access first, deletes the Roblox token and then the Roblox link, and hands you a receipt of what it cleared and what it did not. If Roblox cannot be reached, our copy is still deleted and the receipt says so.</li>
   </ul>
   <p>
-    Two things outlive that, and the receipt names them rather than leaving you to find out: your
+    Some things outlive that, and the receipt names them rather than leaving you to find out: your
     <strong>sign-in identity</strong> (the empty account can still log in until an operator removes
-    it — ask and we will) and your <strong>usage ledger and support messages</strong>, which are
-    accounting and correspondence records. Backup copies expire within 30 days. Anything else the
-    UI cannot delete for you, a human will:
+    it — ask and we will; for a Roblox account it still holds your Roblox user id and username until
+    then), your <strong>account row</strong> with its display name cleared, your <strong>usage ledger
+    and Credit and subscription records</strong>, which are accounting records, your <strong>support
+    messages</strong>, which are correspondence, your membership on other people's projects and the
+    comments, reviews and messages you added to them, a <strong>Discord link</strong> if you made one
+    (until you unlink it), the <strong>record of this deletion</strong>, the receipt itself, the request
+    log for up to 30 days (it can carry your account id), temporary image previews for up to an hour, a
+    bare deleted-project id kept so a late generation cannot recreate erased images, and the model-call
+    log. Backup copies expire within 30 days. Anything else
+    the UI cannot delete for you, a human will:
     <a href="mailto:apple.labs.app@gmail.com">apple.labs.app@gmail.com</a>.
+  </p>
+
+  <h2>Age</h2>
+  <p>
+    StudPilot is for people aged 13 and older, and Roblox's sign-in service is for accounts held by
+    people aged 13 and older. If you believe an account belongs to someone under 13, tell us and we
+    will delete it.
   </p>
 
   <h2>Beta honesty</h2>

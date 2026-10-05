@@ -108,9 +108,14 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     section: 'Notifications',
     keywords: ['notification', 'alerts', 'mentions', 'build failed', 'email me', 'unsubscribe', 'turn off'],
   },
-  // Was 'training-opt-in', a control. StudPilot does not train on customer work, so there is nothing to
-  // opt into — but somebody searching "training" deserves to find the statement that says so.
-  { id: 'training-promise', title: 'StudPilot never trains on your work', section: 'Privacy', keywords: ['training', 'privacy', 'data', 'opt in', 'opt out', 'model'] },
+  // Was 'training-promise', a statement. It is a control again, an OPT-OUT: anonymised improvement data is not collected yet, and
+  // the choice is kept for when it is. Somebody searching "training" must still land on it, so the old words stay.
+  {
+    id: 'improvement-opt-out',
+    title: 'Improvement data',
+    section: 'Privacy',
+    keywords: ['training', 'train', 'ai training', 'learn from my work', 'improve', 'improvement', 'anonymised', 'anonymized', 'privacy', 'data', 'opt out', 'opt in', 'model', 'roblox data'],
+  },
   {
     id: 'analytics-opt-out',
     title: 'Analytics',
