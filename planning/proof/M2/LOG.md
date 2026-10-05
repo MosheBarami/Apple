@@ -41,3 +41,19 @@
   and verified that every page serves the bytes just uploaded.
 - **Spend** before this deploy: $3.92 for the month and 0 neurons today (`/api/admin/spend`). The deploy ran no model
   calls.
+
+## 2026-10-05: privacy, terms and the data page are live (PR #31, `cd451a32`)
+
+- **Review:** a three-lens review with two skeptics per finding. 11 of 19 findings survived, plus 15 minor items.
+  Fix cycle 1 closed 27 of the 32 items and left 5 partly done (the checkers' counts: 15 fixed and 2 partial, 12
+  fixed and 3 partial). A checker of cycle 1 found 6 more, all closed in fix cycle 2.
+- **CI:** 7 of 7 checks green on the first run.
+- **Worker:** `node infra/deploy-worker.mjs studpilot` verified `https://studpilot.app` serves `cd451a32`.
+- **Static:** site and app built, 853 files uploaded and verified.
+- **Live:** `/privacy` shows "Updated: October 2026", and `/auth/roblox/status` still answers `{"configured":true}`.
+- **Open** (`LEGAL-CLAIMS.md`, section 8):
+  - a reading-level target, for the owner;
+  - Discord unlink on deletion and the analytics opt-out on run events, both in M6;
+  - the Analytics Engine retention figure, which still needs confirming;
+  - the in-app policy notice, which has to exist before the training gate may open;
+  - the owner's legal read (BLOCKED N7).
