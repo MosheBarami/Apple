@@ -850,19 +850,6 @@ test('a helper that does NOT pcall its parameter is still unprotected', () => {
   assert.ok(fired(analyzeLuau(bare, { context: 'server' }), 'datastore-without-pcall'));
 });
 
-test("this repository's own DataService passes every rule in this file", () => {
-  // The check that produced the fix above, kept as a regression. If DataService grows
-  // an unprotected DataStore call, or a rule regresses into flagging it again, this is
-  // where it shows up.
-  const src = readFileSync(
-    new URL('../../../apps/benchmark/crystal-canyon/src/server/DataService.luau', import.meta.url),
-    'utf8',
-  );
-  const res = analyzeLuau(src, { path: 'DataService.luau', context: 'server' });
-  const errors = res.findings.filter((f) => f.severity === 'error');
-  assert.deepEqual(errors.map((f) => `${f.rule}:${f.line}`), []);
-});
-
 test('a deprecated call named inside a string is prose, a class name is usage', () => {
   // Found by running this rule over apps/plugin/src/Ops.luau:351, which contains
   // "refused: this code contains a loop with no yield in it (no task.wait, wait() or "

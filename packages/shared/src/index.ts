@@ -153,20 +153,6 @@ export type StudioOp =
   | { op: 'snapshot'; root: string; includeScripts?: boolean; checkpointId?: string } // serialize subtree; new checkpoints bind their identity
   | { op: 'restore'; root: string; snapshot: unknown; checkpointId?: string } // optional for legacy senders; SessionDO always binds it
   | { op: 'insert_asset'; assetId: number; parent: string }
-  | { op: 'query_owner_local'; action: 'health' | 'sources' | 'search' | 'describe' | 'record' | 'children' | 'relations' | 'plan' | 'materialize' | 'job' | 'native-map' | 'native-readiness';
-      id?: string; query?: string; sourceSHA?: string; jobId?: string; className?: string; kind?: string; scope?: string; limit?: number;
-      offset?: number; after?: string | number; afterOrdinal?: number; afterId?: string }
-  | { op: 'query_owner_assembly'; action: 'recipes' | 'code' | 'record'; sourceSHA?: string; mechanic?: string; codeSHA?: string; after?: string | number; offset?: number; limit?: number }
-  | { op: 'query_owner_media'; id: string; property: string; offset?: number; limit?: number; inspect?: boolean }
-  | { op: 'query_owner_exact'; action: 'sources' | 'strings' | 'string'; sourceSHA?: string; identity?: string;
-      seq?: number; offset?: number; limit?: number; after?: string | number }
-  | { op: 'import_owner_local'; nodeId: string; jobId: string; nativeSha256: string; byteLength: number;
-      nativeInstances: number; parent: string }
-  | { op: 'query_owner_library'; action: 'list' | 'game' | 'deps' | 'route'; q?: string; niche?: string; kind?: string; game?: string; after?: number; limit?: number; id?: string; gameId?: string; path?: string;
-      route?: 'deps' | 'install' | 'systems' | 'blueprint' | 'family' | 'report' | 'media' | 'design' | 'find'; params?: Record<string, string | number> }
-  | { op: 'import_owner_library'; gameId: string; path: string; mode: 'self' | 'children'; parent: string; applyServiceProperties?: boolean; replace?: boolean; onlyMissing?: boolean; studioData?: boolean }
-  | { op: 'import_owner_component'; componentId: string; componentSha256: string; byteLength: number;
-      contentToken: string; parent: string; name: string }
   // Roblox-native text-to-3D. Free, ~20s, 10 req/min. Output is SESSION-SCOPED: it does not
   // survive save/publish. The result always carries a QC verdict — generation succeeding is not
   // evidence the model is good.
@@ -947,18 +933,7 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'spatial_query':
     case 'read_terrain':
     case 'check_ui_layout':
-    // Reading the owner's private library: each looks something up and changes nothing in the place.
-    case 'query_owner_catalog':
-    case 'query_owner_assembly':
-    case 'read_owner_media':
-    case 'list_owner_original_strings':
-    case 'read_owner_original_string':
-    case 'read_owner_component':
-    case 'browse_owner_library':
       return 'inspecting';
-    // Working out the design of a game reads the owner's library and moves nothing: it is the planning step of a build.
-    case 'plan_game':
-      return 'planning';
     // Announcing the plan is not doing the work. This tool runs before anything in the project
     // moves, so the one phase it must never fall through to is the `default` below — 'building'
     // would have the workspace claim the place is being changed at the exact moment it is not.
@@ -990,11 +965,6 @@ export function phaseForTool(tool: string): AgentPhase {
     case 'set_visible':
     case 'insert_asset':
     // D-MODELLIB-1: puts a library model into the place, the same act as insert_asset.
-    case 'insert_owner_component':
-    case 'import_owner_library':
-    case 'recreate_owner_game':
-    case 'install_owner_system':
-    case 'build_game':
     case 'insert_library_model':
     case 'generate_model':
     case 'generate_model_external':
@@ -2949,36 +2919,6 @@ export const GOVERNED_TOOLS: readonly GovernedTool[] = [
     name: 'insert_asset',
     label: 'Insert assets from the Creator Store',
     why: 'Brings third-party models into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'insert_owner_component',
-    label: 'Import owner-supplied components',
-    why: 'Inserts private native components, preserving downloaded source as inert data.',
-    group: 'changes',
-  },
-  {
-    name: 'import_owner_library',
-    label: 'Import parts of your uploaded games',
-    why: 'Copies objects and their original scripts from your own game library into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'recreate_owner_game',
-    label: 'Recreate your uploaded games',
-    why: 'Copies a whole game from your own library, scripts included, into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'install_owner_system',
-    label: 'Add a ready-made feature from your uploaded games',
-    why: 'Copies one feature with its scripts from your own game library into your place.',
-    group: 'changes',
-  },
-  {
-    name: 'build_game',
-    label: 'Build a new game from your uploaded games',
-    why: 'Builds an original game from a plan made out of your uploaded games, scripts included, in your place.',
     group: 'changes',
   },
   {

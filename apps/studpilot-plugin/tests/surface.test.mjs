@@ -19,8 +19,7 @@ test('edit permission defaults off and is bound to this live connection', () => 
   assert.match(source, /sessionCurrent/);
   assert.match(source, /local authorized = if runAction ~= nil then pairingStillCurrent\(\) and allowEdits else consentStillCurrent\(\)/,
     'Run-mode controls keep the connection consent while ordinary writes still require edit mode');
-  // Since 634eaece the owner-corpus reads and the viewport capture are fenced by the pairing alone; every
-  // other op still carries the edit consent.
+  // The viewport capture is fenced by the pairing alone; every other op still carries the edit consent.
   assert.match(source, /local readFence = if [^\n]* then pairingStillCurrent else consentStillCurrent\n/);
   assert.match(source, /commands:execute\(id, op, authorized, readFence\)/);
   assert.match(source, /allowEdits = false[\s\S]*bridge:connect/);

@@ -1,22 +1,19 @@
 /**
- * Ready-made models for the agent to look at, choose and place (owner, 2026-10-02: models come from the owner library
- * or the Roblox-owned Creator Store first, procedural rarely; and, after the benchmark that put a knife on a treasure
+ * Ready-made models for the agent to look at, choose and place (owner, 2026-10-02: models come from the
+ * Roblox-owned Creator Store first, procedural rarely; and, after the benchmark that put a knife on a treasure
  * chest and party balloons on a hot air balloon: the harness never picks what fits).
  *
- * The agent searches with its own words (find_library_model, browse_owner_library), previews what it found here
+ * The agent searches with its own words (find_library_model), previews what it found here
  * (previewLibraryModels: evidence, off the place), chooses in its own loop with the conversation in context, and places
  * (placeLibraryPiece) or builds another way when none fits. Nothing in this file chooses a candidate, derives a name from
  * the request, or decorates a placed model: dress_object (dress-object.ts) is the opt-in presentation.
  *
- * Every candidate is a copy WITHOUT scripts or sounds: an owner-library piece is imported into ServerStorage (where no
- * script runs), stripped, and placed as a copy (place_copies destroys scripts and sounds and anchors the parts); a
- * Creator Store row goes through insert_library_model's own gate (insertAndProveClean). Studs come from the plugin's
+ * Every candidate is a copy WITHOUT scripts or sounds: a Creator Store row goes through insert_library_model's own gate (insertAndProveClean). Studs come from the plugin's
  * surface rule on every part a write adds, "if needed" (it skips Neon, Glass and parts that already have a surface).
  */
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite } from './compose';
 import { typed } from './typed-spec';
-import { GAME_ID, LIBRARY_IMPORT_MS, libraryMaterials, librarySafetyCopy } from './local-owner-corpus';
 import { rgbBase64ToDataUrl } from './png';
 import { imagePathFor, storeImage } from './imagegen';
 
@@ -26,6 +23,18 @@ type V3 = [number, number, number];
 export const PLAYER_HEIGHT = 5;
 
 /**
+ * The safety copy taken once before a placement. A place Studio can read but not checkpoint (too large, or holding objects a
+ * snapshot cannot capture) still takes placements: they only add objects and Studio's undo takes them back. Any other
+ * failure (Studio gone, snapshot failed) refuses.
+ */
+export async function librarySafetyCopy(ctx: AgentCtx, label: string): Promise<{ error: string } | { oversize: boolean }> {
+  const checkpoint = await ctx.createCheckpoint(label, 'auto');
+  const oversize = 'error' in checkpoint && /^Checkpoint was not saved: |too large to checkpoint/.test(checkpoint.error);
+  if ('error' in checkpoint && !oversize) return { error: `Nothing was placed: StudPilot could not save a copy of the place first (${checkpoint.error}). Tell the user in one plain sentence.` };
+  return { oversize };
+}
+
+/**
  * A catalog name as it may be shown and repeated: no control characters, no markdown or markup, at most 60 characters
  * (review 2026-10-02: library names went into the chat text, which is replayed to the model and drawn as markdown).
  */
@@ -33,80 +42,24 @@ export function cleanName(s: string): string {
   return s.replace(/[\x00-\x1f\x7f]/g, ' ').replace(/[`*_[\]<>|#~\\{}]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Model';
 }
 
-/** One candidate: a piece of the owner library, or a Roblox-owned Creator Store row. */
+/** One candidate: a Roblox-owned Creator Store row, named by its library id. */
 export interface LibraryCandidate {
-  source: 'owner' | 'store';
+  source: 'store';
   name: string;
-  /** The game the owner-library piece comes from. */
-  game?: string;
-  gameId?: string;
-  path?: string;
   /** A Creator Store row's library id (insert_library_model). */
   id?: string;
-  parts?: number;
-  /** Set when the candidate came from the classified library (gateway /v1/library/find): what it knows about the item. */
-  found?: FoundInfo;
 }
 
-/** What the classified library says about one candidate: shown to the agent that picks, never trusted as an instruction. */
-export interface FoundInfo {
-  description: string;
-  subtype?: string;
-  look?: string;
-  sizeClass?: string;
-  studs?: V3;
-  colours: string[];
-  quality?: { score: number; band: string; reasons: string[] };
-  scripts: number;
-  animated: boolean;
-  copies: number;
-  /** The library's advisory: its best candidate covers little of the request's words (the agent may reject all of them). */
-  weak: boolean;
-}
-
-/** A candidate as the agent names it back: { id } for a store row, { gameId, path } for an owner-library piece. */
+/** A candidate as the agent names it back: { id } from find_library_model. */
 export function candidateOf(raw: unknown): LibraryCandidate | { error: string } {
-  if (!raw || typeof raw !== 'object') return { error: 'each model is an object: { id } from find_library_model, or { gameId, path } from browse_owner_library' };
+  if (!raw || typeof raw !== 'object') return { error: 'each model is an object: { id } from find_library_model' };
   const r = raw as Record<string, unknown>;
   const name = typeof r.name === 'string' && r.name.trim() ? cleanName(r.name) : undefined;
-  if (typeof r.gameId === 'string' || typeof r.path === 'string') {
-    if (typeof r.gameId !== 'string' || !GAME_ID.test(r.gameId)) return { error: 'gameId must be a library game id (8-64 hex characters) from browse_owner_library' };
-    if (typeof r.path !== 'string' || !r.path.startsWith('/') || r.path.length > 400) return { error: 'path must be the library path of the piece, from browse_owner_library, e.g. "/Workspace/Name"' };
-    return { source: 'owner', name: name ?? cleanName(r.path.split('/').filter(Boolean).pop()?.replace(/#\d+$/, '') ?? 'Model'), gameId: r.gameId, path: r.path, ...(typeof r.game === 'string' ? { game: cleanName(r.game) } : {}) };
-  }
   if (typeof r.id === 'string' && r.id.trim()) return { source: 'store', name: name ?? 'Model', id: r.id.trim() };
-  return { error: 'give { id } (from find_library_model) or { gameId, path } (from browse_owner_library)' };
+  return { error: 'give { id } (from find_library_model)' };
 }
 
-interface CatalogItem { gameId?: unknown; game?: unknown; kind?: unknown; name?: unknown; className?: unknown; path?: unknown; parts?: unknown; instances?: unknown; contains?: unknown }
-const PIECE_CLASSES = new Set(['Model', 'MeshPart', 'Part', 'UnionOperation', 'Tool', 'WedgePart']);
-const MAX_PARTS = 400, MAX_INSTANCES = 1500;
-
-/**
- * Why a catalog row cannot be copied into a place as a script-free object, or null when it can: a character (a Humanoid
- * inside), an empty piece, a class that is not a piece, one too big to copy. A mechanical safety fact, never a taste. Pure.
- */
-export function copyBlocker(i: CatalogItem): string | null {
-  if (i.kind !== 'model') return `kind is ${String(i.kind ?? 'unknown')}, not a model`;
-  if (!PIECE_CLASSES.has(String(i.className))) return `a ${String(i.className ?? 'unknown')} is not a copyable piece`;
-  const parts = Number(i.parts ?? 0), instances = Number(i.instances ?? 0);
-  if (!(parts >= 1)) return 'it holds no parts';
-  if (parts > MAX_PARTS) return `${parts} parts is more than ${MAX_PARTS}, too big to copy`;
-  if (instances > MAX_INSTANCES) return `${instances} instances is more than ${MAX_INSTANCES}, too big to copy`;
-  if (Array.isArray(i.contains) && i.contains.some((c) => c === 'Humanoid')) return 'it holds a Humanoid (a character, not an object)';
-  return null;
-}
-
-/**
- * The library's own answer for a models search with a copyability note on every row, so the agent sees what can be placed
- * and why a row cannot, and chooses with all of it in view. Nothing is dropped, ranked or de-duplicated here. Pure.
- */
-export function annotateModels<T extends CatalogItem>(items: T[]): (T & { copyable: boolean; notCopyableBecause?: string })[] {
-  return items.map((i) => {
-    const why = copyBlocker(i);
-    return { ...i, copyable: why === null, ...(why ? { notCopyableBecause: why } : {}) };
-  });
-}
+const MAX_PARTS = 400;
 
 /** Where along x a new thing may stand in front of the spawn: the middle first, then 8 studs at a time either side. */
 export const LANE_STEPS = [0, 8, -8, 16, -16, 24, -24, 32, -32, 40, -40, 48, -48, 56, -56, 64, -64];
@@ -271,12 +224,7 @@ async function stripLeftovers(ctx: AgentCtx, root: string): Promise<void> {
  */
 async function stage(ctx: AgentCtx, c: LibraryCandidate, into: string): Promise<{ from: string; held: ReturnType<typeof inventoryOf> } | { error: string }> {
   let from = into;
-  if (c.source === 'owner') {
-    // The game's own materials first, so a piece that names one does not draw as bare plastic (only missing ones).
-    await libraryMaterials(ctx, c.gameId!).catch(() => undefined);
-    const imported = await ctx.execStudioOp({ op: 'import_owner_library', gameId: c.gameId!, path: c.path!, mode: 'self', parent: into, applyServiceProperties: false, studioData: true }, LIBRARY_IMPORT_MS).catch(() => null);
-    if (!imported?.ok) return { error: `could not be imported: ${String(imported?.error ?? 'no answer from Studio').slice(0, 160)}` };
-  } else {
+  {
     // A Creator Store row passes insert_library_model's own gate (source policy, in-place scan, zero scripts proved).
     const { TOOLS } = await import('./tools');
     const inserted = await TOOLS.insert_library_model!.run(ctx, { id: c.id, parent: into }).catch(() => ({ error: 'insert failed' })) as Record<string, unknown>;
@@ -320,11 +268,8 @@ const PICK_LENGTH = 12;
 export interface ModelPreview {
   index: number;
   name: string;
-  source: 'owner' | 'store';
-  game?: string;
+  source: 'store';
   id?: string;
-  gameId?: string;
-  path?: string;
   parts?: number;
   /** Measured, studs [x, y, z], and said against the player. */
   size?: V3;
@@ -345,7 +290,7 @@ export interface ModelPreview {
  * left behind; nothing here chooses.
  */
 export async function previewLibraryModels(ctx: AgentCtx, raw: unknown[], opts: { snapshot?: boolean } = {}) {
-  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 6) return { error: 'models must list 1 to 6 candidates: { id } from find_library_model or { gameId, path } from browse_owner_library' };
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 6) return { error: 'models must list 1 to 6 candidates: { id } from find_library_model' };
   const candidates: LibraryCandidate[] = [];
   for (const r of raw) {
     const c = candidateOf(r);
@@ -377,7 +322,7 @@ export async function previewLibraryModels(ctx: AgentCtx, raw: unknown[], opts: 
       const inv = inventoryOf(root);
       const blocked = s.held.humanoid ? 'it holds a Humanoid (a character, not an object)' : s.held.parts > MAX_PARTS ? `${s.held.parts} parts is more than ${MAX_PARTS}, too big to copy` : undefined;
       previews.push({
-        index, name: c.name, source: c.source, ...(c.game ? { game: c.game } : {}), ...(c.id ? { id: c.id } : {}), ...(c.gameId ? { gameId: c.gameId, path: c.path } : {}),
+        index, name: c.name, source: c.source, ...(c.id ? { id: c.id } : {}),
         parts: s.held.parts || inv.parts,
         ...(box ? { size: box.size.map((n) => Math.round(n * 10) / 10) as V3, sizeNote: sizeWords(box.size) } : { note: 'size not measured (the piece is too big to read whole)' }),
         dominantColour: hex, dominantColourName: colourName(hex),
@@ -390,7 +335,7 @@ export async function previewLibraryModels(ctx: AgentCtx, raw: unknown[], opts: 
     if (opts.snapshot && staged.length) snapshot = await lineupSnapshot(ctx, staged);
     return {
       previews, ...(failed.length ? { failed } : {}), ...(snapshot ? { snapshot } : {}),
-      note: 'Measured evidence, nothing placed and nothing chosen. Choose with the request in view: place one with insert_library_model ({ id } or { gameId, path }, and size/height/scale if it should differ from its own size), or build it another way if none fits (build_object, ask the user).',
+      note: 'Measured evidence, nothing placed and nothing chosen. Choose with the request in view: place one with insert_library_model ({ id }, and size/height/scale if it should differ from its own size), or build it another way if none fits (build_object, ask the user).',
     };
   } finally {
     for (const s of staged) await gone(ctx, s.into);
@@ -505,7 +450,7 @@ export async function placeLibraryPiece(ctx: AgentCtx, c: LibraryCandidate, a: {
       object: named.path,
       placedAt: at,
       ...(b ? { size: b.size.map((n) => Math.round(n * 10) / 10) as V3, sizeNote: sizeWords(b.size), center: b.center, bottomY: b.bottomY } : { sizeNote: 'size not measured' }),
-      library: { source: c.source, name: c.name, ...(c.game ? { game: c.game } : {}) },
+      library: { source: c.source, name: c.name },
       scriptsAndSoundsLeftOut: s.held.scripts + s.held.sounds,
       note: 'Placed as a script-free copy, nothing else added: no stage, motion, counter, light or camera change, and the ground and spawn are as they were. Use dress_object to add any of those, play_check to see it, and tell the user what is really there.',
     };

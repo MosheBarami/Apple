@@ -34,7 +34,6 @@ const SHIPPED = [
   '../../worker/src/do/session.ts',
 ].map(read).join('\n');
 
-const LEGACY = read('../../plugin/src/init.server.luau');
 
 /** Curly and straight quotes are the same character to a reader; normalise before comparing. */
 const norm = (s) =>
@@ -65,7 +64,7 @@ for (const quote of headings) {
     const needle = norm(quote);
     assert.ok(
       norm(SHIPPED).includes(needle),
-      `not in the shipped artifact${norm(LEGACY).includes(needle) ? ' — it is in apps/plugin, the retired one' : ''}`,
+      'not in the shipped artifact',
     );
   });
 }
@@ -81,9 +80,9 @@ test('the two corrected quotes are the shipped wording, character for character'
 // The guard can fail.
 // ---------------------------------------------------------------------------
 test('the guard rejects the two strings that shipped on this page', () => {
-  // Each stale string is [the wording the retired plugin still has, the wording as the product is now
-  // named]. apps/plugin keeps its old product name until it is deleted (handoff 3.2), so the retired
-  // plugin is searched for the first spelling; the shipped artifact must carry NEITHER spelling.
+  // Each stale string is [the wording the retired plugin had, the wording as the product is now named].
+  // The retired plugin (apps/plugin) was removed in M4, so only the shipped artifact is searched: it must
+  // carry NEITHER spelling.
   const stale = [
     ['Invalid or expired code', 'Invalid or expired code'],
     ['Could not reach Apple — check your internet', 'Could not reach StudPilot — check your internet'],
@@ -92,7 +91,6 @@ test('the guard rejects the two strings that shipped on this page', () => {
     for (const s of new Set([retired, renamed])) {
       assert.equal(norm(SHIPPED).includes(norm(s)), false, `"${s}" should not be in the shipped artifact`);
     }
-    assert.equal(norm(LEGACY).includes(norm(retired)), true, `"${retired}" should be in the retired plugin`);
   }
 });
 

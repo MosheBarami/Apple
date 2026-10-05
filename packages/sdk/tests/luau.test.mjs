@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG = join(HERE, '..');
 const ROOT = join(PKG, '..', '..');
-const HARNESS = join(ROOT, 'apps/plugin/tests/harness.luau');
+const HARNESS = join(ROOT, 'apps/studpilot-plugin/tests/legacy-oracle/harness.luau');
 
 function haveLuau() {
   try {

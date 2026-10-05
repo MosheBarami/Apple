@@ -118,7 +118,7 @@ const DOCS = norm(readFileSync(join(ROOT, 'apps/site/src/pages/docs/privacy-and-
 const SETTINGS_SRC = readFileSync(join(ROOT, 'apps/web/src/routes/settings.tsx'), 'utf8');
 const ROW = SETTINGS_SRC.slice(SETTINGS_SRC.indexOf('<Row id="improvement-opt-out"'), SETTINGS_SRC.indexOf('</Row>', SETTINGS_SRC.indexOf('<Row id="improvement-opt-out"')));
 const WORKER_PREFS = readFileSync(join(ROOT, 'apps/worker/src/preferences.ts'), 'utf8');
-const GATE = readFileSync(join(ROOT, 'packages/training/src/consent-staging.mjs'), 'utf8');
+const GATE = readFileSync(join(ROOT, 'scripts/consent-staging.mjs'), 'utf8');
 
 const RULE = 'never includes data from Roblox, an Open Cloud key, credentials or payment details';
 const NOT_ACTIVE = 'Collection is not active yet';
@@ -262,7 +262,7 @@ const NOTIFICATIONS_SRC = readFileSync(join(ROOT, 'apps/worker/src/notifications
 test('LOCK 3 of 3, the gate: the training pipeline refuses customer work, and the surfaces say "not active" exactly while it does', () => {
   const closed = /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/.test(GATE);
   const open = /export const CUSTOMER_WORK_TRAINING_ENABLED = true;/.test(GATE);
-  assert.ok(closed !== open, 'could not read the gate out of packages/training/src/consent-staging.mjs');
+  assert.ok(closed !== open, 'could not read the gate out of scripts/consent-staging.mjs');
   // THE THREE MOVE TOGETHER. With the gate closed every surface must say collection is not active; with it open none may.
   // Opening the gate alone, or deleting the sentence alone, fails here. Turning collection on is a product decision that changes
   // the pages, the Settings row (its copy and the notice to account holders) and this constant in one change.

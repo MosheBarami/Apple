@@ -20,7 +20,7 @@ fi
 cat <<'EOF'
 
 This container runs code, tests, typecheck and the site/web builds.
-It cannot do live Studio work: Roblox Studio and the local library gateway
-(127.0.0.1:63747) exist only on the owner's Mac.  See .devcontainer/README.md.
+It cannot do live Studio work: Roblox Studio exists only on the owner's Mac.
+See .devcontainer/README.md.
 EOF
 exit 0

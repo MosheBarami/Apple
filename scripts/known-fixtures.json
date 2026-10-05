@@ -202,11 +202,6 @@
       "value_sha256": "9fb28bb8e51420ccd832c43840319f26625fabde26e8765cfd0472d169fe8bbc"
     },
     {
-      "path": "packages/langflow/sync.test.mjs",
-      "pattern": "Assigned secret literal",
-      "value_sha256": "428460bee30712d165053ec1929e3758300f32a530c22981ffae01d52fcdaa42"
-    },
-    {
       "path": "scripts/owner-dashboard/cc/platforms/clerk.mjs",
       "pattern": "Password literal",
       "value_sha256": "2c7f41e60a3ce428f3ee963a33195b5cbbb83c32e70aa033457a3ab7dfb7cab8"

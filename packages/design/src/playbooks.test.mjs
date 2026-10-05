@@ -21,8 +21,6 @@ import {
   assertPlaybookIntegrity,
 } from './playbooks.mjs';
 
-const BENCH = '../../../apps/benchmark/crystal-canyon/src/client';
-const readBench = (f) => readFileSync(new URL(`${BENCH}/${f}`, import.meta.url), 'utf8');
 
 // ------------------------------------------------------------------ integrity
 test('every playbook step cites rules that exist', () => {
@@ -95,15 +93,6 @@ test('an omission is invisible to the check layer and visible to the playbook', 
   assert.ok(graded.missing.length > checked.findings.length);
 });
 
-test('the playbook does not simply fail everything: real code passes it', () => {
-  // A completeness check that fires on working code is a check that gets switched
-  // off. Panels.luau is the shop panel this playbook was derived from.
-  const graded = gradePlaybook(readBench('Panels.luau'), 'panel.shop', { path: 'Panels.luau' });
-  assert.equal(graded.completeness.missing, 0, `missing: ${graded.missing.join(', ')}`);
-  assert.deepEqual(graded.violations, []);
-  assert.equal(graded.ok, true);
-});
-
 test('a step done without the owned primitive reads as re-invention, not as absence', () => {
   // §G's complaint is that StudPilot "defaults to inventing every Roblox GUI from a
   // blank canvas". `manual` is that defaulting, detected — and it must stay
@@ -123,28 +112,6 @@ test('a step done without the owned primitive reads as re-invention, not as abse
     'and every one of them bypassed the library',
   );
   for (const s of graded.steps) assert.equal(s.status, STEP_STATUS.MANUAL);
-});
-
-test('Hud.luau assigns z-order off one number line, and the playbook says so', () => {
-  // Not a synthetic fixture: `zAbove()` exists in Theme.luau and Hud.luau does not
-  // reach for it, writing `parent.ZIndex + 3`, `+ 4`, `+ 2` at each call site
-  // instead — which is exactly what layout.z-order-is-bands-with-headroom warns
-  // about. If this test ever fails because Hud.luau was fixed, delete it.
-  const graded = gradePlaybook(readBench('Hud.luau'), 'hud.cluster', { path: 'Hud.luau' });
-  assert.deepEqual(graded.reinvented, ['z-band']);
-  assert.deepEqual(graded.missing, []);
-});
-
-test('the press step names the path all three devices arrive on', () => {
-  // Regression for a defect in this file's own first draft: the step named
-  // `MouseButton1Down` as the primitive, which covers the mouse and neither touch
-  // nor the gamepad's ButtonA. Theme.luau:1088 documents why that is wrong.
-  const step = getPlaybook('button.interactive').steps.find((s) => s.id === 'press');
-  assert.ok(step.primitive.test('btn.InputBegan:Connect(function(input)'));
-  assert.ok(step.manual.test('btn.MouseButton1Down:Connect(function()'));
-  const graded = gradePlaybook(readBench('Theme.luau'), 'button.interactive', { path: 'Theme.luau' });
-  assert.deepEqual(graded.missing, []);
-  assert.deepEqual(graded.reinvented, [], 'Theme.luau wires every state the intended way');
 });
 
 // ------------------------------------------------------------------ rendering

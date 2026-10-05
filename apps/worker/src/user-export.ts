@@ -355,9 +355,14 @@ export const NON_POSTGRES_STORES: readonly NonPostgresStore[] = [
   //   dropping them is a `wrangler d1` action against live infrastructure, not a code change. This
   //   note is here so the next person to read this list knows the difference between "the product
   //   no longer has a catalogue" and "the bytes are gone". ]]
-  // `owner_id` is the publishing account, not a subject: the rows are publisher-attested Roblox components
-  // (name, path, hashes, usage notes) uploaded through owner-corpus-routes.ts, with nothing about anyone else.
-  { store: 'd1', binding: 'CORPUS', name: 'owner_corpus_components', personal: false, holds: 'the owner-attested release library: component names, paths, hashes and usage notes, keyed by the publishing account' },
+  //[[ `owner_corpus_components` WAS HERE AND WAS REMOVED IN M4 (handoff 4.2, the owner library).
+  //
+  //   Nothing in this worker creates it any more, so the guard "the inventory names real stores" would fail on it.
+  //   NOTHING PERSONAL LEFT THE EXPORT WITH IT: it was `personal: false` (publisher-attested Roblox components, their names, paths,
+  //   hashes and usage notes, keyed by the publishing account, never by a user of the product).
+  //   THE ROWS MAY STILL BE IN THE DEPLOYED DATABASE, and so may the R2 objects under `owner-corpus/`. Dropping them is a
+  //   `wrangler d1` / R2 action against live infrastructure, due 7 days after the replacement is verified (handoff M1), not a
+  //   code change. ]]
   { store: 'd1', binding: 'CORPUS', name: 'chunks', personal: false, holds: 'the documentation corpus the agent retrieves from' },
   { store: 'd1', binding: 'CORPUS', name: 'static_assets', personal: false, holds: 'the deployed web bundle' },
   { store: 'd1', binding: 'CORPUS', name: 'static_chunks', personal: false, holds: 'the bytes of the deployed web bundle' },

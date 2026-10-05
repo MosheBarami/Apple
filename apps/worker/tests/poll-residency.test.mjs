@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const PLUGIN = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'init.server.luau'), 'utf8')
+const PLUGIN = readFileSync(join(HERE, '..', '..', 'studpilot-plugin', 'src', 'Bridge.luau'), 'utf8')
   .replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/^\s*--.*$/gm, '');
 
 /** Read a `const NAME = 12_345;` numeric constant out of the source. */
@@ -49,9 +49,10 @@ test('idle pacing is inside what the deployed plugin will actually honour', () =
   const idleWait = constant('POLL_WAIT_IDLE_MS');
   // The plugin clamps whatever it is told to [0.2, 10] seconds. Issuing more is silently clamped,
   // and staleness derived from the larger number would then declare a healthy plugin dead.
-  const clamp = /task\.wait\(math\.clamp\(\(data\.waitMs or \d+\) \/ 1000, ([\d.]+), ([\d.]+)\)\)/.exec(PLUGIN);
-  assert.ok(clamp, 'the plugin still clamps waitMs — if this moved, re-derive the idle wait');
-  const maxHonoured = Number(clamp[2]) * 1000;
+  const clamp = /return math\.clamp\(millis \/ 1000, MIN_WAIT_SECONDS, MAX_WAIT_SECONDS\)/.exec(PLUGIN);
+  const maxWait = /^local MAX_WAIT_SECONDS = ([\d.]+)$/m.exec(PLUGIN);
+  assert.ok(clamp && maxWait, 'the plugin still clamps waitMs — if this moved, re-derive the idle wait');
+  const maxHonoured = Number(maxWait[1]) * 1000;
   assert.ok(idleWait <= maxHonoured, `idle wait ${idleWait}ms exceeds the ${maxHonoured}ms the plugin honours`);
 });
 

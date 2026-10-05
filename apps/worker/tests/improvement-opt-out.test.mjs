@@ -2,7 +2,7 @@
  * THE IMPROVEMENT-DATA OPT-OUT IS A PREFERENCE THE SERVER ACCEPTS, KEEPS AND NARROWS.
  *
  * Owner decision (planning/STUDPILOT-FINAL-PLAN.md section 7): StudPilot may one day collect anonymised improvement data, as an
- * opt-out. Collection is NOT active (packages/training CUSTOMER_WORK_TRAINING_ENABLED is false; tests/promises-match-the-product.test.mjs
+ * opt-out. Collection is NOT active (scripts/consent-staging.mjs CUSTOMER_WORK_TRAINING_ENABLED is false; tests/promises-match-the-product.test.mjs
  * holds the published rule, the Settings switch and that gate to each other). The switch in Settings > Privacy writes `improvement_opt_out`
  * through the preferences layer, and this file is about that half: the worker has to accept the key, keep it exactly, and treat an
  * organisation's `true` as one a project cannot undo. A key the validator does not know is a switch whose answer the server throws

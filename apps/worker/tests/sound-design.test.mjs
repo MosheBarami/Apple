@@ -34,7 +34,7 @@ await esbuild.build({ entryPoints: [join(WORKER, 'src', 'sound-design.ts')], bun
 const D = await import(pathToFileURL(OUT).href);
 process.on('exit', () => { rmSync(OUT, { force: true }); rmSync(TMP, { recursive: true, force: true }); });
 
-const GLOBAL_TYPES = readFileSync(join(REPO, 'apps', 'plugin', 'globalTypes.d.luau'), 'utf8');
+const GLOBAL_TYPES = readFileSync(join(WORKER, 'tests', 'fixtures', 'globalTypes.d.luau'), 'utf8');
 
 const haveLuau = (bin) => { try { execFileSync(bin, ['--help'], { stdio: 'pipe' }); return true; } catch { return false; } };
 

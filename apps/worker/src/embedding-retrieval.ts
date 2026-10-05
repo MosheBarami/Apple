@@ -1,6 +1,6 @@
 // Find the verified module a customer MEANT, when their words are not the module's words.
 //
-// THE MEASUREMENT THIS ANSWERS. packages/training/runs/knowledge-reach.json: the 80 verified
+// THE MEASUREMENT THIS ANSWERS. packages/corpus/data/measurements/knowledge-reach.json: the 80 verified
 // modules are found 80/80 when the query is phrased like the module's own contract, and 49/80
 // (61%) when it is phrased the way a customer talks. The knowledge is PRESENT and is not REACHED —
 // this repository's central failure shape, at the knowledge layer.

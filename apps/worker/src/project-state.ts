@@ -17,7 +17,6 @@ export const STORAGE_KEYS = {
   memoryEditedAt: 'reset',
   pendingAssetChoice: 'reset',
   buildLedger: 'reset',
-  plannedGame: 'reset',
   playtestRun: 'reset',
   assetSourcesAwaitingRun: 'reset',
   assetSourcesAsked: 'reset',

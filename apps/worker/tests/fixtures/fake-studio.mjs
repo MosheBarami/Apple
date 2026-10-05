@@ -1,4 +1,4 @@
-// A stand-in for the paired Studio plugin, for the tools that build from the owner's saved games.
+// A stand-in for the paired Studio plugin, for the tools that place models and read the place.
 //
 // It is a small world (a flat ground, optional walls and invisible zones, a spawn) plus the operations those tools send:
 // the library routes, imports, tree reads, spatial queries, transforms, clones and script reads. It keeps a log of every
@@ -10,16 +10,12 @@ const isA = (cls, target) => { for (let c = cls; c; c = CLASS_PARENTS[c]) if (c 
 const last = (path) => path.split('.').pop();
 /** query_instances.property {name, op, value}: eq is the whole value, contains is a case-insensitive part of it. */
 const propMatches = (n, p) => { const v = n.props?.[p.name]; if (v === undefined) return false; const t = String(v?.v ?? v).toLowerCase(), w = String(p.value).toLowerCase(); return (p.op ?? 'eq') === 'contains' ? t.includes(w) : t === w; };
-const lastSlash = (path) => path.split('/').filter(Boolean).pop() ?? '';
 
 /**
  * @param {object} o
- * @param {Record<string, unknown>} [o.route]     route name -> data, or (op) => reply
- * @param {(op: object) => object | null} [o.importOf]   per import: { roots:[{name,class,center,size,children:[{name,class}] ,scripts:[{name,class,source}]}], scripts, suspicious }
  * @param {object[]} [o.walls]   [{ center:[x,y,z], size:[x,y,z] }] solid: rays land on them, models cannot overlap them
  * @param {object[]} [o.ghosts]  same, but invisible to rays (a trigger zone): only the overlap check sees them
  * @param {string[]} [o.workspace]  names the place's Workspace holds at the start
- * @param {object | ((op: object) => object)} [o.game]     what a game breakdown (query_owner_library action game) answers
  * @param {(op: object, n: number) => object | Error} [o.play]   the plugin's play_check / play_check_ui report for the n-th session (1-based); an Error is a refused session
  * @param {Record<string, object>} [o.layout]    ui_layout_check answers by screen path (default: a pass)
  * @param {(op: object) => object | null} [o.fail]  return a reply to override an op's answer
@@ -54,30 +50,6 @@ export function fakeStudio(o = {}) {
     return r instanceof Error ? no(r.message) : ok(r);
   };
   const handlers = {
-    query_owner_library(op) {
-      if (op.action === 'route') { const r = o.route?.[op.route]; return typeof r === 'function' ? r(op) : r === undefined ? no('unknown route ' + op.route) : r instanceof Error ? no(r.message) : ok(r); }
-      if (op.action === 'deps') return ok({ needs: [], usedBy: [] });
-      return ok(typeof o.game === 'function' ? o.game(op) : o.game ?? { name: 'Game', place: true, services: {} });
-    },
-    import_owner_library(op) {
-      const parent = nodes.get(op.parent);
-      if (!parent) return no('instance not found at ' + op.parent, 'not_found');
-      const cfg = o.importOf?.(op) ?? {};
-      if (cfg.error) return no(cfg.error, cfg.failure);
-      if (op.replace) for (const c of kids(op.parent)) if (c.class !== 'Terrain' && c.class !== 'Camera') remove(c.path);
-      const roots = cfg.roots ?? [{ name: lastSlash(op.path) || 'Root', class: 'Model', center: [300, -40, 300], size: [4, 4, 4] }];
-      const inserted = [];
-      let skipped = 0;
-      for (const r of roots) {
-        if (op.onlyMissing && [...kids(op.parent)].some((c) => c.name === r.name)) { skipped += 1; continue; }
-        const path = op.parent + '.' + r.name;
-        add(path, { class: r.class ?? 'Model', center: r.center, size: r.size, attrs: { AppleLibraryGame: op.gameId, AppleLibraryPath: op.path } });
-        for (const c of r.children ?? []) { add(path + '.' + c.name, { class: c.class ?? 'Frame', props: c.props }); for (const g of c.children ?? []) add(path + '.' + c.name + '.' + g.name, { class: g.class ?? 'TextLabel', props: g.props }); }
-        for (const s of r.scripts ?? []) add(path + '.' + s.name, { class: s.class ?? 'LocalScript', source: s.source ?? '' });
-        inserted.push(path);
-      }
-      return ok({ inserted, roots: roots.length, instances: 5 * roots.length, scripts: cfg.scripts ?? 0, suspicious: cfg.suspicious ?? [], serviceApplied: [], removed: 0, ...(skipped ? { skipped } : {}), parent: op.parent });
-    },
     get_tree(op) {
       const n = nodes.get(op.root);
       if (!n) return no('instance not found at ' + op.root, 'not_found');
@@ -165,7 +137,7 @@ export function fakeStudio(o = {}) {
   };
 
   const ctx = {
-    env: {}, userId: 'owner', localOwnerGateway: true,
+    env: {}, userId: 'owner',
     studioConnected: () => true,
     checkpoints: [],
     createCheckpoint: async (label) => { ctx.checkpoints.push(label); return { id: 'cp' }; },

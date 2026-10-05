@@ -165,7 +165,7 @@ test('the analytics record and the stored Roblox key are disclosed, with what ea
 const ROOT = join(SITE, '..', '..');
 const terms = read(SITE, 'src', 'pages', 'terms.astro');
 const oauth = read(WORKER, 'src', 'roblox-oauth.ts');
-const gate = read(ROOT, 'packages', 'training', 'src', 'consent-staging.mjs');
+const gate = read(ROOT, 'scripts', 'consent-staging.mjs');
 const signup = read(ROOT, 'apps', 'web', 'src', 'routes', 'auth-pages.tsx');
 const settingsSrc = read(ROOT, 'apps', 'web', 'src', 'routes', 'settings.tsx');
 
@@ -488,7 +488,7 @@ test('THE PROFILE ROW\'S CONSENT FLAG is described as what it is, on the receipt
   const userExport = await bundleWorker('user-export.ts', 'user-export.mjs');
   const profilesSpec = userExport.USER_EXPORT.find((t) => t.table === 'profiles');
   assert.ok(profilesSpec && profilesSpec.fields.includes('training_opt_in'), 'the export no longer includes profiles.training_opt_in: re-read what the receipt may say about the flag');
-  assert.match(code(join(ROOT, 'packages', 'training', 'src', 'consent-staging.mjs')), /proof\.source !== 'profiles\.training_opt_in'/, 'the training pipeline no longer takes its consent proof from profiles.training_opt_in: re-read what the receipt may say about the flag');
+  assert.match(code(join(ROOT, 'scripts', 'consent-staging.mjs')), /proof\.source !== 'profiles\.training_opt_in'/, 'the training pipeline no longer takes its consent proof from profiles.training_opt_in: re-read what the receipt may say about the flag');
   assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/, 'the gate is open: "nothing acts on it while the gate is closed" is no longer the sentence');
 
   const asked = [];

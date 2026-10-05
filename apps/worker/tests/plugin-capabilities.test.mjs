@@ -86,7 +86,7 @@ const reasons = {
 
 function currentAuthoringReport() {
   const supported = [
-    'ping', 'render_view', 'screenshot', 'capture_studio_viewport', 'import_owner_component', 'query_owner_local', 'query_owner_exact', 'query_owner_assembly', 'query_owner_media', 'import_owner_local', 'query_owner_library', 'import_owner_library',
+    'ping', 'render_view', 'screenshot', 'capture_studio_viewport',
     'get_tree', 'get_instance', 'list_scripts', 'read_script', 'dump_scripts', 'search_scripts',
     'get_logs', 'get_selection', 'viewport_info', 'select', 'camera_focus', 'create_instances',
     'set_props', 'delete_instances', 'move_instances', 'transform_instances', 'clone_instances',
@@ -159,7 +159,7 @@ test('legacy, missing, malformed and unknown-schema clients preserve the existin
   // offering it on "unknown" would hand the model a check that is refused on its first call.
   const optIn = candidates.filter((name) => requirements[name].some((op) => C.OPT_IN_OPERATIONS.has(op)));
   // D-MODELLIB-1: insert_library_model stands its model on the spot through spatial_query, so it is opt-in too.
-  for (const name of ['play_check','insert_owner_component','capture_studio_viewport','list_owner_original_strings','read_owner_original_string']) assert.ok(optIn.includes(name), `${name} must remain opt-in`);
+  for (const name of ['play_check','capture_studio_viewport']) assert.ok(optIn.includes(name), `${name} must remain opt-in`);
   for (const raw of [
     undefined,
     null,
@@ -211,7 +211,6 @@ test('only explicitly unsupported operations withhold their dependent tools', ()
     'get_project_tree', 'get_instance', 'read_script', 'edit_script', 'create_instances',
     'set_properties', 'create_checkpoint', 'get_output_logs', 'insert_asset', 'render_view',
     'compose_thumbnail', 'generate_model', 'run_and_check', 'inspect_model',
-    'query_owner_assembly', 'read_owner_media',
   ]) {
     assert.equal(filtered.allowed.has(tool), true, `${tool} should remain executable through typed Studio operations`);
   }
@@ -355,14 +354,18 @@ test('the prose limitation note is bounded while the structured limitation list 
 });
 
 
-test('native insertion capability alternatives preserve a complete path and refuse absent paths', () => {
-  const name='insert_owner_component',tool=T.TOOLS[name];
-  const alternatives={[name]:tool.studioOpAlternatives};
-  const report=ops=>({schema:C.PLUGIN_CAPABILITY_SCHEMA,operations:ops.map(op=>({op,status:'supported'}))});
-  for(const ops of [['snapshot','import_owner_component'],['snapshot','query_owner_local','import_owner_local']]) {
-    assert.equal(C.filterToolsForPlugin([name],{[name]:tool.studioOps},report(ops),alternatives).allowed.has(name),true);
+test('capability alternatives preserve a complete path and refuse absent paths', () => {
+  // The only tool that declared alternatives (insert_owner_component) was removed in M4; the mechanism stays, so it is exercised
+  // on a made-up tool: it needs 'snapshot' and either both of query_instances and scatter, or spatial_query alone (all three are opt-in
+  // operations, so an unreported one counts as absent).
+  const name = 'made_up_tool', studioOps = ['snapshot', 'query_instances', 'scatter', 'spatial_query'];
+  const alternatives = { [name]: [['query_instances', 'scatter'], ['spatial_query']] };
+  const report = ops => ({ schema: C.PLUGIN_CAPABILITY_SCHEMA, operations: ops.map(op => ({ op, status: 'supported' })) });
+  for (const ops of [['snapshot', 'query_instances', 'scatter'], ['snapshot', 'spatial_query']]) {
+    assert.equal(C.filterToolsForPlugin([name], { [name]: studioOps }, report(ops), alternatives).allowed.has(name), true, ops.join());
   }
-  for(const ops of [['snapshot'],['snapshot','query_owner_local'],['query_owner_local','import_owner_local']]) {
-    assert.equal(C.filterToolsForPlugin([name],{[name]:tool.studioOps},report(ops),alternatives).allowed.has(name),false);
+  for (const ops of [['snapshot'], ['snapshot', 'query_instances'], ['query_instances', 'scatter']]) {
+    assert.equal(C.filterToolsForPlugin([name], { [name]: studioOps }, report(ops), alternatives).allowed.has(name), false, ops.join());
   }
 });
+

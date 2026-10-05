@@ -100,7 +100,7 @@ import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, par
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
-import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../request-scope';
+import { isLightingOnlyRequest, staysInLighting } from '../request-scope';
 import { persistWithShedding } from '../persist';
 // THE SELF-CHECK (M1, docs/autonomy/PHASE-3-4-PLAN.md, cut down in M4): the switch, the run's evidence ledger, the decision at the
 // moment of answering, and the optional text judge. See self-check.ts for what each part is and why it exists.
@@ -174,7 +174,7 @@ import {
   type PluginToolFilter,
   type ToolStudioRequirements,
 } from '../plugin-capabilities';
-import { buildApproved } from '../owner-corpus.ts';
+import { buildApproved } from '../account-gate';
 import { toolTraceEntry } from '../trace-entry';
 
 /** Say, on the last persisted trace row, why the run was stopped (the owner reads the trace; the person reads the note). Bounded. */
@@ -297,10 +297,6 @@ interface AgentState {
   onceKeys?: string[];
   /** A create_instances name conflict fences destructive recovery for the rest of this run. */
   blockDeletesAfterCreateConflict?: boolean;
-  /** A recreate_owner_game slot import: the original scripts find objects by name, so this run keeps names and structure. */
-  keepOwnerOriginal?: boolean;
-  /** build_game finished: the game is whole and its content is being given a new theme, which renames and moves models, so the structure fence lifts. */
-  builtGame?: boolean;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -490,10 +486,6 @@ interface AgentState {
   readOnly?: boolean;
   /** The request is only about the light: changes outside Lighting are refused (request-scope.ts). */
   lightingOnly?: boolean;
-  /** The request recreates an owner library game: other changes are refused until it is recreated (request-scope.ts). */
-  ownerRecreate?: boolean;
-  /** The request builds only from owner library parts: generating or Creator Store tools are refused (request-scope.ts). */
-  ownerLibraryOnly?: boolean;
   /**
    * Which tools the permissions above actually REMOVED from this run, computed once at the first
    * step and kept so the announcement is made once and survives a reload.
@@ -635,10 +627,7 @@ const MAX_LAYOUT_CHECKS = 3;
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
 /** What the request's list and the plan's building steps named that nothing this run built is named for. */
 function openParts(agent: AgentState) {
-  // A recreated owner game brought every part the original has, under the original's names.
-  if (agent.mode !== 'agent' || agent.keepOwnerOriginal) return [];
-  // A game built by build_game has all the parts its plan needed; the request's words are not a list of parts still to add.
-  if (agent.builtGame) return [];
+  if (agent.mode !== 'agent') return [];
   const steps = agent.plan ? settlePlan(agent.plan, agent.trace).steps : [];
   return missingParts(requestedParts(agent.request, steps, (tool) => READ_ONLY_WITHHELD.has(tool)), agent.builtWords ?? []);
 }
@@ -663,18 +652,6 @@ const READ_STALL_NOTE =
 const LIGHTING_ONLY =
   'Not run: this request is only about the lighting, so only Lighting changes are made in this run. ' +
   'Finish the lighting change, then reply to the user in one or two short, simple sentences.';
-/** What a recreate request is told when it changes the place before recreating the game. */
-const OWNER_RECREATE_FIRST =
-  'Not run: this request recreates a game from the owner library, and this run has not recreated it yet. The place holds only ' +
-  "what this run's own reads show, whatever earlier replies say. Call recreate_owner_game with the game's id from " +
-  'browse_owner_library first: it replaces each slot, so it never duplicates. Never build its UI, parts or scripts by hand.';
-/** What a library-only request is told when it tries to make content instead of importing it. */
-const OWNER_LIBRARY_ONLY =
-  'Not run: this request builds only from the owner library, so nothing is generated, hand-built or taken from the Creator Store. ' +
-  'Build the game with plan_game {request} then build_game, add a feature with install_owner_system {gameId}, or find one part with browse_owner_library ' +
-  '{kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with import_owner_library, then arrange it with ' +
-  'transform_instances or clone_instances. Sounds are the one exception: a saved game\'s sounds are private to their uploader and do not play ' +
-  'elsewhere, so replace them with licensed public audio through insert_sound.';
 /** A sentence followed by one space, or nothing — so an empty summary leaves no double space. */
 const spaced = (t: string): string => (t ? `${t} ` : '');
 /** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
@@ -852,8 +829,6 @@ const MAX_SNAPSHOT_BYTES = 12 * 1024 * 1024; // refuse absurd checkpoints
  * truncated one, and every checkpoint on this object shares one SQLite.
  */
 const MAX_CHECKPOINT_DESCRIPTION = 500;
-/** Refused after a run recreated an owner game (AgentState.keepOwnerOriginal). */
-const RESTRUCTURING_OPS = new Set(['rename_instance', 'move_instances', 'group_instances', 'ungroup_instances']);
 // The transcript is re-sent every step, and the budget includes the ~15k-char system prompt. At 24,000
 // a building run kept about two turn groups and re-read what it had just read (F-039: 88 reads, 242
 // Credits); at a fixed 60,000 gauntlet round 4 dropped 23 turn groups and lost its plan. The budget is
@@ -3658,8 +3633,6 @@ export class SessionDO extends DurableObject<Env> {
       ...(skills.ids.length > 0 ? { skillCardsShown: skills.ids } : {}),
       ...(mode === 'agent' && forbidsChanges(text) ? { readOnly: true } : {}),
       ...(mode === 'agent' && isLightingOnlyRequest(text) ? { lightingOnly: true } : {}),
-      ...(mode === 'agent' && isOwnerRecreateRequest(text) ? { ownerRecreate: true } : {}),
-      ...(mode === 'agent' && isOwnerLibraryOnlyRequest(text) ? { ownerLibraryOnly: true } : {}),
       step: 0,
       maxSteps: MAX_RUN_STEPS,
       creditsSpent: quota ? 1 : 0,
@@ -4755,20 +4728,6 @@ export class SessionDO extends DurableObject<Env> {
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${LIGHTING_ONLY}`, toolCallId: call.id, name: call.name });
         continue;
       }
-      if (agent.ownerRecreate && !agent.keepOwnerOriginal && READ_ONLY_WITHHELD.has(call.name) && !startsOwnerRecreate(call.name)) {
-        duplicatesThisStep += 1;
-        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (recreate the game first)` });
-        agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_RECREATE_FIRST}`, toolCallId: call.id, name: call.name });
-        continue;
-      }
-      if (agent.ownerLibraryOnly && !staysInOwnerLibrary(call.name)) {
-        duplicatesThisStep += 1;
-        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (library parts only)` });
-        agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_LIBRARY_ONLY}`, toolCallId: call.id, name: call.name });
-        continue;
-      }
       const terrainRefusal = terrainStreakRefusal(agent.terrainStreak ?? 0, call.name);
       if (terrainRefusal) {
         duplicatesThisStep += 1;
@@ -4891,16 +4850,11 @@ export class SessionDO extends DurableObject<Env> {
       }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
-      // A model file recreates without replacing a slot, so the import alone does not mark it.
-      if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
       if (call.name === 'play_check' && out.ok) {
         // What the check measured, in the answer's words (library-object.ts playCheckReading, shared with the library step).
         const reading = playCheckReading(out.detail);
         agent.lastCheckProblem = reading.problem;
         agent.lastCheckSeen = reading.seen;
-      }
-      if (out.mutatedProject === true && call.name === 'build_game') {
-        agent.builtGame = true;
       }
       // What this call left standing is written to the project's ledger (build-ledger.ts), for the next run to be told, as information.
       if (out.mutatedProject === true) await this.recordBuild(agent, call.name, call.arguments, out);
@@ -6210,8 +6164,6 @@ export class SessionDO extends DurableObject<Env> {
   private agentCtx(agent?: AgentState): AgentCtx {
     return {
       discoveredAssetIds: new Set(agent?.discoveredAssetIds ?? []),
-      // The design plan_game made, kept between the run's steps (the context is rebuilt every step) and across a restart of this object.
-      ...(agent ? { plannedGame: { load: () => this.ctx.storage.get('plannedGame'), save: (stored: unknown) => this.ctx.storage.put('plannedGame', stored), clear: () => this.ctx.storage.delete('plannedGame') } } : {}),
       ...(agent ? { userRequest: () => lastUserText(agent.llm) } : {}),
       ...(agent ? { buildLedger: {
         find: async (id: string) => ((await this.ctx.storage.get<LedgerEntry[]>(LEDGER_KEY)) ?? []).find((e) => e.id === id),
@@ -6245,7 +6197,6 @@ export class SessionDO extends DurableObject<Env> {
       // The queue length is backpressure and stays: a hundred ops deep, the honest answer to
       // "can you build right now" is no. The connection half now comes from the same rule the
       // header and the status broadcast use.
-      localOwnerGateway: this.pluginCapabilityReport?.operations.some(op => op.op === 'query_owner_local' && op.status === 'supported') === true,
       studioConnected: () => this.opQueue.length < 100 && this.pluginConnectedNow(),
       execStudioOp: (op, timeoutMs) => this.execStudioOp(op, timeoutMs, agent),
       widenTools: (tools) => {
@@ -6531,10 +6482,6 @@ export class SessionDO extends DurableObject<Env> {
     if (this.placeMismatch) {
       return { id: 'none', ok: false, error: this.placeMismatch.message, failure: WORKER_FAILURES.placeMismatch };
     }
-    if (run?.keepOwnerOriginal && !run.builtGame && RESTRUCTURING_OPS.has(studioOp.op)) {
-      return { id: 'none', ok: false, failure: 'refused',
-        error: 'This run recreated an owner library game. Its scripts find objects by their original names and places, so renaming, moving or regrouping them is refused. Keep the original structure.' };
-    }
     // Stopping Run mode only returns Studio to edit mode; it changes nothing in the place. It must reach
     // Studio even when the run that started the simulation has ended (the user pressed Stop mid-playtest):
     // refused or dropped, it left Studio simulating and every later edit was refused. So it belongs to
@@ -6587,10 +6534,6 @@ export class SessionDO extends DurableObject<Env> {
       });
     });
     if (run && result.ok) run.createdPaths = rememberCreated(run.createdPaths, studioOp.op, result.data);
-    if (run && studioOp.op === 'import_owner_library' && studioOp.replace === true && result.ok && !run.keepOwnerOriginal) {
-      run.keepOwnerOriginal = true;
-      await this.persistAgent(run);
-    }
     if (run && studioOp.op === 'create_instances' && !result.ok && result.failure === 'conflict') {
       run.blockDeletesAfterCreateConflict = true;
       // Persist before the next tool call: a DO eviction must not clear a safety fence after
@@ -7394,7 +7337,6 @@ export class SessionDO extends DurableObject<Env> {
     }
     // The place was put back: what the ledger says stands there, and a plan made for that place, no longer describe it.
     await this.ctx.storage.delete(LEDGER_KEY);
-    await this.ctx.storage.delete('plannedGame');
     say('verifying');
 
     // SURFACE THE FIDELITY REPORT. The plugin returns exactly how faithful the restore was —

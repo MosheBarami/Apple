@@ -125,7 +125,7 @@ async function main() {
   const tmp = mkdtempSync(join(tmpdir(), 'showcase-deploy-'));
   const htmlPath = join(tmp, 'index.html');
   execFileSync(process.execPath, [
-    join(REPO, 'packages/training/src/build-showcase-gallery.mjs'),
+    join(REPO, 'infra/build-showcase-gallery.mjs'),
     '--ui', uiDir, '--maps', mapDir, '--out', htmlPath,
     '--ui-prefix', `${PREFIX}/ui-showcase/`,
     '--map-prefix', `${PREFIX}/map-showcase/`,

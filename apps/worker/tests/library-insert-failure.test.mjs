@@ -10,8 +10,7 @@
  *   - a tree too big to list is reported as a SIZE limit, never as "a critical finding", and the 400-node ceiling
  *     is not the first thing a larger model meets;
  *   - a failed removal is never reported as "removed";
- *   - every failure carries stage, reason, retry and next; an id that failed is not tried twice in the run;
- *   - owner-corpus rows accept position/height/scale after the import and return the inner model's path.
+ *   - every failure carries stage, reason, retry and next; an id that failed is not tried twice in the run.
  *
  * Run with:  node --test tests/library-insert-failure.test.mjs      (from apps/worker)
  */
@@ -326,42 +325,3 @@ test('a refusal before anything was tried (source off) is stage policy and does 
   assert.equal(p.ops.length, 0);
 });
 
-// ---------------------------------------------------------------- owner rows
-test('a local owner import accepts position/scale after the import and returns the inner model path, not the wrapper', async () => {
-  const raw = 'a'.repeat(64) + ':42';
-  const sha = 'b'.repeat(64);
-  const jobId = 'c'.repeat(64);
-  const calls = [];
-  const exec = async (op) => {
-    calls.push(op);
-    if (op.op === 'query_owner_local') return { ok: true, data: { status: 'ready', jobId, nodeId: raw, name: 'Chair', nativeSha256: sha, nativeBytes: 88, nativeInstances: 9, policy: 'owner-loopback-scriptfree-v1', nativeScripts: 0 } };
-    if (op.op === 'import_owner_local') return { ok: true, data: { inserted: ['game.Workspace.Chair'], scriptsExecuted: 0 } };
-    if (op.op === 'get_tree') return { ok: true, data: { root: { class: 'Folder', name: 'Chair', children: [{ class: 'Model', name: 'ChairModel' }] } } };
-    if (op.op === 'spatial_query') return { ok: true, data: { center: [0, 3, 0], size: [2, 6, 2], bottomY: 0 } };
-    if (op.op === 'transform_instances') return { ok: true, data: {} };
-    return { ok: false, error: `unexpected ${op.op}` };
-  };
-  const ctx = { env: {}, userId: 'owner', localOwnerGateway: true, studioConnected: () => true, execStudioOp: exec, createCheckpoint: async () => ({ id: 'cp' }), addMemoryFact: async () => '' };
-  const r = await T.runTool(ctx, 'insert_library_model', JSON.stringify({ id: `owner-local:${raw}`, position: [10, 0, -4], height: 12 }));
-  const data = JSON.parse(r.resultForLlm);
-  assert.equal(data.error, undefined, r.resultForLlm);
-  assert.deepEqual(data.inserted, ['game.Workspace.Chair.ChairModel'], 'the wrapper Folder was returned instead of the model inside it');
-  assert.equal(data.wrapper, 'game.Workspace.Chair');
-  const moves = calls.filter((o) => o.op === 'transform_instances');
-  assert.ok(moves.some((o) => o.scale && o.paths[0] === 'game.Workspace.Chair.ChairModel'), 'the height was not applied to the inner model');
-  assert.ok(moves.some((o) => o.move && o.paths[0] === 'game.Workspace.Chair.ChairModel'), 'the position was not applied to the inner model');
-  assert.equal(calls.find((o) => o.op === 'import_owner_local').parent, 'game.Workspace', 'owner rows default to game.Workspace through insert_library_model, as its description says');
-  // insert_owner_component keeps its own default (a place to inspect), as ITS description says.
-  calls.length = 0;
-  await T.runTool(ctx, 'insert_owner_component', JSON.stringify({ id: `owner-local:${raw}` }));
-  assert.equal(calls.find((o) => o.op === 'import_owner_local').parent, 'game.ServerStorage');
-});
-
-test('placeImportedOwner leaves a multi-piece import where it landed and says so', async () => {
-  const exec = async (op) => (op.op === 'get_tree'
-    ? { ok: true, data: { root: { class: 'Folder', name: 'Set', children: [{ class: 'Model', name: 'A' }, { class: 'Model', name: 'B' }] } } }
-    : { ok: false, error: 'unexpected' });
-  const out = await M.placeImportedOwner(exec, { inserted: ['game.Workspace.Set'] }, { position: [1, 2, 3] });
-  assert.deepEqual(out.inserted, ['game.Workspace.Set']);
-  assert.match(out.placementWarning, /several pieces/);
-});

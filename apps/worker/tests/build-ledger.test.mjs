@@ -117,7 +117,7 @@ test('the session keeps a ledger, not two single slots: no builtObject, no built
   assert.match(s, /if \(out\.mutatedProject === true\) await this\.recordBuild\(agent, call\.name, call\.arguments, out\);/);
   const restore = s.slice(s.indexOf('async restoreCheckpoint('));
   assert.ok(restore.indexOf("storage.delete(LEDGER_KEY)") > restore.indexOf("op: 'restore'"), 'the ledger goes only after the place was really put back');
-  assert.ok(restore.indexOf("storage.delete('plannedGame')") > restore.indexOf("op: 'restore'"));
+  assert.equal(restore.includes("plannedGame"), false, 'plan_game is gone (M4): no stored design is kept or cleared');
   const live = s.slice(s.indexOf('private async liveLedger'), s.indexOf('private async recordBuild'));
   assert.match(live, /!studioConnected\) return \[\]/, 'with Studio away nothing that may be dead is offered');
   assert.match(live, /op: 'get_instance'/, 'each entry is verified against the live place');

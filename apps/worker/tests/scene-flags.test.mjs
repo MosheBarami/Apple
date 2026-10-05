@@ -118,11 +118,9 @@ test('near-black lighting is flagged with its numbers; a readable rig and a lit 
   assert.deepEqual(kinds(sceneFlags({ workspace: tree([]), lighting: { root: { props: {} } } })), [], 'a rig that cannot be read says nothing');
 });
 
-test('an imported original game is not the agent\'s layout, an unreadable tree is null, a cut-off tree says so', () => {
+test('an unreadable tree is null, a cut-off tree says so', () => {
   const nodes = [];
   for (let r = 0; r < 4; r++) for (let c = 0; c < 8; c++) nodes.push(cluster(`N${r * 8 + c}`, [c * 20, r * 20]));
-  const tagged = sceneFlags({ workspace: tree([model('Original', nodes, { AppleLibraryGame: { t: 'string', v: 'abc' } })]) });
-  assert.deepEqual(kinds(tagged), []);
   assert.equal(sceneFlags({ workspace: { nothing: true } }), null);
   assert.equal(sceneFlags({ workspace: tree(nodes, true) }).truncated, true);
   assert.match(flagLines(sceneFlags({ workspace: tree(nodes) }))[0], /^\[high\] repeated_grid: 32 identical objects/);

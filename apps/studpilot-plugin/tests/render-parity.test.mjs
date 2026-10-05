@@ -37,11 +37,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildChunk, luauMissing } from '../../plugin/tests/run.mjs';
+import { buildChunk, luauMissing } from './legacy-oracle/run.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const LEGACY_TESTS = join(HERE, '..', '..', 'plugin', 'tests');
-const LEGACY_SRC = join(HERE, '..', '..', 'plugin', 'src');
+const LEGACY_TESTS = join(HERE, 'legacy-oracle');
+const LEGACY_SRC = join(HERE, 'legacy-oracle', 'src');
 const PORTED = join(HERE, '..', 'src', 'Render.luau');
 
 /** The ported module stands in for `Render`; `Paths` is still the legacy stub the prelude needs. */

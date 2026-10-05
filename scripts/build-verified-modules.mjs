@@ -28,8 +28,8 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ALL_GAME_LOGIC_CURRICULUM } from '../packages/training/src/build-game-logic.mjs';
-import { runSpecCase } from '../packages/training/src/tool-trajectory-verify.mjs';
+import { ALL_GAME_LOGIC_CURRICULUM } from '../packages/corpus/src/generators/build-game-logic.mjs';
+import { runSpecCase } from '../packages/corpus/src/generators/tool-trajectory-verify.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'packages/corpus/data/verified-modules.json');

@@ -19,7 +19,7 @@ export function requestedArtifactTool(request = ''): 'generate_image' | 'insert_
  * library is a preference, not a ban on building).
  */
 const DELIVERS: Record<string, readonly string[]> = {
-  insert_library_model: ['insert_library_model', 'insert_owner_component', 'build_object'],
+  insert_library_model: ['insert_library_model', 'build_object'],
   generate_image: ['generate_image'],
 };
 

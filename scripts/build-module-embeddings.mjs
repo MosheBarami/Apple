@@ -17,7 +17,7 @@
  * WHY INT8. The float32 vectors are 80 × 1024 × 4 = 328 KB for the modules alone, and the Worker
  * bundle is a shared budget. Quantising to int8 with one scale per vector costs 4× less and,
  * measured on the same 80 customer queries, changes top-1 by zero — see
- * packages/training/runs/embedding-retrieval.json. A compression that cost accuracy would have to
+ * packages/corpus/data/measurements/embedding-retrieval.json. A compression that cost accuracy would have to
  * be reported; this one did not, and the measurement is what says so rather than the intuition.
  *
  * Usage:
@@ -28,7 +28,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEnv, embedAll, normalise } from '../packages/training/src/workers-ai-embed.mjs';
+import { loadEnv, embedAll, normalise } from '../packages/corpus/src/generators/workers-ai-embed.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');

@@ -60,7 +60,7 @@ export const PREFERENCE_KEYS = [
   // a project cannot switch somebody's account back on. Read by analytics-consent.ts.
   'analytics_opt_out',
   // The choice to stay out of "improvement data": anonymised use data StudPilot MAY one day collect to get better (plan section 7).
-  // Collection is NOT active (CUSTOMER_WORK_TRAINING_ENABLED is false in packages/training), so nothing reads this key today: it
+  // Collection is NOT active (CUSTOMER_WORK_TRAINING_ENABLED is false in scripts/consent-staging.mjs), so nothing reads this key today: it
   // exists so the choice is recorded now and honoured from the first day. Default is `false`, not opted out, as the published
   // policy says. It narrows like `analytics_opt_out`: an organisation's opt-out is not for a project to switch back off.
   'improvement_opt_out',

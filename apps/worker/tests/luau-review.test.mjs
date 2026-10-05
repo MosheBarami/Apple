@@ -271,18 +271,18 @@ test('edit_script surfaces a missing anchor as a refusal with nothing written', 
 // 3. Concurrent edit detection — the two hashes must agree ACROSS LANGUAGES
 // ---------------------------------------------------------------------------------------------
 
-/** The `sourceHash` function lifted out of Ops.luau and run by the real interpreter. */
+/** The shipped plugin's `hashSource` function lifted out of Commands.luau and run by the real interpreter. */
 function pluginHash(strings) {
-  const src = readFileSync(join(WORKER, '..', 'plugin', 'src', 'Ops.luau'), 'utf8');
-  const start = src.indexOf('local function sourceHash(s: string): string');
-  assert.notEqual(start, -1, 'Ops.luau no longer defines sourceHash — the wire contract is gone');
+  const src = readFileSync(join(WORKER, '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
+  const start = src.indexOf('local function hashSource(source: string): string');
+  assert.notEqual(start, -1, 'Commands.luau no longer defines hashSource — the wire contract is gone');
   const end = src.indexOf('\nend\n', start);
-  assert.notEqual(end, -1, 'could not find the end of sourceHash in Ops.luau');
+  assert.notEqual(end, -1, 'could not find the end of hashSource in Commands.luau');
   const fn = src.slice(start, end + '\nend\n'.length);
 
   const script = join(TMP, 'hash.luau');
   const literals = strings.map((s) => JSON.stringify(s)).join(', ');
-  writeFileSync(script, `${fn}\nlocal inputs = { ${literals} }\nfor _, s in inputs do print(sourceHash(s)) end\n`);
+  writeFileSync(script, `${fn}\nlocal inputs = { ${literals} }\nfor _, s in inputs do print(hashSource(s)) end\n`);
   const out = execFileSync('luau', [script], { encoding: 'utf8' });
   return out.trim().split('\n');
 }

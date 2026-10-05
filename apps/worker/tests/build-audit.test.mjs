@@ -302,48 +302,6 @@ test('an empty Workspace is refused rather than audited as perfect', async () =>
   assert.match(String(res.error), /no geometry/);
 });
 
-// An imported library original is the game's own design: unanchored ridges, far-away props, huge and coplanar parts are
-// how that game works. Its roots carry the AppleLibraryGame attribute (import_owner_library sets it), and nothing under
-// one is audited, so the agent is never sent to "fix" a game it was asked to keep.
-const node = (name, cls, props, children = [], attributes = {}) => ({ path: `game.Workspace.${name}`, name, class: cls, children, attributes, props });
-const part = (name, { anchored = false, at = [0, 5, 0], size = [4, 1.2, 2], color = [0.64, 0.64, 0.65] } = {}) => node(name, 'Part', {
-  Position: { t: 'Vector3', v: at }, Size: { t: 'Vector3', v: size }, Material: { t: 'EnumItem', v: 'Enum.Material.Plastic' },
-  Color: { t: 'Color3', v: color }, Anchored: { t: 'bool', v: anchored }, Transparency: { t: 'number', v: 0 } });
-const tag = { AppleLibraryGame: { t: 'string', v: 'abcdef012345' }, AppleLibraryPath: { t: 'string', v: '/Workspace/Farm' } };
-const treeOf = (...children) => ({ root: { path: 'game.Workspace', name: 'Workspace', class: 'Workspace', attributes: {}, props: {}, children } });
-
-test('parts under a root tagged as an imported library original are left out of the audit and counted as imported', () => {
-  const built = part('Mine', { anchored: true, at: [0, 1, 0] });
-  const original = node('Farm', 'Model', {}, [part('Loose1'), part('Loose2'), node('Deep', 'Folder', {}, [part('Loose3')])], tag);
-  const cap = BA.auditCaptureFromTree(treeOf(built, original));
-  assert.equal(cap.parts.length, 1, 'only the part the agent built is measured');
-  assert.equal(cap.importedRoots, 1);
-  assert.equal(BA.auditMetrics(cap).unanchoredParts, 0, 'the original\'s unanchored parts are not the agent\'s defects');
-  // The control: the same parts untagged are measured, so the exclusion is the tag and nothing else.
-  const plain = BA.auditCaptureFromTree(treeOf(built, node('Farm', 'Model', {}, [part('Loose1'), part('Loose2'), node('Deep', 'Folder', {}, [part('Loose3')])])));
-  assert.equal(plain.parts.length, 4);
-  assert.equal(plain.importedRoots, undefined);
-  assert.equal(BA.auditMetrics(plain).unanchoredParts, 3);
-});
-
-test('a tagged root nested inside something the agent built is still left out, whatever else the tag carries', () => {
-  const nested = node('Level', 'Folder', {}, [part('Floor', { anchored: true }), node('Pet', 'Model', {}, [part('Body')], { AppleLibraryGame: { t: 'string', v: 'abcdef012345' } })]);
-  const cap = BA.auditCaptureFromTree(treeOf(nested));
-  assert.deepEqual([cap.parts.length, cap.importedRoots], [1, 1]);
-});
-
-test('audit_build on a place that holds only imported originals says there is nothing to fix, not that nothing is built', async () => {
-  const tree = treeOf(node('Farm', 'Model', {}, [part('Loose1'), part('Loose2')], tag));
-  const ops = [];
-  const ctx = { env: {}, studioConnected: () => true, addMemoryFact: async () => {},
-    execStudioOp: async (o) => { ops.push(o); return { ok: true, data: o.root === 'game.Lighting' ? { root: { path: 'game.Lighting', class: 'Lighting', props: {}, attributes: {}, children: [] } } : tree }; } };
-  const res = await T.TOOLS.audit_build.run(ctx, {});
-  assert.equal(res.error, undefined, 'build something first would send the agent to add parts to a finished game');
-  assert.equal(res.confirmed, 0);
-  assert.equal(res.importedRoots, 1);
-  assert.match(res.text, /imported original game content/);
-});
-
 test('unreadable pass output is an error, not an empty clean verdict', async () => {
   const ops = [];
   const ctx = { env: {}, studioConnected: () => true,

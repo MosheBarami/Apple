@@ -287,34 +287,10 @@ test('SessionDO says that how it looks was not checked whatever the plugin can r
   assert.doesNotMatch(code, /allowed\.has\('inspect_visually'\)|inspect_visually/, 'an automatic visual critique is back in the run loop');
 });
 
-/**
- * WHICH PLUGIN IS THE PRODUCT, ASSERTED RATHER THAN REMEMBERED.
- *
- * Two Studio plugins lived in this repository at once and nothing resolved which one shipped. Both
- * looked maintained, the root README pointed at the legacy one, and the worker's own comments cite
- * its files as the thing they must match. A month later that is a fork somebody re-discovers and
- * has to work out from scratch.
- *
- * So the marker is a test, not a note. The legacy tree stays — five suites owned elsewhere read its
- * source, and `apps/worker/src/composition.ts` pins its background constants to that rasteriser —
- * but it may not stop saying what it is.
- */
-test('the legacy plugin is marked as not-the-product and names the one that ships', () => {
-  const legacy = join(HERE, '..', '..', 'plugin', 'README.md');
-  assert.ok(existsSync(legacy), 'apps/plugin/README.md is gone — the fork is unmarked again');
-  const text = readFileSync(legacy, 'utf8');
-  assert.match(text, /NOT THE PRODUCT/, 'the legacy plugin no longer says it is not the product');
-  assert.match(text, /apps\/studpilot-plugin/, 'the marker must name the plugin that does ship');
-  assert.match(text, /docs\/PLUGIN-RELEASE\.md/, 'the marker must point at the release runbook');
-});
-
+// The legacy plugin (apps/plugin) was removed in M4; apps/studpilot-plugin is the only plugin.
 test('the shipped plugin refuses the pattern the removed Creator Store asset contained', () => {
-  // The legacy run_code builds a ModuleScript out of the HTTP body and requires it. That is the
-  // prohibited pattern and the reason the decision went the way it did, so both halves are pinned:
-  // the legacy one still HAS it (if it ever loses it, the reasoning here needs rewriting), and the
-  // shipped one must never grow it.
-  const legacyOps = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'Ops.luau'), 'utf8');
-  assert.match(legacyOps, /pcall\(require, module\)/, 'the legacy run_code no longer loads received text — revisit apps/plugin/README.md');
+  // The removed legacy plugin's run_code built a ModuleScript out of the HTTP body and required it. That is the
+  // prohibited pattern and the reason the Creator Store asset was removed; the shipped plugin must never grow it.
 
   // CALL SITES, not mentions. Commands.luau carries a refusal LIST naming loadstring, InsertService
   // and GetObjects, and a scanner that matched the words would report the guard as the defect —

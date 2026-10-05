@@ -962,19 +962,15 @@ test('a run that changed something and then only reads is ended at the read-stal
 });
 
 // 2026-09-30: the stop note listed tool names ("recreate owner game (1)"). It now says what the user got.
+// Restated in M4 without the owner-library imports it was first written around: the property is the plain-words note.
 test('a stopped run tells a young creator what they got, and names no tool', async () => {
-  const gameId = 'abcdef012345';
-  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
   const h = await makeSession({
     connected: true,
-    capabilities: SUPPORTED,
     answerOp: (op) => {
       if (op.op === 'get_tree') return { ok: true, data: { root: { path: op.root, name: 'x', class: 'Folder', children: [] } } };
-      if (op.op === 'import_owner_library') return { ok: true, data: { roots: 1, instances: 12, scripts: 2, suspicious: [] } };
       return { ok: true, data: {} };
     },
     responses: [
-      calls(['import_owner_library', { gameId, path: '/StarterGui/ShopGui', mode: 'self' }], ['import_owner_library', { gameId, path: '/Workspace', mode: 'children' }]),
       calls(['create_instances', { items: [{ className: 'Part', name: 'Coin1', parent: 'game.Workspace' }] }]),
       ...Array.from({ length: 40 }, (_, i) => calls(['get_project_tree', { root: `game.Workspace.Look${i}` }])),
       answer({ text: 'Done.' }),
@@ -985,39 +981,9 @@ test('a stopped run tells a young creator what they got, and names no tool', asy
     for (let i = 0; i < 60 && !lastEnd(h); i++) await h.session.alarm();
     assert.ok(lastEnd(h), 'the run never ended');
     const text = h.sent.filter((m) => m.type === 'delta').map((m) => m.text).join('');
-    assert.match(text, /It worked on the shop screen, the game map and new objects\./, text);
+    assert.match(text, /It worked on new objects\./, text);
     assert.doesNotMatch(text, TOOL_NAME, 'the stop note names a tool');
     assert.doesNotMatch(assistantRow(h).content, TOOL_NAME, 'the saved reply names a tool');
-  } finally {
-    h.stop();
-  }
-});
-
-// The dependencies of a library asset are added once per RUN. The memory is the run's own persisted state, not a test double.
-test('a library asset brings what it needs, once per run, even when the model asks for it again', async () => {
-  const gameId = 'abcdef012345', shop = '/StarterGui/ShopGui';
-  const SUPPORTED = { schema: 'golem.studio-ops.v1', operations: ['import_owner_library', 'query_owner_library', 'snapshot'].map((op) => ({ op, status: 'supported' })) };
-  const h = await makeSession({
-    connected: true,
-    capabilities: SUPPORTED,
-    answerOp: (op) => {
-      if (op.op === 'query_owner_library') return { ok: true, data: { path: shop, needs: [{ path: '/ReplicatedStorage/BuyItem', parent: 'game.ReplicatedStorage', mode: 'self', instances: 1, why: 'the shop buttons fire the BuyItem remote' }], usedBy: [] } };
-      if (op.op === 'import_owner_library') return { ok: true, data: { roots: 1, instances: 12, scripts: 2, suspicious: [] } };
-      return { ok: true, data: {} };
-    },
-    responses: [
-      calls(['import_owner_library', { gameId, path: shop, mode: 'self', parent: 'game.StarterGui' }]),
-      calls(['import_owner_library', { gameId, path: shop, mode: 'self', parent: 'game.Workspace' }]),
-      answer({ text: 'The shop is ready.' }),
-    ],
-  });
-  try {
-    await start(h, { text: 'add a shop' });
-    for (let i = 0; i < 20 && !lastEnd(h); i++) await h.session.alarm();
-    assert.ok(lastEnd(h), 'the run never ended');
-    assert.equal(h.ops.filter((op) => op.op === 'query_owner_library' && op.action === 'deps').length, 1, 'the same asset asked for its pieces twice in one run');
-    const deps = h.ops.filter((op) => op.op === 'import_owner_library' && op.path === '/ReplicatedStorage/BuyItem');
-    assert.deepEqual(deps.map((op) => [op.mode, op.parent, op.onlyMissing]), [['self', 'game.ReplicatedStorage', true]]);
   } finally {
     h.stop();
   }

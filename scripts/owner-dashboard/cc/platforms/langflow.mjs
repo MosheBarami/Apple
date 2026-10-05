@@ -8,7 +8,6 @@
 // The one write is `run`, behind a confirm modal and a dryRun plan; it never forwards the run's key.
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { REPO, cached, uncache, ok, fail, run as exec } from '../http.mjs';
 
 export const FLOW_DIR = path.join(REPO, 'packages', 'langflow');
@@ -16,10 +15,8 @@ const base = () => (process.env.LANGFLOW_URL || 'http://localhost:7860').replace
 const arr = (x) => (Array.isArray(x) ? x : []);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const MAX_INPUT = 4000;
-// sync.mjs's example input per flow id (the module only runs main() when executed), prefilled in the
-// page's run box. Missing or broken sync.mjs: no examples, the box starts empty.
-const EXAMPLES = await import(pathToFileURL(path.join(FLOW_DIR, 'sync.mjs')).href)
-  .then((m) => Object.fromEntries(arr(m.FLOWS).map((f) => [f.id, JSON.stringify(f.example ?? null)]).filter(([, v]) => v.length <= MAX_INPUT)), () => ({}));
+// packages/langflow (its sync.mjs and the example input per flow id) was removed in M4: no examples, the run box starts empty.
+const EXAMPLES = {};
 
 async function call(p, headers = {}, { method = 'GET', body, timeout = 4000 } = {}) {
   const r = await fetch(`${base()}${p}`, { method, headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}), ...headers },

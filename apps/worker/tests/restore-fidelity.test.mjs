@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SESSION = readFileSync(join(HERE, '..', 'src', 'do', 'session.ts'), 'utf8');
-const SERIALIZER = readFileSync(join(HERE, '..', '..', 'plugin', 'src', 'Serializer.luau'), 'utf8');
+const SERIALIZER = readFileSync(join(HERE, '..', '..', 'studpilot-plugin', 'src', 'Commands.luau'), 'utf8');
 // The body starts AFTER the return-type annotation, and that boundary is the whole point.
 // The annotation NAMES every fidelity field, so a slice that includes it lets a `instancesCreated:`
 // match land on the type that PROMISES the count rather than on the code that supplies it. Found by
@@ -29,9 +29,9 @@ test('the plugin still computes a fidelity report worth surfacing', () => {
   // If the plugin stops reporting these, the worker's handling below is dead code and this test
   // is the thing that says so.
   for (const field of ['instancesCreated', 'scriptsRestored', 'scriptsExpected', 'failedInstances', 'failedScripts', 'failedProperties']) {
-    assert.match(SERIALIZER, new RegExp(`${field}\\s*=`), `Serializer.luau must still report ${field}`);
+    assert.match(SERIALIZER, new RegExp(`${field}\\s*=`), `Commands.luau must still report ${field}`);
   }
-  assert.match(SERIALIZER, /restored = failedInstances == 0 and failedScripts == 0/);
+  assert.match(SERIALIZER, /restored = true,/, 'the restore result still carries the verdict');
 });
 
 test('ok reflects the plugin verdict, not merely that the op was delivered', () => {

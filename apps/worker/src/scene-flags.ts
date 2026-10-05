@@ -115,7 +115,6 @@ function walkTree(root: Record<string, unknown>): Walk {
     return (vec(props.Position) ?? vec(props.CFrame)) !== null && vec(props.Size) !== null ? true : kids(n).some(hasParts);
   };
   const visit = (n: Record<string, unknown>, top: boolean): void => {
-    if (isObj(n.attributes) && 'AppleLibraryGame' in n.attributes) return; // an imported original is the game's own design
     const cls = typeof n.class === 'string' ? n.class : '';
     const container = cls === 'Model' || cls === 'Folder' || top;
     if (container && holdsSubUnits(n)) {

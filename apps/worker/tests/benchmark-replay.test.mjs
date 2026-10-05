@@ -228,8 +228,8 @@ function assertModelFirst(h) {
   assert.deepEqual(early, [], 'a library or build step ran before the first model call');
 }
 /** A current plugin reports what it can do; the ops a library step and a build stand on are among them (an older one that does
- * not report the owner-library ops is offered fewer tools, by design: that is plugin-capabilities.ts, not this test's concern). */
-const CURRENT_PLUGIN = { schema: 'golem.studio-ops.v1', operations: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'set_surface_default', 'strip_descendants', 'import_owner_library', 'query_owner_library', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'list_scripts', 'read_script', 'group_instances', 'transform_instances', 'insert_asset', 'spatial_query', 'set_props_bulk', 'query_instances', 'play_check', 'capture_studio_viewport'].map((op) => ({ op, status: 'supported' })) };
+ * not report an opt-in op is offered fewer tools, by design: that is plugin-capabilities.ts, not this test's concern). */
+const CURRENT_PLUGIN = { schema: 'golem.studio-ops.v1', operations: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'set_surface_default', 'strip_descendants', 'list_scripts', 'read_script', 'group_instances', 'transform_instances', 'insert_asset', 'spatial_query', 'set_props_bulk', 'query_instances', 'play_check', 'capture_studio_viewport'].map((op) => ({ op, status: 'supported' })) };
 const CHOICE = ['find_library_model', 'preview_library_models', 'insert_library_model', 'build_object', 'dress_object'];
 const offeredAt = (h, i) => (h.chatCalls[i].req.tools ?? []).map((t) => t.name ?? t.function?.name);
 /** What the harness must never add on its own to an object the agent built (the 2026-10-02 benchmark's habits). */
@@ -315,7 +315,7 @@ test('replay: a library model is found and previewed by the agent, after the mod
   ]);
   try {
     assertModelFirst(h);
-    const placing = h.ops.filter((o) => o.op === 'import_owner_library' || (o.op === 'create_instances' && o.items.some((i) => i.parent === 'Workspace')));
+    const placing = h.ops.filter((o) => o.op === 'create_instances' && o.items.some((i) => i.parent === 'Workspace'));
     assert.deepEqual(placing, [], 'a preview placed something in the place');
     assert.doesNotMatch(opsText(h), NEVER_ADDED);
     const toolResults = h.chatCalls.at(-1).req.messages.filter((m) => m.role === 'tool');

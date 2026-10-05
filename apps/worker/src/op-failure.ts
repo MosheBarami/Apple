@@ -29,7 +29,7 @@ import { REFUSAL_REMEDIES, isRefusalRemedyCode, studioFictionIn } from '@studpil
 import type { OpFailureKind, OpResult, StudioOp, RefusalRemedyCode } from '@studpilot/shared';
 
 /**
- * The ops that change the user's place. Mirrors the `MUTATING` table in apps/plugin/src/Ops.luau,
+ * The ops that change the user's place. Mirrors the `MUTATING` table in apps/studpilot-plugin/src/Commands.luau,
  * which is what decides whether an undo recording is opened — tests/op-failure.test.mjs reads both
  * files and fails if they drift, because two lists of the same fact kept in step by care alone is
  * precisely the arrangement this repo has already been bitten by.
@@ -42,7 +42,6 @@ export const MUTATING_OPS: ReadonlySet<string> = new Set([
   'move_instances',
   'restore',
   'insert_asset',
-  'import_owner_component',
   'run_code',
   'generate_model',
   'transform_instances',
@@ -52,6 +51,7 @@ export const MUTATING_OPS: ReadonlySet<string> = new Set([
   'rename_instance',
   'set_locked',
   'set_visible',
+  'terrain_edit',
 ]);
 
 export function mutates(op: StudioOp | { op: string } | string | null | undefined): boolean {

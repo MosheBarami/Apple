@@ -343,19 +343,6 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   spatial_query: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   read_terrain: 'Read-only, excluded for the same reason as search_instances: its plugin operation is opt-in and MCP does not check the connected plugin supports it.',
   capture_studio_viewport: 'Read-only, excluded for the same reason as search_instances: native viewport capture is an opt-in plugin operation and MCP does not check the connected plugin supports it.',
-  // ---- the owner's private library (read through the owner's paired gateway) ---------------
-  query_owner_catalog: 'Pages the owner\'s private library through the owner\'s own paired Studio. That library is not a public catalogue, and a project-scoped key is not a grant to read it.',
-  query_owner_assembly: 'Reads exact code from the owner\'s private library; excluded for the same reason as query_owner_catalog.',
-  read_owner_media: 'Reads media bytes from the owner\'s private library; excluded for the same reason as query_owner_catalog.',
-  list_owner_original_strings: 'Lists original source strings from the owner\'s private library; excluded for the same reason as query_owner_catalog.',
-  read_owner_original_string: 'Reads original source code from the owner\'s private library; excluded for the same reason as query_owner_catalog, and it would make this surface a source distribution channel.',
-  read_owner_component: 'Reads components of the owner\'s private library; excluded for the same reason as query_owner_catalog.',
-  browse_owner_library: 'Pages the owner\'s uploaded game library; excluded for the same reason as query_owner_catalog.',
-  import_owner_library: 'Writes parts of the owner\'s uploaded games into Studio; excluded for the same reason as query_owner_catalog.',
-  recreate_owner_game: 'Writes a whole uploaded game into Studio; excluded for the same reason as query_owner_catalog.',
-  install_owner_system: 'Writes one ready-made system from the owner\'s uploaded games into Studio; excluded for the same reason as query_owner_catalog.',
-  plan_game: 'Reads the owner\'s private library to design a game; excluded for the same reason as query_owner_catalog.',
-  build_game: 'Builds a whole game in Studio from the owner\'s uploaded games; excluded for the same reason as query_owner_catalog.',
   build_object: 'Builds a whole object with scripts in the place; excluded until the MCP surface has a reviewed object-building scope.',
   dress_object: 'Adds a stage, a click response with an animation script, a counter screen, attached library pieces, a light or an effect to an object in the place; excluded with build_object until the MCP surface has a reviewed object-building scope.',
   preview_library_models: 'Reads, but stages candidate models in Studio\'s ServerStorage (and, with a snapshot, in a temporary row in the place) and removes them again; excluded like the other tools that touch the place until the MCP scope is reviewed.',
@@ -365,7 +352,6 @@ export const MCP_EXCLUDED: Readonly<Record<string, string>> = {
   model_anatomy: 'Read-only (get_tree and read_script), but it is the first half of add_behaviour and means nothing on a surface that cannot add behaviour, so it is excluded with it.',
   build_studded_ui: 'Writes a whole studded ScreenGui into the place; excluded until the MCP surface has a reviewed UI-writing scope.',
   add_upgrades: 'Installs server scripts and a studded screen into the place; excluded for the same reason as build_studded_ui.',
-  insert_owner_component: 'Inserts a component from the owner\'s private library into the place. It is a write, which belongs to an agent run, and its source is the private library above.',
   check_ui_layout: 'Changes nothing in the place, but it builds a temporary copy of a screen in Studio\'s own UI layer, and its plugin operation is opt-in, which MCP does not negotiate. Excluded for both reasons.',
 };
 

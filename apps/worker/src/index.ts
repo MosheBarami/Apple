@@ -54,7 +54,6 @@ import {
 } from './erasure';
 import type { Env, AuthedUser } from './env';
 import { verifyJwt, bearerToken } from './auth';
-import { ownerCorpusRoutes } from './owner-corpus-routes';
 import { getOwnedProject, getProfile, getProjectAccess, listProjectMembers, memberDirectory, supaRest, type MemberRow, type ProjectRow } from './supa';
 import { parseSupportSubmission } from './support';
 import { can, capabilitiesFor, asCollabRole, asShareScope, effectivePermissions, redeemShareLink, GRANTABLE_ROLES, type CollabAction, type CollabRole, type Membership, type MembershipAccessChange, type ShareResource } from './collab';
@@ -690,7 +689,6 @@ app.use('/api/*', async (c, next) => {
   // A browser <img> cannot attach the account JWT. This one numeric, read-only route returns
   // only Roblox's public thumbnail; unknown sibling paths stay behind the JWT gate.
   if (AUTH_EXEMPT.includes(path) ||
-      /^\/api\/owner-corpus\/content\/[a-f0-9]{64}$/.test(path) ||
       (/^\/api\/library-preview\/[1-9][0-9]{0,15}$/.test(path) && AUTH_EXEMPT.includes('/api/library-preview/:assetId')) ||
       path.startsWith('/api/admin/')) return next();
   const token = bearerToken(c.req.raw);
@@ -702,8 +700,6 @@ app.use('/api/*', async (c, next) => {
   c.set('user', user);
   return next();
 });
-
-app.route('/api/owner-corpus', ownerCorpusRoutes);
 
 /**
  * SIGN IN WITH ROBLOX. Outside /api on purpose: these are browser navigations to and from Roblox, so there
@@ -4579,7 +4575,7 @@ app.post('/api/admin/run-tool/:id', async (c) => {
  * available through /api/admin/run-tool, which goes through the gate.
  *
  * The list is what the harnesses in infra/ and packages/evals actually send, and no more, plus the two read-only
- * ops the owner-library audit drives (capture_studio_viewport, preload_content): they look, they insert nothing.
+ * ops (capture_studio_viewport, preload_content): they look, they insert nothing.
  */
 const ADMIN_STUDIO_OPS = new Set<StudioOp['op']>([
   'ping',

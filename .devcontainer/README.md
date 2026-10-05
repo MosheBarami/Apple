@@ -30,8 +30,6 @@ Forwarded ports: 8787 `wrangler dev` (apps/worker), 5173 `vite` (apps/web), 4321
 
 - **Roblox Studio.** Anything that needs a live Studio session (pairing the plugin, checkpoints, play tests,
   the owner benchmark runner) needs the owner's Mac.
-- **The local library gateway on `127.0.0.1:63747`.** It lives on the Mac. The plugin tests that mention it
-  use a stub and run fine; the real gateway does not exist in a Codespace.
 - **`wrangler dev` against real bindings.** It needs `.dev.vars`, which is gitignored and holds secrets. This
   container never receives any. Do not add them as Codespaces secrets without the owner's say-so.
 - **Anything that spends money** (the eval runners, live provider calls). They stay on the Mac with an explicit

@@ -64,7 +64,6 @@ test('no shipped client points at a former host, except the plugin fallback that
   const clients = [
     'apps/studpilot-plugin/src/Bridge.luau',
     'apps/studpilot-plugin/src/init.server.luau',
-    'apps/studpilot-plugin/src/ops/OwnerCorpus.luau',
     'packages/sdk/luau/StudPilotClient.luau',
     'packages/sdk/src/wire.mjs',
     'packages/sdk/python/studpilot_sdk/client.py',

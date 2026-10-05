@@ -177,30 +177,6 @@ test('a stopped run says what the user got, in plain words, counted from its own
     'It worked on new objects, the lighting, a sound, the terrain, how the game works, copies of objects and more.', 'a long list is cut short');
 });
 
-test('what a library import brought is named the way the game shows it, never by path or tool', async () => {
-  const { builtSummary, addMade, madeKey, plainName, plainLibraryThing } = await import('../src/run-idle.ts');
-  const imp = (path, mode = 'self') => madeKey('import_owner_library', JSON.stringify({ gameId: 'abcdef012345', path, mode }));
-  assert.equal(plainLibraryThing('/Workspace'), 'the game map');
-  assert.equal(plainLibraryThing('/StarterGui'), 'the game screens');
-  assert.equal(plainLibraryThing('/StarterGui/ShopGui'), 'the shop screen');
-  assert.equal(plainLibraryThing('/StarterGui/MainUI/Frames#2'), 'the frames screen');
-  assert.equal(plainLibraryThing('/Workspace/BrainrotPet'), 'the brainrot pet');
-  assert.equal(plainLibraryThing('/ServerScriptService/CashLoop'), 'the cash loop system');
-  assert.equal(plainLibraryThing('/StarterPack/Sword'), 'the sword tool');
-  assert.equal(plainLibraryThing('/'), 'a saved model');
-  assert.equal(plainLibraryThing('/StarterGui/##'), 'a screen', 'a name with nothing readable falls back to its kind');
-  assert.equal(plainName('/Workspace/Plot1'), 'plot 1');
-  assert.equal(plainName('/StarterGui/ShopGUI'), 'shop');
-  assert.equal(plainName('/Workspace/Brainrot Pet#3'), 'brainrot pet');
-  assert.equal(plainName('/Workspace/Bases_NEW/{94396031-cda8-4c6d-ae16-6f869de43bd7}'), '', 'an id is not a name');
-  assert.equal(plainName('/Workspace/1449'), '', 'a bare number is not a name');
-  assert.equal(plainLibraryThing('/SavedGameModules/Workspace/BoatContainer/Boat_{2E055272-1AE8-47E0-8BF6-22F0E52C71F9}'), 'a system');
-  let made;
-  for (const key of [imp('/Workspace', 'children'), imp('/StarterGui/ShopGui'), imp('/StarterGui/ShopGui'), madeKey('recreate_owner_game', '{"gameId":"abcdef012345"}')]) made = addMade(made, key);
-  assert.equal(builtSummary(made), 'It worked on the game map, the shop screen and the whole game.');
-  assert.equal(madeKey('import_owner_library', 'not json'), '=part of a saved game', 'unreadable arguments still name no tool');
-});
-
 test('addMade keeps a bounded record and files the overflow as other changes', async () => {
   const { builtSummary, addMade } = await import('../src/run-idle.ts');
   let made;
@@ -273,7 +249,7 @@ test('a built game with nothing on screen or an unplayed loop is not finished: s
   const { gameGaps, gameGapSteer, builtAGame } = await import('../src/run-idle.ts');
   // RESTATED phase 1: a regex over genre words in the request decided that "a game" owed a HUD and a playtest (a request in
   // another language, or for a genre not on the list, owed nothing; a script fix that said "game" owed both).
-  const game = { builtGame: true };
+  const game = { made: { edit_script: 2, create_instances: 3, build_object: 1 } };
   assert.deepEqual(gameGaps(game, true), ['hud', 'playtest']);
   assert.deepEqual(gameGaps({ ...game, hudBuilt: true }, true), ['playtest']);
   assert.deepEqual(gameGaps({ ...game, hudBuilt: true, playChecked: true }, true), []);
@@ -307,11 +283,8 @@ test('the run loop records the HUD and the playtest, and steers an unfinished ga
   assert.match(SESSION, /gaps\.length > 0 \|\| leavesWorkOpen\(res\.text\)/);
 });
 
-test('an owner game recreate or StarterGui import brings its own HUD, so no generated HUD is owed', async () => {
+test('a HUD built by a UI tool or written as a ScreenGui is a HUD, so no generated HUD is owed', async () => {
   const { buildsHud } = await import('../src/run-idle.ts');
-  assert.equal(buildsHud('recreate_owner_game', '{"gameId":"0a1b2c3d"}'), true);
-  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/StarterGui","parent":"game.StarterGui"}'), true);
-  assert.equal(buildsHud('import_owner_library', '{"gameId":"0a1b2c3d","path":"/Workspace/Farm"}'), false);
   assert.equal(buildsHud('insert_ui_component', '{}'), true);
   assert.equal(buildsHud('create_instances', '{"items":[{"className":"Part"}]}'), false);
 });

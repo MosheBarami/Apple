@@ -6,9 +6,7 @@
 // ships came from — so they are pinned here rather than left to inspection.
 //
 // The modules are TypeScript in the worker; they are transpiled on the fly so there is no build
-// step and no duplicated copy to drift. The Luau QC gate cannot run under node, so instead the
-// last block PARSES apps/plugin/src/Generation.luau and asserts its mirrored thresholds agree
-// with the canonical TypeScript ones — which is what actually stops the two drifting.
+// step and no duplicated copy to drift.
 //
 // Run: node --test packages/evals/src/asset-qc.test.mjs
 import test from 'node:test';
@@ -682,73 +680,6 @@ test('a centroid pivot on a tall model is outside tolerance — this is the floa
   assert.ok(15 > pivotToleranceStuds(height), 'a centroid pivot must be caught, not tolerated');
   // while a 0.2-stud modelling slop on the same tree must not be flagged
   assert.ok(0.2 <= pivotToleranceStuds(height));
-});
-
-// ==============================================================================================
-// 6. The Luau mirror must agree with the TypeScript canon
-// ==============================================================================================
-
-const luauSrc = readFileSync(new URL('../../../apps/plugin/src/Generation.luau', import.meta.url).pathname, 'utf8');
-
-function parseLuauScaleTable(text) {
-  const start = text.indexOf('local SCALE: { [string]: ScaleRule } = {');
-  assert.notEqual(start, -1, 'could not find the SCALE table in Generation.luau');
-  const body = text.slice(start, text.indexOf('\n}', start));
-  const out = {};
-  const re = /^\t(\w+) = \{ minHeight = ([\d.]+), maxHeight = ([\d.]+), maxAnyDim = ([\d.]+), tallest = (true|false) \},$/gm;
-  let m;
-  while ((m = re.exec(body)) !== null) {
-    out[m[1]] = { minHeight: Number(m[2]), maxHeight: Number(m[3]), maxAnyDim: Number(m[4]), tallest: m[5] === 'true' };
-  }
-  return out;
-}
-
-test("the plugin's mirrored SCALE table is identical to SCALE_ENVELOPES", () => {
-  const luau = parseLuauScaleTable(luauSrc);
-  assert.ok(Object.keys(luau).length > 20, 'the Luau table did not parse');
-  assert.deepEqual(luau, JSON.parse(JSON.stringify(SCALE_ENVELOPES)), 'Generation.luau has drifted from assets.ts SCALE_ENVELOPES');
-});
-
-test("the plugin's QC constants match the canonical QC_THRESHOLDS", () => {
-  const constant = (name) => {
-    const m = new RegExp(`^local ${name} = ([\\d.]+)$`, 'm').exec(luauSrc);
-    assert.ok(m, `Generation.luau has no '${name}' constant`);
-    return Number(m[1]);
-  };
-  assert.equal(constant('RATE_LIMIT'), QC_THRESHOLDS.generationRateLimitPerMinute);
-  assert.equal(constant('RATE_WINDOW'), QC_THRESHOLDS.generationRateWindowSeconds);
-  assert.equal(constant('DEFAULT_TIMEOUT'), QC_THRESHOLDS.generationTimeoutSeconds);
-  assert.equal(constant('DEFAULT_MAX_TRIANGLES'), QC_THRESHOLDS.defaultMaxTriangles);
-  assert.equal(constant('MIN_STUD'), QC_THRESHOLDS.minStud);
-  assert.equal(constant('HARD_TRIANGLE_CEILING'), QC_THRESHOLDS.hardTriangleCeiling);
-  assert.equal(constant('SOFT_TRIANGLE_WARN'), QC_THRESHOLDS.softTriangleWarn);
-  assert.equal(constant('SOFT_PART_WARN'), QC_THRESHOLDS.softPartWarn);
-  // written as a fraction in the Luau so the provenance of the number stays visible
-  assert.match(luauSrc, /local GREY_TOLERANCE = 12 \/ 255/);
-  assert.equal(12 / 255, QC_THRESHOLDS.defaultGreyTolerance);
-});
-
-test('the plugin uses the same pivot and upright tolerances as the TypeScript canon', () => {
-  assert.match(luauSrc, /math\.max\(0\.5, s\.Y \* 0\.05\)/, 'vertical pivot tolerance drifted');
-  assert.match(luauSrc, /math\.max\(0\.5, math\.max\(s\.X, s\.Z\) \* 0\.10\)/, 'lateral pivot tolerance drifted');
-  assert.match(luauSrc, /measurements\.uprightDot < 0\.85/, 'upright tolerance drifted');
-  assert.equal(QC_THRESHOLDS.pivotToleranceStuds, 0.5);
-  assert.equal(QC_THRESHOLDS.pivotToleranceFraction, 0.05);
-  assert.equal(QC_THRESHOLDS.lateralPivotToleranceFraction, 0.1);
-  assert.equal(QC_THRESHOLDS.uprightDotMin, 0.85);
-});
-
-test('the plugin refuses scripts and calls GetObjects rather than InsertService:LoadAsset', () => {
-  assert.match(luauSrc, /game:GetObjects\("rbxassetid:\/\/"/, 'the only working plugin insert path must be used');
-  // InsertService:LoadAsset fails from a plugin ("User is not authorized to access Asset."), so it
-  // may be named in a comment but must never be acquired or called.
-  assert.ok(!/GetService\("InsertService"\)/.test(luauSrc), 'InsertService must not be acquired');
-  assert.ok(!/InsertService\s*:\s*LoadAsset/.test(luauSrc.replace(/^\s*--.*$/gm, '')), 'InsertService:LoadAsset must not be called');
-  // exactly one CALL site (comments may mention it), so the deprecation of GetObjects is a
-  // one-function fix rather than a hunt through the plugin
-  const code = luauSrc.replace(/^\s*--.*$/gm, '');
-  assert.equal(code.split('game:GetObjects(').length - 1, 1, 'GetObjects must be behind a single adapter');
-  assert.match(luauSrc, /REFUSE this model/, 'a script-bearing model must be refused outright');
 });
 
 //[[ THE CHAIN THESE TWO TESTS GUARD SURVIVED THE CATALOGUE; ITS FIRST LINK DID NOT.

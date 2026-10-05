@@ -1,6 +1,6 @@
 // Agent tool definitions + dispatcher. Tools either talk to Studio (via the session DO's
 // op queue) or run worker-side (docs search, memory, checkpoints).
-import { annotateModels, candidateOf, placeLibraryPiece, placeSizeOf, previewLibraryModels } from './library-object';
+import { previewLibraryModels } from './library-object';
 import { dressObject } from './dress-object';
 import { expandTerrainRecipe, TERRAIN_RECIPES } from './terrain-recipes';
 import type { Env } from './env';
@@ -79,11 +79,7 @@ import { applyOrigin, readOrigin, sharedParent } from './local-space';
 import { expandTerrainPath, TERRAIN_PATH_OP_CAP } from './terrain-path';
 import { insertUiComponent, refuseUiLook, uiImageResolver, UI_RULE, isEmptyScreenGuiHost } from './ui-components';
 import { FX_RULE, findSound, findVfxTool, insertSound, insertVfx, playLibrarySound, refuseSoundId } from './fx-library';
-import { findLibraryModels, libraryAdvice, libraryModel, placeImportedOwner, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted, type LibraryModel } from './model-library';
-import {queryOwnerAssembly,readOwnerMedia} from './owner-evidence';
-import { LOCAL_OWNER_PREFIX, localNodeId, localOwnerQuery, readLocalOwner, insertLocalOwner, librarySafetyCopy, listOwnerOriginalStrings, readOwnerOriginalString, queryOwnerCatalog, browseOwnerLibrary, importOwnerLibrary, recreateOwnerGame, FIND_TYPES, FIND_SIZES } from './local-owner-corpus';
-import { installOwnerSystem, installSummary, importSummary, recreateSummary, browseSummary } from './library-assemble';
-import { planGame, buildGame, planSummary, buildSummary } from './game-plan';
+import { findLibraryModels, libraryAdvice, libraryModel, LIBRARY_GENRES, LIBRARY_KINDS, placeInserted, type LibraryModel } from './model-library';
 import { sourcesIn as runSourcesIn } from './sources';
 import { buildObject } from './object-tool';
 import { animateModel } from './animate-tool';
@@ -92,9 +88,8 @@ import { lintScriptWrite } from './behaviour-review';
 import { modelAnatomy } from './model-anatomy';
 import { buildStuddedUi } from './studded-ui-tool';
 import { addUpgrades } from './upgrades-tool';
-import { findOwnerComponents, libraryNamespace, ownerComponent, ownerComponentGrant, readOwnerDescription } from './owner-corpus';
 import { matchesVisualAnchor, visualAssetAnchor } from './asset-choice';
-import { contentWords, fetchLiveModel, liveAssetIdOf, relevanceOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
+import { fetchLiveModel, liveAssetIdOf, searchLiveModels, LIVE_ID_PREFIX, type LiveModel } from './creator-store-live';
 import { ensureProvenanceTables, recordAssetUse } from './provenance';
 import { MOODS, PALETTES, type RGB } from './worldbuilding';
 import { EFFECTS, EFFECT_NAMES, effectCatalogue, effectInstanceSpecs, parseInstancePath } from './effects';
@@ -189,8 +184,6 @@ export interface AgentCtx {
    * a tool that needs one refuses without it.
    */
   userId?: string;
-  /** Explicit paired-plugin capability; carries no loopback address or credentials. */
-  localOwnerGateway?: boolean;
   studioConnected(): boolean;
   execStudioOp(op: StudioOp, timeoutMs?: number): Promise<OpResult>;
   /** Live run fence: direct model deletion is refused after a create name conflict. */
@@ -317,12 +310,6 @@ export interface AgentCtx {
    * within one run (adding the same asset's dependencies twice). Absent outside a run, where every claim is the first.
    */
   onceInRun?(key: string): boolean;
-  /**
-   * Where plan_game keeps the design build_game carries out. The run loop rebuilds this context every step and a design is too big
-   * to hand back through the model, so the session keeps it. Absent outside a run (the eval harness, tests): game-plan.ts then keeps
-   * the last design in memory.
-   */
-  plannedGame?: { load(): Promise<unknown>; save(stored: unknown): Promise<void>; clear?(): Promise<unknown> };
   /** The user's own words for this run (their last message), so a tool that must understand the request does not read the model's retelling of it. */
   userRequest?: () => string | undefined;
   /**
@@ -1299,7 +1286,7 @@ function libraryOrder(ctx: AgentCtx): LibraryOrder {
   const run = libraryRunOf(ctx);
   return orderApplies({
     offered: !ctx.offeredTools || ctx.offeredTools.has('find_library_model'),
-    usable: allowedSources(ctx.assetSources).includes('creator_store') || ctx.localOwnerGateway === true,
+    usable: allowedSources(ctx.assetSources).includes('creator_store'),
     outcome: run.outcome,
     gated: run.gated,
   });
@@ -1324,7 +1311,7 @@ function recordInsert(ctx: AgentCtx, a: Record<string, unknown>, result: unknown
   const r = rec(result);
   const id = String(a.id ?? '');
   const row = libraryRow(ctx, id);
-  if (!row || id.startsWith('owner:') || id.startsWith(LOCAL_OWNER_PREFIX)) return result;
+  if (!row) return result;
   const failed = typeof r.error === 'string';
   // A policy or argument refusal reached neither Roblox nor Studio, so it says nothing about the library.
   if (failed && r.stage === 'policy') return result;
@@ -2018,56 +2005,6 @@ function webCtx(ctx: AgentCtx): WebToolCtx {
  */
 async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   const query = a.query === undefined ? undefined : String(a.query);
-  if (a.sourceSHA !== undefined && !query?.trim()) return {error:'Source-scoped search requires plain query words; use query_owner_catalog for source pages.'};
-  if (a.sourceSHA !== undefined && !/^[a-f0-9]{64}$/.test(String(a.sourceSHA))) return {error:'Use an original source SHA from query_owner_catalog.'};
-  if (a.sourceSHA !== undefined && (!ctx.userId || !ctx.localOwnerGateway || !ctx.studioConnected())) return {error:'Source-scoped search needs the authenticated paired local owner gateway.'};
-  let localStatus: unknown;
-  // Rows the owner's gateway returned for the query's words in a path or description but not in the row's own name. The gateway
-  // does not rank (`ORDER BY n.id`, packages/owner-corpus/gateway.py), so "crystal" answered a javelin whose path says crystal.
-  // They are kept back and offered only when nothing else answers.
-  let heldLocal: Record<string, unknown>[] = [];
-  const localRows = (rows: unknown[], note: string, nextAfter: unknown) => ({source:'owner_local',
-    results:rows.map((row) => ({...rec(row),id:LOCAL_OWNER_PREFIX+localNodeId(String(rec(row).id)),preview:{status:'native-pixels-required',visualApproved:false,gameplayVerified:false}})),
-    nextAfter:nextAfter ?? null,priority:'full local owner corpus first',note});
-  const LOCAL_NOTE = 'Exact indexed rows; visual suitability and gameplay are unverified. read_owner_component supports describe, properties, script, children, relations, plan and native-map pages. insert_owner_component materializes a script-free native chunk locally. Oversized roots need paged child imports and later reference repair.';
-  if (ctx.localOwnerGateway && ctx.studioConnected() && query) {
-    const local=await localOwnerQuery(ctx,{action:'search',query,sourceSHA:a.sourceSHA === undefined ? undefined : String(a.sourceSHA),limit:Math.min(10,Math.max(1,Number(a.limit)||5)),
-      after:a.after === undefined ? undefined : localNodeId(String(a.after)),className:a.className === undefined ? undefined : String(a.className)});
-    localStatus=local;
-    const items = Array.isArray(local.items) ? local.items as unknown[] : [];
-    const paged = a.after !== undefined || a.sourceSHA !== undefined;
-    // A page walk (after, sourceSHA) is exact by contract and is returned as it came; a fresh search is held to the row's own name.
-    const wanted = contentWords(query);
-    const named = paged ? items : items.filter((row) => relevanceOf(String(rec(row).name ?? ''), wanted) > 0)
-      .sort((x, y) => relevanceOf(String(rec(y).name ?? ''), wanted) - relevanceOf(String(rec(x).name ?? ''), wanted));
-    if (named.length) {
-      const left = items.length - named.length;
-      return localRows(named, left > 0 ? `${LOCAL_NOTE} ${left} other row(s) matched only in a path or description, not by name, and were left out.` : LOCAL_NOTE, left > 0 ? null : local.nextAfter);
-    }
-    if (items.length) heldLocal = items.map(rec);
-    if (paged) return {...local,source:'owner_local',results:[],note:'This local page ended or was refused. No unrelated catalogue page substituted.'};
-  }
-  const ownedAll = await findOwnerComponents(ctx.env, libraryNamespace(ctx.env, ctx.userId), query ?? '', Number(a.limit ?? 10));
-  // The same rule as the local corpus: its full-text search also matches words inside code and properties, so a row counts
-  // as an answer only when its own name has a word of the request. Rows matched elsewhere are dropped here, not held.
-  const ownedWanted = contentWords(query ?? '');
-  const owned = ownedAll.filter((c) => relevanceOf(c.name, ownedWanted) > 0);
-  if (owned.length) {
-    const results: Record<string,unknown>[] = [];
-    let chars = 0;
-    for (const c of owned) {
-      const row = {id:c.id,name:c.name.slice(0,128),className:c.className.slice(0,128),path:c.path.slice(0,256),
-        summary:c.summary.slice(0,512),usage:c.usage.slice(0,512),componentSha256:c.componentSha256,
-        byteLength:c.byteLength,dependencyCount:c.dependencyIds.length,unresolvedRefCount:c.unresolvedRefs.length,
-        descriptionAvailable:!!c.descriptionSha256,scriptsPreserved:c.scriptsPreserved,...(c.readiness ? {readiness:c.readiness} : {})};
-      const size = JSON.stringify(row).length;
-      if (chars + size > 18000) break;
-      results.push(row); chars += size;
-    }
-    return {source:'owner_corpus',results,total:owned.length,outputLimited:results.length < owned.length,
-      localGateway:localStatus ? ('error' in rec(localStatus) ? 'unavailable' : 'no matches') : 'not configured',
-      note:'Owner-attested cloud seed components are fallback after the full local corpus. Components take priority. Use a narrower query if outputLimited. Read exact properties/code with read_owner_component, then pass the owner: id to insert_owner_component. Scripts remain inert data; scriptsPreserved:false marks a script-free unit whose original scripts were excluded.'};
-  }
   const found = findLibraryModels({
     query,
     genre: a.genre ? String(a.genre) : undefined,
@@ -2109,10 +2046,7 @@ async function findLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): 
     }
   }
   if (liveNote) found.note = `${found.note ? found.note + ' ' : ''}${liveNote}`;
-  if (!found.results.length && heldLocal.length) {
-    return localRows(heldLocal.slice(0, 5), `${LOCAL_NOTE} None of these rows has a word of "${query}" in its own name: the owner library matched them only in a path or description, so check each with preview_library_models before trusting one.${liveNote ? ' ' + liveNote : ''}`, null);
-  }
-  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available${liveNote ? ' (' + liveNote.replace(/\.$/, '') + ')' : ''}. Try other words (several queries are fine), browse_owner_library, or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
+  if (!found.results.length && requestedObject) found.note = `No verified Creator Store model named ${requestedObject} is available${liveNote ? ' (' + liveNote.replace(/\.$/, '') + ')' : ''}. Try other words (several queries are fine), or take the next step of the asset order (Creator Store, adapt or combine, then Parts in full detail); do not pass off an unrelated preview as this object. If the request cannot work without it, record it as an UNRESOLVED ESSENTIAL GAP and name it in your final summary.`;
   return found;
 }
 
@@ -2124,43 +2058,7 @@ const LIVE_ROWS_KEPT = 60;
 /** insert_library_model, as one function so the run can record how the library insert ended (library-run.ts). */
 async function insertLibraryModelCall(ctx: AgentCtx, a: Record<string, unknown>): Promise<unknown> {
   const refuse = (reason: string, extra?: Record<string, unknown>) => insertFailure(ctx, { stage: 'policy', reason, retry: false, ...(extra ? { extra } : {}) });
-  if (a.gameId !== undefined || a.path !== undefined) {
-    const piece = candidateOf({ gameId: a.gameId, path: a.path, name: a.name });
-    if ('error' in piece) return piece;
-    const size = placeSizeOf(a);
-    if ('error' in size) return size;
-    return placeLibraryPiece(ctx, piece, { name: a.name, at: a.position, replace: a.replace, size });
-  }
-  if (a.id === undefined) return refuse('give { id } from find_library_model, or { gameId, path } from browse_owner_library');
-  if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return insertLocalOwner(ctx, { ...a, parent: a.parent ?? 'game.Workspace' });
-  if (String(a.id ?? '').startsWith('owner:')) {
-    if (ctx.offeredTools && !ctx.offeredTools.has('insert_owner_component')) return refuse('Native owner import is unavailable for this run: check permissions and update the paired plugin.');
-    if (!ctx.userId) return refuse('Owner corpus insertion requires the authenticated project owner.');
-    const library = libraryNamespace(ctx.env, ctx.userId);
-    const component = await ownerComponent(ctx.env, library, String(a.id));
-    if (!component) return refuse('This component has no verified bytes in this owner corpus. Ingest its complete native export first.');
-    const pos = a.position === undefined ? undefined : boundedTriple(a.position, 'position', DIRECT_EDIT_LIMITS.translation);
-    if (pos && !Array.isArray(pos)) return refuse(pos.error);
-    const scale = a.scale === undefined ? undefined : Number(a.scale);
-    if (scale !== undefined && !(scale >= DIRECT_EDIT_LIMITS.minScale && scale <= DIRECT_EDIT_LIMITS.maxScale)) return refuse(`scale must be between ${DIRECT_EDIT_LIMITS.minScale} and ${DIRECT_EDIT_LIMITS.maxScale}`);
-    const height = a.height === undefined ? undefined : Number(a.height);
-    if (height !== undefined && !(height > 0 && height <= 2000)) return refuse('height must be between 0 and 2000 studs');
-    const longestOwner = a.size === undefined ? undefined : Number(a.size);
-    if (longestOwner !== undefined && !(longestOwner > 0 && longestOwner <= 2000)) return refuse('size must be between 0 and 2000 studs');
-    if ([scale, height, longestOwner].filter((v) => v !== undefined).length > 1) return refuse('give one of size (longest side in studs), height or scale, not several');
-    // Imports only add objects and Studio's undo takes them back, so an oversize place does not refuse them (librarySafetyCopy).
-    const copy = await librarySafetyCopy(ctx, 'before owner component import');
-    if ('error' in copy) return refuse(`Owner import refused: ${copy.error}`);
-    const token = await ownerComponentGrant(ctx.env, library, component);
-    const imported = await ctx.execStudioOp({ op: 'import_owner_component', componentId: component.id,
-      componentSha256: component.componentSha256, byteLength: component.byteLength, contentToken: token,
-      parent: String(a.parent ?? 'game.Workspace'), name: component.name.slice(0,96) }, 120_000);
-    if (!imported.ok) return insertFailure(ctx, { ...insertStage(imported), error: imported.error ?? 'Native owner import failed', extra: { library: component.id } });
-    const landed = await placeImportedOwner((o, t) => ctx.execStudioOp(o as StudioOp, t), imported.data, { position: Array.isArray(pos) ? pos : undefined, scale, height, longest: longestOwner });
-    ctx.noteCreated?.(Array.isArray(landed.inserted) ? (landed.inserted as unknown[]).filter((p): p is string => typeof p === 'string') : []);
-    return { ...rec(imported.data), ...landed, library: {id:component.id,name:component.name,componentSha256:component.componentSha256},
-      note: 'Native component imported. Downloaded script sources are inert data, not activated gameplay. Visual/gameplay verification is still required.' };
-  }
+  if (a.id === undefined) return refuse('give { id } from find_library_model');
   let pick = libraryRow(ctx, String(a.id ?? ''));
   if (!pick && String(a.id ?? '').startsWith(LIVE_ID_PREFIX)) {
     // A live id this run did not search for (the previous run offered it and the owner picked it) is taken only when it is
@@ -4256,7 +4154,6 @@ export const TOOLS: Record<string, ToolImpl> = {
         if (scene.terrain && 'solidVoxels' in scene.terrain && Number(scene.terrain.solidVoxels) > 0) {
           return { text: 'There are no parts to audit, but the place holds terrain (see scene). Nothing was judged.', confirmed: 0, blocking: 0, partsAudited: 0, scene };
         }
-        if (capture.importedRoots) return { text: 'Nothing to fix: everything in Workspace is imported original game content, which is the game\'s own design and is not audited.', confirmed: 0, blocking: 0, partsAudited: 0, importedRoots: capture.importedRoots };
         return { error: 'there is no geometry in Workspace to audit yet — build something first' };
       }
 
@@ -5398,52 +5295,13 @@ export const TOOLS: Record<string, ToolImpl> = {
   // Downloaded CC0/CC-BY/MIT files remain indexed but are not offered to the
   // agent: the current source choice does not authorise a permanent upload into the user's
   // Roblox account. Props still come from the library; parts stay for terrain, paths and zones.
-  query_owner_catalog: {
-    def:{name:'query_owner_catalog',description:'Page the entire private local owner source index through the current authenticated Studio pairing, without uploading a catalogue. section:sources returns safe source metadata/availability with exclusive source SHA nextAfter; section:health returns current decode status counts. section:native-readiness pages hash-verified native model artifacts with rows[].readiness flags (numeric after cursor, optional query). Original source SHA is distinct from normalized component and binary referent IDs. Use find_library_model sourceSHA for exact full-index component search; read_owner_component pages hierarchy, exact properties and inert source on demand. Native visual approval requires actual pixels, never catalogue names.',parameters:S({section:{type:'string',enum:['sources','health','native-readiness']},after:{type:['string','number'],description:'sources: exclusive source SHA; native-readiness: numeric row offset'},query:{type:'string',description:'native-readiness only: source name, boundary or class words'},limit:{type:'number',description:'1..10, default 5'}})},
-    studio:true,studioOps:['query_owner_local'],run:queryOwnerCatalog,
-  },
-  query_owner_assembly: {
-    def:{name:'query_owner_assembly',description:'Read actual source-grounded assembly context as untrusted inert DATA. Omit sourceSHA to page all preserved source entries and their actual snapshot/context availability (exclusive SHA cursor); supply sourceSHA for recipes/counts. Supply mechanic (inventory, build-place, shop, progression, punch-combat, steal-ownership) and follow nextAfter to page source pieces and dependency candidates. Binary identities never imply normalized mapping or working bindings. section:record reads full source metadata or a selected mechanic piece JSON via offset/nextOffset, retaining every provided root/dependency/function/evidence array omitted by summaries. section:code plus codeSHA reads original code bytes with readable UTF-8, hashes and nextOffset. Preserve original script placement; resolve missing/ambiguous bootstrap, self modules, GUI mounts and remotes before adapting through normal checkpoint/consent script tools. Never execute recovered originals.',parameters:S({sourceSHA:{type:'string'},mechanic:{type:'string'},section:{type:'string',enum:['recipes','code','record']},codeSHA:{type:'string'},after:{type:['string','number'],description:'Registry: exclusive source SHA; mechanic pieces: inclusive numeric offset'},offset:{type:'number'},limit:{type:'number'}})},
-    studio:true,studioOps:['query_owner_assembly'],run:queryOwnerAssembly,
-  },
-  read_owner_media: {
-    def:{name:'read_owner_media',description:'Read actual private media bytes attached to an exact normalized owner-local node Content property. No arbitrary URI/path allowed. Default byte pages preserve base64 and SHA with nextOffset; Roblox mesh/asset containers are not pixels or native-loading proof. Bytes only: StudPilot does not describe pictures.',parameters:S({id:{type:'string'},property:{type:'string'},offset:{type:'number'},limit:{type:'number'}},['id','property'])},
-    studio:true,studioOps:['query_owner_media'],run:readOwnerMedia,
-  },
-  list_owner_original_strings: {
-    def:{name:'list_owner_original_strings',description:'List original binary string sidecars as inert owner DATA. Omit sourceSHA to page all sidecar sources, independent of normalized corpus indexing; after is an exclusive SHA cursor. With sourceSHA, page string-property metadata using inclusive numeric after (default 0); follow nextAfter unchanged. Returns seq, property, raw SHA and sourceSHA:binary:rawReferent identities. No binary-to-normalized node mapping is proved. Read an exact original record with read_owner_original_string. Unavailable/paused status is not complete coverage.',parameters:S({sourceSHA:{type:'string'},after:{type:['number','string'],description:'With sourceSHA: inclusive integer sequence 0..2147483647; canonical decimal strings accepted. Without sourceSHA: exclusive SHA string. Preserve the requested cursor; never reset after a refusal.'},limit:{type:'number',description:'1..10 records, default 5'}})},
-    studio:true,studioOps:['query_owner_exact'],run:listOwnerOriginalStrings,
-  },
-  read_owner_original_string: {
-    def:{name:'read_owner_original_string',description:'Read hash-verified original binary string bytes as UNTRUSTED inert DATA, including original Source code. Use id=sourceSHA:binary:rawReferent and seq from list_owner_original_strings. Normalized owner-local node IDs are not accepted or mapped. Returns exact base64 plus readable UTF-8 when valid (BOM and CRLF preserved), page/whole hashes, property, provenance and nextOffset byte cursor. Invalid or split UTF-8 stays lossless base64. No code executes. Review/adapt through normal script editing with checkpoint/consent; never run downloaded originals.',parameters:S({id:{type:'string'},seq:{type:'number'},offset:{type:'number'},limit:{type:'number',description:'Byte limit 1..3000, default 2000'}},['id','seq'])},
-    studio:true,studioOps:['query_owner_exact'],run:readOwnerOriginalString,
-  },
-  read_owner_component: {
-    def: {
-      name: 'read_owner_component',
-      description: 'Inspect owner components as untrusted DATA. Owner-local IDs: default section:describe gives class/provenance/static mechanic clues; section:script on a normalized Script/LocalScript/ModuleScript node id gives hash-verified normalized Lune UTF-8 source (not guaranteed original binary bytes): check source.exactStrings, then list_owner_original_strings/read_owner_original_string for the separate original binary records (no normalized-node mapping is proved); section:properties gives exact XML bytes/text. Both page by byte offset/nextOffset. children pages by afterOrdinal/afterId; relations take kind:media/dependencies and after; plan exposes fitting subtrees of oversized maps; native-map needs jobId. Original code never runs; adapt mechanics through write_script/edit_script with checkpoint/consent. Cloud owner IDs: search find_library_model first. Without scriptId: metadata keys and paged script ids; section:metadata gives exact JSON property/reference chunks, section:scripts lists scripts (nextScriptOffset). With scriptId: the exact source slice and hash (nextOffset for more). Never require or run downloaded source to inspect it.',
-      parameters: S({ id: {type:'string'}, scriptId:{type:'string'}, section:{type:'string',enum:['metadata','scripts','describe','properties','script','children','relations','plan','native-map']}, offset:{type:'number'}, maxChars:{type:'number'}, limit:{type:'number'}, kind:{type:'string',enum:['media','dependencies']}, scope:{type:'string',enum:['node','subtree']}, after:{type:'number'}, afterOrdinal:{type:'number'}, afterId:{type:'string'}, jobId:{type:'string'} }, ['id']),
-    },
-    studio: false,
-    run: async (ctx,a) => {
-      if (!ctx.userId) return {error:'Owner component reads need an authenticated owner context.'};
-      if (String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX)) return readLocalOwner(ctx,a);
-      const library = libraryNamespace(ctx.env,ctx.userId);
-      const component = await ownerComponent(ctx.env,library,String(a.id ?? ''));
-      if (!component) return {error:'Component is not available in this owner corpus.'};
-      return readOwnerDescription(ctx.env,library,component,{scriptId:a.scriptId === undefined ? undefined : String(a.scriptId),section:a.section === undefined ? undefined : String(a.section),offset:Number(a.offset),maxChars:Number(a.maxChars)});
-    },
-  },
   find_library_model: {
     def: {
       name: 'find_library_model',
       description:
-        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the owner's local corpus (paired plugin), then ingested owner components, then bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode StudPilot may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
+        "Step 1 of the asset order, before building a detailed object: search for a ready-made prop, building, plant, vehicle, character, pet, weapon, kit, UI or map in the bundled Roblox-owned models, then the live Creator Store (free, verified creator, zero scripts; ids cs:<n>). Plain words, as many queries as needed; genre and kind narrow it. Bundled third-party models only with includeThirdParty=true (marked requiresThirdPartyLoading; Studio may refuse them, never promise they load). Fit and looks are unverified until preview_library_models. In Agent mode StudPilot may show the owner up to three thumbnails to pick from. Inserts nothing: pass a result `id` unchanged to insert_library_model.",
       parameters: S(
         {
-          sourceSHA: {type:'string',description:'Source SHA from query_owner_catalog; scopes the local index.'},
-          after: {type:'string',description:'nextAfter cursor; keep the same query.'},
-          className: {type:'string',description:'Exact Roblox class filter.'},
           query: { type: 'string', description: 'Plain words for the object.' },
           genre: { type: 'string', enum: [...LIBRARY_GENRES] },
           kind: { type: 'string', enum: [...LIBRARY_KINDS] },
@@ -5455,97 +5313,6 @@ export const TOOLS: Record<string, ToolImpl> = {
     },
     studio: false,
     run: async (ctx, a) => recordSearch(ctx, await findLibraryModelCall(ctx, a)),
-  },
-  insert_owner_component: {
-    def: {
-      name: 'insert_owner_component',
-      description: 'Import an owner-attested native RBXM component with its actual hierarchy/mesh bytes. owner-local: IDs materialize locally through the paired gateway; pending jobs are not insertions, and oversized roots expose fitting children via read_owner_component section:plan. Every native node retains global identity; cross-chunk references are not automatically repaired. Exact original code remains readable inert data for reviewed gameplay adaptation. Use an owner: or owner-local: id from find_library_model. Takes a protective checkpoint and needs the paired plugin native import capability. Downloaded scripts become inert source DATA, so source references need reviewed integration; no code is executed and no Roblox upload happens. Default parent game.ServerStorage for inspection; set an appropriate target to compose UI or the world.',
-      parameters: S({id:{type:'string'},parent:{type:'string'}},['id']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_local','import_owner_local','import_owner_component'],
-    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component']],
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('error' in r || 'pending' in r)),
-    run: async (ctx,a) => (String(a.id ?? '').startsWith('owner:') || String(a.id ?? '').startsWith(LOCAL_OWNER_PREFIX))
-      ? TOOLS.insert_library_model!.run(ctx,{...a, parent: a.parent ?? 'game.ServerStorage'})
-      : {error:'insert_owner_component requires an exact owner: component id'},
-  },
-  // THE OWNER'S UPLOADED GAMES, FIRST SOURCE FOR EVERY BUILD. Whole games with their original scripts, read from the
-  // owner's Mac through the paired plugin; the ops need no pasted gateway key.
-  browse_owner_library: {
-    def: {
-      name: 'browse_owner_library',
-      description: "The owner's game library, the FIRST source for every build. mode find, q = the request in the user's words: matches by meaning, colour, size (\"over 1000 studs tall\") and type; no_strong_match when nothing is close. Without id: pages games (q = words in a game or its top-level names, niche, after = nextAfter). With id: one game per service (instance and script counts, lighting, terrain). With kind: single assets across all games: ui, model, fx (the part holding particles, beams, trails, fire), sound, animation, tool, script, map (a whole Workspace; import with mode children) or system (ready-made systems: what each does, whether its code works; add with install_owner_system); q = words in name, path or contents; game = one game id. Hits carry gameId and path for import_owner_library (mode self); a UI goes to game.StarterGui, an fx holder under the part it decorates.",
-      parameters: S({q:{type:'string'},niche:{type:'string'},kind:{type:'string',enum:['ui','model','fx','sound','animation','tool','script','map','system'],description:'Search single assets of this kind across the library; system lists the ready-made systems install_owner_system adds.'},game:{type:'string',description:'With kind: only this game id.'},id:{type:'string',description:'A game id from the list; returns its breakdown.'},after:{type:'number',description:'nextAfter from the previous page.'},limit:{type:'number',description:'1..25, default 10 (mode find: 1..12).'},mode:{type:'string',enum:['find'],description:'find: up to 12 ranked candidates for q, each with a description, size, colours, quality and why it matched.'},type:{type:'string',enum:FIND_TYPES},subtype:{type:'string'},colour:{type:'string'},size:{type:'string',enum:FIND_SIZES},min_quality:{type:'number',description:'0..100'}}),
-    },
-    studio: true,
-    studioOps: ['query_owner_library'],
-    plainSummary: browseSummary,
-    // A models search says, per row, whether it can be copied script-free and why not: information for the agent's own choice.
-    run: async (ctx, a) => {
-      const out = await browseOwnerLibrary(ctx, a);
-      const rows = (out as { items?: unknown }).items;
-      return a.kind === 'model' && Array.isArray(rows) ? { ...out, items: annotateModels(rows) } : out;
-    },
-  },
-  import_owner_library: {
-    def: {
-      name: 'import_owner_library',
-      description: "Copy part of an owner library game into Studio WITH its original scripts, parented straight into the target (no wrapper Folder) so the game's scripts find their objects. path is a library path from browse_owner_library: \"/Workspace\", \"/ServerScriptService\", \"/StarterPlayer/StarterPlayerScripts\", \"/Workspace/Farm\" (a repeated sibling name is \"Name#2\"); \"/\" with mode children is the loose top level of a model file. mode children imports what is inside the path, self imports the instance itself. parent defaults to the same service for a service path, else game.Workspace; \"/Lighting\" and \"/Workspace\" children also apply the game's lighting/gravity. Terrain is never copied. Takes a checkpoint. A single asset (mode self) also brings the pieces it needs to work (remotes, modules, server scripts, controllers): they are added for you and listed as dependencies.",
-      parameters: S({gameId:{type:'string'},path:{type:'string'},mode:{type:'string',enum:['self','children']},parent:{type:'string',description:'Studio path such as game.Workspace or game.StarterPlayer.StarterPlayerScripts.'}},['gameId','path','mode']),
-    },
-    studio: true,
-    studioOps: ['snapshot','import_owner_library'],
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
-    plainSummary: importSummary,
-    run: importOwnerLibrary,
-  },
-  recreate_owner_game: {
-    def: {
-      name: 'recreate_owner_game',
-      description: "Recreate an uploaded owner library game in the open place from its original parts and scripts: imports every slot the game has, in order Lighting, ReplicatedFirst, ReplicatedStorage, ServerStorage, ServerScriptService, SoundService, Teams, StarterPack, StarterGui, StarterPlayerScripts, StarterCharacterScripts, Workspace, each into the same service (a model file goes into Workspace), replacing what that slot held, so a second run never duplicates. Returns per-slot results, totals and every suspicious script; stops at the first failure. Terrain is not copied. Use browse_owner_library first to pick the closest game.",
-      parameters: S({gameId:{type:'string'}},['gameId']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    mutatesProject: (r) => !(typeof r === 'object' && r !== null && 'error' in r && !('projectMutated' in r)),
-    plainSummary: recreateSummary,
-    run: recreateOwnerGame,
-  },
-  install_owner_system: {
-    def: {
-      name: 'install_owner_system',
-      description: "Add ONE ready-made system from the owner's saved games to the open place with everything it needs to work: daily rewards, a spin wheel, pets and eggs, settings, notifications, a loading screen, donations, codes, trading, plots, a shop. Its screens, scripts, remotes and modules go where Roblox expects them, parts the place already has are skipped (so a second install never duplicates), and screens that came without working code get their buttons connected so every menu opens and closes. gameId is a saved game or system pack from browse_owner_library (kind script, or q = what the system does). Takes one checkpoint. Answer the user from the returned forUser, in your own friendly words.",
-      parameters: S({gameId:{type:'string',description:'A library game id from browse_owner_library.'}},['gameId']),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
-    plainSummary: installSummary,
-    run: installOwnerSystem,
-  },
-  plan_game: {
-    def: {
-      name: 'plan_game',
-      description: "Only for a saved game the user names: designs its copy. Then build_game.",
-      parameters: S({request:{type:'string'},theme:{type:'string'},features:{type:'array',items:{type:'string'}},seed:{type:'number'}},['request']),
-    },
-    studio: true,
-    studioOps: ['query_owner_library'],
-    plainSummary: planSummary,
-    run: planGame,
-  },
-  build_game: {
-    def: {
-      name: 'build_game',
-      description: "Only after plan_game: builds that saved game's copy (one checkpoint). Then answer from forUser.",
-      parameters: S({planId:{type:'string',description:'The planId plan_game returned.'},design:{type:'object',description:'Only names you changed.',properties:{title:{type:'string'},theme:{type:'string'},pitch:{type:'string'},currency:{type:'string'}}}}),
-    },
-    studio: true,
-    studioOps: ['snapshot','query_owner_library','import_owner_library'],
-    mutatesProject: (r) => typeof r === 'object' && r !== null && (r as {changed?: unknown}).changed === true,
-    plainSummary: buildSummary,
-    run: buildGame,
   },
   more_tools: {
     def: {
@@ -5569,14 +5336,14 @@ export const TOOLS: Record<string, ToolImpl> = {
   preview_library_models: {
     def: {
       name: 'preview_library_models',
-      description: "Look at ready-made models before choosing: 1-6 candidates ({ id } from find_library_model, { gameId, path } from browse_owner_library), staged off the place and measured (size against a player, colour, parts, blockers); nothing is placed or chosen for you. snapshot: true shows the user one picture.",
+      description: "Look at ready-made models before choosing: 1-6 candidates ({ id } from find_library_model), staged off the place and measured (size against a player, colour, parts, blockers); nothing is placed or chosen for you. snapshot: true shows the user one picture.",
       parameters: S({
-        models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, name: { type: 'string' }, game: { type: 'string' } } } },
+        models: { type: 'array', minItems: 1, maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } },
         snapshot: { type: 'boolean' },
       }, ['models']),
     },
     studio: true,
-    studioOps: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'import_owner_library', 'strip_descendants'],
+    studioOps: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'strip_descendants'],
     plainSummary: (_a, r, failed) => failed ? 'Could not look at the models' : `Looked at ${(r as { previews?: unknown[] } | undefined)?.previews?.length ?? 0} ready-made model(s)`,
     run: (ctx, a) => previewLibraryModels(ctx, Array.isArray(a.models) ? a.models : [], { snapshot: a.snapshot === true }),
   },
@@ -5589,11 +5356,11 @@ export const TOOLS: Record<string, ToolImpl> = {
         stage: { type: 'object', properties: { color: { type: 'string' }, height: { type: 'number' }, pad: { type: 'number' } } },
         click: { type: 'object', properties: { motion: { type: 'string', enum: ['wobble', 'spin', 'bob', 'pop', 'press', 'open'] }, sound: { type: 'string' }, amount: { type: 'number' } } },
         counter: { type: 'object', properties: { label: { type: 'string' }, hint: { type: 'string' } } },
-        attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, gameId: { type: 'string' }, path: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
+        attach: { type: 'array', maxItems: 6, items: { type: 'object', properties: { id: { type: 'string' }, pieceName: { type: 'string' }, at: {}, width: { type: 'number' } } } },
       }, ['target']),
     },
     studio: true,
-    studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'import_owner_library', 'strip_descendants'],
+    studioOps: ['get_tree', 'get_instance', 'create_instances', 'transform_instances', 'rig_model', 'set_joint_pivot', 'edit_script', 'set_props', 'delete_instances', 'place_copies', 'strip_descendants'],
     mutatesProject: (r) => typeof r === 'object' && r !== null && (r as { changed?: unknown }).changed === true,
     plainSummary: (_a, _r, failed) => failed ? 'Could not dress the object' : 'Dressed the object',
     run: dressObject,
@@ -5691,12 +5458,10 @@ export const TOOLS: Record<string, ToolImpl> = {
     def: {
       name: 'insert_library_model',
       description:
-        "Place ONE ready-made model you chose as a script-free copy; reports its size against a player. Pass { id } from find_library_model (a verified Creator Store row) or { gameId, path } from browse_owner_library. It keeps its own size unless you pass size (longest side), height or scale; dress_object adds extras. name: any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; file rows are not insertable. Inserts are scanned in the place and scripts removed; this skips insert_asset's gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, then go on down the asset order. For many copies, insert one and clone_instances it.",
+        "Place ONE ready-made model you chose as a script-free copy; reports its size against a player. Pass { id } from find_library_model (a verified Creator Store row). It keeps its own size unless you pass size (longest side), height or scale; dress_object adds extras. name: any language; a taken name is an error (rename, or replace: true). Third-party rows need the experience's third-party loading; file rows are not insertable. Inserts are scanned in the place and scripts removed; this skips insert_asset's gate (which refuses every Model). A failure names its stage, whether to retry and the next candidate ids: take the next, then go on down the asset order. For many copies, insert one and clone_instances it.",
       parameters: S(
         {
           id: { type: 'string', description: 'A result `id` from find_library_model, unchanged.' },
-          gameId: { type: 'string', description: 'With path: an owner-library piece.' },
-          path: { type: 'string' },
           name: { type: 'string' },
           position: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'number' }, description: 'Bottom-centre.' },
           size: { type: 'number', description: 'Longest side in studs.' },
@@ -5709,8 +5474,7 @@ export const TOOLS: Record<string, ToolImpl> = {
       ),
     },
     studio: true,
-    studioOps: ['snapshot', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
-    studioOpAlternatives: [['query_owner_local','import_owner_local'],['import_owner_component'],['insert_asset']],
+    studioOps: ['snapshot', 'insert_asset', 'get_tree', 'list_scripts', 'read_script', 'delete_instances', 'group_instances', 'spatial_query', 'transform_instances'],
     // A refusal changed nothing in the place.
     mutatesProject: (r) => !(typeof r === 'object' && r !== null && ('pending' in r || ('error' in r && !('projectMutated' in r)))),
     run: async (ctx, a) => recordInsert(ctx, a, await insertLibraryModelCall(ctx, a)),
@@ -6456,18 +6220,16 @@ export async function runTool(
       ? Object.fromEntries(Object.entries(result as Record<string, unknown>).filter(([key]) => key !== 'projectMutated' && key !== 'retryable'))
       : result;
     let str = typeof visibleResult === 'string' ? visibleResult : JSON.stringify(visibleResult);
-    const resultLimit = name === 'browse_owner_library' || name === 'import_owner_library' || name === 'recreate_owner_game' || name === 'install_owner_system' || name === 'plan_game' || name === 'build_game' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_script' || name === 'read_owner_component' || name === 'find_library_model' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
+    const resultLimit = name === 'read_script' || name === 'find_library_model' ? MAX_SCRIPT_RESULT_CHARS : MAX_RESULT_CHARS;
     if (str.length > resultLimit) str = str.slice(0, resultLimit) + `\n...[truncated ${str.length - resultLimit} chars]`;
     const mutatedProject = partialMutation || (!failed && toolMutatesProject(name, result));
     // An explicit UI payload wins. It is capped separately and more generously than the derived
     // one: this socket already carries 200KB playtest frames, so a single ~25KB evidence panel per
     // build is not what needs protecting — a 24KB cap sized for re-sent tool results is.
-    const privateOwnerRead = name === 'browse_owner_library' || name === 'query_owner_catalog' || name === 'query_owner_assembly' || name === 'read_owner_media' || name === 'list_owner_original_strings' || name === 'read_owner_original_string' || name === 'read_owner_component' && String(args.id ?? '').startsWith(LOCAL_OWNER_PREFIX);
-    const detail = privateOwnerRead ? undefined : ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
+    const detail = ctx.uiDetail !== undefined ? capUiDetail(ctx.uiDetail) : detailForUi(visibleResult);
     // THE LEDGER. What this call did, as evidence for the self-check. A change that failed is recorded as a failed
-    // attempt (it moves nothing); one that failed after part of it landed still counts as a change. The owner's private reads
-    // are not evidence about the place.
-    if (ctx.evidence && !privateOwnerRead) {
+    // attempt (it moves nothing); one that failed after part of it landed still counts as a change.
+    if (ctx.evidence) {
       const kind: ToolRecord['kind'] | null = impl.mutatesProject !== undefined
         ? (mutatedProject || failed ? 'mutation' : 'read')
         : impl.studio ? (phaseForTool(name) === 'playtesting' ? 'play' : 'read') : null;
