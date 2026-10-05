@@ -23,7 +23,7 @@
    - Supabase: project "StudPilot", Auth site URL `studpilot.app`.
    - Sentry: `studpilot-worker`, `studpilot-web`.
    - Discord: bot "StudPilot", interactions endpoint on `studpilot.app`.
-   - GitHub: see the LOG.
+   - GitHub: `MosheBarami/StudPilot` (the old URL answers 301).
 7. **Not met yet, and why:**
    - Google and Discord sign-in (BLOCKED N2; email works).
    - A live pairing (N8; the old-host routes answer as the origin does).
@@ -33,4 +33,6 @@
 8. **Spend:** the month stands at $3.92 of the $25 cap. M1 testing cost under $0.01.
 9. **Owner decisions D-1 to D-9** are applied (LOG.md). `BLOCKED.md` lists only what waits on the owner, with
    steps; **N1 (Turnstile hostname) is urgent**.
-10. **Local folder:** see the LOG; reopen Claude Code in `~/Developer/StudPilot` after the rename (D-6).
+10. **Local folder:** renamed to `~/Developer/StudPilot` (D-6), with a symlink at the old path for now.
+    **Owner: reopen Claude Code in `~/Developer/StudPilot`**; the memory was copied there. Eight sibling clones
+    were deleted after their 133 refs were archived in the main repo.
