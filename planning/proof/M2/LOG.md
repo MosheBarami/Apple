@@ -74,3 +74,31 @@
   nodes only; the owner dashboards hand-copy the accent.
 - **Process:** the cycle-3 agent ran `git checkout --` on one file in its own scratch clone (the rule forbids it in the
   shared checkout only), and it wrote one draft into `/tmp/_x` and then removed it.
+
+## 2026-10-05: owner update applied (OWNER-DECISIONS D-10 to D-16)
+- **O2 (Sign in with Roblox):** the owner reports that it works. Read-only checks on the live store, counts only:
+  - `roblox_identities` holds 1 row and `roblox_oauth_tokens` holds 1 row, at version 1 with a generation set;
+  - no stored token looks like plain text (0 rows match `RBX-%` or `%refresh%`);
+  - `reauth_at` is null in every row (no re-authentication has run yet).
+  - The second sign-in and Disconnect need the owner's browser, and stay unobserved.
+- **N2 (Google and Discord):** not done. `.env` had no Google lines and no Discord OAuth secret (names checked, no values
+  read), and Supabase shows both providers off, with no client id or secret. Back in BLOCKED.md with the exact names.
+- **AI Gateway retention (D-14):**
+  - Logs older than 30 days were deleted from the old `golem` gateway with the logs API (filter
+    `created_at < 2026-09-05T14:22:49Z`; 920 matched). The oldest log is now 2026-09-05T16:52Z; the API's counts stay
+    stale for a while.
+  - The new `studpilot` gateway's oldest log is from 2026-10-04.
+  - The daily deletion needs a narrow token on the Worker (BLOCKED N4) before 2026-11-03.
+- **Email Routing (D-13):** the API token cannot manage Email Routing or DNS (10000), so this is BLOCKED E1, with
+  dashboard steps.
+- **Studio computer access:** Studio was not running, and the request could not find the app. It will be asked again when
+  M3 needs it.
+- **X6 trademark:** `planning/proof/M7/trademark.md`.
+- **BLOCKED.md:** rewritten to the owner's list (X4, X5, N5, X7, X8, X9, N4), plus N9 (the named operator), E1 (email
+  routing) and N2 (the missing lines).
+- **Next:** one code lane for D-13 and D-14:
+  - the operator rename;
+  - automatic removal of the sign-in identity and the Discord link on deletion;
+  - the 30-day log deletion cron;
+  - Roblox-derived data deleted on loss of access;
+  - the 6-bullet short version.

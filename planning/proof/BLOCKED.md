@@ -1,54 +1,43 @@
 # Waiting on the owner
 
-Only what needs the owner: an owner-only action from the handoff (X1, X4–X9), money, a legal step, or a console
-no token here can reach. Work that does not depend on an item goes on. Decided items were removed (see
-`OWNER-DECISIONS.md`). "Urgent" means something live does not work until it is done.
+Only what needs the owner: an owner-only action from the handoff (X4, X5, X7–X9), money, a legal step, or a console
+no token here can reach. Work that does not depend on an item goes on. Done and decided items are removed (see
+`OWNER-DECISIONS.md`, D-10 to D-16, 2026-10-05).
 
 ## Urgent
 
-### N1. Turnstile: allow `studpilot.app` (the account-recovery form on studpilot.app needs it)
-The Worker requires a Turnstile token on `POST /api/recovery-request`, and the widget only allows the old
-hosts. The API token cannot edit widgets (10000 "Authentication error", measured 2026-10-04).
-1. Open https://dash.cloudflare.com → your account → **Turnstile**.
-2. Click the widget whose site key starts `0x4AAAAAAFBZ` (named `apple-auth`).
-3. Under **Hostname management**, click **Add hostnames**, type `studpilot.app`, and confirm. Keep the existing
-   three hostnames.
-4. Optionally rename the widget to `studpilot-auth`. The site key does not change.
-5. Click **Save**. Nothing else is needed; the code already uses this site key.
+### E1. Forward support@studpilot.app to your Gmail (Cloudflare Email Routing; about 3 minutes)
+The legal pages are moving to support@studpilot.app (D-13). The Cloudflare API token cannot manage Email Routing or DNS
+(10000 "Authentication error", measured 2026-10-05), so this is in the dashboard.
+1. Open https://dash.cloudflare.com → your account → the **studpilot.app** zone → **Email** → **Email Routing**.
+2. Click **Get started** (or **Enable Email Routing**). When it offers to add the MX and TXT records, click **Add records
+   and enable**.
+3. Under **Routing rules** → **Custom addresses** → **Create address**: type `support`, action **Send to an email**,
+   destination: your Gmail address. Click **Save**.
+4. Open the verification email Cloudflare sends to your Gmail and click **Verify email address**.
+5. Tell Claude Code "email routing done". It sends one test message to support@studpilot.app and checks that it arrived
+   by asking you.
 
-### O2. Sign in with Roblox once (3 minutes; it closes the M2 Roblox check)
-Sign in with Roblox is live on studpilot.app. Two things can't be checked without your Roblox login: that Roblox
-accepts the redirect, and that the whole round trip works.
-1. Open https://create.roblox.com/dashboard/credentials → **OAuth 2.0 Apps** → **StudPilot**. Check these values and
-   fix any that differ, then click **Save**:
-   - Redirect URL: `https://studpilot.app/auth/roblox/callback`
-   - Entry link: `https://studpilot.app/`
-   - Privacy policy: `https://studpilot.app/privacy`
-   - Terms of service: `https://studpilot.app/terms`
-   - Category: **Creation & Productivity Tools**
-2. Open a private browser window at https://studpilot.app/app/login and click **Continue with Roblox**.
-3. Sign in to Roblox and click **Allow**.
-4. The first time, StudPilot asks you to confirm that a new account will be made. Confirm it. You land in the app,
-   signed in.
-5. Tell Claude Code "roblox ok", or paste the error text. It then checks the connection in Settings, a second sign-in,
-   and Disconnect.
-Roblox allows at most 10 users until the app passes review (X9).
-
-### S1. Roblox Studio: sign in, open the eval place, pair once (10 minutes; M3 cannot run its baseline without it)
-Roblox Studio on this Mac is signed out: every Studio MCP call answered 401. Claude Code does not sign in for
-you, and computer access to Studio was refused, so the steps that need Studio's own screens are yours.
-1. Open **Roblox Studio** and sign in with your Roblox account.
-2. Open the local place `~/Developer/StudPilot-eval/EvalBaseplate.rbxlx` with **File → Open from File**. Claude Code
-   puts that file there; the M3 runbook `scripts/eval/README.md` says how it is made. Do not publish it.
-3. Check that the StudPilot plugin shows in the **Plugins** tab. If it does not, tell Claude Code; it installs the
-   build into `~/Documents/Roblox/Plugins`.
-4. Tell Claude Code "studio ready". It mints a pairing code for the eval project with the admin route and gives it
-   to you.
-5. Type the 6-character code into the plugin's pairing box and click **Connect**. Leave Studio open on that place
-   while the 60 runs go. Closing Studio ends the pairing.
-Alternative: allow Claude Code computer access to **RobloxStudio** when it asks, and it does steps 2 and 5 itself.
+### N2. Google and Discord sign-in: the four `.env` lines were not found
+On 2026-10-05 `~/Developer/StudPilot/.env` had no Google lines and no Discord OAuth secret. Supabase shows both providers
+off, with no client id or secret set. Add these four lines to that file, with these exact names, and tell Claude Code "N2
+lines in":
+```
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+DISCORD_OAUTH_CLIENT_ID=
+DISCORD_OAUTH_CLIENT_SECRET=
+```
+The Discord client id is the application id (`DISCORD_APPLICATION_ID` is already there). The secret is on the Discord
+developer page, under **OAuth2** → **Reset Secret**. That is not the bot token. Both apps need the redirect
+`https://npqvyijsvzkuwddyhtpm.supabase.co/auth/v1/callback`.
 
 ## Before charging money
+
+### N9. An adult or a company becomes the named operator (D-15)
+The legal pages name "StudPilot" as the operator, with support@studpilot.app. Before any money is charged, an adult or a
+registered company must become the named operator: the party in the terms, on the privacy policy and on the Stripe
+account (X5). Tell Claude Code the legal name, and it updates `/privacy` and `/terms`.
 
 ### X5. An adult holds the Stripe account
 Charging stays off until then (plan section 7). When it is done, also do N5.
@@ -70,48 +59,6 @@ through the stand-in until 2027-01-02.
 3. Open `~/Developer/StudPilot/.env` and replace the value after `ROBLOX_OAUTH_CLIENT_SECRET=`. Save.
 4. Tell Claude Code "secret rotated". It puts the new value on the Worker and checks that sign-in still works.
 
-### X6. Trademark check for "StudPilot"
-Search USPTO (https://tmsearch.uspto.gov), EUIPO and the Israeli register for "StudPilot" in classes 9 and 42.
-Record the result in `planning/proof/M7/` or tell Claude Code.
-
-### N2. Sign-in with Google and Discord (Supabase providers)
-Only email sign-in is on. Google and Discord need OAuth clients that only your accounts can create.
-- **Google:**
-  1. https://console.cloud.google.com → **APIs & Services** → **Credentials** → **Create credentials** → **OAuth
-     client ID** → type **Web application**.
-  2. Under **Authorized redirect URIs**, add `https://npqvyijsvzkuwddyhtpm.supabase.co/auth/v1/callback`.
-  3. Click **Create** and copy the client ID and secret.
-- **Discord:**
-  1. https://discord.com/developers/applications → your app → **OAuth2**.
-  2. Under **Redirects**, add the same Supabase callback URL.
-  3. Copy the **Client ID** and click **Reset Secret** to get the secret.
-- **Supabase:**
-  1. https://supabase.com/dashboard/project/npqvyijsvzkuwddyhtpm/auth/providers.
-  2. Enable **Google**, paste its ID and secret, and save. Do the same for **Discord**.
-  3. Alternatively, put the four values in `.env` as `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`,
-     `DISCORD_OAUTH_CLIENT_ID` and `DISCORD_OAUTH_CLIENT_SECRET`, and Claude Code enables the providers through
-     the Management API.
-
-### N3. Discord application name and avatar
-The API ignores `name` (measured; the bot is already named "StudPilot").
-1. https://discord.com/developers/applications → the **AppleAI** app → **General Information**.
-2. Set **Name** to `StudPilot`.
-3. Upload the new icon, `packages/design/brand/icon-512.png`, which M2 makes.
-4. Click **Save Changes**.
-
-### N6. Operator name and support inbox for the legal pages
-The privacy and terms pages still name "Apple Labs" and its Gmail inbox.
-1. Decide the legal operator name (a person or company) and a support address (for example
-   `support@studpilot.app`).
-2. Write both into `planning/proof/OWNER-DECISIONS.md`.
-Claude Code then replaces every occurrence. Until then the M2 rewrite keeps the old operator line, marked for
-replacement.
-
-### N7. Legal review of the rewritten privacy and terms pages
-Claude Code drafts them in M2: 13+, the Roblox OAuth data held, no AI training on Roblox data, deletion, and
-anonymised opt-out improvement data. Before the Roblox OAuth review, read `/privacy` and `/terms` on
-studpilot.app, or have a lawyer do so, and reply "legal ok" or with the changes.
-
 ## M7 only
 
 - **X7. Publish the plugin:** decide whether and when to publish the Studio plugin to the Creator Store (after
@@ -123,22 +70,15 @@ studpilot.app, or have a lawyer do so, and reply "legal ok" or with the changes.
 
 ## Anytime
 
-### X1. Close the Codex app fully
-Quit the Codex app (on macOS, ⌘Q in the Codex window) so that only one agent works in the repo.
-
-### N4. A Cloudflare token for analytics readback (`CF_ANALYTICS_TOKEN`), optional
-Nothing reads product analytics back today. Creating the token through the API was refused: the main token
-cannot manage tokens, and `CLOUDFLARE_API_TOKEN_WRITE_ALL` is invalid.
+### N4. One narrow Cloudflare token for the Worker (`CF_WORKER_OPS_TOKEN`); due before 2026-11-03
+Two jobs need it. The 30-day AI Gateway log retention you approved (D-14) is a daily deletion run by the Worker. The
+second is the optional analytics readback. The main token cannot create tokens (measured 2026-10-04), and it is far too
+broad to put on the Worker. Until this token exists the deletion is run by hand. The new gateway's oldest log is from
+2026-10-04, so nothing passes 30 days before 2026-11-03.
 1. https://dash.cloudflare.com/profile/api-tokens → **Create Token** → **Create Custom Token**.
-2. Name it `studpilot-analytics-read`.
-3. Permissions: **Account** · **Account Analytics** · **Read**. Account resources: your account.
+2. Name it `studpilot-worker-ops`.
+3. Permissions: **Account** · **AI Gateway** · **Edit**, and **Account** · **Account Analytics** · **Read**. Account
+   resources: your account.
 4. **Continue to summary** → **Create Token**, then copy it.
-5. Add a line `CF_ANALYTICS_TOKEN=<token>` to `.env`. Claude Code puts it on the Worker as a secret.
-
-### N8. One live pairing (1 minute; it closes the last M1 check)
-Minting a pairing code needs a signed-in account, and Claude Code does not sign in with a password.
-1. Open https://studpilot.app/app and sign in.
-2. Open any project and click **Pair**.
-3. In Roblox Studio, with the StudPilot or Apple Studio plugin open, enter the 6-character code.
-4. If the plugin says it is connected, the check passes. Tell Claude Code, or leave it: it can read
-   `pluginConnected` from the session.
+5. Add a line `CF_WORKER_OPS_TOKEN=<token>` to `~/Developer/StudPilot/.env`. Claude Code puts it on the Worker as a
+   secret, and the daily cron starts deleting logs older than 30 days.

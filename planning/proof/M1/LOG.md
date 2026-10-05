@@ -270,3 +270,11 @@
   - Kept: `RbxAI-design2` (untracked `docs/evidence/ember-rail-round2/`), `RbxAI-integration` (the owner's
     `launch.json` runs a dev server from it), `RbxAI-ci` (the deploy clone) and `RbxAI-archive` (the golem
     export).
+
+## 2026-10-05: owner update (OWNER-DECISIONS D-10)
+The owner reported these done; Claude Code did not observe them itself:
+- N1: Turnstile allows `studpilot.app`.
+- N3: the Discord application is renamed to StudPilot.
+- N8: a live pairing works. This was the last M1 check.
+- X1: Codex is closed.
+After this, the only open M1 items are the time-gated deletions in `deletions.md`, due on and after 2026-10-11.

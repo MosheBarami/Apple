@@ -28,3 +28,14 @@ These are final. Apply them and record each one in the milestone LOG where it be
 - **X8:** the hidden test set. At M7 only.
 - **X9:** record the <1-minute OAuth demo video and submit it for review. At M7; Claude Code prepares the script.
 - **Optional:** a Cloudflare API token for `CF_ANALYTICS_TOKEN` (analytics readback). Try to create it via the API first; if that is not permitted, list it here with click-by-click steps.
+
+## Owner update, 2026-10-05 (in chat)
+| # | Item | Owner decision |
+|---|---|---|
+| D-10 | N1, O2, N8, N3, X1 | **Done by the owner.** Turnstile allows `studpilot.app`; Sign in with Roblox works; a live pairing works; the Discord app is renamed; Codex is closed. |
+| D-11 | N2 (Google and Discord sign-in) | Enable both providers in Supabase from the four `.env` lines, update `/privacy`, verify both sign-ins live. |
+| D-12 | X6 (trademark) | **No conflict found** for "StudPilot". Recorded in `planning/proof/M7/trademark.md`. |
+| D-13 | N6 (operator and inbox) | **Operator: StudPilot. Contact: support@studpilot.app.** Replace every "Apple Labs" and the old Gmail address everywhere. Cloudflare Email Routing forwards support@ to the owner's Gmail. |
+| D-14 | N7 (legal review) | **Approved after these fixes:** account deletion removes the sign-in identity and the Discord link automatically; AI Gateway logs are kept 30 days, stated on `/privacy`; all Roblox-derived data is deleted if StudPilot loses Roblox API access; the `/privacy` short version becomes 6 plain bullets (what we collect, never sold, Roblox data never trains AI, download or delete anytime, 13+, contact). |
+| D-15 | The named operator | Added to BLOCKED.md under "Before charging money": an adult or a company must become the named operator. |
+| D-16 | BLOCKED.md | Keeps only X4, X5, N5, X7, X8, X9 and N4, plus D-15. |
