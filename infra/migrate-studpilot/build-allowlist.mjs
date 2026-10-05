@@ -39,7 +39,7 @@ const wildOf = (rel) => WILDCARDS.findIndex(([paths]) => paths.split(',').some((
 // Filled from review of the unclassified list: each file here earns its line by doing compatibility on purpose.
 const COMPAT_FILES = new Set([
   'packages/shared/src/legacy-wire.ts', 'scripts/lib/env-compat.mjs', 'scripts/lib/legacy-name.mjs', 'scripts/check-copy.mjs',
-  'scripts/check-old-names.mjs', 'scripts/check-rebrand.mjs', 'scripts/clean-test-tmp.mjs', 'scripts/probe-s1.mjs',
+  'scripts/lib/copy-shapes.mjs', 'scripts/check-old-names.mjs', 'scripts/check-rebrand.mjs', 'scripts/clean-test-tmp.mjs', 'scripts/probe-s1.mjs',
   'apps/worker/tests/legacy-wire.test.mjs',
   'apps/worker/src/public-api.ts',
   'apps/worker/tests/public-api.test.mjs',

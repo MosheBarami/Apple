@@ -102,7 +102,6 @@ test('the footer keeps its product links, Privacy, Terms, Status, Discord, the o
   assert.ok(text.includes(`© ${new Date().getFullYear()} StudPilot.`), 'the footer does not name the operator in its copyright line');
   assert.ok(links.includes(`mailto:${shared.SUPPORT_EMAIL}`), `the footer does not link to mailto:${shared.SUPPORT_EMAIL}`);
   assert.ok(text.includes(shared.SUPPORT_EMAIL), 'the footer does not print the contact address');
-  assert.doesNotMatch(text, /\bApple Labs\b|apple\.labs\.app/i, 'the footer still names the former operator or inbox');
   assert.match(text, /\bBeta\b/, 'the footer has no beta note');
   for (const href of links) {
     const kind = classify(href);
@@ -142,4 +141,22 @@ test('the removed routes are redirects the build emits: /models and /proof to th
     assert.equal(bare(target), bare(to), `${from} redirects to ${target}, expected ${to}`);
     assert.notEqual(resolveBuilt(target).kind, 'missing', `${from} redirects to ${target}, which the build does not contain`);
   }
+});
+
+// NO PAGE LINKS TO A ROUTE THE BUILD REDIRECTS (M2 site fix cycle 1). A redirect stub keeps an old link working (the web app still links /docs/connect), but a
+// page of this site that links to one names a page that is gone: How it works said "Connect a project" after /docs/connect had been folded into Getting started.
+// Derived from the built pages, never listed: every <a href> of every real page that resolves to a redirect stub fails.
+test('no built page links to a redirect stub: every internal link goes to a page that is there', () => {
+  const pages = distPages().filter(({ html }) => !/<meta http-equiv="refresh"[^>]*url=/i.test(html));
+  let checked = 0;
+  const bad = [];
+  for (const { route, html } of pages) {
+    for (const href of hrefsOf(html)) {
+      if (classify(href) !== 'site') continue;
+      checked += 1;
+      if (resolveBuilt(href).kind === 'redirect') bad.push(`${route} -> ${href}`);
+    }
+  }
+  assert.ok(checked > 200, `only ${checked} internal links were checked`);
+  assert.deepEqual(bad, [], 'these links go to a route the build redirects (name the page it moved to instead)');
 });

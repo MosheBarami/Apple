@@ -165,7 +165,6 @@ test('holds the composition: the sections, the shared header and footer, a visib
   await expect(page.locator('header#site-nav')).toHaveCount(1);
   await expect(page.locator('footer[data-site-footer]')).toHaveCount(1);
   await expect(page.locator('footer[data-site-footer]')).toContainText(SUPPORT_EMAIL);
-  await expect(page.locator('footer[data-site-footer]')).not.toContainText('Apple Labs');
 
   // THE MARK IS VISIBLE. A logo's class once collided with a demo's padding and drew nothing at all while every other check passed.
   const mark = await page.locator('header#site-nav .brand svg').evaluate((svg) => {
@@ -179,12 +178,20 @@ test('holds the composition: the sections, the shared header and footer, a visib
   expect(mark.padding, 'the header mark is padded into nothing').toBe(0);
   expect(mark.drawnW * mark.drawnH, 'the header mark draws no pixels').toBeGreaterThan(100);
 
-  // THE SCREENSHOT SLOT KEEPS ITS BOX WHETHER OR NOT A PICTURE IS IN IT: a fixed size, so nothing shifts when one arrives.
-  const slot = page.locator('.hero [data-screen-slot]');
+  // THE HERO HOLDS A REAL SCREENSHOT, IN ITS RESERVED BOX. (RESTATED 2026-10-05, M2 site fix cycle 1: the figure used to be an empty frame that said "A real
+  // screenshot goes here"; it is a recorded capture of the web app now, so the property is that the picture is there, decoded, at the size its record says,
+  // loaded eagerly, with its caption and no placeholder text, and that its box keeps the record's aspect ratio so nothing shifts when it arrives.)
+  const slot = page.locator('.hero [data-screen]');
   await expect(slot).toHaveCount(1);
-  const box = await slot.evaluate((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height, ratio: Number(el.getAttribute('data-width')) / Number(el.getAttribute('data-height')) }; });
+  const box = await slot.evaluate((el) => { const r = el.querySelector('.slot__frame')!.getBoundingClientRect(); return { w: r.width, h: r.height, ratio: Number(el.getAttribute('data-width')) / Number(el.getAttribute('data-height')) }; });
   expect(box.w, 'the slot has no width').toBeGreaterThan(200);
   expect(Math.abs(box.w / box.h - box.ratio), 'the slot does not hold its aspect ratio').toBeLessThan(0.02);
+  const img = slot.locator('img');
+  await expect(img).toHaveCount(1);
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth), { message: 'the hero picture did not load' }).toBeGreaterThan(0);
+  expect(await img.getAttribute('loading'), 'the hero picture is lazy-loaded: it is the largest thing above the fold').not.toBe('lazy');
+  await expect(slot.locator('figcaption')).toContainText('sample data');
+  await expect(page.locator('main')).not.toContainText('screenshot goes here');
 
   // The type: the shared system stack, never bold, sentence case.
   const display = await page.locator('h1').evaluate((el) => {

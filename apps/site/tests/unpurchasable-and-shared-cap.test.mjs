@@ -117,7 +117,7 @@ test('noindex is opt-in: every other route keeps its canonical', () => {
 });
 
 // RESTATED 2026-10-05 (M2 site fix cycle 1, plan step 2.6). This pinned one sentence of /docs/updating, which is folded into the plugin page and is a
-// redirect now. It also pinned the WRONG article: "not an StudPilot choice" is what the rename codemod left of "not an Apple choice", and the
+// redirect now. It also pinned the WRONG article: "not an StudPilot choice" is what the rename codemod left of the old name's article, and the
 // guard held that slip in place ("a StudPilot" is right, "an StudPilot" is not). The property is the grammar, on every built page: no "an" before
 // the product's name, and the plugin page's updating sentence is the one that exists.
 test('the article before StudPilot is right on every built page ("a StudPilot", never "an StudPilot")', () => {
