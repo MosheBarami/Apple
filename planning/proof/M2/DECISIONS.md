@@ -433,6 +433,8 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   a page, so a double press, or a button and the shortcut, make one project. A failure is a toast; success is the conversation opening.
 - **The five starting points stay**, in the composer's "Starting points" menu, where they insert a request into the message box
   (`lib/project-templates.ts`). `templateSeed`, the dialog's lookup, was removed with its only caller.
+- **The docs page that described the dialog is corrected.** `/docs/getting-started` said "give it a name" before a project exists; it now says
+  the click opens the project, what a new project is called, and how to rename it (a test holds the page to the behaviour).
 - **Not verified live:** the two queries it makes (`projects` read by name, then one insert) run under the signed-in person's
   row-level security exactly as the old dialog's insert did; no database was touched in this task.
 

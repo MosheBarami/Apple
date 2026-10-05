@@ -13,7 +13,7 @@ section 12; screenshots are in `app-local/` (see its README).
 
 | Suite | Before | After |
 |---|---|---|
-| `apps/web` `node --test` | 2537 pass, 0 fail | 2713 pass, 0 fail (+176, all in the ten new files below) |
+| `apps/web` `node --test` | 2537 pass, 0 fail | 2714 pass, 0 fail (+177, all in the ten new files below) |
 | `apps/site` `node --test` (built without network) | 381 pass | 381 pass (the two privacy-claims tests were restated in place) |
 | `apps/web` `pnpm typecheck`, `pnpm build` | clean | clean; entry 144.3 kB gzipped against the 150 kB budget |
 | `node scripts/check-app-bundle.mjs` | | passes, and now also fails if the pieces stub reaches `dist` |
@@ -27,7 +27,7 @@ No worker file changed, so the worker suite was not run. The root suite is in th
 |---|---|---|
 | `auth-providers.test.mjs` | 21 | Google and Discord render only when `GET /auth/v1/settings` says `external.<provider> === true`: the decision function, the request, the once-per-page cache, fail-closed on every error, the buttons and the click (run), and `signInWithOAuth` called from one component only |
 | `age-gate.test.mjs` | 18 | The 13+ screen: boundary on the birthday, leap days, impossible dates, the soft block (a remembered refusal, also with blocked storage), a neutral screen, nothing sent on a refusal, only `{ age_gate: 'passed' }` on a pass |
-| `create-project.test.mjs` | 19 | One-click create: the name rule, the hook run (reads names, inserts `{ owner_id, name }`, opens the project, hands over the landing sentence once, one project per double press), the shelf's button and empty state run, no dialog left |
+| `create-project.test.mjs` | 20 | One-click create: the name rule, the hook run (reads names, inserts `{ owner_id, name }`, opens the project, hands over the landing sentence once, one project per double press), the shelf's button and empty state run, no dialog left, and the getting-started docs page says what the click does |
 | `studio-shots.test.mjs` | 18 | The screenshots strip: which frames (this run's own, last eight, by capture time), honest names (Studio screenshot vs Preview render), the empty state, where it shows, click to enlarge and Earlier/Later run, memory only |
 | `checkpoint-history.test.mjs` | 16 | History grouped by request from the fields the API returns; hand-saved checkpoints apart; "Earlier work"; the rows rendered (author, description, Restore, the restore's own sentence and counts) |
 | `pieces-panel.test.mjs` | 24 | The settings panel: what each control may hold, SPECIMEN, the empty state, every control named, the controls run, keyboard and focus ring, reachable from the workspace |
@@ -60,7 +60,7 @@ two-query `from()` for creating a project; the query stub records `mutate(...)` 
 
 ### Red-first proof: planted breaks, each watched red, restored, rerun green
 
-126 breaks were planted across the ten new files and the restated tests; every one went red. The harness for it is a script that
+127 breaks were planted across the ten new files and the restated tests; every one went red. The harness for it is a script that
 backs the file up, replaces one exact string, runs the named test files and restores the file even on failure (kept out of the repo).
 
 | Item | Breaks planted (each red; names are the break, not the test) |
@@ -68,7 +68,7 @@ backs the file up, replaces one exact string, runs the named test files and rest
 | C1 (8) | truthy accepted for a provider; fail-open on a non-200; cache removed; the component hard-codes the list instead of the hook; Roblox wait skipped; request without the `apikey`; buttons not held while starting; no early return on a second press |
 | C2 (14) | `>=` to `>`; birthday a day late; real-date check removed; future date accepted; refusal not written; remembered refusal ignored; in-page memory dropped; captcha asked before the gate; birth year added to the metadata; form shown despite a refusal; placeholder year on the field; refusal text names the age; refused submit falls through to sign-up |
 | C1/C2 site (5) | the page says the date is stored; the form loses its field; the metadata carries more than the flag; the old "only personal information" sentence back; an ungated `signInWithOAuth` in Settings |
-| C3 (13) | count instead of highest; loose name pattern; description in the insert; no in-flight guard; guard never released; seed handed on a blank start; seed copied not moved; no failure toast; header button, empty-state action, rail, palette each stop creating; a template picker reference returns |
+| C3 (14) | count instead of highest; loose name pattern; description in the insert; no in-flight guard; guard never released; seed handed on a blank start; seed copied not moved; no failure toast; header button, empty-state action, rail, palette each stop creating; a template picker reference returns; the docs page tells a reader to name a project first |
 | C4 (13) | all frames; unattributed frames; first eight; arrival order; a preview captioned a screenshot; empty sentence changed; placeholder image; thumbnail not a button; chat reply gets an empty strip; strip touches storage; socket cap 80; Later not held; Turn stops taking frames |
 | C5 history (15) | manual under a request; old under the first request; the next request; empty requests listed; oldest first; assistant messages as requests; row loses author, description, restore sentence, counts; status under every row; the page closes the drawer; flat list; a field the API does not return; names not handed to the row |
 | C5 pieces (21) | clamp not refuse; no step snapping; hex accepts words; text not capped; SPECIMEN stamp and note dropped; empty sentence changed; switch loses its role; control without a name; invalid number reported; blur does not restore; edits leak across pieces; focus ring removed; a shadow added; the panel fetches; the stub statically imported, loaded in every build, loaded by a mock flag, forgotten by `check-app-bundle.mjs`; the drawer mounted always; a drawer missing from the remembered list |
