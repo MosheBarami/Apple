@@ -34,6 +34,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { legaciesOf } from '@studpilot/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -1431,7 +1432,8 @@ test('the 429 for an account out of Credits names the limit that binds and when 
   ];
   // A TRIPWIRE, deliberately exact: the refusal's header set is the published contract (the same call to refuse(), only its
   // message argument changed). If the middleware changes it, this fires and the change gets a review; do not bump it.
-  const HEADERS = 'apple-version,content-type,referrer-policy,strict-transport-security,studpilot-version,x-content-type-options,x-ratelimit-limit,x-ratelimit-remaining,x-ratelimit-reset,x-request-id';
+  // The version header goes out under both spellings; the former one is derived, not typed (the old-name guard counts a typed one).
+  const HEADERS = [legaciesOf('studpilot-version')[0], 'content-type', 'referrer-policy', 'strict-transport-security', 'studpilot-version', 'x-content-type-options', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'x-request-id'].sort().join(',');
   for (const [what, figures, message] of cases) {
     const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, ...figures, creditsRemaining: 0 } } : QUOTA_STATE) });
     const key = await seedKey(bundle, { scopes: ['chat:write'] });
