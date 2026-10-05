@@ -143,7 +143,11 @@ packages/
   evals/            the eval and security suites. security.test.mjs is the standing proof of the trust
                     boundaries.
   sdk/              the public /v1 API client.
-  design/           design tokens. NOT a UI library.
+  design/           the web visual system and the brand: src/web/tokens.css (the ONE token file; apps/site and
+                    apps/web import it first), accents.json (3 accent candidates with measured AA ratios),
+                    brand/ (the mark, favicon, icons; scripts/make-brand-assets.mjs renders them). Also the Roblox
+                    UI rule engine (src/rules.mjs, retrieve, checks). NOT a UI library. Handoff M2 2.1 recorded
+                    the decisions in planning/proof/M2/DESIGN-SYSTEM.md.
   owner-classify/, training/, langflow/   dropped by the plan; removed from the workspace in M3.
   owner-corpus/     the owner's game library data. Git-ignored; stays on disk; leaves the product in M3.
 
