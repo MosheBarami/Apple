@@ -138,6 +138,64 @@ was read after each break.
 focus move is run once (the refusal appearing on mount) and its re-run on the transition is a source assertion on the effect's dependencies, because the stand-in React cannot place a
 DOM node before the effect runs. Screen-reader output after the refusal is not heard by anyone here. The screenshots are from a local dev server and a headless Chromium.
 
+### Fix cycle 2 (2026-10-05): the third check's findings
+
+The cycle 2 check (`app-c2-findings.json`: one item partly fixed, four things the cycle 1 fixes made false, loose or unguarded, and its own suite record) is answered in
+`DECISIONS.md` 12.10. The branch was rebased onto main `30fbebd7` first (`git rebase --onto origin/main eb4b2b12`; the 24 design-system commits are main's #32 now).
+
+**Counts.** "Before" was measured in a copy of the tree at the rebased head `37c6a691`, with the same commands as "after" (so the rebase is confirmed to have changed nothing),
+"after" on this branch's last commit. Every network fetch of the site build and its tests was refused (`NODE_USE_ENV_PROXY=1` with a dead proxy).
+
+| Suite | Before (`37c6a691`) | After |
+|---|---|---|
+| `cd apps/web && pnpm typecheck` | clean | clean |
+| `cd apps/web && node --test` | 2736 pass, 0 fail | **2742 pass, 0 fail** (+6: three new tests in `studio-shots.test.mjs`, three in the new `legal-claims-cites.test.mjs`; the Roblox-anchor test was restated in place) |
+| `cd apps/web && pnpm build` | clean | clean; entry 144.6 kB gzipped against the 150 kB budget |
+| `node scripts/check-app-bundle.mjs` | passes | passes (eager graph 270.2 kB across 4 files; the pieces stub, its button's name and its specimen note absent) |
+| `node --test tests/*.test.mjs` at the root | 661 tests: 643 pass, 2 fail, 16 skipped | the same: 661 tests, 643 pass, **2 fail**, 16 skipped; the two are the known `check-pixels` scratchpad-location failures ("THE CONTROL: against a SAME-ORIGIN baseline ..." and "against a baseline with NO provenance ..."), identical on the rebased head |
+| `pnpm --filter @studpilot/site build` then `cd apps/site && node --test tests/*.test.mjs` | 381 pass | build clean (21 pages); 381 pass, 0 fail |
+| `cd packages/design && node --test` | 165 pass | 165 pass, 0 fail |
+| `node scripts/check-old-names.mjs` | CLEAN | CLEAN (0 violations) |
+
+No worker file changed, so the worker suite was not run.
+
+**Restated tests (the property each one keeps)**
+
+| Test | Why it had to change | Property kept |
+|---|---|---|
+| `auth-providers.test.mjs`, "\"Continue with Roblox\" is an anchor and carries the hairline ..." | It pinned the text of `.auth-page a.btn { ... }`, the rule that also restyled the six primary anchor buttons | The Roblox anchor, and only it, carries the hairline and the 20px line a `<button>` gets from the element rule: no rule of `auth.css` gives a border or a line height to every anchor button (a matcher over the sheet's selectors, run on the real sheet), the rule is on `.auth-roblox-link`, exactly one element wears that class (a syntax-tree walk), and the six primary anchors it protects are still found |
+| `studio-shots.test.mjs`, "WHAT THE EMPTY STRIP SAYS ..." (one assertion) | The finished-turn line now begins "No screenshots to show" and says "connect Studio" in its second sentence; its constant is `SHOTS_NONE_HERE` | The line still says what to do (`/connect Studio/i`) and still keeps no promise about "while StudPilot builds" |
+
+**New guards, each run red first, then green.** Written before the fix and run against the cycle 1 code: the playtest test failed (the two new frames were dropped), the
+finished-turn test failed on the old sentence, the Roblox-anchor test failed naming exactly `.auth-page a.btn`, and the cite test failed on 24 cites (every cite of an app file in the document was
+bare or borrowed a file, so none could be checked; the six that were one line off are the ones the planted drift below shows going red once the symbols are there). Then 22 breaks planted by exact string replacement in a copy of the tree (the count of the string asserted, the file restored from the clone and checked
+byte-identical afterwards), **each watched red**:
+
+| Item | Breaks planted (each red; names are the break, not the test) |
+|---|---|
+| Frame key (4) | playtest key without `capturedAt` (the cycle 1 behaviour); playtest frames never equal (a replay is not dropped); the key without the counter; the time compared within a 60 second window |
+| Finished-turn line (4) | the cycle 1 sentence back; "were taken" said again beside the new reason; the sentence stops saying how long they are kept; a third place that sets the frames (a reload path) |
+| Roblox link (6) | the old `a.btn` selector with the class still on the markup; the class dropped from the anchor; a primary anchor wearing the class; a new `.auth-page .btn` rule with a border; a new `.auth-page .auth-card a` rule with a line height; the Roblox rule without its hairline |
+| Cites (8) | one comment line added at the top of `auth-pages.tsx` (the drift itself); one line added at the top of `settings.tsx`; a cite without its symbol; a bare `:NNN` after a cite; one line number off by one; the checker accepting any line; the file lookup finding no app file; a range read as its first line |
+
+**The checker's six drifts replayed.** With the symbols in place and the six cites put back at their old lines (795, 853, 963, 439, 836, 416) in a copy of the document, the
+test went red naming each with where the symbol is: 795 to 796, 853 to 854, 963 to 964 (twice, in two rows), 439 to 440, 836 to 837, 416 to 417 (a function whose name is also a prefix of
+`AlternativeSignInView` at 387, so it lists both).
+
+**Gaps in my own first drafts, found by this run and closed.** (1) The first matcher for "a rule that reaches every anchor button" flagged the busy mark
+(`.btn[data-busy='true']::before`) and the theme toggle's `.btn`, neither of which is an anchor button; it now skips pseudo-elements and requires the selector's containers to be
+the ones every anchor button sits in (`.auth-page`, `.auth-card`, `.auth-form-col`). (2) The first synthetic case of the cite checker named a real line of `auth-pages.tsx`, so it
+would have failed the day that file changed above it; it runs on lines of its own now. (3) I expected the "replay is not dropped" break to be caught by "A REPLAYED RING"; that
+test uses frames with no playtest run, so the break is caught by the new playtest test and by "two different pictures" instead (the expectation was wrong, the break was red).
+
+**Measured in a browser, not asserted by a test.** `/app/reset` in a headless Chromium on the local dev server (every non-local request aborted): the primary anchor button
+measures `1px solid rgb(166, 124, 255)` and 47.7px; with the cycle 1 rule put back as a style, `1px solid rgba(255, 255, 255, 0.12)` and 46px (the checker's figures). The three
+provider buttons on the sign-in and sign-up screens still measure `1px solid rgb(55, 59, 68)`, 20px line, 46px. Screenshots: `app-local/` (`03b` retaken, `10` added).
+
+**What this cycle cannot show.** No worker was touched, so the Durable Object eviction is reproduced as the checker described it (the same run id arriving with seq 1 and 2 after
+seq 1..3), not by evicting one. The finished-turn sentence is a statement of what the page keeps; nobody has been shown it. The cite guard says where the code is, not that the
+sentence beside a cite is still true, and a symbol that is on the cited line for another reason passes.
+
 ### What these tests cannot show
 
 - **Not rendered in a DOM.** The app has no DOM test environment. Behaviour is reached by running the shipped code against stand-ins
