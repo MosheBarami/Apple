@@ -416,6 +416,19 @@ is vacuous until the buttons land, and fires then. **Policy / external:** what G
 4. That all Roblox-derived data is wiped on loss of access is the owner's reading of the Roblox Third-Party App Policy (9.4); the code wipes what it stores because of the OAuth grant, and the Open Cloud key is **not** covered (an owner decision).
 5. That deleting the usage ledger's key is acceptable accounting (9.2): the ledger is kept under an id that belongs to no account.
 
-### 9.7 Suites on branch `studpilot/m2-owner-update` (2026-10-05)
+### 9.7 Suites on branch `studpilot/m2-owner-update` (run 2026-10-05, Node 26.8.1)
 
-See the end of the commit series; the exact counts are in the report that came with it.
+| Command | Result |
+|---|---|
+| `cd apps/worker && pnpm typecheck && node --test` | typecheck clean; 5,663 tests, 5,657 pass, 0 fail, 6 skipped (main before this branch: 5,590 tests) |
+| `pnpm --filter @studpilot/site build` | 21 pages built |
+| `cd apps/site && node --test tests/*.test.mjs` | 387 tests, 387 pass, 0 fail |
+| `cd apps/web && pnpm typecheck && node --test` | typecheck clean; 2,537 tests, 2,537 pass, 0 fail |
+| `node --test tests/*.test.mjs` (root) | 661 tests, 643 pass, 2 fail (the two known `check-pixels` cases, which need the site served from the repository checkout), 16 skipped |
+| `cd packages/evals && pnpm test` | 1,481 tests, 1,476 pass, 0 fail, 5 skipped |
+| `pnpm -r typecheck` | clean in every workspace |
+| `node scripts/check-old-names.mjs`, `node infra/migrate-studpilot/build-allowlist.mjs --write` | CLEAN; UNCLASSIFIED 0 (the operator rows are gone) |
+| `node scripts/check-copy.mjs`, `node scripts/check-schema-drift.mjs` | clean (341 pages, 156 stylesheets); schema OK |
+
+**Before deploying.** (1) Apply migration `0015_usage_ledger_survives_account_deletion.sql` BEFORE the worker that deletes sign-in identities (9.2). (2) `CF_WORKER_OPS_TOKEN` is owner item N4: until it is set the gateway deletion does nothing and says so, and the 30-day sentence holds
+without it until 2026-11-03 (9.3). (3) Email Routing (BLOCKED E1) makes `support@studpilot.app` reach a person (9.1). (4) The first live run of the daily Roblox check is the verification list in 9.4.
