@@ -9,6 +9,12 @@ a disconnect that could delete the only handle on a grant, and four weaker point
 what changed; sections 1, 2, 5 to 9 below are already rewritten to the current design. Where an old line of section 9
 tested the fragment design that was replaced, it says so.
 
+**Updated again 2026-10-05 after a second review round ("cycle 2").** It found that the two flow cookies could be planted
+(reopening login CSRF), a rate limit that locked a school lab out at its seventh sign-in, Settings that a Roblox-only account
+could not use, a Connections card that sent people to a dead end, tests that did not execute the landing page or the catch
+handlers, and two minor gaps. Section 11 says what each was and what changed. Sections 1, 2, 4 to 8 are rewritten to the
+current design; section 9c is the cycle's mutations.
+
 ## 1. What a person sees
 
 1. On the sign-in and sign-up pages a "Continue with Roblox" button appears, but only when the worker says it can
@@ -16,10 +22,15 @@ tested the fragment design that was replaced, it says so.
    the button stays hidden until the three secrets of section 4 are on the Worker.
 2. The button goes to `/auth/roblox/start`, then to Roblox, then back to `/auth/roblox/callback`, then to the app at
    `/app/auth/roblox`, which signs them in and sends them where they were going. If somebody is already signed in in
-   that browser, the page asks first ("Switch to my Roblox account" or "Stay signed in") and replaces nothing until they
-   choose.
-3. In Settings, under Connections, a card "Sign in with Roblox" shows the linked Roblox username and a
-   "Disconnect Roblox" button.
+   that browser, the page asks first ("Switch to my Roblox account" or "Stay signed in"; for a session that is itself a Roblox
+   account, which is how a Roblox-only account confirms it is the person in Settings, "Continue with Roblox" or "Cancel") and
+   replaces nothing until they choose. When the session that results belongs to a different account, the previous account's
+   drafts, recent searches and view state are cleared.
+3. In Settings, under Connections, a card "Sign in with Roblox" shows the linked Roblox username and a "Disconnect Roblox"
+   button. While Roblox is the account's only way in (a Roblox-only account) there is no button: the card says Roblox is how
+   the account signs in, that it cannot be disconnected because there would be no way back in, and how to withdraw StudPilot's
+   access (section 11, item 4). Such an account is shown by its Roblox username, never by its placeholder address, and has no
+   email or password form; export, delete and the other gated actions ask it to sign in with Roblox again (item 3).
 4. Only `openid profile` is requested. The asset scopes (`asset:read asset:write`) arrive with uploads (M5c), with
    their own consent screen. Adding scopes later makes every user consent again, so none is asked for early.
 
@@ -32,7 +43,7 @@ redirect URI here is built on it.
 browser            worker (studpilot.app)                       Roblox                 Supabase Auth
   | GET /auth/roblox/start          |                              |                        |
   |-------------------------------->| state + PKCE verifier -> KV (600 s, single use)
-  |<-- 302 authorize?...S256 --------| Set-Cookie rbx_oauth_state (HttpOnly, Lax)
+  |<-- 302 authorize?...S256 --------| Set-Cookie __Host-rbx_oauth_state (HttpOnly, Secure, Lax, Path=/)
   |------------------------------------------------------------>| user consents
   |<-- 302 /auth/roblox/callback?code&state ---------------------|
   |-------------------------------->| state read and DELETED; cookie must match
@@ -42,7 +53,7 @@ browser            worker (studpilot.app)                       Roblox          
   |                                 |-- POST /auth/v1/admin/users (KEYED synthetic address) -->|
   |                                 |-- POST .../generate_link (the user's CURRENT address) -->|
   |                                 | token_hash -> KV under a random handle (300 s, single use)
-  |<-- 302 /app/auth/roblox   NOTHING in the URL; Set-Cookie rbx_oauth_handle (HttpOnly, Secure, Lax, Path=/auth/roblox/redeem)
+  |<-- 302 /app/auth/roblox   NOTHING in the URL; Set-Cookie __Host-rbx_oauth_handle (HttpOnly, Secure, Lax, Path=/)
   | SPA: somebody already signed in here? Ask, redeem nothing. Otherwise:
   |-- POST /auth/roblox/redeem (same Origin, cookie, no body) -->| handle read and DELETED; cookie cleared
   |<-- { token_hash, next } ---------------------------------------|
@@ -71,19 +82,29 @@ browser            worker (studpilot.app)                       Roblox          
   sight. A 404 that is not GoTrue's (a wrong `SUPABASE_URL`, a proxy page) and an unreachable Auth are NOT read as "gone":
   the sign-in fails, because acting on them would delete every returning person's link or make a second account.
 - **The sign-in token is bound to the browser that finished the callback.** The callback stores the token hash in KV under a
-  random 256-bit handle (300 s) and sets the handle in a cookie that is HttpOnly, Secure (on https), SameSite=Lax and scoped
-  to `Path=/auth/roblox/redeem`. The redirect carries nothing, so no link anyone can make signs in a person who does not
-  hold the cookie. `POST /auth/roblox/redeem` requires the request's own `Origin` (checked before anything is spent), reads
+  random 256-bit handle (300 s) and sets the handle in a cookie named `__Host-rbx_oauth_handle` (HttpOnly, Secure, SameSite=Lax,
+  Path=/, no Domain). The redirect carries nothing, so no link anyone can make signs in a person who does not hold the cookie. `POST /auth/roblox/redeem` requires the request's own `Origin` (checked before anything is spent), reads
   and burns the handle, returns `{token_hash, next}` once and clears the cookie.
+- **The two flow cookies cannot be planted.** A cookie with an ordinary name can be set on this host by a response over plain
+  http before HSTS is known, or by any sibling subdomain, and a planted state or handle reopens login CSRF. On https the state
+  and handle cookies are therefore `__Host-rbx_oauth_state` and `__Host-rbx_oauth_handle`, which a browser accepts only when
+  they are Secure, Path=/ and carry no Domain, so neither of those can set them; only the prefixed names are read there, so a
+  request with just the bare names has no state and no handle. `__Secure-` was not used for the path-scoped cookie it would
+  have suited: a sibling subdomain can still set one with `Domain=studpilot.app`. The price of `Path=/` is that each cookie
+  travels with every request to this host while it lives (state until the callback clears it, at most 10 minutes; handle
+  until redeem clears it, at most 5); both are HttpOnly and single use. The registered `http://localhost:5173` dev origin,
+  where a Secure cookie is not reliable, keeps the bare names and the narrow paths.
 - **The refresh token** is sealed with `CREDENTIAL_KEY` (the same AES-GCM helper the Open Cloud key uses) in
   `roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, rotated_at, lease_until)`. Roblox refresh
   tokens are single use. A fresh sign-in REPLACES the stored token and deliberately does not revoke the previous one
   (section 10, item 5). `refreshRobloxAccessToken` first claims a lease on the row (a conditional update on
   `version` and `lease_until`), only then calls Roblox, then stores the replacement by compare-and-swap on
-  `version`. Two requests at once: one refreshes, the other is told `busy`. A sign-in or disconnect that lands
+  `version` and `generation`. Two requests at once: one refreshes, the other is told `busy`. A sign-in or disconnect that lands
   while Roblox is answering wins, and the stale replacement is discarded and revoked. The 15-minute access token is cached
-  per person in the isolate's memory and handed out only while it is unexpired and the row is still at the version it was
-  issued under, so a new sign-in voids it and a disconnect (no row) is answered before the cache is read. A Roblox 429 is
+  per person in the isolate's memory and handed out only while it is unexpired and the row is still at the version AND the generation it was
+  issued under (the generation is a random label made at every sign-in and kept by every refresh; `version` alone restarts at 1
+  when a disconnect deletes the row), so a new sign-in voids it, a disconnect (no row) is answered before the cache is read, and
+  a token from a revoked grant is never served after sign-ins that bring the row back to the same version number. A Roblox 429 is
   `unavailable` (try again), not `refused` (the grant is dead). Nothing calls it yet; it is the building block for uploads (M5c).
 - **Disconnect** (`POST /api/me/roblox/disconnect`, JWT-authed) revokes the grant at Roblox with the stored token,
   deletes the token row and the identity link, and is idempotent. NOTHING is deleted, and no success is reported, unless
@@ -92,16 +113,26 @@ browser            worker (studpilot.app)                       Roblox          
   answering or refusing is a 502 (`revoke_failed`), and none of them carries a `revoked` field. Roblox answering 400
   counts as "already revoked" ONLY when its body says `invalid_token`, the documented case; any other 400 (our own request
   or credentials were wrong, so the token may be live), a 401, a 429 or a 5xx is a failure. A success says `revoked: true`
-  (Roblox confirmed) or `null` (there was no stored token), and the web card words a withdrawal only for those.
+  (Roblox confirmed) or `null` (there was no stored token), and the web card words a withdrawal only for those. The card does not offer the button while Roblox is the account's only way in;
+  the route still answers that case as above for any other caller.
 - **Export and erasure.** Both tables are in the account export (`user-export.ts`; the sealed token and the
   lease are withheld and the file says why) and in account erasure (`erasure.ts`): the grant is revoked at Roblox
   first, then both tables are swept, with a receipt line each and a note on whether Roblox was reached.
 - **Hardening on `/auth/roblox/*`:** `Cache-Control: no-store`, `Referrer-Policy: no-referrer`,
-  `X-Content-Type-Options: nosniff`, the router's `ipLimited` (20 a minute for start, callback and redeem, 120 for status),
+  `X-Content-Type-Options: nosniff`, the router's `ipLimited` with a bucket per kind of request (next bullet),
   one fixed sentence on every error page (nothing Roblox sent is reflected), and no log line that carries a query
   string, a token, a code, a state, a handle or a response body (the only line is `[roblox-oauth] <stage>`). An `oauth_token`
   redaction rule was added to the worker's `redaction.ts` (credential shapes only; it blocks egress, so a field NAME is not
   enough) and, as a wider net for a log line, to the browser's Sentry scrub.
+
+- **Rate limits are per kind of request, sized for a shared address.** `status` 120 a minute per address. `start` 60 a minute per
+  address (a lab of thirty can sign in together). `callback` and `redeem` come after the person has consented at Roblox, so a
+  refusal there throws a sign-in away: they are keyed by their OWN state or handle (5 a minute: one use and a reload or two),
+  never by the shared address, and a request from another origin never spends a handle's bucket. A request with no usable state
+  or handle, and a well-formed state or handle that nobody holds (random, replayed, expired), count against a per-address stray
+  bucket (60 a minute) that no real flow touches. Replay protection is unchanged: a state and a handle are single use and burned
+  on first read; the buckets only bound how hard a spent value can be hammered. One shared bucket of 20 for all three, which this
+  replaced, locked a lab out at its seventh sign-in.
 
 ## 3. The decision: the Worker now holds a Supabase secret key
 
@@ -162,20 +193,24 @@ curl -sI https://studpilot.app/auth/roblox/start
 
 must show `HTTP/2 302` and a `location:` that starts `https://apis.roblox.com/oauth/v1/authorize?` and contains
 `client_id=5523165872353873834`, `code_challenge_method=S256` and `scope=openid%20profile`, plus a `set-cookie:
-rbx_oauth_state=` and `cache-control: no-store`. Before the secrets are set the same command shows `503`, and
+__Host-rbx_oauth_state=` (with `Secure` and `Path=/`) and `cache-control: no-store`. Before the secrets are set the same command shows `503`, and
 `curl -s https://studpilot.app/auth/roblox/status` shows `{"configured":false}`; after, `{"configured":true}`.
 Then the handoff's own check for O2: the owner signs in with Roblox in a private window (the app is in Roblox's
 private mode, 10 users, until review) and lands in the app.
 
 ## 5. What was built, and where
 
-Worker: `apps/worker/src/roblox-oauth.ts` (new); `keyedId` in `user-credentials.ts`; wiring in `index.ts`; `env.ts` (three
+Worker: `apps/worker/src/roblox-oauth.ts` (new; cycle 2 changed its cookies, limits and token row); `keyedId` in `user-credentials.ts`; wiring in `index.ts`; `env.ts` (three
 optional secrets); `erasure.ts`, `user-export.ts`, `account-export.ts`; `redaction.ts`.
 Web: `lib/roblox-signin.ts` (the button's and the landing page's logic and hooks), `components/roblox-connection-card.tsx`
 (new); `routes/auth-pages.tsx` (button, landing page), `app.tsx` (route `/auth/roblox`, outside both guards like
-`/confirm`), `routes/settings.tsx`, `lib/settings-search.ts`, `lib/api.ts`, `lib/sentry.ts`.
-Tests: `apps/worker/tests/roblox-oauth.test.mjs` (64), `apps/web/tests/roblox-signin.test.mjs` (23) with its helper
-`apps/web/tests/hook-harness.mjs`, plus cases in `secret-redaction.test.mjs` and `sentry.test.mjs`.
+`/confirm`), `routes/settings.tsx`, `lib/settings-search.ts`, `lib/api.ts`, `lib/sentry.ts`. Cycle 2 added
+`lib/account-identity.ts` (who an account is: Roblox-only by `app_metadata.roblox_sub`; what to show instead of a placeholder
+address), `lib/account-state.ts` (clears the previous account's drafts, searches and view state) and `lib/use-roblox-username.ts`,
+and changed `components/reauth-dialog.tsx`, `components/layout.tsx` and `lib/auth.tsx` (one word: `AuthContext` is exported).
+Tests: `apps/worker/tests/roblox-oauth.test.mjs` (77), `apps/web/tests/roblox-signin.test.mjs` (41) with its helpers
+`apps/web/tests/hook-harness.mjs` and, new in cycle 2, `apps/web/tests/page-harness.mjs` (runs a page component's own code:
+section 11, item 5), plus cases in `secret-redaction.test.mjs` and `sentry.test.mjs`.
 
 **Additions beyond the brief, each with its reason:**
 - *The state is also bound to the browser by a cookie, and so is the sign-in token.* A state that lives only in KV allows
@@ -224,6 +259,21 @@ services. In order of how likely each is to need a fix:
    shape, so it does not depend on it. The revoke endpoint's `invalid_token` answer is the task's reading of Roblox's
    documentation; if Roblox words an already-revoked token differently, disconnect answers 502 for it (nothing is lost).
 
+6. **Cycle 2: the `__Host-` cookies in a real browser.** The state cookie is set on a 302 that answers a top-level navigation and
+   must come back on the callback, a cross-site top-level GET from Roblox; `SameSite=Lax` allows that. Not observed. If a
+   browser refused it, every sign-in would answer 400 "state not bound to this browser".
+7. **Cycle 2: a fresh Roblox sign-in counts as re-authentication because `verifyOtp` stamps the new session's
+   `last_sign_in_at`,** which `freshestAuth` already reads. That GoTrue updates it on a magic-link verify is from memory, not
+   observed. If it did not, a password-less account would be asked again in a loop after each Roblox round trip; the fix would be to
+   stamp the re-authentication in `AuthProvider` after the landing page's sign-in. First live check: press Export, confirm with
+   Roblox, press Export again: no second prompt.
+8. **Cycle 2: re-auth is only as strong as the person's Roblox session.** If they are already signed in to Roblox in that browser,
+   Roblox may sign them straight back without asking for a password, so the confirmation proves "somebody at this browser can
+   complete a Roblox sign-in", which is weaker than typing a password. `prompt=login` would force a prompt; it is not requested
+   because whether Roblox supports it could not be confirmed here.
+9. **Cycle 2: `session.user.app_metadata.roblox_sub`** is what the SPA reads to recognise a Roblox-only account. The Auth API returns
+   `app_metadata` on the user object supabase-js hands the page; not observed.
+
 ## 7. Deferred, and not done here
 
 - **Local dev.** The registered dev redirect `http://localhost:5173/auth/roblox/callback` is honoured by the origin
@@ -235,7 +285,8 @@ services. In order of how likely each is to need a fix:
   `@users.studpilot.invalid` must be handled, and a Roblox user has no inbox for password reset.
 - **The account-deletion route still does not remove the Supabase login** (it never could); the worker now holds a
   key that could, and that is a decision for the owner, not a side effect of this change.
-- **`ipLimited` is per isolate,** like every other limiter here: best effort, not a global ceiling.
+- **`ipLimited` is per isolate,** like every other limiter here: best effort, not a global ceiling. Flooding is for Cloudflare's own
+  rate limiting in front of the worker; a per-state or per-handle bucket cannot stop it.
 - **KV is eventually consistent.** A replayed callback that reaches another colo within seconds could still see the
   state; the cookie (cleared on first use) and Roblox's own single-use code are what stop it. The same holds for the
   handle: a redeem that reached another colo before the callback's write had propagated would see no handle and the page
@@ -244,8 +295,21 @@ services. In order of how likely each is to need a fix:
   browser and its own Roblox account, and only same-origin script can spend it, so it is left to expire rather than spent.
 - **The choice appears for any existing session,** including one for the same Roblox account: who the token is for is not
   known until it is redeemed, and redeeming is what must wait for the person.
-- **The handle cookie is Secure only over https.** Production is always https; the registered dev origin
-  `http://localhost:5173` is plain http, where some browsers refuse a Secure cookie (the same rule as the state cookie).
+- **The dev origin's cookies are bare-named and not Secure.** Production is always https and uses the `__Host-` names; the
+  registered dev origin `http://localhost:5173` is plain http, where some browsers refuse a Secure cookie, so it has no prefix to
+  lean on and keeps the narrow paths. A planted cookie is therefore possible there, which is acceptable for a developer's machine.
+- **A Roblox-only account cannot change its email or set a password.** Settings shows no form for either (the address is a
+  placeholder, so Supabase's secure email change would wait for a confirmation nobody can give). Making that possible needs a
+  decision about the Supabase setting and a real-address step; it is the owner's.
+- **Re-authentication does not resume the action.** The round trip leaves and re-enters Settings, so the person presses the button
+  again, and it does not ask for ten minutes. The dialog says so.
+- **The data export file records what is stored:** `user.email` and the `profiles` row carry the placeholder address of a Roblox-only
+  account. It is a data record, not a screen; no screen shows it.
+- **The Settings page is not rendered in a test** (no DOM): what a Roblox-only account sees there is checked by reading the syntax
+  tree (the control of the email and password rows branches on the account kind; no address is printed from the session) and by
+  rendering the pieces that carry the words (the dialog, the card, the landing view). The first live run is the first time the page
+  is seen as such an account.
+- **The worker's `signInKept` disconnect answer is no longer reachable from the UI.** The route still produces it, tested.
 - **The access-token cache is per isolate.** Parallel callers in different isolates are still kept apart by the lease
   (one is told `busy`), not by the cache.
 - **The web Sentry scrub keeps the wider `oauth_token` pattern.** It scrubs a log line and blocks nothing, so over-matching
@@ -254,26 +318,32 @@ services. In order of how likely each is to need a fix:
 
 ## 8. Measured results (2026-10-05, branch `studpilot/m2-roblox`, Node 26.8.1)
 
-After the review round (section 10). The last column is what this section said before it.
+After the second review round (section 11). The last column is what this section said after the first one (section 10).
 
-| Command | Result | Before the review round |
+| Command | Result | After the first review round |
 |---|---|---|
 | `cd apps/worker && pnpm typecheck` | exit 0 | exit 0 |
-| `cd apps/worker && node --test` | tests 5495, pass 5489, fail 0, skipped 6 | 5472, 5466, 0, 6 |
+| `cd apps/worker && node --test` | tests 5508, pass 5502, fail 0, skipped 6 | 5495, 5489, 0, 6 |
 | `cd apps/web && pnpm typecheck` | exit 0 | exit 0 |
-| `cd apps/web && node --test` | tests 2478, pass 2478, fail 0 | 2466, 2466, 0 |
+| `cd apps/web && node --test` | tests 2496, pass 2496, fail 0 | 2478, 2478, 0 |
 | `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16. The two failures are the scratchpad-location cases in `tests/check-pixels.test.mjs` ("THE CONTROL: against a SAME-ORIGIN baseline..." and "against a baseline with NO provenance..."), which fail when the clone lives under a scratchpad path | the same |
-| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move; UNCLASSIFIED 0) | the same |
-| `pnpm build` in `apps/web`, then `node scripts/check-app-bundle.mjs` | entry 141.5 kB gzipped (budget 150), eager graph 267.1 kB | 141.0 kB, 266.6 kB |
+| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move; `build-allowlist.mjs` reads UNCLASSIFIED: 0 row(s), 0 hit(s)) | the same |
+| `pnpm build` in `apps/web` (exit 0), then `node scripts/check-app-bundle.mjs` | entry 141.9 kB gzipped (budget 150), eager graph 267.6 kB | 141.5 kB, 267.1 kB |
 
-New tests since the first version: `roblox-oauth.test.mjs` 42 to 64 (+22), `roblox-signin.test.mjs` 11 to 23 (+12, and every
-one of the 11 old ones was replaced or restated as behaviour), `secret-redaction.test.mjs` +1. Worker +23, web +12.
+New tests in cycle 2: `roblox-oauth.test.mjs` 64 to 77 (+13), `roblox-signin.test.mjs` 23 to 41 (+18; the old tests that touch the
+landing state, the choice card, the Connections card and the route-guard check were restated, not only added to). Worker +13, web +18.
+
+The new worker test file, run against the unfixed `roblox-oauth.ts` (the version at the start of cycle 2): 77 tests, 12 pass,
+65 fail. Most of those are the sign-in tests, which fail because the cookies now carry other names; the per-item evidence is the
+mutations of 9c. The web tests cannot load against the old web source (the modules they test did not exist), so for them the
+mutations are the evidence.
 
 A local-only browser check was made on the first version (the Vite dev server, every non-localhost request aborted, the
 status route stubbed): the button shows on `/app/login` and `/app/signup` at 1280 and at 375 pixels with no horizontal
-scroll and is absent when the status says `false`. **It was not repeated after the review round**: the landing page now
-needs the worker's redeem route, which the dev server does not serve, so what was observed there (the failure card) is
-what the behaviour tests now execute, and the live check of section 4 is the first time the whole path is seen.
+scroll and is absent when the status says `false`. **It was not repeated after either review round**: the landing page needs the
+worker's redeem route, which the dev server does not serve, and what a Roblox-only account sees in Settings needs a signed-in Roblox
+account on a live Supabase. What was observed there (the failure card) is what the behaviour tests now execute, and the live
+check of section 4 is the first time the whole path is seen.
 
 ## 9. The mutations: every new test was made red, then green
 
@@ -361,6 +431,12 @@ RED  W16 landing route path drifts (palette tripwire): app.tsx -> red 1 (1 of 16
 and the old web lines `W01` to `W16` aimed at the fragment parser and at tests that read source text in a certain order; those tests
 no longer exist. Their replacements are `r.W01` to `r.W16` and `r.B01` to `r.B43` below. Every other line above still holds: its test
 is unchanged or was restated and run again in 9b.
+
+**Superseded in cycle 2 (cookies).** `r.W03` to `r.W06` and `r.W10` mutated a cookie's attributes or clearing, and `r.W06` ("handle
+cookie sent to the whole site") named a path scope that is now the required design: on https a `__Host-` cookie must be `Path=/`.
+Every test that read a cookie's name, path or attributes was restated, and `c2.K01` to `c2.K15` below are the mutations of the
+restated tests. The other lines of 9 and 9b still hold; the web tests that `r.B..` aimed at (the landing hook, the choice card and
+the Connections card) were restated in cycle 2 with the new state shape and card text, and `c2.W..` are their counterparts.
 
 ### 9b. The review round: 114 changes, 114 red
 
@@ -491,6 +567,115 @@ RED  r.B42 the settings row does not hold the card: settings.tsx -> red 1 (1 of 
 RED  r.B43 the settings search forgets the card: settings-search.ts -> red 1 (1 of 23); expected: row in settings
 ```
 
+### 9c. Cycle 2: 95 changes, 95 red
+
+Same method and the same runner as 9b (each change made alone, the named test file run, the exact reverse replacement made, the
+file checked byte-identical afterwards, a baseline run first that must be green). `red N (N of M)` is how many tests in that file
+failed; M is the same on every run of a file (77 for the worker file, 41 for the web file), so a red is a failing assertion and
+not a file that stopped loading. The first runs found two survivors, each a real gap in the tests and each fixed before it was
+recorded as red: `c2.G03` (a re-sign-in kept the previous generation: the worker test now requires a new random one at every
+sign-in) and `c2.W38` (the Roblox re-auth dialog could drop the sentence that says why the action asks: each action must have
+its own explanation). The prefixes: `K` cookies, `L` limits, `S` strays, `G` generation, `T` the test additions (minted link,
+foreign `roblox_sub`, route-level catches, stray calls), `E` export and delete for a Roblox-only account, `W` the web changes.
+
+```
+RED  c2.K01 the flow cookies lose the __Host- prefix on https: roblox-oauth.ts -> red 64 (64 of 77)
+RED  c2.K02 the production cookies are not Secure: roblox-oauth.ts -> red 6 (6 of 77)
+RED  c2.K03 the production cookies are path-scoped (a __Host- cookie must be Path=/): roblox-oauth.ts -> red 5 (5 of 77)
+RED  c2.K04 the production cookies carry a Domain: roblox-oauth.ts -> red 5 (5 of 77)
+RED  c2.K05 the production cookies are readable by script (no HttpOnly): roblox-oauth.ts -> red 5 (5 of 77)
+RED  c2.K06 the production cookies are SameSite=None: roblox-oauth.ts -> red 5 (5 of 77)
+RED  c2.K07 the callback reads the BARE state cookie name in production: roblox-oauth.ts -> red 61 (61 of 77)
+RED  c2.K08 the callback accepts the bare state cookie as well as the prefixed one: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.K09 the redeem reads the BARE handle cookie name in production: roblox-oauth.ts -> red 19 (19 of 77)
+RED  c2.K10 the redeem accepts the bare handle cookie as well as the prefixed one: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.K11 the dev origin is given prefixed names (nothing is the dev origin): roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.K12 production is given the bare names (everything is the dev origin): roblox-oauth.ts -> red 64 (64 of 77)
+RED  c2.K13 the cleared state cookie loses its prefix: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.K14 the cleared handle cookie loses its prefix: roblox-oauth.ts -> red 3 (3 of 77)
+RED  c2.K15 the dev cookies are Secure (they would not work on http://localhost in Safari): roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.L01 start is back on the shared 20-a-minute bucket: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.L02 start allows 20 a minute for an address: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.L03 start allows 600 a minute (no real ceiling): roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.L04 callback is limited by the shared address, 20 a minute: roblox-oauth.ts -> red 3 (3 of 77)
+RED  c2.L05 redeem is limited by the shared address, 20 a minute: roblox-oauth.ts -> red 3 (3 of 77)
+RED  c2.L06 a replayed state is never limited: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L07 a replayed handle is never limited: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L08 a callback with no usable state is never limited: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L09 a redeem with no usable handle is never limited: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L10 a request from another origin spends the handle's bucket: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L11 the status check shares the start bucket: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L12 stray callbacks spend the address's start bucket: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.L13 the state bucket is shared by every flow (a constant key): roblox-oauth.ts -> red 63 (63 of 77)
+RED  c2.S01 a state nobody holds is not counted against the address: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.S02 a handle nobody holds is not counted against the address: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.S03 a state of invalid shape is counted twice against the address: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.S04 an unknown handle is refused with 429 but the cookie is left: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.S05 a state HELD by a flow is counted as a stray: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.G01 the access-token cache ignores the generation: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.G02 the compare-and-swap ignores the generation: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.G03 a sign-in keeps the old generation: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.G04 every sign-in mints the same generation: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.G05 a refresh forgets the generation in the cache entry: roblox-oauth.ts -> red 2 (2 of 77)
+RED  c2.T01 the minted link is trusted without checking whose it is: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T02 an address held by a user with ANY roblox_sub is adopted: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T03 the /start catch logs the error text: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T04 the /start catch reflects the error in the page: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T05 the /callback catch logs the error text: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T06 the /callback catch answers the request URL (which carries the code) in the page: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T07 the /start catch does not clear the state cookie: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T08 the /callback catch does not clear the state cookie: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T08b the /redeem catch logs the error text: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T08c the /redeem catch answers the error text: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T08d the /redeem catch does not clear the handle cookie: roblox-oauth.ts -> red 1 (1 of 77)
+RED  c2.T09 the callback uses the secret key for a table query after a sign-in (a stray call, answered by nothing): roblox-oauth.ts -> red 62 (62 of 77)
+RED  c2.E01 the export refuses an account whose address is a placeholder (asks for a password): index.ts -> red 1 (1 of 77)
+RED  c2.E02 the deletion refuses an account whose address is a placeholder (asks for a password): index.ts -> red 1 (1 of 77)
+RED  c2.W01 the page's redeem reads window.location.hash instead of asking the worker: auth-pages.tsx -> red 4 (4 of 41)
+RED  c2.W02 the page's currentAccount always answers null (a silent replacement): auth-pages.tsx -> red 4 (4 of 41)
+RED  c2.W03 the landing never shows the choice (startRobloxLanding redeems straight away): roblox-signin.ts -> red 5 (5 of 41)
+RED  c2.W04 the page does not wire onSwitch: auth-pages.tsx -> red 2 (2 of 41)
+RED  c2.W05 the page's onStay goes to Settings instead of home: auth-pages.tsx -> red 1 (1 of 41)
+RED  c2.W06 the page navigates on without replacing the history entry: auth-pages.tsx -> red 3 (3 of 41)
+RED  c2.W07 the page trades the token as another OTP type: auth-pages.tsx -> red 1 (1 of 41)
+RED  c2.W08 the page does not hand the hook the account-switched cleanup: auth-pages.tsx -> red 2 (2 of 41)
+RED  c2.W09 the page never tells the hook the account is a Roblox one: auth-pages.tsx -> red 1 (1 of 41)
+RED  c2.W10 the page ignores an error from getSession: auth-pages.tsx -> red 1 (1 of 41)
+RED  c2.W11 the page asks the choice view for a failure card: auth-pages.tsx -> red 2 (2 of 41)
+RED  c2.W12 the cleanup also runs when the SAME account signs in again: roblox-signin.ts -> red 2 (2 of 41)
+RED  c2.W13 the cleanup never runs: roblox-signin.ts -> red 4 (4 of 41)
+RED  c2.W14 the cleanup runs when nobody was signed in before: roblox-signin.ts -> red 2 (2 of 41)
+RED  c2.W15 a cleanup that throws undoes the sign-in: roblox-signin.ts -> red 1 (1 of 41)
+RED  c2.W16 the switch forgets who was signed in: roblox-signin.ts -> red 3 (3 of 41)
+RED  c2.W17 the cleanup forgets the view state: account-state.ts -> red 4 (4 of 41)
+RED  c2.W18 the cleanup forgets the drafts: account-state.ts -> red 4 (4 of 41)
+RED  c2.W19 the cleanup forgets the search history: account-state.ts -> red 4 (4 of 41)
+RED  c2.W20 the cleanup clears everything in storage: account-state.ts -> red 3 (3 of 41)
+RED  c2.W21 a Roblox-only account is offered Disconnect: roblox-signin.ts -> red 2 (2 of 41)
+RED  c2.W22 the dead-end advice is back: roblox-signin.ts -> red 1 (1 of 41)
+RED  c2.W23 the card drops the reason Disconnect is unavailable: roblox-signin.ts -> red 2 (2 of 41)
+RED  c2.W24 the card does not say how to withdraw access: roblox-signin.ts -> red 1 (1 of 41)
+RED  c2.W25 a Roblox account is recognised from user_metadata (which a person can write): account-identity.ts -> red 5 (5 of 41)
+RED  c2.W26 any non-empty roblox_sub string is accepted: account-identity.ts -> red 1 (1 of 41)
+RED  c2.W27 a Roblox account is recognised by the shape of its address: account-identity.ts -> red 2 (2 of 41)
+RED  c2.W28 the identity shows the address of a Roblox account: account-identity.ts -> red 1 (1 of 41)
+RED  c2.W29 a placeholder address alone does not make an identity a Roblox one: account-identity.ts -> red 1 (1 of 41)
+RED  c2.W30 the sentence under the Settings title names the address again: settings.tsx -> red 1 (1 of 41)
+RED  c2.W31 the shell prints the raw address again: layout.tsx -> red 1 (1 of 41)
+RED  c2.W32 the email row offers its form to a Roblox-only account: settings.tsx -> red 1 (1 of 41)
+RED  c2.W33 the password row offers its form to a Roblox-only account: settings.tsx -> red 1 (1 of 41)
+RED  c2.W34 the dialog never asks a Roblox account to sign in with Roblox: reauth-dialog.tsx -> red 2 (2 of 41)
+RED  c2.W35 the dialog asks every account to sign in with Roblox: reauth-dialog.tsx -> red 1 (1 of 41)
+RED  c2.W36 the Roblox re-auth returns to the dashboard instead of Settings: reauth-dialog.tsx -> red 1 (1 of 41)
+RED  c2.W37 the Roblox re-auth dialog has no Cancel: reauth-dialog.tsx -> red 1 (1 of 41)
+RED  c2.W38 the Roblox re-auth dialog does not say why the action asks: reauth-dialog.tsx -> red 1 (1 of 41)
+RED  c2.W39 the confirmation card is worded as a switch: auth-pages.tsx -> red 1 (1 of 41)
+RED  c2.W40 the window the dialog names is not the real one: reauth-dialog.tsx -> red 1 (1 of 41)
+RED  c2.W41 the landing route is moved inside the guarded layout Route: app.tsx -> red 1 (1 of 41)
+RED  c2.W42 the landing route is wrapped in AuthGuard itself: app.tsx -> red 1 (1 of 41)
+RED  c2.W43 the landing route is wrapped in GuestGuard itself: app.tsx -> red 1 (1 of 41)
+```
+
 ## 10. The independent review of this branch, and what it changed (2026-10-05)
 
 Seven findings, each fixed with a test that failed before the fix. Measured: the worker test file, run against the unfixed
@@ -538,3 +723,83 @@ against the old web source at all, since the functions it tests did not exist; i
 - KV's eventual consistency can make an early redeem see no handle (the person tries again). A strongly consistent store
   (D1 or a Durable Object) would remove it; the review asked for KV, so it stayed.
 - The in-page browser check of section 8 was not repeated for the new landing flow, for the reason given there.
+
+## 11. The second independent review, and what it changed (2026-10-05, "cycle 2")
+
+Six items, each with tests that failed before the fix or fail when the fix is undone (9c). Where "before" is quoted it is measured.
+
+1. **The flow cookies could be planted (security).** The state cookie (`rbx_oauth_state`) and the handle cookie (`rbx_oauth_handle`)
+   had ordinary names, so a cookie set over plain http before HSTS is known, or by a sibling subdomain, could plant a state or a
+   handle and reopen login CSRF (the victim signs in as the attacker). Now, on https, they are `__Host-rbx_oauth_state` and
+   `__Host-rbx_oauth_handle` with `Secure`, `Path=/`, no `Domain`, `HttpOnly`, `SameSite=Lax`, on set and on clear, and only the
+   prefixed name is read: a request carrying just the bare name is refused (the callback answers 400 and burns the state; redeem
+   answers 400 and spends nothing). The plain names survive only on the registered `http://localhost:5173` dev origin. Why `__Host-`
+   for both and not `__Secure-` for the path-scoped handle: a sibling subdomain can set a `__Secure-` cookie with
+   `Domain=studpilot.app`, so it would not stop the attack the finding names; the price is `Path=/` (section 2). Tests: the state
+   and handle cookie tests assert every required attribute on set and on clear; `COOKIE PLANTING` offers the bare name alone, the
+   bare name beside a wrong prefixed one, and a planted bare cookie beside the real one; the dev-origin test completes a whole flow
+   with bare names. Mutations `c2.K01` to `c2.K15`.
+2. **A school lab was locked out (breaks users).** Start, callback and redeem shared one bucket of 20 a minute per address, three
+   requests per sign-in, so the seventh sign-in from one address was refused, and a refusal on redeem failed a sign-in the person had
+   already consented to at Roblox. Now: start 60 a minute per address; callback and redeem keyed by their own single-use state or
+   handle (5 a minute), never by the address; a stray bucket (60 a minute per address) for requests with no usable state or handle and
+   for well-formed values nobody holds, so fresh random values cannot be used to hammer KV; a request from another origin never spends
+   a handle's bucket (section 2). Tests: 20 sign-ins from one address in a minute, each step answered; 60 flows started (the 61st start
+   is the one refused) and every one of them still completes its callback and redeem; a replayed state or handle is a 400 and then a 429
+   with no second exchange; strays are limited per address and a real flow from that address is untouched. Mutations `c2.L01` to
+   `c2.L13`, `c2.S01` to `c2.S05`.
+3. **A Roblox-only account could not use Settings (breaks users).** It has no password, but export, delete, change email, change
+   password, sign out everywhere and remove two-step all asked for one. Now `ReauthDialog` asks such an account to sign in with Roblox
+   again (a link to `/auth/roblox/start?return=/settings`); the new session's `last_sign_in_at` is the fresh proof the gate already reads
+   (section 6, item 7). The account is recognised by `app_metadata.roblox_sub`, which only the Auth admin API can write: not by the
+   shape of its address (an email account whose address merely looks like the placeholder still gets the password box), and not by
+   `user_metadata`, which a person can write. The landing page words a Roblox account that is already signed in as a confirmation
+   ("Continue with Roblox" / "Cancel"). Tests: the dialog for every gated action; the unchanged password dialog; the gate's window;
+   in the worker harness a Roblox-only account (bearer carrying only the placeholder address) exports its data and deletes it with no
+   password step, the Roblox grant is revoked by the erasure, and the same Roblox account then signs back in to the same user.
+   Mutations `c2.W25` to `c2.W27`, `c2.W34` to `c2.W40`, `c2.E01`, `c2.E02`. Not done: resuming the action after the round trip.
+4. **The Connections card told people to do something impossible (breaks users).** "Change your email address and set a password"
+   cannot work while the address is a placeholder that Supabase's secure email change would need a confirmation from. The card now says
+   that Roblox is how the account signs in, that it cannot be disconnected and why (no email address or password, so no way back in),
+   and how to withdraw StudPilot's access (Connected apps in Roblox, or delete the StudPilot account). It offers no Disconnect button
+   in that state. The placeholder address is never shown as an account's address: the shell's account line and Settings use the Roblox
+   username (`Roblox: <username>`, `Signed in with Roblox as <username>`, or "Roblox account" until the name is known), and Settings
+   shows no email or password form for such an account. Tests: the card rendered with and without another way in; the identity rules; a
+   syntax-tree check that no screen prints an address straight from the session and that both rows branch on the account kind.
+   Mutations `c2.W21` to `c2.W24`, `c2.W28` to `c2.W33`.
+5. **The tests.**
+   - The landing page itself is run. `RobloxCallbackPage` hands its hook `currentAccount`, `redeem`, `verifyOtp`, an
+     account-switched cleanup and a `navigate` callback, and its view `onSwitch` and `onStay`. `tests/page-harness.mjs` bundles the page
+     with `react` replaced by the hook stand-in, `react-router-dom` by a recorder, the Supabase client by a controllable stand-in, and
+     every other module the page imports by an inert stand-in (the logic under test stays real); calling the component returns the
+     element tree, and the test reads and calls the view's props. A redeem that reads `window.location.hash`, a `currentAccount` that
+     answers null (a silent replacement), a landing that skips the choice, and a mis-wired `onSwitch`, `onStay`, `navigate` or `verifyOtp`
+     each fail (`c2.W01` to `c2.W11`). It does not render children, reconcile, or run a hook the stand-in lacks.
+   - The minted link must belong to the linked user (`link.userId === userId`): a test makes Auth mint it for another user (`c2.T01`).
+     An address held by a user with a DIFFERENT `roblox_sub` is refused, not adopted (`c2.T02`).
+   - Every test in the worker file now fails on any call the Roblox or Supabase mock does not know, and on the Supabase secret key being
+     sent anywhere but `/auth/v1/admin/...`, in every scenario, not only the first sign-in (the worker swallows a failed outbound call, so
+     the mock records it and the wrapper around `test` checks at the end). `c2.T09` adds a table query with the secret key to the callback
+     and 62 of the 77 tests go red.
+   - The route-level catch handlers are reached with a store that throws an error whose message carries a URL with a code: each answers
+     the one generic page (JSON for redeem), clears its cookie with its attributes, and logs only `unexpected failure`
+     (`c2.T03` to `c2.T08d`).
+   - The tautology in the log test (`assert.ok(boom.res.status >= 200)`, true of every response) is replaced by the status and stage it was
+     meant to check (a storage failure answers 502 and logs `storage`).
+   - The "outside both guards" route test read the tags that enclose the route, but a guard is written in a Route's `element`, so a route
+     moved inside the guarded layout Route was not seen. It now reads the `element` of every ancestor Route and has positive controls
+     (`/settings` is found guarded by `AuthGuard`, `/login` by `GuestGuard`, `/confirm` by neither): `c2.W41` to `c2.W43`.
+6. **Minor, done.** When the landing page replaces one account's session with another account's, the previous account's drafts, recent
+   searches and view state are cleared (the same three families the sign-out handler clears; the same account confirming itself keeps its
+   own): a session replaced by `verifyOtp` sends SIGNED_IN, not SIGNED_OUT, so the existing handler never ran (`c2.W12` to `c2.W20`).
+   The per-isolate access-token cache is bound to the row's version and to a generation (a random label made at every sign-in and kept by
+   every refresh), and so are the refresh lease and the compare-and-swap: a token issued under a revoked grant is no longer served after a
+   disconnect and two sign-ins that bring the row back to the same version number (`c2.G01` to `c2.G05`). The `roblox_oauth_tokens`
+   table gained a `generation` column in its create statement; nothing is deployed, so no existing table needs migrating, and the account
+   export names the column as withheld bookkeeping.
+
+**Not fixed, or not verifiable here, and why.** Everything in the second half of section 7 added in cycle 2, and sections 6.6 to 6.9. In
+short: nothing was run against Roblox, Supabase or a browser (the rules of this work); a Roblox-only account cannot change its email or set
+a password (an owner decision about Supabase); re-authentication does not resume the action; its strength is that of the person's Roblox
+session; the Settings page is checked by its syntax tree and its pieces, not rendered whole; the export file records the placeholder
+address as stored.
