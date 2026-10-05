@@ -222,7 +222,10 @@ const PROJECT_SOURCES: readonly ExportSource[] = [
   { key: 'checkpoints', covers: ['checkpoints'], path: (p) => `/api/projects/${encodeURIComponent(p)}/checkpoints` },
   { key: 'attribution', covers: ['oplog', 'project_asset_use'], path: (p) => `/api/projects/${encodeURIComponent(p)}/attribution` },
   { key: 'automations', covers: ['automations', 'automation_runs'], path: (p) => `/api/projects/${encodeURIComponent(p)}/automations` },
-  { key: 'files', covers: ['ws:<project>:', 'wst:<project>:'], path: (p) => `/api/projects/${encodeURIComponent(p)}/files` },
+  // FOLLOWED, AND COVERING NOTHING. `/files` answers with a listing (name, size, saved date, and the trash entries with their deleted and expiry dates):
+  // it carries no file text. It used to claim `ws:<project>:` and `wst:<project>:`, so the file said nothing about their text being absent, and the
+  // pages said only the history was left out. Both stores are now printed under `notInThisFile` (OMISSION_WHY says what the listing does give).
+  { key: 'files', covers: [], path: (p) => `/api/projects/${encodeURIComponent(p)}/files` },
   { key: 'studio', covers: ['studio_pairings'], path: (p) => `/api/projects/${encodeURIComponent(p)}/studio/diagnostics?limit=200` },
   { key: 'memory', covers: ['memory_entries'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/export` },
   { key: 'memory_audit', covers: ['memory_audit'], path: (p) => `/api/memory/project/${encodeURIComponent(p)}/audit` },
@@ -249,6 +252,8 @@ const PROJECT_SOURCES: readonly ExportSource[] = [
  * what it should do — the worker is the thing that knows.
  */
 const OMISSION_WHY: Record<string, string> = {
+  'ws:<project>:': 'The text of your workspace files is not in this file. Every file is listed per project under `followed` (its name, size and when it was saved), but not what is in it; the zip route here serves the text.',
+  'wst:<project>:': 'The text of deleted workspace files is not in this file. The trash is listed per project under `followed` (name, size, when it was deleted and when it goes for good), but not what is in each file.',
   checkpoint_chunks: 'Bytes, not text. A checkpoint snapshot is a binary object; it is restored from the workspace rather than read.',
   'wsv:<project>:': 'One route per file path, and a download cannot guess which paths you want. Every current file is listed per project under `followed`; its history is fetched per path from the route here.',
   generated_images: 'Bytes, not text. The conversation that produced each image IS in this file and carries its id; the image itself is fetched one id at a time.',
@@ -412,7 +417,9 @@ const READ_ME =
   'Studio pairings — each under the route it came from. `complete` is a claim about those and only ' +
   'those: it is true when every route answered. Some things are NOT in here whatever it says, and all ' +
   'are listed in `notInThisFile`, with the route that serves each one where there is one: bytes (images, ' +
-  'audio, checkpoint snapshots, workspace file history), which cannot be lines of JSON; live credentials ' +
+  'audio, checkpoint snapshots), which cannot be lines of JSON; the text of your workspace files and their ' +
+  'earlier versions (this file lists your workspace files by name, size and date, and the deleted ones in the ' +
+  'trash, but does not contain what is in them); live credentials ' +
   '(a Studio pairing code), which would be dangerous in a downloaded file; and internal records that are ' +
   'not offered as a download (the request log, hashed account-recovery requests, applied payment events ' +
   'and refunds, a billing cache, deleted project ids, replies saved for your API keys).';
@@ -2611,9 +2618,10 @@ export function SettingsPage() {
                 children: (
                   <p className="settings-note settings-note-quiet">
                     The file lists at the top, next to the route that serves each one where there is one, everything it leaves
-                    out: bytes — images, audio, checkpoint snapshots and the history of your workspace files, which cannot be
-                    lines of JSON — and a live Studio pairing code, which would be a working key to your project sitting in a
-                    downloaded file (everything else about those pairings is in there). Some things are kept only as internal
+                    out: bytes — images, audio and checkpoint snapshots, which cannot be lines of JSON — and the text of your
+                    workspace files and their earlier versions (the file lists those files by name, size and date, and the deleted
+                    ones in the trash, but not what is in them), and a live Studio pairing code, which would be a working key to
+                    your project sitting in a downloaded file (everything else about those pairings is in there). Some things are kept only as internal
                     records and are not offered as a download: the request log, hashed account-recovery requests, which payment
                     events and refunds were already applied, a bounded cache of recent billing decisions, deleted project ids
                     held back to stop images being recreated, and the replies saved for your own API keys. Project branding has

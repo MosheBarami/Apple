@@ -184,6 +184,10 @@ test('the Settings copy and the file\u2019s own readMe do not call the export ev
     assert.match(text, /recovery/i, `${where} does not name the account-recovery records`);
   }
   assert.match(rows, /Project branding has\s+a route of its own/, 'the download row does not say branding is listed rather than included');
+  // THE WORKSPACE FILES: the file lists them (name, size, date; the trash too) and contains none of their text.
+  const flat = rows.replace(/\s+/g, ' ');
+  assert.match(flat, /the file lists those files by name, size and date, and the deleted ones in the trash, but not what is in them/, 'the download row does not say the file lists the workspace files but not their text');
+  assert.doesNotMatch(flat, /history of your workspace files/, 'the download row still says only the history of the workspace files stays out');
   // The worker's own note on the request log no longer says it carries no actor id once analytics are off (the run entries still do).
   const note = /\n\s+events: '([^']+)'/.exec(readFileSync(join(WEB, '..', 'worker', 'src', 'account-export.ts'), 'utf8'))?.[1] ?? '';
   assert.ok(note.length > 40, 'could not read the request-log note out of account-export.ts');

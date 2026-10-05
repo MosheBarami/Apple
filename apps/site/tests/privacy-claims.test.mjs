@@ -712,6 +712,26 @@ test('WHAT THE EXPORT LEAVES OUT is read from the worker\'s own list, and every 
   }
 });
 
+test('THE WORKSPACE FILES: the export lists them (name, size, date, and the trash) and holds none of their text, and every surface says exactly that', () => {
+  // The route the export follows for them is GET /api/projects/:id/files, which answers with `listWorkspace` and the trash. Their rows carry no text field: that is
+  // what makes "lists but does not contain their text" true. If a row ever gains one, the file contains the text, and these sentences are wrong in the other direction.
+  const tools = wcode(join(WORKER, 'src', 'webtools.ts'));
+  const fieldsOf = (name) => [...(new RegExp(`export interface ${name} \\{([\\s\\S]*?)\\}`).exec(tools)?.[1] ?? '').matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
+  assert.deepEqual(fieldsOf('WorkspaceFile'), ['path', 'bytes', 'updatedAt'], 'a listed workspace file now carries more than its name, size and date: re-read what the export holds');
+  assert.deepEqual(fieldsOf('WorkspaceTrashEntry'), ['path', 'bytes', 'deletedAt', 'expiresAt'], 'a trash entry now carries more than its name, size and dates');
+  const index = wcode(join(WORKER, 'src', 'index.ts'));
+  const route = index.slice(index.indexOf("app.get('/api/projects/:id/files', "), index.indexOf("app.get('/api/projects/:id/files/content'"));
+  assert.ok(route.length > 200 && /listWorkspace\(/.test(route) && /trashOf\(/.test(route) && !/content|readVersionOf|\.read\(/.test(route), 'the files route the export follows now returns something other than the listing and the trash');
+  // The worker's own pointers: the text is the zip, the trash is listed with the files, and the history is per path.
+  const stores = EXPORT.elsewhereFor();
+  assert.match(stores.find((s) => s.name === 'ws:<project>:').where, /files\/archive/, 'the worker no longer points the workspace files at the zip route');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /The file lists your workspace files \(name, size and date, and the deleted ones in the trash\) but does not contain their text or their earlier versions/, `${where} does not say the export lists the workspace files but not their text`);
+    assert.doesNotMatch(text, /history of your workspace files/, `${where} still says only the history of the workspace files is left out`);
+    assert.doesNotMatch(text, /snapshots,? and the history of your workspace files|bytes[^.]{0,120}workspace files/, `${where} still files the workspace files under bytes`);
+  }
+});
+
 test('THE NIGHTLY SWEEP is described as the three stores it runs, and the pages do not say it enforces every dated window', () => {
   const sweeps = [...wcode(join(WORKER, 'src', 'retention-sweep.ts')).matchAll(/results\.push\(await one\('([a-z_]+)'/g)].map((m) => m[1]);
   assert.deepEqual(sweeps, ['memory_entries', 'notifications', 'automation_runs'], 'the nightly sweep runs a different set of stores: re-describe it on the data page');
