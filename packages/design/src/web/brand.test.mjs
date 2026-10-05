@@ -17,7 +17,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
@@ -266,7 +266,13 @@ test('CI runs the brand check, headless, after Chromium is installed', () => {
 });
 
 test('the site links the favicon and touch icon, and its manifest points at icons that exist', () => {
-  for (const rel of ['apps/site/src/layouts/Base.astro', 'apps/site/src/layouts/Landing.astro']) {
+  // RESTATED 2026-10-05 (M2 site rebuild, handoff 2.2): this read two layouts, Base.astro and the old front page's own Landing.astro, which the
+  // rebuild deleted (every route, the front page included, renders through Base). The property is that EVERY site layout that owns a document
+  // links the icons, and the floor that proves the scan read one is that Base is among them.
+  const layoutDir = abs('apps/site/src/layouts');
+  const layouts = readdirSync(layoutDir).filter((f) => f.endsWith('.astro')).map((f) => `apps/site/src/layouts/${f}`).filter((rel) => /<html\b/.test(read(rel)));
+  assert.ok(layouts.includes('apps/site/src/layouts/Base.astro'), `Base.astro was not among the site's document layouts (${layouts.join(', ') || 'none'}): the scan has drifted`);
+  for (const rel of layouts) {
     const src = read(rel);
     assert.match(src, /rel="icon" href="\/favicon\.svg"/, `${rel} does not link /favicon.svg`);
     assert.match(src, /rel="apple-touch-icon"[^>]*href="\/apple-touch-icon\.png"/, `${rel} does not link the touch icon`);

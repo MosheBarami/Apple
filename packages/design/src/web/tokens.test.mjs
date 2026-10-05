@@ -51,7 +51,10 @@ test('the token file is exported by the package and both apps depend on it', () 
 
 test('every document layout of the site imports the tokens, and the app imports them before any other sheet', () => {
   const layouts = walkText(['apps/site/src/layouts']).filter((f) => /<html\b/.test(readText(f)));
-  assert.ok(layouts.length >= 2, `only ${layouts.length} document layout(s) found; the walk has drifted`);
+  // RESTATED 2026-10-05 (M2 site rebuild): the floor was TWO (Base.astro and the old front page's Landing.astro, deleted by the rebuild; every route
+  // now renders through Base). The property is that every layout owning a document imports the tokens; the floor is one, and it is Base.
+  assert.ok(layouts.length >= 1, `only ${layouts.length} document layout(s) found; the walk has drifted`);
+  assert.ok(layouts.some((f) => f.rel.endsWith('layouts/Base.astro')), 'Base.astro was not among the document layouts read');
   for (const f of layouts) {
     assert.match(readText(f), /import\s+['"]@studpilot\/design\/tokens\.css['"]/, `${f.rel} does not import the design tokens`);
     // Before every sheet of the site's own, so the cascade needs no `!important` to settle.

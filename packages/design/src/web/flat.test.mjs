@@ -215,7 +215,11 @@ test('no file but tokens.css writes a colour on a theme root, in any nesting, se
   assert.ok(rulesRead > 3000, `only ${rulesRead} rules read; the parse has drifted`);
   assert.ok(flatRules(FILES.filter(isStyle).map((f) => ({ ...f, css: cssOf(f) }))).some((r) => r.selector === ':root'), 'no :root rule was found at all; the selector match is blind');
   assert.ok(FILES.some((f) => f.rel === 'apps/web/index.html'), 'apps/web/index.html is not read');
-  assert.ok(FILES.filter((f) => /\.astro$/.test(f.rel) && /<html\b/.test(readText(f))).length >= 2, 'the site layouts are not read for an inline style on <html>');
+  // RESTATED 2026-10-05 (M2 site rebuild): the floor was TWO document layouts (Base.astro and the old Landing.astro, deleted by the rebuild). It is
+  // one now, and it must be Base: the scan has to have read the layout that owns <html>.
+  const htmlLayouts = FILES.filter((f) => /\.astro$/.test(f.rel) && /<html\b/.test(readText(f)));
+  assert.ok(htmlLayouts.length >= 1, 'the site layouts are not read for an inline style on <html>');
+  assert.ok(htmlLayouts.some((f) => f.rel.endsWith('layouts/Base.astro')), 'Base.astro, the one layout that owns <html>, was not read');
   assert.deepEqual(stray, [], `a colour is written on a theme root outside tokens.css:\n  ${stray.join('\n  ')}`);
 });
 
