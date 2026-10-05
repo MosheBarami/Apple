@@ -30,7 +30,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { rgbOfHex, splitTop, theme, themeBlocks, surfacesOf } from './css-tokens.mjs';
 import { buildMockWeb, launchChromium, serveApp } from './tests/built-web.mjs';
-import { BAR, drawnRatio, failuresOf, inPageFilledElements, inPageFocusIndicator, inPageRememberRest } from './tests/probes.mjs';
+import { BAR, drawnRatio, failuresOf, inPageBackdropFilters, inPageFilledElements, inPageFocusIndicator, inPageRememberRest } from './tests/probes.mjs';
 import { ROOT } from './tests/repo-walk.mjs';
 import { appSheets, flatRules } from './tests/sheets.mjs';
 
@@ -79,6 +79,9 @@ const FOCUS = { dark: [], light: [] };
 /** mode -> the focus stops of the Button variant fixtures, one per variant and surface */
 const VARIANT_FOCUS = { dark: [], light: [] };
 const RING = 3;
+/** [{ route, blurred: string[] }]: every element drawn with a backdrop filter, route by route (the same in both themes). */
+const BLURS = [];
+let FIXTURE_BLURS = [];
 
 const NO_MOTION = '*,*::before,*::after{transition:none!important;animation:none!important}';
 const setTheme = (page, mode) => page.evaluate((m) => { document.documentElement.dataset.theme = m; }, mode);
@@ -133,6 +136,7 @@ before(async () => {
       }
       await page.mouse.move(0, 0);
       DRAWN[mode].push({ route: route.name, state: 'hover', elements: hovered });
+      if (mode === 'dark') BLURS.push({ route: route.name, blurred: await page.evaluate(inPageBackdropFilters) });
       // From the keyboard: the ring each control draws when it is tabbed to.
       await page.evaluate(inPageRememberRest);
       FOCUS[mode].push({ route: route.name, stops: await tabThrough(page) });
@@ -162,6 +166,14 @@ before(async () => {
     }
     document.body.appendChild(host);
   }, { variants, surfaces });
+  // The vendored attachment remove button, as upstream writes it (`bg-background/80 backdrop-blur-sm`), and a bare utility:
+  // the stylesheet must take the blur out of an element that carries one.
+  await page.evaluate(() => {
+    const host = document.getElementById('fx-host');
+    host.insertAdjacentHTML('beforeend', '<button id="fx-blur-a" type="button" class="bg-background/80 backdrop-blur-sm">a</button><div id="fx-blur-b" class="backdrop-blur-sm">b</div>');
+  });
+  FIXTURE_BLURS = await page.evaluate(inPageBackdropFilters, '#fx-blur-a, #fx-blur-b');
+  await page.evaluate(() => { document.getElementById('fx-blur-a').remove(); document.getElementById('fx-blur-b').remove(); });
   for (const mode of MODES) {
     await setTheme(page, mode);
     await page.waitForTimeout(150);
@@ -229,6 +241,7 @@ test('the guard has teeth: a label in the wrong ink on the accent is reported, t
       `<button id="t-bad" style="background:var(--accent);color:var(--muted)">${icon}Send</button>`,
       `<button id="t-ok" style="background:var(--accent);color:var(--accent-ink)">${icon}Send</button>`,
       `<button id="t-mix" style="background:color-mix(in srgb,var(--accent) 90%,transparent);color:var(--accent-ink)">${icon}Send</button>`,
+      '<div id="t-blur" style="backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)">pane</div><div id="t-clear" style="backdrop-filter:none">pane</div>',
     ].join('');
     document.body.appendChild(host);
   });
@@ -242,6 +255,8 @@ test('the guard has teeth: a label in the wrong ink on the accent is reported, t
     assert.ok(lines.some((l) => /text/.test(l)), `${mode}: the label drawn in --muted on the accent was not reported`);
     assert.equal(lines.length, 2, `${mode}: exactly the wrong-ink fixture should fail (its text and its icon), got:\n${lines.join('\n')}`);
   }
+  assert.equal((await page.evaluate(inPageBackdropFilters, '#t-blur')).length, 1, 'a frosted pane (backdrop-filter: blur) was not reported');
+  assert.equal((await page.evaluate(inPageBackdropFilters, '#t-clear')).length, 0, 'an unfiltered element was reported as frosted');
   await context.close();
   // The arithmetic: black text at half alpha on white is a mid grey, not black.
   assert.ok(drawnRatio([0, 0, 0, 0.5], [255, 255, 255]) < 5.5 && drawnRatio([0, 0, 0, 1], [255, 255, 255]) > 20, 'the alpha of a drawn foreground is not laid over its fill');
@@ -335,6 +350,16 @@ for (const mode of MODES) {
     assert.deepEqual(bad, [], `${mode}: a Button variant is tabbed to and draws a ring under ${RING}:1 on its surface:\n  ${bad.join('\n  ')}`);
   });
 }
+
+/* ------------------------------------------------------------------ flat: nothing is drawn through a frosted pane */
+
+test('no element on any route is drawn with a backdrop filter, and an element that carries a backdrop-blur utility is not either', () => {
+  assert.equal(BLURS.length, ROUTES.length, 'not every route was scanned for a backdrop filter');
+  const drawn = BLURS.flatMap((b) => b.blurred.map((x) => `${b.route}: ${x}`));
+  assert.deepEqual(drawn, [], `a frosted pane is drawn:\n  ${drawn.join('\n  ')}`);
+  // The scan could see one: the fixture carries the utility the vendored attachments file ships, and it must come back unblurred.
+  assert.deepEqual(FIXTURE_BLURS, [], `an element with a backdrop-blur utility is drawn blurred:\n  ${FIXTURE_BLURS.join('\n  ')}`);
+});
 
 /* ------------------------------------------------------------------ the cause, held directly */
 

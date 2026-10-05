@@ -13,7 +13,7 @@ import { readText, walkText } from './repo-walk.mjs';
 /** The CSS of a file: the file itself, or the <style> blocks of an .astro page. */
 export function cssOf(file) {
   const src = readText(file);
-  return stripComments(file.rel.endsWith('.astro') ? [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n') : src);
+  return stripComments(/\.(?:astro|html)$/.test(file.rel) ? [...src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n') : src);
 }
 
 /** Every .css and .astro file of both apps, as { path, rel, css }. */
@@ -168,19 +168,45 @@ export function carriesColour(value) {
   return false;
 }
 
+/** The names a theme goes by when nothing names the root element: `.dark`, `.dark-mode`, `.is-light`, `.theme-sepia`. */
+const THEME_CLASS = /^\.(?:dark|light|(?:dark|light)[-_]?(?:mode|theme|scheme)|(?:is|has|theme|mode|scheme)[-_](?:dark|light))$/i;
+/** `[data-theme]`, `[data-mode="dark"]`, `[data-bs-theme=dark]`, `[data-color-scheme=dark]`: any attribute whose name says theme, mode or scheme. */
+const THEME_ATTRIBUTE = /^\[[\w-]*(?:theme|mode|scheme)[\w-]*(?:\s*[~|^$*]?=\s*[^\]]*)?\]$/i;
+
+/** The last compound of a complex selector (the element the rule STYLES), or null for one that cannot be read. */
+function subjectOf(selector) {
+  let depth = 0;
+  let cut = 0;
+  for (let i = 0; i < selector.length; i += 1) {
+    const c = selector[i];
+    if (c === '(' || c === '[') depth += 1;
+    else if (c === ')' || c === ']') depth -= 1;
+    else if (depth === 0 && /[\s>+~]/.test(c)) cut = i + 1;
+  }
+  return selector.slice(cut).trim() || null;
+}
+
 /**
- * Is one selector of a list a THEME ROOT: the document element, or the element a theme is switched
- * on, in any spelling this code base or another could use: `:root`, `html`, `body`, `[data-theme]`
- * quoted or not, `html.dark`, `:root.light`, `:root:not([data-theme='light'])`, `html:where(.dark)`.
- * A descendant (`html .card`) is not a root: it is a component scoping its own value.
+ * Is one selector of a list a THEME ROOT: a rule whose SUBJECT, the element it styles, is the document element
+ * or the element a theme is switched on. Two shapes:
+ *   - the subject is `html`, `:root` or `body` with ANY qualifier: `html.no-js`, `html[dir=rtl]`, `:root.dark-mode`,
+ *     `body.is-dark`, `html:where(.dark)`, `html > body.x`. (The first version listed the qualifiers it knew, and a
+ *     rule on `html.no-js` or `[data-bs-theme=dark]` slipped through.)
+ *   - the subject names no element but is a theme switch: `.dark`, `.dark-mode`, `.is-light`, `.theme-dark`, `[data-theme]`,
+ *     `[data-mode="dark"]`, `[data-bs-theme=dark]`, any attribute whose name says theme, mode or scheme, alone or with pseudo-classes.
+ * A descendant of the root (`html .card`, `[data-theme=light] .card`) is a component scoping its own value, not a root,
+ * and a pseudo-element (`html::selection`) is not the element.
  */
 export function isThemeRoot(part) {
   const compact = part.trim().replace(/\[[^\]]*\]/g, (m) => m.replace(/\s+/g, ''));
-  const flat = compact.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
-  if (!flat || /[\s>+~,]/.test(flat)) return false;
-  const head = /^(?::root|html|body)/i.exec(flat);
-  if (!head && !/\[data-theme|\.(?:dark|light)\b|\.theme-/i.test(flat)) return false;
-  return /^(?:\[data-theme[^\]]*\]|\.(?:dark|light|theme-[\w-]+)|:[\w-]+)*$/i.test(flat.slice(head ? head[0].length : 0));
+  const subject = subjectOf(compact);
+  if (!subject || /::/.test(subject.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, ''))) return false;
+  if (/^(?::root|html|body)(?![\w-])/i.test(subject)) return true;
+  const bare = subject.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
+  const simples = bare.match(/\.[\w-]+|\[[^\]]*\]|:[\w-]+|#[\w-]+|[^.[:#]+/g) ?? [];
+  if (simples.length === 0 || simples.some((x) => /^[^.[:#]/.test(x))) return false;
+  const themed = simples.filter((x) => THEME_CLASS.test(x) || THEME_ATTRIBUTE.test(x));
+  return themed.length > 0 && simples.every((x) => THEME_CLASS.test(x) || THEME_ATTRIBUTE.test(x) || x.startsWith(':'));
 }
 
 /**
@@ -199,6 +225,36 @@ export function themeRootColours(css) {
       const [prop, value] = [d.slice(0, colon).trim(), d.slice(colon + 1).trim()];
       if (carriesColour(value)) out.push({ selector, prop, value });
     }
+  }
+  return out;
+}
+
+/**
+ * Every colour written by an inline `style` attribute on the document or body element in markup (an .astro layout or
+ * apps/web/index.html): `<html style="--paper:#000">`, `<body style="background:#fff">`. A stylesheet guard never reads it.
+ * As { tag, prop, value }.
+ */
+export function inlineRootColours(markup) {
+  const out = [];
+  for (const m of markup.replace(/<!--[\s\S]*?-->/g, ' ').matchAll(/<(html|body)\b[^>]*?\sstyle\s*=\s*(["'])([\s\S]*?)\2/gi)) {
+    for (const d of splitTop(m[3], ';')) {
+      const colon = d.indexOf(':');
+      if (colon === -1) continue;
+      const [prop, value] = [d.slice(0, colon).trim(), d.slice(colon + 1).trim()];
+      if (carriesColour(value)) out.push({ tag: m[1].toLowerCase(), prop, value });
+    }
+  }
+  return out;
+}
+
+/**
+ * Every colour a SCRIPT writes on the document or body element: `document.documentElement.style.setProperty('--paper', '#000')`,
+ * `document.body.style.background = '#fff'`. As { target, text }.
+ */
+export function scriptRootColours(script) {
+  const out = [];
+  for (const m of script.matchAll(/(documentElement|document\.body)\.style\.(?:setProperty\(\s*['"`][^'"`]+['"`]\s*,\s*|[\w]+\s*=\s*)(['"`])([^'"`]*)\2/g)) {
+    if (carriesColour(m[3])) out.push({ target: m[1], text: m[0].slice(0, 80) });
   }
   return out;
 }

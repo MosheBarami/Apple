@@ -806,7 +806,9 @@ export function Composer({
       <PromptInput
         className={cn(
           'gx-composer__form relative rounded-2xl',
-          '[&>[data-slot=input-group]]:rounded-2xl [&>[data-slot=input-group]]:bg-card/90 [&>[data-slot=input-group]]:shadow-lg [&>[data-slot=input-group]]:backdrop-blur',
+          // A flat surface: an opaque card and a hairline edge. It was `bg-card/90` over `backdrop-blur`, a frosted pane
+          // that let the thread show through blurred (the glass the design system removed, M2 2.1).
+          '[&>[data-slot=input-group]]:rounded-2xl [&>[data-slot=input-group]]:bg-card [&>[data-slot=input-group]]:shadow-lg',
           dropping && '[&>[data-slot=input-group]]:border-dashed [&>[data-slot=input-group]]:border-primary [&>[data-slot=input-group]]:bg-primary/10',
         )}
         data-dropping={dropping || undefined}

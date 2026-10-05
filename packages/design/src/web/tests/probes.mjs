@@ -192,6 +192,17 @@ export function inPageFocusIndicator() {
   return { id: el.getAttribute('data-fid'), who: label(el), indicators, best: best ? { kind: best.kind, ratio: best.ratio, colour: best.colour, width: best.width } : null, visible: r.width > 1 && r.height > 1 };
 }
 
+/** Every element the browser draws with a backdrop filter (a frosted pane), as readable strings. Flat means none. */
+export function inPageBackdropFilters(selector = '*') {
+  const out = [];
+  for (const el of document.querySelectorAll(selector)) {
+    const cs = getComputedStyle(el);
+    const v = cs.backdropFilter || cs.webkitBackdropFilter;
+    if (v && v !== 'none') out.push(`<${el.tagName.toLowerCase()} class="${(el.getAttribute('class') || '').slice(0, 60)}"> backdrop-filter: ${v}`);
+  }
+  return out;
+}
+
 /** The ratio of a drawn foreground ([r, g, b, a]) over a drawn fill ([r, g, b]), with the foreground's own alpha laid over the fill first. */
 export function drawnRatio(fg, fill) {
   const a = fg[3];

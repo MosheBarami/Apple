@@ -174,3 +174,14 @@
 [class*='focus-visible:ring-destructive/']:focus-visible {
   --tw-ring-color: var(--color-destructive);
 }
+
+/*
+ * NO BLUR BEHIND A SURFACE, WHEREVER A UTILITY ASKS FOR ONE. The language is flat: a surface is a colour and a hairline.
+ * The attachment tile's remove button is vendored upstream as `bg-background/80 backdrop-blur-sm` (byte-pinned), so the
+ * blur is taken out here, for any element that carries a backdrop-blur utility, by a rule outside every layer.
+ * flat.test.mjs holds that no first-party file asks for one and that this rule is still here while a vendored file does.
+ */
+[class*='backdrop-blur'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
