@@ -6,8 +6,10 @@
  *
  *   1. both apps import it, first, and depend on the package that carries it;
  *   2. it declares exactly one --accent per theme, and no other sheet in either app declares one;
- *   3. no retired accent literal is left anywhere outside this package, and no accent value of any
- *      candidate is typed into an app (an app reads the token);
+ *   3. no retired accent colour is left anywhere outside this package, and no accent value of any
+ *      candidate is typed into an app or a script (an app reads the token). Both are compared as COLOURS, in any
+ *      syntax: `rgba(139, 92, 246, .2)` and `hsl(228 93% 66%)` are the retired violet and azure the guards were
+ *      first written to ban, and the first versions matched the hex spelling only;
  *   4. the accent family is candidate 1 of accents.json, and every candidate in that file clears AA in
  *      both themes, MEASURED from the files at the moment the test runs (the ratios recorded in
  *      accents.json must equal them);
@@ -21,8 +23,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  AA, ACCENTS_JSON_PATH, OLD_ACCENT_LITERALS, SURFACES, STATUS_INKS, TEXT_INKS, TOKENS_CSS_PATH,
-  aaFailures, accentRingOf, contrast, customPropertyWrites, declarations, measureAccentExact, readTokensCss, roundRatios,
+  AA, ACCENTS_JSON_PATH, OLD_ACCENT_HEX, OLD_ACCENT_LITERALS, SURFACES, STATUS_INKS, TEXT_INKS, TOKENS_CSS_PATH,
+  aaFailures, accentRingOf, coloursIn, contrast, customPropertyWrites, declarations, listedColoursIn, measureAccentExact, readTokensCss, roundRatios,
   stripComments, stripScriptComments, surfacesOf, theme, themeBlocks, topLevelRules,
 } from './css-tokens.mjs';
 import { ROOT, readText, walkNames, walkText } from './tests/repo-walk.mjs';
@@ -111,49 +113,112 @@ test('the guard has teeth: a stylesheet, a style object and a setProperty call t
 
 /* ------------------------------------------------------------------ 3. no accent literals in the apps */
 
-/** The retired accent literals a source still carries, matched case-insensitively and across rgba spacing. */
-const retiredIn = (text) => {
-  const src = text.toLowerCase().replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, 'rgba($1,$2,$3');
-  return OLD_ACCENT_LITERALS.filter((lit) => src.includes(lit));
-};
+/** The retired accent COLOURS a source still carries, in any syntax (hex, rgb(), rgba(), hsl(), hwb(), color(srgb), oklab(), oklch()): the hexes found. */
+const retiredIn = (text) => listedColoursIn(text, OLD_ACCENT_HEX);
 
-test('no retired accent literal exists in any tracked source outside packages/design', () => {
+test('no retired accent colour exists in any tracked source outside packages/design, in any colour syntax', () => {
   const files = walkText(['apps', 'packages', 'scripts', 'tools', 'infra', 'tests', '.github', 'supabase'], { skipPaths: [
     'packages/asset-library', 'packages/corpus', 'packages/training', 'packages/owner-corpus', 'packages/design',
   ] });
   assert.ok(files.length > 1500, `only ${files.length} files scanned; the walk has drifted`);
+  assert.ok(files.some((f) => f.rel.startsWith('scripts/')) && files.some((f) => f.rel.startsWith('apps/web/')), 'the walk misses scripts/ or the app');
+  // Third-party brand skins of the owner dashboards carry their vendors' own colours: Sentry's purple (#7553ff) is 4/255 from a
+  // retired violet of ours. They are left out by path and held from both ends below (the exemption goes when the skin stops needing it).
+  const THIRD_PARTY = /^scripts\/owner-dashboard\/control\/skins\/(?!studpilot\.css$)/;
   const hits = [];
-  for (const f of files) for (const lit of retiredIn(readText(f))) hits.push(`${f.rel}: ${lit}`);
-  assert.deepEqual(hits, [], `a retired accent literal is still in the tree:\n  ${hits.join('\n  ')}`);
+  const exempt = [];
+  for (const f of files) {
+    const found = retiredIn(readText(f));
+    if (THIRD_PARTY.test(f.rel)) { if (found.length) exempt.push(f.rel); continue; }
+    for (const hex of found) hits.push(`${f.rel}: ${hex}`);
+  }
+  assert.deepEqual(hits, [], `a retired accent colour is still in the tree (in some syntax):\n  ${hits.join('\n  ')}`);
+  assert.ok(exempt.length >= 1, 'no third-party brand skin carries a colour near a retired accent any more: delete the THIRD_PARTY exemption');
+  assert.ok(exempt.every((rel) => /sentry\.css$/.test(rel)), `a third-party skin other than Sentry's is exempt only by being near a retired accent: ${exempt.join(', ')}; check it is a vendor colour`);
 });
 
-test('the ban names every retired accent, including the three violets and the blue the first pass let drop out of the list', () => {
+test('the ban names every retired accent, including the three violets, the blue and the dashboards\' azure', () => {
   // Spelled out here on purpose: a ban that is a list is only as good as the list, so the list is held.
-  for (const lit of ['#5b7cfa', '#4568e8', '#8ca4ff', '#4264e8', '#3155d4', '#8b5cf6', '#7550de', '#7657ff', '#4f7cff']) {
-    assert.ok(OLD_ACCENT_LITERALS.includes(lit), `${lit} is not banned`);
+  for (const lit of ['#5b7cfa', '#4568e8', '#8ca4ff', '#4264e8', '#3155d4', '#8b5cf6', '#7550de', '#7657ff', '#4f7cff', '#8aa2ff', '#3454d1', '#b9c6ff']) {
+    assert.ok(OLD_ACCENT_LITERALS.includes(lit) && OLD_ACCENT_HEX.includes(lit), `${lit} is not banned`);
   }
-  assert.ok(OLD_ACCENT_LITERALS.some((l) => l.startsWith('rgba(91,124,250')) && OLD_ACCENT_LITERALS.some((l) => l.startsWith('rgba(69,104,232')), 'a translucent form of the old azure is not banned');
 });
 
-test('the guard has teeth: each retired literal is found in the forms it was written, and today\'s accent is not', () => {
-  for (const lit of OLD_ACCENT_LITERALS.filter((l) => l.startsWith('#'))) {
-    assert.deepEqual(retiredIn(`a { color: ${lit.toUpperCase()}; }`), [lit], `${lit} was not found in upper case`);
+/** A colour written in each syntax a page can use, from its channels. */
+const spellings = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [rf, gf, bf] = [r, g, b].map((v) => v / 255);
+  const max = Math.max(rf, gf, bf);
+  const min = Math.min(rf, gf, bf);
+  const l = (max + min) / 2;
+  const d = max - min;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  const hue = d === 0 ? 0 : (max === rf ? ((gf - bf) / d + 6) % 6 : max === gf ? (bf - rf) / d + 2 : (rf - gf) / d + 4) * 60;
+  return {
+    upper: hex.toUpperCase(),
+    'hex with alpha': `${hex}33`,
+    'rgb() commas': `rgb(${r}, ${g}, ${b})`,
+    'rgb() spaces': `rgb(${r} ${g} ${b})`,
+    'rgba()': `rgba(${r}, ${g}, ${b}, .2)`,
+    'rgba() tight': `rgba(${r},${g},${b},0.2)`,
+    'rgb() with a slash alpha': `rgb(${r} ${g} ${b} / 20%)`,
+    'rgb() percentages': `rgb(${(rf * 100).toFixed(1)}% ${(gf * 100).toFixed(1)}% ${(bf * 100).toFixed(1)}%)`,
+    'hsl() whole numbers': `hsl(${Math.round(hue)} ${Math.round(sat * 100)}% ${Math.round(l * 100)}%)`,
+    'hsla()': `hsla(${Math.round(hue)}, ${Math.round(sat * 100)}%, ${Math.round(l * 100)}%, .3)`,
+    'color(srgb)': `color(srgb ${rf.toFixed(4)} ${gf.toFixed(4)} ${bf.toFixed(4)})`,
+  };
+};
+
+test('the guard has teeth: each retired colour is found in every syntax it can be written, and today\'s accent is not', () => {
+  for (const hex of OLD_ACCENT_HEX) {
+    for (const [name, text] of Object.entries(spellings(hex))) {
+      assert.ok(retiredIn(`a { color: ${text}; }`).includes(hex), `${hex} was not found written as ${name}: ${text}`);
+    }
   }
-  assert.deepEqual(retiredIn('a { background: rgba( 91 , 124 , 250 , .2 ); }'), ['rgba(91,124,250'], 'a spaced rgba of the old azure was not found');
-  assert.deepEqual(retiredIn(`a { color: ${ACCENTS.candidates[0].dark.accent}; }`), [], 'the shipping accent trips the retired-literal guard');
+  // The forms the first guard let through, as the review wrote them.
+  assert.deepEqual(retiredIn('a { background: rgba( 91 , 124 , 250 , .2 ); }'), ['#5b7cfa'], 'a spaced rgba of the old azure was not found');
+  assert.ok(retiredIn('a { background: rgba(139, 92, 246, 0.2); }').includes('#8b5cf6'), 'the retired violet as rgba() was not found');
+  assert.ok(retiredIn('a { outline-color: rgb(91 124 250 / 20%); }').includes('#5b7cfa'), 'the retired azure as rgb() with a slash alpha was not found');
+  assert.ok(retiredIn('a { color: hsl(228 93% 66%); }').includes('#5b7cfa'), 'the retired azure as a loosely rounded hsl() (4/255 off, as the review wrote it) was not found');
+  // Today's accent is not one of them, in any syntax, and a colour that is merely near is not either.
+  for (const [name, text] of Object.entries(spellings(ACCENTS.candidates[0].dark.accent))) assert.deepEqual(retiredIn(`a { color: ${text}; }`), [], `the shipping accent written as ${name} trips the retired guard`);
+  // A colour that is merely near IS found (Sentry's purple, 4/255 from a retired violet): the guard cannot tell a vendor's colour from ours, so the skin is exempt by path above.
+  assert.deepEqual(retiredIn('a { color: #7553FF; }'), ['#7657ff'], 'the near colour the exemption exists for is no longer near');
+  assert.deepEqual(retiredIn('a { color: #7a60ff; }'), [], 'a colour 7/255 from a retired violet was found');
+  // The reader itself: hex of every length, the functional syntaxes, and what is not a literal.
+  assert.deepEqual(coloursIn('#abc #aabbcc #aabbccdd #abcd').map((c) => c.rgb.join(',')), ['170,187,204', '170,187,204', '170,187,204', '170,187,204']);
+  assert.deepEqual(coloursIn('color: var(--accent); background: red; --x: calc(1px + 2px); id="#fab-1"').map((c) => c.literal), [], 'a var(), a named colour, a length or an anchor with a suffix was read as a colour literal');
 });
 
-test('no accent value of any candidate is typed into an app: an app reads the token', () => {
+test('no accent value of any candidate is typed into an app or a script: an app reads the token', () => {
   const values = ACCENTS.candidates.flatMap((c) => ['dark', 'light'].flatMap((m) => [c[m].accent, c[m]['accent-strong']])).map((v) => v.toLowerCase());
   assert.equal(new Set(values).size, values.length, 'two candidates share an accent value');
-  const files = walkText(['apps/site/src', 'apps/web/src', 'apps/web/scripts']);
+  // The dashboards in scripts/owner-dashboard are the owner's separate local tool: its own palette, webfonts, glass and aurora, with
+  // service skins that carry third-party brand colours (a cyan that is also a candidate). They hand-copy the default accent; that is the
+  // one place this guard does not read, and it is held from both ends below.
+  const OWNER_TOOL = 'scripts/owner-dashboard/';
+  const files = walkText(['apps/site/src', 'apps/web/src', 'apps/web/scripts', 'scripts']);
   const hits = [];
+  let read = 0;
   for (const f of files) {
-    const src = readText(f).toLowerCase();
-    for (const v of values) if (src.includes(v)) hits.push(`${f.rel}: ${v}`);
+    if (f.rel.startsWith(OWNER_TOOL)) continue;
+    read += 1;
+    for (const hex of listedColoursIn(readText(f), values)) hits.push(`${f.rel}: ${hex}`);
   }
-  assert.ok(files.length > 300, `only ${files.length} app files scanned; the walk has drifted`);
-  assert.deepEqual(hits, [], `an accent colour is hard-coded in an app; use var(--accent) or var(--accent-strong):\n  ${hits.join('\n  ')}`);
+  assert.ok(read > 300, `only ${read} files scanned; the walk has drifted`);
+  assert.ok(files.some((f) => f.rel.startsWith('scripts/') && !f.rel.startsWith(OWNER_TOOL)), 'scripts/ is not in the walk');
+  assert.deepEqual(hits, [], `an accent colour is hard-coded (in some syntax); use var(--accent) or var(--accent-strong):\n  ${hits.join('\n  ')}`);
+  // From the other end: the exemption is needed while the dashboards still copy the shipping accent, and goes when they stop.
+  const dashboards = files.filter((f) => f.rel.startsWith(OWNER_TOOL));
+  assert.ok(dashboards.length > 20, `only ${dashboards.length} dashboard files; ${OWNER_TOOL} moved: delete the exemption`);
+  assert.ok(dashboards.some((f) => listedColoursIn(readText(f), [ACCENTS.candidates[0].dark.accent]).length > 0), `${OWNER_TOOL} no longer copies the accent: delete the exemption`);
+});
+
+test('the guard has teeth: every syntax of an accent value is found in an app, and a var() is not', () => {
+  const values = ACCENTS.candidates.flatMap((c) => ['dark', 'light'].flatMap((m) => [c[m].accent, c[m]['accent-strong']]));
+  for (const hex of values) for (const [name, text] of Object.entries(spellings(hex))) assert.ok(listedColoursIn(`a { border-color: ${text}; }`, values).includes(hex), `${hex} written as ${name} was not found: ${text}`);
+  assert.deepEqual(listedColoursIn('a { color: var(--accent); background: var(--accent-wash); }', values), []);
+  assert.ok(listedColoursIn('a { background: rgba(166,124,255,.2); }', values).includes('#a67cff'), 'the shipping accent as rgba() passed (the finding)');
 });
 
 /* ------------------------------------------------------------------ 4. accents.json: three candidates, AA, default in the file */

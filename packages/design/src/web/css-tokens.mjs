@@ -26,9 +26,100 @@ export const OLD_ACCENT_LITERALS = [
   '#5b7cfa', '#4568e8', '#8ca4ff', '#4264e8', '#3155d4',
   'rgba(91,124,250', 'rgba(69,104,232',
   '#8b5cf6', '#7550de', '#7657ff', '#4f7cff',
+  // The owner dashboards (scripts/owner-dashboard) kept their own azure ink next to the violet: the same family, hand-typed.
+  '#8aa2ff', '#3454d1', '#b9c6ff',
 ];
 
+/**
+ * The retired accents as colours, not spellings: every entry of OLD_ACCENT_LITERALS that is a hex (the translucent
+ * `rgba(` prefixes are the same colours written another way, and `listedColoursIn` finds a colour in ANY syntax).
+ */
+export const OLD_ACCENT_HEX = OLD_ACCENT_LITERALS.filter((l) => l.startsWith('#'));
+
 export const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+/* ------------------------------------------------------------------ a colour in any syntax */
+
+/**
+ * Every colour LITERAL a text writes, in any syntax a stylesheet, a script or a page can spell it, as { literal, rgb, alpha }
+ * with rgb the three 8-bit channels (not rounded: a test compares with a tolerance). Recognised: hex (3, 4, 6, 8 digits),
+ * rgb()/rgba() (commas or spaces, percentages, a slash alpha), hsl()/hsla(), hwb(), color(srgb ...), oklab() and oklch().
+ * A named colour or a var() is not a literal and is not returned. The first guards matched the hex spelling only, so the same
+ * colour written `rgba(139, 92, 246, .2)` or `hsl(228 93% 66%)` passed them.
+ */
+export function coloursIn(text) {
+  const out = [];
+  for (const m of String(text).matchAll(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{4}|[0-9a-f]{3})(?![0-9a-z_-])/gi)) {
+    const h = m[1].length <= 4 ? [...m[1]].map((c) => c + c).join('') : m[1];
+    out.push({ literal: m[0], rgb: [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)), alpha: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1 });
+  }
+  for (const m of String(text).matchAll(/\b(rgba?|hsla?|hwb|oklab|oklch|color)\(([^()]*)\)/gi)) {
+    const c = colourFromFunction(m[1].toLowerCase(), m[2]);
+    if (c) out.push({ literal: m[0], ...c });
+  }
+  return out;
+}
+
+function colourFromFunction(fn, args) {
+  const parts = args.replace(/[,/]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const num = (p) => (p === undefined || p === 'none' ? 0 : parseFloat(p));
+  const share = (p, whole) => (String(p).endsWith('%') ? (parseFloat(p) / 100) * whole : parseFloat(p));
+  const alphaOf = (p) => (p === undefined ? 1 : share(p, 1));
+  const clamp = (v) => Math.min(255, Math.max(0, v));
+  const degrees = (p) => { const v = parseFloat(p); return /turn$/.test(p) ? v * 360 : /rad$/.test(p) ? (v * 180) / Math.PI : /grad$/.test(p) ? v * 0.9 : v; };
+  /** hsl in degrees and 0..1 -> [r, g, b] in 0..255 */
+  const hsl = (h, s, l) => {
+    const k = (n) => (n + (((h % 360) + 360) % 360) / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    return [0, 8, 4].map((n) => (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))) * 255);
+  };
+  let rgb;
+  let alpha;
+  if (fn === 'rgb' || fn === 'rgba') {
+    if (parts.length < 3) return null;
+    rgb = parts.slice(0, 3).map((p) => clamp(share(p, 255)));
+    alpha = alphaOf(parts[3]);
+  } else if (fn === 'hsl' || fn === 'hsla') {
+    if (parts.length < 3) return null;
+    rgb = hsl(degrees(parts[0]), num(parts[1]) / 100, num(parts[2]) / 100).map(clamp);
+    alpha = alphaOf(parts[3]);
+  } else if (fn === 'hwb') {
+    if (parts.length < 3) return null;
+    const [w, b] = [num(parts[1]) / 100, num(parts[2]) / 100];
+    rgb = hsl(degrees(parts[0]), 1, 0.5).map((v) => clamp((v / 255) * (1 - w - b) * 255 + w * 255));
+    alpha = alphaOf(parts[3]);
+  } else if (fn === 'color') {
+    if (parts[0] !== 'srgb' || parts.length < 4) return null;
+    rgb = parts.slice(1, 4).map((p) => clamp(share(p, 1) * 255));
+    alpha = alphaOf(parts[4]);
+  } else {
+    // oklab(L a b) and oklch(L C h): Bjorn Ottosson's matrices to linear sRGB, then the sRGB transfer function.
+    if (parts.length < 3) return null;
+    const L = share(parts[0], 1);
+    let [a, b] = [num(parts[1]), num(parts[2])];
+    if (fn === 'oklch') { const hd = (degrees(parts[2]) * Math.PI) / 180; [a, b] = [num(parts[1]) * Math.cos(hd), num(parts[1]) * Math.sin(hd)]; }
+    const [l, m, s] = [L + 0.3963377774 * a + 0.2158037573 * b, L - 0.1055613458 * a - 0.0638541728 * b, L - 0.0894841775 * a - 1.291485548 * b].map((v) => v ** 3);
+    const linear = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+    rgb = linear.map((v) => clamp((v <= 0.0031308 ? 12.92 * v : 1.055 * Math.max(v, 0) ** (1 / 2.4) - 0.055) * 255));
+    alpha = alphaOf(parts[3]);
+  }
+  return rgb.some(Number.isNaN) ? null : { rgb, alpha };
+}
+
+/**
+ * Which of the `listed` colours (hex strings) a text carries, in ANY syntax, within `tolerance` per channel (of 255).
+ * The default is 6: an `hsl()` written to whole numbers lands on its hex within 2.9 for every colour this repository
+ * bans or ships (measured over all 24), and one written loosely (`hsl(228 93% 66%)` for #5b7cfa) within 4, so the same
+ * colour in another syntax is found. The cost is a colour that is merely near: Sentry's brand purple (#7553ff) in the
+ * owner dashboards' Sentry skin is 4 from a retired violet, and tokens.test.mjs leaves third-party brand skins out by path.
+ * Returns the listed hexes found, once each.
+ */
+export function listedColoursIn(text, listed, tolerance = 6) {
+  const found = new Set();
+  const want = listed.map((hex) => ({ hex, rgb: [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) }));
+  for (const c of coloursIn(text)) for (const w of want) if (w.rgb.every((v, i) => Math.abs(v - c.rgb[i]) <= tolerance)) found.add(w.hex);
+  return [...found];
+}
 
 export function readTokensCss() {
   return readFileSync(TOKENS_CSS_PATH, 'utf8');

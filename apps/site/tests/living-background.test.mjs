@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OLD_ACCENT_LITERALS, declarations, readTokensCss, topLevelRules } from '@studpilot/design/css-tokens';
+import { OLD_ACCENT_HEX, declarations, listedColoursIn, readTokensCss, topLevelRules } from '@studpilot/design/css-tokens';
 import accents from '@studpilot/design/accents.json' with { type: 'json' };
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -142,8 +142,8 @@ test('no rule spends the violet tokens, and nothing glows or grades', () => {
   assert.doesNotMatch(tokens, /--autonomous/i, 'a mode token outlived the Autonomous switch');
   // The accent is violet now, and it is ONE token: no page types an accent colour into its markup,
   // whether it is a retired accent or a value of any candidate in accents.json.
-  const typed = [...OLD_ACCENT_LITERALS, ...accents.candidates.flatMap((c) => [c.dark.accent, c.dark['accent-strong'], c.light.accent, c.light['accent-strong']])];
-  const src = withoutComments(page).toLowerCase();
-  const hit = typed.filter((v) => src.includes(v.toLowerCase()));
-  assert.deepEqual(hit, [], 'an accent colour was hard-coded into page markup; use var(--accent)');
+  // As COLOURS, in any syntax (RESTATED 2026-10-05: the first version looked for the hex spelling, so `rgba(166,124,255,.2)` passed).
+  const typed = [...OLD_ACCENT_HEX, ...accents.candidates.flatMap((c) => [c.dark.accent, c.dark['accent-strong'], c.light.accent, c.light['accent-strong']])];
+  const hit = listedColoursIn(withoutComments(page), typed);
+  assert.deepEqual(hit, [], 'an accent colour was hard-coded into page markup (in some colour syntax); use var(--accent)');
 });
