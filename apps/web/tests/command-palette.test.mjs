@@ -204,9 +204,10 @@ test('every signed-in route is a child of the shell, so every one of them has th
   // failures around the form.
   //
   // /auth/roblox is the fourth of the /confirm kind, reviewed when it was added (Sign in with Roblox, M2):
-  // the worker redirects here with a one-time token in the URL fragment, and this page trades it for the
-  // session. The visitor has no session until it finishes, so a shell around it would fire the rail's
-  // queries with no credential, and AuthGuard would send the person to /login before the token was used.
+  // the worker redirects here (with nothing in the URL), and this page redeems the one-time token it is holding
+  // for this browser and trades it for the session. The visitor has no session until it finishes, so a shell
+  // around it would fire the rail's queries with no credential, and AuthGuard would send the person to /login
+  // before the token was used.
   assert.deepEqual(
     outside.sort(),
     ['/auth/roblox', '/confirm', '/forgot', '/login', '/recovery', '/reset', '/signup', '/studio-preview'],

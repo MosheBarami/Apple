@@ -149,8 +149,9 @@ export function App() {
                   <Route path="/reset" element={<ResetPasswordPage />} />
                   <Route path="/confirm" element={<ConfirmEmailPage />} />
                   {/* WHERE A ROBLOX SIGN-IN LANDS, and outside both guards for the reason /confirm is: the worker
-                      redirects here with a one-time token in the fragment, this page turns it into the session,
-                      and GuestGuard would bounce it away first while AuthGuard would send it to /login. */}
+                      redirects here (with nothing in the URL), this page redeems the one-time token the worker is
+                      holding for this browser and turns it into the session, and GuestGuard would bounce it away
+                      first while AuthGuard would send it to /login. */}
                   <Route path="/auth/roblox" element={<RobloxCallbackPage />} />
                   <Route
                     element={

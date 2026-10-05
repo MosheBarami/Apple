@@ -1,13 +1,16 @@
 // Sign in with Roblox, the browser half: when the button shows, where it goes, what the landing route does
-// with the fragment, and what the Connections card says. The worker half is apps/worker/src/roblox-oauth.ts
-// and planning/proof/M2/ROBLOX-SIGNIN.md says how the two fit.
+// once the worker has sent the browser back, and what the Connections card says. The worker half is
+// apps/worker/src/roblox-oauth.ts and planning/proof/M2/ROBLOX-SIGNIN.md says how the two fit.
 //
-// No JSX and no Supabase import, so `node --test` can load it: the one call that needs the Supabase client
-// is handed in.
+// No JSX and no Supabase import, so `node --test` can load it: the calls that need the Supabase client are
+// handed in. The two hooks use only useState, useEffect and useRef, and tests/roblox-hooks.test.mjs runs them
+// for real against a small stand-in for React (there is no DOM package in this app).
+import { useEffect, useRef, useState } from 'react';
 import { safeInternalPath } from './safe-redirect.ts';
 
 export const ROBLOX_START_PATH = '/auth/roblox/start';
 export const ROBLOX_STATUS_PATH = '/auth/roblox/status';
+export const ROBLOX_REDEEM_PATH = '/auth/roblox/redeem';
 
 /**
  * The button is rendered only when the worker says it can complete a sign-in. Any other answer, including
@@ -26,6 +29,24 @@ export async function fetchRobloxConfigured(fetchImpl: typeof fetch = fetch): Pr
 }
 
 /**
+ * Whether to draw "Continue with Roblox". False until the worker has said yes, so the button is never there
+ * for a moment and then taken away, and false for ever on any other answer.
+ */
+export function useRobloxConfigured(): boolean {
+  const [configured, setConfigured] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void fetchRobloxConfigured().then((ok) => {
+      if (current) setConfigured(ok);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
+  return configured;
+}
+
+/**
  * The link the button points at. The screen the person was heading for rides along as `return`, cleaned
  * here and checked again by the worker against its own short list, which has the last word.
  */
@@ -34,33 +55,94 @@ export function robloxStartHref(from?: string | null): string {
   return path === '/' ? ROBLOX_START_PATH : `${ROBLOX_START_PATH}?return=${encodeURIComponent(path)}`;
 }
 
+/* ------------------------------------------------------------------------- the landing route --- */
+
 /**
- * What /app/auth/roblox does with its fragment. The token hash is the only thing that matters; its shape is
- * checked so that a mangled or hand-typed fragment never reaches Supabase. `next` is app-relative and goes
- * through the same open-redirect check as every other post-login target.
+ * WHERE THE WORKER SENDS THE BROWSER BACK, and what it must never do. The redirect carries nothing: the
+ * one-time sign-in token waits behind an HttpOnly cookie that only this browser holds. So this page asks the worker
+ * for it (a same-origin POST with no body, the cookie going along on its own) and trades it with Supabase.
+ * It never reads the URL for a token. A link that carried one would sign in whoever opened it, and anyone can
+ * make such a link out of their own Roblox sign-in: a crafted `#token_hash=…` here is ignored.
  */
-export function parseRobloxFragment(hash: string): { tokenHash: string; next: string } | null {
-  const params = new URLSearchParams(hash.replace(/^#/, ''));
-  const tokenHash = params.get('token_hash') ?? '';
-  if (!/^[A-Za-z0-9._~-]{16,256}$/.test(tokenHash)) return null;
-  return { tokenHash, next: safeInternalPath(params.get('next')) };
+export async function redeemRobloxSignIn(fetchImpl: typeof fetch = fetch): Promise<{ tokenHash: string; next: string } | null> {
+  try {
+    const res = await fetchImpl(ROBLOX_REDEEM_PATH, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { token_hash?: unknown; next?: unknown } | null;
+    const tokenHash = typeof body?.token_hash === 'string' ? body.token_hash : '';
+    // Its shape is checked so that a mangled answer never reaches Supabase. `next` is app-relative and goes
+    // through the same open-redirect check as every other post-login target.
+    if (!/^[A-Za-z0-9._~-]{16,256}$/.test(tokenHash)) return null;
+    return { tokenHash, next: safeInternalPath(body?.next) };
+  } catch {
+    return null;
+  }
 }
 
-export type RobloxSignInOutcome = { kind: 'signed-in'; next: string } | { kind: 'failed' };
+export interface RobloxLandingDeps {
+  /** Who is signed in right now: null when nobody, a throw when that cannot be told. */
+  currentAccount(): Promise<{ email: string | null } | null>;
+  redeem(): Promise<{ tokenHash: string; next: string } | null>;
+  verifyOtp(args: { token_hash: string; type: 'magiclink' }): Promise<{ error: unknown }>;
+}
 
-/** Trade the one-time token hash for a Supabase session. Supabase issues it; the worker never signs one. */
-export async function completeRobloxSignIn(
-  hash: string,
-  verifyOtp: (args: { token_hash: string; type: 'magiclink' }) => Promise<{ error: unknown }>,
-): Promise<RobloxSignInOutcome> {
-  const parsed = parseRobloxFragment(hash);
-  if (!parsed) return { kind: 'failed' };
+export type RobloxLandingState =
+  | { kind: 'working' }
+  /** Somebody is already signed in here. Nothing has been redeemed, and nothing is replaced until they say so. */
+  | { kind: 'choice'; email: string | null }
+  | { kind: 'signed-in'; next: string }
+  | { kind: 'failed' };
+
+/** Redeem the handle and trade the token for a Supabase session. Supabase issues it; the worker never signs one. */
+export async function completeRobloxSignIn(deps: Pick<RobloxLandingDeps, 'redeem' | 'verifyOtp'>): Promise<RobloxLandingState> {
+  const redeemed = await deps.redeem();
+  if (!redeemed) return { kind: 'failed' };
   try {
-    const { error } = await verifyOtp({ token_hash: parsed.tokenHash, type: 'magiclink' });
-    return error ? { kind: 'failed' } : { kind: 'signed-in', next: parsed.next };
+    const { error } = await deps.verifyOtp({ token_hash: redeemed.tokenHash, type: 'magiclink' });
+    return error ? { kind: 'failed' } : { kind: 'signed-in', next: redeemed.next };
   } catch {
     return { kind: 'failed' };
   }
+}
+
+/**
+ * What the landing page does first. Signing in as the Roblox account REPLACES whatever session this browser has, so
+ * when there is one it asks (state `choice`) and redeems nothing yet. When it cannot tell, it fails rather than guess.
+ */
+export async function startRobloxLanding(deps: RobloxLandingDeps): Promise<RobloxLandingState> {
+  let account: { email: string | null } | null;
+  try {
+    account = await deps.currentAccount();
+  } catch {
+    return { kind: 'failed' };
+  }
+  return account ? { kind: 'choice', email: account.email } : completeRobloxSignIn(deps);
+}
+
+/** The words that say whose session would be replaced. A placeholder address is not somebody's name. */
+export function existingSessionLine(email: string | null): string {
+  const named = email && !/\.invalid$/i.test(email) ? ` as ${email}` : '';
+  return `You are already signed in${named}. Signing in with Roblox would replace that session.`;
+}
+
+/** The landing page's state, and the one thing a person can do from `choice`. The hook runs once, whatever re-renders it. */
+export function useRobloxLanding(deps: RobloxLandingDeps, onSignedIn: (next: string) => void): { state: RobloxLandingState; switchNow: () => void } {
+  const [state, setState] = useState<RobloxLandingState>({ kind: 'working' });
+  const started = useRef(false);
+  const apply = (outcome: RobloxLandingState): void => {
+    if (outcome.kind === 'signed-in') onSignedIn(outcome.next);
+    else setState(outcome);
+  };
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void startRobloxLanding(deps).then(apply);
+  }, []); // once per mount, on purpose: the handle can be redeemed only once
+  const switchNow = (): void => {
+    setState({ kind: 'working' });
+    void completeRobloxSignIn(deps).then(apply);
+  };
+  return { state, switchNow };
 }
 
 /* ------------------------------------------------------------------- the Connections card --- */
@@ -109,6 +191,9 @@ export function describeConnection(c: RobloxConnection): ConnectionView {
 
 export function disconnectMessage(r: RobloxDisconnectResult): string {
   if (!r.tokenRemoved && !r.linkRemoved && !r.signInKept) return 'There was nothing connected.';
+  // `revoked` is Roblox's own answer as the worker reports it: `true` says Roblox withdrew the access, `null` that there was
+  // no stored token to withdraw. `false` is never a success, so it is never worded as one.
+  if (r.revoked === false) return 'StudPilot removed its copy of the connection, but Roblox did not confirm that it withdrew the access. Check Connected apps in your Roblox account settings.';
   if (r.signInKept) return 'StudPilot’s access to your Roblox account is withdrawn. Roblox is still how you sign in.';
   return 'Roblox disconnected.';
 }
