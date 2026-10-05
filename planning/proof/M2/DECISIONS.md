@@ -252,3 +252,95 @@ Credits" (it said "Builds today", "N requests" and "Days you built").
 
 **Still open after cycle 2:** the M6 one-pool profit gap (section 3), the roadmap chip's per-request scale (section 8), and the
 paid daily caps (section 5), all as written there. Not changed: checkout stays off and nothing was deployed, pushed or sent.
+
+## 10. What the third review changed (cycle 3, HEAD `97655dba`)
+
+A third review of `97655dba` left seven groups of defects. Each has a test that was run red against the unfixed code (or against
+a mutation of the fix) and then green; the mutations are in the report.
+
+**1. The between-steps pause no longer refunds a step that ran (money).** The `quota` pause at the top of step 2 and later did not set
+`allowanceUsedUp`, so `refundVerdict` saw a refundable ending with nothing mutated and handed back every unit the run was charged.
+Reproduced before the fix: Free, 51 units left, one read-only step of 1,530 neurons settled the 51 exactly, step 2 paused, 51 units were
+refunded and the reply said "You have not been charged for this run". Now the pause sets the mark, the same as the settlement stop:
+a `quota` ending that the person's own allowance caused is never refunded, whether it came from the day or the month. **The one `quota`
+ending that still refunds is the service being full** (`BudgetError` and `CAPACITY_EXHAUSTED`, section 8 A): the person did not cause it
+and a run that delivered nothing is not charged. A test pins that the two are different, in both directions.
+
+**2. The public API's admission refusal names the limit that binds.** `429 insufficient_quota` said "This account has no Credits left
+today." for a Free account whose month was used up. It now reads `quotaLimit` like every app path: "This account's daily Credits are used
+up. They refill at midnight UTC." or "... monthly Credits ... on 1 November at 00:00 UTC.". The error code, type, status and headers are
+the published contract: it is the same `refuse(429, 'insufficient_quota', ...)` call with only its message changed, and a test pins the
+refusal's header names exactly (a tripwire: the version header under both its spellings, `content-type`, `referrer-policy`,
+`strict-transport-security`, `x-content-type-options`, `x-ratelimit-limit`, `x-ratelimit-remaining`, `x-ratelimit-reset`,
+`x-request-id`; no `Retry-After`, no usage header) for both limits.
+
+**3. The live footer and the stored row agree after Stop mid-step.** `finishRun` broadcasts `msg_end` at once, with the cost known then
+(the admission), and `settleAbandonedStep` brought the row and the quota meter to the settled figure but told the message nothing. It now
+also broadcasts `{ type: 'run_cost', msgId, creditsSpent }` (additive: `packages/shared` `ServerMsg`; the SDK's stream fold ignores a
+frame type it does not know). The web applies it to that one message through `withRunCost` and touches no run state, because it can arrive
+during the next run. It is sent only when the settlement took something.
+
+**4. Guard: rule 4 of `offer-rules.mjs`.** The plan was "the last plan named before the figure", which reported correct copy
+(`<li>5 Credits a day (Free)</li>` under a Pro item; "5 Credits a day on Free, 20 on Pro" after a plan in the same sentence) and said
+nothing about a wrong figure with its plan after it ("30 Credits a day (Free)"). It is now the nearest plan name in the figure's own
+clause, either side; a list item, paragraph, heading, row, comma or sentence ends a clause; a tie holds the figure to either plan; a claim
+inside an attribute does not own the text after its tag. `CREDIT_CLAIM` also reads "every day", "each day", "daily", "per calendar
+month", "monthly", "5 daily Credits", and any no-break space (U+00A0, U+202F, `&nbsp;`, `&#160;`, `&#xA0;`, `&NonBreakingSpace;` and the
+other entities in `SPACE`); `PRICE_CLAIM` reads "billed monthly", "per user per month" (and seat, member, person, account), one-decimal
+prices ("$12.5 a month") and the same spaces. Each spelling has a case, and the real tree is still clean.
+
+**5. Wiring pins and vacuous assertions.** `tests/check-offer.test.mjs` no longer reads the script's text: it runs a copy of the real script,
+with its rules, against a small tree (its own tables, tracked copy files, `git ls-files`) with one planted violation per rule: 4 (and 4 per
+plan, and credits-not-ledger-units), 5, 6, 7 and 1-3 (`planIssues`), and a control that also shows the two exceptions are honoured. Taking
+`copyProblems`, `termProblems`, `planIssues`, `priceProblems` or `limitProblems` out of the script, reading no source files, or dropping the
+exceptions turns a case red. `tests/check-credit-figures.test.mjs` runs the real script against a copy of the site's sources with a fixture
+pricing page (one name left unused at a time, and import-only), so it fails if the script stops reporting `unusedNames` results or loses a
+name from `CONFIG_NAMES`; and the same fixture mechanism holds the milestone derivation (item 6). The Stop-in-flight test's two vacuous
+assertions are restated: "compute that ran" was the loop's own counter times 40 (now the count of provider calls, read where the call
+happens, against what the ledger took: 40 + 40 + 40 + the 30 left = 150), and "the meter is told" was satisfied by the admission's quota frame
+(now the last quota frame must be the settlement's, and say 0 left).
+
+**6. The roadmap Cost chip is a build's cost, not an edit's.** It printed `runs x MODE_INFO.agent.typicalCredits`, the price of one
+targeted edit (4 to 18 ledger units, 0.03 to 0.12 credits), as a milestone's cost: below the cheapest published build (0.52) and a
+fortieth of a typical one (1.40). `creditRangeForRuns(complexity, runs)` now reads `BUILD_COSTS` (small, medium, large are the `small`,
+`typical`, `big` rows) times `runs`, in ledger units on the wire as before, and carries `estimated` for the big row, which the chip
+prints as ", estimated" as the pricing page does. A one-run medium milestone reads 1.40 Credits, a small one 0.52 to 1.40, a large one 4.00
+to 12.00 estimated, and two runs read double. **The assumption is the owner's to confirm**: that a run of a milestone costs about one build
+of its size (it is the only published figure there is; the 12-credit big row is itself an estimate). M6's estimate-before-you-build
+replaces it. `MODE_INFO.typicalCredits` is unchanged and still what the usage page calls the next request. `check-credit-figures.mjs` holds
+`creditRangeForRuns` to `BUILD_COSTS` (no `MODE_INFO`, no typed figure).
+
+**7. Small.** The post-checkout banner printed the stored plan id ("builder"); it now prints Pro or Max through `planDisplayName`. The
+pricing FAQ test accepted swapped resets (it matched "midnight UTC" and "1st of the next month" anywhere); each reset is now read inside the
+sentence or clause that names its period. `quotaLimit`'s clamps are pinned: a day and a month both overspent by different amounts are a tie
+and name the month (without the day's `Math.max(0, ...)` they named the day), figures that are not finite numbers read as unreadable, and
+the daily lift is the next UTC midnight at the last millisecond and at midnight itself. **Not pinnable, stated:** the month's own
+`Math.max(0, ...)` is redundant while the day's is there (a negative month figure is below every non-negative day figure either way), so
+removing it changes no output.
+
+### For M6 (both are open and the owner decides; neither is built now)
+
+(a) **Parallel runs and API calls are each admitted for 1 unit and run to completion.** Admission is all-or-nothing for 1 ledger unit and
+a step is paid when it resolves, up to what is left (`upTo`), so N concurrent runs or API calls against U units left are all admitted
+(N up to U), each runs a step of up to `MAX_NEURONS_PER_REQUEST` = 1,200 neurons = 40 ledger units, and the first settlements take what is
+left while the rest find nothing. The overrun is therefore about (units left) x (step cost - 1), at most 39 x U units: 51 units left is
+at most 1,989 units, 13.26 credits, $0.66 of compute (arithmetic from the constants, not a measured run). Today only the number in flight
+at once matters: one run at a time per project (SessionDO), `KEY_RATE_LIMIT` 120 requests a minute per live key. **The M6 fix is to reserve
+a per-step estimate before the call** instead of 1 unit, and to refuse when the balance cannot cover it.
+
+(b) **Refunds on `incomplete` and `error` endings with nothing mutated are user-triggerable.** A person who can make a run end that way
+(a request the model cannot satisfy, the step cap, a refusal) gets every unit back, measured in `run-refund.test.mjs`: a terminal provider
+error after one 60-neuron step on a 100-unit allowance returns the 2 units charged. A read-only prose answer that ends `done` is not
+refunded (probed: 3,000 neurons, 100 units charged, 0 refunded), so the product is paying for analysis and not for an attempt that
+produced nothing; whether an attempt that used compute and delivered nothing should be free is a pricing-policy decision, not a bug, and
+M6 must make it.
+
+**Both are bounded today by the global caps, which this slice left untouched:** `BILLABLE_NEURONS_PER_DAY` 150,000 ($1.65) plus
+`FREE_NEURONS_PER_DAY` 10,000 is `DAILY_NEURON_CEILING` 160,000 neurons (5,333 ledger units, 35.6 credits) a day for the whole service,
+and `BILLABLE_NEURONS_PER_MONTH` 2,270,000 neurons ($24.97) a month. No account can cost the service more than that, in total, through either
+route; what is open is who pays for the compute inside the bound.
+
+**Still open after cycle 3:** the M6 one-pool profit gap (section 3), the paid daily caps (section 5), the two M6 decisions above, and the
+milestone-cost assumption in item 6. The roadmap chip's per-request scale (section 8) is closed by item 6. The SDK's stream fold does not
+apply `run_cost` (an SDK run resolves at `msg_end`), so an SDK client that watched a Stop mid-step reads the cost known at that instant; the
+stored row, the web footer and the meter agree. Not changed: checkout stays off and nothing was deployed, pushed or sent.
