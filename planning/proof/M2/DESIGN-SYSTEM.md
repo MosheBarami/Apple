@@ -748,3 +748,178 @@ was run on the same planted tree.
 - Not run: the Playwright e2e suite (no layout changed), Lighthouse, a real device, the brand check on the Linux runner.
 - The owner should know that three vendored controls (Copy Code, Download file, the reasoning trigger) now draw the muted
   ink upstream wrote for them, where the cascade defect had been drawing them in full ink.
+
+## 12. Cycle 3, the last of the review fixes (2026-10-05, on the cycle 2 tree 4f1c1583)
+
+The cycle 2 checker measured five defects in the built apps that the cycle 2 guards had not. This section fixes each, extends the rendered
+guard so it would have caught it, and says what was measured before and after. Everything was measured in this clone
+(`scratchpad/m2design`, branch `studpilot/m2-design`) with the change it describes in place. Commits, in order: `a7f7a3f5` (items 1, 2 and 4:
+the web app and its rendered guard), `570cb965` (items 3 and 5: the site), `0a02031b` (a press must look different from a hover),
+`e58d8abe` (item 2 again: where the map node's ring lives; 12.2 says why it moved), `7853a693` (a comment's ratios); this section is the sixth.
+
+### 12.1 The primary button's label on hover and press (item 1; a defect that broke users)
+
+Measured on the unchanged tree, by the checker's probe and by the extended guard (identical): the label of the legacy `.btn-primary` on the
+five sign-in pages (login, signup, forgot, recovery, confirm), hovered or pressed, is `--ink` on `--accent-strong`: **1.96:1 in dark and 2.30:1
+in light** (rest 6.54 and 6.10, focus 6.54 and 6.10). The same pair inside the `.usage-page` and `.settings-page` wrappers (the checker's fixtures; the cycle 2 guard read hover only
+on the controls the mock routes happen to render, and drew no sign-in page at all).
+
+Cause, in one line: `system.css` hovers every `<button>` with `button:hover:not(:disabled):not([aria-disabled='true'])`, specificity (0,3,1),
+which sets `color:var(--ink)` and a 12% ink wash; the primary's own hover, `.btn-primary:hover:not(:disabled)`, was (0,3,0), so it lost. Where a
+page rule restyled the primary's fill (`.auth-page .btn-primary:hover`, `:is(.shelf,.usage-page,.settings-page) .btn-primary:hover`, both (0,4,0), fill
+only) the fill came back and the label did not; where no page rule did (a modal, the workspace) the button turned grey on hover, with the label on the
+wash. A first version of the fix raised only the label's specificity, and the fixture scan (750 fixtures, 8,548 measurements) found what it did to the
+second case: the accent-ink label on the grey wash, 1.28:1 light and 1.32:1 dark. So the fix is the whole rule.
+
+Fix, `apps/web/src/design/system.css`: the hover and press rules of `.btn-primary` and `.gx-btn--primary` carry `:not([aria-disabled='true'])`, so they are
+(0,4,0) and outrank the element rule. They tie only with a page rule that restyles the primary on purpose (`.settings-card .btn-primary:hover`, a tinted
+pill with an accent label), which loads later and wins. A disabled button keeps its resting look, as the element rule leaves it. The press fill is now the
+documented `color-mix(accent 86%, black)` where it was the hover fill or the grey wash.
+
+Measured after, by the checker's probe on the production build (`auth-hover.mjs`, five pages, both themes) and by the fixture scan:
+
+| label on the accent | rest | hover | press | focus |
+|---|---|---|---|---|
+| dark (was 6.54, 1.96, 1.96, 6.54) | 6.54 | 9.25 | 4.99 | 6.54 |
+| light (was 6.10, 2.30, 2.30, 6.10) | 6.10 | 7.81 | 7.57 | 6.10 |
+
+The fixture scan (every legacy button family in eight page wrappers, five surfaces, four states) has 4.99:1 as its lowest accent-fill label, the press in dark.
+That is the narrowest margin of the lane: a press is the label on the darkest fill the button draws.
+
+The guard (`packages/design/src/web/rendered.test.mjs` and `tests/`): the build no longer forces `VITE_STUDPILOT_MOCK=1` (with the flag on the app is always signed in to
+a fixture and `/app/login` draws the project shelf, so the signed-out pages could not be drawn; fixtures are asked for per page with `?mock=1`, as the routes
+already did). It now draws 14 routes: the six signed-out pages (sign in, sign up, forgot, recovery, confirm, reset), each afresh in each theme, and the eight mock
+routes. On each it reads every control the browser paints with the accent in five states, the label's text at 4.5:1 and its icons at 3:1: at rest; disabled (where it keeps
+the fill, undimmed: a disabled sign-in submit is read before the form is typed into); under the pointer; pressed (the mouse held on it and released off it, so nothing is
+clicked); and focused from the keyboard. A state is read on whatever fill the control draws in it (the cycle 2 read dropped a control that left the accent on hover instead of
+measuring it on the fill it moved to), carries the pseudo-classes the browser reports, and a state that was not reached fails. A control inside a faded ancestor is refused as
+not measured. A press must also draw a different fill from a hover (the press rule is a state of its own; a mutation that put it back turned nothing red until this was asserted).
+Measured by the guard, per theme: rest 20 elements (15 controls) at 6.54 / 6.10 at worst, disabled 5 at 6.54 / 6.10, hover 15 (14 controls) at 5.54 / 5.03, press 15 (14) at 4.99 / 5.03, focus 15 (14) at 6.54 / 6.10.
+Second, the legacy primary is drawn in every page wrapper the stylesheets restyle it in, DERIVED from the rules (`tests/sheets.mjs primaryButtonContexts`: 8 wrappers today, none
+listed) and wrapped as the app's own markup writes them (`shelf` is `page shelf`: the dashboard's custom properties are on `.page.shelf`, and a bare `.shelf` draws a page
+that does not exist, which this guard did at first and which read 1.96:1 on a label the real page draws correctly), as a button, a block button, a link and the workspace's
+`gx-btn--primary`, with a disabled twin: 40 controls per theme (32 live in four states, 8 disabled twins at rest), at worst 6.54 / 6.10 at rest, 5.59 / 5.60 hovered, 4.99 / 5.12 pressed, 6.54 / 6.10 focused.
+
+### 12.2 The roadmap map's node buttons: the ring was never drawn (item 2)
+
+Measured on the unchanged tree. The checker's pixel read gave 1.18:1 dark and 1.22:1 light on the two nodes the map fades. The extended guard reads each node's ring
+two ways, and they disagree, which is the finding. The model (the ring's computed colour, now composited through every ancestor's opacity) reads 1.56:1 and 1.61:1 on
+the two faded nodes and at least 3:1 on the other four. The pixels (a clip of the card with nothing focused, the same clip with the button focused, compared) read **no ring on
+any node**: 0 to 1 pixels changed on the faded nodes and on the in-progress one, and 56 to 202 on the others, antialiased corners where the card's rounded clip meets the button's
+square one (1.4 to 1.8:1 against what they replaced). The button is the whole card (`size-full`) and the card is `overflow-hidden`, so a ring drawn outside the button is outside
+the clip: the dimming (`opacity-40`) was the smaller defect, and lifting it alone would have drawn nothing. Two other placements were drawn before the one that stayed: an inset box-shadow ring is painted under
+the header's fill (looked at: visible on three sides); a box-shadow ring on the card replaces the selected node's own ring, so focusing the selected node reads 1.38:1 dark and 1.31:1 light
+against not focusing it (measured).
+
+Fix, `apps/web/src/components/roadmap/dependency-map.tsx`: the button draws an OUTLINE inset by two pixels (`focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring`),
+which is painted over the header, is not clipped, is its own property so it shows beside the selected node's ring, and is the focused element's own indicator (the first fix put it on the card:
+drawn, 3.56:1 or better as pixels, but the focused button itself carried none, which a reader of its own style finds); and a faded node returns to full strength while it has focus
+(`focus-within:opacity-100`). Measured as pixels, per node (six nodes, two of them faded), both themes: dark 5.07 / 3.80 / 3.65 (selected) / 3.96 / 3.97 / 5.07, light 6.61 / 3.60 / 3.39 (selected) /
+3.71 / 3.69 / 6.61. The checker's own scan on this build (`focus-scan.mjs`, pixels and styles, 20 route-theme pairs signed in, 12 signed out): 410 and 46 stops, none under 3:1 by either
+read; the lowest style read 3.34:1 (light) and the lowest pixel read 3.24:1 (light, the selected map node), no stop without an indicator of its own.
+
+The guard: `inPageFocusIndicator` composites every ancestor's opacity (premultiplied, group by group, from the parent up to the root) once with the ring and once without, so the ratio is
+between two pixels the browser paints and a stop reports the opacity it sits under; and `inPageRingPixels` reads a ring as pixels (the changed pixels grouped by the colour they were repainted
+in, the group that reads best against what it replaced), applied to every map node, with canaries (six nodes, at least one faded and one not, no card that moved). Measured by the guard: 185
+focus stops per theme (153 before: the signed-out pages), none dimmed, lowest ring 3.91 dark and 3.56 light (the model), and the nodes' pixel read 3.65 dark and 3.39 light at worst.
+
+### 12.3 Selected text on a filled control, on the site (item 3)
+
+Measured on the unchanged tree, by the checker's selection probe over the 20 built routes in both themes (4,020 text elements): 14 groups below 4.5:1, lowest 1.53:1 dark and 1.51:1 light. The
+accent controls (the call to action's label, the composer's Send, the shiny and the primary button, the skip link) read **2.77:1 dark and 2.94:1 light**: `::selection` is a translucent
+wash of the accent, which over an accent fill paints the accent, with `--ink` on it. The docs folder's paper sheets (`--paper` text on an `--ink` fill, 8px labels) read 1.53 and 1.51: the wash over
+`--ink` under `--ink`. Read as pixels, the folder's selected label is the same colour as the fill (1.00:1).
+
+Fix: every control the sheets fill sets its own OPAQUE selection pair, for its own text and its descendants' (`X::selection` and `X ::selection`; the descendant form is the one that beats the
+page-wide rule on a label span). On the accent the pair is the label's own pair swapped (the accent-ink as the highlight, the accent as the text), which reads exactly as the control does at rest and
+is visibly not the control; on the paper sheets it is `--paper` behind `--ink`. The rules sit beside the fills they pair with: `base.css` (the skip link, `.btn-primary`), `landing.css` (`.composer-send`),
+`picks/cta-button.css` (`.cta`, and `.cta__knob`, which carries an arrow today and declares the pair so a label added to it reads), `picks-docs/Folder.astro` (`.fold__paper`).
+
+Measured after: the checker's probe, 4,020 text elements, **min 6.54:1 dark and 6.10:1 light, 0 groups below 4.5 or in the browser's own highlight**; pixels, the accent controls' selected text,
+6.54 and 6.10. The one pixel read below that is the probe's own sample of `.fold__paper` at rest (1.00): the sheet's label sits behind the folder's front flap (decorative art; the label peeks above it
+on hover), so the probe reads the flap, not a selection; the style read for the same element is ink on paper, 18.05:1 dark and 16.87:1 light on either sheet, and a hovered folder was selected and drawn to check that the highlight shows.
+
+The guards: `apps/site/tests/contrast.test.mjs` derives every opaque non-surface fill from the cascade (the six today: `.btn-primary`, `.cta`, `.cta__knob`, `.composer-send`, `.skip-link`, `.fold__paper`, found, not listed) and
+requires both forms for each, 4.5:1 for the text and 3:1 of the highlight against the fill; its fixtures fail the shipped wash, each missing half, a pair that paints the fill itself, a wash of the accent over its own
+fill, and a rule for another element. `apps/site/tests/rendered-selection.test.mjs` (new) serves the build, reads the `::selection` style the browser resolved for every text element of every built route
+(derived from `dist`) in both themes, over what is really behind it (every ancestor's fill and opacity), and selects the text of four accent controls and reads the painted pixels; it is first pointed at an accent
+control with no pair of its own (must fail) and at one with the inverted pair (must pass), and at a card at 40% opacity (the dimming must be read).
+
+### 12.4 The destructive Badge as a link, in dark (item 4; latent)
+
+Measured by drawing every variant of the shadcn Badge as the `span` it is and as the `a` it becomes: the destructive link hovered, 3.07 to 3.17:1 on the five surfaces (white on 90% of `--bad`; rest 5.15, a span has
+no hover). Fixed with the destructive Button's correction, one more selector in `styles/ai-elements.css` (`a[class*='[a&]:hover:bg-destructive/90']`, an `a` only, so a span badge does not gain a hover step): 4.79:1 dark,
+5.03 light at worst over the 80 badge fixtures per theme. The rendered guard now draws them (variants read from `components/ui/badge.tsx`, not listed).
+
+### 12.5 The stale comment (item 5)
+
+`apps/site/src/styles/global.css`, above `.table-scroll table th[scope='row']`: "Frosted too, so the plans scrolling under it blur rather than show through." The rule is an opaque `--surface-2` and
+the site draws no blur; the comment says so.
+
+### 12.6 Mutations: every new or restated guard went red, then green
+
+One planted break per row (the anchors asserted to occur exactly once, every file restored byte for byte and the hash compared, a lock so that only one harness mutates the tree; the harness is not committed).
+Run on the final tree. "Pixels" and "model" are the two reads of a ring.
+
+| Item | Planted break | Red |
+|---|---|---|
+| 1 | the primary's hover rule back at (0,3,0) | rendered: both accent-fill tests and both legacy-primary tests (the sign-in pages at 1.96 / 2.30) |
+| 1 | the press rule back at (0,3,0), hover kept | rendered: both accent-fill tests ("draws the same fill pressed as hovered"; before that assertion: nothing) |
+| 1 | a state read keeps only the elements that still match the accent (the cycle 2 read) | rendered: the states fixture test, the dark legacy test, the light accent-fill and legacy tests |
+| 1 | the press is never made | rendered: both accent-fill tests, both legacy tests, the states fixture test |
+| 1 | the fixture flag forced on again | rendered: both accent-fill tests (the sign-in pages are not drawn) |
+| 1 | the wrapper derivation finds no wrapper | rendered: both legacy-primary tests |
+| 1 | the signed-out routes dropped from the list | rendered: both accent-fill tests (the floor) |
+| 2 | the faded node is not lifted on focus | rendered: both map-pixel tests and both tab tests (the model sees 1.2:1) |
+| 2 | the ring back on the button, outside the card's clip (the cycle 2 ring) | rendered: both map-pixel tests. The tab tests stay GREEN: the model reads a ring that the clip never draws |
+| 2 | a box-shadow ring on the card, replacing the selected node's own | rendered: both map-pixel tests (the selected node, 1.38 / 1.31:1) |
+| 2 | the focus model ignores every ancestor's opacity | rendered: the faded-card fixture test (the real tab tests stay green with the fix in place) |
+| 4 | the destructive badge link's correction removed | rendered: the dark Badge test (3.07 to 3.17:1; red on the unfixed tree before the fix) |
+| 3 | the skip link and primary-button pair removed | site contrast: both fill tests; rendered-selection: the dark and light scan and pixel tests |
+| 3 | the composer Send pair removed | site contrast: both fill tests; rendered-selection: the four scan and pixel tests |
+| 3 | the call to action pair removed | site contrast: both fill tests; rendered-selection: the four scan and pixel tests |
+| 3 | the paper sheets' pair removed | site contrast: both fill tests; rendered-selection: both scan tests (the pixel sample does not draw the folder) |
+| 3 | the pair paints the fill itself (the accent behind the accent-ink label) | site contrast: both fill tests ("does not show"); rendered-selection: both pixel tests (the style scan reads 6.54 and stays green) |
+| 3 | only the descendant forms removed | site contrast: both fill tests; rendered-selection: four |
+| 3 | every pair removed (the cycle 2 state) | site contrast: both; rendered-selection: four |
+| 3 | the scan's ground reader ignores the element's own fill | rendered-selection: the fixture test |
+| 3 | the contrast guard checks the element's own text only; the visibility check removed | site contrast: the fixture test, each |
+
+### 12.7 Verification (2026-10-05, in the clone, on the final tree)
+
+| Command | Result |
+|---|---|
+| `cd packages/design && node --test` | tests 165, pass 165, fail 0 (157 before: eight new, the guards of 12.1 to 12.4; about 50 s of it is the build and the browser) |
+| `cd packages/design && pnpm typecheck` | exit 0 |
+| `cd apps/web && pnpm typecheck && node --test && pnpm build` | tsc exit 0; tests 2,532, pass 2,532, fail 0; built in 8.61 s |
+| `cd apps/site && npx astro build && node --test tests/*.test.mjs` | 21 pages built; tests 353, pass 353, fail 0 (345 before: three contrast tests, five in the new `rendered-selection.test.mjs`) |
+| `node --test tests/*.test.mjs` (root) | tests 658, pass 640, fail 2, skipped 16: the two failures are the scratchpad-location check-pixels cases (`THE CONTROL: against a SAME-ORIGIN baseline...`, `against a baseline with NO provenance...`), as before |
+| `node scripts/make-brand-assets.mjs --check` | BRAND ASSETS OK: 12 asset(s), all current |
+| `node scripts/check-landing-budget.mjs` | markup and CSS 17,481 B of 20,000 (17,423 before: the selection pairs); inline JS 23,714 of 36,000; images 25,873 of 40,000 |
+| `build-allowlist.mjs --write`, `check-old-names.mjs` | UNCLASSIFIED 0; CLEAN, 46,296 hits all allowlisted by 644 lines, 0 violations; the allowlist file is unchanged by this cycle (a first draft of the new test wrote the site's former-name theme key and was caught by this guard; it was removed, not allowlisted) |
+| `node scripts/check-deadends.mjs --gate` | ALL DISPOSITIONED, 43 entries |
+| `node scripts/check-ci-references.mjs` | CI REFERENCES OK, 24 paths in 3 workflow files |
+| `node scripts/check-offer.mjs` | OFFER COHERENT, 4 plans, 409 copy files |
+
+The checker's own probes, re-run on the new build (scripts in `scratchpad/probes/c3`, copies of the cycle 2 checker's, repointed at this clone):
+
+| Probe | Lowest measured |
+|---|---|
+| sign-in label, rest / hover / press / focus (`auth-hover.mjs`, five pages) | dark 6.54 / 9.25 / 4.99 / 6.54, light 6.10 / 7.81 / 7.57 / 6.10 (was 1.96 and 2.30 hovered and pressed) |
+| legacy button families, 750 fixtures, 8,548 measurements (`fixtures-scan.mjs`) | accent-fill labels 4.99:1; the only pair under the bar is the `gx-chip` of 12.8 (4.41); the destructive Badge link 4.78 (was 3.07) |
+| every focus stop (`focus-scan.mjs`: 410 signed in, 46 signed out; style and pixels) | style 3.34:1 (light), pixels 3.24:1 (light, the selected map node); none under 3:1; no stop without an indicator of its own (the cycle 2 tree: the two faded map nodes at 1.18 and 1.22) |
+| the map's node rings as pixels (`ringpx.mjs`) | 3.65:1 dark, 3.39:1 light (the selected node); the faded nodes 5.07 and 6.61 |
+| selected text, every text element of the 20 built routes (`site-selection.mjs`, 4,020) | 6.54:1 dark, 6.10:1 light; 0 groups under 4.5 or in the browser's own highlight (was 14 groups, 1.53 and 1.51) |
+| selected text as pixels (`sel-pixels.mjs`) | the accent controls 6.54 and 6.10; `.fold__paper` at rest reads 1.00 because its label is behind the folder's flap (12.3) |
+
+### 12.8 What stays open
+
+- `gx-chip` with a `model-signature` in light, hovered or pressed: 4.41:1 (`--accent` on an 18% accent wash). Found by the same fixture scan, which also found it on the cycle 2 tree. It is a tint, not an accent fill, and not one of the five items;
+  it is left as it is.
+- The press is the narrowest margin on the branch: 4.99:1 (dark), the label on the darkest fill the button draws.
+- A ring is read as pixels for the roadmap map's nodes only. Every other stop is read by the model, which now accounts for ancestor opacity but not for a clip or a sibling painted over the ring: a ring clipped elsewhere would pass it.
+  The checker's all-stops pixel scan on this build read 370 of the 410 signed-in stops and the lowest was 3.24:1; the guard does not run that scan.
+- The disabled primary is read where it keeps the accent fill (the sign-in pages). Where a page repaints it as an outline (the shelf) it has no fill and is not read, as WCAG exempts an inactive control.
+- `a[class*='[a&]:hover:bg-destructive/90']` is an attribute selector on a class string, like the other corrections of vendored utilities (11.12): if upstream respells the utility it stops matching, and the badge test measures it.
+- `settings.css` still describes `.btn-primary` as "the tinted pill, 10% green behind 90% green", a description of the old accent that predates the filled primary; the comment is stale and was not touched.
+- Not run: the Playwright e2e suite, Lighthouse, a real device, the brand check on the Linux runner.
