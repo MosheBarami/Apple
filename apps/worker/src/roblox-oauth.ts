@@ -29,6 +29,13 @@
 //     handle reopens the same login CSRF. Only the registered http://localhost dev origin keeps the bare names;
 //   - the rate limits are per kind of request, and the two steps that come AFTER the person has consented at Roblox
 //     (callback, redeem) are keyed by their own single-use state or handle, never by the address a school lab shares;
+//   - a RE-AUTHENTICATION is a flow of its own (`purpose: 'reauth'` in the stored state). It asks Roblox for a fresh login
+//     (`prompt=login`, `max_age=0`), never makes an account, and on success records the time on the server, which is what
+//     the two gated worker routes (export, delete) and the SPA's gate read for a Roblox-only account instead of trusting
+//     the session's `last_sign_in_at`, which any sign-in sets and which a still-open roblox.com session satisfies by itself;
+//   - nothing makes a NEW account until the person has said so. A Roblox account nobody here has seen is held (sealed) behind
+//     the handle cookie as a `pending` record, the SPA asks "This creates a new StudPilot account", and only /create makes
+//     the user. Somebody who already has an email account would otherwise get a second, empty one without noticing;
 //   - an account is found by `sub`. A username is display text that Roblox lets people change and reuse, so
 //     linking by it would let a second person take an account over;
 //   - the synthetic address is a KEYED digest of the `sub` (HMAC under CREDENTIAL_KEY). A Roblox id is public,
@@ -68,6 +75,16 @@ const SYNTHETIC_EMAIL_DOMAIN = 'users.studpilot.invalid';
 const ADDRESS_PURPOSE = 'roblox-signin-address';
 const OUTBOUND_TIMEOUT_MS = 10_000;
 const REFRESH_LEASE_MS = 30_000;
+/**
+ * How long a Roblox re-authentication holds, by the SERVER's clock. The same ten minutes as REAUTH_WINDOW_MS in
+ * apps/web/src/lib/auth-flows.ts (a test holds the two equal). It is never compared with a device clock: both ends of the
+ * comparison are written and read by the worker, so a device that is minutes off cannot loop a person through re-authentication.
+ */
+const REAUTH_WINDOW_MS = 10 * 60_000;
+/** A stamp a little ahead of this isolate's clock is clock noise between machines, not a stamp from the future. */
+const REAUTH_CLOCK_NOISE_MS = 5_000;
+/** The action a re-authentication was asked for, carried back to Settings so it can be resumed: words and hyphens, nothing else. */
+const REAUTH_ACTION = /^[a-z]{2,20}(?:-[a-z]{2,20}){0,3}$/;
 /** Roblox access tokens live 15 minutes; one is handed out from memory until a minute before that. */
 const ACCESS_TOKEN_MARGIN_MS = 60_000;
 
@@ -100,8 +117,10 @@ export const robloxSignInConfigured = (env: Env): boolean => configOf(env) !== n
 export function ensureRobloxOAuthTables(env: Pick<Env, 'CORPUS'>): Promise<void> {
   return oncePerIsolate('roblox-oauth', async () => {
     await env.CORPUS.prepare(
-      `create table if not exists roblox_identities(roblox_sub text primary key, user_id text not null, username text not null, created_at text not null)`,
+      `create table if not exists roblox_identities(roblox_sub text primary key, user_id text not null, username text not null, created_at text not null, reauth_at integer)`,
     ).run();
+    // `reauth_at` (epoch ms, by the clock of this worker) is when this person last signed in with Roblox AS A RE-AUTHENTICATION: null
+    // until then. Nothing is deployed, so no existing table needs the column added.
     // One Roblox account per StudPilot account. Nothing in M2 links a second one, and the index makes
     // sure nothing can by accident.
     await env.CORPUS.prepare('create unique index if not exists roblox_identities_user on roblox_identities(user_id)').run();
@@ -404,29 +423,39 @@ const syntheticEmail = async (env: Env, sub: string): Promise<string> =>
 /** `address_taken`: the address exists and is not ours. `link`: it could not be said safely (Auth unreachable, a malformed answer). */
 type Linked = { ok: true; userId: string; email: string } | { ok: false; code: 'link' | 'address_taken' };
 
-/** The StudPilot user for this Roblox account: found by `sub`, or made once. Never one it cannot vouch for. */
-async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<Linked> {
+/**
+ * The StudPilot user this Roblox account is already linked to, found by `sub`: `'none'` when nobody here has seen it (or when
+ * its link pointed at a user that no longer exists, which is the same thing), and a refusal when that cannot be told safely.
+ * It makes nothing: a NEW account is made only by `userFor`, after the person has said they want one.
+ */
+async function findLinked(env: Env, cfg: Config, who: RobloxProfile): Promise<Linked | 'none'> {
   await ensureRobloxOAuthTables(env);
   const known = await env.CORPUS.prepare('select user_id, username from roblox_identities where roblox_sub = ?')
     .bind(who.sub).first<{ user_id: string; username: string }>();
-  if (known) {
-    const user = await authUser(env, cfg, known.user_id);
-    if (user === null) return { ok: false, code: 'link' };       // cannot tell: making a second account would be worse than failing
-    if (user !== 'gone') {
-      // The name is display text. Following a change keeps the same user; it never selects one.
-      if (known.username !== who.username) {
-        await env.CORPUS.prepare('update roblox_identities set username = ? where roblox_sub = ?').bind(who.username, who.sub).run();
-      }
-      return { ok: true, userId: known.user_id, email: user.email };
+  if (!known) return 'none';
+  const user = await authUser(env, cfg, known.user_id);
+  if (user === null) return { ok: false, code: 'link' };       // cannot tell: making a second account would be worse than failing
+  if (user !== 'gone') {
+    // The name is display text. Following a change keeps the same user; it never selects one.
+    if (known.username !== who.username) {
+      await env.CORPUS.prepare('update roblox_identities set username = ? where roblox_sub = ?').bind(who.username, who.sub).run();
     }
-    // The link points at a Supabase user that was deleted (by an operator, in the dashboard). Left alone it would
-    // refuse this person for ever, so it goes, with the token row that belonged to that user, and the sign-in
-    // goes on as a first sight. The token is deleted, not revoked: this sign-in has just obtained a new
-    // authorization for the same Roblox account and revoking the old token could end it too (proof section 6).
-    await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ?').bind(known.user_id).run();
-    await env.CORPUS.prepare('delete from roblox_identities where roblox_sub = ? and user_id = ?').bind(who.sub, known.user_id).run();
-    note('stale link dropped');
+    return { ok: true, userId: known.user_id, email: user.email };
   }
+  // The link points at a Supabase user that was deleted (by an operator, in the dashboard). Left alone it would
+  // refuse this person for ever, so it goes, with the token row that belonged to that user, and the sign-in
+  // goes on as a first sight. The token is deleted, not revoked: this sign-in has just obtained a new
+  // authorization for the same Roblox account and revoking the old token could end it too (proof section 6).
+  await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ?').bind(known.user_id).run();
+  await env.CORPUS.prepare('delete from roblox_identities where roblox_sub = ? and user_id = ?').bind(who.sub, known.user_id).run();
+  note('stale link dropped');
+  return 'none';
+}
+
+/** The StudPilot user for this Roblox account: found by `sub`, or made once. Never one it cannot vouch for. Called only once the person has asked for a new account. */
+async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<Linked> {
+  const found = await findLinked(env, cfg, who);
+  if (found !== 'none') return found;
 
   const email = await syntheticEmail(env, who.sub);
   const made = await createAuthUser(env, cfg, email, who);
@@ -458,24 +487,29 @@ async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<Linke
  * the previous token is held nowhere in this system once the row is overwritten, so nobody here can use it.
  * Section 6 of planning/proof/M2/ROBLOX-SIGNIN.md says what to check on the first live run.
  */
-async function storeRefreshToken(env: Env, userId: string, who: RobloxProfile, tokens: TokenSet): Promise<void> {
-  if (!tokens.refreshToken) return;
-  const sealed = await sealSecret(env, tokens.refreshToken);
+async function storeSealedRefresh(env: Env, userId: string, sub: string, scope: string, sealed: string | null): Promise<void> {
+  if (!sealed) return;
   await env.CORPUS.prepare(
     `insert into roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, generation, rotated_at, lease_until) values (?, ?, ?, ?, 1, ?, ?, null)
      on conflict(user_id) do update set sealed_refresh = excluded.sealed_refresh, sub = excluded.sub, scopes = excluded.scopes,
        version = roblox_oauth_tokens.version + 1, generation = excluded.generation, rotated_at = excluded.rotated_at, lease_until = null`,
-  ).bind(userId, sealed, who.sub, tokens.scope, randomToken(16), new Date().toISOString()).run();
+  ).bind(userId, sealed, sub, scope, randomToken(16), new Date().toISOString()).run();
 }
 
 // ---------------------------------------------------------------------------------------------
-// the three routes
+// the routes
 // ---------------------------------------------------------------------------------------------
 
 interface StateRecord {
   verifier: string;
   returnTo: string;
   redirectUri: string;
+  /**
+   * `reauth`: the person is confirming it is them (a Roblox-only account has no password), not signing in for the first time or
+   * again. It asked Roblox for a fresh login, it never makes an account, and a success records the time on the server.
+   * A record without the field (one stored before it existed) is an ordinary sign-in.
+   */
+  purpose: 'signin' | 'reauth';
 }
 
 async function start(req: Request, env: Env): Promise<Response> {
@@ -486,12 +520,17 @@ async function start(req: Request, env: Env): Promise<Response> {
   // A flow must start on the host it will come back to, or the state cookie is on the wrong host.
   if (!origin) return redirect(`${PRODUCT_ORIGIN}${url.pathname}${url.search}`);
 
+  // `reauth=<action>` marks a re-authentication, and the action rides back to Settings so it can be resumed. A value that is not
+  // an action id is not a re-authentication: the flow is an ordinary sign-in, as a bad `return` is dropped to `/`.
+  const asked = url.searchParams.get('reauth');
+  const action = asked !== null && REAUTH_ACTION.test(asked) ? asked : null;
   const state = randomToken(32);
   const verifier = randomToken(48);
   const record: StateRecord = {
     verifier,
-    returnTo: allowedReturn(url.searchParams.get('return')),
+    returnTo: action ? `/settings?resume=${action}` : allowedReturn(url.searchParams.get('return')),
     redirectUri: `${origin}${CALLBACK_PATH}`,
+    purpose: action ? 'reauth' : 'signin',
   };
   await env.KV.put(STATE_PREFIX + state, JSON.stringify(record), { expirationTtl: STATE_TTL_SECONDS });
   const authorize = `${OAUTH}/authorize?` + query({
@@ -502,6 +541,11 @@ async function start(req: Request, env: Env): Promise<Response> {
     state,
     code_challenge: await s256(verifier),
     code_challenge_method: 'S256',
+    // A re-authentication must not be answered from a Roblox session that is already open in the browser: whoever is at an
+    // unlocked screen would be bounced straight back and the round trip would prove nothing. OpenID Connect's `prompt=login` asks
+    // the provider to ask again and `max_age=0` says no earlier login is recent enough. Whether Roblox honours either is NOT
+    // confirmed by anything saved in this repository (proof section 6, item 8).
+    ...(action ? { prompt: 'login', max_age: '0' } : {}),
   });
   return redirect(authorize, [stateCookie(state, isDevOrigin(req))]);
 }
@@ -510,16 +554,57 @@ function parseRecord(raw: string | null): StateRecord | null {
   if (!raw) return null;
   try {
     const r = JSON.parse(raw) as Partial<StateRecord>;
-    return r.verifier && r.redirectUri && typeof r.returnTo === 'string' ? (r as StateRecord) : null;
+    return r.verifier && r.redirectUri && typeof r.returnTo === 'string'
+      ? { verifier: r.verifier, returnTo: r.returnTo, redirectUri: r.redirectUri, purpose: r.purpose === 'reauth' ? 'reauth' : 'signin' }
+      : null;
   } catch {
     return null;
   }
 }
 
-/** Counts one request against the caller's address for a state or handle nobody holds; true when that address is over its allowance. */
-type Strike = () => boolean;
+/**
+ * What an address has spent of its STRAY allowance: requests with no usable state or handle, and well-formed ones nobody holds.
+ * `spent` is asked BEFORE anything is read from KV and counts nothing; `strike` counts one stray, after a read found nobody
+ * holding the value. So an address that has used its allowance gets an answer that cost no KV read, however many fresh random
+ * values it sends; and so does a real flow from that address, until the minute is out (nothing of it is burned meanwhile).
+ */
+interface Strays {
+  spent(): boolean;
+  strike(): boolean;
+}
 
-async function callback(req: Request, env: Env, strike: Strike): Promise<Response> {
+/** The first sight of a Roblox account that nobody here has seen. Held, sealed, until the person says whether they want an account made. */
+interface PendingAccount {
+  sub: string;
+  username: string;
+  /** The Roblox refresh token, sealed with CREDENTIAL_KEY like the stored one; null when Roblox sent none. */
+  sealedRefresh: string | null;
+  scope: string;
+}
+
+/**
+ * What waits in KV behind a handle. `tokenHash`: a sign-in that is ready, redeemed once. `pending`: a first sight that is waiting
+ * for the person to press Continue; /create turns it into the first kind, /decline withdraws it.
+ */
+type HandleRecord = { tokenHash: string; next: string } | { pending: PendingAccount; next: string };
+
+function parseHandle(raw: string | null): HandleRecord | null {
+  if (!raw) return null;
+  try {
+    const r = JSON.parse(raw) as { tokenHash?: unknown; next?: unknown; pending?: Record<string, unknown> | null };
+    if (typeof r.next !== 'string') return null;
+    if (typeof r.tokenHash === 'string' && r.tokenHash) return { tokenHash: r.tokenHash, next: r.next };
+    const p = r.pending;
+    if (p && /^\d{1,20}$/.test(str(p.sub)) && str(p.username) && str(p.scope) && (p.sealedRefresh === null || typeof p.sealedRefresh === 'string')) {
+      return { pending: { sub: str(p.sub), username: str(p.username), sealedRefresh: p.sealedRefresh as string | null, scope: str(p.scope) }, next: r.next };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function callback(req: Request, env: Env, strays: Strays): Promise<Response> {
   const cfg = configOf(env);
   if (!cfg) return page(503, MESSAGES.unavailable);
   const url = new URL(req.url);
@@ -531,15 +616,18 @@ async function callback(req: Request, env: Env, strike: Strike): Promise<Respons
 
   const state = url.searchParams.get('state') ?? '';
   const code = url.searchParams.get('code') ?? '';
-  // Burn the state before anything else is looked at: whatever happens next, this one cannot be used again.
   const validShape = FLOW_TOKEN.test(state);
+  // An address that has already used up its stray allowance is answered before KV is asked anything, so fresh random states
+  // cannot cost reads. Nothing is burned and no cookie is cleared: a real flow from that address can finish once the minute is out.
+  if (validShape && strays.spent()) return page(429, MESSAGES.busy);
+  // Burn the state before anything else is looked at: whatever happens next, this one cannot be used again.
   const raw = validShape ? await env.KV.get(STATE_PREFIX + state) : null;
   if (raw !== null) await env.KV.delete(STATE_PREFIX + state);
   const record = parseRecord(raw);
   if (!record) {
     // A state nobody holds is never a legitimate request. It is keyed by itself (so a flow is never refused for what its neighbours
     // do), which would let unlimited fresh states hammer KV, so each one also counts against the address's stray allowance.
-    if (validShape && strike()) return page(429, MESSAGES.busy, clear);
+    if (validShape && strays.strike()) return page(429, MESSAGES.busy, clear);
     return fail(400, 'state unknown or already used');
   }
   if (readStateCookie(req) !== state) return fail(400, 'state not bound to this browser');
@@ -551,16 +639,33 @@ async function callback(req: Request, env: Env, strike: Strike): Promise<Respons
   if (!who) return fail(502, 'userinfo');
 
   try {
-    const linked = await userFor(env, cfg, who);
+    const known = await findLinked(env, cfg, who);
     // A different status, stage and reference from the generic failure, so an operator can tell it at a glance.
-    if (!linked.ok) return linked.code === 'address_taken' ? fail(409, 'synthetic address taken', REFERENCES.addressTaken) : fail(502, 'account link');
-    await storeRefreshToken(env, linked.userId, who, tokens);
-    const hashed = await signInTokenFor(env, cfg, linked.userId, linked.email);
-    if (!hashed) return fail(502, 'sign-in token');
-    // The token never goes in the URL. It waits in KV behind a random handle, and the handle goes only to THIS browser,
-    // in a cookie that only /redeem receives: a link made from this response signs in nobody who does not hold the cookie.
+    if (known !== 'none' && !known.ok) return fail(502, 'account link');
+    const sealed = tokens.refreshToken ? await sealSecret(env, tokens.refreshToken) : null;
+    let waiting: HandleRecord;
+    if (known === 'none') {
+      // Nobody here has seen this Roblox account. A re-authentication is for an account that exists, and never makes one.
+      if (record.purpose === 'reauth') {
+        // The authorization Roblox has just given is for an account that has no StudPilot account here: withdraw it, as a "Go back" does.
+        if (tokens.refreshToken && !(await revokeAtRoblox(cfg, tokens.refreshToken))) note('reauthentication revoke');
+        return fail(403, 'reauthentication without a linked account');
+      }
+      // Nothing is made yet. The person is asked first ("This creates a new StudPilot account. Already have one? Sign in with your
+      // email instead."), because somebody with an email account who presses "Continue with Roblox" would otherwise get a second,
+      // empty account without noticing, and think their projects were gone.
+      waiting = { pending: { sub: who.sub, username: who.username, sealedRefresh: sealed, scope: tokens.scope }, next: record.returnTo };
+    } else {
+      await storeSealedRefresh(env, known.userId, who.sub, tokens.scope, sealed);
+      const hashed = await signInTokenFor(env, cfg, known.userId, known.email);
+      if (!hashed) return fail(502, 'sign-in token');
+      // The server's own record that this person confirmed it is them, written only once the whole sign-in has worked.
+      if (record.purpose === 'reauth') await stampReauth(env, known.userId);
+      waiting = { tokenHash: hashed, next: record.returnTo };
+    }
+    // Nothing reaches the URL. The record waits in KV behind a random handle, and the handle goes only to THIS browser, in a
+    // cookie that only /redeem (and, for a first sight, /create and /decline) receives: a link made from this response signs in nobody who does not hold the cookie.
     const handle = randomToken(32);
-    const waiting: HandleRecord = { tokenHash: hashed, next: record.returnTo };
     await env.KV.put(HANDLE_PREFIX + handle, JSON.stringify(waiting), { expirationTtl: HANDLE_TTL_SECONDS });
     return redirect(LANDING_PATH, [...clear, handleCookie(handle, isDevOrigin(req))]);
   } catch {
@@ -568,41 +673,116 @@ async function callback(req: Request, env: Env, strike: Strike): Promise<Respons
   }
 }
 
-interface HandleRecord {
-  tokenHash: string;
-  next: string;
+/**
+ * The browser's handle cookie, looked up: its record, or the refusal to send. The Origin check has already run (it spends
+ * nothing). An address that has used up its stray allowance is refused BEFORE KV is read; a handle nobody holds is a stray.
+ */
+async function lookUpHandle(req: Request, env: Env, strays: Strays, clear: readonly string[]): Promise<{ handle: string; rec: HandleRecord } | Response> {
+  const handle = readHandleCookie(req);
+  const shaped = FLOW_TOKEN.test(handle);
+  if (shaped && strays.spent()) return jsonReply(429, { error: MESSAGES.busy });
+  const raw = shaped ? await env.KV.get(HANDLE_PREFIX + handle) : null;
+  const rec = parseHandle(raw);
+  if (!rec) {
+    if (raw !== null) await env.KV.delete(HANDLE_PREFIX + handle);       // nothing readable is kept under a handle
+    // The same as an unknown state: a handle nobody holds also counts against the address's stray allowance.
+    if (shaped && strays.strike()) return jsonReply(429, { error: MESSAGES.busy }, clear);
+    note('handle unknown or already used');
+    return jsonReply(400, { error: MESSAGES.failed }, clear);
+  }
+  return { handle, rec };
+}
+
+/** The Origin check shared by the three routes the SPA POSTs to: refused before the handle is looked at, so a hostile page spends nothing. */
+function sameOriginRefusal(req: Request, what: string): Response | null {
+  const origin = ownOrigin(req);
+  if (origin && req.headers.get('Origin') === origin) return null;
+  note(`${what} from another origin`);
+  return jsonReply(403, { error: MESSAGES.failed });
 }
 
 /**
  * The SPA's landing page calls this (POST, same origin, no body) to turn the handle cookie into the sign-in token.
- * It answers once: the handle is read and burned, and the cookie is cleared whatever the outcome. The Origin check
- * runs first and spends nothing, so a hostile page cannot make a real person's sign-in fail by poking at it.
+ * A ready sign-in answers once: the handle is read and burned, and the cookie is cleared whatever the outcome. A first sight
+ * answers `{confirm: 'new-account', username}` and spends nothing: the person has to say whether they want an account made.
  */
-async function redeem(req: Request, env: Env, strike: Strike): Promise<Response> {
+async function redeem(req: Request, env: Env, strays: Strays): Promise<Response> {
   const cfg = configOf(env);
   const clear = [clearedHandleCookie(isDevOrigin(req))];
   if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });        // nothing read, nothing cleared: it can still be redeemed once the secrets are back
-  const origin = ownOrigin(req);
-  if (!origin || req.headers.get('Origin') !== origin) {
-    note('redeem from another origin');
-    return jsonReply(403, { error: MESSAGES.failed });
+  const refused = sameOriginRefusal(req, 'redeem');
+  if (refused) return refused;
+  const found = await lookUpHandle(req, env, strays, clear);
+  if (found instanceof Response) return found;
+  const { handle, rec } = found;
+  if ('pending' in rec) return jsonReply(200, { confirm: 'new-account', username: rec.pending.username, next: rec.next });
+  await env.KV.delete(HANDLE_PREFIX + handle);
+  return jsonReply(200, { token_hash: rec.tokenHash, next: rec.next }, clear);
+}
+
+/**
+ * "Continue": the person has been told this makes a NEW StudPilot account and has said yes. Only this makes the user. The pending
+ * first sight becomes an ordinary ready sign-in under the same handle, which /redeem then hands over once. Nothing is burned on a
+ * failure, so pressing Continue again is possible; making the user is idempotent (the address is keyed by the `sub`).
+ */
+async function createAccount(req: Request, env: Env, strays: Strays): Promise<Response> {
+  const cfg = configOf(env);
+  if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });
+  const refused = sameOriginRefusal(req, 'create');
+  if (refused) return refused;
+  const found = await lookUpHandle(req, env, strays, [clearedHandleCookie(isDevOrigin(req))]);
+  if (found instanceof Response) return found;
+  const { handle, rec } = found;
+  if (!('pending' in rec)) {
+    note('nothing waiting to be created');
+    return jsonReply(400, { error: MESSAGES.failed });
   }
-  const handle = readHandleCookie(req);
-  const raw = FLOW_TOKEN.test(handle) ? await env.KV.get(HANDLE_PREFIX + handle) : null;
-  if (raw !== null) await env.KV.delete(HANDLE_PREFIX + handle);
-  let waiting: Partial<HandleRecord> | null = null;
   try {
-    waiting = raw ? (JSON.parse(raw) as Partial<HandleRecord>) : null;
+    const who: RobloxProfile = { sub: rec.pending.sub, username: rec.pending.username };
+    const linked = await userFor(env, cfg, who);
+    if (!linked.ok) {
+      if (linked.code === 'address_taken') {
+        note('synthetic address taken');
+        return jsonReply(409, { error: MESSAGES.failed, reference: REFERENCES.addressTaken });
+      }
+      note('account link');
+      return jsonReply(502, { error: MESSAGES.failed });
+    }
+    await storeSealedRefresh(env, linked.userId, who.sub, rec.pending.scope, rec.pending.sealedRefresh);
+    const hashed = await signInTokenFor(env, cfg, linked.userId, linked.email);
+    if (!hashed) {
+      note('sign-in token');
+      return jsonReply(502, { error: MESSAGES.failed });
+    }
+    await env.KV.put(HANDLE_PREFIX + handle, JSON.stringify({ tokenHash: hashed, next: rec.next } satisfies HandleRecord), { expirationTtl: HANDLE_TTL_SECONDS });
+    return jsonReply(200, { created: true });
   } catch {
-    waiting = null;
+    note('storage');
+    return jsonReply(502, { error: MESSAGES.failed });
   }
-  if (!waiting?.tokenHash || typeof waiting.next !== 'string') {
-    // The same as an unknown state: a handle nobody holds also counts against the address's stray allowance.
-    if (FLOW_TOKEN.test(handle) && strike()) return jsonReply(429, { error: MESSAGES.busy }, clear);
-    note('handle unknown or already used');
-    return jsonReply(400, { error: MESSAGES.failed }, clear);
+}
+
+/**
+ * "Go back": the person does not want a new account. The pending record is deleted, and the authorization Roblox just gave (for an
+ * account that will not exist) is withdrawn rather than left in their Connected apps. Nothing was made, so nothing is deleted.
+ */
+async function declineAccount(req: Request, env: Env, strays: Strays): Promise<Response> {
+  const cfg = configOf(env);
+  if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });
+  const refused = sameOriginRefusal(req, 'decline');
+  if (refused) return refused;
+  const clear = [clearedHandleCookie(isDevOrigin(req))];
+  const found = await lookUpHandle(req, env, strays, clear);
+  if (found instanceof Response) return found;
+  const { handle, rec } = found;
+  if (!('pending' in rec)) {
+    note('nothing waiting to be declined');
+    return jsonReply(400, { error: MESSAGES.failed });
   }
-  return jsonReply(200, { token_hash: waiting.tokenHash, next: waiting.next }, clear);
+  await env.KV.delete(HANDLE_PREFIX + handle);
+  const token = rec.pending.sealedRefresh ? await openSecret(env, rec.pending.sealedRefresh) : null;
+  if (token && !(await revokeAtRoblox(cfg, token))) note('decline revoke');
+  return jsonReply(200, { declined: true }, clear);
 }
 
 /**
@@ -611,13 +791,14 @@ async function redeem(req: Request, env: Env, strike: Strike): Promise<Response>
  * - `status` runs on every visit to the sign-in page: 120 a minute for the address.
  * - `start` is the only request a person can be refused before they have spent anything: 60 a minute for the address, so a
  *   lab of thirty can sign in together.
- * - `callback` and `redeem` come AFTER the person has consented at Roblox, and a refusal there throws that sign-in away. So
- *   they are keyed by their own state or handle (5 a minute: one use, and a reload or two), never by the shared address; a
- *   state and a handle are single use anyway, which is the replay protection, and the bucket only bounds how hard one
- *   already-spent value can be hammered. A request with no usable state or handle is never a legitimate one, and shares a
- *   per-address bucket of its own (60 a minute) that no real flow touches; so does a well-formed state or handle that nobody
- *   holds (random, replayed, expired), which the handler counts against that same bucket, because a bucket per value would
- *   otherwise let fresh random values through for ever.
+ * - `callback` and the handle routes (`redeem`, `create`, `decline`) come AFTER the person has consented at Roblox, and a refusal
+ *   there throws that sign-in away. So they are keyed by their own state or handle (5 a minute: one use, and a reload or two),
+ *   never by the shared address; a state and a handle are single use anyway, which is the replay protection, and the bucket only
+ *   bounds how hard one already-spent value can be hammered. A request with no usable state or handle is never a legitimate one,
+ *   and shares a per-address bucket of its own (60 a minute) that no real flow touches; so does a well-formed state or handle that
+ *   nobody holds (random, replayed, expired), which the handler counts against that same bucket, because a bucket per value would
+ *   otherwise let fresh random values through for ever. That bucket is asked BEFORE KV is read (`Strays.spent`), so an address
+ *   that has used it up costs no more reads.
  *
  * `ipLimited` is per isolate and evicts the least active key first under a flood, so none of this is a global ceiling:
  * flooding is for Cloudflare's own rate limiting in front of the worker.
@@ -630,7 +811,7 @@ function limitFor(req: Request, ip: string): { key: string; limit: number } {
     const state = new URL(req.url).searchParams.get('state') ?? '';
     return FLOW_TOKEN.test(state) ? { key: `rbx-callback:${state}`, limit: 5 } : { key: `rbx-callback-stray:${ip}`, limit: 60 };
   }
-  if (path.endsWith('/redeem')) {
+  if (path.endsWith('/redeem') || path.endsWith('/create') || path.endsWith('/decline')) {
     // Only a request from the app's own origin spends the handle's bucket, so another page (or a sibling subdomain, whose
     // requests do carry the cookie) cannot use up a person's allowance and make their real redeem fail.
     const handle = readHandleCookie(req);
@@ -642,13 +823,23 @@ function limitFor(req: Request, ip: string): { key: string; limit: number } {
   return { key: `rbx-other:${ip}`, limit: 60 };
 }
 
+/** The stray allowance of one kind of request (the bucket `limitFor` names for a request with no usable value). */
+export const STRAY_LIMIT = 60;
+
+/** `spent(key, limit)`: has `key` already used `limit` in its window? Counts nothing. The router's own (index.ts `ipSpent`). */
+export type IpSpent = (key: string, limit: number) => boolean;
+
 /**
  * The routes under /auth/roblox. The limiter is the worker's own (index.ts `ipLimited`) and is handed in,
- * because that function lives in the router and this file may not import it back.
+ * because that function lives in the router and this file may not import it back; so is its read-only twin `ipSpent`.
  */
-export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
+export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => false): Hono<{ Bindings: Env }> {
   const routes = new Hono<{ Bindings: Env }>();
   const ipOf = (c: { req: { header(name: string): string | undefined } }): string => c.req.header('CF-Connecting-IP') ?? 'unknown';
+  const straysOf = (kind: 'callback' | 'redeem', ip: string): Strays => {
+    const key = `rbx-${kind}-stray:${ip}`;
+    return { spent: () => spent(key, STRAY_LIMIT), strike: () => limited(key, STRAY_LIMIT) };
+  };
 
   routes.use('*', async (c, next) => {
     const { key, limit } = limitFor(c.req.raw, ipOf(c));
@@ -670,7 +861,7 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
   });
   routes.get('/callback', async (c) => {
     try {
-      return await callback(c.req.raw, c.env, () => limited(`rbx-callback-stray:${ipOf(c)}`, 60));
+      return await callback(c.req.raw, c.env, straysOf('callback', ipOf(c)));
     } catch {
       note('unexpected failure');
       return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
@@ -678,13 +869,60 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
   });
   routes.post('/redeem', async (c) => {
     try {
-      return await redeem(c.req.raw, c.env, () => limited(`rbx-redeem-stray:${ipOf(c)}`, 60));
+      return await redeem(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
     } catch {
       note('unexpected failure');
       return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(isDevOrigin(c.req.raw))]);
     }
   });
+  // These two leave the cookie alone when they fail: the person is still holding a pending first sight and can press the button again.
+  routes.post('/create', async (c) => {
+    try {
+      return await createAccount(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
+    } catch {
+      note('unexpected failure');
+      return jsonReply(500, { error: MESSAGES.failed });
+    }
+  });
+  routes.post('/decline', async (c) => {
+    try {
+      return await declineAccount(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
+    } catch {
+      note('unexpected failure');
+      return jsonReply(500, { error: MESSAGES.failed });
+    }
+  });
   return routes;
+}
+
+/**
+ * RE-AUTHENTICATION, as the server keeps it. A Roblox-only account has no password, so "type your password again" is "sign in with
+ * Roblox again": a flow started with `reauth=<action>` that asked Roblox for a fresh login and ended in a successful sign-in.
+ * Its time is written here, by the server's clock, and read here: the gated worker routes (export, delete) and the SPA's gate
+ * ask this, and nothing compares it with a device clock or with the session's `last_sign_in_at`.
+ */
+async function stampReauth(env: Env, userId: string, now = Date.now()): Promise<void> {
+  await env.CORPUS.prepare('update roblox_identities set reauth_at = ? where user_id = ?').bind(now, userId).run();
+}
+
+/** Did this person confirm it is them with Roblox in the last REAUTH_WINDOW_MS, by the server's clock? */
+export async function robloxReauthFresh(env: Env, userId: string, now = Date.now()): Promise<boolean> {
+  await ensureRobloxOAuthTables(env);
+  const row = await env.CORPUS.prepare('select reauth_at from roblox_identities where user_id = ?').bind(userId).first<{ reauth_at: number | null }>();
+  const at = row?.reauth_at;
+  if (typeof at !== 'number') return false;
+  const age = now - at;
+  return age >= -REAUTH_CLOCK_NOISE_MS && age <= REAUTH_WINDOW_MS;
+}
+
+/**
+ * The refusal for a gated worker route (export, delete) when the caller is a Roblox-only account that has not confirmed it is them,
+ * or null when the route may go on. Every other account proves who it is with its password, in the SPA, as before.
+ */
+export async function robloxReauthRefusal(env: Env, user: AuthedUser): Promise<{ status: 403; body: { error: string; code: 'reauth_required' } } | null> {
+  if (!isSynthetic(user.email)) return null;
+  if (await robloxReauthFresh(env, user.userId)) return null;
+  return { status: 403, body: { error: 'This account signs in with Roblox. Confirm it is you by signing in with Roblox again, then try this again.', code: 'reauth_required' } };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -849,6 +1087,8 @@ export interface RobloxConnection {
   linkedAt: string | null;
   /** True while the account's address is still the synthetic one, so Roblox is the only way in. */
   signInOnly: boolean;
+  /** True when the person confirmed it is them with Roblox within the last ten minutes, by the SERVER's clock. The SPA's gate asks this instead of comparing timestamps with the device's clock. */
+  reauthFresh: boolean;
 }
 
 export async function describeRobloxConnection(env: Env, user: AuthedUser): Promise<RobloxConnection> {
@@ -861,5 +1101,6 @@ export async function describeRobloxConnection(env: Env, user: AuthedUser): Prom
     username: row?.username ?? null,
     linkedAt: row?.created_at ?? null,
     signInOnly: isSynthetic(user.email),
+    reauthFresh: row !== null && (await robloxReauthFresh(env, user.userId)),
   };
 }

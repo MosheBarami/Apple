@@ -247,7 +247,9 @@ export const USER_EXPORT: readonly ExportTable[] = [
     access: 'worker',
     ownerColumn: 'user_id',
     fields: ['roblox_sub', 'user_id', 'username', 'created_at'],
-    excluded: {},
+    excluded: {
+      reauth_at: 'when this account last confirmed it is them with Roblox, for the ten-minute window that gates export and deletion; internal bookkeeping, not a fact about the person',
+    },
   },
   {
     store: 'd1',

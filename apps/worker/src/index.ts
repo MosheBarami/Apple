@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes } from './roblox-oauth';
+import { describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -487,6 +487,16 @@ function ipLimited(ip: string, limit = 20, windowMs = 60_000): boolean {
   return rec.n > limit;
 }
 
+/**
+ * Has `ip` (any key) already used `limit` hits in its window? Counts nothing: the read-only twin of `ipLimited`, for a caller that
+ * must decide BEFORE doing the work a hit would be counted for (the Roblox sign-in routes refuse an address over its stray
+ * allowance before they read KV). The same record, so the two cannot disagree: a key is spent when its next `ipLimited` would refuse.
+ */
+function ipSpent(ip: string, limit: number): boolean {
+  const rec = ipHits.get(ip);
+  return rec !== undefined && Date.now() - rec.at <= rec.w && rec.n >= limit;
+}
+
 // ---------------------------------------------------------------- middleware
 /**
  * ERROR MONITORING. FIRST, so it is OUTERMOST.
@@ -701,7 +711,7 @@ app.route('/api/owner-corpus', ownerCorpusRoutes);
  * is no bearer token to check, and they carry their own guards (single-use state, a browser-bound cookie,
  * PKCE, an IP limit) in roblox-oauth.ts. `ipLimited` is handed in because it lives here.
  */
-app.route('/auth/roblox', robloxOAuthRoutes(ipLimited));
+app.route('/auth/roblox', robloxOAuthRoutes(ipLimited, ipSpent));
 
 /**
  * Compare two secrets without leaking their contents through timing.
@@ -3406,6 +3416,9 @@ app.get('/api/feedback', async (c) => {
  */
 app.get('/api/me/export', async (c) => {
   const user = c.get('user');
+  // A Roblox-only account has no password, so its identity gate is the server's own record of a Roblox re-authentication.
+  const unconfirmed = await robloxReauthRefusal(c.env, user);
+  if (unconfirmed) return c.json(unconfirmed.body, unconfirmed.status);
   const doc = await collectAccountExport(c.env, user);
   // The digest travels INSIDE the file, over the data, for the reason the transcript export gives:
   // a header exists during the download and the file is what gets kept, and a transfer cut in half
@@ -3456,6 +3469,8 @@ app.get('/api/me/delete', async (c) => {
 
 app.post('/api/me/delete', async (c) => {
   const user = c.get('user');
+  const unconfirmed = await robloxReauthRefusal(c.env, user);
+  if (unconfirmed) return c.json(unconfirmed.body, unconfirmed.status);
   const body = (await c.req.json<{ confirm?: unknown }>().catch(() => null)) ?? {};
   if (body.confirm !== ERASURE_CONFIRMATION) {
     return c.json(
