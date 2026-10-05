@@ -46,14 +46,14 @@ test('validate refuses what cannot be published and accepts what can', () => {
 test('the staged manifest is renamed, public, linked to the repo and has no lifecycle scripts', () => {
   const out = stagedManifest(
     { name: '@studpilot/sdk', version: '1.0.0', private: true, scripts: { prepublishOnly: 'x' }, bin: { studpilot: './bin/studpilot.mjs' } },
-    { owner: 'MosheBarami', repo: 'MosheBarami/Apple', directory: 'packages/sdk' },
+    { owner: 'MosheBarami', repo: 'MosheBarami/StudPilot', directory: 'packages/sdk' },
   );
   assert.equal(out.name, '@moshebarami/sdk');
   assert.equal(out.private, undefined);
   assert.equal(out.scripts, undefined);
   assert.deepEqual(out.bin, { studpilot: 'bin/studpilot.mjs' });
   assert.equal(out.publishConfig.registry, GITHUB_REGISTRY);
-  assert.equal(out.repository.url, 'git+https://github.com/MosheBarami/Apple.git');
+  assert.equal(out.repository.url, 'git+https://github.com/MosheBarami/StudPilot.git');
 });
 
 test('main.json is well formed and every required check is a job name in ci.yml', () => {

@@ -27,7 +27,7 @@ They stay installed, but the plan (section 10) no longer counts them or their me
 milestone proof in `planning/proof/` is.
 
 Memory (auto-memory is off to save context, D-COST-1): read
-`~/.claude/projects/-Users-moshe-Developer-RbxAI/memory/MEMORY.md` when prior decisions, owner preferences or infra
+`~/.claude/projects/-Users-moshe-Developer-StudPilot/memory/MEMORY.md` when prior decisions, owner preferences or infra
 facts matter; write new memories there by hand. The folder name encodes the checkout's path, so it changes when the
 local folder is renamed (handoff step 1.6). The old SGSD loop is archived in `docs/sgsd/SGSD-ORCHESTRATOR.md`;
 read it only when asked to run SGSD.

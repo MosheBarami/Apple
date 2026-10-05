@@ -219,3 +219,54 @@
   exact copy.
 - The only difference between the two databases is `notifications`: 1 row in the new database that the old one
   lacks, written after the switch, which shows writes now go to the new database.
+
+## Merge and deploy of the cutover (2026-10-04, 20:50 UTC)
+- PR #26 merged as `3be704ca` (CI green except "Workers Builds", fixed below). Deployed with
+  `node infra/deploy-worker.mjs studpilot` from a clean clone (version `7f6ca0b9`): `studpilot.app` serves
+  `3be704ca` = main HEAD, with no `-dirty`.
+- **Workers Builds** (the Cloudflare Git integration), read through its API:
+  - The branch trigger named the deleted `wrangler.apple.jsonc`, which is why it failed on every PR; it now
+    names `wrangler.studpilot.jsonc`.
+  - The production trigger on `main` ran `npx wrangler deploy` from the repository root, bypassing
+    `deploy-worker.mjs` and its stamp. It was deleted.
+  - Proof: `platforms/workers-builds.json`. `docs/DEPLOY-INTEGRATION.md` updated.
+
+## 1.5 deployed (2026-10-05, about 07:30 UTC)
+- PR #27 merged as `2cf1e5c1`, the first PR with every check green: 8 of 8, including "Workers Builds:
+  studpilot" after its trigger fix.
+- Worker deployed from a clean clone (version `e469d123`): `studpilot.app` serves `2cf1e5c1` = main HEAD.
+- Site and app rebuilt and uploaded: 853 files, every page verified; a rollback of 73 paths was captured first.
+  The landing's canonical link is now `https://studpilot.app/`, and the sitemap and the home page contain no
+  workers.dev host.
+- `check-rebrand --deployed`: "REBRAND COMPLETE — 851 source files, the deployed bundle and 21 rendered
+  route(s) carry no user-visible former name".
+- **The escape-hatch hang** (one checker run past 300 s in three CI runs).
+  - #27 sets `gc.auto=0` and `maintenance.auto=false` in the test fixture; its CI then passed with no hang.
+  - A local run in a clone without that change hung once in the same file.
+  - That fits the auto-gc hypothesis but does not prove it. The fixture now also reports the git and node
+    processes still alive if a timeout recurs.
+
+## 1.4 GitHub (2026-10-05)
+- `gh repo rename`: `MosheBarami/Apple` → `MosheBarami/StudPilot`, now with a StudPilot description and the
+  homepage `https://studpilot.app`. The old URL answers 301 to the new one.
+- The shared checkout, the deploy clone and every work clone point at the new URL, and fetching through it
+  works. Proof: `platforms/github.json`.
+
+## 1.6 Local folder (owner decision D-6, 2026-10-05)
+- Renamed `~/Developer/RbxAI` → `~/Developer/StudPilot`. A symlink at the old path keeps running sessions and
+  stale references working; remove it once nothing uses it.
+- The hand-written memory (17 files) was copied to `~/.claude/projects/-Users-moshe-Developer-StudPilot/memory/`.
+- In the owner's uncommitted `.claude/launch.json`, only the paths inside the repo were rewritten; the
+  `RbxAI-integration` entries are untouched.
+- **Sibling clones:**
+  - 8 clean ones (`RbxAI-caps`, `-feed`, `-fix-r3`, `-rename`, `-reorg`, `-search`, `-site-v4`, `-web-v4`) had
+    no uncommitted files or stashes when measured. Their 133 branch and tag refs were fetched into the main repo
+    under `refs/archive/siblings/<name>/`, and every tip was then referenced (0 unreferenced). Only then were
+    they deleted.
+  - **One lapse, recorded:** `-site-v4` and `-web-v4` were worktrees of a sibling deleted earlier in the same
+    loop, so their final `git status` failed and was read as clean. No work was lost: the measurement taken
+    while they were valid showed 0 dirty files and 0 stashes, and their refs had already been archived. The
+    guard should have stopped on a failing status; it was not used again.
+  - Kept: `RbxAI-design2` (untracked `docs/evidence/ember-rail-round2/`), `RbxAI-integration` (the owner's
+    `launch.json` runs a dev server from it), `RbxAI-ci` (the deploy clone) and `RbxAI-archive` (the golem
+    export).
