@@ -59,6 +59,11 @@ export const PREFERENCE_KEYS = [
   // is: an organisation has to be able to decide it for its people, and it NARROWS across layers so
   // a project cannot switch somebody's account back on. Read by analytics-consent.ts.
   'analytics_opt_out',
+  // The choice to stay out of "improvement data": anonymised use data StudPilot MAY one day collect to get better (plan section 7).
+  // Collection is NOT active (CUSTOMER_WORK_TRAINING_ENABLED is false in packages/training), so nothing reads this key today: it
+  // exists so the choice is recorded now and honoured from the first day. Default is `false`, not opted out, as the published
+  // policy says. It narrows like `analytics_opt_out`: an organisation's opt-out is not for a project to switch back off.
+  'improvement_opt_out',
 ] as const;
 export type PreferenceKey = (typeof PREFERENCE_KEYS)[number];
 
@@ -168,6 +173,8 @@ export interface Preferences {
   asset_sources?: AssetSourcePolicy;
   /** True to keep this person's account id off analytics events. NARROWS: any layer's `true` wins. */
   analytics_opt_out?: boolean;
+  /** True to keep this person out of improvement data. NARROWS: any layer's `true` wins. Not read by anything yet: collection is off. */
+  improvement_opt_out?: boolean;
 }
 
 export type PreferenceReject =
@@ -242,6 +249,11 @@ export function normalisePreferences(input: unknown, vocab: PreferenceVocabulary
         // accident, and both would be truthy or falsy in a way somebody has to guess at; a consent
         // flag is the last field in this list that should be decided by coercion.
         if (typeof value === 'boolean') prefs.analytics_opt_out = value;
+        else rejected.push({ key, reason: 'bad_value' });
+        break;
+      case 'improvement_opt_out':
+        // A boolean and only a boolean, for the reason analytics_opt_out gives: a consent flag is not decided by coercion.
+        if (typeof value === 'boolean') prefs.improvement_opt_out = value;
         else rejected.push({ key, reason: 'bad_value' });
         break;
       case 'roblox_conventions': {
@@ -364,7 +376,7 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
       // leaves all 13 assertions in asset-source-policy.test.mjs green, because the narrowing loop
       // below overwrites this one. Recorded rather than removed, for the reason above - and so the
       // next person to read a green suite does not count this line as covered.
-      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode' || key === 'asset_sources' || key === 'analytics_opt_out') continue;
+      if (key === 'tool_permissions' || key === 'notify_events' || key === 'memory_mode' || key === 'asset_sources' || key === 'analytics_opt_out' || key === 'improvement_opt_out') continue;
       const v = layer[key];
       if (v === undefined) continue;
       (prefs as Record<string, unknown>)[key] = v;
@@ -445,6 +457,17 @@ export function mergePreferences(layers: Partial<Record<MemoryScope, Preferences
     optOut = next;
   }
   if (optOut !== undefined) prefs.analytics_opt_out = optOut;
+
+  // `improvement_opt_out` narrows the same way, for the same reason: any layer's `true` wins, `false` everywhere is a real answer.
+  let improvementOptOut: boolean | undefined;
+  for (const scope of order) {
+    const v = layers[scope]?.improvement_opt_out;
+    if (v === undefined) continue;
+    const next = improvementOptOut === true || v === true;
+    if (next !== improvementOptOut) sources.improvement_opt_out = scope;
+    improvementOptOut = next;
+  }
+  if (improvementOptOut !== undefined) prefs.improvement_opt_out = improvementOptOut;
 
   // `notify_events` merges PER ENTRY, in precedence order, for a reason unrelated to the one that
   // makes tool permissions narrow: nothing about it is a safety rule, and a project that overrode

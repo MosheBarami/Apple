@@ -895,7 +895,7 @@ const SECTION_INDEX = [
     group: 'Your data',
     id: 'privacy',
     label: 'Privacy',
-    fields: ['training-promise', 'analytics-opt-out', 'download-my-data'],
+    fields: ['improvement-opt-out', 'analytics-opt-out', 'download-my-data'],
   },
   { group: 'Your data', id: 'danger', label: 'Danger zone', fields: ['reset-settings', 'delete-account'] },
 ] as const;
@@ -1949,6 +1949,25 @@ export function SettingsPage() {
     onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
   });
 
+  // The same shape as the analytics switch, one key over. Collection is not active, so what is confirmed is that the choice is KEPT.
+  const setImprovementOptOut = useMutation({
+    mutationFn: async (optOut: boolean) => {
+      const base = storedPrefs.data?.preferences.prefs ?? {};
+      return savePreferences('user', userId, { ...base, improvement_opt_out: optOut });
+    },
+    onSuccess: (out) => {
+      void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
+      // What came back, not what was sent.
+      toast(
+        out.preferences.improvement_opt_out
+          ? 'Saved: you are opted out of improvement data.'
+          : 'Saved: you are not opted out of improvement data.',
+        'success',
+      );
+    },
+    onError: (e: Error) => toast(`Couldn't save: ${e.message}`, 'error'),
+  });
+
   /**
    * The progress of the walk, because it is dozens of requests rather than one.
    *
@@ -2472,23 +2491,45 @@ export function SettingsPage() {
       </Section>
 
 
-      <Section id="privacy" title="Privacy" visible={sectionShows('training-promise', 'analytics-opt-out', 'download-my-data')}>
-        {/* THE TOGGLE IS GONE, AND THE PROMISE IS THE REASON.
-            Both published privacy pages say StudPilot never trains on a customer's projects — the
-            policy states outright that no opt-in programme exists. This row offered exactly that
-            opt-in, in the account settings of the same product. A careful reader could not
-            reconcile the two, and whichever they believed, one of them was lying to them.
-            Owner's decision, 2026-09-20: the promise is the true one. The stronger commitment is
-            the one worth keeping, so the switch goes rather than the sentence. `training_opt_in`
-            stays in the database untouched — dropping a column is a migration, and nothing reads
-            it now. */}
-        <Row id="training-promise" visible={shows('training-promise')}>
-          <p className="settings-lead">StudPilot never trains on your work.</p>
+      <Section id="privacy" title="Privacy" visible={sectionShows('improvement-opt-out', 'analytics-opt-out', 'download-my-data')}>
+        {/* THE OLD "NEVER TRAINS" STATEMENT IS GONE, AND SO IS THE CONTRADICTION IT CAUSED.
+            This row said StudPilot never trains on your work and that no setting could change it. The owner's decision
+            (planning/STUDPILOT-FINAL-PLAN.md section 7) is different and the published privacy page now says the same thing: StudPilot
+            may one day collect ANONYMISED improvement data, as an OPT-OUT, never including data from Roblox, an Open Cloud key,
+            credentials or payment details. Collection is NOT active (CUSTOMER_WORK_TRAINING_ENABLED is false in
+            packages/training), so this switch records a choice that is kept for when it is. It is not a training opt-IN: the control
+            named trainingOptIn must not exist (tests/promises-match-the-product.test.mjs holds the page, this row and that gate
+            to each other). `profiles.training_opt_in` stays in the database untouched; nothing here reads it. */}
+        <Row id="improvement-opt-out"
+          visible={shows('improvement-opt-out')}
+          title="Improvement data"
+          control={
+            <label className="switch-row switch-row--toggle">
+              <Switch
+                name="improvementOptOut"
+                id="improvement-opt-out"
+                checked={storedPrefs.data?.preferences.prefs.improvement_opt_out ?? false}
+                onChange={(e) => setImprovementOptOut.mutate(e.target.checked)}
+                disabled={storedPrefs.isPending || setImprovementOptOut.isPending}
+              />
+              <span className="gx-sr">Opt out of improvement data</span>
+            </label>
+          }
+        >
           <p className="settings-note">
-            Your projects, your prompts and the code StudPilot writes for you are yours. They are not used to
-            train models, and there is no setting here that would change that — the commitment is the
-            product's, not a preference you have to remember to keep switched off.
+            Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key, credentials or payment details.
+            Collection is not active yet: before it starts we will tell every account holder and update the privacy policy.
           </p>
+          <p className="settings-note settings-note-quiet">
+            Switched on, you are opted out. Your choice is kept for when collection starts.
+          </p>
+          {/* A FAILED READ IS NOT "NOT OPTED OUT", for the reason the analytics row gives. */}
+          {storedPrefs.isError && (
+            <p className="settings-note settings-note-warn" role="alert">
+              This setting could not be read just now, so the switch above may not show what is stored. Reload the page
+              before changing it.
+            </p>
+          )}
         </Row>
 
 

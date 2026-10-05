@@ -115,7 +115,7 @@ test('both are identity-gated, and each says why', () => {
 
 test('search finds the privacy controls by the words people use for them', () => {
   const ids = new Set(SETTING_FIELDS.map((f) => f.id));
-  for (const id of ['analytics-opt-out', 'download-my-data', 'delete-account']) {
+  for (const id of ['analytics-opt-out', 'improvement-opt-out', 'download-my-data', 'delete-account']) {
     assert.ok(ids.has(id), `${id} is not in the settings registry`);
   }
   const cases = [
@@ -125,6 +125,9 @@ test('search finds the privacy controls by the words people use for them', () =>
     ['close my account', 'delete-account'],
     ['analytics', 'analytics-opt-out'],
     ['tracking', 'analytics-opt-out'],
+    // The old promise row was found by "training"; the opt-out that replaced it has to be.
+    ['training', 'improvement-opt-out'],
+    ['ai training', 'improvement-opt-out'],
   ];
   for (const [query, id] of cases) {
     assert.equal(matchSettings(query)[0], id, `"${query}" should find ${id}, found ${matchSettings(query)[0]}`);
@@ -141,6 +144,23 @@ test('the analytics switch writes the preference the worker reads', () => {
   assert.ok(at > 0, 'nothing on the settings page sets it');
   const around = page.slice(Math.max(0, at - 700), at + 400);
   assert.match(around, /savePreferences\('user'/, 'it must be written at user scope');
+});
+
+test('the improvement-data switch writes the preference the worker validates, at user scope, and reads absent as NOT opted out', () => {
+  // The worker accepts the key only if preferences.ts declares it (a key it does not know is thrown away, so the switch would look
+  // saved and be forgotten), and the page reads what the SERVER returned rather than what it sent.
+  const worker = readFileSync(join(WEB, '..', 'worker', 'src', 'preferences.ts'), 'utf8');
+  assert.match(worker, /'improvement_opt_out',\n\] as const;/, "the worker's preference vocabulary does not declare the key the switch writes");
+  assert.match(api, /improvement_opt_out\?: boolean/, 'the preference is not in the client’s vocabulary');
+  const at = page.indexOf('const setImprovementOptOut');
+  assert.ok(at > 0, 'nothing on the settings page sets it');
+  const mutation = page.slice(at, at + 900);
+  assert.match(mutation, /savePreferences\('user', userId, \{ \.\.\.base, improvement_opt_out: optOut \}\)/, 'it must be written at user scope, with everything already stored kept');
+  assert.match(mutation, /out\.preferences\.improvement_opt_out/, 'the confirmation must say what came back, not what was sent');
+  const row = copy.slice(copy.indexOf('<Row id="improvement-opt-out"'), copy.indexOf('</Row>', copy.indexOf('<Row id="improvement-opt-out"')));
+  assert.match(row, /checked=\{storedPrefs\.data\?\.preferences\.prefs\.improvement_opt_out \?\? false\}/, 'default must be not opted out');
+  assert.match(row, /onChange=\{\(e\) => setImprovementOptOut\.mutate\(e\.target\.checked\)\}/, 'checked means opted OUT');
+  assert.match(row, /storedPrefs\.isError/, 'a failed read must not render as "not opted out"');
 });
 
 test('the switch says when it takes effect, and quotes the window the worker really keeps', () => {

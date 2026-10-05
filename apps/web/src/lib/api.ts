@@ -543,6 +543,13 @@ export interface Preferences {
    * the settings copy says so.
    */
   analytics_opt_out?: boolean;
+  /**
+   * True to opt out of "improvement data": anonymised use data StudPilot may one day collect to get better.
+   *
+   * Collection is NOT active (packages/training CUSTOMER_WORK_TRAINING_ENABLED is false), so nothing reads this yet; the choice
+   * is kept so it is honoured from the first day. Absent means not opted out. NARROWS across layers, like analytics_opt_out.
+   */
+  improvement_opt_out?: boolean;
 }
 
 export interface PromptProfile {
