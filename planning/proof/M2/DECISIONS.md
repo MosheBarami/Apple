@@ -422,6 +422,7 @@ mark, and `ObjectIcon` (the plugin page uses it).
 
 - **Roblox sign-in.** The first task said Roblox and email sign-in were live while `ROBLOX-SIGNIN.md` said nothing was switched on; the pages then said "being switched on".
   The owner confirmed on 2026-10-05 (D-10) that Sign in with Roblox is live and he has used it; the pages now say it works, and Google and Discord "are coming" (12.5).
+  **Superseded in 12.12:** the Roblox OAuth app is in Roblox's private mode (up to 10 users until review), so the pages say it is in a limited test.
 - **Screenshots in the step list.** The plan's step 4 mentions Studio screenshots. They reach the browser only from a play test or from the `look`
   tool (vision, removed in M3), and the app's strip for them is another lane's. The page says "a live step list" and no more.
 - **The block engine and the checks** are worded as "being built to", with "Partly works today" where the tools exist (play test, button presses,
@@ -459,7 +460,7 @@ rebased onto `main` at `f9c4bfe7`, which holds the design system (#32), the lega
 
 | Owner fact | What the site now says | Held by |
 |---|---|---|
-| Sign in with Roblox is live and the owner has used it; Google and Discord are not switched on | "sign in with Roblox" works (step 1 of How it works, the landing rail, the blog, Getting started); Google and Discord "are coming" | `how-it-works.test.mjs` (step 1 is "Works today" and the worker and the app have the route), `blog-post.test.mjs` (no `signInWithOAuth` in the app), `docs-claims.test.mjs` |
+| Sign in with Roblox is live and the owner has used it; Google and Discord are not switched on | "sign in with Roblox" works (step 1 of How it works, the landing rail, the blog, Getting started); Google and Discord "are coming". **Superseded in 12.12:** the sentences now say it is in a limited test until Roblox approves the app | `how-it-works.test.mjs`, `blog-post.test.mjs` (no `signInWithOAuth` in the app), `docs-claims.test.mjs`; `roblox-signin-limit.test.mjs` since 12.12 |
 | The operator is StudPilot, the contact is support@studpilot.app (D-13) | `SUPPORT_EMAIL` in `packages/shared` is the one home; the footer prints it as a link; the footer's "Apple Labs" byline is gone (a byline that repeats the wordmark is the defect `one-operator.test.mjs` was written against); the docs layout, status page, FAQ and troubleshooting read the constant; the allowlist rows only these edits kept alive are removed (`build-allowlist.mjs --write`: UNCLASSIFIED 0) | `nav-and-routes.test.mjs`, `one-operator.test.mjs` (footer test restated), `landing.spec.ts` |
 | The Creator Store listing is unavailable (`STUDIO_PLUGIN_STORE_LIVE` is false) | see 12.6 | `plugin-honesty.test.mjs` and the restated `how-it-works` and `blog-post` tests |
 
@@ -557,7 +558,7 @@ held to zero (the mutation is deleting the config line). Cost: under 300 B of gz
 
 ### 12.11 Things I found that are not mine, and one I could not reproduce
 
-- **Two `apps/web` tests fail because of the docs redirect (a cross-lane fix, not mine to make).** `apps/web/src/components/empty-state-model.ts` links `/docs/connect` from two empty states
+- **Two `apps/web` tests fail because of the docs redirect (a cross-lane fix, not mine to make).** *Fixed in fix cycle 2 (12.12, finding 6), the only `apps/web` edit of this lane.* `apps/web/src/components/empty-state-model.ts` links `/docs/connect` from two empty states
   (lines 91 and 102, label "Connect a project"), and `apps/web/tests/contextual-help.test.mjs` requires every docs link in the app to be a file under `apps/site/src/pages/docs`. The page is folded into
   Getting started and is an Astro redirect, so the live link still lands, but the web suite is 2,537 tests, 2,535 pass, **2 fail** ("the empty states that mean go and connect Studio say where that is written",
   "every help link declared on an empty state names a page on disk"). The fix is in `apps/web` and is two lines: point those links at `/docs/getting-started` (label "Getting started"). I was told not to touch
@@ -571,3 +572,40 @@ held to zero (the mutation is deleting the config line). Cost: under 300 B of gz
 - The test-ledger commit message of the first pass says "73 tests" for the 8 deleted files; the ledger's rows count 65 (9+2+9+4+10+19+8+4). The ledger is the record.
 - One process slip, harmless and recorded: early in the work I ran `git checkout` on one file I had just edited, in this isolated clone, to undo an experiment (the working rules forbid it in the shared checkout);
   nothing else was touched. Mock-mode exploration also made one unauthenticated read to the Supabase REST URL that returned 401 and no data, before the capture script was written to abort every request that leaves the machine.
+
+### 12.12 Fix cycle 2 (2026-10-05): what the second review changed, and the facts it settled
+
+The second review had 23 findings (13 survived two skeptics each, the others are minor). Every one is fixed or answered here. The branch was rebased onto `main` at `30fbebd7` (planning files only) first.
+The proof is `RED-FIRST.md` section 6 (every new or restated guard shown red, then green, with the previous guard run on the same break), `TEST-LEDGER.md` (the cycle's section; the cycle-1 count corrected), and
+the retaken `new-local/` and `side-by-side/` pictures (all 13 routes at 1440 and 390 px, and the three pairs, taken from `astro preview` of `67034fb9`).
+
+| # | Finding | What was done | Held by |
+|---|---|---|---|
+| 0 | Roblox sign-in shown as working for everyone | `ROBLOX_OAUTH_REVIEWED = false` in `packages/shared` (beside `STUDIO_PLUGIN_STORE_LIVE`); How it works step 1 is "Partly works today"; the landing, the Getting started page and the post say "Sign in with Roblox is in a limited test until Roblox approves the app. Email sign-in works for everyone." | `roblox-signin-limit`, `how-it-works`, `blog-post` |
+| 1 | The hero picture shows a Studio selection chip | Not re-captured without the chip (the chip is the app's mock fixture, `apps/web/src/lib/mock.ts`, which this lane may not change): the alt and caption of both captures say the chip is sample data and no Studio is connected; the capture was re-run at `ab32175d` | `no-fake-output` |
+| 2 | The critic is described as running | Reworded as the bar being built to ("will see", "is still being made", nothing rated); the three figures carry "Target" in their rows; the catalog and the post agree | `quality-bar-claims`, `blog-post` |
+| 3 | Pro 20 and Max 30 a day printed as plan facts | `PAID_DAILY_CAPS_DECIDED = false`; the pricing row says "Not decided yet", the credits page says the paid daily limit is not decided yet, and no paid "full days" is printed | `undecided-figures` |
+| 4 | The lede says the plans differ only in Credits | "they differ in how many Credits they include and in who is answered first when you write to support"; the support note says paid plans are *planned* to be answered first | `pricing-config` |
+| 5 | support@studpilot.app published before the inbox can receive mail | Kept, with the line "a human reads it". Evidence below | (none: a fact, not code) |
+| 6 | Two `apps/web` tests red | `empty-state-model.ts`: both help links now `/docs/getting-started#pair`, labelled "Pair Studio with a project"; `apps/web`: 2537 tests, 0 fail | `nav-and-routes`, the two `apps/web` tests |
+| 7 to 16 | Guards that did not hold what they claim | Restated to the property, each with red-first proof | see the ledger section |
+| 17 to 22 | Layout and accessibility | Fixed, each held by a browser measure | `layout-measures`, `pages-render-clean` |
+
+**Facts and decisions.**
+- **Roblox sign-in (finding 0).** `planning/roblox-oauth-setup.md`: the app is in private mode, "up to 10 unique users until Roblox reviews the app"; the review is owner action X9 (open, scheduled for M7). The page says it plainly and derives every sentence from
+  the one flag (`apps/site/src/lib/roblox-signin.ts`); the day X9 is done, flip `ROBLOX_OAUTH_REVIEWED` and the pages say it plainly again. The post is Markdown and cannot read the flag, so `blog-post` holds it: it fails the day the flag flips until
+  a person moves the line to "What works today". Step 1 is "Partly works today" and not "Works today" because the label is the claim and one of its parts works for ten people.
+- **support@studpilot.app (finding 5).** Cloudflare Email Routing for studpilot.app was switched on and verified on 2026-10-05: status `ready`, the rule "support to owner" forwards `support@studpilot.app` to the owner's address, `route1` to `route3.mx.cloudflare.net` and the
+  SPF record resolve on public DNS (`planning/proof/M2/LOG.md`, "Cloudflare access through OAuth, and support@ forwarding is live"; `BLOCKED.md` E1 is closed). The brief for this cycle states that the inbox receives mail and that the owner reads it. I did not
+  send a mail or read the inbox (no network write was allowed), and the LOG's own line says a test message had not yet been observed when it was written. The address and "a human reads it" stay.
+- **Paid per-day caps (finding 3).** `planning/pricing-2026-10-04.md` decides price and monthly pool per plan and Free's 5 a day; `planning/proof/OWNER-DECISIONS.md` has no answer on the paid daily figures (section 5 of this file still lists "Pro 20 and Max 30" as an assumption for the
+  owner to confirm). The config keeps them (QuotaDO needs a number); the marketing site no longer prints them. When the owner decides, set `PAID_DAILY_CAPS_DECIDED` to true.
+- **Not mine, found on the way, for the other lanes.**
+  - The legal lane: three shrink-only debts name its pages, each deleted by the test the day the page stops offending: `roblox-signin-limit` (`/privacy`, `/terms`, `/docs/privacy-and-data`, and `/docs`, whose list quotes the privacy page's summary "what it holds when
+    you sign in with Roblox"), `plugin-honesty` (`/privacy`, `/terms`, `/docs/privacy-and-data`), and the existing `titles` debt. `/terms` still says "have an AI agent apply them inside Roblox Studio via the StudPilot plugin" with no caveat.
+  - The app lane: `apps/web/src/routes/auth-pages.tsx` draws "Continue with Roblox" for every visitor once the worker reports it configured, so the 11th person meets a failed Roblox consent; and `apps/web/src/components/plans.tsx` prints the paid plans' "N a day" figures, which the owner has not decided.
+- **The landing budget** after this cycle, measured and not raised: markup and stylesheets 10,667 B gzip of 12,000, inline JavaScript 3,007 B of 3,500, images 26,916 B of 31,000.
+- **Not done, on purpose.** The hero picture was not re-captured without the chip (above). Lighthouse was not run (other lanes were running suites; the deployed site is measured later). No deploy, no push, no network write.
+- **A slip, harmless and recorded.** I ran `git checkout` with no arguments once, in this clone, by mistake: it only lists the modified files and changed nothing. Probe servers used ports 4321 to 4326 (all stopped); mutation work ran in copies under the scratchpad's `probes/site/`.
+- **What I found about my own first versions, so the next reader does not repeat it.** Four of the new guards were green on the break they were written for and were tightened before they were committed: the critic scanner exempted a whole sentence on one "will"; the stale-reference scan
+  accepted "old" and "was" anywhere nearby; the footer buttons' height was measured only where the layout had one line; and the "Included" text hidden inside a tick cell, which the e2e contrast audit measured against the plan's label once the phone layout became a grid (placed in the value column).

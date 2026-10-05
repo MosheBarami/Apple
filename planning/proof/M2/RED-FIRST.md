@@ -283,3 +283,120 @@ with the break in place and again after the restore. The helper scripts that ran
 
 ### 5.18 no page links to a redirect stub (tests/nav-and-routes.test.mjs)
 - how-it-works.astro linking `/docs/connect` ("Connect a project") again (rebuilt): 1 red; the first pass's page did exactly this after the route was folded into Getting started
+
+
+## 6. Fix cycle 2 (2026-10-05): the mutations
+
+The second review (23 findings) asked for every new or restated guard to be shown red. Each entry below is one planted break, made in a throw-away copy of the clone (`cp -cR`, so the
+clone itself was never mutated), with the occurrence count of the replaced text asserted to be exactly one; the site was rebuilt with the break in place, the named test file was run, and
+the failures are quoted (the first message of each). The file was then restored from the clone, the site rebuilt, and the same file run again: every restored run is green, with the counts
+given. "BEFORE" is the same break run against the previous version of the guard (the file as it stood at `5e12cef3`, the head of fix cycle 1, copied into the probe), which is what the
+reviewers measured: the break passed. The helper that ran them is throw-away and lives outside the repository.
+
+### 6.1 Roblox sign-in (finding 0; tests/roblox-signin-limit.test.mjs, how-it-works, blog-post)
+- how-it-works step 1 offers "or sign in with Roblox" in the paragraph with no limit: 1 red ("/how-it-works/: "Make an account with your email and a password, or sign in with Roblox. You do not need a card." offers it with no limit in the same paragraph"); restored 5/5 (+1 skipped by design) green
+- the landing rail step 01 back to "Use your email, or sign in with Roblox.": 1 red (named by route and sentence); restored green
+- the post's lead back to "You can sign in with your email, or with Roblox." under What works today: 3 red (two in blog-post: a lead with no verifier, no verifier for it; one in roblox-signin-limit: the blog block offers it with no limit); restored 12/12
+- `Continue with Roblox.` added to /docs/billing: 1 red ("/docs/billing/: "Continue with Roblox." offers it with no limit in the same paragraph"); restored green
+- `ROBLOX_LIMIT` cut to "Sign in with Roblox is in a limited test." (half the limit): 3 red (how-it-works step 1, every page, the one-source test); restored 14/14
+- `ROBLOX_OAUTH_REVIEWED` flipped to true in packages/shared: 2 red (the post, which Markdown cannot derive, still says limited test: the blog verifier says "move the line to What works today", and the opposite-lie test names the post's sentence); restored 21/21
+- how-it-works step 1 `status` forced to `'live'`: 1 red ("the label of step 1 does not follow ROBLOX_OAUTH_REVIEWED"); restored 9/9
+- the scanner and the block reader are proved on fixtures first (the three sentences the first rebuild shipped are offers; the limit in the NEXT paragraph does not satisfy the offer; the title and the description are read)
+
+### 6.2 The hero screenshot (finding 1; tests/no-fake-output.test.mjs)
+- screens.json: the hero record's caption without "No Studio is connected": 1 red ("app-idle: the caption does not say that no Studio is connected, and the picture shows the "2 selected" chip"); restored 14/14
+- the phone record's alt without it: 1 red (app-idle-phone: the alt ...); restored green
+- the capture was re-run at `ab32175d`: the pictures are byte-identical (the hashes did not change); the records' commit, alt and caption did
+
+### 6.3 The quality bar (finding 2; tests/quality-bar-claims.test.mjs, blog-post)
+- index.astro: "A fresh blind critic sees only the request and screenshots of the result" back: 1 red ("/: ... says the critic does it, and none is built"); restored 3/3
+- catalog.astro: "a blind critic rates it 8 or better" with the modal "will" elsewhere in the sentence ("A piece will go in this catalog only when ...: a blind critic rates it"): 1 red (this is the break that showed the first version of the scanner exempted a whole sentence on one "will"; it now reads the modal on the critic's own clause); restored green
+- the post: "No piece has passed it yet." back: 2 red (the blog verifier, and "implies pieces were rated"); restored 10/10
+- index.astro: the "Target" label removed from the first row of the bar: 1 red ("a row of the bar shows its figure with no "Target""); restored green
+- a critic harness appears (`scripts/eval/run.mjs`): 1 red in blog-post ("a critic harness (scripts/eval) is in the repository: re-read what the post says about the critic"); restored 7/7
+
+### 6.4 Undecided per-day figures (finding 3; tests/undecided-figures.test.mjs, pricing-config, quota-ceiling-copy)
+- pricing.astro: the paid cells of "Credits a day" print the config's 20 and 30 again: 3 red (pricing-config twice: "Pro: its Credits a day cell is not "Not decided yet""; undecided-figures: "the "Credits a day" row says "20" for Pro"); restored 22/22 (+1 skipped by design)
+- pricing.astro: the paid "full days" line back ("Pro: 20 a day against 100 a month is 5 full days"): 1 red ("gives a paid plan's per-day figure (20) as a fact"); restored green
+- credits-and-limits.astro: "Pro plan: 100 Credits a month · up to 20 a day" back: 1 red; the "full days" sentence for a paid plan back: 1 red; restored green
+- before: the first version of the pricing guards pinned the 20 and 30 to the config (`day = { Free: '5', Pro: '20', Max: '30' }`), so the printed figures were the guarded ones
+
+### 6.5 The pricing lede (finding 4; pricing-config)
+- the lede back to "they differ only in how many Credits they include": 1 red ("the lede says the plans differ only in Credits"); restored 19/19
+- the lede keeps "differ in how many Credits they include" but drops support while the table still says "answered before Free": 1 red ("the table gives paid plans priority support and the lede does not mention support"); restored green
+
+### 6.6 support@studpilot.app (finding 5)
+- No mutation: the finding is answered by evidence, not by code (DECISIONS.md 12.12): Email Routing forwarding is live, so the address and the line stay.
+
+### 6.7 The web app's docs links (finding 6; tests/nav-and-routes.test.mjs; apps/web tests/contextual-help.test.mjs)
+- apps/web empty-state-model.ts: the `waitingForStudio` link back to `/docs/connect`: 1 red in the site ("the app links a docs route that is redirected or gone"); and the same change run in apps/web: 2 red, the two tests that were red on the branch ("the empty states that mean "go and connect Studio" say where that is written", "every help link declared on an empty state names a page on disk": "waitingForStudio links to /docs/connect, which is not on disk"); restored: site 8/8, apps/web 8/8
+- `cd apps/web && node --test`: 2537 tests, 2537 pass, 0 fail with the fix (it was 2535 and 2 fail on the branch)
+
+### 6.8 plugin-honesty (finding 7)
+- docs/billing.astro: "Every request is applied to your place through the Studio plugin, so you can start building today." with no caveat on the page: 1 red ("/docs/billing/: "Every request is applied ..." and no caveat anywhere on the page"); restored 4/4. BEFORE (`5e12cef3`'s short verb list): 0 failing of 3, which is the finding
+- docs/credits-and-limits.astro: the flag-derived caveat removed: 1 red ("... "A run that changed your place keeps its Credits ..." and no caveat anywhere on the page"); docs/troubleshooting.astro: the same: 1 red; restored green
+- the scanner is proved first on the finding's mutation sentence, the /terms sentence, "pairing Studio" and a plugin and a pair far apart (all talk), on a menu label (not talk) and on the page's meta description (read)
+
+### 6.9 No instruction to build or load the legacy plugin (finding 8; tests/legacy-plugin-instructions.test.mjs)
+- docs/plugin.astro: "Run rojo build apps/plugin/default.project.json and load the result as a local plugin.": 2 red (the built page and the source: "instructs a reader toward apps/plugin (rojo-build-legacy, legacy-project-file, build-the-legacy)"); restored 4/4
+- docs/plugin.astro: "download the studpilot-studio-pr-unverified artifact from CI": 2 red ("names the unverified CI artifact studpilot-studio-pr-unverified", the name read from ci.yml); restored green
+- src/data/pieces.ts: a string "build apps/plugin with Rojo and load it in Studio": 1 red (the source of words; "build-the-legacy, legacy-then-load"); restored green
+- BEFORE: the first mutation with the new file removed, against the other 387 tests of the site suite: 0 failing (the finding: "355 pass, 0 fail")
+
+### 6.10 The blog post, every block (finding 9; blog-post)
+- an unbolded paragraph under What works today ("StudPilot builds the piece into your Studio place, runs every check, and shows you a finished game."): 2 red ("has no bold lead, so nothing checks it against the repository"; "claims a Studio capability"); restored 7/7
+- a paragraph glued straight under the heading with no blank line: 2 red (read from the first parser's code, not run: it took a block that holds a heading line for a heading and dropped everything else in it); restored green
+- an unbolded sentence added to the closing section: 1 red; a new heading "## Coming soon" with a claim under it: 3 red ("stands under the heading "Coming soon", which this test does not know"); restored green
+
+### 6.11 Landmarks (finding 10; landmarks-unique)
+- catalog.astro: the "Where to ask" section `aria-label="The four kinds of pieces"` (two region landmarks, one name): 1 red ("/catalog/: two region landmarks named "The four kinds of pieces" (<section>)"); restored 2/2. BEFORE: 0 failing of 2
+- `aria-labelledby` is resolved to the heading text: proved on a fixture (two sections pointing at headings with the same words, `How  it works` and `How it works`)
+
+### 6.12 Nothing hides content behind a class a script adds (finding 11; reveal-cannot-hide-content)
+- the finding's mutation (an inline script in Base.astro adds `js-ready`, and `html:not(.js-ready) main { opacity: 0; }` in site.css): 2 red (the shape scan: "html:not(.js-ready) main: hidden unless a class or attribute is added (a negated gate)"; the browser: "/ (scripting off): "Beta" in span.badge: opacity 0.00"); restored 7/7. BEFORE (the first restatement): 0 failing of 4
+- the browser measure alone: `main { opacity: 0; }` (no gate for the scanner to see): 1 red (nothing drawn, in all three scenarios); restored green
+- a positive gate: `.js-ready main { opacity: 0 }` with a script adding the class: 2 red (".js-ready main: hidden behind .js-ready, which no markup carries"; and the page invisible with the observer that never fires); restored green
+
+### 6.13 The status page's live region (finding 14; status-live-region)
+- role="alert" on #status-card: 1 red ("#status-next is inside a live region, so every rewrite of it is announced"); restored 3/3. BEFORE: 0 failing of 2
+- the poll writes through `announce.append(...)` (outside the countdown the first guard inspected): 1 red ("the announcer is written in 2 places (announce.textContent = | announce.append()"); restored green. BEFORE: 0 failing of 2
+
+### 6.14 The vacuity floors (finding 15; contrast, packages/design focus)
+- contrast: 151 text/ground pairs are derived per theme (measured by setting the floor above it and reading the failure). The pairing blind to the pricing page's `<style>` block derives 121, which passed the old floor of 120: now 1 red ("dark: only 121 text/ground pairs were derived (151 were measured when this floor was set)"); the floor is 147; restored 22/22
+- focus: 148 stylesheets and 100 focus rules are read. The walk blind to the pages and layouts of apps/site reads 126, which passed the old floor of 120: now 1 red ("only 126 stylesheets read (148 were read when this floor was set)"); the floor is 145; restored 8/8. The focus-rule floor is 100 against 100 measured and was not changed
+
+### 6.15 Stale test comments (finding 16; old-layouts-gone)
+- the "NOT COVERED: the docs Terminal demo (components/picks-docs/Terminal.astro) ..." line put back in reveal-cannot-hide-content: 1 red ("reveal-cannot-hide-content.test.mjs:3 names components/picks-docs/Terminal.astro and does not say it is gone"); restored 8/8. (A first version of the scan accepted the words "old" and "was" anywhere within two lines and was green on this break; it was tightened.)
+
+### 6.16 Layout and accessibility (findings 17 to 22; pages-render-clean, layout-measures)
+- DocsLayout.astro: `overflow: hidden` back on `.docs__nav`: 1 red in pages-render-clean ("390px /docs/: details.docs__nav (overflow hidden/hidden) cuts the ring of summary"); restored 11/11. BEFORE (the first pages-render-clean, ring style at 1440 px only): 0 failing of 9
+- pricing.astro: the phone block back to two columns for three plans: 1 red ("390px: Price: Pro is not under Free (Free/Pro/Max)"); the footer cells' own hairline back: 1 red ("390px: Get it: a plan's cell carries its own hairline"); the buttons' minimum height removed: 1 red ("520px: Get it: the buttons are 36 and 54 and 54px tall"); restored 6/6
+- docs/index.astro: the summary run on after the title: 1 red ("1440px: "Getting started" has text after it that is not in its own element"); status.astro: the orb centred on the whole text box: 1 red ("390px: the orb is -8px from the centre of its headline"); DocsLayout `.docs__main` back to 72ch: 1 red ("/docs/: the footer rule ends at 1169.6, the prose at 1149.5"); pricing `.now__stats` back to `align-self: start`: 1 red ("1440px: the panel sits 0px below the top of the copy and 219px above its end"); each restored green
+- each measure is also proved first on a page built to show its defect (layout-measures: the phone-table fixture, the orb injection)
+
+### 6.17 The ledger rows that cited the placeholder `R..` (finding 13; the rows cite these)
+- ScreenSlot.astro: `.slot__frame` given `backdrop-filter: blur(8px)`: 1 red in living-background ("the slot is frosted or casts a shadow; surfaces here are flat"); restored 5/5
+- getting-started.astro: the unavailability callout removed from ahead of the connection steps: 1 red in onboarding-recovery ("the plugin cannot be installed, and the connect page does not say so"); restored 6/6
+- Footer.astro: a second paragraph under the wordmark that reads exactly "StudPilot": 1 red in one-operator ("a footer paragraph reads exactly "StudPilot", directly under the "StudPilot" wordmark"); the copyright line naming "Acme Labs": 2 red (one-operator: "the copyright line names "Acme Labs", and the operator is StudPilot"; nav-and-routes: "the footer does not name the operator in its copyright line"); the mailto link removed: 1 red in nav-and-routes ("the footer does not link to mailto:support@studpilot.app"); each restored green
+- catalog.astro: "You can ask an StudPilot for any of these": 1 red in unpurchasable-and-shared-cap ("catalog/index.html says "an StudPilot""); restored 7/7
+- docs/billing.astro: `order={4}` removed: 1 red in the root tests/billing-help ("the billing page names no place in the order"); restored (root docs-search and billing-help) 14/14
+
+### 6.18 Green after fix cycle 2 (the same commands, at the head of the branch)
+
+| command | result |
+|---|---|
+| `pnpm --filter @studpilot/site build` | 19 pages built (and 7 redirect stubs), 0 errors |
+| `cd apps/site && node --test tests/*.test.mjs` | 391 tests, 389 pass, 0 fail, 2 skipped (the two "opposite lie" tests, skipped by design while `ROBLOX_OAUTH_REVIEWED` and `PAID_DAILY_CAPS_DECIDED` are false); 355 before this cycle |
+| `cd packages/design && node --test` | 165 tests, 165 pass, 0 fail |
+| `cd apps/web && node --test` | 2537 tests, 2537 pass, 0 fail (it was 2535 and 2 fail on the branch before the finding-6 fix) |
+| `node --test tests/*.test.mjs` at the root | 684 tests, 666 pass, 2 fail, 16 skipped: the two known `tests/check-pixels.test.mjs` cases (lines 78 and 108), which fail because the clone sits in a scratchpad, identical on main |
+| `node scripts/check-landing-budget.mjs` | passes, nothing raised: markup and stylesheets 10,667 B gzip of 12,000; inline JavaScript 3,007 B of 3,500; images 26,916 B of 31,000 |
+| `node scripts/check-site-links.mjs` | 711 internal links across 26 pages, all resolve |
+| `node scripts/check-site-semantics.mjs` | 19 pages and 7 redirect stubs sound (one h1, landmarks) |
+| `check-copy.mjs`, `check-offer.mjs`, `check-credit-figures.mjs` | clean (COPY CLEAN; OFFER COHERENT, 4 plans, 379 copy files; credit figures agree) |
+| `node scripts/check-old-names.mjs` | clean (0 violations) |
+| `node scripts/make-brand-assets.mjs --check` | BRAND ASSETS OK, 12 assets current |
+| `pnpm --filter @studpilot/site typecheck`; `cd packages/shared && pnpm typecheck`; `cd apps/web && pnpm typecheck` | 0 errors |
+| `E2E_PORT=4326 pnpm exec playwright test` (desktop, laptop, phone) | 345 specs pass (section 4 says 387 for the first pass; 345 is what the specs of this tree number) |
+| Lighthouse | not run in this cycle (the deployed site is measured later) |
+

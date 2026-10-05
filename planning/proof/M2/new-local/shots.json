@@ -1,6 +1,6 @@
 {
  "tag": "new-local",
- "note": "retaken after fix cycle 1 from `astro preview` of the site at 7f38be22 (branch studpilot/m2-site), before any deploy; the old counterparts are in ../old",
+ "note": "retaken after fix cycle 2 from `astro preview` of the site at 67034fb9 (branch studpilot/m2-site), before any deploy; the old counterparts are in ../old. /status reads \"Status unknown (HTTP 404)\" because the preview has no /api/health; the 404 shots carry status 404 by design",
  "shots": [
   {
    "file": "new-home-desktop.png",
@@ -11,8 +11,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 460763,
-   "sha256": "58bb768f5af89f797a523bd4379dc99d49645e6678a5b614f39f7f69fbdbcb0d"
+   "bytes": 482548,
+   "sha256": "eb3cc20aecb671d41fd34b32283a66ed05b4184b97090847e589fa2d76643c91"
   },
   {
    "file": "new-how-it-works-desktop.png",
@@ -23,8 +23,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 458066,
-   "sha256": "afb171c76b786d29b8b304646ab7a2d96b36ef9836ebbe3836a9f4943ee83327"
+   "bytes": 472466,
+   "sha256": "f586fd413de3bc38ba09b3c029249a93a0a55bfde27134870077b84be744562e"
   },
   {
    "file": "new-catalog-desktop.png",
@@ -35,8 +35,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 425758,
-   "sha256": "5cdd8af43cbc81bbe86eae492bd4a76af66c5044efd4b57f6c22a9365b1e7fb3"
+   "bytes": 435631,
+   "sha256": "77474d68f7905d25430e7516072854960bed1a049be05c41abe395f88c02cc3d"
   },
   {
    "file": "new-pricing-desktop.png",
@@ -47,8 +47,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 687550,
-   "sha256": "d3ac1136bf8522fca744aae9f6ae337fac45faf16acc1c148f0cd42a67b964bd"
+   "bytes": 685195,
+   "sha256": "57aa3eafc54275409032ec84a42ddd8cb703426abaed76f0c531b1f114c08c22"
   },
   {
    "file": "new-blog-desktop.png",
@@ -71,8 +71,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 345156,
-   "sha256": "33991a8aa67831dbf8c78122f1ebcfa6fffff83a1da2382f1a85b9c5b700e9e4"
+   "bytes": 364905,
+   "sha256": "98bb5fc7a30ccf700f2c1f6fe5c71afb8285d4f870a3a75176c95ad9c74b457a"
   },
   {
    "file": "new-docs-desktop.png",
@@ -83,8 +83,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 216994,
-   "sha256": "21ef5a4203b2ff5f656ed0c54d09e375499026c052e4478171c5b226ec4d63ea"
+   "bytes": 216953,
+   "sha256": "db0d61c35819f544d985dfb7207c52c9f2bd95a88448114c8543e359c098bec0"
   },
   {
    "file": "new-docs-getting-started-desktop.png",
@@ -95,8 +95,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 415118,
-   "sha256": "800ad7a4af1bfc46fa7df0ac1b105faf310ffdf0bc4ecb8112a7717292d9f34b"
+   "bytes": 419485,
+   "sha256": "fe56e693e4a3071c3b32c0ded1c894e72b1584a5f685e4758a86b2122fc4e839"
   },
   {
    "file": "new-docs-plugin-desktop.png",
@@ -108,7 +108,7 @@
    "reducedMotion": true,
    "horizontalScroll": false,
    "bytes": 336809,
-   "sha256": "f2c35bd1e51c3a0ad7ad47273d2bbb6ce9eee60b3340312898c14ceb58d0d8d5"
+   "sha256": "cc6d680fa385ab0390ca1c2faced74a7cc103d1fdfe27010d54e83e51056c5d6"
   },
   {
    "file": "new-status-desktop.png",
@@ -119,8 +119,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 248015,
-   "sha256": "e1ac06adbd5f41d1c572c773739897a43ebc8ef7692ec055ca7d63ebcdfbbf91"
+   "bytes": 247812,
+   "sha256": "400e8b470bad298a30a71ed6dbab7275815767e144320ee2d3194eac4fc6d072"
   },
   {
    "file": "new-privacy-desktop.png",
@@ -167,8 +167,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 384400,
-   "sha256": "b8260f8118a5c9bb72c7f9b09d1fd24f2a72519e08ca3972706c4074bc3904a5"
+   "bytes": 400679,
+   "sha256": "53e28db6342171261c14afe081ff12373dc0fea30ec9ca7e121baf53d2296077"
   },
   {
    "file": "new-how-it-works-phone.png",
@@ -179,8 +179,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 388204,
-   "sha256": "ffe7fe2f6c458a85a099f696bcb0902416afa5fdc5f227542f54402ecb5f6526"
+   "bytes": 400416,
+   "sha256": "857a9f9490bf5539f0c5d40ea7801ea56cdb55f0a2210b1006cd2091f59952b4"
   },
   {
    "file": "new-catalog-phone.png",
@@ -191,8 +191,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 373223,
-   "sha256": "e8a3bfc4b7de929bc2c6d96b3386aea3c354357f2bed40529803d14dfd8897fe"
+   "bytes": 317266,
+   "sha256": "ee6b4b249ebe9760593101396ea29c1d2fc3e2b137410161f534108d61e49460"
   },
   {
    "file": "new-pricing-phone.png",
@@ -203,8 +203,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 646542,
-   "sha256": "abb6da975aaad051d4483347bd02f2f321c35a485eb7eb7a47ad85b3e81a998b"
+   "bytes": 658736,
+   "sha256": "97c8338c7472ed8a056fb15dc3a1e7c21b63fb7923efceb7e46db639bdc5c87c"
   },
   {
    "file": "new-blog-phone.png",
@@ -227,8 +227,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 299698,
-   "sha256": "132ac43749c311ede8502f3057b26e4096200b3c33d2c412314e962c63a14d03"
+   "bytes": 318073,
+   "sha256": "dbc07ceed5ad7d4a01f950aaf18fa8aed3e8c86e50399670f3c2d09a89bb5d7f"
   },
   {
    "file": "new-docs-phone.png",
@@ -239,8 +239,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 182529,
-   "sha256": "92a2056a92e51201b698035965b8a994c9694f5890ab88181bb5712ff4887e86"
+   "bytes": 181351,
+   "sha256": "4faa91428025a827d5e7ddcec55574bae55a5e0a2d658a78c00719de81166f8d"
   },
   {
    "file": "new-docs-getting-started-phone.png",
@@ -251,8 +251,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 348544,
-   "sha256": "bfe1b602b4202469037caa7551c299e255810abfe11fc3d78bdd209a8925f7e9"
+   "bytes": 351041,
+   "sha256": "d48ac985f2ab6b8bf7c7bddcb064b018634f89546a554ffcffbcf58f758b579d"
   },
   {
    "file": "new-docs-plugin-phone.png",
@@ -263,8 +263,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 279862,
-   "sha256": "4e06c84e2aea7c833d20396496e99e8f8d33638e0d385301da92c4b4cd6ee55d"
+   "bytes": 279863,
+   "sha256": "30b407c26c0b4566d7c9f29e71bb3435311486a79ec6d49205dde91aa3b5adb7"
   },
   {
    "file": "new-status-phone.png",
@@ -275,8 +275,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 223716,
-   "sha256": "93ded4e29630a5bcc3ec7aa8a5873650a8850ceb8d88b8f65fcf4182e4ee5ef4"
+   "bytes": 223512,
+   "sha256": "5c455b918e755be0c75bd1ece1e4493eadf829236f9706d555f8877faa0d7222"
   },
   {
    "file": "new-privacy-phone.png",
