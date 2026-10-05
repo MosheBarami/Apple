@@ -48,7 +48,6 @@ import { SupportDialog } from './support-dialog';
 import { projectIdFromPath } from './support-model';
 import { OfflineBanner } from './offline-banner';
 import { OnboardingTour } from './onboarding-tour';
-import { StudioAtmosphere } from './studio-atmosphere';
 import { ModelMark } from './ws/model-mark';
 import { restartTour, writeProgress } from '../lib/onboarding';
 import { RailChats, useScrollEdges } from './picks/chat/rail-chats';
@@ -596,7 +595,6 @@ function Shell() {
       )}
 
       <main id="main-content" className="gx-main">
-        <StudioAtmosphere />
         {/* THE ONLY WAY BACK TO THE RAIL ON A PHONE, SO IT CANNOT BELONG TO ONE ROUTE.
             Below 681px the rail is off-canvas and only `.is-open` returns it. This button used
             to live in the workspace topbar, which meant the dashboard, usage, settings, roadmap

@@ -32,6 +32,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TOKENS_CSS_PATH } from '@studpilot/design/css-tokens';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(SITE, 'src');
@@ -56,7 +57,9 @@ function walk(dir, out = []) {
  * stops growing, and three in this repository have.
  */
 function sheets() {
-  const out = [];
+  // The site's own sheets, plus the one token file both apps import: the type tokens live there now
+  // (M2), and a type system whose tokens are not in the walk is a type system nobody checks.
+  const out = [{ file: TOKENS_CSS_PATH, css: readFileSync(TOKENS_CSS_PATH, 'utf8') }];
   for (const file of walk(SRC)) {
     if (file.endsWith('.css')) {
       out.push({ file, css: readFileSync(file, 'utf8') });

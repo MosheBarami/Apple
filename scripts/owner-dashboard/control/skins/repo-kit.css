@@ -78,7 +78,7 @@
 
 /* the area colour, used by chips and dots */
 [class*='cm-a-'] { --ac: var(--muted); }
-.cm-a-dashboard { --ac: #5b7cfa; } .cm-a-worker { --ac: #f6821f; } .cm-a-web { --ac: #3ecf8e; } .cm-a-site { --ac: #2dd4bf; }
+.cm-a-dashboard { --ac: #a67cff; } .cm-a-worker { --ac: #f6821f; } .cm-a-web { --ac: #3ecf8e; } .cm-a-site { --ac: #2dd4bf; }
 .cm-a-plugin { --ac: #e5484d; } .cm-a-training { --ac: #ffd21e; } .cm-a-corpus { --ac: #c084fc; } .cm-a-library { --ac: #f472b6; }
 .cm-a-packages { --ac: #a3a3ff; } .cm-a-infra { --ac: #fb923c; } .cm-a-graph { --ac: #94a3b8; } .cm-a-agents { --ac: #d97757; }
 .cm-a-docs { --ac: #60a5fa; } .cm-a-tests { --ac: #84cc16; } .cm-a-scripts { --ac: #22d3ee; } .cm-a-config { --ac: #a1a1aa; } .cm-a-other { --ac: #71717a; }

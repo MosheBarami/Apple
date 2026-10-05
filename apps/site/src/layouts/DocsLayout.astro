@@ -153,12 +153,9 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     font: inherit;
     font-size: 14px;
     color: var(--ink);
-    background: var(--glass-fill);
-    border: 1px solid var(--glass-line);
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: var(--r-pill);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     transition: border-color var(--t-fast) var(--ease-out);
   }
 
@@ -197,19 +194,17 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     display: grid;
     gap: 0.15rem;
     padding: 0.5rem 0.65rem;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-md);
     text-decoration: none;
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
     transition:
       border-color var(--t-fast) var(--ease-out),
-      translate var(--t-base) var(--ease-spring);
+      translate var(--t-base) var(--ease-out);
   }
 
   .docs__results :global(a:hover) {
-    border-color: var(--glass-line-hover);
+    border-color: var(--line-strong);
     text-decoration: none;
     translate: 0 -2px;
   }
@@ -266,7 +261,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     transition:
       color var(--t-fast) var(--ease-out),
       background-color var(--t-fast) var(--ease-out),
-      translate var(--t-base) var(--ease-spring);
+      translate var(--t-base) var(--ease-out);
   }
 
   .docs__group a:hover {
@@ -276,10 +271,10 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     translate: 3px 0;
   }
 
-  /* The current page is an ordinary active state: the restrained blue. */
+  /* The current page is an ordinary active state: the accent. */
   .docs__group a[aria-current='page'] {
     color: var(--ink);
-    background: var(--accent-soft);
+    background: var(--accent-wash);
   }
 
   .docs__main {
@@ -346,11 +341,8 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .prose :global(.callout) {
-    background: var(--glass-fill);
-    border: 1px solid var(--glass-line);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
     padding: 16px 20px;
     margin: 24px 0;
@@ -363,7 +355,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .prose :global(.callout--violet) {
-    border-color: var(--glass-line);
+    border-color: var(--line);
   }
 
   .docs__foot {
@@ -386,12 +378,9 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     }
 
     .docs__nav {
-      background: var(--glass-fill);
-      border: 1px solid var(--glass-line);
+      background: var(--surface);
+      border: 1px solid var(--line);
       border-radius: var(--r-xl);
-      box-shadow: var(--glass-shadow);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
       overflow: hidden;
     }
 

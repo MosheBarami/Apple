@@ -1,0 +1,105 @@
+{
+  "default": "violet",
+  "note": "Three candidates for the one accent. Each carries its four values per theme and the WCAG ratios measured from them against the surfaces in tokens.css. Do not type the ratios: `node packages/design/src/web/measure-accents.mjs --write` recomputes them, and tokens.test.mjs fails if they drift or if any is below AA (4.5:1 for text and button labels, 3:1 for the focus ring). The token file holds the default candidate.",
+  "candidates": [
+    {
+      "name": "violet",
+      "dark": {
+        "accent": "#a67cff",
+        "accent-strong": "#bfa2ff",
+        "accent-ink": "#0c0816",
+        "accent-wash": "rgba(166, 124, 255, 0.14)"
+      },
+      "light": {
+        "accent": "#7240d8",
+        "accent-strong": "#5f2fc4",
+        "accent-ink": "#ffffff",
+        "accent-wash": "rgba(114, 64, 216, 0.1)"
+      },
+      "measured": {
+        "dark": {
+          "textOnBase": 6.51,
+          "textWorst": 5.02,
+          "ringWorst": 5.02,
+          "labelOnAccent": 6.54,
+          "labelOnStrong": 9.25,
+          "strongOnWash": 6.45
+        },
+        "light": {
+          "textOnBase": 5.74,
+          "textWorst": 5.12,
+          "ringWorst": 5.12,
+          "labelOnAccent": 6.1,
+          "labelOnStrong": 7.81,
+          "strongOnWash": 6.21
+        }
+      }
+    },
+    {
+      "name": "cyan",
+      "dark": {
+        "accent": "#22d3ee",
+        "accent-strong": "#67e8f9",
+        "accent-ink": "#03161b",
+        "accent-wash": "rgba(34, 211, 238, 0.13)"
+      },
+      "light": {
+        "accent": "#0b6b82",
+        "accent-strong": "#085669",
+        "accent-ink": "#ffffff",
+        "accent-wash": "rgba(11, 107, 130, 0.1)"
+      },
+      "measured": {
+        "dark": {
+          "textOnBase": 10.89,
+          "textWorst": 8.39,
+          "ringWorst": 8.39,
+          "labelOnAccent": 10.24,
+          "labelOnStrong": 12.77,
+          "strongOnWash": 8.92
+        },
+        "light": {
+          "textOnBase": 5.75,
+          "textWorst": 5.12,
+          "ringWorst": 5.12,
+          "labelOnAccent": 6.11,
+          "labelOnStrong": 8.25,
+          "strongOnWash": 6.57
+        }
+      }
+    },
+    {
+      "name": "magenta",
+      "dark": {
+        "accent": "#ec62d2",
+        "accent-strong": "#f58ae2",
+        "accent-ink": "#17061a",
+        "accent-wash": "rgba(236, 98, 210, 0.14)"
+      },
+      "light": {
+        "accent": "#b0178f",
+        "accent-strong": "#92107a",
+        "accent-ink": "#ffffff",
+        "accent-wash": "rgba(176, 23, 143, 0.1)"
+      },
+      "measured": {
+        "dark": {
+          "textOnBase": 6.79,
+          "textWorst": 5.23,
+          "ringWorst": 5.23,
+          "labelOnAccent": 6.72,
+          "labelOnStrong": 8.93,
+          "strongOnWash": 6.34
+        },
+        "light": {
+          "textOnBase": 5.87,
+          "textWorst": 5.23,
+          "ringWorst": 5.23,
+          "labelOnAccent": 6.24,
+          "labelOnStrong": 8.15,
+          "strongOnWash": 6.36
+        }
+      }
+    }
+  ]
+}

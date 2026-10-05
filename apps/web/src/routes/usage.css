@@ -120,14 +120,14 @@
   margin:0;
   padding:13px 20px;
   border-block:1px solid var(--accent-ring);
-  background:var(--accent-soft);
-  box-shadow:var(--glow);
+  background:var(--accent-wash);
+  box-shadow:var(--halo);
   font-size:13px;
   line-height:1.6;
   letter-spacing:-.005em;
   color:var(--muted);
 }
-.credits-card > .credits-credits strong { font-weight:400; color:var(--accent-light); font-variant-numeric:tabular-nums; }
+.credits-card > .credits-credits strong { font-weight:400; color:var(--accent-strong); font-variant-numeric:tabular-nums; }
 
 /*[[ AND THE COST LINES ARE NOT THAT BAND. `.credits-credits` is applied twice by usage.tsx — once
  *   to the purchased balance and once per published per-request cost — so the accent above would
@@ -192,7 +192,7 @@
  *   is a surface moving on its own rather than a thing under the finger, so it takes the colour
  *   band's duration and the hard curve that arrives fast and settles. ]]*/
 .credits-card .ring-arc {
-  filter:drop-shadow(0 0 8px var(--accent-glow));
+  filter:drop-shadow(0 0 8px var(--accent-wash));
   transition:stroke-dasharray var(--t-color) var(--ease-hard);
   animation:usage-ring-arrive var(--t-color) var(--ease-hard) both;
 }
@@ -238,7 +238,7 @@
   height:100%;
   min-width:2px;
   background:var(--accent);
-  box-shadow:var(--glow);
+  box-shadow:var(--halo);
   transform-origin:left center;
   animation:usage-fill-grow var(--t-base) var(--ease-hard) both;
   transition:width var(--t-base) var(--ease-hard);
@@ -331,7 +331,7 @@
 .invoice-row__toggle::before { content:''; position:absolute; inset-inline-start:8px; top:calc(50% - 4px); width:6px; height:6px; border-inline-end:1px solid var(--faint); border-block-end:1px solid var(--faint); transform:rotate(-45deg); transition:transform var(--t-fast) var(--ease-out),border-color var(--t-color) var(--ease-hard); }
 [dir='rtl'] .invoice-row__toggle::before { transform:rotate(135deg); }
 /* Open points down, which is the same rotation in either direction. */
-.invoice-row__toggle[aria-expanded='true']::before,[dir='rtl'] .invoice-row__toggle[aria-expanded='true']::before { transform:rotate(45deg); border-color:var(--accent-light); }
+.invoice-row__toggle[aria-expanded='true']::before,[dir='rtl'] .invoice-row__toggle[aria-expanded='true']::before { transform:rotate(45deg); border-color:var(--accent-strong); }
 .invoice-row__number { font:14px/1.4 var(--font-mono); letter-spacing:-.01em; color:var(--ink); overflow-wrap:anywhere; }
 .invoice-row__date { font-size:12px; line-height:1.4; letter-spacing:-.005em; color:var(--faint); }
 .invoice-row__amount { margin-inline-start:auto; font:14px var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink); }

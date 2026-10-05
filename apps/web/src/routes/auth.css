@@ -271,7 +271,7 @@
    focusable thing in the product and that is not restyled here; what IS added is the well lifting
    and taking the accent border plus the bar's 12px glow, so the field being typed into is legible
    as the active one at a glance and even when the ring is off-screen behind a keyboard. */
-.auth-page .field input:focus,.auth-page .field textarea:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--glow); }
+.auth-page .field input:focus,.auth-page .field textarea:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--halo); }
 .auth-page .field input:disabled,.auth-page .field textarea:disabled { opacity:.48; cursor:not-allowed; }
 /*[[ A FIELD THE FORM HAS ALREADY REJECTED says so on the field, not only in the panel at the top.
  *   `aria-invalid` is the attribute the screen reader is told with, so it is also the hook the eye
@@ -358,12 +358,12 @@
 .auth-page .auth-switch { margin:16px 0 0; font-size:13px; line-height:1.55; text-align:center; color:var(--muted); text-wrap:pretty; }
 .auth-page .auth-switch + .auth-switch { margin-block-start:8px; }
 .auth-page .auth-switch a,.auth-page .field-hint a { color:var(--ink); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 34%,transparent); text-underline-offset:3px; transition:text-decoration-color var(--t-color) var(--ease-hard),color var(--t-color) var(--ease-hard); }
-.auth-page .auth-switch a:hover,.auth-page .field-hint a:hover { color:var(--accent-light); text-decoration-color:currentColor; }
+.auth-page .auth-switch a:hover,.auth-page .field-hint a:hover { color:var(--accent-strong); text-decoration-color:currentColor; }
 .auth-page .auth-switch a:active,.auth-page .field-hint a:active { color:var(--muted); }
 /* The "use a different account" control is a button in a sentence of links, and it has to read as
    one of them rather than as a fourth full-width action. */
 .auth-page .auth-switch .btn-ghost { border-color:transparent; padding:4px 6px; color:var(--ink); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--ink) 34%,transparent); text-underline-offset:3px; }
-.auth-page .auth-switch .btn-ghost:hover:not(:disabled) { background:transparent; color:var(--accent-light); text-decoration-color:currentColor; }
+.auth-page .auth-switch .btn-ghost:hover:not(:disabled) { background:transparent; color:var(--accent-strong); text-decoration-color:currentColor; }
 
 /* THE FIRST LINK AFTER AN ACTION gets a wider gap than the links have between themselves, so the
    block of alternatives reads as one thing sitting below the button rather than as a fourth row of

@@ -2,19 +2,19 @@
    Sources, read only: apps/web/src/routes/nonworkspace-minimal.css (the /usage, /settings, shelf layer:
    --nm-bg/panel/panel-soft/line/line-soft/ink/muted/faint, panel radius 16, control radius 12, 38px
    buttons, the ink-filled primary, the 4px usage-switch, the 28-38px/480 title, monochrome bars),
-   apps/web/src/design/studpilot-minimal.css (accent #5b7cfa / light #4568e8, accent-light, ring) and
+   packages/design/src/web/tokens.css (accent #a67cff / light #7240d8, accent-light, ring) and
    apps/web/src/design/system.css (status colours, the system font stack, ui-monospace).
    No font files: the product uses the system stack, so the Hebrew fallback is the system face too. */
 
 html[data-skin='apple'][data-theme='dark'] {
   --ap-bg: #050505; --ap-panel: #0a0a0a; --ap-panel-hover: #0d0d0d; --ap-soft: #101010; --ap-line: #2e2e2e; --ap-line-soft: #202020;
-  --ap-ink: #fafafa; --ap-muted: #a6a6a6; --ap-faint: #8a8a8a; --ap-bar: #a6a6a6; --ap-accent: #5b7cfa; --ap-accent-light: #8ca4ff;
+  --ap-ink: #fafafa; --ap-muted: #a6a6a6; --ap-faint: #8a8a8a; --ap-bar: #a6a6a6; --ap-accent: #a67cff; --ap-accent-light: #bfa2ff;
   --ap-shadow: 0 22px 58px rgba(0,0,0,.34), 0 2px 10px rgba(0,0,0,.22);
   --ap-good: #99d4b0; --ap-bad: #f6aaaa; --ap-warn: #e7c991; --ap-info: #a1c6ef;
   --bg: #050505; --paper: #050505; --paper-2: #0a0a0a; --surface: #0a0a0a; --surface-2: #101010; --surface-3: #181818; --card: #0a0a0a; --card2: #101010;
   --ink: #fafafa; --ink-2: #fafafa; --text: #fafafa; --muted: #a6a6a6; --dim: #a6a6a6; --faint: #8a8a8a; --off: #6f6f6f;
   --line: #2e2e2e; --line2: #2e2e2e; --line-strong: #3b3d46; --hairline: #202020; --control-fill: rgba(255,255,255,.035);
-  --accent: #5b7cfa; --accent2: #8ca4ff; --accent-ink: #8ca4ff; --accent-soft: rgba(91,124,250,.10); --accent-ring: rgba(91,124,250,.32);
+  --accent: #a67cff; --accent2: #bfa2ff; --accent-ink: #bfa2ff; --accent-soft: rgba(166,124,255,.10); --accent-ring: rgba(166,124,255,.32);
   --primary: #fafafa; --primary-hover: #e6e6e6; --on-primary: #070707;
   --good: #99d4b0; --warn: #e7c991; --bad: #f6aaaa; --mid: #a1c6ef;
   --glass: rgba(5,5,5,.86); --shadow: none; --glow: transparent;
@@ -22,13 +22,13 @@ html[data-skin='apple'][data-theme='dark'] {
 }
 html[data-skin='apple'][data-theme='light'] {
   --ap-bg: #f6f6f5; --ap-panel: #fff; --ap-panel-hover: #fbfbfa; --ap-soft: #f1f1ef; --ap-line: #d9d9d6; --ap-line-soft: #e7e7e4;
-  --ap-ink: #111; --ap-muted: #5f5f5c; --ap-faint: #6b6b67; --ap-bar: #5f5f5c; --ap-accent: #4568e8; --ap-accent-light: #3155d4;
+  --ap-ink: #111; --ap-muted: #5f5f5c; --ap-faint: #6b6b67; --ap-bar: #5f5f5c; --ap-accent: #7240d8; --ap-accent-light: #5f2fc4;
   --ap-shadow: 0 18px 48px rgba(24,24,20,.08), 0 2px 8px rgba(24,24,20,.04);
   --ap-good: #28633f; --ap-bad: #a33131; --ap-warn: #775620; --ap-info: #345d95;
   --bg: #f6f6f5; --paper: #f6f6f5; --paper-2: #f1f1ef; --surface: #fff; --surface-2: #f1f1ef; --surface-3: #e7e7e4; --card: #fff; --card2: #f1f1ef;
   --ink: #111; --ink-2: #111; --text: #111; --muted: #5f5f5c; --dim: #5f5f5c; --faint: #6b6b67; --off: #8f8f8a;
   --line: #d9d9d6; --line2: #d9d9d6; --line-strong: #c7cbd4; --hairline: #e7e7e4; --control-fill: rgba(16,18,23,.035);
-  --accent: #4568e8; --accent2: #3155d4; --accent-ink: #3155d4; --accent-soft: rgba(69,104,232,.09); --accent-ring: rgba(69,104,232,.25);
+  --accent: #7240d8; --accent2: #5f2fc4; --accent-ink: #5f2fc4; --accent-soft: rgba(114,64,216,.09); --accent-ring: rgba(114,64,216,.25);
   --primary: #111; --primary-hover: #2a2a2a; --on-primary: #fff;
   --good: #28633f; --warn: #775620; --bad: #a33131; --mid: #345d95;
   --glass: rgba(246,246,245,.88); --shadow: none; --glow: transparent;

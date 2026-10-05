@@ -1,5 +1,5 @@
 /* StudPilot HQ — the site's design system (apps/site/src/styles/studpilot-minimal.css) applied to the
-   control center: near-black matte, hairlines, one accent (#5b7cfa) that marks state and never
+   control center: near-black matte, hairlines, one accent (#a67cff) that marks state and never
    fills a button, system fonts, the site's radii, easings and 120/200/420 ms timings. Brand
    colours appear only inside each platform's own logo tile, header and accents. */
 
@@ -8,7 +8,7 @@
   --paper: #000; --paper-2: #05070b; --surface: #0a0a0a; --surface-2: #111217; --surface-3: #181a22;
   --ink: #fafafa; --ink-2: #d4d4d8; --muted: #a6a6a6; --faint: #8a8d96;
   --line: #2e2e2e; --line-strong: #3b3d46; --hairline: #1a1b1f; --control-fill: rgba(255,255,255,.035);
-  --accent: #5b7cfa; --accent-ink: #8aa2ff; --accent-soft: rgba(91,124,250,.1); --accent-ring: rgba(91,124,250,.32);
+  --accent: #a67cff; --accent-ink: #8aa2ff; --accent-soft: rgba(166,124,255,.1); --accent-ring: rgba(166,124,255,.32);
   --good: #7cc49a; --warn: #e6a95a; --bad: #e98b83;
   --primary: #fafafa; --primary-hover: #d4d4d8; --on-primary: #000; --glass: rgba(0,0,0,.72);
   color-scheme: dark;
@@ -17,7 +17,7 @@
   --paper: #f6f7fa; --paper-2: #eef0f4; --surface: #fff; --surface-2: #f5f6f9; --surface-3: #eceff4;
   --ink: #101217; --ink-2: #33363d; --muted: #5d626d; --faint: #646973;
   --line: #d9dce3; --line-strong: #c7cbd4; --hairline: #e4e7ed; --control-fill: rgba(16,18,23,.035);
-  --accent: #4568e8; --accent-ink: #3454d1; --accent-soft: rgba(69,104,232,.09); --accent-ring: rgba(69,104,232,.28);
+  --accent: #7240d8; --accent-ink: #3454d1; --accent-soft: rgba(114,64,216,.09); --accent-ring: rgba(114,64,216,.28);
   --good: #23724a; --warn: #8a5a13; --bad: #b3372d;
   --primary: #101217; --primary-hover: #33363d; --on-primary: #fff; --glass: rgba(246,247,250,.78);
   color-scheme: light;

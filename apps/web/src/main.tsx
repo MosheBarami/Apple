@@ -2,10 +2,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 import { initDirection } from './lib/direction.ts';
 import { installSentry, sentryRelease } from './lib/sentry.ts';
+// The design tokens FIRST: the one token file both apps share. Every sheet after it spends them.
+import '@studpilot/design/tokens.css';
 import './design/system.css';
-import './design/studpilot-minimal.css';
-// The glass shell (D-GLASS-1): loaded last so it is the layer that paints.
-import './design/glass.css';
+import './design/shell.css';
 // Vercel AI Elements' Tailwind styling, scoped to the AI surfaces (see the sheet's header).
 import './styles/ai-elements.css';
 

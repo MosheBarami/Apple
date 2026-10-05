@@ -56,15 +56,13 @@ test('the logical replacements are actually present, so the rules were converted
 test('every surviving physical inset is symmetric, centring, or off-screen', () => {
   // `left:`/`right:` are NOT banned outright: a symmetric pair already mirrors, `left: 50%` with a
   // translate is centring, and `left: -9999px` is the visually-hidden trick. Converting those would
-  // be churn that reads as progress. The atmosphere beam/mesh are direction-neutral decoration, and
-  // the before/after wipe labels are intentionally anchored to the visual comparison sides. Anything
-  // ELSE that is single-sided must be logical.
+  // be churn that reads as progress. The before/after wipe labels are intentionally anchored to the
+  // visual comparison sides. Anything ELSE that is single-sided must be logical.
   for (const [name, css] of Object.entries(SHEETS)) {
     // Strip the explicitly visual-only rules before looking at declaration blocks. The
     // block matcher intentionally has no selector context, so filtering the source first
     // avoids accidentally exempting an unrelated future `left: 12px` rule.
     const body = code(css)
-      .replace(/\.studio-atmosphere__(beam|mesh)\s*\{[^{}]*\}/g, '')
       .replace(/\.gu-wipe-tag--[lr]\s*\{[^{}]*\}/g, '');
     for (const block of body.match(/\{[^{}]*\}/g) ?? []) {
       const l = /(?:^|;|\{)\s*left\s*:\s*([^;}]+)/.exec(block);

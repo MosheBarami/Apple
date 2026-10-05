@@ -11,8 +11,8 @@
   :root {
     --bg: #07090f; --bg2: #0b0f1a; --card: #0f1422; --line: #1b2236; --line2: #253052;
     --text: #e8ecf6; --dim: #8b95ad; --faint: #5a6480;
-    --accent: #5b7cfa; --accent2: #8aa2ff; --glow: rgba(91,124,250,.35);
-    --c-read: #5b7cfa; --c-w5: #8a6cf5; --c-w1: #c26cf5; --c-in: #6cc3f5; --c-out: #f5b86c;
+    --accent: #a67cff; --accent2: #8aa2ff; --glow: rgba(166,124,255,.35);
+    --c-read: #a67cff; --c-w5: #8a6cf5; --c-w1: #c26cf5; --c-in: #6cc3f5; --c-out: #f5b86c;
     --live: #4ade80; --ok: #4ade80; --warn: #f5b86c; --bad: #f87171; --violet: #c26cf5;
     --r: 16px;
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
@@ -22,7 +22,7 @@
   body { background: var(--bg); color: var(--text); font: 15px/1.55 Heebo, system-ui, -apple-system, sans-serif; min-height: 100vh; overflow-x: hidden; }
   button { font: inherit; color: inherit; }
   .aurora { position: fixed; inset: -25% -15% auto; height: 85vh; pointer-events: none; z-index: 0; filter: blur(24px);
-    background: radial-gradient(40% 50% at 72% 30%, rgba(91,124,250,.22), transparent 70%),
+    background: radial-gradient(40% 50% at 72% 30%, rgba(166,124,255,.22), transparent 70%),
                 radial-gradient(34% 44% at 22% 8%, rgba(194,108,245,.14), transparent 70%),
                 radial-gradient(30% 40% at 50% 70%, rgba(74,222,128,.05), transparent 70%);
     animation: drift 26s ease-in-out infinite alternate; }
@@ -56,7 +56,7 @@
   .tab-btn { position: relative; padding: 8px 16px; border-radius: 999px; border: 1px solid transparent; background: none; color: var(--dim);
     font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; transition: color .2s, background .2s, border-color .2s, box-shadow .3s; }
   .tab-btn:hover { color: var(--text); background: rgba(255,255,255,.035); }
-  .tab-btn.on { color: #fff; background: linear-gradient(180deg, rgba(91,124,250,.26), rgba(91,124,250,.08)); border-color: rgba(91,124,250,.5);
+  .tab-btn.on { color: #fff; background: linear-gradient(180deg, rgba(166,124,255,.26), rgba(166,124,255,.08)); border-color: rgba(166,124,255,.5);
     box-shadow: 0 0 26px -6px var(--glow), inset 0 1px 0 rgba(255,255,255,.08); }
   .tab-btn .ct { margin-inline-start: 6px; font: 500 11px var(--mono); color: var(--faint); }
   .tab-btn.on .ct { color: var(--accent2); }
@@ -119,7 +119,7 @@
   .fi { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 8px; border-radius: 10px; }
   .fi:hover { background: rgba(255,255,255,.025); }
   .fi.new { animation: flash 1.6s ease; }
-  @keyframes flash { from { background: rgba(91,124,250,.2); } to { background: transparent; } }
+  @keyframes flash { from { background: rgba(166,124,255,.2); } to { background: transparent; } }
   .fi .t { color: var(--faint); font: 12px var(--mono); padding-top: 2px; }
   .fi .w { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
   .fi .a { color: var(--faint); font-size: 12px; margin-top: 1px; }
@@ -209,7 +209,7 @@
   .fbtn { padding: 5px 13px; border-radius: 999px; border: 1px solid var(--line2); background: rgba(15,20,34,.6); color: var(--dim); cursor: pointer;
     font-size: 13px; transition: .2s; }
   .fbtn:hover { color: var(--text); }
-  .fbtn.on { color: #fff; border-color: rgba(91,124,250,.55); background: rgba(91,124,250,.16); }
+  .fbtn.on { color: #fff; border-color: rgba(166,124,255,.55); background: rgba(166,124,255,.16); }
   .fbtn .ct { font: 11px var(--mono); color: var(--faint); margin-inline-start: 4px; }
   .libs { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-bottom: 16px; }
   .lib { display: flex; flex-direction: column; animation: fadeUp .5s cubic-bezier(.2,.8,.2,1) both; transition: transform .25s, border-color .25s; }
@@ -228,7 +228,7 @@
   .lib .pv img { flex: 1; min-width: 0; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; background: #0b0f1a; }
   .lib .path { font: 11px var(--mono); color: var(--faint); margin-top: auto; padding-top: 12px; direction: ltr; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; max-height: 92px; overflow: hidden; direction: ltr; justify-content: flex-end; }
-  .chips span { font: 11px var(--mono); padding: 1px 7px; border-radius: 6px; background: rgba(91,124,250,.08); border: 1px solid rgba(91,124,250,.18); color: #b9c6ff; }
+  .chips span { font: 11px var(--mono); padding: 1px 7px; border-radius: 6px; background: rgba(166,124,255,.08); border: 1px solid rgba(166,124,255,.18); color: #b9c6ff; }
   .chips.he { direction: rtl; justify-content: flex-start; }
   .chips.he span { font-family: Heebo, sans-serif; font-size: 12px; }
   .note { border: 1px dashed rgba(245,184,108,.4); background: rgba(245,184,108,.05); border-radius: 12px; padding: 12px 14px; color: #f3d7b4; font-size: 14px; }
@@ -336,7 +336,7 @@
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
-    <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#5b7cfa"/></linearGradient>
+    <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#a67cff"/></linearGradient>
     <linearGradient id="gV" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e7b6ff"/><stop offset="1" stop-color="#8a6cf5"/></linearGradient>
     <linearGradient id="gG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a7f3c4"/><stop offset="1" stop-color="#22c55e"/></linearGradient>
     <linearGradient id="gW" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fde68a"/><stop offset="1" stop-color="#f5896c"/></linearGradient>
@@ -348,7 +348,7 @@
   <div class="bar">
     <div class="brand">
       <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
-        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#5b7cfa"/></linearGradient></defs>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a9b8ff"/><stop offset="1" stop-color="#a67cff"/></linearGradient></defs>
         <rect x="2" y="2" width="36" height="36" rx="11" fill="#0f1422" stroke="#253052"/>
         <rect x="11" y="11" width="18" height="18" rx="4" fill="url(#lg)" transform="rotate(12 20 20)"/>
         <rect x="17" y="17" width="6" height="6" rx="1.5" fill="#0f1422" transform="rotate(12 20 20)"/>
@@ -556,7 +556,7 @@ const SEV_HE = { critical: 'קריטי', high: 'חמור', medium: 'בינוני
 const DOMAIN_HE = { ui: 'ממשק ומסכים', input: 'שליטה וקלט', client_server: 'לקוח ושרת', data: 'שמירת נתונים', gameplay: 'משחקיות', worldbuilding: 'בניית עולם', performance: 'ביצועים', security: 'אבטחה', genre_pattern: "דפוסים לפי ז'אנר" };
 const KIT_HE = { horror: 'אימה', obby: 'אובי', tycoon: 'טייקון', simulator: 'סימולטור', racing: 'מרוצים', roleplay: 'משחק תפקידים', tower_defense: 'הגנת מגדלים', fps_arena: 'יריות', anime_battle: 'קרבות אנימה', survival: 'הישרדות', adventure: 'הרפתקאות' };
 const ROUTE_HE = { 'workers-ai': 'Cloudflare Workers AI', 'unified-billing': 'Cloudflare AI Gateway' };
-const VENDOR = { StudPilot: ['A', '#5b7cfa'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
+const VENDOR = { StudPilot: ['A', '#a67cff'], Google: ['G', '#22c55e'], OpenAI: ['O', '#e8ecf6'] };
 const LIMIT_HE = (l) => /5-hour/i.test(l) ? 'מגבלת 5 שעות' : /fable/i.test(l) ? 'שבועי · Fable' : /weekly/i.test(l) ? 'שבועי · כל המודלים' : l;
 const visItem = (id) => P?.vision?.items?.find((i) => i.id === id);
 const chip = (cls, text) => `<span class="chip ${cls}"><i></i>${esc(text)}</span>`;
@@ -829,7 +829,7 @@ function drawChart(series) {
   const bw = Math.max(1, (w - pad.l - pad.r) / series.length - 1);
   g.fillStyle = 'rgba(245,184,108,.35)';
   for (const [t, , b] of series) { const bh = b / maxB * (h - pad.t - pad.b) * 0.35; g.fillRect(X(t) - bw / 2, h - pad.b - bh, bw, bh); }
-  const grad = g.createLinearGradient(0, pad.t, 0, h - pad.b); grad.addColorStop(0, 'rgba(91,124,250,.38)'); grad.addColorStop(1, 'rgba(91,124,250,0)');
+  const grad = g.createLinearGradient(0, pad.t, 0, h - pad.b); grad.addColorStop(0, 'rgba(166,124,255,.38)'); grad.addColorStop(1, 'rgba(166,124,255,0)');
   g.beginPath(); g.moveTo(X(t0), Y(0)); for (const [t, v] of series) g.lineTo(X(t), Y(v)); g.lineTo(X(t1), Y(0)); g.closePath(); g.fillStyle = grad; g.fill();
   g.beginPath(); series.forEach(([t, v], i) => i ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v))); g.strokeStyle = '#7d97ff'; g.lineWidth = 2; g.stroke();
   const [lt, lv] = series.at(-1); g.beginPath(); g.arc(X(lt), Y(lv), 4, 0, 7); g.fillStyle = '#8aa2ff'; g.fill();

@@ -1,225 +1,16 @@
 /*
- * THE PRODUCT'S DESIGN SYSTEM.
+ * THE PRODUCT'S ELEMENT SHEET: the bare-element rules and the components every screen shares
+ * (buttons, fields, chips, the dock, the composer, modals, toasts).
  *
- * REBUILT 2026-09-20 AGAINST A MEASURED BAR. The owner named https://rosebud.ai/ and set the brief
- * in one sentence: follow it closely in OUR green, keep OUR typeface, and replace the current
- * visual language wherever the two disagree. The measurements are not impressions — they were
- * taken off the live DOM with getComputedStyle on 2026-09-20 and are recorded as twenty claims in
- * packages/corpus/data/ui-references/web-landing.json under the reference id
- * "rosebud-ai-design-language". Every number in this block cites one of them.
- *
- * THE NAMES AND VALUES HERE MIRROR apps/site/src/styles/landing.css, which was rebuilt against the
- * same reading. Before this pass the marketing site and the product were two different companies:
- * the same warm graphite ramp on both, neutral rather than tinted, one flat accent doing three
- * jobs, ten-pixel radii, and control heights that landed wherever padding left them. A customer
- * crosses from one to the other in a single click, and the seam was visible.
- *
- * WHAT WAS DELIBERATELY NOT TAKEN. The bar is monospace on every node, headings included; the
- * owner asked for our typeface to be kept, so the type scale below is ours. Its accent is purple
- * across three tints; ours is green and the three tints are RE-DERIVED rather than hue-rotated,
- * because rotating rgb(143,0,200) to green lands on a colour no dark interface should carry. No
- * markup, stylesheet, image, icon, font file or sentence of theirs is reproduced anywhere.
- *
- * THE SEVEN DECISIONS, each a number rather than a taste:
- *
- *   THE RAMP IS TINTED TOWARD THE ACCENT, NEVER NEUTRAL GREY. Measured on the bar: rgb(21,18,26),
- *   rgb(10,8,12), rgb(34,29,46) — red and blue above green at every step, on a purple-accented
- *   page. A pure-grey ramp under a saturated accent is what makes a dark interface read as a
- *   default theme rather than a designed one. Ours is the same rule in green: green highest, then
- *   blue, then red, at every step of the ramp.
- *
- *   TEXT IS THREE STEPS AND NOTHING ELSE — white, white at 78%, white at 55%. No grey tokens, no
- *   second hue. The three below are those composites, flattened to hex so they can be MEASURED:
- *   an alpha ink cannot be checked for contrast against a surface it has not been composited over,
- *   and tests/contrast.test.mjs is what holds this ramp to 4.5:1.
- *
- *   THE ACCENT IS A FAMILY OF THREE. A fill, a LIGHTER tint for borders, a DARKER shade for the
- *   primary button. One accent doing all three jobs is exactly why our accented button read flat:
- *   a green button with a green border in the same green has no edge.
- *
- *   TWO RADII AND NO MORE — 8px for a panel, 6px for a control. Nothing is a pill. (--r-pill
- *   survives for round GEOMETRY: dots, pips, spinner rings, meter caps, switch tracks. A 6px dot
- *   is a square, which is why that token is not simply retired.)
- *
- *   FOUR CONTROL HEIGHTS — 28 / 32 / 36 / 50 — with padding that tracks the height. Every button
- *   on the bar lands on one of those four; a fifth height is how a control bar stops looking
- *   machined.
- *
- *   FIVE BUTTON VARIANTS THAT DIFFER BY BORDER AND TEXT, NOT BY FILL, and exactly one filled
- *   button per screen. Four of the bar's five variants have no fill at all.
- *
- *   ELEVATION IS A GLOW AND SEPARATION IS A HAIRLINE. The only conventional shadow on the bar is
- *   the primary button's inset rim plus a 2px lift, and --shadow-primary carries those two numbers
- *   exactly.
+ * It declares no colour, radius, space, type or motion token. All of them live in
+ * packages/design/src/web/tokens.css, which main.tsx imports before this sheet, and this sheet spends
+ * them: dark and professional, flat surfaces with hairline edges, ONE bright accent, the system font.
+ * Comments below that describe earlier palettes (green, then blue) are history: they may name a token
+ * since renamed (planning/proof/M2/DESIGN-SYSTEM.md section 4 lists the renames), and every value they
+ * quote is superseded by tokens.css.
  */
-:root {
-  color-scheme:dark;
-  --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif; --font-display:var(--font-body); --font-mono:ui-monospace,SFMono-Regular,monospace;
-
-  /* THE FOUR-STEP RAMP, TINTED TOWARD THE ACCENT HUE, plus the one extra step this product needs
-     that a marketing page does not (--surface-3 is a TRACK colour: meter grooves, skeletons, the
-     well a progress bar runs in). Green is above blue is above red at every step, which is the
-     same relationship the bar keeps in purple and the reason a black page reads as designed rather
-     than as an unset theme. These are the landing's --ground / --raised / --surface / --surface-2
-     under this sheet's own names; two names for one colour is how a palette drifts, so the values
-     are identical and the mapping is written down here rather than left to be rediscovered. */
-  --paper:#050807; --paper-2:#0a0f0c; --surface:#101814; --surface-2:#18231d; --surface-3:#22302a;
-
-  /* THREE TEXT STEPS. rgb(255,255,255), then 78%, then 55% — measured on the bar as the whole of
-     its text palette. Flattened over --paper so each one is a real colour that can be measured:
-     #ffffff / #c7cdc9 / #8e9691 clear 20.1 / 12.5 / 6.6 against the page and 16.2 / 10.0 / 5.3
-     against --surface-2, the lightest surface any of them sits on. The old ramp was #f4f3f2 /
-     #bdbab6 / #aaa7a3 — warm greys, and --muted and --faint only 0.5:1 apart, which is three names
-     for two colours. */
-  --ink:#ffffff; --muted:#c7cdc9; --faint:#8e9691;
-
-  /* THE EDGES, AND WHY THERE ARE FIVE OF THEM RATHER THAN ONE.
-     Measured on the bar: a hairline at rgba(255,255,255,0.08) separating surfaces, a heavier
-     divider, and then THREE different edges on controls — 0.18 on a chrome button, 0.38 (of the
-     lighter accent tint) on an accented one, and 0.12 on one that is not available. Those last
-     three are the entire button system: the variants differ by their BORDER and their TEXT, and
-     almost never by their fill. One --line doing all of it is why every control in this product
-     looked like the same control. */
-  --line:rgba(255,255,255,.08);
-  --line-strong:#2c3a33;
-  --control-fill:rgba(255,255,255,.06);
-  --control-line:rgba(255,255,255,.18);
-  /* AN UNAVAILABLE CONTROL KEEPS ITS SHAPE AND LOSES ITS CONTRAST. Measured: the bar's unavailable
-     action is the same height, radius, padding and tracking as the live one beside it, and differs
-     only by border alpha 0.38 -> 0.12 and label 100% -> 38%. It is not greyed out, not hidden and
-     not a different object — it is the same object turned down. What this replaces is
-     `opacity:.48` on every disabled control in the app, which dims the BORDER and the LABEL and
-     the icon together and reads as breakage rather than as not-yet. */
-  --quiet-line:rgba(255,255,255,.12);
-  --quiet-ink:rgba(255,255,255,.38);
-
-  /*[[ THE ACCENT IS A FAMILY OF THREE, which is the single biggest thing taken from the bar.
-   *
-   *   Measured: rgb(203,82,251) fills and focuses, rgb(236,146,251) — a LIGHTER tint — borders
-   *   every accented control, and rgb(143,0,200) — a DARKER shade — is the primary button's fill.
-   *
-   *   --accent-deep is chosen for CONTRAST rather than by eye: white on #00794f measures 5.46:1,
-   *   which clears 4.5:1 for the button label at any size. The old primary button was the accent
-   *   at 10% alpha carrying the same accent at 90% as text — a tinted rectangle, which is the one
-   *   variant the bar does NOT have. Its primary is filled, once per screen, and everything else
-   *   is an outline.
-   *
-   *   The three alpha tokens carry the bar's own numbers — 12% fill, 38% border, 14% glow — so the
-   *   chip that names the model looks like the object it was learned from. ]]*/
-  --accent:#2f7df6;
-  --accent-light:#66efc2;
-  --accent-deep:#00794f;
-  --accent-soft:color-mix(in srgb,var(--accent) 12%,transparent);
-  --accent-ring:color-mix(in srgb,var(--accent-light) 38%,transparent);
-  --accent-glow:color-mix(in srgb,var(--accent) 14%,transparent);
-  /* The primary button's fill and label, under the names the rest of the product already reads.
-     --accent-fill was a 10% tint; it is the deep shade now, and --accent-on-fill is white rather
-     than the accent at 90%, so the one filled control on a screen is a filled control. */
-  --accent-fill:var(--accent-deep); --accent-on-fill:#ffffff;
-  --accent-line:var(--accent-ring);
-  /* THE LAST THREE NAMES OF A RETIRED ALIAS FAMILY, and a note on why two of them are still here.
-     `grep -rn acc-ember src`, run at the end of this pass: components/roadmap/marks.tsx reads
-     --acc-ember and nothing in this tree reads the other two — components/ws/composer.css dropped
-     its --acc-ember-ink reference while this file was being rewritten. They are one line, they now
-     resolve into the accent family rather than to a private value, and they are kept for one pass
-     because three peer stylesheets are uncommitted in this same checkout right now: deleting a name
-     another session is still writing against turns into a red guard in somebody else's run. The
-     next person to touch this block should check that grep again and delete both. */
-  --acc-ember:var(--accent); --acc-ember-soft:var(--accent-soft); --acc-ember-ink:var(--paper);
-  --good:#99d4b0; --bad:#f6aaaa; --warn:#e7c991; --info:#a1c6ef; --future:#c5b3ef;
-  --syntax-keyword:#e5b9eb; --syntax-string:#b5d9b5; --syntax-number:#ddc18f; --syntax-comment:#a6a6a6; --syntax-function:#a9d9ee;
-
-  /* TWO RADII. Measured: 8px on 23 elements (cards, panels), 6px on 11 (every control), and
-     nothing rounder anywhere on the page. --r-md, --r-sm and --r-xs were 10/10/6 — three names
-     for the control radius — and are one value now, so a chip, a button, an input and a menu row
-     cannot drift apart. --r-lg was 16px, which is a panel that has started to look like a pill. */
-  --r-lg:8px; --r-md:6px; --r-sm:6px; --r-xs:6px;
-  /* ROUND GEOMETRY ONLY. Nothing stadium-shaped survives this pass, but 37 rules across this app
-     use this token to make a 6px DOT, a spinner ring, a meter cap or a switch track round — and a
-     6px radius on a 6px dot is a square. The token keeps its job and loses its buttons. */
-  --r-pill:999px;
-
-  /* FOUR CONTROL HEIGHTS AND NO MORE, quantised from the bar: 28 for a bare text button, 32 for a
-     chip or a nav item, 36 for a chrome button and the primary action, 50 for a large step CTA.
-     Padding tracks the height and is not round — 0 8.8px at 32 with 12px/1.2px uppercase text,
-     0 8px at 36 chrome, 0 16px at 36 primary, 12px 24px at 50 — and an icon-only button takes no
-     padding at all and is square instead. */
-  --h-xs:28px; --h-sm:32px; --h-md:36px; --h-lg:50px;
-
-  /*[[ MOTION: TWO BANDS AND A SIGNATURE CURVE, and a ceiling.
-   *
-   *   Measured on the bar: colour-only changes run 0.26s on cubic-bezier(0.32,0.72,0,1) — a hard
-   *   ease-out that leaves immediately and settles late — while background, border and transform
-   *   run 0.15s ease-out, with 0.2s reserved for the largest controls. NOTHING on that page takes
-   *   longer than 0.26s, and that ceiling is the reason it feels crisp rather than smooth.
-   *
-   *   Four of the five references measured agree on the shape: a fast band for anything under the
-   *   finger and a slow band for anything that moves on its own, with nothing in between. This
-   *   sheet's --t-fast was 120ms (below the fast band) and --t-slow was 420ms (above the ceiling,
-   *   and used by five stylesheets for entrance animations). They are 150 and 260 now, so one
-   *   token retunes 108 transitions and six entrances at once.
-   *
-   *   AMBIENT MOTION IS EXEMPT and says so where it is declared: weather measured in seconds is
-   *   not a response to anything, and the ceiling is about what happens under a finger. ]]*/
-  --ease-out:cubic-bezier(.16,1,.3,1); --ease-in-out:cubic-bezier(.65,0,.35,1);
-  --ease-hard:cubic-bezier(.32,.72,0,1);
-  --t-color:.26s; --t-fast:.15s; --t-base:.2s; --t-slow:.26s;
-
-  /*[[ ELEVATION IS A GLOW, NOT A DROP SHADOW.
-   *
-   *   Measured: the accented chip carries `rgba(203,82,251,0.14) 0 0 12px`, focus is a 1px accent
-   *   ring plus a wider low-alpha halo, and the ONLY conventional shadow on the whole page is on
-   *   the primary button — an inset rim and a 2px lift, both of them near-black:
-   *   `rgba(0,0,0,0.18) 0 0 0 1px inset, rgba(0,0,0,0.22) 0 2px`. Everything else separates with a
-   *   hairline.
-   *
-   *   --shadow-pop and --shadow-modal keep their names because docs/DESIGN-LOCK.md licenses those
-   *   two and no others, and five stylesheets read them. What changed is what they contain: they
-   *   were `0 10px 30px #0000004d` and `0 24px 70px #00000066` — a 30px and a 70px blur of pure
-   *   black, which is the house style of every dark SaaS template and the thing the owner rejected
-   *   by name. ]]*/
-  --glow:0 0 12px var(--accent-glow);
-  --shadow-pop:0 0 12px var(--accent-glow); --shadow-modal:0 0 28px var(--accent-glow);
-  --shadow-primary:inset 0 0 0 1px rgba(0,0,0,.18),0 2px rgba(0,0,0,.22);
-  font-family:var(--font-body); font-size:16px; line-height:1.55; color:var(--ink); background:var(--paper);
-}
-/* THE SAME SYSTEM INVERTED, not a second design. Every step keeps its ROLE — --paper is the page,
-   --surface is one step off it toward the light, --surface-3 is the track — and its TINT: green
-   above blue above red at every step here too.
-   TWO THINGS COULD NOT SIMPLY INVERT AND ARE NAMED. The accent: #00d492 measures 1.75:1 on a white
-   page, so the hue is kept and the value dropped until it clears — #00694a is 6.13:1 on the page
-   and 5.08:1 on --surface-2 — and --accent-light, which is a LIGHTER tint on black, has to be a
-   DARKER one here or a bordered control loses its border. The inks: white at 78% and 55% has no
-   light-theme equivalent that clears 4.5:1, so these are re-derived and measured — 17.6 / 9.0 /
-   6.3 on the page, 14.6 / 7.5 / 5.2 on --surface-2.
-   THIS BLOCK WAS TWO BLOCKS. A second `:root[data-theme='light']` two hundred lines further down
-   redeclared --accent, --accent-fill, --accent-on-fill, --accent-soft and --accent-line, and won
-   on source order — so the values written here were not the values that shipped, and anyone
-   reading the palette read the wrong half of it. There is one now. */
-:root[data-theme='light'] {
-  color-scheme:light;
-  --paper:#f2f5f3; --paper-2:#e8ede9; --surface:#ffffff; --surface-2:#d9e2dc; --surface-3:#ccd8d1;
-  --ink:#061009; --muted:#38463f; --faint:#4f5d56;
-  --line:rgba(6,16,9,.10); --line-strong:rgba(6,16,9,.20);
-  --control-fill:rgba(6,16,9,.05); --control-line:rgba(6,16,9,.18);
-  --quiet-line:rgba(6,16,9,.12); --quiet-ink:rgba(6,16,9,.42);
-  --accent:#1f5fce; --accent-light:#285fb5; --accent-deep:#154394;
-  /* The tint stays mixed from the BRIGHT green: a tint's job is to be a tint, and 12% of the dark
-     shade over a white page is a grey box. */
-  --accent-soft:color-mix(in srgb,#4f8df7 12%,transparent);
-  --accent-ring:color-mix(in srgb,var(--accent) 45%,transparent);
-  --accent-glow:color-mix(in srgb,var(--accent) 12%,transparent);
-  --accent-fill:var(--accent-deep); --accent-on-fill:#ffffff;
-  --accent-line:var(--accent-ring);
-  --acc-ember-soft:var(--accent-soft); --acc-ember-ink:#ffffff;
-  --good:#28633f; --bad:#a33131; --warn:#775620; --info:#345d95; --future:#74549a;
-  --syntax-keyword:#773e81; --syntax-string:#326744; --syntax-number:#795e2d; --syntax-comment:#636363; --syntax-function:#285c7c;
-  /* The glow is the same mechanism with the light coming the other way: on paper a halo has to be
-     a shade rather than a tint, or it is invisible. */
-  --glow:0 0 12px var(--accent-glow);
-  --shadow-pop:0 0 12px var(--accent-glow); --shadow-modal:0 0 24px var(--accent-glow);
-  --shadow-primary:inset 0 0 0 1px rgba(0,0,0,.14),0 2px rgba(0,0,0,.16);
-}
+/* The page itself. */
+:root { font-family:var(--font-body); font-size:16px; line-height:1.55; color:var(--ink); background:var(--paper); }
 *,*::before,*::after { box-sizing:border-box; }
 /* THE BARE-ELEMENT RULES BELOW STOP AT THE AI ELEMENTS SURFACES. `:where(:not(.aie, .aie *, [data-slot],
    [data-slot] *))` adds no specificity, so nothing outside those surfaces moves; inside them, the
@@ -257,7 +48,7 @@ button:active:not(:disabled):not([aria-disabled='true']):where(:not(.aie, .aie *
 /* FOCUS IS A RING PLUS A WIDER HALO, which is how the bar draws it: `accent 0 0 0 1px` and a
    low-alpha glow behind it. The outline carries the ring; --glow carries the halo, and focus-halo
    opens it rather than snapping it on. */
-button:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),a:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),input:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),summary:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { outline:2px solid var(--accent); outline-offset:4px; box-shadow:var(--glow); animation:focus-halo var(--t-fast) var(--ease-out); }
+button:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),a:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),input:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),summary:focus-visible:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { outline:2px solid var(--accent); outline-offset:4px; box-shadow:var(--halo); animation:focus-halo var(--t-fast) var(--ease-out); }
 a:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { color:inherit; text-underline-offset:4px; } img,video,canvas { max-width:100%; } svg:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { flex:none; vertical-align:middle; }
 h1:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h2:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h3:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),h4:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),p:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { margin-top:0; }
 /* ONE WEIGHT, AND THIS IS THE LINE THAT WAS MISSING. The rule below sets family, line-height and
@@ -282,13 +73,13 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    It was `background: var(--ink)` — a white button, which is what a product looks like when it has
    no colour of its own. The fill is dark enough against the page (2.6:1) to read as a raised object
    rather than a glow, and carries --ink at 6.4:1. See docs/DESIGN-LOCK.md. */
-.btn-primary,.gx-btn--primary { color:var(--accent-on-fill); background:var(--accent-deep); border:1px solid var(--accent-deep); border-radius:var(--r-md); min-height:var(--h-md); padding:0 16px; font-size:14px; box-shadow:var(--shadow-primary); }
+.btn-primary,.gx-btn--primary { color:var(--accent-ink); background:var(--accent); border:1px solid var(--accent); border-radius:var(--r-md); min-height:var(--h-md); padding:0 16px; font-size:14px; }
 /* Hover deepens the TINT rather than darkening a fill — the object is a piece of coloured light on
    the surface, so more of it is the only response that keeps it the same object. */
-.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent-on-fill); background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); }
+.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent-ink); background:var(--accent-strong); border-color:var(--accent-strong); }
 /* PRESSED IS A STATE, not a missing one. Without it a button that is doing something looks
    identical to one that has not been touched, which is how a person clicks twice. */
-.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent-deep) 86%,#000000); animation:press-settle var(--t-fast) var(--ease-out); }
+.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent) 86%,#000000); animation:press-settle var(--t-fast) var(--ease-out); }
 .btn,.gx-btn { display:inline-flex; gap:8px; align-items:center; justify-content:center; text-decoration:none; }
 /* THE TWO BUTTON VARIANTS THAT EXISTED ONLY IN THE MARKUP. `--primary` above has had a rule since
    the beginning; `--outline` and `--ghost` never did, across 29 uses in seven files. On a <button>
@@ -333,8 +124,8 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
  *   belongs to the chip rather than competing with Send. That decision survives untouched — the
  *   mark is still currentColor. What changed is the chip around it, which is the object the bar
  *   accents and the one place this product had an accent to spend and was not spending it. ]]*/
-.gx-chip:has(.model-signature) { min-height:var(--h-sm); border-radius:var(--r-md); background:var(--accent-soft); border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
-.gx-chip:has(.model-signature):hover:not(:disabled) { background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--accent-light); }
+.gx-chip:has(.model-signature) { min-height:var(--h-sm); border-radius:var(--r-md); background:var(--accent-wash); border:1px solid var(--accent-ring); color:var(--accent-strong); box-shadow:var(--halo); }
+.gx-chip:has(.model-signature):hover:not(:disabled) { background:color-mix(in srgb,var(--accent) 18%,transparent); color:var(--accent-strong); }
 
 /*[[ VARIANT 3 OF 5 — THE ACCENTED OUTLINE, which is the variant this product did not have.
  *
@@ -347,7 +138,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
  *   color:var(--paper)`: a WHITE filled button, which on a screen that already has one filled
  *   primary is two answers to the question of what to press. The third is the generic pressed
  *   chip, which painted the accent on an accent tint and had no edge. ]]*/
-.gx-chip[aria-pressed='true'] { background:transparent; border:1px solid var(--accent-ring); color:var(--accent-light); box-shadow:var(--glow); }
+.gx-chip[aria-pressed='true'] { background:transparent; border:1px solid var(--accent-ring); color:var(--accent-strong); box-shadow:var(--halo); }
 /* THE WORKSPACE SCOPE. This block used to declare twenty-one `--gx-*` aliases of the tokens above
    — a second name for every colour, every line, two more radii and the mono stack. Nothing read
    any of them: `grep -roE "var\(--gx-[a-z0-9-]+" src` returns exactly one name, --gx-dock-w, and
@@ -358,7 +149,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .gx { background:var(--paper); color:var(--ink); }
 .gx-shell { min-height:100dvh; width:100%; background:var(--paper); }
 .gx-main { min-height:100dvh; width:calc(100% - 76px); margin-inline-start:76px; position:relative; }
-.studio-dock { position:fixed; inset-block:0; inset-inline-start:0; z-index:55; width:76px; display:flex; flex-direction:column; align-items:center; gap:17px; padding:23px 12px; border-inline-end:1px solid var(--line); background:color-mix(in srgb,var(--paper-2) 88%,transparent); backdrop-filter:blur(18px); }
+.studio-dock { position:fixed; inset-block:0; inset-inline-start:0; z-index:55; width:76px; display:flex; flex-direction:column; align-items:center; gap:17px; padding:23px 12px; border-inline-end:1px solid var(--line); background:var(--paper-2); }
 .studio-dock > button,.studio-dock > a { display:grid; place-items:center; width:var(--h-md); height:var(--h-md); min-height:var(--h-md); padding:0; border:1px solid transparent; background:transparent; border-radius:var(--r-md); color:var(--muted); text-decoration:none; }
 .studio-dock > :is(button,a):hover { background:var(--surface-2); color:var(--ink); }
 .studio-dock .studio-dock__brand { margin-bottom:12px; color:var(--ink); } .studio-dock__brand .model-signature { width:34px; height:34px; }
@@ -398,7 +189,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .start-sheet h1 { margin-bottom:14px; font-size:clamp(27px,3vw,36px); letter-spacing:-.035em; line-height:1.3; font-weight:400; }
 /* THE MARK GLOWS IN THE PRODUCT'S COLOUR, not in white. A 20px white drop-shadow on a black page
    is a light source the rest of the system does not have. */
-.start-sheet__identity { display:inline-grid; margin-bottom:26px; filter:drop-shadow(0 0 16px var(--accent-glow)); }
+.start-sheet__identity { display:inline-grid; margin-bottom:26px; filter:drop-shadow(0 0 16px var(--accent-wash)); }
 .start-sheet__identity .model-signature { width:52px; height:52px; }
 .start-sheet__lead { animation:type-arrive var(--t-slow) var(--ease-out) both; }
 .start-sheet__lead p { font-size:14px; line-height:1.6; margin:0; color:var(--muted); }
@@ -410,68 +201,6 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .start-sheet__ideas > button:hover { border-color:var(--accent-ring); color:var(--ink); background:color-mix(in srgb,var(--ink) 12%,transparent); } .start-sheet__ideas > button > span:last-child { color:var(--faint); }
 .start-sheet__number { color:var(--faint); font:11px var(--font-mono); padding-top:5px; }
 .start-sheet__aside { display:block; font-size:13px; line-height:1.6; color:var(--faint); margin-top:22px; }
-.studio-atmosphere { position:fixed; inset-block:0; inset-inline:76px 0; overflow:hidden; pointer-events:none; z-index:0; background:radial-gradient(ellipse at 55% 35%,#ffffff06,transparent 43%),radial-gradient(ellipse at 105% 90%,#ffffff09,transparent 45%); }
-.studio-atmosphere__beam { position:absolute; width:230px; height:88%; top:-18%; inset-inline-start:calc(55% - 115px); background:radial-gradient(ellipse,#ffffff22 0%,color-mix(in srgb,var(--accent) 9%,transparent) 28%,transparent 66%); filter:blur(22px); transform:rotate(5deg); animation:ambient-breath 9s ease-in-out infinite alternate; }
-/*[[ THE ATMOSPHERE WAS PITCHED SO LOW IT READ AS NOTHING.
- *
- *   The beam, the mesh and the dust were all here and all animating, and the owner's report was
- *   that the product is static — which is what a 24-second drift at 13% opacity behind a dark
- *   surface actually looks like. Motion nobody can perceive is motion that cost render time and
- *   bought nothing.
- *
- *   Three changes, all of them presence rather than speed: the mesh carries the accent instead of
- *   plain white so it belongs to this product, it drifts further, and a second slow aurora wash
- *   moves across the whole field on a different period so the two never line up into a visible
- *   loop. Nothing here is faster than before — a page that hurries feels cheap, and this is
- *   supposed to be weather, not an animation. ]]*/
-.studio-atmosphere__mesh { position:absolute; width:118%; height:100%; inset-inline-start:-9%; bottom:-5%; fill:none; stroke:var(--accent); stroke-width:.8; opacity:.26; animation:ambient-drift 15s ease-in-out infinite alternate; mask-image:linear-gradient(transparent 6%,#000 34%,#000 62%,transparent 88%); }
-/*[[ WHERE THE MESH IS ALLOWED TO BE LOUD.
- *
- *   The mask above used to read `linear-gradient(transparent 22%,#000 78%)` — transparent at the
- *   top, reaching FULL STRENGTH at 78% down and holding it to the floor. The composer floats in
- *   the bottom quarter of the workspace on a 0.08-alpha surface, so the accent mesh was at its
- *   densest directly behind the one control the whole screen exists to serve, and showed through
- *   it. In a screenshot it does not read as atmosphere; it reads as a green texture leaking in at
- *   the bottom corner and being sliced by the composer's edge, which is what the owner saw.
- *
- *   Four stops instead of two: the mesh now rises through the upper-middle of the workspace, holds
- *   between 38% and 58% where there is nothing but thread, and is gone again by 86% — above the
- *   composer rather than behind it. The layer is unchanged; only where it is permitted to be seen.
- *
- *   NOT a reduction in opacity, which was the other way to fix this and the wrong one: a dimmer
- *   mesh everywhere would have made the atmosphere weaker in the empty middle of the screen, where
- *   it is the only thing keeping a mostly-blank column from looking unfinished. ]]*/
-
-/* The aurora. One element, no image, composited transform only — it never touches layout. 41s
-   against the mesh's 24s and the beam's 14s: three periods with no common multiple a person will
-   sit through, so the field never repeats a frame it has already shown them. */
-.studio-atmosphere::after {
-  content:''; position:absolute; inset:-20%;
-  background:
-    radial-gradient(38% 30% at 22% 28%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%),
-    radial-gradient(32% 26% at 78% 68%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 72%);
-  filter:blur(46px);
-  animation:ambient-aurora 25s ease-in-out infinite alternate;
-}
-@keyframes ambient-aurora {
-  from { transform:translate3d(-3%,2%,0) scale(1); opacity:.55; }
-  to   { transform:translate3d(4%,-3%,0) scale(1.12); opacity:.95; }
-}
-.studio-atmosphere__dust { position:absolute; inset:0; opacity:.38; background-image:radial-gradient(circle at 15% 20%,#fff9 0 .6px,transparent 1px),radial-gradient(circle at 73% 39%,#fff6 0 .5px,transparent 1px),radial-gradient(circle at 47% 75%,#fff5 0 .7px,transparent 1px); background-size:311px 263px,419px 337px,593px 457px; animation:ambient-dust 52s linear infinite; }
-/* AMBIENT, AND EXEMPT FROM THE 0.26s CEILING — the ceiling is about what happens under a finger.
-   Three layers on three periods with no common multiple anybody will sit through (96s here, 41s on
-   the aurora, 24s on the mesh, 14s on the beam), so the field never repeats a frame it has already
-   shown. It is stopped twice over: by `.studio-atmosphere.is-still *` a few rules below, which the
-   workspace applies for a hidden tab AND for a reduced-motion reader, and by the universal
-   reduced-motion block at the foot of this file. */
-@keyframes ambient-dust { from { background-position:0 0,0 0,0 0; } to { background-position:311px 263px,-419px 337px,593px -457px; } }
-/* `*` does not reach a pseudo-element on the container itself, so the aurora is named. Somebody
-   who asked for less motion was still being given the biggest moving thing on the page. */
-.studio-atmosphere.is-still *,
-.studio-atmosphere.is-still::after { animation:none; }
-@keyframes ambient-drift { from { transform:translate3d(0,8px,0) rotate(-1deg); opacity:.1; } to { transform:translate3d(18px,-10px,0) rotate(1deg); opacity:.2; } }
-@keyframes ambient-breath { from { opacity:.5; transform:rotate(4deg) scaleX(.8); } to { opacity:1; transform:rotate(-3deg) scaleX(1.1); } }
-:root[data-theme='light'] .studio-atmosphere { opacity:.2; filter:invert(1); }
 :root[data-theme='light'] .studio-dock { background:color-mix(in srgb,var(--paper-2) 88%,transparent); }
 :root[data-theme='light'] .gx-composer__inner { background:var(--surface); border-color:var(--control-line); box-shadow:var(--shadow-pop); }
 :root[data-theme='light'] .gx-user { background:var(--control-fill); }
@@ -482,10 +211,10 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    panel radius and by a wide margin the roundest thing in the product — over a stack of six raw
    white alphas and a 40px black blur. Now: the raised surface, the chrome border, the panel
    radius, and a glow instead of a drop shadow. */
-.gx-composer__inner { background:color-mix(in srgb,var(--surface) 86%,transparent); border:1px solid var(--control-line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); backdrop-filter:blur(28px); position:relative; transition:border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
+.gx-composer__inner { background:var(--surface); border:1px solid var(--control-line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); position:relative; transition:border-color var(--t-color) var(--ease-hard),box-shadow var(--t-fast) var(--ease-out); }
 /* FOCUS PUTS THE ACCENT ON THE EDGE, which is the bar's own answer: the accented control is the
    one with the accent BORDER, never the one with a brighter white rim. */
-.gx-composer__inner:focus-within { border-color:var(--accent-ring); box-shadow:var(--glow); } .gx-composer textarea { width:100%; display:block; resize:none; min-height:100px; max-height:220px; border:0; padding:22px 24px 10px; font-size:16px; background:transparent; outline:0; }
+.gx-composer__inner:focus-within { border-color:var(--accent-ring); box-shadow:var(--halo); } .gx-composer textarea { width:100%; display:block; resize:none; min-height:100px; max-height:220px; border:0; padding:22px 24px 10px; font-size:16px; background:transparent; outline:0; }
 .gx-composer textarea::placeholder { color:var(--faint); }
 .gx-ws:not(:has(.start-sheet)) .gx-composer textarea { min-height:64px; padding-top:16px; }
 .gx-composer__bar { display:flex; gap:8px; align-items:center; padding:8px 14px 13px; flex-wrap:wrap; }
@@ -494,12 +223,12 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .gx-chip { display:inline-flex; gap:7px; align-items:center; border:1px solid var(--control-line); border-radius:var(--r-md); padding:0 8.8px; min-height:var(--h-sm); font-size:12px; background:var(--control-fill); color:var(--muted); }
 .gx-composer__tools { margin-inline-start:auto; display:flex; gap:8px; align-items:center; } .gx-composer__tools > button:not(.gx-send) { border:1px solid transparent; background:transparent; width:var(--h-sm); height:var(--h-sm); min-height:var(--h-sm); padding:0; display:grid; place-items:center; }
 /* THE ONE FILLED BUTTON ON THE WORKSPACE, drawn as the primary rather than as a grey gradient
-   behind a white rim. Square at 36 — the primary height — and it carries --shadow-primary, which
+   behind a white rim. Square at 36 — the primary height — and it carries no shadow, which
    is the only conventional shadow this system allows and the only place it is spent.
    (components/ws/composer.css restates the fill for the in-composer instance and owns its stop and
    disabled states; this is the object those rules refine, and they now refine the same object.) */
-.gx-send { width:var(--h-md); height:var(--h-md); min-height:var(--h-md); padding:0; display:grid; place-items:center; border:1px solid var(--accent-deep); border-radius:var(--r-md); color:var(--accent-on-fill); background:var(--accent-deep); box-shadow:var(--shadow-primary); }
-.gx-send:hover:not(:disabled) { background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); color:var(--accent-on-fill); }
+.gx-send { width:var(--h-md); height:var(--h-md); min-height:var(--h-md); padding:0; display:grid; place-items:center; border:1px solid var(--accent); border-radius:var(--r-md); color:var(--accent-ink); background:var(--accent); }
+.gx-send:hover:not(:disabled) { background:var(--accent-strong); border-color:var(--accent-strong); color:var(--accent-ink); }
 .gx-send:active:not(:disabled) { animation:press-settle var(--t-fast) var(--ease-out); }
 .gx-send:disabled { background:transparent; border-color:var(--quiet-line); color:var(--quiet-ink); box-shadow:none; opacity:1; }
 .gx-composer__note { text-align:center; color:var(--faint); font-size:10px; margin:13px 0 0; } .gx-creation-note { font-size:12px; color:var(--muted); margin:12px 0 0; }
@@ -507,7 +236,7 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
 .model-signature { width:30px; height:30px; display:inline-grid; place-items:center; color:var(--accent); flex-shrink:0; }
 .model-signature svg { width:100%; height:100%; }
 /* The class is built from the stored model id (ModelMark's variant), which is still 'apple'. */
-.model-signature--apple { color:var(--ink); }
+.model-signature--apple { color:var(--accent); }
 .model-signature.is-live { animation:signature-work 2.4s ease-in-out infinite; transform-origin:50% 50%; }
 .gx-turn { margin:0 0 30px; } .gx-turn--user { margin-inline-start:20%; display:flex; flex-direction:column; align-items:flex-end; } .gx-user { font-size:15px; line-height:1.65; border:1px solid var(--line); border-radius:var(--r-lg); padding:12px 18px; white-space:pre-wrap; overflow-wrap:anywhere; background:var(--control-fill); width:fit-content; max-width:100%; }
 .gx-user__foot { display:flex; justify-content:end; align-items:center; gap:12px; margin-top:6px; } .gx-user__foot button { border:0; background:transparent; min-height:var(--h-xs); padding:0 4px; font-size:12px; }
@@ -614,7 +343,7 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
 /* ---- response: things a person just did ------------------------------------------------- */
 /* The focus halo OPENS rather than snapping on: the ring is the outline, this is the wider
    low-alpha glow behind it that the bar pairs with it. */
-@keyframes focus-halo { from { box-shadow:0 0 0 var(--accent-glow); } to { box-shadow:var(--glow); } }
+@keyframes focus-halo { from { box-shadow:0 0 0 var(--accent-wash); } to { box-shadow:var(--halo); } }
 /* A press is a 1px dip and a return. The button does not resize, because a control that changes
    size under the cursor moves the next one out from under a click already on its way. */
 @keyframes press-settle { 0% { transform:translateY(0); } 45% { transform:translateY(1px); } 100% { transform:translateY(0); } }
@@ -643,7 +372,7 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
 @keyframes pulse-dot { 0%,100% { opacity:.55; } 50% { opacity:1; } }
 /* The composer armed for a drop: the glow widens and settles, which is the accent doing the one
    job the accent is for — naming the thing that is about to happen. */
-@keyframes drop-armed { 0%,100% { box-shadow:var(--glow); } 50% { box-shadow:0 0 22px color-mix(in srgb,var(--accent) 26%,transparent); } }
+@keyframes drop-armed { 0%,100% { box-shadow:var(--halo); } 50% { box-shadow:0 0 22px color-mix(in srgb,var(--accent) 26%,transparent); } }
 
 /* ---- the ones that were already here, kept and re-timed -------------------------------- */
 @keyframes type-arrive { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
@@ -654,8 +383,8 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
   .start-sheet { gap:26px; } .start-sheet h1 { font-size:32px; } .gx-thread { padding-inline:26px; }
 }
 @media(max-width:680px) {
-  .gx-main { width:100%; margin-inline-start:0; } .studio-atmosphere { inset-inline-start:0; }
-  .studio-dock { inset-block:10px auto; inset-inline-start:12px; padding:0; width:44px; height:44px; background:transparent; border:0; backdrop-filter:none; }
+  .gx-main { width:100%; margin-inline-start:0; }
+  .studio-dock { inset-block:10px auto; inset-inline-start:12px; padding:0; width:44px; height:44px; background:transparent; border:0; }
   .studio-dock > button,.studio-dock > a { display:none; } .studio-dock > .studio-navigation { display:grid; }
   .gx-ws { grid-template-rows:64px minmax(0,1fr) auto; } .gx-top { padding:12px 18px 12px 72px; gap:8px; } .gx-top__title { max-width:32vw; font-size:13px; } .gx-top__when { display:none; } .studio-workspace-controls { gap:12px; } .studio-project-menu summary,.studio-preview-toggle { font-size:12px; } .studio-preview-toggle span,.studio-project-menu summary span { margin-inline-start:3px; }
   .start-sheet { gap:26px; padding-block:20px; } .start-sheet h1 { font-size:27px; } .start-sheet__lead p { font-size:13px; } .start-sheet__ideas { gap:8px; } .start-sheet__ideas > button { min-height:var(--h-md); padding:0 12px; font-size:11px; } .gx-thread { padding:20px; } .gx-composer,.gx-ws:has(.start-sheet) .gx-composer { padding:10px 12px 18px; } .gx-composer textarea { min-height:85px; font-size:16px; padding:18px; } .gx-composer__bar { gap:3px; padding:6px 10px 10px; } .gx-chip { font-size:11px; gap:5px; padding:0 6px; } .gx-composer__note { font-size:10px; } .gx-chip--template { display:none; } .gx-send { width:var(--h-md); height:var(--h-md); } .gx-user { font-size:15px; } .gx-turn--user { margin-inline-start:7%; } .page { padding:90px 20px 40px; } .page-head { display:block; } .settings-row { align-items:start; } .settings-pair { display:grid; } .modal,.dialog,.cmdk { padding:22px; }
@@ -670,11 +399,11 @@ table { width:100%; border-collapse:collapse; font-size:13px; } th,td { padding:
 
 /* Functional surfaces. Same paper, rules and typography, without dashboard chrome. */
 pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
-.modal-overlay { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:color-mix(in srgb,var(--paper) 62%,transparent); backdrop-filter:blur(5px); animation:scrim-in var(--t-fast) var(--ease-out); }
+.modal-overlay { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:color-mix(in srgb,var(--paper) 62%,transparent); animation:scrim-in var(--t-fast) var(--ease-out); }
 .modal-panel { width:min(560px,100%); max-height:calc(100dvh - 48px); overflow:auto; padding:30px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-modal); animation:type-arrive var(--t-base) var(--ease-out); }
 .modal-wide { width:min(840px,100%); } .modal-title { font-size:27px; margin:0; } .modal-head { align-items:center; } .modal-body { min-width:0; } .icon-btn { border:1px solid transparent; background:transparent; width:var(--h-sm); height:var(--h-sm); min-height:var(--h-sm); padding:0; display:grid; place-items:center; font-size:22px; }
 .btn-ghost,.btn-quiet { background:transparent; } .btn-sm { padding:6px 10px; font-size:12px; }
-.btn-primary:focus-visible,.gx-btn--primary:focus-visible { color:var(--accent-on-fill); background:var(--accent-fill); }
+.btn-primary:focus-visible,.gx-btn--primary:focus-visible { color:var(--accent-ink); background:var(--accent); }
 /* THE SECOND LIGHT PALETTE LIVED HERE and is gone. It redeclared --accent, --accent-fill,
    --accent-on-fill, --accent-soft and --accent-line two hundred lines below the palette that
    claims to define them, and won on source order — so the block at the top of this file was
@@ -711,7 +440,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .rag-hit { padding-block:14px; border-top:1px solid var(--line); } .rag-preview,.page-sub { color:var(--muted); font-size:13px; }
 .gx-outcome { display:flex; flex-wrap:wrap; align-items:baseline; gap:12px; margin-block:16px; }
 .gx-outcome__retry:focus-visible,.gx-history-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
-.gx-composer__inner.is-dropping { border:2px dashed var(--accent); background:var(--accent-soft); animation:drop-armed 1.1s var(--ease-in-out) infinite; }
+.gx-composer__inner.is-dropping { border:2px dashed var(--accent); background:var(--accent-wash); animation:drop-armed 1.1s var(--ease-in-out) infinite; }
 .gx-assumed,.gx-open-qs { border-inline-start:2px solid var(--warn); padding:10px 16px; margin-block:14px; font-size:13px; }
 .gx-assumed__label,.gx-open-qs__label { display:block; font-weight:400; color:var(--ink); }
 .gx-assumed ul,.gx-open-qs ul { padding-inline-start:18px; color:var(--muted); }
@@ -750,7 +479,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .spend-kinds,.usage-months { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:20px; padding-block:18px; }
 .gx-stage { margin:0 0 20px; } .gx-stage__frame { width:100%; display:block; padding:0; border:0; background:var(--paper-2); overflow:hidden; position:relative; }
 .gx-stage__canvas { display:block; width:100%; height:auto; aspect-ratio:16/10; object-fit:contain; }
-.gx-stage__working { position:absolute; bottom:10px; inset-inline-start:10px; padding:4px 8px; border:1px solid var(--accent-ring); border-radius:var(--r-md); background:var(--surface); color:var(--accent-light); font-size:11px; animation:pulse-dot 1.8s var(--ease-in-out) infinite; }
+.gx-stage__working { position:absolute; bottom:10px; inset-inline-start:10px; padding:4px 8px; border:1px solid var(--accent-ring); border-radius:var(--r-md); background:var(--surface); color:var(--accent-strong); font-size:11px; animation:pulse-dot 1.8s var(--ease-in-out) infinite; }
 .gx-stage__caption { display:flex; align-items:start; gap:12px; flex-wrap:wrap; padding-block:12px; font-size:12px; }
 .gx-stage__what { flex:1; color:var(--muted); } .gx-stage__meta,.gx-stage__count { font:10px var(--font-mono); color:var(--faint); }
 .gx-stage__nav { display:flex; align-items:center; gap:8px; }
@@ -768,7 +497,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gx-playtest__empty { min-height:180px; display:grid; place-content:center; font-size:13px; color:var(--muted); }
 .gx-stage.is-expanded,.gx-playtest.is-expanded { position:fixed; inset:5vh 5vw; padding:20px; overflow:auto; z-index:95; background:var(--surface); border-radius:var(--r-lg); box-shadow:0 0 0 100vmax color-mix(in srgb,var(--paper) 72%,transparent); animation:veil-lift var(--t-base) var(--ease-out); }
 .gx-stage.is-expanded .gx-stage__canvas,.gx-playtest.is-expanded .gx-playtest__canvas { max-height:65vh; }
-.asrc__scrim { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:color-mix(in srgb,var(--paper) 68%,transparent); backdrop-filter:blur(5px); animation:scrim-in var(--t-fast) var(--ease-out); }
+.asrc__scrim { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:color-mix(in srgb,var(--paper) 68%,transparent); animation:scrim-in var(--t-fast) var(--ease-out); }
 .asrc { width:min(620px,100%); max-height:90dvh; overflow:auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:30px; box-shadow:var(--shadow-modal); animation:sheet-rise var(--t-base) var(--ease-out); }
 .asrc__title { font-size:28px; } .asrc__lede { font-size:14px; color:var(--muted); } .asrc__choices { margin-block:22px; }
 .asrc__choice { display:flex; align-items:start; gap:14px; padding:18px 0; border-top:1px solid var(--line); cursor:pointer; }
@@ -781,8 +510,8 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
    nothing. The hover restatement stays, because tests/button-label-contrast.test.mjs requires a
    filled variant to say what its label does under the pointer: `.btn:hover { color:var(--accent) }`
    is right for a ghost button and blanks a filled one, and that defect shipped. */
-.btn--primary { background:var(--accent-deep); color:var(--accent-on-fill); border:1px solid var(--accent-deep); box-shadow:var(--shadow-primary); }
-.btn--primary:hover:not(:disabled),.btn--primary:focus-visible { background:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); color:var(--accent-on-fill); border-color:color-mix(in srgb,var(--accent-deep) 80%,var(--accent)); }
+.btn--primary { background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent); }
+.btn--primary:hover:not(:disabled),.btn--primary:focus-visible { background:var(--accent-strong); color:var(--accent-ink); border-color:var(--accent-strong); }
 .gx-files { min-width:0; } .gx-files__text { max-height:55vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; } .gx-files__table { display:block; overflow:auto; }
 .gx-files__summary { margin:0 0 10px; }
 .gx-files__toolbar, .gx-files__upload { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
@@ -802,7 +531,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .au-badge { font-size:10px; color:var(--warn); } .au-editor,.au-history { margin-block:18px; } .mem__fact { width:100%; }
 .es { display:grid; justify-items:center; gap:14px; padding:42px 24px; text-align:center; animation:empty-arrive var(--t-slow) var(--ease-out); }
 .es__title { color:var(--ink); font-size:25px; margin:0; } .es__body { color:var(--muted); font-size:14px; max-width:500px; margin:0; }
-.es--creation { color:var(--accent); } .es--studio { color:var(--info); } .es--failure { color:var(--bad); } .es--proven { color:var(--good); } .es--future { color:var(--future); }
+.es--creation { color:var(--accent); } .es--studio { color:var(--info); } .es--failure { color:var(--bad); } .es--proven { color:var(--good); } .es--future { color:var(--muted); }
 .gx-cp__desc { color:var(--muted); font-size:13px; line-height:1.6; margin-block:8px; }
 /* The extra line an op sometimes carries — what it touched, what it skipped. `.gx-row__main` is
    already a grid so it does not run into the meta line above it, but with no rule it rendered at
@@ -914,7 +643,7 @@ pre,code,kbd,samp { direction:ltr; unicode-bidi:isolate; text-align:start; }
 .gu-render-readout { display:flex; gap:12px; align-items:center; font-size:11px; margin-block:12px; color:var(--muted); }
 .gu-render-thumbs { display:flex; gap:8px; overflow:auto; margin-block:15px; }
 .gu-thumb { flex:0 0 90px; display:grid; gap:6px; padding:6px; font-size:10px; border:1px solid var(--line); border-radius:var(--r-sm); }
-.gu-thumb.is-active { border-color:var(--accent-ring); box-shadow:var(--glow); } .gu-thumb-img { display:block; width:100%; height:52px; object-fit:cover; }
+.gu-thumb.is-active { border-color:var(--accent-ring); box-shadow:var(--halo); } .gu-thumb-img { display:block; width:100%; height:52px; object-fit:cover; }
 .gu-render-metrics,.gu-kv-list { margin:0; padding:0; } .gu-render-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 22px; }
 .gu-kv-row { display:flex; gap:16px; justify-content:space-between; font-size:11px; border-bottom:1px solid var(--line); padding-block:8px; }
 .gu-kv-row dt { color:var(--muted); } .gu-kv-row dd { margin:0; }

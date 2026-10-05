@@ -21,8 +21,6 @@ importers:
         specifier: ^4.147.0
         version: 4.147.0(@cloudflare/workers-types@5.20260830.1)
 
-  apps/studpilot-plugin: {}
-
   apps/benchmark/crystal-canyon: {}
 
   apps/experiences/lumen-isles: {}
@@ -31,15 +29,18 @@ importers:
 
   apps/site:
     dependencies:
-      '@studpilot/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@astrojs/check':
         specifier: ^0.9.4
         version: 0.9.10(prettier@3.9.6)(typescript@5.9.3)
       '@astrojs/sitemap':
         specifier: ^3.7.4
         version: 3.7.4
+      '@studpilot/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@studpilot/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       astro:
         specifier: ^7.3.5
         version: 7.3.5(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0)
@@ -47,11 +48,10 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  apps/studpilot-plugin: {}
+
   apps/web:
     dependencies:
-      '@studpilot/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@radix-ui/react-use-controllable-state':
         specifier: ^1.2.6
         version: 1.2.6(@types/react@19.3.0)(react@19.2.3)
@@ -67,6 +67,12 @@ importers:
       '@streamdown/mermaid':
         specifier: ^1.0.2
         version: 1.0.2(react@19.2.3)
+      '@studpilot/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@studpilot/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.112.4(@opentelemetry/api@1.9.1)

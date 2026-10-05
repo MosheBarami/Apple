@@ -5,18 +5,18 @@
  *
  *   UI Layouts "Button Arrow Right" (MIT): an arrow knob at the right end that, on hover or focus,
  *            runs out to fill the whole button.
- *   UI Layouts "Liquid Button" (MIT): the fill POURS rather than slides — the knob's run overshoots
- *            and settles, and its leading edge stays round like a drop. Its iridescent blend and
- *            blurred glow are left out: the site's direction has no glow and no second hue.
+ *   UI Layouts "Liquid Button" (MIT): the fill POURS rather than slides, its leading edge staying
+ *            round like a drop. Its iridescent blend, blurred glow and overshoot are left out: the
+ *            site's direction has no glow, no second hue and nothing that overshoots.
  *   UI Layouts "Button Background Shine" (MIT): one sheen crosses the face when the button first
  *            comes into view and again on each hover. Once, never on a loop.
  *   React Bits "Specular Button" (MIT + Commons Clause, code not used): the rim catches the light
  *            on the side nearest the pointer, before the pointer even arrives.
  *
  * It is an ordinary <a>. The knob, sheen and rim are aria-hidden spans; the accessible name is the
- * label. The knob fills with the accent, which is the ordinary active-state colour, and the label
- * keeps `--on-primary` throughout, which holds 4.5:1 against both the ink face and the blue fill in
- * both themes.
+ * label. The face is --accent and the knob --accent-strong, and the label keeps --accent-ink
+ * throughout, which holds 4.5:1 against both fills in both themes
+ * (packages/design/src/web/accents.json records the ratios).
  */
 import './cta-button.css';
 

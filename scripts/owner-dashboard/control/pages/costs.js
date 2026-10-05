@@ -5,7 +5,7 @@
 import { html, num, compact, arr, isNum, failCard, shortDay, ltr, pct, legend, bars, meter, when, bytes } from '../ui.js';
 import { stat, sec, note } from './kit.js';
 
-const COLORS = ['#5b7cfa', '#7cc49a', '#e6a95a', '#c792ea', '#8a8d96'];
+const COLORS = ['#a67cff', '#7cc49a', '#e6a95a', '#c792ea', '#8a8d96'];
 const usd = (v, d = 2) => (isNum(v) ? `$${num(v, v < 0.01 && v > 0 ? 4 : d)}` : '—');
 const short = (m) => String(m || '').replace(/^@cf\//, '').replace(/^[^/]+\//, '');
 const st = { chart: 'tokens' };

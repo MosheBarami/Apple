@@ -928,7 +928,7 @@ function SettingsRail({
   active: string | null;
   onSelect: (id: string) => void;
 }) {
-  // The glass pill (picks: liquid-glass sidebar menu) slides to the current section; it is
+  // The pill (picks: liquid-glass sidebar menu) slides to the current section; it is
   // measured from the list, so it has to be the list's own positioned child.
   const list = useRef<HTMLUListElement>(null);
   if (entries.length === 0) return null;
@@ -936,7 +936,7 @@ function SettingsRail({
   return (
     <nav className="st-nav" aria-label="Settings sections">
       <ul className="st-nav__list" ref={list}>
-        <GlideIndicator host={list} activeKey={active} selector=".st-nav__link.is-active" variant="glass" as="li" />
+        <GlideIndicator host={list} activeKey={active} selector=".st-nav__link.is-active" variant="flat" as="li" />
         {entries.map((e, i) => (
           <li key={e.id}>
             {/* The group heading is drawn by the FIRST entry that belongs to it, rather than by

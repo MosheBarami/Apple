@@ -1,7 +1,7 @@
 /*
  * CONTENT ROUTES — docs, pricing, changelog, status, proof, legal, 404.
  *
- * Structure only. Every colour, type, radius and motion value is a token from studpilot-minimal.css,
+ * Structure only. Every colour, type, radius and motion value is a token from packages/design/src/web/tokens.css,
  * which Base.astro imports before this file; nothing here redeclares one. The page grammar is the
  * same as the landing's: a quiet page title, a muted lede, hairlines instead of shadows, and one
  * surface step for anything that needs a panel.
@@ -60,28 +60,19 @@
   padding-inline: 18px;
 }
 
-/* A panel is frosted matte glass over the aura (owner, 2026-09-24, D-GLASS-1 — this replaces the
-   DESIGN-LOCK "a card does not cast"): translucent fill, a light top edge, a soft low shadow, and a
-   friendly lift under the pointer. */
+/* A panel is flat: a --surface fill and a hairline edge. It casts nothing and does not move; the
+   edge darkens under the pointer. */
 .card,
 .slab {
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-xl);
-  background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  transition:
-    border-color var(--t-base) var(--ease-out),
-    box-shadow var(--t-base) var(--ease-out),
-    translate var(--t-slow) var(--ease-spring);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  transition: border-color var(--t-base) var(--ease-out);
 }
 
 .card:hover,
 .slab:hover {
-  border-color: var(--glass-line-hover);
-  box-shadow: var(--glass-shadow-lift);
-  translate: 0 -3px;
+  border-color: var(--line-strong);
 }
 
 .slab--pad {
@@ -193,12 +184,9 @@
 .callout {
   margin: 24px 0;
   padding: 16px 18px;
-  border: 1px solid var(--glass-line);
+  border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--surface);
 }
 
 .callout p {
@@ -225,12 +213,9 @@
   position: relative;
   overflow-x: auto;
   margin-top: 28px;
-  border: 1px solid var(--glass-line);
+  border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--surface);
 }
 
 /* THE ROW LABEL STAYS PUT WHILE THE PLANS SCROLL PAST IT. The first column is a <th scope="row">,
@@ -241,9 +226,7 @@
   z-index: 1;
   max-width: 160px;
   /* Frosted too, so the plans scrolling under it blur rather than show through. */
-  background: var(--glass-fill-strong);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--surface-2);
 }
 
 .table-scroll table th[scope='row']::after {
@@ -324,8 +307,8 @@ html:not(.no-js) .kinetic {
   transform: translateY(18px) scale(0.985);
   transition:
     opacity var(--t-slow) var(--ease-out),
-    transform 700ms var(--ease-spring),
-    translate var(--t-slow) var(--ease-spring);
+    transform 700ms var(--ease-out),
+    translate var(--t-slow) var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
 }
 

@@ -13,10 +13,10 @@
 .tq-btn--icon { width:var(--h-xs); padding:0; }
 .tq-btn--bare { border-color:transparent; }
 button.tq-btn:hover:not(:disabled):not([aria-disabled='true']) { background:var(--control-fill); color:var(--ink); border-color:var(--line-strong); }
-.tq-btn--primary { background:var(--accent); border-color:transparent; color:#fff; }
-button.tq-btn--primary:hover:not(:disabled):not([aria-disabled='true']) { background:var(--accent-deep); color:#fff; border-color:transparent; }
+.tq-btn--primary { background:var(--accent); border-color:transparent; color:var(--accent-ink); }
+button.tq-btn--primary:hover:not(:disabled):not([aria-disabled='true']) { background:var(--accent-strong); color:var(--accent-ink); border-color:transparent; }
 .tq-btn:disabled { opacity:.5; cursor:default; background:transparent; }
-.tq-btn--primary:disabled { background:var(--accent); color:#fff; }
+.tq-btn--primary:disabled { background:var(--accent); color:var(--accent-ink); }
 .tq-btn:focus-visible { outline:2px solid var(--accent); outline-offset:1px; box-shadow:none; animation:none; }
 .tq-btn[aria-pressed='true'] { background:var(--control-fill); color:var(--ink); border-color:var(--line-strong); }
 

@@ -77,16 +77,16 @@
 .page.shelf {
   /* The accent family. --sh-accent tracks the app's own accent so the two themes still swap. */
   --sh-accent: var(--accent);
-  --sh-accent-light: #66efc2;
-  --sh-accent-deep: #00794f;
-  --sh-accent-on-deep: #ffffff;
-  --sh-accent-soft: color-mix(in srgb, var(--sh-accent) 12%, transparent);
-  --sh-accent-ring: color-mix(in srgb, var(--sh-accent-light) 38%, transparent);
-  --sh-accent-glow: color-mix(in srgb, var(--sh-accent) 14%, transparent);
+  --sh-accent-light: var(--accent-strong);
+  --sh-accent-deep: var(--accent);
+  --sh-accent-on-deep: var(--accent-ink);
+  --sh-accent-soft: var(--accent-wash);
+  --sh-accent-ring: var(--accent-ring);
+  --sh-accent-glow: var(--accent-wash);
 
-  /* The accent-tinted ramp. Green highest, blue next, red lowest, at every step. */
-  --sh-card: #242c27;
-  --sh-card-hi: #2b342e;
+  /* The card and its hover step: the design tokens' surfaces, which carry both themes. */
+  --sh-card: var(--surface);
+  --sh-card-hi: var(--surface-2);
 
   /* Text, three steps. */
   --sh-ink-1: var(--ink);
@@ -105,8 +105,8 @@
   --sh-off-edge: color-mix(in srgb, var(--ink) 12%, transparent);
   --sh-off-ink: color-mix(in srgb, var(--ink) 38%, transparent);
 
-  --sh-r-panel: 8px;
-  --sh-r-control: 6px;
+  --sh-r-panel: var(--r-md);
+  --sh-r-control: var(--r-sm);
 
   /*[[ AND EVERY CONTROL SHORTER THAN 36px STATES `min-height` AS WELL AS `height`, WHICH IS NOT
    *   BELT AND BRACES. design/system.css puts `min-height: var(--h-md)` — 36px — on the bare
@@ -141,17 +141,6 @@
    derived it, where --sh-accent-light must be DARKER than the page rather than lighter or an
    accented control loses its edge against white. */
 :root[data-theme='light'] .page.shelf {
-  --sh-accent-light: #285fb5;
-  --sh-accent-deep: #154394;
-  --sh-accent-ring: color-mix(in srgb, var(--sh-accent) 45%, transparent);
-  --sh-accent-glow: color-mix(in srgb, var(--sh-accent) 12%, transparent);
-
-  /* On paper the page is already the bright thing, so a raised surface goes UP to white and the
-     hover step goes DOWN — the same relationship, inverted, which is how every pair in this ramp
-     works. The separation is carried by the hairline, which is why it is stronger here. */
-  --sh-card: #ffffff;
-  --sh-card-hi: #f2f6f3;
-
   --sh-ink-2: color-mix(in srgb, var(--ink) 85%, transparent);
   --sh-ink-3: color-mix(in srgb, var(--ink) 68%, transparent);
 

@@ -1,79 +1,18 @@
 /*
- * StudPilot minimal product system.
+ * THE APP SHELL: the dock, the workspace grid, the turns, the welcome sheet and the popovers.
  *
- * The interaction bar was measured directly in the browser against the reference product:
- * black page, #0a0a0a card, #2e2e2e border, #fafafa foreground, #a6a6a6 muted text, 24px
- * composer radius, 24px backdrop blur and a soft 25/50 shadow. We reuse the grammar, not its
- * code/assets/copy. StudPilot keeps blue for normal action; violet is not spent on any control.
+ * Structure only. Every colour, radius and motion value is a token from
+ * packages/design/src/web/tokens.css, imported before this sheet by main.tsx, so a surface here is a
+ * --surface fill and a hairline edge and nothing frosted: there is no blur and no aurora. The
+ * interaction grammar was measured against a reference product and only its grammar is reused, never
+ * its code, assets or copy.
  */
-
-:root {
-  color-scheme:dark;
-  --paper:#000;
-  --paper-2:#05070b;
-  --surface:#0a0a0a;
-  --surface-2:#111217;
-  --surface-3:#181a22;
-  --ink:#fafafa;
-  --muted:#a6a6a6;
-  /* Raised from #70737d (4.44:1 on paper, 3.95:1 on surface-2): --faint carries real text — the
-     time under a turn, a code block's language, the Edit control — and text clears 4.5:1 here.
-     The value is the public site's (apps/site/src/styles/studpilot-minimal.css), so the two stay one
-     product; tests/app-ink-ramp.test.mjs measures it against every surface in both themes. */
-  --faint:#8a8d96;
-  --line:#2e2e2e;
-  --line-strong:#3b3d46;
-  --control-fill:rgba(255,255,255,.035);
-  --control-line:rgba(255,255,255,.11);
-  --quiet-line:rgba(255,255,255,.07);
-  --quiet-ink:rgba(250,250,250,.36);
-  --accent:#5b7cfa;
-  --accent-light:#8ca4ff;
-  --accent-deep:#4264e8;
-  --accent-soft:rgba(91,124,250,.10);
-  --accent-ring:rgba(91,124,250,.32);
-  --accent-glow:rgba(91,124,250,.12);
-  --r-xs:8px;
-  --r-sm:10px;
-  --r-md:12px;
-  --r-lg:16px;
-  --r-xl:24px;
-  --shadow-pop:0 18px 52px rgba(0,0,0,.34);
-  --shadow-modal:0 28px 88px rgba(0,0,0,.48);
-  --shadow-primary:0 10px 26px rgba(25,46,120,.22);
-}
-
-:root[data-theme='light'] {
-  color-scheme:light;
-  --paper:#f6f7fa;
-  --paper-2:#eef1f6;
-  --surface:#fff;
-  --surface-2:#f5f6f9;
-  --surface-3:#eceff4;
-  --ink:#101217;
-  --muted:#5d626d;
-  --faint:#646973;
-  --line:#d9dce3;
-  --line-strong:#c7cbd4;
-  --control-fill:rgba(16,18,23,.035);
-  --control-line:rgba(16,18,23,.10);
-  --quiet-line:rgba(16,18,23,.07);
-  --quiet-ink:rgba(16,18,23,.40);
-  --accent:#4568e8;
-  --accent-light:#3155d4;
-  --accent-deep:#3155d4;
-  --accent-soft:rgba(69,104,232,.09);
-  --accent-ring:rgba(69,104,232,.25);
-  --accent-glow:rgba(69,104,232,.10);
-  --shadow-pop:0 16px 44px rgba(31,41,55,.11);
-  --shadow-modal:0 28px 70px rgba(31,41,55,.16);
-}
 
 html,body,#root { min-height:100%; background:var(--paper); }
 body {
   color:var(--ink);
   background:var(--paper);
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  font-family:var(--font-body);
 }
 
 /* --------------------------------------------------------------- app shell */
@@ -83,7 +22,6 @@ body {
   margin-inline-start:var(--gx-dock-w);
   background:var(--paper);
 }
-.gx-shell .studio-atmosphere { display:none !important; }
 .gx-shell .studio-dock {
   width:var(--gx-dock-w);
   inset-block:0;
@@ -93,7 +31,6 @@ body {
   align-items:stretch;
   border-inline-end:1px solid var(--line);
   background:var(--paper);
-  backdrop-filter:none;
   box-shadow:none;
 }
 .gx-shell .studio-dock .studio-dock__brand {
@@ -166,10 +103,8 @@ body {
 
 .gx-rail {
   border:1px solid var(--line);
-  background:rgba(10,10,10,.94);
+  background:var(--surface);
   box-shadow:var(--shadow-modal);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
 }
 
 /* --------------------------------------------------------------- workspace */
@@ -194,16 +129,13 @@ body {
   gap:12px;
   border:0;
   border-bottom:1px solid var(--line);
-  background:rgba(0,0,0,.74);
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
-  /* The blur makes this bar its own stacking context, and the conversation below painted over it —
-     measured 2026-09-23 on /app/projects/:id: every row of the open project menu hit-tested to the
-     thread, so no menu item could be clicked. Lifted above the thread; its menus float over it. */
+  background:var(--paper);
+  /* This bar is its own stacking context (it once carried a blur), and the conversation below painted
+     over it — measured 2026-09-23 on /app/projects/:id: every row of the open project menu hit-tested
+     to the thread, so no menu item could be clicked. Lifted above the thread; its menus float over it. */
   position:relative;
   z-index:20;
 }
-:root[data-theme='light'] .studpilot-workspace__topbar { background:rgba(246,247,250,.82); }
 .studpilot-workspace__identity {
   min-width:0;
   flex:0 1 auto;
@@ -281,11 +213,9 @@ body {
   gap:2px;
   border:1px solid var(--line);
   border-radius:12px;
-  background:rgba(10,10,10,.96);
+  background:var(--surface-2);
   box-shadow:var(--shadow-pop);
-  backdrop-filter:blur(24px);
 }
-:root[data-theme='light'] .studio-project-menu[open] > .gx-top__actions { background:rgba(255,255,255,.96); }
 /* Below 860px system.css drops the words from the top bar's Roadmap and Checkpoints buttons to save
    room. Inside this menu the room is there and the word is the only label: measured 2026-09-23 at
    500px, the two rows showed an icon each and nothing else (F-027). */
@@ -464,11 +394,9 @@ body {
 .gx-pop {
   border:1px solid var(--line);
   border-radius:12px;
-  background:rgba(10,10,10,.97);
+  background:var(--surface-2);
   box-shadow:var(--shadow-pop);
-  backdrop-filter:blur(24px);
 }
-:root[data-theme='light'] .gx-pop { background:rgba(255,255,255,.97); }
 .gx-pop__item {
   min-height:38px;
   border-radius:8px;
@@ -518,7 +446,7 @@ body {
 .st--good { color:var(--good); }
 .st--bad { color:var(--bad); }
 .st--warn { color:var(--warn); }
-.st--info { color:var(--accent-light); }
+.st--info { color:var(--accent-strong); }
 .st--muted { color:var(--faint); }
 /* Not violet: no control spends violet (tests/ai-elements-composer). */
 .st--future { color:var(--muted); }
@@ -527,8 +455,8 @@ body {
 
 @keyframes minimal-spin { to { transform:rotate(360deg); } }
 @keyframes minimal-pulse {
-  0%,100% { box-shadow:0 0 0 3px rgba(91,124,250,.06); }
-  50% { box-shadow:0 0 0 5px rgba(91,124,250,.12); }
+  0%,100% { box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 6%,transparent); }
+  50% { box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 12%,transparent); }
 }
 @keyframes minimal-turn-in {
   from { opacity:0; transform:translateY(4px); }
@@ -554,9 +482,8 @@ body {
     padding:0;
     border:1px solid var(--line);
     border-radius:12px;
-    background:rgba(10,10,10,.92);
+    background:var(--surface);
     box-shadow:var(--shadow-pop);
-    backdrop-filter:blur(18px);
     overflow:hidden;
   }
   .gx-shell .studio-dock .studio-dock__brand,

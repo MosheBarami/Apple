@@ -113,7 +113,7 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
 </section>
 
 <style>
-  /* Every colour, radius and border below is a token from studpilot-minimal.css, so the band follows
+  /* Every colour, radius and border below is a token from packages/design/src/web/tokens.css, so the band follows
      both themes. */
 
   .built {
@@ -134,12 +134,10 @@ const seconds = (BUILT_SCREEN.ms.value / 1000).toFixed(1);
     position: relative;
     z-index: 0;
     margin: 0;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
     overflow: hidden;
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
   }
 
   .built-open {

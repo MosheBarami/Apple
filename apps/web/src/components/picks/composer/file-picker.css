@@ -4,7 +4,7 @@
 .gx-composer .gx-composer__bar .gx-chip.gx-chip--files[aria-expanded='true'] { background:var(--control-fill); color:var(--ink); }
 .pk-files__count {
   display:inline-grid; place-items:center; min-inline-size:16px; height:16px; padding:0 4px;
-  border-radius:var(--r-pill); background:var(--accent-soft); color:var(--accent-light); font-size:10.5px;
+  border-radius:var(--r-pill); background:var(--accent-wash); color:var(--accent-strong); font-size:10.5px;
 }
 .gx-composer .pk-files {
   position:absolute; z-index:60; inset-block-end:calc(100% + 8px); inset-inline-start:12px;

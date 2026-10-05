@@ -83,8 +83,8 @@ const isCurrent = (href: string) =>
 </header>
 
 <style>
-  /* A floating frosted pill (D-GLASS-1). The bar itself is transparent; the pill inside it is the
-     glass, so the page and the aura show around it. Total height stays --nav-h. */
+  /* A floating pill. The bar itself is transparent; the pill inside it is a flat --surface with a
+     hairline. Total height stays --nav-h. */
   .nav {
     position: sticky;
     top: 0;
@@ -99,12 +99,9 @@ const isCurrent = (href: string) =>
     gap: 24px;
     height: calc(var(--nav-h) - 8px);
     padding-inline: 14px 8px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-pill);
-    background: var(--glass-fill);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
     transition:
       background-color var(--t-base) var(--ease-out),
       box-shadow var(--t-base) var(--ease-out);
@@ -112,8 +109,7 @@ const isCurrent = (href: string) =>
 
   /* Once the page moves under it, the pill thickens so the words behind never compete. */
   :global(html.scrolled) .nav__inner {
-    background: var(--glass-fill-strong);
-    box-shadow: var(--glass-shadow-lift);
+    background: var(--surface-2);
   }
 
   .brand {
@@ -161,7 +157,7 @@ const isCurrent = (href: string) =>
     transition:
       color var(--t-fast) var(--ease-out),
       background-color var(--t-fast) var(--ease-out),
-      transform var(--t-base) var(--ease-spring);
+      transform var(--t-base) var(--ease-out);
   }
 
   .nav__links ul a:hover {
@@ -174,10 +170,10 @@ const isCurrent = (href: string) =>
     transform: scale(0.96);
   }
 
-  /* The current page: an ordinary active state, so it is the restrained blue. */
+  /* The current page: an ordinary active state, so it takes the accent. */
   .nav__links ul a[aria-current='page'] {
     color: var(--ink);
-    background: var(--accent-soft);
+    background: var(--accent-wash);
   }
 
   .nav__tools {
@@ -223,7 +219,7 @@ const isCurrent = (href: string) =>
     transition:
       color var(--t-fast) var(--ease-out),
       background-color var(--t-fast) var(--ease-out),
-      transform var(--t-slow) var(--ease-spring);
+      transform var(--t-slow) var(--ease-out);
   }
 
   .iconbtn:hover {
@@ -257,7 +253,7 @@ const isCurrent = (href: string) =>
     width: 36px;
     height: 36px;
     padding: 0 10px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-pill);
     background: transparent;
     cursor: pointer;
@@ -294,17 +290,14 @@ const isCurrent = (href: string) =>
       align-items: stretch;
       gap: 0;
       padding: 8px 16px 18px;
-      border: 1px solid var(--glass-line);
+      border: 1px solid var(--line);
       border-radius: var(--r-xl);
-      background: var(--glass-fill-strong);
-      box-shadow: var(--glass-shadow-lift);
-      backdrop-filter: var(--glass-blur);
-      -webkit-backdrop-filter: var(--glass-blur);
+      background: var(--surface-2);
     }
 
     .nav__links.is-open {
       display: flex;
-      animation: menu-drop var(--t-base) var(--ease-spring);
+      animation: menu-drop var(--t-base) var(--ease-out);
     }
 
     @keyframes menu-drop {

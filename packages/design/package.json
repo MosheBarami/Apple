@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "StudPilot's Roblox design intelligence: retrievable UI grammar, so a generated interface is composed from validated rules instead of invented from a blank ScreenGui.",
+  "description": "StudPilot's design: the Roblox UI rule engine (retrievable UI grammar) and the one web visual system, tokens.css, that apps/site and apps/web import.",
   "scripts": {
-    "typecheck": "for f in src/*.mjs; do node --check \"$f\" || exit 1; done",
-    "test": "node --test src/*.test.mjs"
+    "typecheck": "for f in src/*.mjs src/web/*.mjs src/web/tests/*.mjs; do node --check \"$f\" || exit 1; done",
+    "test": "node --test src/*.test.mjs src/web/*.test.mjs",
+    "accents": "node src/web/measure-accents.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",
@@ -14,6 +15,10 @@
     "./retrieve": "./src/retrieve.mjs",
     "./checks": "./src/checks.mjs",
     "./playbooks": "./src/playbooks.mjs",
-    "./pixels": "./src/pixels.mjs"
+    "./pixels": "./src/pixels.mjs",
+    "./tokens.css": "./src/web/tokens.css",
+    "./css-tokens": "./src/web/css-tokens.mjs",
+    "./accents.json": "./src/web/accents.json",
+    "./brand/*": "./brand/*"
   }
 }

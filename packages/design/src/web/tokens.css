@@ -1,0 +1,180 @@
+/*
+ * STUDPILOT DESIGN TOKENS: the one visual system of apps/site and apps/web.
+ *
+ * Both apps import this file first (`@studpilot/design/tokens.css`). It is the only place a colour,
+ * radius, space, type or motion value is declared; every other sheet spends these names.
+ *
+ * THE LANGUAGE. A dark, professional base in the family of Cursor and Linear: a near-black canvas,
+ * flat surfaces that rise by one small step of lightness, hairline borders, and ONE bright accent.
+ * No glass, no blur, no aurora, no gradient: a surface is a colour and an edge, never a light
+ * source. The accent is the only saturated colour on a page; green, amber and red exist for
+ * status and nowhere else.
+ *
+ * THE ACCENT. Its four values per theme (accent, accent-strong, accent-ink, accent-wash) are
+ * candidate 1 of accents.json. The two files must agree, and packages/design/src/web/tokens.test.mjs
+ * fails if they do not, or if the candidate drops below WCAG AA on any surface. To switch candidate,
+ * copy its eight values here.
+ *
+ * TYPE. The system font stack. Nothing is downloaded, so first paint never waits on a font and the
+ * privacy page stays true.
+ *
+ * A dark block and a light block exist because both apps ship a theme toggle. Each holds exactly one
+ * `--accent`.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  /* The browser's address-bar band. The site layouts read it and paint <meta name="theme-color">. */
+  --theme-color: #0a0b0d;
+
+  /* Surfaces: the canvas, then four steps up. A card is --surface, a hovered row --surface-2, a
+     well or progress track --surface-3, a recessed band --paper-2. */
+  --paper: #0a0b0d;
+  --paper-2: #0e1013;
+  --surface: #131519;
+  --surface-2: #1a1d22;
+  --surface-3: #23262c;
+
+  /* Ink: three steps of text, descending. Each clears 4.5:1 on every surface above. */
+  --ink: #f4f5f7;
+  --ink-2: #d2d5db;
+  --muted: #9da2ad;
+  --faint: #8d929d;
+
+  /* Edges: solid, so they read the same over any surface. */
+  --hairline: #1c1f24;
+  --line: #262a30;
+  --line-strong: #373b44;
+  --control-fill: rgba(255, 255, 255, 0.04);
+  --control-line: rgba(255, 255, 255, 0.12);
+  --quiet-line: rgba(255, 255, 255, 0.08);
+  --quiet-ink: rgba(244, 245, 247, 0.38);
+
+  /* The accent family (candidate 1: violet). */
+  --accent: #a67cff;
+  --accent-strong: #bfa2ff;
+  --accent-ink: #0c0816;
+  --accent-wash: rgba(166, 124, 255, 0.14);
+  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  /* Status. Meaning, never decoration. */
+  --good: #5ccf9b;
+  --warn: #e5b04a;
+  --bad: #f27d76;
+  --info: #8aa9d6;
+
+  /* Code. */
+  --syntax-keyword: #c4acff;
+  --syntax-string: #8fd3a8;
+  --syntax-number: #e6c27d;
+  --syntax-comment: #8d929d;
+  --syntax-function: #8ec5f0;
+
+  /* Elevation: a menu or dialog separates by a hairline and a short, low shadow. Cards cast none. */
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 20px 56px rgba(0, 0, 0, 0.55);
+  /* Focus halo: a flat ring beside the 2px outline, not a glow. */
+  --halo: 0 0 0 3px var(--accent-wash);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --theme-color: #f7f8fa;
+
+  --paper: #f7f8fa;
+  --paper-2: #f0f2f5;
+  --surface: #ffffff;
+  --surface-2: #f4f5f8;
+  --surface-3: #e9ebf0;
+
+  --ink: #15171c;
+  --ink-2: #343841;
+  --muted: #565c68;
+  --faint: #5e6470;
+
+  --hairline: #e8ebf0;
+  --line: #dfe2e8;
+  --line-strong: #c9cdd6;
+  --control-fill: rgba(21, 23, 28, 0.04);
+  --control-line: rgba(21, 23, 28, 0.12);
+  --quiet-line: rgba(21, 23, 28, 0.08);
+  --quiet-ink: rgba(21, 23, 28, 0.42);
+
+  --accent: #7240d8;
+  --accent-strong: #5f2fc4;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(114, 64, 216, 0.1);
+  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  --good: #1b7048;
+  --warn: #8a5a12;
+  --bad: #b3342c;
+  --info: #35609a;
+
+  --syntax-keyword: #6a3fc9;
+  --syntax-string: #1f6b40;
+  --syntax-number: #8a5a12;
+  --syntax-comment: #5e6470;
+  --syntax-function: #1d5f8f;
+
+  --shadow-pop: 0 8px 24px rgba(21, 23, 28, 0.12);
+  --shadow-modal: 0 20px 56px rgba(21, 23, 28, 0.18);
+  --halo: 0 0 0 3px var(--accent-wash);
+}
+
+/* Theme-independent tokens. */
+:root {
+  /* Type: the system stack. */
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-body);
+  --font-sans: var(--font-body);
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: clamp(32px, 5vw, 48px);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --leading-tight: 1.2;
+  --leading-normal: 1.55;
+  --tracking-tight: -0.02em;
+
+  /* Radii: tight. A pill is for dots, switches and chips only. */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+
+  /* Space: a 4px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Control heights. */
+  --h-xs: 28px;
+  --h-sm: 32px;
+  --h-md: 36px;
+  --h-lg: 48px;
+
+  /* Motion: under the finger is fast, on its own is slower, and nothing overshoots. */
+  --t-fast: 120ms;
+  --t-color: 160ms;
+  --t-base: 200ms;
+  --t-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-hard: cubic-bezier(0.32, 0.72, 0, 1);
+}

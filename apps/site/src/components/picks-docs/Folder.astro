@@ -10,7 +10,7 @@
  * the folder is the picture, the list is the explanation.
  *
  * Without JavaScript the list is simply visible. Under prefers-reduced-motion the papers move
- * without travelling (the site-wide rule in studpilot-minimal.css cuts every transition to 1ms).
+ * without travelling (the site-wide rule in base.css cuts every transition to 1ms).
  */
 interface Item {
   name: string;
@@ -51,11 +51,9 @@ const id = `folder-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     gap: 12px 28px;
     margin: 20px 0 24px;
     padding: 22px 24px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-md);
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
   }
 
   .fold__btn {
@@ -112,8 +110,8 @@ const id = `folder-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     height: 80%;
     padding-top: 6px;
     border-radius: 8px;
-    background: var(--primary);
-    color: var(--on-primary);
+    background: var(--ink);
+    color: var(--paper);
     font-size: 8px;
     font-weight: 600;
     line-height: 1.2;
@@ -124,7 +122,7 @@ const id = `folder-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   .fold__paper:nth-child(2) {
     width: 80%;
     height: 70%;
-    background: var(--primary-hover);
+    background: var(--ink-2);
   }
 
   .fold__paper:nth-child(3) {
