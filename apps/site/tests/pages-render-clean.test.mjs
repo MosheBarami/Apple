@@ -8,7 +8,8 @@
  *   1. NO HORIZONTAL OVERFLOW at 320, 390, 768 and 1440 px, on every route (the owner's phone-first rule: nothing scrolls sideways at 390).
  *   2. EVERY WORD CLEARS 4.5:1 against what is really behind it, dark and light, on every route (the AA bar, measured on the page
  *      the browser draws, not on a token pair: tests/contrast.test.mjs holds the pairs, this holds the result).
- *   3. THE ONE FOCUS RING: tabbing through every page, each control that takes focus draws 2px solid of the accent (never removed).
+ *   3. THE ONE FOCUS RING: tabbing through every page, each control that takes focus draws 2px solid of the accent (never removed), and at 390 and
+ *      1440 px no ancestor with overflow cuts it (fix cycle 2: the phone's "Docs pages" disclosure clipped its own ring to nothing).
  *   4. NO ID REPEATS on a page.
  *   5. THE CLAIMS the old page held for itself: no retired model, tier or credit rate; no key of your own offered; no promise that the
  *      plugin can be installed while the store is not live (a page may SAY it is unavailable); the engine named is the registry's.
@@ -213,6 +214,71 @@ test('THE ONE FOCUS RING: tabbing through every route, each control that takes f
   });
   assert.ok(focused >= 15 * 8, `only ${focused} focus stops were measured`);
   assert.deepEqual([...new Set(bad)], [], `a control takes focus without the one ring:\n  ${[...new Set(bad)].join('\n  ')}`);
+});
+
+/**
+ * Serialised into the page: the focused element's ring, drawn where it is drawn (its box grown by the outline's offset and width), against every ancestor that
+ * clips: overflow hidden, clip, auto or scroll on the axis. Returns a sentence for the first ancestor that cuts the ring, or null. The viewport is not an ancestor
+ * here (a ring at the edge of the window is cut by the window, which is the page's own margin to keep).
+ */
+function clippedRing() {
+  const el = document.activeElement;
+  if (!el || el === document.body || el === document.documentElement) return null;
+  const cs = getComputedStyle(el);
+  if (cs.outlineStyle === 'none' || cs.outlineStyle === 'hidden') return null;
+  const grow = parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth);
+  const r = el.getBoundingClientRect();
+  if (r.width === 0 || r.height === 0) return null;
+  const ring = { l: r.left - grow, t: r.top - grow, r: r.right + grow, b: r.bottom + grow };
+  for (let n = el.parentElement; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+    const s = getComputedStyle(n);
+    const clipX = /hidden|clip|auto|scroll/.test(s.overflowX);
+    const clipY = /hidden|clip|auto|scroll/.test(s.overflowY);
+    if (!clipX && !clipY) continue;
+    const b = n.getBoundingClientRect();
+    const box = { l: b.left + n.clientLeft, t: b.top + n.clientTop, r: b.left + n.clientLeft + n.clientWidth, b: b.top + n.clientTop + n.clientHeight };
+    const cutX = clipX && (ring.l < box.l - 0.5 || ring.r > box.r + 0.5);
+    const cutY = clipY && (ring.t < box.t - 0.5 || ring.b > box.b + 0.5);
+    if (cutX || cutY) return `${n.tagName.toLowerCase()}.${String(n.className).split(' ')[0]} (overflow ${s.overflowX}/${s.overflowY}) cuts the ring of ${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}`;
+  }
+  return null;
+}
+
+test('THE FOCUS RING IS NEVER CLIPPED: tabbing through every route at 390 and 1440 px, no ancestor with overflow cuts the ring of the control that has focus', async () => {
+  const bad = [];
+  let stopsSeen = 0;
+  await withPages(async (browser, base) => {
+    for (const width of [390, 1440]) {
+      const page = await (await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce' })).newPage();
+      for (const route of ROUTES) {
+        await page.goto(base + route, { waitUntil: 'load' });
+        await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important}' });
+        const stops = await page.evaluate(() => document.querySelectorAll('a[href], button:not([disabled]), input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"])').length);
+        for (let i = 0; i < Math.min(stops + 2, 70); i += 1) {
+          await page.keyboard.press('Tab');
+          stopsSeen += 1;
+          const cut = await page.evaluate(clippedRing);
+          if (cut) bad.push(`${width}px ${route}: ${cut}`);
+        }
+      }
+    }
+  });
+  assert.ok(stopsSeen >= 2 * 15 * 8, `only ${stopsSeen} focus stops were measured`);
+  assert.deepEqual([...new Set(bad)], [], `a focus ring is clipped:\n  ${[...new Set(bad)].join('\n  ')}`);
+});
+
+test('the clipped-ring measure can see: a ring inside an overflow:hidden box that it spills out of is cut, and one with room is not', async () => {
+  const browser = await chromium().launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<style>a{display:block;outline:2px solid red;outline-offset:4px;padding:10px}.box{overflow:hidden;width:200px}.room{padding:12px}</style><div class="box"><a id="tight" href="#">tight</a></div><div class="box room"><a id="roomy" href="#">roomy</a></div><div class="box" style="overflow:visible"><a id="free" href="#">free</a></div>');
+    const run = async (id) => { await page.focus('#' + id); return page.evaluate(clippedRing); };
+    assert.match(await run('tight') ?? '', /cuts the ring of a#tight/, 'a ring cut by an overflow:hidden box was not seen');
+    assert.equal(await run('roomy'), null, 'a ring with room inside the box is read as cut');
+    assert.equal(await run('free'), null, 'a box with overflow visible is read as cutting');
+  } finally {
+    await browser.close();
+  }
 });
 
 test('no id repeats on any page', () => {

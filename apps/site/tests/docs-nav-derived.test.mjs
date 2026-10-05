@@ -77,7 +77,7 @@ test('the /docs index lists the same pages as the sidebar, less itself, each as 
   const html = distPage('/docs/').html;
   const list = regionsWith(html, 'data-docs-index')[0];
   assert.ok(list, 'the /docs index has no derived list');
-  const items = [...list.inner.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => ({ href: /href="([^"]*)"/.exec(m[1])[1], text: textOf(m[1]) }));
+  const items = [...list.inner.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((m) => ({ href: /href="([^"]*)"/.exec(m[1])[1], text: textOf(m[1]) }));
   assert.deepEqual(items.map((i) => i.href), sidebarOf(html).map((l) => l.href).filter((h) => h !== '/docs'));
   for (const i of items) assert.ok(i.text.split(' ').length >= 4, `${i.href} is listed with no summary: "${i.text}"`);
   for (const href of [...hrefsOf(list.inner)]) {

@@ -215,8 +215,10 @@ const label = (p: { path: string; heading: string }) => (p.path === '/docs' ? 'O
     box-shadow: inset 2px 0 0 var(--accent);
   }
 
+  /* The column is exactly the prose measure, so the title, the section rules and the "Stuck?" rule under the page all end where the text ends
+     (it was 72ch beside a 70ch .prose, and the footer rule overshot every rule above it by 21px). */
   .docs__main {
-    max-width: 72ch;
+    max-width: var(--prose-measure);
     min-width: 0;
   }
 
@@ -326,11 +328,13 @@ const label = (p: { path: string; heading: string }) => (p.path === '/docs' ? 'O
       position: static;
     }
 
+    /* NO overflow: hidden HERE. The summary fills this box edge to edge and the shared focus ring is drawn 4px OUTSIDE it, so clipping the box clipped the
+       whole ring: a keyboard user tabbing to "Docs pages" saw no focus at all. The corners are rounded by the box itself (a background follows the
+       radius) and by the summary, so nothing needs clipping. */
     .docs__nav {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--r-lg);
-      overflow: hidden;
     }
 
     .docs__nav > summary {
@@ -344,6 +348,11 @@ const label = (p: { path: string; heading: string }) => (p.path === '/docs' ? 'O
       padding: 0.85rem 1.1rem;
       list-style: none;
       color: var(--ink);
+      border-radius: var(--r-lg);
+    }
+
+    .docs__nav[open] > summary {
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
     }
 
     .docs__nav > summary::-webkit-details-marker {

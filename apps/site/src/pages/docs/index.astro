@@ -38,9 +38,18 @@ const pages = docsPages(sources).filter((p) => p.path !== '/docs');
     {
       pages.map((p) => (
         <li>
-          <strong><a href={p.path}>{p.heading}</a></strong>{p.summary ? ` ${p.summary}` : ''}
+          <strong><a href={p.path}>{p.heading}</a></strong>
+          {p.summary && <span class="docs-index__summary">{p.summary}</span>}
         </li>
       ))
     }
   </ul>
 </DocsLayout>
+
+<style>
+  /* The summary is its own line under the page's title: the title is the only underlined text, and the sentence does not run on from it. */
+  .docs-index__summary {
+    display: block;
+    margin-top: 2px;
+  }
+</style>
