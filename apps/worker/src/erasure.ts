@@ -397,11 +397,33 @@ export async function eraseAccountData(
       : 'Roblox could not be asked to revoke the authorization. StudPilot no longer holds the token; you can remove StudPilot under Connections in your Roblox account settings.';
   }
   steps.push(tokens);
-  steps.push(await d1Sweep(env, 'roblox_identities', `delete from roblox_identities where user_id = ?`, user.userId));
+  // `roblox_identities` is NOT swept here: see the end of this function.
 
   // 3. Postgres: the projects, which cascade, and then a CHECK that they really went.
   steps.push(await erasePostgresProjects(env, user));
   steps.push(await minimiseProfile(env, user));
+
+  //[[ THE ROBLOX LINK IS THE LAST THING SWEPT, AND ONLY WHEN EVERYTHING ELSE WENT.
+  //
+  //   An account that signs in only with Roblox has no password, so the route lets it export or delete only inside ten minutes of a
+  //   Roblox re-authentication, and that proof is a column of this very row (`reauth_at`); the re-authentication itself needs the
+  //   row too, since it never makes an account. This sweep used to come before the Postgres steps. When one of them failed the
+  //   route answered 207 "run it again", the row was already gone, and the retry answered 403 `reauth_required` that no
+  //   re-authentication could ever satisfy: the part that failed could not be finished. So the row stays while any other step has
+  //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one. ]]
+  const othersFailed = steps.some((s) => s.status === 'failed');
+  const holdsLink = othersFailed && (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ?').bind(user.userId).first().catch(() => ({ held: 1 })));
+  steps.push(
+    holdsLink
+      ? {
+          store: 'd1',
+          target: 'roblox_identities',
+          status: 'failed',
+          rows: null,
+          detail: 'Not removed yet, on purpose: it is what lets this account confirm it is the person asking, and it goes in the run that finishes everything else. Run the deletion again.',
+        }
+      : await d1Sweep(env, 'roblox_identities', `delete from roblox_identities where user_id = ?`, user.userId),
+  );
 
   const failed = steps.filter((s) => s.status === 'failed');
   return {

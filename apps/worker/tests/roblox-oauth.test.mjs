@@ -60,7 +60,7 @@ for (const [entry, out] of [['roblox-oauth.ts', LIB_OUT], ['user-credentials.ts'
 const app = (await import(`file://${APP_OUT}`)).default;
 const R = await import(`file://${LIB_OUT}`);
 const C = await import(`file://${CRED_OUT}`);
-const { ROWS } = await import(`file://${join(HERE, 'stubs', 'supa.mjs')}`);
+const { ROWS, FAILING } = await import(`file://${join(HERE, 'stubs', 'supa.mjs')}`);
 process.on('exit', () => { for (const f of [APP_OUT, LIB_OUT, CRED_OUT]) rmSync(f, { force: true }); });
 
 // Every console line the worker writes, kept so one test can read all of them. Nothing is printed.
@@ -2264,4 +2264,89 @@ test('REFRESH LEASE RELEASE binds the generation: when Roblox refuses and the ro
   assert.equal(s.row().generation, 'another-generation');
   assert.equal(s.row().lease_until, otherLease, 'releasing OUR lease did not release the lease of a grant that is not ours');
   s.db.close();
+});
+
+/* ============================================================================================================
+ * FINAL PASS. A DELETION THAT PART-FAILED CAN BE RUN AGAIN; JUNK DOES NOT SPEND A REAL FLOW'S ALLOWANCE; THE DEV HANDLE COOKIE
+ * REACHES ALL THREE ROUTES; AND THE LOG TEST RUNS A SIGN-IN THROUGH CONTINUE.
+ * ========================================================================================================== */
+
+test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link that carries its re-authentication is the last thing swept, and only once everything else has gone', async () => {
+  ROWS.clear(); FAILING.clear();
+  const s = scene();
+  try {
+    await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+    const userId = userIdOf(s.db, SUB_A);
+    const bearer = as(userId, SYNTHETIC(SUB_A));
+    const deleteAs = () => hit(`${PROD}/api/me/delete`, { method: 'POST', headers: { ...bearer.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE MY ACCOUNT' }) }, s.env);
+    const stepOf = (receipt, target) => receipt.steps.find((x) => x.target === target);
+    const linkRows = () => countRows(s.db.raw, 'select count(*) from roblox_identities where user_id = ?', userId);
+    await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+
+    // FIRST RUN: a Postgres step (the last the route takes) is refused. The route answers 207 and says what is left.
+    FAILING.set('profiles', 500);
+    const first = await deleteAs();
+    assert.equal(first.status, 207, 'a part-failed erasure answers 207');
+    const receipt = await first.json();
+    assert.equal(receipt.complete, false);
+    assert.equal(stepOf(receipt, 'roblox_oauth_tokens').status, 'erased', 'the token and its grant went (a retry must not need Roblox again)');
+    assert.equal(countRows(s.db.raw, 'select count(*) from roblox_oauth_tokens where user_id = ?', userId), 0);
+    const kept = stepOf(receipt, 'roblox_identities');
+    assert.equal(kept.status, 'failed', 'the receipt does not claim a sweep that was not done');
+    assert.match(kept.detail, /again/, 'and says to run it again');
+    assert.equal(linkRows(), 1, 'the link, and with it the re-authentication, is still there');
+
+    // RETRY inside the window: the same account, with no new sign-in, is not refused and finishes the job.
+    FAILING.clear();
+    const retry = await deleteAs();
+    assert.equal(retry.status, 200, 'the retry is answered, not refused for a re-authentication that the first run swept away');
+    const done = await retry.json();
+    assert.equal(done.complete, true);
+    assert.deepEqual(stepOf(done, 'roblox_identities'), { store: 'd1', target: 'roblox_identities', status: 'erased', rows: 1 });
+    assert.equal(linkRows(), 0, 'and now that everything else has gone, so does the link');
+
+    // THE WINDOW HAS LAPSED BEFORE THE RETRY: the account is asked to confirm it is them, and CAN, because the link survived.
+    s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at) values (?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now');
+    FAILING.set('profiles', 500);
+    await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+    assert.equal((await deleteAs()).status, 207);
+    s.db.raw.prepare('update roblox_identities set reauth_at = ? where user_id = ?').run(Date.now() - REAUTH_WINDOW_MS - 1000, userId);
+    assert.equal((await deleteAs()).status, 403, 'ten minutes on, it asks again');
+    const again = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+    assert.equal(again.res.status, 302, 'a re-authentication needs the link, and it is there');
+    FAILING.clear();
+    assert.equal((await deleteAs()).status, 200);
+    assert.equal(linkRows(), 0);
+
+    // THE SWEEP OF THE LINK ITSELF FAILS: that is a failed step too, and the link is still there to retry with.
+    s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, reauth_at) values (?, ?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now', Date.now());
+    const realCorpus = s.env.CORPUS;
+    s.env.CORPUS = { ...realCorpus, prepare: (sql) => { if (/^delete from roblox_identities/.test(sql)) throw new Error('D1 said no'); return realCorpus.prepare(sql); } };
+    const broken = await deleteAs();
+    assert.equal(broken.status, 207);
+    assert.equal(stepOf(await broken.json(), 'roblox_identities').status, 'failed');
+    assert.equal(linkRows(), 1);
+    s.env.CORPUS = realCorpus;
+    assert.equal((await deleteAs()).status, 200, 'and the next run finishes it');
+    assert.equal(linkRows(), 0);
+  } finally {
+    FAILING.clear();
+    s.db.close();
+  }
+});
+
+test('an erasure that fails for an account with no Roblox link says nothing about one, and still deletes nothing it was not asked to', async () => {
+  ROWS.clear(); FAILING.clear();
+  const s = scene();
+  try {
+    FAILING.set('profiles', 500);
+    const res = await hit(`${PROD}/api/me/delete`, { method: 'POST', headers: { ...as('a-person-with-an-email-account', 'me@example.com').headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE MY ACCOUNT' }) }, s.env);
+    assert.equal(res.status, 207);
+    const receipt = await res.json();
+    assert.deepEqual(receipt.steps.find((x) => x.target === 'roblox_identities'), { store: 'd1', target: 'roblox_identities', status: 'erased', rows: 0 }, 'nothing to keep, nothing to retry: it is not reported as a failure');
+    assert.deepEqual(receipt.steps.filter((x) => x.status === 'failed').map((x) => x.target), ['profiles — display name']);
+  } finally {
+    FAILING.clear();
+    s.db.close();
+  }
 });
