@@ -7,6 +7,7 @@ import {
 import { checkRobloxCredential } from './roblox-check';
 import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
+import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { Context } from 'hono';
 import {
   verifyStripeSignature,
@@ -243,6 +244,7 @@ import {
   rpcError,
   rpcResult,
   toolResult,
+  type McpToolDescriptor,
 } from './mcp';
 import { creditsForNeurons } from './pricing';
 import {
@@ -577,6 +579,19 @@ app.use('*', async (c, next) => {
   const target = new URL(url.pathname + url.search, PRODUCT_ORIGIN);
   return c.redirect(target.toString(), 308);
 });
+
+/**
+ * STUDPILOT STUDIO (rebuild R1, planning/REBUILD-PLAN.md). `/studio/*` belongs to the `studpilot-studio`
+ * worker, reached over the STUDIO service binding with the prefix removed. Same origin on purpose: the
+ * signed-in Supabase session of /app is the one Studio uses. Without the binding the path does not exist.
+ */
+app.all('/studio/*', async (c) => {
+  if (!c.env.STUDIO) return c.notFound();
+  const url = new URL(c.req.url);
+  url.pathname = url.pathname.slice('/studio'.length) || '/';
+  return c.env.STUDIO.fetch(new Request(url, c.req.raw));
+});
+app.get('/studio', (c) => c.redirect('/studio/', 308));
 
 app.use('/api/*', async (c, next) => {
   await next();
@@ -935,6 +950,43 @@ async function withOwnedProject(
   });
   if (!init.ok) return null; // owner mismatch on a recycled id — refuse
   return { user, project: row, stub, membership, role: membership.role };
+}
+
+/**
+ * THE STUDIO GATE (rebuild R1, planning/REBUILD-PLAN.md).
+ *
+ * The new Flue agent worker (`apps/studio`) reaches a project's Studio only through this entrypoint,
+ * which is reachable only through a service binding, never from the internet. It is the Cloudflare OS
+ * "gatekeeper" shape: the agent gets one typed capability and never sees a credential.
+ *
+ * `openProject` is the only door that takes a user: it verifies the Supabase JWT and applies the
+ * same owner gate as every `/api/projects/*` route. `callTool` then serves only the read-only MCP
+ * surface (`MCP_TOOL_NAMES`) of a project that has a live session, so a bug in the agent worker can
+ * read a place but never write one.
+ */
+export class StudioGate extends WorkerEntrypoint<Env> {
+  async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string } | { ok: false }> {
+    const user = await verifyJwt(this.env, jwt);
+    if (!user) return { ok: false };
+    const ctx = await withOwnedProject({ env: this.env, get: () => user }, projectId);
+    return ctx ? { ok: true, projectName: ctx.project.name } : { ok: false };
+  }
+
+  listTools(): McpToolDescriptor[] {
+    return mcpToolList(toolDefs(true, new Set(MCP_TOOL_NAMES)));
+  }
+
+  async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
+    const entry = mcpTool(name);
+    if (!entry || !UUID_RE.test(projectId)) return { ok: false, text: `Unknown tool '${name}'.` };
+    const res = await sessionStub(this.env, projectId).fetch('https://do/mcp-tool', {
+      method: 'POST',
+      body: JSON.stringify({ tool: entry.tool, args }),
+    });
+    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+    if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
+    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}' };
+  }
 }
 
 app.get('/api/projects/:id/ws', async (c) => {

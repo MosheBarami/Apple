@@ -42,7 +42,7 @@ const ESBUILD = join(WORKER, 'node_modules', '.bin', 'esbuild');
 
 const TMP = mkdtempSync(join(tmpdir(), 'studpilot-roblox-integration-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
 execFileSync(
   ESBUILD,
