@@ -460,3 +460,34 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   own line (section 6: "chat with a live step list and screenshots"). The playtest card and the connection detail stay undrawn.
 - **The mock app** holds no frames by default (the strip's empty state); `?frames=1` stamps the fixture renders for the last mock turn
   so a full strip can be reviewed. Those are fixtures and are never shown in a production build.
+
+### 12.5 C5: piece history, and the per-piece settings panel
+
+**History (real data).** The Checkpoints drawer is the project's history: its real checkpoints grouped by the request that made them
+(`lib/checkpoint-history.ts`, `components/ws/checkpoint-history.tsx`). The API returns a checkpoint's id, label, kind, time, counts,
+coverage, author and description, and **no request id**, so the grouping is by time and says only what time can say:
+- A checkpoint StudPilot took (`auto` or `pre_agent`) is filed under the latest request the person had sent when it was taken, which is the
+  run that request started. A request that made no checkpoint is not listed.
+- A checkpoint the person saved by hand (`manual`) was not made by a request, so it is never filed under one: it sits in "Saved by you".
+- A checkpoint older than every request this page has loaded is "Earlier work", not the first request's.
+- The one weakness is the clock's: a request sent from this tab is stamped with the device's clock until the conversation is reloaded,
+  while a checkpoint carries the server's. A device whose clock is minutes out can file one under its neighbour; a reload restamps every
+  request from the server. If the owner wants exact grouping the worker must stamp each checkpoint with the message id of the run that took it
+  (a later step; it needs a migration of the session store, not done here).
+- The rows are the old rows, moved into the component with no change of content (author, date, counts, description, Restore, the restore's
+  own sentence and counts); three tests that read the row's text out of `workspace.tsx` were restated to read the component.
+
+**Settings panel (a stub, wired in M5).** The panel (`components/ws/pieces-panel.tsx`, a "Pieces" drawer in the workspace, reachable from a
+topbar button and the palette) has four controls: a number (typed, range and step enforced; a value it cannot hold is refused, not clamped),
+a colour (the browser's picker beside a hex field), a switch (a real button with the switch role, and the word On or Off), and a few words
+(length-capped). Every control is native, keyboard reachable, named, and carries the ring token.
+- **Production has no pieces.** `lib/pieces.ts` loads the stub only through a dynamic import behind `import.meta.env.DEV`, so a production
+  build does not contain it, and the panel shows exactly "Pieces appear here after a build". Proof: `tests/pieces-production.test.mjs` bundles
+  the module both ways and reads the output; `scripts/check-app-bundle.mjs` now fails when the stub's marker or a sample name is in
+  `dist` (it ran green on this branch's production build); `tests/mock-mode-production.test.mjs` stays green.
+- **Every stub piece says SPECIMEN**, on the panel in a sentence and as a stamp on each card, and says a change stays in the panel: it is not
+  saved and changes nothing in Studio. A piece without `specimen: true` is never stamped.
+- **What M5 changes.** The panel reads a block's own parameter schema (`block.json`: the parameter JSON Schema with defaults) instead of the
+  stub; a change then edits that block's parameters and re-runs only that block. The four control kinds map to the schema's number, colour,
+  boolean and string types. Nothing here persists a change, and there is no request from the panel, so M5 adds the wiring and removes
+  `lib/pieces-stub.ts`.

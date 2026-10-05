@@ -87,7 +87,12 @@ const MUST_BE_SPLIT = ['admin', 'settings', 'usage', 'roadmap', 'workspace'];
 //   one ui-lab.css already claims in its own header: `grep -r 'ui-lab' dist/` finds nothing. It
 //   cannot pass vacuously — fold the route back in and its module path and its thirteen class
 //   names both reappear, in the JS and in the CSS respectively. ]]
-const MUST_BE_ABSENT = ['ui-lab'];
+//
+//   THE PIECES STUB JOINED IT 2026-10-05 (M2 step 2.3, C5). The per-piece settings panel is built against sample pieces
+//   (apps/web/src/lib/pieces-stub.ts) that are reached only through a dynamic import behind `import.meta.env.DEV`. A production
+//   build must contain none of them: a sample piece shown to a customer would be a build result that never happened. The marker
+//   and a sample name are strings nothing else in the app contains; bundling the stub back in makes both reappear.
+const MUST_BE_ABSENT = ['ui-lab', 'studpilot-pieces-stub-v1', 'Sample shop screen'];
 
 if (!existsSync(DIST)) {
   console.error(`no build found at ${DIST} — run \`pnpm --filter @studpilot/web build\` first`);

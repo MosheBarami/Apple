@@ -50,8 +50,11 @@ import { useStickToBottomContext, type StickToBottomContext } from 'use-stick-to
 import { RollingNumber } from '../components/picks/chat/rolling-number';
 import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
-import { fidelityLine, restoreInFlight, restoreSentence, restoreTone } from '../lib/restore-status';
-import { checkpointAuthorView, rosterNames } from '../lib/checkpoint-author';
+import { restoreInFlight } from '../lib/restore-status';
+import { rosterNames } from '../lib/checkpoint-author';
+import { groupCheckpointsByRequest, requestsFromMessages } from '../lib/checkpoint-history';
+import { CheckpointHistory, HISTORY_NOTE } from '../components/ws/checkpoint-history';
+import { PiecesDrawer } from '../components/ws/pieces-panel';
 import { PairingDialog } from '../components/pairing-dialog';
 import { Composer } from '../components/ws/composer';
 import { Drawer, Icon, PATH } from '../components/ws/primitives';
@@ -117,9 +120,9 @@ const SUGGESTIONS = [
 // and the literal list are kept in step deliberately: search-panel.test.mjs asserts every name the
 // union can hold is a name DRAWERS accepts, because a drawer missing from the list restores as
 // closed for ever and looks like a user who simply never opened it.
-type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
-type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations';
-const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations'] as const;
+type Drawer = null | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations' | 'pieces';
+type DrawerName = 'none' | 'checkpoints' | 'memory' | 'credits' | 'search' | 'members' | 'files' | 'history' | 'automations' | 'pieces';
+const DRAWERS = ['none', 'checkpoints', 'memory', 'credits', 'search', 'members', 'files', 'history', 'automations', 'pieces'] as const;
 
 //[[ BACK TO THE LIVE EDGE, AND HOW MUCH ARRIVED WHILE THE READER WAS AWAY.
 //
@@ -357,6 +360,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // itself. The worker's own phases decide this, not a flag set by the click: a click that never
   // reached the worker must not leave every button dead.
   const restoreBusy = restoreInFlight(restoreStatus);
+  // The history: the real checkpoints under the request that made each (lib/checkpoint-history.ts), from the conversation as this page holds it.
+  const historyGroups = useMemo(
+    () => groupCheckpointsByRequest(checkpoints, requestsFromMessages(messages)),
+    [checkpoints, messages],
+  );
 
   /**
    * The one place Studio's state is named. Four values, each backed by a real
@@ -601,6 +609,13 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
       keywords: ['history', 'restore', 'undo'],
       hint: shortcutLabel(SHORTCUTS.checkpoints),
       run: () => setDrawer('checkpoints'),
+    },
+    {
+      id: 'ws-pieces',
+      title: 'Pieces and their settings',
+      section: 'Project',
+      keywords: ['pieces', 'settings', 'parameters', 'numbers', 'colours', 'colors'],
+      run: () => setDrawer('pieces'),
     },
     {
       id: 'ws-history',
@@ -919,6 +934,17 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           >
             <Icon d={PATH.people} />
           </button>
+          {/* The settings of what was built: each piece's numbers, colours, switches and words. An icon button beside the project's
+              other drawers; the palette carries the words. Built against a stub until M5 (pieces-panel.tsx). */}
+          <button
+            type="button"
+            className="gx-icon-btn"
+            onClick={() => setDrawer('pieces')}
+            aria-label="Pieces and their settings"
+            title="Pieces"
+          >
+            <Icon d={PATH.settings} />
+          </button>
           {/* The way into the files StudPilot keeps for this project — notes, plans and generated
               data, which are StudPilot's own storage and not the Roblox place. Beside memory because
               it is the same kind of thing: something that persists between turns and is read
@@ -1216,6 +1242,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
             Connect Studio to save or restore a checkpoint.
           </p>
         )}
+        {checkpoints.length > 0 && <p className="gx-history__note">{HISTORY_NOTE}</p>}
         {checkpointsState === 'loading' && (
           <p className="gx-empty">Reading the checkpoints StudPilot has taken…</p>
         )}
@@ -1225,60 +1252,21 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           </p>
         )}
 
-        {checkpoints.map((c) => (
-          <div key={c.id} className="gx-row">
-            <span className="gx-row__main">
-              {c.label}
-              <span className="gx-row__meta">
-                {/* WHO, first. The row carried a timestamp and two counts and never said whose
-                    work it was — and the one surface that claimed an author guessed it from the
-                    kind, so on a shared project a teammate's checkpoint read as yours. This says
-                    "Another member" or "Author not recorded" rather than picking the reader, which
-                    is the wrong guess in exactly the argument the field exists for. */}
-                {checkpointAuthorView(c, userId || null, memberNames).label} · {new Date(c.createdAt).toLocaleString(formatSettings().locale)} ·{' '}
-                {c.instanceCount} objects · {c.scriptCount} scripts
-              </span>
-              {/* The authored sentence, under the derived numbers. Shown verbatim and never
-                  truncated in the markup: the worker already caps it at 500 characters, and a
-                  second cap here would hide the end of somebody's own words for no reason. */}
-              {c.description && <span className="gx-cp__desc">{c.description}</span>}
-              {c.coverage === 'supported-subset' && (
-                <span className="gx-cp__desc">Restores supported objects; protected engine objects are preserved rather than rolled back.</span>
-              )}
-              {/* THE RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.
-
-                  This drawer used to close on the click, and the worker used to broadcast nothing
-                  until something went wrong — so the user watched the panel shut and then had no
-                  signal at all, for up to two minutes, about the operation that was at that moment
-                  clearing and rebuilding their place. On success they were told nothing ever.
-
-                  Anchored under the checkpoint it belongs to rather than floating at the top of the
-                  drawer: a list of twenty rows and one status line elsewhere makes the reader
-                  work out which one it is about. */}
-              {restoreStatus?.checkpointId === c.id && (
-                <span className={`gx-restore is-${restoreTone(restoreStatus)}`} role="status">
-                  {restoreSentence(restoreStatus)}
-                  {fidelityLine(restoreStatus.fidelity) && (
-                    <span className="gx-restore__counts">{fidelityLine(restoreStatus.fidelity)}</span>
-                  )}
-                </span>
-              )}
-            </span>
-            <button
-              type="button"
-              className="gx-btn gx-btn--outline"
-              disabled={!studio.connected || restoreBusy}
-              onClick={() => {
-                if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
-                restoreCheckpoint(c.id);
-                // The drawer STAYS OPEN. It is the only surface that shows what the restore is
-                // doing and what came back, and closing it is what made both invisible.
-              }}
-            >
-              {restoreBusy && restoreStatus?.checkpointId === c.id ? 'Restoring…' : 'Restore'}
-            </button>
-          </div>
-        ))}
+        {/* THE HISTORY: the real checkpoints, grouped by the request that made them (lib/checkpoint-history.ts). */}
+        <CheckpointHistory
+          groups={historyGroups}
+          userId={userId || null}
+          memberNames={memberNames}
+          restoreStatus={restoreStatus}
+          restoreBusy={restoreBusy}
+          studioConnected={studio.connected}
+          onRestore={(c) => {
+            if (!window.confirm(`Restore "${c.label}"? This replaces what is in your place now.`)) return;
+            restoreCheckpoint(c.id);
+            // The drawer STAYS OPEN. It is the only surface that shows what the restore is
+            // doing and what came back, and closing it is what made both invisible.
+          }}
+        />
       </Drawer>
 
       {revisionsFor && (
@@ -1321,6 +1309,11 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
           for everyone who never opens it. */}
       <Drawer open={drawer === 'history'} onClose={() => setDrawer(null)} title="What StudPilot did in Studio">
         {drawer === 'history' && <StudioActivity projectId={projectId} onOpenRun={jumpToMessage} />}
+      </Drawer>
+
+      <Drawer open={drawer === 'pieces'} onClose={() => setDrawer(null)} title="Pieces">
+        {/* Mounted only while open: the panel holds edits the person has not saved anywhere, and closing the drawer abandons them. */}
+        {drawer === 'pieces' && <PiecesDrawer />}
       </Drawer>
 
       <Drawer open={drawer === 'members'} onClose={() => setDrawer(null)} title="Who can build here">

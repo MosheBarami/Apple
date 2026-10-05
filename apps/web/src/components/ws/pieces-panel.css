@@ -1,0 +1,51 @@
+/* The per-piece settings panel. Tokens only, flat: a surface and a hairline, no shadow, no gradient. */
+
+.pieces__empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.pieces { display: grid; gap: var(--space-4); }
+
+/* SPECIMEN: said on the panel in a sentence, and stamped on every card. Warn is the one status colour that means "read this before you rely on it". */
+.pieces__specimen { margin: 0; padding: var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink-2); font-size: var(--text-sm); line-height: 1.5; }
+.pieces__stamp { display: inline-block; padding: 1px var(--space-2); border: 1px solid var(--warn); border-radius: var(--r-xs); color: var(--warn); font-size: var(--text-xs); font-weight: 600; letter-spacing: .08em; line-height: 1.5; }
+
+.pieces__piece { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.pieces__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--line); }
+.pieces__name { margin: 0; flex: 1 1 auto; min-width: 0; color: var(--ink); font-size: var(--text-md); font-weight: 600; overflow-wrap: anywhere; }
+.pieces__kind { color: var(--muted); font-size: var(--text-xs); }
+
+.pieces__params { display: grid; padding: var(--space-1) var(--space-3); }
+.pieces__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-block: var(--space-2); border-bottom: 1px solid var(--hairline); }
+.pieces__row:last-child { border-bottom: 0; }
+.pieces__label { flex: 1 1 auto; min-width: 0; color: var(--ink-2); font-size: var(--text-sm); }
+
+.pieces__number, .pieces__colour { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; }
+.pieces__unit { color: var(--muted); font-size: var(--text-xs); }
+.pieces__number input { width: 6.5rem; }
+.pieces__text { width: 11rem; max-width: 100%; }
+.pieces__hex { width: 6rem; font-family: var(--font-mono); }
+.pieces__swatch { width: 2.25rem; padding: 2px; cursor: pointer; }
+
+/* Every control, by keyboard or by pointer: a 2px ring in the one ring token, outside the control. A field that was refused wears the bad edge. */
+.pieces :is(input, button):focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+.pieces input[aria-invalid='true'] { border-color: var(--bad); }
+
+/* The switch is a button with a word and a track. The word carries the state, so colour is never the only signal. */
+.pieces__switch { display: inline-flex; align-items: center; gap: var(--space-2); flex: none; min-height: 32px; padding: 0 var(--space-2); border: 1px solid var(--control-line); border-radius: var(--r-sm); background: var(--control-fill); color: var(--ink-2); cursor: pointer; }
+.pieces__switch-word { min-width: 2ch; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.pieces__switch-track { position: relative; width: 28px; height: 16px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--paper-2); }
+.pieces__switch-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+.pieces__switch[aria-checked='true'] .pieces__switch-track { border-color: var(--accent); background: var(--accent-wash); }
+.pieces__switch[aria-checked='true'] .pieces__switch-track::after { left: 14px; background: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .pieces__switch-track::after { transition: left var(--t-fast) var(--ease-out), background-color var(--t-color) var(--ease-out); }
+}
