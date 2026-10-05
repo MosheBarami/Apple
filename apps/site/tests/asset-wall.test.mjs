@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wall = JSON.parse(readFileSync(join(SITE, 'src', 'data', 'asset-wall.json'), 'utf8'));
 const PAGE = readFileSync(join(SITE, 'src', 'pages', 'index.astro'), 'utf8');
-const CSS = readFileSync(join(SITE, 'src', 'styles', 'landing.css'), 'utf8');
+// RESTATED 2026-10-05 (M2 rebuild): landing.css is deleted; the front page's styles are site.css (and the component styles it uses).
+const CSS = [join('src', 'styles', 'site.css'), join('src', 'components', 'ScreenSlot.astro')].map((f) => readFileSync(join(SITE, f), 'utf8')).join('\n');
 
 test('the licensed asset dataset still exists even though the landing no longer renders it', () => {
   // The library is still used by the product and its licensing evidence must not disappear just
@@ -74,9 +75,8 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
   //
   //   THE PROPERTY WAS NEVER "NO IMAGES". It was "no image a reader would take for a result that
   //   nothing can answer for", and that is what is enforced now — here, by the two rules below,
-  //   and in tests/proof-is-evidence.test.mjs, which checks that every image the landing renders
-  //   is declared in src/data/consent-proof.ts, is bundled locally, carries alt and intrinsic
-  //   size, and is a crop of a docs/evidence file that still hashes to its pin.
+  //   and (since the M2 rebuild) in tests/no-fake-output.test.mjs, which checks that every image the landing renders
+  //   has a record in src/data/screens.json, is bundled locally, carries alt and fixed size, and still hashes to its record.
   //
   //   IT READS THE COMPONENTS NOW, WHICH IS THE HALF THAT MATTERS. The old assertion looked only
   //   at index.astro, so the picture would have passed it untouched simply by being rendered from
@@ -89,8 +89,8 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
   // a component and the provenance checks that come with one; a banner dropped straight into the
   // page is how the wall arrived the first time.
   assert.doesNotMatch(PAGE, /<(?:img|picture|source)\b/i,
-    'index.astro contains an image element directly. Render it from a component whose images are'
-    + ' declared in src/data/consent-proof.ts, so tests/proof-is-evidence.test.mjs can answer for it.');
+    'index.astro contains an image element directly. Render it through components/ScreenSlot.astro, whose images are'
+    + ' recorded in src/data/screens.json, so tests/no-fake-output.test.mjs can answer for it.');
 
   // The page's own rule is unchanged and stays absolute: not one http(s) URL anywhere in
   // index.astro, comments included. It has passed that way since the wall was removed and there is
@@ -129,20 +129,15 @@ test('the landing has no asset banner, image wall, or remote image dependency', 
       + ' banner, and an image that can be swapped by whoever hosts it is not evidence');
     for (const tag of source.matchAll(/<(?:img|picture|source)\b[^>]*\bsrc\s*=\s*["']([^"']*)["'][^>]*>/gi)) {
       assert.fail(`${name} hard-codes an image src="${tag[1]}". Every image on the landing must come`
-        + ' from src/data/consent-proof.ts so its provenance is checkable.');
+        + ' from src/data/screens.json so its provenance is checkable.');
     }
   }
 
   assert.doesNotMatch(CSS, /(?:asset[-_]?wall|ap[-_]wall|wall__|background-image\s*:\s*url\()/i,
-    'landing.css still paints the removed asset/banner wall');
+    'the front page styles still paint the removed asset/banner wall');
 });
 
-test('the landing derives visible model choices from the shared list, not a stale asset count', () => {
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@studpilot\/shared['"]/;
-  assert.match(PAGE, modelImport,
-    'the landing no longer reads the shared product model list');
-  assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,
-    'model cards are not derived from PRODUCT_MODELS');
-  assert.doesNotMatch(PAGE, /\{assetWall\.(?:count|assets)\}/,
-    'index.astro contains a stale library count with no rendered source of truth');
-});
+// DELETED 2026-10-05 (M2 rebuild): 'the landing derives visible model choices from the shared list, not a stale asset count'. Its subject, the
+// front page's grid of model cards (PRODUCT_MODELS.map) and the library count beside it, was deleted with the old "One engine" section;
+// the rebuilt front page names no model and no asset count. The stale-count half is held by the first test above (the wall is not wired
+// into index.astro) and by tests/no-fake-output.test.mjs.

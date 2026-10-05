@@ -92,7 +92,9 @@ test('/docs/billing says checkout is closed, and asks rather than asserts it', (
 
 test('the 404 page nominates no canonical and is marked noindex', () => {
   assert.match(base, /noindex\?: boolean/, 'Base has no noindex prop');
-  assert.match(notFound, /\n  noindex\n/, '404.astro does not pass noindex');
+  // RESTATED 2026-10-05 (M2 rebuild): the property is that the 404 passes `noindex` to Base, wherever the attribute sits in
+  // the tag. The old assertion pinned it to a line of its own, which the rebuilt page (one-line <Base ... noindex>) does not use.
+  assert.match(notFound.replace(/\/\*[\s\S]*?\*\//g, ''), /<Base\b[^>]*\snoindex(?=[\s>/])[^>]*>/, '404.astro does not pass noindex');
 
   if (!existsSync(dist('404.html'))) return;
   const html = flat(readFileSync(dist('404.html'), 'utf8'));

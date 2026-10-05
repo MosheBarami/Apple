@@ -15,15 +15,16 @@ const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...parts) => readFileSync(join(SITE, ...parts), 'utf8');
 const page = read('src', 'pages', 'index.astro');
 const base = read('src', 'layouts', 'Base.astro');
-const landing = read('src', 'layouts', 'Landing.astro');
+const slot = read('src', 'components', 'ScreenSlot.astro');
 
 const withoutComments = (source) => source
   .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-test('the public layouts load the shared design tokens and do not import the retired relaunch layer', () => {
-  for (const [name, source] of [['Base.astro', base], ['Landing.astro', landing]]) {
+// RESTATED 2026-10-05 (M2 rebuild): there is one layout now (Landing.astro was deleted); DocsLayout and LegalLayout sit on Base.
+test('the public layout loads the shared design tokens and does not import the retired relaunch layer', () => {
+  for (const [name, source] of [['Base.astro', base]]) {
     assert.match(source, /import\s+['"]@studpilot\/design\/tokens\.css['"]/,
       `${name} does not load the shared design tokens`);
     assert.doesNotMatch(source, /styles\/relaunch\.css/,
@@ -34,7 +35,6 @@ test('the public layouts load the shared design tokens and do not import the ret
 test('no rendered public layout mounts Horizon or FlowField', () => {
   for (const [name, source] of [
     ['Base.astro', withoutComments(base)],
-    ['Landing.astro', withoutComments(landing)],
     ['index.astro', withoutComments(page)],
   ]) {
     assert.doesNotMatch(source, /import\s+(?:Horizon|FlowField)\b|<(?:Horizon|FlowField)\b/,
@@ -42,20 +42,20 @@ test('no rendered public layout mounts Horizon or FlowField', () => {
   }
 });
 
-test('the hero is product UI rather than a decorative scene', () => {
+// RESTATED 2026-10-05 (M2 rebuild). The hero used to be a real composer (a form, a textarea and a submit), which was the product UI it
+// showed. The rebuilt hero shows the promise and a fixed-size slot for a real screenshot (components/ScreenSlot.astro). The property
+// is the same: the hero holds content and product UI only, and no scenery, canvas or ambient layer.
+test('the hero is content and product UI rather than a decorative scene', () => {
   const source = withoutComments(page);
   const start = source.indexOf('<section class="hero"');
   const end = source.indexOf('</section>', start);
   assert.ok(start >= 0 && end > start, 'the landing hero could not be found');
   const hero = source.slice(start, end + 10);
 
-  assert.match(hero, /<form\s+class="composer"/,
-    'the hero lost the real composer that is its primary interaction');
-  assert.match(hero, /<textarea\b[^>]*class="composer-input"/s,
-    'the composer is no longer an operable text field');
-  assert.match(hero, /<button\s+class="composer-send"\s+type="submit">/,
-    'the composer no longer has a real submit action');
-  assert.doesNotMatch(hero, /\b(?:atmosphere|light-column|sky|strata|stratum|ridge)\b/,
+  assert.match(hero, /<h1\b/, 'the hero lost its headline');
+  assert.match(hero, /href="\/app\/signup"/, 'the hero lost its primary action into the product');
+  assert.match(hero, /<ScreenSlot\b/, 'the hero lost the slot for a real product screenshot');
+  assert.doesNotMatch(hero, /\b(?:atmosphere|light-column|sky|strata|stratum|ridge|aura|noise)\b|<canvas\b|<video\b/i,
     'the hero has regained a cinematic scenery layer');
 });
 
@@ -70,14 +70,15 @@ test('the hero is product UI rather than a decorative scene', () => {
 //
 //   It also held the site's own sheets to declaring no colour token of their own, which is what lets
 //   the one file stay the one file. ]]
-test('the composer is a flat panel on the shared radius, and no site sheet declares a design token of its own', () => {
-  const landingCss = withoutComments(read('src', 'styles', 'landing.css'));
-  const composer = /\.composer\s*\{([^}]*)\}/.exec(landingCss);
-  assert.ok(composer, 'landing.css has no .composer rule');
-  assert.match(composer[1], /border-radius:\s*var\(--r-xl\)/,
-    'the product composer is no longer the --r-xl focal surface');
-  assert.match(composer[1], /background:\s*var\(--surface\)/, 'the composer is not a --surface panel');
-  assert.doesNotMatch(composer[1], /backdrop-filter|box-shadow/, 'the composer is frosted or casts a shadow; surfaces here are flat');
+// RESTATED 2026-10-05 (M2 rebuild): the composer is deleted. The focal object of the rebuilt front page is the screenshot slot, so the
+// flat-panel contract is held there: a --surface panel on the shared radius, no frosted blur and no shadow.
+test('the screenshot slot is a flat panel on the shared radius, and no site sheet declares a design token of its own', () => {
+  const slotCss = withoutComments(slot.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '');
+  const panel = /\.slot\s*\{([^}]*)\}/.exec(slotCss);
+  assert.ok(panel, 'ScreenSlot.astro has no .slot rule');
+  assert.match(panel[1], /border-radius:\s*var\(--r-lg\)/, 'the slot is no longer on the shared --r-lg radius');
+  assert.match(panel[1], /background:\s*var\(--surface\)/, 'the slot is not a --surface panel');
+  assert.doesNotMatch(panel[1], /backdrop-filter|box-shadow/, 'the slot is frosted or casts a shadow; surfaces here are flat');
 
   // A site sheet that re-declares a token the file owns is the second copy the old test existed to catch.
   const owned = new Set(topLevelRules(readTokensCss()).flatMap((r) => declarations(r.body).map((d) => d.name)));

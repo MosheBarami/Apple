@@ -172,7 +172,10 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(TEXT.length >= 4, `only ${TEXT.length} text tokens found (${TEXT.join(', ')}) — the use scan is blind`);
   for (const must of ['ink', 'muted', 'faint']) assert.ok(TEXT.includes(must), `--${must} is not spent as text anywhere; re-check the scan`);
   assert.ok(SURFACES.length >= 5, `only ${SURFACES.length} surfaces found (${SURFACES.join(', ')})`);
-  assert.ok(RULES.length > 500, `only ${RULES.length} rules read — the rule parse is blind`);
+  // RE-BASED 2026-10-05 (M2 rebuild): 473 rules are read now, not 500+, because the 1,139-line landing.css (and the picks components'
+  // own sheets) were deleted with the old front page. The floor is a vacuity check (a blind parse reads a handful, not hundreds), so
+  // it follows the tree down; every pair measured below is still derived from whatever the sheets say.
+  assert.ok(RULES.length > 300, `only ${RULES.length} rules read — the rule parse is blind`);
   for (const mode of Object.keys(THEMES)) {
     assert.ok(MEASURED[mode].length > 150, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
     // THE STATES AND CONTEXTS ARE READ, not just the resting rules: pairs exist for a hovered element and for one inside a context.
@@ -236,7 +239,9 @@ for (const [name, t] of Object.entries(THEMES)) {
   test(`${name}: selected text clears 4.5:1 on every fill a control draws, and shows against it`, () => {
     const { subjects, problems } = selectionOnFills(RULES, name);
     // CANARIES: the fills were found in the sheets, not listed here. Each is a control a person selects text on.
-    for (const must of ['.btn-primary', '.cta', '.composer-send', '.skip-link', '.fold__paper']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
+    // RESTATED 2026-10-05 (M2 rebuild): `.cta` and `.composer-send` were the old landing's controls (the composer and its merged CTA button)
+    // and were deleted with it. The canaries are the three fills the sheets still draw on an opaque non-surface fill.
+    for (const must of ['.btn-primary', '.skip-link', '.fold__paper']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
     assert.deepEqual(problems, [], `${name}: selected text on a fill:\n  ${problems.join('\n  ')}`);
   });
 

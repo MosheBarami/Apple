@@ -32,14 +32,15 @@ function mounts(src, name) {
 }
 
 // pick id -> [page, component that carries it]
+//
+// RESTATED 2026-10-05 (M2 rebuild, handoff 2.2). Seven of the fifteen picks were the pricing page's: the shiny button, the spotlight, the
+// beam border, the number counter and formatter (the build estimator) and the price switcher. The rebuilt pricing page does not use them
+// (flat panels, no motion, no script of its own), so ShinyButton, Spotlight, BeamBorder, BuildEstimator, PriceSwitch and rolling-number
+// are deleted (planning/proof/M2/DECISIONS.md section 12, with the owner pick each one was) and their seven mount tests, 'every plan card
+// is lit by the spotlight', 'both rolling-number users share one implementation' and the estimator half of 'the estimator and the
+// per-build price are derived' went with them. What is kept: the eight docs picks, the Accordion on /pricing, and the per-build price,
+// which is still printed (on each paid card) and is still held to the config below.
 const PICKS = {
-  'eldora--animated-shiny-button': ['pricing.astro', 'ShinyButton'],
-  'gsap--quicksetter': ['pricing.astro', 'Spotlight'],
-  'motion--ui-border-beam': ['pricing.astro', 'BeamBorder'],
-  'reactbits--electric-border': ['pricing.astro', 'BeamBorder'],
-  'motion--number-counter': ['pricing.astro', 'BuildEstimator'],
-  'motion--number-formatting': ['pricing.astro', 'BuildEstimator'],
-  'motion--price-switcher': ['pricing.astro', 'PriceSwitch'],
   'motion--accordion': ['docs/faq.astro', 'Accordion'],
   'reactbits--folder': ['docs/getting-started.astro', 'Folder'],
   'eldora--terminal': ['docs/build-from-source.astro', 'Terminal'],
@@ -64,50 +65,23 @@ test('the pricing limits FAQ and the docs FAQ both open with the Accordion', () 
   assert.ok(mounts(page('pricing.astro'), 'Accordion'));
 });
 
-test('every plan card is lit by the spotlight and every price can roll', () => {
+test('the per-build price on each paid card is derived from the config, never typed', async () => {
   const src = page('pricing.astro');
-  assert.equal((src.match(/\bdata-spotlight\b/g) ?? []).length, 2, 'the Free card and the paid-card template each carry data-spotlight');
-  assert.equal((src.match(/\bdata-price-roll\b/g) ?? []).length, 2, 'the Free price and the paid-price template each carry data-price-roll');
-  assert.equal((src.match(/\bdata-price-unit\b/g) ?? []).length, 2);
-  // Only the ranked card gets the beam and the shining button, and the ranked card is Free: both are
-  // mounted once, before the paid-card template, so no paid card (none can be bought yet) carries them.
-  const paidAt = src.indexOf('paid.map(');
-  assert.ok(paidAt > 0, 'the paid-card template is gone');
-  for (const el of ['<BeamBorder />', '<ShinyButton']) {
-    assert.equal(src.split(el).length - 1, 1, `${el} is mounted more than once, or not at all`);
-    assert.ok(src.indexOf(el) < paidAt, `${el} is on a paid card`);
-  }
-});
-
-test('the estimator and the per-build price are derived, never typed', async () => {
-  const src = page('pricing.astro');
-  assert.match(src, /builds: buildsPerMonth\(id\)/, 'the estimator plans no longer read buildsPerMonth');
-  assert.equal((src.match(/creditsPerBuild=\{TYPICAL_BUILD_CREDITS\}/g) ?? []).length, 2, 'the price switch and the estimator both read the shared typical build');
-  assert.match(src, /start=\{buildsPerMonth\('free'\)\}/);
   assert.match(src, /buildsPerMonth\(id\)\)\) \* 100\) \/ 100/, 'the per-build price is no longer the monthly price over buildsPerMonth');
-
-  // And the built page carries the config's numbers, whatever they are.
   const shared = await import('../../../packages/shared/src/index.ts');
   const file = join(SITE, 'dist', 'pricing', 'index.html');
-  if (existsSync(file)) {
-    const html = readFileSync(file, 'utf8');
-    assert.match(html, new RegExp(`data-cpb="${shared.TYPICAL_BUILD_CREDITS}"`), 'the estimator was not handed the typical build');
-    for (const id of shared.LISTED_PLAN_IDS.filter((p) => p !== 'free')) {
-      const perBuild = Math.round((shared.PLAN_TABLE[id].priceUsdMonthly / shared.PLAN_TABLE[id].approxBuilds) * 100) / 100;
-      assert.ok(
-        html.includes(`data-build="${shared.formatMoney(perBuild)}"`),
-        `${id}: the rendered per-build price is not ${shared.formatMoney(perBuild)}, the monthly price over its builds`,
-      );
-    }
+  assert.ok(existsSync(file), 'dist/pricing/index.html is missing: run the site build first');
+  const text = visibleCopy(readFileSync(file, 'utf8')).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const paid = shared.LISTED_PLAN_IDS.filter((p) => p !== 'free');
+  assert.ok(paid.length >= 2, 'the paid plans were not found');
+  for (const id of paid) {
+    const perBuild = Math.round((shared.PLAN_TABLE[id].priceUsdMonthly / shared.buildsPerMonth(id)) * 100) / 100;
+    assert.ok(
+      text.includes(`about ${shared.formatMoney(perBuild)} a build at this price`),
+      `${id}: the rendered per-build price is not ${shared.formatMoney(perBuild)}, the monthly price over its builds`,
+    );
   }
-});
-
-test('both rolling-number users share one implementation', () => {
-  for (const name of ['PriceSwitch', 'BuildEstimator']) {
-    const src = readFileSync(join(KIT, `${name}.astro`), 'utf8');
-    assert.match(src, /import \{ rollTo \} from '\.\/rolling-number'/, `${name} no longer rolls its digits`);
-  }
-  assert.match(readFileSync(join(KIT, 'rolling-number.ts'), 'utf8'), /export function rollTo\(/);
+  assert.ok(text.includes(`A typical build costs about ${shared.formatCredits(shared.TYPICAL_BUILD_CREDITS)} Credits`), 'the typical build is not the shared one');
 });
 
 test('every docs page mounts DocsKit, last, so the nav, keys and links are upgraded everywhere', () => {

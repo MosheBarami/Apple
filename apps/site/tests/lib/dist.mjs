@@ -41,6 +41,16 @@ export function distPages() {
   return pages.sort((a, b) => a.route.localeCompare(b.route));
 }
 
+/** A built redirect stub (Astro `redirects`): a meta refresh and a link, nothing a reader reads. */
+export const isRedirect = (html) => /<meta http-equiv="refresh"[^>]*url=/i.test(html);
+
+/** Every built page that is a page: the redirect stubs left out. */
+export function realPages() {
+  const pages = distPages().filter((p) => !isRedirect(p.html));
+  assert.ok(pages.length > 0, 'the build holds no real page, only redirects');
+  return pages;
+}
+
 export function distPage(route) {
   const page = distPages().find((p) => p.route === route);
   assert.ok(page, `dist has no page for ${route}: the build did not emit it`);

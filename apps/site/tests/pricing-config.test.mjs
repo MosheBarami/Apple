@@ -16,7 +16,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visibleCopy } from './lib/visible-copy.mjs';
 
@@ -218,11 +219,17 @@ test('NO PAGE POINTS AT "Plans & Credits", which does not exist; the page that d
   assert.match(web('routes/usage.tsx'), /Plan &amp; billing/);
 });
 
-test('THE CHANGELOG DOES NOT DEFINE A CREDIT AS 30 NEURONS: a Credit is 150 ledger units, about $0.05 of compute', () => {
-  const file = fileURLToPath(new URL('../dist/changelog/index.html', import.meta.url));
-  const page = plain(readFileSync(file, 'utf8'));
-  assert.doesNotMatch(page, /1 Credit\s*=\s*30 neurons/i, 'the changelog still defines a Credit as 30 neurons');
-  assert.match(page, /The Credit you see today is 150 of those units, about \$0\.05 of AI compute/, 'and it says what a Credit is now');
+// RESTATED 2026-10-05 (M2 rebuild). This read dist/changelog, which is deleted (/changelog redirects to /blog). The property is that no page
+// still defines a Credit as 30 neurons (the retired unit), and that the page people read says what a Credit is now: so it is held over
+// every built page, and the second half is read off /pricing, which says it in its "What is a Credit?" answer.
+test('NO PAGE DEFINES A CREDIT AS 30 NEURONS: a Credit is about $0.05 of compute, and /pricing says so', () => {
+  const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+  const pages = readdirSync(dist, { recursive: true }).filter((f) => String(f).endsWith('.html'));
+  assert.ok(pages.length > 10, 'too few built pages to mean anything');
+  for (const f of pages) {
+    assert.doesNotMatch(plain(readFileSync(join(dist, String(f)), 'utf8')), /1 Credit\s*=\s*30 neurons/i, `${f} still defines a Credit as 30 neurons`);
+  }
+  assert.match(text, /One Credit is about \$0\.05 of AI compute/, '/pricing does not say what a Credit is now');
 });
 
 test('Enterprise is not on the page, in any form', () => {

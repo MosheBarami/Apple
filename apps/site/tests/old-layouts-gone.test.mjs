@@ -28,7 +28,6 @@ const GONE = [
   'data/showcase-proof.ts',
   'data/consent-proof.ts',
   'data/recorded-run.ts',
-  'data/asset-wall.json',
   'lib/billing-probe.ts',
   // The owner's picked landing components, each replaced by the rebuild.
   'components/picks/ArrowLink.astro',

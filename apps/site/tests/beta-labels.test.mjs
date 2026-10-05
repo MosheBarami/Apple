@@ -31,10 +31,12 @@ test('the scanners can see: a Stripe link, a checkout form and the word Enterpri
   assert.match(textOf('<h2>Enterprise</h2>'), /Enterprise/i);
 });
 
-test('the front page, /pricing and /how-it-works each carry the Beta label as visible text', () => {
+test('the front page, /pricing and /how-it-works each carry the Beta label in their own content, not only in the shared header and footer', () => {
   for (const route of LABELLED) {
-    const text = textOf(distPage(route).html);
-    assert.match(text, /\bBeta\b/, `${route} does not say "Beta" anywhere a reader can see it`);
+    const html = distPage(route).html;
+    const main = textOf(html.slice(html.indexOf('<main'), html.indexOf('</main>')));
+    assert.match(main, /\bBeta\b/, `${route} does not say "Beta" in its own content`);
+    assert.match(textOf(html), /\bBeta\b/, `${route} does not say "Beta" anywhere a reader can see it`);
   }
 });
 

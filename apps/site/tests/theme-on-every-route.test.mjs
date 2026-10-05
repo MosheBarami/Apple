@@ -1,5 +1,8 @@
 // TWO DEFECTS, ONE SUBJECT: the theme a visitor chose, and the colour the browser paints above it.
 //
+// (RESTATED 2026-10-05, M2 rebuild: Landing.astro no longer exists. There is one layout, Base.astro, and every route renders
+// through it, so what was asserted of the two layouts is asserted of Base and of every BUILT page, derived from dist.)
+//
 // 1. apps/site/src/layouts/Landing.astro — index.astro's sole layout — shipped no <html data-theme>,
 //    no pre-paint script and no toggle, and landing.css declared one ramp. Choosing light on
 //    /pricing and clicking the wordmark landed on a dark homepage with no control to change it.
@@ -14,12 +17,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { realPages } from './lib/dist.mjs';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
-const landing = read('../src/layouts/Landing.astro');
 const base = read('../src/layouts/Base.astro');
-const landingCss = read('../src/styles/landing.css');
+const baseCss = read('../src/styles/base.css');
+const siteCss = read('../src/styles/site.css');
 const globalCss = read('../src/styles/global.css');
 // THE ONE TOKEN SOURCE. Since M2 (2026-10-05) every colour token lives in the design package's
 // tokens.css, which both layouts import first; landing.css and global.css are structure only.
@@ -27,7 +31,7 @@ const tokenCss = read('../../../packages/design/src/web/tokens.css');
 const noComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
 const manifest = JSON.parse(read('../public/site.webmanifest'));
 
-const LAYOUTS = { 'Landing.astro': landing, 'Base.astro': base };
+const LAYOUTS = { 'Base.astro': base };
 
 for (const [name, src] of Object.entries(LAYOUTS)) {
   test(`${name} no longer hardcodes the retired #080808 as theme-color`, () => {
@@ -44,24 +48,28 @@ for (const [name, src] of Object.entries(LAYOUTS)) {
   });
 }
 
-test('Landing applies a stored theme before first paint, like Base does', () => {
-  assert.match(landing, /<html lang="en"[^>]*data-theme="dark"/);
-  assert.match(landing, /localStorage\.getItem\('apple-theme'\)/);
-  assert.match(landing, /setAttribute\('data-theme'/);
+test('Base applies a stored theme before first paint', () => {
+  assert.match(base, /<html lang="en"[^>]*data-theme="dark"/);
+  assert.match(base, /localStorage\.getItem\('apple-theme'\)/);
+  assert.match(base, /setAttribute\('data-theme'/);
 });
 
-//[[ RESTATED 2026-09-22. The landing no longer carries its own header; it renders the shared
-//   <Nav />, which is where every route's toggle button lives. The property is unchanged — the front
-//   page has a working toggle — so it is asserted where the button now is: index.astro renders Nav
-//   (or a button of its own), and Nav carries the button the layout's handler listens for. ]]
-test('Landing ships a toggle handler, and index.astro ships a button for it', () => {
-  assert.match(landing, /\[data-theme-toggle\]/);
-  assert.match(landing, /localStorage\.setItem\('apple-theme'/);
-  const index = read('../src/pages/index.astro');
-  const nav = read('../src/components/Nav.astro');
-  const rendersNav = /import Nav from '\.\.\/components\/Nav\.astro'/.test(index) && /<Nav\s*\/>/.test(index);
-  assert.ok(/data-theme-toggle/.test(index) || (rendersNav && /<button[^>]*data-theme-toggle/.test(nav)),
-    'the landing renders no theme toggle — neither its own button nor the shared Nav with one');
+//[[ RESTATED 2026-10-05. This asserted that the front page, which had a layout of its own, shipped a toggle handler and a button.
+//   The property is that EVERY route has a working toggle: read off the built pages. Each carries the pre-paint script that sets
+//   data-theme from the stored key, the theme-color meta the script repaints, a toggle button in the header, and the handler that
+//   writes the key back. The front page, now on Base like the rest, is one of them. ]]
+test('every built page applies the stored theme before paint, has a toggle in its header, and a handler that stores the choice', () => {
+  const pages = realPages();
+  assert.ok(pages.length > 0);
+  for (const { route, html } of pages) {
+    assert.match(html, /<html lang="en"[^>]*data-theme="dark"/, `${route} ships no <html data-theme>`);
+    assert.match(html, /localStorage\.getItem\('apple-theme'\)/, `${route} does not read the stored theme before paint`);
+    assert.match(html, /<meta name="theme-color" id="theme-color"/, `${route} has no theme-color meta the toggle can repaint`);
+    const header = html.match(/<header\b[\s\S]*?<\/header>/i)?.[0] ?? '';
+    assert.match(header, /<button[^>]*data-theme-toggle/, `${route} has no theme toggle in its header`);
+    assert.match(html, /\[data-theme-toggle\]/, `${route} has no handler for the toggle`);
+    assert.match(html, /localStorage\.setItem\('apple-theme'/, `${route} does not store the choice`);
+  }
 });
 
 test('an Astro expression never sits between <!doctype> and <html>', () => {
@@ -79,7 +87,7 @@ test('an Astro expression never sits between <!doctype> and <html>', () => {
 //   packages/design/src/web/tokens.css) so it is checked there, and landing.css is now held to declaring no colour token at all, which
 //   is the stronger half: a second ramp in a structure sheet is how the site ended up with 117
 //   `!important`s fighting over whose value wins. ]]
-test('landing.css has a light ramp, not one ramp', () => {
+test('the token file has a light ramp, and no site sheet declares a colour of its own', () => {
   const css = noComments(tokenCss);
   assert.match(css, /:root\[data-theme='light'\]\s*\{/);
   const at = css.search(/:root\[data-theme='light'\]\s*\{/);
@@ -88,7 +96,7 @@ test('landing.css has a light ramp, not one ramp', () => {
   for (const token of ['--paper', '--ink', '--muted', '--accent', '--accent-ink', '--surface', '--theme-color']) {
     assert.match(light, new RegExp(`${token}:`), `light ramp is missing ${token}`);
   }
-  for (const [name, sheet] of [['landing.css', landingCss], ['global.css', globalCss]]) {
+  for (const [name, sheet] of [['base.css', baseCss], ['site.css', siteCss], ['global.css', globalCss]]) {
     const declared = [...noComments(sheet).matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-f]{3,8}\b|rgba?\()/gi)].map((m) => m[1]);
     assert.deepEqual(declared, [], `${name} declares colour tokens of its own — the ramp has two homes again`);
   }
@@ -177,7 +185,7 @@ test('the guard rejects the layout head that shipped', () => {
   assert.doesNotMatch(shipped, /<meta name="theme-color" id="theme-color"/);
 });
 
-test('the guard rejects a Landing with no theme machinery', () => {
+test('the guard rejects a layout with no theme machinery', () => {
   const shipped = '<!doctype html>\n<html lang="en">\n  <head></head><body><slot /></body>\n</html>';
   assert.doesNotMatch(shipped, /data-theme="dark"/);
   assert.doesNotMatch(shipped, /\[data-theme-toggle\]/);

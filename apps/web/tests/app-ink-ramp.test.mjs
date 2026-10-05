@@ -66,7 +66,12 @@ test('the app and the public site use one ramp: both load the token file and nei
   const siteLayout = join(WEB, '..', 'site', 'src', 'layouts');
   const layouts = readdirSync(siteLayout).filter((f) => f.endsWith('.astro')).map((f) => readFileSync(join(siteLayout, f), 'utf8'));
   const withHtml = layouts.filter((src) => /<html\b/.test(src));
-  assert.ok(withHtml.length >= 2, 'expected the site to have at least two document layouts');
+  // RESTATED 2026-10-05 (M2 site rebuild, handoff 2.2): this expected TWO document layouts (Base.astro and the old front page's own
+  // Landing.astro). The rebuild deleted Landing.astro; every route, the front page included, renders through the one Base layout (the docs
+  // and legal layouts sit on it and own no <html>). The property is that EVERY layout that owns a document imports the shared tokens, and the
+  // floor that proves the scan read something is now one, and it is Base.
+  assert.ok(withHtml.length >= 1, 'expected the site to have a document layout');
+  assert.ok(layouts.some((src) => /<html\b/.test(src) && /import\s+Nav\b/.test(src)), 'the site\'s one document layout (Base.astro, which renders the shared header) was not among the layouts read');
   for (const src of withHtml) assert.match(src, /import\s+['"]@studpilot\/design\/tokens\.css['"]/, 'a site layout does not import the shared tokens');
 
   // No other app file writes an ink: a second --faint is how the two products drift. Stylesheets AND

@@ -17,6 +17,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { distPages, textOf } from './lib/dist.mjs';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
@@ -34,7 +35,9 @@ const PAGES = {
   'docs/faq.astro': '../src/pages/docs/faq.astro',
   'docs/troubleshooting.astro': '../src/pages/docs/troubleshooting.astro',
   'docs/getting-started.astro': '../src/pages/docs/getting-started.astro',
-  'changelog.astro': '../src/pages/changelog.astro',
+  // 'changelog.astro' left this list on 2026-10-05: the page was deleted by the M2 rebuild (handoff 2.2) and /changelog is a
+  // redirect to /blog. Its subject is gone; the property (no page sells one Ctrl+Z as a whole-run undo) is held for every
+  // built page by the test below.
 };
 
 /** The two shapes that assert the wrong unit. Both are what shipped. */
@@ -62,23 +65,30 @@ for (const [name, rel] of Object.entries(PAGES)) {
   test(`${name} does not sell one Ctrl+Z as a whole-run undo`, () => audit(name, read(rel)));
 }
 
-// The three pages that hand a reader Ctrl+Z as a remedy must also hand them the thing that
-// actually reverts a run, or the correction just removes a promise and leaves no exit.
-for (const [name, rel] of [
-  ['index.astro', '../src/pages/index.astro'],
-  ['docs/faq.astro', '../src/pages/docs/faq.astro'],
-  ['docs/troubleshooting.astro', '../src/pages/docs/troubleshooting.astro'],
-  ['docs/getting-started.astro', '../src/pages/docs/getting-started.astro'],
-]) {
-  test(`${name} names the checkpoint as the whole-run exit beside Ctrl+Z`, () => {
-    const text = prose(read(rel));
-    // Ctrl+Z is written three ways across these pages: bare, `Ctrl+Z` inside one <kbd>, and
-    // <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Strip tags before looking, so the guard reads what a reader sees.
-    const visible = text.replace(/<[^>]+>/g, '');
-    assert.match(visible, /Ctrl\s*\+\s*Z/i, `${name} should still mention Ctrl+Z`);
-    assert.match(text, /checkpoint/i, `${name} offers Ctrl+Z without naming the checkpoint`);
-  });
-}
+// RESTATED 2026-10-05 (M2 rebuild). The pages that hand a reader Ctrl+Z as a remedy must also hand them the thing that actually
+// reverts a run, or the correction just removes a promise and leaves no exit. This was listed by file, and the front page, which
+// used to carry the Undo card, no longer mentions Ctrl+Z at all. The property is now read off the BUILT site: every page whose
+// text offers Ctrl+Z also names the checkpoint, and the three docs pages that do offer it are among them (so the list is not empty).
+test('every built page that offers Ctrl+Z also names the checkpoint as the whole-run exit', () => {
+  const offering = distPages().filter(({ html }) => /Ctrl\s*\+\s*Z/i.test(textOf(html)));
+  assert.ok(offering.length > 0, 'no built page mentions Ctrl+Z, so this checked nothing');
+  for (const { route, html } of offering) {
+    assert.match(textOf(html), /checkpoint/i, `${route} offers Ctrl+Z without naming the checkpoint`);
+  }
+  const routes = offering.map((p) => p.route);
+  for (const want of ['/docs/faq/', '/docs/troubleshooting/', '/docs/getting-started/']) {
+    assert.ok(routes.includes(want), `${want} no longer mentions Ctrl+Z; the guard cannot see the page it was written for`);
+  }
+});
+
+test('no built page sells a batch or a run as one undo step', () => {
+  const pages = distPages();
+  assert.ok(pages.length > 0);
+  for (const { route, html } of pages) {
+    const visible = textOf(html);
+    for (const shape of FALSE_UNIT) assert.doesNotMatch(visible, shape, `${route} claims a batch or a run is one undo step`);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // The guard can fail. Without this, everything above is decoration.

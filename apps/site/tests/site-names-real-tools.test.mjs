@@ -102,11 +102,19 @@ for (const file of built) {
   }
 }
 
-test('the build and the registry are both here, or this file has measured nothing', () => {
+// RESTATED 2026-10-05 (M2 rebuild). The old canaries demanded that the site print at least five real tool names, because the old front
+// page and /proof did (an activity log drawn with `get_tree`, a recorded run). The rebuilt marketing pages name no tool at all: they
+// say "a play test", "button presses", "a layout check" in words a 13-year-old reads (handoff M2, "Copy"). The property is unchanged
+// (anything the site prints that looks like a tool name must be one the worker registers), and the canaries now prove the SCANNER can
+// see a tool name, on a synthetic page, instead of demanding that the site print some.
+test('the build and the registry are both here, and the scanner can see a tool name in a page and in a script literal', () => {
   assert.ok(built.length >= 10, `only ${built.length} built pages — run \`npx astro build\` first`);
   assert.ok(existsSync(REGISTRY), `the tool registry is not at ${REGISTRY}; this guard has no source of truth`);
   assert.ok(declaredTools().size >= 20, 'the registry scan found almost no tools — the extraction has stopped working');
-  assert.ok(found.size >= 5, `only ${found.size} tool-shaped words on the whole site — the scanner is not reading the pages`);
+  const seenInMarkup = [...visible('<p>It calls <code>get_project_tree</code> first.</p>').matchAll(TOOLISH)].map((m) => m[1]);
+  assert.deepEqual(seenInMarkup, ['get_project_tree'], 'the scanner is blind to a tool name in running copy');
+  const seenInScript = [...literalsIn('<script>log("get_tree  game.x  ok")</script>').matchAll(TOOLISH)].map((m) => m[1]);
+  assert.deepEqual(seenInScript, ['get_tree'], 'the scanner is blind to a tool name written by a script at runtime');
 });
 
 test('every tool name printed on this site is one the worker actually registers', () => {
@@ -125,39 +133,22 @@ test('every tool name printed on this site is one the worker actually registers'
   );
 });
 
-test('the guard has teeth', () => {
+test('the guard has teeth, and the marketing pages say it in words: no tool name on /, /how-it-works, /catalog or /pricing', () => {
   const tools = declaredTools();
 
   // 1. The registry read is real, and it does not contain the op the landing used to print.
   assert.ok(tools.has('get_project_tree'), 'the extraction lost a tool that certainly exists');
   assert.ok(!tools.has('get_tree'), 'the extraction is picking up wire ops, so the check above proves nothing');
 
-  // 2. A name nobody registers is rejected. This is the assertion the test above makes, run
-  //    against an input chosen here so the mechanism is exercised even on a clean site.
+  // 2. A name nobody registers is rejected. This is the assertion the test above makes, run against an input chosen here so the
+  //    mechanism is exercised even on a clean site.
   assert.ok(!tools.has('summon_the_parts'), 'the registry appears to contain anything asked of it');
 
-  // 3. The site really is printing tool names. Without this, deleting the figure and the proof
-  //    page would leave every assertion above passing over an empty set.
-  const seen = [...found.keys()].filter((t) => tools.has(t));
-  assert.ok(
-    seen.length >= 5,
-    `only ${seen.length} real tool names are on the site (${seen.join(', ')}) — the pages that named ` +
-      'them have been rewritten, and this guard is now checking nothing',
-  );
-
-  // 4. The owner now wants one disappearing, friendly activity phrase on the landing. The
-  //    technical proof page keeps its accurate tool vocabulary; the run illustration must not
-  //    look like a log. Read the rendered figure so comments and unrelated proof copy cannot pass.
-  const landing = readFileSync(join(DIST, 'index.html'), 'utf8');
-  const figure = landing.match(/<div class="activity"[^>]*>([\s\S]*?)<\/div>\s*<\/figure>/);
-  assert.ok(
-    figure,
-    'the landing has no activity figure any more — it was renamed or removed, and assertions 1-3 ' +
-      'would have stayed green over its absence',
-  );
-  const inFigure = [...new Set([...visible(figure[1]).matchAll(TOOLISH)].map((m) => m[1]))];
-  assert.deepEqual(inFigure, [], `the landing's activity line exposes technical tool names: ${inFigure.join(', ')}`);
-  assert.equal((figure[1].match(/class="activity-current"/g) ?? []).length, 1, 'one replaceable activity phrase');
-  assert.match(visible(figure[1]), /Checking your place/);
-  assert.doesNotMatch(literalsIn(landing), /get_project_tree/, 'the interactive demo must not reveal a wire/tool name either');
+  // 3. The rebuilt marketing pages print no tool name at all. (The old assertion here read the landing's "activity" figure, a
+  //    drawn log that was deleted with the old front page; it is replaced by the stronger rule that those pages use plain words.)
+  for (const route of ['index.html', 'how-it-works/index.html', 'catalog/index.html', 'pricing/index.html']) {
+    const html = readFileSync(join(DIST, route), 'utf8');
+    const named = [...new Set([...visible(html).matchAll(TOOLISH), ...literalsIn(html).matchAll(TOOLISH)].map((m) => m[1]))];
+    assert.deepEqual(named, [], `${route} prints technical names: ${named.join(', ')}. The marketing pages say it in words.`);
+  }
 });

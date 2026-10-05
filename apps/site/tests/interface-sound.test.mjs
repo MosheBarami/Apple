@@ -50,8 +50,10 @@ const TEXT = FILES.filter((f) => /\.(?:astro|css|ts|tsx|js|mjs|json|html)$/.test
 
 test('the walk read the site, so nothing below is vacuous', () => {
   assert.ok(FILES.length > 20, `the walk found ${FILES.length} files — this check would be vacuous`);
-  assert.ok(TEXT.some(([f]) => f.endsWith('Base.astro')) && TEXT.some(([f]) => f.endsWith('Landing.astro')),
-    'the two layouts were not among the files read');
+  // RESTATED 2026-10-05 (M2 rebuild): there is one layout now (Base.astro; Landing.astro was deleted), so the canary is Base and
+  // the document layouts that sit on it.
+  assert.ok(['Base.astro', 'DocsLayout.astro', 'LegalLayout.astro'].every((l) => TEXT.some(([f]) => f.endsWith(l))),
+    'the layouts were not among the files read');
 });
 
 test('no layout mounts a sound engine and no page renders a sound control', () => {

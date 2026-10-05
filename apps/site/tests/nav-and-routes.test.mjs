@@ -126,6 +126,8 @@ test('the removed routes are redirects the build emits: /models and /proof to th
     assert.equal(r.kind, 'redirect', `${from} is ${r.kind} in the build: it must be an Astro redirect so the built file overwrites the old static row`);
     const html = readFileSync(r.file, 'utf8');
     const target = html.match(/url=([^"'>\s]+)/i)?.[1];
-    assert.equal(target, to, `${from} redirects to ${target}, expected ${to}`);
+    const bare = (p) => p?.replace(/\/$/, '') || '/';
+    assert.equal(bare(target), bare(to), `${from} redirects to ${target}, expected ${to}`);
+    assert.notEqual(resolveBuilt(target).kind, 'missing', `${from} redirects to ${target}, which the build does not contain`);
   }
 });
