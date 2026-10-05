@@ -109,7 +109,9 @@ const VERIFIERS = {
   'You can make a project and chat with StudPilot.': {
     section: 'What works today',
     check: () => {
-      assert.match(read('web', 'src', 'routes', 'dashboard.tsx'), /from\('projects'\)[\s\S]{0,120}\.insert\(/, 'the dashboard no longer creates a project');
+      // One-click create (M2 2.3 C3): the dashboard's button calls useCreateProject, which inserts the project row.
+      assert.match(read('web', 'src', 'routes', 'dashboard.tsx'), /onClick=\{createProject\}/, 'the dashboard no longer offers to create a project');
+      assert.match(read('web', 'src', 'lib', 'use-create-project.ts'), /from\('projects'\)[\s\S]{0,200}\.insert\(/, 'the dashboard no longer creates a project');
       assert.match(read('web', 'src', 'lib', 'use-project-socket.ts'), /type: 'chat'/, 'the project chat no longer sends a chat message');
     },
   },
@@ -224,9 +226,10 @@ const VERIFIERS = {
   'Google and Discord sign-in are coming.': {
     section: 'What is not there yet',
     check: () => {
-      // The app draws a provider button only when that provider is on, and nothing in the app calls an OAuth sign-in for Google or Discord yet.
-      const src = walkFiles(join(APPS, 'web', 'src'), (p) => /\.tsx?$/.test(p)).map((f) => read('web', 'src', f)).join('\n');
-      assert.doesNotMatch(src, /signInWithOAuth\s*\(/, 'the app signs in with an OAuth provider: re-read this line of the post');
+      // "Not on the sign-in page" holds while the providers are off at Supabase: the app draws a provider button only when the project's own
+      // settings say that provider is on (auth-providers.ts). Switching a provider on (owner item N2) must come with a rewrite of this line.
+      assert.match(read('web', 'src', 'lib', 'auth-providers.ts'), /\(external as Record<string, unknown>\)\[provider\] === true/, 'the provider buttons are no longer gated on the provider being on: re-read this line of the post');
+      assert.match(read('web', 'src', 'routes', 'auth-pages.tsx'), /useEnabledProviders\(/, 'the sign-in page draws provider buttons without asking which are on: re-read this line of the post');
     },
   },
   'Paid plans are not for sale.': {

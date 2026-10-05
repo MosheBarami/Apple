@@ -1,10 +1,11 @@
 // Supabase client — email/password auth + RLS-scoped data access.
 // The anon key is public by design; RLS enforces tenant isolation.
 import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './supabase-config';
 
-export const SUPABASE_URL = 'https://npqvyijsvzkuwddyhtpm.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'sb_publishable_CZXQt2nYfaSnkYF5XoslzQ_LaIIn6wt';
+// The two public values live in their own file so a module that only needs the address (the provider check)
+// does not construct a client by importing this one.
+export { SUPABASE_ANON_KEY, SUPABASE_URL };
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

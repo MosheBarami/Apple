@@ -240,8 +240,9 @@ PostgREST, so **RLS is the thing deciding**, not the worker. `infra/supabase/tes
 cannot read each other, and it is the strongest evidence in the repo.
 
 **Sign in with Roblox** (`apps/worker/src/roblox-oauth.ts`, routes under `/auth/roblox`) is the one place the worker holds
-a Supabase secret key (`SUPABASE_SECRET_KEY`), for the Auth admin API only; everything else still travels with the
-caller's JWT. It answers 503 until `ROBLOX_OAUTH_CLIENT_ID`, `ROBLOX_OAUTH_CLIENT_SECRET`, `SUPABASE_SECRET_KEY` and
+a Supabase secret key (`SUPABASE_SECRET_KEY`), for the Auth admin API (create a user, read one's address, mint a sign-in
+token, delete a user when that person deletes their account, clear the Roblox id and username when a Roblox grant is lost) and
+one PATCH of a profile's display name; everything else still travels with the caller's JWT. The routes answer 503 until `ROBLOX_OAUTH_CLIENT_ID`, `ROBLOX_OAUTH_CLIENT_SECRET`, `SUPABASE_SECRET_KEY` and
 `CREDENTIAL_KEY` are all set. Design and the switch-on steps: `planning/proof/M2/ROBLOX-SIGNIN.md`.
 
 **Migrations are applied by hand.** `infra/supabase/migrations/` holds them; `infra/supabase/migrate.mjs` runs

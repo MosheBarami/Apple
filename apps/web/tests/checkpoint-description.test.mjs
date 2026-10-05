@@ -33,8 +33,11 @@ test('the field is cleared after a save', () => {
   assert.match(WS.slice(at, at + 200), /setNote\(''\)/);
 });
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C5). The row is components/ws/checkpoint-history.tsx now (the history is grouped by request); the
+//   property, that the authored sentence is on the row, is the same, and the rendered row is run in tests/checkpoint-history.test.mjs. ]]
 test('the description is rendered on the row', () => {
-  assert.match(WS, /\{c\.description && <span className="gx-cp__desc">\{c\.description\}<\/span>\}/);
+  const row = readFileSync(join(WEB, 'src', 'components', 'ws', 'checkpoint-history.tsx'), 'utf8');
+  assert.match(row, /\{c\.description && <span className="gx-cp__desc">\{c\.description\}<\/span>\}/);
 });
 
 test('the class it renders with actually has styles', () => {

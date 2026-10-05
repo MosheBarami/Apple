@@ -2494,18 +2494,26 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
 /**
  * The one address support reaches a human at.
  *
- * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used the
- * owner's personal Gmail inbox; the plan ladder in the signed-in app — the only support-ish link
- * anywhere behind the login — used hello@studpilot.build. A customer cannot tell which of those is
- * read, and writing to the wrong one looks, from their side, exactly like being ignored.
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used one Gmail
+ * address; the plan ladder in the signed-in app, the only support-ish link anywhere behind the
+ * login, used another (hello@studpilot.build). A customer cannot tell which of those is read, and
+ * writing to the wrong one looks, from their side, exactly like being ignored.
+ *
+ * Since 2026-10-05 (owner decision D-13) it is support@studpilot.app, which Cloudflare Email Routing
+ * forwards to the owner's own inbox.
  *
  * Declared here so the two halves of the product cannot drift again, and asserted across both
- * trees by tests/support-expectations.test.mjs.
- *
- * support@studpilot.app is the owner's decision of 2026-10-05 (planning/proof/OWNER-DECISIONS.md D-13): Cloudflare
- * Email Routing forwards it to the owner's own inbox, so a person still reads it.
+ * trees by tests/support-expectations.test.mjs (which also reads the three legal pages).
  */
 export const SUPPORT_EMAIL = 'support@studpilot.app';
+
+/**
+ * The operator the legal pages name: who "we" is in the privacy policy and the terms, and who the
+ * footer byline names. Owner decision D-13 (2026-10-05): StudPilot. Before any money is charged an
+ * adult or a company must become the named operator (planning/proof/BLOCKED.md, N9), and this is the
+ * one value to change then; apps/site/tests/one-operator.test.mjs reads it.
+ */
+export const OPERATOR_NAME = 'StudPilot';
 
 /** What a plan can expect when it writes in. */
 export interface PlanSupport {

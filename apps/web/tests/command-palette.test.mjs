@@ -259,37 +259,54 @@ test('the palette actually renders `why` and the disabled state', () => {
 
 /* ---------------------------------------------------- the commands are real --- */
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C3: one-click create). It asked that "New project" ask the SHELL to open the create dialog. There is no
+//   dialog: a project is made at once, by lib/use-create-project.ts, and the property it guarded is the same one in its simplest form: THE
+//   COMMAND DOES WHAT ITS TITLE SAYS. "New project" makes a project (not navigates near one), and the shell's own ⌘⇧N binding takes the
+//   same path, or the chord and the palette would disagree. The behaviour itself is run in tests/create-project.test.mjs. ]]
 test('New project creates a project rather than navigating near one', () => {
   // THE DEFECT: `run: () => navigate('/')`. The command was named for an action it did not take.
   const layout = read('components', 'layout.tsx');
   const global = COMMANDS.find((c) => c.id === 'new-project');
   assert.ok(global, 'the shell must contribute a New project command');
-  assert.match(global.run, /newProject\(\)/, 'New project must ask the shell to open the dialog');
+  assert.match(global.run, /^newProject\s*[},]/, 'New project must run the one-click creator, not navigate');
+  assert.doesNotMatch(global.run, /navigate\(/, 'New project navigates instead of creating');
+  assert.match(layout, /const \{ create: newProject[^}]*\} = useCreateProject\(\)/, 'the shell does not get its creator from the hook every entry point shares');
   // And the shell's own ⌘⇧N binding takes the same path, or the chord and the palette disagree.
-  assert.match(
-    layout,
-    /matchesShortcut\(e, SHORTCUTS\.newProject\)[\s\S]{0,400}?newProject\(\)/,
-    'the ⌘⇧N binding must open the dialog, not only navigate',
-  );
+  const chord = /matchesShortcut\(e, SHORTCUTS\.newProject\)[\s\S]{0,400}?newProject\(\)/.exec(layout)?.[0] ?? '';
+  assert.ok(chord, 'the ⌘⇧N binding must make the project, not only navigate');
+  assert.doesNotMatch(chord, /navigate\(/, 'the ⌘⇧N binding goes to the shelf first');
+  // The rail's "New chat" is the third way in, and the same.
+  const rail = /aria-label="New chat"[\s\S]{0,300}?onClick=\{newProject\}/.test(layout);
+  assert.ok(rail, 'the rail\'s New chat does not make a project');
 });
 
-test('the dashboard both contributes commands and provides the dialog', () => {
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C3). It asked that the dashboard LEND the shell its create dialog. The dialog is gone; what the test
+//   guarded survives as: the shelf contributes commands to the palette AND its own controls make a project in one click through the same
+//   hook as every other entry point (the header button, and the empty state's action), with nothing left of a dialog. ]]
+test('the dashboard contributes commands and makes a project in one click, with no dialog', () => {
   // THE DEFECT: the project shelf contributed nothing, so the palette could not act on the one
   // route whose entire purpose is starting and managing projects.
   const dash = read('routes', 'dashboard.tsx');
-  assert.match(dash, /useProvideNewProject\(/, 'the dashboard must lend the shell its create dialog');
+  assert.match(dash, /useCreateProject\(\)/, 'the dashboard must make a project through the shared hook');
   assert.ok(
     COMMANDS.some((c) => c.file.endsWith('dashboard.tsx')),
     'the dashboard must contribute commands',
   );
+  assert.equal((dash.match(/onClick=\{createProject\}/g) ?? []).length, 2, 'the header button and the empty state must both create');
+  assert.doesNotMatch(dash, /CreateProjectModal|useProvideNewProject|setShowCreate|name="projectName"|name="projectTemplate"/, 'a create dialog is still in the dashboard');
 });
 
-test('a request made before the dashboard exists is honoured when it mounts', () => {
-  // Pressing ⌘⇧N inside a conversation navigates first; the dialog has to survive that hop, and
-  // the flag has to be cleared as it is consumed or every later visit re-opens the dialog.
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C3). It asked that a request made before the dashboard exists be honoured when it mounts, because the dialog
+//   lived in the dashboard. Nothing lives there now, and the property it guarded (⌘⇧N from inside a conversation must work) holds more simply:
+//   THE SHELL MAKES THE PROJECT ITSELF, so there is no request to arm, no hop to the shelf and nothing to leave set, and no stale flag to
+//   re-open anything on a later visit. The shell module keeps no new-project state at all. ]]
+test('a project can be made from any screen: the shell holds no pending request for the dashboard to honour', () => {
   const shell = read('lib', 'shell.tsx');
-  assert.match(shell, /newProjectPending/);
-  assert.match(shell, /clearNewProjectPending\(\)[\s\S]{0,60}open\(\)/, 'the pending request must be cleared as it is consumed');
+  assert.doesNotMatch(shell.replace(/\/\/.*$/gm, ''), /newProject|NewProject/, 'the shell still holds new-project state');
+  const layout = read('components', 'layout.tsx');
+  assert.match(layout, /useCreateProject\(\)/, 'the shell does not create projects itself');
+  const hook = read('lib', 'use-create-project.ts');
+  assert.match(hook, /navigate\(`\/projects\/\$\{row\.id\}`/, 'the hook does not open the project it made');
 });
 
 test('a command that needs a live connection is gated on one, not offered blindly', () => {

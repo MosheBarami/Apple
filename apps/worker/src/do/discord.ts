@@ -268,15 +268,31 @@ export class DiscordDO extends DurableObject<Env> {
       // Revocable from either end. From Discord the caller is a signed interaction; from StudPilot the
       // caller is a verified JWT. Neither can revoke the other's OTHER links, only this pairing.
       const { discordUserId, appleUserId } = (await req.json()) as { discordUserId?: string; appleUserId?: string };
+
+      // FROM THE STUDPILOT SIDE the unlink also withdraws the codes that account has minted and nobody has redeemed yet. A code is
+      // a pass to make a link for that account, good for ten minutes: left alone it could be redeemed AFTER the person disconnected
+      // Discord or deleted the account, and would make a link to an account that no longer wants one. Settings' Disconnect and the
+      // account deletion both come through here, so both are covered. `codesRemoved` says how many there were.
+      let codesRemoved = 0;
+      if (appleUserId && !discordUserId) {
+        for (const [key, row] of await this.ctx.storage.list<CodeRow>({ prefix: 'code:' })) {
+          if (row.appleUserId === appleUserId) {
+            await this.ctx.storage.delete(key);
+            codesRemoved += 1;
+          }
+        }
+        if (codesRemoved > 0) await this.reschedule();
+      }
+
       let holder = discordUserId ?? '';
       if (!holder && appleUserId) holder = (await this.ctx.storage.get<string>(`owner:${appleUserId}`)) ?? '';
-      if (!holder) return json({ removed: false });
+      if (!holder) return json({ removed: false, codesRemoved });
       const link = await this.ctx.storage.get<LinkRecord>(`link:${holder}`);
-      if (!link) return json({ removed: false });
-      if (appleUserId && link.appleUserId !== appleUserId) return json({ removed: false });
+      if (!link) return json({ removed: false, codesRemoved });
+      if (appleUserId && link.appleUserId !== appleUserId) return json({ removed: false, codesRemoved });
       await this.ctx.storage.delete(`link:${holder}`);
       await this.ctx.storage.delete(`owner:${link.appleUserId}`);
-      return json({ removed: true });
+      return json({ removed: true, codesRemoved });
     }
 
     /*

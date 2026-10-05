@@ -1,0 +1,6 @@
+/* The two copyable lines in Settings > Share. Tokens only, flat. */
+
+.copy-line { display: grid; gap: var(--space-2); margin-block-start: var(--space-3); }
+.copy-line__row { display: flex; gap: var(--space-2); align-items: center; }
+.copy-line__field { flex: 1 1 auto; min-width: 0; font-family: var(--font-mono); font-size: var(--text-sm); }
+.copy-line :is(input, button):focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }

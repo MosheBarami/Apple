@@ -132,7 +132,9 @@ export async function loadWithReact(entry, name) {
   const out = join(dir, 'bundle.mjs');
   execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'), [
     wrapper, '--bundle', '--format=esm', '--platform=neutral', '--main-fields=main,module',
-    `--alias:react=${stub}`, '--outfile=' + out, '--log-level=error',
+    // `import.meta.env` is the production shape, as in tests/ui-bundle.mjs: a module that reads MOCK_MODE (lib/mock.ts folds
+    // `import.meta.env.DEV`) must load under node, and under node it is the app's real, non-mock mode.
+    `--alias:react=${stub}`, '--define:import.meta.env={"DEV":false,"PROD":true,"MODE":"test"}', '--outfile=' + out, '--log-level=error',
   ], { stdio: 'pipe' });
   return import(out);
 }

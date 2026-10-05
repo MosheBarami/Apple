@@ -136,7 +136,9 @@ browser            worker (studpilot.app)                       Roblox          
   hyphens, nothing else; anything else is an ordinary sign-in) stores `purpose: "reauth"` with the state, asks Roblox for a fresh
   login (`prompt=login` and `max_age=0`; section 6, item 8 says what is and is not confirmed about them) and sends the browser back to
   `/settings?resume=<action>`. At the callback a re-authentication never makes an account (an unlinked Roblox account is refused with
-  403, and the authorization it was just given is revoked), and on success the worker writes `roblox_identities.reauth_at`, the time by
+  403, and the authorization it was just given is revoked; the one exception is an account whose Roblox access was lost and wiped, which is
+  found by the one-way code the wipe left next to its account id in `roblox_wiped`, must prove itself as a sign-in does, and is linked again:
+  planning/proof/M2/LEGAL-CLAIMS.md section 10), and on success the worker writes `roblox_identities.reauth_at`, the time by
   its own clock, as the last step, after the sign-in token has been minted. An ordinary sign-in writes nothing. That record is what
   decides a Roblox-only account's gate, in two places: `GET /api/me/export` and `POST /api/me/delete` refuse a Roblox-only account
   (its address is the placeholder) with 403 `reauth_required` unless it was written in the last ten minutes, and
@@ -168,7 +170,8 @@ browser            worker (studpilot.app)                       Roblox          
 - **Export and erasure.** Both tables are in the account export (`user-export.ts`; the sealed token and the
   lease are withheld and the file says why) and in account erasure (`erasure.ts`): the grant is revoked at Roblox
   first, then the token table is swept, with a receipt line each and a note on whether Roblox was reached. **The `roblox_identities` row
-  is swept last, and only when every other step succeeded.** For a Roblox-only account that row is the proof of its re-authentication
+  is swept last of the stores, just before the Supabase account, and only when every other step succeeded; and when the sign-in then cannot be removed it is put back
+  (LEGAL-CLAIMS section 10).** For a Roblox-only account that row is the proof of its re-authentication
   (`reauth_at`) and the thing a re-authentication needs to exist at all, so while any other step has failed it stays, the receipt carries a
   `failed` step for it that says to run the deletion again, and the run that completes the rest removes it. Swept earlier, a part-failed
   deletion (207, "run it again") could not be run again by such an account: the retry answered 403 `reauth_required` (section 13, item 1).
@@ -362,6 +365,11 @@ services. In order of how likely each is to need a fix:
    token anywhere; for one whose link was dropped as stale, revoking may also end the old, dead user's token, which nobody holds. Not
    observed. If Roblox words an already-revoked token differently the revoke is logged (`decline revoke`) and the record is deleted
    all the same.
+12. **D-14 (2026-10-05): the lost-grant wipe and the daily introspection check.** `v1/token/introspect` was written from the endpoint list in
+   `planning/roblox-oauth-setup.md` and never observed; whether it accepts a refresh token and answers `{"active": false}` for a revoked one is the
+   first thing to watch (an `inactive` answer is confirmed by a refresh before anything is deleted, so a misreading wipes nobody). Also unobserved:
+   GoTrue's admin `PUT` removing a metadata key set to `null`, and PostgREST taking the `sb_secret_` key in `apikey` alone for the one profile `PATCH`.
+   The full list, with the guards, is in `planning/proof/M2/LEGAL-CLAIMS.md` section 9.4.
 
 ## 7. Deferred, and not done here
 
