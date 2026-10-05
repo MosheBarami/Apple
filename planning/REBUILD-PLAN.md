@@ -21,7 +21,7 @@ Everything stays on Cloudflare Workers with Supabase and D1: no new paid product
 - The M4 decision rule: the harness executes only a block the model selected in this run.
 - The frozen 60 dev requests and the M3 harness, for measuring the new agent against the old one.
 
-## Stages (each one merged, deployed and measured before the next)
+## Stages, first draft (replaced by the revised stages below)
 
 - **R1, the shell.** Add `apps/studio` (Vite with `@flue/vite` and `@cloudflare/vite-plugin`, React 19, Kumo,
   Tailwind 4). It holds one Flue agent, `StudPilot`, on Workers AI through AI Gateway, with the four read-only tools
@@ -36,10 +36,39 @@ Everything stays on Cloudflare Workers with Supabase and D1: no new paid product
 - **R5, the switch.** Serve `/app` from the new worker on studpilot.app. Remove the old SessionDO agent loop once the
   5-request smoke test is not worse than the M3 baseline in any area. Data moves only after 7 days (handoff M1).
 
+## The open-source base (owner request, 2026-10-05, second message)
+
+The owner named four Roblox projects to rebuild around. Checked 2026-10-05:
+
+| Project | License | What it is | How we use it |
+| --- | --- | --- | --- |
+| [Nixera-Studio/roblox-ai-studio](https://github.com/Nixera-Studio/roblox-ai-studio) | MIT | Luau plugin (long-polls a backend, one undo step per action) with ScriptOps, InstanceOps, LogOps, PlaytestOps, TestOps and an in-Studio chat panel; a Node backend where a Coordinator hands work to a Planner, Coder, Reviewer and Test Engineer, with a `run_tests` QA loop | **The core.** Its plugin ops come into `apps/studpilot-plugin` behind our allowlist (`Commands.luau`). Its agent team becomes Flue subagents. Its chat panel becomes a second front end in Studio. NOT `VisionOps` or `capture_viewport` (no vision, plan 3.1); `RunLuau` only if it passes the allowlist |
+| [Chrrxs/robloxstudio-mcp](https://github.com/Chrrxs/robloxstudio-mcp) (maintained fork of boshyxd/robloxstudio-mcp, which is archived) | MIT | MCP server plus a roblox-ts plugin; 49 tools including line-level script edits, `grep_scripts`, `solo_playtest`, `get_runtime_logs`, `find_and_replace_in_scripts` | **Tool contract.** Our tool names, schemas and descriptions follow its definitions where they overlap, so external MCP clients and our agent see one surface. Its playtest and runtime-log handlers are the reference for ours |
+| [madebyshaurya/stud](https://github.com/madebyshaurya/stud) | **AGPL-3.0** | Tauri desktop app (React 19 with prompt-kit) plus a Rust bridge and a plugin | **Ideas only, no code.** Copying it would put all of StudPilot, a hosted service, under the AGPL. The owner decides: BLOCKED.md N10. Ideas taken: show each action live, one undo waypoint per AI change, diff view for script edits |
+| [iamjrmh/mcpbridge](https://github.com/iamjrmh/mcpbridge) | MIT | Local MCP server that talks to Studio and Blender over localhost ports | **Not used.** Local only, and what it does is covered by the two above. Listed for credit |
+
+All four assume a local backend on the creator's machine. StudPilot is hosted, so their transports are
+replaced by our pairing code and the cloud long-poll; everything else keeps their shape. The MIT notices
+go to `THIRD_PARTY_NOTICES.md`.
+
+## Stages, revised for the open-source base
+
+- **R1, the shell (built).** `apps/studio`: a Flue agent with Kumo and `@flue/react`, reading a place through
+  `StudioGate`.
+- **R2, the Studio side.** Port roblox-ai-studio's ScriptOps, InstanceOps, LogOps, PlaytestOps and TestOps
+  into the plugin, behind the allowlist, with one undo waypoint per call. Tool schemas follow robloxstudio-mcp.
+  `StudioGate` gains the write tools; the UI asks for approval before each write.
+- **R3, the team.** Coordinator, Planner, Coder, Reviewer and Test Engineer as Flue subagents, with the
+  `run_tests` QA loop. The M4 rule still holds: blocks are chosen only by the model.
+- **R4, the app.** `/app` rebuilt with Kumo; plus the in-Studio chat panel from roblox-ai-studio talking to
+  the same agent.
+- **R5, the site.** As before.
+- **R6, the switch.** As R5 before: smoke test against the M3 baseline, then retire the old loop.
+
 ## Open PRs at the decision
 
 - #34 (app): merged before the decision (57eec56f).
-- #35 (site): its Playwright contrast check fails on /catalog. R4 replaces those pages, so there is no fix cycle;
-  its text, legal and docs changes are taken into R4.
+- #35 (site): its Playwright contrast check fails on /catalog. R5 replaces those pages, so there is no fix cycle;
+  its text, legal and docs changes are taken into R5.
 - #36 (M3 harness): still needed to measure the old agent as the baseline; merge once green.
 - M4 (the cleanup branch): continues, because it shrinks what R2 has to port.

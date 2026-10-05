@@ -48,3 +48,8 @@ through the stand-in until 2027-01-02.
   submit it in the Roblox Creator Dashboard.
 
 ## Anytime
+
+### N10. Copy code from stud (AGPL-3.0), or use its ideas only?
+madebyshaurya/stud is AGPL-3.0. Copying its code into StudPilot would require the whole hosted product to be
+offered under the AGPL, source included, to every user. Until the owner decides, the rebuild takes its
+ideas only (planning/REBUILD-PLAN.md). The other three named projects are MIT and are used.
