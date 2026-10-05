@@ -19,7 +19,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { listShots } from '../scripts/eval/lib/piece-files.mjs';
 import { DEFAULT_RUBRIC, loadRubric, prepare } from '../scripts/eval/prepare-critics.mjs';
-import { unsupportedClaims, unwrapResults, writeVerdicts } from '../scripts/eval/write-verdicts.mjs';
+import { uiRequiredBecause, unsupportedClaims, unwrapResults, writeVerdicts } from '../scripts/eval/write-verdicts.mjs';
 import { aggregate, collect, pctDown, renderMarkdown } from '../scripts/eval/baseline.mjs';
 import { AREAS } from '../scripts/eval/lib/verdict.mjs';
 
@@ -77,6 +77,7 @@ function piece(root, milestone, id, o = {}) {
     aborted: o.aborted ?? null,
     spend: { before: o.spendBefore ?? { estimatedMonthUsd: 3.9, monthBillableNeurons: 100, dayNeurons: 10 }, after: o.spendAfter ?? { estimatedMonthUsd: 4.0, monthBillableNeurons: 120, dayNeurons: 30 } },
   };
+  if (o.dropFunctionalChecks) delete manifest.functionalChecks; // an older or hand-made manifest: no record of the checks at all
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest));
   return dir;
 }
@@ -537,6 +538,26 @@ test('WIRING: THE UI AREA ON A UI PIECE. Both critics marking it N/A is refused 
   const byCategory = judged('U01', {}, {});
   assert.equal(byCategory.status, 'unevaluable');
   assert.match(byCategory.reasons.join('\n'), /ui: both critics marked UI\/UX N\/A, but the request is in the UI category/);
+  // a piece that built BOTH a world and a screen UI (kind 'both'), in a category that is not UI: the screen UI is still there, and the area cannot be N/A
+  const bothShots = ['overview.png', 'three-quarter.png', 'close-up.png', 'spawn-eye.png', 'ui-1920x1080.png', 'play-1.png'];
+  const bothView = { shotsViewed: bothShots };
+  for (const id of ['P03', 'S01', 'Z01']) {
+    const v = judged(id, { kind: 'both', shots: bothShots }, { a: critic({}, bothView), b: critic({}, bothView) });
+    assert.equal(v.status, 'unevaluable', `${id}: a world+UI piece whose critics both marked UI N/A`);
+    assert.equal(v.pass, false, id);
+    assert.match(v.reasons.join('\n'), /ui: both critics marked UI\/UX N\/A, but the harness found a screen UI in what was built/, id);
+  }
+  // CONTROL: the same piece with one critic scoring the UI is judged on the pictures, and passes
+  const scored = judged('P04', { kind: 'both', shots: bothShots }, { a: critic({ ui: 9 }, bothView), b: critic({}, bothView) });
+  assert.equal(scored.status, 'pass', JSON.stringify(scored.reasons));
+  // the rule itself, by kind: a UI or a world+UI piece needs the area, a world-only piece and an empty place do not, a UI-category request always does
+  const need = (kind, category) => uiRequiredBecause({ manifest: { build: kind === undefined ? undefined : { kind } }, category });
+  assert.match(need('ui', 'props'), /screen UI/);
+  assert.match(need('both', 'props'), /screen UI/);
+  assert.equal(need('world', 'props'), null);
+  assert.equal(need('none', 'props'), null);
+  assert.match(need('world', 'ui'), /UI category/);
+  assert.match(need(undefined, 'ui'), /UI category/);
   // CONTROLS: a props piece with a world build may leave the UI area N/A (that is the rule), and one critic scoring the UI is enough
   assert.equal(judged('P02').status, 'pass');
   const shots7 = ['overview.png', 'three-quarter.png', 'close-up.png', 'spawn-eye.png', 'play-1.png', 'play-2.png', 'play-3.png'];
@@ -566,6 +587,31 @@ test('WIRING: THE PLAY TEST COUNTS ZERO ONLY WITH EVIDENCE. Every missing source
   const seen = judged('P01', { playTest: { ...base, console: null, logServer: { errors: 2, warnings: 0, first: [] }, errors: 2 } });
   assert.equal(seen.status, 'fail');
   assert.match(seen.reasons.join('\n'), /play test: 2 errors/);
+});
+
+test('WIRING: A MANIFEST WITH NO FUNCTIONAL-CHECK RECORD FAILS CLOSED, not open: a piece without functional checks is unevaluable, never a pass', () => {
+  // run-piece.mjs always writes the field, so an absent one is an older or hand-made manifest; reading it as "everything passed" would
+  // let such a piece satisfy clause 4 for free. Every other fixture here has the record, so the absent case is built on purpose.
+  const control = judged('P01', {});
+  assert.equal(control.status, 'pass', `CONTROL: the same piece WITH a passing check record passes: ${JSON.stringify(control.reasons)}`);
+  for (const [label, o] of [
+    ['no record at all', { dropFunctionalChecks: true }],
+    ['a null record', { functionalChecks: null }],
+    ['an empty record', { functionalChecks: {} }],
+    ['defined but with no results', { functionalChecks: { defined: true } }],
+    ['defined with an empty list of results', { functionalChecks: { defined: true, results: [] } }],
+    ['explicitly not defined', { functionalChecks: { defined: false } }],
+  ]) {
+    const v = judged('P01', o);
+    assert.equal(v.status, 'unevaluable', label);
+    assert.equal(v.pass, false, label);
+    assert.equal(v.functionalChecksEstablished, false, label);
+    assert.match(v.reasons.join('\n'), /functional checks: (none are defined for this request yet|marked defined but no result was recorded)/, label);
+  }
+  // a record with a failing check is a failure, and one with only passing checks is the pass the control shows
+  const failing = judged('P02', { functionalChecks: { defined: true, results: [{ id: 'a', pass: true }, { id: 'b', pass: false }] } });
+  assert.equal(failing.status, 'fail');
+  assert.match(failing.reasons.join('\n'), /functional check "b" failed/);
 });
 
 test('WIRING: passIgnoringFunctionalChecks counts a piece only when the checks are the ONLY gap, through writeVerdicts', () => {
