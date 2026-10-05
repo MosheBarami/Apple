@@ -17,7 +17,14 @@
    genuine AI Elements are drawn by their own Tailwind classes over Tailwind's preflight, scoped to the
    same selector (styles/ai-elements.css). Unlayered, these rules would otherwise beat every utility. */
 body { margin:0; min-width:320px; }
-button,input,select,textarea { font:inherit; color:inherit; }
+button,input,select,textarea { font:inherit; }
+/* THE COLOUR RESET STOPS AT THE AI ELEMENTS SURFACES, like every other bare-element rule here. Unscoped, an
+   unlayered `color:inherit` outranks every `@layer utilities` colour on a <button>, whatever its specificity,
+   so `text-primary-foreground` (= --accent-ink) never reached the shadcn primary button: the Send arrow was
+   drawn in the muted ink of the toolbar around it, on the accent fill (1.18:1 dark, 1.10:1 light), and the
+   Build button's label in --ink (2.77:1). Inside the scope Tailwind's preflight already inherits (the base
+   layer, styles/ai-elements.css), and a utility beats it, which is what the components are written for. */
+button:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),input:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),select:where(:not(.aie, .aie *, [data-slot], [data-slot] *)),textarea:where(:not(.aie, .aie *, [data-slot], [data-slot] *)) { color:inherit; }
 button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
 /* VARIANT 2 OF 5 — CHROME, and it is what a bare <button> is in this product.
    Measured: rgba(255,255,255,.06) fill, 1px rgba(255,255,255,.18) border, rgba(255,255,255,.78)

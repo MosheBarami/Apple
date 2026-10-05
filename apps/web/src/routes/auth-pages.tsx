@@ -96,10 +96,10 @@ function DoneMark() {
 /**
  * The disc a status card opens with.
  *
- * `alert` is the ONLY variant that takes a colour, and the reason is arithmetic rather than taste:
- * `--good` (#99d4b0) and `--accent` (#8fd3ab) are three points apart, so a green tick above the
- * green primary button is two green things on one screen — the exact defect docs/DESIGN-LOCK.md
- * rule 4 names. Success reads from the headline and from the single accented action beneath it.
+ * `alert` is the ONLY variant that takes a colour (`--bad`). A success tick in `--good` above the
+ * accent primary button would be two saturated things competing on one screen — the defect
+ * docs/DESIGN-LOCK.md rule 4 names. Success reads from the headline and from the single accented
+ * action beneath it.
  */
 function CardMark({ kind }: { kind: 'mail' | 'alert' | 'done' }) {
   return (

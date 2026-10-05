@@ -140,3 +140,15 @@
   /* The surface's own text colour, as upstream's `body { @apply bg-background text-foreground }`. */
   :where(.aie) { color: var(--color-foreground); }
 }
+
+/*
+ * UPSTREAM'S DESTRUCTIVE HOVER LIGHTENS THE FILL UNDER A WHITE LABEL THAT NEVER CHANGES. The shadcn destructive
+ * Button is `bg-destructive text-white hover:bg-destructive/90` (and `dark:bg-destructive/60` at rest), so in the
+ * dark theme, where --bad is the light red a status line is read in, pressing toward it takes the fill from 60% to
+ * 90% of that red and the label from 5.1:1 to 3.1:1 (measured by drawing it, rendered.test.mjs). The vendored
+ * component is byte-pinned, so the hover step is corrected here: 64% keeps a step you can see above the 60%
+ * rest and the label at 4.6:1 or better on every surface. Light is untouched (a solid --bad, and 90% is 5.1:1).
+ */
+:root:not([data-theme='light']) .hover\:bg-destructive\/90:hover {
+  background-color: color-mix(in srgb, var(--color-destructive) 64%, transparent);
+}
