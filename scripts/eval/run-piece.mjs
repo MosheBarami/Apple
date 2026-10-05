@@ -256,8 +256,21 @@ export async function initBaseline(opts, deps) {
 const isIdle = (info) => info?.agentStatus === 'idle';
 // SIGHUP is what closing the terminal window sends: Node's default for it ends the process at once, like the other two.
 const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+// What a person presses again to kill the runner at once. SIGHUP is not one of them: closing a terminal can deliver it twice
+// (zsh forwards the kernel's SIGHUP to its jobs about a millisecond later), and a second SIGHUP met by Node's default would
+// end the runner with the run live and nothing written. So SIGHUP stays held until the piece is over.
+const KILL_AGAIN = new Set(['SIGINT', 'SIGTERM']);
+
+/** With the terminal gone, a write to it fails with an 'error' event (EIO, ENXIO), which Node turns into a crash if nobody
+ *  listens. The runner must still stop a live run and write the manifest, so the failure is ignored: nobody is there to read it. */
+export function ignoreBrokenTerminal(streams = [process.stdout, process.stderr]) {
+  for (const s of streams) s.on('error', () => undefined);
+}
 
 export async function runPiece(opts, deps) {
+  // A log line never ends the piece: with the terminal gone a write can throw, and the stop and the manifest still have to happen.
+  const rawLog = deps.log;
+  deps = { ...deps, log: (m) => { try { rawLog(m); } catch { /* the terminal is gone */ } } };
   const t0 = deps.now();
   let interrupted = null; // the name of the first SIGINT, SIGTERM or SIGHUP that arrived
   const timer = makeTimer(deps, () => interrupted);
@@ -349,19 +362,20 @@ export async function runPiece(opts, deps) {
 
   // Node's default for SIGINT, SIGTERM and SIGHUP ends the process at once, without running the `finally` below, which would leave a paid run
   // going with nothing in the manifest. So the first signal is only noted: the step in flight finishes (the run's poll below does not
-  // wait for its next tick), no further step begins, and the `finally` stops a live run and writes the files. The handlers are taken off
-  // at the first signal, so a second Ctrl-C kills the process the ordinary way.
+  // wait for its next tick), no further step begins, and the `finally` stops a live run and writes the files. The SIGINT and SIGTERM
+  // handlers are taken off at the first signal, so a second Ctrl-C kills the process the ordinary way; SIGHUP stays held (KILL_AGAIN).
   const signals = deps.signals ?? process;
   let wake;
   const interruption = new Promise((resolve) => { wake = resolve; });
   const listeners = SIGNALS.map((name) => [name, () => {
     if (interrupted) return;
     interrupted = name;
-    unlisten();
+    release();
     deps.log(`[eval] ${name}: stopping the run if one is live, then writing the manifest; press Ctrl-C again to kill the runner at once`);
     wake();
   }]);
   const unlisten = () => { for (const [name, fn] of listeners) signals.off(name, fn); };
+  const release = () => { for (const [name, fn] of listeners) if (KILL_AGAIN.has(name)) signals.off(name, fn); };
   for (const [name, fn] of listeners) signals.on(name, fn);
 
   try {
@@ -863,6 +877,7 @@ async function main() {
     console.error(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 14).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
     return;
   }
+  ignoreBrokenTerminal();
   const deps = defaultDeps(opts);
   deps.log(`[eval] project ${opts.projectId}, user ${opts.userId}, API ${deps.api.base}, admin key ${deps.adminKey ? 'present' : 'MISSING'}${deps.envFile ? ` (from ${deps.envFile})` : ''}`);
   try {
