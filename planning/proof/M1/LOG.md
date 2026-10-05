@@ -219,3 +219,14 @@
   exact copy.
 - The only difference between the two databases is `notifications`: 1 row in the new database that the old one
   lacks, written after the switch, which shows writes now go to the new database.
+
+## Merge and deploy of the cutover (2026-10-04, 20:50 UTC)
+- PR #26 merged as `3be704ca` (CI green except "Workers Builds", fixed below). Deployed with
+  `node infra/deploy-worker.mjs studpilot` from a clean clone (version `7f6ca0b9`): `studpilot.app` serves
+  `3be704ca` = main HEAD, with no `-dirty`.
+- **Workers Builds** (the Cloudflare Git integration), read through its API:
+  - The branch trigger named the deleted `wrangler.apple.jsonc`, which is why it failed on every PR; it now
+    names `wrangler.studpilot.jsonc`.
+  - The production trigger on `main` ran `npx wrangler deploy` from the repository root, bypassing
+    `deploy-worker.mjs` and its stamp. It was deleted.
+  - Proof: `platforms/workers-builds.json`. `docs/DEPLOY-INTEGRATION.md` updated.

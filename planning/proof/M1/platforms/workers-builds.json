@@ -1,0 +1,10 @@
+[
+ {
+  "trigger_name": "Deploy non-production branches",
+  "build_command": "cd apps/worker && npx tsc --noEmit -p .",
+  "deploy_command": "cd apps/worker && npx wrangler versions upload --config wrangler.studpilot.jsonc --var BUILD_SHA:$(git rev-parse --short HEAD)",
+  "branch_includes": [
+   "*"
+  ]
+ }
+]

@@ -11,6 +11,14 @@ node infra/deploy-worker.mjs studpilot          # API, from apps/worker/wrangler
 node infra/deploy-static.mjs                    # site + app -> D1 static store
 ```
 
+**Current state (2026-10-05, measured through the Workers Builds API):** the Worker has one build trigger,
+"Deploy non-production branches". It runs on every branch: it typechecks `apps/worker` and then runs
+`wrangler versions upload --config wrangler.studpilot.jsonc`, which uploads a version without moving traffic.
+The production trigger on `main` (`npx wrangler deploy` from the repository root, which bypassed
+`infra/deploy-worker.mjs` and its `BUILD_SHA` stamp) was deleted in M1. The branch trigger had been failing on
+every PR because it named the deleted `wrangler.apple.jsonc`. Production deploys go only through
+`node infra/deploy-worker.mjs studpilot`.
+
 `apps/worker/wrangler.studpilot.jsonc` is the only Worker config in the repository (the former
 `wrangler.jsonc`, the `golem` Worker's, was deleted in handoff step 1.3). The rest of this page is the
 history of the Workers Builds integration.
