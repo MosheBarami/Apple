@@ -123,6 +123,15 @@ test('CLAUSE 4, THE DECISION: no functional checks defined is NOT a pass: uneval
   const empty = computeVerdict(good({ functionalChecks: { defined: true, results: [] } }));
   assert.equal(empty.pass, false);
   assert.match(empty.reasons.join('\n'), /no result was recorded/);
+  // and so is no record at all (the key absent, or null): the rule itself fails closed, not only the caller that reads the manifest
+  for (const [label, functionalChecks] of [['absent', undefined], ['null', null]]) {
+    const { functionalChecks: _dropped, ...rest } = good();
+    const v = computeVerdict(functionalChecks === undefined ? rest : { ...rest, functionalChecks });
+    assert.equal(v.pass, false, label);
+    assert.equal(v.status, 'unevaluable', label);
+    assert.equal(v.functionalChecksEstablished, false, label);
+    assert.match(v.reasons.join('\n'), /functional checks: none are defined for this request yet/, label);
+  }
 });
 
 test('the side figure never turns a failing piece into a passing one: any other failed clause clears it', () => {
