@@ -371,21 +371,21 @@ old page is in `TEST-LEDGER.md`.
 
 One layout, `Base.astro`, for every route (the docs and legal layouts sit on it). Header: How it works, Catalog, Pricing, Docs, Blog,
 Discord (`/discord`), Sign in (`/app/login`) and the primary "Start free (beta)" (`/app/signup`); on a phone the links fold into a panel and the
-primary button stays in the bar. Footer: product links, docs links, Privacy, Terms, Status, Discord, Contact, the operator line
-"Apple Labs" exactly as it was (owner item N6) and the beta note. The theme toggle keeps its stored key, `apple-theme` (a browser key already in
+primary button stays in the bar. Footer: product links, docs links, Privacy, Terms, Status, Discord, the contact address and the beta note (the first pass kept
+the operator line "Apple Labs" for owner item N6; the owner has since decided the operator is StudPilot and the contact support@studpilot.app, see 12.5). The theme toggle keeps its stored key, `apple-theme` (a browser key already in
 people's browsers, `AGENTS.md` section 2; the site and the app both read it, so there was no second key to read).
 
 Pages: the landing (a left-aligned headline beside a fixed-size slot for a real screenshot, four kinds of piece in a sticky-heading list, a rail of
 four steps, the bar stated in a recessed band, a flat price strip, a closing call), `/how-it-works` (eight steps, each labelled **Works today**,
 **Partly works today** or **Being built**), `/catalog` (the four kinds, each with three example requests copied word for word from the frozen
 dev test set, "No examples yet"), `/pricing` (the same figures and guards, a new layout, no Enterprise, no checkout), `/blog` (a content
-collection of Markdown, one post, "What works today in the StudPilot beta"), `/404`. `/status`, `/discord`, the docs and the legal pages are kept and
-take the new header and footer; their inner structure is untouched. The four removed routes, `/models`, `/proof`, `/showcase` and `/changelog`, are
+collection of Markdown, one post, "What works today in the StudPilot beta"), `/404`. `/status`, `/discord` and the legal pages are kept and
+take the new header and footer; their inner structure is untouched (the docs were rewritten in the fix cycle, 12.9). The four removed routes, `/models`, `/proof`, `/showcase` and `/changelog`, are
 Astro redirects (to `/`, `/catalog`, `/catalog`, `/blog`), so the built files overwrite the old static rows.
 
 The look, using only the tokens: no gradient, no shadow on a card, no motion of its own (nothing reveals on scroll, nothing loops), system
-fonts, one accent. Measured with `scripts/check-landing-budget.mjs` (nothing raised): markup plus stylesheets **10,382 B gzip of 20,000** (was
-17,481), inline JavaScript **2,882 B in 2 blocks of 36,000** (was 23,714 in 4), images **2,996 B of 40,000** (was 25,873). Lighthouse on the local preview (mobile): Accessibility 100, Best Practices 100 and SEO 100 on `/` and on `/pricing`; a local trace of `/pricing`
+fonts, one accent. Measured with `scripts/check-landing-budget.mjs` (nothing raised) in the first pass: markup plus stylesheets 10,382 B gzip of 20,000 (was
+17,481), inline JavaScript 2,882 B in 2 blocks of 36,000 (was 23,714 in 4), images 2,996 B of 40,000 (was 25,873). After the fix cycle the limits were lowered and the figures are in 12.7. Lighthouse on the local preview (mobile): Accessibility 100, Best Practices 100 and SEO 100 on `/` and on `/pricing`; a local trace of `/pricing`
 read LCP 74 ms and CLS 0.00. (Lighthouse's performance score is the step 2.5 measurement, on the deployed site.) The only script on any
 page is the theme toggle and the menu (two inline blocks, 2,882 B raw: the pre-paint theme read and the click and Escape handlers).
 
@@ -420,10 +420,8 @@ mark, and `ObjectIcon` (the plugin page uses it).
 
 ### 12.3 Where the task text and the code disagree, and what I wrote
 
-- **Roblox sign-in.** The task says Roblox and email sign-in are live. `ROBLOX-SIGNIN.md` says nothing is switched on or deployed
-  (`/auth/roblox/status` answers `false` until three secrets are on the Worker), and the Roblox app is in private mode. The pages say email sign-in
-  works and Roblox sign-in "is being switched on", which is true either way, and Google and Discord are "coming". If the owner has switched Roblox on by
-  deploy time, change "being switched on" in four places (`how-it-works`, the landing rail, the blog post, and `tests/how-it-works.test.mjs`).
+- **Roblox sign-in.** The first task said Roblox and email sign-in were live while `ROBLOX-SIGNIN.md` said nothing was switched on; the pages then said "being switched on".
+  The owner confirmed on 2026-10-05 (D-10) that Sign in with Roblox is live and he has used it; the pages now say it works, and Google and Discord "are coming" (12.5).
 - **Screenshots in the step list.** The plan's step 4 mentions Studio screenshots. They reach the browser only from a play test or from the `look`
   tool (vision, removed in M3), and the app's strip for them is another lane's. The page says "a live step list" and no more.
 - **The block engine and the checks** are worded as "being built to", with "Partly works today" where the tools exist (play test, button presses,
@@ -441,18 +439,135 @@ mark, and `ObjectIcon` (the plugin page uses it).
   `planning/rename-allowlist.txt` (six lines for deleted files removed; the pins of `Base.astro`, `Footer.astro` and `theme-on-every-route` set to the
   measured counts; one line added for the operator-line guard).
 
-### 12.4 Open, and not made true here
+### 12.4 Open at the end of the first pass, and where each stands now
 
-1. The screenshot slots are empty (`screens.json` is `[]`): the captures step fills them with real product UI, and `no-fake-output` then
-   requires each picture's hash. The empty frame says "A real screenshot goes here"; do not deploy the site before the captures land.
-2. `infra/deploy-showcase.mjs` still exists and would put the old gallery back over the `/showcase` redirect. It must not be run again;
-   retiring it (and `docs/evidence/ui-showcase`) is a separate decision.
-3. `docs/evidence/pixels/baseline` (87 frames of the old look) is stale; `scripts/check-pixels.mjs` rule 4 fires on every frame until it is re-taken
-   with `--write-baseline` once the app lane lands (DESIGN-SYSTEM section 7: once, not twice).
+1. The screenshot slots were empty (`screens.json` was `[]`) and the frame said "A real screenshot goes here": fixed in the fix cycle (12.7); there is no placeholder frame.
+2. `infra/deploy-showcase.mjs` still exists and would put the old gallery back over the `/showcase` redirect. It must not be run again; retiring it (and `docs/evidence/ui-showcase`)
+   is a separate decision. **Still open.**
+3. `docs/evidence/pixels/baseline` (87 frames of the old look) is stale; `scripts/check-pixels.mjs` rule 4 fires on every frame until it is re-taken with `--write-baseline` once
+   the app lane lands (DESIGN-SYSTEM section 7: once, not twice). **Still open.**
 4. Left alone on purpose: `public/assets/wall` and `data/asset-wall.json` (CI runs `check-asset-wall` over them; the owner library goes in M3);
-   `scripts/check-offer.mjs` still lists `changelog.astro` as an exception (harmless; its test uses the path as a fixture).
-5. Pre-existing, not mine: about 60 places in the docs, `/privacy` and `/terms` where a line break before an inline tag swallows the space
-   ("with it?Build the plugin"; the compiler drops the space between a word at a line end and a tag on the next line). `rendered-text-joins` does not
-   see it. Every page this step wrote is free of it, and `rendered-text-joins` now holds them to zero and names the docs, `/privacy` and `/terms` as a debt
-   that can only shrink (a listed page that is clean fails until it is removed), because the docs rewrite and the legal lane own those pages.
-   Also the docs Terminal demo keeps its output `visibility: hidden` until its own observer fires.
+   `scripts/check-offer.mjs` still lists `changelog.astro` as an exception (harmless; its test uses the path as a fixture). **Still open.**
+5. About 60 places in the docs, `/privacy` and `/terms` where a line break before an inline tag swallowed the space: fixed by one config setting (12.10), the legal pages included.
+   The docs Terminal demo that kept its output hidden is deleted with its page.
+
+### 12.5 Fix cycle 1 (2026-10-05): what the first review changed, and the new owner facts
+
+The first pass was reviewed (23 findings: 18 confirmed by two skeptics each, plus 5 minor). Every one is fixed or recorded here. The branch was
+rebased onto `main` at `f9c4bfe7`, which holds the design system (#32), the legal pages (#31) and Sign in with Roblox (#30). The owner's update of
+2026-10-05 (`planning/proof/OWNER-DECISIONS.md` D-10 to D-16) changed three facts the site states.
+
+| Owner fact | What the site now says | Held by |
+|---|---|---|
+| Sign in with Roblox is live and the owner has used it; Google and Discord are not switched on | "sign in with Roblox" works (step 1 of How it works, the landing rail, the blog, Getting started); Google and Discord "are coming" | `how-it-works.test.mjs` (step 1 is "Works today" and the worker and the app have the route), `blog-post.test.mjs` (no `signInWithOAuth` in the app), `docs-claims.test.mjs` |
+| The operator is StudPilot, the contact is support@studpilot.app (D-13) | `SUPPORT_EMAIL` in `packages/shared` is the one home; the footer prints it as a link; the footer's "Apple Labs" byline is gone (a byline that repeats the wordmark is the defect `one-operator.test.mjs` was written against); the docs layout, status page, FAQ and troubleshooting read the constant; the allowlist rows only these edits kept alive are removed (`build-allowlist.mjs --write`: UNCLASSIFIED 0) | `nav-and-routes.test.mjs`, `one-operator.test.mjs` (footer test restated), `landing.spec.ts` |
+| The Creator Store listing is unavailable (`STUDIO_PLUGIN_STORE_LIVE` is false) | see 12.6 | `plugin-honesty.test.mjs` and the restated `how-it-works` and `blog-post` tests |
+
+Not mine and left as they are: `privacy.astro`, `terms.astro` and `docs/privacy-and-data.astro` still say "Apple Labs" and the Gmail address until the
+legal lane's rewrite lands. Consequences the merge has to settle: `one-operator.test.mjs` tests 1 and 2 pin "the operator is not the product name",
+which D-13 reverses, so that lane must restate them; `titles.test.mjs` names those three pages as a shrink-only debt (their titles still use an em dash);
+`docs/privacy-and-data` imports `DocsKit`, so `DocsKit.astro` stays as an empty stub (12.9). The one edit I made outside `apps/site` for this fact is the
+`SUPPORT_EMAIL` literal in `packages/shared/src/index.ts`; the legal lane is expected to make the identical change, which merges cleanly.
+
+### 12.6 The plugin cannot be had today, and every page that talks about it says so
+
+`STUDIO_PLUGIN_STORE_LIVE` is false (known issue `plugin-not-in-creator-store`). The first pass said "it builds the piece in your own Studio place" in the hero,
+the meta description and the rail, labelled "Pair the plugin" "Works today", and put the only caveat in the last sentence of the page. Now, derived from the
+flag and never typed (each branch reads `STUDIO_PLUGIN_STORE_LIVE`; the day it is true every page says the plugin is free on the Creator Store):
+- the landing hero says the plugin is not open to new customers yet and the chat works now, directly under the promise, and so does the meta description
+  (the text a search result shows); rail step 02 says it; the closing call keeps its line;
+- How it works: "Pair the plugin" and "Follow the live steps" are **Partly works today** (not "Works today") while the listing is down; step 3 says StudPilot can
+  plan in the chat and cannot build in Studio;
+- the blog post: pairing and the checks leave "What works today" and sit under "What is not there yet" ("New customers cannot build in Studio.", "The checks
+  need the plugin."); "Roblox sign-in works" is stated as working;
+- the catalog's "Where to ask", the docs overview, Getting started (steps 4 and 5 need a plugin new customers cannot get), the plugin page, the FAQ and
+  /pricing (the Free panel and the comparison row) already or now ask the flag;
+- the old docs said a connection "survives restarts" and "remembers the session"; the shipped plugin says "A pairing lasts until Studio closes", so no page says it.
+`plugin-honesty.test.mjs` is the sweep: every built page with a sentence about pairing the plugin or building in Studio must carry the caveat on that page, the
+front page in its hero and its description. "Pictures of the real app and plugin" is said only where real pictures are shown: How it works says "a screenshot of the
+real web app ... The plugin is not pictured".
+
+### 12.7 Screenshots (handoff 2.2: "the landing hero and the catalog use real product UI"; plan step 2.3)
+
+`scripts/m2-capture-ui.mjs` builds `apps/web` (typecheck and a production build into a throw-away folder, and proves the production bundle carries none of the mock
+fixtures), runs it in its mock mode (dev-only by design, guarded by `apps/web/tests/mock-mode-production.test.mjs`, so on the Vite dev server with
+`VITE_STUDPILOT_MOCK=1`), aborts every request that leaves the machine, answers the one access check mock mode forgets (`GET /api/shared/<project>`, as the owner)
+and captures **only** the empty workspace of a project with no conversation, at 1200x900 and on a phone. Before each capture it loads the app's own mock
+conversation and the guard (`scripts/lib/capture-guard.mjs`) must find conversation elements in it (the canary); the idle page must then hold no conversation
+element, no picture element, no failure text and not one line of the mock conversation, or the run fails and writes nothing (red-first: pointing the capture at
+the conversation page fails with "18 conversation element(s)"). It encodes webp in Chromium inside a byte budget and writes `apps/site/src/data/screens.json`
+(`id, file, sha256, source, commit, date, containsResult: false, alt, caption, width, height`) at the commit it was taken at (it refuses a tree with
+uncommitted changes in the app or the packages it imports). The landing hero is 23,920 B (budget 25,000); the phone capture on the catalog is 38,036 B.
+
+What is **not** captured, and why:
+- **The plugin in Studio.** Studio is not running here, and the site never shows a Studio picture it did not take. The pages say the plugin is not pictured.
+- **The pairing dialog.** In mock mode it shows "Studio connected" and the fixture code `GLM-7F3K2Q`, which is not the six-character code the pages and the plugin
+  describe; a new customer cannot reach that state.
+- **The usage page.** Its fixtures invent a 30-day spending chart and a spent-today figure, and the page carries the sentence "Builds complete Roblox games
+  from a short prompt", which is whole-game framing the plan forbids. That sentence is in `apps/web/src/routes/usage.tsx`: for the app lane, not mine.
+- **The dashboard.** Its fixture projects carry summaries of what was built ("Stage 1 is built with checkpoint pads ...") that read as results. One-click create is not on `main`.
+- **The empty pieces state.** It is not on `main` either (app lane C5).
+A frame the app lane changes is re-captured by re-running the script; the record carries the commit.
+
+`ScreenSlot.astro` draws a recorded picture and its caption or fails the build: there is no placeholder frame, so "A real screenshot goes here" cannot ship. The
+"live step list" slot on How it works is gone: a step list is a run, which a capture may not show. `no-fake-output.test.mjs` judges every `<img>` on every built page.
+Landing budget, measured after the fix cycle and **lowered, not raised**: markup and stylesheets 10,461 B gzip of **12,000** (was 20,000), inline JavaScript 3,007 B in 2
+blocks of **3,500** (was 36,000), images 26,916 B of **31,000** (was 40,000; the hero plus the two icons the head links).
+
+### 12.8 The share card and the manifest
+
+`apps/site/brand/og.html` (and the `og.png` the brand script renders from it) and `site.webmanifest` said "Describe a Roblox game. StudPilot builds it ... straight into the place
+you have open in Studio" and "Works inside Roblox Studio". The card now says the plan's promise, "Ask for any piece. It looks pro, it works, and we never claim what we didn't
+prove.", under a Beta chip and "The bar we are building to", with "Free while in beta" in its footer; the manifest says beta and nothing about Studio. `check-copy.mjs` reads both
+files now (they were not in its denominator) and its "describe-it-then-builds-it" shape accepts a noun phrase after the verb; `share-surfaces.test.mjs` reads the card, the manifest
+and the title and description tags of every page against the banned copy, the competitor shapes and the Studio-works claims.
+
+### 12.9 The pricing page is a new layout; the docs are trimmed (plan step 2.6)
+
+**Pricing.** The first pass kept the old page's skeleton (three plan cards, two columns of notes, the comparison table, the cost table, the accordion). The new page: one panel for the decision
+a visitor came with (what Free gives you, with the shared-pool warning said there), every plan in ONE table (price, Credits a day and a month, builds, the price a build, steps, engine, support,
+and a last row with the start button and the two disabled "Checkout not open" buttons), the cost of a build as a list with proportional bars, the limits as an always-open grid with the shared limit
+written as one of them, and tax and support as small print. Every figure is still read from `packages/shared` and the worker's ceiling, and every pricing guard is kept (restated where it read a card).
+`/status`, `/discord` and the legal pages keep their structure and take the new header and footer: the rebuild is one Base layout and new pages, not new inner structures for those four.
+
+**Docs.** Pages: Overview, Getting started, The Studio plugin, Credits & limits, Billing & payments, Troubleshooting, FAQ (and Privacy & data, the legal lane's). `/docs/connect` redirects to Getting started
+(pairing lives there), `/docs/updating` and `/docs/build-from-source` to the plugin page (an "Updating" section; the developer path said it was not how anyone installs StudPilot). The sidebar and the
+overview list are derived from the page files (`docsPages` in `src/data/docs-index.ts`: a page's own heading, `order` and `summary`); a page with no `order` follows the ordered ones.
+Every claim was checked: the pairing code is six characters and lasts 10 minutes (`pairing.ts`), a pairing lasts until Studio closes (the plugin's own first line) and a session expires after 30
+days (`session.ts`), edits start off and are turned on in two steps (the plugin), the plugin's can and cannot is its own disclosure quoted, the update path is the worker's `UPDATE_PATH`. Sentences that
+could not be checked were removed (Discord channel names, "plenty of people have learned scripting from StudPilot", supported Studio versions, "gets caught", queueing per account, a tip on making Credits go
+further). `docs-claims.test.mjs` holds the facts against the files, `docs-nav-derived.test.mjs` the derivation.
+
+Deleted with the docs rewrite (each "replaced by the M2 rebuild, handoff 2.2 and plan step 2.6"; `old-layouts-gone.test.mjs` keeps them gone):
+
+| Deleted | The owner pick it was | Why |
+|---|---|---|
+| `picks-docs/DocsKit` (its script and styles) | React Bits Line Sidebar; Componentry Mac Keyboard; UI Layouts Button Hover Underline | pointer-driven motion and animated keycaps on a site that has none, on a nav that is derived now. The file stays as an **empty stub** only because `docs/privacy-and-data.astro` (the legal lane's) still imports it; the test fails the day nothing imports it |
+| `picks-docs/Folder` | React Bits Folder | decoration on Getting started |
+| `picks-docs/Terminal`, `picks-docs/CodeTabs`, `picks-docs/copy-button.ts` | Eldora Terminal; UI Layouts Code Tabs and Code Tabs MDX | the build-from-source page they served is deleted; the Terminal's caret looped forever, a debt the e2e spec named |
+| `components/ObjectIcon` | not a pick: the plugin page's strip of object icons | decoration with hover motion |
+| `pages/docs/connect`, `updating`, `build-from-source` | not picks | folded into Getting started and the plugin page; Astro redirects |
+`Accordion` is kept (the FAQ needs a disclosure). `apps/site/tests/build-from-source-target.test.mjs` (4 tests) is deleted with its subject.
+
+### 12.10 The 61 words glued to the next tag: one setting
+
+Astro 7's default `compressHTML: 'jsx'` applies React's whitespace rules and removes the line break before an inline tag. `compressHTML: true` keeps the space. Measured: 62 glued
+inline tags on 13 pages with the default, 0 on every page with `true`, the legal pages included, so the named-debt exemption in `rendered-text-joins.test.mjs` is deleted and every page is
+held to zero (the mutation is deleting the config line). Cost: under 300 B of gzip on the front page.
+
+### 12.11 Things I found that are not mine, and one I could not reproduce
+
+- **Two `apps/web` tests fail because of the docs redirect (a cross-lane fix, not mine to make).** `apps/web/src/components/empty-state-model.ts` links `/docs/connect` from two empty states
+  (lines 91 and 102, label "Connect a project"), and `apps/web/tests/contextual-help.test.mjs` requires every docs link in the app to be a file under `apps/site/src/pages/docs`. The page is folded into
+  Getting started and is an Astro redirect, so the live link still lands, but the web suite is 2,537 tests, 2,535 pass, **2 fail** ("the empty states that mean go and connect Studio say where that is written",
+  "every help link declared on an empty state names a page on disk"). The fix is in `apps/web` and is two lines: point those links at `/docs/getting-started` (label "Getting started"). I was told not to touch
+  `apps/web`, and keeping a redirect-only page file on disk to satisfy a stale existence check would put it in the derived sidebar and the search index, so I left it.
+- `apps/web/src/routes/usage.tsx` says "Builds complete Roblox games from a short prompt" (whole-game framing the plan forbids). App lane.
+- `apps/web/src/lib/mock.ts` is wrong for a marketing capture in four ways (12.7: the pairing dialog, the usage page, the dashboard, the missing empty states). The capture script says why it does not use those states.
+- The SDK branch of `api-surface-claim.test.mjs` is `if (sdk.private === true)` and `packages/sdk/package.json` no longer says `private`, so that branch is vacuous on main today. It needs the owner's answer on whether
+  the SDK is published.
+- The review measured a layout shift of 0.163 at 390 px on `/status`. With the first answer delayed past first paint I measured 0.018 at 390 px and 0.002 at 1440 px, from the same four sources (the known issues, the
+  meta list, the button, the orb); the fix reserves the text box's height and the Playwright spec asserts nothing moves (under 0.001): red before the fix, green after.
+- The test-ledger commit message of the first pass says "73 tests" for the 8 deleted files; the ledger's rows count 65 (9+2+9+4+10+19+8+4). The ledger is the record.
+- One process slip, harmless and recorded: early in the work I ran `git checkout` on one file I had just edited, in this isolated clone, to undo an experiment (the working rules forbid it in the shared checkout);
+  nothing else was touched. Mock-mode exploration also made one unauthenticated read to the Supabase REST URL that returned 401 and no data, before the capture script was written to abort every request that leaves the machine.

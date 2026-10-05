@@ -185,3 +185,101 @@ the second is skipped in the pixel audit and its summaries are measured.
 | `cd apps/web && node --test` | 2,537 tests, 2,537 pass, 0 fail (unchanged) |
 | `pnpm exec playwright test` | 387 specs pass (desktop, laptop, phone) |
 | Lighthouse (local preview, mobile) on `/` and `/pricing` | Accessibility 100, Best Practices 100, SEO 100 on both |
+
+
+## 5. Fix cycle 1 (2026-10-05): the mutations
+
+The review of the first pass (23 findings, 18 confirmed by two skeptics each, plus 5 minor) asked for red-first proof of every new or restated guard.
+Each entry is a planted break in the named file (restored with a uniquely anchored replacement, the occurrence count asserted first, the diff read after),
+the assertion that went red, and, where the finding measured it, what the same break did to the suite BEFORE the fix. "Rebuilt" means the site was built
+with the break in place and again after the restore. The helper scripts that ran them are throw-away (they live outside the repository).
+
+### 5.1 capture guard (tests/m2-capture-guard.test.mjs, scripts/lib/capture-guard.mjs)
+- remove `'[data-turn]'` from TURN_SELECTORS -> 2 red ("the fixtures cover every selector", "a conversation element is caught: [data-turn]"); restored, 19/19 green
+- change `canvas:not(.pk-voice__wave)` to `canvas.pk-voice__wave` -> 4 red (canvas fixture not caught, waveform judged a result, empty workspace refused, coverage); restored
+- make `found()` return [] (a blind guard) -> 9 red (every conversation and picture fixture passes as clean); restored
+
+### 5.2 blog post (tests/blog-post.test.mjs, src/content/blog/what-works-today.md); each mutation is in the .md only, then restored
+- "a 6-character code" -> "an 8-character code": 1 red (the claim "New customers cannot build in Studio." against the plugin); before the fix this left the whole site suite green
+- "A code works for 10 minutes" -> "30 minutes": 1 red (against TTL_MS in apps/worker/src/do/pairing.ts)
+- the checks sentence -> "run a full load test of your place with a thousand players, translate your game into forty languages, and publish it to Roblox for you": 1 red (the tool names it must name; the no-load-test-or-publish rule); before the fix: green
+- a new bold lead "You can pair a project with Roblox Studio." under "What works today": 3 red (no verifier; the list rule: no Studio capability as working today while the plugin cannot be had)
+- "Paid plans are not for sale." -> "...and a refund is automatic.": 2 red (a lead with no verifier, and the old verifier with no line)
+
+### 5.3 the consent promise and the plugin labels (tests/how-it-works.test.mjs, tests/lib/plugin-promises.mjs)
+- how-it-works.astro: "Edits stay off until you allow them for that connection." -> "Edits are on from the moment you pair, with nothing to allow." (rebuilt): 1 red (the pairing-step test); before the fix the same mutation left 11 site test files green
+- apps/studpilot-plugin/src/init.server.luau: `local allowEdits = false` -> `= true` (restored after): 2 red (how-it-works pairing test and the blog claim "New customers cannot build in Studio.")
+- how-it-works.astro step 2 `status` -> always 'live' (rebuilt): 1 red ("a step is labelled Works today only when it holds for someone who can get the plugin")
+
+### 5.4 no-fake-output over every built route (tests/no-fake-output.test.mjs); each mutation rebuilt, then restored and rebuilt
+- pricing.astro: a remote `<img src="https://example.com/finished-shop.png" alt="A finished shop screen the model built">`: 2 red; before the fix: no-fake-output, asset-wall, hermetic-build, links-resolve, beta-labels and pricing-config all green
+- blog post Markdown `![A finished shop](https://example.com/shop.png)`: 2 red; before the fix: green
+- docs/faq.astro: a recorded file (/assets/screens/app-idle.webp) as a bare <img> outside a screenshot figure: 2 red
+- screens.json: the sha256 of the hero set to zeros: 2 red (record vs bytes; the page's picture vs its record)
+- index.astro: the hero without `priority`: 1 red (eager + fetchpriority=high)
+- catalog.astro: the slot replaced by an empty frame carrying "A real screenshot goes here.": 2 red
+
+### 5.5 the capture script itself (scripts/m2-capture-ui.mjs)
+- the idle capture pointed at the app's mock conversation (`?mock=1` without `&empty=1`): exit 1, "app-idle: the frame is not an idle or empty state, so it is not captured. N conversation element(s) ..." ; nothing written, screens.json and the webp files unchanged
+- the empty workspace without the access stub (earlier in development): the first run failed on "2 conversation element(s): <div.flex.size-full> ([role="log"] > *)" (a selector that judged the app's empty state a turn), fixed by naming the article; and the page said "We could not check your access" until the /api/shared stub, a failure text the guard now refuses
+
+### 5.6 the share surfaces (tests/share-surfaces.test.mjs, scripts/check-copy.mjs reads og.html and site.webmanifest, scripts/lib/copy-shapes.mjs)
+- og.html headline put back to "Describe a Roblox game. StudPilot builds it.": 1 red in share-surfaces; and tests/check-copy.test.mjs (old h1 in the fixture's og.html) exits 1 naming describe-it-then-builds-it and apps/site/brand/og.html
+- og.html footer "Works inside Roblox Studio": 1 red (STUDIO_BUILD_CLAIMS while the plugin cannot be had)
+- site.webmanifest description put back to the old sentence: 1 red; and check-copy test names apps/site/public/site.webmanifest
+- index.astro description (the not-live branch) -> "...it builds it in your own Studio.": 1 red (the description tags of every page are read)
+- Base.astro og:image:alt -> the old sentences: 1 red
+- before these: check-copy printed CLEAN over 330 files and the old card and manifest were in the tree untouched (they were not in its denominator)
+
+### 5.7 packages/design: the three tests that read the deleted Landing layout (brand.test.mjs, tokens.test.mjs, flat.test.mjs)
+- a second document layout apps/site/src/layouts/Tmp.astro (`<html style="background:#fff">`, no tokens import, no icon links; removed after): 3 red, one in each file (tokens: does not import the tokens; flat: an inline colour on <html>; brand: no icon links)
+- Base.astro without its tokens import: 1 red in tokens.test.mjs
+- before: packages/design `node --test` was 162 pass / 3 fail on the branch; now 165 / 0
+
+### 5.8 the four claim guards read every source of words (tests/lib/site-sources.mjs, tests/copy-sources.test.mjs)
+- a refund promise ("If a run fails, the Credits are refunded in full, even when you kept the changes it applied") added to the blog post: 2 red (credit-refund-claims); before: green (confirmed in the first review)
+- "The workspace counts the Credits spent step by step while it runs" added to src/data/pieces.ts: 1 red (no-live-cost-claim); before: green
+- "There is no public API." added to the post: 1 red (api-surface-claim); "StudPilot warns you before starting work it estimates will be expensive" added to pieces.ts: 1 red (pre-run-cost-warning); before: green
+- OBSERVED, NOT CHANGED: the SDK branch of api-surface-claim.test.mjs is `if (sdk.private === true)` and packages/sdk/package.json has no "private" key any more, so "Install the StudPilot SDK" in pieces.ts passes: that branch is vacuous on main today (it needs the owner's answer on whether the SDK is published)
+
+### 5.9 hermetic-build follows imports (tests/hermetic-build.test.mjs)
+- src/components/probe-net.ts (`await fetch('data:text/plain,hi')`) imported from src/pages/404.astro's frontmatter (rebuilt: the build is clean): 1 red; before the fix hermetic-build stayed 7/7 green
+- CONTROL: the same module imported only from a <script> block in 404.astro (a browser script): 0 red
+
+### 5.10 a11y and layout items (theme-on-every-route.test.mjs, status-live-region.test.mjs, tests/e2e/landing.spec.ts)
+- Base.astro rewrites the theme toggle's aria-label again: 1 red; Nav.astro toggle named "Switch to light theme": 1 red; menu button named "Open the menu": 1 red (all in the new "one name and state only" test)
+- status.astro: aria-live="polite" back on #status-card: 1 red; the countdown writing to the announcer: 1 red
+- status.astro text box `min-height` removed (rebuilt): the Playwright spec fails "/status shifted by 0.018064079634848206 when its first check answered" (the reviewer's 0.163 at 390px was not reproduced: with the health answer delayed past first paint it is 0.018 here, from the same four sources: known, status-meta, btn status-refresh, status-orb; the spec asserts the strict property, nothing moves); with the fix: 0
+
+### 5.11 the landing budget rebased down (scripts/check-landing-budget.mjs: 20,000 -> 12,000 markup+CSS gzip, 36,000 -> 3,500 script, 40,000 -> 31,000 image; measured 10,461 / 3,007 / 26,916)
+- 7.9 KB of random text added to index.astro (rebuilt): the checker exits 1 on the markup line (it passed with 9.5 KB of growth before); restored
+
+### 5.12 the glue (rendered-text-joins.test.mjs; astro.config.mjs compressHTML: true, the Astro 7 default is 'jsx')
+- the `compressHTML: true` line deleted (rebuilt): 2 red (62 glued inline tags on 13 pages; the config assertion); with the line: 0 on every page, the legal pages included
+
+### 5.13 the derived docs navigation (tests/docs-nav-derived.test.mjs) and the docs claims (tests/docs-claims.test.mjs)
+- DocsLayout.astro `docsPages(sources)` -> `.filter((p) => p.path !== '/docs/faq')` (rebuilt): 2 red (sidebar is not the docs files; the index differs from the sidebar)
+- DocsLayout.astro a typed two-page list back in place of the derivation: 2 red
+- getting-started: "A pairing lasts until Studio closes. After a restart, enter a new code." -> "A pairing survives restarts: the plugin remembers the session ...": 1 red (the old Connect page's false sentence; the plugin says the opposite)
+- plugin page: the plugin's "cannot publish, upload assets or execute arbitrary received Luau" -> "can publish your game and upload assets": 1 red
+- getting-started "expires after 10 minutes" -> "30 minutes": 1 red (pairing.ts TTL_MS); consent sentence -> "Edits are on from the moment you pair, with nothing to allow.": 1 red
+
+### 5.14 titles (tests/titles.test.mjs) and the docs redirects (tests/nav-and-routes.test.mjs)
+- blog/index.astro title back to "Blog (beta)": 1 red; status.astro back to "Status — StudPilot": 1 red (the legal pages are a named, shrink-only debt)
+- astro.config.mjs without the /docs/connect redirect (rebuilt): 1 red in nav-and-routes (the web app still links /docs/connect)
+
+### 5.15 landmarks (tests/landmarks-unique.test.mjs)
+- Footer.astro docs nav back to aria-label="Documentation" (rebuilt): 1 red (two navigation landmarks named "Documentation" on every docs page)
+
+### 5.16 the plugin caveat sweep (tests/plugin-honesty.test.mjs)
+- index.astro: the hero's flag-derived plugin line removed (rebuilt): 1 red (the hero makes its claim and the caveat is somewhere else on the page)
+- catalog.astro "Where to ask" forced to the live wording (rebuilt): 1 red (the catalog talks about pairing the plugin and carries no caveat)
+- index.astro meta description forced to the live wording (rebuilt): 1 red (what a search result shows leaves the caveat out)
+
+### 5.17 the pricing layout (tests/pricing-config.test.mjs, tests/unpurchasable-and-shared-cap.test.mjs, tests/credit-purchase-claim.test.mjs); each rebuilt, then restored
+- the "Price per typical build" row reading Max's builds for every paid column: 1 red ("EACH PLAN COLUMN carries its own price, allowance and build count ... and no other plan's")
+- the shared-pool paragraph removed from the first panel: 1 red (the shared-cap sentence must come before the comparison table; it is still in the limits grid at the end, which is not enough)
+- an unfiltered render of a plan's `highlights` ("Buy credits when you need more"): 1 red (the page advertises a purchase channel while none exists)
+
+### 5.18 no page links to a redirect stub (tests/nav-and-routes.test.mjs)
+- how-it-works.astro linking `/docs/connect` ("Connect a project") again (rebuilt): 1 red; the first pass's page did exactly this after the route was folded into Getting started

@@ -28,7 +28,8 @@
 // WHAT IT DOES NOT CAPTURE, AND WHY (planning/proof/M2/DECISIONS.md, section 12.5)
 //   The plugin in Studio: Studio is not running where this is run, and the site never shows a Studio picture it did not take.
 //   The dashboard, the usage page and the pairing dialog: in mock mode they carry fixtures that are wrong or read as results
-//   (a project summary of what was built, "60 Credits a day" on the Free plan, "Studio connected" with a ten-character code).
+//   (a project summary of what was built, an invented 30-day spending chart beside a sentence about complete Roblox games, "Studio connected" with
+//   a code that is not six characters).
 //   The empty pieces state, and the dashboard after one-click create: neither is on main yet.
 //
 // No secret is read. Nothing is written outside apps/site/public/assets/screens and apps/site/src/data/screens.json.
