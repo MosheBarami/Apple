@@ -82,11 +82,18 @@ a.gx-sr:focus { z-index:1000; top:10px; inset-inline-start:10px; width:auto; hei
    rather than a glow, and carries --ink at 6.4:1. See docs/DESIGN-LOCK.md. */
 .btn-primary,.gx-btn--primary { color:var(--accent-ink); background:var(--accent); border:1px solid var(--accent); border-radius:var(--r-md); min-height:var(--h-md); padding:0 16px; font-size:14px; }
 /* Hover deepens the TINT rather than darkening a fill — the object is a piece of coloured light on
-   the surface, so more of it is the only response that keeps it the same object. */
-.btn-primary:hover:not(:disabled),.gx-btn--primary:hover:not(:disabled) { color:var(--accent-ink); background:var(--accent-strong); border-color:var(--accent-strong); }
+   the surface, so more of it is the only response that keeps it the same object.
+   THE SELECTOR CARRIES `:not([aria-disabled='true'])` TO OUTRANK THE ELEMENT RULE. Near the top of this file every button is hovered with
+   `button:hover:not(:disabled):not([aria-disabled='true'])` at (0,3,1), which sets `color:var(--ink)` and a 12% ink wash. This rule was
+   `.btn-primary:hover:not(:disabled)` at (0,3,0) and lost to it on both counts: the label turned --ink on the accent step the moment
+   the pointer arrived (1.96:1 dark, 2.30:1 light, on every sign-in page, Usage and Settings, where a page rule put the accent fill
+   back and left the label), and on a page with no rule of its own the button turned grey. (0,4,0) wins. It ties only with a page rule
+   that restyles the primary on purpose (`.settings-card .btn-primary:hover`, which loads later). A disabled button keeps its resting
+   look, as the element rule leaves it. packages/design/src/web/rendered.test.mjs hovers, presses and tabs to every one in a browser. */
+.btn-primary:hover:not(:disabled):not([aria-disabled='true']),.gx-btn--primary:hover:not(:disabled):not([aria-disabled='true']) { color:var(--accent-ink); background:var(--accent-strong); border-color:var(--accent-strong); }
 /* PRESSED IS A STATE, not a missing one. Without it a button that is doing something looks
-   identical to one that has not been touched, which is how a person clicks twice. */
-.btn-primary:active:not(:disabled),.gx-btn--primary:active:not(:disabled) { background:color-mix(in srgb,var(--accent) 86%,#000000); animation:press-settle var(--t-fast) var(--ease-out); }
+   identical to one that has not been touched, which is how a person clicks twice. Same selector weight as the hover, for the same reason. */
+.btn-primary:active:not(:disabled):not([aria-disabled='true']),.gx-btn--primary:active:not(:disabled):not([aria-disabled='true']) { background:color-mix(in srgb,var(--accent) 86%,#000000); animation:press-settle var(--t-fast) var(--ease-out); }
 .btn,.gx-btn { display:inline-flex; gap:8px; align-items:center; justify-content:center; text-decoration:none; }
 /* THE TWO BUTTON VARIANTS THAT EXISTED ONLY IN THE MARKUP. `--primary` above has had a rule since
    the beginning; `--outline` and `--ghost` never did, across 29 uses in seven files. On a <button>

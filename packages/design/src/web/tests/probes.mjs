@@ -14,10 +14,15 @@ import { contrastRgb } from '../css-tokens.mjs';
 
 /**
  * Every element whose own box is painted with something close to one of `targets` ([r, g, b] each), with its drawn text and
- * icons; or, with `only` (a data-probe id from an earlier call), just that element in whatever state the page is in now (hovered);
- * or, with `selector` and no `targets`, every match whatever its fill (a transparent one is drawn on what is behind it).
+ * icons; or, with `only` (a data-probe id from an earlier call), just that element in whatever state the page is in now
+ * (hovered, pressed, focused) and WHATEVER FILL IT DRAWS IN THAT STATE (a control that leaves the accent on hover is measured on
+ * the fill it moved to, not dropped because it no longer matches); or, with `selector` and no `targets`, every match whatever its
+ * fill (a transparent one is drawn on what is behind it). A disabled control is skipped unless `includeDisabled`: its own opacity
+ * is the disabled convention (WCAG 1.4.3 exempts an inactive control) and is not laid over the pair, but the PAIR it keeps (the
+ * label colour on the fill) is still read. `dimmed` is the product of the opacity of every ancestor above the control: a pair
+ * inside a faded card is drawn lighter than the pair this function reads, so the guard refuses to call it measured.
  */
-export function inPageFilledElements({ targets = null, tolerance = 0, only = null, selector = null }) {
+export function inPageFilledElements({ targets = null, tolerance = 0, only = null, selector = null, includeDisabled = false }) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const g = canvas.getContext('2d', { willReadFrequently: true });
@@ -58,15 +63,17 @@ export function inPageFilledElements({ targets = null, tolerance = 0, only = nul
 
   const found = [];
   const scope = only !== null ? [document.querySelector(`[data-probe="${only}"]`)].filter(Boolean) : selector !== null ? document.querySelectorAll(selector) : document.body.querySelectorAll('*');
+  const filtering = targets !== null && only === null;
   for (const el of scope) {
-    if (el.disabled || el.getAttribute('aria-disabled') === 'true') continue;
+    const disabled = Boolean(el.disabled) || el.getAttribute('aria-disabled') === 'true';
+    if (disabled && !includeDisabled) continue;
     const cs = getComputedStyle(el);
     if (!visible(el) || Number(cs.opacity) < 0.05) continue;
     const bg = rgba(cs.backgroundColor);
-    if (targets !== null && bg[3] === 0) continue;
+    if (filtering && bg[3] === 0) continue;
     const fill = bg[3] === 1 ? bg : over(bg, paint(el.parentElement ?? document.documentElement));
     const hit = targets === null ? -1 : targets.findIndex((t) => [0, 1, 2].every((i) => Math.abs(t.rgb[i] - fill[i]) <= tolerance));
-    if (targets !== null && hit < 0) continue;
+    if (filtering && hit < 0) continue;
     const foreground = [];
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     for (let t = walker.nextNode(); t; t = walker.nextNode()) {
@@ -94,7 +101,7 @@ export function inPageFilledElements({ targets = null, tolerance = 0, only = nul
       }
     }
     if (!el.hasAttribute('data-probe')) { window.__probeCount = (window.__probeCount ?? 0) + 1; el.setAttribute('data-probe', String(window.__probeCount)); }
-    found.push({ id: el.getAttribute('data-probe'), tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class') || '').slice(0, 50), name: label(el), fx: el.getAttribute('data-fx'), target: hit, fill, foreground });
+    found.push({ id: el.getAttribute('data-probe'), tag: el.tagName.toLowerCase(), cls: (el.getAttribute('class') || '').slice(0, 50), name: label(el), fx: el.getAttribute('data-fx') ?? el.getAttribute('data-fb'), target: hit, fill, foreground, disabled, dimmed: el.parentElement ? opacityBetween(el.parentElement, null) : 1, states: { hover: el.matches(':hover'), active: el.matches(':active'), focus: el.matches(':focus-visible') }, interactive: el.matches('button, a[href], input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"])') });
   }
   return found;
 }
@@ -120,6 +127,13 @@ export function inPageRememberRest() {
  * ring-shaped box-shadow layers (no offset, no blur, a spread) and a border that changed on focus, and the same
  * three on any ancestor that reacts to the focus inside it (`:focus-within`, the composer card). Each indicator is
  * laid over the surface behind its element and measured against that surface. Returns null when nothing is focused.
+ *
+ * EVERY ANCESTOR'S OPACITY IS PART OF WHAT IS DRAWN. An element with `opacity` is composited as a group, so a ring
+ * inside a card at `opacity: .4` is drawn at 40% over what is behind the card, and so is the card's own fill: the roadmap
+ * map's dimmed nodes drew a 3.9:1 ring at 1.18:1 and the guard, which read the ring's own colour against the nearest
+ * opaque fill, never saw it. `drawnOutside` composites the chain exactly (premultiplied, group by group, from the parent
+ * up to the root), once with the indicator on it and once without, so the ratio is between two pixels the browser paints.
+ * `cum` is the product of the opacities from the focused element up, so a report can say that a stop is dimmed.
  */
 export function inPageFocusIndicator() {
   const el = document.activeElement;
@@ -135,17 +149,18 @@ export function inPageFocusIndicator() {
     const d = g.getImageData(0, 0, 1, 1).data;
     return [d[0], d[1], d[2], d[3] / 255];
   };
-  const over = (top, bottom) => [0, 1, 2].map((i) => top[i] * top[3] + bottom[i] * (1 - top[3])).concat(1);
-  const paint = (node) => {
-    const layers = [];
-    for (let n = node; n; n = n.parentElement) {
-      const c = rgba(getComputedStyle(n).backgroundColor);
-      if (c[3] > 0) layers.push(c);
-      if (c[3] === 1) break;
+  const pre = (c) => [c[0] * c[3], c[1] * c[3], c[2] * c[3], c[3]];
+  const ancestorsOf = (node) => { const out = []; for (let n = node.parentElement; n; n = n.parentElement) out.unshift(n); return out; };
+  /** The colour of a pixel just outside `node`'s box, with `ring` ([r, g, b, a], or null for none) drawn on it, every ancestor composited as a group. */
+  const drawnOutside = (node, ring) => {
+    let content = ring ? pre([ring[0], ring[1], ring[2], ring[3] * Number(getComputedStyle(node).opacity)]) : [0, 0, 0, 0];
+    const chain = ancestorsOf(node);
+    for (let i = chain.length - 1; i >= 0; i -= 1) {
+      const cs = getComputedStyle(chain[i]);
+      const own = pre(rgba(cs.backgroundColor));
+      content = content.map((v, k) => (v + own[k] * (1 - content[3])) * Number(cs.opacity));
     }
-    let out = [255, 255, 255, 1];
-    for (let i = layers.length - 1; i >= 0; i -= 1) out = over(layers[i], out);
-    return out;
+    return [0, 1, 2].map((i) => content[i] + 255 * (1 - content[3]));
   };
   const lum = ([r, g2, b]) => { const f = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g2) + 0.0722 * f(b); };
   const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -154,12 +169,11 @@ export function inPageFocusIndicator() {
   const read = (node, where) => {
     const cs = getComputedStyle(node);
     const was = window.__rest?.get(node);
-    const surface = paint(node.parentElement ?? document.documentElement);
+    const surface = drawnOutside(node, null);
     const add = (kind, css, width) => {
       const c = rgba(css);
       if (c[3] === 0) return;
-      const seen = over(c, surface);
-      indicators.push({ kind: `${where} ${kind}`, width, colour: css, ratio: ratio(seen, surface) });
+      indicators.push({ kind: `${where} ${kind}`, width, colour: css, ratio: ratio(drawnOutside(node, c), surface) });
     };
     if (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && `${cs.outlineStyle}|${cs.outlineWidth}|${cs.outlineColor}` !== was?.outline) add('outline', cs.outlineColor, cs.outlineWidth);
     if (cs.boxShadow !== 'none' && cs.boxShadow !== was?.shadow) {
@@ -189,7 +203,49 @@ export function inPageFocusIndicator() {
   const best = indicators.reduce((a, b) => (!a || b.ratio > a.ratio ? b : a), null);
   const r = el.getBoundingClientRect();
   if (!el.hasAttribute('data-fid')) { window.__fidCount = (window.__fidCount ?? 0) + 1; el.setAttribute('data-fid', String(window.__fidCount)); }
-  return { id: el.getAttribute('data-fid'), who: label(el), indicators, best: best ? { kind: best.kind, ratio: best.ratio, colour: best.colour, width: best.width } : null, visible: r.width > 1 && r.height > 1 };
+  let cum = 1;
+  for (let m = el; m; m = m.parentElement) cum *= Number(getComputedStyle(m).opacity);
+  return { id: el.getAttribute('data-fid'), who: label(el), indicators, best: best ? { kind: best.kind, ratio: best.ratio, colour: best.colour, width: best.width } : null, visible: r.width > 1 && r.height > 1, cum, focusVisible: el.matches(':focus-visible') };
+}
+
+/**
+ * What a focus ring is AS PIXELS: two screenshots of the same clip (nothing focused, then the control focused), as base64 PNGs,
+ * compared in the page. A pixel that changed by 18 or more in some channel belongs to the indicator; the changed pixels are grouped
+ * by the colour they were repainted in (quantised to 4 levels), and the group that reads best against what it replaced is the ring.
+ * This is the check that does not trust a model of the cascade: a ring clipped by an `overflow: hidden` parent, hidden under a
+ * sibling, or drawn at a fraction by an ancestor's `opacity` changes few pixels, or changes them to something close to what
+ * was there. Returns { changed, best: { n, ring, replaced, ratio } | null }.
+ */
+export async function inPageRingPixels({ before, after }) {
+  const load = async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    return { w: img.width, h: img.height, d: g.getImageData(0, 0, img.width, img.height).data };
+  };
+  const [A, B] = [await load(after), await load(before)];
+  if (A.w !== B.w || A.h !== B.h) return { error: `the two clips differ in size (${A.w}x${A.h} against ${B.w}x${B.h})` };
+  const lin = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const ratio = (x, y) => { const [p, q] = [lum(...x), lum(...y)]; return (Math.max(p, q) + 0.05) / (Math.min(p, q) + 0.05); };
+  const groups = new Map();
+  let changed = 0;
+  for (let i = 0; i < A.d.length; i += 4) {
+    if (Math.max(Math.abs(A.d[i] - B.d[i]), Math.abs(A.d[i + 1] - B.d[i + 1]), Math.abs(A.d[i + 2] - B.d[i + 2])) < 18) continue;
+    changed += 1;
+    const key = [A.d[i] >> 2, A.d[i + 1] >> 2, A.d[i + 2] >> 2].join(',');
+    let grp = groups.get(key);
+    if (!grp) { grp = { ring: [A.d[i], A.d[i + 1], A.d[i + 2]], before: [] }; groups.set(key, grp); }
+    grp.before.push([B.d[i], B.d[i + 1], B.d[i + 2]]);
+  }
+  const mean = (arr) => [0, 1, 2].map((j) => Math.round(arr.reduce((t, p) => t + p[j], 0) / arr.length));
+  const reads = [...groups.values()].filter((grp) => grp.before.length >= 12).map((grp) => { const replaced = mean(grp.before); return { n: grp.before.length, ring: grp.ring, replaced, ratio: ratio(grp.ring, replaced) }; }).sort((a, b) => b.ratio - a.ratio);
+  return { changed, best: reads[0] ?? null };
 }
 
 /** Every element the browser draws with a backdrop filter (a frosted pane), as readable strings. Flat means none. */

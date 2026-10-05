@@ -151,8 +151,11 @@
  * 90% of that red and the label from 5.1:1 to 3.1:1 (measured by drawing it, rendered.test.mjs). The vendored
  * component is byte-pinned, so the hover step is corrected here: 64% keeps a step you can see above the 60%
  * rest and the label at 4.6:1 or better on every surface. Light is untouched (a solid --bad, and 90% is 5.1:1).
+ * The destructive Badge used as a link (`[a&]:hover:bg-destructive/90`, an `a` only) has the same step and the same
+ * label: 3.07:1 to 3.17:1 on the five surfaces in dark. Nothing ships one today; the same line corrects it.
  */
-:root:not([data-theme='light']) .hover\:bg-destructive\/90:hover {
+:root:not([data-theme='light']) .hover\:bg-destructive\/90:hover,
+:root:not([data-theme='light']) a[class*='[a&]:hover:bg-destructive/90']:hover {
   background-color: color-mix(in srgb, var(--color-destructive) 64%, transparent);
 }
 

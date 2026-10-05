@@ -258,3 +258,97 @@ export function scriptRootColours(script) {
   }
   return out;
 }
+
+/* ------------------------------------------------------------------ where a legacy primary button is restyled */
+
+/** The compounds of one selector part, left to right: split at the combinators (space, >, +, ~) outside parentheses and brackets. */
+function compoundsOf(part) {
+  const out = [];
+  let depth = 0;
+  let cur = '';
+  for (const c of part.trim()) {
+    if (c === '(' || c === '[') depth += 1;
+    else if (c === ')' || c === ']') depth -= 1;
+    if (depth === 0 && /[\s>+~]/.test(c)) { if (cur) out.push(cur); cur = ''; } else cur += c;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** A compound with its `:not()`, `:has()` and `:where()` groups taken out (balanced). */
+function withoutNegations(compound) {
+  let out = '';
+  for (let i = 0; i < compound.length; i += 1) {
+    const hit = [':not(', ':has(', ':where('].find((p) => compound.startsWith(p, i));
+    if (!hit) { out += compound[i]; continue; }
+    let depth = 0;
+    let j = i + hit.length - 1;
+    for (; j < compound.length; j += 1) { if (compound[j] === '(') depth += 1; else if (compound[j] === ')' && --depth === 0) break; }
+    i = j;
+  }
+  return out;
+}
+
+/** The ways an element can satisfy a compound's classes: `.a.b` is one way, `:is(.a,.b)` is two. Each way is a list of class names. */
+function classWays(compound) {
+  const bare = withoutNegations(compound);
+  const groups = [...bare.matchAll(/:is\(([^()]*)\)/g)];
+  const named = (text) => (text.match(/\.[\w-]+/g) ?? []).map((c) => c.slice(1));
+  let ways = [named(bare.replace(/:is\(([^()]*)\)/g, ''))];
+  for (const g of groups) ways = ways.flatMap((base) => splitTop(g[1]).map((alt) => [...base, ...named(alt)]));
+  return ways;
+}
+
+/**
+ * Where the app's sheets restyle a legacy primary button, DERIVED from the rules and not listed: for every selector part whose subject
+ * positively names `.btn-primary` or `.gx-btn--primary` (a `:not(.btn-primary)` does not count), the classes of each ancestor it demands
+ * (`:is(.shelf,.usage-page)` is a choice, so it is one chain per choice) and the classes of the subject itself. Returns
+ *   { chains: [[['auth-page'], ['auth-card']], ...] }   one entry per distinct set of ancestors, each ancestor a list of classes; [] is "no ancestor"
+ *   { subjects: [['btn-block', 'btn-primary'], ...] }   the distinct class lists of the control itself
+ * so a guard can draw the control inside every page wrapper that restyles it, whether or not the mock data happens to render one there.
+ */
+export function primaryButtonContexts(rules) {
+  const chains = new Map([['', []]]);
+  const subjects = new Map();
+  for (const r of rules) {
+    for (const part of splitTop(r.selector)) {
+      const compounds = compoundsOf(part);
+      if (compounds.length === 0) continue;
+      const own = classWays(compounds[compounds.length - 1]);
+      const ways = own.filter((w) => w.includes('btn-primary') || w.includes('gx-btn--primary'));
+      if (ways.length === 0) continue;
+      for (const way of ways) subjects.set([...way].sort().join(' '), [...way].sort());
+      let product = [[]];
+      for (const ancestor of compounds.slice(0, -1)) {
+        const choices = classWays(ancestor).filter((w) => w.length > 0);
+        if (choices.length === 0) continue;
+        product = product.flatMap((base) => choices.map((choice) => [...base, choice]));
+      }
+      for (const chain of product) chains.set(chain.map((c) => c.join('.')).join(' > '), chain);
+    }
+  }
+  return { chains: [...chains.values()], subjects: [...subjects.values()] };
+}
+
+/**
+ * The class lists the app's own markup gives its page wrappers: every static `className="..."` of apps/web's components, as a list of
+ * class names. A stylesheet names `.shelf` and the page writes `page shelf`, and a rule or a custom property keyed on `.page.shelf`
+ * (the dashboard's `--sh-*` scope) only exists on the real element; a guard that draws a bare `.shelf` draws a page that is not there.
+ */
+export function markupClassLists() {
+  const out = new Set();
+  for (const f of walkText(['apps/web/src']).filter((x) => /\.tsx$/.test(x.rel))) {
+    for (const m of readText(f).matchAll(/className=(?:"([^"{}$]+)"|\{\s*(?:'([^'{}$]+)'|`([^`{}$]+)`)\s*\})/g)) {
+      const names = (m[1] ?? m[2] ?? m[3]).trim().split(/\s+/).filter(Boolean);
+      if (names.length > 0) out.add(names.join(' '));
+    }
+  }
+  return [...out].map((l) => l.split(' '));
+}
+
+/** The shortest class list in the app's markup that carries every one of `classes` (so `['shelf']` is `['page', 'shelf']`); `classes` itself when none does. */
+export function asTheMarkupWritesIt(classes, lists) {
+  const carrying = lists.filter((l) => classes.every((c) => l.includes(c)));
+  if (carrying.length === 0) return classes;
+  return carrying.reduce((a, b) => (b.length < a.length ? b : a));
+}
