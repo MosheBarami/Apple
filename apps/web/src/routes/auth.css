@@ -282,8 +282,10 @@
 .auth-page .auth-card-title[tabindex='-1']:focus-visible { outline:2px solid var(--accent-ring); outline-offset:4px; }
 
 /* "Continue with Roblox" is an anchor, and a button's chrome (the 1px hairline, the 20px line) comes from the `button` element rule, which an anchor does
-   not match: beside Google and Discord it was a flat panel with no edge, 2px shorter. The anchor carries the same hairline and line height. */
-.auth-page a.btn { border:1px solid var(--control-line); line-height:20px; }
+   not match: beside Google and Discord it was a flat panel with no edge, 2px shorter. The anchor carries the same hairline and line height. It does so on a
+   class of its own and not on `a.btn`: the confirmation, reset and recovery screens draw their primary action as an anchor too (<Link className="btn
+   btn-primary btn-block">), and `a.btn` gave those the faint hairline in place of their accent border and took them from 47.7px to 46px. */
+.auth-page a.auth-roblox-link { border:1px solid var(--control-line); line-height:20px; }
 
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that

@@ -342,7 +342,7 @@ export function RobloxSignInView({ configured, from }: { configured: boolean; fr
   if (!configured) return null;
   return (
     <>
-      <a className="btn btn-block" href={robloxStartHref(from)}>
+      <a className="btn btn-block auth-roblox-link" href={robloxStartHref(from)}>
         Continue with Roblox
       </a>
       <p className="field-hint">StudPilot reads your Roblox user ID and username, nothing else.</p>
