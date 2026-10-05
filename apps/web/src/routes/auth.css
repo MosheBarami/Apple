@@ -264,6 +264,27 @@
 .auth-page .auth-form-col .field-date__part select:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--halo); }
 .auth-page .auth-form-col .field-date__part select[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); }
 
+/* A NARROW PHONE (320px gives the row 254px). The 1 : 2 : 1.4 split gave the month 106px, and "September" at 16px is 80px of text between 24px of
+   padding and the select's own arrow, so the chosen month read "Septemb". Here the month's track has a floor that holds the longest name, and
+   the day and the year trade some of their side padding for it (two digits and four digits still fit). Below 300px nothing fits on one line, so
+   the three stack in the order they are read; the page never scrolls sideways. Font size stays 16px (a smaller one makes iOS zoom the page). */
+@media (max-width:400px) {
+  .auth-page .field-date__row { grid-template-columns:minmax(40px,.8fr) minmax(124px,2.4fr) minmax(58px,1.2fr); gap:8px; }
+  .auth-page .auth-form-col .field-date__part input { padding-inline:10px; }
+  .auth-page .auth-form-col .field-date__part select { padding-inline:10px 6px; }
+}
+@media (max-width:300px) {
+  .auth-page .field-date__row { grid-template-columns:minmax(0,1fr); }
+}
+
+/* The refusal that replaces the sign-up form takes focus (so a keyboard or screen-reader user is not dropped on the page), and the heading shows
+   the ring when it has it: tabindex -1 makes it reachable by script and not a tab stop. */
+.auth-page .auth-card-title[tabindex='-1']:focus-visible { outline:2px solid var(--accent-ring); outline-offset:4px; }
+
+/* "Continue with Roblox" is an anchor, and a button's chrome (the 1px hairline, the 20px line) comes from the `button` element rule, which an anchor does
+   not match: beside Google and Discord it was a flat panel with no edge, 2px shorter. The anchor carries the same hairline and line height. */
+.auth-page a.btn { border:1px solid var(--control-line); line-height:20px; }
+
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that
    disappears beneath a button is how people mistype a password twice. 28px is the bare-text-button

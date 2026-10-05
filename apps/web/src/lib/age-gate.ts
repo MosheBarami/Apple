@@ -37,6 +37,30 @@ export type AgeVerdict =
 
 const DIGITS = /^\d{1,4}$/;
 
+const DECIMAL_DIGIT = /\p{Nd}/u;
+
+/**
+ * Every Unicode decimal digit written as the ASCII digit it stands for, and everything else left as it was. A person whose keyboard types
+ * Arabic-Indic, Persian, Devanagari, Bengali, Thai or full-width digits has typed a real date; stripping those as "not digits" made every
+ * keystroke vanish and the submit stay disabled, with no message. Unicode keeps each script's ten decimal digits in one unbroken run in
+ * the order 0 to 9, so a digit's value is its distance from the start of its run, modulo ten (runs may touch, and each is ten long).
+ * tests/age-gate.test.mjs checks the result against Intl's own digits for every numbering system the runtime knows.
+ */
+export function normaliseDigits(raw: string): string {
+  return raw.replace(/\p{Nd}/gu, (digit) => {
+    const at = digit.codePointAt(0) ?? 0;
+    if (at >= 0x30 && at <= 0x39) return digit;
+    let back = 0;
+    while (DECIMAL_DIGIT.test(String.fromCodePoint(at - back - 1))) back += 1;
+    return String(back % 10);
+  });
+}
+
+/** What a day or a year field holds after something is typed or pasted into it: ASCII digits only (any script's digits are converted, anything else is dropped). */
+export function dateDigits(raw: string): string {
+  return normaliseDigits(raw).replace(/\D/g, '');
+}
+
 /** The first year the field accepts. Not a threshold: anybody alive is after it. */
 const FIRST_YEAR = 1900;
 
@@ -45,7 +69,10 @@ const FIRST_YEAR = 1900;
  * and the birthday counts on the day it falls: a person is 13 from their thirteenth birthday, not the day after.
  */
 export function judgeBirthDate(date: BirthDate, now: Date = new Date()): AgeVerdict {
-  const { day, month, year } = date;
+  // Whatever script the digits were typed in is the same date.
+  const day = normaliseDigits(date.day);
+  const month = normaliseDigits(date.month);
+  const year = normaliseDigits(date.year);
   if (![day, month, year].every((part) => DIGITS.test(part.trim()))) return { kind: 'invalid' };
   const d = Number(day);
   const m = Number(month);

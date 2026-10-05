@@ -231,14 +231,24 @@ const Page = await loadPage({
   real: ['lib/auth-flows.ts'],
   fakes: {
     'lib/auth-providers.ts': { useEnabledProviders: '() => globalThis.__pageFakes.providers', PROVIDER_NAME: '({ google: "Google", discord: "Discord" })' },
-    'lib/roblox-signin.ts': { useRobloxConfigured: '() => false' },
+    'lib/roblox-signin.ts': { useRobloxConfigured: '() => globalThis.__pageFakes.robloxConfigured' },
   },
 });
 
-async function mountAlternative(from, providers) {
+// A page's effects run under the stand-in React, which has no browser: the one thing the sign-in component asks of `window` is a `pageshow`
+// listener (and the app's own origin, which is empty here as it always was), so that is what is provided, and recorded.
+const browser = { pageshow: null };
+globalThis.window = {
+  location: { origin: '' },
+  addEventListener: (type, fn) => { if (type === 'pageshow') browser.pageshow = fn; },
+  removeEventListener: (type, fn) => { if (type === 'pageshow' && browser.pageshow === fn) browser.pageshow = null; },
+};
+test.after(() => { delete globalThis.window; });
+
+async function mountAlternative(from, providers, robloxConfigured = false) {
   Page.supabaseControls.calls.length = 0;
   Page.supabaseControls.oauthResult = { data: {}, error: null };
-  globalThis.__pageFakes = { providers };
+  globalThis.__pageFakes = { providers, robloxConfigured };
   const page = Page.mountStub(() => Page.AlternativeSignIn({ from }));
   await page.settle();
   return page;
@@ -250,6 +260,20 @@ test('the page hands the view exactly the providers the hook returned', async ()
     assert.equal(page.result.type, Page.AlternativeSignInView);
     assert.deepEqual([...page.result.props.providers], providers);
   }
+});
+
+// The Roblox half of the seam: AlternativeSignIn is what the two pages mount, and it is the only thing that hands the view what the Roblox status
+// hook said and where the person was heading. Both were pinned by the type checker alone (an unused variable), so a literal in their place
+// (Roblox gone from both pages, or its return path lost) stayed green. Both are run here, with the hook answering each way.
+test('the page hands the view what the Roblox status said, and the screen the person was heading for', async () => {
+  for (const configured of [false, true]) {
+    const page = await mountAlternative('/usage', ['google'], configured);
+    assert.equal(page.result.type, Page.AlternativeSignInView);
+    assert.equal(page.result.props.robloxConfigured, configured, `the view was told Roblox is ${!configured} when the status hook said ${configured}`);
+    assert.equal(page.result.props.from, '/usage', 'the Roblox return path is not the screen the person was heading for');
+  }
+  const other = await mountAlternative('/projects/p1', [], true);
+  assert.equal(other.result.props.from, '/projects/p1');
 });
 
 test('pressing a button calls supabase.auth.signInWithOAuth for THAT provider and comes back to the screen the person was heading for', async () => {
@@ -283,6 +307,24 @@ test('a second press while one is starting does nothing', async () => {
   await page.settle();
   assert.equal(Page.supabaseControls.calls.filter((c) => c.method === 'signInWithOAuth').length, 1);
   held.open();
+});
+
+// A successful start leaves the buttons held, because the browser is on its way to the provider. A page restored from the back/forward cache
+// (`pageshow`, persisted) is exactly as it was left, so it must let go; an ordinary `pageshow` (a first load) must not.
+test('A PAGE RESTORED FROM THE BACK/FORWARD CACHE RELEASES THE BUTTONS THAT A SUCCESSFUL START LEFT HELD', async () => {
+  const page = await mountAlternative('/', ['google', 'discord']);
+  assert.equal(typeof browser.pageshow, 'function', 'the page listens for pageshow');
+  page.result.props.onChoose('google');
+  await page.settle();
+  assert.equal(page.result.props.busy, 'google', 'a successful start leaves the pressed button busy (the browser is leaving)');
+  browser.pageshow({ persisted: false });
+  await page.settle();
+  assert.equal(page.result.props.busy, 'google', 'an ordinary pageshow is not a restore');
+  browser.pageshow({ persisted: true });
+  await page.settle();
+  assert.equal(page.result.props.busy, null, 'restored from the cache: nothing is in flight, so the buttons are released');
+  page.unmount();
+  assert.equal(browser.pageshow, null, 'the listener is removed when the page goes');
 });
 
 /* ------------------------------------------------------------------ where it is called (syntax tree) --- */
@@ -323,4 +365,15 @@ test('the hook module draws nothing and imports no client: it can be loaded with
   const src = readFileSync(join(WEB, 'src', 'lib', 'auth-providers.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.doesNotMatch(src, /from '\.\/supabase'/, 'it imports the client file, which builds a client on import');
   assert.match(src, /from '\.\/supabase-config'/);
+});
+
+/* ------------------------------------------------------------------ the three look alike --- */
+
+test('"Continue with Roblox" is an anchor and carries the hairline and line height a button gets from the element rule, so the three match under one "or"', () => {
+  const css = readFileSync(join(WEB, 'src', 'routes', 'auth.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  assert.match(css, /\.auth-page a\.btn\s*\{\s*border:\s*1px solid var\(--control-line\);\s*line-height:\s*20px;\s*\}/);
+  // The anchor is the only one of the three that is not a <button> (it is a navigation, not an action), and it says so in the markup.
+  const view = readFileSync(join(WEB, 'src', 'routes', 'auth-pages.tsx'), 'utf8');
+  assert.match(view, /<a className="btn btn-block" href=\{robloxStartHref\(from\)\}>/);
+  assert.match(view, /<button\s+key=\{provider\}\s+type="button"\s+className="btn btn-block"/);
 });

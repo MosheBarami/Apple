@@ -315,3 +315,94 @@ test('the date is not stored: nothing in the app writes a birth date anywhere', 
   assert.deepEqual(writes, ["AGE_GATE_KEY, '1'"], 'the only thing written to the browser is the refusal flag');
   assert.equal(/sessionStorage|document\.cookie|fetch\(|sendBeacon|XMLHttpRequest/.test(lib), false, 'the age module stores or sends nothing but that flag');
 });
+
+/* ------------------------------------------------------------------ digits from any keyboard (M2 fix cycle 1) --- */
+
+test('EVERY UNICODE DECIMAL DIGIT IS ACCEPTED AND BECOMES ITS ASCII DIGIT: checked against Intl’s own digits for every numbering system the runtime knows', async () => {
+  const { normaliseDigits, dateDigits } = await fresh();
+  const systems = Intl.supportedValuesOf('numberingSystem');
+  let checked = 0;
+  for (const nu of systems) {
+    const written = new Intl.NumberFormat(`en-u-nu-${nu}`, { useGrouping: false }).format(9876543210);
+    if (!/^\p{Nd}+$/u.test(written)) continue; // an algorithmic system (roman, hebr, ...) is not decimal digits
+    checked += 1;
+    assert.equal(normaliseDigits(written), '9876543210', `${nu}: ${written}`);
+  }
+  assert.ok(checked >= 40, `only ${checked} decimal numbering systems were checked: the oracle is not reading the runtime's list`);
+  // The ones a person names first, spelled out.
+  for (const [what, typed] of [['Arabic-Indic', '٢٠١٠'], ['Persian', '۲۰۱۰'], ['Devanagari', '२०१०'], ['Bengali', '২০১০'], ['Thai', '๒๐๑๐'], ['full-width', '２０１０'], ['mathematical bold', '𝟐𝟎𝟏𝟎']]) {
+    assert.equal(normaliseDigits(typed), '2010', what);
+    assert.equal(dateDigits(typed), '2010', `${what}: a field keeps it`);
+  }
+  // ASCII is untouched; anything that is not a digit stays for the caller to judge (normaliseDigits) or is dropped (dateDigits).
+  assert.equal(normaliseDigits('1987'), '1987');
+  assert.equal(normaliseDigits('1a٢'), '1a2');
+  assert.equal(dateDigits('1a٢ -'), '12', 'letters, signs and spaces are dropped, digits of any script are kept');
+  assert.equal(dateDigits(''), '');
+  assert.equal(dateDigits('²³½'), '', 'superscripts and fractions are not decimal digits');
+});
+
+test('A DATE TYPED IN ANOTHER SCRIPT IS THE SAME DATE: the verdict equals the ASCII one', async () => {
+  const { judgeBirthDate } = await fresh();
+  const arabic = { day: '٠٥', month: '١٠', year: '٢٠١٣' };
+  assert.deepEqual(judgeBirthDate(arabic, NOW), judgeBirthDate(born('05', 10, 2013), NOW), 'Arabic-Indic digits');
+  assert.equal(judgeBirthDate(arabic, NOW).kind, 'pass');
+  assert.equal(judgeBirthDate({ day: '６', month: '１０', year: '２０１３' }, NOW).kind, 'under', 'full-width digits, a day before the birthday');
+  assert.equal(judgeBirthDate({ day: '5', month: '10', year: '٢٠١٣' }, NOW).kind, 'pass', 'ASCII and Arabic-Indic in one date');
+  assert.equal(judgeBirthDate({ day: '٣١', month: '٢', year: '١٩٩٠' }, NOW).kind, 'invalid', '31 February is not a date in any script');
+  assert.equal(judgeBirthDate({ day: '5', month: '10', year: '٢٠١' }, NOW).kind, 'invalid', 'three digits are not a year');
+});
+
+test('THE DAY AND YEAR FIELDS KEEP WHAT A NON-ASCII KEYBOARD TYPES, as the ASCII digits, instead of deleting it', async () => {
+  const Page = await loadSignup();
+  const state = { value: { day: '', month: '9', year: '' } };
+  const seen = [];
+  const field = Page.BirthDateField({ value: state.value, onChange: (next) => seen.push(next), invalid: false });
+  const input = (name) => findAll(field, (n) => n.type === 'input' && n.props.name === name)[0];
+  input('birthYear').props.onChange({ target: { value: '٢٠١٠' } });
+  input('birthDay').props.onChange({ target: { value: '２８' } });
+  input('birthYear').props.onChange({ target: { value: '20x1y0' } });
+  assert.deepEqual(seen.map((s) => [s.day, s.year]), [['', '2010'], ['28', ''], ['', '2010']], 'a date typed in other digits arrives as ASCII; non-digits are still dropped');
+  assert.deepEqual(seen.map((s) => s.month), ['9', '9', '9'], 'the month is left alone');
+});
+
+test('the date row has room for the longest month on a 320px phone, and stacks where nothing fits, without a sideways scroll', () => {
+  const css = readFileSync(join(WEB, 'src', 'routes', 'auth.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const narrow = /@media \(max-width:400px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+  assert.ok(narrow.length > 50, 'there is no rule for a narrow phone');
+  const tracks = /\.field-date__row\s*\{\s*grid-template-columns:\s*minmax\((\d+)px,[^)]*\)\s*minmax\((\d+)px,[^)]*\)\s*minmax\((\d+)px,[^)]*\)/.exec(narrow);
+  assert.ok(tracks, 'the narrow row does not give each part a floor');
+  const [day, month, year] = tracks.slice(1).map(Number);
+  assert.ok(month >= 120, `the month's floor is ${month}px: "September" at 16px is 80px of text plus its padding and arrow`);
+  assert.ok(day >= 36 && year >= 52, 'the day holds two digits and the year four at 16px');
+  // 254px is the row's width at 320px wide (measured): the floors and the two gaps must fit in it.
+  assert.ok(day + month + year + 16 <= 254, `the floors (${day + month + year}px and two 8px gaps) do not fit the 254px a 320px phone gives the row`);
+  assert.match(css, /@media \(max-width:300px\)\s*\{\s*\.auth-page \.field-date__row\s*\{\s*grid-template-columns:\s*minmax\(0,1fr\);/, 'below 300px the three do not stack');
+  assert.doesNotMatch(narrow, /font-size/, 'a smaller font makes iOS zoom the page on focus');
+});
+
+/* ------------------------------------------------------------------ the refusal takes focus --- */
+
+test('WHEN THE REFUSAL REPLACES THE FORM, FOCUS GOES TO ITS HEADING, which is described by the sentence under it', async () => {
+  useStorage(memory({ 'studpilot.age-gate.v1': '1' }));
+  const Page = await loadSignup();
+  const page = Page.mountStub(() => Page.SignupPage()); // not settled: the effects have not run yet
+  const heading = findAll(page.result, (n) => n.type === 'h2' && n.props.id === 'age-refused-title')[0];
+  assert.ok(heading, 'the refusal is not on the page');
+  assert.equal(heading.props.tabIndex, -1, 'a heading is reachable by script and is not a tab stop');
+  const body = findAll(page.result, (n) => n.type === 'p' && n.props.id === 'age-refused-body')[0];
+  assert.ok(body, 'the sentence under the heading has no id');
+  assert.equal(heading.props['aria-describedby'], 'age-refused-body', 'the heading is described by the sentence under it');
+  assert.match(textOf(body), /Thank you for telling us/);
+  assert.equal(body.props.role, undefined, 'a status region inserted already holding its text is not reliably announced: focus carries it');
+  let focused = 0;
+  heading.props.ref.current = { focus() { focused += 1; } };
+  await page.settle();
+  assert.equal(focused, 1, 'the heading took focus once, when the refusal appeared');
+});
+
+test('the refusal’s focus effect runs when the refusal appears, not only on the first render (source)', () => {
+  const signup = nodes(parse('routes', 'auth-pages.tsx')).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'SignupPage').getText();
+  assert.match(signup, /useEffect\(\(\) => \{\s*if \(refused && !sentTo\) refusalTitle\.current\?\.focus\(\);\s*\}, \[refused, sentTo\]\);/);
+  assert.match(signup, /ref=\{refusalTitle\}/);
+});

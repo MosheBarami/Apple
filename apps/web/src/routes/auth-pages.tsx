@@ -5,7 +5,7 @@
 // account. Sign in instead." — which turned the sign-up form into a free membership lookup for
 // anyone with a list of addresses. A message table inside a component is a message table nothing
 // can test, so the table moved out and the screens below only render what the model decided.
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
@@ -32,7 +32,7 @@ import {
   type RobloxLandingState,
 } from '../lib/roblox-signin';
 import { PROVIDER_NAME, useEnabledProviders, type OAuthProvider } from '../lib/auth-providers';
-import { REFUSAL_BODY, REFUSAL_TITLE, refusalRemembered, signupGate, type BirthDate } from '../lib/age-gate';
+import { REFUSAL_BODY, REFUSAL_TITLE, dateDigits, refusalRemembered, signupGate, type BirthDate } from '../lib/age-gate';
 import { StudPilotGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -419,6 +419,17 @@ export function AlternativeSignIn({ from }: { from: string }) {
   const [busy, setBusy] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // A successful start leaves `busy` set, because the browser is on its way to the provider. If the person comes Back to this page and the
+  // browser restores it from its back/forward cache (`pageshow` with `persisted`), the page is exactly as it was left, buttons held and a
+  // spinner on the one pressed, with nothing in flight. Release them.
+  useEffect(() => {
+    const onShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setBusy(null);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+
   const choose = async (provider: OAuthProvider) => {
     if (busy) return;
     setError(null);
@@ -485,7 +496,7 @@ export function BirthDateField({
             required
             value={value.day}
             aria-invalid={mark}
-            onChange={(e) => onChange({ ...value, day: e.target.value.replace(/\D/g, '') })}
+            onChange={(e) => onChange({ ...value, day: dateDigits(e.target.value) })}
           />
         </label>
         <label className="field-date__part">
@@ -516,7 +527,7 @@ export function BirthDateField({
             required
             value={value.year}
             aria-invalid={mark}
-            onChange={(e) => onChange({ ...value, year: e.target.value.replace(/\D/g, '') })}
+            onChange={(e) => onChange({ ...value, year: dateDigits(e.target.value) })}
           />
         </label>
       </div>
@@ -805,6 +816,14 @@ export function SignupPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent'>('idle');
   const navigate = useNavigate();
+  // The refusal REPLACES the form, and the form held keyboard focus (its submit button), so focus would fall to <body> and a screen reader
+  // would hear nothing: a live region that is inserted already holding its text is not reliably announced. Focus moves to the notice's
+  // heading instead (tabIndex -1: reachable by script, not a tab stop), which is described by the sentence under it, so the person hears
+  // both. It runs when the refusal appears, whether it was just given or remembered from this browser's last visit.
+  const refusalTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (refused && !sentTo) refusalTitle.current?.focus();
+  }, [refused, sentTo]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -869,8 +888,8 @@ export function SignupPage() {
     return (
       <AuthShell>
         <div className="auth-card" role="group" aria-labelledby="age-refused-title">
-          <h2 className="auth-card-title" id="age-refused-title">{REFUSAL_TITLE}</h2>
-          <p className="auth-card-sub" role="status">{REFUSAL_BODY}</p>
+          <h2 className="auth-card-title" id="age-refused-title" ref={refusalTitle} tabIndex={-1} aria-describedby="age-refused-body">{REFUSAL_TITLE}</h2>
+          <p className="auth-card-sub" id="age-refused-body">{REFUSAL_BODY}</p>
           <p className="auth-switch">
             Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
           </p>
