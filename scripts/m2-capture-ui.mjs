@@ -32,6 +32,10 @@
 //   a code that is not six characters).
 //   The empty pieces state, and the dashboard after one-click create: neither is on main yet.
 //
+// WHAT THE PICTURES SHOW THAT IS SIMULATED. The mock fixture (apps/web/src/lib/mock.ts) reports a Studio selection of 2 objects, so the composer
+// draws its "2 selected" chip, a state a new customer cannot reach while the plugin cannot be had. The alt and caption of every capture say so
+// (tests/no-fake-output.test.mjs holds the words); capturing without the chip would need a change to the app's fixture, which this lane does not make.
+//
 // No secret is read. Nothing is written outside apps/site/public/assets/screens and apps/site/src/data/screens.json.
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -72,8 +76,8 @@ const CAPTURES = [
     scale: 1,
     maxBytes: 25_000,
     state: 'the workspace of a project with no conversation yet: the composer waiting for a request, and three example ideas',
-    alt: 'The StudPilot web app with an empty chat: a box to describe what to build, and three example ideas. The project name and the numbers are sample data.',
-    caption: 'The real web app with an empty chat. The project name and the numbers are sample data.',
+    alt: 'The StudPilot web app with an empty chat: a box to describe what to build, and three example ideas. The project name, the numbers and the "2 selected" chip are sample data. No Studio is connected.',
+    caption: 'The real web app with an empty chat. The project name, the numbers and the "2 selected" chip, which the app shows when Studio reports a selection, are sample data. No Studio is connected.',
   },
   {
     id: 'app-idle-phone',
@@ -82,8 +86,8 @@ const CAPTURES = [
     scale: 2,
     maxBytes: 40_000,
     state: 'the same empty workspace on a phone',
-    alt: 'The StudPilot web app on a phone with an empty chat: a box to describe what to build, and three example ideas. The project name and the numbers are sample data.',
-    caption: 'The same empty chat on a phone. The project name and the numbers are sample data.',
+    alt: 'The StudPilot web app on a phone with an empty chat: a box to describe what to build, and three example ideas. The project name, the numbers and the "2 selected" chip are sample data. No Studio is connected.',
+    caption: 'The same empty chat on a phone. The project name, the numbers and the "2 selected" chip are sample data. No Studio is connected.',
   },
 ];
 
