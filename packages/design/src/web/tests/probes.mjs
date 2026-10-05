@@ -99,6 +99,99 @@ export function inPageFilledElements({ targets = null, tolerance = 0, only = nul
   return found;
 }
 
+/**
+ * Before any key is pressed: remember what every element's border and box-shadow look like at rest, so a focus
+ * indicator is what CHANGES when focus arrives (a border that is always accent is not a focus ring).
+ */
+export function inPageRememberRest() {
+  // Nothing may hold focus while the resting look is read: an element left focused by an earlier walk would be remembered WITH its ring.
+  document.activeElement?.blur();
+  const rest = new WeakMap();
+  for (const el of document.querySelectorAll('*')) {
+    const cs = getComputedStyle(el);
+    rest.set(el, { border: [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor].join('|'), shadow: cs.boxShadow, outline: `${cs.outlineStyle}|${cs.outlineWidth}|${cs.outlineColor}` });
+  }
+  window.__rest = rest;
+  return document.querySelectorAll('*').length;
+}
+
+/**
+ * The focus indicator the browser draws around the element that has focus now: the best of its own outline, its
+ * ring-shaped box-shadow layers (no offset, no blur, a spread) and a border that changed on focus, and the same
+ * three on any ancestor that reacts to the focus inside it (`:focus-within`, the composer card). Each indicator is
+ * laid over the surface behind its element and measured against that surface. Returns null when nothing is focused.
+ */
+export function inPageFocusIndicator() {
+  const el = document.activeElement;
+  if (!el || el === document.body || el === document.documentElement) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const g = canvas.getContext('2d', { willReadFrequently: true });
+  const rgba = (css) => {
+    g.clearRect(0, 0, 1, 1);
+    g.fillStyle = '#000';
+    g.fillStyle = css;
+    g.fillRect(0, 0, 1, 1);
+    const d = g.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2], d[3] / 255];
+  };
+  const over = (top, bottom) => [0, 1, 2].map((i) => top[i] * top[3] + bottom[i] * (1 - top[3])).concat(1);
+  const paint = (node) => {
+    const layers = [];
+    for (let n = node; n; n = n.parentElement) {
+      const c = rgba(getComputedStyle(n).backgroundColor);
+      if (c[3] > 0) layers.push(c);
+      if (c[3] === 1) break;
+    }
+    let out = [255, 255, 255, 1];
+    for (let i = layers.length - 1; i >= 0; i -= 1) out = over(layers[i], out);
+    return out;
+  };
+  const lum = ([r, g2, b]) => { const f = (c) => { const x = c / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g2) + 0.0722 * f(b); };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const label = (n) => `<${n.tagName.toLowerCase()}${n.getAttribute('data-slot') ? ` data-slot=${n.getAttribute('data-slot')}` : ''}> "${(n.getAttribute('aria-label') || n.textContent || n.getAttribute('placeholder') || '').trim().replace(/\s+/g, ' ').slice(0, 30)}" .${(n.getAttribute('class') || '').split(/\s+/)[0]}`;
+  const indicators = [];
+  const read = (node, where) => {
+    const cs = getComputedStyle(node);
+    const was = window.__rest?.get(node);
+    const surface = paint(node.parentElement ?? document.documentElement);
+    const add = (kind, css, width) => {
+      const c = rgba(css);
+      if (c[3] === 0) return;
+      const seen = over(c, surface);
+      indicators.push({ kind: `${where} ${kind}`, width, colour: css, ratio: ratio(seen, surface) });
+    };
+    if (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 && `${cs.outlineStyle}|${cs.outlineWidth}|${cs.outlineColor}` !== was?.outline) add('outline', cs.outlineColor, cs.outlineWidth);
+    if (cs.boxShadow !== 'none' && cs.boxShadow !== was?.shadow) {
+      // Split the computed list at the commas outside parentheses.
+      const layers = [];
+      let depth = 0;
+      let cur = '';
+      for (const ch of cs.boxShadow) {
+        if (ch === '(') depth += 1;
+        if (ch === ')') depth -= 1;
+        if (ch === ',' && depth === 0) { layers.push(cur); cur = ''; } else cur += ch;
+      }
+      layers.push(cur);
+      for (const layer of layers) {
+        const lengths = [...layer.matchAll(/(-?[\d.]+)px/g)].map((m) => parseFloat(m[1]));
+        if (lengths.length < 4 || lengths[0] !== 0 || lengths[1] !== 0 || lengths[2] !== 0 || !(lengths[3] > 0)) continue;
+        const colour = layer.replace(/(-?[\d.]+)px/g, ' ').replace(/\binset\b/, ' ').trim();
+        add('ring', colour, `${lengths[3]}px`);
+      }
+    }
+    const border = [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor].join('|');
+    if (parseFloat(cs.borderTopWidth) > 0 && border !== was?.border) add('border', cs.borderTopColor, cs.borderTopWidth);
+  };
+  read(el, 'own');
+  let n = el.parentElement;
+  for (let i = 0; n && i < 5; i += 1, n = n.parentElement) if (n.matches(':focus-within')) read(n, 'ancestor');
+  const best = indicators.reduce((a, b) => (!a || b.ratio > a.ratio ? b : a), null);
+  const r = el.getBoundingClientRect();
+  if (!el.hasAttribute('data-fid')) { window.__fidCount = (window.__fidCount ?? 0) + 1; el.setAttribute('data-fid', String(window.__fidCount)); }
+  return { id: el.getAttribute('data-fid'), who: label(el), indicators, best: best ? { kind: best.kind, ratio: best.ratio, colour: best.colour, width: best.width } : null, visible: r.width > 1 && r.height > 1 };
+}
+
 /** The ratio of a drawn foreground ([r, g, b, a]) over a drawn fill ([r, g, b]), with the foreground's own alpha laid over the fill first. */
 export function drawnRatio(fg, fill) {
   const a = fg[3];

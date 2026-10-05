@@ -81,7 +81,7 @@ export const isFocusRule = (rule) => splitTop(rule.selector).some((s) => /:focus
 
 /**
  * What a focus rule DRAWS as its ring, resolved through `lookup`:
- *   rings       an `outline` / `outline-color` colour, and every ring-shaped `box-shadow` layer
+ *   rings       an `outline` / `outline-color` colour, a Tailwind `--tw-ring-color`, and every ring-shaped `box-shadow` layer
  *               (no offset, no blur, a spread: `0 0 0 3px X`, `inset 0 0 0 1px X`). A glow
  *               (`0 0 12px X`) and a drop shadow are not rings and are not collected.
  *   border      the colour the rule gives the border, which can carry the focus when the ring is a wash
@@ -110,6 +110,15 @@ export function focusDrawing(rule, lookup) {
     const text = expand(outlineColour);
     if (text === null) unresolved.push({ prop: 'outline-color', text: outlineColour, colour: null });
     else add('outline-color', text, text);
+  }
+
+  // Tailwind draws a ring as `box-shadow: 0 0 0 <width> var(--tw-ring-color)`, so a rule that sets the colour
+  // variable on focus is setting the ring's colour: a correction of a vendored utility's ring is read as one.
+  const ringColour = declOf(rule.body, '--tw-ring-color');
+  if (ringColour !== null) {
+    const text = expand(ringColour);
+    if (text === null) unresolved.push({ prop: '--tw-ring-color', text: ringColour, colour: null });
+    else add('--tw-ring-color', text, text);
   }
 
   const shadow = declOf(rule.body, 'box-shadow');

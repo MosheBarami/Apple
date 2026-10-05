@@ -95,7 +95,10 @@
     padding: 0;
     border: 0 solid;
     border-color: var(--color-border);
-    outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
+    /* Upstream draws the browser's own focus outline at half of the ring colour. With the ring at 75% of the accent
+       that is 37.5% of it, 1.8:1 on the surfaces (Copy Code, Download file, the reasoning trigger). Full strength is
+       the ring token itself, which clears 3:1 on all five (focus.test.mjs, rendered.test.mjs). */
+    outline-color: var(--color-ring);
   }
   :where(.aie, [data-slot]) {
     line-height: 1.5;
@@ -151,4 +154,23 @@
  */
 :root:not([data-theme='light']) .hover\:bg-destructive\/90:hover {
   background-color: color-mix(in srgb, var(--color-destructive) 64%, transparent);
+}
+
+/*
+ * THE FOCUS RING OF A VENDORED CONTROL IS DRAWN AT FULL STRENGTH. shadcn's Button, Input, Select, Tabs, Switch and
+ * ScrollArea draw focus as `focus-visible:ring-ring/50 focus-visible:ring-[3px]`: a 3px ring at HALF of --color-ring,
+ * which is itself the accent at 75%. On a Button, whose border is 0 wide, that ring is the only indicator and it
+ * measured 1.87:1 dark and 1.82:1 light against the surface it sits on (the composer's toolbar, Send, the roadmap's
+ * Build). The destructive Button's `focus-visible:ring-destructive/20` is fainter still. An invalid field keeps its own
+ * red halo and red border (`aria-invalid:`). The vendored files are
+ * byte-pinned (ai-elements-provenance.test.mjs), so the ring colour is corrected here, for exactly the elements that
+ * carry those utilities, by a rule outside every layer (which beats a layered utility whatever its specificity): the
+ * ring keeps its width and its offset, and takes the colour of the token. Where a control also takes a border-ring the
+ * ring is a halo on top of it, and still reads as one.
+ */
+[class*='focus-visible:ring-ring/']:focus-visible:not([aria-invalid='true']) {
+  --tw-ring-color: var(--color-ring);
+}
+[class*='focus-visible:ring-destructive/']:focus-visible {
+  --tw-ring-color: var(--color-destructive);
 }
