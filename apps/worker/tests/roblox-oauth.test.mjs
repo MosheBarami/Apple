@@ -1649,6 +1649,31 @@ test('REPLAY is still refused: the same state, or the same handle, offered again
   db.close();
 });
 
+test('a state or handle nobody holds also counts against the address: fresh random values cannot be used to hammer KV, and real flows from that address are untouched', async () => {
+  // Each state and handle has a bucket of its own, so a flood of fresh valid-looking values would never meet a ceiling without this.
+  const { db, world, env } = scene();
+  const ip = freshIp();
+  const random = () => randomBytes(32).toString('base64url');
+  const callbacks = [];
+  for (let i = 0; i < 62; i += 1) {
+    const state = random();
+    callbacks.push((await hit(`${PROD}/auth/roblox/callback?code=x&state=${state}`, { headers: { 'CF-Connecting-IP': ip, Cookie: `${STATE_C}=${state}` } }, env)).status);
+  }
+  assert.equal(callbacks.slice(0, 60).every((s) => s === 400), true);
+  assert.deepEqual(callbacks.slice(60), [429, 429], 'the sixty-first state nobody holds is refused');
+  const redeems = [];
+  for (let i = 0; i < 62; i += 1) redeems.push((await redeemRequest(env, { ip, cookie: `${HANDLE_C}=${random()}` })).status);
+  assert.equal(redeems.slice(0, 60).every((s) => s === 400), true);
+  assert.deepEqual(redeems.slice(60), [429, 429], 'and so is the sixty-first handle nobody holds');
+  const refused = await redeemRequest(env, { ip, cookie: `${HANDLE_C}=${random()}` });
+  assertHostCookie(setCookieNamed(refused, HANDLE_C, true), HANDLE_C, { maxAge: 0 });
+  const flow = await startFlow(env, { ip });
+  const done = await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(done.res.status, 302, 'a flow whose state IS held is never counted as a stray');
+  assert.equal((await redeemFor(env, done.res, { ip })).status, 200, 'and its redeem, from the same address, is answered');
+  db.close();
+});
+
 test('requests that carry no usable state or handle are limited per address, and a legitimate flow from that address is not affected', async () => {
   const { db, world, env } = scene();
   const ip = freshIp();

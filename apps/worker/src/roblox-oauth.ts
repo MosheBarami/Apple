@@ -516,7 +516,10 @@ function parseRecord(raw: string | null): StateRecord | null {
   }
 }
 
-async function callback(req: Request, env: Env): Promise<Response> {
+/** Counts one request against the caller's address for a state or handle nobody holds; true when that address is over its allowance. */
+type Strike = () => boolean;
+
+async function callback(req: Request, env: Env, strike: Strike): Promise<Response> {
   const cfg = configOf(env);
   if (!cfg) return page(503, MESSAGES.unavailable);
   const url = new URL(req.url);
@@ -533,7 +536,12 @@ async function callback(req: Request, env: Env): Promise<Response> {
   const raw = validShape ? await env.KV.get(STATE_PREFIX + state) : null;
   if (raw !== null) await env.KV.delete(STATE_PREFIX + state);
   const record = parseRecord(raw);
-  if (!record) return fail(400, 'state unknown or already used');
+  if (!record) {
+    // A state nobody holds is never a legitimate request. It is keyed by itself (so a flow is never refused for what its neighbours
+    // do), which would let unlimited fresh states hammer KV, so each one also counts against the address's stray allowance.
+    if (validShape && strike()) return page(429, MESSAGES.busy, clear);
+    return fail(400, 'state unknown or already used');
+  }
   if (readStateCookie(req) !== state) return fail(400, 'state not bound to this browser');
   if (!code || url.searchParams.has('error')) return fail(400, 'no code');
 
@@ -570,7 +578,7 @@ interface HandleRecord {
  * It answers once: the handle is read and burned, and the cookie is cleared whatever the outcome. The Origin check
  * runs first and spends nothing, so a hostile page cannot make a real person's sign-in fail by poking at it.
  */
-async function redeem(req: Request, env: Env): Promise<Response> {
+async function redeem(req: Request, env: Env, strike: Strike): Promise<Response> {
   const cfg = configOf(env);
   const clear = [clearedHandleCookie(isDevOrigin(req))];
   if (!cfg) return jsonReply(503, { error: MESSAGES.unavailable });        // nothing read, nothing cleared: it can still be redeemed once the secrets are back
@@ -589,6 +597,8 @@ async function redeem(req: Request, env: Env): Promise<Response> {
     waiting = null;
   }
   if (!waiting?.tokenHash || typeof waiting.next !== 'string') {
+    // The same as an unknown state: a handle nobody holds also counts against the address's stray allowance.
+    if (FLOW_TOKEN.test(handle) && strike()) return jsonReply(429, { error: MESSAGES.busy }, clear);
     note('handle unknown or already used');
     return jsonReply(400, { error: MESSAGES.failed }, clear);
   }
@@ -605,7 +615,9 @@ async function redeem(req: Request, env: Env): Promise<Response> {
  *   they are keyed by their own state or handle (5 a minute: one use, and a reload or two), never by the shared address; a
  *   state and a handle are single use anyway, which is the replay protection, and the bucket only bounds how hard one
  *   already-spent value can be hammered. A request with no usable state or handle is never a legitimate one, and shares a
- *   per-address bucket of its own (60 a minute) that no real flow touches.
+ *   per-address bucket of its own (60 a minute) that no real flow touches; so does a well-formed state or handle that nobody
+ *   holds (random, replayed, expired), which the handler counts against that same bucket, because a bucket per value would
+ *   otherwise let fresh random values through for ever.
  *
  * `ipLimited` is per isolate and evicts the least active key first under a flood, so none of this is a global ceiling:
  * flooding is for Cloudflare's own rate limiting in front of the worker.
@@ -636,9 +648,10 @@ function limitFor(req: Request, ip: string): { key: string; limit: number } {
  */
 export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
   const routes = new Hono<{ Bindings: Env }>();
+  const ipOf = (c: { req: { header(name: string): string | undefined } }): string => c.req.header('CF-Connecting-IP') ?? 'unknown';
 
   routes.use('*', async (c, next) => {
-    const { key, limit } = limitFor(c.req.raw, c.req.header('CF-Connecting-IP') ?? 'unknown');
+    const { key, limit } = limitFor(c.req.raw, ipOf(c));
     if (limited(key, limit)) return page(429, MESSAGES.busy);
     return next();
   });
@@ -646,20 +659,26 @@ export function robloxOAuthRoutes(limited: IpLimiter): Hono<{ Bindings: Env }> {
   routes.get('/status', (c) =>
     reply(200, JSON.stringify({ configured: robloxSignInConfigured(c.env) }), { 'Content-Type': 'application/json; charset=utf-8' }));
 
-  for (const [path, handler] of [['/start', start], ['/callback', callback]] as const) {
-    routes.get(path, async (c) => {
-      try {
-        return await handler(c.req.raw, c.env);
-      } catch {
-        // Nothing from the error is kept: its message can carry a URL, and a URL here carries a code.
-        note('unexpected failure');
-        return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
-      }
-    });
-  }
+  routes.get('/start', async (c) => {
+    try {
+      return await start(c.req.raw, c.env);
+    } catch {
+      // Nothing from the error is kept: its message can carry a URL, and a URL here carries a code.
+      note('unexpected failure');
+      return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
+    }
+  });
+  routes.get('/callback', async (c) => {
+    try {
+      return await callback(c.req.raw, c.env, () => limited(`rbx-callback-stray:${ipOf(c)}`, 60));
+    } catch {
+      note('unexpected failure');
+      return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
+    }
+  });
   routes.post('/redeem', async (c) => {
     try {
-      return await redeem(c.req.raw, c.env);
+      return await redeem(c.req.raw, c.env, () => limited(`rbx-redeem-stray:${ipOf(c)}`, 60));
     } catch {
       note('unexpected failure');
       return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(isDevOrigin(c.req.raw))]);
