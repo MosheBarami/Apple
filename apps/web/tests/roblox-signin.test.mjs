@@ -43,6 +43,7 @@ import { writeDraft } from '../src/lib/draft.ts';
 import { rememberSearch } from '../src/lib/search-history.ts';
 import { writeViewChoice } from '../src/lib/view-state.ts';
 import {
+  EXISTING_ROBLOX_SESSION_LINE,
   ROBLOX_CREATE_PATH,
   ROBLOX_DECLINE_PATH,
   ROBLOX_REDEEM_PATH,
@@ -373,6 +374,8 @@ test('the landing page draws one card per state: working, a choice with two butt
   // password it does not have), so the card says what continuing does and offers Continue and Cancel, not "switch".
   const confirming = view({ kind: 'choice', id: 'u1', email: 'roblox-0a1b2c3d4e5f60718293a4b5c6d7e8f9@users.studpilot.invalid', roblox: true });
   assert.match(text(confirming), /Confirm it is you/);
+  assert.ok(text(confirming).includes(EXISTING_ROBLOX_SESSION_LINE), 'the card for a signed-in Roblox account says what continuing does, in the words the page exports');
+  assert.equal(text(choice).includes(EXISTING_ROBLOX_SESSION_LINE), false, 'and an email account’s card does not');
   assert.doesNotMatch(text(confirming), /invalid/, 'the placeholder address is not on the page');
   assert.deepEqual([...confirming.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]), ['Continue with Roblox', 'Cancel']);
 
