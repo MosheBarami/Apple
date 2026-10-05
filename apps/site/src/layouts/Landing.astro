@@ -1,9 +1,11 @@
 ---
-// studpilot-minimal.css FIRST: it is the token source and the shared base, and landing.css adds the
-// front page's structure on top of it. The reverse order is what forced 117 `!important`s.
-import '../styles/studpilot-minimal.css';
+// The design tokens FIRST (one file, shared with the app), then base.css, then landing.css, which
+// adds the front page's structure on top of them. The reverse order is what forced 117 `!important`s.
+import '@studpilot/design/tokens.css';
+import tokensCss from '@studpilot/design/tokens.css?raw';
+import { themeColor } from '@studpilot/design/css-tokens';
+import '../styles/base.css';
 import '../styles/landing.css';
-import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -62,7 +64,7 @@ const ogImage = new URL('/og.png', site);
         derived: the script below reads `--theme-color` off :root and writes it here on load and on
         every toggle, so the band cannot disagree with the palette again. The server-rendered value
         is the dark ground, which is what the default `data-theme="dark"` renders. */}
-    <meta name="theme-color" id="theme-color" content="#000000" />
+    <meta name="theme-color" id="theme-color" content={themeColor('dark', tokensCss)} />
 
     <script is:inline>
       // Runs before first paint, exactly as Base.astro's does: no flash of the wrong theme, and the
@@ -80,7 +82,6 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
-    <Aura />
     <slot />
 
 

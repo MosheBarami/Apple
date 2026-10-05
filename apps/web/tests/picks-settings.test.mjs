@@ -38,7 +38,8 @@ const MOUNTS = [
   ['ui-layouts--motion-number-slider', 'routes/settings.tsx', /import \{ NumberSlider \}/, /<NumberSlider\b/],
   ['motion--clerk-conditional-field', 'routes/settings.tsx', /import \{ ConditionalField \}/, /<ConditionalField open=\{delivery\.digest === 'daily'\}/],
   ['motion--radix-radio-group', 'routes/settings.tsx', /import \{ RadioMark \}/, /<RadioMark on=/],
-  ['ui-layouts--liquid-glass-sidebar-menu', 'routes/settings.tsx', /import \{ GlideIndicator \}/, /<GlideIndicator[^>]*variant="glass"/],
+  // RESTATED 2026-10-05 (M2): the glass variant left with the glass shell; the pick's pill is the flat one.
+  ['ui-layouts--liquid-glass-sidebar-menu', 'routes/settings.tsx', /import \{ GlideIndicator \}/, /<GlideIndicator[^>]*variant="flat"/],
   ['ui-layouts--multi-layout-accordion', 'routes/settings.tsx', /import \{ Accordion \}/, /<Accordion\b/],
   ['animate-ui--theme-toggler', 'routes/settings.tsx', /import \{ withThemeWipe \}/, /withThemeWipe\(\(\) => setPref\('appearance'/],
   ['ui-layouts--button-hover-12', 'routes/settings.tsx', /import '\.\.\/components\/picks\/settings\/account-buttons\.css'/, /./],

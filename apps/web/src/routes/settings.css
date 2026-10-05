@@ -87,7 +87,7 @@
 .settings-find > input[type='search'] { width:100%; padding:9px 13px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2); color:var(--ink); font-size:16px; letter-spacing:-.01em; transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out); }
 .settings-find > input[type='search']::placeholder { color:var(--faint); }
 .settings-find > input[type='search']:hover { border-color:var(--surface-3); }
-.settings-find > input[type='search']:focus { border-color:var(--accent-line); background:var(--surface); }
+.settings-find > input[type='search']:focus { border-color:var(--accent-ring); background:var(--surface); }
 .settings-found { margin:0 0 18px; max-width:68ch; font-size:13px; line-height:1.6; color:var(--muted); text-wrap:pretty; }
 
 /* ------------------------------------------------------------------- the rail --- */
@@ -400,11 +400,11 @@
    image is black on TRANSPARENT; on the dark theme this product defaults to, it was black on
    #232221 and no phone camera could read it — two-step verification could be started and never
    finished.
-   `--accent-on-fill` is the ground rather than a raw #fff because rule 1 admits no hex in a
-   declaration, and it is the only token in the ramp that is near-white in BOTH themes: it is the
-   ink that has to sit on `--accent-fill`, which is a dark green on either side, so it cannot
-   become dark without the primary button becoming unreadable first. */
-.settings-card .mfa-qr { display:block; width:168px; height:168px; max-width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--accent-on-fill); }
+   `--qr-ground` is the ground: a token meant for this, white in BOTH themes. It was `--accent-ink`
+   once, which is near-white only while the accent is dark; with the violet accent `--accent-ink`
+   is near-black in the dark theme, and the black code sat on near-black again (measured 1.06:1).
+   packages/design/src/web/drawn.test.mjs measures the black-on-ground pair in both themes. */
+.settings-card .mfa-qr { display:block; width:168px; height:168px; max-width:100%; padding:10px; border:1px solid var(--line); border-radius:var(--r-md); background:var(--qr-ground); }
 
 /* ------------------------------------------------------ the page's state lines --- */
 
@@ -655,12 +655,11 @@
    specificity against `:checked`'s three, so hovering an ON switch repainted its border grey —
    which reads as the switch turning itself off under the cursor. */
 .settings-card .settings-switch:hover:not(:disabled):not(:checked) { border-color:var(--surface-3); }
-/* ON IS THE ACCENT AT A TENTH, exactly the primary button's treatment — the same green meaning the
-   same thing (this is live) in the same weight, rather than a second saturated green competing
-   with it. The knob carries the full accent so the state reads at a glance without the track
-   turning into a block of paint. */
-.settings-card .settings-switch:checked { background:var(--accent-fill); border-color:var(--accent-line); }
-.settings-card .settings-switch:checked::after { transform:translateX(16px); background:var(--accent); }
+/* ON IS THE ACCENT: the track is the accent, the primary button's colour, and the knob is the ink
+   that sits on the accent (--accent-ink), so the state reads at a glance and the knob never
+   disappears into its own track. */
+.settings-card .settings-switch:checked { background:var(--accent); border-color:var(--accent-ring); }
+.settings-card .settings-switch:checked::after { transform:translateX(16px); background:var(--accent-ink); }
 .settings-card .settings-switch:disabled { opacity:.45; }
 .settings-card .settings-switch:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 /* The privacy row's single opt-out uses the same object, with its label read-only to the screen
@@ -739,7 +738,7 @@
 @media (max-width:1080px) {
   .settings-shell { display:block; }
   .st-nav { margin-inline-start:0; }
-  .st-nav { position:sticky; top:0; z-index:4; margin:0 -20px 20px; padding:9px 20px; background:color-mix(in srgb,var(--paper) 92%,transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .st-nav { position:sticky; top:0; z-index:4; margin:0 -20px 20px; padding:9px 20px; background:var(--paper); border-bottom:1px solid var(--line); }
   .st-nav__list { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
   .st-nav__list::-webkit-scrollbar { display:none; }
   .st-nav__list > li { flex:none; }
@@ -750,7 +749,7 @@
      is what the groups existed to buy. */
   .st-nav__group { display:none; }
   .st-nav__link { padding:6px 12px; border-radius:var(--r-pill); background:var(--paper-2); }
-  .st-nav__link.is-active { box-shadow:none; background:var(--accent-fill); color:var(--accent-on-fill); }
+  .st-nav__link.is-active { box-shadow:none; background:var(--accent); color:var(--accent-ink); }
 }
 @media (max-width:720px) {
   /* THE DOCK COLLAPSES TO A 44px FIXED BUTTON AT top:10px/left:12px (system.css, the ≤760 block),
@@ -784,7 +783,7 @@
   .settings-card .settings-row--split .settings-row__text > p { font-size:12.5px; }
 }
 
-/* Picks: the rail's current row is drawn by the sliding glass pill (GlideIndicator, which also
+/* Picks: the rail's current row is drawn by the sliding pill (GlideIndicator, which also
    clears the row's own fill); here it only takes the rail's corner radius. */
 .st-nav__list.pk-glide-host > .pk-glide { border-radius:var(--r-xs); }
 @media (max-width:1080px) {

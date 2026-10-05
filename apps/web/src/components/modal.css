@@ -31,14 +31,11 @@
 /* ------------------------------------------------------------------- the backdrop --- */
 
 /* ONE VEIL, DERIVED FROM THE RAMP RATHER THAN PICKED. `--paper` at 72% is the page itself turned
-   up until the content behind it stops competing; the three hand-mixed greens it replaces were
-   each a hue nothing else in the product uses. The blur is what makes the dim read as depth
-   instead of as a grey sheet, and it degrades to the veil alone where it is unsupported. */
+   up until the content behind it stops competing. It is a flat dim: nothing behind it is blurred. */
 .modal-overlay.modal-overlay,
 .cmdk-backdrop.cmdk-backdrop {
   position:fixed; inset:0; display:grid; justify-items:center; padding:24px;
   background:color-mix(in srgb,var(--paper) 72%,transparent);
-  backdrop-filter:blur(10px) saturate(112%); -webkit-backdrop-filter:blur(10px) saturate(112%);
   animation:overlay-veil var(--t-base) var(--ease-out) both;
 }
 /* THE LIGHT THEME NEEDS THE OPPOSITE INK, NOT LESS OF THE SAME. `--paper` is #fafafa there, so the

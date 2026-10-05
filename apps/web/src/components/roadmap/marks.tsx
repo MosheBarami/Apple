@@ -13,13 +13,14 @@
 // a real property of the data rather than a category invented to have something
 // to colour.
 import type { MilestoneComplexity, Readiness } from './model';
+import { MARK_PATH, TILE_PATH } from '../glyphs';
 
 /* ------------------------------------------------------------ complexity -- */
 
 export const COMPLEXITY: Record<MilestoneComplexity, { label: string; accent: string; weight: 1 | 2 | 3 }> = {
   small: { label: 'Small', accent: 'var(--good)', weight: 1 },
   medium: { label: 'Medium', accent: 'var(--warn)', weight: 2 },
-  large: { label: 'Large', accent: 'var(--acc-ember)', weight: 3 },
+  large: { label: 'Large', accent: 'var(--accent)', weight: 3 },
 };
 
 const SMALL_HEX = 'M5 0.9l3.55 2.05v4.1L5 9.1 1.45 7.05v-4.1z';
@@ -98,44 +99,30 @@ export function ReadinessNode({ readiness, size = 20 }: { readiness: Readiness; 
 /* ------------------------------------------------------------ empty state -- */
 
 /**
- * Nothing planned yet: one carved hexagon on the spine and two blanks below it.
- * The same idea as the project shelf's `SummonIllustration`, drawn vertically
- * because this page reads downwards.
+ * Nothing planned yet: one made tile (the StudPilot mark's outline) on the spine and two blanks
+ * below it. The same idea as the project shelf's `SummonIllustration`, drawn vertically because
+ * this page reads downwards.
  */
 export function EmptyRoadmapMark() {
   return (
     <svg width="132" height="150" viewBox="0 0 132 150" fill="none" aria-hidden="true" focusable="false">
-      <path d="M66 30 V126" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
-      <path
-        d="M66 8 L84.2 18.5 V39.5 L66 50 L47.8 39.5 V18.5 Z"
-        stroke="var(--line-strong)"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M66 8 V29 M66 29 L47.8 39.5 M66 29 L84.2 39.5"
-        stroke="var(--line-strong)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M66 56 L82 65.2 V83.8 L66 93 L50 83.8 V65.2 Z"
-        stroke="var(--line)"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        strokeDasharray="3 6"
-        fill="none"
-      />
-      <path
-        d="M66 100 L82 109.2 V127.8 L66 137 L50 127.8 V109.2 Z"
-        stroke="var(--line)"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        strokeDasharray="3 6"
-        fill="none"
-      />
+      <path d="M66 50 V126" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
+      <g transform="translate(42 3.5) scale(1.5)">
+        <path
+          d={MARK_PATH}
+          fillRule="evenodd"
+          stroke="var(--line-strong)"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </g>
+      <g transform="translate(49.5 54.25) scale(1.25)">
+        <path d={TILE_PATH} stroke="var(--line)" strokeWidth="1.4" strokeLinejoin="round" strokeDasharray="3 6" vectorEffect="non-scaling-stroke" />
+      </g>
+      <g transform="translate(49.5 98.25) scale(1.25)">
+        <path d={TILE_PATH} stroke="var(--line)" strokeWidth="1.4" strokeLinejoin="round" strokeDasharray="3 6" vectorEffect="non-scaling-stroke" />
+      </g>
     </svg>
   );
 }

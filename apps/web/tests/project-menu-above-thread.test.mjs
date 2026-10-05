@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const css = readFileSync(new URL('../src/design/studpilot-minimal.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const css = readFileSync(new URL('../src/design/shell.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('the top bar that owns the project menu is stacked above the thread', () => {
   const rule = css.match(/\.studpilot-workspace__topbar\s*\{([^}]*)\}/);

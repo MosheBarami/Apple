@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { strayCanvases } from './owner-picks';
 
 /**
@@ -15,7 +17,7 @@ import { strayCanvases } from './owner-picks';
  *   - under prefers-reduced-motion nothing moves: two screenshots a second apart are the same
  *     picture, no animation frame is requested at idle and no animation loops;
  *   - off screen nothing draws: an element out of view is neither drawn into nor looped.
- * The ambient-layer ban, the one header, the blue accent and the pixel-diff helper are unchanged.
+ * The ambient-layer ban, the one header, the one accent and the pixel-diff helper are unchanged.
  *
  * INVERTED 2026-09-22, AND THE HISTORY IS WHY IT IS STILL HERE RATHER THAN DELETED.
  *
@@ -30,7 +32,7 @@ import { strayCanvases } from './owner-picks';
  * property is inverted and the method is kept: every route is checked in a real browser for the
  * absence of the atmosphere (no canvas, no ambient layer), for stillness measured on pixels (two
  * screenshots apart in time are the same picture, the landing composer's example line excepted),
- * for no animation-frame loop at idle, for one header design, for a blue — not green — accent, and
+ * for no animation-frame loop at idle, for one header design, for the one design-token accent (never green), and
  * for reduced motion stopping everything. The pixel-diff helper is the old file's, unchanged.
  */
 
@@ -204,7 +206,7 @@ test.describe('the calm site', () => {
       expect(moving, `${route} moves where nobody can see it`).toEqual([]);
     });
 
-    test(`${route} has one header design and a blue, not green, accent`, async ({ page }) => {
+    test(`${route} has one header design and the one accent of the design tokens, not green`, async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(route);
       const header = page.locator('header#site-nav');
@@ -225,7 +227,15 @@ test.describe('the calm site', () => {
       const d = max - min;
       const hue = d === 0 ? 0 : max === r ? (60 * ((g - b) / d) + 360) % 360 : max === g ? 60 * ((b - r) / d) + 120 : 60 * ((r - g) / d) + 240;
       expect(hue >= 75 && hue <= 175, `${route}: the accent ${accent} is green (hue ${Math.round(hue)})`).toBe(false);
-      expect(hue >= 200 && hue <= 250, `${route}: the accent ${accent} is not the restrained blue (hue ${Math.round(hue)})`).toBe(true);
+      // RESTATED 2026-10-05 (M2 step 2.1). This asserted a blue (hue 200-250). The accent is one token
+      // now, the default candidate of packages/design/src/web/accents.json, and the property is that
+      // the page paints exactly THAT: whichever candidate the owner picks, every route shows it, and
+      // never green (green is for status) nor the ember or azure the owner rejected.
+      const accents = JSON.parse(readFileSync(join(process.cwd(), 'packages/design/src/web/accents.json'), 'utf8'));
+      const want = accents.candidates.find((c: { name: string }) => c.name === accents.default).dark.accent;
+      expect(accent.toLowerCase(), `${route}: the page does not paint the default accent candidate`).toBe(want.toLowerCase());
+      expect(hue >= 10 && hue <= 50, `${route}: the accent ${accent} is ember orange (hue ${Math.round(hue)})`).toBe(false);
+      expect(hue >= 200 && hue <= 250, `${route}: the accent ${accent} is azure blue (hue ${Math.round(hue)})`).toBe(false);
     });
   }
 
@@ -259,7 +269,19 @@ test.describe('the calm site', () => {
       const r = e.getBoundingClientRect();
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
     }));
-    await expect.poll(async () => new Set((await measure()).map((c) => c.top)).size, { timeout: 10_000 }).toBe(1);
+    //[[ RESTATED 2026-10-05 (M2 step 2.1). The settle used to be "all three tops are equal", which is
+    //   also true BEFORE the reveal starts (all three are hidden at the same offset), so the poll could
+    //   pass at once and the next measure land mid-reveal on a card 2px off its neighbours. And the
+    //   phone half below had no settle at all. Dropping the spring easing for --ease-out made the
+    //   reveal start faster and exposed it: the phone half failed 5 loads in 30, against 0 in 30 on
+    //   the build before. The property is unchanged (side by side on a desk, one column on a phone);
+    //   what changed is that both halves now wait until every card has FINISHED revealing (opaque, no
+    //   transform) before measuring where it is. ]]
+    const settled = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.length > 0 && els.every((e) => {
+      const cs = getComputedStyle(e);
+      return cs.opacity === '1' && cs.transform === 'none';
+    }));
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
     const desk = await measure();
     expect(desk.length, 'the plan rail holds no cards').toBe(3);
     expect(new Set(desk.map((c) => c.top)).size, `the cards do not share a row at 1440: ${JSON.stringify(desk)}`).toBe(1);
@@ -268,6 +290,7 @@ test.describe('the calm site', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pricing');
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
     const phone = await page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
     expect(new Set(phone).size, 'on a phone the cards should stack in one column').toBe(1);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

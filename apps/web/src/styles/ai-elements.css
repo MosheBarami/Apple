@@ -18,7 +18,7 @@
  *      name the app happens to use elsewhere (`hidden`, `block`…) never becomes a utility.
  *
  * THE THEME IS THE APP'S PALETTE. Upstream's shadcn tokens (background, muted, accent, border…) are
- * mapped onto the app's own tokens — near-black workspace, the app's blue as primary — so the
+ * mapped onto the app's own tokens — near-black workspace, the accent as primary — so the
  * components follow the app's dark and light themes. They are named `--color-*` only, because the
  * app already uses `--muted` and `--accent` for different jobs.
  */
@@ -63,7 +63,7 @@
   --color-popover: var(--surface-2);
   --color-popover-foreground: var(--ink);
   --color-primary: var(--accent);
-  --color-primary-foreground: white;
+  --color-primary-foreground: var(--accent-ink);
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--ink);
   --color-muted: var(--surface-3);
@@ -95,7 +95,10 @@
     padding: 0;
     border: 0 solid;
     border-color: var(--color-border);
-    outline-color: color-mix(in oklab, var(--color-ring) 50%, transparent);
+    /* Upstream draws the browser's own focus outline at half of the ring colour. With the ring at 75% of the accent
+       that is 37.5% of it, 1.8:1 on the surfaces (Copy Code, Download file, the reasoning trigger). Full strength is
+       the ring token itself, which clears 3:1 on all five (focus.test.mjs, rendered.test.mjs). */
+    outline-color: var(--color-ring);
   }
   :where(.aie, [data-slot]) {
     line-height: 1.5;
@@ -139,4 +142,49 @@
   :where(.aie, .aie *, [data-slot], [data-slot] *):where([hidden]:not([hidden='until-found'])) { display: none !important; }
   /* The surface's own text colour, as upstream's `body { @apply bg-background text-foreground }`. */
   :where(.aie) { color: var(--color-foreground); }
+}
+
+/*
+ * UPSTREAM'S DESTRUCTIVE HOVER LIGHTENS THE FILL UNDER A WHITE LABEL THAT NEVER CHANGES. The shadcn destructive
+ * Button is `bg-destructive text-white hover:bg-destructive/90` (and `dark:bg-destructive/60` at rest), so in the
+ * dark theme, where --bad is the light red a status line is read in, pressing toward it takes the fill from 60% to
+ * 90% of that red and the label from 5.1:1 to 3.1:1 (measured by drawing it, rendered.test.mjs). The vendored
+ * component is byte-pinned, so the hover step is corrected here: 64% keeps a step you can see above the 60%
+ * rest and the label at 4.6:1 or better on every surface. Light is untouched (a solid --bad, and 90% is 5.1:1).
+ * The destructive Badge used as a link (`[a&]:hover:bg-destructive/90`, an `a` only) has the same step and the same
+ * label: 3.07:1 to 3.17:1 on the five surfaces in dark. Nothing ships one today; the same line corrects it.
+ */
+:root:not([data-theme='light']) .hover\:bg-destructive\/90:hover,
+:root:not([data-theme='light']) a[class*='[a&]:hover:bg-destructive/90']:hover {
+  background-color: color-mix(in srgb, var(--color-destructive) 64%, transparent);
+}
+
+/*
+ * THE FOCUS RING OF A VENDORED CONTROL IS DRAWN AT FULL STRENGTH. shadcn's Button, Input, Select, Tabs, Switch and
+ * ScrollArea draw focus as `focus-visible:ring-ring/50 focus-visible:ring-[3px]`: a 3px ring at HALF of --color-ring,
+ * which is itself the accent at 75%. On a Button, whose border is 0 wide, that ring is the only indicator and it
+ * measured 1.87:1 dark and 1.82:1 light against the surface it sits on (the composer's toolbar, Send, the roadmap's
+ * Build). The destructive Button's `focus-visible:ring-destructive/20` is fainter still. An invalid field keeps its own
+ * red halo and red border (`aria-invalid:`). The vendored files are
+ * byte-pinned (ai-elements-provenance.test.mjs), so the ring colour is corrected here, for exactly the elements that
+ * carry those utilities, by a rule outside every layer (which beats a layered utility whatever its specificity): the
+ * ring keeps its width and its offset, and takes the colour of the token. Where a control also takes a border-ring the
+ * ring is a halo on top of it, and still reads as one.
+ */
+[class*='focus-visible:ring-ring/']:focus-visible:not([aria-invalid='true']) {
+  --tw-ring-color: var(--color-ring);
+}
+[class*='focus-visible:ring-destructive/']:focus-visible {
+  --tw-ring-color: var(--color-destructive);
+}
+
+/*
+ * NO BLUR BEHIND A SURFACE, WHEREVER A UTILITY ASKS FOR ONE. The language is flat: a surface is a colour and a hairline.
+ * The attachment tile's remove button is vendored upstream as `bg-background/80 backdrop-blur-sm` (byte-pinned), so the
+ * blur is taken out here, for any element that carries a backdrop-blur utility, by a rule outside every layer.
+ * flat.test.mjs holds that no first-party file asks for one and that this rule is still here while a vendored file does.
+ */
+[class*='backdrop-blur'] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }

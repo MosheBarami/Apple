@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { sharedBlock } from '@studpilot/design/css-tokens';
 import { WEB, bundle, decomment, renderWith } from './ui-bundle.mjs';
 
 const SRC = join(WEB, 'src');
@@ -119,10 +120,18 @@ test('the sprite cell is chosen by the index, at the drawn size, per theme', () 
 });
 
 test('motion reads its timing from :root tokens, and every animation is switched off under reduced motion', () => {
+  // RESTATED 2026-10-05 (M2 review fix 5): a token this sheet spends must be declared on :root, in this
+  // sheet or in the token file every route loads first. --motion-lift-shadow carries the accent, and no
+  // sheet may write a colour on the root (packages/design/src/web/flat.test.mjs), so it moved to
+  // tokens.css; the property, that every motion token used is declared on :root, is unchanged.
   const root = /:root \{([^}]*)\}/.exec(CSS)?.[1] ?? '';
+  const shared = sharedBlock().map((d) => d.name);
   const used = [...new Set([...CSS.matchAll(/var\((--motion-[\w-]+)/g)].map((m) => m[1]))];
   assert.ok(used.length >= 3, 'the motion rules use no tokens');
-  for (const token of used) assert.match(root, new RegExp(`${token}:`), `${token} is used but not declared on :root`);
+  for (const token of used) {
+    assert.ok(new RegExp(`${token}:`).test(root) || shared.includes(token), `${token} is used but not declared on :root, here or in tokens.css`);
+  }
+  assert.ok(used.includes('--motion-lift-shadow') && shared.includes('--motion-lift-shadow') && !/--motion-lift-shadow:/.test(root), 'the coloured lift shadow is no longer declared in the token file alone');
 
   // The entrance plays when a step STARTS, not on every row: keyed to the running state.
   // RESTATED 2026-10-01: the steps are the turn's Task rows (ws/run-steps.tsx), marked by outcome.

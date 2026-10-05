@@ -25,6 +25,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { declarations, readTokensCss, topLevelRules } from '@studpilot/design/css-tokens';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -47,7 +48,8 @@ const files = sources();
 const text = new Map(files.map((f) => [f, decomment(readFileSync(join(SITE, f), 'utf8'))]));
 
 const defined = () => {
-  const names = new Set();
+  // The design package's token file is a defining source: the site imports it first (M2).
+  const names = new Set(topLevelRules(readTokensCss()).flatMap((r) => declarations(r.body).map((d) => d.name)));
   for (const body of text.values()) {
     for (const [, n] of body.matchAll(/(--[a-zA-Z0-9_-]+)\s*:/g)) names.add(n);
     for (const [, n] of body.matchAll(/setProperty\(\s*['"`](--[a-zA-Z0-9_-]+)/g)) names.add(n);

@@ -1,8 +1,9 @@
 // The highlight that slides to whichever tab or section is current.
 //
 // MERGED FROM TWO PICKS that both answer "which one am I on" by moving one shape between items:
-//   * UI Layouts "Liquid Glass Sidebar Menu" (MIT): a glass pill — blurred, lit on its edges —
-//     behind the current row of a vertical menu. Used on the Settings rail.
+//   * UI Layouts "Liquid Glass Sidebar Menu" (MIT): a pill behind the current row of a vertical menu.
+//     Used on the Settings rail. The pick's blur and lit edges are left out (M2: flat surfaces, no
+//     glass), so the pill is a --surface-2 fill with a hairline.
 //   * React Bits "Gooey Nav" (MIT + Commons Clause, re-implemented, not copied): on each change a
 //     small burst of particles leaves the new item and the label pops. Used on the two-option tab
 //     strips (Usage | Plan & billing, Active | Archived). Monochrome here — ink particles, no hue.
@@ -23,7 +24,7 @@ export function GlideIndicator({
   host,
   activeKey,
   selector,
-  variant = 'glass',
+  variant = 'flat',
   as = 'span',
 }: {
   /** The positioned element the items live in. */
@@ -32,7 +33,7 @@ export function GlideIndicator({
   activeKey: string | null;
   /** How to find the active item inside `host`. */
   selector: string;
-  variant?: 'glass' | 'goo';
+  variant?: 'flat' | 'goo';
   /** 'li' when the host is a list, so the markup stays a valid list. */
   as?: 'span' | 'li';
 }) {

@@ -11,19 +11,10 @@
     height var(--pk-glide-dur,.4s) var(--pk-glide-ease,cubic-bezier(.23,1,.32,1));
 }
 
-/* Liquid glass: a translucent pill, lit along its edges, blurring what is under it. */
-.pk-glide--glass {
-  background:color-mix(in srgb,var(--nm-ink,var(--ink)) 6%,transparent);
-  backdrop-filter:blur(6px) saturate(140%); -webkit-backdrop-filter:blur(6px) saturate(140%);
-  box-shadow:
-    inset 1px 1px 1px 0 rgba(255,255,255,.16),
-    inset -1px -1px 1px 0 rgba(255,255,255,.06),
-    0 0 0 1px var(--nm-line-soft,var(--line)),
-    0 4px 14px rgba(0,0,0,.22);
-}
-:root[data-theme='light'] .pk-glide--glass {
-  background:rgba(255,255,255,.72);
-  box-shadow:inset 1px 1px 1px 0 #fff,inset -1px -1px 1px 0 rgba(0,0,0,.04),0 0 0 1px var(--nm-line,var(--line)),0 4px 12px rgba(24,24,20,.08);
+/* Flat: a --surface-2 pill with a hairline. */
+.pk-glide--flat {
+  background:var(--nm-panel-soft,var(--surface-2));
+  box-shadow:0 0 0 1px var(--nm-line,var(--line));
 }
 
 /* Gooey: a solid pill; the burst leaves from its middle. */

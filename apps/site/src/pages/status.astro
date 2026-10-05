@@ -131,7 +131,7 @@ const shortDate = (iso: string) =>
 
 <style>
   /* Status is the one page whose colour means something, so the colour is spent on one small dot
-     and on nothing else: no glow, no tinted headline. Tokens from studpilot-minimal.css; --good,
+     and on nothing else: no glow, no tinted headline. Tokens from packages/design/src/web/tokens.css; --good,
      --warn and --bad are the status tones. */
   .status-wrap {
     max-width: 720px;
@@ -269,11 +269,9 @@ const shortDate = (iso: string) =>
 
   .known__item {
     padding: 18px 20px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
   }
 
   .known__head {

@@ -11,12 +11,12 @@
   color:var(--ink); font-size:13px; line-height:18px; text-align:start; cursor:grab; touch-action:none;
   transition:border-color var(--t-fast) var(--ease-out),background-color var(--t-fast) var(--ease-out);
 }
-.gx-composer .pk-idea:hover { border-color:var(--accent-line); background:var(--surface-2); }
+.gx-composer .pk-idea:hover { border-color:var(--accent-ring); background:var(--surface-2); }
 .gx-composer .pk-idea:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .gx-composer .pk-idea.is-held { z-index:2; cursor:grabbing; border-color:var(--accent); }
 .gx-composer .pk-idea--more { border-style:dashed; background:transparent; box-shadow:none; color:var(--muted); cursor:pointer; }
 .gx-composer .pk-idea--more:hover { color:var(--ink); }
-.gx-composer .gx-composer__bar .gx-chip.gx-chip--ideas[aria-expanded='true'] { color:var(--accent-light); background:var(--accent-soft); }
+.gx-composer .gx-composer__bar .gx-chip.gx-chip--ideas[aria-expanded='true'] { color:var(--accent-strong); background:var(--accent-wash); }
 
 @media (max-width:520px) {
   .gx-composer .pk-ideas { inset-inline:8px; }

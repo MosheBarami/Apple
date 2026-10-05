@@ -96,13 +96,16 @@ export const TOKEN_NAMES = {
     '--line', '--line-2', '--line-3',
     '--font-display', '--font-sans', '--font-mono', '--stretch',
   ],
-  /** apps/site/src/styles/global.css — every other route, light and dark. */
+  /**
+   * The tokens both apps spend, light and dark. Since M2 they are declared in src/web/tokens.css,
+   * and src/web/tokens.test.mjs fails if this list names one that file does not declare.
+   */
   site: [
-    '--paper', '--paper-2', '--surface', '--surface-2',
+    '--paper', '--paper-2', '--surface', '--surface-2', '--surface-3',
     '--ink', '--ink-2', '--muted', '--faint',
-    '--accent', '--accent-ink', '--accent-soft',
+    '--accent', '--accent-strong', '--accent-ink', '--accent-wash',
     '--line', '--line-strong', '--hairline',
-    '--font-display', '--font-body', '--font-mono', '--stretch',
+    '--font-display', '--font-body', '--font-mono',
   ],
 };
 

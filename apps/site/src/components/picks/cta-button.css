@@ -1,17 +1,8 @@
 /* The merged call to action (see CtaButton.astro for which pick supplies what). */
-:root,
-:root[data-theme='dark'] {
-  /* The sheen and the specular rim are drawn on the ink face, so they are its opposite. */
-  --cta-sheen: rgba(91, 124, 250, 0.32);
-  --cta-rim: #5b7cfa;
-}
-
-:root[data-theme='light'] {
-  --cta-sheen: rgba(255, 255, 255, 0.22);
-  --cta-rim: rgba(255, 255, 255, 0.85);
-}
-
 .cta {
+  /* The sheen and the specular rim are light drawn over the accent face. */
+  --cta-sheen: rgba(255, 255, 255, 0.28);
+  --cta-rim: rgba(255, 255, 255, 0.85);
   --cta-h: 48px;
   --cta-pad: 4px;
   position: relative;
@@ -22,8 +13,8 @@
   padding: 0 calc(var(--cta-h) + 6px) 0 22px;
   overflow: hidden;
   border-radius: var(--r-pill);
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent);
+  color: var(--accent-ink);
   font-size: 15px;
   font-weight: 500;
   line-height: 1;
@@ -45,6 +36,16 @@
   transform: scale(0.98);
 }
 
+/* Selected text on the accent face and on the knob: the fill's own pair, inverted (see the note under ::selection in base.css).
+   The knob carries an arrow today; the pair is declared so a label added to it reads. */
+.cta::selection,
+.cta ::selection,
+.cta__knob::selection,
+.cta__knob ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
 .cta:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -55,8 +56,7 @@
   z-index: 2;
 }
 
-/* Button Arrow Right + Liquid: the knob runs out to fill the button, overshooting a little and
-   settling, with its leading edge kept round. */
+/* Button Arrow Right: the knob runs out to fill the button, with its leading edge kept round. */
 .cta__knob {
   position: absolute;
   top: var(--cta-pad);
@@ -69,9 +69,9 @@
   width: calc(var(--cta-h) - 2 * var(--cta-pad));
   padding-right: calc((var(--cta-h) - 2 * var(--cta-pad) - 16px) / 2);
   border-radius: var(--r-pill);
-  background: var(--accent);
-  color: var(--on-primary);
-  transition: width 560ms cubic-bezier(0.3, 1.45, 0.5, 1);
+  background: var(--accent-strong);
+  color: var(--accent-ink);
+  transition: width var(--t-slow) var(--ease-out);
 }
 
 .cta__knob svg {

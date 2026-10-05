@@ -433,11 +433,17 @@ test('the rendered layouts do not mount the retired cinematic layer', () => {
   }
 });
 
-test('both public layouts load the minimal visual system instead of relaunch.css', () => {
+//[[ RESTATED 2026-10-05 (M2 step 2.1). The property is unchanged: both public layouts load ONE shared
+//   visual system and not the retired relaunch treatment. The system is now the design package's
+//   token file followed by the site's base.css; the layouts must import the tokens FIRST, because a
+//   base that lands before its tokens is how a cascade ends up needing `!important`. ]]
+test('both public layouts load the design tokens and then the site base, not relaunch.css', () => {
   const LANDING_LAYOUT = readFileSync(join(SITE, 'src', 'layouts', 'Landing.astro'), 'utf8');
   for (const [name, source] of [['Base.astro', BASE_LAYOUT], ['Landing.astro', LANDING_LAYOUT]]) {
-    assert.match(source, /styles\/studpilot-minimal\.css/,
-      `${name} does not load the shared minimal public-site styles`);
+    const tokens = source.search(/import\s+['"]@studpilot\/design\/tokens\.css['"]/);
+    const base = source.search(/import\s+['"][^'"]*styles\/base\.css['"]/);
+    assert.notEqual(tokens, -1, `${name} does not import the shared design tokens`);
+    assert.ok(base > tokens, `${name} must import styles/base.css after the design tokens`);
     assert.doesNotMatch(source, /styles\/relaunch\.css/,
       `${name} still loads the retired relaunch treatment`);
   }

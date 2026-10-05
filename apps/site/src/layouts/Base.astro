@@ -1,11 +1,14 @@
 ---
-// studpilot-minimal.css FIRST: it is the token source and the shared base. global.css adds the content
-// routes' structure on top and declares no token, so the cascade needs no `!important` to settle.
-import '../styles/studpilot-minimal.css';
+// The design tokens FIRST: one file, shared with the app. base.css is the site's shared base on top of
+// it and global.css adds the content routes' structure on top of that. Neither declares a colour or a
+// type token, so the cascade needs no `!important` to settle.
+import '@studpilot/design/tokens.css';
+import tokensCss from '@studpilot/design/tokens.css?raw';
+import { themeColor } from '@studpilot/design/css-tokens';
+import '../styles/base.css';
 import '../styles/global.css';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
-import Aura from '../components/picks/Aura.astro';
 
 interface Props {
   title: string;
@@ -83,7 +86,7 @@ const ogImage = new URL('/og.png', site);
         :root and rewritten on every toggle, so there is one definition per theme and it lives in the
         stylesheet with the rest of the ramp. The server-rendered value is the dark ground, matching
         this element's default `data-theme="dark"`. */}
-    <meta name="theme-color" id="theme-color" content="#000000" />
+    <meta name="theme-color" id="theme-color" content={themeColor('dark', tokensCss)} />
 
     <script is:inline>
       // Runs before first paint: no flash of the wrong theme, and reveals can
@@ -101,7 +104,6 @@ const ogImage = new URL('/og.png', site);
     </script>
   </head>
   <body>
-    <Aura />
     <a href="#main" class="skip-link">Skip to content</a>
 
     {!bare && <Nav />}
@@ -120,7 +122,7 @@ const ogImage = new URL('/og.png', site);
       // ever stay invisible.
       // ---------------------------------------------------------------
       // Panels and section headings BELOW the first screen get the same
-      // entrance without every page marking them (D-GLASS-1). Only below
+      // entrance without every page marking them (owner, 2026-09-24). Only below
       // it: tagging something already on screen would blink it out.
       document
         .querySelectorAll<HTMLElement>('main :is(.slab, .card, .callout, .table-scroll, .prose > h2)')

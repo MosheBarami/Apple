@@ -10,8 +10,7 @@
  *     site has no gradient backgrounds and no glows anywhere (tests/living-background.test.mjs,
  *     the owner's call). The light here is a solid accent dash on an SVG outline, moved with
  *     stroke-dashoffset — the same motion, no gradient, no glow;
- *   - it stays StudPilot's primary button (ink fill, --on-primary text), and the accent only marks it:
- *     "the accent never fills a button" (studpilot-minimal.css).
+ *   - it stays StudPilot's primary button (accent fill, --accent-ink text).
  *
  * Under prefers-reduced-motion the lights hold still, and off screen they pause (../picks/motion.ts:
  * nothing moves where nobody can see it).
@@ -50,7 +49,7 @@ const { class: className = '', ...rest } = Astro.props;
 
   .shiny__run {
     fill: none;
-    stroke: var(--accent);
+    stroke: var(--accent-strong);
     stroke-width: 1.5;
     stroke-linecap: round;
     stroke-dasharray: 10 90;

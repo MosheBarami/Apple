@@ -4,7 +4,7 @@
 [data-pk-expand]:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 
 .pk-lightbox { position:fixed; inset:0; z-index:230; display:grid; place-items:center; padding:48px 16px; }
-.pk-lightbox__scrim { position:absolute; inset:0; background:color-mix(in srgb,var(--paper) 86%,transparent); backdrop-filter:blur(6px); }
+.pk-lightbox__scrim { position:absolute; inset:0; background:color-mix(in srgb,var(--paper) 86%,transparent); }
 .pk-lightbox__img {
   position:relative; max-width:min(1100px,100%); max-height:100%; object-fit:contain; cursor:zoom-out;
   border-radius:var(--r-lg); box-shadow:var(--shadow-pop); transform-origin:0 0;

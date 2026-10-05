@@ -6,9 +6,9 @@
   opacity:calc(var(--pk-edge) / 100);
   background:conic-gradient(from calc(var(--pk-angle) - 40deg),
     transparent 0deg,
-    color-mix(in srgb,var(--accent-light) 70%,transparent) 20deg,
+    color-mix(in srgb,var(--accent-strong) 70%,transparent) 20deg,
     var(--accent) 40deg,
-    color-mix(in srgb,var(--accent-light) 70%,transparent) 60deg,
+    color-mix(in srgb,var(--accent-strong) 70%,transparent) 60deg,
     transparent 80deg, transparent 360deg);
   -webkit-mask:linear-gradient(var(--ink) 0 0) content-box, linear-gradient(var(--ink) 0 0);
   -webkit-mask-composite:xor;

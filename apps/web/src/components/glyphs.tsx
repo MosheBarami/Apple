@@ -2,17 +2,19 @@
 // marks follow light/dark without a second asset.
 
 /**
- * The StudPilot mark: a hexagonal outline containing an isometric cube.
- *
- * Geometry only — not a monolith, not a face, not a character. The outer
- * hexagon is never filled, the three interior lines are the classic "cube in
- * hexagon" isometric read (a vertical from the top vertex to the centre, then
- * out to the lower-left and lower-right vertices), and the whole thing inherits
- * `currentColor`. There is deliberately no accent fill and no animation: a mark
- * that blinks or reacts is a mascot, and the mascot direction is cancelled.
- *
- * Used at 32px beside the wordmark, ~28px in the workspace rail, and 22px as
- * the assistant avatar in the conversation.
+ * The StudPilot mark: a rounded tile with one circular stud knocked out of it and one corner left
+ * sharp, pointing up and to the right. One filled path in `currentColor`, so it takes the accent.
+ * The same drawing as packages/design/brand/studpilot-mark.svg (see PROVENANCE.md there); a test in
+ * packages/design holds the two equal. Its tile outline and its stud also draw the illustrations
+ * below, so every mark in the app is one vocabulary.
+ */
+export const MARK_PATH = 'M12 3H27.8Q29 3 29 4.2V20A9 9 0 0 1 20 29H12A9 9 0 0 1 3 20V12A9 9 0 0 1 12 3ZM20 17a4.6 4.6 0 1 0-9.2 0 4.6 4.6 0 0 0 9.2 0Z';
+/** The tile alone, without the stud, for drawings where the stud is somewhere else. */
+export const TILE_PATH = 'M12 3H27.8Q29 3 29 4.2V20A9 9 0 0 1 20 29H12A9 9 0 0 1 3 20V12A9 9 0 0 1 12 3Z';
+
+/**
+ * Used at 28px in the workspace rail and on the sign-in screens, ~24px as the assistant avatar and
+ * as the wait mark.
  */
 export function StudPilotGlyph({ size = 28, className }: { size?: number; className?: string }) {
   return (
@@ -20,67 +22,20 @@ export function StudPilotGlyph({ size = 28, className }: { size?: number; classN
       width={size}
       height={size}
       viewBox="0 0 32 32"
-      fill="none"
+      fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       aria-hidden="true"
       focusable="false"
     >
-      {/* Regular hexagon, vertex at top and bottom, circumradius 13 about (16,16). */}
-      <path
-        d="M16 3 L27.26 9.5 L27.26 22.5 L16 29 L4.74 22.5 L4.74 9.5 Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* The cube's three visible faces, as the three shared edges.
-
-          THE Y POINTS DOWN, NOT UP, and that is a correction rather than a preference. Running it
-          from the APEX to the centre and out to the two LOWER vertices draws a cube seen from
-          BELOW: what reads as the top of the shape is two side faces meeting at an edge, and there
-          is no top face at all. This app drew that version while apps/site drew the corrected one,
-          so the mark in the product and the mark on the site were different objects. */}
-      <path
-        d="M16 28.6 V16 M16 16 L4.95 9.62 M16 16 L27.05 9.62"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* And the stud. A cube is a box; a box with a stud is the thing this product builds with,
-          and it is the one detail that says Roblox without writing Roblox. Lighter than the
-          structure so it drops out first at small sizes rather than closing into a dot. */}
-      <ellipse
-        cx="16"
-        cy="8.63"
-        rx="4.2"
-        ry="2.4"
-        stroke="currentColor"
-        strokeWidth="1.15"
-        fill="none"
-      />
+      <path fillRule="evenodd" d={MARK_PATH} />
     </svg>
   );
 }
 
-/** Small StudPilot status mark used by branded waits. */
+/** Small StudPilot status mark used by branded waits: the mark itself. */
 export function StudPilotPulse({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      className="studpilot-pulse"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path d="M8 1.5l5.5 3.5v6L8 14.5 2.5 11V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-      <circle cx="8" cy="8" r="1.5" fill="currentColor" />
-    </svg>
-  );
+  return <StudPilotGlyph size={size} className="studpilot-pulse" />;
 }
 
 export function NavIcon({ d, size = 17 }: { d: string; size?: number }) {
@@ -94,16 +49,8 @@ export function NavIcon({ d, size = 17 }: { d: string; size?: number }) {
 export { ICON_PATH as ICONS } from './icons';
 
 /**
- * Empty-state mark for the project list: an uncarved form.
- *
- * Geometry only, and deliberately so. The previous version of this mark was a
- * head on a body with two accent-filled eyes that blinked on a timer, plus
- * bobbing motes — i.e. a character. DESIGN-SPEC §0 cancels exactly that ("not a
- * face, not a character… a mark that blinks or reacts is a mascot") and §3
- * lists "No mascot" among the things that must not come back. So this is the
- * product's own hexagon vocabulary instead: one hexagon carrying the cube
- * lines, two empty ones beside it, on a faint ground line — a shape that has
- * been carved and two that have not. No fill, no accent, no animation.
+ * Empty-state mark for the project list: one tile with its stud, and two blanks beside it that have
+ * not been made yet. Drawn from the mark's own tile outline; no fill, no accent, no animation.
  */
 export function SummonIllustration() {
   return (
@@ -116,34 +63,18 @@ export function SummonIllustration() {
       aria-hidden="true"
       focusable="false"
     >
-      {/* The carved form: hexagon + the three isometric cube edges. */}
-      <path
-        d="M90 30 L122.91 49 L122.91 87 L90 106 L57.09 87 L57.09 49 Z"
-        stroke="var(--line-strong)"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M90 30 V68 M90 68 L57.09 87 M90 68 L122.91 87"
-        stroke="var(--line-strong)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* The made one: the tile, its stud, standing on the ground line. */}
+      <g transform="translate(51.6 56.4) scale(2.4)">
+        <path d={MARK_PATH} fillRule="evenodd" stroke="var(--line-strong)" strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      </g>
 
-      {/* Two blanks waiting to be carved. */}
-      <path
-        d="M36 72 L53.32 82 L53.32 102 L36 112 L18.68 102 L18.68 82 Z"
-        stroke="var(--line)"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M144 72 L161.32 82 L161.32 102 L144 112 L126.68 102 L126.68 82 Z"
-        stroke="var(--line)"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
+      {/* Two blanks waiting to be made. */}
+      <g transform="translate(10.6 85.4) scale(1.4)">
+        <path d={TILE_PATH} stroke="var(--line)" strokeWidth="1.5" strokeDasharray="3 6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      </g>
+      <g transform="translate(124.6 85.4) scale(1.4)">
+        <path d={TILE_PATH} stroke="var(--line)" strokeWidth="1.5" strokeDasharray="3 6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      </g>
 
       <path d="M22 126 H158" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
@@ -151,11 +82,11 @@ export function SummonIllustration() {
 }
 
 /**
- * 404 mark: the same hexagon with one edge missing, and that edge lying below.
+ * 404 mark: the tile with its stud missing, and the stud lying below.
  *
- * The page is not there, so the shape is not whole — the meaning comes from the
- * geometry rather than from a personified character. The earlier version was a
- * tilted robot with a blinking accent eye, which §3 forbids. No animation.
+ * The page is not there, so the shape is not whole; the meaning comes from the geometry rather than
+ * from a personified character. The stud's place is a faint dashed ring, and the stud itself has
+ * come to rest away from the tile. No animation.
  */
 export function LostStudPilotIllustration() {
   return (
@@ -168,47 +99,15 @@ export function LostStudPilotIllustration() {
       aria-hidden="true"
       focusable="false"
     >
-      {/* The hexagon, drawn as two open runs so the lower-right edge is absent. */}
-      <path
-        d="M65.36 48 L100 28 L134.64 48 L134.64 88"
-        stroke="var(--line-strong)"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M100 108 L65.36 88 L65.36 48"
-        stroke="var(--line-strong)"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Where that edge should be. */}
-      <path
-        d="M134.64 88 L100 108"
-        stroke="var(--line)"
-        strokeWidth="1.4"
-        strokeDasharray="3 7"
-        strokeLinecap="round"
-      />
-
-      {/* The cube's edges, faint — the form is incomplete. */}
-      <path
-        d="M100 28 V68 M100 68 L65.36 88"
-        stroke="var(--line)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* The tile, without its stud. */}
+      <g transform="translate(52 20) scale(3)">
+        <path d={TILE_PATH} stroke="var(--line-strong)" strokeWidth="1.7" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      </g>
+      {/* Where the stud should be. */}
+      <circle cx="100" cy="71" r="14" stroke="var(--line)" strokeWidth="1.4" strokeDasharray="3 7" strokeLinecap="round" />
 
       {/* The missing piece, come to rest away from the shape. */}
-      <path
-        d="M150 124 L168 134"
-        stroke="var(--muted)"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        opacity="0.75"
-      />
+      <circle cx="160" cy="134" r="8" stroke="var(--muted)" strokeWidth="1.7" opacity="0.75" />
 
       <path d="M32 142 H168" stroke="var(--line)" strokeWidth="1.2" strokeLinecap="round" />
     </svg>

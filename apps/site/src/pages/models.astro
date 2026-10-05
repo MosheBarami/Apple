@@ -55,7 +55,7 @@ const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
 </Base>
 
 <style>
-  /* Structure only; every colour is a token from studpilot-minimal.css. No shadow, no glow, no colour
+  /* Structure only; every colour is a token from packages/design/src/web/tokens.css. No shadow, no glow, no colour
      but ink: the one accent is the site-wide focus ring, which this page does not touch. */
   .mhead {
     padding-top: clamp(48px, 7vw, 96px);
@@ -85,11 +85,9 @@ const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
     gap: 14px;
     align-items: flex-start;
     padding: 20px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-lg);
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
   }
 
   .mname {
@@ -124,11 +122,9 @@ const engines = PRODUCT_MODELS.map((m) => PRODUCT_MODEL_INFO[m]);
     place-items: center;
     width: 32px;
     height: 32px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-xs);
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
     color: var(--ink);
   }
 

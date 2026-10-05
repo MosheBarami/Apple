@@ -1,0 +1,43 @@
+{
+  "note": "Written by scripts/make-brand-assets.mjs; never edit by hand. inputs: sha256 of what each render is made from. outputs: sha256 of each PNG as written. renderedOn: the platform whose fonts drew og.png.",
+  "renderedOn": "darwin",
+  "inputs": {
+    "icon": "2185e765ee76ff563d944ee77122ab449c33cb05c8008853ec141cda801f1094",
+    "iconSquare": "d767248b96d0ea54c07d1ab52c8a5f5b677f959b8fee99241e0e27224a960db1",
+    "og": "6e0f508b78ead6a0e9449b00344a9fca5cdf0f9bcbe7d615e8ef52bb7970e86d"
+  },
+  "outputs": {
+    "packages/design/brand/icon-16.png": {
+      "input": "icon",
+      "sha256": "fbc9a65b5331e63896c2a615c3abf7e1253b264a7293bb0f6e8cbf4274e3023f"
+    },
+    "packages/design/brand/icon-32.png": {
+      "input": "icon",
+      "sha256": "41a592ff93b6878cdefd0bde1752fe1353cccbee8450b9ffd0de75de3578478c"
+    },
+    "packages/design/brand/icon-180.png": {
+      "input": "iconSquare",
+      "sha256": "646740760c36668565a693e6982ef19db4655106a9c3f2a5e897bada49b40917"
+    },
+    "packages/design/brand/icon-512.png": {
+      "input": "icon",
+      "sha256": "9b921c7b7f52aae081e5ed7153cd12507f0ebd890ed7b7e376eaeb228314dceb"
+    },
+    "apps/site/public/apple-touch-icon.png": {
+      "input": "iconSquare",
+      "sha256": "646740760c36668565a693e6982ef19db4655106a9c3f2a5e897bada49b40917"
+    },
+    "apps/site/public/icon-192.png": {
+      "input": "icon",
+      "sha256": "aa38da192d2f3c42e660a5066934b0bfdb7ce5a59b6de685fb070d9283b97e28"
+    },
+    "apps/site/public/icon-512.png": {
+      "input": "icon",
+      "sha256": "9b921c7b7f52aae081e5ed7153cd12507f0ebd890ed7b7e376eaeb228314dceb"
+    },
+    "apps/site/public/og.png": {
+      "input": "og",
+      "sha256": "207364871adf046b690beedbd9d718ec9523d36fa10351b9bc22e18787621b0c"
+    }
+  }
+}

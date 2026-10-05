@@ -1,7 +1,7 @@
 /*
  * THE FRONT PAGE — structure only.
  *
- * Every colour, type, radius and motion value is a token from studpilot-minimal.css, which
+ * Every colour, type, radius and motion value is a token from packages/design/src/web/tokens.css, which
  * Landing.astro imports before this file. Nothing here redeclares a token and nothing here needs
  * `!important`: the two sheets no longer fight, so the cascade settles on source order alone.
  *
@@ -20,7 +20,7 @@
  * (components/picks/motion.ts): still under reduced motion, idle off screen, drawn in these tokens.
  */
 
-/* The mono token reaches every technical surface; the body face comes from studpilot-minimal.css. */
+/* The mono token reaches every technical surface; the body face comes from packages/design/src/web/tokens.css. */
 body {
   font-family: var(--font-body);
 }
@@ -68,17 +68,14 @@ a {
   line-height: 1.6;
 }
 
-/* THE COMPOSER — the one object on the page that floats, so it is the one that casts. Its values
-   are the app's composer (apps/web/src/design/studpilot-minimal.css `.gx-composer__inner`). */
+/* THE COMPOSER — the page's focal object: a --surface panel with the stronger hairline. Its values
+   are the app's composer (apps/web/src/design/shell.css `.gx-composer__inner`). */
 .composer {
   width: min(100%, 680px);
   margin-top: 44px;
-  border: 1px solid var(--composer-line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-xl);
-  background: var(--composer-fill);
-  box-shadow: var(--composer-shadow);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: var(--surface);
   text-align: left;
   transition: border-color var(--t-base) var(--ease-out);
 }
@@ -215,22 +212,29 @@ a {
   padding: 0 16px;
   border: 0;
   border-radius: var(--r-pill);
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--accent);
+  color: var(--accent-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-spring);
+  transition: background-color var(--t-fast) var(--ease-out), transform var(--t-base) var(--ease-out);
 }
 
 .composer-send:hover {
-  background: var(--primary-hover);
+  background: var(--accent-strong);
   transform: translateY(-1px) scale(1.04);
 }
 
 .composer-send:active {
   transform: scale(0.95);
+}
+
+/* Selected text on the accent fill: the fill's own pair, inverted (see the note under ::selection in base.css). */
+.composer-send::selection,
+.composer-send ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
 }
 
 .availability {
@@ -441,7 +445,7 @@ a {
   flex: none;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 6px var(--accent-soft);
+  box-shadow: 0 0 0 6px var(--accent-wash);
 }
 
 .activity-current {
@@ -503,27 +507,22 @@ a {
   padding: 22px;
 }
 
-/* FROSTED MATTE GLASS (owner, 2026-09-24, D-GLASS-1): every panel on the page is the same
-   translucent sheet over the aura, and a capability card lifts a little under the pointer. */
+/* Every panel on the page is the same flat sheet: a --surface fill and a hairline. */
 .proof-shot,
 .sequence-figure,
 .demos,
 .capability {
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r-xl);
-  background: var(--glass-fill);
-  box-shadow: var(--glass-shadow);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
 }
 
 .capability {
-  transition: translate var(--t-slow) var(--ease-spring), box-shadow var(--t-base) var(--ease-out);
+  transition: border-color var(--t-base) var(--ease-out);
 }
 
 .capability:hover {
-  translate: 0 -4px;
-  box-shadow: var(--glass-shadow-lift);
+  border-color: var(--line-strong);
 }
 
 .capability h3 {
@@ -542,7 +541,7 @@ a {
 }
 
 /* THE OBJECT EACH CAPABILITY WORKS ON (components/ObjectIcon.astro). It arrives a beat after its
-   card — the card's own reveal delay plus a little — and turns blue and lifts under the pointer.
+   card — the card's own reveal delay plus a little — and takes the accent and lifts under the pointer.
    The entrance moves `scale` and `rotate`, the hover moves `translate`: separate properties, so the
    hover is never held back by the entrance delay. Every path ends visible: without scripting the
    hidden state never applies, the layout's failsafe adds .is-in, and reduced motion drops it. */
@@ -554,7 +553,7 @@ a {
   margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  background: var(--glass-fill-strong);
+  background: var(--surface-2);
   color: var(--ink-2);
   transition:
     opacity var(--t-slow) var(--ease-out) calc(var(--reveal-delay, 0ms) + 160ms),
@@ -660,7 +659,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 .stage-tab[aria-selected='true'] {
   color: var(--ink);
-  background: var(--accent-soft);
+  background: var(--accent-wash);
 }
 
 .demo-stage {
@@ -740,7 +739,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 }
 
 /* The node's class, as Studio's Explorer shows one beside every name. It takes the row's colour,
-   and its stroke turns blue with the dot once the node is read. */
+   and its stroke takes the accent with the dot once the node is read. */
 .rd-node .rd-icon {
   margin-right: -2px;
   transition: stroke var(--t-fast) var(--ease-out);
@@ -839,7 +838,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 .cw-mark.is-on::after {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--accent-wash);
 }
 
 .cw-side {
@@ -899,7 +898,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 .cw-defect[aria-pressed='true'] {
   color: var(--ink);
-  background: var(--accent-soft);
+  background: var(--accent-wash);
 }
 
 /* Luau. */
@@ -937,7 +936,7 @@ html:not(.no-js) [data-reveal].is-in .cap-icon {
 
 .lu-ask[aria-pressed='true'] {
   border-color: var(--accent-ring);
-  background: var(--accent-soft);
+  background: var(--accent-wash);
   color: var(--ink);
 }
 
@@ -1037,8 +1036,8 @@ html:not(.no-js) [data-reveal] {
   transform: translateY(18px) scale(0.985);
   transition:
     opacity var(--t-slow) var(--ease-out),
-    transform 700ms var(--ease-spring),
-    translate var(--t-slow) var(--ease-spring);
+    transform 700ms var(--ease-out),
+    translate var(--t-slow) var(--ease-out);
   transition-delay: var(--reveal-delay, 0ms);
 }
 

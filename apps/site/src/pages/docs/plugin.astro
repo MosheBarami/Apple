@@ -223,7 +223,7 @@ const decided = refusal
   }
 
   /* THE OBJECT STRIP. Tiles that wrap at their own width; each icon arrives a step after the one before it once the
-     figure is revealed, and lifts and turns blue under the pointer. Without scripting, through the
+     figure is revealed, and lifts and takes the accent under the pointer. Without scripting, through the
      layout's failsafe and under reduced motion, every icon is simply there. */
   :global(.prose) .obj-strip {
     margin: 4px 0 32px;
@@ -249,11 +249,9 @@ const decided = refusal
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    border: 1px solid var(--glass-line);
+    border: 1px solid var(--line);
     border-radius: var(--r-sm);
-    background: var(--glass-fill);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--surface);
     color: var(--ink-2);
     transition: border-color var(--t-base) var(--ease-out);
   }

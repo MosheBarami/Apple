@@ -223,7 +223,7 @@
    fact the URL already carries. */
 .lab-specimen:target {
   border-color: var(--accent-ring);
-  box-shadow: var(--glow);
+  box-shadow: var(--halo);
   animation: lab-landed var(--t-color) var(--ease-hard) both;
 }
 
@@ -256,8 +256,8 @@
    The bar declares zero keyframes and runs zero animations; what the corpus says to do with the
    budget instead is spend it on response, which is what a landing flash is. */
 @keyframes lab-landed {
-  from { box-shadow: 0 0 0 var(--accent-glow); }
-  to { box-shadow: var(--glow); }
+  from { box-shadow: 0 0 0 var(--accent-wash); }
+  to { box-shadow: var(--halo); }
 }
 
 /* system.css kills every transition under reduce with !important; restated so this sheet is

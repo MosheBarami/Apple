@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { normaliseLanguage, tokenize } from '../src/lib/highlight.ts';
 import { splitFences } from '../src/lib/code-fences.ts';
 import { CODE_LANGUAGES } from '../src/lib/generative-ui/schema.ts';
+import { themeBlocks } from '@studpilot/design/css-tokens';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, '..');
@@ -39,6 +40,7 @@ const AI_BLOCK = readFileSync(join(WEB, 'src', 'components', 'ai-elements', 'cod
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const MARKDOWN = readFileSync(join(WEB, 'src', 'lib', 'markdown.tsx'), 'utf8');
 const CSS = readFileSync(join(WEB, 'src', 'design', 'system.css'), 'utf8');
+const BLOCKS = themeBlocks();
 
 const joined = (src, lang) => tokenize(src, lang).map((t) => t.text).join('');
 const kinds = (src, lang) => tokenize(src, lang).map((t) => t.kind);
@@ -337,7 +339,8 @@ test('every token kind the renderer can emit has a colour in BOTH themes', () =>
     const rule = new RegExp(`\\.tok--${kind}\\s*\\{[^}]*color:\\s*var\\((--[a-z0-9-]+)\\)`, 'i');
     const m = rule.exec(CSS);
     assert.ok(m, `.tok--${kind} has no colour`);
-    const declarations = [...CSS.matchAll(new RegExp(`${m[1]}:\\s*[^;]+;`, 'g'))];
-    assert.ok(declarations.length >= 2, `${m[1]} is declared ${declarations.length} time(s) — both themes need it`);
+    // RESTATED 2026-10-05 (M2): the syntax tokens are declared in the token file, one per theme block.
+    const declarations = [BLOCKS.dark, BLOCKS.light].filter((block) => block.some((d) => d.name === m[1]));
+    assert.equal(declarations.length, 2, `${m[1]} is declared in ${declarations.length} theme block(s) of tokens.css — both themes need it`);
   }
 });

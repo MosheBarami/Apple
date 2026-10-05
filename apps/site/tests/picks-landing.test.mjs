@@ -295,7 +295,7 @@ function harness({ reduced = false } = {}) {
     window, document, IntersectionObserver: IO, innerHeight: 800,
     requestAnimationFrame: (fn) => { const id = nextId++; frames.set(id, fn); return id; },
     cancelAnimationFrame: (id) => { frames.delete(id); },
-    getComputedStyle: () => ({ getPropertyValue: () => '#5b7cfa', fontFamily: 'sans-serif' }),
+    getComputedStyle: () => ({ getPropertyValue: () => '#808080', fontFamily: 'sans-serif' }),
     MutationObserver: class { observe() {} },
   });
   return {

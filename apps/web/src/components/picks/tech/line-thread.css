@@ -6,9 +6,9 @@
   border:1px solid var(--line-strong); border-radius:50%; background:var(--surface-2); color:var(--ink);
   opacity:0; transition:opacity var(--t-fast) var(--ease-out); z-index:1;
 }
-button.lt-bubble:hover:not(:disabled):not([aria-disabled='true']) { background:var(--accent); border-color:transparent; color:#fff; }
+button.lt-bubble:hover:not(:disabled):not([aria-disabled='true']) { background:var(--accent); border-color:transparent; color:var(--accent-ink); }
 .lt-bubble:focus-visible { opacity:1; outline:2px solid var(--accent); outline-offset:1px; box-shadow:none; animation:none; }
-.lt-bubble[aria-expanded='true'] { opacity:1; background:var(--accent); border-color:transparent; color:#fff; }
+.lt-bubble[aria-expanded='true'] { opacity:1; background:var(--accent); border-color:transparent; color:var(--accent-ink); }
 @media (hover:none) { .lt-bubble { opacity:.7; } }
 
 .lt-thread { padding:6px 8px 8px; border-top:1px solid var(--line); background:var(--paper); font-family:var(--font-body); white-space:normal; animation:lt-in var(--t-base) var(--ease-out) both; }

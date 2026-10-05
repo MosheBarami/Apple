@@ -10,6 +10,6 @@
 .cv-lines--ask .cv-row { padding-inline-start:22px; }
 .cv-row:hover { background:var(--control-fill); }
 .cv-row:hover .lt-bubble, .cv-row:focus-within .lt-bubble { opacity:1; }
-.cv-line.is-asking > .cv-row { background:var(--accent-soft); }
+.cv-line.is-asking > .cv-row { background:var(--accent-wash); }
 .cv-no { flex:none; width:3.2em; padding-inline-end:10px; text-align:end; color:var(--faint); user-select:none; font-variant-numeric:tabular-nums; }
 .cv-code { flex:1; min-width:0; padding-inline-end:12px; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink); background:none; font:inherit; tab-size:2; }

@@ -7,7 +7,7 @@
   color:var(--ink); text-align:center;
   animation:pk-drop-in 180ms var(--ease-out) both;
 }
-.pk-drop__art { width:30px; height:24px; margin-bottom:6px; color:var(--accent-light); animation:pk-drop-bob 1.4s var(--ease-in-out) infinite; }
+.pk-drop__art { width:30px; height:24px; margin-bottom:6px; color:var(--accent-strong); animation:pk-drop-bob 1.4s var(--ease-in-out) infinite; }
 .pk-drop__title { font-size:14px; line-height:20px; }
 .pk-drop__kinds { color:var(--muted); font-size:12px; line-height:16px; }
 @keyframes pk-drop-in { from { opacity:0; scale:.985; } to { opacity:1; scale:1; } }

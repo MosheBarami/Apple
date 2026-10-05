@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { splitTop } from '@studpilot/design/css-tokens';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,16 +60,26 @@ for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
 //   the app's bare-button look stops at the AI Elements surfaces (styles/ai-elements.css), and inside
 //   them Tailwind's preflight — scoped to the same selector — gives every button its resting
 //   background instead. Both halves are checked, so no button anywhere falls through to buttonface. ]]
-const globalButtonReset = /(?:^|})\s*button(?::where\(:not\([^{]*\)\))?\s*\{([^{}]*)\}/.exec(css);
+//[[ RESTATED 2026-10-05. The rule is found by its SELECTOR, not by what the text starts with. The first version took
+//   the first rule whose text began `button:where(:not(` and read its body up to the next brace; the colour reset
+//   (`button:where(:not(…)),input:where(:not(…)),… { color:inherit }`, which stops at the same scope so that a
+//   Tailwind colour utility can win on a shadcn button) begins the same way, was taken for the resting rule, and
+//   "had no background". The property is unchanged: a rule whose ONLY selector is the bare, scoped `button`
+//   declares the resting background. ]]
+const BARE_SCOPED_BUTTON = /^button(?::where\(:not\((.*)\)\))?$/s;
+const globalButtonRule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+  .map((m) => ({ parts: splitTop(m[1].split(';').pop().trim()), body: m[2] }))
+  .find((r) => r.parts.length === 1 && BARE_SCOPED_BUTTON.test(r.parts[0]) && /(^|[;\s])background(?:-color)?\s*:/.test(r.body));
+const globalButtonReset = globalButtonRule ? [globalButtonRule.parts[0], globalButtonRule.body] : null;
 const SCOPE = ':where(.aie, .aie *, [data-slot], [data-slot] *)';
 
 test('the global button reset is visible to the source parser', () => {
   assert.ok(globalButtonReset, 'the stylesheet has no base button rule');
   assert.match(globalButtonReset[1], /background(?:-color)?\s*:/);
   // The scope it stops at is exactly the scope the AI Elements preflight covers.
-  const scoped = /(?:^|})\s*button(:where\(:not\(([^{]*)\)\))\s*\{/.exec(css);
+  const scoped = /^button:where\(:not\((.*)\)\)$/s.exec(globalButtonReset[0]);
   assert.ok(scoped, 'the base button rule is no longer scoped away from the AI Elements surfaces');
-  assert.equal(`:where(${scoped[2]})`, SCOPE);
+  assert.equal(`:where(${scoped[1]})`, SCOPE);
   const preflight = readFileSync(join(WEB, 'src', 'styles', 'ai-elements.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
   const escape = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const inside = new RegExp(`${escape(`${SCOPE}:where(button, input, select, optgroup, textarea)`)}[^{]*\\{([^}]*)\\}`).exec(preflight);

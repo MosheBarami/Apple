@@ -22,80 +22,30 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { contrast, readTokensCss, theme, themeBlocks } from '@studpilot/design/css-tokens';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, '../src/design/system.css'), 'utf8');
-// The marketing and docs surfaces have their own token sets and the same obligation.
-// 2026-09-22: the site redesign moved every colour token into studpilot-minimal.css (global.css and
-// landing.css now declare none), so these read the stylesheet that actually carries the palette. The
-// file is found by what it declares, not by name, so the next move cannot blind them.
-const SITE_STYLES = join(HERE, '../../site/src/styles');
-const tokenSheet = readdirSync(SITE_STYLES).filter((f) => f.endsWith('.css'))
-  .map((f) => readFileSync(join(SITE_STYLES, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''))
-  .sort((a, b) => (b.match(/^\s*--[a-z0-9-]+:\s*#/gm) ?? []).length - (a.match(/^\s*--[a-z0-9-]+:\s*#/gm) ?? []).length)[0];
-const SITE = tokenSheet;
-const LANDING = tokenSheet;
-
-/** Relative luminance, WCAG 2.x. */
-function luminance(hex) {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const f = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-}
-
-function contrast(a, b) {
-  const [x, y] = [luminance(a), luminance(b)];
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-}
-
-/**
- * Every `--name: #rrggbb` in source order. The tokens are declared twice — once for the
- * dark theme, once inside `:root[data-theme='light']` — so order is what separates
- * them, and taking the wrong occurrence would compare a light colour against a dark
- * ground and invent a failure. Index 0 is dark, index 1 is light.
- */
-function legacyToken(name, theme) {
-  const all = [...CSS.matchAll(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`, 'g'))].map((m) => m[1]);
-  assert.ok(all.length >= 2, `--${name} should be declared for both themes, found ${all.length}`);
-  return all[theme === 'dark' ? 0 : 1];
-}
-
-// The new palette is scoped by selector rather than position. Keep aliases for
-// the old test vocabulary so this check measures current colours, not the
-// order or names of the previous dark-first token set.
-const ROOT_BLOCKS = [...CSS.matchAll(/(:root(?:\[[^{}]*\])?)\s*\{([^{}]*)\}/g)]
-  .map((m) => ({ selector: m[1], body: m[2] }));
-const baseRoot = ROOT_BLOCKS.find((entry) => entry.selector === ':root');
-const darkRoot = ROOT_BLOCKS.find((entry) => /data-theme\s*=\s*['"]dark/i.test(entry.selector)
-  || /color-scheme\s*:\s*dark/i.test(entry.body))
-  ?? (baseRoot && !/color-scheme\s*:\s*light/i.test(baseRoot.body) ? baseRoot : undefined);
-const lightRoot = ROOT_BLOCKS.find((entry) => /data-theme\s*=\s*['"]light/i.test(entry.selector)
-  || /color-scheme\s*:\s*light/i.test(entry.body))
-  ?? (baseRoot && darkRoot !== baseRoot ? baseRoot : undefined);
-assert.ok(lightRoot && darkRoot, 'the app must declare light and dark root palettes');
-const ROOT_TOKENS = {
-  light: Object.fromEntries([...lightRoot.body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()])),
-  dark: Object.fromEntries([...darkRoot.body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()])),
-};
+// RESTATED 2026-10-05 (M2 step 2.1): the palette of the app AND of the marketing site is one file,
+// packages/design/src/web/tokens.css, so every section below reads that file in both themes. The
+// token NAMES differ from the app's earlier sheets (a `--gx-ink` ladder, then `--ink`), which is why
+// TOKEN_ALIASES below keeps the old test vocabulary pointing at the current names.
+const CSS = readTokensCss();
+// The marketing and docs surfaces have the same obligation and, since M2, the same file.
+const SITE = CSS;
+const LANDING = CSS;
+const BLOCKS = themeBlocks(CSS);
+const THEME = { dark: theme(BLOCKS.dark), light: theme(BLOCKS.light) };
+const ROOT_TOKENS = { dark: THEME.dark.raw, light: THEME.light.raw };
 const TOKEN_ALIASES = {
   'gx-ground': 'paper', 'gx-raise-2': 'surface-2',
   'gx-ink': 'ink', 'gx-ink-2': 'muted', 'gx-ink-3': 'faint',
 };
-function token(name, theme, seen = new Set()) {
+function token(name, themeName) {
   const actual = TOKEN_ALIASES[name] ?? name;
-  const raw = ROOT_TOKENS[theme][actual];
-  assert.ok(raw, '--' + name + ' should be declared for the ' + theme + ' theme');
-  assert.ok(!seen.has(actual), 'cyclic colour token reference at --' + name);
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
-  if (hex) {
-    const value = hex[1].length === 3 ? hex[1].split('').map((c) => c + c).join('') : hex[1];
-    return '#' + value.toLowerCase();
-  }
-  const ref = /^var\(\s*--([a-z0-9-]+)\s*\)$/i.exec(raw);
-  assert.ok(ref, '--' + name + ' is not a resolvable colour: ' + raw);
-  const next = new Set(seen);
-  next.add(actual);
-  return token(ref[1], theme, next);
+  assert.ok(ROOT_TOKENS[themeName][actual], '--' + name + ' should be declared for the ' + themeName + ' theme');
+  const hex = THEME[themeName].resolve(actual);
+  assert.ok(hex, '--' + name + ' is not a resolvable colour: ' + ROOT_TOKENS[themeName][actual]);
+  return hex;
 }
 
 // The surface each ink sits on. Worst case, not typical case.
@@ -147,21 +97,34 @@ for (const theme of ['dark', 'light']) {
  */
 const NM = readFileSync(join(HERE, '../src/routes/nonworkspace-minimal.css'), 'utf8');
 
-/** The two scoped `--nm-*` blocks, dark first. Scoped by selector, not by source order alone. */
-const NM_BLOCKS = [...NM.matchAll(/([^{}]*)\{([^{}]*)\}/g)]
+//[[ RESTATED 2026-10-05 (M2 step 2.1). This layer used to carry a dark and a light block of literal
+//   greys, which is why it needed its own contrast check. It now declares ONE block of `--nm-*` names,
+//   each a `var()` of a design token, and the two themes come from the token file. So the check is:
+//   the layer declares exactly one block, every ink and panel name in it resolves to a solid colour
+//   through the tokens, in each theme, and the measurements below run on those resolved colours. A
+//   literal colour sneaking back into the block resolves to itself and is measured the same way. ]]
+/** The scoped `--nm-*` block(s). */
+const NM_BLOCKS = [...NM.replace(/\/\*[\s\S]*?\*\//g, ' ').matchAll(/([^{}]*)\{([^{}]*)\}/g)]
   .filter((m) => /--nm-ink\s*:/.test(m[2]))
   .map((m) => ({ selector: m[1].trim(), body: m[2] }));
 
-test('the non-workspace surfaces declare both palettes, so neither can be skipped', () => {
-  assert.equal(NM_BLOCKS.length, 2, `expected a dark and a light --nm-* block, found ${NM_BLOCKS.length}`);
-  assert.ok(!/data-theme\s*=\s*['"]light/i.test(NM_BLOCKS[0].selector), 'the first --nm-* block must be the dark one');
-  assert.ok(/data-theme\s*=\s*['"]light/i.test(NM_BLOCKS[1].selector), 'the second --nm-* block must be the light one');
+test('the non-workspace surfaces declare one palette block, themed by the tokens', () => {
+  assert.equal(NM_BLOCKS.length, 1, `expected one --nm-* block, found ${NM_BLOCKS.length}`);
+  assert.doesNotMatch(NM_BLOCKS[0].selector, /data-theme/i, 'the --nm-* block must not fork by theme; the tokens do');
 });
 
-for (const [i, theme] of [[0, 'dark'], [1, 'light']]) {
-  const tokens = Object.fromEntries(
-    [...NM_BLOCKS[i].body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()]),
+for (const theme of ['dark', 'light']) {
+  // name -> resolved solid colour, following var(--nm-*) and var(--token) chains in this theme.
+  const raw = Object.fromEntries(
+    [...NM_BLOCKS[0].body.matchAll(/--([a-z0-9-]+)\s*:\s*([^;]+)/gi)].map((m) => [m[1], m[2].trim()]),
   );
+  const tokens = {};
+  for (const [name, value] of Object.entries(raw)) {
+    const ref = /^var\(--([a-z0-9-]+)\)$/i.exec(value);
+    const hex = /^#[0-9a-f]{6}$/i.exec(value);
+    const resolved = ref ? THEME[theme].resolve(ref[1]) : hex ? value.toLowerCase() : null;
+    if (resolved) tokens[name] = resolved;
+  }
 
   test(`${theme}: the --nm-* ink ramp clears 4.5:1 on every panel it is drawn on`, () => {
     // Worst case, not typical case: every panel colour, not the one the screenshot happened to
@@ -312,75 +275,46 @@ test('the landing ink ramp clears 4.5:1 on every surface it can sit on', () => {
   }
 });
 
-test('the landing declares no colour token it does not use', () => {
-  // --faint, --surface-2, --accent-grad and --violet all survived the redesign as
-  // declarations with no `var()` reading them. Three of the four were harmless;
-  // --faint was not, because a test asserted a contract on it and went on passing
-  // while nothing on the page was governed by it. A token nothing references is a
-  // decision nobody made, and an assertion about one measures nothing.
+test('the token file declares no colour token nothing reads', () => {
+  // RESTATED 2026-10-05 (M2 step 2.1). The subject was "the landing's colour tokens"; the colour
+  // tokens of both apps are one file now, so the question is whether anything in EITHER app reads
+  // each one. The reasoning that built this test still holds and is the reason for its shape:
   //
-  // A TOKEN CAN BE READ FROM SOMEWHERE OTHER THAN CSS, and this check could not see that. It flagged
-  // --theme-color, which the layouts read with
-  // `getComputedStyle(root).getPropertyValue('--theme-color')` to paint the phone address bar to
-  // match the page. That is a real consumer; the token is doing exactly the job it was declared for.
-  // Reading only the stylesheet made the check report its own blind spot as an unused declaration —
-  // and the fix a person would reach for is deleting the token, which breaks the address bar.
+  //   - a token nothing references is a decision nobody made, and an assertion about one measures
+  //     nothing (--faint once had a contract asserted on it while no rule on the page read it);
+  //   - "read" means read by anything that ships: a var() in the CSS, a quoted '--name' in a script
+  //     (the layouts read --theme-color with getPropertyValue, and a checker that only looked at
+  //     var() reported it as dead, whose fix is deleting the token and breaking the address bar);
+  //   - the walk is asserted non-empty, because a consumer scan that read nothing would report every
+  //     token as dead, and 49 findings reads as a redesign rather than as a broken instrument.
   //
-  // So "read" now means read by anything that ships: a var() in the CSS, or a getPropertyValue in
-  // the layouts that carry the theme script.
-  //[[ IT LOOKED FOR CONSUMERS IN TWO PLACES AND THE LANDING LOADS DOZENS. 2026-09-21.
-  //
-  //   The scan here read `var(--x)` out of landing.css and `getPropertyValue('--x')` out of the
-  //   layouts, and nothing else. So it reported `--font-display` as a token nothing reads while
-  //   FIVE shipped files spend it — global.css twice, Nav.astro, Footer.astro, proof.astro and
-  //   status.astro — every one of which loads on the same document as the declaration it was
-  //   accusing. The fix a person reaches for when a checker says "unused" is deletion, and
-  //   deleting --font-display takes the display face off the front page.
-  //
-  //   That is the SAME failure this test's own header describes for --theme-color, a second time:
-  //   the check reporting its own blind spot as a finding. It was caught by measuring the
-  //   accusation before acting on it — `grep -rlF 'var(--font-display' apps/site/src` — and not
-  //   by the check noticing anything.
-  //
-  //   TOKENS ARE ALSO READ BY NAME, NOT ONLY BY var(). components/Horizon.astro reads the horizon
-  //   colour through a helper, `token('--horizon-key', …)`, so the argument at the
-  //   getPropertyValue call is a variable and no regex aimed at that call can see which token is
-  //   meant. What IS visible is the quoted literal at the call site, so a bare '--name' anywhere in
-  //   a shipped file counts as a read. It costs a little strictness and ends a whole class of false
-  //   accusation.
-  //
-  //   The walk is asserted non-empty, because a consumer scan that silently read nothing would
-  //   report every token on the page as dead — and 49 findings reads as a redesign, not as a
-  //   broken instrument.
-  //
-  //   WHAT SURVIVED THE WIDENING: --card and --font-sans, declared in landing.css and read by
-  //   nothing anywhere under apps/site/src, by var() or by name. Both are deleted in the same
-  //   commit as this comment. --font-sans stays declared in global.css, which is what
-  //   apps/site/tests/type-system.test.mjs requires of the system's four faces.
-  const declared = [...new Set([...LANDING.matchAll(/^\s*--([a-z0-9-]+):/gm)].map((m) => m[1]))];
-  assert.ok(declared.length >= 5, `only ${declared.length} tokens found — did the selector change?`);
+  // Only COLOUR tokens are in question: the file also carries space, type-scale and weight tokens
+  // that exist for the page rebuild, and a token for a thing not built yet is not an unread colour.
+  const colour = /^(#[0-9a-f]{3,8}|rgba?\(|color-mix\()/i;
+  const declared = [...new Set(
+    [...BLOCKS.dark, ...BLOCKS.light].filter((d) => colour.test(d.value)).map((d) => d.name.slice(2)),
+  )];
+  assert.ok(declared.length >= 20, `only ${declared.length} colour tokens found; did the file's shape change?`);
 
-  const siteSrc = join(HERE, '..', '..', 'site', 'src');
   const shipped = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === 'node_modules') continue;
+      if (entry.name === 'node_modules' || entry.name === 'dist') continue;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (/\.(css|astro|ts|js|tsx|jsx)$/.test(entry.name)) shipped.push(readFileSync(full, 'utf8'));
+      else if (/\.(css|astro|ts|js|tsx|jsx|html)$/.test(entry.name)) shipped.push(readFileSync(full, 'utf8'));
     }
   };
-  if (existsSync(siteSrc)) walk(siteSrc);
-  assert.ok(shipped.length >= 20, `only ${shipped.length} shipped file(s) scanned for consumers — the walk is broken, not the page`);
+  for (const root of [join(HERE, '..', 'src'), join(HERE, '..', 'index.html'), join(HERE, '..', '..', 'site', 'src')]) {
+    if (!existsSync(root)) continue;
+    if (root.endsWith('.html')) shipped.push(readFileSync(root, 'utf8'));
+    else walk(root);
+  }
+  assert.ok(shipped.length >= 100, `only ${shipped.length} shipped file(s) scanned for consumers; the walk is broken, not the page`);
   const consumers = shipped.join('\n');
 
-  // A face the site's type-system test requires is declared on purpose even when no page reads it
-  // yet; read the requirement from that test rather than restating it here.
-  const typeSystem = readFileSync(join(HERE, '..', '..', 'site', 'tests', 'type-system.test.mjs'), 'utf8');
-  const required = new Set([...typeSystem.matchAll(/'--(font-[a-z]+)'/g)].map((m) => m[1]));
-  assert.ok(required.has('font-sans'), 'the type-system requirement was not found — this exemption would be a guess');
   const unused = declared.filter(
-    (n) => !required.has(n) && !new RegExp(`var\\(--${n}[,)]`).test(consumers) && !new RegExp(`['"]--${n}['"]`).test(consumers),
+    (n) => !new RegExp(`var\\(--${n}[,)]`).test(consumers) && !new RegExp(`['"]--${n}['"]`).test(consumers),
   );
-  assert.deepEqual(unused, [], `landing.css declares tokens nothing reads: ${unused.join(', ')}`);
+  assert.deepEqual(unused, [], `tokens.css declares colour tokens nothing reads: ${unused.join(', ')}`);
 });

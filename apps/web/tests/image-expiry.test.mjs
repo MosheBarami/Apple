@@ -33,6 +33,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { readTokensCss } from '@studpilot/design/css-tokens';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RENDER = readFileSync(join(WEB, 'src', 'lib', 'generative-ui', 'render.tsx'), 'utf8');
@@ -94,9 +95,12 @@ test('the failure state is announced to assistive tech as unavailable', () => {
 });
 
 test('the styles do not reach for a token that does not exist', () => {
+  // A token is defined by this sheet or by the design package's token file, which main.tsx imports
+  // first (M2: the app's tokens moved out of system.css into packages/design/src/web/tokens.css).
+  const defined = STYLES + readTokensCss();
   const block = STYLES.slice(STYLES.indexOf('.gu-img-gone'), STYLES.indexOf('.gu-img-gone') + 1200);
   for (const token of [...new Set([...block.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]))]) {
-    assert.ok(STYLES.includes(`${token}:`), `${token} is used by the failure state and never defined`);
+    assert.ok(defined.includes(`${token}:`), `${token} is used by the failure state and never defined`);
   }
 });
 

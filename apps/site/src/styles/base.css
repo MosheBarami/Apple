@@ -1,0 +1,250 @@
+/*
+ * THE SITE'S SHARED BASE.
+ *
+ * Every colour, radius, space, type and motion value comes from @studpilot/design/tokens.css, which
+ * both layouts import BEFORE this file; nothing here declares one. This sheet holds what both layouts
+ * need and no page owns: the reset, the focus ring, the buttons, the reduced-motion rule.
+ * landing.css (the front page) and global.css (every other route) come after it and add structure
+ * only. That is what keeps this file free of `!important` except the reduced-motion block, which must
+ * beat any component's own transition wherever that component's styles land in the bundle.
+ *
+ * apps/site/tests/contrast.test.mjs derives every text-token x surface pair from the token file, in
+ * both themes, and fails below 4.5:1.
+ */
+
+/* Theme-independent layout tokens: sizes of this site's page, not of the visual system. */
+:root {
+  --content: 1120px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --nav-h: 64px;
+  --reveal-delay: 0ms;
+}
+
+/* ------------------------------------------------------------------ base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--paper);
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 16px);
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p,
+li,
+dd,
+dt,
+figcaption,
+blockquote {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/* A SELECTION IS ITS OWN COLOUR, NOT THE FOCUS RING'S. It spent --accent-ring, which review fix 3 raised to 75% so a
+   ring reaches 3:1; --ink on that was 4.03:1 over --surface-3 in dark (4.16 to 4.43 elsewhere). The accent at 45% reads
+   as a highlight and keeps --ink above 4.5:1 over all five surfaces in both themes (tests/contrast.test.mjs). */
+::selection {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--ink);
+}
+
+/* A SELECTION OVER A FILL IS THE FILL, INVERTED. The rule above is a translucent wash, so its pair is --ink over whatever is under
+   it, and on an accent fill that is --ink on the accent: 2.77:1 in dark, 2.94:1 in light (a wash of the accent over the accent paints
+   the accent). Every control the sheets fill with the accent (or with --ink) sets its own pair, OPAQUE so it does not depend on the fill:
+   the label's own ink as the highlight and the fill as the text, which reads exactly as the control does at rest (6.54:1 dark, 6.10:1
+   light) and is visibly not the control. tests/contrast.test.mjs finds each filled control in the sheets and requires one. */
+.skip-link::selection,
+.skip-link ::selection,
+.btn-primary::selection,
+.btn-primary ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
+/* ONE FOCUS RING, EVERYWHERE: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
+   `:where()` keeps it at zero specificity so a component can move the ring to a better box — the
+   landing composer does — without having to out-shout it. Nothing may remove it. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* ------------------------------------------------------------------ primitives shared by both layouts */
+
+.skip-link {
+  position: fixed;
+  z-index: 1000;
+  top: 12px;
+  left: 12px;
+  padding: 8px 12px;
+  border-radius: var(--r-xs);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wrap,
+.shell {
+  width: min(var(--content), calc(100% - var(--gutter) * 2));
+  margin-inline: auto;
+}
+
+.eyebrow,
+.micro {
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+/* Buttons: small and precise. 36px tall, one radius, one hairline. The primary is the accent
+   filled, once per view, with --accent-ink on it; everything else is an outline. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.btn:hover {
+  border-color: var(--line-strong);
+  background: var(--control-fill);
+}
+
+.btn:active {
+  background: var(--surface-2);
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.btn-primary:active {
+  background: var(--accent-strong);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.btn-ghost:hover {
+  border-color: transparent;
+  color: var(--ink);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  border-color: var(--line);
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ reduced motion */
+
+/* OFF, not reduced (DESIGN-LOCK, Motion). `!important` is required here and only here: this rule
+   must win over every component's own transition and animation, and a component's scoped style
+   can land after this sheet in the bundle. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

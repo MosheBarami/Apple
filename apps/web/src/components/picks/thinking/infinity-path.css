@@ -3,6 +3,6 @@
 .picks-infinity__run { stroke:var(--picks-infinity,var(--accent)); stroke-dasharray:.25 .75; animation:picks-infinity 1.6s linear infinite; }
 @keyframes picks-infinity { from { stroke-dashoffset:0; } to { stroke-dashoffset:-1; } }
 @media (prefers-reduced-motion: reduce) {
-  .picks-infinity__run { animation:none; stroke-dasharray:none; stroke:var(--accent-line); }
+  .picks-infinity__run { animation:none; stroke-dasharray:none; stroke:var(--accent-ring); }
 }
-.motion-reduced .picks-infinity__run { stroke-dasharray:none; stroke:var(--accent-line); }
+.motion-reduced .picks-infinity__run { stroke-dasharray:none; stroke:var(--accent-ring); }

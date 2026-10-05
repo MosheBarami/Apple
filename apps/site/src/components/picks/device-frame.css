@@ -1,16 +1,7 @@
-/* The tablet frame (DeviceFrame.astro). */
-:root,
-:root[data-theme='dark'] {
-  --device-bezel: #050506;
-  --device-rim: #2c2d33;
-}
-
-:root[data-theme='light'] {
-  --device-bezel: #ffffff;
-  --device-rim: #d3d6de;
-}
-
+/* The tablet frame (DeviceFrame.astro). Its bezel and rim are design tokens, so both themes follow. */
 .device {
+  --device-bezel: var(--paper-2);
+  --device-rim: var(--line-strong);
   perspective: 1400px;
 }
 

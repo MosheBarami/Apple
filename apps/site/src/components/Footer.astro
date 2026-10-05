@@ -100,14 +100,11 @@ const year = new Date().getFullYear();
 </footer>
 
 <style>
-  /* A frosted sheet with rounded shoulders (D-GLASS-1): the page ends on glass, not on a line. */
+  /* A flat sheet with rounded shoulders: the page ends on a recessed band and a hairline. */
   .foot {
-    border-top: 1px solid var(--glass-line);
+    border-top: 1px solid var(--line);
     border-radius: var(--r-xl) var(--r-xl) 0 0;
-    background: var(--glass-fill-quiet);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: var(--paper-2);
     padding: clamp(3.5rem, 7vw, 5.5rem) 0 2.25rem;
     position: relative;
   }
@@ -182,7 +179,7 @@ const year = new Date().getFullYear();
     text-decoration: none;
     transition:
       color var(--t-fast) var(--ease-out),
-      transform var(--t-base) var(--ease-spring);
+      transform var(--t-base) var(--ease-out);
   }
 
   .foot__col a:hover {

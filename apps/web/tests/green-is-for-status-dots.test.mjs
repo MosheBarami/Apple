@@ -1,7 +1,8 @@
 /**
  * F-004, 2026-09-22: the non-workspace screens spoke green — a green primary button on the shelf,
- * a teal chip, green ticks in the Studio dialog — while the workspace speaks the product's blue
- * (#5b7cfa, studpilot-minimal.css). The shelf went quiet black-and-white in e9462f8 (F-041). What was
+ * a teal chip, green ticks in the Studio dialog — while the workspace speaks the product's accent
+ * (then a blue, now the one token --accent in packages/design/src/web/tokens.css). The shelf went
+ * quiet black-and-white in e9462f8 (F-041). What was
  * still green on 2026-09-23, measured in Chrome by computed colour: the ✓ marks in the usage page's
  * Plan/Agent comparison (#34d399, the vendored table's own default) and the large "Studio
  * connected" tick. Green stays only where it is a status dot (toast, "Live", pulse).

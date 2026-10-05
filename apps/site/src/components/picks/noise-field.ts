@@ -37,13 +37,13 @@ function mount(host: HTMLElement): void {
   let W = 0, H = 0, dpr = 1;
   let ink: [number, number, number] = [60, 60, 70];
   let soft: [number, number, number] = [40, 40, 48];
-  let accent: [number, number, number] = [91, 124, 250];
+  let accent: [number, number, number] = [136, 136, 136];
   const P: Pointer = { x: -9999, y: -9999, sx: -9999, sy: -9999, lx: 0, ly: 0, speed: 0, angle: 0, on: false };
 
   const readColours = () => {
     ink = rgb(token('--line-strong', '#3b3d46'));
     soft = rgb(token('--line', '#2e2e2e'));
-    accent = rgb(token('--accent', '#5b7cfa'));
+    accent = rgb(token('--accent'));
   };
 
   /* ---------------------------------------------------------------- lines (Waves) */

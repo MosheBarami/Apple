@@ -47,7 +47,6 @@
    the two breakpoints below are the only places it moves. */
 .gx-shell { --gx-dock-w:248px; }
 .gx-shell .gx-main { width:calc(100% - var(--gx-dock-w)); margin-inline-start:var(--gx-dock-w); }
-.gx-shell .studio-atmosphere { inset-inline:var(--gx-dock-w) 0; }
 
 /* ------------------------------------------------------------------- rail --- */
 
@@ -68,7 +67,7 @@
    The padding follows the same measurement: the reference clears its 36px controls by 12px inside
    a 60px bar, and 12px is its control gutter as well, so one number sets both edges of the rail.
    18/14 were neither on its 4px grid nor in its gap vocabulary. */
-.gx-shell .studio-dock { width:var(--gx-dock-w); align-items:stretch; gap:0; padding:12px; background:var(--paper); backdrop-filter:none; animation:dock-arrive var(--t-slow) var(--ease-out) both; }
+.gx-shell .studio-dock { width:var(--gx-dock-w); align-items:stretch; gap:0; padding:12px; background:var(--paper); animation:dock-arrive var(--t-slow) var(--ease-out) both; }
 /* system.css repaints the rail under the light theme with a hard-coded `#f0f0f0d9`, at a higher
    specificity than the rule above and from a later file. Answered rather than argued with, and
    with the same token: the reference's light sidebar is #f8f8f8 against a white page — a rail a

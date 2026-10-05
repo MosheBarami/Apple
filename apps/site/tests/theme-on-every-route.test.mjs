@@ -21,9 +21,9 @@ const landing = read('../src/layouts/Landing.astro');
 const base = read('../src/layouts/Base.astro');
 const landingCss = read('../src/styles/landing.css');
 const globalCss = read('../src/styles/global.css');
-// THE ONE TOKEN SOURCE. Since the 2026-09-22 redesign every colour token lives in studpilot-minimal.css,
-// which both layouts import first; landing.css and global.css are structure only.
-const tokenCss = read('../src/styles/studpilot-minimal.css');
+// THE ONE TOKEN SOURCE. Since M2 (2026-10-05) every colour token lives in the design package's
+// tokens.css, which both layouts import first; landing.css and global.css are structure only.
+const tokenCss = read('../../../packages/design/src/web/tokens.css');
 const noComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
 const manifest = JSON.parse(read('../public/site.webmanifest'));
 
@@ -75,8 +75,8 @@ test('an Astro expression never sits between <!doctype> and <html>', () => {
 });
 
 //[[ RESTATED 2026-09-22. The property is "the front page has a light ramp, not one ramp". The
-//   ramp moved out of landing.css into studpilot-minimal.css — the one token source both layouts load —
-//   so it is checked there, and landing.css is now held to declaring no colour token at all, which
+//   ramp moved out of landing.css into the one token source both layouts load (since M2,
+//   packages/design/src/web/tokens.css) so it is checked there, and landing.css is now held to declaring no colour token at all, which
 //   is the stronger half: a second ramp in a structure sheet is how the site ended up with 117
 //   `!important`s fighting over whose value wins. ]]
 test('landing.css has a light ramp, not one ramp', () => {
@@ -85,7 +85,7 @@ test('landing.css has a light ramp, not one ramp', () => {
   const at = css.search(/:root\[data-theme='light'\]\s*\{/);
   assert.notEqual(at, -1);
   const light = css.slice(at, css.indexOf('}', at));
-  for (const token of ['--paper', '--ink', '--muted', '--accent', '--composer-fill', '--theme-color']) {
+  for (const token of ['--paper', '--ink', '--muted', '--accent', '--accent-ink', '--surface', '--theme-color']) {
     assert.match(light, new RegExp(`${token}:`), `light ramp is missing ${token}`);
   }
   for (const [name, sheet] of [['landing.css', landingCss], ['global.css', globalCss]]) {
@@ -110,8 +110,8 @@ test('landing.css has a light ramp, not one ramp', () => {
 // Aimed at the one token source since 2026-09-22 (see above). The dark block is the combined
 // `:root, :root[data-theme='dark']` selector; the light block is `:root[data-theme='light']`.
 const THEME_BLOCKS = [
-  { name: "studpilot-minimal.css :root, [data-theme='dark']", css: () => noComments(tokenCss), selector: /:root,\s*:root\[data-theme='dark'\]\s*\{/ },
-  { name: "studpilot-minimal.css :root[data-theme='light']", css: () => noComments(tokenCss), selector: /:root\[data-theme='light'\]\s*\{/ },
+  { name: "tokens.css :root, [data-theme='dark']", css: () => noComments(tokenCss), selector: /:root,\s*:root\[data-theme='dark'\]\s*\{/ },
+  { name: "tokens.css :root[data-theme='light']", css: () => noComments(tokenCss), selector: /:root\[data-theme='light'\]\s*\{/ },
 ];
 
 /** The declaration block that starts at `selector`, brace-balanced. */
@@ -161,7 +161,7 @@ test('the address bar cannot disagree with the page, in any theme of either styl
 //   maintains. So it is compared with the default (dark) --paper read from the token sheet. ]]
 test('the manifest no longer carries a third black nobody maintains', () => {
   const dark = blockFor(noComments(tokenCss), /:root,\s*:root\[data-theme='dark'\]\s*\{/);
-  assert.ok(dark, 'the default theme block was not found in studpilot-minimal.css');
+  assert.ok(dark, 'the default theme block was not found in tokens.css');
   const paper = declared(dark, '--paper');
   assert.ok(paper, 'the default theme declares no --paper to compare the manifest with');
   assert.equal(manifest.theme_color.toLowerCase(), paper.toLowerCase());
