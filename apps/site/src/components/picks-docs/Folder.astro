@@ -130,6 +130,14 @@ const id = `folder-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     height: 60%;
   }
 
+  /* Selected text on a sheet of paper: the sheet's own pair, inverted. The page's wash is --ink-coloured here and the text --ink, which is
+     1.5:1; --paper behind --ink reads 18:1 on the sheet and 13:1 on the second one (see the note under ::selection in base.css). */
+  .fold__paper::selection,
+  .fold__paper ::selection {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
   .fold__front {
     position: absolute;
     z-index: 3;

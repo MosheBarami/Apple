@@ -82,6 +82,19 @@ svg {
   color: var(--ink);
 }
 
+/* A SELECTION OVER A FILL IS THE FILL, INVERTED. The rule above is a translucent wash, so its pair is --ink over whatever is under
+   it, and on an accent fill that is --ink on the accent: 2.77:1 in dark, 2.94:1 in light (a wash of the accent over the accent paints
+   the accent). Every control the sheets fill with the accent (or with --ink) sets its own pair, OPAQUE so it does not depend on the fill:
+   the label's own ink as the highlight and the fill as the text, which reads exactly as the control does at rest (6.54:1 dark, 6.10:1
+   light) and is visibly not the control. tests/contrast.test.mjs finds each filled control in the sheets and requires one. */
+.skip-link::selection,
+.skip-link ::selection,
+.btn-primary::selection,
+.btn-primary ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
 /* ONE FOCUS RING, EVERYWHERE: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
    `:where()` keeps it at zero specificity so a component can move the ring to a better box — the
    landing composer does — without having to out-shout it. Nothing may remove it. */

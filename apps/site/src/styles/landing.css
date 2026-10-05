@@ -230,6 +230,13 @@ a {
   transform: scale(0.95);
 }
 
+/* Selected text on the accent fill: the fill's own pair, inverted (see the note under ::selection in base.css). */
+.composer-send::selection,
+.composer-send ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
 .availability {
   margin: 22px 0 0;
   color: var(--ink-2);

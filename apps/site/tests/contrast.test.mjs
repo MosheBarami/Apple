@@ -25,6 +25,10 @@
  *   - derives the SURFACES from the sheet: every `--paper*` and `--surface*` step;
  *   - requires 4.5:1 for every text token on every surface: worst case, not typical case, because
  *     a token used for text on one surface today is used on another tomorrow;
+ *   - requires 4.5:1 for SELECTED text on every surface (the `::selection` rules) AND ON EVERY FILL a control draws: a selection is a
+ *     translucent wash, so over the accent button it paints the accent and carries --ink on it (2.77:1 dark, 2.94:1 light, found by selecting
+ *     the text and reading the pixels). Each filled control must set its own opaque pair, for its own text and its descendants' (`X::selection`
+ *     and `X ::selection`), that reads at 4.5:1 and is visibly not the fill (3:1 against it);
  *   - requires 3:1 for the focus ring (--accent) on every surface: non-text contrast, WCAG 1.4.11;
  *   - requires every pair to clear 4.5:1 in both themes (the accent button's --accent-ink on --accent at rest and on
  *     --accent-strong hovered, the folder's --paper on --ink and --ink-2);
@@ -38,7 +42,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { blend, colourOf, contrast, contrastRgb, expandVars, rgbOfHex, splitTop, surfacesOf, theme, themeBlocks } from '@studpilot/design/css-tokens';
-import { entriesOf, measure, pairsFor, rulesOf } from './lib/cascade-pairs.mjs';
+import { entriesOf, measure, pairsFor, parsePart, rulesOf, specificityOf } from './lib/cascade-pairs.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -109,6 +113,59 @@ function selectionRatios(rule, mode) {
   });
 }
 
+/** One `::selection` selector part, read: { own, subject, raw } where subject is the element whose text it styles ('' for the page-wide rule) and own is false for `X ::selection` (its descendants' text). */
+function selectionTarget(part) {
+  const m = /^(.*?)(\s*)::(?:-moz-)?selection$/.exec(part.trim());
+  if (!m) return null;
+  const head = m[1].trim();
+  return { own: m[2] === '', subject: head === '' ? '' : parsePart(head).subject, raw: part.trim() };
+}
+
+/**
+ * Selected text on every opaque fill a control draws, in one theme. The fills are DERIVED (the pairs whose ground is an opaque colour that is
+ * not a page surface), grouped by the element that carries them; for each, the `::selection` rule that wins for that element's own text and
+ * for its descendants' text (the most specific that names it, else the page-wide one) is laid over each of its fills.
+ * Returns { subjects: [selector], problems: [string] }.
+ */
+function selectionOnFills(rules, mode) {
+  const lookup = lookupOf(mode);
+  const entries = entriesOf(rules);
+  const surfaces = surfaceList(mode);
+  const byGround = new Map();
+  for (const pair of pairsFor(entries, mode)) {
+    const m = { pair, ...measure(pair, lookup, surfaces, { contrastRgb, blend }) };
+    if (m.kind !== 'fill') continue;
+    for (const v of pair.fills) {
+      const colour = expandVars(v, lookup) && colourOf(expandVars(v, lookup));
+      if (!colour || colour[3] !== 1 || /^var\(--(?:paper|surface)(?:-\d)?\)$/.test(v)) continue;
+      if (!byGround.has(pair.subject)) byGround.set(pair.subject, new Map());
+      byGround.get(pair.subject).set(v, colour.slice(0, 3));
+    }
+  }
+  const selections = rules.flatMap((r) => splitTop(r.selector).map(selectionTarget).filter(Boolean).map((target) => ({ ...target, specificity: specificityOf(target.raw), bg: declOf(r.body, 'background') ?? declOf(r.body, 'background-color'), fg: declOf(r.body, 'color') })));
+  const problems = [];
+  for (const [subject, grounds] of byGround) {
+    for (const own of [true, false]) {
+      const applies = selections.filter((x) => x.subject === subject && x.own === own);
+      const heavier = (a, b) => b.specificity[0] - a.specificity[0] || b.specificity[1] - a.specificity[1] || b.specificity[2] - a.specificity[2];
+      const winner = applies.length ? applies.reduce((a, b) => (heavier(a, b) >= 0 ? b : a)) : selections.filter((x) => x.subject === '').at(-1);
+      const what = `${subject}${own ? '' : ' (descendants)'}`;
+      if (!winner) { problems.push(`${what}: no ::selection rule applies`); continue; }
+      const [bgC, fgC] = [winner.bg, winner.fg].map((v) => { const text = v && expandVars(v, lookup); return text && colourOf(text); });
+      if (!bgC || !fgC) { problems.push(`${what}: the ::selection that applies (${winner.raw}) sets no resolvable background and colour`); continue; }
+      for (const [name, fill] of grounds) {
+        const painted = blend(fill, bgC);
+        const read = contrastRgb(blend(painted, fgC), painted);
+        const apart = contrastRgb(painted, fill);
+        const how = applies.length ? winner.raw : `the page-wide ${winner.raw}, because ${what} sets none`;
+        if (read < 4.5) problems.push(`${what} on ${name}: selected text is ${read.toFixed(2)}:1 (${how})`);
+        else if (apart < 3) problems.push(`${what} on ${name}: the selection is ${apart.toFixed(2)}:1 against the fill, so it does not show (${how})`);
+      }
+    }
+  }
+  return { subjects: [...byGround.keys()], problems };
+}
+
 test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(STYLES.length >= 8, `only ${STYLES.length} style sources read — the walk has drifted`);
   // 4, not 5: --autonomous-ink left with the landing's Autonomous toggle (V3 gate G01, no mode surface).
@@ -174,6 +231,13 @@ for (const [name, t] of Object.entries(THEMES)) {
       for (const { surface, ratio } of r) if (ratio < 4.5) bad.push(`${rule.selector} { ${rule.body.trim().replace(/\s+/g, ' ')} } is ${ratio.toFixed(2)}:1 over --${surface}`);
     }
     assert.deepEqual(bad, [], `${name}: selected text below 4.5:1:\n  ${bad.join('\n  ')}`);
+  });
+
+  test(`${name}: selected text clears 4.5:1 on every fill a control draws, and shows against it`, () => {
+    const { subjects, problems } = selectionOnFills(RULES, name);
+    // CANARIES: the fills were found in the sheets, not listed here. Each is a control a person selects text on.
+    for (const must of ['.btn-primary', '.cta', '.composer-send', '.skip-link', '.fold__paper']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
+    assert.deepEqual(problems, [], `${name}: selected text on a fill:\n  ${problems.join('\n  ')}`);
   });
 
   test(`${name}: the accent is legible as text on every surface, because links and active labels spend it`, () => {
@@ -266,6 +330,37 @@ test('the guard has teeth: a colour with a fallback, a literal and a color-mix a
   const css = ".t { color: var(--ink); } [data-theme='light'] .t { color: var(--paper); }";
   assert.ok(fixture(css, 'light').by['.t'] < 1.2, 'the light-only colour was not read in light');
   assert.ok(fixture(css, 'dark').by['.t'] >= 4.5, 'the light-only colour was read in dark');
+});
+
+test('the guard has teeth: a selection that is a wash fails on the accent fill, an inverted opaque pair passes, and each half of it is required', () => {
+  const FILL = '.zz-cta { color: var(--accent-ink); background: var(--accent); } .zz-cta:hover { background: var(--accent-strong); }';
+  const WASH = '::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--ink); }';
+  const INVERTED = '.zz-cta::selection, .zz-cta ::selection { background: var(--accent-ink); color: var(--accent); }';
+  const run = (css, mode) => selectionOnFills(rulesOf([css]), mode);
+  /** Which of the two forms (the element's own text, its descendants' text) a result fails: the fixture's fill has two grounds, so a form can fail twice. */
+  const forms = (r) => [...new Set(r.problems.map((p) => (/\(descendants\)/.test(p) ? 'descendants' : 'own')))].sort();
+  for (const mode of Object.keys(THEMES)) {
+    // As shipped: the page-wide wash over the accent face. The accent painted by the wash IS the accent, and --ink on it was 2.77:1 (dark) and 2.94:1 (light).
+    const shipped = run(`${FILL} ${WASH}`, mode);
+    assert.deepEqual(shipped.subjects, ['.zz-cta'], `${mode}: the fill was not found`);
+    assert.ok(shipped.problems.some((p) => /selected text is [12]\.\d\d:1/.test(p)), `${mode}: the shipped wash over the accent was not failed: ${shipped.problems.join(' | ')}`);
+    assert.deepEqual(forms(shipped), ['descendants', 'own'], `${mode}: both the element's own text and its descendants' text should fail (${shipped.problems.join(' | ')})`);
+    assert.ok(shipped.problems.some((p) => /on var\(--accent-strong\)/.test(p)) && shipped.problems.some((p) => /on var\(--accent\):/.test(p)), `${mode}: the hover fill and the resting fill were not both read`);
+    // The inverted opaque pair reads (the label's pair, swapped) and shows.
+    assert.deepEqual(run(`${FILL} ${WASH} ${INVERTED}`, mode).problems, [], `${mode}: the inverted pair was failed`);
+    // Each half is required: the descendant form alone leaves the element's own text on the wash, the own form alone leaves the label span on it.
+    assert.deepEqual(forms(run(`${FILL} ${WASH} .zz-cta ::selection { background: var(--accent-ink); color: var(--accent); }`, mode)), ['own'], `${mode}: the own-text half was not required`);
+    assert.deepEqual(forms(run(`${FILL} ${WASH} .zz-cta::selection { background: var(--accent-ink); color: var(--accent); }`, mode)), ['descendants'], `${mode}: the descendant half was not required`);
+    // A pair that reads but is the fill itself (the accent as the highlight, the label ink on it) shows nothing, and a rule for another element is not this one's.
+    assert.ok(run(`${FILL} ${WASH} .zz-cta::selection, .zz-cta ::selection { background: var(--accent); color: var(--accent-ink); }`, mode).problems.every((p) => /does not show/.test(p)), `${mode}: a selection that paints the fill was passed`);
+    assert.deepEqual(forms(run(`${FILL} ${WASH} .zz-other::selection, .zz-other ::selection { background: var(--accent-ink); color: var(--accent); }`, mode)), ['descendants', 'own'], `${mode}: a rule for another element was counted`);
+    // A wash of the accent over the accent fill, under a label that reads, is still not a selection.
+    assert.deepEqual(forms(run(`${FILL} ${WASH} .zz-cta::selection, .zz-cta ::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-ink); }`, mode)), ['descendants', 'own'], `${mode}: a wash over its own fill was passed`);
+  }
+  // The paper on ink (the docs folder), derived like the accent button: ink is a fill that is not a page surface.
+  const fold = run('.zz-sheet { color: var(--paper); background: var(--ink); } ' + WASH, 'dark');
+  assert.deepEqual(fold.subjects, ['.zz-sheet'], 'an ink fill was not found');
+  assert.deepEqual(forms(fold), ['descendants', 'own'], `the page wash over an --ink sheet was not failed (${fold.problems.join(' | ')})`);
 });
 
 test('the guard has teeth: the selection that shipped fails in dark, and a selection with no colour is reported', () => {

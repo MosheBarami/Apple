@@ -36,6 +36,16 @@
   transform: scale(0.98);
 }
 
+/* Selected text on the accent face and on the knob: the fill's own pair, inverted (see the note under ::selection in base.css).
+   The knob carries an arrow today; the pair is declared so a label added to it reads. */
+.cta::selection,
+.cta ::selection,
+.cta__knob::selection,
+.cta__knob ::selection {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
 .cta:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;

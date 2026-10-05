@@ -225,7 +225,7 @@
   inset-inline-start: 0;
   z-index: 1;
   max-width: 160px;
-  /* Frosted too, so the plans scrolling under it blur rather than show through. */
+  /* An opaque surface, so the plans scrolling under the row label are hidden by it and do not show through. The site draws no blur. */
   background: var(--surface-2);
 }
 
