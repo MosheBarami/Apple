@@ -382,7 +382,7 @@ export function Turn({
         <RunSteps item={item} tools={item.tools} streaming={item.streaming} />
 
         {/* STUDIO SCREENSHOTS (M2 2.3): the last few frames of this run, for the person only. With none it says what is true of this
-            turn (still coming, how to get them, or nothing at all once a finished request took none). */}
+            turn (still coming, how to get them, or nothing at all once a finished turn holds none and Studio is connected). */}
         {showShots && <StudioShots frames={shots} running={item.streaming} studioConnected={studioConnected ?? false} />}
 
         {/* THE REPLY APPEARS ONCE, when the run ends and msg_end settles it to the stored answer

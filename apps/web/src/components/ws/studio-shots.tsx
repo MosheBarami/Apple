@@ -5,7 +5,7 @@
 //
 // WHAT IT NEVER DOES. It never invents a picture: a frame that does not decode cleanly is not drawn (lib/frame-decode.ts), and says
 // so. With no frame it says what is true of THIS turn (lib/studio-shots.ts shotsEmptyLine: screenshots are coming, or how to get them,
-// or nothing at all once a finished request took none), rather than showing a placeholder that could be mistaken for a result.
+// or nothing at all once a finished turn holds none and Studio is connected), rather than showing a placeholder that could be mistaken for a result.
 import { useEffect, useRef, useState } from 'react';
 import type { StudioFrame } from '@studpilot/shared';
 import { frameImageSrc, paintFrame } from '../../lib/frame-decode';

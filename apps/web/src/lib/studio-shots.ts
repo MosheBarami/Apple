@@ -19,20 +19,28 @@ export const SHOT_LIMIT = 8;
 export const SHOTS_EMPTY = 'Studio screenshots appear here while StudPilot builds';
 /** A run in flight with Studio not connected: the sentence says what to do, because waiting will not fill the strip. */
 export const SHOTS_CONNECT = 'Connect Studio to see screenshots here while StudPilot builds';
-/** A finished request that captured nothing, with Studio not connected: why, and what to do next time. */
-export const SHOTS_NONE_TAKEN = 'No screenshots were taken for this request. Connect Studio to see them next time.';
+/**
+ * A finished turn with no frame in this page and Studio not connected: why there is nothing to show, and what to do next time.
+ *
+ * It does NOT say that none were taken. The page cannot know: its frames live in memory only (use-project-socket.ts persists none and a reloaded
+ * conversation carries its tool steps, not its frames), so a build that did capture Studio, opened again after a reload, has none here either.
+ * What is true of every case is that the page keeps them only while the tab is open, and that is what this says.
+ */
+export const SHOTS_NONE_HERE =
+  'No screenshots to show for this request: they are kept only while this tab stays open, so a reload clears them. To see them next time, connect Studio and keep this tab open during the request.';
 
 /**
  * The one line under a turn that has no screenshot, or null when there is nothing true and useful to say.
  *
  * It follows what is the case, because a sentence written for a run in flight is false under a finished one: while the run is going and
  * Studio is connected, screenshots are on their way; while it is going and Studio is not connected they are not, and the line says how to
- * get them; once the run is over with nothing captured, a line is drawn only when there is something to do (connect Studio), and nothing
- * is drawn when Studio was there and the request simply took none (a web search, a file read), so no finished turn keeps a promise.
+ * get them; once the run is over with no frame in this page, a line is drawn only when there is something to do (connect Studio), and nothing
+ * is drawn when Studio is connected (the request may simply have taken none, a web search or a file read, and the page cannot tell that from a
+ * reload that cleared them), so no finished turn keeps a promise or claims what it cannot know.
  */
 export function shotsEmptyLine({ running, studioConnected }: { running: boolean; studioConnected: boolean }): string | null {
   if (running) return studioConnected ? SHOTS_EMPTY : SHOTS_CONNECT;
-  return studioConnected ? null : SHOTS_NONE_TAKEN;
+  return studioConnected ? null : SHOTS_NONE_HERE;
 }
 
 /** Said in the enlarged view, and true of this page only. */
@@ -41,13 +49,18 @@ export const SHOTS_KEPT = 'Shown only in this tab and kept only while it is open
 /**
  * Whether two frames are ONE capture. The worker replays the frames it still holds, with their original `msgId` and `capturedAt`, every
  * time a socket attaches during a playtest (apps/worker/src/do/session.ts), so after a reconnect the page receives captures it already
- * has. A playtest frame is identified by its run and its counter (`playtestRunId`, `seq`); any other by what was captured and when.
- * Two different pictures never compare equal: the pixels are part of the identity when nothing else tells them apart.
+ * has. A playtest frame is identified by its run, its counter and the moment it was captured (`playtestRunId`, `seq`, `capturedAt`); any
+ * other by what was captured and when. Two different pictures never compare equal: the pixels are part of the identity when nothing else
+ * tells them apart.
+ *
+ * THE MOMENT IS PART OF A PLAYTEST FRAME'S KEY because the counter alone cannot tell a new frame from a replay: `seq` is a plain field of the
+ * Durable Object (`playtestSeq`, reset only when a playtest begins) while the playtest run is stored, so after an eviction in the middle of a
+ * playtest the worker keeps the same run id and counts from 1 again. A replay carries the capture's original time; a new frame does not.
  */
 export function sameFrame(a: StudioFrame, b: StudioFrame): boolean {
   if (a === b) return true;
   if (a.playtestRunId !== undefined && a.seq !== undefined && b.playtestRunId !== undefined && b.seq !== undefined) {
-    return a.playtestRunId === b.playtestRunId && a.seq === b.seq;
+    return a.playtestRunId === b.playtestRunId && a.seq === b.seq && a.capturedAt === b.capturedAt;
   }
   return (
     a.capturedAt === b.capturedAt &&

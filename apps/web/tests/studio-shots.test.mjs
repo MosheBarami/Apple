@@ -8,9 +8,13 @@
  *      earlier run or one the worker could not attribute.
  *   1b. EACH CAPTURE ONCE. The worker replays the frames it holds each time a socket attaches during a playtest, so a reconnect must not
  *      repeat the strip or push the run's older frames out of the newest eight (M2 fix cycle 1).
+ *   1c. A NEW PLAYTEST FRAME IS NOT A REPLAY EVEN WHEN THE WORKER'S COUNTER RESTARTS. The counter lives in the Durable Object's memory and
+ *      the playtest run id survives an eviction, so new frames can arrive under a run id and a counter the page already holds; the capture
+ *      time tells them apart, and a true replay carries the same one (M2 fix cycle 2).
  *   2. WHAT IT SAYS. A Studio capture is a "Studio screenshot"; anything else is a "Preview render", so a preview is never read as
  *      a screenshot. With no frame the strip says what is true of THIS turn: still coming, how to get them (connect Studio), or nothing
- *      at all once a finished request took none. No finished turn keeps a sentence about "while StudPilot builds".
+ *      at all once a finished request took none. No finished turn keeps a sentence about "while StudPilot builds", and none says that no
+ *      screenshot was taken: the page keeps frames in memory only, so after a reload it cannot know (M2 fix cycle 2).
  *   3. WHERE IT SHOWS. On the latest assistant turn while it runs, once it has a frame, or when it was a build at all. A plain chat
  *      reply, and every earlier turn, gets nothing. The offer to the latest turn only is held where it is made (workspace.tsx).
  *   4. THE PERSON ONLY, IN MEMORY ONLY. The strip and its dialog persist nothing and send nothing: no storage, no request, no
@@ -24,7 +28,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
-import { SHOT_LIMIT, SHOTS_CONNECT, SHOTS_EMPTY, SHOTS_KEPT, SHOTS_NONE_TAKEN, appendFrame, sameFrame, shotCaption, shotKind, shotKindLabel, shotsEmptyLine, shotsForTurn } from '../src/lib/studio-shots.ts';
+import { SHOT_LIMIT, SHOTS_CONNECT, SHOTS_EMPTY, SHOTS_KEPT, SHOTS_NONE_HERE, appendFrame, sameFrame, shotCaption, shotKind, shotKindLabel, shotsEmptyLine, shotsForTurn } from '../src/lib/studio-shots.ts';
 import ts from 'typescript';
 
 const T0 = 1_700_000_000_000;
@@ -84,6 +88,28 @@ test('two different pictures are never taken for one: same second and view but d
   assert.equal(sameFrame(frame(1), frame(1, { msgId: 'run-2' })), false, 'the same capture time under another run');
 });
 
+// ADDED 2026-10-05 (M2 fix cycle 2). The worker's playtest counter `seq` is a plain in-memory field of the Durable Object (apps/worker/src/do/session.ts,
+// `playtestSeq`, reset only when a playtest begins) while the playtest run itself is stored, so after an eviction in the middle of a playtest the
+// worker keeps the SAME run id and counts from 1 again. Keyed on the run and the counter alone, the page took those new pictures for a replay and
+// never showed them. The capture time tells them apart: a replay carries the capture's original one.
+test('A NEW PLAYTEST FRAME AFTER THE WORKER’S COUNTER RESTARTS IS NOT A REPLAY: the same run and counter at another moment both stay, and an exact replay is still dropped', () => {
+  const play = (seq, n, pixels) => frame(n, { playtestRunId: 'pt_1', seq, rgbBase64: pixels });
+  const held = [play(1, 1, 'AAAA'), play(2, 2, 'AAAA'), play(3, 3, 'AAAA')];
+  // After the eviction: new pictures (other pixels, later times) arrive as seq 1 and 2 of the run the page already holds.
+  const fresh = [play(1, 10, 'BBBB'), play(2, 11, 'CCCC')];
+  assert.equal(sameFrame(held[0], fresh[0]), false, 'a later capture with other pixels, under the same run and counter, is not the held one');
+  assert.equal(sameFrame(held[1], fresh[1]), false);
+  const grown = fresh.reduce((list, f) => appendFrame(list, f, 8), held);
+  assert.deepEqual(grown.map((f) => f.rgbBase64), ['AAAA', 'AAAA', 'AAAA', 'BBBB', 'CCCC'], 'the new frames were dropped as replays');
+  assert.deepEqual(shotsForTurn(grown, 'run-1').map((f) => f.capturedAt), [1, 2, 3, 10, 11].map((n) => T0 + n * 1000), 'and the strip shows all five, in time order');
+  // The worker's replay (same run, same counter, the capture's own time) still adds nothing, however often it arrives.
+  const replay = [...held, ...fresh].map(copy);
+  for (const [i, f] of replay.entries()) assert.equal(sameFrame(f, [...held, ...fresh][i]), true, `a copy of capture ${i} is that capture`);
+  const again = replay.reduce((list, f) => appendFrame(list, f, 8), grown);
+  assert.equal(again, grown, 'a replayed ring changed the list');
+  assert.equal(shotsForTurn([...grown, ...replay], 'run-1').length, 5, 'and the strip still shows each once');
+});
+
 test('appendFrame keeps the newest eight, returns the very same list for a capture it holds, and never changes its input', () => {
   const nine = Array.from({ length: 9 }, (_, i) => frame(i + 1));
   const grown = nine.reduce((list, f) => appendFrame(list, f, 8), []);
@@ -116,12 +142,40 @@ test('a Studio capture is a screenshot; anything else is a preview render, and t
 test('WHAT THE EMPTY STRIP SAYS follows the run and Studio, and a finished turn keeps no promise about "while it builds"', () => {
   assert.equal(shotsEmptyLine({ running: true, studioConnected: true }), SHOTS_EMPTY, 'on its way');
   assert.equal(shotsEmptyLine({ running: true, studioConnected: false }), SHOTS_CONNECT, 'waiting will not fill it: say what to do');
-  assert.equal(shotsEmptyLine({ running: false, studioConnected: false }), SHOTS_NONE_TAKEN, 'over, with nothing, and Studio is the reason to act on');
+  assert.equal(shotsEmptyLine({ running: false, studioConnected: false }), SHOTS_NONE_HERE, 'over, with nothing, and Studio is the reason to act on');
   assert.equal(shotsEmptyLine({ running: false, studioConnected: true }), null, 'over, Studio was there: nothing true and useful to add');
-  for (const finished of [SHOTS_NONE_TAKEN]) assert.doesNotMatch(finished, /while StudPilot builds|appear here/, 'a finished turn must not say screenshots are coming');
+  for (const finished of [SHOTS_NONE_HERE]) assert.doesNotMatch(finished, /while StudPilot builds|appear here/, 'a finished turn must not say screenshots are coming');
   assert.match(SHOTS_CONNECT, /^Connect Studio/);
-  assert.match(SHOTS_NONE_TAKEN, /Connect Studio/);
+  assert.match(SHOTS_NONE_HERE, /connect Studio/i);
 });
+
+// ADDED 2026-10-05 (M2 fix cycle 2). The line under a finished turn said "No screenshots were taken for this request.", which the page cannot know:
+// frames are held in memory only (use-project-socket.ts) and a reloaded conversation carries its tool steps, not its frames, so a build that did
+// capture Studio, opened again after a reload, was told it took none. The line says what is true instead: why there is nothing to show, and what
+// to do next time.
+test('THE FINISHED-TURN LINE NEVER SAYS NONE WERE TAKEN (the page cannot know after a reload); it says how long they are kept and what to do next time', () => {
+  for (const claim of [/\bwere taken\b/i, /\bwas taken\b/i, /\bnone\b/i, /\btook (no|none)\b/i, /\bno screenshots (were|was)\b/i, /\bnever\b/i]) {
+    assert.doesNotMatch(SHOTS_NONE_HERE, claim, `the line asserts what happened in the run: ${claim}`);
+  }
+  assert.match(SHOTS_NONE_HERE, /only while this tab stays open/i, 'it does not say how long the screenshots are kept');
+  assert.match(SHOTS_NONE_HERE, /reload/i, 'it does not say what clears them');
+  assert.match(SHOTS_NONE_HERE, /next time/i);
+  assert.match(SHOTS_NONE_HERE, /connect Studio/i);
+  assert.match(SHOTS_NONE_HERE, /keep this tab open/i, 'it does not say how to see them next time');
+  assert.equal(SHOTS_NONE_HERE, 'No screenshots to show for this request: they are kept only while this tab stays open, so a reload clears them. To see them next time, connect Studio and keep this tab open during the request.');
+});
+
+// What the sentence rests on: the page's frames live in memory and nowhere else. If a frame is ever kept across a reload (from history, storage or a
+// request), the line above is wrong again, so this fails and the line must be re-worded with the change that keeps them.
+test('THE LINE RESTS ON THIS: the frames come into the page from the socket alone, and nothing reloads them', () => {
+  const hook = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  const sets = [...hook.matchAll(/setFrames\(/g)];
+  assert.equal(sets.length, 2, 'the page sets its frames somewhere new: from the fixture (dev) and from a `studio_frame` message only');
+  assert.match(hook, /case 'studio_frame':[\s\S]*?setFrames\(\(list\) => appendFrame\(list, msg\.frame, MAX_FRAMES\)\)/);
+  assert.match(hook, /withFrames \? mockFrames\(\)/);
+  assert.doesNotMatch(hook, /useState<StudioFrame\[\]>\([^)]*(localStorage|sessionStorage|JSON\.parse)/, 'the frames start from stored data');
+});
+
 
 test('the words are exact, short and plain', () => {
   assert.equal(SHOTS_EMPTY, 'Studio screenshots appear here while StudPilot builds');
@@ -145,7 +199,7 @@ test('NO FRAME YET: the one sentence for this turn and no picture, no placeholde
   assert.doesNotMatch(html, /<canvas|<img|<button|<svg/, 'nothing that could be mistaken for a result');
   assert.match(html, /aria-label="Studio screenshots from this run"/);
   assert.equal(text(render(ui.h(ui.StudioShots, { frames: [], running: true, studioConnected: false }))), SHOTS_CONNECT, 'Studio off: what to do');
-  assert.equal(text(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: false }))), SHOTS_NONE_TAKEN);
+  assert.equal(text(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: false }))), SHOTS_NONE_HERE);
   assert.equal(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: true })), '', 'a finished request with nothing to say draws no box at all');
 });
 
@@ -181,7 +235,7 @@ test('A LIVE RUN with no frame yet shows the strip’s own sentence (what to do 
 test('A FINISHED BUILD keeps its screenshots; one with none says what to do when Studio is off, and nothing under it when Studio was there', () => {
   const tool = { toolId: 't1', tool: 'create_instances', summary: 'x', ok: true, done: true, startedAt: T0, durationMs: 5, startObserved: true };
   assert.equal((strip(turn({ tools: [tool] }, { frames: [frame(1)], studioConnected: true })).match(/shots__thumb/g) ?? []).length, 1);
-  assert.equal(text(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false }))), SHOTS_NONE_TAKEN);
+  assert.equal(text(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false }))), SHOTS_NONE_HERE);
   assert.equal(strip(turn({ tools: [tool] }, { frames: [], studioConnected: true })), null, 'a finished turn that took no screenshot keeps no "appear here while it builds" sentence');
   assert.doesNotMatch(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false })), /while StudPilot builds/);
 });
