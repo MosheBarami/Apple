@@ -5,8 +5,8 @@
   "name": "studpilot-studio",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/* here with the prefix
-  // removed (same origin,
+  // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/* here (static files with the prefix
+  // removed, /studio/api/* unchanged) (same origin,
   // so the signed-in Supabase session carries over). No workers.dev route.
   "workers_dev": false,
   "ai": { "binding": "AI" },
@@ -16,7 +16,7 @@
     "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
     "AI_GATEWAY_ID": "studpilot"
   },
-  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/studio/api/*"] },
   "observability": { "enabled": true },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FlueStudPilotAgent"] }]
 }

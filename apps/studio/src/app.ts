@@ -16,9 +16,10 @@ setProvider(cloudflareBindingProvider({ binding: bound.AI, gateway: { id: bound.
 
 const app = new Hono<{ Bindings: Env }>();
 
-const MOUNT = '/api/agents/studpilot';
+// Full public paths: the main worker forwards /studio/api/* unchanged (see its /studio proxy).
+const MOUNT = '/studio/api/agents/studpilot';
 
-app.get('/api/health', (c) => c.json({ ok: true }));
+app.get('/studio/api/health', (c) => c.json({ ok: true }));
 
 app.use(`${MOUNT}/*`, async (c, next) => {
   const auth = c.req.header('Authorization') ?? '';
