@@ -64,7 +64,7 @@ sixteen test files read it at runtime:
 | --- | --- |
 | `apps/studpilot-plugin/tests/render-parity.test.mjs` | `tests/run.mjs`, `tests/render.spec.luau`, `tests/rasteriser.spec.luau`, `src/Paths.luau` — runs the original specs against the **shipped** rasteriser |
 | `apps/studpilot-plugin/tests/worker-capability-contract.test.mjs` | this README, `src/Ops.luau` |
-| `apps/site/tests/build-from-source-target.test.mjs` | this README, `src/Ops.luau` |
+| `apps/site/tests/legacy-plugin-instructions.test.mjs` | this README, `src/Ops.luau` |
 | `apps/site/tests/panel-quotes-match-shipped.test.mjs` | `src/init.server.luau` |
 | `apps/worker/tests/companion-selection.test.mjs`, `luau-review.test.mjs`, `op-failure.test.mjs` | `src/Ops.luau` |
 | `apps/worker/tests/tools-for-mode.test.mjs` | `src/Generation.luau`, `src/Ops.luau` |

@@ -11,11 +11,12 @@
  * What it protected is held in two forms, and one form is NOT carried over, said plainly:
  *   - the rebuilt marketing sheets (base.css, site.css, global.css) and layouts declare NO keyframe, run NO animation and loop nothing,
  *     which is stronger than "every keyframe wins": there is nothing to lose. Held below.
- *   - the keyframes that remain are the three of the docs and status components (Folder, Terminal, status orb). For those the property
- *     is held at the level of names: every `animation` names a keyframe the same file declares, every keyframe is used, and every loop
- *     (`infinite`) is switched off under prefers-reduced-motion in the same file or by the base sheet's global reduced-motion rule.
- *     NOT carried over: resolving specificity and source order for them. A keyframe that is declared, named by a rule and shadowed by
- *     a more specific rule on the same element would pass here. The docs rewrite owns those three components.
+ *   - the one keyframe that remains is the status page's orb (`orb-checking`; the docs rewrite deleted the Folder and Terminal components that
+ *     carried the other two). For it the property is held at the level of names: every `animation` names a keyframe the same file declares,
+ *     every keyframe is used, and every loop (`infinite`) is switched off under prefers-reduced-motion in the same file or by the base sheet's
+ *     global reduced-motion rule.
+ *     NOT carried over: resolving specificity and source order for it. A keyframe that is declared, named by a rule and shadowed by
+ *     a more specific rule on the same element would pass here.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

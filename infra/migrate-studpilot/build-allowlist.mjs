@@ -90,7 +90,6 @@ const COMPAT_FILES = new Set([
   'apps/site/src/pages/pricing.astro',
   'apps/web/src/design/system.css',
   'apps/web/tests/search-filters.test.mjs',
-  'apps/site/tests/build-from-source-target.test.mjs',
   'apps/web/tests/generative-ui.test.mjs',
   'apps/site/tests/panel-quotes-match-shipped.test.mjs',
   'apps/web/src/lib/shortcuts.ts',
