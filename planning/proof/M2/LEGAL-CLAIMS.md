@@ -43,7 +43,7 @@ These were already false or were made false by the Roblox lane. Each is now corr
 
 | Claim | Evidence | Guard |
 |---|---|---|
-| Operator "Apple Labs", contact `apple.labs.app@gmail.com` | **policy** (BLOCKED N6: the legal name and inbox are the owner's). Left exactly as it was. | `OO` |
+| Operator the former operator name, contact the former Gmail inbox | **policy** (BLOCKED N6: the legal name and inbox are the owner's). Left exactly as it was. | `OO` |
 | Email sign-up asks for an email, a password **and a date of birth** (a day, a month and a year); the password is hashed. **The date is checked in the browser and never sent or stored**; see section 9 | `auth-pages.tsx:854 supabase.auth.signUp(` (`signUp` with email, password and, at `auth-pages.tsx:860 data: gate.data`, the pass note), `auth-pages.tsx:964 <BirthDateField` (the field); hashing is Supabase Auth's | `PC` "13 AND OLDER ..." (fails if the form loses the field or the pages stop saying it) |
 | The display name starts as the part of the email before the `@`, and can be changed in Settings | `infra/supabase/migrations/0001_init.sql:98`; `settings.tsx:2167 title="Display name"` | none new (carried over) |
 | Operator "StudPilot", contact `support@studpilot.app` | **policy** (owner decision D-13, 2026-10-05; before any money is charged an adult or a company must become the named operator, BLOCKED N9). `OPERATOR_NAME` and `SUPPORT_EMAIL` in `packages/shared/src/index.ts` are the values. | `OO`, `tests/support-expectations.test.mjs` |
@@ -257,7 +257,7 @@ the minor item about the receipt's "old consent flag that nothing reads any more
 
 ### Left alone
 
-The operator line (Apple Labs, the Gmail inbox) is untouched; `OO` is green (the site suite above).
+The operator line (the former operator name, the Gmail inbox) is untouched; `OO` is green (the site suite above).
 
 ## 9. The app rebuild (M2 step 2.3, `studpilot/m2-app`): what the new sign-up and sign-in screens made true or false
 
