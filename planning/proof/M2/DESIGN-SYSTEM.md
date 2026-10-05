@@ -755,7 +755,7 @@ The cycle 2 checker measured five defects in the built apps that the cycle 2 gua
 guard so it would have caught it, and says what was measured before and after. Everything was measured in this clone
 (`scratchpad/m2design`, branch `studpilot/m2-design`) with the change it describes in place. Commits, in order: `a7f7a3f5` (items 1, 2 and 4:
 the web app and its rendered guard), `570cb965` (items 3 and 5: the site), `0a02031b` (a press must look different from a hover),
-`e58d8abe` (item 2 again: where the map node's ring lives; 12.2 says why it moved), `7853a693` (a comment's ratios); this section is the sixth.
+`e58d8abe` (item 2 again: where the map node's ring lives; 12.2 says why it moved), `7853a693` (a comment's ratios), `11b48102` (the selection test sets the theme by its attribute alone, which the old-name guard asked for); this section is the seventh.
 
 ### 12.1 The primary button's label on hover and press (item 1; a defect that broke users)
 
