@@ -27,7 +27,7 @@ import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
 import { RobloxConnectionCard } from '../components/roblox-connection-card';
 import { useAuth } from '../lib/auth';
-import { accountIdentity } from '../lib/account-identity';
+import { accountIdentity, isRobloxAccount } from '../lib/account-identity';
 import { useRobloxUsername } from '../lib/use-roblox-username';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
@@ -56,6 +56,7 @@ import {
   freshestAuth,
   needsReauth,
   passwordProblem,
+  resumeActionFrom,
   PASSWORD_MIN,
   authErrorMessage,
   type SensitiveAction,
@@ -67,6 +68,7 @@ import {
   deleteAccount,
   fetchDeletionStatus,
   fetchNotifications,
+  fetchRobloxConnection,
   fetchScopeMemory,
   markNotificationsRead,
   grantOwnerCredits,
@@ -1732,12 +1734,37 @@ export function SettingsPage() {
    * from a render two states ago.
    */
   const guard = (action: SensitiveAction) => {
+    // A Roblox-only account has no password and is not asked by comparing timestamps. Whether it has confirmed it is them with
+    // Roblox is the SERVER's record, answered in the server's own time: the session's `last_sign_in_at` is not it (any sign-in
+    // sets that, and a still-open roblox.com session satisfies a sign-in by itself) and neither is the device's clock (a device
+    // minutes off would be asked again after every confirmation, for ever). Anything but a clear yes is a no, and asks.
+    if (isRobloxAccount(session?.user)) {
+      void fetchRobloxConnection().then(
+        (connection) => (connection.reauthFresh === true ? setPending(action) : setReauthFor(action)),
+        () => setReauthFor(action),
+      );
+      return;
+    }
     if (needsReauth(action, lastAuth)) {
       setReauthFor(action);
       return;
     }
     setPending(action);
   };
+
+  // BACK FROM ROBLOX. A Roblox-only account that pressed Export (or Delete, ...) was sent to confirm it is them and returns here with
+  // `?resume=<action>`: the action carries on without a second press. The address is cleaned first so a reload does not repeat it,
+  // and the gate is asked as always (a link that names an action opens nothing; the server's record does).
+  useEffect(() => {
+    const action = resumeActionFrom(window.location.search);
+    if (action === null) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('resume');
+    window.history.replaceState(window.history.state, '', url);
+    if (isRobloxAccount(session?.user)) guard(action);
+    // Once, on arrival: `guard` is rebuilt every render and would run the action again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* --- two-step verification --------------------------------------------- */
 

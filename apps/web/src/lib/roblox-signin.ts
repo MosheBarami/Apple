@@ -11,6 +11,8 @@ import { safeInternalPath } from './safe-redirect.ts';
 export const ROBLOX_START_PATH = '/auth/roblox/start';
 export const ROBLOX_STATUS_PATH = '/auth/roblox/status';
 export const ROBLOX_REDEEM_PATH = '/auth/roblox/redeem';
+export const ROBLOX_CREATE_PATH = '/auth/roblox/create';
+export const ROBLOX_DECLINE_PATH = '/auth/roblox/decline';
 
 /**
  * The button is rendered only when the worker says it can complete a sign-in. Any other answer, including
@@ -55,6 +57,15 @@ export function robloxStartHref(from?: string | null): string {
   return path === '/' ? ROBLOX_START_PATH : `${ROBLOX_START_PATH}?return=${encodeURIComponent(path)}`;
 }
 
+/**
+ * The link "Confirm with Roblox" points at: a sign-in that is a RE-AUTHENTICATION for `action`. The worker asks Roblox for a fresh
+ * login (so a Roblox session already open in this browser is not enough on its own), records the confirmation on the server,
+ * and sends the browser back to Settings carrying the action (`/settings?resume=<action>`), which Settings then resumes.
+ */
+export function robloxReauthHref(action: string): string {
+  return `${ROBLOX_START_PATH}?reauth=${encodeURIComponent(action)}`;
+}
+
 /* ------------------------------------------------------------------------- the landing route --- */
 
 /**
@@ -64,11 +75,26 @@ export function robloxStartHref(from?: string | null): string {
  * It never reads the URL for a token. A link that carried one would sign in whoever opened it, and anyone can
  * make such a link out of their own Roblox sign-in: a crafted `#token_hash=…` here is ignored.
  */
-export async function redeemRobloxSignIn(fetchImpl: typeof fetch = fetch): Promise<{ tokenHash: string; next: string } | null> {
+export type Redeemed =
+  | { tokenHash: string; next: string }
+  /** A Roblox account nobody here has seen. Nothing has been made: the person is asked first. `username` is Roblox's own, cleaned by the worker. */
+  | { confirmNew: { username: string } }
+  | null;
+
+/** The same-origin POST every step of the landing page makes: only the handle cookie goes along, nothing is in the URL, nothing is cached. */
+const post = (fetchImpl: typeof fetch, path: string): Promise<Response> =>
+  fetchImpl(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+
+export async function redeemRobloxSignIn(fetchImpl: typeof fetch = fetch): Promise<Redeemed> {
   try {
-    const res = await fetchImpl(ROBLOX_REDEEM_PATH, { method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } });
+    const res = await post(fetchImpl, ROBLOX_REDEEM_PATH);
     if (!res.ok) return null;
-    const body = (await res.json()) as { token_hash?: unknown; next?: unknown } | null;
+    const body = (await res.json()) as { token_hash?: unknown; next?: unknown; confirm?: unknown; username?: unknown } | null;
+    if (body?.confirm === 'new-account') {
+      // Shown on a card as text, so it is only ever a non-empty string of a sane length.
+      const username = typeof body.username === 'string' ? body.username.trim() : '';
+      return username !== '' && username.length <= 200 ? { confirmNew: { username } } : null;
+    }
     const tokenHash = typeof body?.token_hash === 'string' ? body.token_hash : '';
     // Its shape is checked so that a mangled answer never reaches Supabase. `next` is app-relative and goes
     // through the same open-redirect check as every other post-login target.
@@ -76,6 +102,30 @@ export async function redeemRobloxSignIn(fetchImpl: typeof fetch = fetch): Promi
     return { tokenHash, next: safeInternalPath(body?.next) };
   } catch {
     return null;
+  }
+}
+
+/**
+ * "Continue" on the first-sight card: the person has been told this makes a NEW StudPilot account and has said yes. Only this makes
+ * the user. `reference` is the worker's fixed code for a failure an operator can search for (never provider text).
+ */
+export async function createRobloxAccount(fetchImpl: typeof fetch = fetch): Promise<{ ok: true } | { ok: false; reference?: string }> {
+  try {
+    const res = await post(fetchImpl, ROBLOX_CREATE_PATH);
+    const body = (await res.json().catch(() => null)) as { created?: unknown; reference?: unknown } | null;
+    if (res.ok && body?.created === true) return { ok: true };
+    return typeof body?.reference === 'string' && /^[a-z_]{3,40}$/.test(body.reference) ? { ok: false, reference: body.reference } : { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** "Go back": the person does not want a new account. The worker deletes what it held and withdraws the Roblox authorization. */
+export async function declineRobloxAccount(fetchImpl: typeof fetch = fetch): Promise<void> {
+  try {
+    await post(fetchImpl, ROBLOX_DECLINE_PATH);
+  } catch {
+    /* nothing more can be done from here: the held record expires on its own in five minutes */
   }
 }
 
@@ -90,7 +140,11 @@ export interface RobloxLandingAccount {
 export interface RobloxLandingDeps {
   /** Who is signed in right now: null when nobody, a throw when that cannot be told. */
   currentAccount(): Promise<RobloxLandingAccount | null>;
-  redeem(): Promise<{ tokenHash: string; next: string } | null>;
+  redeem(): Promise<Redeemed>;
+  /** Make the account that is waiting (the person said Continue). */
+  create(): Promise<{ ok: true } | { ok: false; reference?: string }>;
+  /** Drop the account that is waiting (the person said Go back). */
+  decline(): Promise<void>;
   verifyOtp(args: { token_hash: string; type: 'magiclink' }): Promise<{ data?: { user?: { id?: string } | null } | null; error: unknown }>;
   /** A different account has just replaced the one that was signed in here: drop what the old one left on this device. */
   accountSwitched(): void;
@@ -100,8 +154,10 @@ export type RobloxLandingState =
   | { kind: 'working' }
   /** Somebody is already signed in here. Nothing has been redeemed, and nothing is replaced until they say so. */
   | { kind: 'choice'; id: string; email: string | null; roblox: boolean }
+  /** A Roblox account nobody here has seen: nothing is made until the person presses Continue. */
+  | { kind: 'confirm-new'; username: string }
   | { kind: 'signed-in'; next: string }
-  | { kind: 'failed' };
+  | { kind: 'failed'; reference?: string };
 
 /**
  * Redeem the handle and trade the token for a Supabase session. Supabase issues it; the worker never signs one.
@@ -117,6 +173,8 @@ export async function completeRobloxSignIn(
 ): Promise<RobloxLandingState> {
   const redeemed = await deps.redeem();
   if (!redeemed) return { kind: 'failed' };
+  // A first sight is a question, not a sign-in: nothing is traded and nothing is made until the person answers it.
+  if ('confirmNew' in redeemed) return { kind: 'confirm-new', username: redeemed.confirmNew.username };
   try {
     const { data, error } = await deps.verifyOtp({ token_hash: redeemed.tokenHash, type: 'magiclink' });
     if (error) return { kind: 'failed' };
@@ -131,6 +189,19 @@ export async function completeRobloxSignIn(
   } catch {
     return { kind: 'failed' };
   }
+}
+
+/**
+ * "Continue" on the first-sight card: make the account, then redeem the sign-in it produced and trade it as usual. A failure to make it
+ * is a failure card (with the worker's reference when it gave one); nothing is signed in.
+ */
+export async function continueRobloxNewAccount(
+  deps: Pick<RobloxLandingDeps, 'create' | 'redeem' | 'verifyOtp' | 'accountSwitched'>,
+  previous: { id: string } | null = null,
+): Promise<RobloxLandingState> {
+  const made = await deps.create();
+  if (!made.ok) return made.reference ? { kind: 'failed', reference: made.reference } : { kind: 'failed' };
+  return completeRobloxSignIn(deps, previous);
 }
 
 /**
@@ -160,8 +231,15 @@ export function existingSessionLine(email: string | null): string {
 export const EXISTING_ROBLOX_SESSION_LINE =
   'You are signed in with Roblox. Continue to sign in again with the Roblox account you just used. If it is a different Roblox account, it replaces this session.';
 
-/** The landing page's state, and the one thing a person can do from `choice`. The hook runs once, whatever re-renders it. */
-export function useRobloxLanding(deps: RobloxLandingDeps, onSignedIn: (next: string) => void): { state: RobloxLandingState; switchNow: () => void } {
+/**
+ * The landing page's state, and the things a person can do from it: from `choice` switch, from `confirm-new` continue or go back.
+ * The hook runs once, whatever re-renders it. `onDeclined` is called once "Go back" has been said and the worker told.
+ */
+export function useRobloxLanding(
+  deps: RobloxLandingDeps,
+  onSignedIn: (next: string) => void,
+  onDeclined: () => void = () => {},
+): { state: RobloxLandingState; switchNow: () => void; continueNew: () => void; goBack: () => void } {
   const [state, setState] = useState<RobloxLandingState>({ kind: 'working' });
   const started = useRef(false);
   /** Who was signed in when the choice was put to the person: the account a switch replaces. */
@@ -180,7 +258,15 @@ export function useRobloxLanding(deps: RobloxLandingDeps, onSignedIn: (next: str
     setState({ kind: 'working' });
     void completeRobloxSignIn(deps, replaced.current).then(apply);
   };
-  return { state, switchNow };
+  const continueNew = (): void => {
+    setState({ kind: 'working' });
+    void continueRobloxNewAccount(deps, replaced.current).then(apply);
+  };
+  const goBack = (): void => {
+    setState({ kind: 'working' });
+    void deps.decline().then(onDeclined);
+  };
+  return { state, switchNow, continueNew, goBack };
 }
 
 /* ------------------------------------------------------------------- the Connections card --- */
@@ -192,6 +278,8 @@ export interface RobloxConnection {
   linkedAt: string | null;
   /** True while the account's address is still the placeholder, so Roblox is the only way in. */
   signInOnly: boolean;
+  /** True when the person confirmed it is them with Roblox in the last ten minutes, by the SERVER's clock: what a Roblox-only account's gate asks, instead of any timestamp compared with the device's. */
+  reauthFresh: boolean;
 }
 
 export interface RobloxDisconnectResult {
@@ -243,5 +331,8 @@ export function disconnectMessage(r: RobloxDisconnectResult): string {
   if (r.signInKept) return 'StudPilot’s access to your Roblox account is withdrawn. Roblox is still how you sign in.';
   return 'Roblox disconnected.';
 }
+
+/** What the first-sight card says, word for word: it is the answer to "Continue with Roblox" from somebody who may already have an email account here. */
+export const ROBLOX_NEW_ACCOUNT_LINE = 'This creates a new StudPilot account. Already have one? Sign in with your email instead.';
 
 export const ROBLOX_SIGNIN_FAILED = 'We could not sign you in with Roblox. Try again, or sign in with your email.';

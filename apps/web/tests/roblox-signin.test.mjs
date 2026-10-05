@@ -35,23 +35,28 @@ import ts from 'typescript';
 import { WEB, bundle, renderWith, text } from './ui-bundle.mjs';
 import { matchSettings } from '../src/lib/settings-search.ts';
 import { loadWithReact } from './hook-harness.mjs';
-import { findElement, loadPage } from './page-harness.mjs';
-import { REAUTH_WINDOW_MS, SENSITIVE_ACTIONS, freshestAuth, needsReauth } from '../src/lib/auth-flows.ts';
+import { findAll, findElement, loadPage, textOf } from './page-harness.mjs';
+import { REAUTH_WINDOW_MS, SENSITIVE_ACTIONS, resumeActionFrom } from '../src/lib/auth-flows.ts';
 import { accountIdentity, isPlaceholderAddress, isRobloxAccount } from '../src/lib/account-identity.ts';
 import { clearAccountState } from '../src/lib/account-state.ts';
 import { writeDraft } from '../src/lib/draft.ts';
 import { rememberSearch } from '../src/lib/search-history.ts';
 import { writeViewChoice } from '../src/lib/view-state.ts';
 import {
-  EXISTING_ROBLOX_SESSION_LINE,
+  ROBLOX_CREATE_PATH,
+  ROBLOX_DECLINE_PATH,
   ROBLOX_REDEEM_PATH,
   ROBLOX_START_PATH,
   completeRobloxSignIn,
+  continueRobloxNewAccount,
+  createRobloxAccount,
+  declineRobloxAccount,
   describeConnection,
   disconnectMessage,
   existingSessionLine,
   fetchRobloxConfigured,
   redeemRobloxSignIn,
+  robloxReauthHref,
   robloxStartHref,
   startRobloxLanding,
 } from '../src/lib/roblox-signin.ts';
@@ -232,16 +237,20 @@ test('when the session that results belongs to a DIFFERENT account than the one 
 
 /** The landing hook with recording stand-ins. `over` replaces any of them. */
 function landing(over = {}) {
-  const calls = { account: 0, redeem: 0, verify: [], switched: 0 };
+  const calls = { account: 0, redeem: 0, create: 0, decline: 0, verify: [], switched: 0 };
   const deps = {
     currentAccount: async () => { calls.account += 1; if (over.accountThrows) throw new Error('storage'); return over.account ?? null; },
-    redeem: async () => { calls.redeem += 1; return over.redeemed === undefined ? { tokenHash: HASH, next: '/settings' } : over.redeemed; },
+    // `redeemed` may be a list: the first answer, then the next (a first sight is asked, then redeemed again once it has been made).
+    redeem: async () => { calls.redeem += 1; const answers = Array.isArray(over.redeemed) ? over.redeemed : [over.redeemed]; const answer = answers[Math.min(calls.redeem, answers.length) - 1]; return answer === undefined ? { tokenHash: HASH, next: '/settings' } : answer; },
+    create: async () => { calls.create += 1; return over.created ?? { ok: true }; },
+    decline: async () => { calls.decline += 1; },
     verifyOtp: async (args) => { calls.verify.push(args); return { data: { user: { id: over.newUserId ?? 'the-new-user' } }, error: over.verifyError ?? null }; },
     accountSwitched: () => { calls.switched += 1; },
   };
   const signedIn = [];
-  const hook = M.mountStub(() => M.useRobloxLanding(deps, (next) => signedIn.push(next)));
-  return { hook, calls, signedIn };
+  const declined = [];
+  const hook = M.mountStub(() => M.useRobloxLanding(deps, (next) => signedIn.push(next), () => declined.push(true)));
+  return { hook, calls, signedIn, declined };
 }
 
 test('LANDING, nobody signed in here: it redeems, trades the token, and goes where the person was heading, once', async () => {
@@ -328,6 +337,8 @@ test('startRobloxLanding asks about the existing session before it redeems anyth
     currentAccount: async () => { order.push('account'); return null; },
     redeem: async () => { order.push('redeem'); return { tokenHash: HASH, next: '/' }; },
     verifyOtp: async () => { order.push('verify'); return { error: null }; },
+    create: async () => ({ ok: true }),
+    decline: async () => {},
     accountSwitched: noop,
   };
   await startRobloxLanding(deps);
@@ -346,7 +357,7 @@ test('the sentence about the existing session names the account, and never a pla
 /* ------------------------------------------------- what the landing page shows --- */
 
 test('the landing page draws one card per state: working, a choice with two buttons, and a failure with a way out', () => {
-  const view = (state) => render(ui.h(ui.RobloxLandingView, { state, onSwitch: noop, onStay: noop }));
+  const view = (state) => render(ui.h(ui.RobloxLandingView, { state, onSwitch: noop, onStay: noop, onContinue: noop, onBack: noop }));
 
   const working = view({ kind: 'working' });
   assert.match(working, /role="status"/);
@@ -362,7 +373,6 @@ test('the landing page draws one card per state: working, a choice with two butt
   // password it does not have), so the card says what continuing does and offers Continue and Cancel, not "switch".
   const confirming = view({ kind: 'choice', id: 'u1', email: 'roblox-0a1b2c3d4e5f60718293a4b5c6d7e8f9@users.studpilot.invalid', roblox: true });
   assert.match(text(confirming), /Confirm it is you/);
-  assert.ok(text(confirming).includes(EXISTING_ROBLOX_SESSION_LINE));
   assert.doesNotMatch(text(confirming), /invalid/, 'the placeholder address is not on the page');
   assert.deepEqual([...confirming.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]), ['Continue with Roblox', 'Cancel']);
 
@@ -543,7 +553,7 @@ assert.equal(DEVICE_KEYS.length, 4, 'the fixture wrote four keys');
  * Mount the real RobloxCallbackPage with `session` as the one Supabase reports, run `body`, and put every global back.
  * `reads` records any look at window.location.hash, search or href; `fetches` every request the page made.
  */
-async function scenario({ session = null, sessionError = null, verifyResult, redeemBody = { token_hash: HASH, next: '/settings' }, redeemStatus = 200 } = {}, body) {
+async function scenario({ session = null, sessionError = null, verifyResult, redeemBody = { token_hash: HASH, next: '/settings' }, redeemStatus = 200, answers = {} } = {}, body) {
   const sc = Page.supabaseControls;
   const rc = Page.routerControls;
   sc.session = session;
@@ -561,7 +571,13 @@ async function scenario({ session = null, sessionError = null, verifyResult, red
     get search() { reads.push('search'); return `?token_hash=${ATTACKER_HASH}`; },
     get href() { reads.push('href'); return `https://studpilot.app/app/auth/roblox#token_hash=${ATTACKER_HASH}`; },
   } };
-  globalThis.fetch = async (url, init) => { fetches.push({ url, init }); return new Response(JSON.stringify(redeemBody), { status: redeemStatus }); };
+  // `answers[path]` is a list of { status, body } handed out in order for that path; every other request is answered like a redeem.
+  const queued = Object.fromEntries(Object.entries(answers).map(([path, list]) => [path, [...list]]));
+  globalThis.fetch = async (url, init) => {
+    fetches.push({ url, init });
+    const next = queued[url]?.shift();
+    return next ? new Response(JSON.stringify(next.body), { status: next.status }) : new Response(JSON.stringify(redeemBody), { status: redeemStatus });
+  };
   try {
     const page = Page.mountStub(() => Page.RobloxCallbackPage());
     await page.settle();
@@ -695,9 +711,10 @@ const EMAIL_USER = { id: 'u1', email: 'me@example.com', app_metadata: { provider
 test('RE-AUTH for a Roblox-only account is signing in with Roblox again, for EVERY action Settings gates: there is no password box it could never fill', () => {
   for (const action of SENSITIVE_ACTIONS) {
     const html = dialogFor(ROBLOX_USER, action);
-    assert.match(html, /<a [^>]*href="\/auth\/roblox\/start\?return=%2Fsettings"[^>]*>Confirm with Roblox<\/a>/, `${action}: the way to confirm is the Roblox sign-in, returning to Settings`);
+    assert.match(html, new RegExp(`<a [^>]*href="/auth/roblox/start\\?reauth=${action}"[^>]*>Confirm with Roblox</a>`), `${action}: the way to confirm is a Roblox RE-AUTHENTICATION for this action, not a plain sign-in`);
     assert.equal(/type="password"|name="currentPassword"|Your password/.test(html), false, `${action}: no password field`);
     assert.match(text(html), /no password to type/);
+    assert.match(text(html), /what you asked for carries on/, `${action}: it says the action resumes by itself`);
     assert.match(html, /<button[^>]*>Cancel<\/button>/, `${action}: and a way out`);
     assert.doesNotMatch(html, /invalid|roblox-0a1b/i, `${action}: the placeholder address is not on the dialog`);
   }
@@ -715,15 +732,9 @@ test('RE-AUTH for an account with a password is unchanged: a password box, and n
   }
 });
 
-test('the gate lets a Roblox-only account through only after a fresh sign-in: stale asks for every gated action, a sign-in seconds ago does not, and the window is the product’s own', () => {
-  const now = Date.now();
-  const stamp = (msAgo) => new Date(now - msAgo).toISOString();
-  for (const action of SENSITIVE_ACTIONS) {
-    assert.equal(needsReauth(action, freshestAuth(stamp(60 * 60_000), null), now), true, `${action}: an hour-old sign-in asks`);
-    assert.equal(needsReauth(action, freshestAuth(stamp(REAUTH_WINDOW_MS + 1000), null), now), true, `${action}: just past the window asks`);
-    assert.equal(needsReauth(action, freshestAuth(stamp(5_000), null), now), false, `${action}: a Roblox sign-in five seconds ago (the new session’s last_sign_in_at) does not`);
-  }
-  assert.match(text(dialogFor(ROBLOX_USER, 'export-data')), new RegExp(`${Math.round(REAUTH_WINDOW_MS / 60_000)} minutes`), 'the dialog names the real window');
+test('the dialog names the real window: the same ten minutes the server keeps a re-authentication for', () => {
+  assert.match(text(dialogFor(ROBLOX_USER, 'export-data')), new RegExp(`${Math.round(REAUTH_WINDOW_MS / 60_000)} minutes`));
+  assert.equal(REAUTH_WINDOW_MS, 10 * 60_000);
 });
 
 /* ---------------------------------------------------------- the account is never shown by its placeholder --- */
@@ -742,16 +753,474 @@ test('no screen prints a raw account address: Settings and the shell go through 
   assert.match(head[0].getText(), /identity\.signedInAs/, 'the sentence under the Settings title is the identity’s');
 });
 
-test('Settings offers a Roblox-only account no email or password form: the control of both rows is empty for it, and a form for everyone else', () => {
-  const rows = nodes(parse('routes', 'settings.tsx')).filter((n) => ts.isJsxElement(n) && tagOf(n) === 'Row' && ['email-address', 'password'].includes(attrText(n, 'id')));
-  assert.deepEqual(rows.map((r) => attrText(r, 'id')).sort(), ['email-address', 'password']);
-  for (const row of rows) {
-    const id = attrText(row, 'id');
-    const conditional = nodes(attr(row, 'control')).find((n) => ts.isConditionalExpression(n) && /identity\.roblox/.test(n.condition.getText()));
-    assert.ok(conditional, `${id}: the control does not branch on identity.roblox`);
-    assert.equal(conditional.whenTrue.getText(), 'null', `${id}: a Roblox-only account gets no control`);
-    assert.ok(nodes(conditional.whenFalse).some((n) => isTag(n) && ['form'].includes(tagOf(n))), `${id}: everybody else still gets the form`);
+/* ============================================================================================================
+ * SETTINGS, RUN. SettingsPage is called for real (tests/page-harness.mjs): its hooks, its Roblox-only branching, its identity gate
+ * and its resume-on-arrival run against stand-ins for the session, the query layer and the worker's answer, and the element tree
+ * it returns is read. A branch that is inverted, a gate that consults the wrong thing, a resume that never fires: each fails here.
+ * ========================================================================================================== */
+
+const Settings = await loadPage({
+  entry: 'src/routes/settings.tsx',
+  name: 'roblox-settings',
+  real: ['lib/account-identity.ts', 'lib/auth-flows.ts', 'lib/use-roblox-username.ts', 'lib/prefs.ts', 'lib/settings-search.ts', 'lib/confirm-model.ts', 'lib/notification-prefs.ts', 'lib/notification-inbox.ts', 'lib/security-history.ts', 'lib/mfa.ts', 'lib/format.ts', 'lib/roblox-signin.ts'],
+  fakes: {
+    'lib/auth.tsx': { useAuth: '() => globalThis.__pageFakes.auth' },
+    'lib/theme.tsx': { usePrefs: '() => globalThis.__pageFakes.prefs' },
+    'components/toast.tsx': { useToast: '() => ({ toast: () => {} })' },
+    'lib/api.ts': { DELETE_ACCOUNT_PHRASE: "'DELETE MY ACCOUNT'", fetchRobloxConnection: '(...a) => globalThis.__pageFakes.api.fetchRobloxConnection(...a)' },
+    'lib/mock.ts': { MOCK_MODE: 'false' },
+  },
+});
+
+const SETTINGS_ROBLOX_NAME = 'Builder1';
+
+/**
+ * Mount SettingsPage as `user`, with `connection` as what the worker answers for GET /api/me/roblox/connection (an Error is a failed
+ * request), the address bar at `search`, and the DEVICE CLOCK `skewMs` away from the real one (the session's own
+ * `last_sign_in_at` stays the real, server-side time). Everything global is put back afterwards.
+ */
+async function settingsScenario({ user, connection = { reauthFresh: false }, search = '', skewMs = 0, lastSignInAgoMs = 1000 }, body) {
+  const realNow = Date.now.bind(Date);
+  const fakes = {
+    auth: {
+      session: { user: { ...user, last_sign_in_at: new Date(realNow() - lastSignInAgoMs).toISOString() } },
+      signOutEverywhere: async () => ({ ok: true }),
+      reauthenticatedAt: null,
+    },
+    prefs: { prefs: {}, setPref: noop, resetPrefs: noop, theme: 'dark', systemTheme: 'dark' },
+    api: { fetches: 0, async fetchRobloxConnection() { fakes.api.fetches += 1; if (connection instanceof Error) throw connection; return connection; } },
+  };
+  globalThis.__pageFakes = fakes;
+  Settings.queryControls.queries.length = 0;
+  Settings.queryControls.answer = (options) => (options.queryKey[0] === 'roblox-connection' ? { data: { configured: true, connected: true, username: SETTINGS_ROBLOX_NAME, signInOnly: true, reauthFresh: false } } : undefined);
+  const replaced = [];
+  const realWindow = globalThis.window;
+  globalThis.window = { location: { search, hash: '', href: `https://studpilot.app/app/settings${search}` }, history: { state: null, replaceState: (_state, _title, url) => { replaced.push(String(url)); } } };
+  Date.now = () => realNow() + skewMs;
+  try {
+    const page = Settings.mountStub(() => Settings.SettingsPage());
+    await page.settle();
+    const tree = () => page.result;
+    const click = async (element) => { element.props.onClick(); await page.settle(); };
+    return await body({ page, tree, click, fakes, replaced });
+  } finally {
+    Date.now = realNow;
+    if (realWindow === undefined) delete globalThis.window; else globalThis.window = realWindow;
+    delete globalThis.__pageFakes;
   }
+}
+
+const buttonLike = (tree, pattern) => findAll(tree, (n) => n.type === 'button' && typeof n.props.onClick === 'function' && pattern.test(textOf(n)))[0];
+/** The identity dialog Settings has open, as { action }, or null. */
+const openDialog = (tree) => findAll(tree, (n) => typeof n.props.action === 'string' && typeof n.props.onConfirmed === 'function' && n.props.title === 'Confirm it is you')[0]?.props ?? null;
+/** The action the page has decided to run (or to ask the confirmation ladder about): what RunPending was handed. */
+const pendingAction = (tree) => findAll(tree, (n) => 'pending' in n.props && 'ceremony' in n.props && 'run' in n.props)[0]?.props.pending ?? null;
+const rowControl = (tree, id) => findAll(tree, (n) => n.props.id === id && 'control' in n.props)[0];
+
+/** The button (or callback) each gated action is reached by on this page, for an account that has the control at all. */
+const GATED = [
+  ['sign-out-everywhere', async (tree, click) => click(buttonLike(tree, /^Sign out on all devices$/))],
+  ['export-data', async (tree, click) => click(buttonLike(tree, /^Download my data$/))],
+  ['reset-settings', async (tree, click) => click(buttonLike(tree, /^Reset \d+ settings?$/))],
+  ['delete-account', async (tree, click) => click(buttonLike(tree, /^Delete my account$/))],
+  ['remove-two-step', async (tree, click, page) => { findAll(tree, (n) => typeof n.props.onRemove === 'function')[0].props.onRemove('factor-1'); await page.settle(); }],
+];
+
+test('SETTINGS, run, a Roblox-only account: no email or password form, its own words in their place, shown by its Roblox username, and the Roblox query is asked', async () => {
+  await settingsScenario({ user: ROBLOX_USER }, async ({ tree }) => {
+    for (const id of ['email-address', 'password']) {
+      const row = rowControl(tree(), id);
+      assert.ok(row, `${id}: the row is drawn`);
+      assert.equal(row.props.control, null, `${id}: no control for an account that has no address to change and no password to set`);
+    }
+    assert.match(textOf(tree()), /This account has no password: it signs in with Roblox/);
+    assert.match(textOf(tree()), /signs in with Roblox and has no email address/);
+    const signed = findAll(tree(), (n) => n.props.className === 'settings-signed')[0];
+    assert.equal(textOf(signed), `Signed in with Roblox as ${SETTINGS_ROBLOX_NAME}`, 'the sentence under the title names the Roblox account');
+    assert.equal(findAll(tree(), (n) => n.type === 'strong' && textOf(n) === `Roblox: ${SETTINGS_ROBLOX_NAME}`).length, 1, 'and so does the address row');
+    assert.doesNotMatch(JSON.stringify(textOf(tree())), /invalid|roblox-0a1b/i, 'the placeholder address is nowhere on the page');
+    const asked = Settings.queryControls.queries.filter((q) => q.queryKey[0] === 'roblox-connection');
+    assert.ok(asked.length > 0 && asked.every((q) => q.enabled === true && q.queryKey[1] === ROBLOX_USER.id), 'the Roblox username is asked for, for this account');
+  });
+});
+
+test('SETTINGS, run, an account with an email and a password keeps both forms, its address, and never asks about Roblox', async () => {
+  await settingsScenario({ user: EMAIL_USER }, async ({ tree, fakes }) => {
+    for (const id of ['email-address', 'password']) {
+      const row = rowControl(tree(), id);
+      assert.ok(row && row.props.control !== null, `${id}: there is a control`);
+      assert.equal(findAll(row.props.control, (n) => n.type === 'form').length, 1, `${id}: and it is the form`);
+    }
+    assert.doesNotMatch(textOf(tree()), /signs in with Roblox/);
+    assert.equal(textOf(findAll(tree(), (n) => n.props.className === 'settings-signed')[0]), 'Signed in as me@example.com');
+    assert.equal(findAll(tree(), (n) => n.type === 'strong' && textOf(n) === 'me@example.com').length, 1);
+    assert.deepEqual(Settings.queryControls.queries.filter((q) => q.queryKey[0] === 'roblox-connection').map((q) => q.enabled), [false], 'the Roblox username is not asked for, and not for an account that has none');
+    assert.equal(fakes.api.fetches, 0);
+  });
+});
+
+test('SETTINGS, run, the Roblox gate is THE SERVER’S answer: only a clear yes lets the action through, and a session that signed in a second ago still has to confirm', async () => {
+  for (const [action, reach] of GATED) {
+    for (const [what, connection, asks] of [
+      ['the server has a confirmation on record', { reauthFresh: true }, false],
+      ['the server has none', { reauthFresh: false }, true],
+      ['the answer has no such field', {}, true],
+      ['a string is not a yes', { reauthFresh: 'true' }, true],
+      ['the request fails', new Error('network'), true],
+    ]) {
+      // `lastSignInAgoMs: 1000`: the session itself says it signed in a second ago, which is what the old gate trusted.
+      await settingsScenario({ user: ROBLOX_USER, connection, lastSignInAgoMs: 1000 }, async ({ page, tree, click, fakes }) => {
+        await reach(tree(), click, page);
+        assert.equal(fakes.api.fetches, 1, `${action}: ${what}: the server was asked`);
+        if (asks) {
+          assert.deepEqual([openDialog(tree())?.action, pendingAction(tree())], [action, null], `${action}: ${what}: it asks`);
+        } else {
+          assert.deepEqual([openDialog(tree()), pendingAction(tree())], [null, action], `${action}: ${what}: it goes ahead`);
+        }
+      });
+    }
+  }
+});
+
+test('SETTINGS, run, a device clock that is far off cannot loop a Roblox-only account: the decision never reads it', async () => {
+  const SKEWS = [['30 s behind', -31_000], ['an hour behind', -3_600_000], ['11 minutes ahead', 11 * 60_000], ['a day ahead', 24 * 3_600_000]];
+  for (const [clock, skewMs] of SKEWS) {
+    for (const [action, reach] of GATED) {
+      // The server says the person confirmed it is them: the action goes ahead, however wrong this device's clock is.
+      await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: true }, skewMs }, async ({ page, tree, click }) => {
+        await reach(tree(), click, page);
+        assert.deepEqual([openDialog(tree()), pendingAction(tree())], [null, action], `${action}: device ${clock}: asked again although the server has a confirmation`);
+      });
+      // And when it does not, it asks, once, and that is the end of it.
+      await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: false }, skewMs }, async ({ page, tree, click }) => {
+        await reach(tree(), click, page);
+        assert.deepEqual([openDialog(tree())?.action, pendingAction(tree())], [action, null], `${action}: device ${clock}`);
+      });
+    }
+  }
+});
+
+test('SETTINGS, run, a password account is gated exactly as before: by its sign-in time against the device clock, and the server is never asked', async () => {
+  const fresh = (action) => async ({ page, tree, click, fakes }) => { await GATED.find(([a]) => a === action)[1](tree(), click, page); assert.equal(fakes.api.fetches, 0, `${action}: no Roblox query`); return [openDialog(tree()), pendingAction(tree())]; };
+  for (const [action] of GATED.filter(([a]) => a !== 'remove-two-step')) {
+    assert.deepEqual(await settingsScenario({ user: EMAIL_USER, lastSignInAgoMs: 5_000 }, fresh(action)), [null, action], `${action}: a sign-in five seconds ago does not ask`);
+    const [dialog, pending] = await settingsScenario({ user: EMAIL_USER, lastSignInAgoMs: 60 * 60_000 }, fresh(action));
+    assert.deepEqual([dialog?.action, pending], [action, null], `${action}: an hour-old sign-in asks (with a password, in the dialog)`);
+  }
+});
+
+test('SETTINGS, run, coming back from Roblox with ?resume=<action> carries the action on by itself, once, whatever the device clock says', async () => {
+  for (const [clock, skewMs] of [['honest', 0], ['30 s behind', -31_000], ['11 minutes ahead', 11 * 60_000]]) {
+    for (const action of SENSITIVE_ACTIONS) {
+      await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: true }, search: `?resume=${action}`, skewMs }, async ({ tree, fakes, replaced }) => {
+        assert.deepEqual([openDialog(tree()), pendingAction(tree())], [null, action], `${action}: device ${clock}: the action was not resumed`);
+        assert.equal(fakes.api.fetches, 1, `${action}: the server was asked once`);
+        assert.deepEqual(replaced, ['https://studpilot.app/app/settings'], `${action}: the resume parameter is taken out of the address, so a reload does not repeat it`);
+      });
+    }
+  }
+  // It resumes nothing the server has not confirmed: a link that names an action opens nothing by itself.
+  await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: false }, search: '?resume=export-data' }, async ({ tree }) => {
+    assert.deepEqual([openDialog(tree())?.action, pendingAction(tree())], ['export-data', null], 'not confirmed: it asks again, and does not run');
+  });
+  await settingsScenario({ user: ROBLOX_USER, connection: new Error('network'), search: '?resume=delete-account' }, async ({ tree }) => {
+    assert.deepEqual([openDialog(tree())?.action, pendingAction(tree())], ['delete-account', null]);
+  });
+  // Other parts of the address survive the clean-up.
+  await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: true }, search: '?resume=export-data&ownerCredits=0' }, async ({ replaced }) => {
+    assert.deepEqual(replaced, ['https://studpilot.app/app/settings?ownerCredits=0']);
+  });
+});
+
+test('SETTINGS, run, ?resume= does nothing for anything that is not a gated action, nothing without a Roblox account, and nothing at all on an ordinary visit', async () => {
+  for (const search of ['', '?resume=', '?resume=evil', '?resume=export-data%00', '?resume%5B%5D=export-data', '?resume=EXPORT-DATA', '?resume=export-data-now', '?other=export-data']) {
+    await settingsScenario({ user: ROBLOX_USER, connection: { reauthFresh: true }, search }, async ({ tree, fakes, replaced }) => {
+      assert.deepEqual([openDialog(tree()), pendingAction(tree())], [null, null], `${JSON.stringify(search)}: nothing runs and nothing opens`);
+      assert.equal(fakes.api.fetches, 0, `${JSON.stringify(search)}: the server is not even asked`);
+      assert.deepEqual(replaced, [], `${JSON.stringify(search)}: the address is left alone`);
+    });
+  }
+  // A password account has no Roblox confirmation to resume on: the parameter is cleaned and nothing is run.
+  await settingsScenario({ user: EMAIL_USER, search: '?resume=delete-account' }, async ({ tree, fakes, replaced }) => {
+    assert.deepEqual([openDialog(tree()), pendingAction(tree())], [null, null]);
+    assert.equal(fakes.api.fetches, 0);
+    assert.deepEqual(replaced, ['https://studpilot.app/app/settings']);
+  });
+});
+
+test('resumeActionFrom names a gated action or nothing, and robloxReauthHref carries the action to the worker’s start route', () => {
+  for (const action of SENSITIVE_ACTIONS) {
+    assert.equal(resumeActionFrom(`?resume=${action}`), action);
+    assert.equal(resumeActionFrom(`?x=1&resume=${action}&y=2`), action);
+    assert.equal(robloxReauthHref(action), `/auth/roblox/start?reauth=${action}`);
+    assert.equal(robloxReauthHref(action).startsWith(ROBLOX_START_PATH), true);
+  }
+  for (const bad of ['', '?', '?resume=', '?resume=evil', '?resume=export-data%20', '?resume=Export-Data', '?resume=__proto__', '?resume=constructor', null, undefined, 42, {}]) {
+    assert.equal(resumeActionFrom(bad), null, JSON.stringify(bad));
+  }
+  assert.equal(robloxReauthHref('a b&c'), '/auth/roblox/start?reauth=a%20b%26c', 'whatever it is handed is encoded, never concatenated');
+});
+
+/* ============================================================================================================
+ * useRobloxUsername AND ITS CALL SITES, RUN.
+ * ========================================================================================================== */
+
+const Username = await loadPage({
+  entry: 'src/lib/use-roblox-username.ts',
+  name: 'roblox-username',
+  real: ['lib/account-identity.ts'],
+  fakes: { 'lib/api.ts': { fetchRobloxConnection: '(...args) => globalThis.__connectionFetcher(...args)' } },
+});
+
+test('useRobloxUsername, run: a Roblox-only account asks for its connection (by its id, through the api’s own function) and gets the username; every other caller asks for nothing and gets null', async () => {
+  const answered = { username: 'from the api module' };
+  globalThis.__connectionFetcher = async () => answered;
+  try {
+    const run = async (user, answer) => {
+      Username.queryControls.queries.length = 0;
+      Username.queryControls.answer = answer;
+      const hook = Username.mountStub(() => Username.useRobloxUsername(user));
+      await hook.settle();
+      return { name: hook.result, query: Username.queryControls.queries.at(-1) };
+    };
+    const connected = (o) => (o.queryKey[0] === 'roblox-connection' ? { data: { username: 'Builder1' } } : undefined);
+
+    const roblox = await run(ROBLOX_USER, connected);
+    assert.equal(roblox.name, 'Builder1');
+    assert.deepEqual(roblox.query.queryKey, ['roblox-connection', 'u2'], 'the key the Connections card uses, so one request serves both');
+    assert.equal(roblox.query.enabled, true);
+    assert.equal(await roblox.query.queryFn(), answered, 'it asks the api module’s own connection call');
+    assert.equal((await run(ROBLOX_USER, () => undefined)).name, null, 'null until the answer arrives: callers say "Roblox account", never the placeholder');
+    assert.equal((await run(ROBLOX_USER, () => ({ data: { username: null } }))).name, null);
+    assert.equal((await run(ROBLOX_USER, () => ({ data: undefined, isError: true }))).name, null);
+
+    // Everyone else: nothing is asked and nothing is returned, even if the cache happens to hold a Roblox answer under that key
+    // (`connected` answers whatever it is asked, as a cache that still holds an old entry would).
+    for (const [what, user] of [['an email account', EMAIL_USER], ['an address that only looks like the placeholder', { ...EMAIL_USER, email: PLACEHOLDER }], ['nobody', null], ['nobody yet', undefined]]) {
+      const other = await run(user, connected);
+      assert.equal(other.name, null, `${what}: no name`);
+      assert.equal(other.query.enabled, false, `${what}: nothing is asked`);
+    }
+    // A Roblox account whose id is not known yet asks nothing either (a disabled query has no data, as in the real query layer).
+    const idless = await run({ app_metadata: { roblox_sub: '1234567' } }, (o) => (o.enabled === false ? undefined : connected(o)));
+    assert.equal(idless.query.enabled, false, 'no id, nothing to ask about');
+    assert.equal(idless.name, null);
+  } finally {
+    delete globalThis.__connectionFetcher;
+  }
+});
+
+const Shell = await loadPage({
+  entry: 'src/components/layout.tsx',
+  name: 'roblox-shell',
+  real: ['lib/account-identity.ts', 'lib/use-roblox-username.ts', 'lib/view-state.ts', 'lib/rail-width.ts'],
+  expose: { 'components/layout.tsx': ['Shell'] },
+  fakes: {
+    'lib/auth.tsx': { useAuth: '() => globalThis.__pageFakes.auth' },
+    'lib/shell.tsx': { useShell: '() => globalThis.__pageFakes.shell' },
+    'lib/theme.tsx': { useTheme: '() => ({ theme: "dark", setTheme() {} })' },
+    'lib/mock.ts': { MOCK_MODE: 'false' },
+    'lib/api.ts': { fetchRobloxConnection: '() => null' },
+  },
+});
+
+/** The address line the shell hands its rail for `user`, with the Roblox query answering `username` (undefined: not yet). */
+async function shellLabel(user, username) {
+  globalThis.__pageFakes = { auth: { session: { user }, signOut: async () => {} }, shell: { railOpen: true, openRail: noop, closeRail: noop, railCollapsed: false, newProject: noop } };
+  const realWindow = globalThis.window;
+  const realDocument = globalThis.document;
+  globalThis.window = { localStorage: { getItem: () => null, setItem: noop }, location: { search: '' } };
+  globalThis.document = { addEventListener: noop, removeEventListener: noop };
+  Shell.queryControls.queries.length = 0;
+  Shell.queryControls.answer = (o) => (o.queryKey[0] === 'roblox-connection' && username !== undefined ? { data: { username } } : undefined);
+  try {
+    const page = Shell.mountStub(() => Shell.Shell());
+    await page.settle();
+    const rails = findAll(page.result, (n) => typeof n.props.email === 'string');
+    assert.equal(rails.length, 1, 'the shell hands exactly one account line to its rail');
+    return rails[0].props.email;
+  } finally {
+    delete globalThis.__pageFakes;
+    if (realWindow === undefined) delete globalThis.window; else globalThis.window = realWindow;
+    if (realDocument === undefined) delete globalThis.document; else globalThis.document = realDocument;
+  }
+}
+
+test('the SHELL’s account line, run: a Roblox-only account is "Roblox: <username>" (or "Roblox account" until it is known), never its placeholder address; everyone else is their address', async () => {
+  assert.equal(await shellLabel(ROBLOX_USER, 'Builder1'), 'Roblox: Builder1');
+  assert.equal(await shellLabel(ROBLOX_USER, undefined), 'Roblox account');
+  assert.equal(await shellLabel(EMAIL_USER, undefined), 'me@example.com');
+  assert.equal(await shellLabel(EMAIL_USER, 'ignored'), 'me@example.com', 'a Roblox answer does not rename an email account');
+});
+
+test('isPlaceholderAddress: the reserved .invalid ending, anchored, and nothing that only resembles it', () => {
+  for (const near of ['me@example.invalid.com', 'me@example.invalidx', 'me@exampleinvalid', 'invalid@example.com', 'me@invalid', 'me.invalid@example.com', 'me@example.invalid.example', 'me@example.invalid@example.com ', '.invalid@example.com', 'me@example-invalid', 'me@example.valid']) {
+    assert.equal(isPlaceholderAddress(near), false, `${near} is not a placeholder address`);
+  }
+  for (const real of [PLACEHOLDER, 'me@example.INVALID', '  me@example.invalid  ', 'x@y.invalid']) assert.equal(isPlaceholderAddress(real), true, `${real} is`);
+  for (const nothing of [undefined, '', 42, {}, []]) assert.equal(isPlaceholderAddress(nothing), false);
+});
+
+/* ============================================================================================================
+ * A FIRST SIGHT IS ASKED ABOUT: the card, the calls it makes, and what is never done without Continue.
+ * ========================================================================================================== */
+
+const ASKED = { status: 200, body: { confirm: 'new-account', username: 'Builder1', next: '/' } };
+const MADE = { status: 200, body: { created: true } };
+
+test('the first-sight card says it in the words the brief gives, names the Roblox account, and offers exactly Continue and Go back', () => {
+  const html = render(ui.h(ui.RobloxLandingView, { state: { kind: 'confirm-new', username: 'Builder1' }, onSwitch: noop, onStay: noop, onContinue: noop, onBack: noop }));
+  assert.match(text(html), /This creates a new StudPilot account\. Already have one\? Sign in with your email instead\./);
+  assert.match(text(html), /Signed in to Roblox as Builder1/);
+  assert.deepEqual([...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]), ['Continue', 'Go back']);
+  assert.match(html, /role="group"/);
+  assert.equal(/role="alert"/.test(html), false, 'it is a question, not an error');
+  // The username is Roblox's text: it is shown as text, never as markup.
+  const hostile = render(ui.h(ui.RobloxLandingView, { state: { kind: 'confirm-new', username: '<img src=x onerror=alert(1)>' }, onSwitch: noop, onStay: noop, onContinue: noop, onBack: noop }));
+  assert.equal(/<img/.test(hostile), false);
+  // A failure shows the worker's fixed reference when it gave one, and nothing when it did not.
+  const failed = (state) => render(ui.h(ui.RobloxLandingView, { state, onSwitch: noop, onStay: noop, onContinue: noop, onBack: noop }));
+  assert.match(failed({ kind: 'failed', reference: 'roblox_address_taken' }), /Reference: <code>roblox_address_taken<\/code>/);
+  assert.equal(/Reference/.test(failed({ kind: 'failed' })), false);
+});
+
+test('redeem answers a first sight as a QUESTION: {confirmNew: {username}}, only when the answer is the worker’s and the name can be shown', async () => {
+  const reply = (body, status = 200) => async () => new Response(JSON.stringify(body), { status });
+  assert.deepEqual(await redeemRobloxSignIn(reply({ confirm: 'new-account', username: 'Builder1', next: '/' })), { confirmNew: { username: 'Builder1' } });
+  assert.deepEqual(await redeemRobloxSignIn(reply({ confirm: 'new-account', username: '  Builder1 ' })), { confirmNew: { username: 'Builder1' } });
+  for (const bad of [{ confirm: 'new-account' }, { confirm: 'new-account', username: '' }, { confirm: 'new-account', username: '   ' }, { confirm: 'new-account', username: 42 }, { confirm: 'new-account', username: 'x'.repeat(201) }]) {
+    assert.equal(await redeemRobloxSignIn(reply(bad)), null, `${JSON.stringify(bad).slice(0, 50)}`);
+  }
+  assert.equal(await redeemRobloxSignIn(reply({ confirm: 'new-account', username: 'Builder1' }, 400)), null, 'an error status is not a question');
+  // Anything that is not the question is read as before.
+  assert.deepEqual(await redeemRobloxSignIn(reply({ confirm: 'something-else', token_hash: HASH, next: '/usage' })), { tokenHash: HASH, next: '/usage' });
+});
+
+test('createRobloxAccount and declineRobloxAccount are same-origin POSTs with no body and nothing in the URL, and read only the worker’s fixed words back', async () => {
+  const seen = [];
+  const record = (answer) => async (url, init) => { seen.push({ url, init }); return answer(); };
+  assert.deepEqual(await createRobloxAccount(record(() => new Response('{"created":true}', { status: 200 }))), { ok: true });
+  await declineRobloxAccount(record(() => new Response('{"declined":true}', { status: 200 })));
+  assert.deepEqual(seen.map((x) => [x.init.method, x.url, x.init.credentials, x.init.body, x.init.cache]), [['POST', ROBLOX_CREATE_PATH, 'same-origin', undefined, 'no-store'], ['POST', ROBLOX_DECLINE_PATH, 'same-origin', undefined, 'no-store']]);
+  assert.equal(seen.some((x) => /[?#]/.test(x.url)), false);
+  const failure = (status, body) => async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status });
+  assert.deepEqual(await createRobloxAccount(failure(409, { error: 'x', reference: 'roblox_address_taken' })), { ok: false, reference: 'roblox_address_taken' });
+  for (const bad of [{ reference: '<script>' }, { reference: 'x'.repeat(60) }, { reference: 42 }, { error: 'x' }, 'not json']) {
+    assert.deepEqual(await createRobloxAccount(failure(502, bad)), { ok: false }, `${JSON.stringify(bad).slice(0, 40)} is not shown`);
+  }
+  assert.deepEqual(await createRobloxAccount(failure(200, { created: false })), { ok: false }, 'a 200 that does not say created is not a success');
+  assert.deepEqual(await createRobloxAccount(failure(500, { created: true })), { ok: false }, 'and a failing status is not either');
+  assert.deepEqual(await createRobloxAccount(async () => { throw new TypeError('network'); }), { ok: false });
+  await declineRobloxAccount(async () => { throw new TypeError('network'); });               // swallowed: nothing more can be done from here
+});
+
+test('continueRobloxNewAccount makes the account FIRST and signs in only if that worked: a failure redeems nothing, trades nothing, and keeps the worker’s reference', async () => {
+  const log = [];
+  const deps = (created) => ({
+    create: async () => { log.push('create'); return created; },
+    redeem: async () => { log.push('redeem'); return { tokenHash: HASH, next: '/usage' }; },
+    verifyOtp: async () => { log.push('verify'); return { data: { user: { id: 'u9' } }, error: null }; },
+    accountSwitched: () => log.push('switched'),
+  });
+  assert.deepEqual(await continueRobloxNewAccount(deps({ ok: true })), { kind: 'signed-in', next: '/usage' });
+  assert.deepEqual(log, ['create', 'redeem', 'verify']);
+  log.length = 0;
+  assert.deepEqual(await continueRobloxNewAccount(deps({ ok: false, reference: 'roblox_address_taken' })), { kind: 'failed', reference: 'roblox_address_taken' });
+  assert.deepEqual(await continueRobloxNewAccount(deps({ ok: false })), { kind: 'failed' });
+  assert.deepEqual(log, ['create', 'create'], 'nothing was redeemed or traded after a failure');
+  log.length = 0;
+  assert.deepEqual(await continueRobloxNewAccount(deps({ ok: true }), { id: 'u1' }), { kind: 'signed-in', next: '/usage' });
+  assert.deepEqual(log, ['create', 'redeem', 'verify', 'switched'], 'and an account that replaced another one clears the other’s local state, as a switch does');
+});
+
+test('LANDING (hook), a first sight: it ASKS and does nothing else; Continue makes the account and signs in; Go back declines and leaves', async () => {
+  const asked = landing({ redeemed: [{ confirmNew: { username: 'Builder1' } }, undefined] });
+  await asked.hook.settle();
+  assert.deepEqual(asked.hook.result.state, { kind: 'confirm-new', username: 'Builder1' });
+  assert.deepEqual([asked.calls.create, asked.calls.decline, asked.calls.verify, asked.signedIn], [0, 0, [], []], 'asked, and nothing made, declined, traded or entered');
+
+  asked.hook.result.continueNew();
+  asked.hook.rerender();
+  assert.deepEqual(asked.hook.result.state, { kind: 'working' });
+  await asked.hook.settle();
+  assert.deepEqual([asked.calls.create, asked.calls.redeem, asked.calls.verify, asked.signedIn], [1, 2, [{ token_hash: HASH, type: 'magiclink' }], ['/settings']]);
+
+  const back = landing({ redeemed: [{ confirmNew: { username: 'Builder1' } }] });
+  await back.hook.settle();
+  back.hook.result.goBack();
+  back.hook.rerender();
+  assert.deepEqual(back.hook.result.state, { kind: 'working' }, 'the card gives way to a working one while the worker is told, so Go back cannot be pressed twice');
+  await back.hook.settle();
+  assert.deepEqual([back.calls.decline, back.calls.create, back.calls.verify, back.signedIn, back.declined], [1, 0, [], [], [true]]);
+
+  const refused = landing({ redeemed: [{ confirmNew: { username: 'Builder1' } }], created: { ok: false, reference: 'roblox_address_taken' } });
+  await refused.hook.settle();
+  refused.hook.result.continueNew();
+  await refused.hook.settle();
+  assert.deepEqual(refused.hook.result.state, { kind: 'failed', reference: 'roblox_address_taken' });
+  assert.deepEqual([refused.calls.verify, refused.signedIn], [[], []]);
+});
+
+test('LANDING PAGE, run, a first sight: the card asks; NOTHING is made, redeemed again or traded until Continue, and then the order is ask, create, redeem, trade', async () => {
+  await scenario({ answers: { [ROBLOX_REDEEM_PATH]: [ASKED], [ROBLOX_CREATE_PATH]: [MADE] } }, async ({ page, view, sc, rc, fetches, reads }) => {
+    assert.deepEqual(view().state, { kind: 'confirm-new', username: 'Builder1' });
+    assert.deepEqual(fetches.map((f) => f.url), [ROBLOX_REDEEM_PATH], 'only the question was asked');
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession'], 'no session was made');
+    assert.deepEqual(rc.navigations, []);
+    view().onContinue();
+    page.rerender();
+    assert.deepEqual(view().state, { kind: 'working' });
+    await page.settle();
+    assert.deepEqual(fetches.map((f) => [f.init.method, f.url, f.init.credentials]), [['POST', ROBLOX_REDEEM_PATH, 'same-origin'], ['POST', ROBLOX_CREATE_PATH, 'same-origin'], ['POST', ROBLOX_REDEEM_PATH, 'same-origin']]);
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession', 'verifyOtp']);
+    assert.deepEqual(sc.calls[1].args, [{ token_hash: HASH, type: 'magiclink' }]);
+    assert.deepEqual(rc.navigations, [{ to: '/settings', options: { replace: true } }]);
+    assert.deepEqual(reads, []);
+  });
+});
+
+test('LANDING PAGE, run, a first sight: Go back declines at the worker, goes to the sign-in page, and makes and trades nothing', async () => {
+  await scenario({ answers: { [ROBLOX_REDEEM_PATH]: [ASKED] } }, async ({ page, view, sc, rc, fetches }) => {
+    view().onBack();
+    page.rerender();
+    await page.settle();
+    assert.deepEqual(fetches.map((f) => f.url), [ROBLOX_REDEEM_PATH, ROBLOX_DECLINE_PATH]);
+    assert.equal(fetches.some((f) => f.url === ROBLOX_CREATE_PATH), false, 'no account was made');
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession'], 'and nothing was traded');
+    assert.deepEqual(rc.navigations, [{ to: '/login', options: { replace: true } }], 'back to the sign-in page, where signing in with an email is on offer');
+  });
+});
+
+test('LANDING PAGE, run, a first sight where the account cannot be made: a failure card (with the worker’s reference), nothing traded, nowhere navigated', async () => {
+  const taken = { status: 409, body: { error: 'x', reference: 'roblox_address_taken' } };
+  await scenario({ answers: { [ROBLOX_REDEEM_PATH]: [ASKED], [ROBLOX_CREATE_PATH]: [taken] } }, async ({ page, view, sc, rc, fetches }) => {
+    view().onContinue();
+    page.rerender();
+    await page.settle();
+    assert.deepEqual(view().state, { kind: 'failed', reference: 'roblox_address_taken' });
+    assert.deepEqual(fetches.map((f) => f.url), [ROBLOX_REDEEM_PATH, ROBLOX_CREATE_PATH], 'it did not redeem after a failed create');
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession']);
+    assert.deepEqual(rc.navigations, []);
+  });
+});
+
+test('LANDING PAGE, run, somebody signed in who meets a first sight is asked twice, in order: first whether to replace the session, then whether to make the account', async () => {
+  await scenario({ session: emailSession, answers: { [ROBLOX_REDEEM_PATH]: [ASKED], [ROBLOX_CREATE_PATH]: [MADE] } }, async ({ page, view, sc, rc, fetches, storage }) => {
+    assert.equal(view().state.kind, 'choice');
+    assert.deepEqual(fetches, [], 'nothing redeemed while the person decides about their session');
+    view().onSwitch();
+    page.rerender();
+    await page.settle();
+    assert.deepEqual(view().state, { kind: 'confirm-new', username: 'Builder1' });
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession'], 'the existing session is still untouched');
+    assert.equal(storage.map.size, DEVICE_KEYS.length, 'and so is everything the device holds');
+    view().onContinue();
+    page.rerender();
+    await page.settle();
+    assert.deepEqual(sc.calls.map((c) => c.method), ['getSession', 'verifyOtp']);
+    assert.deepEqual(rc.navigations, [{ to: '/settings', options: { replace: true } }]);
+    assert.deepEqual([...storage.map.keys()], ['theme'], 'the account was replaced by another, so the previous one’s local state is cleared');
+  });
 });
 
 /* ------------------------------------------------------------------- clearing the previous account --- */

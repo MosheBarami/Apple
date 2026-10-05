@@ -51,6 +51,23 @@ export function useRef(initial) {
 // A page that calls it for an id it never reads in the part under test.
 export const useId = () => ':stub:';
 
+// The rest of what a page body uses. A memo is recomputed only when its dependencies change, as in React.
+const sameMemoDeps = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, k) => Object.is(v, b[k]));
+export function useMemo(factory, deps) {
+  const inst = current;
+  const i = inst.cursor++;
+  const slot = inst.slots[i];
+  if (slot && sameMemoDeps(slot.deps, deps)) return slot.value;
+  const value = factory();
+  inst.slots[i] = { deps, value };
+  return value;
+}
+export const useCallback = (fn, deps) => useMemo(() => fn, deps);
+// A context here is its default value: a page is mounted outside any provider, so the default is what it reads.
+export const createContext = (defaultValue) => ({ _currentValue: defaultValue, Provider: 'Provider', Consumer: 'Consumer' });
+export const useContext = (context) => context._currentValue;
+export const memo = (component) => component;
+
 const sameDeps = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, k) => Object.is(v, b[k]));
 
 export function useEffect(fn, deps) {

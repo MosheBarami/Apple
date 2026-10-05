@@ -13,6 +13,12 @@
  *     every call made on it;
  *   - every OTHER module the page imports directly is replaced by an inert stand-in that exports the same names as functions
  *     returning null, except the ones the test names in `real` (the logic under test, which stays real and brings its own imports);
+ *   - `@tanstack/react-query` is a stand-in that records every query and mutation a component asks for and answers a query from
+ *     `queryControls.answer(options)`, so a hook's `enabled`, its key and what it returns are observed;
+ *   - a module the test names in `fakes` is replaced for EVERY importer (a real module's import of it too): the names given are
+ *     the expressions the test wrote, the rest are inert. They reach the test's state through `globalThis.__pageFakes`;
+ *   - `expose` appends an export to a module's source as it is loaded, so a component the app does not export (the shell's own
+ *     `Shell`) can be called without changing the app for the test;
  *   - everything the real modules import is the real thing.
  *
  * What it does NOT do: render the children (a child component is never called), reconcile, or run a hook this file's stand-in
@@ -43,7 +49,27 @@ export const controls = { navigations: [] };
 export const useNavigate = () => (to, options) => { controls.navigations.push({ to, options }); };
 export const useLocation = () => ({ pathname: '/auth/roblox', search: '', hash: '', state: null });
 export const Link = 'Link';
+export const NavLink = 'NavLink';
 export const Navigate = 'Navigate';
+export const Outlet = 'Outlet';
+`;
+
+const QUERY_STUB = `
+export const queryControls = {
+  queries: [],              // every options object a component passed to useQuery, in order
+  mutations: [],            // and to useMutation
+  answer: () => undefined,  // (options) => the partial result to return for that query, or undefined while it is pending
+};
+export const useQuery = (options) => {
+  queryControls.queries.push(options);
+  const given = queryControls.answer(options);
+  return { data: undefined, error: null, isPending: given === undefined, isError: false, isSuccess: given !== undefined, isFetching: false, refetch: async () => {}, ...(given ?? {}) };
+};
+export const useMutation = (options) => {
+  queryControls.mutations.push(options);
+  return { mutate: () => {}, mutateAsync: async () => {}, isPending: false, isError: false, error: null, reset: () => {} };
+};
+export const useQueryClient = () => ({ invalidateQueries: async () => {}, setQueryData: () => {}, getQueryData: () => undefined });
 `;
 
 const SUPABASE_STUB = `
@@ -62,8 +88,11 @@ export const supabase = { auth: {
 export async function getAccessToken() { return null; }
 `;
 
-/** Exports of a module's source as functions returning null: enough for a page that imports them and never calls them. */
-function inertSource(source) {
+/**
+ * Exports of a module's source as functions returning null: enough for a page that imports them and never calls them.
+ * `given` maps an export's name to the expression the test wrote for it, which replaces the null function.
+ */
+function inertSource(source, given = {}) {
   const names = new Set();
   for (const m of source.matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm)) names.add(m[1]);
   for (const m of source.matchAll(/^export\s*\{([^}]*)\}/gm)) {
@@ -72,15 +101,15 @@ function inertSource(source) {
       if (piece && !piece.startsWith('type ')) names.add(piece.split(/\s+as\s+/).pop());
     }
   }
-  return [...names].map((n) => `export const ${n} = () => null;`).join('\n') + (/^export\s+default\b/m.test(source) ? '\nexport default () => null;' : '') + '\n';
+  return [...names].map((n) => `export const ${n} = ${Object.hasOwn(given, n) ? given[n] : '() => null'};`).join('\n') + (/^export\s+default\b/m.test(source) ? '\nexport default () => null;' : '') + '\n';
 }
 
 /** Bundle `entry` (under apps/web) as described above and import it. `real` lists the modules (paths ending as given) that stay real. */
-export async function loadPage({ entry, name, real = [] }) {
+export async function loadPage({ entry, name, real = [], fakes = {}, expose = {} }) {
   // realpath: on macOS the temp directory is a symlink, and a stub reached by two spellings of its path would be bundled twice.
   const dir = realpathSync(mkdtempSync(join(tmpdir(), `${name}-page-`)));
   const stubs = {};
-  for (const [key, source] of Object.entries({ react: REACT_STUB, jsx: JSX_STUB, router: ROUTER_STUB, supabase: SUPABASE_STUB })) {
+  for (const [key, source] of Object.entries({ react: REACT_STUB, jsx: JSX_STUB, router: ROUTER_STUB, supabase: SUPABASE_STUB, query: QUERY_STUB })) {
     stubs[key] = join(dir, `${key}-stub.mjs`);
     writeFileSync(stubs[key], source);
   }
@@ -91,6 +120,7 @@ export async function loadPage({ entry, name, real = [] }) {
     `export { mountStub } from 'react';`,
     `export { controls as routerControls } from 'react-router-dom';`,
     `export { controls as supabaseControls } from 'virtual:supabase';`,
+    `export { queryControls } from '@tanstack/react-query';`,
   ].join('\n'));
   const out = join(dir, 'bundle.mjs');
   const built = await esbuild.build({
@@ -104,8 +134,13 @@ export async function loadPage({ entry, name, real = [] }) {
         b.onResolve({ filter: /^react\/jsx(-dev)?-runtime$/ }, () => ({ path: stubs.jsx }));
         b.onResolve({ filter: /^react-router-dom$/ }, () => ({ path: stubs.router }));
         b.onResolve({ filter: /^virtual:supabase$/ }, () => ({ path: stubs.supabase }));
+        b.onResolve({ filter: /^@tanstack\/react-query$/ }, () => ({ path: stubs.query }));
         b.onResolve({ filter: /^\.{1,2}\// }, async (args) => {
-          if (args.importer !== entryPath || args.path.endsWith('.css')) return undefined;
+          if (args.path.endsWith('.css')) return undefined;
+          // A faked module is faked for every importer, the entry's and a real module's alike.
+          const fakeKey = Object.keys(fakes).find((k) => resolve(args.resolveDir, args.path).replace(/\.(tsx?|jsx?)$/, '') === resolve(WEB, 'src', k).replace(/\.(tsx?|jsx?)$/, ''));
+          if (fakeKey) return { path: resolve(WEB, 'src', fakeKey), namespace: 'fake' };
+          if (args.importer !== entryPath) return undefined;
           const resolved = await b.resolve(args.path, { resolveDir: args.resolveDir, kind: args.kind });
           if (resolved.errors.length) return { errors: resolved.errors };
           if (/\/lib\/supabase\.ts$/.test(resolved.path)) return { path: stubs.supabase };
@@ -113,6 +148,16 @@ export async function loadPage({ entry, name, real = [] }) {
           return { path: resolved.path, namespace: 'inert' };
         });
         b.onLoad({ filter: /.*/, namespace: 'inert' }, (args) => ({ contents: inertSource(readFileSync(args.path, 'utf8')), loader: 'js' }));
+        b.onLoad({ filter: /.*/, namespace: 'fake' }, (args) => {
+          const key = Object.keys(fakes).find((k) => resolve(WEB, 'src', k) === args.path);
+          return { contents: inertSource(readFileSync(args.path, 'utf8'), fakes[key]), loader: 'js' };
+        });
+        // `expose`: the source of a module that is not stubbed, with the exports the test asked for appended.
+        b.onLoad({ filter: /\.tsx?$/ }, (args) => {
+          const key = Object.keys(expose).find((k) => resolve(WEB, 'src', k) === args.path);
+          if (!key) return undefined;
+          return { contents: `${readFileSync(args.path, 'utf8')}\nexport { ${expose[key].join(', ')} };\n`, loader: args.path.endsWith('x') ? 'tsx' : 'ts' };
+        });
       },
     }],
   });
@@ -130,4 +175,28 @@ export function findElement(node, type) {
     if (found) return found;
   }
   return null;
+}
+
+/**
+ * Every element in an unexpanded tree that satisfies `predicate`, looking inside every prop that holds elements, not only `children`
+ * (a settings row keeps its form in `control`). Strings and numbers are not elements.
+ */
+export function findAll(node, predicate, found = []) {
+  if (!node || typeof node !== 'object') return found;
+  if (Array.isArray(node)) {
+    for (const child of node) findAll(child, predicate, found);
+    return found;
+  }
+  if (node.props && predicate(node)) found.push(node);
+  for (const value of Object.values(node.props ?? {})) {
+    if (value && typeof value === 'object') findAll(value, predicate, found);
+  }
+  return found;
+}
+
+/** The text an unexpanded tree would show: its strings and numbers, in order. */
+export function textOf(node) {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join('');
+  return node && typeof node === 'object' ? textOf(node.props?.children) : '';
 }

@@ -20,7 +20,10 @@ import { clearAccountState } from '../lib/account-state';
 import { isRobloxAccount } from '../lib/account-identity';
 import {
   EXISTING_ROBLOX_SESSION_LINE,
+  ROBLOX_NEW_ACCOUNT_LINE,
   ROBLOX_SIGNIN_FAILED,
+  createRobloxAccount,
+  declineRobloxAccount,
   existingSessionLine,
   redeemRobloxSignIn,
   robloxStartHref,
@@ -1055,16 +1058,54 @@ function ExpiredLinkCard({
 /* ------------------------------------------------------------ roblox sign-in --- */
 
 /** What /auth/roblox shows for each state of lib/roblox-signin.ts. Pure, so it is rendered and read in tests. */
-export function RobloxLandingView({ state, onSwitch, onStay }: { state: RobloxLandingState; onSwitch: () => void; onStay: () => void }) {
+export function RobloxLandingView({
+  state,
+  onSwitch,
+  onStay,
+  onContinue,
+  onBack,
+}: {
+  state: RobloxLandingState;
+  onSwitch: () => void;
+  onStay: () => void;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
   if (state.kind === 'failed') {
     return (
       <div className="auth-card" role="alert">
         <CardMark kind="alert" />
         <h2 className="auth-card-title">We could not sign you in</h2>
         <p className="auth-card-sub">{ROBLOX_SIGNIN_FAILED}</p>
+        {/* The worker's own fixed code, for somebody to quote to whoever looks after this: never provider text. */}
+        {state.reference && (
+          <p className="field-hint">
+            Reference: <code>{state.reference}</code>
+          </p>
+        )}
         <Link to="/login" className="btn btn-primary btn-block">
           Back to sign in
         </Link>
+      </div>
+    );
+  }
+  if (state.kind === 'confirm-new') {
+    // NOTHING HAS BEEN MADE YET. Somebody who already has an email account here and presses "Continue with Roblox" would otherwise
+    // get a second, empty account, believe their projects were gone, and be given a second free allowance. Continue is the only thing
+    // that makes the account; Go back withdraws the Roblox authorization it was given and makes nothing.
+    return (
+      <div className="auth-card" role="group" aria-labelledby="roblox-new-title">
+        <h2 className="auth-card-title" id="roblox-new-title">Create a new account?</h2>
+        <p className="auth-card-sub">{ROBLOX_NEW_ACCOUNT_LINE}</p>
+        <p className="field-hint">
+          Signed in to Roblox as <strong>{state.username}</strong>.
+        </p>
+        <button type="button" className="btn btn-primary btn-block" onClick={onContinue}>
+          Continue
+        </button>
+        <button type="button" className="btn btn-block" onClick={onBack}>
+          Go back
+        </button>
       </div>
     );
   }
@@ -1103,7 +1144,7 @@ export function RobloxLandingView({ state, onSwitch, onStay }: { state: RobloxLa
  */
 export function RobloxCallbackPage() {
   const navigate = useNavigate();
-  const { state, switchNow } = useRobloxLanding(
+  const { state, switchNow, continueNew, goBack } = useRobloxLanding(
     {
       currentAccount: async () => {
         const { data, error } = await supabase.auth.getSession();
@@ -1112,14 +1153,24 @@ export function RobloxCallbackPage() {
         return user ? { id: user.id, email: user.email ?? null, roblox: isRobloxAccount(user) } : null;
       },
       redeem: () => redeemRobloxSignIn(),
+      create: () => createRobloxAccount(),
+      decline: () => declineRobloxAccount(),
       verifyOtp: (args) => supabase.auth.verifyOtp(args),
       accountSwitched: clearAccountState,
     },
     (next) => navigate(next, { replace: true }),
+    // "Go back" from the first-sight card: back to the sign-in page, where signing in with an email is on offer.
+    () => navigate('/login', { replace: true }),
   );
   return (
     <AuthShell>
-      <RobloxLandingView state={state} onSwitch={switchNow} onStay={() => navigate('/', { replace: true })} />
+      <RobloxLandingView
+        state={state}
+        onSwitch={switchNow}
+        onStay={() => navigate('/', { replace: true })}
+        onContinue={continueNew}
+        onBack={goBack}
+      />
     </AuthShell>
   );
 }
