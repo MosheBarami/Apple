@@ -582,13 +582,15 @@ app.use('*', async (c, next) => {
 
 /**
  * STUDPILOT STUDIO (rebuild R1, planning/REBUILD-PLAN.md). `/studio/*` belongs to the `studpilot-studio`
- * worker, reached over the STUDIO service binding with the prefix removed. Same origin on purpose: the
+ * worker, reached over the STUDIO service binding (static files with the prefix removed). Same origin on purpose: the
  * signed-in Supabase session of /app is the one Studio uses. Without the binding the path does not exist.
  */
 app.all('/studio/*', async (c) => {
   if (!c.env.STUDIO) return c.notFound();
   const url = new URL(c.req.url);
-  url.pathname = url.pathname.slice('/studio'.length) || '/';
+  // The agent API keeps its full path: Flue writes that path into the stream URLs it hands back, so a
+  // stripped one would point the browser at a path that is not this proxy. Static files lose the prefix.
+  if (!url.pathname.startsWith('/studio/api/')) url.pathname = url.pathname.slice('/studio'.length) || '/';
   return c.env.STUDIO.fetch(new Request(url, c.req.raw));
 });
 app.get('/studio', (c) => c.redirect('/studio/', 308));
