@@ -2409,6 +2409,12 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // refuses during a run, and it refuses any project without a `bench-baseline` checkpoint, so the key cannot
       // wipe a customer's project with it (apps/worker/tests/bench-reset-scope.test.mjs).
       'POST /api/admin/bench-reset/:id',
+      // Reviewed 2026-10-05 (M3 evaluation harness): mints a Studio pairing code for one project and one NAMED owner, so
+      // the harness needs no password sign-in. The session is the authority on ownership (`/owner-check`: a different
+      // owner is 403, a session with no owner on record is 409), both ids are validated as UUIDs before a Durable Object
+      // is named, no Supabase call is added, the audit row is filed before the mint, and PairingDO's own cap of five
+      // live codes per user still applies (apps/worker/tests/admin-pairing-route.test.mjs).
+      'POST /api/admin/pairing/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',
@@ -2511,6 +2517,7 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
     'GET /api/admin/account/:userId',
     'GET /api/admin/billing-reconcile',
     'POST /api/admin/grant-credits',
+    'POST /api/admin/pairing/:id',
     'POST /api/admin/quota-reset',
     'POST /api/admin/set-plan',
   ], 'an admin route that acts on a named user was added or removed — review it');

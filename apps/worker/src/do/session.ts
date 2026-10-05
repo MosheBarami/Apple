@@ -3011,6 +3011,14 @@ export class SessionDO extends DurableObject<Env> {
       return json({ ok: true });
     }
 
+    // Is this person the owner of this project? Asked by the admin pairing route so that the owner id
+    // never leaves the session: `/info` deliberately omits it, and this answers a yes or a no.
+    if (path === '/owner-check' && req.method === 'POST') {
+      const asked = (await req.json().catch(() => null)) as { userId?: unknown } | null;
+      if (typeof asked?.userId !== 'string' || asked.userId !== bind.ownerId) return json({ error: 'owner mismatch' }, 403);
+      return json({ ok: true, projectId: bind.projectId, projectName: bind.projectName });
+    }
+
     if (path === '/info') {
       const agent = await this.ctx.storage.get<AgentState>('agent');
       const msgs = this.sql.exec(`select count(*) as c from messages`).one() as { c: number };
