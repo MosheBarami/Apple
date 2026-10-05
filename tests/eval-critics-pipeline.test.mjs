@@ -30,24 +30,49 @@ const WORKFLOW = readFileSync(join(HERE, '..', 'scripts', 'eval', 'critics.workf
 const SHOT_FILES = ['play-2.png', 'close-up.png', 'overview.png', 'play-1.png', 'spawn-eye.png', 'three-quarter.png', 'play-3.png'];
 const ORDERED = ['overview.png', 'three-quarter.png', 'close-up.png', 'spawn-eye.png', 'play-1.png', 'play-2.png', 'play-3.png'];
 
+const WORLD_NAMES = ['overview', 'three-quarter', 'close-up', 'spawn-eye'];
+
+/**
+ * A piece folder as run-piece.mjs leaves it: the files, and a manifest that records what was built, the pictures that were
+ * planned and captured, and the play-test evidence the verdict reads. Every option overrides one of those facts.
+ */
 function piece(root, milestone, id, o = {}) {
   const dir = join(root, milestone, id);
   mkdirSync(join(dir, 'shots'), { recursive: true });
   const category = { U: 'ui', S: 'systems', P: 'props', Z: 'zones' }[id[0]];
-  for (const f of o.shots ?? SHOT_FILES) writeFileSync(join(dir, 'shots', f), 'png bytes');
+  const shotFiles = o.shots ?? SHOT_FILES;
+  for (const f of shotFiles) writeFileSync(join(dir, 'shots', f), 'png bytes');
   writeFileSync(join(dir, 'request.txt'), `request for ${id}\n`);
   writeFileSync(join(dir, 'reply.md'), o.reply ?? `I built ${id}. It has glowing parts.\n`);
   writeFileSync(join(dir, 'console.txt'), o.console ?? '');
   writeFileSync(join(dir, 'steps.json'), JSON.stringify({ count: 2, failed: 1, stopReason: 'done', steps: [{ tool: 'build_part', summary: 'made it', ok: true }, { tool: 'edit_script', summary: 'x', ok: false, error: 'refused' }] }));
   writeFileSync(join(dir, 'credits.json'), JSON.stringify({ ledgerPerCredit: 150, spentCredits: o.credits ?? 1.5, spentLedger: Math.round((o.credits ?? 1.5) * 150) }));
   writeFileSync(join(dir, 'timing.json'), JSON.stringify({ totalMs: (o.totalMin ?? 6) * 60_000 }));
+  const uiFile = shotFiles.find((f) => f.startsWith('ui-'));
+  const kind = o.kind ?? (uiFile ? (shotFiles.some((f) => WORLD_NAMES.includes(f.replace('.png', ''))) ? 'both' : 'ui') : 'world');
+  const planned = [...(kind === 'ui' ? [] : WORLD_NAMES), ...(kind === 'ui' || kind === 'both' ? ['ui'] : [])];
+  const captures = o.captures ?? planned.map((name) => {
+    const file = name === 'ui' ? uiFile : shotFiles.find((f) => f === `${name}.png`);
+    return file ? { name, file: `shots/${file}`, error: null } : { name, file: null, error: 'screen_capture returned no picture' };
+  });
+  const errors = o.playErrors ?? 0;
+  const playTest = o.playTest === undefined
+    ? {
+        started: true, serverAnswered: true, errors, warnings: 0, unestablished: null,
+        console: { errors, warnings: 0 }, logServer: { errors, warnings: 0, first: [] }, logClient: { errors: 0, warnings: 0, first: [] },
+        frames: [1, 2, 3].map((n) => ({ name: `play-${n}`, file: `shots/play-${n}.png`, error: null })),
+      }
+    : o.playTest;
   const manifest = {
     harness: { dryRun: o.dryRun === true, startedAt: o.startedAt ?? '2026-10-05T10:00:00Z', finishedAt: o.finishedAt ?? '2026-10-05T10:06:00Z' },
     request: { id, category, text: `request for ${id}`, devSetSha256: 'd'.repeat(64) },
     deploy: { apiBase: 'https://studpilot.app', buildSha: 'abc12345' },
     baseline: { sha256: 'b'.repeat(64) },
-    run: o.noRun || o.dryRun ? null : { startedAt: '2026-10-05T10:01:00Z', endedBy: o.endedBy ?? 'done', minutes: o.minutes ?? 4 },
-    playTest: { errors: o.playErrors ?? 0, warnings: 0 },
+    conversation: o.conversation !== undefined ? o.conversation : o.dryRun ? { cleared: false, skipped: 'dry run' } : o.noRun ? null : { cleared: true, route: 'POST /api/admin/conversation-reset/:id', removedMessages: 4, messagesAfter: 0 },
+    run: o.run !== undefined ? o.run : o.noRun || o.dryRun ? null : { startedAt: '2026-10-05T10:01:00Z', endedBy: o.endedBy ?? 'done', minutes: o.minutes ?? 4 },
+    build: o.build !== undefined ? o.build : { kind, addedInstances: 9, addedParts: 8, addedScripts: 1, addedByService: { Workspace: 8, ServerScriptService: 1 }, bounds: { min: [0, 0, 0], max: [10, 5, 10] }, screenGuis: [] },
+    captures,
+    playTest,
     functionalChecks: o.functionalChecks ?? { defined: false },
     aborted: o.aborted ?? null,
     spend: { before: o.spendBefore ?? { estimatedMonthUsd: 3.9, monthBillableNeurons: 100, dayNeurons: 10 }, after: o.spendAfter ?? { estimatedMonthUsd: 4.0, monthBillableNeurons: 120, dayNeurons: 30 } },
@@ -345,6 +370,9 @@ test('BASELINE: pass rate, category means of the lower score, credits, minutes, 
   assert.match(md, /with the functional-check clause waived: 2 \/ 4 \(50\.0%\)\*\*\. This is NOT the plan's pass rate/);
   assert.match(md, /Not run \(harness stopped first\): 1 \(Z02 \(preflight\)\)/);
   assert.match(md, /Dry runs not counted: 1/);
+  assert.match(md, /Conversation: 4 of 4 attempted pieces ran in a FRESH conversation/);
+  assert.equal(/SHARED THE PROJECT/.test(md), false);
+  assert.deepEqual(agg.conversation, { freshChat: 4, attempted: 4, sharedChat: [] });
   assert.match(md, /Credits per piece .*mean 2\.00, max 3\.00/);
   assert.match(md, /Change in the month's estimate: \$0\.2000/);
   assert.match(md, /\| U01 \| ui \| pass \|/);
@@ -402,4 +430,187 @@ test('BASELINE: .prev- folders (earlier runs moved aside) are not counted twice'
   writeFileSync(join(copy, 'manifest.json'), readFileSync(join(dir, 'manifest.json')));
   assert.equal(readdirSync(join(root, 'MT')).length, 2);
   assert.equal(collect('MT', root).pieces.length, 1);
+});
+
+// ================================================================================================================
+// WIRING: what write-verdicts reads out of the folder and hands to the pass rule. The pure rule is tested in
+// eval-verdict.test.mjs; these go through writeVerdicts on real piece folders, because the first review showed that
+// the wiring (the run record, the pictures the critics were given, the planned pictures, the play-test evidence) could
+// be switched off without any test noticing.
+
+const CHECKS = { functionalChecks: { defined: true, results: [{ id: 'x', pass: true }] } };
+const VIEWED = (files) => files.map((f) => f.replace(/^shots\//, ''));
+
+/** Write one piece and its critics' results, run writeVerdicts, and read verdict.json back. */
+function judged(id, o = {}, { a, b, claimsResult, noClaims = false, root = mkdtempSync(join(tmpdir(), 'eval-wire-')) } = {}) {
+  const dir = piece(root, 'MT', id, { ...CHECKS, ...o });
+  const shots = listShots(dir).map((s) => s.name);
+  const ca = a === undefined ? critic({}, { shotsViewed: shots }) : a;
+  const cb = b === undefined ? critic({}, { shotsViewed: shots }) : b;
+  writeVerdicts({ results: [{ dir, requestId: id, criticA: ca, criticB: cb, claims: noClaims ? null : claimsResult ?? claims() }] });
+  return JSON.parse(readFileSync(join(dir, 'verdict.json'), 'utf8'));
+}
+
+test('WIRING, CONTROL: a piece that has everything the rule asks for passes through writeVerdicts, so the failures below are the wiring and not a broken fixture', () => {
+  const v = judged('P01');
+  assert.equal(v.status, 'pass', JSON.stringify(v.reasons));
+  assert.equal(v.nonCritic.runEndedBy, 'done');
+  assert.deepEqual(v.nonCritic.screenshots.missing, []);
+  assert.deepEqual(v.nonCritic.screenshots.planned, ['overview', 'three-quarter', 'close-up', 'spawn-eye']);
+  assert.equal(v.nonCritic.playTest.errors, 0);
+});
+
+test('WIRING: THE RUN MUST HAVE ENDED NORMALLY. A timeout, a stop, a harness stop and a missing run record all fail through writeVerdicts', () => {
+  for (const endedBy of ['timeout', 'stopped', 'never-started', 'poll-failed', 'harness-stopped', 'no-reply', 'unknown-stop-reason', 'error', 'quota']) {
+    const v = judged('P01', { endedBy });
+    assert.equal(v.status, 'fail', endedBy);
+    assert.match(v.reasons.join('\n'), new RegExp(`the run did not end normally \\(${endedBy}\\)`), endedBy);
+    assert.equal(v.nonCritic.runEndedBy, endedBy);
+  }
+  // a run record with no ending in it, and no run record at all, are not a normal ending either
+  const noEnding = judged('P02', { run: { startedAt: '2026-10-05T10:01:00Z', minutes: 4 } });
+  assert.equal(noEnding.status, 'fail');
+  assert.match(noEnding.reasons.join('\n'), /did not end normally \(unknown\)/);
+  const noRecord = judged('P03', { run: null });
+  assert.equal(noRecord.status, 'fail');
+  assert.match(noRecord.reasons.join('\n'), /did not end normally \(unknown\)/);
+  // a dry run and a harness abort are named as such
+  assert.match(judged('P04', { dryRun: true }).reasons.join('\n'), /did not end normally \(dry-run\)/);
+  assert.match(judged('P05', { aborted: { step: 'captures', message: 'x' } }).reasons.join('\n'), /did not end normally \(aborted\)/);
+});
+
+test('WIRING: EVERY SCREENSHOT THE CRITICS WERE GIVEN IS CHECKED. A critic that omits one from what it viewed makes the piece unevaluable, in writeVerdicts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eval-wire-'));
+  const shots = ['overview.png', 'three-quarter.png', 'close-up.png', 'spawn-eye.png', 'play-1.png', 'play-2.png', 'play-3.png'];
+  const v = judged('P01', {}, { root: dir, b: critic({}, { shotsViewed: shots.filter((s) => s !== 'play-3.png') }) });
+  assert.equal(v.status, 'unevaluable');
+  assert.match(v.reasons.join('\n'), /critic B is not usable: did not view 1 of 7 screenshots: play-3\.png/);
+  assert.equal(v.lower, null);
+  assert.deepEqual(v.shotsGiven, shots, 'the verdict records the pictures the critics were given');
+  // a critic that viewed none
+  assert.match(judged('P02', {}, { a: critic({}, { shotsViewed: [] }) }).reasons.join('\n'), /critic A is not usable: did not view 7 of 7 screenshots/);
+});
+
+test('WIRING: THE PLANNED PICTURES. The pictures found on disk are not the definition of "every picture": a planned one that failed makes the piece unevaluable', () => {
+  const failedCapture = (name) => ({ name, file: null, error: 'screen_capture returned no picture (text: Studio is busy)' });
+  // the finding's first probe: every world camera and the UI capture failed, only a play frame exists, both critics score 9 and mark UI N/A
+  const probe = judged('U01', {
+    kind: 'both', shots: ['play-1.png'],
+    captures: [...['overview', 'three-quarter', 'close-up', 'spawn-eye'].map(failedCapture), failedCapture('ui')],
+  });
+  assert.equal(probe.status, 'unevaluable');
+  assert.equal(probe.pass, false);
+  assert.equal(probe.passIgnoringFunctionalChecks, false);
+  assert.match(probe.reasons.join('\n'), /screenshots: 5 of 5 planned pictures are missing \(overview: screen_capture returned no picture/);
+  assert.equal(probe.lower, null);
+  // one of four world pictures failed; the three that exist were viewed by both critics
+  const partial = judged('P01', { shots: ['overview.png', 'three-quarter.png', 'spawn-eye.png', 'play-1.png'], captures: [
+    { name: 'overview', file: 'shots/overview.png', error: null }, { name: 'three-quarter', file: 'shots/three-quarter.png', error: null },
+    failedCapture('close-up'), { name: 'spawn-eye', file: 'shots/spawn-eye.png', error: null },
+  ] });
+  assert.equal(partial.status, 'unevaluable');
+  assert.match(partial.reasons.join('\n'), /screenshots: 1 of 4 planned pictures are missing \(close-up: screen_capture returned no picture \(text: Studio is busy\)\)/);
+  assert.deepEqual(partial.nonCritic.screenshots.missing.map((m) => m.name), ['close-up']);
+  // a capture the manifest says succeeded whose file is not in shots/
+  const gone = judged('P02', { shots: ['overview.png', 'three-quarter.png', 'close-up.png'], captures: WORLD_NAMES.map((n) => ({ name: n, file: `shots/${n}.png`, error: null })) });
+  assert.match(gone.reasons.join('\n'), /spawn-eye: the file is not in shots\//);
+  // a UI piece whose UI picture failed
+  const ui = judged('U02', { kind: 'ui', shots: ['play-1.png'], captures: [failedCapture('ui')] });
+  assert.equal(ui.status, 'unevaluable');
+  assert.match(ui.reasons.join('\n'), /1 of 1 planned pictures are missing \(ui: /);
+  // a manifest that records no build cannot say what was planned
+  const noBuild = judged('P03', { build: null });
+  assert.equal(noBuild.status, 'unevaluable');
+  assert.match(noBuild.reasons.join('\n'), /screenshots: the manifest does not say which pictures the piece should have/);
+  // CONTROL: a UI piece with its picture passes
+  const ok = judged('U03', { kind: 'ui', shots: ['ui-1920x1080.png', 'play-1.png'] }, { a: critic({ ui: 9 }, { shotsViewed: ['ui-1920x1080.png', 'play-1.png'] }), b: critic({ ui: 9 }, { shotsViewed: ['ui-1920x1080.png', 'play-1.png'] }) });
+  assert.equal(ok.status, 'pass', JSON.stringify(ok.reasons));
+});
+
+test('WIRING: THE UI AREA ON A UI PIECE. Both critics marking it N/A is refused when the harness found a UI, or when the request is in the UI category', () => {
+  const uiShots = ['ui-1280x720.png', 'play-1.png'];
+  const view = { shotsViewed: uiShots };
+  const both = judged('P01', { kind: 'ui', shots: uiShots }, { a: critic({}, view), b: critic({}, view) });
+  assert.equal(both.status, 'unevaluable');
+  assert.match(both.reasons.join('\n'), /ui: both critics marked UI\/UX N\/A, but the harness found a screen UI in what was built/);
+  // a UI-category request whose build was classified as a world piece: still a UI request
+  const byCategory = judged('U01', {}, {});
+  assert.equal(byCategory.status, 'unevaluable');
+  assert.match(byCategory.reasons.join('\n'), /ui: both critics marked UI\/UX N\/A, but the request is in the UI category/);
+  // CONTROLS: a props piece with a world build may leave the UI area N/A (that is the rule), and one critic scoring the UI is enough
+  assert.equal(judged('P02').status, 'pass');
+  const shots7 = ['overview.png', 'three-quarter.png', 'close-up.png', 'spawn-eye.png', 'play-1.png', 'play-2.png', 'play-3.png'];
+  const one = judged('U02', {}, { a: critic({ ui: 9 }, { shotsViewed: shots7 }), b: critic({}, { shotsViewed: shots7 }) });
+  assert.equal(one.status, 'pass', JSON.stringify(one.reasons));
+});
+
+test('WIRING: THE PLAY TEST COUNTS ZERO ONLY WITH EVIDENCE. Every missing source, and a record that merely says errors 0, leave the piece unevaluable', () => {
+  const base = { started: true, serverAnswered: true, errors: 0, warnings: 0, console: { errors: 0, warnings: 0 }, logServer: { errors: 0, warnings: 0, first: [] }, logClient: null, frames: [] };
+  assert.equal(judged('P01', { playTest: base }).status, 'pass', 'CONTROL: the client log and the frames are not required');
+  for (const [label, play, pattern] of [
+    ['an old-style record that only says errors: 0', { errors: 0, warnings: 0 }, /play did not start/],
+    ['play never started', { ...base, started: false }, /play did not start/],
+    ['the server never answered', { ...base, serverAnswered: false }, /the server did not answer while the place was playing/],
+    ['the server log was not read', { ...base, logServer: null }, /the server log could not be read/],
+    ['the console was not read', { ...base, console: null }, /the console could not be read/],
+    ['the finding\'s probe: only the client log was read', { ...base, logServer: null, console: null, logClient: { errors: 0, warnings: 0, first: [] } }, /server log could not be read; the console could not be read/],
+    ['no play-test record at all', null, /play test: it did not run/],
+  ]) {
+    const v = judged('P01', { playTest: play });
+    assert.equal(v.status, 'unevaluable', label);
+    assert.equal(v.passIgnoringFunctionalChecks, false, label);
+    assert.match(v.reasons.join('\n'), pattern, label);
+    assert.equal(v.nonCritic.playTest === null || v.nonCritic.playTest.errors === null, true, `${label}: the verdict must not record 0 errors`);
+  }
+  // an error that was seen stands, and fails the piece, even when another source is missing
+  const seen = judged('P01', { playTest: { ...base, console: null, logServer: { errors: 2, warnings: 0, first: [] }, errors: 2 } });
+  assert.equal(seen.status, 'fail');
+  assert.match(seen.reasons.join('\n'), /play test: 2 errors/);
+});
+
+test('WIRING: passIgnoringFunctionalChecks counts a piece only when the checks are the ONLY gap, through writeVerdicts', () => {
+  const noChecks = { functionalChecks: { defined: false } };
+  assert.equal(judged('P01', noChecks).passIgnoringFunctionalChecks, true, 'CONTROL');
+  assert.equal(judged('P02', noChecks, { noClaims: true }).passIgnoringFunctionalChecks, false, 'the claim audit never ran');
+  assert.equal(judged('P03', { ...noChecks, playTest: null }).passIgnoringFunctionalChecks, false, 'the play test never ran');
+  assert.equal(judged('P04', { ...noChecks, shots: ['overview.png', 'play-1.png'] }).passIgnoringFunctionalChecks, false, 'planned pictures are missing');
+  assert.equal(judged('P05', noChecks, { a: null }).passIgnoringFunctionalChecks, false, 'a critic returned nothing');
+  assert.equal(judged('P06', { ...noChecks, endedBy: 'timeout' }).passIgnoringFunctionalChecks, false);
+});
+
+test('the claim auditor is told what the harness measured and that an unread console is not an empty one', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'eval-wire-'));
+  const dir = piece(root, 'MT', 'P01', { console: '(the console was not read: get_console_output failed after the play test: console unavailable)\n', playTest: { started: true, serverAnswered: true, errors: null, warnings: null, unestablished: ['the console could not be read'], console: null, logServer: { errors: 0, warnings: 1, first: ['ServerScriptService.Main:3: boom'] }, logClient: null, frames: [{ name: 'play-1', file: 'shots/play-1.png' }, { name: 'play-2', file: null, error: 'x' }] } });
+  const args = prepare([dir]);
+  const m = args.pieces[0].measured;
+  assert.equal(m.build.addedParts, 8);
+  assert.deepEqual(m.build.addedByService, { Workspace: 8, ServerScriptService: 1 });
+  assert.deepEqual(m.playTest.sourcesRead, { console: false, serverLog: true, clientLog: false });
+  assert.deepEqual(m.playTest.notEstablished, ['the console could not be read']);
+  assert.equal(m.playTest.framesCaptured, 1);
+  assert.deepEqual(m.playTest.firstErrorLines, ['ServerScriptService.Main:3: boom']);
+  const { calls } = await runWorkflow(args, okAgent);
+  const audit = calls.find((c) => c.opts.label === 'P01 claim audit').prompt;
+  assert.match(audit, /WHAT THE HARNESS MEASURED/);
+  assert.match(audit, /"addedParts": 8/);
+  assert.match(audit, /"notEstablished": \[\s*"the console could not be read"\s*\]/);
+  assert.match(audit, /the console was not read: get_console_output failed/);
+  assert.match(audit, /that is not the same as nothing printed/);
+  for (const c of calls.filter((x) => /critic/.test(x.opts.label))) assert.equal(/WHAT THE HARNESS MEASURED|addedParts/.test(c.prompt), false, 'a critic never sees the measurements');
+});
+
+test('BASELINE: a piece that ran without a cleared conversation is named beside the numbers, because it shared the chat of the pieces before it', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'eval-pipe-'));
+  await verdicted(root, [
+    { id: 'P01', opts: {} },
+    { id: 'P02', opts: { conversation: undefined, ...{} } },
+    { id: 'P03', opts: { conversation: { cleared: false, status: 409 } } },
+    { id: 'P04', opts: { conversation: null } },
+  ]);
+  const agg = aggregate(collect('MT', root).pieces);
+  assert.deepEqual(agg.conversation, { freshChat: 2, attempted: 4, sharedChat: ['P03', 'P04'] });
+  const md = renderMarkdown('MT', agg);
+  assert.match(md, /Conversation: 2 of 4 attempted pieces ran in a FRESH conversation/);
+  assert.match(md, /\*\*2 attempted piece\(s\) SHARED THE PROJECT'S EARLIER CONVERSATION.*: P03, P04\.\*\*/);
+  assert.match(md, /not comparable with a fresh-chat piece/);
 });

@@ -59,6 +59,43 @@ export function readPiece(dirArg) {
   };
 }
 
+/**
+ * What the harness itself measured, in the few lines the claim auditor can check a reply against: what the run added to the
+ * place (counts from Studio, not from the reply), and what the play test did and read. Null parts are absent records.
+ */
+export function measuredSummary(manifest) {
+  const b = manifest?.build ?? null;
+  const p = manifest?.playTest ?? null;
+  const frames = Array.isArray(p?.frames) ? p.frames : [];
+  return {
+    build: b
+      ? {
+          kind: b.kind ?? null,
+          addedInstances: b.addedInstances ?? null,
+          addedParts: b.addedParts ?? null,
+          addedScripts: b.addedScripts ?? null,
+          addedByService: b.addedByService && !Array.isArray(b.addedByService) ? b.addedByService : {},
+          bounds: b.bounds ?? null,
+          terrain: b.terrain ?? null,
+          screenGuis: (b.screenGuis ?? []).map((g) => ({ name: g.name, enabled: g.enabled, guiObjects: g.guiObjects, texts: g.texts })),
+        }
+      : null,
+    playTest: p
+      ? {
+          started: p.started === true,
+          serverAnswered: p.serverAnswered === true,
+          errors: Number.isFinite(p.errors) ? p.errors : null,
+          warnings: Number.isFinite(p.warnings) ? p.warnings : null,
+          notEstablished: p.unestablished ?? null,
+          sourcesRead: { console: Boolean(p.console), serverLog: Boolean(p.logServer), clientLog: Boolean(p.logClient) },
+          framesCaptured: frames.filter((f) => f.file).length,
+          firstErrorLines: [...(p.logServer?.first ?? []), ...(p.logClient?.first ?? [])].slice(0, 10),
+        }
+      : null,
+    ui: manifest?.ui ? { note: manifest.ui.note ?? null } : null,
+  };
+}
+
 /** The step list as plain text, one line per tool call, for the claim auditor. */
 export function stepsText(steps) {
   if (!steps) return '(no step record)';

@@ -4,14 +4,16 @@
 //
 //   node scripts/eval/write-verdicts.mjs <results.json> [--prepared <args.json from prepare-critics>]
 //
-// The pass rule is lib/verdict.mjs; this script only gathers its inputs from the folder (play-test errors and the
-// functional-check record come from manifest.json, never from a model) and writes the files.
+// The pass rule is lib/verdict.mjs; this script only gathers its inputs from the folder (the play-test evidence, the
+// pictures the piece was planned to have, whether it is a UI piece, how the run ended and the functional-check record all
+// come from manifest.json, never from a model) and writes the files.
 // With --prepared, a piece that was skipped by prepare-critics but whose agent run DID start (its screenshots failed, say)
 // gets an `unevaluable` verdict naming the reason, so it is counted as attempted and never as a pass. A skipped piece with
 // no agent run (a dry run, a harness abort before the run) gets no verdict: it was not attempted.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { playTestEvidence, plannedShotNames } from './lib/capture-plan.mjs';
 import { readPiece } from './lib/piece-files.mjs';
 import { computeVerdict } from './lib/verdict.mjs';
 
@@ -34,9 +36,40 @@ export function unsupportedClaims(claims) {
   return [...seen.values()];
 }
 
+/**
+ * The pictures the piece was planned to have (from its kind, as recorded in the manifest) and which of them are missing: a
+ * planned picture counts only when its capture was recorded with a file AND that file is in shots/. The files found on disk
+ * are never the definition of "every picture": a piece with one picture of four is not a piece with all its pictures.
+ */
+export function plannedPictures(piece) {
+  const names = plannedShotNames(piece.manifest?.build?.kind);
+  if (!names) return null;
+  const onDisk = new Set(piece.shots.map((s) => s.name));
+  const missing = [];
+  for (const name of names) {
+    const rec = (piece.manifest?.captures ?? []).find((c) => c.name === name);
+    if (rec?.file && onDisk.has(basename(rec.file))) continue;
+    missing.push({ name, why: rec?.error ?? (rec?.file ? 'the file is not in shots/' : 'no capture was recorded') });
+  }
+  return { names, missing };
+}
+
+/** Why the UI area may not be N/A for this piece, or null when it may: the harness found a screen UI, or the request is a UI request. */
+export function uiRequiredBecause(piece) {
+  const kind = piece.manifest?.build?.kind;
+  if (kind === 'ui' || kind === 'both') return 'the harness found a screen UI in what was built';
+  if (piece.category === 'ui') return 'the request is in the UI category';
+  return null;
+}
+
 export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] } = {}) {
   const m = piece.manifest ?? {};
-  const play = m.playTest && Number.isFinite(m.playTest.errors) ? { errors: m.playTest.errors, warnings: m.playTest.warnings ?? null } : null;
+  // The play test counts only with the evidence that the place ran: a record that says `errors: 0` without it is not read as 0.
+  const evidence = playTestEvidence(m.playTest);
+  const recorded = Number.isFinite(m.playTest?.errors) ? m.playTest.errors : null;
+  const play = m.playTest
+    ? { errors: recorded !== null && (recorded > 0 || evidence.established) ? recorded : null, warnings: m.playTest.warnings ?? null, why: evidence.missing }
+    : null;
   const unsupported = unsupportedClaims(claims);
   const dryRun = m.harness?.dryRun === true;
   const verdict = computeVerdict({
@@ -44,6 +77,8 @@ export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] 
     criticA: criticA ?? null,
     criticB: criticB ?? null,
     shotsGiven: piece.shots.map((s) => s.name),
+    planned: plannedPictures(piece),
+    uiRequired: uiRequiredBecause(piece),
     playTest: play,
     functionalChecks: m.functionalChecks ?? { defined: false },
     claims: unsupported ? { unsupported } : null,
