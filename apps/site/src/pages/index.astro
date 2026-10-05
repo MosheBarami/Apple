@@ -32,7 +32,7 @@ const price = (id: (typeof paid)[number]) => formatMoney(PLAN_COPY[id].priceUsdM
  */
 const pluginHero = STUDIO_PLUGIN_STORE_LIVE
   ? 'The Studio plugin is free on the Creator Store.'
-  : 'The Studio plugin is not open to new customers yet, so for now you can sign up and use the chat.';
+  : 'New customers cannot get the Studio plugin yet; for now you can use the chat.';
 const description = STUDIO_PLUGIN_STORE_LIVE
   ? 'StudPilot is an AI co-pilot for Roblox Studio, in beta. Ask for a piece of your game and a free plugin builds it in your own Studio place. Free while in beta.'
   : 'StudPilot is an AI co-pilot for Roblox Studio, in beta. The Studio plugin is not open to new customers yet; you can sign up and use the chat. Free while in beta.';
@@ -48,12 +48,11 @@ const pairStep = STUDIO_PLUGIN_STORE_LIVE
       <div class="hero__copy">
         <p class="hero__meta">
           <span class="badge">Beta</span>
-          <span class="kicker">The bar we are building to</span>
         </p>
         <h1 id="hero-title" class="display">Ask for any piece. It looks pro, it works, and we never claim what we didn't prove.</h1>
         <p class="lede">
           StudPilot is an AI co-pilot for Roblox Studio. You ask in the web app, and a plugin builds the piece in your own
-          Studio place. The line above is the bar we are building to. It is not a result we are claiming.
+          Studio place. The headline is the bar we are building to, not a result we claim.
         </p>
         <p class="hero__plugin" data-plugin-line>{pluginHero} <a href="/docs/plugin">Where the plugin stands</a>.</p>
         <div class="hero__cta">
