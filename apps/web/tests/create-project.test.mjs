@@ -282,3 +282,16 @@ test('the creation hook asks the person nothing: it takes no arguments', () => {
   assert.doesNotMatch(hook, /template/i, 'the hook reads a template');
   assert.match(hook, /\.insert\(\{ owner_id: ownerId, name: [^}]*\}\)/, 'the insert carries something besides an owner and a name');
 });
+
+/* ------------------------------------------------------------------ the docs say what the button does --- */
+
+test('the getting-started page describes one-click create: it does not tell a reader to name a project first, and says how to rename', () => {
+  const page = readFileSync(join(WEB, '..', 'site', 'src', 'pages', 'docs', 'getting-started.astro'), 'utf8').replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const words = page.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  assert.match(words, /Click New project and you land in the chat workspace at once/, 'the page does not say the click opens the project');
+  assert.doesNotMatch(words, /give it a name|name it before|enter a name|type a name|choose a name/i, 'the page still describes a dialog that asks for a name');
+  assert.ok(words.includes(`“${UNTITLED_PREFIX} 1”`), 'the page does not say what a new project is called');
+  assert.match(words, /click its title to rename it/, 'the page does not say how to rename');
+  // And what it says is true: the workspace title is where a project is renamed.
+  assert.match(readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8'), /<EditableProjectTitle projectId=\{projectId\}/);
+});
