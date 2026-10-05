@@ -93,8 +93,11 @@ const QUOTA_ENDINGS = [
   // RESTATED 2026-10-01: ccbf8d59 reworded "today's shared building capacity" into plain language; same ending.
   { owner: 'service', phrase: 'has reached its building limit' },
   { owner: 'service', phrase: 'An administrator paused generation' },
-  { owner: 'reader', phrase: 'your daily Credits ran out' },
-  { owner: 'reader', phrase: 'the last of your Credits for today' },
+  // RESTATED (M2 review, cycle 2): the worker names the limit that bound ("your daily/monthly Credits ran out",
+  // "the last of your Credits today/this month"), so the two reader-side endings are matched by the part that is
+  // the same for both periods. Same property: both reader-owned endings are still written by do/session.ts.
+  { owner: 'reader', phrase: 'Credits ran out. They refill' },
+  { owner: 'reader', phrase: 'That used the last of your Credits' },
 ];
 
 test("'quota' really is four endings that disagree about whose allowance ran out", () => {

@@ -38,7 +38,7 @@ import type {
   ProductModel,
   PluginCapabilityReportV1,
 } from '@studpilot/shared';
-import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
+import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, quotaLimit, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@studpilot/shared';
 import { asUiTheme, uiThemeContextLine, type UiTheme } from '@studpilot/shared';
 import { WIRE_HEADERS, echoSubprotocol, readWire } from '@studpilot/shared';
@@ -72,7 +72,7 @@ import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, sele
 import { playCheckReading } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
-import { creditsForNeurons } from '../pricing';
+import { creditsForNeurons, MAX_NEURONS_PER_REQUEST } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
@@ -3547,7 +3547,9 @@ export class SessionDO extends DurableObject<Env> {
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
     if (!quota.ok) {
-      this.refuseOne(origin, { type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
+      // The limit that stopped them: Free's month is used up in six days, and midnight refills nothing then.
+      const limit = quotaLimit(quota.state);
+      this.refuseOne(origin, { type: 'error', code: 'quota', message: `${limit.label} Credits are used up. They refill ${limit.refillWhen}.` });
       this.broadcast({ type: 'quota', quota: quota.state });
       return;
     }
@@ -4059,7 +4061,8 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
       if (state.unmetered !== true && state.creditsRemaining <= 0) {
-        agent.finalText = agent.finalText || 'I paused because your daily Credits ran out. Progress is saved.';
+        const limit = quotaLimit(state);
+        agent.finalText = agent.finalText || `I paused because your ${limit.label.toLowerCase()} Credits ran out. They refill ${limit.refillWhen}. Progress is saved.`;
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -4294,7 +4297,7 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: pending });
       pending = '';
     };
-    const raced = await this.untilStopped(llmChat(
+    const stepCall = llmChat(
       this.env,
       {
         model: gatewayModel,
@@ -4334,11 +4337,14 @@ export class SessionDO extends DurableObject<Env> {
       // paid work. See StepRefusedError.
       if (e instanceof RateLimitedError) throw new StepRefusedError(e.message);
       throw e;
-    }));
+    });
+    const raced = await this.untilStopped(stepCall);
     // G10: Stop pressed while the model is still thinking ends the run now instead of when the call
-    // returns. Nothing from that call is applied or charged: its answer, if it ever comes, is dropped.
+    // returns. Nothing from that call is applied: its answer, if it ever comes, is dropped. Its COST is
+    // not: the provider call is not cancelled, so what it used is charged when it finishes.
     if (raced === STOPPED_IN_FLIGHT) {
       agent.status = 'stopping';
+      this.settleAbandonedStep(agent, stepCall);
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -4433,9 +4439,10 @@ export class SessionDO extends DurableObject<Env> {
         // they have run out mid-run: finish this step's work, then stop cleanly. What was left is
         // already taken (settleUsage) and the step is not refunded: see AgentState.allowanceUsedUp.
         agent.allowanceUsedUp = true;
+        const limit = quotaLimit(settle.state);
         agent.finalText =
           (res.text || agent.finalText || '') +
-          '\n\nThat used the last of your Credits for today. Everything so far is saved — they refill at midnight UTC.';
+          `\n\nThat used the last of your Credits ${limit.window}. Everything so far is saved. They refill ${limit.refillWhen}.`;
         this.broadcast({ type: 'quota', quota: settle.state });
         await this.finishRun(agent, 'quota');
         return;
@@ -5715,6 +5722,27 @@ export class SessionDO extends DurableObject<Env> {
     if (owed > 0) await this.settleUsage(agent, owed);
   }
 
+  /**
+   * A MODEL STEP THE RUN WALKED AWAY FROM STILL RUNS, AND STILL COSTS (review of d1a25c4e, finding 1).
+   *
+   * Stop ends a run at once and the provider call is not cancelled: it finishes, and the service pays for it
+   * (up to MAX_NEURONS_PER_REQUEST, 1,200 neurons = 40 ledger units). Only the 1-unit admission had been charged,
+   * so send-and-Stop in a loop bought a step of compute for 1 unit each time. The run is already over and its
+   * answer is dropped, but what the step used is charged to the person when it resolves: up to what they have
+   * left, like every settlement (settleUsage). Its measured usage when it reports one, the step's ceiling when
+   * it does not. A call that FAILS charges nothing: the gateway releases its reservation and records no spend.
+   * The run row and the meter are brought to what the ledger took, so the transcript and the balance agree.
+   */
+  private settleAbandonedStep(agent: AgentState, call: Promise<{ neurons: number }>): void {
+    void call.then(async (res) => {
+      const before = agent.creditsSpent;
+      await this.settleNeurons(agent, Number.isFinite(res?.neurons) && res.neurons >= 0 ? res.neurons : MAX_NEURONS_PER_REQUEST);
+      if (agent.creditsSpent === before) return;
+      this.sql.exec(`update messages set credits_spent = ? where id = ?`, agent.creditsSpent, agent.msgId);
+      this.broadcast({ type: 'quota', quota: await this.quotaState(agent.userId) });
+    }).catch(() => {});
+  }
+
   /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
   private async runSelfCheckLook(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx) {
     ctx.evidence = ledger;
@@ -6195,17 +6223,21 @@ export class SessionDO extends DurableObject<Env> {
     //   one from before this run paid for itself. ]]
     if (agent.userId) {
       const state = await this.quotaState(agent.userId).catch(() => null);
-      const band = state ? usageBand(state.creditsRemaining, state.creditsDaily) : 'fine';
+      // Measured against the limit that binds: Free's 30 a month is spent in six days, and "2 of 5 left today" is
+      // false when the month has 2 left. The meter reads the same period (usage-meter-model.ts).
+      const limit = quotaLimit(state);
+      const total = state ? (limit.period === 'month' ? state.creditsMonthly : state.creditsDaily) : 0;
+      const band = state ? usageBand(state.creditsRemaining, total) : 'fine';
       if (state && band !== 'fine') {
         const usage = notify(this.env, {
           kind: 'usage_threshold',
           recipientId: agent.userId,
           subject: `usage:${dayKey(Date.now())}:${band}`,
-          title: band === 'exhausted' ? 'Your Credits for today are used up' : 'You are running low on Credits',
+          title: band === 'exhausted' ? `Your Credits for ${limit.window} are used up` : 'You are running low on Credits',
           body:
             band === 'exhausted'
-              ? `They refill at ${state.resetsAtIso}.`
-              : `${creditsText(state.creditsRemaining)} of ${creditsText(state.creditsDaily)} Credits left today. They refill at ${state.resetsAtIso}.`,
+              ? `They refill at ${limit.resetsAtIso}.`
+              : `${creditsText(state.creditsRemaining)} of ${creditsText(total)} Credits left ${limit.window}. They refill at ${limit.resetsAtIso}.`,
           at: Date.now(),
         }).then(() => undefined);
         void usage.catch(() => {});

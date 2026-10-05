@@ -2272,7 +2272,7 @@ app.get('/api/projects/:id/roadmap', async (c) => {
       projectId: ctx.project.id,
       ...out.roadmap,
       shape: publicShape(out.shape),
-      notes: [...out.roadmap.notes, 'Daily Credits are used up, so this is the unranked roadmap.'],
+      notes: [...out.roadmap.notes, 'Your Credits are used up, so this is the unranked roadmap.'],
     });
   }
   const chat: RoadmapChat = async ({ system, user: prompt }) => {
@@ -3538,7 +3538,7 @@ app.get('/api/docs/search', async (c) => {
     body: JSON.stringify({ credits: 1, kind: 'docs_search' }),
   });
   const { ok } = (await spend.json()) as { ok: boolean };
-  if (!ok) return c.json({ error: 'Daily Credits used up', hits: [] }, 429);
+  if (!ok) return c.json({ error: 'Credits used up', hits: [] }, 429);
   try {
     const { hits, outcome, citations } = await searchDocsDetailed(c.env, q, 6);
     // `outcome` travels with the results, always — a caller that renders an empty list has to be

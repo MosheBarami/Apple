@@ -404,7 +404,8 @@ const TERMINAL_NOTE: Record<TerminalKind, string> = {
   failed: 'Stopped by an error',
   stopped: 'Stopped by you',
   incomplete: 'Finished without changing anything',
-  quota: 'Out of Credits for today',
+  // Not "for today": the run can also stop on the month's limit (or the service's own capacity).
+  quota: 'Out of Credits',
 };
 
 /**

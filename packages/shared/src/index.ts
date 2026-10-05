@@ -1612,6 +1612,65 @@ export interface QuotaState {
   unmetered?: boolean;
 }
 
+/** The first instant of the next UTC month: when a monthly limit lifts. */
+export function nextMonthResetIso(now: number): string {
+  const d = new Date(now);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** Which limit is the one a person is held by, and when THAT one lifts. */
+export interface QuotaLimit {
+  period: 'day' | 'month';
+  /** 'Daily' | 'Monthly' */
+  label: string;
+  /** 'today' | 'this month' */
+  window: string;
+  /** The instant it lifts: the next UTC midnight, or the first instant of the next UTC month. */
+  resetsAtIso: string;
+  /** 'at midnight UTC' | 'on 1 November at 00:00 UTC', for "They refill ...". */
+  refillWhen: string;
+}
+
+/**
+ * WHICH LIMIT STOPPED A PERSON, AND WHEN IT REALLY LIFTS.
+ *
+ * The ledger spends min(dayLeft, monthLeft). Free's 30 a month is used up in six full days, and from then on the
+ * day is not what stops anybody: "Daily Credits are used up. They refill at midnight UTC" promised the allowance
+ * back in hours when it is weeks away. Every sentence that names a limit or a refill reads it here. A tie names
+ * the month (tomorrow's midnight would refill nothing), as the usage meter always did. A state without the
+ * figures reads as the day, the wire's own `resetsAtIso`.
+ */
+export function quotaLimit(
+  q: Partial<Pick<QuotaState, 'creditsDaily' | 'creditsUsedToday' | 'creditsMonthly' | 'creditsUsedThisMonth' | 'resetsAtIso'>> | null | undefined,
+  now: number = Date.now(),
+): QuotaLimit {
+  const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+  const dayLeft = finite(q?.creditsDaily) && finite(q?.creditsUsedToday) ? Math.max(0, q.creditsDaily - q.creditsUsedToday) : null;
+  const monthLeft = finite(q?.creditsMonthly) && finite(q?.creditsUsedThisMonth) ? Math.max(0, q.creditsMonthly - q.creditsUsedThisMonth) : null;
+  if (dayLeft !== null && monthLeft !== null && monthLeft <= dayLeft) {
+    const resetsAtIso = nextMonthResetIso(now);
+    const first = new Date(resetsAtIso);
+    return {
+      period: 'month',
+      label: 'Monthly',
+      window: 'this month',
+      resetsAtIso,
+      refillWhen: `on 1 ${MONTH_NAMES[first.getUTCMonth()]} at 00:00 UTC`,
+    };
+  }
+  const midnight = new Date(now);
+  midnight.setUTCHours(24, 0, 0, 0);
+  return {
+    period: 'day',
+    label: 'Daily',
+    window: 'today',
+    resetsAtIso: typeof q?.resetsAtIso === 'string' && Number.isFinite(Date.parse(q.resetsAtIso)) ? q.resetsAtIso : midnight.toISOString(),
+    refillWhen: 'at midnight UTC',
+  };
+}
+
 export interface CheckpointMeta {
   id: string;
   label: string;
@@ -2356,7 +2415,7 @@ function planCopy(id: PlanId, blurb: string, highlights: string[]): PlanCopy {
 
 export const PLAN_COPY: Record<PlanId, PlanCopy> = {
   free: planCopy('free', 'Enough to build something real and see whether StudPilot suits you.', [
-    'Every build mode',
+    'The same StudPilot engine as every plan',
     STUDIO_PLUGIN_STORE_LIVE ? 'Studio plugin' : 'Studio integration · public installation unavailable',
     'Checkpoints and restore',
   ]),

@@ -107,7 +107,11 @@ test('the run that spends the last Credits says so, once per day per band', () =
   assert.ok(emit, 'nothing emits usage_threshold any more');
   assert.match(emit[1], /recipientId: agent\.userId/);
   assert.match(emit[1], /subject: `usage:\$\{dayKey\([\s\S]*?\}:\$\{band\}`/, 'the day and the band are the dedupe subject');
-  assert.match(body, /usageBand\(state\.creditsRemaining, state\.creditsDaily\)/, 'the band must come from the shared threshold');
+  // RESTATED (M2 review, cycle 2): the band is measured against the limit that BINDS (the month when it is what
+  // is running out), not always the day. The property: it comes from the shared usageBand, over the balance and
+  // that period's total, which is read from the state's own daily and monthly figures.
+  assert.match(body, /usageBand\(state\.creditsRemaining, total\)/, 'the band must come from the shared threshold');
+  assert.match(body, /const total = state \? \(limit\.period === 'month' \? state\.creditsMonthly : state\.creditsDaily\) : 0;/, 'and be measured against the binding limit');
   assert.match(body, /band !== 'fine'/, 'a healthy balance must not notify');
 });
 

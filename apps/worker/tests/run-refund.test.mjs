@@ -247,6 +247,28 @@ test('a settlement (upTo) charges what is LEFT and says it was not paid in full;
   assert.equal(unreadable.state.allowanceRemaining, unreadable.state.creditsDaily);
 });
 
+test('a settlement (upTo) draws on PURCHASED/granted credits when the allowance is spent, and stops at what they cover', async () => {
+  //[[ Review cycle 2, finding 2. The ceiling is allowanceRemaining + credits; with `credits` dropped every
+  //   other test still passed, because each one has credits at 0 or an allowance that covers the amount. ]]
+  const q = quota({ credits: 30 });
+  await q.spend(750); // the whole day's allowance; 30 purchased credits remain
+  const spent = await q.state();
+  assert.equal(spent.allowanceRemaining, 0, 'the fixture: the allowance is spent');
+  assert.equal(spent.credits, 30, 'the fixture: 30 credits remain');
+
+  const covered = await q.call('/spend', { credits: 20, kind: 'usage_agent', upTo: true });
+  assert.equal(covered.ok, true, 'a settlement the remaining credits cover is paid in full');
+  assert.equal(covered.fromAllowance, 0);
+  assert.equal(covered.fromCredits, 20, 'drawn from the credits, since there is no allowance');
+  assert.equal((await q.state()).credits, 10);
+
+  const part = await q.call('/spend', { credits: 40, kind: 'usage_agent', upTo: true });
+  assert.equal(part.ok, false, 'one the credits cannot cover is part-paid');
+  assert.equal(part.fromAllowance, 0);
+  assert.equal(part.fromCredits, 10, 'and takes what the credits hold, no more');
+  assert.equal((await q.state()).credits, 0);
+});
+
 test('THE REFUND PUTS BACK EXACTLY WHAT WAS TAKEN, in the same two ledgers', async () => {
   const q = quota({ credits: 10 });
   const daily = (await q.state()).creditsDaily;
@@ -351,6 +373,11 @@ class SqlMemory {
       if (row) Object.assign(row, { stop_reason, run_failure, credits_spent });
       return result();
     }
+    if (q.startsWith('update messages set credits_spent = ? where id = ?')) {
+      const row = this.messages.find((m) => m.id === args[1]);
+      if (row) row.credits_spent = args[0];
+      return result();
+    }
     if (q.startsWith('insert into oplog(')) {
       const [op_id, kind, ok, summary, created_at, failure, run_id] = args;
       this.oplog.push({ op_id, kind, ok, summary, created_at, failure, run_id });
@@ -433,7 +460,7 @@ function gatewayResponse({ finishReason = 'stop', text = '', toolCalls = [], neu
   };
 }
 
-function makeSession({ responses = [], book = ledger() } = {}) {
+function makeSession({ responses = [], book = ledger(), chat = null } = {}) {
   const store = new Map([['bind', { projectId: 'project-1', projectName: 'Test Place', ownerId: 'owner-1' }]]);
   const sql = new SqlMemory();
   const sent = [];
@@ -492,10 +519,10 @@ function makeSession({ responses = [], book = ledger() } = {}) {
         return { bind(...a) { rec.args = a; return this; }, async first() { return null; }, async all() { return { results: [] }; }, async run() { return { success: true, meta: { changes: 0 } }; } };
       },
     },
-    __testChat: async () => {
+    __testChat: chat ?? (async () => {
       assert.ok(queue.length > 0, 'the test gateway ran more times than the fixture supplied');
       return structuredClone(queue.shift());
-    },
+    }),
   };
   return { session: new SessionDO(ctx, env), store, sql, sent, book, ws, corpus };
 }
@@ -659,6 +686,109 @@ test('THE FREE ALLOWANCE CANNOT BE FARMED: a request that overruns it takes what
   assert.equal((await q.state()).allowanceRemaining, 0);
 });
 
+/** Wait (real time) until `ok()` holds, or fail naming what never happened. */
+async function until(ok, what, ms = 3000) {
+  const t0 = Date.now();
+  while (!ok()) {
+    assert.ok(Date.now() - t0 < ms, `timed out waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
+/**
+ * One request, Stop pressed while its model step is in flight, then the abandoned step finishes and
+ * reports `neurons`. Returns what the session did and whether the step ran at all (false when the
+ * request was refused at the door).
+ */
+async function sendAndStopInFlight(book, neurons) {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  let entered = false;
+  const h = makeSession({
+    book,
+    chat: async () => { entered = true; await gate; return gatewayResponse({ finishReason: 'stop', text: 'Half an answer.', neurons }); },
+  });
+  await start(h, 'build a small tower');
+  if (h.sent.some((m) => m.type === 'error' && m.code === 'quota')) return { h, ran: false };
+  const alarm = h.session.alarm();
+  await until(() => entered, 'the model step to start');
+  h.store.set('stopRequested', Date.now()); // the Stop button (stop-signal.ts STOP_KEY)
+  await alarm;
+  assert.equal(lastEnd(h).stopReason, 'stopped', 'Stop ends the run at once, without waiting for the provider');
+  release(); // the provider call the run walked away from now finishes, and is billed to the service
+  return { h, ran: true };
+}
+
+test('STOP IN FLIGHT IS NOT FREE: the abandoned step is settled when it finishes, so send-and-Stop cannot loop at 40 to 1', async () => {
+  //[[ Review cycle 2, finding 1. Stop while a model step is in flight ended the run at once with only
+  //   the 1-unit admission charged, and the abandoned provider call still finished and was billed to
+  //   the service: up to MAX_NEURONS_PER_REQUEST (1,200 neurons = 40 ledger units). A Free account
+  //   could send and Stop in a loop at 40 units of compute for every 1 it paid. The fix settles the
+  //   step's measured usage when the call resolves, capped by what the person has left. ]]
+  const q = quota();
+  await q.spend(600);
+  assert.equal((await q.state()).allowanceRemaining, 150, 'the fixture: 150 ledger units left of Free\'s 750');
+  const book = realBook(q);
+
+  let computeRun = 0; // ledger units of provider compute that ran, whoever paid for it
+  let lastRun;
+  let iterations = 0;
+  for (; iterations < 12; iterations++) {
+    const { h, ran } = await sendAndStopInFlight(book, 1200);
+    if (!ran) break;
+    computeRun += 40;
+    // The step is settled in the background once it resolves: give the ledger time to hear of it.
+    // (Not asserted here: unfixed, nothing ever arrives and the loop below is what shows it.)
+    await until(() => book.spends.length >= 2 * (iterations + 1), 'the settlement', 400).catch(() => {});
+    lastRun = h;
+  }
+  assert.ok(iterations < 12, 'the loop must end by itself: before the fix 150 units paid for 150 requests and it never did');
+  const state = await q.state();
+  assert.equal(state.allowanceRemaining, 0, 'the allowance is spent by the compute that ran, so the next request is refused at the door');
+  assert.equal(iterations, 4, '150 units buy 4 abandoned 40-unit steps (the last one is part-paid), not 150 requests');
+  assert.ok(computeRun <= 150 + 40, `compute that ran (${computeRun} units) is bounded by the allowance plus one step`);
+  assert.equal(book.spends.filter((s) => s.ok === false && s.fromAllowance > 0).length, 1, 'the last step is paid as far as the balance goes (upTo), not dropped');
+  assert.equal(book.refunds.length, 0, 'a Stop is not a refund');
+  assert.ok(lastRun.sent.some((m) => m.type === 'quota'), 'the meter is told what the settlement took');
+});
+
+test('a Stop in flight charges the step\'s MEASURED usage, not its ceiling, and records it on the run row', async () => {
+  const q = quota();
+  const book = realBook(q);
+  const { h } = await sendAndStopInFlight(book, 300); // 10 ledger units
+  await until(() => book.spends.length >= 2, 'the settlement');
+  assert.equal(book.spends[1].credits, 10 - 1, 'owed is the step\'s 10 units less the 1 already taken at the door');
+  assert.equal((await q.state()).allowanceRemaining, 750 - 10, 'the person paid for what the step used and no more');
+  await until(() => assistantRow(h)?.credits_spent === 10, 'the run row to carry the settled cost');
+});
+
+test('a Stop in flight whose step reports no usage is charged the step\'s ceiling, as far as the balance goes', async () => {
+  const q = quota();
+  await q.spend(700); // 50 units left: the ceiling is 40 ledger units (1,200 neurons), so it fits
+  const book = realBook(q);
+  await sendAndStopInFlight(book, NaN);
+  await until(() => book.spends.length >= 2, 'the settlement');
+  assert.equal(book.spends[1].credits, 40 - 1, 'the ceiling (MAX_NEURONS_PER_REQUEST = 1,200 neurons = 40 units) less the admission unit');
+  assert.equal((await q.state()).allowanceRemaining, 50 - 40);
+});
+
+test('a step abandoned by Stop that FAILS cost nothing and is not charged', async () => {
+  const q = quota();
+  const book = realBook(q);
+  let fail;
+  const gate = new Promise((_, rej) => { fail = rej; });
+  let entered = false;
+  const h = makeSession({ book, chat: async () => { entered = true; await gate; } });
+  await start(h);
+  const alarm = h.session.alarm();
+  await until(() => entered, 'the model step to start');
+  h.store.set('stopRequested', Date.now());
+  await alarm;
+  fail(new Error('rate limited'));
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(book.spends.length, 1, 'only the admission: the gateway releases its reservation on a failed call, so nothing ran up');
+});
+
 /** The notification rows a run wrote: { kind, title, body } from the bound values of the inbox insert. */
 const notificationsWritten = (h) =>
   h.corpus.filter((c) => /^insert into notifications\(/.test(c.sql.trim())).map((c) => ({ kind: c.args[2], title: c.args[4], body: c.args[5] }));
@@ -694,6 +824,98 @@ test('THE LOW-CREDITS NOTIFICATION IS IN CREDITS TOO, and the empty one promises
   assert.match(out.title, /used up/);
   assert.match(out.body, /^They refill at \S+\.$/);
   assert.doesNotMatch(out.body, /bigger plan|cover the gap/i);
+});
+
+// ------------------------------------------------ which limit stopped you, and when it lifts
+//[[ Review cycle 2, finding 3. quotaState spends min(dayLeft, monthLeft), and Free's 30 credits a month are
+//   used up in six full days. Every sentence below said "Daily Credits are used up. They refill at midnight UTC"
+//   even then, promising the allowance back in hours when it is weeks away. ]]
+
+/** A Free account (750 ledger units a day, 4,500 a month) with some of each already spent. */
+function freeAccount({ today = 0, earlierThisMonth = 0 } = {}) {
+  const q = quota();
+  // Earlier days of THIS month, on a key that is never today's (day "00"), so only the month sum sees them.
+  if (earlierThisMonth) q.rows.push({ day: `${new Date().toISOString().slice(0, 7)}-00`, kind: 'seed', credits: earlierThisMonth });
+  if (today) q.rows.push({ day: new Date().toISOString().slice(0, 10), kind: 'seed', credits: today });
+  return { q, book: realBook(q) };
+}
+const monthName = (offset) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + offset, 1))
+  .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+const nextMonthIso = () => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)).toISOString();
+
+test('REFUSED AT THE DOOR: the DAY is what ran out, and the message says midnight UTC', async () => {
+  const { book } = freeAccount({ today: 750 });
+  const h = makeSession({ book });
+  await start(h);
+  const refusal = h.sent.find((m) => m.type === 'error' && m.code === 'quota');
+  assert.equal(refusal?.message, 'Daily Credits are used up. They refill at midnight UTC.');
+});
+
+test('REFUSED AT THE DOOR: the MONTH is what ran out, so it says monthly and the first of next month, never midnight', async () => {
+  const { book } = freeAccount({ earlierThisMonth: 4500 }); // nothing spent today: the day has its full 750
+  const h = makeSession({ book });
+  await start(h);
+  const refusal = h.sent.find((m) => m.type === 'error' && m.code === 'quota');
+  assert.equal(refusal?.message, `Monthly Credits are used up. They refill on 1 ${monthName(1)} at 00:00 UTC.`);
+  assert.doesNotMatch(refusal.message, /midnight|Daily/);
+});
+
+test('A RUN THAT USES THE LAST OF THE MONTH SAYS THE MONTH, and what it says about the refill is the month\'s', async () => {
+  const { q, book } = freeAccount({ earlierThisMonth: 4440 }); // 60 left this month; the day still has 750
+  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Some progress.', neurons: 3000 })] });
+  await start(h);
+  await h.session.alarm();
+  assert.equal(lastEnd(h).stopReason, 'quota');
+  assert.equal((await q.state()).allowanceRemaining, 0, 'the fixture ended on the month, with the day still holding credits');
+  const reply = assistantRow(h).content;
+  assert.match(reply, new RegExp(`the last of your Credits this month\\. Everything so far is saved\\. They refill on 1 ${monthName(1)} at 00:00 UTC\\.`));
+  assert.doesNotMatch(reply, /midnight|for today/);
+});
+
+test('A RUN THAT USES THE LAST OF THE DAY SAYS TODAY AND MIDNIGHT UTC', async () => {
+  const { book } = freeAccount({ today: 700 });
+  const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Some progress.', neurons: 3000 })] });
+  await start(h);
+  await h.session.alarm();
+  assert.equal(lastEnd(h).stopReason, 'quota');
+  assert.match(assistantRow(h).content, /the last of your Credits today\. Everything so far is saved\. They refill at midnight UTC\./);
+});
+
+test('A RUN PAUSED BETWEEN STEPS names the limit that ran out', async () => {
+  for (const [account, expected] of [
+    [{ earlierThisMonth: 4449 }, new RegExp(`your monthly Credits ran out\\. They refill on 1 ${monthName(1)} at 00:00 UTC\\. Progress is saved`)],
+    [{ today: 699 }, /your daily Credits ran out\. They refill at midnight UTC\. Progress is saved/],
+  ]) {
+    // 51 units left: 1 taken at the door, and the first step's 1,530 neurons (51 units in all) settle the other 50 exactly. 0 left, step 2 is not run.
+    const { book } = freeAccount(account);
+    const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'obby checkpoint' }) };
+    const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'tool_calls', neurons: 1530, toolCalls: [{ id: 's1', ...call }] })] });
+    await start(h);
+    await h.session.alarm();
+    if (lastEnd(h) === undefined) await h.session.alarm();
+    assert.match(assistantRow(h).content, expected);
+  }
+});
+
+test('THE EMPTY-CREDITS NOTIFICATION AND THE LOW-CREDITS WARNING NAME THE MONTH WHEN THE MONTH IS WHAT BINDS', async () => {
+  // Month used up exactly by this run: the title and body are the month's, with the real instant.
+  const out = freeAccount({ earlierThisMonth: 4440 });
+  const h = makeSession({ book: out.book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Done.', neurons: 3000 })] });
+  await start(h, 'explain what this project does', 'plan');
+  await h.session.alarm();
+  const n = notificationsWritten(h).find((x) => x.kind === 'usage_threshold');
+  assert.ok(n, 'no usage_threshold notification was written');
+  assert.equal(n.title, 'Your Credits for this month are used up');
+  assert.equal(n.body, `They refill at ${nextMonthIso()}.`);
+
+  // Month nearly used up (about 8% left of 30 credits): the warning is measured against the month, not the day.
+  const low = freeAccount({ earlierThisMonth: 4000 });
+  const l = makeSession({ book: low.book, responses: [gatewayResponse({ finishReason: 'stop', text: 'Done.', neurons: 3000 })] });
+  await start(l, 'explain what this project does', 'plan');
+  await l.session.alarm();
+  const w = notificationsWritten(l).find((x) => x.kind === 'usage_threshold');
+  assert.ok(w, 'no low-credits warning was written for a month at 11% (400 of 4,500 left, less this run)');
+  assert.match(w.body, new RegExp(`^2\\.\\d\\d of 30\\.00 Credits left this month\\. They refill at ${nextMonthIso().replace(/[.]/g, '\\.')}\\.$`));
 });
 
 test('A LEDGER THAT DID NOT ANSWER IS NOT A REFUND THAT FAILED — and the reply claims neither', async () => {

@@ -160,6 +160,37 @@ test('/credits adds the purchased balance in credits too', async () => {
   assert.match(out.body.data.content, /plus 2\.00 purchased/);
 });
 
+// A Free-sized month nearly used up while the day still has plenty: the MONTH is the limit that binds, and
+// Discord must not promise "today's allowance" back in hours (review cycle 2, finding 3).
+const MONTH_BOUND = { ...QUOTA, creditsRemaining: 50, allowanceRemaining: 50, creditsUsedThisMonth: 3950 };
+const nextMonth = () => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1))
+  .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+
+test('/credits says when the limit that BINDS refills: the day in hours, the month on the first', async () => {
+  const day = await handleInteraction(cmd('credits'), ports());
+  assert.match(day.body.data.content, /Today's allowance refills in about 5 hours\./);
+
+  const month = await handleInteraction(cmd('credits'), ports({ quota: async () => MONTH_BOUND }));
+  const text = month.body.data.content;
+  assert.match(text, new RegExp(`This month's allowance refills on 1 ${nextMonth()} at 00:00 UTC\\.`));
+  assert.match(text, /from this month's Pro allowance/, 'the balance line names the period it is measured against');
+  assert.doesNotMatch(text, /today's|in about \d+ hours?/i, 'no daily refill promised while the month is what binds');
+});
+
+test('/build refused for want of Credits names the limit that binds', async () => {
+  const empty = { creditsRemaining: 0, allowanceRemaining: 0, credits: 0 };
+  const refuse = async (quota) => {
+    const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), ports({ quota: async () => quota }));
+    const edits = [];
+    await out.deferred(async (c) => void edits.push(c));
+    return edits[0];
+  };
+  assert.match(await refuse({ ...QUOTA, ...empty }), /Today's allowance refills in about 5 hours\./);
+  const month = await refuse({ ...QUOTA, ...empty, creditsUsedThisMonth: 4000 });
+  assert.match(month, new RegExp(`This month's allowance refills on 1 ${nextMonth()} at 00:00 UTC\\.`));
+  assert.doesNotMatch(month, /today's|in about \d+ hours?/i);
+});
+
 test('/status reports the live run using the same words the web app uses', async () => {
   const out = await handleInteraction(cmd('status'), ports());
   assertMessage(out.body);

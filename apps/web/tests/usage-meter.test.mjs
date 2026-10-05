@@ -275,6 +275,18 @@ test('an ordinary day is still reported as a day', () => {
   assert.equal(v.resetsIn, 'resets in 3h', 'and it is the wire figure that is used');
 });
 
+test('WHAT THE EMPTY METER SAYS ABOUT THE REFILL IS THE BINDING LIMIT\'S: midnight UTC for the day, the first of next month for the month', () => {
+  // Review cycle 2, finding 3. Both are the "no credits left" dead stop; only the period differs.
+  const day = meterView(quota({ creditsUsedToday: 60, allowanceRemaining: 0, credits: 0 }), NOW, { upgradeAvailable: false });
+  assert.equal(day.period, 'day');
+  assert.match(day.nextAction ?? '', /refills at midnight UTC/);
+
+  const month = meterView(quota({ creditsUsedToday: 0, creditsUsedThisMonth: 900, allowanceRemaining: 0, credits: 0 }), NOW, { upgradeAvailable: false });
+  assert.equal(month.period, 'month');
+  assert.match(month.nextAction ?? '', /^The monthly limit lifts on 1 October at 00:00 UTC\./, 'NOW is 14 September: the month lifts on 1 October');
+  assert.doesNotMatch(month.nextAction ?? '', /midnight/);
+});
+
 test('the month boundary is the first instant of the next UTC month', () => {
   assert.equal(nextMonthResetIso(Date.UTC(2026, 8, 14, 12)), '2026-10-01T00:00:00.000Z');
   assert.equal(nextMonthResetIso(Date.UTC(2026, 11, 31, 23, 59)), '2027-01-01T00:00:00.000Z');

@@ -45,7 +45,7 @@
 //    the attribution ledger — an empty ledger is never drawn as a clearance — and it is the same
 //    mistake in a different subsystem.
 import {
-  PLAN_LIMITS, PLAN_COPY, TYPICAL_BUILD_CREDITS, creditsText, internalToCredits, isPlanId, type QuotaState, CREDIT_PURCHASE_LIVE,
+  PLAN_LIMITS, PLAN_COPY, TYPICAL_BUILD_CREDITS, creditsText, internalToCredits, isPlanId, quotaLimit, nextMonthResetIso, type QuotaState, CREDIT_PURCHASE_LIVE,
 } from '@studpilot/shared';
 
 export type MeterTone = 'good' | 'warn' | 'bad' | 'unknown' | 'pending';
@@ -141,13 +141,10 @@ export function resetsIn(iso: string | undefined, now: number): string | null {
 
 /**
  * The first instant of the next UTC month. The wire carries the DAILY reset only, and when the
- * month is the binding limit that figure is the wrong answer to "when does this lift". This is the
- * same UTC arithmetic the ledger keys by, not a second opinion about policy.
+ * month is the binding limit that figure is the wrong answer to "when does this lift". Defined once, in
+ * shared, with the rule for which limit binds (quotaLimit), so the worker's sentences and this meter agree.
  */
-export function nextMonthResetIso(now: number): string {
-  const d = new Date(now);
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();
-}
+export { nextMonthResetIso };
 
 const finite = (n: unknown): n is number => Number.isFinite(n);
 
@@ -172,13 +169,8 @@ export function meterView(
   // WHICH LIMIT IS BITING. allowanceRemaining is already the smaller of the two, so this only
   // decides what to CALL it. The month wins ties: at the moment they are equal, the day is about to
   // renew into a month that will not, and naming the month is the more useful of the two truths.
-  const dayLeft = finite(quota.creditsDaily) && finite(quota.creditsUsedToday)
-    ? Math.max(0, quota.creditsDaily - quota.creditsUsedToday)
-    : null;
-  const monthLeft = finite(quota.creditsMonthly) && finite(quota.creditsUsedThisMonth)
-    ? Math.max(0, quota.creditsMonthly - quota.creditsUsedThisMonth)
-    : null;
-  const period: MeterPeriod = dayLeft !== null && monthLeft !== null && monthLeft <= dayLeft ? 'month' : 'day';
+  const limit = quotaLimit(quota, now);
+  const period: MeterPeriod = limit.period;
 
   // The enforced table first; the wire's own figure only as a fallback for a plan we do not know.
   const wireTotal = period === 'month' ? quota.creditsMonthly : quota.creditsDaily;
@@ -256,7 +248,7 @@ export function meterView(
           ? 'Credits cannot be bought and paid plans are not available yet, so waiting is the way through.'
           : 'Credits cannot be bought yet. Usage and Credits shows whether a paid plan can raise it.');
     nextAction = period === 'month'
-      ? `The monthly limit does not lift until next month. ${monthlyPath}`
+      ? `The monthly limit lifts ${limit.refillWhen}. ${monthlyPath}`
       : CREDIT_PURCHASE_LIVE
         ? 'Wait for the reset, or add credits.'
         : 'It refills at midnight UTC. Credits cannot be bought yet, so waiting is the way through.';

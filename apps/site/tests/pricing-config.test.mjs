@@ -75,6 +75,21 @@ function note(title) {
   return plain(m[1]);
 }
 
+/**
+ * `phrase` in `t` with no digit, comma or point glued to its front: "25 Credits per day" is not "5 Credits per day",
+ * and a card that says it must not pass for the one that says the other. (A plain `includes` passed both.)
+ */
+const has = (t, phrase) => new RegExp(`(?<![\\d.,])${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\d)`).test(t);
+
+test('the card assertions are BOUNDED: a leading extra digit, or a trailing one, fails', () => {
+  assert.ok(has('Free $0 in beta 5 Credits per day · up to 30 a month', '5 Credits per day · up to 30 a month'));
+  assert.ok(!has('15 Credits per day · up to 30 a month', '5 Credits per day · up to 30 a month'), 'a leading extra digit passed');
+  assert.ok(!has('1,5 Credits per day · up to 30 a month', '5 Credits per day · up to 30 a month'), 'a thousands comma passed');
+  assert.ok(!has('2.5 Credits per day · up to 30 a month', '5 Credits per day · up to 30 a month'), 'a decimal point passed');
+  assert.ok(!has('100 Credits a month · up to 20 a day', '100 Credits a month · up to 2 a day'), 'a trailing extra digit passed');
+  assert.ok(!has('1100 Credits a month · up to 20 a day', '100 Credits a month · up to 20 a day'), 'four digits passed for three');
+});
+
 test('the page says the owner\'s line, exactly', () => {
   assert.ok(text.includes('Free while in beta. Paid plans start later'), 'the headline is not the decided line');
   assert.match(html, /<h1[^>]*>\s*Free while in beta\. Paid plans start later\s*<\/h1>/, 'and it is the page\'s one h1');
@@ -88,15 +103,15 @@ test('EACH CARD carries its own price, allowance and build count, from the plan 
     const t = cards[id];
     assert.ok(t.includes(plan.name), `${plan.name}: the card does not carry its own name`);
     // Price. Free is $0 in beta; a paid card is "<price> a month", adjacent, inside the card.
-    if (plan.priceUsdMonthly === 0) assert.match(t, /\$0 in beta/, `${plan.name}: the card does not say it is $0 in beta`);
-    else assert.ok(t.includes(`${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not on its card`);
+    if (plan.priceUsdMonthly === 0) assert.ok(has(t, '$0 in beta'), `${plan.name}: the card does not say it is $0 in beta`);
+    else assert.ok(has(t, `${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not on its card`);
     // Allowance. Free leads with its day (that is how it is given out), a paid plan with its month (its pool).
     const line = id === 'free'
       ? `${plan.creditsPerDay} Credits per day · up to ${plan.creditsPerMonth} a month`
       : `${plan.creditsPerMonth} Credits a month · up to ${plan.creditsPerDay} a day`;
-    assert.ok(t.includes(line), `${plan.name}: "${line}" is not on its card`);
+    assert.ok(has(t, line), `${plan.name}: "${line}" is not on its card`);
     // Build count.
-    assert.ok(t.includes(`About ${buildsPerMonth(id)} typical builds a month`), `${plan.name}: "About ${buildsPerMonth(id)} typical builds a month" is not on its card`);
+    assert.ok(has(t, `About ${buildsPerMonth(id)} typical builds a month`), `${plan.name}: "About ${buildsPerMonth(id)} typical builds a month" is not on its card`);
   }
   // Nothing crosses: a card never carries another plan's price or allowance (a swapped pair would pass the loop above).
   for (const id of LISTED_PLAN_IDS) {
@@ -108,10 +123,87 @@ test('EACH CARD carries its own price, allowance and build count, from the plan 
   }
   // The exact figures the owner decided, typed once, so a config edit that is wrong is caught here too
   // and not only a page that disagrees with it.
-  assert.ok(cards.builder.includes('$9.99 a month') && cards.studio.includes('$24.99 a month'));
-  assert.ok(cards.free.includes('5 Credits per day · up to 30 a month'));
-  assert.ok(cards.builder.includes('100 Credits a month · up to 20 a day') && cards.studio.includes('300 Credits a month · up to 30 a day'));
-  assert.ok(cards.free.includes('About 20 typical builds a month') && cards.builder.includes('About 70 typical builds') && cards.studio.includes('About 200 typical builds'));
+  assert.ok(has(cards.builder, '$9.99 a month') && has(cards.studio, '$24.99 a month'));
+  assert.ok(has(cards.free, '5 Credits per day · up to 30 a month'));
+  assert.ok(has(cards.builder, '100 Credits a month · up to 20 a day') && has(cards.studio, '300 Credits a month · up to 30 a day'));
+  assert.ok(has(cards.free, 'About 20 typical builds a month') && has(cards.builder, 'About 70 typical builds') && has(cards.studio, 'About 200 typical builds'));
+});
+
+/** One row of the comparison table, by its label: the cells keyed by the plan column they sit under, as a visitor reads them. */
+function matrixRow(label) {
+  const table = /<table class="compare"[\s\S]*?<\/table>/.exec(html);
+  assert.ok(table, 'no comparison table on the page');
+  const row = [...table[0].matchAll(/<tr[^>]*>\s*<th scope="row"[^>]*>([\s\S]*?)<\/th>([\s\S]*?)<\/tr>/g)]
+    .find((m) => plain(m[1].replace(/<span class="rownote"[\s\S]*?<\/span>/, '')) === label);
+  assert.ok(row, `no comparison row labelled "${label}"`);
+  return Object.fromEntries([...row[2].matchAll(/<td[^>]*data-label="([^"]*)"[^>]*>([\s\S]*?)<\/td>/g)].map((c) => [c[1], plain(c[2])]));
+}
+
+test('THE COMPARISON TABLE\'S Price, Credits a day, Credits a month AND builds ROWS are the plan table\'s, cell by cell', () => {
+  // Read from PLAN_TABLE, not from PLAN_FEATURES (which is what the page renders): a config that reverts, or a
+  // page that stops reading it, makes the cell differ from this. Then the decided figures, typed once.
+  const names = Object.fromEntries(LISTED_PLAN_IDS.map((id) => [PLAN_TABLE[id].name, id]));
+  const price = matrixRow('Price');
+  const day = matrixRow('Credits a day');
+  const month = matrixRow('Credits a month');
+  const builds = matrixRow('Typical builds a month');
+  for (const [name, id] of Object.entries(names)) {
+    const plan = PLAN_TABLE[id];
+    assert.equal(price[name], plan.priceUsdMonthly === 0 ? 'Free while in beta' : `${formatMoney(plan.priceUsdMonthly)} a month`, `Price / ${name}`);
+    assert.equal(day[name], String(plan.creditsPerDay), `Credits a day / ${name}: a ledger-unit figure (PLAN_LIMITS) is not what a person reads`);
+    assert.equal(month[name], String(plan.creditsPerMonth), `Credits a month / ${name}`);
+    assert.equal(builds[name], `About ${buildsPerMonth(id)}`, `Typical builds a month / ${name}`);
+  }
+  assert.deepEqual(Object.keys(price), ['Free', 'Pro', 'Max'], 'the columns are the listed plans, in order');
+  assert.deepEqual(price, { Free: 'Free while in beta', Pro: '$9.99 a month', Max: '$24.99 a month' }, 'the owner\'s line, not "Free forever"');
+  assert.deepEqual(day, { Free: '5', Pro: '20', Max: '30' });
+  assert.deepEqual(month, { Free: '30', Pro: '100', Max: '300' });
+});
+
+test('WHAT THE PAGE SAYS HAPPENS AT THE LIMIT names BOTH resets: midnight UTC for the day, the first of next month for the month', () => {
+  for (const q of ['What happens when I run out of Credits?', 'Can a build cost more than the table says?']) {
+    const a = faqAnswer(q);
+    assert.match(a, /midnight UTC/, `"${q}" does not say when the daily limit lifts`);
+    assert.match(a, /(1st of the next month|first of the next month)/i, `"${q}" does not say when the monthly limit lifts`);
+  }
+  // And never the one sentence that promises the day's refill whatever stopped you.
+  assert.doesNotMatch(faqAnswer('Can a build cost more than the table says?'), /the allowance refills at midnight UTC/);
+});
+
+test('THE DOCS PAGE ON LIMITS names both resets too', () => {
+  const file = fileURLToPath(new URL('../dist/docs/credits-and-limits/index.html', import.meta.url));
+  assert.ok(existsSync(file), 'dist/docs/credits-and-limits/index.html is missing: run `npx astro build` first');
+  const doc = plain(readFileSync(file, 'utf8'));
+  assert.match(doc, /The daily limit resets at midnight UTC/, 'the day\'s reset is not named');
+  assert.match(doc, /The monthly limit resets at 00:00 UTC on the 1st of the next month, and a new day does not lift it/, 'the month\'s reset is not named');
+  assert.doesNotMatch(doc, /Quotas reset at midnight UTC/, 'the sentence that promised the day\'s reset for both limits is back');
+});
+
+test('NO PAGE POINTS AT "Plans & Credits", which does not exist; the page that does is Usage and Credits (Plan & billing tab)', () => {
+  for (const [name, dist] of [['/pricing', 'pricing'], ['/terms', 'terms']]) {
+    const file = fileURLToPath(new URL(`../dist/${dist}/index.html`, import.meta.url));
+    const page = plain(readFileSync(file, 'utf8'));
+    assert.doesNotMatch(page, /Plans (&|and) Credits page/i, `${name} sends the reader to a page that does not exist`);
+  }
+  // /terms renders this sentence only when checkout is open, so the BUILT page cannot show it today: read the sources.
+  for (const name of ['terms', 'pricing']) {
+    const src = readFileSync(fileURLToPath(new URL(`../src/pages/${name}.astro`, import.meta.url)), 'utf8');
+    assert.doesNotMatch(src, /Plans (&amp;|&|and) Credits page/i, `${name}.astro sends the reader to a page that does not exist`);
+  }
+  assert.match(readFileSync(fileURLToPath(new URL('../src/pages/terms.astro', import.meta.url)), 'utf8'), /Plan &amp; billing tab of your account's Usage and Credits page/, 'terms.astro does not name the page that exists');
+  const faq = faqAnswer('Can I subscribe now?');
+  assert.match(faq, /Plan & billing tab of your account['\u2019]s Usage and Credits page/, 'the FAQ does not point at the page that shows purchase availability');
+  // And that page is real: the app has a Usage and Credits link and a Plan & billing tab.
+  const web = (p) => readFileSync(fileURLToPath(new URL(`../../web/src/${p}`, import.meta.url)), 'utf8');
+  assert.match(web('components/layout.tsx'), /Usage and Credits/);
+  assert.match(web('routes/usage.tsx'), /Plan &amp; billing/);
+});
+
+test('THE CHANGELOG DOES NOT DEFINE A CREDIT AS 30 NEURONS: a Credit is 150 ledger units, about $0.05 of compute', () => {
+  const file = fileURLToPath(new URL('../dist/changelog/index.html', import.meta.url));
+  const page = plain(readFileSync(file, 'utf8'));
+  assert.doesNotMatch(page, /1 Credit\s*=\s*30 neurons/i, 'the changelog still defines a Credit as 30 neurons');
+  assert.match(page, /The Credit you see today is 150 of those units, about \$0\.05 of AI compute/, 'and it says what a Credit is now');
 });
 
 test('Enterprise is not on the page, in any form', () => {

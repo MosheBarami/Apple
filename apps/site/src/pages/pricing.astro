@@ -206,7 +206,7 @@ const ceilingLines = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id)
 const limitFaq = [
   {
     q: 'What happens when I run out of Credits?',
-    a: `<p>StudPilot tells you plainly, mid-conversation, and shows when your quota resets (daily, at midnight UTC — the same instant for everyone, not 24 hours after you started). Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset. If it is the <em>monthly</em> ceiling you have reached rather than the day's, the next reset that helps you is the start of the month, and the workspace says which of the two you hit.</p>`,
+    a: `<p>StudPilot tells you plainly, mid-conversation, which limit you reached and when it lifts. The <em>daily</em> limit resets at midnight UTC, the same instant for everyone, not 24 hours after you started. The <em>monthly</em> limit resets at 00:00 UTC on the 1st of the next month, and a new day does not lift it. Nothing is lost — your chat, project and checkpoints stay exactly where they are. You can keep reading, browsing your project and restoring checkpoints; only new AI requests wait for the reset.</p>`,
   },
   {
     q: 'Why is there a limit at all?',
@@ -240,7 +240,7 @@ const limitFaq = [
   //   protocol still has nothing to carry it.
   {
     q: 'Can a build cost more than the table says?',
-    a: `<p>Yes. The table shows what builds typically cost, not a quote. A build is charged for the AI work it actually used, so a long one costs more. The workspace shows what a request cost once it has finished, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved, and the allowance refills at midnight UTC.</p>`,
+    a: `<p>Yes. The table shows what builds typically cost, not a quote. A build is charged for the AI work it actually used, so a long one costs more. The workspace shows what a request cost once it has finished, and if a run reaches the end of your Credits it stops there and says so — everything it finished by then is saved. The limit it reached lifts at midnight UTC if it was the day's, and at 00:00 UTC on the 1st of the next month if it was the month's.</p>`,
   },
   {
     q: 'What is a Credit?',
@@ -248,7 +248,7 @@ const limitFaq = [
   },
   {
     q: 'Can I subscribe now?',
-    a: `<p>Not yet. Paid checkout is not open. ${PLAN_COPY.builder.name} and ${PLAN_COPY.studio.name} are the planned subscription tiers, and charging starts later. Your account’s Plans &amp; Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
+    a: `<p>Not yet. Paid checkout is not open. ${PLAN_COPY.builder.name} and ${PLAN_COPY.studio.name} are the planned subscription tiers, and charging starts later. The Plan &amp; billing tab of your account’s Usage and Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
   },
 ];
 ---
