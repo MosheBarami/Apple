@@ -701,6 +701,10 @@ test('RE-AUTH for a Roblox-only account is signing in with Roblox again, for EVE
     assert.match(html, /<button[^>]*>Cancel<\/button>/, `${action}: and a way out`);
     assert.doesNotMatch(html, /invalid|roblox-0a1b/i, `${action}: the placeholder address is not on the dialog`);
   }
+  // And each one says why it is asking, in its own words, as the password dialog does.
+  assert.equal(new Set(SENSITIVE_ACTIONS.map((action) => text(dialogFor(ROBLOX_USER, action)))).size, SENSITIVE_ACTIONS.length, 'every action has its own explanation');
+  assert.match(text(dialogFor(ROBLOX_USER, 'delete-account')), /deletes your data from every store/);
+  assert.match(text(dialogFor(ROBLOX_USER, 'export-data')), /everything we keep about you/);
 });
 
 test('RE-AUTH for an account with a password is unchanged: a password box, and no Roblox link; and an address that merely LOOKS like the placeholder does not make an account passwordless', () => {
@@ -736,6 +740,18 @@ test('no screen prints a raw account address: Settings and the shell go through 
   const head = nodes(parse('routes', 'settings.tsx')).filter((n) => ts.isJsxElement(n) && attrText(n, 'className') === 'settings-signed');
   assert.equal(head.length, 1);
   assert.match(head[0].getText(), /identity\.signedInAs/, 'the sentence under the Settings title is the identity’s');
+});
+
+test('Settings offers a Roblox-only account no email or password form: the control of both rows is empty for it, and a form for everyone else', () => {
+  const rows = nodes(parse('routes', 'settings.tsx')).filter((n) => ts.isJsxElement(n) && tagOf(n) === 'Row' && ['email-address', 'password'].includes(attrText(n, 'id')));
+  assert.deepEqual(rows.map((r) => attrText(r, 'id')).sort(), ['email-address', 'password']);
+  for (const row of rows) {
+    const id = attrText(row, 'id');
+    const conditional = nodes(attr(row, 'control')).find((n) => ts.isConditionalExpression(n) && /identity\.roblox/.test(n.condition.getText()));
+    assert.ok(conditional, `${id}: the control does not branch on identity.roblox`);
+    assert.equal(conditional.whenTrue.getText(), 'null', `${id}: a Roblox-only account gets no control`);
+    assert.ok(nodes(conditional.whenFalse).some((n) => isTag(n) && ['form'].includes(tagOf(n))), `${id}: everybody else still gets the form`);
+  }
 });
 
 /* ------------------------------------------------------------------- clearing the previous account --- */

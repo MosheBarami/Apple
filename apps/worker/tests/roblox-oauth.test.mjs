@@ -1074,11 +1074,13 @@ test('the refresh token is stored sealed, is not in any response, and is the one
 test('signing in again replaces the stored token and bumps the version, so a refresh begun before it cannot overwrite it', async () => {
   const { db, world, env } = scene();
   await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
-  const first = rowsOf(db, 'select sealed_refresh, version from roblox_oauth_tokens')[0];
+  const first = rowsOf(db, 'select sealed_refresh, version, generation from roblox_oauth_tokens')[0];
   await signIn(env, world, { sub: SUB_A, username: 'Builder1' });
-  const second = rowsOf(db, 'select sealed_refresh, version from roblox_oauth_tokens')[0];
+  const second = rowsOf(db, 'select sealed_refresh, version, generation from roblox_oauth_tokens')[0];
   assert.equal(second.version, first.version + 1);
   assert.notEqual(second.sealed_refresh, first.sealed_refresh);
+  assert.match(first.generation, /^[A-Za-z0-9_-]{20,}$/, 'a random label, not a counter');
+  assert.notEqual(second.generation, first.generation, 'every sign-in is a new generation: it is a new authorization at Roblox');
   assert.equal(countRows(db.raw, 'select count(*) from roblox_oauth_tokens'), 1);
   db.close();
 });
