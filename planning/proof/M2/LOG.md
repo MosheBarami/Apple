@@ -121,3 +121,10 @@
     DKIM is still propagating.
   - Not yet observed: a test message actually arriving.
 - **BLOCKED.md:** C1 and E1 removed. N4 stays, because the OAuth login cannot reach AI Gateway.
+
+## 2026-10-05 (evening): owner rules for token economy; #33 merged and live
+- Owner: master Cloudflare token (`CLOUDFLARE_API_TOKEN_MASTER`) is the only key. N4 done with it: narrow `studpilot-worker-ops` token on the Worker as `CF_WORKER_OPS_TOKEN`.
+- AI Gateway logs API verified live; logs older than 30 days deleted from `golem` (oldest now 2026-09-09) and `default` (oldest now 2026-09-28).
+- Migration 0015 applied with its ledger row (FK gone). #33 merged (295474c3) and deployed.
+- Accent pick: one critic, violet 7, cyan 6, magenta 5: violet stays (`accent/`). Landing gate: 6 then 5 after one fix: STALLED.md.
+- Dependabot #67 (http-cache-semantics via Astro, build time only, no patched release listed): left open.
