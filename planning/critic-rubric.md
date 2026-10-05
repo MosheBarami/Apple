@@ -15,7 +15,10 @@ rubric text it used.
   - UI pieces: the screen in a Studio viewport at the size named in the file name (for example
     `ui-1920x1080`). The real size is in the name; do not assume another;
   - `play-1`, `play-2`, `play-3`: three frames taken in order, a moment apart, while the place was
-    running. Motion, particles and flicker show up as differences between them.
+    running. Motion, particles and flicker show up as differences between them. They may be absent when
+    the place could not be photographed while running; then judge feedback from the stills alone, and
+    do not call an effect missing only because a still cannot show motion (a glow, a light or a
+    particle emitter that is visible in a still counts).
 - Nothing else. You do not see the code, the reply, the logs or the other critic.
 
 You judge what the pictures show. Sound is proven by the logs, not by you, so do not score or guess it.
