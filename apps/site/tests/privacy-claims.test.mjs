@@ -480,6 +480,48 @@ test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTIO
   assert.doesNotMatch(profile.why, /\bconsent\b[^.]*\bwithdrawn\b/i, 'the receipt still says a consent was withdrawn');
 });
 
+test('THE PROFILE ROW\'S CONSENT FLAG is described as what it is, on the receipt AND on the live step: read into the export, the only proof the training gate accepts, and acted on by nothing while that gate is closed', async () => {
+  // `profiles.training_opt_in` is reset to off by the deletion. It is NOT "an old flag that nothing reads": the data export includes it (user-export.ts) and the training pipeline
+  // accepts consent proof only from that column (consent-staging.mjs). What is true is that nothing ACTS on it while the gate is closed. So long as either reader exists,
+  // neither the receipt's residue entry nor the step label the deletion writes may say or imply that nothing reads it. The label is read from the code that writes it (the step is
+  // run, with the database stubbed), the same way the residue is read from the evaluated list.
+  const userExport = await bundleWorker('user-export.ts', 'user-export.mjs');
+  const profilesSpec = userExport.USER_EXPORT.find((t) => t.table === 'profiles');
+  assert.ok(profilesSpec && profilesSpec.fields.includes('training_opt_in'), 'the export no longer includes profiles.training_opt_in: re-read what the receipt may say about the flag');
+  assert.match(code(join(ROOT, 'packages', 'training', 'src', 'consent-staging.mjs')), /proof\.source !== 'profiles\.training_opt_in'/, 'the training pipeline no longer takes its consent proof from profiles.training_opt_in: re-read what the receipt may say about the flag');
+  assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/, 'the gate is open: "nothing acts on it while the gate is closed" is no longer the sentence');
+
+  const asked = [];
+  const realFetch = globalThis.fetch;
+  const answer = (status) => { globalThis.fetch = async (url, init) => { asked.push({ url: String(url), body: init?.body }); return new Response(JSON.stringify([{ id: 'u-1' }]), { status }); }; };
+  const env = { SUPABASE_URL: 'https://supa.test', SUPABASE_ANON_KEY: 'anon' };
+  let done;
+  let failed;
+  try {
+    answer(200);
+    done = await RECEIPT.minimiseProfile(env, { userId: 'u-1', jwt: 'jwt' });
+    answer(500);
+    failed = await RECEIPT.minimiseProfile(env, { userId: 'u-1', jwt: 'jwt' });
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  const patch = JSON.parse(asked[0].body);
+  assert.equal(patch.training_opt_in, false, 'the deletion no longer resets the consent flag: the receipt says it does');
+  assert.equal(patch.display_name, null, 'the deletion no longer clears the display name');
+  assert.equal(done.status, 'erased');
+  assert.equal(failed.status, 'failed');
+
+  const UNREAD = /nothing reads|reads? (it|them|the flag) any more|any more|no longer (read|used|consulted)|\bunused\b|never read|(is|are) not read|\bold (consent )?flag\b|consent[^.]*\bwithdrawn/i;
+  const profile = RECEIPT.ACCOUNT_RESIDUE.find((r) => r.target.includes('public.profiles'));
+  for (const [where, text] of [['the residue entry for the account row', profile.why], ['the step label when the profile was cleared', done.target], ['the step label when it could not be', failed.target]]) {
+    assert.doesNotMatch(text, UNREAD, `${where} says or implies nothing reads the consent flag, which the export and the training gate do: "${text}"`);
+  }
+  assert.match(done.target, /display name cleared, consent flag reset to off/, 'the live step label does not say what the step did to the display name and the flag');
+  assert.match(profile.why, /consent flag reset to off/, 'the residue entry does not say the flag was reset to off');
+  assert.match(profile.why, /Nothing acts on that flag while the training gate is closed/, 'the residue entry does not say what is true of the flag: nothing acts on it while the gate is closed');
+  assert.match(profile.why, /data export still includes it/, 'the residue entry does not admit the export includes the flag');
+});
+
 test('what deletion does with the Roblox data is what the code does: revoke first, delete the token, the link last and only when everything else went', () => {
   const grant = erasure.indexOf('revokeStoredRobloxGrant(env, user.userId)');
   const tokens = erasure.indexOf("'roblox_oauth_tokens'");

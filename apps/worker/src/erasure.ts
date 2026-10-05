@@ -104,9 +104,9 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     store: 'postgres',
     target: 'public.profiles — the account row itself',
     why:
-      'Its display name has been cleared, and so has an old consent flag that nothing reads any more, ' +
-      'which is everything in the row that describes you. The row is anchored to the sign-in identity ' +
-      'above and goes when that does.',
+      'Its display name has been cleared and its consent flag reset to off, which is everything in the row ' +
+      'that describes you. Nothing acts on that flag while the training gate is closed, although a data ' +
+      'export still includes it. The row is anchored to the sign-in identity above and goes when that does.',
   },
   {
     store: 'postgres',
@@ -510,14 +510,14 @@ async function erasePostgresProjects(env: Env, user: AuthedUser): Promise<Erasur
  * This is minimisation, not deletion, and the receipt says so in `ACCOUNT_RESIDUE` rather than
  * counting it as the row having gone.
  */
-async function minimiseProfile(env: Env, user: AuthedUser): Promise<ErasureStep> {
+export async function minimiseProfile(env: Env, user: AuthedUser): Promise<ErasureStep> {
   const res = await supaRest<unknown[]>(env, user.jwt, `/profiles?id=eq.${encodeURIComponent(user.userId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ display_name: null, training_opt_in: false }),
     prefer: 'return=representation',
   });
   return res.ok
-    ? { store: 'postgres', target: 'profiles — display name cleared, old consent flag reset', status: 'erased', rows: Array.isArray(res.data) ? res.data.length : null }
+    ? { store: 'postgres', target: 'profiles — display name cleared, consent flag reset to off', status: 'erased', rows: Array.isArray(res.data) ? res.data.length : null }
     : { store: 'postgres', target: 'profiles — display name', status: 'failed', rows: null, detail: `patch returned ${res.status}` };
 }
 
