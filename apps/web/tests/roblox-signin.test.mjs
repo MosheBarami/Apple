@@ -707,6 +707,11 @@ test('a Roblox-only account is recognised by app_metadata.roblox_sub, never by t
   assert.equal(isRobloxAccount({ email: 'me@example.com', user_metadata: { roblox_sub: '1234567' }, app_metadata: {} }), false, 'user_metadata is written by the person; only app_metadata is the worker’s');
   for (const sub of [undefined, null, '', 'abc', '12 34', 1234567, {}, '1'.repeat(30)]) assert.equal(isRobloxAccount({ app_metadata: { roblox_sub: sub } }), false, `roblox_sub ${JSON.stringify(sub)}`);
   for (const nobody of [null, undefined, 'a string', 42, {}, { app_metadata: null }, { app_metadata: 'x' }]) assert.equal(isRobloxAccount(nobody), false);
+  // AFTER A LOST ROBLOX GRANT the worker clears the id and keeps a one-way code in its place (apps/worker/src/roblox-oauth.ts, `roblox_code`). The account is still a
+  // Roblox-only account with no password, so it must still be recognised as one, or Settings would ask it for a password it does not have, for ever.
+  assert.equal(isRobloxAccount({ email: PLACEHOLDER, app_metadata: { provider: 'email', roblox_code: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' } }), true, 'a wiped Roblox account is still a Roblox account');
+  assert.equal(isRobloxAccount({ email: 'me@example.com', user_metadata: { roblox_code: 'a1b2c3d4e5f60718293a4b5c6d7e8f90' }, app_metadata: {} }), false, 'user_metadata is written by the person');
+  for (const code of [undefined, null, '', 'A1B2C3D4E5F60718293A4B5C6D7E8F90', 'a1b2c3', 'g1b2c3d4e5f60718293a4b5c6d7e8f90', 12345, {}]) assert.equal(isRobloxAccount({ app_metadata: { roblox_code: code } }), false, `roblox_code ${JSON.stringify(code)}`);
   assert.equal(isPlaceholderAddress(PLACEHOLDER), true);
   assert.equal(isPlaceholderAddress('me@example.com'), false);
   assert.equal(isPlaceholderAddress(null), false);

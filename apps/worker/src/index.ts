@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
+import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -43,6 +43,7 @@ import {
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import { accountExportFilename, collectAccountExport } from './account-export';
 import { describeSweep, runRetentionSweeps } from './retention-sweep';
+import { describeGatewayRetention, pruneGatewayLogs, readGatewayRetention, rememberGatewayRetention } from './gateway-log-retention';
 import { analyticsActorId, consentIsStale, forgetAnalyticsConsent, refreshAnalyticsConsent } from './analytics-consent';
 import {
   ERASURE_CONFIRMATION,
@@ -3454,10 +3455,17 @@ app.get('/api/me/export', async (c) => {
  *      project-scoped store would hand back a receipt that looks finished.
  *   3. THE RECEIPT IS THE PRODUCT. Counts per store, from the stores; the Postgres step re-reads to
  *      confirm; and everything that survives is listed with the reason.
- *   4. IT DOES NOT SAY THE ACCOUNT IS GONE. The sign-in identity lives in `auth.users` and removing
- *      it needs a service-role credential this worker deliberately does not hold. `accountRemoved`
- *      is false and the residue says so in words, because "your account has been deleted" beside a
- *      login that still works is the lie this whole file exists to avoid.
+ *   4. IT SAYS THE ACCOUNT IS GONE ONLY WHEN SUPABASE SAID SO. The sign-in identity lives in
+ *      `auth.users`; since 2026-10-05 (owner decision D-14) the LAST step of the deletion removes it
+ *      with the Auth admin API, after Discord was unlinked and every other store had been swept, and
+ *      only when none of them failed. `accountRemoved` is true only then, so "your account has been
+ *      deleted" never sits beside a login that still works. A failed unlink or a failed removal is a
+ *      failed step: the receipt is incomplete and the route answers 207.
+ *
+ * IT CAN BE RUN AGAIN at any point. After a part-finished run the sign-in is still there (it goes
+ * last, and only when nothing failed), so the same person can sign in and repeat the request, and
+ * every step is a no-op over what is already gone. After a finished run the same call finds no
+ * projects, nothing to sweep and Auth answering "no such user", and reports that as done.
  *
  * GET on the same path is the status: what was requested, when, how much succeeded, and what is
  * still outstanding.
@@ -3615,6 +3623,13 @@ app.get('/api/admin/product-analytics', async (c) => {
   const days = Number(c.req.query('days') ?? 7);
   return c.json(await readProductAnalytics(c.env, days));
 });
+
+/**
+ * The AI Gateway log retention (gateway-log-retention.ts): whether the daily deletion of logs older than 30 days CAN run, which setting is
+ * missing when it cannot (names only, never values), and what the last run did. `configured: false` is the honest answer until owner item N4
+ * has put CF_WORKER_OPS_TOKEN on the Worker: in that state the step does nothing and says so, rather than reading as a quiet night.
+ */
+app.get('/api/admin/gateway-log-retention', async (c) => c.json(await readGatewayRetention(c.env)));
 
 /**
  * The raw logs behind the rollups: request logs, model traces, error logs, build logs, audit logs.
@@ -7417,6 +7432,56 @@ async function runScheduled(env: Env, cron: string | null): Promise<void> {
       fatal: false,
       actorId: null,
     });
+  }
+  // THE AI GATEWAY LOG, 30 DAYS (owner decision D-14). Its own step, after the sweeps and caught on its own: a refused call here must not
+  // cancel the retention sweep above, and a missing token (owner item N4) must not look like a night with nothing to delete. It is
+  // recorded either way, as an audit event in the admin log and as the last-run record GET /api/admin/gateway-log-retention reads.
+  const gateway = await pruneGatewayLogs(env);
+  await rememberGatewayRetention(env, gateway);
+  recordEvent({
+    kind: 'audit',
+    action: 'gateway_log_retention',
+    actorKind: 'system',
+    allowed: gateway.status === 'requested',
+    subject: describeGatewayRetention(gateway),
+  });
+  if (gateway.status === 'failed') {
+    recordEvent({
+      kind: 'error',
+      scope: 'retention:gateway_logs',
+      errorKind: 'sweep_failed',
+      message: gateway.reason ?? 'the gateway log deletion failed and gave no reason',
+      fatal: false,
+      actorId: null,
+    });
+  }
+  // ROBLOX GRANTS (owner decision D-14): ask Roblox whether each stored token is still valid, and wipe the Roblox data of a person whose grant is lost
+  // (Roblox Third-Party App Policy). Its own step, after the others: a Roblox outage must not cancel the retention sweep. The counts are recorded either
+  // way, so a night that checked nothing (no Roblox sign-in on this deployment) reads as that and not as a quiet night.
+  //
+  // A NIGHT THAT DID NOT DO ITS JOB IS NOT A GOOD NIGHT, and each way it can fail to is its own error event (and turns `allowed` off): `disagreed` (Roblox
+  // contradicted itself: the introspection call is wrong), `kept` (a wipe could not finish and is retried tomorrow), `unreadable` (CREDENTIAL_KEY rotated or lost: no
+  // token can be opened, so nothing is checked), `inconclusive` (Roblox ANSWERED and no answer could be acted on, or every token went unanswered: the call
+  // shape or the client credentials are wrong, and the check silently does nothing every night, which reads as a healthy one) and `unchecked` (the run reached its cap
+  // or its time budget, so some grants were not asked about tonight). The introspection call was written from a note and has never been seen to work live, so the
+  // two that would hide a call that never works are the two this must not leave silent.
+  const grants = await checkRobloxGrants(env);
+  const inconclusive = grants.unusable > 0 || (grants.checked > 0 && grants.unknown === grants.checked);
+  recordEvent({
+    kind: 'audit',
+    action: 'roblox_grant_check',
+    actorKind: 'system',
+    allowed: !grants.skipped && grants.disagreed === 0 && grants.kept === 0 && grants.unreadable === 0 && !inconclusive && grants.unchecked === 0,
+    subject: describeGrantCheck(grants),
+  });
+  for (const [count, scope, message] of [
+    [grants.disagreed, 'roblox-grants:introspection', 'Roblox reported a token inactive and a refresh then worked: the introspection call is misread and no grant was wiped for it'],
+    [grants.kept, 'roblox-grants:wipe', 'a grant Roblox reports lost could not be wiped yet (Supabase or the database could not be reached); it is retried at the next check'],
+    [grants.unreadable, 'roblox-grants:unreadable', 'a stored Roblox token could not be opened (CREDENTIAL_KEY rotated or lost), so it was not checked'],
+    [inconclusive ? 1 : 0, 'roblox-grants:inconclusive', 'Roblox gave no answer the check could act on (a refused request or credentials, an answer that is not a plain active flag, or no answer for any token): no grant was wiped for it, and the daily check is not working until this is fixed'],
+    [grants.unchecked, 'roblox-grants:unchecked', 'stored Roblox grants were not checked tonight because the run reached its cap or its time budget; tomorrow\'s run starts after the last one it reached'],
+  ] as const) {
+    if (count > 0) recordEvent({ kind: 'error', scope, errorKind: 'sweep_failed', message, fatal: false, actorId: null });
   }
   // Flushed here rather than left to `maybeFlush`: a scheduled invocation makes a handful of events
   // and then the isolate goes away, so a threshold-based flush would drop exactly the record that

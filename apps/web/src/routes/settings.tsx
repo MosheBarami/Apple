@@ -2102,8 +2102,8 @@ export function SettingsPage() {
       subject: DELETE_ACCOUNT_PHRASE,
       body:
         'Your projects, conversations, checkpoints, workspace files, memory, notifications, automations, ' +
-        'API keys and your stored Roblox key are deleted from every store StudPilot can reach. None of it can be ' +
-        'brought back. Your sign-in itself is not removed by this — the receipt afterwards names everything that survives, and why.',
+        'API keys and your stored Roblox key are deleted from every store StudPilot can reach, then your Discord link is removed, ' +
+        'then your Roblox link if you have one, and your sign-in is deleted last. None of it can be brought back. The receipt afterwards names everything that survives, and why.',
     },
   };
 
@@ -2703,12 +2703,14 @@ export function SettingsPage() {
         >
           <p className="settings-note">
             Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
-            keys and your stored Roblox key from every store StudPilot can reach. It cannot be undone.
+            keys and your stored Roblox key from every store StudPilot can reach, unlinks Discord, and then deletes your
+            sign-in. It cannot be undone.
           </p>
           <p className="settings-note">
-            It does not remove your sign-in. That needs an operator, and the receipt afterwards names it along with
-            everything else that survives and why — rather than telling you the account is gone while you can still log
-            in to it.
+            The order is your stores, then Discord, then your Roblox link, and your sign-in last, and only if every step before
+            it worked: if one fails, the receipt says which and your sign-in stays so you can run the deletion again (if the
+            sign-in itself is the step that fails, your Roblox link is put back so you can still confirm it is you). The
+            receipt also names everything that survives and why.
           </p>
           {/* MOVED INSIDE THE ROW. It used to sit between two <Row>s, which meant it was the one
               piece of prose on the page the search box could not hide: filtering to "delete

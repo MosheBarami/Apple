@@ -130,7 +130,7 @@ node scripts/check-site-semantics.mjs → exit 0
 > | 3.2 hero `?start=` | CLOSED | `apps/web/src/lib/pending-start.ts` — `capturePendingStart` / `takePendingStart` (a move, not a read) / `clearPendingStart`, wired through `auth-pages.tsx` and `dashboard.tsx`, tested in `apps/web/tests/pending-start.test.mjs` |
 > | 3.3 the 16-screens figure | CLOSED | `showcase-proof.ts` reads 21 and `21 September 2026`, from the manifest's own `counts.built` |
 > | 3.4 landing header | CLOSED | primary pill is `/app/signup`; Showcase added to the landing header |
-> | 3.5 no way to reach a human | CLOSED | Contact column with `mailto:apple.labs.app@gmail.com` in the landing footer |
+> | 3.5 no way to reach a human | CLOSED | Contact column with `mailto:support@studpilot.app` in the landing footer |
 > | 3.7 failures-become-evals | CLOSED | F-69/F-70/F-71 written, `packages/evals/tasks/observation-failure.json` cites each, linkage checked in two halves (`tasks.mjs` shape + `failures-linked.test.mjs` existence), falsified three ways |
 > | 3.10 Playwright MCP | CLOSED | `.mcp.json` at project scope, verified by a real initialize handshake returning Playwright 1.64.0-alpha, not by the file existing |
 > | 3.11 six commits on no remote | CLOSED | pushed; `git rev-list --count origin/main..HEAD` = 0 |
