@@ -25,7 +25,7 @@ export function moneySign(currency: string | undefined, symbol: string): { sign:
   return { sign, picture: !!named && !isMoneyGlyph(sign) };
 }
 
-/** A typed value the plugin understands as-is (compose-run.ts passes these through). */
+/** A typed value the plugin understands as-is (typed-spec.ts passes these through). */
 const udim2 = (xs: number, xo: number, ys: number, yo: number) => ({ t: 'UDim2', v: [xs, xo, ys, yo] });
 const udim = (s: number, o: number) => ({ t: 'UDim', v: [s, o] });
 const vec2 = (x: number, y: number) => ({ t: 'Vector2', v: [x, y] });

@@ -18,7 +18,7 @@
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite } from './compose';
 import { luau } from './compose';
-import { typed } from './compose-run';
+import { typed } from './typed-spec';
 import { findSounds, soundAssetId } from './fx-library';
 import { applySurfaceOp, userWantsOwnSurface } from './surfaces';
 import { studdedScreen } from './stud-ui';

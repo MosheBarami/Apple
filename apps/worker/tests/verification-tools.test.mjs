@@ -1,9 +1,9 @@
 /**
- * FIVE WAYS TO CHECK A BUILD, AND THE MODEL HAS TO KNOW WHICH ONE.
+ * FOUR WAYS TO CHECK A BUILD, AND THE MODEL HAS TO KNOW WHICH ONE.
  *
- * check_composition, audit_build, run_spec, run_and_check and inspect_visually all answer "is this
- * any good" and answer completely different questions. Two of them cost money: inspect_visually
- * renders and calls a vision model, run_and_check runs the place. Three are free.
+ * check_composition, audit_build, run_spec and run_and_check all answer "is this any good" and
+ * answer completely different questions. run_and_check runs the place; the other three are free.
+ * (A fifth, inspect_visually, rendered the scene and called a vision model: removed in M4, no vision.)
  *
  * Until now none of their descriptions mentioned any of the others, so the model chose between
  * them on vibes — and the cheapest correct answer is frequently one of the free ones. A tool
@@ -30,16 +30,17 @@ execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   { cwd: WORKER, stdio: 'pipe' });
 const T = await import(`file://${out}`);
 
-const VERIFIERS = ['check_composition', 'audit_build', 'run_spec', 'run_and_check', 'inspect_visually'];
+const VERIFIERS = ['check_composition', 'audit_build', 'run_spec', 'run_and_check'];
 const describe = (name) => {
   const def = T.toolDefs(true, undefined).find((d) => d.name === name);
   assert.ok(def, `${name} is not offered`);
   return def.description;
 };
 
-test('all five verifiers exist and are offered, so nothing below is vacuous', () => {
+test('all four verifiers exist and are offered, and the vision one is not, so nothing below is vacuous', () => {
   const offered = T.toolDefs(true, undefined).map((d) => d.name);
   for (const v of VERIFIERS) assert.ok(offered.includes(v), `${v} missing`);
+  assert.equal(offered.includes('inspect_visually'), false, 'M4: no tool sends a picture to a model');
 });
 
 test('check_composition consumes render_view layout data without run_code', async () => {
@@ -69,13 +70,13 @@ test('check_composition consumes render_view layout data without run_code', asyn
   assert.equal(typeof res.structure, 'string');
 });
 
-test('THE PAID ONES SAY THEY COST, and name the free one to try first', () => {
-  // The whole point. A model that does not know inspect_visually costs Credits will reach for it
-  // when audit_build would have found the defect for nothing.
-  const visual = describe('inspect_visually');
-  assert.match(visual, /costs Credits|cost/i, 'it must say it costs');
-  assert.match(visual, /audit_build/, 'and name the free alternative');
-  assert.match(visual, /free/i, 'and say that it is free');
+// RESTATED in M4: this used to hold the paid verifier (inspect_visually) to saying it costs Credits. There is no paid verifier any
+// more, so the property is the opposite one: no verifier's description sends the model to a vision critique.
+test('NO VERIFIER IS A PICTURE JUDGE: none names a vision model, a critique of an image or a look tool', () => {
+  for (const v of VERIFIERS) {
+    const d = describe(v);
+    assert.doesNotMatch(d, /vision model|critiqued as an image|inspect_visually|\blook tool\b|calls a vision/i, `${v} points at a picture judge`);
+  }
 });
 
 test('run_and_check says what it does NOT prove, and names what does', () => {
@@ -92,10 +93,10 @@ test('run_spec says what run_and_check cannot do', () => {
   assert.match(d, /errored|error/i);
 });
 
-test('audit_build says it does not replace the visual one', () => {
+test('audit_build says it judges geometry and lighting configuration, not how the result looks on screen', () => {
   const d = describe('audit_build');
-  assert.match(d, /inspect_visually/, 'it must name the tool it complements');
-  assert.match(d, /render/i, 'and say it does not look at one');
+  assert.match(d, /GEOMETRY/, 'it must say what it judges');
+  assert.match(d, /does not look at the render/i, 'and say it does not look at one');
 });
 
 test('every snake_case name in a verifier description is a real tool', () => {

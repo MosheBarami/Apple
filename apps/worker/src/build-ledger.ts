@@ -31,7 +31,7 @@ const MAX_SPECS = 3;
 const MAX_SPEC_CHARS = 20_000;
 
 /** Tools whose successful result leaves something standing that a later message may be about. */
-const LEDGER_TOOLS = new Set(['build_object', 'insert_library_model', 'insert_owner_component', 'dress_object', 'compose_game', 'build_game',
+const LEDGER_TOOLS = new Set(['build_object', 'insert_library_model', 'insert_owner_component', 'dress_object', 'build_game',
   'recreate_owner_game', 'install_owner_system', 'add_upgrades', 'build_studded_ui']);
 
 const rec = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {});
@@ -44,7 +44,6 @@ export function rootPathsOf(tool: string, result: unknown): string[] {
   if (typeof r.object === 'string') out.push(r.object);
   out.push(...strings(r.inserted));
   if (typeof r.screen === 'string' && r.screen) out.push(`game.StarterGui.${r.screen}`);
-  if (tool === 'compose_game' && typeof r.game === 'string') out.push('game.Workspace.AppleMap');
   return [...new Set(out)].slice(0, 8);
 }
 

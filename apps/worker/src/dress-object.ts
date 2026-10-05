@@ -14,7 +14,7 @@
  */
 import type { AgentCtx } from './tools';
 import { luau } from './compose';
-import { typed } from './compose-run';
+import { typed } from './typed-spec';
 import { findSounds, soundAssetId } from './fx-library';
 import { installAnimationPlayer } from './animate-tool';
 import { contrastStage, motionClip, writeObjectHud, type ObjectPart } from './object-tool';

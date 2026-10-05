@@ -1,11 +1,11 @@
 /**
- * THE EVIDENCE LEDGER — what this run changed, read back, looked at and played, as facts.
+ * THE EVIDENCE LEDGER — what this run changed, read back and played, as facts.
  *
- * It is the one thing the self-check (self-check.ts) stands on. Three consumers read it and nothing
- * else: the completion gate asks "did the work change since the last look" (look-gate.ts), the claim
- * audit asks "does anything this run observed support what the reply says" (claim-audit.ts), and the
- * `look` tool records what it saw (studio-look.ts). It carries FACTS, not opinions: no score, no
- * judgement, no list of subjects. What a fact means for a particular claim is the audit's business.
+ * It is the one thing the self-check (self-check.ts) stands on. The claim audit reads it and asks "does
+ * anything this run observed support what the reply says" (claim-audit.ts). It carries FACTS, not
+ * opinions: no score, no judgement, no list of subjects. What a fact means for a particular claim is the
+ * audit's business. There is no look in it: nothing in the product sends a picture to a model (M4), so
+ * nothing here can say how a thing looks.
  *
  * HOW A FACT IS KNOWN matters more than what it says, so every fact carries it:
  *   write  the run set it (a tool call succeeded with that value). Real, but the place may have moved on.
@@ -30,16 +30,12 @@ export const LEDGER_LIMITS = Object.freeze({
   colours: 60,
   texts: 60,
   names: 100,
-  looks: 30,
   plays: 8,
-  issues: 8,
   textChars: 120,
   entryChars: 200,
-  noteChars: 200,
 });
 
-export type LedgerKind = 'mutation' | 'read' | 'look' | 'play';
-export type LookVerdict = 'seen' | 'not_seen' | 'cannot_tell';
+export type LedgerKind = 'mutation' | 'read' | 'play';
 
 export interface LedgerEntry { seq: number; kind: LedgerKind; tool: string; text: string; ok: boolean; mutationSeq: number }
 export interface ColourFact {
@@ -48,7 +44,6 @@ export interface ColourFact {
 }
 export interface TextFact { seq: number; mutationSeq: number; text: string; where: string; via: 'write' | 'read' | 'play'; visible: boolean | null }
 export interface NameFact { seq: number; mutationSeq: number; path: string; name: string; className?: string; via: 'write' | 'read' }
-export interface LookFact { seq: number; mutationSeq: number; about: string; verdict: LookVerdict; note: string; source: string }
 export interface PlayFact {
   seq: number; mutationSeq: number; tool: string; ok: boolean;
   /** A real player joined and the client answered. False means nothing on screen was observed. */
@@ -62,66 +57,21 @@ export interface EvidenceLedger {
   seq: number;
   /** Successful changes so far. A count, never capped. */
   mutationSeq: number;
-  /**
-   * `mutationSeq` at the last change the viewport could show: one that touched the workspace or the lighting, or whose paths
-   * are unknown (assumed in view, so a look is never skipped on a guess). A look can only be owed for these: a screen or a
-   * script is not in the picture, and a look at it would be a look at something else.
-   */
-  viewChangedSeq: number;
   entries: LedgerEntry[];
-  /** Paths the run changed, newest last. The default subject of a look. */
+  /** Paths the run changed, newest last. */
   touched: string[];
   colours: ColourFact[];
   texts: TextFact[];
   names: NameFact[];
-  looks: LookFact[];
   plays: PlayFact[];
-  lookIssues: string[];
-  /** Every look attempt, successful or not: this is what the per-run cap counts. */
-  lookCount: number;
-  lookFailures: number;
-  /** Looks the gate itself ran, and the rounds it has sent the agent back, so each bound survives a restart. */
-  forcedLooks: number;
-  repairRounds: number;
+  /** The rounds the audit has sent unsupported claims back, so the bound survives a restart. */
   auditRounds: number;
-  /** Blind critiques run (blind-critique.ts). Optional so a ledger stored before it existed reads as zero. */
-  criticRounds?: number;
-  /** Paths of models this run placed (a mutation whose result lists `inserted` paths), newest last: what a composer can be told to use. */
-  inserted?: string[];
-  /** `mutationSeq` at the last look that actually looked; null before any. */
-  lastLookMutationSeq: number | null;
-  /** `mutationSeq` when a look attempt last FAILED; the gate does not demand a look that just could not run. */
-  lastLookFailedAt: number | null;
 }
 
 export function newLedger(): EvidenceLedger {
   return {
-    v: 1, seq: 0, mutationSeq: 0, viewChangedSeq: 0, entries: [], touched: [], colours: [], texts: [], names: [], looks: [], plays: [],
-    lookIssues: [], lookCount: 0, lookFailures: 0, forcedLooks: 0, repairRounds: 0, auditRounds: 0, lastLookMutationSeq: null, lastLookFailedAt: null,
+    v: 1, seq: 0, mutationSeq: 0, entries: [], touched: [], colours: [], texts: [], names: [], plays: [], auditRounds: 0,
   };
-}
-
-/**
- * Changed, in a way the viewport can show, since the last look that looked. False for a run that has changed nothing, and for one
- * that only changed screens and scripts. STRUCTURAL: it reads where the change landed, never what the request was about.
- */
-export function lookNeeded(l: EvidenceLedger): boolean {
-  return l.viewChangedSeq > (l.lastLookMutationSeq ?? 0);
-}
-
-/** The services a camera in edit mode draws: the workspace (terrain included) and the lighting that lights it. */
-const VIEWABLE = /^game\.(?:Workspace|Lighting)(?:$|[.[])/;
-
-/**
- * A change the viewport could show moves `viewChangedSeq`. Three things make it so, and the first two cannot be argued with:
- *   - the tool is one that builds in the world (`world`: a composer, an object or model placement, terrain), whatever paths it
- *     happens to report: composites report few paths, in other shapes, or none (round 2 of game 1: compose_game reported none);
- *   - the paths are unknown (assumed in view, so a look is never skipped on a guess);
- *   - any path is in the workspace or the lighting (paths are normalised first: `Workspace.X` is `game.Workspace.X`).
- * Only a change whose every reported path is a screen, a script or a service stays out of the picture.
- */
-function noteChange(l: EvidenceLedger, paths: string[], world = false): void {
-  if (world || paths.length === 0 || paths.some((p) => VIEWABLE.test(p))) l.viewChangedSeq = l.mutationSeq;
 }
 
 // ------------------------------------------------------------------------------------ helpers ---
@@ -230,17 +180,6 @@ function forget(l: EvidenceLedger, path: string): void {
   l.names = l.names.filter((f) => !gone(f.path));
   l.touched = l.touched.filter((p) => !gone(p));
   l.texts = l.texts.filter((f) => !gone(f.where));
-  // A deleted model is not a model the run can still use (compose_game offers `inserted` as machine looks).
-  if (l.inserted) l.inserted = l.inserted.filter((p) => !gone(p));
-}
-
-/** A renamed model keeps its place in `inserted` under its new name: round 3 renamed four crystals and the composer was offered the old paths. */
-function renameInserted(l: EvidenceLedger, from: string, name: string): void {
-  if (!l.inserted?.length) return;
-  const parent = from.replace(/(?:\.[A-Za-z_][A-Za-z0-9_]*|\["(?:[^"\\]|\\.)*"\])$/, '');
-  if (parent === from) return;
-  const to = joinPath(parent, name);
-  l.inserted = [...new Set(l.inserted.map((p) => (p === from ? to : p.startsWith(`${from}.`) || p.startsWith(`${from}[`) ? to + p.slice(from.length) : p)))];
 }
 
 // ---------------------------------------------------------------------- what a call wrote ---
@@ -276,19 +215,14 @@ function pathsIn(value: unknown, out: string[]): void {
 }
 
 /** Record a successful change; returns the paths it touched, for the entry's one-line description. */
-function recordMutation(rec: Recorder, tool: string, args: Record<string, unknown>, result: unknown, world: boolean): string[] {
+function recordMutation(rec: Recorder, tool: string, args: Record<string, unknown>, result: unknown): string[] {
   const { l } = rec;
   l.mutationSeq += 1;
   const paths: string[] = [];
-  if (tool === 'rename_instance') {
-    const from = asPath(args.path), name = typeof args.name === 'string' ? args.name.trim() : '';
-    if (from && name) renameInserted(l, from, name);
-  }
   if (tool === 'delete_instances') {
     const gone: string[] = [];
     pathsIn(args, gone);
     for (const p of gone) forget(l, p);
-    noteChange(l, gone, world);
     return gone;
   }
   walkSpecs(rec, args.items, 'game.Workspace', paths);
@@ -304,15 +238,8 @@ function recordMutation(rec: Recorder, tool: string, args: Record<string, unknow
     const list = result[k];
     if (Array.isArray(list)) for (const raw of list.slice(0, 100)) { const p = asPath(raw); if (p && !l.names.some((n) => n.path === p)) rec.name(p, lastSegment(p), undefined, 'write'); }
   }
-  if (isObj(result) && Array.isArray(result.inserted)) {
-    for (const raw of result.inserted.slice(0, 20)) {
-      const p = asPath(raw);
-      if (p && !(l.inserted ?? []).includes(p)) pushCapped((l.inserted ??= []), p, LEDGER_LIMITS.touched);
-    }
-  }
   const unique = [...new Set(paths)];
   for (const p of unique) touch(l, p);
-  noteChange(l, unique, world);
   return unique;
 }
 
@@ -430,8 +357,6 @@ export interface ToolRecord {
    * change counter moves and the paths are remembered; what it wrote is not trusted, so no colour or text is.
    */
   partial?: boolean;
-  /** The tool builds in the world (a composer, a model or object placement, terrain): its change is in the picture whatever paths it reports. */
-  world?: boolean;
 }
 
 function describe(c: ToolRecord, touchedNow: string[]): string {
@@ -450,7 +375,7 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
     const args = isObj(c.args) ? c.args : {};
     let touchedNow: string[] = [];
     if (c.ok) {
-      if (c.kind === 'mutation') touchedNow = recordMutation(rec, c.tool, args, c.result, c.world === true);
+      if (c.kind === 'mutation') touchedNow = recordMutation(rec, c.tool, args, c.result);
       else if (c.kind === 'read') {
         const budget = { n: 1500 };
         walkRead(rec, c.result, undefined, budget);
@@ -467,51 +392,10 @@ export function recordToolCall(l: EvidenceLedger, c: ToolRecord): void {
       pathsIn(c.result, paths);
       touchedNow = [...new Set(paths)];
       for (const p of touchedNow) touch(l, p);
-      noteChange(l, touchedNow, c.world === true);
     }
     pushCapped(l.entries, { seq: l.seq, kind: c.kind, tool: c.tool, text: describe(c, touchedNow), ok: c.ok, mutationSeq: l.mutationSeq }, LEDGER_LIMITS.entries);
   } catch {
     // A ledger that cannot record a call is a ledger with a gap, which the audit already treats as "not checked".
-  }
-}
-
-export interface LookRecord {
-  ok: boolean;
-  source: string;
-  views: string[];
-  observations: { about: string; verdict: LookVerdict; note: string }[];
-  answers: { question: string; answer: string; verdict?: LookVerdict }[];
-  issues: string[];
-  error?: string;
-}
-
-/** Record one look attempt. Never throws. */
-export function recordLook(l: EvidenceLedger, r: LookRecord): void {
-  try {
-    l.seq += 1;
-    l.lookCount += 1;
-    if (r.ok) {
-      l.lastLookMutationSeq = l.mutationSeq;
-      for (const o of r.observations.slice(0, 12)) {
-        pushCapped(l.looks, { seq: l.seq, mutationSeq: l.mutationSeq, about: cut(o.about, 120), verdict: o.verdict, note: cut(o.note, LEDGER_LIMITS.noteChars), source: r.source }, LEDGER_LIMITS.looks);
-      }
-      for (const a of r.answers.slice(0, 4)) {
-        pushCapped(l.looks, { seq: l.seq, mutationSeq: l.mutationSeq, about: cut(a.question, 120), verdict: a.verdict ?? 'cannot_tell', note: cut(a.answer, LEDGER_LIMITS.noteChars), source: r.source }, LEDGER_LIMITS.looks);
-      }
-      l.lookIssues = r.issues.slice(0, LEDGER_LIMITS.issues).map((s) => cut(s, LEDGER_LIMITS.noteChars));
-    } else {
-      l.lookFailures += 1;
-      l.lastLookFailedAt = l.mutationSeq;
-    }
-    const count = (v: LookVerdict) => r.observations.filter((o) => o.verdict === v).length;
-    pushCapped(l.entries, {
-      seq: l.seq, kind: 'look', tool: 'look', ok: r.ok, mutationSeq: l.mutationSeq,
-      text: r.ok
-        ? `look (${r.source}, ${r.views.join('/') || 'one view'}): ${count('seen')} seen, ${count('not_seen')} not seen, ${count('cannot_tell')} cannot tell`
-        : cut(`look failed: ${r.error ?? 'could not look'}`, LEDGER_LIMITS.entryChars),
-    }, LEDGER_LIMITS.entries);
-  } catch {
-    /* see recordToolCall */
   }
 }
 
@@ -525,7 +409,6 @@ export function ledgerDigest(l: EvidenceLedger, maxChars: number): string {
     ...l.entries.map((e) => ({ seq: e.seq, line: `#${e.seq} ${e.kind}${e.ok ? '' : ' (failed)'}: ${e.text}` })),
     ...l.colours.map((c) => ({ seq: c.seq, line: `#${c.seq} colour of ${c.path} (${c.prop}) is ${c.label ?? c.family ?? 'unknown'}, ${how(c.via)}` })),
     ...l.texts.map((t) => ({ seq: t.seq, line: `#${t.seq} text "${t.text}" at ${t.where}, ${how(t.via)}${t.visible === true ? ', visible' : t.visible === false ? ', HIDDEN' : ''}` })),
-    ...l.looks.map((o) => ({ seq: o.seq, line: `#${o.seq} look ${o.verdict.replace('_', ' ')}: ${o.about} — ${o.note}` })),
     ...l.plays.map((p) => ({ seq: p.seq, line: `#${p.seq} play ${p.verdict}${p.observed ? '' : ' (nothing observed)'}, ${p.errors} error(s): ${p.summary}` })),
   ].sort((a, b) => a.seq - b.seq);
   let text = rows.map((r) => r.line).join('\n');

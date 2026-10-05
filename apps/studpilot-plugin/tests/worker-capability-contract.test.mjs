@@ -173,7 +173,8 @@ const WITHHELD_BY_DESIGN = [
  * alternatives passed it needs render_view like the rest. The worker's session DOES pass alternatives, and there a plugin with native
  * capture and no renderer keeps the look (tests/look-tool.test.mjs in apps/worker holds that).
  */
-const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'inspect_visually', 'look', 'render_view'];
+// RESTATED in M4 (no vision): the tools that need the renderer are the three that remain; `inspect_visually` and `look` are removed.
+const VISUAL_GATE = ['check_composition', 'compose_thumbnail', 'render_view'];
 
 test('the report the plugin emits parses — it never lands in compatibility mode', { skip }, async () => {
   const { C } = await workerModules();
@@ -241,8 +242,7 @@ test('the visual gate survives when the renderer is bundled, and is withheld by 
   for (const tool of VISUAL_GATE) {
     assert.ok(without.withheld.includes(tool), `${tool} must be withheld when no renderer is bundled`);
   }
-  // SessionDO keys its "Rendered appearance was not verified" sentence off this exact membership.
-  assert.ok(without.withheld.includes('inspect_visually'), 'the honest-degradation sentence is keyed off this');
+  assert.equal(without.withheld.includes('inspect_visually'), false, 'M4: there is no visual inspection tool to withhold');
 
   const blocked = without.limitations.find((item) => item.operation === 'render_view');
   assert.ok(blocked, 'the loss must be attributed to render_view, not left as a bare missing tool');
@@ -275,17 +275,16 @@ test('the player-side check is offered with this plugin, and withheld by name wi
   assert.ok(storeFilter.allowed.has('run_and_check'), 'the server-side playtest is unaffected');
 });
 
-test('SessionDO still keys its unverified-appearance sentence off the withheld set', { skip }, async () => {
-  // Pinned to the PROPERTY, not the spelling: what must stay true is that the sentence is produced
-  // by membership of `inspect_visually` in `withheld`, and that it says the check did not run. If
-  // this ever becomes an unconditional line, or stops existing, the plugin's refusal becomes
-  // invisible to the person watching — which is the failure this whole file is about.
+test('SessionDO says that how it looks was not checked whatever the plugin can render, and has no automatic visual critique', { skip }, async () => {
+  // RESTATED in M4. The sentence used to be produced by membership of `inspect_visually` in `withheld` ("Rendered appearance was not
+  // verified"): a plugin without a renderer made the check disappear, and the user was told. There is no visual check any more, so the
+  // sentence is unconditional on the plugin: a visual design answer after a change always says how it looks was not checked. What must
+  // stay true is that the line exists and says the check did not happen, and that nothing in the run loop looks at a picture.
   const session = readFileSync(join(WORKER, 'src', 'do', 'session.ts'), 'utf8');
   const code = session.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');
-  assert.match(code, /withheld\.includes\('inspect_visually'\)/, 'the degradation is no longer driven by the capability report');
-  assert.match(code, /Rendered appearance was not verified/, 'the user is no longer told the visual check did not run');
-  // The automatic critique that asked `allowed.has('inspect_visually')` is gone by owner decision (V3 Q21, 3dc0d89c).
-  assert.doesNotMatch(code, /allowed\.has\('inspect_visually'\)/, 'an automatic visual critique is back in the run loop (V3 Q21)');
+  assert.match(code, /How it looks on screen was not checked: StudPilot cannot look at pictures\./, 'the user is no longer told that how it looks was not checked');
+  assert.doesNotMatch(code, /withheld\.includes\('inspect_visually'\)|Rendered appearance was not verified/, 'the old capability-bound sentence is back');
+  assert.doesNotMatch(code, /allowed\.has\('inspect_visually'\)|inspect_visually/, 'an automatic visual critique is back in the run loop');
 });
 
 /**

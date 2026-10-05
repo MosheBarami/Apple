@@ -54,7 +54,7 @@ const REQUEST_TOKENS = 12;
 /** Tools whose steps build in the workspace; their skills come from the worldbuilding domain. Each is a registered tool (held by a test). */
 export const WORLD_BUILDING_TOOLS: readonly string[] = [
   'create_instances', 'clone_instances', 'scatter_instances', 'group_instances', 'shape_terrain', 'edit_terrain',
-  'set_mood', 'build_scene', 'insert_library_model', 'insert_asset', 'generate_model', 'transform_instances', 'create_rig',
+  'set_mood', 'insert_library_model', 'insert_asset', 'generate_model', 'transform_instances', 'create_rig',
 ];
 const WORLD_DOMAIN: CreatorSkillDomain = 'worldbuilding';
 

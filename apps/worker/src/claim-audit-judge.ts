@@ -15,7 +15,7 @@
  *   - A judge that throws or answers nothing readable adds nothing, and says it failed: the absence of
  *     findings from a judge that did not run is not a finding that the reply is fine.
  *
- * The model call is INJECTED, like look-observe's, so this module runs in tests with no model.
+ * The model call is INJECTED, so this module runs in tests with no model.
  */
 import { ledgerDigest, type EvidenceLedger } from './evidence-ledger.ts';
 import type { Finding } from './claim-audit.ts';

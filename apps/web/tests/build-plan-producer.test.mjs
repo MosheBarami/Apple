@@ -113,7 +113,8 @@ test('a plan missing verification reaches the browser with the worker-added veri
   assert.equal(res.ok, true, 'the worker still refuses the repairable plan');
   const parsed = validateDocument(res.detail);
   assert.equal(parsed.ok, true, `the browser rejected the repaired plan: ${JSON.stringify(parsed.errors)}`);
-  assert.deepEqual(parsed.doc.blocks[0].steps.map((s) => s.tool), ['create_instances', 'inspect_visually']);
+  // RESTATED in M4 (no vision): the verifier the worker appends is audit_build, the first of the four verifiers; it was inspect_visually.
+  assert.deepEqual(parsed.doc.blocks[0].steps.map((s) => s.tool), ['create_instances', 'audit_build']);
   assert.match(res.resultForLlm, /had no verification step/i,
     'the model was not told that the browser-visible verifier was added');
 });

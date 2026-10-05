@@ -108,7 +108,6 @@ const PLAN_TOOLS = [
   'web_search',
   'docs_lookup',
   'screenshot_page',
-  'ocr_image',
   'github_lookup',
   'git_history',
   'workspace_list',

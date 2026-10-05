@@ -88,9 +88,7 @@ export const DEFAULT_MODELS: Record<string, ModelCfg> = {
   agent: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: true, maxTokens: 6500, ctx: 1_310_720, temperature: 0.25, reasoningEffort: 'low' },
 
   memory: { id: '@cf/qwen/qwen3-30b-a3b-fp8', nativeTools: false, maxTokens: 800, ctx: 32_768, temperature: 0.2 },
-
-  // The visual critic sends real image_url data URLs and must remain on a multimodal model.
-  vision: { id: '@cf/zai-org/glm-5.3-flash', nativeTools: false, maxTokens: 4000, ctx: 1_310_720, temperature: 0.3, reasoningEffort: 'low' },
+  // There is no `vision` key (M4): the product sends no picture to a model, and a test fails if one comes back.
 };
 
 let modelCache: { at: number; models: Record<string, ModelCfg> } | null = null;
@@ -125,10 +123,18 @@ function isModelCfg(value: unknown): value is ModelCfg {
   );
 }
 
+/**
+ * Model keys the product no longer has. A stale `config:models` row from before M4 still carries a `vision` key; the override mechanism
+ * accepts custom keys, so without this a stale row could put the picture role back in the table. Nothing calls it, but a test fails if
+ * a vision key is present, and the table is what it reads.
+ */
+const RETIRED_MODEL_KEYS: ReadonlySet<string> = new Set(['vision']);
+
 function configuredModels(value: unknown): Record<string, ModelCfg> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const out: Record<string, ModelCfg> = {};
   for (const [key, cfg] of Object.entries(value as Record<string, unknown>)) {
+    if (RETIRED_MODEL_KEYS.has(key)) continue;
     if (!isModelCfg(cfg)) continue;
     // This is a migration guard, not a general provider policy. Custom keys remain available for
     // admin experiments; only the five user-facing keys are protected from the stale production
@@ -304,8 +310,7 @@ export async function chat(env: Env, req: GatewayRequest, opts: ChatOptions = {}
   // pattern in prose, which then never executes (observed with GLM-5.3-flash before this was fixed).
   let messages: GatewayMessage[] = req.messages;
   if (usePrompted) {
-    // Prompted-tool mode is text-only by construction; images only ever ride on tool-less
-    // vision calls, so flattening to a string here cannot lose an attachment.
+    // Prompted-tool mode is text-only by construction, and so is every message the product sends.
     const asText = contentText;
     const first = messages[0];
     if (first?.role === 'system') {

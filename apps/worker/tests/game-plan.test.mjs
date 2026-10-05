@@ -109,7 +109,7 @@ const designRoute = (over = {}) => () => ({ ok: true, data: { ...design(), ...ov
 const studio = (over = {}) => { const f = fakeStudio({ route: { design: designRoute() }, importOf, ...over }); f.ctx.projectId ??= 'project-1'; return f; };
 // A plan belongs to the call that names its id (phase 1): like the agent, the helper passes back the planId plan_game returned.
 async function run(f, name, args) {
-  const given = name === 'build_game' || name === 'judge_game' ? { planId: f.planId, ...args } : args;
+  const given = name === 'build_game' ? { planId: f.planId, ...args } : args;
   const out = await T.runTool(f.ctx, name, JSON.stringify(given));
   const data = JSON.parse(out.resultForLlm);
   if (name === 'plan_game' && data.planId) f.planId = data.planId;
@@ -428,7 +428,7 @@ test('build_game: a service\'s own attributes (the save key every player\'s data
   assert.ok(f.log.findIndex((o) => o.op === 'set_props' && o.attributes) > f.log.findIndex((o) => o.op === 'import_owner_library'), 'after the imports');
 });
 
-test('build_game: hands the model the content checklist (theme, modules, formats, counts, models, code edits, currency) and the walkthrough, with the request for judge_game', async () => {
+test('build_game: hands the model the content checklist (theme, modules, formats, counts, models, code edits, currency) and the walkthrough, with the play test as the check', async () => {
   const f = studio();
   const { out, data } = await built(f);
   const c = data.themeTheContent;
@@ -449,8 +449,9 @@ test('build_game: hands the model the content checklist (theme, modules, formats
   assert.deepEqual(c.walkthrough, design().walkthrough);
   assert.deepEqual(c.warnings, design().warnings);
   assert.deepEqual(c.checks, ['Play it once and read the output: no red errors.'], 'what build_game already did is not asked of the model again');
-  assert.match(data.note, /judge_game \{request: themeTheContent\.request\}/);
-  assert.match(data.note, /at most three rounds/);
+  // RESTATED in M4: the client judge is gone. The model is told to play the game once with play_check and fix what it reports.
+  assert.match(data.note, /Play it once with play_check and fix what it reports/);
+  assert.doesNotMatch(data.note, /judge_game|at most three rounds/, 'no tool that does not exist is named');
   assert.ok(out.resultForLlm.length < 12000, `the result stays well inside the limit (${out.resultForLlm.length})`);
 });
 
@@ -665,20 +666,18 @@ test('readDesign: the shapes the library really writes (objects for theme, curre
 
 // ------------------------------------------------------------------------------------------------- the flow
 
-test('the flow: plan_game, build_game and judge_game are the agent\'s tools; assemble_owner_game is no longer offered', () => {
+test('the flow: plan_game and build_game are the agent\'s tools; assemble_owner_game, judge_game and compose_game are not offered', () => {
   const names = T.toolNames();
-  for (const n of ['plan_game', 'build_game', 'judge_game', 'install_owner_system', 'recreate_owner_game', 'browse_owner_library', 'import_owner_library', 'read_script', 'edit_script']) assert.ok(names.includes(n), n);
-  assert.equal(names.includes('assemble_owner_game'), false);
+  for (const n of ['plan_game', 'build_game', 'install_owner_system', 'recreate_owner_game', 'browse_owner_library', 'import_owner_library', 'read_script', 'edit_script']) assert.ok(names.includes(n), n);
+  for (const gone of ['assemble_owner_game', 'judge_game', 'compose_game']) assert.equal(names.includes(gone), false, `${gone} came back`);
   const defs = Object.fromEntries(T.toolDefs(true).map((d) => [d.name, d]));
-  assert.match(defs.build_game.description, /judge_game/);
-  assert.match(defs.build_game.description, /at most three rounds/);
+  assert.doesNotMatch(defs.build_game.description, /judge_game|at most three rounds/);
   assert.match(defs.plan_game.description, /build_game/);
-  assert.match(defs.plan_game.description, /compose_game/, 'a new idea goes to the composer');
-  // RESTATED 2026-10-04 (t1 round 2): the composer's definition says it builds the BASE of a game, not the whole game.
-  assert.match(defs.compose_game.description, /BASE of a NEW game/);
+  assert.doesNotMatch(defs.plan_game.description, /compose_game/, 'a new idea no longer goes to a composer');
+  // RESTATED in M4: the prompt names the saved-game pair and names neither the composer nor the judge.
   const prompts = readFileSync('src/prompts.ts', 'utf8');
-  assert.match(prompts, /compose_game \(you pick the template[\s\S]{0,500}judge_game \{request\}[\s\S]{0,120}at most three rounds/);
-  assert.equal(/assemble_owner_game/.test(prompts), false);
+  assert.match(prompts, /plan_game and build_game copy one saved game/);
+  assert.equal(/assemble_owner_game|compose_game|judge_game/.test(prompts), false);
 });
 
 test('the flow: the tools are registered where the product lists them (permissions, phases, the web table, the MCP exclusions)', () => {
@@ -686,9 +685,8 @@ test('the flow: the tools are registered where the product lists them (permissio
   assert.equal(S.GOVERNED_TOOLS.some((g) => g.name === 'assemble_owner_game'), false);
   assert.equal(S.phaseForTool('plan_game'), 'planning');
   assert.equal(S.phaseForTool('build_game'), 'building');
-  assert.ok(S.GOVERNED_TOOLS.some((g) => g.name === 'compose_game' && g.group === 'changes'));
-  assert.equal(S.phaseForTool('compose_game'), 'building');
-  assert.deepEqual(T.projectMutatingToolNames().filter((n) => /_game$/.test(n)).sort(), ['build_game', 'compose_game', 'recreate_owner_game']);
+  assert.equal(S.GOVERNED_TOOLS.some((g) => g.name === 'compose_game' || g.name === 'judge_game'), false, 'no permission row for a removed tool');
+  assert.deepEqual(T.projectMutatingToolNames().filter((n) => /_game$/.test(n)).sort(), ['build_game', 'recreate_owner_game']);
 });
 
 test('the flow: a design path resolves the way the imports put things (children go straight in, a self import keeps its name, odd names are bracketed)', () => {

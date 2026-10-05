@@ -209,13 +209,13 @@ test('the bridge: StudPilot, every retired id and any other value normalize to S
 test('every gateway lane that answers a customer runs the registry\'s engine, at its full output room', () => {
   const studpilot = shared.registryModel('apple');
   assert.equal(providers.STUDPILOT_MODEL_ID, studpilot.providerModelId, 'the provider constant drifted from the registry');
-  assert.equal(providers.VISION_MODEL_ID, GLM);
+  assert.equal(providers.VISION_MODEL_ID, undefined, 'M4: there is no vision model constant');
   for (const key of ['plan', 'agent']) {
     assert.equal(DEFAULT_MODELS[key].id, GLM, key);
     // GLM can spend a small max_tokens entirely on reasoning_content; the budget is not lowered.
     assert.ok(DEFAULT_MODELS[key].maxTokens >= studpilot.maxOutputTokens, `${key}: ${DEFAULT_MODELS[key].maxTokens}`);
   }
-  assert.equal(DEFAULT_MODELS.vision.id, GLM);
+  assert.equal(DEFAULT_MODELS.vision, undefined, 'M4: there is no vision lane');
   for (const key of Object.keys(DEFAULT_MODELS)) {
     assert.equal(key.startsWith('lab-'), false, `training lane ${key} is still routed`);
     assert.equal(LEGACY.includes(key), false, `retired model ${key} still has a lane`);

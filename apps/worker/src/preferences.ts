@@ -739,8 +739,6 @@ export function needsForModelKey(key: unknown): { tools: boolean; vision: boolea
   switch (key) {
     case 'memory':
       return { tools: false, vision: false };
-    case 'vision':
-      return { tools: false, vision: true };
     case 'plan':
     case 'agent':
       return { tools: true, vision: false };

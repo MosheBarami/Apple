@@ -502,15 +502,16 @@ test('the library tools are registered as project-changing Studio tools, offered
 
 // ---------------------------------------------------------- the prompt, the run's own record and the fences
 
-test('the prompt names the flow (compose, judge, fix, answer) as the way to build a new game, in a short paragraph without the do-and-do-not prose the tools now enforce', async () => {
+test('the prompt names the flow (library first, then answer) as the way to build a new game, in a short paragraph without the do-and-do-not prose the tools now enforce, and names no composer or judge', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/prompts.ts', import.meta.url), 'utf8');
-  const at = src.indexOf('- A NEW GAME IS MADE FROM COMPONENTS, NEVER BY COPYING A WHOLE SAVED GAME.');
+  const at = src.indexOf('- A NEW GAME IS MADE FROM PARTS YOU CHOOSE, NEVER BY COPYING A WHOLE SAVED GAME.');
   assert.ok(at > 0, 'the paragraph');
   const paragraph = src.slice(at, src.indexOf('\n- ', at + 10));
   assert.ok(paragraph.length < 1300, `${paragraph.length} characters: keep it short, the tool descriptions carry the how`);
-  assert.match(paragraph, /compose_game \(you pick the template[\s\S]*judge_game \{request\}[\s\S]*at most three rounds/);
-  assert.match(paragraph, /never build a different game instead/);
+  assert.match(paragraph, /find_library_model for each piece, preview, insert what fits, parts for what is\s+missing/);
+  assert.doesNotMatch(src, /compose_game|judge_game/, 'M4: the composer and the client judge are gone from the prompt');
+  assert.match(paragraph, /never\s+build a different game instead/);
   assert.match(paragraph, /install_owner_system \{gameId\}/);
   assert.match(paragraph, /If an imported game can load code from the internet, say so in one plain sentence/);
   for (const enforced of [/never a flat or realistic map/i, /studded-modern and\s+studded-classic/i, /MaterialVariant from MaterialService/i, /unrelated GUIs dropped on it/i, /ONE studded game in the niche/i]) assert.doesNotMatch(src, enforced);
@@ -526,7 +527,7 @@ test('a run that built a game or installed a system reports it in plain words, a
 
 test('a build that only uses the saved games may call the library tools, and is told about them when it reaches for something else', async () => {
   const { staysInOwnerLibrary } = await import('../src/request-scope.ts');
-  for (const name of ['plan_game', 'build_game', 'judge_game']) assert.equal(staysInOwnerLibrary(name), true, name);
+  for (const name of ['plan_game', 'build_game']) assert.equal(staysInOwnerLibrary(name), true, name);
   assert.equal(staysInOwnerLibrary('install_owner_system'), true);
   const { readFileSync } = await import('node:fs');
   const session = readFileSync(new URL('../src/do/session.ts', import.meta.url), 'utf8');

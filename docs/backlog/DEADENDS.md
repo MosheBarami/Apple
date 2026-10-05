@@ -905,3 +905,13 @@ The public site's redesign (6662c41b) moved this probe into `pages/pricing.astro
 `apps/web/src/components/ai-elements/reasoning.tsx` is listed above as DELETE (D-THINK-1). The owner
 reversed that on 2026-10-01: it is the turn's reasoning surface again (ws/run-steps.tsx), reached on
 every turn. The entry above is history, not a current disposition.
+
+## `apps/worker/src/compose-plotsim.ts` — STRUCTURALLY-BLOCKED, 2026-10-05
+
+Imported by nothing in the tree, and that is the decision rather than an oversight. Its only importer was `compose-tool.ts`, the
+`compose_game` tool, which M4 removed with the whole-game path (handoff 4.3, planning/proof/M4/DECISIONS.md). The plan keeps it on
+purpose: the plot simulator's geometry, economy checks and steps (`readPlotSim`, `plotSimSteps`, `readMachines`) are source material for
+the M5 blocks (`shop`, `plots`, `currency+save`, `upgrades`), and `packages/components/*` and `compose-tycoon.ts` / `compose-lane.ts`
+are kept for the same reason. It is exercised by `tests/plot-sim.test.mjs` and `tests/composer-kit.test.mjs`. When the M5 block engine
+(`packages/blocks`, `recipe.ts`) takes what it needs from it, this becomes a WIRE (or a DELETE of what the blocks replaced) and this
+entry goes.

@@ -298,8 +298,9 @@ test('a built game with nothing on screen or an unplayed loop is not finished: s
 
 test('the run loop records the HUD and the playtest, and steers an unfinished game before it can end', () => {
   assert.match(SESSION, /out\.mutatedProject === true && buildsHud\(call\.name, call\.arguments\)\) agent\.hudBuilt = true/);
-  // The property: a play_check that worked marks the run as played; so does a judge_game that played (sessions other than 0).
-  assert.match(SESSION, /out\.ok && \(call\.name === 'play_check' \|\| \(call\.name === 'judge_game' && [^\n]*sessions[^\n]*\)\) agent\.playChecked = true/);
+  // The property: a play_check that worked marks the run as played. (RESTATED in M4: a judge_game that played used to count too; the judge is gone.)
+  assert.match(SESSION, /out\.ok && call\.name === 'play_check'\) agent\.playChecked = true/);
+  assert.doesNotMatch(SESSION, /judge_game/, 'no judge verdict marks a run as played');
   // every Autonomous ending consults the game gaps: prose, idle, and the duplicate-streak unstick
   const uses = SESSION.match(/gameGaps\(agent, allowed\.has\('play_check'\)\)/g) ?? [];
   assert.equal(uses.length, 3, 'the prose, idle and duplicate-streak endings must all check the game');
@@ -357,15 +358,6 @@ test('CREDITS: the run loop skips only run_luau when a change names no target', 
   assert.match(SESSION, /const target = aim\(call\.arguments\) \|\| \(call\.name === 'run_luau' \? '' : '\(no target\)'\);\s*if \(target\) \{[\s\S]{0,400}afterChange\(agent\.changesByTarget, `\$\{call\.name\} \$\{target\}`\)/);
 });
 
-test('CREDITS: the visual inspection tool no longer says to repeat it "until it passes"', () => {
-  const tools = readFileSync(join(WORKER, 'src', 'tools.ts'), 'utf8');
-  const at = tools.indexOf("name: 'inspect_visually'");
-  assert.ok(at > 0, 'inspect_visually was not found — this test would check nothing');
-  const description = tools.slice(at, at + 1500);
-  assert.doesNotMatch(description, /until it passes/, 'a repeat-until-pass instruction has no progress test, and each inspection renders and calls a vision model');
-  assert.match(description, /do not score better, stop and say so/);
-});
-
 test('review 2026-10-02: a back-and-forth bout that ended does not turn a later, unrelated bout into an immediate end', async () => {
   const R = await import('../src/run-idle.ts');
   let st; const actions = [];
@@ -391,32 +383,3 @@ test('review 2026-10-02: an A, A, B loop still ends, and a changeless tool (set_
   assert.ok(session.includes(`Over your last ${R.CHANGE_WINDOW} changes, ${R.WINDOW_NUDGE} or more`), 'the steer states numbers other than the guard uses');
 });
 
-test('the self-check\'s look counts as a check after a change, so reading after it is the idle this file bounds', async () => {
-  const { EXTRA_CHECK_TOOLS, afterStep, IDLE_AFTER_VERIFY_NUDGE } = await import('../src/run-idle.ts');
-  assert.ok(EXTRA_CHECK_TOOLS.has('look'));
-  // Derived from the registry, not asserted by hand: every extra check is a real tool and changes nothing (a check that changes the
-  // place would be a change, and a change clears the check).
-  const esbuild = await import('esbuild');
-  const { mkdtempSync, rmSync } = await import('node:fs');
-  const { tmpdir } = await import('node:os');
-  const { join } = await import('node:path');
-  const { pathToFileURL } = await import('node:url');
-  const dir = mkdtempSync(join(tmpdir(), 'run-idle-checks-'));
-  try {
-    await esbuild.build({ entryPoints: [join(WORKER, 'src', 'tools.ts')], bundle: true, format: 'esm', platform: 'node', outfile: join(dir, 'tools.mjs'),
-      alias: { '@studpilot/shared': join(WORKER, '..', '..', 'packages', 'shared', 'src', 'index.ts') }, logLevel: 'silent' });
-    const T = await import(pathToFileURL(join(dir, 'tools.mjs')).href);
-    for (const name of EXTRA_CHECK_TOOLS) {
-      assert.ok(T.toolNames().includes(name), `${name} is not a registered tool`);
-      assert.ok(!T.projectMutatingToolNames().includes(name), `${name} changes the place, so it cannot be a check`);
-    }
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-  // And it behaves as a check: after a change and a check, only reading is counted toward the nudge.
-  let state = {};
-  state = afterStep(state, { mutated: true, verified: false, calls: 1 });
-  state = afterStep(state, { mutated: false, verified: true, calls: 1 });
-  for (let i = 0; i < IDLE_AFTER_VERIFY_NUDGE; i++) state = afterStep(state, { mutated: false, verified: false, calls: 1 });
-  assert.equal(state.action, 'nudge');
-});

@@ -4,7 +4,7 @@
  * A scripted model (no provider is called, nothing is paid for) plays the agent's side of the benchmark's items; the real
  * SessionDO, tool registry, build_object, preview_library_models and dress_object play the harness; a fake Studio keeps the
  * place. The properties pinned: the run starts with the model (no library or Studio step before its first call); the whole choice
- * (find, preview, place, build, dress, compose) is offered at every call and never forced; a tool's rejection hands the turn back
+ * (find, preview, place, build, dress) is offered at every call and never forced; a tool's rejection hands the turn back
  * to the model; nothing the agent did not ask for (a stage, a "Click it!", a wobble, a crown, a Baseplate or Lighting change)
  * reaches Studio; a Hebrew name survives. The model's own words here are test data; the harness holds none.
  * The harness is copied from run-loop-traps.test.mjs, with a scripted response that may be a function of the request.
@@ -230,7 +230,7 @@ function assertModelFirst(h) {
 /** A current plugin reports what it can do; the ops a library step and a build stand on are among them (an older one that does
  * not report the owner-library ops is offered fewer tools, by design: that is plugin-capabilities.ts, not this test's concern). */
 const CURRENT_PLUGIN = { schema: 'golem.studio-ops.v1', operations: ['snapshot', 'get_instance', 'create_instances', 'delete_instances', 'get_tree', 'set_surface_default', 'strip_descendants', 'import_owner_library', 'query_owner_library', 'query_owner_local', 'import_owner_local', 'import_owner_component', 'list_scripts', 'read_script', 'group_instances', 'transform_instances', 'insert_asset', 'spatial_query', 'set_props_bulk', 'query_instances', 'play_check', 'capture_studio_viewport'].map((op) => ({ op, status: 'supported' })) };
-const CHOICE = ['find_library_model', 'preview_library_models', 'insert_library_model', 'build_object', 'dress_object', 'compose_game'];
+const CHOICE = ['find_library_model', 'preview_library_models', 'insert_library_model', 'build_object', 'dress_object'];
 const offeredAt = (h, i) => (h.chatCalls[i].req.tools ?? []).map((t) => t.name ?? t.function?.name);
 /** What the harness must never add on its own to an object the agent built (the 2026-10-02 benchmark's habits). */
 const NEVER_ADDED = /Click it!|wobble|crown|ClickDetector|AppleBody|AppleRoot|Stage|Baseplate|SpawnLocation|Lighting|Atmosphere/i;

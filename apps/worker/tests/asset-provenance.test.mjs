@@ -49,10 +49,10 @@ test('every agent-run call site passes the run in', () => {
   // when their route trips it, which is exactly how a provenance-degrading call site gets waved
   // through. Each single-tool route is listed here with the reason it has no run to accumulate
   // against, and an unlisted one fails.
-  // REVIEWED 2026-10-02: '/bench-evaluate' measures a place AFTER a benchmark run has ended (owner-bench.ts); it is no
-  // run, discovers nothing for one, and is refused while a run is going.
+  // REVIEWED 2026-10-02: '/bench-evaluate' measured a place AFTER a benchmark run had ended; it was no run. REVIEWED 2026-10-05 (M4):
+  // the route is deleted with the vision judge it fed, so the count of run-less sites went DOWN by one, not up.
   // '/bench-reset' empties the place between benchmark requests, refused during a run: no run either.
-  const runLess = ["path === '/run-tool'", "path === '/mcp-tool'", "path === '/bench-evaluate'", "path === '/bench-reset'"];
+  const runLess = ["path === '/run-tool'", "path === '/mcp-tool'", "path === '/bench-reset'"];
   const without = callSites.filter((a) => a === '');
   assert.equal(
     without.length,

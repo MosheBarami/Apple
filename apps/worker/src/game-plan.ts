@@ -54,7 +54,7 @@ export interface Design {
   studioNotes: string[]; walkthrough: string[]; checklist: string[];
 }
 export interface Patch { path: string; edits: ScriptEdit[]; why: string }
-interface Stored { design: Design; request: string; seed: number; at: number; /** The id plan_game returned: build_game and judge_game pass it back, so a plan is used only by a call that names it. */ planId?: string }
+interface Stored { design: Design; request: string; seed: number; at: number; /** The id plan_game returned: build_game passes it back, so a plan is used only by a call that names it. */ planId?: string }
 /** A plan older than this is another conversation's: build_game asks for a fresh one. */
 const PLAN_LIFETIME_MS = 3 * 60 * 60_000;
 
@@ -261,16 +261,6 @@ async function recallPlan(ctx: AgentCtx, planId?: unknown): Promise<Stored | und
   return { ...r, design: { keepEdits: [], themeNotes: [], unreadable: 0, hide: [], patches: [], serviceAttributes: [], ...design, write: arr(design.write).filter((w) => w && typeof w === 'object') } } as unknown as Stored;
 }
 
-/**
- * The first steps of the game's loop, when the game was built from a library core whose loop runs as saved: what a player does to earn.
- * The judge's quick test cannot plant, aim or wait out a wave; this is what it says a player should try instead of calling the loop missing.
- */
-export async function plannedLoop(ctx: AgentCtx, planId?: unknown): Promise<string[] | undefined> {
-  const stored = await recallPlan(ctx, planId);
-  const d = stored?.design;
-  return d && (d.core.runs ?? 0) >= 3 && d.walkthrough.length ? d.walkthrough.slice(0, 4) : undefined;
-}
-
 /** What the model may change after reading the plan: the title, the theme, the pitch and the currency name. A new title or currency goes into every text that carried the old one. */
 export function withNames(design: Design, over: Record<string, unknown>): Design {
   const next: Design = JSON.parse(JSON.stringify(design));
@@ -351,7 +341,7 @@ export async function planGame(ctx: AgentCtx, a: Record<string, unknown>) {
   if (!out.ok) return { error: `${plainProblem(out.error)} Tell the user in one plain sentence; nothing was built.`, technical: out.error };
   const design = readDesign(rec(out.data));
   if ('error' in design) return { error: `${design.error} Tell the user in one plain sentence that the library has nothing for that kind of game yet; nothing was built.` };
-  // The library takes the first 200 characters; the judge is given the user's whole request.
+  // The library takes the first 200 characters; the plan keeps the user's whole request.
   const planId = crypto.randomUUID().slice(0, 8);
   if (!(await keepPlan(ctx, { design, request: clean(words || a.request, 1000) || request, seed, at: Date.now(), planId }))) return { error: 'There is no project to keep the plan in, so nothing was planned.' };
   return {
@@ -674,13 +664,13 @@ function buildWords(design: Design, r: {
 }
 
 const NEXT_STEPS = 'The build is in the place. Now: (1) theme the content: for each entry of themeTheContent.tables read the module (read_script), then edit it (edit_script) so every item gets a themed name (theme.nameIdeas) and price in the given format and count (a module that has more items than the count keeps only that many); keep keepInMind true while you do; import the themedModels that fit with import_owner_library; carry out brokenReferences (each line names a part that is not in the game: remove or guard it), codeEdits, featuresToWrite and textsStillToChange with edit_script. ' +
-  '(2) Call judge_game {request: themeTheContent.request}. (3) Fix what it lists, in its order, and judge again, at most three rounds in all. ' +
-  '(4) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
+  '(2) Play it once with play_check and fix what it reports. ' +
+  '(3) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
 /** When the build did everything itself (the content was chosen, the texts fixed, nothing left to write), the model checks and answers. */
 const DONE_STEPS = 'The build is in the place and nothing is left to do on it: the content that fits the request was chosen, and the texts, names and code were already changed. ' +
-  'Do not rename, re-theme or rewrite anything. Now: (1) Call judge_game {request: themeTheContent.request}. (2) Fix only what it lists, in its order, and judge again, at most three rounds in all. ' +
-  '(3) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
-/** Is there anything in the checklist for the model to do before the judge? */
+  'Do not rename, re-theme or rewrite anything. Now: (1) Play it once with play_check and fix only what it reports. ' +
+  '(2) Answer the user from forUser in your own friendly words: what the player will see and do. Name no tools, paths, counts or ids. If a script in it can load code from the internet or ask players to pay (see suspicious), say so in one plain sentence.';
+/** Is there anything in the checklist for the model to do before it plays the game? */
 const workLeft = (c: Record<string, unknown>): boolean =>
   ['tables', 'themedModels', 'codeEdits', 'featuresToWrite', 'brokenReferences', 'textsStillToChange'].some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0);
 
@@ -803,7 +793,7 @@ export async function buildGame(ctx: AgentCtx, a: Record<string, unknown>, opts:
   const menus = (wired?.wired.length ?? 0) > 0;
   const dangling = disconnected ? [] : await danglingReferences(ctx, design, late);
 
-  if (imported === 0 && brought > 0 && !failed.length) return { built: false, changed: false, title: design.title, forUser: `${plainText(design.title, 60)} was already in your game, so nothing changed.`, note: 'Everything in the plan is already in the place. Go on to theming the content and judge_game if that is still owed, otherwise answer the user.' };
+  if (imported === 0 && brought > 0 && !failed.length) return { built: false, changed: false, title: design.title, forUser: `${plainText(design.title, 60)} was already in your game, so nothing changed.`, note: 'Everything in the plan is already in the place. Go on to theming the content and playing the game if that is still owed, otherwise answer the user.' };
   if (imported === 0) return { error: `${disconnected ? plainProblem('disconnected') : 'StudPilot could not build a game from your saved games this time.'} Tell the user in one plain sentence; nothing was added.`, technical: failed[0] };
   // Scripts that can call out to the internet come in dozens (every plant model carries one): a few say it, the count says how many.
   const flagged = suspicious.slice(0, 8);

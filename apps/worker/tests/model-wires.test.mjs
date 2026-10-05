@@ -40,11 +40,11 @@ const S = await bundle('do/session.ts', 'session');
 
 const GLM = '@cf/zai-org/glm-5.3-flash';
 
-/** A conversation that exercises every translation: system, image, a prior tool call and its result. */
+/** A conversation that exercises every translation: system, a text-part user turn, a prior tool call and its result. (No image part: M4 removed pictures from the wire.) */
 const CONVERSATION = [
   { role: 'system', content: 'You are StudPilot.' },
   { role: 'system', content: 'The place has a Baseplate.' },
-  { role: 'user', content: [{ type: 'text', text: 'Match this.' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }] },
+  { role: 'user', content: [{ type: 'text', text: 'Match this.' }, { type: 'text', text: 'And this.' }] },
   { role: 'assistant', content: 'Looking first.', toolCalls: [{ id: 'call_7', name: 'get_children', arguments: '{"path":"Workspace"}' }] },
   { role: 'tool', content: '["Baseplate"]', toolCallId: 'call_7', name: 'get_children' },
 ];

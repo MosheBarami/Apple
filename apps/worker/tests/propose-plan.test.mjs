@@ -151,7 +151,7 @@ test('a plan with no verification step is COMPLETED with one, and the addition i
   assert.equal(res.ok, true, 'a plan the model cannot repair must still be able to run');
 
   // The property: what runs contains a check.
-  assert.match(res.resultForLlm, /inspect_visually/, 'the appended verifier must be in the plan the model reads back');
+  assert.match(res.resultForLlm, /audit_build/, 'the appended verifier must be in the plan the model reads back (audit_build leads the preference since M4)');
 
   // And it is not silent — to the model...
   assert.match(res.resultForLlm, /had no verification step/i, 'the model must be told a step it did not write was added');
@@ -159,7 +159,7 @@ test('a plan with no verification step is COMPLETED with one, and the addition i
   // ...nor to the user: the checklist they see carries it too.
   const block = res.detail.blocks[0];
   assert.equal(block.steps.length, 3, 'the verification step should have been appended');
-  assert.equal(block.steps[2].tool, 'inspect_visually');
+  assert.equal(block.steps[2].tool, 'audit_build');
   assert.equal(block.steps[2].status, 'pending', 'an appended step has not happened either');
 });
 
@@ -178,10 +178,10 @@ test('a plan that already checks its own work is left exactly alone', async () =
     'nothing was added, so nothing should be announced');
 });
 
-test('each of the five verifiers on its own satisfies the rule', async () => {
-  // Pinned against the same five verification-tools.test.mjs pins, so a verifier renamed there
+test('each of the four verifiers on its own satisfies the rule', async () => {
+  // Pinned against the same four verification-tools.test.mjs pins, so a verifier renamed there
   // and not here would surface as this test refusing a legitimate plan.
-  for (const v of ['run_and_check', 'run_spec', 'audit_build', 'check_composition', 'inspect_visually']) {
+  for (const v of ['run_and_check', 'run_spec', 'audit_build', 'check_composition']) {
     const res = await call({
       steps: [{ title: 'Build it', tool: 'create_instances' }, { title: 'Check it', tool: v }],
     });

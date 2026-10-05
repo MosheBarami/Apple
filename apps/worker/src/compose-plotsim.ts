@@ -6,7 +6,7 @@
  * the player's own plot (AppleShop + AppleMachines), presses on your own machines pay, upgrades (AppleUpgrades), rebirth,
  * and the studded simulator HUD (stud-ui.ts plotSimHud).
  *
- * WHAT the game is about is the AGENT's, argument by argument (compose_game's `plotSim`): the machines (their names, what
+ * WHAT the game is about is the AGENT's, argument by argument (the `plotSim` spec): the machines (their names, what
  * each earns and costs, which model backs each one), the upgrades, the currency and its symbol, the rebirth numbers, the
  * scenery it chose from the library. The harness holds no ladder of its own: it used to recolour the hero in "Classic /
  * Neon / Ice / Gold / Lava / Galaxy" tiers with a keyboard emoji, name library models "Mega / Ultra / Royal ...", and
@@ -21,7 +21,6 @@ import { studdedMap, STUD_PALETTE } from './studded-map';
 import { plotSimHud, type StudColour } from './stud-ui';
 import { readUpgrades, upgradeBlurb, upgradeIcon, type UpgradeSpec } from './upgrades-tool';
 import { cleanText } from './compose-tycoon';
-import type { MapFacts } from './world-steps';
 
 /** A machine the shop sells: a library model (ref), or a model already in the place (from), recoloured when a hue is given. */
 export interface MachineSpec {
@@ -99,7 +98,7 @@ export function readMachines(raw: unknown): { machines: MachineSpec[]; economy: 
       ...(colour ? { colour } : {}), ...(ref ? { ref } : {}), ...(from ? { from } : {}), ...(hue !== undefined ? { hue } : {}),
     });
   });
-  if (missing.length) return { error: `The machines are missing: ${missing.join('; ')}. Fill them in and call compose_game again.`, missing };
+  if (missing.length) return { error: `The machines are missing: ${missing.join('; ')}. Fill them in.`, missing };
   for (let i = 1; i < out.length; i++) {
     if (!(out[i]!.price > out[i - 1]!.price)) return { error: `machines[${i}].price (${out[i]!.price}) must be higher than machines[${i - 1}].price (${out[i - 1]!.price}): tiers rise in price, or the cheaper one is never worth buying after the dearer one`, missing: [`machines[${i}].price`] };
   }
@@ -263,31 +262,12 @@ export function plotSimSteps(recipe: PlotSimRecipe): Step[] {
   return steps;
 }
 
-/**
- * The map this recipe builds, in the numbers the world pass needs to give the agent concrete steps (world-steps.ts): the island's
- * bounds, the hub, each plot, and eight spots of free ground. From the same layout the steps were made from, so nothing is measured
- * twice and nothing is guessed.
- */
-export function plotSimMapFacts(recipe: PlotSimRecipe): MapFacts {
-  const layout = hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) });
-  const hub = layout.hub!;
-  const stride = Math.max(1, Math.floor(layout.scatter.length / 8));
-  return {
-    root: 'game.Workspace.AppleMap',
-    ground: { center: layout.ground.center, half: [layout.ground.size[0] / 2, layout.ground.size[1] / 2] },
-    hub: { path: 'game.Workspace.AppleMap.Hub', center: hub.center, half: hub.radius },
-    plots: layout.plots.map((at, i) => ({ path: `game.Workspace.AppleMap.Plots.Plot${i + 1}`, at })),
-    free: layout.scatter.filter((_, i) => i % stride === 0).slice(0, 8),
-    frame: (PLOT_TILES * PLOT_TILE) / 2 + 1,
-  };
-}
-
 /** Where the hero goes: the centre of the hub. */
 export function heroSpot(recipe: PlotSimRecipe): [number, number] {
   return hubLayout(recipe.seed, recipe.players, { plotTiles: PLOT_TILES, tile: PLOT_TILE, ...(recipe.heroSize ? { hero: recipe.heroSize } : {}) }).hub!.heroSpot;
 }
 
-/** What compose_game's `plotSim` argument holds, read and checked, or what is missing. Pure. */
+/** What a `plotSim` spec holds, read and checked, or what is missing. Pure. */
 export function readPlotSim(given: unknown, seed: number, hasComponents: boolean): { recipe: PlotSimRecipe; economy: MachineEconomy[]; notes: string[]; defaults: string[] } | { error: string; missing: string[] } {
   const g = (given && typeof given === 'object' ? given : {}) as Record<string, unknown>;
   const missing: string[] = [];
@@ -302,7 +282,7 @@ export function readPlotSim(given: unknown, seed: number, hasComponents: boolean
   const upgrades = readUpgrades(g.upgrades);
   if ('error' in upgrades) missing.push('upgrades (1 to 9: { label, kind, amount, cost })');
   if (missing.length || 'error' in machines || 'error' in upgrades) {
-    const why = 'error' in machines && !missing.some((m) => !machines.missing.includes(m)) ? machines.error : `The plot simulator is missing: ${missing.join('; ')}. Fill them from the user's request and call compose_game again.`;
+    const why = 'error' in machines && !missing.some((m) => !machines.missing.includes(m)) ? machines.error : `The plot simulator is missing: ${missing.join('; ')}. Fill them from the user's request.`;
     return { error: why, missing };
   }
   const defaults: string[] = [];

@@ -210,7 +210,7 @@ test('only explicitly unsupported operations withhold their dependent tools', ()
   for (const tool of [
     'get_project_tree', 'get_instance', 'read_script', 'edit_script', 'create_instances',
     'set_properties', 'create_checkpoint', 'get_output_logs', 'insert_asset', 'render_view',
-    'compose_thumbnail', 'inspect_visually', 'generate_model', 'run_and_check', 'inspect_model',
+    'compose_thumbnail', 'generate_model', 'run_and_check', 'inspect_model',
     'query_owner_assembly', 'read_owner_media',
   ]) {
     assert.equal(filtered.allowed.has(tool), true, `${tool} should remain executable through typed Studio operations`);
@@ -242,7 +242,6 @@ test('current ordinary authoring stays available even when arbitrary plugin-cont
     'install_module',
     'insert_asset',
     'render_view',
-    'inspect_visually',
     'create_checkpoint',
     'generate_model',
     'set_mood',

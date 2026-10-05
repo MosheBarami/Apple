@@ -184,7 +184,6 @@ import {
 } from './automation-store';
 import { dstDisclosure, instantForWall, wallPartsAt } from './zoned-time';
 import { dunningCopy, interpretDunningEvent } from './dunning';
-import { critiqueViews } from './vision';
 import { roadmapForProject, executionBrief, polishRoadmap, publicShape, type StudioProbe, type RoadmapChat } from './roadmap';
 import { applyBrandingEdit, brandingArt, BRANDING_PUBLISH, generateBranding, readBranding, writeBranding } from './branding';
 import { refuseLuauIngress } from './tools';
@@ -306,7 +305,7 @@ import {
   type RateBucket,
   type RateLimitVerdict,
 } from './public-api';
-import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
+import type { OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
 import { isPlanId, normalizeModelId, PRICE_CURRENCY, quotaLimit, type ProductModel } from '@studpilot/shared';
@@ -4510,70 +4509,6 @@ app.get('/api/admin/session-info/:id', async (c) => {
 });
 
 /**
- * Raw vision access for the eval harness: it brings its own 20-dimension rubric prompt and its own
- * PNGs, and only needs a model to look at them. Kept separate from /api/admin/critique, which is
- * the product's own opinionated 8-dimension critique — the eval must be free to disagree with the
- * product's judgement rather than inherit it.
- */
-app.post('/api/admin/vision-critique', async (c) => {
-  const { prompt, images, responseFormat } = await c.req.json<{
-    prompt: string;
-    images: { mediaType: string; base64: string }[];
-    responseFormat?: string;
-  }>();
-  if (!prompt || !Array.isArray(images) || !images.length) return c.json({ ok: false, error: 'prompt and images required' }, 400);
-  const content = [
-    { type: 'text' as const, text: prompt },
-    ...images.map((i) => ({ type: 'image_url' as const, image_url: { url: `data:${i.mediaType};base64,${i.base64}` } })),
-  ];
-  try {
-    const res = await llmChat(
-      c.env,
-      {
-        model: 'vision',
-        messages: [{ role: 'user', content }],
-        // `high`, never `medium`: measured, medium spends the whole budget on reasoning and
-        // returns an empty string. See docs/COST-MODEL.md.
-        reasoningEffort: 'high',
-        maxTokens: 4000,
-        ...(responseFormat === 'json' ? {} : {}),
-      },
-      { kind: 'eval:vision-critique', cacheTtl: 0 },
-    );
-    return c.json({ ok: true, text: res.text, neurons: res.neurons });
-  } catch (e) {
-    if (e instanceof BudgetError) return c.json({ ok: false, error: e.message, reason: e.reason }, 429);
-    throw e;
-  }
-});
-
-/**
- * Critique rendered views. This is how the visual eval harness reaches a vision model: the
- * grader has no Workers AI binding of its own, and routing it through here means eval spend is
- * counted by the same budget ledger as everything else rather than escaping it.
- */
-app.post('/api/admin/critique', async (c) => {
-  const { subject, boundsSize, views, lighting, intent, passThreshold, subjectKind } = await c.req.json<{
-    subject?: string;
-    boundsSize?: [number, number, number];
-    views: RenderViewResult['views'];
-    lighting?: RenderViewResult['lighting'];
-    intent: string;
-    passThreshold?: number;
-    /** 'prop' judges one object; 'scene' judges a place. Inferred from bounds when omitted. */
-    subjectKind?: 'prop' | 'scene';
-  }>();
-  if (!Array.isArray(views) || !views.length) return c.json({ error: 'views required' }, 400);
-  const result: RenderViewResult = { subject: subject ?? 'scene', boundsSize: boundsSize ?? [0, 0, 0], views, lighting };
-  try {
-    return c.json(await critiqueViews(c.env, result, intent ?? 'a well-built Roblox scene', { passThreshold, subject: subjectKind }));
-  } catch (e) {
-    if (e instanceof BudgetError) return c.json({ error: e.message, reason: e.reason }, 429);
-    throw e;
-  }
-});
-
-/**
  * Run a single Studio op against a paired project, with no agent loop and no inference.
  * The visual eval harness captures renders through this: driving a model to ask for a screenshot
  * would make every eval run cost money and would confound what the eval is measuring.
@@ -4593,19 +4528,13 @@ app.post('/api/admin/agent-run/:id', async (c) => {
 
 /**
  * The owner's benchmark on his OWN project, with his own sign-in (owner, 2026-10-02): a fresh chat (conversation,
- * memory and run state cleared; pairing and checkpoints kept) and the evaluation of what a finished request built.
- * Owner only, never a collaborator; neither route builds anything.
+ * memory and run state cleared; pairing and checkpoints kept). The evaluation half (`bench/evaluate`) judged photos with a
+ * vision model and was removed in M4. Owner only, never a collaborator; the route builds nothing.
  */
 app.post('/api/projects/:id/bench/reset', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const res = await ctx.stub.fetch('https://do/bench-reset', { method: 'POST' });
-  return c.json(await res.json(), res.status as 200);
-});
-app.post('/api/projects/:id/bench/evaluate', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
-  if (!ctx) return c.json({ error: 'not found' }, 404);
-  const res = await ctx.stub.fetch('https://do/bench-evaluate', { method: 'POST', body: JSON.stringify(await c.req.json().catch(() => ({}))) });
   return c.json(await res.json(), res.status as 200);
 });
 

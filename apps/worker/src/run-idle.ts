@@ -9,14 +9,6 @@
 // whose latest change has passed a verifier, and which has since only read, is idle.
 
 import { fenceForQuote } from './run-parts.ts';
-/**
- * Tools that are CHECKS without being verifiers. A plan's verification step is the agent's own choice among the verifiers in
- * verifiers.ts, and the self-check's `look` is not one of them (it answers "what does it look like", never "is it good"). But a
- * successful look after a change IS the run having checked that change, so reading afterwards is the idle this file bounds.
- * Registered here, beside the bound it feeds; tests/run-idle.test.mjs derives that each is a real tool that changes nothing.
- */
-export const EXTRA_CHECK_TOOLS: ReadonlySet<string> = new Set(['look']);
-
 export const IDLE_AFTER_VERIFY_NUDGE = 4;
 export const IDLE_AFTER_VERIFY_LIMIT = 8;
 /**
@@ -39,9 +31,8 @@ export const ANSWER_ONLY_NUDGE = 5;
  */
 export const READ_STALL_NUDGE = 6;
 export const READ_STALL_LIMIT = 20;
-// The nudge was 10 until round 3 (2026-10-04): a run after a composer read for 30 steps, and the generic note at the tenth did not
-// move it. It is 6 now, and after a composer the note restates the next concrete step of the world pass (world-pass.ts readStallNote).
-// Still well under the limit, which ends the run.
+// The nudge was 10 until round 3 (2026-10-04): a run read for 30 steps, and the generic note at the tenth did not move it. It is 6
+// now. Still well under the limit, which ends the run.
 
 /**
  * EVERY TURN THE HARNESS WRITES INTO THE TRANSCRIPT CARRIES THIS PREFIX. The transcript only has a `user`
@@ -264,7 +255,7 @@ export function afterToolOutcome(streaks: Record<string, number> | undefined, to
  */
 const MADE: Record<string, string | [string, string]> = {
   edit_script: 'how the game works', format_script: 'how the game works', run_luau: 'how the game works', install_module: 'how the game works',
-  create_instances: 'new objects', build_scene: 'a ready-made scene',
+  create_instances: 'new objects',
   set_properties: 'how things look', set_properties_bulk: 'how things look', set_locked: 'how things look', set_visible: 'how things look',
   edit_terrain: 'the terrain', shape_terrain: 'the terrain',
   delete_instances: 'removed objects',
@@ -309,7 +300,6 @@ export function plainLibraryThing(path: string): string {
 export function madeKey(tool: string, args: string | undefined): string {
   if (tool === 'recreate_owner_game') return '=the whole game';
   if (tool === 'build_game') return '=a whole new game from your saved games';
-  if (tool === 'compose_game') return '=a whole new game made for your idea';
   if (tool === 'install_owner_system') return '=a ready-made feature from your saved games';
   if (tool !== 'import_owner_library') return tool;
   try {
@@ -411,7 +401,7 @@ export function gameGaps(
 
 /** A mutating call that puts a HUD on screen. An owner game's original UI counts: a recreate or a StarterGui import brings its own. */
 export function buildsHud(name: string, args: string | undefined): boolean {
-  return name === 'build_ui' || name === 'insert_ui_component' || name === 'build_studded_ui' || name === 'add_upgrades' || name === 'recreate_owner_game' || name === 'build_game' || name === 'compose_game' ||
+  return name === 'build_ui' || name === 'insert_ui_component' || name === 'build_studded_ui' || name === 'add_upgrades' || name === 'recreate_owner_game' || name === 'build_game' ||
     /ScreenGui|ui_kit/.test(args ?? '') || (name === 'import_owner_library' && /StarterGui/.test(args ?? ''));
 }
 

@@ -15,7 +15,7 @@
  */
 import type { AgentCtx } from './tools';
 import type { InstanceSpecLite } from './compose';
-import { typed } from './compose-run';
+import { typed } from './typed-spec';
 import { GAME_ID, LIBRARY_IMPORT_MS, libraryMaterials, librarySafetyCopy } from './local-owner-corpus';
 import { rgbBase64ToDataUrl } from './png';
 import { imagePathFor, storeImage } from './imagegen';
@@ -390,7 +390,7 @@ export async function previewLibraryModels(ctx: AgentCtx, raw: unknown[], opts: 
     if (opts.snapshot && staged.length) snapshot = await lineupSnapshot(ctx, staged);
     return {
       previews, ...(failed.length ? { failed } : {}), ...(snapshot ? { snapshot } : {}),
-      note: 'Measured evidence, nothing placed and nothing chosen. Choose with the request in view: place one with insert_library_model ({ id } or { gameId, path }, and size/height/scale if it should differ from its own size), or build it another way if none fits (build_object, compose_game, ask the user).',
+      note: 'Measured evidence, nothing placed and nothing chosen. Choose with the request in view: place one with insert_library_model ({ id } or { gameId, path }, and size/height/scale if it should differ from its own size), or build it another way if none fits (build_object, ask the user).',
     };
   } finally {
     for (const s of staged) await gone(ctx, s.into);

@@ -1,11 +1,10 @@
 // SessionDO — one per project. Store of record for chat history, checkpoints and op logs.
 // Bridges: browser (WebSocket, hibernatable) <-> agent loop (alarm-driven steps) <-> Studio
 // plugin (HTTP long-poll). Survives eviction between agent steps via persisted state.
-import { benchClean, benchEvaluate } from '../owner-bench';
+import { benchClean } from '../owner-bench';
 import { surfaceDefaultOp } from '../surfaces';
 import { addSources } from '../sources';
 import { lastUserText } from '../user-request';
-import { afterReady, saysReady } from '../run-flow';
 import { LEDGER_KEY, ledgerBlock, ledgerEntryFor, liveEntries, withEntry, type LedgerEntry } from '../build-ledger';
 import { RESET_KEYS } from '../project-state';
 import { withoutToolTalk } from '../plain-reply';
@@ -96,27 +95,21 @@ import type { LibraryRun } from '../library-run';
 import { addCreated, rememberCreated, coveredByCreated } from '../created-paths';
 import { promptBudgetForKey } from '../prompt-budget';
 import { VERIFIER_TOOLS } from '../verifiers';
-import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, pushHarness, buildNudge, retuneNudge, READ_STALL_LIMIT, alternatesWithChecks, type LastChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction, EXTRA_CHECK_TOOLS } from '../run-idle';
+import { afterStep, afterChange, afterChangeWindow, afterToolOutcome, failureSteer, FAIL_STEER_AT, pushHarness, buildNudge, retuneNudge, READ_STALL_LIMIT, alternatesWithChecks, type LastChange, builtSummary, addMade, madeKey, leavesWorkOpen, AUTONOMOUS_CONTINUES, AUTONOMOUS_CONTINUE_STEER, AUTONOMOUS_IDLE_STEER, gameGaps, gameGapSteer, buildsHud, afterDuplicateStreak, unstucksAfterProgress, UNSTICK_STEER, type RetuneAction, type FailureAction } from '../run-idle';
 import { addEvidence, evidenceWords, fenceForQuote, missingParts, partSteer, partSteerAllowed, requestedParts } from '../run-parts';
-import { floatingIslandKit, kitZone, touchesKit, type KitZone } from '../scene-kits';
 import { nextTerrainStreak, terrainStreakRefusal } from '../terrain-streak';
 import { assetSearchLimitReached, explicitAssetSearchLimit } from '../asset-search-limit';
 import { explicitToolSequence, sequenceProgress, sequenceStepMessages, sequenceCallSignature } from '../tool-sequence';
 import { isLightingOnlyRequest, staysInLighting, isOwnerRecreateRequest, startsOwnerRecreate, isOwnerLibraryOnlyRequest, staysInOwnerLibrary } from '../request-scope';
 import { persistWithShedding } from '../persist';
-// THE SELF-CHECK (M1, docs/autonomy/PHASE-3-4-PLAN.md): the switch, the run's evidence ledger, the decision at the
+// THE SELF-CHECK (M1, docs/autonomy/PHASE-3-4-PLAN.md, cut down in M4): the switch, the run's evidence ledger, the decision at the
 // moment of answering, and the optional text judge. See self-check.ts for what each part is and why it exists.
 import { selfCheckMode } from '../self-check';
 import { newLedger, type EvidenceLedger } from '../evidence-ledger';
-import { checkAtAnswer, forcedLookMessage, judgeWorthIt } from '../self-check-run';
+import { checkAtAnswer, judgeWorthIt } from '../self-check-run';
 import { auditReply, type Finding } from '../claim-audit';
 import { judgeReply } from '../claim-audit-judge';
-import { LOOK_TOOL, runBlindCritique } from '../look-tool';
-import { criticFlagOn, critiqueLines, hasSevereFlaw, reportMessage, CRITIC_LIMITS, AREA_WORDS, FLAW_AREAS, type FlawArea, type ReportKind } from '../blind-critique';
-import { decideJudgeGate, judgeFixMessage, readJudge, type JudgeVerdict } from '../judge-gate';
-import { COMPOSER_TOOLS, decideWorldPass, noteComposer, noteWorldTool, readStallNote, type WorldBase } from '../world-pass';
-import { noteFactsComposer, noteFactsTool, stepsBody, worldSteps, type MapFacts, type WorldFacts } from '../world-steps';
-import { readSceneFlags } from '../scene-flags-run';
+import { layoutMessage, readSceneFlags } from '../scene-flags-run';
 import { clearStop, requestStop, stopRequested, stopRequestedAt } from '../stop-signal';
 import { singleFlight } from '../single-flight';
 import { runIntentFor } from '../run-intent';
@@ -191,23 +184,6 @@ function annotateLastTrace(agent: { trace: ToolTraceEntry[] }, text: string): vo
 }
 
 /** The last few trace rows, as the rows describe themselves, for the note that a read-only stall ended the run. */
-/** The composer's `map` result as MapFacts, or undefined when it is not that shape (a composer with no map, an older result). */
-function mapFactsOf(v: unknown): MapFacts | undefined {
-  const m = v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
-  const p2 = (x: unknown): x is [number, number] => Array.isArray(x) && x.length === 2 && x.every((n) => typeof n === 'number' && Number.isFinite(n));
-  if (!m || typeof m.root !== 'string' || !Array.isArray(m.plots) || !Array.isArray(m.free)) return undefined;
-  const g = m.ground as { center?: unknown; half?: unknown } | undefined;
-  if (!g || !p2(g.center) || !p2(g.half)) return undefined;
-  const hub = m.hub as { path?: unknown; center?: unknown; half?: unknown } | undefined;
-  return {
-    root: m.root, ground: { center: g.center, half: g.half },
-    ...(hub && typeof hub.path === 'string' && p2(hub.center) && typeof hub.half === 'number' ? { hub: { path: hub.path, center: hub.center, half: hub.half } } : {}),
-    plots: (m.plots as { path?: unknown; at?: unknown }[]).filter((q) => typeof q.path === 'string' && p2(q.at)).map((q) => ({ path: q.path as string, at: q.at as [number, number] })).slice(0, 8),
-    free: (m.free as unknown[]).filter(p2).slice(0, 8),
-    ...(typeof m.frame === 'number' ? { frame: m.frame } : {}),
-  };
-}
-
 function lastReads(trace: readonly ToolTraceEntry[], n: number): string {
   return trace.slice(-n).map((t) => t.summary.replace(/\s+/g, ' ').slice(0, 80)).join('; ') || 'none';
 }
@@ -325,19 +301,6 @@ interface AgentState {
   keepOwnerOriginal?: boolean;
   /** build_game finished: the game is whole and its content is being given a new theme, which renames and moves models, so the structure fence lifts. */
   builtGame?: boolean;
-  /** judge_game said the game is ready in this run: project changes are refused and the answer is next (run-flow.ts). */
-  judgedReady?: boolean;
-  /** The latest judge_game verdict of this run (judge-gate.ts): an answer over a "not ready" one is sent back, twice at most. */
-  lastJudge?: JudgeVerdict;
-  /** Times the run was sent back for the judge's findings. */
-  judgeFixPasses?: number;
-  /** A composer built a base and what the run has built on it since (world-pass.ts); undefined before any composer. */
-  worldBase?: WorldBase;
-  /** What the composer built (its map in numbers) and the tools used since: the facts the world pass's steps are made from (world-steps.ts). */
-  worldFacts?: WorldFacts;
-  /** The areas the blind critique found a severe flaw in, when it sent the run back for its one fix pass (a fixed vocabulary), and the change count then. */
-  critiqueSevere?: FlawArea[];
-  critiqueAtSeq?: number;
   /**
    * The run is offered the focused toolset (tools.ts FOCUSED_TOOLS): about 30 tools instead of 115, so every step sends
    * a fraction of the tool text and thinks faster (owner, 2026-10-01: "token efficient and really really fast").
@@ -346,14 +309,8 @@ interface AgentState {
   focused?: boolean;
   /** Deferred tools more_tools unlocked by name while the run is still focused (tools.ts DEFERRED_GROUPS). */
   unlockedTools?: string[];
-  /** compose_game built a plot simulator: the run plays it once and answers (the 93-step run rebuilt it by hand, 274 credits). */
-  composedPlotSim?: boolean;
-  /** What the composer said the player can do in the game it built: the answer when the run ends any other way. */
-  composedForUser?: string;
   /** What the last play_check found wrong, in its own words (undefined when it passed). */
   lastCheckProblem?: string;
-  /** The run ends at the next step on composedForUser, without asking the model (a build Studio refused outright). */
-  endWithComposed?: boolean;
     /** What the last play_check measured, for the answer (its leaderstats line, and its error count). */
   lastCheckSeen?: string;
   /** The UI theme the user picked for this request. Studded refuses the non-studded UI tools. */
@@ -424,8 +381,6 @@ interface AgentState {
   lastChange?: LastChange;
   /** The last call refused as a duplicate, so a duplicate-streak stop can name it. */
   lastDuplicate?: { tool: string; aim: string };
-  /** Set when build_scene has built a kit this run; its pieces and terrain are kept (scene-kits.ts). */
-  kitZone?: KitZone;
   /** Consecutive terrain writes since the last other change (terrain-streak.ts; round 6 made 951). */
   terrainStreak?: number;
   /** A Studio tool was refused because the plugin stopped answering (run-refund.ts studioDropped). */
@@ -491,8 +446,6 @@ interface AgentState {
   consecutiveCuts?: number;
   /** consecutive provider transport failures; reset after a successful model response */
   transientFailures?: number;
-  /** the last visual critique failed its quality gate */
-  visualDefectsFound?: boolean;
   /**
    * What the user's request looks like, classified once when the run starts.
    *
@@ -621,6 +574,8 @@ interface AgentState {
   skillPush?: SkillPushState;
   /** Layout checks run after a world-building step (scene-flags.ts), and the kinds of flag already sent to the agent, so each goes once. */
   layoutChecks?: number;
+  /** The layout flags were read at the moment of answering (once per run). */
+  layoutAtAnswer?: boolean;
   layoutFlagsSent?: string[];
 }
 
@@ -674,7 +629,7 @@ type QueuedSteer = { id: string; text: string; at: number };
 const VERIFIERS = new Set<string>(VERIFIER_TOOLS);
 /** Where the run's evidence ledger lives: its own key, never inside the agent state (the transcript already presses its 128 KiB cap). */
 const SELF_CHECK_KEY = 'selfCheckLedger';
-/** Layout reads after world-building steps, per run (scene-flags.ts). */
+/** Layout reads after world-building steps, per run, and the one at the moment of answering (scene-flags.ts). */
 const MAX_LAYOUT_CHECKS = 3;
 /** What a run that was told not to change anything is never offered. */
 const READ_ONLY_WITHHELD = new Set(projectMutatingToolNames());
@@ -698,6 +653,12 @@ function steerToPart(agent: AgentState): string | null {
   agent.partSteers = gate.next;
   return partSteer(missing, gate.next.steers - 1);
 }
+/** The one line a visual design answer carries because the product has no look (M4): said once, after the reply. */
+const NOT_LOOKED_AT = 'How it looks on screen was not checked: StudPilot cannot look at pictures.';
+/** The read-stall note (run-idle.ts READ_STALL_NUDGE): reads piled up with nothing built. */
+const READ_STALL_NOTE =
+  'You have read the place enough. Stop reading and make the next change the request needs now, with what you ' +
+  'already know. If a detail is missing, choose a sensible default instead of reading again.';
 /** What a lighting-only run is told when it reaches for anything else. */
 const LIGHTING_ONLY =
   'Not run: this request is only about the lighting, so only Lighting changes are made in this run. ' +
@@ -714,10 +675,6 @@ const OWNER_LIBRARY_ONLY =
   '{kind, q} (kind ui, model, fx, sound, animation, tool, script or map), import it with import_owner_library, then arrange it with ' +
   'transform_instances or clone_instances. Sounds are the one exception: a saved game\'s sounds are private to their uploader and do not play ' +
   'elsewhere, so replace them with licensed public audio through insert_sound.';
-/** What a run is told when it tries to redo a kit it already built. */
-const KIT_KEPT =
-  'Not run: the ready-made scene is finished, and its pieces and the terrain around it are kept as built in this run. ' +
-  'Add only what the request still asks for that the scene does not have, or reply to the user now in two or three short, simple sentences.';
 /** A sentence followed by one space, or nothing — so an empty summary leaves no double space. */
 const spaced = (t: string): string => (t ? `${t} ` : '');
 /** Consecutive steps a tool-call-written-as-text steer may be given before the ordinary ending decides. */
@@ -2703,16 +2660,6 @@ export class SessionDO extends DurableObject<Env> {
       return json({ ok: left.length === 0, reset: true, left: left.slice(0, 20) });
     }
 
-    // The owner's benchmark: measure the place after a request's run ended (owner-bench.ts). Never during a run.
-    if (path === '/bench-evaluate' && req.method === 'POST') {
-      const running = await this.ctx.storage.get<AgentState>('agent');
-      if (running && running.status === 'running') return json({ ok: false, error: 'a run is in progress' }, 409);
-      if (!(await this.pluginConnected())) return json({ ok: false, error: 'Studio is not connected' }, 409);
-      const { request, reply } = (await req.json().catch(() => ({}))) as { request?: string; reply?: string };
-      const bind = await this.bind();
-      return json({ ok: true, ...(await benchEvaluate(this.agentCtx(), this.env, bind?.projectId ?? 'bench', String(request ?? ''), String(reply ?? ''))) });
-    }
-
     if (path === '/purge' && req.method === 'POST') {
       for (const ws of this.ctx.getWebSockets()) {
         try {
@@ -4154,8 +4101,6 @@ export class SessionDO extends DurableObject<Env> {
     //   remove, so a preference cannot hand run_luau to the one mode whose entire purpose is that
     //   it cannot touch the project. See applyToolPermissions. ]]
     const modeBase = toolsForMode(agent.mode, offerStudio, toolNames());
-    // With the self-check off the run is exactly what it was before it existed: no look is offered either.
-    if (selfCheckMode(this.env) === 'off') modeBase.delete(LOOK_TOOL);
     // A request that forbade changes gets no tool that can make one — narrowing only, like the
     // permissions below. The playtest stays: it restores anything it disturbs, and it is often
     // exactly what such a request asks for.
@@ -4172,22 +4117,6 @@ export class SessionDO extends DurableObject<Env> {
     const knownTools = new Set(toolNames());
     const sequence = explicitToolSequence(agent.request ?? '', knownTools);
     const sequenceStep = sequence ? sequenceProgress(sequence, agent.trace) : null;
-    // A composed plot simulator that passed its play check is answered with what the composer built and what the check
-    // measured, not a model's retelling (round 7 of the owner's test 1, 2026-10-01: the answer kept saying "you spawn in a
-    // hub" for a game where every player starts on their own plot). One model call fewer, too.
-    if (agent.endWithComposed && agent.composedForUser) {
-      agent.finalText = agent.composedForUser;
-      await this.finishRun(agent, 'incomplete');
-      return;
-    }
-    // Only with the self-check off: with it on, the answer goes through the gates (world pass, judge, look, critique) like any other,
-    // and this ending skipped all of them (t1 round 2: compose_game, judge_game "not ready", then the run ended here, never looked at).
-    if (agent.composedPlotSim && agent.composedForUser && agent.playChecked && !agent.lastCheckProblem && selfCheckMode(this.env) === 'off') {
-      // The reply reaches the browser on msg_end (finishRun), like every other ending: nothing is streamed here.
-      agent.finalText = `${agent.composedForUser}\n\nI play-tested it: ${agent.lastCheckSeen ?? 'it ran'}.`;
-      await this.finishRun(agent, 'done');
-      return;
-    }
     if (sequenceStep && sequenceStep.state !== 'next') {
       await this.finishRun(agent, sequenceStep.state === 'complete' ? 'done' : 'incomplete', undefined,
         sequenceStep.state === 'complete'
@@ -4239,7 +4168,6 @@ export class SessionDO extends DurableObject<Env> {
       // What the run has actually DONE, which is what expires a stale `conversational` verdict
       // taken from the opening message. `traits` is spread below and carries that verdict.
       mutated: agent.mutated,
-      visualDefectsFound: agent.visualDefectsFound,
       ...(agent.traits ?? {}),
     });
     if (agent.forcedEffort) choice.effort = agent.forcedEffort;
@@ -4285,8 +4213,7 @@ export class SessionDO extends DurableObject<Env> {
     // on the run's first step, gets no tool definitions: they are 69 tools and ~67k characters, about
     // 80% of the input of every call, and "hi" needs none of them. CONVERSATIONAL_RE is anchored to the
     // whole message, so "hi, build me a tower" is not talk. Any later step is offered the normal set.
-    // After judge_game said ready, the next step is the answer: no tool is offered, so the model can only reply (run-flow.ts).
-    const talkOnly = (!sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated) || agent.judgedReady === true;
+    const talkOnly = !sequence && agent.traits?.conversational === true && agent.step === 1 && !agent.mutated;
     // Historical assistant replies can include unsupported completion claims. State the current
     // required action at the provider boundary, using only validated registry names.
     const stepMessages = sequenceStep?.state === 'next'
@@ -4410,7 +4337,6 @@ export class SessionDO extends DurableObject<Env> {
     // Signals are recomputed from what actually happens each step, so an escalation lapses once
     // the problem it was bought for is resolved.
     agent.priorStepFailed = false;
-    agent.visualDefectsFound = false;
     // A tool call written as text and not run IS something that went wrong this step. This used to
     // be set before the reset above, which erased it on the same line it was meant to survive.
     if (rescued?.refused) agent.priorStepFailed = true;
@@ -4422,17 +4348,6 @@ export class SessionDO extends DurableObject<Env> {
       res.text = '';
       agent.finalText = '';
     }
-    if (
-      res.text &&
-      !res.toolCalls.length &&
-      agent.mutated &&
-      studioConnected &&
-      agent.traits?.visualDesignTask &&
-      capabilityFilter.withheld.includes('inspect_visually')
-    ) {
-      res.text += '\n\nRendered appearance was not verified: the connected Studio does not provide the required visual inspection operation.';
-    }
-
     // Credits track real spend: charge the difference between what this call actually cost
     // and the 1 Credit already taken for the step. Users are never billed for our estimate.
     // Round Credits once per RUN, not once per call: otherwise a run of five small calls costs
@@ -4693,8 +4608,7 @@ export class SessionDO extends DurableObject<Env> {
       // and a game with nothing on screen or a loop nobody played is not finished either.
       const gaps = gameGaps(agent, allowed.has('play_check'));
       // …nor is a request whose own list still names a part nothing built is named for (run-parts.ts).
-      // A game the client check called ready is finished: its answer ends the run (run-flow.ts).
-      const partNext = agent.mutated && canBuild && !owesWork && !agent.judgedReady ? steerToPart(agent) : null;
+      const partNext = agent.mutated && canBuild && !owesWork ? steerToPart(agent) : null;
       if (partNext) {
         pushHarness(agent.llm, partNext);
         await this.persistAgent(agent);
@@ -4702,7 +4616,7 @@ export class SessionDO extends DurableObject<Env> {
         return;
       }
       if (
-        agent.mutated && canBuild && !owesWork && !agent.judgedReady &&
+        agent.mutated && canBuild && !owesWork &&
         (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES && (gaps.length > 0 || leavesWorkOpen(res.text))
       ) {
         agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
@@ -4711,12 +4625,21 @@ export class SessionDO extends DurableObject<Env> {
         await this.ctx.storage.setAlarm(Date.now() + 10);
         return;
       }
-      // THE SELF-CHECK AT THE MOMENT OF ANSWERING (self-check-run.ts): look at the work before saying anything about it,
-      // send the reply's unsupported claims back, and say what is still unchecked in one plain line after the agent's words.
+      // THE SELF-CHECK AT THE MOMENT OF ANSWERING (self-check-run.ts): send the reply's unsupported claims back, hand the agent
+      // the layout flags once, and say what is still unchecked in one plain line after the agent's words.
       // Not for an answer the product composes itself (it is built from the build, not from the model's retelling).
-      // Also for an answer after a composer or a ready judge: a composed base is not the game, and "ready" says how it plays, not how it looks.
       if (!owesWork && agent.mode === 'agent') {
-        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected, canBuild)) return;
+        if (ledger && await this.selfCheckAtAnswer(agent, ledger, ctx, allowed, studioConnected)) return;
+      }
+      // THERE IS NO LOOK IN THE PRODUCT (M4). The answer to a visual design request, after the run changed the place, says plainly that how
+      // it looks was not checked: a model that cannot see a picture must not leave the impression that it did. Said once, here, after any
+      // audit round has settled, so a reply that was sent back is not followed by the same line twice. (This line used to be said only when
+      // the connected Studio could not render and `inspect_visually` was withheld; no run can inspect visually any more.)
+      if (!owesWork && agent.mutated && studioConnected && agent.traits?.visualDesignTask) {
+        const prior = agent.streamedText ?? '';
+        agent.finalText = agent.finalText ? `${agent.finalText}\n\n${NOT_LOOKED_AT}` : NOT_LOOKED_AT;
+        agent.streamedText = prior ? `${prior}\n\n${NOT_LOOKED_AT}` : NOT_LOOKED_AT;
+        this.broadcast({ type: 'delta', msgId: agent.msgId, text: prior ? `\n\n${NOT_LOOKED_AT}` : NOT_LOOKED_AT });
       }
       await this.finishRun(agent, owesWork ? 'incomplete' : 'done');
       return;
@@ -4816,13 +4739,12 @@ export class SessionDO extends DurableObject<Env> {
         });
         continue;
       }
-      const readyRefusal = afterReady(agent.judgedReady, call.name, new Set(projectMutatingToolNames()))
-        ?? ((agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
-          ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined);
+      const readyRefusal = (agent.uiTheme ?? 'studded') === 'studded' && (call.name === 'insert_ui_component' || call.name === 'build_ui')
+        ? 'The UI theme is studded: every screen is the game\'s own studded GUI. Use build_studded_ui (or build_object\'s screen), then a LocalScript for the values and buttons.' : undefined;
       if (readyRefusal) {
         duplicatesThisStep += 1;
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (${agent.judgedReady ? 'the game is ready' : 'not run'})` });
+        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `✗ ${call.name} (not run)` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${readyRefusal}`, toolCallId: call.id, name: call.name });
         continue;
       }
@@ -4845,13 +4767,6 @@ export class SessionDO extends DurableObject<Env> {
         this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
         this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (library parts only)` });
         agent.llm.push({ role: 'tool', content: `[${call.name}] ${OWNER_LIBRARY_ONLY}`, toolCallId: call.id, name: call.name });
-        continue;
-      }
-      if (agent.kitZone && touchesKit(agent.kitZone, call.name, call.arguments)) {
-        duplicatesThisStep += 1;
-        this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: call.name, summary: call.name, target: targetOf(call.name, call.arguments) });
-        this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: false, summary: `${call.name} (the ready-made scene is kept)` });
-        agent.llm.push({ role: 'tool', content: `[${call.name}] ${KIT_KEPT}`, toolCallId: call.id, name: call.name });
         continue;
       }
       const terrainRefusal = terrainStreakRefusal(agent.terrainStreak ?? 0, call.name);
@@ -4974,62 +4889,22 @@ export class SessionDO extends DurableObject<Env> {
         }
         agent.builtWords = addEvidence(agent.builtWords, evidenceWords(call.name, call.arguments));
       }
-      if (out.ok && call.name === 'build_scene') {
-        let kitArgs: Record<string, unknown> = {};
-        try { kitArgs = JSON.parse(call.arguments || '{}') as Record<string, unknown>; } catch { /* the tool already refused bad JSON */ }
-        const kit = floatingIslandKit(kitArgs);
-        if (!('error' in kit)) agent.kitZone = kitZone(kit.facts);
-      }
       if (out.ok && VERIFIERS.has(call.name) && agent.mutated) verifiedThisStep = true;
-      // A look at the work is a check too: reading after it is the idle the bound above already counts.
-      if (out.ok && EXTRA_CHECK_TOOLS.has(call.name) && agent.mutated) verifiedThisStep = true;
       if (out.mutatedProject === true && buildsHud(call.name, call.arguments)) agent.hudBuilt = true;
       // A model file recreates without replacing a slot, so the import alone does not mark it.
       if (out.mutatedProject === true && call.name === 'recreate_owner_game') agent.keepOwnerOriginal = true;
-      // A composed plot simulator or tycoon that passed its play check is answered with what the composer built and what the
-      // check measured (the composer says which template it made; the request's words decide nothing here).
-      if (call.name === 'compose_game' && out.mutatedProject === true && out.ok && ['plot-sim', 'tycoon'].includes(String((out.detail as { template?: unknown } | undefined)?.template ?? ''))) {
-        agent.composedPlotSim = true;
-      }
-      // A build refused because Studio is in a Play test cannot be helped by any other tool (every write is refused the
-      // same way): the run ends on what to do (round 11 of the owner's test 1, 2026-10-01: 17 minutes of refused writes).
-      if (call.name === 'compose_game' && !out.ok && /Studio is in a Play test/.test(out.resultForLlm)) {
-        agent.composedForUser = 'Studio is in a Play test, so nothing could be built. Stop the test (the red square at the top of Studio), then ask again.';
-        agent.endWithComposed = true;
-      }
-      if (call.name === 'compose_game' && out.ok) {
-        const said = (out.detail as { forUser?: unknown } | undefined)?.forUser;
-        if (typeof said === 'string' && said.trim()) agent.composedForUser = said.trim();
-      }
       if (call.name === 'play_check' && out.ok) {
         // What the check measured, in the answer's words (library-object.ts playCheckReading, shared with the library step).
         const reading = playCheckReading(out.detail);
         agent.lastCheckProblem = reading.problem;
         agent.lastCheckSeen = reading.seen;
       }
-      if (out.mutatedProject === true && (call.name === 'build_game' || call.name === 'compose_game')) {
+      if (out.mutatedProject === true && call.name === 'build_game') {
         agent.builtGame = true;
       }
       // What this call left standing is written to the project's ledger (build-ledger.ts), for the next run to be told, as information.
       if (out.mutatedProject === true) await this.recordBuild(agent, call.name, call.arguments, out);
-      if (out.ok && saysReady(call.name, out.resultForLlm)) agent.judgedReady = true;
-      // The verdict itself, kept so an answer over a "not ready" one can be sent back (judge-gate.ts). The newest verdict wins.
-      if (out.ok && call.name === 'judge_game') {
-        const verdict = readJudge(out.resultForLlm);
-        if (verdict) agent.lastJudge = verdict;
-      }
-      // A composer built the BASE of a game; what the run builds on it after is counted (world-pass.ts).
-      if (out.mutatedProject === true && out.ok) {
-        if (COMPOSER_TOOLS.includes(call.name)) {
-          agent.worldBase = noteComposer(agent.worldBase);
-          agent.worldFacts = noteFactsComposer(mapFactsOf((out.detail as { map?: unknown } | undefined)?.map));
-        } else {
-          noteWorldTool(agent.worldBase, call.name);
-          noteFactsTool(agent.worldFacts, call.name);
-        }
-      }
-      // Judging the game plays it in up to three Test sessions (sessions:0 reads without playing), so it is the playtest a built game is owed.
-      if (out.ok && (call.name === 'play_check' || (call.name === 'judge_game' && !/"sessions"\s*:\s*0\b/.test(call.arguments)))) agent.playChecked = true;
+      if (out.ok && call.name === 'play_check') agent.playChecked = true;
       // A read made BEFORE the place changed is not the same read after it. Refusing an identical
       // get_project_tree as "you already have the result above" after a create_instances hands the
       // model a result that is now false — and it asks again (run 1870ecfe). So a change forgets the
@@ -5080,7 +4955,6 @@ export class SessionDO extends DurableObject<Env> {
           }
         }
       }
-      if (ctx.lastCritique && !ctx.lastCritique.passed) agent.visualDefectsFound = true;
       this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
       // Keep the live trace the reconnect snapshot replays from.
       agent.uiTools = agent.uiTools ?? [];
@@ -5248,12 +5122,6 @@ export class SessionDO extends DurableObject<Env> {
     } else if (streak === 'end') {
       const note = agent.lightingOnly && agent.mutated
         ? `The lighting is changed. ${spaced(builtSummary(agent.made))}Say what else you would like and StudPilot will do it.`
-        : agent.kitZone
-        ? `Your scene is built. ${spaced(builtSummary(agent.made))}Say what you would like changed and StudPilot will change it.`
-        // A composed game ends on what the player can do in it, and on what the last check found (live 2026-10-01: the
-        // owner got "kept doing the same thing again and again" instead of how to play the game that was built).
-        : agent.composedForUser
-        ? `${agent.composedForUser}${agent.lastCheckProblem ? `\n\nOne thing is not right yet: ${agent.lastCheckProblem.replace(/\s*\(Studio's own[^)]*\)/, '')} Ask StudPilot to fix it.` : ''}`
         : agent.mutated
         ? `StudPilot stopped because it kept doing the same thing again and again. ${spaced(builtSummary(agent.made))}Everything it made is in your place.`
         : 'StudPilot stopped because it kept doing the same thing again and again, and nothing in your place was changed.';
@@ -5285,7 +5153,7 @@ export class SessionDO extends DurableObject<Env> {
     // instead, bounded by partSteerAllowed. Reads are withheld for one step when
     // the run was about to end on reading.
     if ((idle.action === 'finish' || idle.action === 'stall' || idle.action === 'nudge') &&
-        agent.mode === 'agent' && canBuild && !agent.lightingOnly && !agent.kitZone) {
+        agent.mode === 'agent' && canBuild && !agent.lightingOnly) {
       const steer = steerToPart(agent);
       if (steer) {
         if (idle.action !== 'nudge') {
@@ -5363,10 +5231,8 @@ export class SessionDO extends DurableObject<Env> {
         'between versions of it, keep the best one, finish anything else the request still needs, and then reply to the user. ' +
         'If each change really adds something new, carry on.');
     }
-    // With a composed base the note restates the next step of the world pass (world-steps.ts), fenced as data; round 3 read for 30 steps.
-    const stallNote = idle.action === 'build' ? readStallNote(agent.worldBase ? this.fencedToolOutput(agent, 'world_steps', this.worldStepsFor(agent, ledger)[0] ?? '').text : undefined) : '';
     if (idle.action === 'build') {
-      pushHarness(agent.llm, stallNote);
+      pushHarness(agent.llm, READ_STALL_NOTE);
     }
     if (idle.action === 'finish' && (agent.autonomousContinues ?? 0) < AUTONOMOUS_CONTINUES) {
       agent.autonomousContinues = (agent.autonomousContinues ?? 0) + 1;
@@ -5537,43 +5403,20 @@ export class SessionDO extends DurableObject<Env> {
     ctx: AgentCtx,
     allowed: ReadonlySet<string>,
     studioConnected: boolean,
-    canBuild: boolean,
   ): Promise<boolean> {
-    // What the run still owes before it may answer, and what it must admit once the bounds on that are used.
-    const { owed, admit } = this.owedAtAnswer(agent, canBuild && studioConnected, ledger.mutationSeq, ledger);
     const input = {
       ledger,
       reply: agent.finalText ?? '',
-      lookAvailable: allowed.has(LOOK_TOOL),
-      studioConnected,
-      can: { read: allowed.has('get_instance'), play: allowed.has('play_check'), look: allowed.has(LOOK_TOOL) },
-      ...(owed ? { owed } : {}),
-      admit,
+      can: { read: allowed.has('get_instance'), play: allowed.has('play_check') },
     };
-    let decision = checkAtAnswer({ ...input, extra: owed ? undefined : await this.judgeFindings(agent, input) });
-    if (decision.action === 'steer' && decision.kind === 'world' && agent.worldBase) agent.worldBase.steers += 1;
-    if (decision.action === 'steer' && decision.kind === 'judge') agent.judgeFixPasses = (agent.judgeFixPasses ?? 0) + 1;
-    if (decision.action === 'force_look') {
-      // The gate forces ONE look, run here on the agent's behalf; the observations go to the agent as data to act on.
-      const out = await this.runSelfCheckLook(agent, ledger, ctx);
-      if (out.ok) {
-        pushHarness(agent.llm, forcedLookMessage(this.fencedToolOutput(agent, LOOK_TOOL, out.resultForLlm).text));
-        return this.takeAnotherStep(agent, ledger);
-      }
-      // A look that could not run gives the agent nothing to act on, so no extra model step is spent on it: decide again
-      // without it (the gate now steps aside) and let the final line say the work was not looked at.
-      decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
-    }
+    const decision = checkAtAnswer({ ...input, extra: await this.judgeFindings(agent, input) });
     if (decision.action === 'steer') {
       pushHarness(agent.llm, decision.message);
       return this.takeAnotherStep(agent, ledger);
     }
-    // THE BLIND CRITIQUE (blind-critique.ts): the answer is about to go. A reviewer who sees only the request and pictures of the
-    // place says what is wrong with them; a severe flaw sends the agent back for ONE fix pass, then it answers.
-    if (decision.action === 'finish' && await this.blindCritiqueAtAnswer(agent, ledger, ctx, allowed, studioConnected)) {
-      return this.takeAnotherStep(agent, ledger);
-    }
-    if (decision.action === 'finish' && decision.note) {
+    // The layout flags (scene-flags.ts), once per run, for a run that built in the world: measured, no render, no model.
+    if (await this.layoutFlagsAtAnswer(agent, ctx, studioConnected)) return this.takeAnotherStep(agent, ledger);
+    if (decision.note) {
       // The same way every other product note is added: after the agent's own words, never in place of them.
       const prior = agent.streamedText ?? '';
       agent.finalText = agent.finalText ? `${agent.finalText}\n\n${decision.note}` : decision.note;
@@ -5584,49 +5427,8 @@ export class SessionDO extends DurableObject<Env> {
     return false;
   }
 
-  /**
-   * What the run owes before it may answer, from its own state: the world the request describes when a composer built only a base
-   * (world-pass.ts), then the findings of its own latest "not ready" judge (judge-gate.ts). `owed` is the one steer to send now (the
-   * judge's findings go in fenced: they quote names from the place); `admit` are the plain lines for the final note once a bound
-   * is used, plus the critique's severe areas (a fixed vocabulary, never its words). `canFix` is false when nothing could be changed.
-   */
-  private owedAtAnswer(agent: AgentState, canFix: boolean, mutationSeq: number, ledger?: EvidenceLedger): { owed?: { kind: 'world' | 'judge'; message: string }; admit: string[] } {
-    const admit: string[] = [];
-    let owed: { kind: 'world' | 'judge'; message: string } | undefined;
-    const world = decideWorldPass(agent.worldBase, { canBuild: canFix, ...(agent.worldBase ? { steps: this.fencedToolOutput(agent, 'world_steps', stepsBody(this.worldStepsFor(agent, ledger))).text } : {}) });
-    if (world.action === 'steer') owed = { kind: 'world', message: world.message };
-    else if (world.action === 'admit') admit.push(world.line);
-    const judge = decideJudgeGate(agent.lastJudge, agent.judgeFixPasses ?? 0, { canBuild: canFix });
-    if (judge.action === 'steer' && !owed) owed = { kind: 'judge', message: judgeFixMessage(this.fencedToolOutput(agent, 'judge_game', judge.body).text) };
-    else if (judge.action === 'admit') admit.push(judge.line);
-    // The critique's severe flaws are admitted when the run changed nothing after hearing them (what it changed after is looked at, or
-    // said not to have been, by the gate). The areas are a fixed vocabulary: the reviewer's own words never reach the user's reply.
-    const severe = (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a));
-    if (severe.length && mutationSeq === agent.critiqueAtSeq) admit.push(`A fresh reviewer who looked at screenshots found serious problems (${severe.map((a) => AREA_WORDS[a]).join(', ')}) and I did not change anything in answer to them, so they are still there.`);
-    return { ...(owed ? { owed } : {}), admit };
-  }
-
-  /**
-   * The numbered calls the run still owes after a composer (world-steps.ts), from facts it holds: the composer's map, the models it
-   * inserted (the ledger's list, and where the library step left each), the tools it has used since, and the areas a fresh
-   * reviewer found serious. Pure reading; the caller fences the text before it reaches the transcript.
-   */
-  private worldStepsFor(agent: AgentState, ledger?: EvidenceLedger): string[] {
-    const stands = new Map((agent.libraryRun?.placed ?? []).map((p) => [p.path.replace(/^game\./, ''), p.at] as const));
-    const models = (ledger?.inserted ?? []).slice(-6).map((path) => ({ path, at: stands.get(path.replace(/^game\./, '')) }));
-    return worldSteps({
-      ...(agent.worldFacts?.map ? { map: agent.worldFacts.map } : {}),
-      models,
-      used: agent.worldFacts?.used ?? [],
-      assets: agent.worldBase?.assets ?? 0,
-      flawWords: (agent.critiqueSevere ?? []).filter((a) => FLAW_AREAS.includes(a)).map((a) => AREA_WORDS[a]),
-    });
-  }
-
   /** End the step here and take another: the check handed the agent something to act on. */
   private async takeAnotherStep(agent: AgentState, ledger: EvidenceLedger): Promise<true> {
-    // A ready verdict ends the changes (afterReady) and offers no tools; a check that sends the run back to fix something outranks it.
-    agent.judgedReady = false;
     await this.saveLedger(agent, ledger);
     await this.persistAgent(agent);
     await this.ctx.storage.setAlarm(Date.now() + 10);
@@ -5634,46 +5436,18 @@ export class SessionDO extends DurableObject<Env> {
   }
 
   /**
-   * THE BLIND CRITIQUE AT THE MOMENT OF ANSWERING. Returns true when a report was pushed to the agent and it must take its one fix
-   * pass; false when the run may answer. Bounded: ONE critique per run (`ledger.criticRounds`, counted before the call so a failure
-   * cannot be retried), only for a run that changed what the viewport shows, only with Studio connected and `look` offered.
-   * The critic is given the request and the frames and nothing else (blind-critique.ts); the layout flags (scene-flags.ts) ride
-   * along because they are measured, model-free and cost no pass of their own.
+   * THE LAYOUT FLAGS AT THE MOMENT OF ANSWERING. Returns true when a report was pushed to the agent and it must take a step to act
+   * on it; false when the run may answer. Bounded: ONE read per run (`agent.layoutAtAnswer`, set before the read so a failure
+   * cannot be retried), only for a run that built in the world, only with Studio connected, and each kind of flag is sent once per
+   * run (newLayoutFlags). Measured and model-free: it costs no pass of its own.
    */
-  private async blindCritiqueAtAnswer(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx, allowed: ReadonlySet<string>, studioConnected: boolean): Promise<boolean> {
-    if (selfCheckMode(this.env) === 'off' || !criticFlagOn(this.env)) return false;
-    if ((ledger.criticRounds ?? 0) >= CRITIC_LIMITS.fixPasses) return false;
-    if (ledger.viewChangedSeq === 0 || !studioConnected || !allowed.has(LOOK_TOOL)) return false;
-    ledger.criticRounds = (ledger.criticRounds ?? 0) + 1;
-    await this.saveLedger(agent, ledger);
-
-    ctx.evidence = ledger;
-    const toolId = `selfcheck_${agent.step}_review`;
-    this.broadcast({ type: 'agent_status', phase: phaseForTool(LOOK_TOOL), step: agent.step, tool: LOOK_TOOL });
-    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
-    const t0 = Date.now();
-    const verdict = await runBlindCritique(ctx, agent.request ?? '');
-    await this.settleNeurons(agent, verdict.neurons);
-    const severe = verdict.ok && hasSevereFlaw(verdict.critique);
-    const summary = verdict.ok
-      ? `A fresh reviewer looked at the result: ${verdict.critique.flaws.length} flaw(s) found${severe ? ', some serious' : ''}`
-      : 'A fresh review of the result could not be made';
-    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: verdict.ok, summary });
-    agent.uiTools = agent.uiTools ?? [];
-    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: verdict.ok, summary, durationMs: Date.now() - t0 });
-    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
-
-    if (severe && verdict.ok) {
-      agent.critiqueSevere = [...new Set(verdict.critique.flaws.filter((f) => f.severity === 'severe').map((f) => f.area))];
-      agent.critiqueAtSeq = ledger.mutationSeq;
-    }
+  private async layoutFlagsAtAnswer(agent: AgentState, ctx: AgentCtx, studioConnected: boolean): Promise<boolean> {
+    if (selfCheckMode(this.env) === 'off' || !studioConnected || agent.layoutAtAnswer) return false;
+    if (!agent.trace.some((t) => t.ok && WORLD_BUILDING_TOOLS.includes(t.tool))) return false;
+    agent.layoutAtAnswer = true;
     const flags = await this.newLayoutFlags(agent, ctx);
-    if (!severe && flags.length === 0) return false;
-    const body = [
-      ...(severe && verdict.ok ? [critiqueLines(verdict.critique)] : []),
-      ...(flags.length ? [`Layout flags (measured, no render):\n${flags.join('\n')}`] : []),
-    ].join('\n\n');
-    this.pushReport(agent, severe ? 'critique' : 'layout', body);
+    if (!flags.length) return false;
+    this.pushReport(agent, flags.join('\n'));
     return true;
   }
 
@@ -5699,12 +5473,12 @@ export class SessionDO extends DurableObject<Env> {
     if (next && WORLD_BUILDING_TOOLS.includes(next.tool)) return; // the plan is still building the world
     agent.layoutChecks = (agent.layoutChecks ?? 0) + 1;
     const flags = await this.newLayoutFlags(agent, ctx);
-    if (flags.length) this.pushReport(agent, 'layout', flags.join('\n'));
+    if (flags.length) this.pushReport(agent, flags.join('\n'));
   }
 
-  /** THE ONE PLACE a measured or model-made report enters the transcript: a fixed wrapper around a fenced body (blind-critique.ts reportMessage). */
-  private pushReport(agent: AgentState, kind: ReportKind, body: string): void {
-    pushHarness(agent.llm, reportMessage(kind, this.fencedToolOutput(agent, kind === 'critique' ? 'blind_critique' : 'layout_flags', body).text));
+  /** THE ONE PLACE a measured report enters the transcript: a fixed wrapper around a fenced body (scene-flags-run.ts layoutMessage). */
+  private pushReport(agent: AgentState, body: string): void {
+    pushHarness(agent.llm, layoutMessage(this.fencedToolOutput(agent, 'layout_flags', body).text));
   }
 
   /**
@@ -5749,23 +5523,6 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'run_cost', msgId: agent.msgId, creditsSpent: agent.creditsSpent });
       this.broadcast({ type: 'quota', quota: await this.quotaState(agent.userId) });
     }).catch(() => {});
-  }
-
-  /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
-  private async runSelfCheckLook(agent: AgentState, ledger: EvidenceLedger, ctx: AgentCtx) {
-    ctx.evidence = ledger;
-    const toolId = `selfcheck_${agent.step}_look`;
-    const t0 = Date.now();
-    agent.phase = phaseForTool(LOOK_TOOL);
-    this.broadcast({ type: 'agent_status', phase: agent.phase, step: agent.step, tool: LOOK_TOOL });
-    this.broadcast({ type: 'tool_start', msgId: agent.msgId, toolId, tool: LOOK_TOOL, summary: LOOK_TOOL });
-    const out = await runTool(ctx, LOOK_TOOL, '{}');
-    agent.trace.push(toolTraceEntry({ tool: LOOK_TOOL, summary: out.summary, ok: out.ok, resultForLlm: out.resultForLlm, detail: out.detail }, Date.now() - t0, scrubEngineIdentity));
-    this.broadcast({ type: 'tool_end', msgId: agent.msgId, toolId, ok: out.ok, summary: out.summary, detail: out.detail });
-    agent.uiTools = agent.uiTools ?? [];
-    agent.uiTools.push({ toolId, tool: LOOK_TOOL, ok: out.ok, summary: out.summary, durationMs: Date.now() - t0, detail: out.detail });
-    if (agent.uiTools.length > 60) agent.uiTools.splice(0, agent.uiTools.length - 60);
-    return out;
   }
 
   /** Tool output as the model reads it: fenced as untrusted data under the run's own unguessable id. The ONE place it is built. */
@@ -6276,8 +6033,7 @@ export class SessionDO extends DurableObject<Env> {
     // The mode is checked BEFORE the model call, not inside the writer. `applyModelUpdate` would
     // discard the result anyway, but a run with memory switched off must not spend a neuron — or a
     // provider round-trip carrying this conversation — producing a summary nobody will ever store.
-    // A look the self-check ran on the agent's behalf is not substantive work: it must not tip a small run into distillation.
-    if (agent.trace.filter((t) => t.tool !== LOOK_TOOL).length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
+    if (agent.trace.length > 2 && reason === 'done' && memoryWritable(this.memoryModeOn(agent))) {
       // Distillation is StudPilot's own housekeeping: it counts against the GLOBAL neuron budget
       // (so it can never create an uncontrolled bill) but is not charged to the user's Credits.
       const budgetLeft = await this.quotaState(agent.userId);
@@ -6474,12 +6230,8 @@ export class SessionDO extends DurableObject<Env> {
       // The run's user is the project owner (startRun records `bind.ownerId`); a tool that acts in
       // the user's own account (generate_model_external) needs it. No run, no user.
       userId: agent?.userId,
-      // For `look`: what the run was asked, and where a model call made inside a tool is counted (it reaches the Credits
-      // with the next step's settlement, like every other compute this run used).
-      ...(agent ? {
-        request: agent.request,
-        addNeurons: (n: number) => { agent.neuronsUsed = (agent.neuronsUsed ?? 0) + n; },
-      } : {}),
+      // What the run was asked: data for a check (audit_build), never an instruction.
+      ...(agent ? { request: agent.request } : {}),
       assetSources: this.pinnedPrefs?.asset_sources ?? undefined,
       approvedLibraryAssetId: agent?.approvedLibraryAssetId,
       rejectedLibraryAssetIds: agent?.rejectedLibraryAssetIds,

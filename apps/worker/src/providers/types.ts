@@ -54,14 +54,13 @@ export interface ProviderModel {
 
 /**
  * What each internal model key needs from whatever serves it. Mirrors DEFAULT_MODELS in gateway.ts:
- * `nativeTools` there is `tools` here, and `vision` is the only key that is ever handed an image.
+ * `nativeTools` there is `tools` here. No key is ever handed an image (M4: no vision role), so no key needs `vision`.
  * Used to answer "can this provider serve this key at all?" without running anything.
  */
 export const MODEL_KEY_NEEDS: Record<string, { tools: boolean; vision: boolean }> = {
   plan: { tools: true, vision: false },
   agent: { tools: true, vision: false },
   memory: { tools: false, vision: false },
-  vision: { tools: false, vision: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -213,31 +212,16 @@ export interface ProviderAdapter {
 // small shared helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Character-equivalent weight for preflight. GLM Flash's published processor caps an image at
- * 8,000 tokens; reserve that maximum plus 128 framing tokens for every inline PNG/JPEG, even
- * a tiny one. Transport base64 is not tokenized text. Unknown models/URLs retain the prior
- * length fallback. Actual provider usage still settles the reservation in the gateway.
- * Source: https://huggingface.co/zai-org/GLM-5.3-Flash/raw/main/processor_config.json
- */
-export function contentChars(content: string | GatewayContentPart[], modelId?: string): number {
+/** Character weight of a message's content for preflight. Text only: no message the product sends carries a picture (M4). */
+export function contentChars(content: string | GatewayContentPart[]): number {
   if (typeof content === 'string') return content.length;
-  return content.reduce(
-    (n, p) => {
-      if ('text' in p) return n + p.text.length;
-      const url = p.image_url.url;
-      const inlineFlashImage = modelId === '@cf/zai-org/glm-5.3-flash'
-        && /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(url);
-      return n + (inlineFlashImage ? 8_128 * 3.5 : url.length);
-    },
-    0,
-  );
+  return content.reduce((n, p) => n + p.text.length, 0);
 }
 
-/** Flatten mixed content to plain text. Used by providers that cannot take an image on a given path. */
+/** Flatten content to plain text. */
 export function contentText(content: string | GatewayContentPart[]): string {
   if (typeof content === 'string') return content;
-  return content.map((p) => ('text' in p ? p.text : '[image]')).join('\n');
+  return content.map((p) => p.text).join('\n');
 }
 
 export function errorMessage(e: unknown): string {

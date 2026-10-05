@@ -2,7 +2,7 @@ import { TERRAIN_BLIND_NOTE } from '@studpilot/shared';
 // ADVERSARIAL VISUAL CRITIC — a panel of prosecutors, not a panel of reviewers.
 //
 // THE FAILURE THIS REPLACES.
-// vision.ts asks one vision model "critique this scene". The measured failure mode is agreeable
+// A single vision model asked "critique this scene" (vision.ts, removed in M4). The measured failure mode was agreeable
 // vague praise: the model says the build is "solid overall, could use more detail", which is true
 // of literally every build ever made, cannot be acted on, cannot be regression-tested, and lets a
 // grey blockout through. Asking the same model more nicely does not fix it. The structure of the

@@ -59,7 +59,7 @@ test('what a fresh start erases is the project\'s work; what it keeps is the pro
 });
 
 test('/bench-reset uses the registry (one resetProjectState), and clears the in-memory mirrors of the keys it deletes', () => {
-  const reset = session.slice(session.indexOf("path === '/bench-reset'"), session.indexOf("path === '/bench-evaluate'"));
+  const reset = session.slice(session.indexOf("path === '/bench-reset'"), session.indexOf("path === '/purge'"));
   assert.match(reset, /await this\.resetProjectState\(\);/);
   assert.equal(/storage\.delete\('/.test(reset), false, 'a hand-written list of keys is back in the handler');
   const fn = session.slice(session.indexOf('private async resetProjectState'), session.indexOf('private async liveLedger'));

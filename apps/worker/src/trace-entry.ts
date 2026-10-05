@@ -1,7 +1,7 @@
 /**
  * THE TRACE ROW OF A TOOL CALL, AND WHY A FAILED ONE KEEPS ITS REASON.
  *
- * Measured 2026-10-04 (t1 round 1): `compose_game` failed three times in a row with the row text "Could not build the game"
+ * Measured 2026-10-04 (t1 round 1): a composite game-building tool failed three times in a row with the row text "Could not build the game"
  * and `detail: null`. A failed tool has no panel (`detail` is for the generative-UI document a SUCCESS draws), and a tool's
  * plain summary is a fixed sentence for the person ("Could not build the game"), so nothing on the stored row said WHY.
  * The reason existed: it was the `error` of the result the model had just read. It was only copied to the row at two of

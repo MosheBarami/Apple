@@ -299,9 +299,8 @@ function flattenContent(content: unknown): string | null {
   for (const p of content) {
     if (!p || typeof p !== 'object') return null;
     const { type, text } = p as { type?: unknown; text?: unknown };
-    // Images are not accepted on this surface: the vision path is metered and prompted very
-    // differently, and quietly dropping an image part would answer a question the caller did not
-    // ask while charging them for it.
+    // Images are not accepted on this surface (nothing in the product sends a picture to a model since M4), and
+    // quietly dropping an image part would answer a question the caller did not ask while charging them for it.
     if (type !== 'text' || typeof text !== 'string') return null;
     parts.push(text);
   }

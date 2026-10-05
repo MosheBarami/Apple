@@ -9,7 +9,7 @@
  * player reads, a count, a behaviour — and checks each against the evidence ledger (evidence-ledger.ts).
  * Every claim ends in one of three verdicts and they are never blurred:
  *
- *   supported     something this run set, read back, looked at or played says so
+ *   supported     something this run set, read back or played says so
  *   contradicted  something this run observed says otherwise. The strongest finding there is.
  *   unsupported   nothing this run observed says either way. NOT the same as wrong, and never reported
  *                 as wrong: it is reported as "not checked".
@@ -33,7 +33,7 @@ import type { EvidenceLedger, ColourFact } from './evidence-ledger.ts';
 
 export type ClaimKind = 'colour' | 'text' | 'count' | 'behaviour' | 'presence' | 'other';
 export type Verdict = 'supported' | 'contradicted' | 'unsupported';
-export type Need = 'read' | 'play' | 'look' | 'none';
+export type Need = 'read' | 'play' | 'none';
 
 export interface Claim {
   kind: ClaimKind;
@@ -67,7 +67,7 @@ export interface AuditResult {
   unsupported: Finding[];
 }
 
-export interface Offered { read: boolean; play: boolean; look: boolean }
+export interface Offered { read: boolean; play: boolean }
 
 // ------------------------------------------------------------------------------ reading words ---
 
@@ -230,7 +230,7 @@ const TRIGGER_CLICK = /\b(?:when|if|once|as soon as|every time|each time|after)\
 const TRIGGER_TOUCH = /\b(?:when|if|once|as soon as|every time|each time|after)\b[^.]{0,40}\b(?:touch(?:es|ed)?|step(?:s|ped)?|walk(?:s|ed)?|approach(?:es|ed)?|enter(?:s|ed)?|jump(?:s|ed)?|collect(?:s|ed)?|pick(?:s|ed)? up|stand(?:s)?)\b/i;
 const EFFECT = /\b(?:opens?|closes?|spins?|rotates?|bounces?|slides?|swings?|moves?|flies|floats?|jumps?|glows?|flashes|lights? up|explodes?|teleports?|disappears?|appears?|plays?|gives?|awards?|grants?|unlocks?|respawns?|heals?|damages?|speeds?|shows?|changes?|starts?|stops?|spawns?|rewards?|adds?)\b/i;
 const SOUND = /\b(?:plays? (?:a |an |the |some )?(?:sound|song|music|noise|jingle|tune|chime|effect)|makes? (?:a |some )?(?:sound|noise)|has (?:background )?music|music (?:plays|loops))\b/i;
-// Motion only: how something glows or sparkles is something a look can see, motion is not.
+// Motion only: how something glows or sparkles is a matter of appearance, which nothing in the product observes; motion is a behaviour.
 const AMBIENT = /\b(?:spins|rotates|bounces|floats|pulses|swings|slides)\b/i;
 
 function behaviourClaims(clause: string): Claim[] {
@@ -310,26 +310,6 @@ function colourWhat(f: ColourFact): string {
   return f.family ?? 'an unknown colour';
 }
 
-function lookSaysColour(claim: Claim, l: EvidenceLedger): Finding | null {
-  const subject = subjectTokens(claim.subject);
-  // Whether a colour word in a look's text names the colour the agent claimed. A word is judged by its own first family.
-  const agrees = (word: string): boolean => sameColour(claim.colour!, [...(familiesOfWord(word) ?? [])][0] ?? 'grey') === true;
-  for (const o of [...l.looks].reverse()) {
-    if (o.mutationSeq !== l.mutationSeq) continue; // a look at an older state is not evidence about this one
-    const text = `${o.about} ${o.note}`;
-    if (subject.length && !tokensMatch(subject, pathTokens(text.replace(/[^A-Za-z ]/g, ' ')))) continue;
-    const words = colourWordsIn(text);
-    if (o.verdict === 'seen') {
-      if (words.some((w) => agrees(w.base))) return found(claim, 'supported', 'a look at the place saw it that way');
-      if (words.length) return found(claim, 'contradicted', `a look at the place saw it as ${words[0]!.word}, not ${claim.colour}`);
-    }
-    if (o.verdict === 'not_seen' && words.some((w) => agrees(w.base))) {
-      return found(claim, 'contradicted', 'a look at the place did not see it as claimed');
-    }
-  }
-  return null;
-}
-
 function evalColour(claim: Claim, l: EvidenceLedger): Finding {
   const subject = subjectTokens(claim.subject);
   const colour = claim.colour!;
@@ -346,9 +326,7 @@ function evalColour(claim: Claim, l: EvidenceLedger): Finding {
       ? `it was read back from the place as ${colourWhat(f)}, not ${colour}`
       : `the last change this run made set it to ${colourWhat(f)}, not ${colour}`);
   }
-  const look = lookSaysColour(claim, l);
-  if (look) return look;
-  return found(claim, 'unsupported', `nothing this run set, read back or looked at says what colour the ${claim.subject} is`, 'read');
+  return found(claim, 'unsupported', `nothing this run set or read back says what colour the ${claim.subject} is`, 'read');
 }
 
 const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -443,7 +421,7 @@ export function resultOf(claims: Claim[], findings: Finding[]): AuditResult {
 /** Worth sending back to the agent: contradicted, or unsupported with a tool the agent was actually offered. */
 export function actionable(result: AuditResult, can: Offered): boolean {
   if (result.contradicted.length) return true;
-  return result.unsupported.some((f) => (f.needs === 'read' && can.read) || (f.needs === 'play' && can.play) || (f.needs === 'look' && can.look));
+  return result.unsupported.some((f) => (f.needs === 'read' && can.read) || (f.needs === 'play' && can.play));
 }
 
 /** The message that sends unsupported claims back. For the agent, so it may name its own tools. Null when there is nothing to send. */
@@ -456,13 +434,12 @@ export const ALREADY_SHOWN = 'The user has already read your previous answer: do
 export function steerForFindings(result: AuditResult, can: Offered): string | null {
   const send = [
     ...result.contradicted,
-    ...result.unsupported.filter((f) => (f.needs === 'read' && can.read) || (f.needs === 'play' && can.play) || (f.needs === 'look' && can.look)),
+    ...result.unsupported.filter((f) => (f.needs === 'read' && can.read) || (f.needs === 'play' && can.play)),
   ];
   if (!send.length) return null;
   const how = [
     can.read ? 'get_instance reads one thing back' : '',
     can.play ? 'play_check plays as a real player' : '',
-    can.look ? 'look looks at the place' : '',
   ].filter(Boolean).join('; ');
   // A user-role message: it carries the agent's own clause, words from closed vocabularies, numbers and fixed sentences — and
   // nothing a place wrote or a model wrote ABOUT the place. A judge's finding (kind "other") is therefore sent back by its claim
@@ -498,14 +475,12 @@ function plainPhrase(f: Finding): string {
 
 /**
  * The one line appended after the agent's own reply, in plain words, naming what is still unchecked.
- * `extras` are things the completion gate adds ("how it looks after my last changes"). Null when there is
- * nothing to say. Never rewrites anything: it is a separate line.
+ * Null when there is nothing to say. Never rewrites anything: it is a separate line.
  */
-export function notCheckedLine(result: AuditResult, extras: string[] = []): string | null {
+export function notCheckedLine(result: AuditResult): string | null {
   const phrases = [
     ...result.contradicted.map(plainPhrase),
     ...result.unsupported.map(plainPhrase),
-    ...extras,
   ];
   if (!phrases.length) return null;
   const shown = phrases.slice(0, 5);
