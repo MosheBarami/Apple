@@ -349,6 +349,14 @@ for (const mode of ['dark', 'light']) {
  */
 const WEBFONT = /@font-face|fonts\.googleapis|fonts\.gstatic|use\.typekit|fonts\.bunny|@fontsource|fontsource\.org|typeface-[a-z]|\.(?:woff2?|ttf|otf|eot)\b/i;
 const FONT_PACKAGE = /^(?:@fontsource(?:-variable)?\/|typeface-|@expo-google-fonts\/|fontsource-)/i;
+/**
+ * A stylesheet from ANOTHER ORIGIN, whoever hosts it: a `<link rel="stylesheet" href="https://...">`, a protocol-relative one,
+ * or an `@import` of one. It can declare its own @font-face (`https://rsms.me/inter/inter.css` does), so no host list can know
+ * it is a font: the first version listed five hosts and passed a link to a sixth. An app loads its own stylesheets only.
+ */
+const EXTERNAL_STYLESHEET = /<link\b(?=[^>]*\brel=["']?stylesheet)[^>]*\bhref=["']?(?:https?:)?\/\/|@import\s+(?:url\(\s*)?["']?(?:https?:)?\/\//i;
+/** A build configuration that turns on a font provider (Astro's fonts API, Vite plugins that inline a webfont). */
+const FONT_CONFIG = /\bfontProviders\b|\bexperimental\s*:\s*\{[^}]*\bfonts\b|\bunplugin-fonts\b|\bvite-plugin-webfont/i;
 
 test('the type tokens are the system stack, and no webfont is requested anywhere', () => {
   const body = Object.fromEntries(topLevelRules(CSS).flatMap((r) => declarations(r.body)).map((d) => [d.name, d.value]));
@@ -367,11 +375,19 @@ test('the type tokens are the system stack, and no webfont is requested anywhere
   for (const f of files) {
     if (f.rel.endsWith('tokens.test.mjs') || f.rel.endsWith('flat.test.mjs') || f.rel.endsWith('brand.test.mjs')) continue;
     if (WEBFONT.test(readText(f))) hits.push(f.rel);
+    if (EXTERNAL_STYLESHEET.test(readText(f))) hits.push(`${f.rel} (loads a stylesheet from another origin)`);
   }
+  // The build configuration of each app, derived: a font provider is switched on there, not in a source file.
+  const configs = walkNames(['apps/site', 'apps/web'], /(?:^|\.)config\.(?:m?[jt]s|cjs)$|^(?:astro|vite|tailwind)\.config\./);
+  assert.ok(configs.length >= 2, `only ${configs.length} build configuration(s) found; the walk has drifted`);
+  for (const rel of configs) if (FONT_CONFIG.test(readFileSync(join(ROOT, rel), 'utf8')) || WEBFONT.test(readFileSync(join(ROOT, rel), 'utf8'))) hits.push(`${rel} (a build configuration that asks for a font)`);
   // A font file on disk is a webfont even when nothing names it yet: the next stylesheet will.
   for (const rel of walkNames([...dirs, 'apps/web/public'].filter((d) => existsSync(join(ROOT, d))), /\.(?:woff2?|ttf|otf|eot)$/i)) hits.push(`${rel} (a font file)`);
-  // And a font package in a dependency list of either app or of this one.
-  for (const pkg of ['apps/site/package.json', 'apps/web/package.json', 'packages/design/package.json']) {
+  // And a font package in the dependency list of ANY workspace (every package.json under apps, packages and tools, and the root's), not
+  // only the three that ship to a browser: a font package in a shared package reaches both apps through it.
+  const manifests = ['package.json', ...walkNames(['apps', 'packages', 'tools'], /^package\.json$/)];
+  assert.ok(manifests.length >= 8, `only ${manifests.length} package manifests found; the walk has drifted`);
+  for (const pkg of manifests) {
     const json = JSON.parse(readFileSync(join(ROOT, pkg), 'utf8'));
     for (const name of Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies, ...json.optionalDependencies })) if (FONT_PACKAGE.test(name)) hits.push(`${pkg} depends on ${name}`);
   }
@@ -393,6 +409,19 @@ test('the guard has teeth: every way a font could be pulled in is seen, and the 
   for (const src of ['font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', 'font-family: ui-monospace, Menlo, monospace;', '.fontsize { font-size: 14px }']) {
     assert.equal(WEBFONT.test(src), false, `the system stack was reported as a webfont: ${src}`);
   }
+  // The review's shapes: a host the list never knew, a protocol-relative link, an @import, and a font provider in a build configuration.
+  for (const src of [
+    '<link rel="stylesheet" href="https://rsms.me/inter/inter.css">',
+    '<link href="//cdn.example.net/fonts.css" rel="stylesheet" />',
+    "<link rel='stylesheet' href='http://fonts.example.org/css'>",
+    '@import url(//fonts.example.net/x.css);',
+    '@import "https://cdn.example.com/inter.css";',
+  ]) assert.ok(EXTERNAL_STYLESHEET.test(src), `a stylesheet from another origin was not seen: ${src}`);
+  for (const src of ['<link rel="stylesheet" href="/_astro/index.abc.css">', '<link rel="stylesheet" href="../../../packages/design/src/web/tokens.css" />', '<link rel="icon" href="data:image/svg+xml,x">', '<a href="https://studpilot.app/docs" rel="noopener">x</a>', '@import "./local.css";']) {
+    assert.equal(EXTERNAL_STYLESHEET.test(src), false, `a stylesheet of the app's own was reported as external: ${src}`);
+  }
+  for (const src of ["import { defineConfig, fontProviders } from 'astro/config';", 'export default { experimental: { fonts: [{ provider: p, name: "Inter" }] } };', "plugins: [require('unplugin-fonts')]"]) assert.ok(FONT_CONFIG.test(src), `a font provider in a build configuration was not seen: ${src}`);
+  assert.equal(FONT_CONFIG.test("export default defineConfig({ site: 'https://studpilot.app', integrations: [sitemap()] });"), false, 'an ordinary Astro configuration was reported');
   for (const name of ['@fontsource/inter', '@fontsource-variable/inter', 'typeface-inter', '@expo-google-fonts/inter']) assert.ok(FONT_PACKAGE.test(name), `${name} is not recognised as a font package`);
   assert.equal(FONT_PACKAGE.test('react'), false, 'an ordinary package was reported as a font package');
 });

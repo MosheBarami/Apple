@@ -37,7 +37,10 @@
  *     in `pnpm -r test` without a browser;
  *   - every icon is rendered again and compared with the committed PNG PIXEL BY PIXEL, not byte by
  *     byte: another machine encodes and antialiases a little differently, an old mark does not pass
- *     as a new one. og.png is drawn in the system font of the machine that ran `pnpm brand`, so it
+ *     as a new one. That compare is loose on purpose (a violet one step from today's is within it), so
+ *     every committed icon is also read for its FLAT colours: the tile and the mark are flat fills that
+ *     no encoder changes, and they must be the tokens' --paper and --accent to within 2 of 255, which
+ *     an icon in any other accent is not. og.png is drawn in the system font of the machine that ran `pnpm brand`, so it
  *     is compared by render only on the platform the manifest names (renderedOn); elsewhere the
  *     manifest hashes are its check, and the report says so.
  *
@@ -244,6 +247,16 @@ for (const asset of ASSETS) {
   const same = existing && existing.equals(buf);
   let verdict = same ? 'unchanged' : existing ? 'CHANGED' : 'NEW';
 
+  // THE FLAT COLOURS OF A COMMITTED ICON ARE THE TOKENS (--check only): see the header. An icon drawn in the previous accent is the
+  // same picture to the compare below (mean difference 5.0 of the 8 it allows) and a different one to this.
+  if (CHECK && existing && asset.origin) {
+    const flat = await flatColours(browser, existing, 0.1);
+    const near = (rgb, hex) => [1, 3, 5].every((i, k) => Math.abs(rgb[k] - parseInt(hex.slice(i, i + 2), 16)) <= 2);
+    for (const [role, hex] of [['tile', sources.paper], ['mark', sources.accent]]) {
+      if (!flat.some((c) => near(c.rgb, hex))) problems.push(`${asset.out}: no flat ${role} colour within 2 of ${hex}; its flat colours are ${flat.map((c) => `rgb(${c.rgb.join(',')}) ${(c.share * 100).toFixed(0)}%`).join(', ') || 'none'}. It is an old icon, or was edited; run \`pnpm brand\``);
+    }
+  }
+
   if (CHECK) {
     if (!existing) problems.push(`${asset.out} does not exist; run without --check to write it`);
     else if (!same) {
@@ -366,6 +379,35 @@ async function pixelDiff(br, a, b) {
       return { mean: sum / (n * 4), far: far / n };
     },
     { x: a.toString('base64'), y: b.toString('base64') },
+  );
+  await page.close();
+  return out;
+}
+
+/** The flat colours of a PNG: every opaque colour that fills at least `minShare` of the frame, as [{ rgb, share }]. */
+async function flatColours(br, buf, minShare) {
+  const page = await br.newPage();
+  const out = await page.evaluate(
+    async ({ b64, min }) => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,' + b64;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const { data } = g.getImageData(0, 0, img.width, img.height);
+      const counts = new Map();
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] !== 255) continue;
+        const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      const n = img.width * img.height;
+      return [...counts.entries()].filter(([, v]) => v / n >= min).map(([k, v]) => ({ rgb: k.split(',').map(Number), share: v / n }));
+    },
+    { b64: buf.toString('base64'), min: minShare },
   );
   await page.close();
   return out;
