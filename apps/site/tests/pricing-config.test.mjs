@@ -160,14 +160,33 @@ test('THE COMPARISON TABLE\'S Price, Credits a day, Credits a month AND builds R
   assert.deepEqual(month, { Free: '30', Pro: '100', Max: '300' });
 });
 
-test('WHAT THE PAGE SAYS HAPPENS AT THE LIMIT names BOTH resets: midnight UTC for the day, the first of next month for the month', () => {
-  for (const q of ['What happens when I run out of Credits?', 'Can a build cost more than the table says?']) {
-    const a = faqAnswer(q);
-    assert.match(a, /midnight UTC/, `"${q}" does not say when the daily limit lifts`);
-    assert.match(a, /(1st of the next month|first of the next month)/i, `"${q}" does not say when the monthly limit lifts`);
+test('WHAT THE PAGE SAYS HAPPENS AT THE LIMIT names BOTH resets, EACH WITH ITS OWN PERIOD: midnight UTC for the day, the first of next month for the month', () => {
+  //[[ Review cycle 3, finding 7. This matched "midnight UTC" and "1st of the next month" anywhere in the answer, so an
+  //   answer that said the DAILY limit resets on the 1st of the next month and the MONTHLY one at midnight passed. The
+  //   pairing is the claim: each reset is read inside the sentence (or clause) that names its period. ]]
+  const MIDNIGHT = /midnight UTC/i;
+  const FIRST = /(1st of the next month|first of the next month)/i;
+  const sentences = (a, word) => a.split(/(?<=[.!?])\s+/).filter((x) => new RegExp(`\\b${word}\\b`, 'i').test(x));
+
+  const run = faqAnswer('What happens when I run out of Credits?');
+  const daily = sentences(run, 'daily');
+  const monthly = sentences(run, 'monthly');
+  assert.ok(daily.length >= 1 && monthly.length >= 1, 'the answer does not name both limits by period: this would check nothing');
+  for (const x of daily) {
+    assert.match(x, MIDNIGHT, `the DAILY limit's reset is not midnight UTC: "${x}"`);
+    assert.doesNotMatch(x, FIRST, `the DAILY limit is given the monthly reset: "${x}"`);
   }
+  for (const x of monthly) {
+    assert.match(x, FIRST, `the MONTHLY limit's reset is not the 1st of the next month: "${x}"`);
+    assert.doesNotMatch(x, MIDNIGHT, `the MONTHLY limit is given the daily reset: "${x}"`);
+  }
+
+  const cost = faqAnswer('Can a build cost more than the table says?');
+  assert.match(cost, /lifts at midnight UTC if it was the day's/, 'the day\'s reset is not tied to the day');
+  assert.match(cost, /1st of the next month if it was the month's/, 'the month\'s reset is not tied to the month');
+  assert.doesNotMatch(cost, /midnight UTC if it was the month's|1st of the next month if it was the day's/, 'the two resets are swapped');
   // And never the one sentence that promises the day's refill whatever stopped you.
-  assert.doesNotMatch(faqAnswer('Can a build cost more than the table says?'), /the allowance refills at midnight UTC/);
+  assert.doesNotMatch(cost, /the allowance refills at midnight UTC/);
 });
 
 test('THE DOCS PAGE ON LIMITS names both resets too', () => {

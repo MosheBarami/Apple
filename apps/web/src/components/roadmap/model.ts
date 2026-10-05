@@ -54,13 +54,15 @@ export interface Milestone {
   /** Effort in runs, in the worker's own words. Runs are not what anyone is billed in. */
   effort: string;
   /**
-   * What it costs, derived by the worker from `runs × the mode's typical Credits`.
+   * What it costs, derived by the worker from `runs ×` the published cost of one build of its size.
    *
    * Null when the worker could not derive it. Rendered through `creditRangeLabel`, which prints
    * nothing at all rather than a zero — see the refusals documented there.
    */
   creditsLow?: number | null;
   creditsHigh?: number | null;
+  /** True when the build row the figure comes from is itself an estimate (the big one). Absent from an older worker: not an estimate. */
+  creditsEstimated?: boolean;
   detected: Detected;
   /** What the scan saw that produced `detected`. */
   evidence: string[];
@@ -509,19 +511,23 @@ export function effortLabel(effort: string | null | undefined): string {
  *
  * An en dash, not a hyphen: this is a range, and it is read by a person.
  *
- * THE UNIT. The worker's `creditsLow` and `creditsHigh` are `runs x MODE_INFO.typicalCredits`, which
- * is in LEDGER UNITS (INTERNAL_PER_CREDIT to a credit), so they are converted here, once, and printed
- * as the credits a person reads: two decimals ("0.03–0.12 Credits"). The milestone card and the
- * suggestions both print through this function, so there is no second place to forget it.
+ * THE UNIT. The worker's `creditsLow` and `creditsHigh` are `runs x` the published cost of one build of the
+ * milestone's size (BUILD_COSTS), in LEDGER UNITS (INTERNAL_PER_CREDIT to a credit), so they are converted here,
+ * once, and printed as the credits a person reads: two decimals ("1.40 Credits"). `estimated` is the worker's
+ * flag for a build row the pricing page itself calls an estimate. The milestone card and the suggestions both
+ * print through this function, so there is no second place to forget it.
  */
 export function creditRangeLabel(
   low: number | null | undefined,
   high: number | null | undefined,
+  estimated?: boolean,
 ): string {
   if (typeof low !== 'number' || typeof high !== 'number') return '';
   if (!Number.isFinite(low) || !Number.isFinite(high)) return '';
   if (low <= 0 || high < low) return '';
-  return low === high ? `${creditsText(low)} Credits` : `${creditsText(low)}–${creditsText(high)} Credits`;
+  const range = low === high ? `${creditsText(low)} Credits` : `${creditsText(low)}–${creditsText(high)} Credits`;
+  // The pricing page says ", estimated" for the same build row; a chip that dropped the flag would print an estimate as a quote.
+  return estimated === true ? `${range}, estimated` : range;
 }
 
 /**

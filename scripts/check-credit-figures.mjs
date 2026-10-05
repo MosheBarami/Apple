@@ -262,40 +262,44 @@ for (const { key, mode } of MODES) {
 
 // THE MILESTONE PRICE MUST BE DERIVED, NOT TYPED.
 //
-// The roadmap card shows a mileagent's cost as a Credit range: `runs × the mode's typical
-// Credits`. That is a fourth surface for a number this file already tracks through three, and
-// the whole reason this guard exists is that the same figure, typed into more than one place,
-// drifted in three of them inside a single component.
+// The roadmap card shows a milestone's cost as a Credit range: `runs ×` what one BUILD of the milestone's
+// size costs on the pricing page. That is another surface for a number this file already tracks through
+// three, and the whole reason this guard exists is that the same figure, typed into more than one place,
+// drifted in three of them inside a single component. (It was `runs × MODE_INFO.typicalCredits`, the price of
+// one targeted EDIT, which put a milestone below the cheapest published build; see DECISIONS.md section 10.)
 //
-// So what is checked is not the arithmetic — mileagent-credits.test.mjs does that — but that
-// there is still only ONE place a price is written down. `creditRangeForRuns` must read
-// MODE_INFO, and must not contain a published figure of its own; roadmap.ts must call it rather
-// than multiply by hand.
+// So what is checked is not the arithmetic — apps/worker/tests/milestone-credits.test.mjs does that — but that
+// there is still only ONE place a price is written down. `creditRangeForRuns` must read BUILD_COSTS, and must
+// not contain a published figure of its own; roadmap.ts must call it rather than multiply by hand.
 const rangeFn = shared.slice(shared.indexOf('export function creditRangeForRuns'));
 if (!rangeFn || rangeFn === shared) {
   problems.push('packages/shared no longer exports creditRangeForRuns — the roadmap card has no derivation to use');
 } else {
   const body = rangeFn.slice(0, rangeFn.indexOf('\n}\n'));
-  if (!/MODE_INFO\[/.test(body)) {
-    problems.push('creditRangeForRuns does not read MODE_INFO — the mileagent price is a second copy free to drift');
+  if (!/BUILD_COSTS\.find\(/.test(body)) {
+    problems.push('creditRangeForRuns does not read BUILD_COSTS — the milestone price is a second copy free to drift');
   }
-  // Only the MULTI-DIGIT published figures are searched for, and the single-digit ones are
-  // deliberately not. `2` and `4` are indistinguishable from the arity literals a parser
-  // legitimately contains (`parts.length > 2`), so looking for them finds the parser and reports
-  // it as a hard-coded price — which is how this check first went red against correct code. The
-  // limitation is stated rather than papered over: a hard-coded '2' here would not be caught by
-  // this line, and mileagent-credits.test.mjs is what would catch the wrong answer it produced.
+  if (/MODE_INFO/.test(body)) {
+    problems.push('creditRangeForRuns reads MODE_INFO, the per-request edit price; a milestone is priced as a build (BUILD_COSTS)');
+  }
+  // Only the MULTI-CHARACTER published figures are searched for, and the single-digit ones are
+  // deliberately not. `4` is indistinguishable from the arity literals a parser legitimately contains,
+  // so looking for it finds the parser and reports it as a hard-coded price. The limitation is stated
+  // rather than papered over: a hard-coded '4' here would not be caught by this line, and
+  // milestone-credits.test.mjs is what would catch the wrong answer it produced. Each figure is searched
+  // for in credits (as BUILD_COSTS holds it) and in ledger units (as the result is in).
   const published = new Set();
-  for (const mode of ['agent']) {
-    const line = new RegExp(`${mode}: \\{[^}]*typicalCredits: '([^']+)'`).exec(shared);
-    for (const n of (line?.[1] ?? '').split('-')) if (n.trim().length >= 2) published.add(n.trim());
+  for (const b of BUILD_COSTS) {
+    for (const credits of [b.creditsLow, b.creditsHigh]) {
+      for (const n of [credits, Math.round(credits * INTERNAL_PER_CREDIT)]) if (String(n).length >= 2) published.add(String(n));
+    }
   }
   if (published.size === 0) {
-    problems.push('no multi-digit typicalCredits figure was parsed, so the hard-coding check below is vacuous');
+    problems.push('no multi-character BUILD_COSTS figure was read, so the hard-coding check below is vacuous');
   }
   for (const n of published) {
-    if (new RegExp(`\\b${n}\\b`).test(body)) {
-      problems.push(`creditRangeForRuns hard-codes the published figure ${n}; it must read it from MODE_INFO`);
+    if (new RegExp(`(?<![\\d.])${n.replace(/\./g, '\\.')}(?![\\d.])`).test(body)) {
+      problems.push(`creditRangeForRuns hard-codes the published figure ${n}; it must read it from BUILD_COSTS`);
     }
   }
 }

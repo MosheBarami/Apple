@@ -53,6 +53,7 @@ import {
 } from '../lib/api';
 import { ConfirmDialog } from '../components/confirm-dialog';
 import { useToast } from '../components/toast';
+import { planDisplayName } from '../lib/plan-name';
 import './usage.css';
 import './nonworkspace-minimal.css';
 // The owner's picked account-screen components (apps/web/src/components/picks/settings).
@@ -914,7 +915,7 @@ export function UsagePage() {
             <p className="plans-note" role="status">
               Thanks — your payment went through. The plan changes when Stripe confirms it, usually
               within a few seconds; this page shows{' '}
-              <strong>{me.data.quota.plan}</strong> right now.{' '}
+              <strong>{planDisplayName(me.data.quota.plan)}</strong> right now.{' '}
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => void me.refetch()}>
                 Check again
               </button>

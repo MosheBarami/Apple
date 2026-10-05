@@ -1929,38 +1929,44 @@ export const MODE_INFO: Record<
   },
 };
 
+/** The BUILD_COSTS row a roadmap milestone of each size is priced as. */
+const BUILD_ROW_OF_SIZE = { small: 'small', medium: 'typical', large: 'big' } as const;
+
 /**
  * WHAT A PIECE OF WORK COSTS, WHEN IT TAKES MORE THAN ONE RUN.
  *
- * `typicalCredits` above is per RUN. A roadmap milestone is sized in runs — "about two Agent
- * runs" — so the card said how much work it was in a unit nobody is billed in, while the number
- * that would answer "what will this cost me" sat two clicks away in the composer, unmultiplied.
+ * A roadmap milestone is sized in runs ("about two Agent runs") and in size (small, medium, large). Nobody is billed
+ * in runs, so the card also prints what the work costs: `runs x` the published cost of ONE BUILD OF THAT SIZE. The
+ * multiplication is the whole value: reprinting one build's cost on a multi-run card would understate the work by
+ * that factor.
  *
- * The multiplication is the whole value. With `runs` varying across the catalogue, reprinting one
- * run's range on a multi-run card would understate the work by that factor.
+ * THE PRICE OF A RUN IS A BUILD'S, NOT AN EDIT'S. This read `MODE_INFO.agent.typicalCredits`, which is what a targeted
+ * edit costs (4-18 ledger units, 0.03-0.12 credits), so a milestone chip printed a figure below the cheapest build on
+ * the pricing page (0.52 credits) and a fortieth of a typical one (1.40). A milestone is building work. Its size is
+ * priced as the build table prices it: small, medium and large are the `small`, `typical` and `big` rows of
+ * BUILD_COSTS, and the big row stays flagged as an estimate because the table says it is one.
  *
- * It PARSES `typicalCredits` rather than keeping its own table, so there is exactly one place a
- * price is written down. A second copy of a price is a second copy free to drift, which is the
- * defect scripts/check-credit-figures.mjs exists because of — that number had drifted in three
- * places inside one component.
+ * It READS BUILD_COSTS rather than keeping its own table, so there is exactly one place a price is written down. A
+ * second copy of a price is a second copy free to drift, which is the defect scripts/check-credit-figures.mjs exists
+ * because of. BUILD_COSTS is in credits; the result is in LEDGER UNITS (INTERNAL_PER_CREDIT to a credit), the unit
+ * the worker sends and the web converts back to credits for a person (creditsText).
  *
- * Returns a RANGE even when the published figure is a single number ("2" -> 2-2). It never
- * collapses a spread to one number: the measurements behind docs/COST-MODEL.md do not support
- * that precision, and a single figure would read as a quote.
- *
- * `null` for a run count that is not a positive whole number — an unreadable input produces no
- * figure rather than a wrong one, because a wrong price is worse than a missing one.
+ * Returns a RANGE even when the published figure is a single number. It never collapses a spread to one number.
+ * `null` for a run count that is not a positive whole number, and for a size nobody published: an unreadable input
+ * produces no figure rather than a wrong one, because a wrong price is worse than a missing one.
  */
-export function creditRangeForRuns(mode: ProductMode, runs: number): { low: number; high: number } | null {
+export function creditRangeForRuns(
+  complexity: keyof typeof BUILD_ROW_OF_SIZE,
+  runs: number,
+): { low: number; high: number; estimated: boolean } | null {
   if (!Number.isInteger(runs) || runs < 1) return null;
-  const published = MODE_INFO[mode]?.typicalCredits;
-  if (!published) return null;
-  const parts = published.split('-').map((p) => Number(p.trim()));
-  if (parts.length < 1 || parts.length > 2 || parts.some((n) => !Number.isFinite(n) || n <= 0)) return null;
-  const low = parts[0]!;
-  const high = parts.length === 2 ? parts[1]! : low;
-  if (high < low) return null;
-  return { low: low * runs, high: high * runs };
+  const rowId = Object.hasOwn(BUILD_ROW_OF_SIZE, complexity) ? BUILD_ROW_OF_SIZE[complexity] : undefined;
+  const build = rowId === undefined ? undefined : BUILD_COSTS.find((b) => b.id === rowId);
+  if (!build) return null;
+  const low = Math.round(build.creditsLow * INTERNAL_PER_CREDIT);
+  const high = Math.round(build.creditsHigh * INTERNAL_PER_CREDIT);
+  if (!(low > 0) || high < low) return null;
+  return { low: low * runs, high: high * runs, estimated: build.estimated };
 }
 
 export const PROTOCOL_VERSION = 1;

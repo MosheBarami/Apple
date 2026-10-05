@@ -285,6 +285,23 @@ test('a range that runs backwards is refused rather than silently reordered', ()
   assert.equal(creditRangeLabel(60, 20), '');
 });
 
+test('AN ESTIMATED RANGE SAYS SO, as the pricing page does for the same build row; a measured one does not', () => {
+  // Review cycle 3, finding 6: the big-build row is flagged `estimated` in the shared build table, and a chip that
+  // dropped the flag would print an estimate as a quote. 600-1,800 ledger units is 4.00-12.00 credits.
+  assert.equal(creditRangeLabel(600, 1800, true), '4.00–12.00 Credits, estimated');
+  assert.equal(creditRangeLabel(210, 210, false), '1.40 Credits');
+  assert.equal(creditRangeLabel(210, 210), '1.40 Credits', 'no flag is not an estimate');
+  assert.equal(creditRangeLabel(null, null, true), '', 'and an estimate of nothing is still nothing');
+});
+
+test('the card and the comparison pass the worker\'s estimate flag to the label, so the flag reaches the chip', async () => {
+  const { readFileSync: read } = await import('node:fs');
+  for (const file of ['milestone-card.tsx', 'suggestions.tsx']) {
+    const tsx = read(new URL(`../src/components/roadmap/${file}`, import.meta.url), 'utf8').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    assert.match(tsx, /creditRangeLabel\((?:m|s)\.creditsLow, (?:m|s)\.creditsHigh, (?:m|s)\.creditsEstimated\)/, `${file} prints the range without the estimate flag`);
+  }
+});
+
 test('the card actually renders the range it is handed', async () => {
   // The field exists on the model and on the wire; a field no component reads is the dead branch
   // this section of the audit keeps finding.

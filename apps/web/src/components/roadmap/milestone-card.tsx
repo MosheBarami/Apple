@@ -100,8 +100,8 @@ export function MilestoneCard({ placed, onJumpTo, onBrief, busy }: Props) {
             is the same size expressed in the unit the account is actually charged, derived by
             the worker from the same `runs`. `creditRangeLabel` returns '' rather than a zero
             when the worker could not derive a figure, so no chip appears at all. */}
-        {creditRangeLabel(m.creditsLow, m.creditsHigh) && (
-          <span className="chip">{creditRangeLabel(m.creditsLow, m.creditsHigh)}</span>
+        {creditRangeLabel(m.creditsLow, m.creditsHigh, m.creditsEstimated) && (
+          <span className="chip">{creditRangeLabel(m.creditsLow, m.creditsHigh, m.creditsEstimated)}</span>
         )}
         {m.detected === 'present' && readiness !== 'landed' && (
           <span className="rm-card__note">Parts of this may already exist</span>

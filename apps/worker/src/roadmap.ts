@@ -1559,19 +1559,21 @@ export interface Milestone {
   complexity: Complexity;
   effort: string;
   /**
-   * What the milestone costs, in the unit the user is actually billed in.
+   * What the milestone costs, in the unit the user is actually billed in (ledger units).
    *
    * `effort` above says how much WORK it is — "about two Agent runs" — which is not a unit anyone
-   * is charged in. These are `runs × MODE_INFO[mode].typicalCredits`, derived through
-   * `creditRangeForRuns` so the figure cannot drift from the price the composer and the pricing
-   * page publish.
+   * is charged in. These are `runs ×` the published cost of one BUILD of this milestone's size
+   * (BUILD_COSTS: small, typical, big), derived through `creditRangeForRuns` so the figure cannot
+   * drift from the price the pricing page publishes. They were `runs ×` the per-request edit price,
+   * which is below the cheapest build.
    *
-   * Kept as a RANGE, never collapsed: the measurements behind docs/COST-MODEL.md do not support
-   * quoting one number. Null when the derivation could not be made, so a card shows no chip
-   * rather than a wrong price.
+   * Kept as a RANGE, never collapsed. `creditsEstimated` is true when the build row is itself an
+   * estimate (the big one), and the card says so. Null when the derivation could not be made, so a
+   * card shows no chip rather than a wrong price.
    */
   creditsLow: number | null;
   creditsHigh: number | null;
+  creditsEstimated: boolean;
   mode: ProductMode;
   category: MilestoneCategory;
   /** the concrete things that exist once it lands — the same list the execution brief builds from */
@@ -1682,9 +1684,11 @@ export function buildRoadmap(shape: ProjectShape, now = Date.now()): Roadmap {
       complexity: s.complexity,
       effort: effortLine(s),
       // The same `runs` the effort line above is built from, so the two can never disagree about
-      // how big this milestone is — one says it in runs, the other in the billing unit.
-      creditsLow: creditRangeForRuns(s.mode, s.runs)?.low ?? null,
-      creditsHigh: creditRangeForRuns(s.mode, s.runs)?.high ?? null,
+      // how big this milestone is — one says it in runs, the other in the billing unit. The price of
+      // a run is the published cost of one build of this milestone's size (not an edit's).
+      creditsLow: creditRangeForRuns(s.complexity, s.runs)?.low ?? null,
+      creditsHigh: creditRangeForRuns(s.complexity, s.runs)?.high ?? null,
+      creditsEstimated: creditRangeForRuns(s.complexity, s.runs)?.estimated ?? false,
       mode: s.mode,
       category: MILESTONE_CATEGORY[s.id] ?? 'core',
       deliverables: [...s.build],
