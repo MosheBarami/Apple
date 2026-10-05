@@ -192,9 +192,67 @@ test uses frames with no playtest run, so the break is caught by the new playtes
 measures `1px solid rgb(166, 124, 255)` and 47.7px; with the cycle 1 rule put back as a style, `1px solid rgba(255, 255, 255, 0.12)` and 46px (the checker's figures). The three
 provider buttons on the sign-in and sign-up screens still measure `1px solid rgb(55, 59, 68)`, 20px line, 46px. Screenshots: `app-local/` (`03b` retaken, `10` added).
 
-**What this cycle cannot show.** No worker was touched, so the Durable Object eviction is reproduced as the checker described it (the same run id arriving with seq 1 and 2 after
+**What this cycle cannot show.** **(Corrected in fix cycle 3, below: the state this sentence says was reproduced, the same run id arriving with seq 1 and 2 after seq 1..3, is one the worker cannot be in. It was built by hand, and the key is a defence, not the answer to an eviction.)** No worker was touched, so the Durable Object eviction is reproduced as the checker described it (the same run id arriving with seq 1 and 2 after
 seq 1..3), not by evicting one. The finished-turn sentence is a statement of what the page keeps; nobody has been shown it. The cite guard says where the code is, not that the
 sentence beside a cite is still true, and a symbol that is on the cited line for another reason passes.
+
+### Fix cycle 3 (2026-10-05): the fourth check's findings
+
+The cycle 3 check (a checker, and a regression hunter whose two serious findings two skeptics each confirmed) is answered in `DECISIONS.md` 12.11. No worker, legal-page or
+`apps/site` file changed. The branch head the findings were made on is `10c2f409`.
+
+**Counts.** "Before" is the checker's record of `10c2f409`; "after" was measured in this clone with the same commands (every network fetch of the site build and its tests was
+refused: `NODE_USE_ENV_PROXY=1` with a dead proxy).
+
+| Suite | Before (`10c2f409`) | After |
+|---|---|---|
+| `cd apps/web && pnpm typecheck` | clean | clean |
+| `cd apps/web && node --test` | 2742 pass, 0 fail | **2747 pass, 0 fail** (+5: three new tests in `studio-shots.test.mjs`, one in `auth-providers.test.mjs`, one in `legal-claims-cites.test.mjs`; three more were restated or replaced in place) |
+| `cd apps/web && pnpm build` | clean | clean |
+| `node scripts/check-app-bundle.mjs` | passes | passes (entry 144.6 kB gzipped, eager graph 270.2 kB across 4 files) |
+| `node --test tests/*.test.mjs` at the root | 661 tests: 643 pass, 2 fail, 16 skipped | the same: 661 tests, 643 pass, **2 fail**, 16 skipped. The two are the known `check-pixels.test.mjs` scratchpad-location failures ("THE CONTROL: against a SAME-ORIGIN baseline ..." and "against a baseline with NO provenance ..."): they fail because this clone sits in a scratchpad, identically on main, and were not touched |
+| `pnpm --filter @studpilot/site build` then `cd apps/site && node --test tests/*.test.mjs` | 381 pass | build clean (21 pages); 381 pass, 0 fail |
+| `cd packages/design && node --test` | 165 pass | 165 pass, 0 fail |
+| `node scripts/check-old-names.mjs` | CLEAN | CLEAN (0 violations) |
+
+No worker file changed, so the worker suite was not run. Per-file test counts after: `studio-shots.test.mjs` 30 (was 27), `auth-providers.test.mjs` 25 (24), `legal-claims-cites.test.mjs` 4 (3).
+
+**Restated tests (the property each one keeps)**
+
+| Test | Why it had to change | Property kept |
+|---|---|---|
+| `studio-shots.test.mjs`, "THE LINE RESTS ON THIS" | Counted `setFrames(` and used a regex that cannot cross a `)`: a lazy initializer plus an effect kept frames across a reload and nothing went red | Read from the syntax tree: the one frames state starts from `[]`; its setter is only called, twice (the fixture under `if (MOCK_MODE)`, and the `studio_frame` message through `appendFrame`); its value is read once, as a plain returned member; the workspace takes it by its own name with no default. A tripwire, on purpose |
+| the same file, "the strip is mounted by the turn, and is the only thing that draws frames there" | Pinned the whole opening tag as text and the tag gained `studioKnown` | The strip is handed this run's frames, whether the run is going, and Studio's state, and nothing else (the exact set of four props), and the turn draws frames no other way |
+| the same file, the playtest-key test (renamed) | Its comment, header and title said the worker restarts its counter under a surviving run id, which it does not | The key still tells a new capture from a replay at the same run and counter, and an exact replay is still dropped; it now also asserts that captures 1 ms, 1 s and 4.999 s apart are distinct (a window of any size is wrong), and says plainly that it builds the case by hand |
+| `auth-providers.test.mjs`, the Roblox-anchor test | Its matcher split a selector on whitespace and needed three exact container names (a child combinator escaped), forbade a line height on every anchor button (which blocked making them match a `<button>`), and carried the 20px and the hairline as numbers | Only the Roblox anchor carries the hairline, and it is the button element rule's own; no rule gives a primary anchor a border that the primary `<button>` does not also get; every full-width anchor has the line a `<button>` has, read from `system.css`. The matcher is a small selector engine with its own self-test |
+
+**New guards, each run red first, then green.** The new tests were run against the cycle 2 source (HEAD's copy of the six source files this round changed, in a copy of the tree):
+five went red (the three `studio.known` tests, the restated mount test, the restated sheet test), as they should. "THE LINE RESTS ON THIS" stays green there, because the
+property is true of that code; the checker's own break is what it is proved against. Then 47 breaks planted by exact string replacement in a copy of the tree (the count of the
+string asserted, each file restored from the clone and checked byte-identical afterwards): **46 went red, and 1 stayed green on purpose.** The runner reports which test went red and
+its first assertion message was read for a sample (2b, 2g, c1, c3, c10, k7, 1b, g2) to see they fail for the reason named.
+
+| Item | Breaks planted (each red unless marked) |
+|---|---|
+| Frame key (6) | no capture time in the key; the time compared in a 5 s window (**the one the check found alive**); in a 1 s window; in a 1 ms window; playtest frames never equal; no counter in the key |
+| The line rests on this (10) | a third place sets the frames (storage); **the checker's break: a lazy `useState` initializer reading `sessionStorage` plus an effect writing it, no new `setFrames` call**; a lazy initializer alone; an eager call as the initial value; the setter handed to a helper; `useReducer` in place of `useState`; the hook returning the frames merged with a stored copy; the workspace giving them a default from storage; an effect that writes them to storage (the tripwire); the socket message setting them some way other than `appendFrame` |
+| Studio heard (10) | `hello` does not mark it; `studio_status` does not; a closed socket leaves it marked; the page starts out knowing; the mock never hears; the workspace does not hand the turn `studioKnown`; `shotsEmptyLine` ignores it; the turn does not pass it on; the strip does not pass it to the decision; a turn whose caller does not say is taken not to know |
+| The sheet (12) | the anchors lose the button line; a 21px line; **the checker's break, `.auth-page .auth-card > a` with a border**; the cycle 1 rule `.auth-page a.btn` back; `a[href]` with a border colour; `a:not(.auth-roblox-link)` with a border colour; the Roblox hairline not the button's; the Roblox rule on `a.btn`; a tight child combinator (`.auth-card>a.btn-primary`); a sibling rule on anchors alone; a longhand border on the anchors; and **`.auth-page .btn-primary { border-color }` (the check's `3j`), which stays green by design** because it styles the primary button and anchor alike and so cannot make them differ |
+| The matcher (5, in the test itself) | it stops reading `>`; ignores `:not(...)`; reads a pseudo-element as an element; ignores attribute selectors; forgets the containers. Each turns its own self-test red. (The pseudo-element one first stayed green: the break was dead code, because `::before` is already "unknown, not a match"; a `:before` and an `::after` sample were added and it went red.) |
+| Cites outside a code span (4) | a plain-prose cite; a cite deep inside a span; a bold cite (**the check's `4e`**); the scanner no longer blanking spans |
+
+**The check's four dead guards.** `1g`: red now (the 1 ms and 1 s cases); `2e`: red now (the break is `2b`); `3j`: not a defect, green by design (above); `4e`: red now (`g1` to `g3`).
+
+**Measured in a browser, not asserted by a test.** `/app/reset` in a headless Chromium on the local dev server (every non-local request aborted: 0 reached the network). The primary
+anchor measures `1px solid rgb(166, 124, 255)`, a 20px line and **46px** (it was 21.7px and 47.7px). The check-email card's pair, rebuilt on the page's own stylesheet (a `<button class="btn btn-block">`
+over the primary anchor, since that card needs a sign-up round trip): button `1px solid rgb(55, 59, 68)`, 20px, 46px; anchor 20px, 46px; with the line rule neutralised, the anchor measures 21.7px and 47.7px
+(the checker's figures). The Roblox, Google and Discord buttons on the sign-up and sign-in screens still measure `1px solid rgb(55, 59, 68)`, 20px, 46px each. Screenshots: `app-local/` (`10` retaken; the rest compared and kept, see its README).
+
+**What this cycle cannot show.** The socket hook is not run under `node --test` (it needs more of React than the harness stands in for), so `studio.known`'s four settings (initial, `hello`,
+`studio_status`, close) are read from the syntax tree, and what is run is the decision, the strip and the turn. Nobody watched a real reload with a real worker: the claim is that a page
+that has not heard says nothing, and it is held by those pieces, not by a reload. The guard on frames kept across a reload is a tripwire on the places a frame can enter or leave the hook;
+it cannot know that a new reader is harmless. The selector matcher over-approximates and models only a primary anchor in the page's one chain; a rule it cannot parse is "not a match", so an
+exotic selector could hide from it. The worker's restart of a counter was not reproduced because it does not happen; making it happen (persisting the gate and the counter) is not done.
 
 ### What these tests cannot show
 
