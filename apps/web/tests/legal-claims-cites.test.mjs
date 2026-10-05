@@ -10,7 +10,9 @@
  *     `roblox-signin.ts:299-323 describeConnection`        a range: the text must be on one of the lines 299 to 323
  *
  * and this test reads the file and fails when the text is not on the cited line, saying where it is now. A cite with no symbol fails too (so
- * a bare `auth-pages.tsx:854` cannot come back), and so does a `:96` continuation that borrows the file of the cite before it.
+ * a bare `auth-pages.tsx:854` cannot come back), and so does a `:96` continuation that borrows the file of the cite before it. A cite the reader above
+ * cannot see is a cite nothing guards, so one written OUTSIDE a code span (plain prose, bold) or inside a span but not at its start (`see auth-pages.tsx:854`) fails
+ * too (cycle 3: it was silently skipped, and a planted one went unnoticed).
  *
  * Scope: the cites into apps/web/src. A file name that also exists under apps/worker/src (`turnstile.ts`) is ambiguous and is not read as an app
  * file; the worker's own cites belong to the lanes that own the worker and are not checked here.
@@ -70,6 +72,26 @@ function problems(list, read) {
   return wrong;
 }
 
+/** Cites into an app file that `citesIn` cannot see, as sentences: written outside a code span, or inside one but not as its first words. */
+export function unreadCites(markdown, isAppFile) {
+  const wrong = [];
+  const shape = /([\w./-]+\.(?:tsx?|mjs|css)):(\d+)/g;
+  markdown.split('\n').forEach((line, at) => {
+    const outside = line.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length));
+    for (const m of outside.matchAll(shape)) {
+      if (isAppFile(m[1])) wrong.push(`${DOC}:${at + 1} \`${m[0]}\` is written outside a code span, where nothing reads it; put it in one with its symbol`);
+    }
+    for (const span of line.matchAll(/`([^`]+)`/g)) {
+      const read = /^[\w./-]+\.(?:tsx?|mjs|css):\d+/.test(span[1]) || /^:\d+/.test(span[1]);
+      if (read) continue;
+      for (const m of span[1].matchAll(shape)) {
+        if (isAppFile(m[1])) wrong.push(`${DOC}:${at + 1} \`${span[1]}\` has the cite \`${m[0]}\` somewhere but at its start, where nothing reads it; start the code span with it`);
+      }
+    }
+  });
+  return wrong;
+}
+
 const doc = readFileSync(join(ROOT, DOC), 'utf8');
 const cites = citesIn(doc);
 const mine = cites.map((c) => ({ ...c, path: appFile(c.file) })).filter((c) => c.path);
@@ -115,4 +137,22 @@ test('the checker can see a drifted cite, a bare one, a continuation and a symbo
   assert.match(wrong[1], /cited with no symbol/);
   assert.match(wrong[2], /bare continuation/);
   assert.match(wrong[3], /"GONE" is not on line 1 of f; it is nowhere in the file/);
+});
+
+test('A CITE THE READER CANNOT SEE IS FOUND, not skipped: the document has none, and the scan finds one written outside a span, in bold, or deep inside one', () => {
+  const isApp = (name) => appFile(name) !== null;
+  const wrong = unreadCites(doc, isApp);
+  assert.deepEqual(wrong, [], `${wrong.length} cite(s) of ${DOC} are written where nothing reads them:\n${wrong.join('\n')}`);
+  const sample = [
+    'plain prose cites auth-pages.tsx:854 and nothing reads it',
+    'bold **settings.tsx:12** too',
+    'a span, but not at its start: `see auth-pages.tsx:854 for it`',
+    'fine: `auth-pages.tsx:854 supabase.auth.signUp(` and `:855` after it',
+    'not an app file: turnstile.ts:5, `turnstile.ts:5 verify`, tests/x.mjs:9, notes.md:3',
+  ].join('\n');
+  const found = unreadCites(sample, isApp);
+  assert.equal(found.length, 3, found.join('\n'));
+  assert.match(found[0], /:1 `auth-pages\.tsx:854` is written outside a code span/);
+  assert.match(found[1], /:2 `settings\.tsx:12` is written outside a code span/);
+  assert.match(found[2], /:3 `see auth-pages\.tsx:854 for it` has the cite `auth-pages\.tsx:854` somewhere but at its start/);
 });
