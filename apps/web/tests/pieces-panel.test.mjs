@@ -49,7 +49,7 @@ test('a number with a fractional step comes back as a clean number, not 0.300000
 });
 
 test('a colour is #rgb or #rrggbb in any case, held as lower-case #rrggbb; anything else is not a colour', () => {
-  assert.equal(normaliseColour('#7C5CFF'), '#7c5cff');
+  assert.equal(normaliseColour('#D9A441'), '#d9a441');
   assert.equal(normaliseColour('#fa0'), '#ffaa00');
   assert.equal(normaliseColour(' #ABCDEF '), '#abcdef');
   for (const refused of ['', '#', '#12', '#12345', '#1234567', 'red', 'rgb(1,2,3)', '7c5cff', '#gggggg', '#12 345', null, undefined, 5, {}]) {

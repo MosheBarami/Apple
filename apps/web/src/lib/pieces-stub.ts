@@ -19,7 +19,7 @@ export const STUB_PIECES: Piece[] = [
       { kind: 'number', id: 'columns', label: 'Item columns', value: 3, min: 1, max: 6, step: 1 },
       { kind: 'number', id: 'corner', label: 'Corner roundness', value: 8, min: 0, max: 24, step: 1, unit: 'px' },
       { kind: 'colour', id: 'panel', label: 'Panel colour', value: '#1a1d22' },
-      { kind: 'colour', id: 'highlight', label: 'Highlight colour', value: '#7c5cff' },
+      { kind: 'colour', id: 'highlight', label: 'Highlight colour', value: '#d9a441' },
       { kind: 'toggle', id: 'prices', label: 'Show prices', value: true },
       { kind: 'text', id: 'title', label: 'Title', value: 'Shop', maxLength: 24 },
     ],

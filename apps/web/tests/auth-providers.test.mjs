@@ -25,7 +25,7 @@ import { loadPage } from './page-harness.mjs';
 
 const SETTINGS_URL = 'https://npqvyijsvzkuwddyhtpm.supabase.co/auth/v1/settings';
 // The shape the project really answers with: a long `external` object of booleans beside other settings.
-const settings = (external) => ({ external: { email: true, phone: false, apple: false, ...external }, disable_signup: false, mailer_autoconfirm: false });
+const settings = (external) => ({ external: { email: true, phone: false, azure: false, ...external }, disable_signup: false, mailer_autoconfirm: false });
 const answer = (status, body, contentType = 'application/json') =>
   async () => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { 'Content-Type': contentType } });
 
@@ -74,7 +74,7 @@ test('a settings document of the wrong shape says none, and so does no document 
     assert.deepEqual(enabledProviders(bad), [], JSON.stringify(bad));
   }
   // A provider this app has no button for is ignored, not drawn.
-  assert.deepEqual(enabledProviders(settings({ github: true, facebook: true, apple: true })), []);
+  assert.deepEqual(enabledProviders(settings({ github: true, facebook: true, azure: true })), []);
 });
 
 test('the answer keeps the app order, whatever order the project lists them in', () => {
@@ -305,7 +305,7 @@ test('signInWithOAuth is called from one component, and that component draws onl
 });
 
 test('no Google or Discord button is written by hand: the words come from the provider list', () => {
-  const written = nodes(parse('routes', 'auth-pages.tsx')).filter((n) => ts.isJsxText(n) && /Continue with (Google|Discord|GitHub|Facebook|Apple)/i.test(n.getText()));
+  const written = nodes(parse('routes', 'auth-pages.tsx')).filter((n) => ts.isJsxText(n) && /Continue with (Google|Discord|GitHub|Facebook|Twitter)/i.test(n.getText()));
   assert.deepEqual(written.map((n) => n.getText()), [], 'a button for a named provider is in the markup, outside the list');
   assert.match(readFileSync(join(WEB, 'src', 'routes', 'auth-pages.tsx'), 'utf8'), /Continue with \{PROVIDER_NAME\[provider\]\}/);
 });

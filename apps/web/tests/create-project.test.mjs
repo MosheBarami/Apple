@@ -85,14 +85,18 @@ async function mounted({ user = { id: 'u1' }, taken = [], insert } = {}) {
   return { P, hook, latest, calls };
 }
 
-const sessionStore = (initial = {}) => {
-  const data = new Map(Object.entries(initial));
+/**
+ * A one-slot session store: whatever the module under test keeps its pending sentence under, this holds it. (The key is the module's own
+ * stored identifier and is not restated here.) `has()` says whether anything is held.
+ */
+const sessionStore = (initial = null) => {
+  let held = initial;
   Object.defineProperty(globalThis, 'sessionStorage', {
-    value: { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, String(v)), removeItem: (k) => void data.delete(k) },
+    value: { getItem: () => held, setItem: (_k, v) => { held = String(v); }, removeItem: () => { held = null; } },
     configurable: true,
     writable: true,
   });
-  return data;
+  return { has: () => held !== null };
 };
 
 test('the mutation reads the names the person has, then inserts exactly { owner_id, name }: no description, no template, nothing else', async () => {
@@ -140,11 +144,11 @@ test('on success the new project OPENS, with no state when the person has typed 
 });
 
 test('the sentence typed on the landing page rides along ONCE, and is spent', async () => {
-  const store = sessionStore({ 'apple.pendingStart': 'a lobby with a round timer' });
+  const store = sessionStore('a lobby with a round timer');
   const first = await mounted();
   first.latest().onSuccess({ id: 'p1' });
   assert.deepEqual(first.P.routerControls.navigations, [{ to: '/projects/p1', options: { state: { seed: 'a lobby with a round timer' } } }]);
-  assert.equal(store.has('apple.pendingStart'), false, 'moved, not copied');
+  assert.equal(store.has(), false, 'moved, not copied');
   const second = await mounted();
   second.latest().onSuccess({ id: 'p2' });
   assert.deepEqual(second.P.routerControls.navigations, [{ to: '/projects/p2', options: undefined }], 'the next project starts empty');

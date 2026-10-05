@@ -43,7 +43,8 @@ export function NumberControl({ id, param, value, onChange }: { id: string; para
           setBad(false);
         }}
       />
-      {param.unit && <span className="pieces__unit">{param.unit}</span>}
+      {/* Always drawn, empty when there is no unit: the number and its unit are two grid columns (pieces-panel.css). */}
+      <span className="pieces__unit">{param.unit}</span>
     </span>
   );
 }
