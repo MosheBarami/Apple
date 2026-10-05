@@ -6,6 +6,7 @@ import '../styles/site.css';
 import { PIECES } from '../data/pieces';
 import { LISTED_PLAN_IDS, PLAN_COPY, PLAN_TABLE, PRICE_CURRENCY, formatMoney } from '@studpilot/shared';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import { EMAIL_FOR_EVERYONE, ROBLOX_LIMIT, ROBLOX_OAUTH_REVIEWED } from '../lib/roblox-signin';
 
 /*
  * THE FRONT PAGE, REBUILT (M2, handoff 2.2). A new layout, not the old one restyled.
@@ -101,7 +102,12 @@ const pairStep = STUDIO_PLUGIN_STORE_LIVE
         <li>
           <span class="rail__n">01</span>
           <h3>Sign in</h3>
-          <p>Use your email, or sign in with Roblox. Google and Discord are coming.</p>
+          <p>
+            {ROBLOX_OAUTH_REVIEWED
+              ? 'Use your email, or sign in with Roblox.'
+              : `Use your email. ${ROBLOX_LIMIT} ${EMAIL_FOR_EVERYONE}`}
+            {' '}Google and Discord are coming.
+          </p>
         </li>
         <li>
           <span class="rail__n">02</span>
@@ -130,25 +136,25 @@ const pairStep = STUDIO_PLUGIN_STORE_LIVE
         <p class="kicker">The quality bar</p>
         <h2 id="bar-title" class="sec-title">The bar a piece has to clear</h2>
         <p class="sec-text">
-          A fresh blind critic sees only the request and screenshots of the result. It does not know how the piece was
-          made. A piece goes in the catalog only when it clears all three lines.
+          The bar is a fresh blind critic. It will see only the request and screenshots of the result, and it will not know
+          how the piece was made. A piece will go in the catalog only when it clears all three lines.
         </p>
         <p class="note">
-          <strong>Beta:</strong> this is a target, not a score. No piece has passed it yet, so the catalog has no examples
-          yet. <a href="/blog/what-works-today">What works today</a> says what is built and what is not.
+          <strong>Beta:</strong> this is a target, not a score. The critic is being built, so nothing has been rated against the bar
+          yet, and the catalog has no examples yet. <a href="/blog/what-works-today">What works today</a> says what is built and what is not.
         </p>
       </div>
       <ul class="bar__list" data-quality-bar>
         <li class="bar__row">
-          <span class="bar__value">8/10</span>
-          <p class="bar__what">or better in every area the critic looks at, with no serious flaw.</p>
+          <span class="bar__fig"><span class="bar__value">8/10</span><span class="bar__target">Target</span></span>
+          <p class="bar__what">or better from the critic in every area, with no serious flaw.</p>
         </li>
         <li class="bar__row">
-          <span class="bar__value">0</span>
+          <span class="bar__fig"><span class="bar__value">0</span><span class="bar__target">Target</span></span>
           <p class="bar__what">errors when the piece is play tested in Studio.</p>
         </li>
         <li class="bar__row">
-          <span class="bar__value">0</span>
+          <span class="bar__fig"><span class="bar__value">0</span><span class="bar__target">Target</span></span>
           <p class="bar__what">false claims in the reply. It says what it proved, and lists what it did not.</p>
         </li>
       </ul>

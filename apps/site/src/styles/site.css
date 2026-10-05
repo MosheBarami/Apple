@@ -309,6 +309,20 @@ main > .sec--band:last-child {
   border-bottom: 0;
 }
 
+.bar__fig {
+  display: grid;
+  gap: 8px;
+}
+
+.bar__target {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .bar__value {
   color: var(--ink);
   font-size: clamp(2.25rem, 5vw, 3.5rem);
@@ -612,7 +626,7 @@ main > .sec--band:last-child {
 }
 
 .post {
-  max-width: 70ch;
+  max-width: var(--prose-measure);
 }
 
 .post .carved {

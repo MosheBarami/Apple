@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import ScreenSlot from '../components/ScreenSlot.astro';
 import '../styles/site.css';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import { EMAIL_FOR_EVERYONE, ROBLOX_LIMIT, ROBLOX_OAUTH_REVIEWED } from '../lib/roblox-signin';
 
 /*
  * HOW STUDPILOT WORKS: the eight steps of plan section 1, each worded for what the code does TODAY.
@@ -14,9 +15,12 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
  *             any build does it today.
  *
  * What was checked in apps/worker before each step was worded:
- *   1  sign-in: email works, and so does Sign in with Roblox (live on studpilot.app since 2026-10-05, owner decision D-10; the worker serves
- *      /auth/roblox/start and the app's sign-in page offers it). Google and Discord are not switched on (the app draws a button only when its
- *      provider is on), so the page says they are coming.
+ *   1  sign-in: email works for everyone. Sign in with Roblox works for the owner (owner decision D-10; the worker serves /auth/roblox/start and
+ *      the app's sign-in page offers it), BUT THE ROBLOX APP IS IN ROBLOX'S PRIVATE MODE: up to 10 unique users until Roblox approves it (owner
+ *      action X9, open; planning/roblox-oauth-setup.md). ROBLOX_OAUTH_REVIEWED is false, so this step is "partly works today" and says the limit in the
+ *      paragraph that offers Roblox. The label and the sentences are derived from the flag, never typed (src/lib/roblox-signin.ts,
+ *      tests/roblox-signin-limit.test.mjs). Google and Discord are not switched on (the app draws a button only when its provider is on), so the
+ *      page says they are coming.
  *   2  pairing: the plugin takes a six-character code (apps/studpilot-plugin/src/init.server.luau); the code lasts 10 minutes and edits stay
  *      off until allowed (docs/getting-started). BUT NEW CUSTOMERS CANNOT GET THE PLUGIN: STUDIO_PLUGIN_STORE_LIVE is false, so this step is
  *      only "partly works today" (it works for people who already have the plugin), and it says so. It is "Works today" only when the flag
@@ -38,9 +42,13 @@ const LABEL: Record<Status, string> = { live: 'Works today', partial: 'Partly wo
 const steps: Array<{ title: string; status: Status; body: string[] }> = [
   {
     title: 'Sign in',
-    status: 'live',
+    // The label is the claim, and while the Roblox app is in private mode part of the step works for only a few people: it follows the flag.
+    status: ROBLOX_OAUTH_REVIEWED ? 'live' : 'partial',
     body: [
-      'Make an account with your email and a password, or sign in with Roblox. You do not need a card.',
+      ROBLOX_OAUTH_REVIEWED
+        ? 'Make an account with your email and a password, or sign in with Roblox. You do not need a card.'
+        : 'Make an account with your email and a password. You do not need a card.',
+      ...(ROBLOX_OAUTH_REVIEWED ? [] : [`${ROBLOX_LIMIT} ${EMAIL_FOR_EVERYONE}`]),
       'Google and Discord sign-in are coming, so they are not on the sign-in page yet.',
     ],
   },

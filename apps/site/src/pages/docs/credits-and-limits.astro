@@ -14,6 +14,8 @@ import {
   fullRateDays,
   monthlyCeilingBitesFirst,
 } from '@studpilot/shared';
+import { NOT_DECIDED, dailyCapDecided } from '../../lib/plan-facts';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
 // documentation contradicting the thing it documents. Every figure is in PLAN_TABLE and BUILD_COSTS.
@@ -21,7 +23,7 @@ const free = PLAN_TABLE.free;
 const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
 /* The plans whose monthly ceiling arrives before the month does: on each of them the daily figure
    alone is not what a reader will meet. */
-const ceilingPlans = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id));
+const ceilingPlans = LISTED_PLAN_IDS.filter((id) => dailyCapDecided(id) && monthlyCeilingBitesFirst(id));
 const small = BUILD_COSTS.find((b) => b.id === 'small')!;
 const big = BUILD_COSTS.find((b) => b.id === 'big')!;
 import DocsLayout from '../../layouts/DocsLayout.astro';
@@ -42,11 +44,13 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     the Free plan stay free while StudPilot is in beta: no card and no surprise bill.
   </p>
 
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> New customers cannot get the Studio plugin yet, so a run that changes your place in Studio applies only to people who already have it. Chat requests spend Credits too. <a href="/docs/plugin">Where the plugin stands</a>.</p></div>}
+
   <h2>The numbers</h2>
   <ul>
     <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · up to {free.creditsPerMonth} a month.</li>
     {paid.map((id) => (
-      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_TABLE[id].creditsPerMonth} Credits a month · up to {PLAN_TABLE[id].creditsPerDay} a day. Planned: paid plans start later.</li>
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_TABLE[id].creditsPerMonth} Credits a month{dailyCapDecided(id) ? <> · up to {PLAN_TABLE[id].creditsPerDay} a day</> : <>. The daily limit is {NOT_DECIDED.toLowerCase()}</>}. Planned: paid plans start later.</li>
     ))}
     <li><strong>One Credit</strong> is about {formatMoney(CREDIT_USD, { currency: PRICE_CURRENCY })} of AI compute, and your balance shows with two decimals.</li>
     <li><strong>A typical build:</strong> about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits. A small one costs {formatCredits(small.creditsLow)} to {formatCredits(small.creditsHigh)}; a big one, which is still an estimate, {big.creditsLow} to {big.creditsHigh}.</li>
@@ -151,7 +155,7 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     rate; the monthly figure is a ceiling, and a day's refill cannot take you past it.
     {ceilingPlans.length > 0 ? (
       <>
-        {' '}On every plan the ceiling is the one that bites if you spend the whole daily allowance
+        {' '}The ceiling is the one that bites if you spend the whole daily allowance
         every day:{' '}
         {ceilingPlans.map((id, i) => (
           <>

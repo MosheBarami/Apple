@@ -28,6 +28,9 @@ const {
 } = shared;
 const { DAILY_NEURON_CEILING } = await import('../../worker/src/pricing.ts');
 
+/** A plan's cell in the "Credits a day" row: its figure when the owner decided it (Free always; the paid plans once PAID_DAILY_CAPS_DECIDED), else "Not decided yet". */
+const dailyCell = (id) => (id === 'free' || shared.PAID_DAILY_CAPS_DECIDED ? String(PLAN_TABLE[id].creditsPerDay) : 'Not decided yet');
+
 const distFile = fileURLToPath(new URL('../dist/pricing/index.html', import.meta.url));
 const sourceFile = fileURLToPath(new URL('../src/pages/pricing.astro', import.meta.url));
 
@@ -106,8 +109,9 @@ test('EACH PLAN COLUMN carries its own price, allowance and build count, from th
     // Price. Free is "Free while in beta" in its Price cell; a paid column says "<price> a month", adjacent.
     if (plan.priceUsdMonthly === 0) assert.ok(has(t, 'Free while in beta'), `${plan.name}: the column does not say it is free while in beta`);
     else assert.ok(has(t, `${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not in its column`);
-    // Allowance and builds: each in its own cell.
-    assert.ok(t.split(' | ').includes(String(plan.creditsPerDay)), `${plan.name}: its ${plan.creditsPerDay} Credits a day is not a cell of its column`);
+    // Allowance and builds: each in its own cell. THE PER-DAY CELL IS THE OWNER'S FIGURE OR "Not decided yet": Free's 5 is decided, the paid plans' 20 and
+    // 30 are an assumption (PAID_DAILY_CAPS_DECIDED), and a paid cell that printed one while the flag is false would be a plan fact nobody decided.
+    assert.ok(t.split(' | ').includes(dailyCell(id)), `${plan.name}: its Credits a day cell is not "${dailyCell(id)}" in its column`);
     assert.ok(t.split(' | ').includes(String(plan.creditsPerMonth)), `${plan.name}: its ${plan.creditsPerMonth} Credits a month is not a cell of its column`);
     assert.ok(has(t, `About ${buildsPerMonth(id)}`), `${plan.name}: "About ${buildsPerMonth(id)}" typical builds is not in its column`);
   }
@@ -127,8 +131,8 @@ test('EACH PLAN COLUMN carries its own price, allowance and build count, from th
   // and not only a page that disagrees with it.
   assert.ok(has(cols.builder, '$9.99 a month') && has(cols.studio, '$24.99 a month'));
   assert.ok(cols.free.split(' | ').includes('5') && cols.free.split(' | ').includes('30'));
-  assert.ok(cols.builder.split(' | ').includes('20') && cols.builder.split(' | ').includes('100'));
-  assert.ok(cols.studio.split(' | ').includes('30') && cols.studio.split(' | ').includes('300'));
+  assert.ok(cols.builder.split(' | ').includes(dailyCell('builder')) && cols.builder.split(' | ').includes('100'));
+  assert.ok(cols.studio.split(' | ').includes(dailyCell('studio')) && cols.studio.split(' | ').includes('300'));
   assert.ok(has(cols.free, 'About 20') && has(cols.builder, 'About 70') && has(cols.studio, 'About 200'));
   // And the decision panel is Free's, from the same table.
   const panel = plain(/<section[^>]*aria-labelledby="now-title"[\s\S]*?<\/section>/.exec(html)?.[0] ?? '');
@@ -158,13 +162,13 @@ test('THE COMPARISON TABLE\'S Price, Credits a day, Credits a month AND builds R
   for (const [name, id] of Object.entries(names)) {
     const plan = PLAN_TABLE[id];
     assert.equal(price[name], plan.priceUsdMonthly === 0 ? 'Free while in beta' : `${formatMoney(plan.priceUsdMonthly)} a month`, `Price / ${name}`);
-    assert.equal(day[name], String(plan.creditsPerDay), `Credits a day / ${name}: a ledger-unit figure (PLAN_LIMITS) is not what a person reads`);
+    assert.equal(day[name], dailyCell(id), `Credits a day / ${name}: a ledger-unit figure (PLAN_LIMITS) is not what a person reads, and a paid plan's undecided figure is not printed`);
     assert.equal(month[name], String(plan.creditsPerMonth), `Credits a month / ${name}`);
     assert.equal(builds[name], `About ${buildsPerMonth(id)}`, `Typical builds a month / ${name}`);
   }
   assert.deepEqual(Object.keys(price), ['Free', 'Pro', 'Max'], 'the columns are the listed plans, in order');
   assert.deepEqual(price, { Free: 'Free while in beta', Pro: '$9.99 a month', Max: '$24.99 a month' }, 'the owner\'s line, not "Free forever"');
-  assert.deepEqual(day, { Free: '5', Pro: '20', Max: '30' });
+  assert.deepEqual(day, shared.PAID_DAILY_CAPS_DECIDED ? { Free: '5', Pro: '20', Max: '30' } : { Free: '5', Pro: 'Not decided yet', Max: 'Not decided yet' });
   assert.deepEqual(month, { Free: '30', Pro: '100', Max: '300' });
 });
 

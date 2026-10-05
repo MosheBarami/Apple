@@ -2,12 +2,15 @@
 import { PLAN_TABLE } from '@studpilot/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
+import { EMAIL_FOR_EVERYONE, ROBLOX_LIMIT, ROBLOX_OAUTH_REVIEWED } from '../../lib/roblox-signin';
 
 // The free allowance is read from the shared product contract so this guide cannot outlive a quota change independently.
 /*
  * REWRITTEN FOR THE BETA (M2 site fix cycle 1, plan step 2.6). What it says, and where each claim was checked:
- *   - sign-in: email and a password, or Sign in with Roblox (live since 2026-10-05, owner decision D-10; the worker serves /auth/roblox and the
- *     app's sign-in page links /auth/roblox/start). Google and Discord are not on the sign-in page (nothing in apps/web calls an OAuth sign-in yet).
+ *   - sign-in: email and a password works for everyone. Sign in with Roblox works (owner decision D-10; the worker serves /auth/roblox and the
+ *     app's sign-in page links /auth/roblox/start) but the Roblox app is in Roblox's private mode, up to 10 unique users until Roblox approves it
+ *     (owner action X9), so the page derives what it says from ROBLOX_OAUTH_REVIEWED (src/lib/roblox-signin.ts). Google and Discord are not on the
+ *     sign-in page (nothing in apps/web calls an OAuth sign-in yet).
  *   - the pairing dialog is the app's "Studio connection" window (apps/web/src/components/pairing-dialog.tsx): "Your pairing code", a countdown, and
  *     the instruction this page repeats ("click StudPilot in the Plugins tab, enter this code and press Connect to StudPilot").
  *   - a code lasts 10 minutes and works once (apps/worker/src/do/pairing.ts, TTL_MS); the pairing itself lasts until Studio closes (the plugin's own
@@ -38,8 +41,9 @@ const free = PLAN_TABLE.free;
 
   <h2>1. Make an account</h2>
   <p>
-    Go to <a href="/app">the app</a> and sign up with an email address and a password, or use Sign in with Roblox on the sign-in page. There is no
-    card to enter. You start with your full daily allowance of <strong>{free.creditsPerDay} Credits</strong> immediately. Google and Discord
+    Go to <a href="/app">the app</a> and sign up with an email address and a password.
+    {ROBLOX_OAUTH_REVIEWED ? 'You can also use Sign in with Roblox on the sign-in page.' : `${ROBLOX_LIMIT} ${EMAIL_FOR_EVERYONE}`}
+    There is no card to enter. You start with your full daily allowance of <strong>{free.creditsPerDay} Credits</strong> immediately. Google and Discord
     sign-in are coming. They are not on the sign-in page yet.
   </p>
 

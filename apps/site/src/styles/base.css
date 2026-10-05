@@ -17,6 +17,8 @@
   --content: 1120px;
   --gutter: clamp(16px, 4vw, 40px);
   --nav-h: 60px;
+  /* The width of a column of reading text. Every prose column (the shared .prose, a blog post, the docs main column and its footer rule) reads this one value. */
+  --prose-measure: 70ch;
 }
 
 /* ------------------------------------------------------------------ base */

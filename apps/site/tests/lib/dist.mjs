@@ -85,6 +85,43 @@ export function textOf(html) {
     .trim();
 }
 
+/** The tags that start or end a block of text for a reader: a paragraph, a list item, a heading, a cell, a button, a label. Inline tags are not in it. */
+const BLOCK_TAGS = 'address|article|aside|blockquote|body|br|button|caption|dd|details|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|label|li|main|nav|ol|option|p|pre|section|summary|table|tbody|td|tfoot|th|thead|title|tr|ul';
+
+/**
+ * What a reader sees as separate blocks of text: one string per paragraph, list item, heading, cell, button or label, in page order.
+ * Inline tags (a, strong, em, code, span) do not split a block, so "Use <a>Sign in with Roblox</a>, then ..." is one block. A guard that asks
+ * "does the paragraph that makes the claim also carry the qualifier" reads these, not the whole page flattened into one string.
+ */
+export function blocksOf(html) {
+  const marked = html.replace(new RegExp(`</?(?:${BLOCK_TAGS})\\b[^>]*>`, 'gi'), ' \u0001 ');
+  return textOf(marked).split('\u0001').map((b) => b.trim()).filter(Boolean);
+}
+
+/**
+ * The words a page itself says, as one string: its <main>, with the navigation, the docs sidebar and the search form taken out (a link's label is not a
+ * sentence the page says), then its title and descriptions (what a search result shows). The header and footer sit outside <main>.
+ */
+export function pageWordsOf(html) {
+  const main = /<main\b[\s\S]*<\/main>/.exec(html)?.[0] ?? html;
+  const body = main
+    .replace(/<nav\b[\s\S]*?<\/nav>/gi, ' ')
+    .replace(/<details\b[^>]*\bdocs__nav\b[\s\S]*?<\/details>/gi, ' ')
+    .replace(/<form\b[^>]*role="search"[\s\S]*?<\/form>/gi, ' ');
+  const head = /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '';
+  return [textOf(head), ...metaTextOf(html), textOf(body)].join('. ');
+}
+
+/** The words a page puts in its head for a search result or a pasted link, besides its title (blocksOf reads the title): every description, Open Graph and Twitter content. */
+export function metaTextOf(html) {
+  const out = [];
+  for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const a = attrsOf(m[0]);
+    if (a.content && /^(?:description|og:|twitter:)/i.test(a.name ?? a.property ?? '')) out.push(textOf(a.content));
+  }
+  return out;
+}
+
 /** The attributes of one start tag, as an object. */
 export function attrsOf(tag) {
   const out = {};

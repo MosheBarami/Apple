@@ -22,6 +22,7 @@ import {
   CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@studpilot/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
+import { NOT_DECIDED, dailyCapDecided } from '../lib/plan-facts';
 
 /*
  * THE LIMIT THIS PAGE NEVER MENTIONED, ON THE PAGE WHERE PEOPLE DECIDE.
@@ -139,8 +140,17 @@ const engineName = PRODUCT_MODEL_INFO.apple.name;
 // which went on offering "Add credits" at the moment a customer's allowance ran out. One fact, one
 // home: packages/shared/src/index.ts.
 const CREDIT_PURCHASE_LIVE = SHARED_CREDIT_PURCHASE_LIVE;
+/* A PAID PLAN'S PER-DAY FIGURE IS NOT THE OWNER'S: the decided pricing doc fixes the monthly pools only (src/lib/plan-facts.ts). The row stays, because a
+   capability missing from a list is indistinguishable from one nobody mentioned, and a paid cell says "Not decided yet" in place of the assumed 20 or 30. */
 const planFeatures = PLAN_FEATURES.map((f) =>
-  f.id === 'credits' && !CREDIT_PURCHASE_LIVE
+  f.id === 'credits-per-day'
+    ? {
+        ...f,
+        values: Object.fromEntries(
+          LISTED_PLAN_IDS.map((id) => [id, dailyCapDecided(id) ? f.values[id] : NOT_DECIDED]),
+        ) as Record<string, string>,
+      }
+    : f.id === 'credits' && !CREDIT_PURCHASE_LIVE
     ? {
         ...f,
         /* The shared label says "credits" in lower case; the unit is a proper noun on this site. */
@@ -186,8 +196,9 @@ const buildCostRows = BUILD_COSTS.map((b) => ({
 }));
 
 /* Each plan whose monthly ceiling arrives before the month does, as "Free: 5 a day against 30 a month
-   is 6 full days". Derived per plan, because the ceiling bites on every listed plan. */
-const ceilingLines = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id)).map(
+   is 6 full days". Derived per plan, and only for a plan whose per-day figure is decided: a paid plan's "full days" would be arithmetic on a number
+   nobody decided (src/lib/plan-facts.ts). */
+const ceilingLines = LISTED_PLAN_IDS.filter((id) => dailyCapDecided(id) && monthlyCeilingBitesFirst(id)).map(
   (id) =>
     `${PLAN_COPY[id].name}: ${PLAN_TABLE[id].creditsPerDay} a day against ${PLAN_TABLE[id].creditsPerMonth} a month is <strong>${fullRateDays(id)} full days</strong>`,
 );
@@ -263,8 +274,8 @@ const limits = [...limitFaq, sharedLimit];
           (planning/pricing-2026-10-04.md): paid plans have no way to be bought, and say so. */}
       <h1 id="pricing-title" class="carved">Free while in beta. Paid plans start later</h1>
       <p class="lede lede-wide">
-        {planNames} are plans. Every plan uses {engineName}; they differ only in how many Credits they
-        include. Paid checkout is not open yet; the paid plans below describe the planned offering.
+        {planNames} are plans. Every plan uses {engineName}; they differ in how many Credits they
+        include and in who is answered first when you write to support. Paid checkout is not open yet; the paid plans below describe the planned offering.
       </p>
     </div>
   </section>
@@ -512,7 +523,7 @@ const limits = [...limitFaq, sharedLimit];
         <h3>Support</h3>
         <p>
           Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. {PLAN_SUPPORT.free.promise} Paid
-          accounts are answered first.
+          plans are planned to be answered first; nobody can buy one yet.
         </p>
       </div>
     </div>
@@ -590,6 +601,7 @@ const limits = [...limitFaq, sharedLimit];
     font-size: 14px;
   }
 
+  /* The panel is centred against the copy beside it, so the card does not end in a block of empty space under a short panel. */
   .now__stats {
     display: grid;
     gap: 0;
@@ -597,7 +609,7 @@ const limits = [...limitFaq, sharedLimit];
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     background: var(--paper);
-    align-self: start;
+    align-self: center;
   }
 
   .now__stats > div {
@@ -658,6 +670,16 @@ const limits = [...limitFaq, sharedLimit];
     white-space: normal;
     line-height: 1.3;
     text-align: center;
+  }
+
+  /* THE "GET IT" BUTTONS ARE ONE SIZE: the live Start button and the two off ones ("Checkout not open" wraps onto two lines in a narrow cell) were 36px and
+     53px tall beside each other. One minimum height, centred text, and the cell's full width. */
+  .compare tfoot td .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 52px;
   }
 
   .compare-note {
@@ -906,8 +928,12 @@ const limits = [...limitFaq, sharedLimit];
       border-bottom: 0;
     }
 
+    /* The footer row ("Get it") carries its own hairline in the table's own layout (.compare tfoot td, one specificity above the reset above), and in a
+       stack each cell's rule landed at a different height: the stacked row already has its hairline from the row above. */
     .stack-sm th,
-    .stack-sm td {
+    .stack-sm td,
+    .stack-sm tfoot th,
+    .stack-sm tfoot td {
       display: block;
       padding: 0;
       border: 0;
@@ -945,9 +971,28 @@ const limits = [...limitFaq, sharedLimit];
     }
   }
 
+  /* ON A NARROW PHONE EACH PLAN IS ONE LINE, in the order of the table: "Free   5", "Pro   Not decided yet", "Max   Not decided yet". Three plans in two columns left
+     MAX alone on a line of its own in every row, and the plans could not be read against each other. */
   @media (max-width: 480px) {
     .compare tr {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .stack-sm td[data-label],
+    .stack-sm tfoot td[data-label] {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    .stack-sm tfoot td[data-label] {
+      align-items: center;
+    }
+
+    .stack-sm td[data-label]::before {
+      margin-bottom: 0;
     }
 
     .now {

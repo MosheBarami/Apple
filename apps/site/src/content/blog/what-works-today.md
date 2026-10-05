@@ -8,7 +8,7 @@ StudPilot is in beta. This post says what you can do today and what you cannot. 
 
 ## What works today
 
-**You can sign in with your email, or with Roblox.** Make an account with an email and a password, or use Sign in with Roblox. You do not need a card.
+**You can sign in with your email.** Make an account with an email and a password. You do not need a card. Email sign-in works for everyone.
 
 **You can make a project and chat with StudPilot.** A project holds the chat for one Roblox place. Type a request and StudPilot starts work.
 
@@ -22,7 +22,7 @@ StudPilot is in beta. This post says what you can do today and what you cannot. 
 
 **The checks need the plugin.** StudPilot has tools to play test a place, press buttons in a running game, check a screen's layout and audit what it built, and it checks its own reply for claims it cannot back up. They run inside Studio, so a new customer cannot use most of them yet.
 
-**The quality bar has not been met.** The bar is a blind critic that rates a piece 8 or better in every area, no play-test errors, and no false claims. No piece has passed it yet. That is why the [catalog](/catalog) has no examples.
+**The quality bar has not been met.** The bar is a blind critic that will rate a piece 8 or better in every area, with no play-test errors and no false claims. That critic is being built, so no piece has been rated against the bar yet. That is why the [catalog](/catalog) has no examples.
 
 **Reviewed building blocks are not built.** We are building StudPilot to put each piece together from reviewed blocks. Today it builds each piece one step at a time.
 
@@ -31,6 +31,8 @@ StudPilot is in beta. This post says what you can do today and what you cannot. 
 **The one multiple-choice question is not in the chat.** We are building StudPilot to ask it only when a request is not clear.
 
 **There is no settings panel for a piece yet.** To change a piece, ask in the chat.
+
+**Sign in with Roblox is in a limited test.** Roblox lets only a few people use it until Roblox approves the app, so it may not work for you yet. Email sign-in works for everyone.
 
 **Google and Discord sign-in are coming.** They are not on the sign-in page.
 

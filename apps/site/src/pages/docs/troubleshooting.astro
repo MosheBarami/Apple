@@ -1,6 +1,9 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import { SUPPORT_EMAIL } from '@studpilot/shared';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
+// The plugin's messages below are for someone who has the plugin. While the Creator Store listing is down new customers cannot get it, and this page says so
+// where it talks about it (derived from the flag, tests/plugin-honesty.test.mjs).
 ---
 
 <DocsLayout
@@ -14,6 +17,8 @@ import { SUPPORT_EMAIL } from '@studpilot/shared';
     Grouped by what you can actually see. If the panel is showing you a message, start with
     <a href="#messages">what the panel says</a>.
   </p>
+
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> The messages below are for people who already have the Studio plugin. New customers cannot get it yet, and the chat works without it. <a href="/docs/plugin">Where the plugin stands</a>.</p></div>}
 
   <h2 id="messages">What the panel says</h2>
 

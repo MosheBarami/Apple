@@ -30,28 +30,44 @@ function post(name) {
   return { front, body: m[2] };
 }
 
-/** The claims of a post: every paragraph that opens with a bold lead, as { section, lead, text }. */
-function claimsOf(body) {
+/**
+ * EVERY BLOCK OF THE POST, as { section, lead, text }: a heading line sets the section (a heading and the paragraph under it with no blank line between
+ * them are two blocks, not one swallowed one), and every other block is read, bold-led or not. `lead` is the bold opening of the block, or null.
+ * (The first version collected only blocks that opened with a bold lead, so an unbolded paragraph written under "What works today" was never examined.)
+ */
+function blocksOfPost(body) {
   let section = '';
   const out = [];
-  for (const block of body.split(/\n\s*\n/)) {
-    const h = block.match(/^## (.+)$/m);
+  const spaced = body.replace(/^(#{1,6} .*)$/gm, '\n$1\n');
+  for (const block of spaced.split(/\n\s*\n/)) {
+    const t = block.trim();
+    if (!t) continue;
+    const h = t.match(/^#{1,6} (.+)$/);
     if (h) {
       section = h[1].trim();
       continue;
     }
-    const m = block.trim().match(/^\*\*(.+?)\*\*\s*([\s\S]*)$/);
-    if (m) out.push({ section, lead: m[1].trim(), text: m[2].replace(/\s+/g, ' ').trim() });
+    const m = t.match(/^\*\*(.+?)\*\*\s*([\s\S]*)$/);
+    out.push(m ? { section, lead: m[1].trim(), text: m[2].replace(/\s+/g, ' ').trim() } : { section, lead: null, text: t.replace(/\s+/g, ' ') });
   }
   return out;
 }
 
-test('the claim parser can see: it reads the sections, the bold leads and the text after them', () => {
+/** The claims of a post: every block that opens with a bold lead. */
+const claimsOf = (body) => blocksOfPost(body).filter((b) => b.lead !== null);
+
+test('the claim parser can see: it reads the sections, the bold leads and the text after them, the blocks that have no bold lead, and a paragraph that follows a heading with no blank line', () => {
   const fixture = '## One\n\n**A lead.** The text, with [a link](/x).\n\n**Another.** More.\n\n## Two\n\n**Third.** Last.';
   assert.deepEqual(claimsOf(fixture), [
     { section: 'One', lead: 'A lead.', text: 'The text, with [a link](/x).' },
     { section: 'One', lead: 'Another.', text: 'More.' },
     { section: 'Two', lead: 'Third.', text: 'Last.' },
+  ]);
+  const loose = '## One\n**Glued.** Straight under its heading.\n\nAn unbolded paragraph builds the piece in Studio.\n\n- a list item';
+  assert.deepEqual(blocksOfPost(loose), [
+    { section: 'One', lead: 'Glued.', text: 'Straight under its heading.' },
+    { section: 'One', lead: null, text: 'An unbolded paragraph builds the piece in Studio.' },
+    { section: 'One', lead: null, text: '- a list item' },
   ]);
 });
 
@@ -83,12 +99,11 @@ const registered = new Set([
  * from one list to the other is a change of what is true, and fails here until a person re-reads it.
  */
 const VERIFIERS = {
-  'You can sign in with your email, or with Roblox.': {
+  'You can sign in with your email.': {
     section: 'What works today',
-    check: () => {
-      assert.match(worker('index.ts'), /app\.route\('\/auth\/roblox'/, 'the worker no longer serves /auth/roblox');
-      assert.ok(read('web', 'src', 'lib', 'roblox-signin.ts').includes("'/auth/roblox/start'"), 'the app no longer links Sign in with Roblox to /auth/roblox/start');
+    check: (text) => {
       assert.match(read('web', 'src', 'routes', 'auth-pages.tsx'), /signInWithPassword/, 'the app no longer signs in with an email and a password');
+      assert.match(text, /Email sign-in works for everyone\./);
     },
   },
   'You can make a project and chat with StudPilot.': {
@@ -158,7 +173,11 @@ const VERIFIERS = {
       assert.match(text, /8 or better in every area/);
       assert.match(text, /no play-test errors/);
       assert.match(text, /no false claims/);
-      assert.match(text, /No piece has passed it yet/);
+      // THE CRITIC IS NOT A RUNNING THING YET, so the post says it is being built and that nothing has been rated. The day a critic harness is in the
+      // repository (handoff 3.1 to 3.3: scripts/eval, planning/critic-rubric.md) this fails until a person re-reads the line and the pages that state the bar.
+      assert.match(text, /That critic is being built, so no piece has been rated against the bar yet/);
+      assert.ok(!existsSync(join(APPS, '..', 'scripts', 'eval')), 'a critic harness (scripts/eval) is in the repository: re-read what the post says about the critic');
+      assert.ok(!existsSync(join(APPS, '..', 'planning', 'critic-rubric.md')), 'the critic rubric (planning/critic-rubric.md) is in the repository: re-read what the post says about the critic');
       assert.match(textOf(distPage('/catalog/').html), /No examples yet/, 'the catalog shows examples while the post says no piece has passed');
     },
   },
@@ -187,6 +206,19 @@ const VERIFIERS = {
     section: 'What is not there yet',
     check: () => {
       assert.equal(walkFiles(join(APPS, 'web', 'src'), (p) => /piece-settings|settings-panel-piece|PieceSettings/.test(p)).length, 0, 'a per-piece settings panel exists: the post says there is none');
+    },
+  },
+  'Sign in with Roblox is in a limited test.': {
+    section: 'What is not there yet',
+    check: (text) => {
+      // The Markdown cannot read ROBLOX_OAUTH_REVIEWED, so this is where the flag is held against the post: the day Roblox approves the app and the
+      // flag flips, this fails until a person moves the line to "What works today" (tests/roblox-signin-limit.test.mjs reads every built page).
+      assert.equal(shared.ROBLOX_OAUTH_REVIEWED, false, 'the Roblox app is reviewed: the post says Sign in with Roblox is in a limited test, so move the line to "What works today"');
+      assert.match(text, /until Roblox approves the app/);
+      assert.match(text, /Email sign-in works for everyone\./);
+      // The sign-in is real, so the limit is the only thing the line takes back: the worker serves it and the app offers it.
+      assert.match(worker('index.ts'), /app\.route\('\/auth\/roblox'/, 'the worker no longer serves /auth/roblox');
+      assert.ok(read('web', 'src', 'lib', 'roblox-signin.ts').includes("'/auth/roblox/start'"), 'the app no longer links Sign in with Roblox to /auth/roblox/start');
     },
   },
   'Google and Discord sign-in are coming.': {
@@ -228,13 +260,32 @@ test('each claim holds against the repository, and stands in the list it belongs
   }
 });
 
-test('nothing is listed under "What works today" about building, pairing or checking in Studio while the plugin cannot be had', () => {
+/** What a Studio capability sounds like: pairing, the plugin, a place built in Studio, a play test, a check, a build of a piece. */
+const STUDIO_CAPABILITY = /\bpair|\bplugin\b|\bin Studio\b|\binto (?:your|the) (?:Studio )?place\b|play test|\bchecks?\b|\bbuilds? (?:a|the|your|into|it|every|each) /i;
+/** The headings the post may have. A claim under any other heading has no rule. */
+const SECTIONS = ['What works today', 'What is not there yet', 'Why we are saying this'];
+
+test('EVERY BLOCK of the post is accounted for: no heading outside the three, and under the two claim lists no block without a bold lead (so no line without a verifier)', () => {
+  const { body } = post('what-works-today.md');
+  const blocks = blocksOfPost(body);
+  assert.ok(blocks.length >= 15, `only ${blocks.length} blocks were found in the post: the parser has drifted`);
+  for (const b of blocks) {
+    assert.ok(SECTIONS.includes(b.section) || b.section === '', `"${b.text.slice(0, 60)}" stands under the heading "${b.section}", which this test does not know`);
+    if (b.section === 'What works today' || b.section === 'What is not there yet') {
+      assert.notEqual(b.lead, null, `the block "${b.text.slice(0, 80)}" under "${b.section}" has no bold lead, so nothing checks it against the repository: give it a lead and a verifier, or delete it`);
+    }
+  }
+  const headings = [...body.matchAll(/^#{1,6} (.+)$/gm)].map((m) => m[1].trim());
+  for (const h of headings) assert.ok(SECTIONS.includes(h), `the post has a heading "${h}" this test does not know`);
+});
+
+test('nothing in the post outside "What is not there yet" claims a Studio capability while the plugin cannot be had: not the bold-led lines, not an unbolded paragraph, not the introduction or the closing', () => {
   const { body } = post('what-works-today.md');
   assert.equal(shared.STUDIO_PLUGIN_STORE_LIVE, false, 'the plugin can be had now: re-read the whole post');
-  const works = claimsOf(body).filter((c) => c.section === 'What works today');
+  const works = blocksOfPost(body).filter((b) => b.section === 'What works today');
   assert.ok(works.length >= 3, 'the "What works today" list was not found');
-  for (const c of works) {
-    assert.doesNotMatch(`${c.lead} ${c.text}`, /\bpair|\bplugin\b|\bin Studio\b|play test|\bchecks?\b|\bbuilds? (?:a|the|your) /i, `"${c.lead}" lists a Studio capability as working today, and new customers cannot get the plugin`);
+  for (const b of blocksOfPost(body).filter((x) => x.section !== 'What is not there yet')) {
+    assert.doesNotMatch(`${b.lead ?? ''} ${b.text}`, STUDIO_CAPABILITY, `"${(b.lead ?? b.text).slice(0, 80)}" under "${b.section || 'the introduction'}" claims a Studio capability, and new customers cannot get the plugin`);
   }
 });
 

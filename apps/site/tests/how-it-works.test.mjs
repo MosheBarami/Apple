@@ -107,10 +107,16 @@ test('a step is labelled "Works today" only when it holds for someone who can ge
   assert.match(steps[2].text, /Without the plugin, StudPilot can plan it with you in the chat, but it cannot build it in Studio/);
 });
 
-test('step 1 says Sign in with Roblox works, and the worker and the app have it; Google and Discord stay "coming"', () => {
+test('step 1 follows ROBLOX_OAUTH_REVIEWED: while the Roblox app is in private mode it is "Partly works today" and says the limit; the worker and the app have the sign-in; Google and Discord stay "coming"', () => {
   const step1 = stepsOf(distPage('/how-it-works/').html)[0];
   assert.match(step1.text, /sign in with Roblox/i);
-  assert.equal(step1.label, 'Works today');
+  // The label is the claim. Email works for everyone; Sign in with Roblox works for up to 10 people until Roblox approves the app (owner action X9).
+  assert.equal(step1.label, shared.ROBLOX_OAUTH_REVIEWED ? 'Works today' : 'Partly works today', 'the label of step 1 does not follow ROBLOX_OAUTH_REVIEWED');
+  if (!shared.ROBLOX_OAUTH_REVIEWED) {
+    assert.match(step1.text, /Sign in with Roblox is in a limited test until Roblox approves the app\. Email sign-in works for everyone\./);
+  } else {
+    assert.doesNotMatch(step1.text, /limited test/);
+  }
   const apps = join(SITE, '..');
   assert.match(readFileSync(join(apps, 'worker', 'src', 'index.ts'), 'utf8'), /app\.route\('\/auth\/roblox'/, 'the worker no longer serves Sign in with Roblox');
   assert.ok(readFileSync(join(apps, 'web', 'src', 'lib', 'roblox-signin.ts'), 'utf8').includes("'/auth/roblox/start'"), 'the app no longer links to /auth/roblox/start');

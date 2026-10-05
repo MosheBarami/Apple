@@ -77,7 +77,7 @@
 /* ------------------------------------------------------------------ prose */
 
 .prose {
-  max-width: 70ch;
+  max-width: var(--prose-measure);
   color: var(--ink-2);
 }
 
