@@ -2566,12 +2566,14 @@ export function SettingsPage() {
           <p className="settings-note">
             StudPilot records which requests were made and how long they took, so a broken feature can be told from a slow
             one. That record carries your account id for 30 days unless you turn it off here. The requests are still
-            counted either way — an opt-out removes your name from the row, not the row. This covers request and error
-            entries only: the same log also holds one entry for each agent run and each model call, and those carry your
-            account id and the project id for the same 30 days whatever this says.
+            counted either way — an opt-out removes your name from the row, not the row. This covers only the entry for
+            each request and the error entry for a request that failed: the same log also holds one entry for each agent
+            run and each model call, and an error entry for a chat message that trips the abuse check, and those carry
+            your account id and the project id for the same 30 days whatever this says.
           </p>
           <p className="settings-note settings-note-quiet">
-            Switched on, your account id is kept out. Takes effect within a minute.
+            Switched on, your account id is kept out of the request entry and the failed-request error entry described
+            above, and nothing else. Takes effect within a minute.
           </p>
           {/* A FAILED READ IS NOT "OFF". Rendering an unchecked box over a fetch that never
               answered would show somebody their opt-out had been forgotten. */}

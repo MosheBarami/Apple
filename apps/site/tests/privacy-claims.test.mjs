@@ -623,10 +623,12 @@ test('the terms: 13+, Roblox account linking with disconnect, free while in beta
 const rel = (f) => f.slice(WORKER.length + 1);
 const BOTH_AND_SETTINGS = [...BOTH, ['Settings > Privacy', prose(settingsSrc.slice(settingsSrc.indexOf('<Row id="analytics-opt-out"'), settingsSrc.indexOf('</Row>', settingsSrc.indexOf('<Row id="analytics-opt-out"'))))]];
 
-test('THE ANALYTICS OPT-OUT COVERS THE REQUEST AND ERROR ENTRIES ONLY, every surface says so, and none says a project id is never in the log', () => {
-  // The opt-out is applied in ONE place, the /api/* middleware. The per-run `build` event and every `model_call` event carry the account id, the project id and
-  // the run id with no consent filter, and are stored beside the request entries for the same 30 days. If a later change routes them through the same filter,
-  // these sentences become wrong in the other direction: reword them then.
+test('THE ANALYTICS OPT-OUT COVERS ONLY THE ENTRY FOR EACH REQUEST AND THE ERROR ENTRY FOR A FAILED ONE, every surface says so, and none says a project id is never in the log', () => {
+  // The opt-out is applied in ONE place, the /api/* middleware, to the `request` event and to the `error` event that middleware writes for a failed request. The per-run
+  // `build` event, every `model_call` event and the `error` event for a chat message that trips the abuse check (scope chat:ingress, written by the Session DO) carry the
+  // account id with no consent filter, and are stored beside the request entries for the same 30 days. "Request and error entries" was wrong in the second half: an error
+  // entry is not necessarily the one the middleware writes. If a later change routes the others through the same filter, these sentences become wrong in the other
+  // direction: reword them then.
   const users = WORKER_SRC.filter((f) => /\banalyticsActorId\(/.test(wcode(f)) && !f.endsWith('analytics-consent.ts')).map(rel);
   assert.deepEqual(users, ['src/index.ts'], 'the consent filter is applied somewhere else now: the pages say it covers only request and error entries');
   assert.equal([...wcode(join(WORKER, 'src', 'index.ts')).matchAll(/\banalyticsActorId\(/g)].length, 1, 'index.ts applies the consent filter more than once: re-read what it now covers');
@@ -636,20 +638,45 @@ test('THE ANALYTICS OPT-OUT COVERS THE REQUEST AND ERROR ENTRIES ONLY, every sur
   const gw = wcode(join(WORKER, 'src', 'gateway.ts'));
   const call = gw.slice(gw.indexOf("kind: 'model_call'"), gw.indexOf("kind: 'model_call'") + 500);
   assert.ok(call.length > 300 && /actorId: opts\.actorId/.test(call) && /projectId: opts\.projectId/.test(call), 'the model_call event no longer carries the account id and project id as the pages say');
+  // THE ERROR ENTRIES THAT CARRY AN ACCOUNT ID, derived: every `kind: 'error'` call whose actor id is not a literal null. There are two, and only the first is filtered. A third (or a
+  // second one that gains the filter) changes what the pages may say, so this is a tripwire on purpose.
+  const carrying = [];
+  for (const f of WORKER_SRC.filter((f) => !f.endsWith('src/analytics.ts'))) { // analytics.ts defines the event; it does not record one
+    const body = wcode(f);
+    for (const m of body.matchAll(/kind: 'error'/g)) {
+      const next = body.indexOf('recordEvent(', m.index + 10);
+      const call = body.slice(m.index, next > 0 ? Math.min(next, m.index + 1500) : m.index + 1500);
+      if (/\bactorId(?:,|:\s*(?!\s|null\b))/.test(call)) carrying.push(`${rel(f)} ${/scope: ([^,\n]+),/.exec(call)?.[1] ?? '?'} ${/analyticsActorId/.test(body.slice(Math.max(0, m.index - 1500), m.index)) ? 'filtered' : 'unfiltered'}`);
+    }
+  }
+  assert.deepEqual(carrying.sort(), ["src/do/session.ts 'chat:ingress' unfiltered", 'src/index.ts route filtered'],
+    'a different set of error entries carries an account id now: the pages say the switch covers only the request entry and the error entry of a failed request, and that the chat-ingress error entry is outside it');
+  const ingress = session.slice(session.indexOf("scope: 'chat:ingress'"), session.indexOf("scope: 'chat:ingress'") + 1600);
+  assert.ok(/actorId: who\.actorId/.test(ingress) && /projectId: who\.projectId/.test(ingress) && !/analyticsActorId/.test(ingress), 'the chat-ingress error entry no longer carries the account id and the project id unfiltered');
+  assert.match(session, /refuseAbusive\(text, \{ actorId: me\?\.userId \?\? null, projectId: bind\.projectId \}\)/, 'the account id given to the abuse check is no longer the raw one');
   for (const [where, text] of BOTH) {
-    assert.match(text, /covers only those request and error entries/, `${where} does not say the analytics switch covers only the request and error entries`);
+    assert.match(text, /covers only the entry for each request and the error entry for a request that failed/, `${where} does not say the analytics switch covers only the entry for each request and the error entry for a request that failed`);
+    assert.doesNotMatch(text, /covers only those request and error entries/, `${where} still says the switch covers "those request and error entries", which overstates it`);
     assert.match(text, /one entry (for each|per) agent run and one (for each|per) model call/, `${where} does not say the log also holds an entry per agent run and per model call`);
     assert.match(text, /whatever the switch says/, `${where} does not say those entries carry the account id whatever the switch says`);
+    assert.match(text, /error entry written when a chat message trips the abuse check[^.]*which carries your account id and the project('s)? id/, `${where} does not say the chat-ingress error entry carries the account id and the project id`);
     assert.doesNotMatch(text, /a project id is never in the log|so no project id is in it|never as the raw path, so a project id/i, `${where} still says no project id is ever in the log`);
   }
   const row = BOTH_AND_SETTINGS[2][1];
-  assert.match(row, /request and error entries only/, 'the Settings analytics row does not say the switch covers only request and error entries');
-  assert.match(row, /one entry for each agent run and each model call/, 'the Settings analytics row does not say run and model-call entries carry the account id');
+  assert.match(row, /covers only the entry for each request and the error entry for a request that failed/, 'the Settings analytics row does not say the switch covers only the request entry and the error entry of a failed request');
+  assert.match(row, /one entry for each agent run and each model call, and an error entry for a chat message that trips the abuse check, and those carry your account id/, 'the Settings analytics row does not say run, model-call and chat-ingress entries carry the account id');
+  assert.match(row, /Switched on, your account id is kept out of the request entry and the failed-request error entry described above, and nothing else/, 'the Settings line under the switch does not carry the same qualification');
+  assert.doesNotMatch(row, /Switched on, your account id is kept out\./, 'the Settings line under the switch is the unqualified one again');
+  assert.doesNotMatch(row, /request and error entries only/, 'the Settings analytics row still says "request and error entries only"');
   const exportNote = RECEIPT.ACCOUNT_RESIDUE.find((r) => r.target.includes('AdminDO'));
   assert.match(exportNote.why, /agent-run events/, 'the receipt does not say run events carry the account id');
-  assert.match(exportNote.why, /covers only the request and error entries/, 'the receipt does not say the analytics opt-out covers only the request and error entries');
+  assert.match(exportNote.why, /covers only the entry for each request and the error entry for a request that failed/, 'the receipt does not say the analytics opt-out covers only the request entry and the error entry of a failed request');
+  assert.match(exportNote.why, /abuse check/, 'the receipt does not say the chat-ingress error entry carries the project id too');
+  assert.doesNotMatch(exportNote.why, /covers only the request and error entries/, 'the receipt still says the opt-out covers "the request and error entries"');
   const events = EXPORT.elsewhereFor().find((e) => e.name === 'events');
   assert.match(events.where, /not off the entries for agent runs/, 'the export file still tells the person the request log carries no actor id once analytics are off');
+  assert.match(events.where, /leaves it off the entry for each request and the error entry for a request that failed/, 'the export note does not say what the opt-out covers');
+  assert.match(events.where, /chat messages that trip the abuse check/, 'the export note does not say the chat-ingress entries are outside the opt-out');
 });
 
 test('the exceptions to row-level security are the secret key AND the purpose-token database functions (share links, membership changes), named on both pages; every other query carries a person\'s token', () => {

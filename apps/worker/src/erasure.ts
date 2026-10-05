@@ -149,10 +149,11 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     store: 'do',
     target: 'AdminDO — the request log',
     why:
-      'Request, error, audit and agent-run events can carry your account id for at most 30 days (run ' +
-      'events carry the project id too; the analytics opt-out covers only the request and error entries) ' +
-      'and are then evicted by the log\'s own retention sweep. Deleting them selectively would break the ' +
-      'audit trail they exist for.',
+      'Request, error, audit, model-call and agent-run events can carry your account id for at most 30 days ' +
+      '(run and model-call events carry the project id too, and so does the error event for a chat message ' +
+      'that trips the abuse check; the analytics opt-out covers only the entry for each request and the ' +
+      'error entry for a request that failed) and are then evicted by the log\'s own retention sweep. ' +
+      'Deleting them selectively would break the audit trail they exist for.',
   },
   {
     store: 'do',
