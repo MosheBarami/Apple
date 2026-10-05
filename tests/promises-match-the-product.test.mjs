@@ -161,14 +161,93 @@ test('LOCK 2 of 3, the Settings control: an opt-OUT switch in Settings > Privacy
  *      way, re-aim THIS check in the same change that builds it; do not delete it (planning/proof/M2/LEGAL-CLAIMS.md, section 5).
  *
  * So the gate cannot be flipped alone: opening it needs both pieces of evidence AND every surface to stop saying "not active".
+ *
+ * "READ" MEANS THE PROGRAM READS IT, NOT THAT THE WORD APPEARS. The first version looked for the name anywhere in the gate source with
+ * comments removed, and the gate's own refusal message ("... only once the pipeline honours improvement_opt_out ...", a string literal)
+ * contains it, so the lock could pass while the gate read nothing. The check now removes comments AND the text of string and template
+ * literals, and requires a property access (`profile.improvement_opt_out`, `prefs?.improvement_opt_out`) or a destructure
+ * (`const { improvement_opt_out } = prefs`, `({ improvement_opt_out }) => ...`) of the name in what is left.
  */
 const NOTICE_KIND = 'policy_notice';
 const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
+/**
+ * `src` with comments removed and the TEXT of string and template literals emptied: what is left is what the program does, not what it says.
+ * `${...}` expressions inside a template stay (they run). A small scanner rather than a regex because a quote inside a comment, a comment
+ * marker inside a string and a regex literal each defeat the order-of-replacements approach.
+ */
+export function programText(src) {
+  let out = '';
+  let i = 0;
+  let prev = ''; // the last significant (non-space) character of program text, to tell a regex literal from a division
+  const REGEX_AFTER = new Set(['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '<', '>', '~', '^']);
+  function code(stopAtBrace) {
+    let depth = 0;
+    while (i < src.length) {
+      const c = src[i];
+      const n = src[i + 1];
+      if (c === '/' && n === '/') { while (i < src.length && src[i] !== '\n') i += 1; continue; }
+      if (c === '/' && n === '*') { const end = src.indexOf('*/', i + 2); i = end === -1 ? src.length : end + 2; out += ' '; continue; }
+      if (c === '"' || c === "'") {
+        i += 1;
+        while (i < src.length && src[i] !== c && src[i] !== '\n') i += src[i] === '\\' ? 2 : 1;
+        i += 1;
+        out += c + c; prev = c;
+        continue;
+      }
+      if (c === '`') {
+        i += 1;
+        out += '``'; prev = '`';
+        while (i < src.length && src[i] !== '`') {
+          if (src[i] === '\\') { i += 2; continue; }
+          if (src[i] === '$' && src[i + 1] === '{') { i += 2; out += ' '; code(true); out += ' '; continue; }
+          i += 1;
+        }
+        i += 1;
+        continue;
+      }
+      if (c === '/' && REGEX_AFTER.has(prev)) {
+        i += 1;
+        let inClass = false;
+        while (i < src.length && (src[i] !== '/' || inClass) && src[i] !== '\n') {
+          if (src[i] === '\\') i += 1;
+          else if (src[i] === '[') inClass = true;
+          else if (src[i] === ']') inClass = false;
+          i += 1;
+        }
+        i += 1;
+        while (/[a-z]/i.test(src[i] ?? '')) i += 1;
+        out += '/ /'; prev = '/';
+        continue;
+      }
+      if (stopAtBrace) {
+        if (c === '{') depth += 1;
+        if (c === '}') { if (depth === 0) { i += 1; return; } depth -= 1; }
+      }
+      out += c;
+      if (!/\s/.test(c)) prev = c;
+      i += 1;
+    }
+  }
+  code(false);
+  return out;
+}
+
+/** Does `text` (already run through programText) read `name` off an object: `.name`, `?.name`, or a destructure that names it? */
+export function readsProperty(text, name) {
+  const n = name.replace(/[$]/g, '\\$&');
+  return (
+    new RegExp(`(?:\\.|\\?\\.)\\s*${n}\\b`).test(text) ||
+    new RegExp(`\\{[^{}]*\\b${n}\\b[^{}]*\\}\\s*=(?![=>])`).test(text) ||
+    new RegExp(`(?:function\\s*\\w*\\s*)?\\(\\s*\\{[^{}]*\\b${n}\\b[^{}]*\\}[^)]*\\)\\s*(?:=>|\\{)`).test(text)
+  );
+}
+
 /** What is missing before the gate may be open: [] means nothing is. Pure, so the cases below can be fed by hand. */
 export function gateEvidenceMissing({ gateSrc, notificationsSrc }) {
   const missing = [];
-  if (!/\bimprovement_opt_out\b|\bimprovementOptOut\b/.test(stripComments(gateSrc))) {
+  const gateCode = programText(gateSrc);
+  if (!readsProperty(gateCode, 'improvement_opt_out') && !readsProperty(gateCode, 'improvementOptOut')) {
     missing.push('the training gate does not read improvement_opt_out (the only consent proof it accepts is profiles.training_opt_in, an opt-in column the Settings switch never writes)');
   }
   const kinds = /NOTIFICATION_KINDS = \[([\s\S]*?)\] as const/.exec(stripComments(notificationsSrc))?.[1] ?? '';
@@ -214,4 +293,51 @@ test('the gate evidence check can fail: opened alone, with only the opt-out read
   assert.deepEqual(asks(GATE_WITH, KINDS_WITH), [], 'with both, the gate may be open');
   // The check is reading the real sources (LOCK 3 above runs it on them whenever the gate is open).
   assert.ok(GATE.length > 500 && NOTIFICATIONS_SRC.includes('NOTIFICATION_KINDS'), 'the real sources were not read: this test would check nothing');
+});
+
+test('THE GATE-LOCK HOLE: the name in a string, a template or a comment, or as a bare word, is not a read; only a property access or a destructure is', () => {
+  const OPEN = 'export const CUSTOMER_WORK_TRAINING_ENABLED = true;\n';
+  // The gate's own refusal message, verbatim (consent-staging.mjs, validateEnvelope): a string literal that names the key. With the gate open and
+  // NOTHING else in the file, the first version of this check counted that as the gate reading the preference.
+  const REFUSAL = "Customer work is not collected for improvement data or training yet: this gate is closed, whatever profiles.training_opt_in holds. It opens only once the pipeline honours improvement_opt_out and every account holder has been told (tests/promises-match-the-product.test.mjs).";
+  const NOT_A_READ = {
+    'the refusal message alone': `${OPEN}const refusal = { code: 'x', message: '${REFUSAL}' };`,
+    'the refusal message in a template literal': `${OPEN}const refusal = \`${REFUSAL}\`;`,
+    'a property access spelled inside a string': `${OPEN}const note = 'check profile.improvement_opt_out here';`,
+    'a property access spelled inside a template': `${OPEN}const note = \`check profile.improvement_opt_out here\`;`,
+    'a double-quoted string': `${OPEN}const k = "improvement_opt_out";`,
+    'a line comment': `${OPEN}// if (profile.improvement_opt_out) skip();`,
+    'a block comment': `${OPEN}/* const { improvement_opt_out } = profile; */`,
+    'a bare identifier': `${OPEN}const improvementOptOut = false;`,
+    'a key written into an object, not read from one': `${OPEN}save({ improvement_opt_out: true });`,
+    'a quote inside a comment before the real code': `${OPEN}// it's here\nconst refusal = '${REFUSAL}';`,
+  };
+  for (const [what, gateSrc] of Object.entries(NOT_A_READ)) {
+    const missing = gateEvidenceMissing({ gateSrc, notificationsSrc: "export const NOTIFICATION_KINDS = [\n  'policy_notice',\n] as const;" });
+    assert.equal(missing.length, 1, `${what} counted as the gate reading improvement_opt_out`);
+    assert.match(missing[0], /does not read improvement_opt_out/, what);
+  }
+  const A_READ = {
+    'a property access': `${OPEN}if (profile.improvement_opt_out === true) skip();`,
+    'an optional property access': `${OPEN}if (profile?.improvement_opt_out) skip();`,
+    'a read inside a template expression': `${OPEN}log(\`opted out: \${profile.improvement_opt_out}\`);`,
+    'a destructure': `${OPEN}const { id, improvement_opt_out } = profile;`,
+    'a renamed destructure': `${OPEN}const { improvement_opt_out: optedOut } = profile;`,
+    'a parameter destructure in an arrow function': `${OPEN}const skip = ({ improvement_opt_out }) => improvement_opt_out === true;`,
+    'a parameter destructure in a function': `${OPEN}function skip({ improvement_opt_out }) { return improvement_opt_out; }`,
+    'the camel-case property': `${OPEN}if (prefs.improvementOptOut) skip();`,
+    'a read next to the refusal message': `${OPEN}const m = '${REFUSAL}';\nif (profile.improvement_opt_out) skip();`,
+  };
+  for (const [what, gateSrc] of Object.entries(A_READ)) {
+    const missing = gateEvidenceMissing({ gateSrc, notificationsSrc: "export const NOTIFICATION_KINDS = [\n  'policy_notice',\n] as const;" });
+    assert.deepEqual(missing, [], `${what} is a real read and was refused`);
+  }
+  // The scanner reads the REAL gate without running off the rails: every function the file exports is still there once comments and literals are
+  // gone, and the text inside its string literals is not.
+  const exported = [...GATE.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]);
+  assert.ok(exported.length >= 4, `only ${exported.length} exported functions were read out of the gate: this test would check nothing`);
+  const real = programText(GATE);
+  for (const name of exported) assert.ok(real.includes(`function ${name}`), `programText lost ${name} from the real gate: the scanner mis-read a literal or a comment`);
+  assert.equal(real.includes('proof must come from'), false, 'programText kept the text of a string literal from the real gate');
+  assert.ok(real.includes('CUSTOMER_WORK_TRAINING_ENABLED'), 'programText lost the gate constant');
 });
