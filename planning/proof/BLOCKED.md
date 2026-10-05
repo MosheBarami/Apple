@@ -6,6 +6,21 @@ no token here can reach. Work that does not depend on an item goes on. Done and 
 
 ## Urgent
 
+### C1. The new `CLOUDFLARE_API_TOKEN` in `.env` is rejected (deploys are paused)
+At 17:27 on 2026-10-05 the token in `.env` changed. Cloudflare answers "Invalid API Token" (code 1000) on both verify
+endpoints, and `wrangler whoami` fails with code 9109. Until a working token is in `.env`, nothing deploys and no
+Cloudflare API call works. Branches and merges go on; deploys wait.
+1. https://dash.cloudflare.com/profile/api-tokens → **Create Token** → **Create Custom Token**, named `studpilot-deploy`.
+2. Permissions:
+   - Account: **Workers Scripts** Edit, **D1** Edit, **Workers R2 Storage** Edit, **Workers KV Storage** Edit,
+     **Vectorize** Edit, **AI Gateway** Edit, **Queues** Edit, **Workers AI** Read, **Email Routing Addresses** Edit.
+   - Zone (studpilot.app): **Workers Routes** Edit, **DNS** Edit, **Email Routing Rules** Edit, **Zone Settings** Read.
+3. **Continue to summary** → **Create Token**. Copy the token value shown on the next screen. That value is the
+   secret, not the token's ID.
+4. Replace the value after `CLOUDFLARE_API_TOKEN=` in `~/Developer/StudPilot/.env`, save, and tell Claude Code "token
+   fixed". With **Email Routing** and **DNS** included, Claude Code also does E1 itself, except the verify click in your
+   Gmail.
+
 ### E1. Forward support@studpilot.app to your Gmail (Cloudflare Email Routing; about 3 minutes)
 The legal pages are moving to support@studpilot.app (D-13). The Cloudflare API token cannot manage Email Routing or DNS
 (10000 "Authentication error", measured 2026-10-05), so this is in the dashboard.
