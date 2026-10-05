@@ -1,162 +1,95 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { SUPPORT_EMAIL } from '@studpilot/shared';
 
-// WHY THIS PAGE EXISTS. StudPilot can take money — a Stripe checkout, a customer portal, a
-// signature-verified webhook, purchased Credits — and had not one written word about any of it.
-// /docs/credits-and-limits covers the quota and its only money words are "no card". The FAQ has ten
-// questions and none about a failed payment, an invoice or cancelling. So the first time a card was
-// declined, the product's entire published position was an email address.
+// WHAT THIS PAGE IS FOR. StudPilot is in beta and free, and paid plans start later: checkout is OFF, so nobody can pay yet. The page says that first,
+// and then says how billing will work once it opens (a failed card, invoices, cancelling, a plan that has not applied), so the rules are readable
+// before anyone is subject to them. It was five long sections of paid-account procedure; it is the short version.
 //
-// EVERY CLAIM BELOW IS READ OFF apps/worker/src/billing.ts, not imagined, and
-// tests/billing-help.test.mjs checks the two load-bearing ones against that file: that `past_due`
-// still entitles (so "your plan keeps working while the card is retried" stays true), and that a
-// lapsed period still drops to free. If someone tightens either rule, this page goes red naming the
-// sentence that became a lie — which is the failure mode a billing page has, and the reason it is
-// the most dangerous kind of documentation to leave behind.
+// EVERY CLAIM BELOW IS READ OFF apps/worker/src/billing.ts, not imagined, and tests/billing-help.test.mjs checks the two load-bearing ones against
+// that file: that `past_due` still entitles (so "your plan keeps working while the card is retried" stays true), and that a lapsed period still drops
+// to free. If someone tightens either rule, this page goes red naming the sentence that became a lie.
 //
-//[[ AND THE ONE THING IT DID NOT SAY WAS THAT NONE OF IT IS REACHABLE YET.
-//
-//   Five sections of procedure for a paid account — a failed card, invoices, cancelling, a plan
-//   that has not applied, changing tier — read to a prospect as a product with live subscriptions.
-//   The only caveat on the page covered extra Credits. Meanwhile /pricing renders "Planned tier —
-//   not available to purchase yet" and /terms says the same, so the docs nav's "Billing & payments"
-//   was the one door in the site that did not mention the lock.
-//
-//   ASKED, NOT TYPED, and asked the same way /pricing asks it: /api/billing/config is computed from
-//   the deployment's own environment, so the day Stripe is connected this page stops apologising on
-//   its own. An unreachable probe falls back to "closed", which is the safe error in both
-//   directions — a reader told checkout is shut loses nothing but a click, and the owner sees a
-//   wrong "closed" within a day, while the opposite mistake sends a customer at a 503.
-const BILLING_ORIGIN = 'https://studpilot.app';
-const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config')
-  .then((r) => (r.ok ? r.json() : null))
-  .catch(() => null);
-const checkoutOpen = billingProbe?.checkout === true;
+// THE ANSWER IS A FACT, NOT A PROBE (M2). It used to be asked of the live deployment at build time (/api/billing/config), which made a build depend
+// on the network. Checkout is off and paid plans start later (planning/proof/M2/DECISIONS.md section 3), so the page says so; the day charging
+// starts it is changed on purpose, with /pricing and its tests in the same change. tests/hermetic-build.test.mjs holds it.
+const checkoutOpen = false;
 ---
 
 <DocsLayout
-  title="Billing & payments — StudPilot Docs"
+  title="Billing & payments | StudPilot"
   description={checkoutOpen
     ? 'What happens when a payment fails, where invoices live, how cancelling works, and what to do when a payment went through but the plan has not changed.'
-    : 'Paid checkout is not open in this preview, so nobody can subscribe yet. How billing will work once it is: failed payments, invoices, cancelling, and changing plan.'}
+    : 'Paid checkout is not open in the beta, so nobody can subscribe yet. How billing will work once it is: failed payments, invoices, cancelling and changing plan.'}
   heading="Billing & payments"
+  order={4}
+  summary="There is nothing to pay for in the beta. How billing will work when paid plans start."
 >
   {!checkoutOpen && (
     <div class="callout">
       <p>
-        <strong>There is no way to become a paying customer yet.</strong> Paid checkout is not open
-        in this preview — <a href="/pricing">Pricing</a> marks every paid tier "planned" and
-        <a href="/terms">Terms</a> says the same. Everything below describes how billing works for a
-        paid account and applies to nobody today; it is published so that the rules are readable
-        before anyone is subject to them, not because a subscription can be started. StudPilot is free
-        to use, with the daily allowance on <a href="/docs/credits-and-limits">Credits &amp;
-        limits</a>.
+        <strong>There is no way to become a paying customer yet.</strong> StudPilot is free while in beta and paid checkout is not open.
+        <a href="/pricing">Pricing</a> marks every paid plan "planned", and <a href="/terms">Terms</a> says the same. What follows describes how
+        billing will work for a paid account. It applies to nobody today, and it is published so the rules can be read before anyone is subject to
+        them. The Free plan is on <a href="/docs/credits-and-limits">Credits &amp; limits</a>.
       </p>
     </div>
   )}
 
   <p>
-    Everything to do with money — cards, invoices, cancelling — lives in the billing portal, which
-    is Stripe's, not ours. You reach it from <strong>Usage</strong> in the app
-    (<a href="/app/usage">/app/usage</a>), from the button that reads
-    <em>Manage billing, invoices and cancellation</em>. It appears once you are on a paid plan.
+    Everything to do with money (cards, invoices, cancelling) lives in the billing portal, which is Stripe's, not ours. You reach it from
+    <strong>Usage</strong> in the app (<a href="/app/usage">/app/usage</a>), from the button that reads <em>Manage billing, invoices and
+    cancellation</em>. It appears once you are on a paid plan.
   </p>
 
   <h2 id="failed-payment">A payment failed or the card was declined</h2>
   <p>
-    <strong>Your plan keeps working.</strong> A failed renewal is usually an expired card, and we do
-    not cut off a paying customer at the first retry. Stripe retries over the following days, and
-    for as long as it is retrying you keep the allowance you are paying for.
-  </p>
-  <p>
-    Update the card in the billing portal — that is the whole fix, and it applies immediately. If
-    Stripe gives up before you do, the subscription ends and the account drops to Free: your
-    projects, checkpoints and conversations are untouched, and the daily allowance becomes the free
-    one. Nothing is deleted for&nbsp;non-payment.
+    <strong>Your plan keeps working.</strong> A failed renewal is usually an expired card, and a paying customer is not cut off at the first retry.
+    Stripe retries over the following days, and for as long as it is retrying you keep the allowance you are paying for. Update the card in the
+    billing portal and it applies at once. If Stripe gives up first, the subscription ends and the account drops to Free. Your projects, checkpoints
+    and conversations are untouched.
   </p>
 
   <h2 id="invoices">Where invoices and receipts are</h2>
   <p>
-    In the billing portal, under your payment history — every invoice, with a PDF, including ones
-    from a subscription that has since ended. We do not hold a second copy of your billing history;
-    the portal is the record.
-  </p>
-  <p>
-    If you need a company name, address or VAT number on them, set it in the portal before the next
-    invoice is issued. Stripe puts on an invoice what it knows at the moment it issues it.
+    In the billing portal, under your payment history: every invoice, with a PDF. StudPilot keeps no second copy of your billing history. If you need
+    a company name or a VAT number on an invoice, set it in the portal before the next one is issued.
   </p>
 
   <h2 id="cancelling">Cancelling</h2>
   <p>
-    Cancel in the billing portal. <strong>You keep the plan until the end of the period you have
-    already paid for</strong> — cancelling on day 3 of a month does not take the allowance away on
-    day 3. After that date the account is on Free, with everything still in it.
-  </p>
-  {/*
-    "Credits you bought separately" presupposed a purchase a customer cannot make. The behaviour
-    described is real — extra Credits sit in their own balance, survive a subscription ending, and
-    splitSpend takes the day's allowance before touching them — but the only things that can put
-    them there are the Stripe webhook and an admin route, and no code in this repository creates the
-    payment-mode checkout the webhook is waiting for. The presupposition is removed and the gap is
-    said out loud, because a reader planning around "I'll just buy more" needs to know now rather
-    than at the moment their allowance ends.
-  */}
-  <p>
-    Extra Credits, if an account has any, are separate from a subscription and do not expire with
-    one. They stay on the account, and they are spent only after the day's included allowance is
-    gone. <strong>There is no way to buy them today</strong> — no plan has a credit checkout, and
-    <a href="/pricing">Pricing</a> says the same in its comparison table.
+    Cancel in the billing portal. <strong>You keep the plan until the end of the period you have already paid for.</strong> After that date the
+    account is on Free, with everything still in it.
   </p>
 
   <h2 id="not-applied">I paid, and the plan still shows the old one</h2>
   <p>
-    Give it a few seconds and press <em>Check again</em> on the Usage page. Plans are applied from
-    Stripe's own webhook rather than from the page you land on after paying — deliberately, because
-    a person who pays and closes the tab has still bought the thing, and a person who reaches the
-    success page by typing the URL has not. The webhook usually arrives before you get back.
-  </p>
-  <p>
-    If it is still wrong after a minute, that is worth reporting rather than paying again. Nothing
-    you do on this page can double-charge you — but a second checkout could, so do not start one.
+    Give it a few seconds and press <em>Check again</em> on the Usage page. Plans are applied from Stripe's own webhook rather than from the page you
+    land on after paying, so a person who pays and closes the tab has still bought the plan. If it is still wrong after a minute, write in instead of
+    paying again.
   </p>
 
-  <h2 id="upgrading">Changing plan while already on a paid one</h2>
-  <p>
-    Moving between paid tiers happens in the portal, not through a new checkout, in both directions.
-    A second checkout would <em>add</em> a subscription rather than replace the running one, and you
-    would be billed for both. The app already routes you to the portal for this; it is only worth
-    knowing if you were about to go looking for a purchase button.
-  </p>
-
+  {/*
+    Extra Credits are not for sale: no plan has a credit checkout, and /pricing says so in its comparison table. The behaviour that exists (a separate
+    balance that outlives a subscription and is spent after the day's allowance) has no way to be reached today, so it is not described here.
+  */}
   <h2 id="charges">What is charged, and what is not</h2>
   <ul>
+    <li><strong>Nothing is charged before checkout completes.</strong> Starting one and closing it costs nothing.</li>
     <li>
-      <strong>Nothing is charged before checkout completes.</strong> Starting one and closing it
-      costs nothing, and the app says so where it happens.
-    </li>
-    <li>
-      <strong>Running out of Credits is not a charge.</strong> A request refused for lack of
-      allowance is refused before it costs anything — see
+      <strong>Running out of Credits is not a charge.</strong> A request refused for lack of allowance is refused before it costs anything. See
       <a href="/docs/credits-and-limits">Credits &amp; limits</a>.
     </li>
     <li>
-      <strong>A step that failed is not charged.</strong> Credits come from the compute a call
-      actually reports, so a call that returned nothing reports nothing —
-      <a href="/docs/troubleshooting#model-failures">Troubleshooting</a> covers what each failure
-      means.
+      <strong>A step that failed is not charged.</strong> Credits come from the compute a call actually reports, so a call that returned nothing
+      reports nothing. <a href="/docs/troubleshooting#model-failures">Troubleshooting</a> covers what each failure means.
     </li>
   </ul>
 
   <div class="callout">
     <p>
-      A billing question a page cannot answer is worth an email:
-      <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Include the email address on the
-      account and roughly when the payment was — never a card number, which we neither need nor
-      want, and which nobody at StudPilot can see.
+      A billing question a page cannot answer is worth an email: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Include the email address
+      on the account and roughly when the payment was. Never send a card number: nobody at StudPilot needs it.
     </p>
   </div>
-
-  <DocsKit />
 </DocsLayout>

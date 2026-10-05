@@ -57,12 +57,16 @@ const DIST = 'apps/site/dist';
 //   that headroom is most of how the page drifted this far without a single red build attributable
 //   to the growth. gzip does not vary by more than a fraction of a percent on a rounding change,
 //   so ~14% is room for a real edit and not room for a second set of demos. ]]
-// The owner's 2026-09-24 glass and motion redesign added 841 B gzip to the built landing (18,984
-// -> 19,825); the old threshold had only 16 B of headroom before that explicit product change.
-// Rebased by 1 KB, keeping 175 B of headroom and the measurement itself unchanged. See
-// docs/evidence/landing-glass-payload-2026-09-25.md. JS and image budgets remain unchanged.
-const BUDGET_GZIP_BYTES = 20_000; // markup + stylesheets only; measured 19,825 on 2026-09-25
-const BUDGET_JS_BYTES = 36_000; // measured 32,079 raw across 7 inline blocks on 2026-09-21
+//[[ REBASED DOWN TO THE REBUILT PAGE, 2026-10-05 (M2 site fix cycle 1).
+//
+//   These limits were set for the old 32 KB, seven-demo front page (markup 19,825 B gzip, 32,079 B of script, 11,648 B of image). The M2 rebuild
+//   (handoff 2.2) cut the page to markup and stylesheets of 10,461 B gzip, two inline script blocks of 3,007 B and one 23,920 B hero capture, and
+//   nothing here moved: the page could grow by 9.5 KB of markup, 33 KB of inline script (twelve times what it ships) or 13 KB of image before this
+//   went red, which is the loose headroom this file's own header says is "most of how the page drifted". The limits are re-based DOWN to the new
+//   measurements with the same ~15% headroom the file has always argued for. Nothing is raised. The hero picture is held to 25,000 B on its own
+//   by apps/site/tests/no-fake-output.test.mjs, so the image limit is the hero plus the two icons the head links, plus ~15%.
+const BUDGET_GZIP_BYTES = 12_000; // markup + stylesheets only; measured 10,461 on 2026-10-05
+const BUDGET_JS_BYTES = 3_500; // measured 3,007 raw across 2 inline blocks on 2026-10-05
 
 //[[ IMAGES WERE INVISIBLE TO THIS FILE UNTIL 2026-09-21, AND ON THAT DAY THEY STOPPED BEING ZERO.
 //
@@ -83,7 +87,7 @@ const BUDGET_JS_BYTES = 36_000; // measured 32,079 raw across 7 inline blocks on
 //   recording 4,662 B when it was set — and raising a failing number to meet the page is how a
 //   gate becomes a decoration. The image line is separate so the two can be attributed apart. ]]
 const IMAGE_BYTES = /\.(png|jpe?g|webp|avif|gif|svg)$/i;
-const BUDGET_IMAGE_BYTES = 40_000; // measured 11,648 (one proof capture) at the time of writing
+const BUDGET_IMAGE_BYTES = 31_000; // measured 26,916 on 2026-10-05 (the 23,920 B hero capture, the favicon, the touch icon)
 
 if (!existsSync(DIST)) {
   console.error(`no build found at ${DIST} — run the site build first`);

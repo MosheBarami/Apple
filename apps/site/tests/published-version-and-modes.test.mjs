@@ -22,6 +22,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visibleText } from './lib/visible-copy.mjs';
+import { realPages, textOf } from './lib/dist.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
@@ -62,7 +63,9 @@ test('THE PLUGIN VERSION THE DOCS NAME IS THE ONE THE PLUGIN PRINTS', () => {
  * 2026-09-20; no plan buys a place in the queue. A sentence that DENIES it ("No plan buys a place
  * further up that queue") is the page being correct, and is not flagged.
  */
-const ORDINARY_BEFORE_PLAN = new Set(['Your', 'The', 'This', 'That', 'Each', 'Every', 'Any', 'No', 'Their', 'Our', 'Changing', 'Paid', 'Monthly', 'Daily']);
+const ORDINARY_BEFORE_PLAN = new Set(['Your', 'The', 'This', 'That', 'Each', 'Every', 'Any', 'No', 'Their', 'Our', 'Changing', 'Paid', 'Monthly', 'Daily',
+  // Added 2026-10-05, when this scan was widened from the docs to every built page: a status label on /pricing ("Planned tier"), not a name.
+  'Planned']);
 function inventedTiers(body, names) {
   const found = [];
   for (const [, word, noun] of body.matchAll(/\b([A-Z][A-Za-z]+) (plans?|tiers?)\b/g)) {
@@ -82,9 +85,11 @@ function queueClaims(body) {
   return body.split(/(?<=[.!?])\s+/).filter((sentence) => QUEUE_CLAIM.test(sentence) && !DENIAL.test(sentence)).map((x) => x.trim());
 }
 const docText = (f) => visibleText(text(f).replace(/<code>[\s\S]*?<\/code>/g, ''));
-/* The changelog is read too: it is history, and may say what WAS true, but it may not call the plans of today by names they
-   do not have. It carried "there is no Pro tier. The paid tiers are Builder and Studio" next to a pricing page selling Pro and Max. */
-const CHANGELOG = visibleText(readFileSync(join(HERE, '..', 'src', 'pages', 'changelog.astro'), 'utf8'));
+/* RESTATED 2026-10-05 (M2 rebuild). The changelog page was read here too, as history that may not call the plans of today by names they
+   do not have ("there is no Pro tier. The paid tiers are Builder and Studio" next to a pricing page selling Pro and Max). The page is
+   deleted (/changelog redirects to /blog), so the property is held for every BUILT page that is not a docs page: the front page,
+   how it works, the catalog, pricing, the blog and its posts, privacy, terms, status. Derived from dist, never listed. */
+const siteText = () => realPages().filter((p) => !p.route.startsWith('/docs/')).map((p) => [p.route, textOf(p.html)]);
 
 test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are named', async () => {
   // The plans come from the shared PLAN_TABLE through PLAN_COPY, not from a parse of its source: the
@@ -98,16 +103,18 @@ test('NO PAGE INVENTS A PLAN, and the three that exist are the three that are na
   for (const f of pages) {
     assert.deepEqual(inventedTiers(docText(f), names), [], `${f} names a tier the plan table does not list (${names.join(', ')})`);
   }
-  assert.deepEqual(inventedTiers(CHANGELOG, names), [], `changelog.astro names a tier the plan table does not list (${names.join(', ')})`);
+  const others = siteText();
+  assert.ok(others.length >= 8, `read only ${others.length} non-docs pages — this would pass on nothing`);
+  for (const [route, body] of others) assert.deepEqual(inventedTiers(body, names), [], `${route} names a tier the plan table does not list (${names.join(', ')})`);
 });
 
 test('NO PAGE, AND NO PLAN CARD, GIVES A PLAN A PLACE IN A QUEUE', async () => {
-  // The changelog is not scanned for this: its v0.1 entry records that a priority queue was once PROMISED
-  // ("Pro (..., priority queue, ...) opens as a waitlist"), which is history, and the same entry says it is gone.
+  // (The changelog, which recorded that a priority queue was once PROMISED as history, is deleted; every built page is scanned.)
   const { PLAN_COPY, LISTED_PLAN_IDS } = await import('../../../packages/shared/src/index.ts');
   const surfaces = [
     ...pages.map((f) => [`docs/${f}`, docText(f)]),
     ['pricing.astro', visibleText(readFileSync(join(HERE, '..', 'src', 'pages', 'pricing.astro'), 'utf8'))],
+    ...siteText().map(([route, body]) => [`built ${route}`, body]),
     ...LISTED_PLAN_IDS.map((id) => [`PLAN_COPY.${id}`, [PLAN_COPY[id].blurb, ...PLAN_COPY[id].highlights].join('. ')]),
   ];
   for (const [name, body] of surfaces) assert.deepEqual(queueClaims(body), [], `${name} gives a plan queue priority, which no plan has`);

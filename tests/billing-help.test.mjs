@@ -34,9 +34,13 @@ test('the page exists and is built from the docs layout', () => {
 });
 
 test('it is in the navigation, so it is not an orphan', () => {
-  // The layout's own header records why this rule exists: four pages had already shipped reachable
-  // only by typing their URL.
-  assert.match(LAYOUT, /href: '\/docs\/billing'/, '/docs/billing is absent from the docs nav');
+  // RESTATED 2026-10-05 (M2 site fix cycle 1, plan step 2.6): the sidebar was a hand-written list, and this pinned `href: '/docs/billing'` in it. The
+  // sidebar is derived from the page files now (docsPages in src/data/docs-index.ts), so the property is that the page names its place and the layout
+  // derives the list from the files. apps/site/tests/docs-nav-derived.test.mjs reads the built sidebar back and proves every file is in it.
+  assert.match(LAYOUT, /docsPages\(sources\)/, 'the docs layout no longer derives its navigation from the page files');
+  assert.match(LAYOUT, /import\.meta\.glob\('\.\.\/pages\/docs\/\*\.astro'/, 'the docs layout does not read the page files');
+  assert.match(readFileSync(PAGE_PATH, 'utf8'), /\n\s*heading="Billing &amp?;? ?payments"|\n\s*heading="Billing & payments"/, 'the billing page has no heading for the derived list to print');
+  assert.match(readFileSync(PAGE_PATH, 'utf8'), /\n\s*order=\{\d+\}/, 'the billing page names no place in the order');
 });
 
 test('it answers the four questions a billing problem actually produces', () => {

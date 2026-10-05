@@ -1,57 +1,34 @@
 ---
 import Base from './Base.astro';
-import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import { SUPPORT_EMAIL } from '@studpilot/shared';
+import { docsPages } from '../data/docs-index';
 
+/*
+ * THE DOCS LAYOUT, on the site's one Base layout (M2 site fix cycle 1, plan step 2.6).
+ *
+ * THE SIDEBAR IS DERIVED FROM THE FILES. It was a hand-written list of sections and links, and the header comment above it said that a page
+ * added under src/pages/docs and not added to the list ships as an orphan, which is what happened to four of them. The list is now read from the
+ * page sources (src/data/docs-index.ts, the same raw glob the search index reads): a page appears the day its file exists, under its own
+ * `heading` and in the order of its own `order`. tests/docs-nav-derived.test.mjs reads the built sidebar back.
+ *
+ * What a docs page passes: `title`, `description` and `heading` as before, plus `order` (its place) and `summary` (one line for the /docs index).
+ * The title is written as "<heading> | StudPilot", like every page of the site.
+ */
 interface Props {
   title: string;
   description: string;
   heading: string;
+  /** Read from the page's source by docsPages(); the layout itself does not use them. */
+  summary?: string;
+  order?: number;
 }
 
 const { title, description, heading } = Astro.props;
 
-// Every docs route appears here exactly once. A page absent from this list is
-// reachable only by typing its URL, so adding a page under src/pages/docs/ and
-// not adding it here ships an orphan — which is what happened to /docs/connect,
-// /docs/updating, /docs/troubleshooting and /docs/build-from-source.
-const sections = [
-  {
-    label: 'Start here',
-    links: [
-      { href: '/docs', label: 'Overview' },
-      { href: '/docs/getting-started', label: 'Getting started' },
-      { href: '/docs/plugin', label: STUDIO_PLUGIN_STORE_LIVE ? 'Install the plugin' : 'Plugin availability' },
-      { href: '/docs/connect', label: 'Connect a project' },
-    ],
-  },
-  {
-    label: 'Using StudPilot',
-    links: [
-      { href: '/docs/credits-and-limits', label: 'Credits & limits' },
-      { href: '/docs/billing', label: 'Billing & payments' },
-    ],
-  },
-  {
-    label: 'Keeping it working',
-    links: [
-      { href: '/docs/updating', label: 'Updating the plugin' },
-      { href: '/docs/troubleshooting', label: 'Troubleshooting' },
-    ],
-  },
-  {
-    label: 'Trust',
-    links: [
-      { href: '/docs/privacy-and-data', label: 'Privacy & data' },
-      { href: '/docs/faq', label: 'FAQ' },
-    ],
-  },
-  {
-    label: 'Developer',
-    links: [{ href: '/docs/build-from-source', label: 'Build from source' }],
-  },
-];
-
+const sources = import.meta.glob('../pages/docs/*.astro', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const pages = docsPages(sources);
 const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
+const label = (p: { path: string; heading: string }) => (p.path === '/docs' ? 'Overview' : p.heading);
 ---
 
 <Base title={title} description={description}>
@@ -59,14 +36,12 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     <aside class="docs__side">
       <details class="docs__nav" id="docs-nav-details">
         <summary>
-          <span>Docs navigation</span>
+          <span>Docs pages</span>
           <span class="docs__chev" aria-hidden="true"></span>
         </summary>
-        {/* THE DOCS COULD NOT BE SEARCHED AT ALL until this. The nav below is a hand-written list;
-            finding a sentence meant opening pages one at a time. This reads a static index built
-            from the page sources at deploy time (src/pages/docs-index.json.js) and filters it in
-            the browser — it deliberately does NOT call the worker's /api/docs/search, which
-            indexes Roblox's documentation rather than ours and bills a Credit per query. */}
+        {/* THE DOCS SEARCH reads a static index built from the page sources at deploy time (src/pages/docs-index.json.js) and filters it in
+            the browser. It deliberately does NOT call the worker's /api/docs/search, which indexes Roblox's documentation rather than ours and
+            bills a Credit per query. */}
         <form class="docs__search" role="search" onsubmit="return false">
           <label class="visually-hidden" for="docs-search">Search the documentation</label>
           <input
@@ -83,22 +58,17 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
         </form>
 
         <nav aria-label="Documentation" id="docs-nav-list">
-          {
-            sections.map((section) => (
-              <div class="docs__group">
-                <p class="docs__grouplabel mono">{section.label}</p>
-                <ul>
-                  {section.links.map((link) => (
-                    <li>
-                      <a href={link.href} aria-current={current === link.href ? 'page' : undefined}>
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          }
+          <ul>
+            {
+              pages.map((p) => (
+                <li>
+                  <a href={p.path} aria-current={current === p.path ? 'page' : undefined}>
+                    {label(p)}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
         </nav>
       </details>
     </aside>
@@ -112,8 +82,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 
       <footer class="docs__foot">
         <p>
-          Stuck? Ask in the app, check your Credits before sending, or email
-          <a href="mailto:apple.labs.app@gmail.com">apple.labs.app@gmail.com</a>.
+          Stuck? Ask in the app, check your Credits before sending, or email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
         </p>
       </footer>
     </article>
@@ -123,7 +92,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 <style>
   .docs {
     display: grid;
-    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
     gap: clamp(1.5rem, 5vw, 4rem);
     padding-block: clamp(2.25rem, 5vw, 3.5rem) clamp(3.5rem, 8vw, 6rem);
     align-items: start;
@@ -131,11 +100,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 
   .docs__side {
     position: sticky;
-    top: 6rem;
-  }
-
-  .docs__nav {
-    border: 0;
+    top: calc(var(--nav-h) + 24px);
   }
 
   .docs__nav > summary {
@@ -143,19 +108,19 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .docs__search {
-    margin-bottom: 1.4rem;
+    margin-bottom: 20px;
   }
 
   .docs__search input {
     width: 100%;
-    min-height: 36px;
+    min-height: 40px;
     padding: 0 12px;
     font: inherit;
     font-size: 14px;
     color: var(--ink);
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--r-pill);
+    border-radius: var(--r-sm);
     transition: border-color var(--t-fast) var(--ease-out);
   }
 
@@ -168,8 +133,8 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
   }
 
   .docs__searchcount {
-    margin: 0.45rem 0 0;
-    font-size: 0.75rem;
+    margin: 8px 0 0;
+    font-size: 12px;
     color: var(--faint);
   }
 
@@ -179,47 +144,38 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 
   .docs__results {
     list-style: none;
-    margin: 0.6rem 0 0;
+    margin: 10px 0 0;
     padding: 0;
     display: grid;
-    gap: 0.5rem;
+    gap: 8px;
   }
 
-  /* :global BECAUSE THESE NODES ARE BUILT AT RUNTIME. Astro scopes a component's styles by
-     stamping a data attribute onto the elements in its template; a <li> created by innerHTML never
-     gets one, so a scoped rule silently does not match it. Measured: the snippet rendered
-     unclamped and unstyled until these were globalised. The `.docs__results` ancestor is in the
-     template, so the scoping still confines them to this list. */
+  /* :global BECAUSE THESE NODES ARE BUILT AT RUNTIME. Astro scopes a component's styles by stamping a data attribute onto the elements in its
+     template; a <li> created by innerHTML never gets one, so a scoped rule silently does not match it. */
   .docs__results :global(a) {
     display: grid;
-    gap: 0.15rem;
-    padding: 0.5rem 0.65rem;
+    gap: 2px;
+    padding: 8px 10px;
     border: 1px solid var(--line);
-    border-radius: var(--r-md);
+    border-radius: var(--r-sm);
     text-decoration: none;
     background: var(--surface);
-    transition:
-      border-color var(--t-fast) var(--ease-out),
-      translate var(--t-base) var(--ease-out);
   }
 
   .docs__results :global(a:hover) {
     border-color: var(--line-strong);
-    text-decoration: none;
-    translate: 0 -2px;
   }
 
   .docs__results :global(.docs__resulttitle) {
     color: var(--ink);
-    font-size: 0.86rem;
-    font-weight: 550;
+    font-size: 14px;
+    font-weight: 500;
   }
 
-  /* Two lines of the matching prose. A result list of bare titles would be the nav again, which is
-     the thing this exists to improve on. */
+  /* Two lines of the matching prose. A result list of bare titles would be the nav again. */
   .docs__results :global(.docs__resultsnip) {
     color: var(--muted);
-    font-size: 0.76rem;
+    font-size: 12px;
     line-height: 1.45;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -227,58 +183,42 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     overflow: hidden;
   }
 
-  .docs__group {
-    margin-bottom: 1.6rem;
-  }
-
-  .docs__grouplabel {
-    margin: 0 0 8px;
-    color: var(--faint);
-    font-family: var(--font-body);
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .docs__group ul {
+  #docs-nav-list ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.1rem;
-    border-left: 0;
+    gap: 2px;
   }
 
-  .docs__group a {
+  #docs-nav-list a {
     display: block;
+    padding: 7px 10px;
+    border-radius: var(--r-sm);
     color: var(--muted);
     font-size: 14px;
-    padding: 6px 12px;
-    border-radius: var(--r-pill);
-    margin-left: 0;
     text-decoration: none;
     transition:
       color var(--t-fast) var(--ease-out),
-      background-color var(--t-fast) var(--ease-out),
-      translate var(--t-base) var(--ease-out);
+      background-color var(--t-fast) var(--ease-out);
   }
 
-  .docs__group a:hover {
+  #docs-nav-list a:hover {
     color: var(--ink);
     background: var(--control-fill);
-    text-decoration: none;
-    translate: 3px 0;
   }
 
-  /* The current page is an ordinary active state: the accent. */
-  .docs__group a[aria-current='page'] {
+  /* The page you are on: ink, the accent wash, and an accent rule on its edge, so it is not carried by colour alone. */
+  #docs-nav-list a[aria-current='page'] {
     color: var(--ink);
     background: var(--accent-wash);
+    box-shadow: inset 2px 0 0 var(--accent);
   }
 
+  /* The column is exactly the prose measure, so the title, the section rules and the "Stuck?" rule under the page all end where the text ends
+     (it was 72ch beside a 70ch .prose, and the footer rule overshot every rule above it by 21px). */
   .docs__main {
-    max-width: 72ch;
+    max-width: var(--prose-measure);
     min-width: 0;
   }
 
@@ -354,8 +294,15 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     font-size: 15px;
   }
 
-  .prose :global(.callout--violet) {
-    border-color: var(--line);
+  /* A keyboard key. A plain keycap, not an animated one: it shows the key and does nothing else. */
+  .prose :global(kbd) {
+    padding: 1px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-xs);
+    background: var(--surface-2);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.82em;
   }
 
   .docs__foot {
@@ -366,7 +313,11 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     font-size: 0.88rem;
   }
 
-  /* ---- mobile nav ---- */
+  .docs__foot p {
+    margin: 0;
+  }
+
+  /* ---- narrow screens: the list folds into a disclosure ---- */
   @media (max-width: 900px) {
     .docs {
       grid-template-columns: 1fr;
@@ -377,11 +328,13 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
       position: static;
     }
 
+    /* NO overflow: hidden HERE. The summary fills this box edge to edge and the shared focus ring is drawn 4px OUTSIDE it, so clipping the box clipped the
+       whole ring: a keyboard user tabbing to "Docs pages" saw no focus at all. The corners are rounded by the box itself (a background follows the
+       radius) and by the summary, so nothing needs clipping. */
     .docs__nav {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: var(--r-xl);
-      overflow: hidden;
+      border-radius: var(--r-lg);
     }
 
     .docs__nav > summary {
@@ -395,6 +348,11 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
       padding: 0.85rem 1.1rem;
       list-style: none;
       color: var(--ink);
+      border-radius: var(--r-lg);
+    }
+
+    .docs__nav[open] > summary {
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
     }
 
     .docs__nav > summary::-webkit-details-marker {
@@ -415,6 +373,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
       transform: rotate(225deg) translateY(-2px);
     }
 
+    .docs__search,
     .docs__nav nav {
       padding: 0 1.1rem 1rem;
     }
@@ -428,13 +387,11 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
 <script>
   import { searchDocs, type DocEntry } from '../data/docs-index';
 
-  // WHY THE INDEX IS FETCHED RATHER THAN INLINED. The prose of every docs page is tens of
-  // kilobytes; inlined into each one it would be paid for by every reader, including those who
-  // never type anything. It is fetched once, on the first keystroke, and reused after that.
+  // WHY THE INDEX IS FETCHED RATHER THAN INLINED. The prose of every docs page is tens of kilobytes; inlined into each one it would be paid for
+  // by every reader, including those who never type anything. It is fetched once, on the first keystroke, and reused after that.
   //
-  // AND A FAILURE TO LOAD IS SAID OUT LOUD. A search box that silently finds nothing because its
-  // index 404'd looks exactly like one working over a corpus that does not cover your question,
-  // and the reader draws the second conclusion. It says which, and leaves the nav in place.
+  // AND A FAILURE TO LOAD IS SAID OUT LOUD. A search box that silently finds nothing because its index 404'd looks exactly like one working
+  // over a corpus that does not cover your question, and the reader draws the second conclusion. It says which, and leaves the list in place.
   const input = document.getElementById('docs-search') as HTMLInputElement | null;
   const results = document.getElementById('docs-search-results') as HTMLUListElement | null;
   const count = document.getElementById('docs-search-count');
@@ -477,27 +434,21 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     }
     const hits = searchDocs(data, query);
     if (navList) navList.hidden = hits.length > 0;
-    count.textContent =
-      hits.length === 0 ? `Nothing matches “${query}”.` : `${hits.length} page${hits.length === 1 ? '' : 's'}`;
+    count.textContent = hits.length === 0 ? `Nothing matches “${query}”.` : `${hits.length} page${hits.length === 1 ? '' : 's'}`;
     results.hidden = hits.length === 0;
     results.innerHTML = hits
-      .map(
-        (h) =>
-          `<li><a href="${h.path}"><span class="docs__resulttitle">${escapeHtml(h.title)}</span>`
-          + `<span class="docs__resultsnip">${escapeHtml(h.snippet)}</span></a></li>`,
-      )
+      .map((h) => `<li><a href="${h.path}"><span class="docs__resulttitle">${escapeHtml(h.title)}</span><span class="docs__resultsnip">${escapeHtml(h.snippet)}</span></a></li>`)
       .join('');
   }
 
   input?.addEventListener('input', () => {
-    // Render what is typed NOW, not what was typed when the fetch started: the index arrives once
-    // and later keystrokes must not be answered with an earlier query's results.
+    // Render what is typed NOW, not what was typed when the fetch started: the index arrives once and later keystrokes must not be answered
+    // with an earlier query's results.
     void loadIndex().then((data) => render(input.value, data));
   });
 
   input?.addEventListener('keydown', (e) => {
-    // Escape clears the query. Without this it closes the mobile disclosure the box lives in, which
-    // hides the results the reader was looking at.
+    // Escape clears the query. Without this it closes the mobile disclosure the box lives in, which hides the results the reader was looking at.
     if (e.key === 'Escape' && input.value) {
       e.stopPropagation();
       input.value = '';
@@ -505,7 +456,7 @@ const current = Astro.url.pathname.replace(/\/$/, '') || '/docs';
     }
   });
 
-  // Desktop keeps the nav permanently expanded; mobile treats it as a disclosure.
+  // Desktop keeps the list permanently expanded; mobile treats it as a disclosure.
   const details = document.getElementById('docs-nav-details') as HTMLDetailsElement | null;
   if (details) {
     const mq = window.matchMedia('(min-width: 901px)');

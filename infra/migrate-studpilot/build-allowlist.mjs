@@ -39,7 +39,7 @@ const wildOf = (rel) => WILDCARDS.findIndex(([paths]) => paths.split(',').some((
 // Filled from review of the unclassified list: each file here earns its line by doing compatibility on purpose.
 const COMPAT_FILES = new Set([
   'packages/shared/src/legacy-wire.ts', 'scripts/lib/env-compat.mjs', 'scripts/lib/legacy-name.mjs', 'scripts/check-copy.mjs',
-  'scripts/check-old-names.mjs', 'scripts/check-rebrand.mjs', 'scripts/clean-test-tmp.mjs', 'scripts/probe-s1.mjs',
+  'scripts/lib/copy-shapes.mjs', 'scripts/check-old-names.mjs', 'scripts/check-rebrand.mjs', 'scripts/clean-test-tmp.mjs', 'scripts/probe-s1.mjs',
   'apps/worker/tests/legacy-wire.test.mjs',
   'apps/worker/src/public-api.ts',
   'apps/worker/tests/public-api.test.mjs',
@@ -90,7 +90,6 @@ const COMPAT_FILES = new Set([
   'apps/site/src/pages/pricing.astro',
   'apps/web/src/design/system.css',
   'apps/web/tests/search-filters.test.mjs',
-  'apps/site/tests/build-from-source-target.test.mjs',
   'apps/web/tests/generative-ui.test.mjs',
   'apps/site/tests/panel-quotes-match-shipped.test.mjs',
   'apps/web/src/lib/shortcuts.ts',
@@ -125,7 +124,6 @@ const CLASSES = [
   { id: 'quoted-id', paths: '**', token: '(?:apple|golem)', reason: 'the bare id \'apple\' (product model, search author, outbox consumer, billing worker) and \'golem\' (the legacy worker): stored values and cloud-bound names', removal: 'the cloud step (handoff 1.3) for worker names; the id itself stays a stored value' },
   { id: 'record-names', paths: '**', token: T('apple-(?:generation|restore|studio|ui)-(?:engine|visual)[\\w.-]*|apple-restore-engine[\\w.-]*|apple-plaza[\\w./-]*|apple-unfetched'), reason: 'file names of hash-pinned proof places, recorded regression baselines and a byte-for-byte evidence copy, kept under their recorded names', removal: 'never: records (renamed only with a Studio rebuild of the proof)' },
   { id: 'cloud', paths: '**', token: T('apple\\.moshe-barami111|golem\\.moshe-barami111|MosheBarami/Apple|Apple\\.git|apple-media|apple-notifications|apple-model-upload|apple-cf-probe|apple_product_events|apple_(?:Session|Quota|Pairing|Admin|Budget|Discord)DO|golem_(?:Session|Quota|Pairing|Admin|Budget|Discord)DO|golem-corpus|golem-docs|golem-kv|golem-gw|golem-assets|LEGACY_QUOTA_DO|deploy-worker\\.mjs'), reason: 'cloud-bound names (hosts, resources, the GitHub repo, the deploy target): renamed with their resource', removal: 'handoff 1.3 / 1.4: in the same commit as the cloud rename' },
-  { id: 'operator', paths: '**', token: T('Apple Labs|apple\\.labs\\.app'), reason: 'the operator\'s legal name and support inbox: the owner\'s decision (a legal name and a monitored inbox)', removal: 'when the owner names the operator and creates the StudPilot inbox' },
   { id: 'store-listing', paths: '**', token: T('Apple Studio'), reason: 'the Creator Store listing title of the published plugin, which users see in Manage Plugins until the owner retitles it', removal: 'when the owner retitles the Creator Store listing (deferred, rename-inventory)' },
   { id: 'owner-local', paths: '**', token: T('Application Support/Apple|Support/Apple|com\\.moshe\\.apple|Apple-OS|mcp__apple-studio'), reason: 'the owner\'s on-disk state on his Mac (library folders, launchd label, MCP server name): renamed only with a fallback, with him present', removal: 'with the local folder rename (handoff 1.6)' },
   { id: 'wire-compat', paths: '**', token: T('golem\\.v1|golem\\.jwt|apple\\.v1|apple\\.jwt|X-Golem-|X-Apple-|golem\\.studio-ops|apple\\.studio-ops|golem-ui|apple-ui|GolemBaseVolume|GOLEM_[A-Z]|APPLE_[A-Z]'), reason: 'the former wire spellings and env names that compatibility code and its tests name on purpose (published plugins send X-Golem-*; the owner\'s .env carries GOLEM_ keys)', removal: 'phase D: when the legacy counters stay at zero after the renamed plugin is published, and .env carries only STUDPILOT_ names' },

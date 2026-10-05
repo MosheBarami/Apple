@@ -17,7 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // credit-figure guard in CI, which sometimes read our temporary line instead of the real page.
 // Copy only the trees the checker walks; the mutation stays inside this test's private fixture.
 const FIXTURE = mkdtempSync(join(tmpdir(), 'check-copy-'));
-for (const path of ['scripts/check-copy.mjs', 'apps/site/src', 'apps/web/src', 'apps/web/index.html', 'apps/site/index.html']) {
+for (const path of ['scripts/check-copy.mjs', 'scripts/lib/copy-shapes.mjs', 'apps/site/src', 'apps/site/brand/og.html', 'apps/site/public/site.webmanifest', 'apps/web/src', 'apps/web/index.html', 'apps/site/index.html']) {
   const from = join(ROOT, path);
   if (!existsSync(from)) continue;
   const to = join(FIXTURE, path);
@@ -72,12 +72,52 @@ test('copy injection never edits the shared checkout', () => {
   });
 });
 
+//[[ THE SHARE CARD AND THE WEB MANIFEST ARE READ (2026-10-05).
+//
+//   Both carried "Describe a Roblox game. StudPilot builds it." (whole-game framing, and the competitor shape this checker bans) while it printed
+//   CLEAN, because neither is a page and the walk only opened pages. Each is put back in its old state inside the private fixture below and the
+//   checker must name the file and the rule. The sentence is also a construction the first version of the rule could not see ("Describe a Roblox
+//   game", with a noun phrase after the verb), so that widening is held here too. ]]
+const OG_VICTIM = join(FIXTURE, 'apps', 'site', 'brand', 'og.html');
+const MANIFEST_VICTIM = join(FIXTURE, 'apps', 'site', 'public', 'site.webmanifest');
+function withFileEdited(victim, edit, fn) {
+  const original = readFileSync(victim, 'utf8');
+  try {
+    writeFileSync(victim, edit(original));
+    fn(run());
+  } finally {
+    writeFileSync(victim, original);
+  }
+}
+const OLD_CARD = '<h1><span>Describe a</span> <span>Roblox game.</span> <span>StudPilot builds it.</span></h1>';
+
+test('it reads the share card: the old headline put back in og.html is named, with its file', () => {
+  withFileEdited(OG_VICTIM, (t) => t.replace(/<h1>[\s\S]*?<\/h1>/, OLD_CARD), (r) => {
+    assert.equal(r.code, 1, `the checker passed on the old share card:\n${r.out}`);
+    assert.match(r.out, /describe-it-then-builds-it/);
+    assert.match(r.out, /apps\/site\/brand\/og\.html/);
+  });
+});
+
+test('it reads the web manifest: the old description put back is named, with its file', () => {
+  withFileEdited(MANIFEST_VICTIM, (t) => t.replace(/"description": "[^"]*"/, '"description": "Describe a Roblox game. StudPilot builds it, straight into the place you have open in Studio."'), (r) => {
+    assert.equal(r.code, 1, `the checker passed on the old manifest:\n${r.out}`);
+    assert.match(r.out, /apps\/site\/public\/site\.webmanifest/);
+  });
+});
+
+test('the explanation inside the share card is not copy: its own comment names the banned shapes and the checker stays clean', () => {
+  assert.equal(run().code, 0);
+  assert.match(readFileSync(OG_VICTIM, 'utf8'), /<!--[\s\S]*whole game[\s\S]*-->/, 'the card no longer explains itself, so this proves nothing');
+});
+
 for (const [line, rule] of [
   ['Describe what you want and StudPilot builds it for you', 'describe-it-builds-it'],
   ['Turn one prompt into a whole playable game', 'one-x-whole-y'],
   ['StudPilot is not just another code assistant', 'x-not-y'],
   ['Make Roblox games without learning to code', 'without-learning'],
   ['Create your dream game in minutes', 'dream-vague'],
+  ['Describe a Roblox game. StudPilot builds it.', 'describe-it-then-builds-it'],
 ]) {
   test(`it catches "${line}" as ${rule}`, () => {
     withCopy(line, (r) => {
@@ -93,7 +133,7 @@ test('IT DOES NOT REPORT ITS OWN EXAMPLES — the trap this repo keeps falling i
   // check-copy.mjs quotes every banned construction verbatim in its own table, and the site files
   // explain in comments why they avoid them. A guard that read its commentary as data would fail
   // on a clean tree, every time, and be deleted within a day.
-  const src = readFileSync(SCRIPT, 'utf8');
+  const src = readFileSync(join(FIXTURE, 'scripts', 'lib', 'copy-shapes.mjs'), 'utf8');
   assert.match(src, /describe\|tell\|type\|say/, 'the shapes really are in this file');
   assert.equal(run().code, 0, 'and the checker is still clean while they are');
 });

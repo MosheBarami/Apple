@@ -149,19 +149,21 @@ test('where two sheets declare the same token, they declare the same value', () 
     `set the same thing in different faces:\n  ${bad.join('\n  ')}`);
 });
 
-test('the mono token reaches technical surfaces while friendly activity uses the body face', () => {
-  // The owner's instruction names monospace for technical content specifically. This asserts the
-  // The landing's single activity phrase is plain-language copy, not a technical log.
-  // The read demo, Luau panel and tree retain their technical structure.
-  const landing = SHEETS.find((s) => s.file.endsWith('landing.css'));
-  assert.ok(landing, 'landing.css was not read');
-  const css = strip(landing.css);
-  for (const hook of ['.rd-node', '.rd-log', '.lu-out code']) {
+// RESTATED 2026-10-05 (M2 rebuild). The property is unchanged: the mono token reaches technical surfaces and the body token reaches
+// reading text. It was asserted on landing.css's hooks (.rd-node, .rd-log, .lu-out code, .activity-current), which were the old
+// landing's read-order tree, Luau panel and activity phrase, all deleted. The technical surfaces of the rebuilt pages are the
+// example requests, the step and rail numbers and inline code; reading text is the page body.
+test('the mono token reaches technical surfaces while reading text uses the body face', () => {
+  const sheet = (name) => {
+    const found = SHEETS.find((x) => x.file.endsWith(name));
+    assert.ok(found, `${name} was not read`);
+    return strip(found.css);
+  };
+  const site = sheet('site.css');
+  for (const hook of ['.requests li', '.step__n', '.rail__n']) {
     const rule = new RegExp(`${hook.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*font-family\\s*:\\s*var\\(--font-mono\\)`);
-    assert.match(css, rule, `${hook} does not take the mono token, so a technical surface is set in the body face`);
+    assert.match(site, rule, `${hook} does not take the mono token, so a technical surface is set in the body face`);
   }
-  assert.match(css, /\.activity-current\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
-    'the friendly activity phrase does not use the body face');
-  assert.match(css, /body\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/,
-    'the landing body does not take the body token');
+  assert.match(sheet('global.css'), /\.prose code,[\s\S]*?font-family\s*:\s*var\(--font-mono\)/, 'inline code does not take the mono token');
+  assert.match(sheet('base.css'), /body\s*\{[^}]*font-family\s*:\s*var\(--font-body\)/, 'the page body does not take the body token');
 });

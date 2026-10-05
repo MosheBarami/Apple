@@ -1,0 +1,80 @@
+---
+/**
+ * A REAL SCREENSHOT OF THE PRODUCT, WITH ITS RECORD, AND NOTHING ELSE.
+ *
+ * Handoff M2: the site ships before any piece has passed the bar, so the only pictures it may show are real product UI (the web
+ * app's idle and empty states, or the plugin in Studio). Never a build, never a result. scripts/m2-capture-ui.mjs takes them and
+ * writes src/data/screens.json, one record per picture:
+ * { id, file, sha256, source, commit, date, containsResult: false, alt, caption, width, height, ... }.
+ *
+ * THERE IS NO EMPTY FRAME. A slot that has no record is a build error, not a grey box: the page asks for a picture by its `id`, and
+ * either that picture exists and was recorded, or the page does not render. (This used to draw a frame that said "A real screenshot
+ * goes here", which shipped to the public as a developer's note in the landing hero.) The box is reserved from the record's own size
+ * (aspect-ratio, plus data-width and data-height), so the page does not move when the image decodes.
+ *
+ * tests/no-fake-output.test.mjs holds all of it on every built page: an <img> only inside one of these figures, each one's hash equal
+ * to its record's, its alt and size equal to the record's, and no empty frame anywhere.
+ */
+import screens from '../data/screens.json';
+
+interface Props {
+  /** The record's `id` in screens.json. */
+  id: string;
+  /** The picture is the largest thing above the fold: load it first (the landing hero). Every other picture is lazy. */
+  priority?: boolean;
+  class?: string;
+}
+const { id, priority = false, class: className = '' } = Astro.props;
+type ScreenRecord = { id: string; file: string; alt: string; caption: string; width: number; height: number };
+const record = (screens as ScreenRecord[]).find((r) => r.id === id);
+if (!record) {
+  throw new Error(
+    `ScreenSlot: screens.json has no record named "${id}". A picture is shown only when scripts/m2-capture-ui.mjs took it and recorded it; ` +
+      `there is no placeholder frame. Run the capture, or take the slot out of the page.`,
+  );
+}
+---
+
+<figure class={`slot ${className}`.trim()} data-screen={id} data-width={record.width} data-height={record.height}>
+  <div class="slot__frame" style={`aspect-ratio: ${record.width} / ${record.height}`}>
+    <img
+      src={record.file}
+      alt={record.alt}
+      width={record.width}
+      height={record.height}
+      loading={priority ? 'eager' : 'lazy'}
+      fetchpriority={priority ? 'high' : undefined}
+      decoding="async"
+    />
+  </div>
+  <figcaption>{record.caption}</figcaption>
+</figure>
+
+<style>
+  .slot {
+    margin: 0;
+    width: 100%;
+  }
+
+  .slot__frame {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+  }
+
+  .slot img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .slot figcaption {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+</style>

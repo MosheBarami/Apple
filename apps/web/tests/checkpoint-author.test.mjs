@@ -80,10 +80,15 @@ test('a member with no display name is still named by their handle', () => {
   assert.equal(checkpointAuthorView(manual('u-1'), 'u-me', names).label, 'maya');
 });
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C5). The row moved out of routes/workspace.tsx into components/ws/checkpoint-history.tsx, where the history is
+//   grouped by request. The property is unchanged and now asked of both halves: the ROW (the component) says who took it, and the PAGE
+//   (the workspace) names the people the roster can name and mounts that component. The rendered row is run in tests/checkpoint-history.test.mjs. ]]
 test('the drawer renders the author beside the date', () => {
+  const row = readFileSync(join(WEB, 'src', 'components', 'ws', 'checkpoint-history.tsx'), 'utf8');
   const ws = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
-  assert.match(ws, /checkpointAuthorView/, 'the row must say who took it');
+  assert.match(row, /checkpointAuthorView/, 'the row must say who took it');
   assert.match(ws, /rosterNames/, 'and name the people the roster can name');
+  assert.match(ws, /<CheckpointHistory[\s\S]{0,200}memberNames=\{memberNames\}/, 'the page does not hand the row the names');
 });
 
 test('the shape the browser reads actually carries an author', () => {

@@ -87,8 +87,12 @@ function stripRegions(html, tags) {
 const problems = [];
 const files = pages().sort();
 
+// A redirect stub (Astro `redirects`: a meta refresh and one link, emitted for /models, /proof, /showcase and /changelog by the
+// M2 rebuild) is not a page a reader reads: it has no heading and no landmark by design, and is counted so it cannot hide a page.
+let redirectStubs = 0;
 for (const file of files) {
   const html = readFileSync(file, 'utf8');
+  if (/<meta http-equiv="refresh"[^>]*url=/i.test(html) && !/<main\b/.test(html)) { redirectStubs += 1; continue; }
   const where = '/' + relative(DIST, file).replace(/index\.html$/, '').replace(/\.html$/, '');
   const say = (msg) => problems.push(`${where}: ${msg}`);
 
@@ -159,4 +163,4 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log(`check-site-semantics: ${files.length} page(s), heading hierarchy and landmarks are sound`);
+console.log(`check-site-semantics: ${files.length - redirectStubs} page(s) and ${redirectStubs} redirect stub(s), heading hierarchy and landmarks are sound`);

@@ -1,0 +1,132 @@
+{
+ "base": "https://studpilot.app",
+ "tag": "old",
+ "shots": [
+  {
+   "file": "old-home-desktop.png",
+   "url": "https://studpilot.app/",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 1064414,
+   "sha256": "cab4e560063f273cee4dad82b8e55cc8c0305889103dbe44c1789f892653e708",
+   "at": "2026-10-04T20:07:56.570Z"
+  },
+  {
+   "file": "old-pricing-desktop.png",
+   "url": "https://studpilot.app/pricing",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 679092,
+   "sha256": "09c9ea850aa6f6a2ac1ae558948dfdaf25f75a94fc6f80d8221ba867c760f85b",
+   "at": "2026-10-04T20:07:59.680Z"
+  },
+  {
+   "file": "old-docs-desktop.png",
+   "url": "https://studpilot.app/docs",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 408211,
+   "sha256": "c214f3b982d97a7799911edef879c0cc455db6148e024eb0b8609bc133109de4",
+   "at": "2026-10-04T20:08:01.634Z"
+  },
+  {
+   "file": "old-privacy-desktop.png",
+   "url": "https://studpilot.app/privacy",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 996126,
+   "sha256": "23969cd2c56e77f419f575b1f017dba057440ad22c4ad4a2653782b2514f22b2",
+   "at": "2026-10-04T20:08:03.558Z"
+  },
+  {
+   "file": "old-terms-desktop.png",
+   "url": "https://studpilot.app/terms",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 601892,
+   "sha256": "4903ffc28c4c8771d32e291b4031997e3a13c8bd1ae3c9e71a38320ad377b943",
+   "at": "2026-10-04T20:08:05.478Z"
+  },
+  {
+   "file": "old-app-login-desktop.png",
+   "url": "https://studpilot.app/app/login",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 44243,
+   "sha256": "1c912d194b09c50c764dc6d102ad6a15e85b5288dce8e3389d67cb478368680d",
+   "at": "2026-10-04T20:08:07.580Z"
+  },
+  {
+   "file": "old-app-signup-desktop.png",
+   "url": "https://studpilot.app/app/signup",
+   "status": 200,
+   "viewport": "1440x900",
+   "bytes": 50576,
+   "sha256": "635ff1c67354fda71404b13b16ff5532ddb7185e131d12ef4f9d4690d3d0e36f",
+   "at": "2026-10-04T20:08:09.289Z"
+  },
+  {
+   "file": "old-home-phone.png",
+   "url": "https://studpilot.app/",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 635186,
+   "sha256": "07ccf981f8988b5441fd85081b89dccb40a4863b3ed8b5e16e6d2aa6f721262d",
+   "at": "2026-10-04T20:08:11.854Z"
+  },
+  {
+   "file": "old-pricing-phone.png",
+   "url": "https://studpilot.app/pricing",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 589464,
+   "sha256": "bf770916f0642f07524f24d1d52b7834b7760c33f47178c03bbe8f725334a081",
+   "at": "2026-10-04T20:08:14.600Z"
+  },
+  {
+   "file": "old-docs-phone.png",
+   "url": "https://studpilot.app/docs",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 273533,
+   "sha256": "2173795fddec4449c5c14854b6ff2dae254bd27fc30980b76efaa90b9db8b091",
+   "at": "2026-10-04T20:08:16.265Z"
+  },
+  {
+   "file": "old-privacy-phone.png",
+   "url": "https://studpilot.app/privacy",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 795804,
+   "sha256": "ef0a0f958fdc67898051a21b8992ea6e31406107a15af705b12b3ed41f4421ae",
+   "at": "2026-10-04T20:08:17.908Z"
+  },
+  {
+   "file": "old-terms-phone.png",
+   "url": "https://studpilot.app/terms",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 459895,
+   "sha256": "f0d035f78848c98c264a0906f48657c5f7fac8ca7fc2d764781ca38d0f615ec3",
+   "at": "2026-10-04T20:08:19.500Z"
+  },
+  {
+   "file": "old-app-login-phone.png",
+   "url": "https://studpilot.app/app/login",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 35072,
+   "sha256": "586048b5eef43093790469eaf065fda780353fe8065ab3923950aaccb9b65c86",
+   "at": "2026-10-04T20:08:21.189Z"
+  },
+  {
+   "file": "old-app-signup-phone.png",
+   "url": "https://studpilot.app/app/signup",
+   "status": 200,
+   "viewport": "390x844",
+   "bytes": 39884,
+   "sha256": "824f3623dff5702c919553e50b0644b66f74445970a0337dc4197eddd6a0f56a",
+   "at": "2026-10-04T20:08:22.672Z"
+  }
+ ]
+}

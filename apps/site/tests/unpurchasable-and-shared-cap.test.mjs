@@ -15,7 +15,7 @@
 // the sentence cannot outlive the ceiling it describes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -65,13 +65,17 @@ test('/pricing discloses the shared ceiling, with the figure derived from the wo
   assert.match(html, /your own balance still shows Credits/i);
 });
 
-test('the shared-cap sentence is the whole point, so it must be above the FAQ', () => {
+// RESTATED 2026-10-05 (M2 site fix cycle 1). The page no longer has plan cards, a heading "What each plan includes" or an accordion. The property is
+// the same: the shared ceiling is disclosed where people decide, BEFORE the comparison table and not only in the limits at the end, so nobody meets
+// "StudPilot has reached today's shared building capacity" first as an error. The table is the section with id="compare".
+test('the shared-cap sentence is the whole point, so it must come before the comparison table', () => {
   if (!existsSync(dist('pricing/index.html'))) return;
   const html = flat(readFileSync(dist('pricing/index.html'), 'utf8'));
   const cap = html.search(/shared building capacity/i);
-  const compare = html.search(/What each plan includes/i);
-  assert.ok(cap !== -1 && compare !== -1);
-  assert.ok(cap < compare, 'the disclosure is below the comparison table, not beside the plan cards');
+  const compare = html.search(/id="compare"/i);
+  assert.ok(cap !== -1 && compare !== -1, 'the cap sentence or the comparison section was not found');
+  assert.ok(cap < compare, 'the disclosure is below the comparison table, not above it');
+  assert.match(html.slice(cap - 400, cap + 400), /even though your own balance still shows Credits/i, 'the early disclosure does not say what the user sees');
 });
 
 test('/docs/billing says checkout is closed, and asks rather than asserts it', () => {
@@ -92,7 +96,9 @@ test('/docs/billing says checkout is closed, and asks rather than asserts it', (
 
 test('the 404 page nominates no canonical and is marked noindex', () => {
   assert.match(base, /noindex\?: boolean/, 'Base has no noindex prop');
-  assert.match(notFound, /\n  noindex\n/, '404.astro does not pass noindex');
+  // RESTATED 2026-10-05 (M2 rebuild): the property is that the 404 passes `noindex` to Base, wherever the attribute sits in
+  // the tag. The old assertion pinned it to a line of its own, which the rebuilt page (one-line <Base ... noindex>) does not use.
+  assert.match(notFound.replace(/\/\*[\s\S]*?\*\//g, ''), /<Base\b[^>]*\snoindex(?=[\s>/])[^>]*>/, '404.astro does not pass noindex');
 
   if (!existsSync(dist('404.html'))) return;
   const html = flat(readFileSync(dist('404.html'), 'utf8'));
@@ -110,12 +116,18 @@ test('noindex is opt-in: every other route keeps its canonical', () => {
   }
 });
 
-test('the a/an slip in /docs/updating is gone, and nowhere else', () => {
-  for (const rel of ['../src/pages/docs/updating.astro']) {
-    assert.doesNotMatch(read(rel), /\ba\s+StudPilot\b/, 'the article is wrong again');
+// RESTATED 2026-10-05 (M2 site fix cycle 1, plan step 2.6). This pinned one sentence of /docs/updating, which is folded into the plugin page and is a
+// redirect now. It also pinned the WRONG article: "not an StudPilot choice" is what the rename codemod left of the old name's article, and the
+// guard held that slip in place ("a StudPilot" is right, "an StudPilot" is not). The property is the grammar, on every built page: no "an" before
+// the product's name, and the plugin page's updating sentence is the one that exists.
+test('the article before StudPilot is right on every built page ("a StudPilot", never "an StudPilot")', () => {
+  const pages = readdirSync(fileURLToPath(new URL('../dist/', import.meta.url)), { recursive: true }).filter((f) => String(f).endsWith('.html'));
+  assert.ok(pages.length > 10, 'too few built pages to mean anything');
+  for (const f of pages) {
+    const text = readFileSync(fileURLToPath(new URL(`../dist/${f}`, import.meta.url)), 'utf8').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    assert.doesNotMatch(text, /\ban\s+StudPilot\b/i, `${f} says "an StudPilot"`);
   }
-  // the corrected sentence is still the sentence
-  assert.match(read('../src/pages/docs/updating.astro'), /not an\s+StudPilot choice/);
+  assert.match(read('../src/pages/docs/plugin.astro'), /Roblox does not update Studio plugins on its own/, 'the plugin page no longer carries the updating sentence');
 });
 
 // ---------------------------------------------------------------------------
@@ -128,5 +140,5 @@ test('the guard rejects the pages that shipped', () => {
     /no way to become a paying customer yet/i,
   );
   assert.doesNotMatch('<link rel="canonical" href="/404/">', /name="robots" content="noindex/);
-  assert.match('That is platform behaviour, not a\n    StudPilot choice.', /\ba\s+StudPilot\b/);
+  assert.match('That is platform behaviour, not an\n    StudPilot choice.', /\ban\s+StudPilot\b/i);
 });

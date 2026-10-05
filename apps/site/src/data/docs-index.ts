@@ -145,6 +145,39 @@ function headingsOf(body: string): string[] {
     .filter((h) => /[\p{L}\p{N}]/u.test(h));
 }
 
+export interface DocsPage {
+  /** /docs for the index page, /docs/<slug> for every other. */
+  path: string;
+  /** The page's own title: the `heading=` it passes the layout. This is what the sidebar and the index print. */
+  heading: string;
+  /** One sentence for the index page: the page's `summary=`, else its plain-string `description=`, else nothing. */
+  summary: string;
+  /** Where the page stands among the others: its `order={n}`. A page with none follows the ordered ones, alphabetically. */
+  order: number;
+}
+
+/**
+ * THE DOCS PAGES, DERIVED FROM THE FILES. (M2 site fix cycle 1, plan step 2.6: "derive both from the files".)
+ *
+ * The sidebar of DocsLayout.astro and the list on /docs were two hand-written lists, and a page that was added to src/pages/docs and not to
+ * both was an orphan (it happened to four of them). They both read this now, from the same raw sources the search index reads: a page is
+ * listed the day its file exists, under the title and in the order its own `<DocsLayout heading= order= summary=>` says. A page that
+ * names no `order` follows the ordered ones, so a page written by another lane (the privacy page) appears without a line being added anywhere.
+ *
+ * Like the search extractor this reads source text, deliberately crudely: the props are string and number literals on lines of their own,
+ * and tests/docs-nav-derived.test.mjs reads the BUILT sidebar and index back and fails if a page is missing, twice listed, out of order or
+ * dead (a page whose props this reader cannot see would be listed under its path, which that test refuses).
+ */
+export function docsPages(files: Record<string, string>): DocsPage[] {
+  const pages = Object.entries(files).map(([file, raw]) => {
+    const path = pathForFile(file);
+    const order = /\n\s*order=\{(\d+)\}/.exec(raw)?.[1];
+    const summary = /\n\s*summary="([^"]+)"/.exec(raw)?.[1] ?? /\n\s*description="([^"]+)"/.exec(raw)?.[1] ?? '';
+    return { path, heading: titleOf(raw, path), summary: decode(summary.trim()), order: order === undefined ? Number.POSITIVE_INFINITY : Number(order) };
+  });
+  return pages.sort((a, b) => (a.order === b.order ? a.path.localeCompare(b.path) : a.order - b.order));
+}
+
 /**
  * Build the index from raw page sources, keyed by file path.
  *

@@ -1,62 +1,55 @@
 import { expect, test } from '@playwright/test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { strayCanvases } from './owner-picks';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 
 /**
  * THE SITE IS CALM ON EVERY ROUTE — IN A REAL BROWSER.
  *
- * RESTATED 2026-09-24 TO THE OWNER'S PICKS (commit 3940085). A day after the inversion below, the
- * owner chose the components the site is now built from, and several move on purpose: noise
- * grounds and a particle word drawn on <canvas>, a ticker of ideas, beams, a light running round
- * a button. "No canvas, nothing moves, no animation frame at idle" failed the owner's own choices
- * on every route, so what is checked now is the contract those picks promise
- * (apps/site/src/components/picks/motion.ts), in a real browser:
- *   - a <canvas> appears only in a pick's own host, always aria-hidden — the hosts are read from
- *     the pick components by ./owner-picks.ts, never listed here;
- *   - under prefers-reduced-motion nothing moves: two screenshots a second apart are the same
- *     picture, no animation frame is requested at idle and no animation loops;
- *   - off screen nothing draws: an element out of view is neither drawn into nor looped.
- * The ambient-layer ban, the one header, the one accent and the pixel-diff helper are unchanged.
+ * RESTATED 2026-10-05 (M2 site rebuild, handoff 2.2). This file proved the calm of the old site through the owner's picks: a <canvas>
+ * only inside a pick's own host (read from components/picks/ by ./owner-picks.ts), loops that stop off screen, and a stagger of reveals
+ * that had to finish before a card could be measured. The picks and the reveals are deleted (planning/proof/M2/DECISIONS.md section 12),
+ * and ./owner-picks.ts went with them. The rebuilt pages draw no canvas at all and move nothing on their own, so the properties are
+ * held in their plainest form, in a real browser, on every route the build emits:
+ *   - no <canvas> and no ambient layer anywhere;
+ *   - under prefers-reduced-motion nothing moves: two screenshots a second apart are the same picture, no animation frame is requested
+ *     at idle and no animation loops;
+ *   - off screen nothing draws or loops (the status orb is the only loop left, and it idles off screen);
+ *   - one header design and the one accent of the design tokens, never green;
+ *   - reduced motion stops everything and leaves no content invisible;
+ *   - /pricing's one table holds the three plans as columns on a desk and stacks them on a phone, and its Free panel is beside its figures.
+ * The routes are DERIVED from the build, never listed: a page added tomorrow is held tomorrow.
  *
- * INVERTED 2026-09-22, AND THE HISTORY IS WHY IT IS STILL HERE RATHER THAN DELETED.
- *
- * This file used to prove the opposite: that a living background — the <Horizon /> canvas, a
- * perspective grid and a glow band — was visible and moving on every route. Its method was the
- * valuable part. It learned, expensively, that "the element exists" and "the script runs" say
- * nothing about what a reader sees (the canvas once ran, drew and was painted over, with every
- * check green), so it asserted on PIXELS: hide the thing, and see whether the screenshot changes.
- *
- * The owner's final direction removes that layer outright — "no wireframe horizon, no glowing grid,
- * no fake AI particles, no ambient sci-fi wallpaper" — and asks for a site that is calm. So the
- * property is inverted and the method is kept: every route is checked in a real browser for the
- * absence of the atmosphere (no canvas, no ambient layer), for stillness measured on pixels (two
- * screenshots apart in time are the same picture, the landing composer's example line excepted),
- * for no animation-frame loop at idle, for one header design, for the one design-token accent (never green), and
- * for reduced motion stopping everything. The pixel-diff helper is the old file's, unchanged.
+ * HISTORY KEPT. The method is the 2026-09-22 file's: assert on PIXELS, because "the element exists" and "the script runs" say nothing
+ * about what a reader sees (a canvas once ran, drew and was painted over with every check green). The pixel-diff helper is unchanged.
  */
 
-/** Every layout family: the landing, the content routes, docs, legal and status. */
-const ROUTES = [
-  '/',
-  '/pricing',
-  '/docs',
-  '/docs/getting-started',
-  '/docs/plugin',
-  '/changelog',
-  '/status',
-  '/privacy',
-  '/terms',
-];
+/** Every real route of the built site (redirect stubs and the Discord hop left out), as the preview serves it. */
+function routesFromBuild(): string[] {
+  const dist = join(__dirname, '..', '..', 'apps', 'site', 'dist');
+  if (!existsSync(dist)) throw new Error('apps/site/dist is missing: build the site first; this spec derives its routes from it');
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name === 'index.html') {
+        const html = readFileSync(p, 'utf8');
+        if (/<meta http-equiv="refresh"[^>]*url=/i.test(html) || /location\.replace\(/.test(html)) continue;
+        const rel = relative(dist, join(p, '..')).split(sep).join('/');
+        out.push(rel === '' ? '/' : `/${rel}`);
+      }
+    }
+  };
+  walk(dist);
+  if (out.length < 15) throw new Error(`only ${out.length} routes were derived from dist`);
+  return out.sort();
+}
+const ROUTES = routesFromBuild();
 
-/**
- * Settle the page: fonts done, reveals finished, one full frame painted. The reveal failsafe fires
- * at 2.6s and its fade is --t-slow (420ms), so a reveal can still be moving at 3.0s — waiting 2.9s
- * measured a fade, not the page.
- */
+/** Settle the page: fonts done, one full frame painted. (Nothing reveals on scroll any more, so there is no stagger to wait out.) */
 async function settle(page: import('@playwright/test').Page) {
   await page.evaluate(() => document.fonts?.ready);
-  await page.waitForTimeout(3500);
+  await page.waitForTimeout(500);
   await page.evaluate(
     () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null)))),
   );
@@ -126,9 +119,9 @@ function recordDrawing() {
 
 test.describe('the calm site', () => {
   for (const route of ROUTES) {
-    test(`${route} draws a canvas only where an owner pick does, and no ambient scene`, async ({ page }) => {
+    test(`${route} draws no canvas and no ambient scene`, async ({ page }) => {
       await page.goto(route);
-      expect(await strayCanvases(page), `${route} renders a <canvas> that is not an owner pick's decoration`).toEqual([]);
+      expect(await page.locator('canvas').count(), `${route} renders a <canvas>`).toBe(0);
       const ambient = await page.evaluate(() =>
         [...document.querySelectorAll('[class]')]
           .map((el) => String((el as HTMLElement).className))
@@ -141,8 +134,7 @@ test.describe('the calm site', () => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(route);
       await settle(page);
-      // Masked: /status's live readouts (a countdown is information, not decor). Nothing else is —
-      // under reduced motion even the landing composer's example line holds still.
+      // Masked: /status's live readouts (a countdown is information, not decor). Nothing else is.
       const mask = [page.locator('#status-checked'), page.locator('#status-next')];
       const a = await page.screenshot({ mask });
       await page.waitForTimeout(1200);
@@ -203,6 +195,8 @@ test.describe('the calm site', () => {
           return found;
         }, [from, end] as const));
       }
+      // The docs' Terminal demo (a caret that blinked forever, named here as a debt) was deleted with build-from-source by the docs rewrite (M2 site
+      // fix cycle 1), so nothing is excused any more: every mover off screen fails.
       expect(moving, `${route} moves where nobody can see it`).toEqual([]);
     });
 
@@ -240,7 +234,7 @@ test.describe('the calm site', () => {
   }
 
   test('reduced motion stops everything and still shows every section', async ({ page }) => {
-    // Nine routes in one test: the default 30s is a budget for one page, and a loaded machine ran
+    // Every route in one test: the default 30s is a budget for one page, and a loaded machine ran
     // out of it mid-sweep. The property is per route; the time is not.
     test.setTimeout(120_000);
     await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -252,48 +246,41 @@ test.describe('the calm site', () => {
       );
       expect(running, `${route}: ${running} endless animation(s) still running under reduced motion`).toBe(0);
       const hidden = await page.evaluate(() =>
-        [...document.querySelectorAll('[data-reveal]')].filter((el) => Number(getComputedStyle(el).opacity) < 1).length,
+        [...document.querySelectorAll('main *')].filter((el) => (el.textContent ?? '').trim() && Number(getComputedStyle(el).opacity) === 0 && !el.closest('[hidden], .visually-hidden')).length,
       );
-      expect(hidden, `${route}: ${hidden} section(s) left invisible under reduced motion`).toBe(0);
+      expect(hidden, `${route}: ${hidden} element(s) left invisible under reduced motion`).toBe(0);
     }
   });
 
-  test('pricing lays its three plans side by side on a desk and stacks them on a phone', async ({ page }) => {
+  // RESTATED 2026-10-05 (M2 site fix cycle 1): /pricing is a new layout. The three plan cards (`.plan-rail > .plan`) are gone: every plan is a COLUMN of
+  // one table, and the decision a visitor came with is one panel. The property is the same (side by side on a desk, no sideways scroll on a phone),
+  // read off the new structure: on a desk the table's three plan header cells share a row, in three columns; on a phone the table stacks and the page
+  // does not scroll sideways at 320 or 390; the Free panel puts its copy beside its figures on a desk and above them on a phone.
+  test('pricing holds its three plans as columns on a desk and stacks on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/pricing');
-    // The cards reveal with a stagger (8px of travel); measured mid-reveal they are a pixel apart
-    // in height and read as two rows. Settle first — the failsafe is 2.6s plus a 420ms fade. A fixed
-    // 3.5s wait was not enough on a loaded machine (2026-10-04: red twice under a full parallel run,
-    // green alone), so the measure waits until the reveal has finished, for up to 10s.
-    const measure = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => {
+    const heads = await page.locator('table.compare thead th[scope="col"]').evaluateAll((els) => els.map((e) => {
       const r = e.getBoundingClientRect();
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
     }));
-    //[[ RESTATED 2026-10-05 (M2 step 2.1). The settle used to be "all three tops are equal", which is
-    //   also true BEFORE the reveal starts (all three are hidden at the same offset), so the poll could
-    //   pass at once and the next measure land mid-reveal on a card 2px off its neighbours. And the
-    //   phone half below had no settle at all. Dropping the spring easing for --ease-out made the
-    //   reveal start faster and exposed it: the phone half failed 5 loads in 30, against 0 in 30 on
-    //   the build before. The property is unchanged (side by side on a desk, one column on a phone);
-    //   what changed is that both halves now wait until every card has FINISHED revealing (opaque, no
-    //   transform) before measuring where it is. ]]
-    const settled = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.length > 0 && els.every((e) => {
-      const cs = getComputedStyle(e);
-      return cs.opacity === '1' && cs.transform === 'none';
-    }));
-    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
-    const desk = await measure();
-    expect(desk.length, 'the plan rail holds no cards').toBe(3);
-    expect(new Set(desk.map((c) => c.top)).size, `the cards do not share a row at 1440: ${JSON.stringify(desk)}`).toBe(1);
-    expect(new Set(desk.map((c) => c.left)).size, 'the cards overlap in one column').toBe(3);
-    expect(Math.min(...desk.map((c) => c.w)), 'a card is too narrow to read').toBeGreaterThan(300);
+    expect(heads.length, 'the comparison table has no plan columns: capability plus three plans is four headers').toBe(4);
+    expect(new Set(heads.map((c) => c.top)).size, `the headers do not share a row at 1440: ${JSON.stringify(heads)}`).toBe(1);
+    expect(new Set(heads.map((c) => c.left)).size, 'two headers overlap in one column').toBe(4);
+    expect(Math.min(...heads.slice(1).map((c) => c.w)), 'a plan column is too narrow to read').toBeGreaterThan(120);
+    const panel = await page.locator('.now').evaluate((el) => {
+      const copy = el.querySelector('.now__copy')!.getBoundingClientRect();
+      const stats = el.querySelector('.now__stats')!.getBoundingClientRect();
+      return { copyLeft: copy.left, statsLeft: stats.left };
+    });
+    expect(panel.statsLeft, 'on a desk the Free figures sit beside its copy, not under it').toBeGreaterThan(panel.copyLeft + 300);
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/pricing');
-    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
-    const phone = await page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
-    expect(new Set(phone).size, 'on a phone the cards should stack in one column').toBe(1);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow, '/pricing scrolls sideways on a phone').toBeLessThanOrEqual(1);
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/pricing');
+      const rows = await page.locator('table.compare tbody tr').first().evaluate((tr) => getComputedStyle(tr).display);
+      expect(rows, `on a ${width}px phone the table rows should stack as blocks, not scroll sideways`).toBe('grid');
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `/pricing scrolls sideways at ${width}px`).toBeLessThanOrEqual(1);
+    }
   });
 });

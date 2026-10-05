@@ -1,93 +1,55 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
+import { docsPages } from '../../data/docs-index';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 /*
- * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
+ * THE DOCS INDEX, DERIVED FROM THE FILES (M2 site fix cycle 1, plan step 2.6). The list of pages below is read from the page sources by
+ * docsPages() (src/data/docs-index.ts), the same function the sidebar of DocsLayout.astro reads, so a page appears here the day its file exists, under
+ * its own heading and its own one-line summary. It used to be a hand-written list in four sections, and a page that was added and not listed was an
+ * orphan.
  *
- * A <meta name="description"> and its og:description twin are what a search result and a pasted
- * link show. This page's body has asked STUDIO_PLUGIN_STORE_LIVE since the listing was removed,
- * while its description went on promising a Creator Store install path in every snippet — so the
- * promise reached the reader BEFORE the correction did, and the correction only arrived if they
- * clicked. Same constant, same answer, one sentence earlier.
+ * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE. A <meta name="description"> and its og:description twin are
+ * what a search result and a pasted link show. This page asks STUDIO_PLUGIN_STORE_LIVE for its description as well as its body, so the promise never
+ * reaches the reader before the correction.
  */
+const sources = import.meta.glob('./*.astro', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const pages = docsPages(sources).filter((p) => p.path !== '/docs');
 ---
 
 <DocsLayout
-  title="Documentation — StudPilot"
+  title="Documentation | StudPilot"
   description={STUDIO_PLUGIN_STORE_LIVE
-    ? `Everything you need to build with StudPilot: getting started, installing and connecting the Studio plugin, Credits, and how your data is handled.`
-    : `Everything you need to build with StudPilot: getting started, Credits, and how your data is handled. Public Studio installation is unavailable right now.`}
+    ? 'Everything you need to start with StudPilot: getting started, the Studio plugin, Credits and limits, billing, troubleshooting and how your data is handled.'
+    : 'Everything you need to start with StudPilot: getting started, Credits and limits, billing, troubleshooting and how your data is handled. Public Studio installation is unavailable right now.'}
   heading="StudPilot documentation"
+  order={0}
+  summary="Where to start."
 >
   <p>
-    StudPilot turns plain-language descriptions into real changes inside Roblox Studio. These docs cover
-    the whole journey: installing the plugin, connecting it to a project,
-    understanding Credits, and knowing exactly what happens to your data.
+    StudPilot is an AI co-pilot for Roblox Studio, in beta. These pages say how to start, what the plugin does, how Credits work, and how your data is
+    handled. They say plainly what does not work yet.
   </p>
 
   {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> You can create an account and chat; building inside Studio needs the plugin. <a href="/docs/plugin">Plugin availability</a>.</p></div>}
 
-  <h2>Start here</h2>
-  <ul>
-    <li>
-      <strong><a href="/docs/getting-started">Getting started</a></strong> — create your workspace
-      and check what is available.
-    </li>
-    <li>
-      <strong><a href="/docs/plugin">{STUDIO_PLUGIN_STORE_LIVE ? 'Install the plugin' : 'Plugin availability'}</a></strong> —
-      {STUDIO_PLUGIN_STORE_LIVE ? ' get StudPilot Studio from the Creator Store and open it in Studio.' : ' public Studio installation is unavailable right now.'}
-    </li>
-    <li>
-      <strong><a href="/docs/connect">Connect a project</a></strong> — link the plugin to one StudPilot
-      project with a short-lived code.
-    </li>
+  <h2>The pages</h2>
+  <ul data-docs-index>
+    {
+      pages.map((p) => (
+        <li>
+          <strong><a href={p.path}>{p.heading}</a></strong>
+          {p.summary && <span class="docs-index__summary">{p.summary}</span>}
+        </li>
+      ))
+    }
   </ul>
-
-  <h2>Using StudPilot</h2>
-  <ul>
-    <li>
-      <strong><a href="/docs/credits-and-limits">Credits &amp; limits</a></strong> — how the daily
-      quota works and what happens at the edges.
-    </li>
-  </ul>
-
-  <h2>Keeping it working</h2>
-  <ul>
-    <li>
-      <strong><a href="/docs/updating">Updating the plugin</a></strong> — Roblox does not update
-      plugins for you. Here is the button.
-    </li>
-    <li>
-      <strong><a href="/docs/troubleshooting">Troubleshooting</a></strong> — every message the
-      Studio panel can show, and the fix.
-    </li>
-  </ul>
-
-  <h2>Trust</h2>
-  <ul>
-    <li>
-      <strong><a href="/docs/privacy-and-data">Privacy &amp; data</a></strong> — what is stored,
-      where, and how Roblox data and improvement data are handled.
-    </li>
-    <li>
-      <strong><a href="/docs/faq">FAQ</a></strong> — quick answers to the questions everyone asks.
-    </li>
-  </ul>
-
-  <div class="callout">
-    <p>
-      {STUDIO_PLUGIN_STORE_LIVE ? <>Install the <a href="/docs/plugin">plugin</a>, open your place in Studio, <a href="/docs/connect">connect</a> it to a project, and describe your idea.</> : <>Start with <a href="/app/signup">a free account</a> and a conversation. If you already have a working plugin, <a href="/docs/connect">connect your place</a>. Otherwise, check <a href="/docs/plugin">plugin availability</a>.</>}
-    </p>
-  </div>
-
-  <h2>For developers</h2>
-  <p>
-    Working on StudPilot itself rather than with it?
-    <a href="/docs/build-from-source">Build the plugin from source</a> covers the Rojo build and the
-    local-plugin debug loop. It is explicitly not the install path.
-  </p>
-
-  <DocsKit />
 </DocsLayout>
+
+<style>
+  /* The summary is its own line under the page's title: the title is the only underlined text, and the sentence does not run on from it. */
+  .docs-index__summary {
+    display: block;
+    margin-top: 2px;
+  }
+</style>

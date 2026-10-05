@@ -25,6 +25,7 @@ import { createRequire } from 'node:module';
 import { dirname, extname, join, normalize, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { rgbOfHex, theme, themeBlocks } from '@studpilot/design/css-tokens';
+import { isRedirect } from './lib/dist.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(SITE, 'dist');
@@ -41,7 +42,13 @@ function routes() {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      else if (e.name === 'index.html') { const rel = relative(DIST, dirname(p)).split(sep).join('/'); out.push(rel === '' ? '/' : `/${rel}/`); }
+      else if (e.name === 'index.html') {
+        // RESTATED 2026-10-05 (M2 rebuild): the redirect stubs Astro emits for the removed routes draw no page, and /discord forwards the
+        // browser to the community invite the moment it loads (either one navigates away mid-scan), so neither is a route to measure.
+        const html = readFileSync(p, 'utf8');
+        if (isRedirect(html) || /location\.replace\(/.test(html)) continue;
+        const rel = relative(DIST, dirname(p)).split(sep).join('/'); out.push(rel === '' ? '/' : `/${rel}/`);
+      }
       else if (e.name === '404.html') out.push('/404.html');
     }
   };
@@ -170,7 +177,9 @@ const NO_TEXT = new Set();
 /** mode -> [{ sel, route, ...paintedPair }] */
 const PIXELS = { dark: [], light: [] };
 // A SAMPLE of the controls the defect hid in, selected and read as pixels (the style scan above covers every element on every route).
-const PIXEL_SUBJECTS = ['span.cta__label', 'span.shiny__label', 'button.composer-send', 'a.btn-primary:not(.shiny)'];
+// RESTATED 2026-10-05 (M2 rebuild): the old landing's CTA, shiny and composer-send controls were deleted. The sample is the accent
+// button the rebuild draws everywhere (the header's Start free (beta), the hero and closing calls) and its large form.
+const PIXEL_SUBJECTS = ['a.btn-primary', 'a.btn-primary.btn-lg'];
 
 async function open(page, base, route, mode) {
   await page.goto(base + route, { waitUntil: 'load' });

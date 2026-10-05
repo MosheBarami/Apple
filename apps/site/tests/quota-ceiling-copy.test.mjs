@@ -65,7 +65,11 @@ test('while the ceiling bites, both pages derive the cutoff rather than restatin
     const file = new URL(`../dist/${rel}`, import.meta.url);
     if (!existsSync(file)) continue;
     const html = readFileSync(file, 'utf8').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    for (const id of LISTED_PLAN_IDS.filter((p) => shared.monthlyCeilingBitesFirst(p))) {
+    // Only a plan whose per-day figure the owner decided: Free always, the paid plans once PAID_DAILY_CAPS_DECIDED (tests/undecided-figures.test.mjs
+    // holds the other half, that an undecided figure and the "full days" built on it are not printed at all).
+    const decided = LISTED_PLAN_IDS.filter((p) => (p === 'free' || shared.PAID_DAILY_CAPS_DECIDED) && shared.monthlyCeilingBitesFirst(p));
+    assert.ok(decided.includes('free'), 'Free is not among the plans whose cutoff is checked: the loop below would check nothing');
+    for (const id of decided) {
       const t = PLAN_TABLE[id];
       assert.ok(
         html.includes(`${t.creditsPerDay} a day against ${t.creditsPerMonth} a month`) && html.includes(`${shared.fullRateDays(id)} full days`),

@@ -70,3 +70,40 @@ test('no page glues a word to the next one', { skip: !built.length }, () => {
   }
   assert.deepEqual(bad, []);
 });
+
+// A WORD GLUED TO THE TAG AFTER IT (added 2026-10-05, M2 site rebuild; the debt list removed the same day, fix cycle 1).
+//
+// Astro 7's compiler, with its default `compressHTML: 'jsx'` (React's whitespace rules), drops the space between a word at the end of a source line and an inline tag that
+// starts the next one: `...with it?\n<a href>Build</a>` was built as `with it?<a href>Build</a>` and a reader saw "with it?Build the plugin". The
+// two checks above read the text, and the first pattern list cannot see a link. This reads the BUILT html: an opening inline tag directly after
+// a letter, a digit or sentence punctuation is a space that was lost.
+//
+// THE FIRST VERSION NAMED A DEBT: 61 joins on 13 pages (the docs, /privacy and /terms) were exempt by route, "a debt that can only shrink". The
+// cause was one setting (`compressHTML` in astro.config.mjs), not 61 sites; with `compressHTML: true` (lossless) every page, the legal pages
+// included, is clean, so the exemption is deleted and EVERY built page is held to zero. The mutation that proves it is the setting: delete the
+// line (the default 'jsx' comes back) and this fails with the 62 joins.
+const GLUED_TAG = /[A-Za-z0-9.,?!:;)]<(?:a|em|strong|code|kbd)[ >]/g;
+const stripNonProse = (html) => html.replace(/<(script|style|pre)[\s\S]*?<\/\1>/g, '');
+
+test('no built page glues an inline tag to the word before it', { skip: !built.length }, () => {
+  const bad = [];
+  let read = 0;
+  for (const p of built) {
+    const route = relative(DIST, p).replace(/index\.html$/, '').replace(/\.html$/, '');
+    const found = [...stripNonProse(readFileSync(p, 'utf8')).matchAll(GLUED_TAG)];
+    read += 1;
+    if (found.length) bad.push(`${route}: ${found.length} glued inline tag(s), e.g. "${found[0][0]}"`);
+  }
+  assert.ok(read >= 15, `only ${read} pages were read; the walk has drifted`);
+  assert.deepEqual(bad, []);
+});
+
+test('the compiler keeps the space: astro.config.mjs sets compressHTML to a lossless value, not the JSX default', () => {
+  const config = readFileSync(join(DIST, '..', 'astro.config.mjs'), 'utf8').replace(/\/\/.*$/gm, '');
+  assert.match(config, /compressHTML:\s*(?:true|false)\b/, 'compressHTML is not set: Astro 7 defaults to the JSX rules and drops the space before an inline tag');
+});
+
+test('the glue scan can see: a lost space before a link is caught, a space and an opening bracket are not', () => {
+  assert.equal([...'with it?<a href="/x">Build</a>'.matchAll(GLUED_TAG)].length, 1);
+  assert.equal([...'with it? <a href="/x">Build</a> and (<code>x</code>)'.matchAll(GLUED_TAG)].length, 0);
+});

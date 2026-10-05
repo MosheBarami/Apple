@@ -1,0 +1,103 @@
+---
+import Base from '../layouts/Base.astro';
+import ScreenSlot from '../components/ScreenSlot.astro';
+import PieceIcon from '../components/PieceIcon.astro';
+import '../styles/site.css';
+import { PIECES } from '../data/pieces';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+
+/*
+ * THE CATALOG, IN M2: THE FOUR KINDS OF PIECE, AND NOTHING THAT PRETENDS TO BE A RESULT.
+ *
+ * Handoff M2: pieces that pass the critic are added to the catalog and the front page in M7. Until then this page
+ * explains the four kinds in words and shows what a person might ask for. The example requests are copied word for
+ * word from planning/STUDPILOT-TEST-SET-DEV.md (src/data/pieces.ts) and are labelled as requests. None has a
+ * result beside it, because no piece has passed the bar. tests/catalog-examples.test.mjs holds both halves.
+ */
+
+// Where the plugin stands is asked of the flag, never typed: while the Creator Store listing is down, new customers can chat and plan and cannot build in Studio.
+const whereToAsk = STUDIO_PLUGIN_STORE_LIVE
+  ? 'Make a project, pair the free plugin with Roblox Studio, and type a request in the chat.'
+  : 'Make a project and type a request in the chat. To build in Roblox Studio you also pair the plugin, which new customers cannot get yet.';
+---
+
+<Base
+  title="Catalog: the four kinds of pieces | StudPilot"
+  description="The four kinds of pieces StudPilot is built for: custom UI, game systems, interactive props and map areas. Examples arrive when pieces pass the quality bar."
+>
+  <section class="page-head">
+    <div class="wrap">
+      <p class="kicker"><span class="badge">Beta</span> Catalog</p>
+      <h1 class="carved">The four kinds of pieces</h1>
+      <p class="lede">
+        You can ask for any of these, in any size. Here is what each one is, and what a request for it can look like.
+      </p>
+      <p class="note">
+        <strong>No examples yet.</strong> A piece will go in this catalog only when it passes the quality bar we are building to: a blind
+        critic will rate it 8 or better in every area, it will have no play-test errors, and its reply will make no false claim. The
+        critic is still being made. Examples arrive when pieces pass. Until then this page shows requests only. It never shows a result.
+      </p>
+    </div>
+  </section>
+
+  <section class="sec sec--flush" aria-label="The four kinds of pieces">
+    <div class="wrap">
+      {
+        PIECES.map((piece) => (
+          <article class="kind" aria-labelledby={`kind-${piece.id}`}>
+            <div class="kind__head">
+              <span class="piece__icon">
+                <PieceIcon piece={piece.id} />
+              </span>
+              <h2 id={`kind-${piece.id}`}>{piece.title}</h2>
+              <p class="kind__what">{piece.short} {piece.what}</p>
+            </div>
+            <div>
+              <p class="requests__label">Example requests</p>
+              <ul class="requests">
+                {piece.examples.map((request) => (
+                  <li>{request}</li>
+                ))}
+              </ul>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="sec sec--band" aria-labelledby="where-title">
+    <div class="wrap shots">
+      <div>
+        <p class="kicker">Where to ask</p>
+        <h2 id="where-title" class="sec-title">You ask in the web app</h2>
+        <p class="sec-text">
+          {whereToAsk} The picture is the real app, on a phone, before any request. It does not show a finished piece.
+        </p>
+        <a class="text-link" href="/how-it-works">How it works</a>
+      </div>
+      <ScreenSlot id="app-idle-phone" class="slot--phone" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .shots {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 28px clamp(32px, 5vw, 64px);
+  }
+
+  @media (min-width: 900px) {
+    .shots {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    }
+  }
+
+  /* The phone capture is tall and narrow: it keeps a phone's width instead of stretching across the column. */
+  .shots :global(.slot--phone) {
+    max-width: 320px;
+    margin-inline: auto;
+  }
+</style>

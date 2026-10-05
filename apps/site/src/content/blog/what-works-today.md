@@ -1,0 +1,43 @@
+---
+title: What works today in the StudPilot beta
+description: A plain list of what works in the StudPilot beta on 5 October 2026, and what is not there yet.
+date: 2026-10-05
+---
+
+StudPilot is in beta. This post says what you can do today and what you cannot. It is short on purpose, and every line is something the product does now, or says plainly that it does not.
+
+## What works today
+
+**You can sign in with your email.** Make an account with an email and a password. You do not need a card. Email sign-in works for everyone.
+
+**You can make a project and chat with StudPilot.** A project holds the chat for one Roblox place. Type a request and StudPilot starts work.
+
+**You can watch what it does in the chat.** The chat shows a live list of the steps StudPilot is taking, and you can stop a run at any time.
+
+**Free costs nothing.** The Free plan gives you 5 Credits a day, up to 30 a month. A Credit is about $0.05 of AI compute, and you are charged for the AI work a build actually used. A typical build uses about 1.40 Credits. That is an estimate, and a long build costs more.
+
+## What is not there yet
+
+**New customers cannot build in Studio.** The plugin that builds in your place is not on the Creator Store, so you cannot get it today. The chat works without it, and StudPilot can plan with you there. People who already have the plugin can pair a project with a 6-character code. A code works for 10 minutes, and edits stay off until you allow them for that connection. The [plugin page](/docs/plugin) says where it stands.
+
+**The checks need the plugin.** StudPilot has tools to play test a place, press buttons in a running game, check a screen's layout and audit what it built, and it checks its own reply for claims it cannot back up. They run inside Studio, so a new customer cannot use most of them yet.
+
+**The quality bar has not been met.** The bar is a blind critic that will rate a piece 8 or better in every area, with no play-test errors and no false claims. That critic is being built, so no piece has been rated against the bar yet. That is why the [catalog](/catalog) has no examples.
+
+**Reviewed building blocks are not built.** We are building StudPilot to put each piece together from reviewed blocks. Today it builds each piece one step at a time.
+
+**Not every build runs every check.** The checks exist. Making sure every build runs all of them, in the same order, is still ahead of us.
+
+**The one multiple-choice question is not in the chat.** We are building StudPilot to ask it only when a request is not clear.
+
+**There is no settings panel for a piece yet.** To change a piece, ask in the chat.
+
+**Sign in with Roblox is in a limited test.** Roblox lets only a few people use it until Roblox approves the app, so it may not work for you yet. Email sign-in works for everyone.
+
+**Google and Discord sign-in are coming.** They are not on the sign-in page.
+
+**Paid plans are not for sale.** Pro and Max are planned, and there is no checkout. See [pricing](/pricing).
+
+## Why we are saying this
+
+The promise on the front page is the bar we are building to. It is not something we have shown. We would rather tell you what is missing than let you find out from a build.

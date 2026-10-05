@@ -1,80 +1,73 @@
 import { expect, test } from '@playwright/test';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 // The asset id and the install href have exactly one definition in this repository. Asserting the
-// rendered href against the constant — rather than against a pasted URL — is what stops the landing
+// rendered href against the constant, rather than against a pasted URL, is what stops the site
 // and the shared package drifting apart.
-import {
-  MODEL_REGISTRY,
-  PRODUCT_MODELS,
-  PRODUCT_MODEL_INFO,
-  STUDIO_PLUGIN_INSTALL_HREF,
-  STUDIO_PLUGIN_STORE_LIVE,
-  STUDIO_PLUGIN_URL,
-} from '../../packages/shared/src/index';
-import { strayCanvases } from './owner-picks';
+import { MODEL_REGISTRY, STUDIO_PLUGIN_STORE_LIVE, SUPPORT_EMAIL } from '../../packages/shared/src/index';
 
 /**
- * The landing page's invariants, restated 2026-09-22 against the calm redesign.
+ * The landing page's invariants, RESTATED 2026-10-05 for the M2 rebuild (handoff 2.2).
  *
- * WHAT CHANGED AND WHY THIS WAS REWRITTEN RATHER THAN PATCHED. This file had gone stale almost
- * everywhere: it expected an h1 reading "Describe a Roblox game. / StudPilot builds it.", links called
- * "Start building — free" and "Install for Studio", `.ap-*` classes, sections #top/#product/
- * #library/#modes/#how/#pricing, a Rubik display face and a loaded Archivo webfont — none of which
- * the landing has had for weeks. It also asserted "ships no JavaScript", which the landing stopped
- * doing when its composer and stages became real controls. A spec whose selectors match nothing is
- * a spec that fails for reasons nobody reads.
- *
- * EVERY PROPERTY IT CHECKED THAT IS STILL A REQUIREMENT IS KEPT, re-aimed at the page that exists:
- *   - the proposition is one h1, and the whole offer is in the first frame at every size
- *   - no horizontal scroll at any supported size; every header control reachable on a phone
- *   - every nav destination resolves, and no link anywhere on the site is dead (/showcase is
- *     published by infra/deploy-showcase.mjs, not by Astro, so it is resolved against its
- *     publisher rather than fetched from this preview — see WORKER_SERVED)
- *   - no 3D, and a canvas only where an owner pick draws one; no model maker the product does not
- *     offer, and never what StudPilot's own models run on; Credits capitalised (these two, and the
- *     composer ghost's "nothing runs forever", RESTATED 2026-09-24 to the owner's picks, commit
- *     3940085, and to D-VISION-1 — each says why where it is asserted)
- *   - the primary action reaches registration and sign-in reaches sign-in
- *   - the install link is whatever the shared constant says, with external-link attributes when it
- *     leaves the site; no undistributable store link and no install promise while the store is shut
- *   - keyboard reachable, with a visible focus ring — now also on the composer, which had none
- *   - text enlargement scrolls rather than clipping; every text element clears WCAG AA against the
- *     pixels actually behind it, in BOTH themes now, read off one held frame (RESTATED 2026-09-24:
- *     the owner's picks move, and a box and its pixels must come from the same picture)
- *
- * ONE ASSERTION IS INVERTED: "claims no second model" forbade the words "studpilot max". StudPilot MAX is a
- * real model today (PRODUCT_MODELS), so the property it protected — no capability claim without a
- * capability — is asserted directly: the page names exactly the shared models, and says which plans
- * include each. RESTATED 2026-10-03 (V3 G01/G16, 38efea2e, c839d7af): one engine on every plan and no
- * modes, so canUseProductModel, PRODUCT_MODES and /docs/modes are gone; each card says "every plan"
- * and the section carries no mode rows.
+ * WHAT CHANGED. The front page is new (a left-aligned headline beside a fixed-size slot for a real screenshot, four kinds of piece, a
+ * rail of four steps, the quality bar, a price strip). The old page's composer, its three demo stages, its model cards, its read-order
+ * section and the "Product" anchor are deleted (planning/proof/M2/DECISIONS.md section 12), so the tests that pinned them are deleted with
+ * them (each in planning/proof/M2/TEST-LEDGER.md) and every property that is still a requirement is kept, re-aimed at the page that exists:
+ *   - the proposition is one h1 (the plan's promise, as the bar being built to), and the offer is in the first frame at every size
+ *   - no horizontal scroll at any supported size; every header control reachable on a phone, the header one row, the menu opens
+ *   - every nav destination resolves, and no link anywhere on the site is dead (routes derived from the build)
+ *   - no 3D, no webfont, no canvas; no model maker the product does not offer; Credits capitalised
+ *   - the primary actions reach registration and sign-in reaches sign-in; the plugin line is honest while the store is shut
+ *   - keyboard reachable with a visible focus ring; text enlargement scrolls rather than clipping; every text element clears WCAG AA
+ *     against the pixels behind it, in both themes, on the four marketing pages
  */
 
-/** Routes this site links to that Astro does not build, and what publishes each. */
-const WORKER_SERVED = new Map([['/showcase', 'infra/deploy-showcase.mjs']]);
 const ROOT = join(__dirname, '..', '..');
+const AA_ROUTES = ['/', '/how-it-works', '/catalog', '/pricing'];
 
-test('renders the proposition', async ({ page }) => {
+/** Every real route of the built site, as the preview serves it (redirect stubs and the Discord hop left out). */
+function routesFromBuild(): string[] {
+  const dist = join(ROOT, 'apps', 'site', 'dist');
+  if (!existsSync(dist)) throw new Error('apps/site/dist is missing: build the site first; this spec derives its routes from it');
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name === 'index.html') {
+        const html = readFileSync(p, 'utf8');
+        if (/<meta http-equiv="refresh"[^>]*url=/i.test(html) || /location\.replace\(/.test(html)) continue;
+        const rel = relative(dist, join(p, '..')).split(sep).join('/');
+        out.push(rel === '' ? '/' : `/${rel}`);
+      }
+    }
+  };
+  walk(dist);
+  if (out.length < 15) throw new Error(`only ${out.length} routes were derived from dist`);
+  return out.sort();
+}
+
+test('renders the proposition: one h1, the plan\'s promise, under a visible Beta label', async ({ page }) => {
   await page.goto('/');
   const h1 = page.getByRole('heading', { level: 1 });
   await expect(h1).toBeVisible();
   await expect(page.locator('h1')).toHaveCount(1);
-  const text = ((await h1.textContent()) ?? '').trim();
-  expect(text.length, 'the headline is empty or a fragment').toBeGreaterThan(20);
-  // The line under it says where the product works, in the product's own words.
-  await expect(page.locator('.hero .lead')).toContainText('Roblox Studio');
+  expect(((await h1.textContent()) ?? '').trim()).toBe("Ask for any piece. It looks pro, it works, and we never claim what we didn't prove.");
+  await expect(page.locator('.hero .badge')).toContainText('Beta');
+  // The line under it says where the product works, in the product's own words, and frames the promise as the bar.
+  await expect(page.locator('.hero .lede')).toContainText('Roblox Studio');
+  await expect(page.locator('.hero .lede')).toContainText('the bar we are building to');
 });
 
 test('opens on the whole proposition', async ({ page }) => {
-  // The page scrolls; what may NOT happen is a reader having to scroll to find out what this is or
-  // how to start. Measured at the shortest supported height as well as the tallest.
+  // The page scrolls; what may NOT happen is a reader having to scroll to find out what this is or how to start. Measured at the
+  // shortest supported height as well as the tallest.
   const sizes = [
     { width: 1440, height: 900 },
     { width: 1366, height: 768 },
     { width: 390, height: 844 },
   ];
-  const mustBeVisible = ['h1', '.hero .lead', 'form.composer', 'button.composer-send', '.availability'];
+  const mustBeVisible = ['h1', '.hero .badge', '.hero .lede', '.hero__cta a.btn-primary'];
   const bad: string[] = [];
 
   for (const size of sizes) {
@@ -114,10 +107,9 @@ test('never scrolls horizontally at any supported size', async ({ page }) => {
 });
 
 test('every header control is reachable on a phone, and the header is one row', async ({ page }) => {
-  // The property, not the mechanism: every painted control in the header has its whole box inside
-  // the viewport. A row that clips INTERNALLY never scrolls the document, which is how "Sign in"
-  // once sat 36px past the edge of a 375px phone while the page-level guard stayed green.
-  // And the header is ONE row: the landing's old inline header wrapped onto three (151px).
+  // The property, not the mechanism: every painted control in the header has its whole box inside the viewport. A row that clips
+  // INTERNALLY never scrolls the document, which is how "Sign in" once sat 36px past the edge of a 375px phone while the page-level
+  // guard stayed green. And the header is ONE row.
   const sizes = [
     { width: 375, height: 812 },
     { width: 390, height: 844 },
@@ -151,26 +143,30 @@ test('every header control is reachable on a phone, and the header is one row', 
   // The menu opens, and what it reveals is reachable too.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
+  await expect(page.locator('#menu-toggle')).toHaveAttribute('aria-expanded', 'false');
   await page.locator('#menu-toggle').click();
-  await expect(page.locator('#primary-nav')).toBeVisible();
-  await expect(page.locator('#primary-nav').getByRole('link', { name: 'Create an account' })).toBeVisible();
+  await expect(page.locator('#menu-toggle')).toHaveAttribute('aria-expanded', 'true');
+  for (const name of ['How it works', 'Catalog', 'Pricing', 'Docs', 'Blog', 'Discord', 'Sign in']) {
+    await expect(page.locator('#primary-nav').getByRole('link', { name, exact: true }), `${name} is not reachable in the open menu`).toBeVisible();
+  }
+  await expect(page.locator('#primary-nav').getByRole('link', { name: 'Start free (beta)' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menu-toggle')).toHaveAttribute('aria-expanded', 'false');
 });
 
-test('holds the composition: the sections the nav names, the shared header, a visible mark', async ({ page }) => {
+test('holds the composition: the sections, the shared header and footer, a visible mark, a reserved slot', async ({ page }) => {
   await page.goto('/');
-  // The sections the page is built from, plus every one the shared nav names.
-  const navFragments = await page.$$eval('header#site-nav a[href^="/#"]', (as) => as.map((a) => a.getAttribute('href')!.slice(2)));
-  expect(navFragments.length, 'the shared nav offers no product-section destination').toBeGreaterThan(0);
-  for (const id of new Set(['proof', 'inside', 'capabilities', 'built', 'models', ...navFragments])) {
-    await expect(page.locator(`#${id}`), `#${id} is missing`).toHaveCount(1);
-  }
+  for (const id of ['pieces', 'how', 'bar', 'pricing']) await expect(page.locator(`#${id}`), `#${id} is missing`).toHaveCount(1);
+  await expect(page.locator('#pieces .piece')).toHaveCount(4);
+  await expect(page.locator('#how .rail > li')).toHaveCount(4);
 
-  // ONE header, the shared one: the landing's own inline header drifted from every other route's.
+  // ONE header, the shared one, and one footer carrying the contact address (owner decision D-13: the operator is StudPilot, the contact
+  // is support@studpilot.app, read from the shared config).
   await expect(page.locator('header#site-nav')).toHaveCount(1);
-  await expect(page.locator('footer.foot')).toHaveCount(1);
+  await expect(page.locator('footer[data-site-footer]')).toHaveCount(1);
+  await expect(page.locator('footer[data-site-footer]')).toContainText(SUPPORT_EMAIL);
 
-  // THE MARK IS VISIBLE. The logo's class once collided with a demo's `.gm { padding: 16px }`, and
-  // a 22px box with 16px of padding drew nothing at all while every other check passed.
+  // THE MARK IS VISIBLE. A logo's class once collided with a demo's padding and drew nothing at all while every other check passed.
   const mark = await page.locator('header#site-nav .brand svg').evaluate((svg) => {
     const r = svg.getBoundingClientRect();
     const s = getComputedStyle(svg);
@@ -182,9 +178,20 @@ test('holds the composition: the sections the nav names, the shared header, a vi
   expect(mark.padding, 'the header mark is padded into nothing').toBe(0);
   expect(mark.drawnW * mark.drawnH, 'the header mark draws no pixels').toBeGreaterThan(100);
 
-  // Models from PRODUCT_MODELS — derived, so a second cannot hide. No mode rows: V3 G16 removed modes.
-  await expect(page.locator('#models .mode-row')).toHaveCount(0);
-  await expect(page.locator('#models .model-card')).toHaveCount(PRODUCT_MODELS.length);
+  // THE HERO HOLDS A REAL SCREENSHOT, IN ITS RESERVED BOX. (RESTATED 2026-10-05, M2 site fix cycle 1: the figure used to be an empty frame that said "A real
+  // screenshot goes here"; it is a recorded capture of the web app now, so the property is that the picture is there, decoded, at the size its record says,
+  // loaded eagerly, with its caption and no placeholder text, and that its box keeps the record's aspect ratio so nothing shifts when it arrives.)
+  const slot = page.locator('.hero [data-screen]');
+  await expect(slot).toHaveCount(1);
+  const box = await slot.evaluate((el) => { const r = el.querySelector('.slot__frame')!.getBoundingClientRect(); return { w: r.width, h: r.height, ratio: Number(el.getAttribute('data-width')) / Number(el.getAttribute('data-height')) }; });
+  expect(box.w, 'the slot has no width').toBeGreaterThan(200);
+  expect(Math.abs(box.w / box.h - box.ratio), 'the slot does not hold its aspect ratio').toBeLessThan(0.02);
+  const img = slot.locator('img');
+  await expect(img).toHaveCount(1);
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth), { message: 'the hero picture did not load' }).toBeGreaterThan(0);
+  expect(await img.getAttribute('loading'), 'the hero picture is lazy-loaded: it is the largest thing above the fold').not.toBe('lazy');
+  await expect(slot.locator('figcaption')).toContainText('sample data');
+  await expect(page.locator('main')).not.toContainText('screenshot goes here');
 
   // The type: the shared system stack, never bold, sentence case.
   const display = await page.locator('h1').evaluate((el) => {
@@ -199,9 +206,9 @@ test('holds the composition: the sections the nav names, the shared header, a vi
   expect(display.size, `the headline is ${display.size}px — the hero is oversized again`).toBeLessThanOrEqual(56);
 });
 
-test('ships no webfont to fail, no 3D, and a canvas only where an owner pick draws one', async ({ page }) => {
-  // The design uses the system stack on purpose (the app's own), so there is no webfont whose
-  // failure would make every other check in this file pass over a page that looks wrong.
+test('ships no webfont to fail, no 3D, and no canvas', async ({ page }) => {
+  // The design uses the system stack on purpose (the app's own), so there is no webfont whose failure would make every other check in
+  // this file pass over a page that looks wrong.
   const fonts: string[] = [];
   const scripts: string[] = [];
   page.on('request', (r) => {
@@ -211,9 +218,7 @@ test('ships no webfont to fail, no 3D, and a canvas only where an owner pick dra
   await page.goto('/', { waitUntil: 'networkidle' });
   expect(fonts, `unexpected webfont requests: ${fonts.join(', ')}`).toEqual([]);
   expect(scripts.filter((s) => /three|webgl|babylon/i.test(s)), 'a 3D library is loading on the landing').toEqual([]);
-  // RESTATED 2026-09-24: the owner's picks (commit 3940085) draw the landing's grounds on <canvas>.
-  // What may not happen is a canvas that is not a pick's decoration (see ./owner-picks.ts).
-  expect(await strayCanvases(page), 'a <canvas> on the landing is not an owner pick\'s decoration').toEqual([]);
+  expect(await page.locator('canvas').count(), 'the rebuilt landing draws no canvas').toBe(0);
 });
 
 test('every nav destination resolves', async ({ page }) => {
@@ -221,7 +226,7 @@ test('every nav destination resolves', async ({ page }) => {
   const links = await page.$$eval('header#site-nav a', (as) =>
     as.map((a) => ({ label: (a.textContent ?? '').trim(), href: a.getAttribute('href') ?? '' })),
   );
-  expect(links.length).toBeGreaterThanOrEqual(5);
+  expect(links.length).toBeGreaterThanOrEqual(8);
   const bad: string[] = [];
 
   for (const { label, href } of links) {
@@ -230,36 +235,17 @@ test('every nav destination resolves', async ({ page }) => {
       continue;
     }
     if (href.startsWith('/app')) continue; // the React workspace, served by the worker, not this preview
-    const [path, hash] = href.split('#');
-    if (hash && (path === '' || path === '/')) {
-      const target = page.locator(`#${hash}`);
-      if ((await target.count()) !== 1) bad.push(`${label} -> ${href} names no element on this page`);
-      continue;
-    }
-    if (WORKER_SERVED.has(path)) {
-      // Not an Astro route, so this preview cannot serve it. Resolved against its publisher instead
-      // of skipped: an exemption with no publisher behind it would be a hole.
-      if (!existsSync(join(ROOT, WORKER_SERVED.get(path)!))) bad.push(`${label} -> ${href}: its publisher is gone`);
-      continue;
-    }
     const res = await page.request.get(href);
     if (res.status() !== 200) bad.push(`${label} -> ${href} (HTTP ${res.status()})`);
   }
 
   expect(bad, `dead nav destinations:\n${bad.join('\n')}`).toEqual([]);
-
-  // RESTATED 2026-10-03: /docs/modes went with the modes (V3 G16, c839d7af).
-  for (const route of ['/docs/getting-started', '/docs/plugin', '/docs/connect', '/docs']) {
-    const res = await page.request.get(route);
-    expect(res.status(), `${route} should resolve`).toBe(200);
-  }
 });
 
 test('names no model maker the product does not offer, and never what StudPilot itself runs on', async ({ page }) => {
-  // RESTATED 2026-09-24 (D-VISION-1): the product now offers other makers' models by name, so those
-  // names may appear — read from MODEL_REGISTRY, not typed here. Two things stay off the page: a
-  // maker or model the registry does not offer, and the foundation under StudPilot's own models, which
-  // the registry records in providerModelId ('@cf/<org>/<family>-…') and the page never repeats.
+  // RESTATED 2026-09-24 (D-VISION-1): the names the registry offers may appear, read from MODEL_REGISTRY, not typed here. Two things
+  // stay off the page: a maker or model the registry does not offer, and the foundation under StudPilot's own model, which the
+  // registry records in providerModelId ('@cf/<org>/<family>-…') and the page never repeats.
   await page.goto('/');
   const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
   const offered = MODEL_REGISTRY.map((m) => `${m.vendor} ${m.displayName}`).join(' ').toLowerCase();
@@ -274,26 +260,9 @@ test('names no model maker the product does not offer, and never what StudPilot 
   }
 });
 
-test('names exactly the models the product has, and the plans that include each', async ({ page }) => {
-  // INVERTED from "claims no second model": what must not happen is a model named here that the
-  // product does not have, or a model described as a plan ("the subscription tier").
-  // RESTATED 2026-10-03 (V3 G01): one engine, on every plan, so each card says "every plan".
-  await page.goto('/');
-  const models = page.locator('#models .model-card');
-  for (const [i, model] of PRODUCT_MODELS.entries()) {
-    const card = models.nth(i);
-    await expect(card).toContainText(PRODUCT_MODEL_INFO[model].name.replace(' MAX', ''));
-    expect(((await card.textContent()) ?? '').toLowerCase(), `${model} does not say it is on every plan`).toContain('every plan');
-  }
-  const body = ((await page.locator('body').textContent()) ?? '').toLowerCase();
-  expect(body).not.toContain('subscription tier');
-  await expect(page.locator('#models .model-card'), 'a model card the product does not have').toHaveCount(PRODUCT_MODELS.length);
-  await expect(page.locator('#models'), 'a mode name survived V3 G16').not.toContainText(/\b(Plan|Agent|Autonomous) mode\b/);
-});
-
 test('counts in Credits, capitalised', async ({ page }) => {
-  // The allowance unit is "Credits". A lowercase "credits" on the page that introduces the unit is
-  // how a reader ends up thinking there are two different things.
+  // The allowance unit is "Credits". A lowercase "credits" on the page that introduces the unit is how a reader ends up thinking there
+  // are two different things.
   await page.goto('/');
   const text = (await page.locator('main').textContent()) ?? '';
   expect(text).toContain('Credits');
@@ -302,153 +271,70 @@ test('counts in Credits, capitalised', async ({ page }) => {
 
 test('the primary actions reach registration, and sign-in reaches sign-in', async ({ page }) => {
   await page.goto('/');
-  // The composer IS the primary action: a real form that submits to registration.
-  await expect(page.locator('form.composer')).toHaveAttribute('action', '/app/signup');
-  await expect(page.locator('form.composer textarea')).toHaveAttribute('name', 'start');
-  // CSS locators, not roles: on a phone these two sit inside the collapsed menu, which removes them
-  // from the accessibility tree until it opens — the hrefs are what is under test here.
-  await expect(page.locator('header#site-nav a.nav__cta')).toHaveText('Create an account');
+  // CSS locators, not roles: on a phone these sit inside the collapsed menu or the bar, and the hrefs are what is under test.
+  await expect(page.locator('header#site-nav a.nav__cta')).toHaveText('Start free (beta)');
   await expect(page.locator('header#site-nav a.nav__cta')).toHaveAttribute('href', '/app/signup');
-  await expect(page.locator('.closing').getByRole('link', { name: 'Create a free account' })).toHaveAttribute('href', '/app/signup');
+  await expect(page.locator('.hero__cta a.btn-primary')).toHaveAttribute('href', '/app/signup');
+  await expect(page.locator('.cta a.btn-primary')).toHaveAttribute('href', '/app/signup');
   // The mirrored mistake: a returning user must not be sent to registration.
-  await expect(page.locator('header#site-nav a.nav__signin')).toHaveText('Sign in');
-  await expect(page.locator('header#site-nav a.nav__signin')).toHaveAttribute('href', '/app/login');
-
-  // Typing and submitting carries the sentence to registration.
-  await page.locator('form.composer textarea').fill('a lobby with a timer');
-  await Promise.all([page.waitForURL(/\/app\/signup\?start=/), page.locator('button.composer-send').click()]);
+  await expect(page.locator('header#site-nav .nav__signin a')).toHaveText('Sign in');
+  await expect(page.locator('header#site-nav .nav__signin a')).toHaveAttribute('href', '/app/login');
 });
 
-test('the install link goes where the shared constant says, and says so honestly', async ({ page }) => {
+test('the plugin line is honest: the plugin page, never a store page that cannot be installed from', async ({ page }) => {
   await page.goto('/');
-  const link = page.locator('.availability a');
+  const link = page.locator('.cta a[href="/docs/plugin"]');
   await expect(link).toBeVisible();
-  await expect(link).toHaveAttribute('href', STUDIO_PLUGIN_INSTALL_HREF);
-
-  if (STUDIO_PLUGIN_STORE_LIVE) {
-    expect(STUDIO_PLUGIN_INSTALL_HREF, 'the store is live, so the install href must be the store URL').toBe(STUDIO_PLUGIN_URL);
-    await expect(link).toHaveAttribute('target', '_blank');
-    const rel = (await link.getAttribute('rel')) ?? '';
-    expect(rel.split(/\s+/)).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
-    await expect(link).toContainText('Creator Store');
-  } else {
-    // Same-origin: a new tab here would be a lie about where the reader is going.
-    await expect(link).not.toHaveAttribute('target', '_blank');
+  // Same-origin: a new tab here would be a lie about where the reader is going.
+  await expect(link).not.toHaveAttribute('target', '_blank');
+  if (!STUDIO_PLUGIN_STORE_LIVE) {
+    const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
+    expect(hrefs.filter((h) => h.includes('create.roblox.com/store/asset')), 'the landing links straight to an undistributable store page').toEqual([]);
+    // Read by sentence: "Available now" is true of the Free PLAN (the price strip says it), so the phrases are banned only in a sentence that is
+    // about the plugin or the store (RESTATED 2026-10-05; the old page had no plan strip, so the phrase was banned page-wide).
+    const text = ((await page.locator('body').textContent()) ?? '').toLowerCase().replace(/\s+/g, ' ');
+    const aboutPlugin = text.split(/(?<=[.!?])\s+/).filter((t) => /plugin|creator store|studio plugin/.test(t));
+    expect(aboutPlugin.length, 'no sentence about the plugin was found, so this would pass over nothing').toBeGreaterThan(0);
+    for (const claim of ['available now', 'now on the creator store', 'available on the creator store', 'get it now', 'get studpilot studio']) {
+      for (const sentence of aboutPlugin) expect(sentence, `landing must not claim "${claim}" about the plugin`).not.toContain(claim);
+    }
   }
 });
 
-test('the landing never links straight to an undistributable store page', async ({ page }) => {
-  test.skip(STUDIO_PLUGIN_STORE_LIVE, 'the store is live; linking it is correct');
+test('How it works lists the eight steps, each labelled with what is true today', async ({ page }) => {
   await page.goto('/');
-  const hrefs = await page.locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
-  expect(hrefs.filter((h) => h.includes('create.roblox.com/store/asset'))).toEqual([]);
+  await page.locator('#how').getByRole('link', { name: /All eight steps/ }).click();
+  await expect(page).toHaveURL(/\/how-it-works\/?$/);
+  await expect(page.locator('.step')).toHaveCount(8);
+  await expect(page.locator('.step__status')).toHaveCount(8);
+  for (const label of await page.locator('.step__status').allTextContents()) expect(['Works today', 'Partly works today', 'Being built']).toContain(label.trim());
+  await expect(page.locator('main')).toContainText('Beta');
 });
 
-test('no copy on the landing promises an install path the store does not have', async ({ page }) => {
-  test.skip(STUDIO_PLUGIN_STORE_LIVE, 'the store is live; offering the install is the truth');
-  await page.goto('/');
-  const text = ((await page.locator('body').textContent()) ?? '').toLowerCase();
-  for (const claim of ['available now', 'now on the creator store', 'available on the creator store', 'get it now', 'get studpilot studio']) {
-    expect(text, `landing must not claim "${claim}"`).not.toContain(claim);
-  }
-});
-
-test('the Product link reaches the run section, and it holds three steps', async ({ page }) => {
-  await page.goto('/');
-  const href = await page.$$eval('header#site-nav a', (as) => as.find((a) => (a.textContent ?? '').trim() === 'Product')?.getAttribute('href') ?? null);
-  expect(href, 'the nav must offer "Product"').toBeTruthy();
-  const target = page.locator(`#${href!.split('#')[1]}`);
-  await expect(target).toHaveCount(1);
-  await expect(target.locator('.step')).toHaveCount(3);
-});
-
-test('is keyboard reachable and keeps a visible focus ring — the composer included', async ({ page }) => {
+test('is keyboard reachable and keeps a visible focus ring', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('Tab');
   await expect(page.locator('.skip-link')).toBeFocused();
 
-  // A link's own ring, on a link that is painted at every size.
-  await page.locator('.closing').getByRole('link', { name: 'Create a free account' }).focus();
-  const link = await page.evaluate(() => {
-    const s = getComputedStyle(document.activeElement as HTMLElement);
-    return { width: parseFloat(s.outlineWidth), style: s.outlineStyle, offset: parseFloat(s.outlineOffset) };
-  });
-  expect(link.style).not.toBe('none');
-  expect(link.width).toBeGreaterThanOrEqual(2);
-
-  // THE COMPOSER HAD NO VISIBLE RING (`outline: none` on the textarea won the cascade). The ring
-  // now lives on the composer: 2px of the accent at a 4px offset (docs/DESIGN-LOCK.md, rule 6).
-  await page.locator('form.composer textarea').focus();
-  const ring = await page.locator('form.composer').evaluate((el) => {
-    const s = getComputedStyle(el);
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    const probe = document.createElement('i');
-    probe.style.color = accent;
-    document.body.append(probe);
-    const want = getComputedStyle(probe).color;
-    probe.remove();
-    return { style: s.outlineStyle, width: parseFloat(s.outlineWidth), offset: parseFloat(s.outlineOffset), color: s.outlineColor, want };
-  });
-  expect(ring.style, 'the focused composer draws no ring').toBe('solid');
-  expect(ring.width).toBe(2);
-  expect(ring.offset).toBe(4);
-  expect(ring.color, 'the ring is not the accent').toBe(ring.want);
-
-  // Every stage tab is reachable and operable from the keyboard.
-  await page.locator('.stage-tab').first().focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.stage-tab').nth(1)).toBeFocused();
-  await expect(page.locator('.stage-tab').nth(1)).toHaveAttribute('aria-selected', 'true');
-});
-
-// ONE RING AT A TIME (2026-09-22). The composer used `:focus-within` and also turned its rim blue, so
-// a focused field drew two concentric rings, and tabbing on to Build left the composer's ring lit
-// around the button's own — two nested blue rings. The property: the composer rings only while its
-// field has focus, its rim does not change colour, and Build draws its own ring alone.
-test('one focus ring at a time: the field rings the composer, Build rings itself alone', async ({ page }) => {
-  await page.goto('/');
-  const composer = page.locator('form.composer');
-  const rim = () => composer.evaluate((el) => getComputedStyle(el).borderTopColor);
-  const resting = await rim();
-
-  await page.locator('form.composer textarea').focus();
-  expect(await rim(), 'focusing the field recolours the composer rim — a second ring').toBe(resting);
-
-  await page.keyboard.press('Tab');
-  await expect(page.locator('button.composer-send')).toBeFocused();
-  const outer = await composer.evaluate((el) => getComputedStyle(el).outlineStyle);
-  expect(outer, 'the composer keeps its ring while Build has focus: two nested rings').toBe('none');
-  const own = await page.locator('button.composer-send').evaluate((el) => {
-    const st = getComputedStyle(el);
-    return { style: st.outlineStyle, width: parseFloat(st.outlineWidth) };
-  });
-  expect(own.style, 'Build draws no ring of its own').not.toBe('none');
-  expect(own.width).toBeGreaterThanOrEqual(2);
-});
-
-// THE GHOST PLAYS ONCE (2026-09-22). It cycled forever with a blinking fake caret. Finishing its
-// animations jumps to where the one pass ends, which must be the first example, readable, and
-// nothing else — never an empty box.
-test('the composer ghost plays one pass and comes to rest on a readable example', async ({ page }) => {
-  await page.goto('/');
-  // RESTATED 2026-09-24: the owner's picks loop on purpose (the beams, while on screen), so the
-  // page-wide "nothing runs forever" is now atmosphere-on-every-route.spec.ts's contract. Here:
-  // nothing in the composer's field — the ghost, or a caret beside it — runs forever.
-  const endless = await page.evaluate(() =>
-    document.getAnimations().filter((a) => a.effect?.getTiming().iterations === Infinity
-      && ((a.effect as KeyframeEffect | null)?.target as Element | null)?.closest('.composer-field')).length);
-  expect(endless, 'an animation in the composer runs forever').toBe(0);
-  const ran = await page.evaluate(() => {
-    const mine = document.getAnimations().filter((a) =>
-      ((a.effect as KeyframeEffect | null)?.target as Element | null)?.classList.contains('composer-line'));
-    mine.forEach((a) => a.finish());
-    return mine.length;
-  });
-  expect(ran, 'the ghost does not animate at all, so this check would pass over nothing').toBeGreaterThan(0);
-  const opacity = await page.locator('.composer-line').evaluateAll((els) => els.map((el) => Number(getComputedStyle(el).opacity)));
-  expect(opacity.length).toBeGreaterThan(1);
-  expect(opacity[0], 'the pass ends on an empty field').toBe(1);
-  expect(opacity.slice(1), 'the pass ends with more than one sentence showing').toEqual(opacity.slice(1).map(() => 0));
+  // A link's own ring, on a link that is painted at every size, and a button's.
+  for (const sel of ['.cta a.btn-primary', '.hero__cta a.btn-primary', 'header#site-nav .brand']) {
+    await page.locator(sel).first().focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    const ring = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement;
+      const s = getComputedStyle(el);
+      const probe = document.createElement('i');
+      probe.style.color = 'var(--accent)';
+      document.body.append(probe);
+      const want = getComputedStyle(probe).color;
+      probe.remove();
+      return { style: s.outlineStyle, width: parseFloat(s.outlineWidth), color: s.outlineColor, want };
+    });
+    expect(ring.style, `${sel} draws no ring when focused`).toBe('solid');
+    expect(ring.width).toBeGreaterThanOrEqual(2);
+    expect(ring.color, `${sel}: the ring is not the accent`).toBe(ring.want);
+  }
 });
 
 test('reduced motion stops the landing and hides nothing', async ({ page }) => {
@@ -459,11 +345,8 @@ test('reduced motion stops the landing and hides nothing', async ({ page }) => {
     document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity).length,
   );
   expect(running, 'an endless animation still runs under reduced motion').toBe(0);
-  const hidden = await page.evaluate(() => [...document.querySelectorAll('[data-reveal]')].filter((el) => Number(getComputedStyle(el).opacity) < 1).length);
+  const hidden = await page.evaluate(() => [...document.querySelectorAll('main *')].filter((el) => (el.textContent ?? '').trim() && Number(getComputedStyle(el).opacity) === 0 && !el.closest('[hidden], .visually-hidden')).length);
   expect(hidden, 'content left invisible under reduced motion').toBe(0);
-  // The still state of the composer is a readable example, not an empty box.
-  const first = await page.locator('.composer-line').first().evaluate((el) => Number(getComputedStyle(el).opacity));
-  expect(first).toBe(1);
 });
 
 test('text enlargement scrolls rather than clipping', async ({ page }) => {
@@ -471,17 +354,17 @@ test('text enlargement scrolls rather than clipping', async ({ page }) => {
   await page.addStyleTag({ content: 'html { font-size: 32px !important; }' });
   const clipped = await page.evaluate(() => getComputedStyle(document.querySelector('main') as HTMLElement).overflow === 'hidden');
   expect(clipped, 'main must not clip its own content').toBe(false);
-  await expect(page.locator('button.composer-send')).toBeVisible();
+  await expect(page.locator('.hero__cta a.btn-primary')).toBeVisible();
 });
 
-for (const theme of ['dark', 'light'] as const) {
-  test(`every text element clears WCAG AA against what is actually behind it (${theme})`, async ({ page }) => {
+for (const route of AA_ROUTES) for (const theme of ['dark', 'light'] as const) {
+  test(`every text element of ${route} clears WCAG AA against what is actually behind it (${theme})`, async ({ page }) => {
     // Not a token audit: the only honest backdrop is the rendered pixel. apps/site/tests/
     // contrast.test.mjs checks the tokens; this checks what a browser paints, in both themes.
     await page.addInitScript((t) => { try { localStorage.setItem('apple-theme', t); } catch { /* private mode */ } }, theme);
-    await page.goto('/');
-    // Reveals finish (their failsafe is 2.6s) before boxes are measured.
-    await page.waitForTimeout(2900);
+    await page.goto(route);
+    // Nothing reveals on scroll any more; let the first frame paint.
+    await page.waitForTimeout(300);
     // ONE FRAME, HELD (RESTATED 2026-09-24 to the owner's picks, commit 3940085). The idea row now
     // slides 36px a second and the threads drift, so boxes measured here and pixels shot a second
     // later were two different pictures: a chip's stale box caught the next chip's hairline border
@@ -503,6 +386,9 @@ for (const theme of ['dark', 'light'] as const) {
         const s = getComputedStyle(el);
         if (s.visibility === 'hidden' || s.display === 'none' || s.opacity === '0') continue;
         if (el.closest('[aria-hidden="true"], [hidden]')) continue; // decorative ghosts and hidden stages
+        // Text inside a CLOSED disclosure (the pricing limits FAQ) is not painted, whatever box the engine reports for it (added 2026-10-05, when this
+        // audit was extended from the front page to /pricing): its summary is measured, its answer is measured once it is opened.
+        if (el.closest('details:not([open])') && !el.closest('summary')) continue;
         // THE GLYPHS' OWN LINE BOXES, NOT THE ELEMENT'S BOX. An element box reaches into a rounded
         // button's transparent corners and onto a panel's hairline border — pixels no glyph sits on —
         // and the worse-of-two-extremes verdict below then reports a white-on-black button as 1:1.
@@ -626,7 +512,7 @@ for (const theme of ['dark', 'light'] as const) {
 }
 
 test('supporting routes resolve', async ({ page }) => {
-  for (const route of ['/pricing', '/docs', '/docs/plugin', '/changelog', '/status', '/privacy', '/terms']) {
+  for (const route of ['/how-it-works', '/catalog', '/pricing', '/blog', '/blog/what-works-today', '/docs', '/docs/plugin', '/status', '/privacy', '/terms']) {
     const res = await page.request.get(route);
     expect(res.status(), `${route} should resolve`).toBe(200);
   }
@@ -678,12 +564,10 @@ test('/status reports what it measured, and "unknown" when nothing answered for 
 });
 
 test('no link anywhere on the site points at a section or route that does not exist', async ({ page }) => {
-  // Every internal link resolves to something real, INCLUDING anchors: a bare `#inside` on the
-  // landing and a `/#inside` from any other page both have to name an element on the page they
-  // claim. /showcase is resolved against its publisher (WORKER_SERVED), because this preview is an
-  // Astro build and /showcase is uploaded to the worker separately — fetching it here would report
-  // a 404 that says nothing about production, and skipping it silently would be a hole.
-  const routes = ['/', '/pricing', '/docs', '/docs/plugin', '/docs/connect', '/changelog', '/status', '/privacy', '/terms'];
+  // Every internal link resolves to something real, INCLUDING anchors: a bare `#x` and a `/page#x` both have to name an element on the page
+  // they claim. The routes are derived from the build, so a page added tomorrow is held tomorrow. The removed routes (/models, /proof,
+  // /showcase, /changelog) are redirects the build emits; a link to one still resolves, and the nav test names where they go.
+  const routes = routesFromBuild();
   const bad: string[] = [];
 
   for (const route of routes) {
@@ -694,11 +578,6 @@ test('no link anywhere on the site points at a section or route that does not ex
       if (path.startsWith('/app')) continue; // the React workspace, served by the worker
       if (path === '') {
         if (hash && (await page.locator(`#${hash}`).count()) !== 1) bad.push(`${route} -> ${href} (no #${hash} on ${route})`);
-        continue;
-      }
-      const clean = path.replace(/\/$/, '') || '/';
-      if (WORKER_SERVED.has(clean)) {
-        if (!existsSync(join(ROOT, WORKER_SERVED.get(clean)!))) bad.push(`${route} -> ${href} (its publisher ${WORKER_SERVED.get(clean)} is gone)`);
         continue;
       }
       const res = await page.request.get(path);
@@ -714,4 +593,29 @@ test('no link anywhere on the site points at a section or route that does not ex
   }
 
   expect(bad, `dead links:\n${bad.join('\n')}`).toEqual([]);
+});
+
+// THE STATUS PAGE DOES NOT SHIFT WHEN ITS FIRST CHECK ANSWERS (M2 site fix cycle 1). The answer is a longer sentence than "Reaching the StudPilot API.",
+// it wraps on a phone, and the known issues, the button and the orb moved down with it (measured in review: 0.163 at 390px, 0.025 at 1440; measured again
+// here with the answer delayed half a second so that it lands after the first paint: 0.018 at 390px, 0.002 at 1440, the same four sources). The text box
+// now keeps its height, so the property is the strict one: NOTHING moves (under 0.001), not "under the 0.1 line", which the old page also met here.
+test('/status does not shift when the first check answers: no layout shift at 390px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/health', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ status: 404, body: 'nothing here' });
+  });
+  await page.addInitScript(() => {
+    (window as unknown as { __cls: number }).__cls = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as unknown as Array<{ hadRecentInput: boolean; value: number }>) {
+        if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+  await page.goto('/status');
+  await page.waitForFunction(() => document.getElementById('status-headline')?.textContent !== 'Checking…');
+  await page.waitForTimeout(800);
+  const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+  expect(cls, `/status shifted by ${cls} when its first check answered`).toBeLessThan(0.001);
 });

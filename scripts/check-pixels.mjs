@@ -93,6 +93,13 @@ function routes() {
       if (entry.isDirectory()) { walk(join(d, entry.name), `${prefix}${entry.name}/`); continue; }
       if (!entry.name.endsWith('.astro')) continue;
       const name = entry.name.replace(/\.astro$/, '');
+      // A dynamic page (the blog's post page, `[...slug].astro`) is not a URL: its routes are the entries of the collection it renders.
+      // Added by the M2 site rebuild, which is when the site gained one.
+      if (/^\[\.\.\.\w+\]$/.test(name) && prefix === 'blog/') {
+        const posts = join(ROOT, 'apps', 'site', 'src', 'content', 'blog');
+        if (existsSync(posts)) for (const f of readdirSync(posts)) if (f.endsWith('.md')) out.push(`/blog/${f.replace(/\.md$/, '')}`);
+        continue;
+      }
       // 404 is reached by being wrong, not by being linked; capturing it needs a bad URL.
       if (name === '404') { out.push('/__not_found_probe__'); continue; }
       out.push(name === 'index' ? (prefix || '/') : `${prefix}${name}`);
@@ -114,17 +121,19 @@ const SCHEMES = ['light', 'dark'];
  * A literal here would agree with itself and with nothing else, and the failure it would cause is
  * the one this key exists to end: a sweep that sets a key nobody reads, renders the default theme
  * for both schemes, and reports eighty frames of which forty are duplicates. So a rename in the
- * layout turns this RED rather than quiet. Both layouts must agree, because a sweep that drives the
- * landing's switch and not the chrome routes' would be half-blind in a new way.
+ * layout turns this RED rather than quiet. Every layout that owns a document must agree, because a sweep
+ * that drives the landing's switch and not the chrome routes' would be half-blind in a new way. Since the
+ * M2 site rebuild (2026-10-05) there is one such layout, Base.astro: the front page lost its own
+ * (Landing.astro), and the list below is still a list so a second one added tomorrow must be named here.
  */
 const THEME_KEY = (() => {
-  const layouts = ['Landing.astro', 'Base.astro'].map((f) => join(ROOT, 'apps', 'site', 'src', 'layouts', f));
+  const layouts = ['Base.astro'].map((f) => join(ROOT, 'apps', 'site', 'src', 'layouts', f));
   const keys = layouts.map((p) => {
     const src = existsSync(p) ? readFileSync(p, 'utf8') : '';
     return (/localStorage\.getItem\(\s*['"]([^'"]+)['"]\s*\)/.exec(src) ?? [])[1] ?? null;
   });
   if (keys.some((k) => k === null) || new Set(keys).size !== 1) {
-    console.error('check-pixels: cannot read one agreed theme key out of Landing.astro and Base.astro');
+    console.error('check-pixels: cannot read one agreed theme key out of Base.astro');
     console.error(`  found ${JSON.stringify(keys)} — the light half of every sweep would silently photograph the dark page`);
     process.exit(1);
   }

@@ -1,7 +1,7 @@
 {
-  "name": "StudPilot — AI builder for Roblox",
+  "name": "StudPilot: an AI co-pilot for Roblox Studio (beta)",
   "short_name": "StudPilot",
-  "description": "Describe a Roblox game. StudPilot builds it — the parts, the scripts, the systems — straight into the place you have open in Studio.",
+  "description": "StudPilot is an AI co-pilot for Roblox Studio, in beta. Ask for any piece of your game. It looks pro, it works, and we never claim what we didn't prove: that is the bar we are building to. Free while in beta.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

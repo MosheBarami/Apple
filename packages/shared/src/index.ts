@@ -2170,6 +2170,24 @@ export const STUDIO_PLUGIN_STORE_LIVE: boolean = false;
  */
 export const CREDIT_PURCHASE_LIVE: boolean = false;
 
+/**
+ * Can ANYONE sign in with Roblox today? No: only a handful of people can.
+ *
+ * The Roblox OAuth app is in Roblox's private mode, which allows up to 10 unique users until Roblox
+ * reviews the app (planning/roblox-oauth-setup.md, "Facts and limits"). The review needs a demo video
+ * and is owner action X9, scheduled for M7. Until then the sign-in works for the owner and a few
+ * testers, and the app draws the button for every visitor once the worker reports it configured, so
+ * the 11th person reaches a failed Roblox consent. Every page that offers Sign in with Roblox says
+ * "in a limited test until Roblox approves the app" and that email sign-in works for everyone; the
+ * site derives those sentences from this flag (apps/site/src/lib/roblox-signin.ts), and
+ * apps/site/tests/roblox-signin-limit.test.mjs fails if a page offers it without the limit while
+ * this is false.
+ *
+ * Flip it to true only when Roblox has approved the app (X9 done). Typed `boolean`, not the literal
+ * `false`, so a branch on it does not look unreachable.
+ */
+export const ROBLOX_OAUTH_REVIEWED: boolean = false;
+
 
 /**
  * WHY the store is not live — the fact every "unavailable" surface was missing.
@@ -2293,6 +2311,18 @@ export const PLAN_TABLE = {
   studio: { name: 'Max', priceUsdMonthly: 24.99, creditsPerDay: 30, creditsPerMonth: 300, approxBuilds: 200, listed: true },
   enterprise: { name: 'Enterprise', priceUsdMonthly: null, creditsPerDay: 30, creditsPerMonth: 300, approxBuilds: 200, listed: false },
 } as const;
+
+/**
+ * Has the owner decided the PAID plans' per-day figures (PLAN_TABLE `creditsPerDay` for builder and studio: 20 and 30)? No.
+ *
+ * The decided pricing doc fixes the monthly pools only (planning/pricing-2026-10-04.md, the plans table). The two daily figures are
+ * an assumption written down so QuotaDO has a number to enforce (planning/proof/M2/DECISIONS.md section 5: "Pro 20 and Max 30 credits a
+ * day, which are an assumption"; planning/proof/OWNER-DECISIONS.md has no answer). A page may print a paid plan's per-day figure as a plan
+ * fact only when this is true; until then the marketing site says "Not decided yet" where a paid plan's daily figure would be, and prints
+ * no "full days" arithmetic for a paid plan (apps/site/tests/undecided-figures.test.mjs). Free's 5 a day is decided and always printed.
+ * Flip it when the owner confirms or replaces the two figures.
+ */
+export const PAID_DAILY_CAPS_DECIDED: boolean = false;
 
 /** The top-up pack: credits that do not expire, bought once. Checkout for it is off (CREDIT_PURCHASE_LIVE). */
 export const TOPUP_PACK = { priceUsd: 4.99, credits: 50, approxBuilds: 35 } as const;
@@ -2464,15 +2494,26 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
 /**
  * The one address support reaches a human at.
  *
- * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
- * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
- * anywhere behind the login — used hello@studpilot.build. A customer cannot tell which of those is
- * read, and writing to the wrong one looks, from their side, exactly like being ignored.
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used one Gmail
+ * address; the plan ladder in the signed-in app, the only support-ish link anywhere behind the
+ * login, used another (hello@studpilot.build). A customer cannot tell which of those is read, and
+ * writing to the wrong one looks, from their side, exactly like being ignored.
+ *
+ * Since 2026-10-05 (owner decision D-13) it is support@studpilot.app, which Cloudflare Email Routing
+ * forwards to the owner's own inbox.
  *
  * Declared here so the two halves of the product cannot drift again, and asserted across both
- * trees by tests/support-expectations.test.mjs.
+ * trees by tests/support-expectations.test.mjs (which also reads the three legal pages).
  */
-export const SUPPORT_EMAIL = 'apple.labs.app@gmail.com';
+export const SUPPORT_EMAIL = 'support@studpilot.app';
+
+/**
+ * The operator the legal pages name: who "we" is in the privacy policy and the terms, and who the
+ * footer byline names. Owner decision D-13 (2026-10-05): StudPilot. Before any money is charged an
+ * adult or a company must become the named operator (planning/proof/BLOCKED.md, N9), and this is the
+ * one value to change then; apps/site/tests/one-operator.test.mjs reads it.
+ */
+export const OPERATOR_NAME = 'StudPilot';
 
 /** What a plan can expect when it writes in. */
 export interface PlanSupport {

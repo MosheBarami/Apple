@@ -155,7 +155,14 @@ if (ledgerOk) {
 /* -------------------------------------------------------------- the website --- */
 
 rule();
-if (!existsSync(PAGE_PATH)) {
+// THE CHANGELOG PAGE WAS RETIRED BY THE M2 REBUILD (handoff 2.2, 2026-10-05): /changelog is an Astro redirect to /blog now, so there is
+// no page to check the ledger against. The retirement is read from the site's own config, not assumed: a tree whose config does not
+// redirect /changelog still fails below when the page is missing. Release notes stay in docs/releases (checked above).
+const CONFIG_PATH = join(ROOT, 'apps', 'site', 'astro.config.mjs');
+const pageRetired = existsSync(CONFIG_PATH) && /['"]\/changelog['"]\s*:\s*['"]\/blog['"]/.test(readFileSync(CONFIG_PATH, 'utf8'));
+if (!existsSync(PAGE_PATH) && pageRetired) {
+  console.log('the changelog page is retired (/changelog redirects to /blog): the ledger is checked against docs/releases only');
+} else if (!existsSync(PAGE_PATH)) {
   fail('the published changelog page is missing', 'apps/site/src/pages/changelog.astro', 'the ledger is checked against what the product tells the public');
 } else {
   const { missingFromPage, missingFromLedger } = ledgerPageAgreement(releases, readFileSync(PAGE_PATH, 'utf8'));

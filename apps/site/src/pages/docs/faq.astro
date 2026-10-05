@@ -1,94 +1,82 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import Accordion from '../../components/picks-docs/Accordion.astro';
+import { PLAN_TABLE, SUPPORT_EMAIL } from '@studpilot/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
+
+const free = PLAN_TABLE.free;
 
 const general = [
   {
     q: 'Where do I get the StudPilot plugin?',
     a: STUDIO_PLUGIN_STORE_LIVE
-      ? `<p>From the Roblox Creator Store, and only from there. The plugin is called <strong>StudPilot Studio</strong> and it is free — see <a href="/docs/plugin">Install the plugin</a>. Roblox splits this into two steps: you get the plugin on the web, then install it from inside Studio's Toolbox. There is no one-click install from a web page; Roblox provides no such hand-off.</p>`
-      // The closed-store answer takes its link from the shared href. That derivation also keeps it
-      // out of the docs search index (src/data/docs-index.ts skips templates), so a search made
-      // while the store is open cannot surface the sentence that says it is shut.
-      : `<p>From the Roblox Creator Store, and only from there. Public Studio installation is unavailable right now — <a href="${STUDIO_PLUGIN_INSTALL_HREF}">Plugin availability</a> says what that means. Roblox splits installation into two steps: you get the plugin on the web, then install it from inside Studio's Toolbox.</p>`,
+      ? `<p>From the Roblox Creator Store, and only from there. The plugin is called <strong>StudPilot Studio</strong> and it is free: <a href="/docs/plugin">The Studio plugin</a> says how to get it and install it.</p>`
+      // The closed-store answer takes its link from the shared href. That derivation also keeps it out of the docs search index
+      // (src/data/docs-index.ts skips templates), so a search made while the store is open cannot surface the sentence that says it is shut.
+      : `<p>Public Studio installation is unavailable right now, so new customers cannot get it yet. You can sign up and use the chat in the meantime. <a href="${STUDIO_PLUGIN_INSTALL_HREF}">Plugin availability</a> says what that means.</p>`,
   },
   {
-    q: 'There used to be a .rbxm download. Where did it go?',
-    a: `<p>Retired. A file you drop into a folder by hand never updates, is not signed by anything, and gets no help from Studio's plugin management window. The Creator Store install is the supported path. Building the plugin yourself is still possible and documented under <a href="/docs/build-from-source">Build the plugin from source</a>, but that is a development path, not an install path.</p>`,
+    q: 'Is StudPilot free?',
+    a: `<p>Yes, while it is in beta. The Free plan gives you ${free.creditsPerDay} Credits a day, up to ${free.creditsPerMonth} a month, with no card. Paid plans start later. See <a href="/pricing">Pricing</a> and <a href="/docs/credits-and-limits">Credits &amp; limits</a>.</p>`,
   },
   {
     q: 'Do I need to know how to script?',
-    a: `<p>No, but it helps. StudPilot writes the Luau for you and explains anything it wrote in plain language (just ask it to explain what it wrote). Creators who can read a little code iterate faster, and plenty of people have learned scripting <em>from</em> StudPilot's explanations of its own work.</p>`,
+    a: `<p>No. StudPilot writes the Luau for you, and you can ask it to explain anything it wrote in plain words.</p>`,
   },
   {
-    q: 'Is there a community where I can get help?',
-    a: `<p>Yes: the <a href="/discord">StudPilot Discord server</a>. Ask in <strong>#help</strong>, report bugs in <strong>#bug-reports</strong>, share your games in <strong>#showcase</strong>, and follow <strong>#changelog</strong> for every release. You can also link your account there and build with <code>/build</code>.</p>`,
-  },
-  {
-    q: 'Which Roblox Studio versions are supported?',
-    a: `<p>Current production Roblox Studio on Windows and macOS. The plugin uses only stable, documented Studio APIs, so ordinary Studio updates don't break it. If Roblox ships a breaking change, the <a href="/changelog">changelog</a> and the plugin panel will both say so.</p>`,
+    q: 'How old do I need to be?',
+    a: `<p>StudPilot is for people aged 13 and older.</p>`,
   },
   {
     q: 'Can StudPilot publish my game?',
-    a: `<p>No, by design. StudPilot builds inside your open place; publishing to Roblox stays a human decision made by you, in Studio, with your own account. StudPilot has no publishing permission over your account and does not ask for one.</p>
-      <p>There is one credential you can give it, and only if you want to: an Open Cloud API key, connected under Settings &rarr; Connections, which lets StudPilot upload images and audio it generates into <em>your</em> Roblox account instead of ours. It is stored encrypted, never shown again, used only for the permissions you ticked, and you can disconnect it at any time. <a href="/docs/troubleshooting#roblox-key-refused">What to do if Roblox refuses it</a>.</p>`,
+    a: `<p>No. The plugin says it cannot publish. StudPilot builds inside the place you have open, and publishing to Roblox stays something you do yourself, in Studio, with your own account.</p>`,
   },
   {
-    q: 'Does StudPilot work with team projects / Team Create?',
-    a: `<p>StudPilot works on the place open in the paired Studio window. In Team Create sessions its edits appear to teammates like any collaborator's edits. One pairing belongs to one Studio window; teammates who want their own StudPilot chats should use their own accounts and projects.</p>`,
-  },
-  {
-    // This comment used to say a refund "was not true and could not become true". It became true on
-    // 2026-09-20: QuotaDO gained /refund and SessionDO calls it. The answer below still does not
-    // promise one, and that is correct rather than stale — closing Studio mid-build pauses the run,
-    // which is not a failure that left you nothing, so it is not the case the refund covers. Work
-    // that never ran is still never charged, which remains the reason this answer holds.
+    // This comment used to say a refund "was not true and could not become true". It became true on 2026-09-20: QuotaDO gained /refund and
+    // SessionDO calls it. The answer below still does not promise one, and that is correct rather than stale: closing Studio mid-build pauses
+    // the run, which is not a failure that left you nothing, so it is not the case the refund covers. Work that never ran is still never
+    // charged, which remains the reason this answer holds.
     q: 'What happens if I close Studio mid-build?',
-    a: `<p>The agent notices it lost its hands and pauses the run with a clear message. Work that never ran is never charged — Credits settle against the compute a call actually reported, and a call that did not happen reports nothing. Reopen the place, reconnect, and ask StudPilot to continue — the plan and history are still in the project.</p>`,
+    a: `<p>The agent notices it lost its hands and pauses the run with a clear message. Work that never ran is never charged: Credits settle against the compute a call actually reported, and a call that did not happen reports nothing. Reopen the place, pair again with a new code, and ask StudPilot to continue. The plan and history are still in the project.</p>`,
   },
   {
     q: 'StudPilot made a change I hate. Now what?',
-    // "EACH STUDPILOT BATCH IS ONE NATIVE UNDO STEP" WAS THE WRONG UNIT, and it made Ctrl+Z sound like
-    // the whole-run exit. The plugin opens one ChangeHistoryService recording per OPERATION
-    // (apps/studpilot-plugin/src/Commands.luau) and the bridge executes a server batch one operation at
-    // a time (apps/studpilot-plugin/src/Bridge.luau), so a batch of six writes is six undo steps. The
-    // checkpoint is the single-action exit; Ctrl+Z is the fine-grained one.
-    a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio to take back the last change (one undo step per change StudPilot made, so a multi-step run needs one press per step); restore the automatic checkpoint taken before the run, which undoes the whole run in one action; or just tell StudPilot what you hate — it can usually fix a wrong turn faster than a rollback.</p>`,
+    // "EACH STUDPILOT BATCH IS ONE NATIVE UNDO STEP" WAS THE WRONG UNIT, and it made Ctrl+Z sound like the whole-run exit. The plugin opens one
+    // ChangeHistoryService recording per OPERATION (apps/studpilot-plugin/src/Commands.luau) and the bridge executes a server batch one operation at a
+    // time (apps/studpilot-plugin/src/Bridge.luau), so a batch of six writes is six undo steps. The checkpoint is the single-action exit; Ctrl+Z is the
+    // fine-grained one.
+    a: `<p>Three exits, in order of size: press <kbd>Ctrl+Z</kbd> in Studio to take back the last change (one undo step per change StudPilot made, so a multi-step run needs one press per step); restore the checkpoint taken before the run, which undoes the whole run in one action; or just tell StudPilot what you hate. It can usually fix a wrong turn faster than a rollback.</p>`,
   },
   {
     //[[ THIS ANSWER SAID "Not yet", AND THE FEATURE WAS ALREADY IN THE READER'S OWN ACCOUNT.
     //
-    //   The HTTP API shipped the day after this answer was last edited, and nobody came back to it.
-    //   `GET /v1` answers 401 with "Provide an API key as `Authorization: Bearer gk_live_…`" on the
-    //   live worker — a gated surface, not an absent one — and Settings → Connections → API keys
-    //   mints, lists, rotates and revokes keys behind nothing but a signed-in session: no plan gate,
-    //   no allowlist. So the docs denied a capability the product was handing out, and the reader
-    //   either never found it or found it and stopped believing the manual.
+    //   The HTTP API shipped the day after this answer was last edited, and nobody came back to it. `GET /v1` answers 401 with "Provide an API key
+    //   as `Authorization: Bearer gk_live_…`" on the live worker (a gated surface, not an absent one), and Settings → Connections → API keys
+    //   mints, lists, rotates and revokes keys behind nothing but a signed-in session: no plan gate, no allowlist. So the docs denied a capability
+    //   the product was handing out, and the reader either never found it or found it and stopped believing the manual.
     //
-    //   NO LINK TO A DOCS PAGE, BECAUSE THERE IS NO DOCS PAGE. The API describes itself at GET /v1
-    //   and GET /v1/openapi.json, both of which need only a valid key, and that is what this points
-    //   at. Inventing an /docs/api href here would trade one false sentence for a dead link.
+    //   NO LINK TO A DOCS PAGE, BECAUSE THERE IS NO DOCS PAGE. The API describes itself at GET /v1 and GET /v1/openapi.json, both of which need only a
+    //   valid key, and that is what this points at. Inventing an /docs/api href here would trade one false sentence for a dead link.
     //
-    //   AND NO SDK. The panel in the app names one; `packages/sdk` is `"private": true` and is
-    //   published nowhere, so a customer cannot install what that word promises. Naming it here
-    //   would spread the same defect onto a second surface.
+    //   AND NO SDK. The panel in the app names one; `packages/sdk` is `"private": true` and is published nowhere, so a customer cannot install what
+    //   that word promises. Naming it here would spread the same defect onto a second surface.
     q: 'Is there an API or a way to script StudPilot itself?',
     a: `<p>Yes. There is an HTTP API at <code>/v1</code> on the same host as the app, with scoped keys: chat completions, your projects and their transcripts, starting an agent run, a server-sent event stream of run state, and a Model Context Protocol endpoint for MCP clients.</p>
-      <p>Mint a key under <strong>Settings &rarr; Connections &rarr; API keys</strong> in the app — you see the secret once, and you can rotate or revoke it from the same panel. The surface documents itself: <code>GET /v1</code> lists every route and the scope it needs, and <code>GET /v1/openapi.json</code> is the machine-readable description. Both accept any valid key. There is no separate docs page for it yet, and no published client library — the API is the thing that exists.</p>`,
+      <p>Mint a key under <strong>Settings &rarr; Connections &rarr; API keys</strong> in the app. You see the secret once, and you can rotate or revoke it from the same panel. The surface documents itself: <code>GET /v1</code> lists every route and the scope it needs, and <code>GET /v1/openapi.json</code> is the machine-readable description. Both accept any valid key. There is no separate docs page for it yet, and no published client library.</p>`,
   },
   {
-    q: 'How do I report a bug or ask for a feature?',
-    a: `<p>Email <a href="mailto:apple.labs.app@gmail.com">apple.labs.app@gmail.com</a>. Include the project name and roughly when it happened; screenshots welcome. Feedback lands directly with the people who build the product — there is no ticket abyss.</p>`,
+    q: 'Is there a community, and how do I report a bug?',
+    a: `<p>There is a <a href="/discord">StudPilot Discord server</a>. To report a bug or ask for a feature, email <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> with the project name and roughly when it happened. Screenshots help.</p>`,
   },
 ];
 ---
 
 <DocsLayout
-  title="FAQ — StudPilot Docs"
-  description="Quick answers about getting the plugin, scripting knowledge, Studio versions, publishing, Team Create, interrupted builds, undo and rollback, and reporting bugs."
+  title="FAQ | StudPilot"
+  description="Quick answers about the plugin, the free beta, scripting, publishing, interrupted builds, undo and rollback, the API and reporting bugs."
   heading="Frequently asked questions"
+  order={6}
+  summary="Quick answers to the questions that come up most."
 >
   <p>
     Answers to the questions that reach our inbox most. Pricing and quota questions live on the
@@ -99,8 +87,6 @@ const general = [
   <div class="faq-block">
     <Accordion items={general} />
   </div>
-
-  <DocsKit />
 </DocsLayout>
 
 <style>

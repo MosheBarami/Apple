@@ -67,6 +67,31 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['roblox', 'sign in', 'log in', 'login', 'disconnect', 'unlink', 'revoke', 'username', 'oauth', 'connect'],
   },
   {
+    id: 'google-signin',
+    title: 'Sign in with Google',
+    section: 'Connections',
+    keywords: ['google', 'sign in', 'log in', 'login', 'connect', 'disconnect', 'unlink', 'link', 'gmail', 'account'],
+  },
+  {
+    id: 'discord-signin',
+    title: 'Sign in with Discord',
+    section: 'Connections',
+    // Not the Discord bot link (the row named "Discord"): this is how a person signs in, and the words say so.
+    keywords: ['discord', 'sign in', 'log in', 'login', 'connect', 'disconnect', 'unlink', 'link', 'account'],
+  },
+  {
+    id: 'invite-link',
+    title: 'Invite link',
+    section: 'Share',
+    keywords: ['invite', 'friend', 'friends', 'share', 'link', 'sign up', 'tell someone'],
+  },
+  {
+    id: 'made-with-badge',
+    title: 'Made with StudPilot badge',
+    section: 'Share',
+    keywords: ['badge', 'made with', 'description', 'game description', 'share', 'attribution', 'text'],
+  },
+  {
     id: 'roblox-key',
     title: 'Your Roblox account',
     section: 'Connections',
@@ -180,6 +205,16 @@ export function matchSettings(query: unknown, fields: readonly SettingField[] = 
     }
   }
   return [...best.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+}
+
+/**
+ * The line under the search box. `total` is the number of settings THIS PAGE HAS, not the registry's: a sign-in provider that is off has no
+ * row, so counting it ("Showing 4 of 33" on a page of 31) names settings that cannot be found.
+ */
+export function foundLine(query: string, shown: number, total: number): string {
+  return shown === 0
+    ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
+    : `Showing ${shown} of ${total} settings. Clear the box to see them all.`;
 }
 
 /** Is this control visible under the current query? What each row's `hidden` is bound to. */

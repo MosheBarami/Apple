@@ -50,8 +50,9 @@ test('nothing the build emits hides the pointer or carries the retired cursor ma
 
 test('the built controls still ask for a pointer', () => {
   const css = builtFiles().filter(([f]) => f.endsWith('.css')).map(([, b]) => b).join('\n');
-  // The shared button primitive and the landing's composer submit are the two controls every route
-  // and the front page render; both must keep the pointer that says "this can be pressed".
+  // The shared button primitive and the header's icon buttons (the theme toggle and the menu button) are the controls every route
+  // renders; both must keep the pointer that says "this can be pressed". RESTATED 2026-10-05 (M2 rebuild): the second was the
+  // landing's composer submit (`.composer-send`), deleted with the composer.
   assert.match(css, /\.btn\{[^}]*cursor:pointer/, 'the shared .btn lost its pointer in the build');
-  assert.match(css, /\.composer-send\{[^}]*cursor:pointer/, 'the landing composer submit lost its pointer in the build');
+  assert.match(css, /\.iconbtn(?:\[[^\]]*\])?\{[^}]*cursor:pointer/, 'the header icon buttons lost their pointer in the build');
 });

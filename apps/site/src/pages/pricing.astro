@@ -22,6 +22,7 @@ import {
   CREDIT_PURCHASE_LIVE as SHARED_CREDIT_PURCHASE_LIVE } from '@studpilot/shared';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 import { DAILY_NEURON_CEILING } from '../../../worker/src/pricing';
+import { NOT_DECIDED, dailyCapDecided } from '../lib/plan-facts';
 
 /*
  * THE LIMIT THIS PAGE NEVER MENTIONED, ON THE PAGE WHERE PEOPLE DECIDE.
@@ -45,7 +46,7 @@ const serviceCreditsPerDay = Math.floor(DAILY_NEURON_CEILING / (NEURONS_PER_CRED
  *
  * STUDIO_PLUGIN_STORE_LIVE says whether the Creator Store install path works. While it does, the
  * shared plugin row is `true` for every plan and prints once, as a universal bullet (see
- * UNIVERSAL_BULLETS below) — so there is no second Studio line to disagree with it. While it does not,
+ * the comparison table's `plugin` row) — so there is no second Studio line to disagree with it. While it does not,
  * this bullet says so on every card, in the one sentence the rest of the site uses.
  */
 const studioBullet = STUDIO_PLUGIN_STORE_LIVE ? null : 'Roblox Studio plugin · public installation unavailable';
@@ -67,7 +68,6 @@ const studioBullet = STUDIO_PLUGIN_STORE_LIVE ? null : 'Roblox Studio plugin · 
 //   apps/site/tests/pricing-availability.test.mjs holds the page to "no checkout link".
 //]]
 const free = PLAN_TABLE.free;
-const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
 
 /*
  * THE CARDS' SHARED FLOOR IS DERIVED, WHICH IS ALSO WHAT CLOSES THE HOLE IN THEM.
@@ -93,7 +93,6 @@ const supportBullet = (id: PlanId) =>
 /* Every run has the same step ceiling on every plan; it is one bullet on every card rather than a
    Free-only line that made the paid cards look as if they lacked it. */
 const stepsBullet = 'Up to 1000 steps a message';
-const UNIVERSAL_BULLETS = PLAN_FEATURES.filter((f) => LISTED_PLAN_IDS.every((id) => f.values[id] === true)).map((f) => f.label);
 
 /* ONE ENGINE ON EVERY PLAN (V3 gate G01). Free, Pro and Max are plans and differ only in their
    allowance; every one of them uses StudPilot, the only engine there is. */
@@ -141,8 +140,17 @@ const engineName = PRODUCT_MODEL_INFO.apple.name;
 // which went on offering "Add credits" at the moment a customer's allowance ran out. One fact, one
 // home: packages/shared/src/index.ts.
 const CREDIT_PURCHASE_LIVE = SHARED_CREDIT_PURCHASE_LIVE;
+/* A PAID PLAN'S PER-DAY FIGURE IS NOT THE OWNER'S: the decided pricing doc fixes the monthly pools only (src/lib/plan-facts.ts). The row stays, because a
+   capability missing from a list is indistinguishable from one nobody mentioned, and a paid cell says "Not decided yet" in place of the assumed 20 or 30. */
 const planFeatures = PLAN_FEATURES.map((f) =>
-  f.id === 'credits' && !CREDIT_PURCHASE_LIVE
+  f.id === 'credits-per-day'
+    ? {
+        ...f,
+        values: Object.fromEntries(
+          LISTED_PLAN_IDS.map((id) => [id, dailyCapDecided(id) ? f.values[id] : NOT_DECIDED]),
+        ) as Record<string, string>,
+      }
+    : f.id === 'credits' && !CREDIT_PURCHASE_LIVE
     ? {
         ...f,
         /* The shared label says "credits" in lower case; the unit is a proper noun on this site. */
@@ -153,29 +161,15 @@ const planFeatures = PLAN_FEATURES.map((f) =>
     : f,
 );
 import Base from '../layouts/Base.astro';
-import Accordion from '../components/picks-docs/Accordion.astro';
-import BeamBorder from '../components/picks-docs/BeamBorder.astro';
-import BuildEstimator from '../components/picks-docs/BuildEstimator.astro';
-import PriceSwitch from '../components/picks-docs/PriceSwitch.astro';
-import ShinyButton from '../components/picks-docs/ShinyButton.astro';
-import Spotlight from '../components/picks-docs/Spotlight.astro';
+import '../styles/site.css';
 
-/* A PLAN'S PRICE PER BUILD, for the "a month / a build" switch above the cards. Derived from the
-   same two numbers the card already prints — the monthly price and buildsPerMonth — so the switch
-   cannot show a figure the card does not imply. Rounded to the cent. */
+/* A PLAN'S PRICE PER TYPICAL BUILD: the monthly price over the builds that month buys, both from the shared config, rounded to the
+   cent. It used to sit behind the "a month / a build" switch (a picked component, deleted by the M2 rebuild); the figure itself is
+   kept, printed on each paid card. tests/pricing-config.test.mjs and tests/picks-pricing-docs.test.mjs hold it to the config. */
 const perBuild = (id: PlanId) =>
   formatMoney(Math.round(((PLAN_COPY[id].priceUsdMonthly ?? 0) / Math.max(1, buildsPerMonth(id))) * 100) / 100, {
     currency: PRICE_CURRENCY,
   });
-
-/* The build estimator's plans, in order, from the same configuration as the cards. No paid plan can
-   be bought yet, and the estimator says so. */
-const estimatorPlans = LISTED_PLAN_IDS.map((id) => ({
-  name: PLAN_COPY[id].name,
-  builds: buildsPerMonth(id),
-  planned: id !== 'free',
-  contact: false,
-}));
 
 /*
  * WHAT BUILDS COST, READ FROM THE PRICING CONFIG (BUILD_COSTS in packages/shared).
@@ -189,19 +183,32 @@ const estimatorPlans = LISTED_PLAN_IDS.map((id) => ({
 const dollars = (credits: number) => formatMoney(Math.round(credits * CREDIT_USD * 100) / 100, { currency: PRICE_CURRENCY });
 const range = (low: number, high: number, fmt: (n: number) => string) =>
   low === high ? fmt(low) : `${fmt(low)}\u2013${fmt(high)}`;
+/* Each row's bar is drawn to the top of its range over the largest top of any row (a width, not a figure): it shows how much more a big
+   build costs than a small one and says nothing the two numbers beside it do not. */
+const maxCredits = Math.max(...BUILD_COSTS.map((b) => b.creditsHigh));
 const buildCostRows = BUILD_COSTS.map((b) => ({
+  id: b.id,
   label: b.label,
   credits: range(b.creditsLow, b.creditsHigh, formatCredits),
   dollars: range(b.creditsLow, b.creditsHigh, dollars),
   estimated: b.estimated,
+  width: Math.max(4, Math.round((b.creditsHigh / maxCredits) * 100)),
 }));
 
 /* Each plan whose monthly ceiling arrives before the month does, as "Free: 5 a day against 30 a month
-   is 6 full days". Derived per plan, because the ceiling bites on every listed plan. */
-const ceilingLines = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id)).map(
+   is 6 full days". Derived per plan, and only for a plan whose per-day figure is decided: a paid plan's "full days" would be arithmetic on a number
+   nobody decided (src/lib/plan-facts.ts). */
+const ceilingLines = LISTED_PLAN_IDS.filter((id) => dailyCapDecided(id) && monthlyCeilingBitesFirst(id)).map(
   (id) =>
     `${PLAN_COPY[id].name}: ${PLAN_TABLE[id].creditsPerDay} a day against ${PLAN_TABLE[id].creditsPerMonth} a month is <strong>${fullRateDays(id)} full days</strong>`,
 );
+
+/* THE SHARED LIMIT IS ONE OF THE LIMITS, so it is written as one: the same shape as the others, asked in the page's own words. (It used to be a
+   note under the plan cards.) The figures are the worker's own ceiling, derived above. */
+const sharedLimit = {
+  q: 'A second, shared limit',
+  a: `<p>Every plan draws on one shared pool of about ${serviceCreditsPerDay.toLocaleString()} Credits of building a day across the whole service, which is roughly ${Math.floor(serviceCreditsPerDay / free.creditsPerDay)} accounts building flat out. When that day's pool is gone, a run stops with “StudPilot has reached today's shared building capacity” even though your own balance still shows Credits. It resets at midnight UTC, the same instant for everyone, and the steps that already finished stay done and stay paid for. <a href="/docs/credits-and-limits">How the two limits differ</a>.</p>`,
+};
 
 const limitFaq = [
   {
@@ -251,222 +258,88 @@ const limitFaq = [
     a: `<p>Not yet. Paid checkout is not open. ${PLAN_COPY.builder.name} and ${PLAN_COPY.studio.name} are the planned subscription tiers, and charging starts later. The Plan &amp; billing tab of your account’s Usage and Credits page shows live purchase availability; no subscription starts without a confirmed checkout.</p>`,
   },
 ];
+// The limits, in the order a reader meets them: the ones that are theirs, then the one that is shared.
+const limits = [...limitFaq, sharedLimit];
 ---
 
 <Base
-  title="Pricing — StudPilot"
-  description={`Plans and Credits for StudPilot. Free includes ${free.creditsPerDay} Credits a day and ${free.creditsPerMonth} a month, and every plan uses ${engineName}. Paid checkout is not open yet.`}
+  title="Pricing: free while in beta | StudPilot"
+  description={`Plans and Credits for StudPilot, in beta. Free includes ${free.creditsPerDay} Credits a day and ${free.creditsPerMonth} a month, and every plan uses ${engineName}. Paid checkout is not open yet.`}
 >
   <!-- ==================================================== head -->
-  <section class="section phead" aria-labelledby="pricing-title">
+  <section class="page-head" aria-labelledby="pricing-title">
     <div class="wrap">
-      <p class="eyebrow">Pricing</p>
+      <p class="kicker"><span class="badge">Beta</span> Pricing</p>
       {/* THE HEADLINE AGREES WITH THE BUTTONS UNDER IT. It is the owner's line, word for word
           (planning/pricing-2026-10-04.md): paid plans have no way to be bought, and say so. */}
       <h1 id="pricing-title" class="carved">Free while in beta. Paid plans start later</h1>
       <p class="lede lede-wide">
-        {planNames} are plans. Every plan uses {engineName}; they differ only in how many Credits they
-        include. Paid checkout is not open yet; the paid plans below describe the planned offering.
+        {planNames} are plans. Every plan uses {engineName}; they differ in how many Credits they
+        include and in who is answered first when you write to support. Paid checkout is not open yet; the paid plans below describe the planned offering.
       </p>
-
-      <div class="plans">
-        <PriceSwitch creditsPerBuild={TYPICAL_BUILD_CREDITS} />
-        <div class="plan-rail">
-        <article
-          class="plan slab slab--seam is-promoted"
-          aria-labelledby="plan-free"
-          data-reveal
-          data-spotlight
-        >
-          <BeamBorder />
-          <p class="plan__flag">Available now</p>
-          <header class="plan__head">
-            <h2 id="plan-free">Free</h2>
-            <p class="plan__price">
-              <span data-price-roll data-month={formatMoney(0, { currency: PRICE_CURRENCY })} data-build={perBuild('free')}>{formatMoney(0, { currency: PRICE_CURRENCY })}</span>
-              <small class="plan__per" data-price-unit data-month="in beta" data-build="a build">in beta</small>
-            </p>
-          </header>
-          <ul class="plan__list">
-            <li><strong>{free.creditsPerDay} Credits</strong> per day · up to {free.creditsPerMonth} a month</li>
-            <li>About {buildsPerMonth('free')} typical builds a month</li>
-            <li>Built by {engineName}</li>
-            <li>{stepsBullet}</li>
-            {UNIVERSAL_BULLETS.map((b) => <li>{b}</li>)}
-            {studioBullet && <li>{studioBullet}</li>}
-            {/* Published for every plan, including this one. Three of the four tiers said nothing
-                about support anywhere, and a buyer cannot tell silence from "there is none". */}
-            <li>{supportBullet('free')}</li>
-          </ul>
-          {/*[[ EVERY CARD ENDS ON THE SAME ROW, AND THE ROW IS ANCHORED TO THE BOTTOM EDGE.
-               Only this card had a button. `margin-top: auto` on a CTA that two of three cards did
-               not render is not a layout — it is a layout for one card and a hole for the others.
-               The footer is the thing that is anchored now, so the card that cannot be bought still
-               ends on a control at the same y as the one that can, and the caption that explains
-               why sits under it instead of floating in the middle of the void. ]]*/}
-          <footer class="plan__foot">
-            {/* The same words the landing uses for the same door. "Start building" promised a
-                build to a reader whose card, a few lines up, could say Studio installation was
-                unavailable; the note under the button is asked of the same flag. */}
-            <ShinyButton href="/app/signup" class="plan__cta">Create a free account</ShinyButton>
-            <p class="plan__note plan__note--foot">
-              {STUDIO_PLUGIN_STORE_LIVE
-                ? 'No card required. Chat and building in Studio both work on Free.'
-                : 'No card required. Free chat works now.'}
-            </p>
-          </footer>
-        </article>
-
-        {
-          paid.map((id, i) => (
-            /* A paid card is `is-planned`: nobody can take it yet, so it is not ranked. */
-            <article
-              class="plan slab slab--seam is-planned"
-              aria-labelledby={`plan-${id}`}
-              data-reveal
-              data-reveal-delay={110 + i * 60}
-              data-spotlight
-            >
-              <p class="plan__flag plan__flag--quiet">Planned</p>
-              <header class="plan__head">
-                <h2 id={`plan-${id}`}>{PLAN_COPY[id].name}</h2>
-                <p class="plan__price">
-                  <span
-                    data-price-roll
-                    data-month={formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}
-                    data-build={perBuild(id)}
-                  >
-                    {formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY })}
-                  </span>
-                  <small class="plan__per" data-price-unit data-month="a month" data-build="a build">a month</small>
-                </p>
-              </header>
-              <ul class="plan__list">
-                <li>
-                  <strong>{PLAN_TABLE[id].creditsPerMonth} Credits</strong> a month · up to{' '}
-                  {PLAN_TABLE[id].creditsPerDay} a day
-                </li>
-                <li>About {buildsPerMonth(id)} typical builds a month</li>
-                <li>Built by {engineName}</li>
-                <li>{stepsBullet}</li>
-                {/* The same gap as the `credits` row below, one surface earlier. Builder's
-                    highlights include "Buy credits when you need more", and leaving it beside a
-                    comparison row that now reads "Unavailable" would make the page disagree with
-                    itself in two places a reader can see at once. Filtered rather than reworded:
-                    the bullet is true of the planned tier and false of the product today, and the
-                    flag is what decides which.
-
-                    "Everything in Free" / "Everything in Pro" is filtered for a different
-                    reason: it is a cross-reference, not a capability, and it is what left these
-                    cards two hundred pixels short of their own bottom edge. The rows it was
-                    standing in for are printed underneath it instead. */}
-                {PLAN_COPY[id].highlights
-                  .filter((h) => CREDIT_PURCHASE_LIVE || !/\bbuy\b.*\bcredits?\b/i.test(h))
-                  .filter((h) => !/^everything in\b/i.test(h))
-                  .map((h) => (
-                    <li>{h}</li>
-                  ))}
-                {UNIVERSAL_BULLETS.map((b) => (
-                  <li>{b}</li>
-                ))}
-                {studioBullet && <li>{studioBullet}</li>}
-                <li>{supportBullet(id)}</li>
-              </ul>
-              <footer class="plan__foot">
-                {/*[[ A BUTTON THAT IS VISIBLY OFF, RATHER THAN NO BUTTON AT ALL.
-                       The two planned cards rendered a 12px grey sentence and nothing else, so the
-                       row of three cards had exactly one control in it and no answer to "what do I
-                       click". A `disabled` button is the honest shape: it says the affordance
-                       exists, names the state, and cannot be pressed into a checkout that would
-                       answer 503. It is a real <button disabled>, not a styled span, so assistive
-                       technology is told the same thing the eye is. ]]*/}
-                <button
-                  type="button"
-                  class="btn plan__cta"
-                  disabled
-                  aria-describedby={`plan-${id}-note`}
-                >
-                  Checkout not open
-                </button>
-                <p class="plan__note plan__note--foot" id={`plan-${id}-note`}>
-                  Planned tier — checkout is not open.
-                </p>
-              </footer>
-            </article>
-          ))
-        }
-        </div>
-
-        <BuildEstimator
-          plans={estimatorPlans}
-          creditsPerBuild={TYPICAL_BUILD_CREDITS}
-          start={buildsPerMonth('free')}
-          step={10}
-          max={400}
-        />
-
-        {/* FOUR NOTES, EACH WITH ITS OWN TITLE (2026-09-22). They were four dense paragraphs in a row
-            directly under the cards, which read as a wall of fine print. Nothing in them is cut; each
-            is now a titled item in a quiet two-column list, so a reader can find the one they want. */}
-        <div class="plan-notes">
-        <p class="plan__note">
-          <strong class="note-title">A second, shared limit</strong>
-          Every plan above draws on one
-          shared pool of about {serviceCreditsPerDay.toLocaleString()} Credits of building a day
-          across the whole service, which is roughly{' '}
-          {Math.floor(serviceCreditsPerDay / free.creditsPerDay)} accounts building flat out. When
-          that day's pool is gone, a run stops with “StudPilot has reached today's shared building
-          capacity” even though your own balance still shows Credits. It resets at midnight UTC, the
-          same instant for everyone, and the steps that already finished stay done and stay paid for.{' '}
-          <a href="/docs/credits-and-limits">How the two limits differ</a>.
-        </p>
-
-        <p class="plan__note">
-          <strong class="note-title">Credits and builds</strong>
-          A typical build costs about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits, so every allowance
-          above is also a number of builds. Free limits apply now. Paid prices and limits describe the
-          planned offering and may change before checkout opens.
-        </p>
-
-        {/*
-          THE PRICE ABOVE IS THE PRICE BEFORE TAX, AND SAYING SO IS THE POINT.
-          The checkout asks Stripe to calculate tax from the billing address, so a buyer in a
-          jurisdiction we are registered in pays more than the figure on this page. Quoting the bare
-          number and letting them discover the difference on a bank statement is the same failure as
-          quoting a bare currency symbol, which this page already stopped doing.
-        */}
-        <p class="plan__note">
-          <strong class="note-title">Tax</strong>
-          Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
-          are is calculated at checkout, and businesses can enter a VAT or GST number there so the
-          invoice carries it.
-        </p>
-
-        <p class="plan__note">
-          <strong class="note-title">Support</strong>
-          Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. {PLAN_SUPPORT.free.promise} Paid
-          accounts are answered first.
-        </p>
-        </div>
-      </div>
     </div>
   </section>
 
-  <!-- ==================================================== comparison -->
-  <section class="section" id="compare" aria-labelledby="compare-title">
+  {/* ================================================ THE ONE DECISION: WHAT FREE GIVES YOU TODAY.
+      The old page led with three equal plan cards and a button between them (and a comparison table that repeated them under them).
+      This one answers the question a visitor came with first, in one panel, and puts every plan in ONE table after it. */}
+  <section class="sec sec--flush" aria-labelledby="now-title">
+    <div class="wrap now">
+      <div class="now__copy">
+        <p class="kicker">Available now</p>
+        <h2 id="now-title" class="sec-title">Free</h2>
+        <p class="now__price"><span>{formatMoney(0, { currency: PRICE_CURRENCY })}</span> in beta</p>
+        <p class="now__line">
+          <strong>{free.creditsPerDay} Credits</strong> per day · up to {free.creditsPerMonth} a month. About {buildsPerMonth('free')} typical builds a month.
+        </p>
+        {studioBullet && <p class="now__line">{studioBullet}</p>}
+        {/* THE SHARED LIMIT IS SAID HERE, BEFORE THE TABLE, NOT ONLY IN THE LIMITS AT THE END: a visitor signing up should not meet "StudPilot has reached
+            today's shared building capacity" for the first time as an error message (tests/unpurchasable-and-shared-cap.test.mjs holds the order). */}
+        <p class="now__line now__shared">
+          One thing to know first: every plan draws on one shared pool of building a day across the whole service. When it is gone, a run stops
+          with “StudPilot has reached today's shared building capacity” even though your own balance still shows Credits.
+          <a href="#limits-title">The details</a>.
+        </p>
+        <div class="now__cta">
+          <a href="/app/signup" class="btn btn-primary btn-lg">Start free (beta)</a>
+          <p class="now__note">
+            {STUDIO_PLUGIN_STORE_LIVE
+              ? 'No card required. Chat and building in Studio both work on Free.'
+              : 'No card required. Free chat works now.'}
+          </p>
+        </div>
+      </div>
+      <dl class="now__stats" aria-label="What Free gives you">
+        <div>
+          <dt>A day</dt>
+          <dd>{free.creditsPerDay}</dd>
+        </div>
+        <div>
+          <dt>A month, at most</dt>
+          <dd>{free.creditsPerMonth}</dd>
+        </div>
+        <div>
+          <dt>Typical builds a month</dt>
+          <dd>{buildsPerMonth('free')}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ==================================================== every plan, in one table -->
+  <section class="sec sec--band" id="compare" aria-labelledby="compare-title">
     <div class="wrap">
       <header class="sechead">
-        <p class="eyebrow" data-reveal>Side by side</p>
-        <h2 id="compare-title" data-reveal class="carved">What each plan includes</h2>
-        <p class="lede lede-wide" data-reveal>
-          The cards above say what each tier <em>adds</em>. This says what each tier
-          <em>has</em> — including the rows where the answer is the same for everyone,
-          because a capability missing from a list of bullets is indistinguishable from
-          one nobody mentioned.
+        <p class="kicker">Side by side</p>
+        <h2 id="compare-title" class="sec-title">Every plan, in one table</h2>
+        <p class="sec-text">
+          Free is the only plan anybody can have today. Pro and Max are planned, and nobody can buy them yet. Every row
+          is said for every plan, including the rows where the answer is the same for everyone, because a capability missing from a list is
+          indistinguishable from one nobody mentioned.
         </p>
       </header>
 
-      <div class="table-scroll stack-sm" data-reveal>
+      <div class="table-scroll stack-sm">
         <table class="compare">
           <caption class="visually-hidden">
             Every capability by plan. Rows are capabilities; columns are plans.
@@ -474,7 +347,14 @@ const limitFaq = [
           <thead>
             <tr>
               <th scope="col">Capability</th>
-              {LISTED_PLAN_IDS.map((id) => <th scope="col">{PLAN_COPY[id].name}{id !== 'free' ? ' (planned)' : ''}</th>)}
+              {
+                LISTED_PLAN_IDS.map((id) => (
+                  <th scope="col">
+                    {PLAN_COPY[id].name}
+                    <span class="colstate">{id === 'free' ? 'Available now' : 'Planned'}</span>
+                  </th>
+                ))
+              }
             </tr>
           </thead>
           <tbody>
@@ -483,18 +363,8 @@ const limitFaq = [
                 <tr>
                   <th scope="row">
                     {feature.label}
-                    {/*[[ THIS CAPTION USED TO PRINT ON TOP OF THE NUMBERS BESIDE IT.
-                         `.tx` in this page's scoped block set `white-space: nowrap`, which beat
-                         global.css by Astro's scoping attribute. The row header is capped at 148px
-                         and is `position: sticky` with `z-index: 1`, so an unwrappable sentence did
-                         not merely overflow — it painted OVER the cells it ran into. Measured on
-                         the deployed page with a Range over the text node rather than the element
-                         box (the box stays 134px wide while the ink does not): five of five
-                         captions overflowed, the worst by 563px across three value columns, on top
-                         of the allowance figures and three "Unavailable"s.
-                         The element box is the wrong instrument for this defect, which is why a
-                         stylesheet grep for the class found nothing wrong.
-                         It is its own class now so the mode table's inline `.tx` is untouched. ]]*/}
+                    {/* A caption under the capability. Its own class, so it wraps inside the narrow sticky header
+                        instead of printing over the cells beside it. */}
                     {feature.note && <span class="rownote">{feature.note}</span>}
                   </th>
                   {LISTED_PLAN_IDS.map((id) => {
@@ -502,9 +372,8 @@ const limitFaq = [
                     if (value === true) {
                       return (
                         <td class="compare__yes" data-label={PLAN_COPY[id].name}>
-                          {/* The glyph is decoration; the word is the answer. A table whose
-                              cells are bare ticks and blanks is unreadable aloud, and "blank"
-                              is exactly the ambiguity this table exists to remove. */}
+                          {/* The glyph is decoration; the word is the answer. A table whose cells are bare ticks
+                              and blanks is unreadable aloud. */}
                           <span aria-hidden="true">&#10003;</span>
                           <span class="visually-hidden">Included</span>
                         </td>
@@ -523,14 +392,58 @@ const limitFaq = [
                 </tr>
               ))
             }
+            {/* The rows the table gains by no longer sitting under three cards that said them: what a build costs at that price, the steps a
+                message may take, the engine and the kind of support. Each is read from the config or from the one place that declares it. */}
+            <tr>
+              <th scope="row">Price per typical build</th>
+              {
+                LISTED_PLAN_IDS.map((id) => (
+                  <td data-label={PLAN_COPY[id].name}>{id === 'free' ? 'Free in beta' : `about ${perBuild(id)} a build at this price`}</td>
+                ))
+              }
+            </tr>
+            <tr>
+              <th scope="row">Steps in one message</th>
+              {LISTED_PLAN_IDS.map((id) => <td data-label={PLAN_COPY[id].name}>{stepsBullet}</td>)}
+            </tr>
+            <tr>
+              <th scope="row">Engine</th>
+              {LISTED_PLAN_IDS.map((id) => <td data-label={PLAN_COPY[id].name}>Built by {engineName}</td>)}
+            </tr>
+            <tr>
+              <th scope="row">Support</th>
+              {LISTED_PLAN_IDS.map((id) => <td data-label={PLAN_COPY[id].name}>{supportBullet(id)}</td>)}
+            </tr>
           </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Get it</th>
+              {
+                LISTED_PLAN_IDS.map((id) => (
+                  <td data-label={PLAN_COPY[id].name}>
+                    {id === 'free' ? (
+                      <a href="/app/signup" class="btn btn-primary">Start free (beta)</a>
+                    ) : (
+                      /* A BUTTON THAT IS VISIBLY OFF, RATHER THAN NO BUTTON AT ALL: it says the affordance exists, names the state, and cannot
+                         be pressed into a checkout that would answer 503. A real <button disabled>, so assistive technology is told the same
+                         thing the eye is. */
+                      <button type="button" class="btn" disabled aria-describedby="checkout-note">
+                        Checkout not open
+                      </button>
+                    )
+                  }
+                  </td>
+                ))
+              }
+            </tr>
+          </tfoot>
         </table>
       </div>
 
-      <p class="plan__note compare-note">
-        Figures come from the shared plan configuration. Free access is available now. Paid plans are
-        not yet available to purchase.{' '}
-        {STUDIO_PLUGIN_STORE_LIVE ? (
+      <p class="compare-note" id="checkout-note">
+        Planned tier — checkout is not open. Free limits apply now. Paid prices and limits describe the planned offering and may change
+        before checkout opens. Figures come from the shared plan configuration.
+        {' '}{STUDIO_PLUGIN_STORE_LIVE ? (
           <>Building in Studio also needs the StudPilot Studio plugin, which is free: <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">get it from the Creator Store</a>.</>
         ) : (
           <>Building in Studio also needs the StudPilot Studio plugin; public installation is unavailable. <a href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</a>.</>
@@ -539,45 +452,32 @@ const limitFaq = [
     </div>
   </section>
 
-
-  <!-- ==================================================== build costs -->
-  <section class="section" aria-labelledby="credits-title">
+  <!-- ==================================================== what a credit buys -->
+  <section class="sec" aria-labelledby="credits-title">
     <div class="wrap">
       <header class="sechead">
-        <p class="eyebrow" data-reveal>Per build</p>
-        <h2 id="credits-title" data-reveal class="carved">What a Credit buys</h2>
-        <p class="lede lede-wide" data-reveal>
+        <p class="kicker">Per build</p>
+        <h2 id="credits-title" class="sec-title">What a Credit buys</h2>
+        <p class="sec-text">
           One Credit is about {formatMoney(CREDIT_USD, { currency: PRICE_CURRENCY })} of AI compute.
-          Balances show with two decimals.
+          Balances show with two decimals. A typical build costs about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits, so every allowance above is also a number of builds.
         </p>
       </header>
 
-      <div class="table-scroll stack-sm" data-reveal>
-        <table>
-          <caption class="visually-hidden">What builds cost, in Credits and in dollars of AI compute</caption>
-          <thead>
-            <tr>
-              <th scope="col">Build</th>
-              <th scope="col">Credits</th>
-              <th scope="col">AI compute</th>
-            </tr>
-          </thead>
-          <tbody>
-            {
-              buildCostRows.map((row) => (
-                <tr>
-                  <td data-label="Build">{row.label}{row.estimated ? ', estimated' : ''}</td>
-                  <td class="num" data-label="Credits">{row.credits}</td>
-                  <td class="num" data-label="AI compute">{row.dollars}</td>
-                </tr>
-              ))
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <p class="tfoot" data-reveal>
-        These are what builds typically cost, not a quote. A build is charged for the work it actually
+      <ol class="costs" aria-label="What builds cost, in Credits and in dollars of AI compute">
+        {
+          buildCostRows.map((row) => (
+            <li class="cost" data-build={row.id}>
+              <span class="cost__label">{row.label}{row.estimated ? ', estimated' : ''}</span>
+              <span class="cost__bar" aria-hidden="true"><span style={`width: ${row.width}%`}></span></span>
+              <span class="cost__credits num">{row.credits}</span>
+              <span class="cost__usd num">{row.dollars}</span>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="tfoot">
+        <span class="tfoot__key">Credits, then AI compute.</span> These are what builds typically cost, not a quote. A build is charged for the work it actually
         did, so a long one costs more, and the workspace shows what each request cost once it has finished.
         StudPilot&rsquo;s own housekeeping does not count against your quota.
       </p>
@@ -585,236 +485,222 @@ const limitFaq = [
   </section>
 
   <!-- ==================================================== limits -->
-  <section class="section limitsec" aria-labelledby="limits-title">
-    <div class="wrap wrap-narrow-ish">
+  <section class="sec sec--band limitsec" aria-labelledby="limits-title">
+    <div class="wrap">
       <header class="sechead">
-        <p class="eyebrow" data-reveal>The honest part</p>
-        <h2 id="limits-title" data-reveal class="carved">Limits, plainly stated</h2>
+        <p class="kicker">The honest part</p>
+        <h2 id="limits-title" class="sec-title">Limits, plainly stated</h2>
       </header>
-      <div data-reveal data-reveal-delay="90">
-        <Accordion items={limitFaq} />
+      <div class="limits">
+        {
+          limits.map((l) => (
+            <article class="limit">
+              <h3 class="limit__q">{l.q}</h3>
+              <div class="limit__a" set:html={l.a} />
+            </article>
+          ))
+        }
       </div>
     </div>
   </section>
 
-  <Spotlight />
+  <!-- ==================================================== two small print blocks -->
+  <section class="sec" aria-labelledby="fine-title">
+    <div class="wrap fine">
+      <h2 id="fine-title" class="visually-hidden">Tax and support</h2>
+      {/* THE PRICE ABOVE IS THE PRICE BEFORE TAX, AND SAYING SO IS THE POINT: the checkout asks Stripe to calculate
+          tax from the billing address, so quoting the bare number and letting a buyer discover the difference on a
+          bank statement is the same failure as quoting a bare currency symbol. */}
+      <div>
+        <h3>Tax</h3>
+        <p>
+          Prices are in {PRICE_CURRENCY} and exclude tax. Any VAT or sales tax that applies where you
+          are is calculated at checkout, and businesses can enter a VAT or GST number there so the
+          invoice carries it.
+        </p>
+      </div>
+      <div>
+        <h3>Support</h3>
+        <p>
+          Write to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. {PLAN_SUPPORT.free.promise} Paid
+          plans are planned to be answered first; nobody can buy one yet.
+        </p>
+      </div>
+    </div>
+  </section>
 </Base>
 
 <style>
-  /* Structure only; every value is a token from packages/design/src/web/tokens.css. The cards are the page's one
-     grid of panels: a surface step and a hairline each, no shadow, the Free card ranked by its
-     filled button rather than by colour. */
-  .phead {
-    padding-top: clamp(48px, 7vw, 96px);
-    padding-bottom: clamp(56px, 8vw, 96px);
-  }
-
-  .phead > .wrap > .eyebrow,
-  .sechead .eyebrow {
-    justify-content: center;
-  }
-
-  .phead > .wrap > h1,
-  .phead > .wrap > .lede,
-  .sechead,
-  .sechead .lede {
-    margin-inline: auto;
-    text-align: center;
+  /* Structure only; every value is a token from packages/design/src/web/tokens.css. THE LAYOUT, which is new: one panel for the decision a
+     visitor came with (what Free gives you today), every plan in ONE table after it (not three cards and a table that repeated them), the
+     cost of a build as a list with bars (not a second table), the limits as a grid that is always open (not an accordion), and the tax and
+     support lines as small print. The old page ran: three plan cards, two columns of notes, the table, a cost table, an accordion. */
+  .lede-wide {
+    max-width: 62ch;
   }
 
   .sechead {
     max-width: 62ch;
-    margin-bottom: clamp(28px, 4vw, 44px);
+    margin-bottom: clamp(24px, 4vw, 40px);
   }
 
-  .sechead h2 {
-    margin-bottom: 8px;
-  }
-
-  /* THE GRID THAT BROKE. `.plans` is the block; `.plan-rail` holds the three cards and
-     `.plan-notes` the notes under them. These rules used to live in relaunch.css, which was
-     deleted, and the three cards stacked into one 364px column at 1440 with the notes beside them. */
-  .plans {
-    max-width: 1120px;
-    margin: clamp(40px, 6vw, 64px) auto 0;
-  }
-
-  .plan-rail {
+  /* ------------------------------------------------------------ the one decision: Free, now */
+  .now {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px clamp(32px, 6vw, 80px);
+    padding: clamp(24px, 4vw, 44px);
+    border: 1px solid var(--accent-ring);
+    border-radius: var(--r-xl);
+    background: var(--surface);
   }
 
-  .plan {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 28px;
+  .now__price {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 15px;
   }
 
-  .plan.is-planned {
-    background: var(--paper-2);
-  }
-
-  .plan__flag {
-    align-self: flex-start;
-    margin: 0 0 20px;
-    padding: 3px 8px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-pill);
+  .now__price span {
+    margin-right: 6px;
     color: var(--ink);
+    font-size: 2.5rem;
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .now__line {
+    max-width: 52ch;
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .now__line strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .now__shared a {
+    color: var(--ink);
+    text-underline-offset: 3px;
+  }
+
+  .now__cta {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .now__note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  /* The panel is centred against the copy beside it, so the card does not end in a block of empty space under a short panel. */
+  .now__stats {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--paper);
+    align-self: center;
+  }
+
+  .now__stats > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .now__stats > div:last-child {
+    border-bottom: 0;
+  }
+
+  .now__stats dt {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .now__stats dd {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ------------------------------------------------------------ the table */
+  .colstate {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
-  .plan__flag--quiet {
-    color: var(--faint);
+  .compare tfoot th,
+  .compare tfoot td {
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    vertical-align: middle;
   }
 
-  .plan__head {
-    margin-bottom: 22px;
-  }
-
-  .plan h2 {
-    margin: 0 0 6px;
-    color: var(--ink);
-    font-size: 18px;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-
-  .plan__price {
-    margin: 0;
+  .compare tfoot th[scope='row'] {
     color: var(--muted);
-    font-size: 14px;
   }
 
-  .plan__per {
-    font-size: inherit;
-  }
-
-  .plan__price span {
-    margin-right: 6px;
-    color: var(--ink);
-    font-size: 30px;
-    font-weight: 500;
-    letter-spacing: -0.03em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .plan__list {
-    display: grid;
-    gap: 10px;
-    margin: 0 0 28px;
-    padding: 0;
-    color: var(--muted);
-    font-size: 14px;
-    line-height: 1.5;
-    list-style: none;
-  }
-
-  .plan__list strong {
-    color: var(--ink);
-    font-weight: 500;
-  }
-
-  .plan__list li {
-    position: relative;
-    padding-left: 18px;
-  }
-
-  .plan__list li::before {
-    content: '';
-    position: absolute;
-    left: 2px;
-    top: 0.62em;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--line-strong);
-  }
-
-  .plan__foot {
-    display: grid;
-    gap: 10px;
-    margin-top: auto;
-    padding-top: 20px;
-    border-top: 1px solid var(--hairline);
-  }
-
-  .plan__cta {
-    width: 100%;
-    min-height: 40px;
-  }
-
-  .plan__note {
-    margin: 12px 0 0;
-    color: var(--faint);
-    font-size: 13px;
-    line-height: 1.55;
-  }
-
-  .plan__note--foot {
-    min-height: 3em;
-    margin: 0;
+  /* A button in a table cell may wrap: on a phone each plan is a narrow column of the stacked row, and a nowrap "Checkout not open" pushed the
+     page 2px past a 320px screen. */
+  .compare td .btn {
+    max-width: 100%;
+    padding-block: 8px;
+    white-space: normal;
+    line-height: 1.3;
     text-align: center;
   }
 
-  .plan-notes {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 40px;
-    margin-top: 40px;
+  /* THE "GET IT" BUTTONS ARE ONE SIZE: the live Start button and the two off ones ("Checkout not open" wraps onto two lines in a narrow cell) were 36px and
+     53px tall beside each other. Centred text and the cell's full width here; the one minimum height that fits two lines is in the phone block below. */
+  .compare tfoot td .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
-  .plan-notes {
-    gap: 28px 48px;
-    margin-top: 56px;
-  }
-
-  .plan-notes .plan__note {
-    margin: 0;
-    padding-top: 16px;
-    border-top: 1px solid var(--hairline);
+  .compare-note {
+    max-width: 66ch;
+    margin: 16px 0 0;
     color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
   }
 
-  .note-title {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--ink);
-    font-size: 14px;
-  }
-
-  .plan__note a,
+  .compare-note a,
   .tfoot a,
-  .plan__note strong {
+  .limit__a :global(a),
+  .fine a {
     color: var(--ink);
-  }
-
-  .plan__note a,
-  .tfoot a {
     text-decoration: underline;
     text-decoration-color: var(--line-strong);
     text-underline-offset: 3px;
   }
 
-  .plan__note strong,
-  .tfoot strong {
-    font-weight: 500;
-  }
-
-  .compare-note {
-    max-width: 62ch;
-    margin: 16px auto 0;
-    text-align: center;
-  }
-
-  /* A caption under a capability name in the table. It wraps (the sticky header is narrow on a
-     phone) and drops the header's weight. */
+  /* A caption under a capability name in the table. It wraps (the sticky header is narrow on a phone) and
+     drops the header's weight. */
   .rownote {
     display: block;
     max-width: 34ch;
@@ -829,7 +715,7 @@ const limitFaq = [
 
   @media (min-width: 760px) {
     .compare th[scope='row'] {
-      width: 30%;
+      width: 28%;
       max-width: 34ch;
     }
   }
@@ -846,6 +732,74 @@ const limitFaq = [
     font-variant-numeric: tabular-nums;
   }
 
+  /* ------------------------------------------------------------ what a Credit buys */
+  .costs {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .cost {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label label'
+      'credits usd'
+      'bar bar';
+    align-items: baseline;
+    gap: 8px 20px;
+    padding-block: 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .cost__label {
+    grid-area: label;
+    color: var(--ink);
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  .cost__credits {
+    grid-area: credits;
+    color: var(--ink);
+  }
+
+  .cost__usd {
+    grid-area: usd;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .cost__bar {
+    grid-area: bar;
+    display: block;
+    height: 6px;
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+  }
+
+  .cost__bar > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--r-pill);
+    background: var(--accent);
+  }
+
+  @media (min-width: 760px) {
+    .cost {
+      grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr) 7rem 6.5rem;
+      grid-template-areas: 'label bar credits usd';
+      align-items: center;
+    }
+
+    .cost__credits,
+    .cost__usd {
+      text-align: right;
+    }
+  }
+
   .tfoot {
     max-width: 62ch;
     margin: 16px 0 0;
@@ -854,16 +808,96 @@ const limitFaq = [
     line-height: 1.6;
   }
 
-  .limitsec .wrap-narrow-ish {
-    width: min(820px, calc(100% - var(--gutter) * 2));
-    margin-inline: auto;
+  .tfoot__key {
+    color: var(--ink-2);
+    font-weight: 500;
   }
 
-  /* THE TWO TABLES STACK ON A PHONE (2026-09-22). Both are 620px wide, and inside a 356px scroll
-     box they cut words mid-word at the right edge ("Inspects the pro") and hid the Studio and
-     Enterprise columns with no sign they existed. Below 640px each row becomes a block: the row's
-     name on top, then every value under the label its column header gave it (`data-label`), so
-     nothing is off-screen and nothing needs a sideways scroll. */
+  /* ------------------------------------------------------------ the limits, always open */
+  .limits {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .limit {
+    padding-block: 24px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .limit__q {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+  }
+
+  .limit__a :global(p) {
+    max-width: 66ch;
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .limit__a :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .limit__a :global(strong),
+  .limit__a :global(em) {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  @media (min-width: 900px) {
+    .limits {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: clamp(32px, 5vw, 64px);
+    }
+  }
+
+  /* ------------------------------------------------------------ small print */
+  .fine {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px clamp(32px, 5vw, 64px);
+  }
+
+  .fine h3 {
+    margin: 0 0 6px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .fine p {
+    max-width: 52ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @media (min-width: 760px) {
+    .fine {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 900px) {
+    .now {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: center;
+    }
+  }
+
+  /* THE TABLE STACKS ON A PHONE. It is 620px wide, and inside a 356px scroll box it cut words mid-word at the right edge and hid columns
+     with no sign they existed. Below 640px each row becomes a block: the row's name on top, then every value under the label its column
+     header gave it (`data-label`), so nothing is off-screen and nothing needs a sideways scroll. */
   @media (max-width: 640px) {
     .stack-sm {
       overflow: visible;
@@ -893,8 +927,12 @@ const limitFaq = [
       border-bottom: 0;
     }
 
+    /* The footer row ("Get it") carries its own hairline in the table's own layout (.compare tfoot td, one specificity above the reset above), and in a
+       stack each cell's rule landed at a different height: the stacked row already has its hairline from the row above. */
     .stack-sm th,
-    .stack-sm td {
+    .stack-sm td,
+    .stack-sm tfoot th,
+    .stack-sm tfoot td {
       display: block;
       padding: 0;
       border: 0;
@@ -908,6 +946,10 @@ const limitFaq = [
 
     .table-scroll.stack-sm table :global(th[scope='row'])::after {
       content: none;
+    }
+
+    .compare tfoot td .btn {
+      min-height: 56px;
     }
 
     .stack-sm td[data-label]::before {
@@ -924,7 +966,7 @@ const limitFaq = [
 
     /* The comparison: capability on top, the plans as a grid under it. */
     .compare tr {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .compare :global(th[scope='row']) {
@@ -932,22 +974,42 @@ const limitFaq = [
     }
   }
 
-  @media (max-width: 960px) {
-    .plan-rail {
-      grid-template-columns: minmax(0, 1fr);
-      max-width: 520px;
-      margin-inline: auto;
-    }
-
-    .plan-notes {
-      max-width: 520px;
-      margin-inline: auto;
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
+  /* ON A NARROW PHONE EACH PLAN IS ONE LINE, in the order of the table: "Free   5", "Pro   Not decided yet", "Max   Not decided yet". Three plans in two columns left
+     MAX alone on a line of its own in every row, and the plans could not be read against each other. */
   @media (max-width: 480px) {
-    .plan {
+    .compare tr {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .stack-sm td[data-label],
+    .stack-sm tfoot td[data-label] {
+      display: grid;
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    .stack-sm tfoot td[data-label] {
+      align-items: center;
+    }
+
+    /* The visually-hidden "Included" of a tick cell is out of flow, and in a grid its phantom box sat in the first column, over the plan's label
+       (the e2e contrast audit measured it against the label's glyphs). It is placed in the value column instead, where the tick is. */
+    .stack-sm td[data-label] {
+      position: relative;
+    }
+
+    .stack-sm td[data-label] > :global(.visually-hidden) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .stack-sm td[data-label]::before {
+      margin-bottom: 0;
+    }
+
+    .now {
       padding: 22px;
     }
   }

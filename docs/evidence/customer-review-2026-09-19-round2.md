@@ -429,7 +429,7 @@ Every claim I found on more than one surface. "Source of truth" is
 | Quota resets midnight UTC | `/pricing` FAQ, `/docs/credits-and-limits`, `/docs/troubleshooting` | **Yes** | Stated identically three times. |
 | Modes = Plan + Agent only | `/pricing`, `/docs/modes`, shared:1491 | **Yes** | `/changelog` lists Super Agent with an explicit withdrawal note. |
 | Product version | `/api/health` 0.1.0 · `/changelog` v0.2 · `/docs/updating` v0.2.0 · `/docs/faq` v0.1 | **No** | **S1** |
-| Support email | every page footer + 8 docs pages | **Yes** | `apple.labs.app@gmail.com` throughout. |
+| Support email | every page footer + 8 docs pages | **Yes** | `support@studpilot.app` throughout. |
 | Nav label for `/pricing` | `/` says "Plans"; all others say "Pricing" | **No** | **S3** |
 | Roblox disclaimer wording | `/` vs all others | **No** | Two different sentences. **S3** |
 | Brand mark | `/app/signup` hexagon vs site-wide chevron | **No** | **S4** |

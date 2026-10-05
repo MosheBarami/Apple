@@ -46,6 +46,34 @@ function queryFlag(): boolean {
  */
 export const MOCK_MODE: boolean = import.meta.env.DEV && (FLAG || queryFlag());
 
+/**
+ * Which sign-in providers the mock app says are switched on: none, which is what production says today
+ * (Google and Discord are off at the project). `?providers=google,discord` turns them on so the cards and
+ * buttons that wait for them can be reviewed; only these two names are ever returned.
+ */
+export function mockEnabledProviders(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const asked = (new URLSearchParams(window.location.search).get('providers') ?? '').split(',');
+    return ['google', 'discord'].filter((name) => asked.includes(name));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Whether the mock app's Studio is connected: yes, unless the address says `?studio=off` (development only), so the screenshots strip's
+ * "Connect Studio" lines can be reviewed. Everything else about the mock's Studio stays as it is.
+ */
+export function mockStudioConnected(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return new URLSearchParams(window.location.search).get('studio') !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Operator fixtures
 // ---------------------------------------------------------------------------
@@ -89,6 +117,19 @@ export function mockSpend() {
       { day: days[0]?.day ?? '', model: 'embedding', kind: 'embedding', neurons: 90, calls: 41, usd: 0 },
     ],
   };
+}
+
+/**
+ * The identities the mock account has: the email one every account has, and a Google or Discord one when the address asks for it
+ * (`?linked=google,discord`, development only), so the connected state of the Connections cards can be reviewed.
+ */
+export function mockIdentities(): { provider: string; identity_id: string; identity_data: Record<string, unknown> }[] {
+  const asked = typeof window === 'undefined' ? [] : (new URLSearchParams(window.location.search).get('linked') ?? '').split(',');
+  const linked = ['google', 'discord'].filter((name) => asked.includes(name));
+  return [
+    { provider: 'email', identity_id: 'mock-email', identity_data: { email: 'builder@example.com' } },
+    ...linked.map((name) => ({ provider: name, identity_id: `mock-${name}`, identity_data: { email: `builder@${name}.example` } })),
+  ];
 }
 
 /**

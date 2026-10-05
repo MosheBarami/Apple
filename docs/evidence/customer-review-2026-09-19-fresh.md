@@ -438,7 +438,7 @@ the product is trying to ship was removed by Roblox. Not a defect today; a defec
 
 ### S12 — Minor, observed
 
-- `/terms` says Apple is *"operated by Apple Labs"*; `/privacy` says *"built and operated by Apple"*.
+- `/terms` says Apple is *"operated by StudPilot"*; `/privacy` says *"built and operated by Apple"*.
   Two entity names in two legal documents.
 - `/changelog` dates v0.2 as `2026-08-30` and v0.1 as just `2026`.
 - `/legal` returns 404. Nothing links to it (the footer links `/privacy` and `/terms` directly), so
@@ -448,7 +448,7 @@ the product is trying to ship was removed by Roblox. Not a defect today; a defec
   gives `stone: typicalCredits: '4-18'`, and `pricing.astro:112–115` takes `.split('-')[0]`. There is
   a footnote disclosing that a build settles higher, so this is disclosed — but a column headed "cost
   per request" showing the floor of a 4.5× range will be read as a price.
-- *Inferred, and I am not a lawyer:* the product is named **Apple**, operated by **Apple Labs**, in
+- *Inferred, and I am not a lawyer:* the product is named **Apple**, operated by **StudPilot**, in
   the software-tools market. The footer carefully disclaims Roblox Corporation and says nothing about
   the other company. As a buyer deciding whether to build a workflow on this, that is a reason to
   hesitate independent of any defect above.

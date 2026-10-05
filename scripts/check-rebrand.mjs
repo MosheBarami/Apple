@@ -327,7 +327,7 @@ function stringLiterals(src, rel) {
   //
   // EXCEPT WHAT THE BUILD DELETES, and the difference is not pedantry — it is the difference
   // between a checker and a muzzle. apps/site/src/components/Footer.astro carries a six-line
-  // `{/* … */}` comment explaining why the operator's byline is "Apple Labs" and what it used to
+  // `{/* … */}` comment explaining why the operator's byline reads as it does and what it used to
   // say; Astro compiles that comment away and no browser ever receives a byte of it. Reported as a
   // finding, the only way to clear the gate is to DELETE THE EXPLANATION — so the check would be
   // spending the one thing this repository is built on, the reason a decision was made, to buy a

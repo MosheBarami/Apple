@@ -44,15 +44,22 @@ const THEMES = Object.fromEntries(MODES.map((m) => [m, theme(themeBlocks()[m])])
 const TARGETS = (mode) => ['accent', 'accent-strong'].map((n) => ({ name: n, rgb: rgbOfHex(THEMES[mode].resolve(n)) }));
 const TOLERANCE = 24;
 
-/** Type into every field of a sign-in form: the submit is disabled until the form is valid, and a person enables it by typing. */
+/**
+ * Type into every field of a sign-in form: the submit is disabled until the form is valid, and a person enables it by typing. The sign-up
+ * form also asks for a date of birth (a day, a month and a year); a grown-up's date is typed, so the form is complete.
+ */
 async function fillForm(page) {
   for (const field of await page.locator('input:visible, textarea:visible').all()) {
     const type = await field.getAttribute('type');
+    const name = await field.getAttribute('name');
     if (type === 'checkbox') await field.check();
     else if (type === 'email') await field.fill('person@example.com');
     else if (type === 'password') await field.fill('test-only-Passw0rd!');
+    else if (name === 'birthDay') await field.fill('12');
+    else if (name === 'birthYear') await field.fill('1990');
     else await field.fill('a note');
   }
+  for (const select of await page.locator('select:visible').all()) await select.selectOption({ index: 6 });
 }
 
 /**

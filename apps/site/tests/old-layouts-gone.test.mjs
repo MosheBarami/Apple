@@ -1,0 +1,178 @@
+// THE OLD LAYOUTS ARE GONE, AND NOTHING IMPORTS THEM (handoff 2.2: "Do not reuse old layouts").
+//
+// The owner's rule is that a redesign which keeps the old layouts fails, and that it is judged side by side against the old
+// pages. The cheapest way for a rebuild to keep an old layout is to leave its component in the tree and import it again, so
+// the list of what was deliberately replaced is a test: each file below must not exist, and no source file may import one
+// by name. Every deletion is recorded, with the owner pick it was, in planning/proof/M2/DECISIONS.md (section 12).
+//
+// The importer scan is run on a synthetic source first so that a scan that finds nothing cannot pass for a clean tree.
+//
+// Run with:  node --test tests/old-layouts-gone.test.mjs   (from apps/site; reads source, needs no build)
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { SITE, stripComments, walkFiles } from './lib/dist.mjs';
+
+const SRC = join(SITE, 'src');
+
+/** What the M2 rebuild replaced. Paths are relative to apps/site/src (or apps/site/public where noted). */
+const GONE = [
+  // The old front-page layout and the page-level furniture around it.
+  'layouts/Landing.astro',
+  'styles/landing.css',
+  'components/BuiltScreen.astro',
+  'components/ConsentProof.astro',
+  'components/Marquee.astro',
+  'components/FAQ.astro',
+  'data/showcase-proof.ts',
+  'data/consent-proof.ts',
+  'data/recorded-run.ts',
+  'lib/billing-probe.ts',
+  // The owner's picked landing components, each replaced by the rebuild.
+  'components/picks/ArrowLink.astro',
+  'components/picks/BeamFlow.astro',
+  'components/picks/CtaButton.astro',
+  'components/picks/DeviceFrame.astro',
+  'components/picks/NoiseField.astro',
+  'components/picks/ParticleWord.astro',
+  'components/picks/PointerRim.astro',
+  'components/picks/motion.ts',
+  'components/picks/noise.ts',
+  'components/picks/scramble.ts',
+  'components/picks/ticker.ts',
+  // The owner's picked pricing and docs components the new pricing page does not use.
+  'components/picks-docs/BeamBorder.astro',
+  'components/picks-docs/BuildEstimator.astro',
+  'components/picks-docs/PriceSwitch.astro',
+  'components/picks-docs/ShinyButton.astro',
+  'components/picks-docs/Spotlight.astro',
+  'components/picks-docs/rolling-number.ts',
+  'components/picks-docs/rolling-number.css',
+  // The pages that became redirects.
+  'pages/models.astro',
+  'pages/proof.astro',
+  'pages/changelog.astro',
+  // M2 site fix cycle 1, plan step 2.6 (the docs rewrite): the three docs pages that were folded into others and are Astro redirects now
+  // (/docs/connect to getting-started, /docs/updating and /docs/build-from-source to the plugin page) ...
+  'pages/docs/connect.astro',
+  'pages/docs/updating.astro',
+  'pages/docs/build-from-source.astro',
+  // ... and the docs components that only decorated them: the Folder (getting-started), the Terminal and the Code Tabs (build-from-source), the
+  // copy button they shared, and the plugin page's strip of object icons. DocsKit is not here: see the next-to-last test.
+  'components/picks-docs/Folder.astro',
+  'components/picks-docs/Terminal.astro',
+  'components/picks-docs/CodeTabs.astro',
+  'components/picks-docs/copy-button.ts',
+  'components/ObjectIcon.astro',
+];
+
+const GONE_DIRS = ['components/picks'];
+
+/** The module names a source file imports, as written. */
+function importsOf(text) {
+  return [...stripComments(text).matchAll(/(?:^|\n)\s*import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g)].map((m) => m[1]);
+}
+
+/** Whether `spec` imported from `from` (a path under src) names `gone` (a path under src), with or without an extension. */
+function names(spec, from, gone) {
+  if (!spec.startsWith('.')) return false;
+  const target = resolve(dirname(join(SRC, from)), spec);
+  const goneAbs = join(SRC, gone);
+  const strip = (p) => p.replace(/\.(?:astro|ts|js|css|json)$/, '');
+  return target === goneAbs || strip(target) === strip(goneAbs);
+}
+
+test('the import scan can see: it flags an import of a deleted component and a side-effect style import, and passes a live one', () => {
+  const src = "import Landing from '../layouts/Landing.astro';\nimport '../styles/landing.css';\nimport Base from '../layouts/Base.astro';\n// import Marquee from '../components/Marquee.astro';";
+  const specs = importsOf(src);
+  assert.deepEqual(specs, ['../layouts/Landing.astro', '../styles/landing.css', '../layouts/Base.astro']);
+  assert.ok(specs.some((s) => names(s, 'pages/index.astro', 'layouts/Landing.astro')));
+  assert.ok(specs.some((s) => names(s, 'pages/index.astro', 'styles/landing.css')));
+  assert.ok(!specs.some((s) => names(s, 'pages/index.astro', 'components/Marquee.astro')));
+});
+
+test('every old layout, component, data file and page the rebuild replaced no longer exists', () => {
+  assert.ok(GONE.length > 0);
+  for (const rel of GONE) assert.ok(!existsSync(join(SRC, rel)), `src/${rel} still exists: it is an old layout the M2 rebuild replaced`);
+  for (const rel of GONE_DIRS) assert.ok(!existsSync(join(SRC, rel)), `src/${rel}/ still exists`);
+});
+
+test('the layouts folder holds the one Base layout and the two document layouts that sit on it, and nothing else', () => {
+  const layouts = walkFiles(join(SRC, 'layouts'));
+  assert.deepEqual(layouts, ['Base.astro', 'DocsLayout.astro', 'LegalLayout.astro']);
+  for (const doc of ['DocsLayout.astro', 'LegalLayout.astro']) {
+    assert.match(readFileSync(join(SRC, 'layouts', doc), 'utf8'), /import Base from '\.\/Base\.astro'/, `${doc} is not built on Base`);
+  }
+});
+
+test('no source file imports anything that was deleted, and every page renders through Base (directly or through a layout on it)', () => {
+  const files = walkFiles(SRC, (p) => /\.(?:astro|ts|js|mjs)$/.test(p));
+  assert.ok(files.length > 0);
+  for (const file of files) {
+    for (const spec of importsOf(readFileSync(join(SRC, file), 'utf8'))) {
+      for (const gone of GONE) assert.ok(!names(spec, file, gone), `${file} imports ${spec}, which the rebuild deleted (${gone})`);
+    }
+  }
+  const pages = files.filter((f) => f.startsWith('pages/') && f.endsWith('.astro'));
+  assert.ok(pages.length > 0);
+  for (const page of pages) {
+    const text = stripComments(readFileSync(join(SRC, page), 'utf8'));
+    assert.match(text, /layouts\/(?:Base|DocsLayout|LegalLayout)\.astro/, `${page} does not render through Base, DocsLayout or LegalLayout`);
+  }
+});
+
+test('index.astro is on Base and carries no copy of the old front page', () => {
+  const index = readFileSync(join(SRC, 'pages', 'index.astro'), 'utf8');
+  assert.match(index, /layouts\/Base\.astro/);
+  assert.doesNotMatch(stripComments(index), /Landing|NoiseField|BuiltScreen|ConsentProof|Marquee|BeamFlow|DeviceFrame|PointerRim/);
+});
+
+// DocsKit WAS THE DOCS' POINTER EFFECTS AND IS A STUB (M2 site fix cycle 1). It cannot be deleted yet because the privacy-and-data page, which the
+// legal lane owns and is rewriting, still imports and mounts it. So the property is: it holds no markup, no style and no script (nothing of the old
+// effects survives in it), nothing but that one page imports it, and the day that page stops importing it this fails, so the file is deleted.
+test('DocsKit is an empty stub, only the legal lane\'s privacy-and-data page imports it, and it is deleted the day that stops', () => {
+  const kit = join(SRC, 'components', 'picks-docs', 'DocsKit.astro');
+  if (!existsSync(kit)) return; // deleted: the end of its life
+  const body = stripComments(readFileSync(kit, 'utf8')).replace(/^---\s*---\s*/m, '').trim();
+  assert.equal(body, '', `DocsKit.astro carries markup, a style or a script again: ${body.slice(0, 80)}`);
+  const importers = walkFiles(SRC, (p) => /\.(?:astro|ts|js|mjs)$/.test(p)).filter((f) => importsOf(readFileSync(join(SRC, f), 'utf8')).some((spec) => names(spec, f, 'components/picks-docs/DocsKit.astro')));
+  assert.ok(importers.length > 0, 'nothing imports DocsKit any more: delete components/picks-docs/DocsKit.astro');
+  assert.deepEqual(importers, ['pages/docs/privacy-and-data.astro'], 'a page other than the legal lane\'s privacy-and-data imports DocsKit again');
+});
+
+// NO TEST DESCRIBES A DELETED COMPONENT AS STILL THERE (M2 site fix cycle 2, finding 16). reveal-cannot-hide-content kept a paragraph "NOT COVERED: the docs Terminal demo
+// (components/picks-docs/Terminal.astro) ... keeps output visibility:hidden" after the docs rewrite deleted the file, a limit that no longer existed, and another test's
+// header still counted the deleted Folder and Terminal among the keyframes that remain. A test file that names a deleted path must say, within three lines of it, that it
+// is gone (deleted, removed, replaced, folded, redirect, no longer, stub). The records that exist to list the deletions are exempt.
+/** The words that say a deleted path is gone, found within three lines of its name. */
+const GONE_WORDS = /delet|\bgone\b|removed|replaced|folded|redirect|no longer|\bstub\b|retired|legacy|used to|moved/i;
+
+test('no test file names a path the rebuild deleted without saying, beside it, that it is gone', () => {
+  const tests = walkFiles(join(SITE, 'tests'), (p) => /\.test\.mjs$/.test(p)).filter((f) => !/^(?:old-layouts-gone|picks-pricing-docs|legacy-plugin-instructions)\.test\.mjs$/.test(f));
+  assert.ok(tests.length > 40, `only ${tests.length} test files were read`);
+  const bad = [];
+  let mentions = 0;
+  const lineOf = (text, i) => text.slice(0, i).split('\n').length - 1;
+  for (const f of tests) {
+    const text = readFileSync(join(SITE, 'tests', f), 'utf8');
+    const lines = text.split('\n');
+    for (const gone of GONE.filter((g) => /\.(?:astro|ts)$/.test(g) && !g.startsWith('pages/'))) {
+      let at = text.indexOf(gone);
+      while (at !== -1) {
+        mentions += 1;
+        const n = lineOf(text, at);
+        const near = lines.slice(Math.max(0, n - 3), n + 4).join(' ');
+        if (!GONE_WORDS.test(near)) bad.push(`${f}:${n + 1} names ${gone} and does not say it is gone`);
+        at = text.indexOf(gone, at + gone.length);
+      }
+    }
+  }
+  assert.ok(mentions >= 0);
+  assert.deepEqual(bad, []);
+});
+
+test('the stale-reference scan can see: a comment that treats a deleted component as live is caught, one that says it was deleted is not', () => {
+  assert.ok(!GONE_WORDS.test('NOT COVERED: the docs Terminal demo (components/picks-docs/Terminal.astro) types its output when it scrolls into view and keeps it hidden'));
+  assert.ok(GONE_WORDS.test('The docs Terminal demo (components/picks-docs/Terminal.astro) was deleted with build-from-source.'));
+});

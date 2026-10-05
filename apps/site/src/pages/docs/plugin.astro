@@ -1,13 +1,9 @@
 ---
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
-import ObjectIcon, { type ObjectName } from '../../components/ObjectIcon.astro';
 
-// The canonical Creator Store identity for the plugin, "StudPilot Studio". The asset id has exactly ONE
-// definition in this repository — packages/shared/src/index.ts — and everything, including this
-// page, derives from it. Do not restate the number here; a second copy is a second thing to forget
-// to change. (Why create.roblox.com/store/asset: roblox.com/library/<id> redirects there, so Roblox
-// itself names that the canonical URL.)
+// The canonical Creator Store identity for the plugin, "StudPilot Studio". The asset id has exactly ONE definition in this repository
+// (packages/shared/src/index.ts) and everything, including this page, derives from it. Do not restate the number here; a second copy is a second
+// thing to forget to change.
 import {
   STUDIO_PLUGIN_ASSET_ID as ASSET_ID,
   STUDIO_PLUGIN_URL as STORE_URL,
@@ -16,76 +12,63 @@ import {
 } from '../../lib/studio-plugin';
 
 /*
- * AN INSTALL GUIDE, ASKED OF THE FLAG.
+ * THE PLUGIN PAGE, REWRITTEN (M2 site fix cycle 1, plan step 2.6): AVAILABILITY FROM THE FLAG, and the three pages that were about the same
+ * plugin folded into it. /docs/connect (pairing, in Getting started), /docs/updating (the "Updating" section below) and /docs/build-from-source
+ * (a developer path that was explicitly not how anyone installs StudPilot; deleted, and redirected here) are Astro redirects now.
  *
- * `storeLive` decides whether this page is an install guide or an availability notice, and it
- * decides the metadata too: a description is what a search result and a pasted link show, so it
- * must never promise an install path the body denies (apps/site/tests/
- * plugin-availability-metadata.test.mjs).
+ * `storeLive` decides whether this page is an install guide or an availability notice, and it decides the metadata too: a description is what a
+ * search result and a pasted link show, so it must never promise an install path the body denies (tests/plugin-availability-metadata.test.mjs).
+ * While STUDIO_PLUGIN_STORE_LIVE is false new customers cannot get the plugin: the page says so first and says what still works.
  *
- * `refusal` is kept for the day a listing is refused again: while one is recorded, the page states
- * Roblox's own reason rather than only the outcome (apps/site/tests/plugin-listing-identity.test.mjs).
- * It is null from 2026-09-22, when the listing was distributed again.
+ * `refusal` is kept for the day a listing is refused again: while one is recorded, the page states Roblox's own reason rather than only the
+ * outcome (tests/plugin-listing-identity.test.mjs). It is null from 2026-09-22, when the listing was distributed again.
  *
- * The labels quoted in the steps — StudPilot, StudPilot Studio, Not connected, Connect to StudPilot, Enable
- * edits…, Allow edits for this connection, Turn edits off — are the plugin's own strings in
- * apps/studpilot-plugin/src/init.server.luau.
+ * What the plugin can and cannot do is the plugin's own sentence (apps/studpilot-plugin/src/init.server.luau, the disclosure under "Enable
+ * edits…"), quoted, and tests/docs-plugin-claims.test.mjs holds it to that file.
  */
-/* WHAT "CREATE INSTANCES" MEANS, IN OBJECTS A YOUNG CREATOR WILL MEET IN STUDIO'S EXPLORER. Each is
-   one the worker's tools make or change (apps/worker/src/tools.ts): scripts through edit_script's
-   Script / LocalScript / ModuleScript, terrain through edit_terrain, meshes through generate_model,
-   and the rest through create_instances, which takes any class name. The glyphs are the site's own
-   drawings (components/ObjectIcon.astro), not Roblox's artwork. */
-const objects: ObjectName[] = [
-  'Part', 'MeshPart', 'Model', 'Terrain', 'SpawnLocation', 'Humanoid',
-  'Script', 'LocalScript', 'ModuleScript', 'RemoteEvent',
-  'ScreenGui', 'Frame', 'TextButton', 'ImageLabel', 'Sound', 'ParticleEmitter',
-];
-
 const decided = refusal
   ? new Date(refusal.decidedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
   : null;
 ---
 
 <DocsLayout
-  title="Install the plugin — StudPilot Docs"
+  title="The Studio plugin | StudPilot"
   description={storeLive
-    ? 'How to install StudPilot Studio from the Roblox Creator Store, enable it, open the StudPilot panel, pair it with your project and allow edits.'
-    : 'Public Studio installation is unavailable right now. What that means, and what the install steps will be once the listing is available again.'}
-  heading="Install StudPilot Studio"
+    ? 'The free StudPilot Studio plugin: how to get it from the Roblox Creator Store, what it can and cannot do, how to pair it and how to update it.'
+    : 'Public Studio installation is unavailable right now. What that means, what still works, what the plugin does and how to update it if you already have it.'}
+  heading="The Studio plugin"
+  order={2}
+  summary="Whether you can get the plugin today, what it does, and how to update it."
 >
   <p>
-    StudPilot builds inside Roblox Studio through a free plugin, <strong>StudPilot Studio</strong>. The
-    plugin is the product's hands: it reads and edits scripts, creates instances, sets properties
-    and reads the output — always inside the one place you connect it to, and always as Studio
-    undo steps.
+    <strong>StudPilot Studio</strong> is the plugin that lets StudPilot reach the place you have open in Roblox Studio. Without it the web app can
+    chat and plan with you. With it paired, and edits allowed, StudPilot can change that one place.
   </p>
 
   {
     storeLive ? (
-      <p class="cta-row">
+      <p>
         <a href={STORE_URL} class="btn btn-primary" rel="noopener noreferrer" target="_blank">
           Get StudPilot Studio on the Creator Store <span aria-hidden="true">↗</span>
-        </a>
-        <span>Free. Opens Roblox's site in a new tab.</span>
+        </a>{' '}
+        It is free. The link opens Roblox's site in a new tab.
       </p>
     ) : (
       <div class="callout">
         {
           refusal ? (
             <p>
-              <strong>Public installation is unavailable, and it is a moderation decision.</strong>{' '}
-              Roblox removed this plugin's Creator Store listing (<code>{ASSET_ID}</code>) on {decided},
-              giving the reason <strong>“{refusal.reason}”</strong>, so the store URL is not a working
-              install path.
-              {refusal.appealId ? ' An appeal has been sent and is awaiting a decision.' : ' An appeal has not been sent.'}
-              {' '}The steps below apply once the listing is available again.
+              <strong>Public installation is unavailable, and it is a moderation decision.</strong> Roblox removed this plugin's Creator Store
+              listing (<code>{ASSET_ID}</code>) on {decided}, giving the reason <strong>“{refusal.reason}”</strong>, so the store URL is not a
+              working install path.
+              {refusal.appealId ? ' An appeal has been sent and is awaiting a decision.' : ' An appeal has not been sent.'}{' '}
+              New customers can chat and plan in the web app, and cannot build in Studio yet.
             </p>
           ) : (
             <p>
-              <strong>Public installation is unavailable right now.</strong> The plugin
-              (<code>{ASSET_ID}</code>) cannot be installed from the Creator Store today. The steps
-              below apply once the listing is available again.
+              <strong>Public installation is unavailable right now.</strong> The plugin (<code>{ASSET_ID}</code>) cannot be installed from the
+              Creator Store today, so new customers can chat and plan in the web app and cannot build in Studio yet. The status page lists it as a
+              known issue. If you already have the plugin, it may still work.
             </p>
           )
         }
@@ -93,249 +76,43 @@ const decided = refusal
     )
   }
 
-  <h2>{storeLive ? 'Install it in five steps' : 'After public installation opens'}</h2>
+  <h2>{storeLive ? 'Getting it' : 'When installation opens again'}</h2>
   <p>
-    Roblox splits installation into two halves, and the second half happens inside Studio: a web
-    page cannot install a plugin into Studio, whatever the button on the store page looks like.
+    Roblox splits installation into two halves, and the second half happens inside Studio: a web page cannot install a plugin into Studio. You get
+    the plugin from the Creator Store page, then install it from Studio's <strong>Toolbox</strong>, under <strong>Inventory</strong>. A
+    <strong>StudPilot</strong> button then appears in the <strong>Plugins</strong> tab. If it does not, open <strong>Manage Plugins</strong> and
+    switch the plugin on.
+  </p>
+  <p>
+    The first time it talks to StudPilot, Studio can ask you to allow the plugin to reach the network. Allow it, or the panel says
+    “Could not reach StudPilot”. You can accept, deny or revoke that in Studio's plugin management window.
   </p>
 
-  <ol class="steps">
-    <li>
-      <strong>Get it from the Creator Store.</strong>{' '}
-      {storeLive
-        ? <>Open <a href={STORE_URL} rel="noopener noreferrer" target="_blank">StudPilot Studio on the Creator Store</a>, sign in to Roblox and press <strong>Get Plugin</strong>.</>
-        : <>Open the Creator Store page for StudPilot Studio, sign in to Roblox and press <strong>Get Plugin</strong>.</>}
-      {' '}That only adds it to your Roblox inventory; nothing has reached Studio yet.
-    </li>
-    <li>
-      <strong>Install it in Studio.</strong> Open Roblox Studio, open the <strong>Toolbox</strong>,
-      and find StudPilot Studio under <strong>Inventory</strong> (or search the
-      <strong>Creator Store</strong> tab). Click it, then press <strong>Install</strong>.
-    </li>
-    <li>
-      <strong>Check it is enabled.</strong> An <strong>StudPilot</strong> button appears in Studio's
-      <strong>Plugins</strong> tab. If it does not, open <strong>Manage Plugins</strong> from the same
-      tab and switch StudPilot Studio on.
-    </li>
-    <li>
-      <strong>Open the StudPilot panel.</strong> Click <strong>StudPilot</strong> in the Plugins tab. The
-      <strong>StudPilot Studio</strong> panel docks and reads <strong>Not connected</strong>. StudPilot can see
-      nothing until you pair it.
-    </li>
-    <li>
-      <strong>Pair it, then allow edits.</strong> In the StudPilot web app, open your project and press
-      <strong>Enter pairing code</strong> to get a six-character code. Type it into the panel and press
-      <strong>Connect to StudPilot</strong>. The connection starts read-only; press
-      <strong>Enable edits…</strong> and then <strong>Allow edits for this connection</strong> when you
-      want StudPilot to build. Every new connection starts with edits off again. The details are in
-      <a href="/docs/connect">Connect a project</a>.
-    </li>
-  </ol>
-
-  <div class="callout">
-    <p>
-      <strong>Studio will ask permission to reach the network.</strong> StudPilot talks to its server
-      over HTTPS. The first time a plugin uses the network, Studio can prompt you to allow that web
-      address, and you can accept, deny or revoke it at any time in the
-      <strong>Plugin Management</strong> window. StudPilot does nothing until you allow it. This is not
-      the same setting as <em>Game Settings → Security → Allow HTTP Requests</em>, which governs your
-      game's own code, not plugins.
-    </p>
-  </div>
+  <h2>Pairing, and what you allow</h2>
+  <p>
+    The plugin does nothing until you pair it with a project by typing a six-character code, and it starts with edits off. Pairing, the code and
+    turning edits on are in <a href="/docs/getting-started#pair">Getting started</a>.
+  </p>
 
   <h2>What it can and cannot do</h2>
-  <ul>
-    <li>
-      <strong>Can:</strong> read and edit scripts, create, move and delete instances, set
-      properties, snapshot the instance tree, read output logs, move the
-      camera — inside the place you connected, and only while Studio is open with that place.
-    </li>
-    <li>
-      <strong>Cannot:</strong> read files on your computer, act on places you did not connect,
-      run while Studio is closed, or publish your game. Publishing stays a human decision made
-      with your own Roblox account.
-    </li>
-    <li>
-      <strong>Bounded test control:</strong> StudPilot can start, pause, resume, restart and stop Studio
-      Run mode so StudPilot can verify its own work, capture output and take periodic viewport snapshots.
-      It does not publish your game or bypass Studio/Roblox account permissions. Arbitrary code
-      execution remains separately permissioned, and unsafe asset ingress is refused by name with
-      an explicit reason rather than failing quietly.
-    </li>
-  </ul>
+  <p>
+    This is the plugin's own wording from the panel, under <strong>Enable edits…</strong>: StudPilot may create or change supported objects and
+    scripts in the place you paired, control a Run-mode playtest, and start a short Test session with a player. It cannot publish, upload assets or
+    execute arbitrary received Luau inside the plugin. Writes need edit mode, and the plugin opens an undo recording for each. Disconnecting turns
+    the permission off. It works only while Studio is open with that place.
+  </p>
 
-  <figure class="obj-strip" data-reveal>
-    <figcaption>A few of the objects it creates or edits</figcaption>
-    <ul role="list">
-      {objects.map((name, i) => (
-        <li style={`--i:${i}`}><ObjectIcon name={name} /><code>{name}</code></li>
-      ))}
-    </ul>
-  </figure>
+  <h2 id="updating">Updating</h2>
+  <p>
+    Roblox does not update Studio plugins on its own. In Studio open <strong>Plugins</strong>, then <strong>Manage Plugins</strong>, find
+    StudPilot and press <strong>Update</strong>. If your build is too old for the server, the panel says so, and builds are blocked until
+    you update.
+  </p>
 
   <h2>Removing it</h2>
   <p>
-    Uninstall StudPilot Studio from Studio's plugin management window, the same place you manage every
-    other plugin. You can also stop StudPilot acting on a place at any moment without uninstalling
-    anything — press <strong>Disconnect</strong> in the panel, or disconnect from the web workspace.
-    See <a href="/docs/troubleshooting">Troubleshooting</a>.
+    Uninstall it from Studio's plugin management window, the same place you manage every other plugin. To stop StudPilot acting on a place without
+    uninstalling anything, press <strong>Disconnect</strong> in the panel, or disconnect from the project in the web app. If something does not
+    line up, <a href="/docs/troubleshooting">Troubleshooting</a> lists what the panel can say.
   </p>
-
-  <div class="callout callout--violet">
-    <p>
-      <strong>Developer note — not the normal path.</strong> If you are working on StudPilot itself,
-      you can build the plugin from source and load it as a local plugin. That path is documented
-      separately in <a href="/docs/build-from-source">Build the plugin from source</a>. It is for
-      development and debugging only; do not follow it to use StudPilot.
-    </p>
-  </div>
-
-  <DocsKit />
 </DocsLayout>
-
-<style>
-  .cta-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px 16px;
-    margin: 28px 0 32px;
-  }
-
-  /* The label may wrap: at 320px it is wider than the column, and `nowrap` (the site-wide button
-     rule) pushed it 12px past the right gutter. */
-  .cta-row .btn {
-    display: inline-block;
-    min-height: 40px;
-    max-width: 100%;
-    padding: 10px 16px;
-    line-height: 1.3;
-    text-align: center;
-    white-space: normal;
-  }
-
-  /* `>` so this reaches the note beside the button and not the arrow inside it: the arrow inherited
-     --muted against the ink-filled button and measured 2.33:1. Inside the button it takes the
-     button's own colour. */
-  .cta-row > span {
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  /* THE OBJECT STRIP. Tiles that wrap at their own width; each icon arrives a step after the one before it once the
-     figure is revealed, and lifts and takes the accent under the pointer. Without scripting, through the
-     layout's failsafe and under reduced motion, every icon is simply there. */
-  :global(.prose) .obj-strip {
-    margin: 4px 0 32px;
-  }
-
-  :global(.prose) .obj-strip figcaption {
-    margin: 0 0 12px;
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  :global(.prose) .obj-strip ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  :global(.prose) .obj-strip li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-    background: var(--surface);
-    color: var(--ink-2);
-    transition: border-color var(--t-base) var(--ease-out);
-  }
-
-  :global(.prose) .obj-strip code {
-    font-size: 13px;
-  }
-
-  :global(.prose) .obj-strip li :global(.obj-icon) {
-    transition:
-      opacity var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
-      scale var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
-      translate var(--t-base) var(--ease-out),
-      stroke var(--t-base) var(--ease-out);
-  }
-
-  :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
-    opacity: 0;
-    scale: 0.7;
-  }
-
-  :global(html:not(.no-js) .prose [data-reveal].is-in) li :global(.obj-icon) {
-    opacity: 1;
-    scale: 1;
-  }
-
-  :global(.prose) .obj-strip li:hover {
-    border-color: var(--accent-ring);
-  }
-
-  /* The stroke, not `color`: a glyph is a graphic, and --accent is no text colour on this site
-     (tests/contrast.test.mjs). */
-  :global(.prose) .obj-strip li:hover :global(.obj-icon) {
-    translate: 0 -2px;
-    stroke: var(--accent);
-  }
-
-  @media (prefers-reduced-motion: reduce), print {
-    :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
-      opacity: 1;
-      scale: 1;
-    }
-
-    :global(.prose) .obj-strip li:hover :global(.obj-icon) {
-      translate: none;
-    }
-  }
-
-  /* `:global(.prose)` in front because DocsLayout styles `.prose ol` and `.prose li` at a higher
-     specificity than a page's own scoped rule would have. */
-  :global(.prose) .steps {
-    counter-reset: step;
-    display: grid;
-    gap: 0;
-    margin: 20px 0 28px;
-    padding: 0;
-    list-style: none;
-  }
-
-  :global(.prose) .steps li {
-    position: relative;
-    padding: 16px 0 16px 44px;
-    border-top: 1px solid var(--hairline);
-  }
-
-  :global(.prose) .steps li:last-child {
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  :global(.prose) .steps li::before {
-    counter-increment: step;
-    content: counter(step);
-    position: absolute;
-    top: 16px;
-    left: 0;
-    display: grid;
-    place-items: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1;
-  }
-</style>

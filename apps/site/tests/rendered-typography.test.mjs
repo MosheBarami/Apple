@@ -38,40 +38,20 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { extname, join, dirname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { realPages } from './lib/dist.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(SITE, 'dist');
 const ROOT = join(SITE, '..', '..');
 
-// Every route a reader can reach, which is the set scripts/check-site-links.mjs walks. A route
-// added to src/pages and not added here is measured nowhere, so the list is asserted against the
-// build below rather than trusted.
-const ROUTES = [
-  '/',
-  // A route is added to this list the day it is built, not the day somebody notices it is missing.
-  // /proof is a page of quotations from a run log, which is the shape most likely to strand a word:
-  // long monospace lines the wrapper cannot break, beside prose columns it can.
-  '/proof/',
-  '/pricing/',
-  // Built 2026-09-23: model rows are short names beside long ones, which is where a word strands.
-  '/models/',
-  '/changelog/',
-  '/status/',
-  '/privacy/',
-  '/terms/',
-  '/404.html',
-  '/docs/',
-  '/docs/getting-started/',
-  '/docs/plugin/',
-  '/docs/connect/',
-  '/docs/credits-and-limits/',
-  '/docs/billing/',
-  '/docs/updating/',
-  '/docs/troubleshooting/',
-  '/docs/privacy-and-data/',
-  '/docs/faq/',
-  '/docs/build-from-source/',
-];
+// Every route a reader can reach, DERIVED from the built site (the redirect stubs, which have no page, are left out, and so is
+// /discord, whose script forwards the browser to the community server's invite the moment it loads).
+// RESTATED 2026-10-05 (M2 rebuild): this was a typed list that still named /proof/, /models/ and /changelog/, three routes that
+// are redirects now, and that would have needed a hand edit for every page added. A route added tomorrow is measured tomorrow.
+const ROUTES = realPages()
+  .filter((p) => !/location\.replace\(/.test(p.html))
+  .map((p) => (p.route === '/404' ? '/404.html' : p.route));
+assert.ok(ROUTES.length >= 15, `only ${ROUTES.length} routes were derived from dist`);
 
 const WIDTHS = [375, 1280];
 
@@ -293,7 +273,7 @@ test('NO PAGE STRANDS A WORD ON ITS OWN LINE, at 375px or at 1280px', async () =
     `${strays.length} text blocks end on a stranded word, and the budget is ${ORPHAN_BUDGET}:\n  ` +
       strays.join('\n  ') +
       '\n\nThe rules that hold this down are the `text-wrap: balance` / `text-wrap: pretty` pair in ' +
-      'src/styles/global.css and src/styles/landing.css. If one of them was removed, this is what ' +
+      'src/styles/global.css and src/styles/base.css. If one of them was removed, this is what ' +
       'the pages look like without it.',
   );
 });
@@ -363,7 +343,11 @@ test('EVERY PAGE TITLE IS SET THE SAME WAY, and none falls back to the browser\'
   );
 });
 
-test("THE 404's LABEL IS ON THE PAGE'S AXIS, not hard against the left of it", async () => {
+// RESTATED 2026-10-05 (M2 rebuild). The 404 was a centred page and its label drifted left of its heading (`.eyebrow` is display:flex,
+// so text-align does not reach it). The rebuilt 404 is left-aligned, so the property is the same one in its new form: the label and
+// the heading sit on ONE axis. The LEFT edge of the label's text is compared with the heading's, by boxing the text with a Range
+// (the element's box is full-width whether or not the text moved).
+test("THE 404's LABEL IS ON THE PAGE'S AXIS: its text starts where the heading does", async () => {
   const chromium = loadChromium();
   const { server, port } = await serveDist();
   const browser = await chromium.launch();
@@ -372,31 +356,19 @@ test("THE 404's LABEL IS ON THE PAGE'S AXIS, not hard against the left of it", a
       const ctx = await browser.newContext({ viewport: { width, height: 900 } });
       const page = await ctx.newPage();
       await page.goto(`http://127.0.0.1:${port}/404.html`, { waitUntil: 'load' });
-
-      // The element's BOX is full-width whether or not the fix is present — it is a block-level
-      // flex container either way — so the box proves nothing. What moved is the TEXT inside it,
-      // which is why this boxes the text with a Range and compares its centre to the heading's.
       const m = await page.evaluate(() => {
-        const eyebrow = document.querySelector('.lost .eyebrow');
+        const label = document.querySelector('.lost .kicker');
         const h1 = document.querySelector('.lost h1');
         const range = document.createRange();
-        range.selectNodeContents(eyebrow);
+        range.selectNodeContents(label);
         const e = range.getBoundingClientRect();
         const h = h1.getBoundingClientRect();
-        return {
-          eyebrowCentre: e.left + e.width / 2,
-          headingCentre: h.left + h.width / 2,
-          justify: getComputedStyle(eyebrow).justifyContent,
-          text: eyebrow.textContent.trim(),
-        };
+        return { labelLeft: e.left, headingLeft: h.left, text: label.textContent.trim() };
       });
-      assert.ok(m.text.length > 0, 'the 404 has no eyebrow label, so this test guards nothing');
+      assert.ok(m.text.length > 0, 'the 404 has no label, so this test guards nothing');
       assert.ok(
-        Math.abs(m.eyebrowCentre - m.headingCentre) <= 2,
-        `at ${width}px the 404's "${m.text}" is centred on ${Math.round(m.eyebrowCentre)}px while its ` +
-          `heading is centred on ${Math.round(m.headingCentre)}px (justify-content: ${m.justify}). ` +
-          '.eyebrow is display:flex, so text-align does not reach it — it needs justify-content: center, ' +
-          'the way /pricing centres its three.',
+        Math.abs(m.labelLeft - m.headingLeft) <= 2,
+        `at ${width}px the 404's "${m.text}" starts at ${Math.round(m.labelLeft)}px while its heading starts at ${Math.round(m.headingLeft)}px`,
       );
       await ctx.close();
     }

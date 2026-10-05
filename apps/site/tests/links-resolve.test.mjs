@@ -74,7 +74,11 @@ function fileFor(route, all) {
  * repository` below reads that file and fails if it does not actually ship the route. Adding
  * `/anything` here without a publisher does not buy silence.
  */
-const WORKER_SERVED = new Map([['/showcase', 'infra/deploy-showcase.mjs']]);
+//
+// RE-AIMED AGAIN 2026-10-05 (M2 rebuild): /showcase is built by Astro now. It is one of the four removed routes (/models, /proof,
+// /showcase, /changelog) that astro.config.mjs redirects, so the built file overwrites the old static row and the exemption is gone,
+// exactly as the test below said it must be. The map is empty and stays as the mechanism for the next route the Worker serves.
+const WORKER_SERVED = new Map();
 
 const built = existsSync(DIST) ? pages() : [];
 const html = new Map(built.map((f) => [f, readFileSync(join(DIST, f), 'utf8')]));
@@ -118,60 +122,51 @@ test('every anchor names an id that is on the page it points at', () => {
   );
 });
 
-test('the exempt routes are published by something in this repository', () => {
-  // WHAT MAKES THE EXEMPTION HONEST. A route listed above is being excused from the
-  // does-it-resolve check on the claim that the Worker serves it. This reads the file that is
-  // supposed to do the serving and fails if it does not name the route — so the claim costs
-  // something. Without this, `WORKER_SERVED` would be a list of links nobody checks at all, which
-  // is strictly worse than the broken-link report it replaced.
+test('the exempt routes are published by something in this repository, and no route Astro builds is still exempt', () => {
+  // WHAT MAKES THE EXEMPTION HONEST. A route listed above is being excused from the does-it-resolve check on the claim that the
+  // Worker serves it. This reads the file that is supposed to do the serving and fails if it does not name the route, so the claim
+  // costs something. And the opposite drift: the day Astro builds a route that is exempt, the entry becomes a lie that silently
+  // stops the real check from running on a real page.
   const repo = join(SITE, '..', '..');
   for (const [route, publisher] of WORKER_SERVED) {
     const path = join(repo, publisher);
     assert.ok(existsSync(path), `${route} is exempt on the word of ${publisher}, which does not exist`);
     const source = readFileSync(path, 'utf8');
-    assert.ok(
-      source.includes(`'${route}'`) || source.includes(`"${route}"`),
-      `${publisher} is named as the publisher of ${route} but never mentions that path — the exemption is unearned`,
-    );
-    // AND THE OPPOSITE DRIFT: the day someone adds apps/site/src/pages/showcase.astro, this entry
-    // becomes a lie that silently stops the real check from running on a real page. Self-cleaning.
-    assert.equal(
-      fileFor(route, built),
-      null,
-      `${route} is now built by Astro — delete its ${publisher} exemption so the ordinary check covers it`,
-    );
+    assert.ok(source.includes(`'${route}'`) || source.includes(`"${route}"`), `${publisher} is named as the publisher of ${route} but never mentions that path`);
+    assert.equal(fileFor(route, built), null, `${route} is now built by Astro: delete its ${publisher} exemption so the ordinary check covers it`);
+  }
+  // The four routes the rebuild removed are BUILT (as redirects), so none of them needs an exemption.
+  for (const route of ['/models', '/proof', '/showcase', '/changelog']) {
+    assert.ok(fileFor(route, built), `${route} is not in the build: it must be an Astro redirect so it overwrites the old static row`);
+    assert.ok(!WORKER_SERVED.has(route), `${route} is built, so it must not be exempt`);
   }
 });
 
-test('every page reaches the showcase, the landing included', () => {
-  // THE FAILURE THIS EXISTS FOR IS ONE DAY OLD. /showcase went live on 2026-09-21 with nothing
-  // anywhere linking to it: the best evidence this product has, reachable only by being told the
-  // URL. A link that is nobody's test is a link that gets tidied away by the next person who
-  // thinks the nav is too long.
-  //
-  // THE LANDING IS IN THE SET, AND THE FIRST VERSION OF THIS TEST EXEMPTED IT. That version was
-  // written from the assumption that Nav.astro is the site's navigation; the landing has its own
-  // header and does not import it, so the check passed on nineteen pages and the front door — the
-  // one page the owner actually opens — was the single page with no link. The exemption hid
-  // exactly the case worth checking. It reaches /showcase from the footer rather than the header
-  // because landing.css measured that header row at 320px against 343 available on a phone; where
-  // the link lives is that page's business, that it is reachable is this test's.
+// RESTATED 2026-10-05 (M2 rebuild). This asserted that every page links to /showcase, the gallery of screens the model built. The
+// gallery is deleted on purpose (no fake output: nothing the site shows may be a build that did not really happen) and /showcase
+// redirects to /catalog. The property it protected is "the page that holds the product's evidence is reachable from every page,
+// the front page included, and nobody tidies the link away": the evidence page is the catalog now, so that is what is held.
+test('every page reaches the catalog, the landing included', () => {
   assert.ok(html.size >= 10, 'too few pages built for this to mean anything');
-  const missing = [...html]
-    .filter(([, body]) => !/href="\/showcase"/.test(body))
-    .map(([f]) => routeOf(f))
-    .sort();
-  assert.deepEqual(missing, [], 'pages with no route to the showcase:\n  ' + missing.join('\n  '));
+  const real = [...html].filter(([, body]) => !/<meta http-equiv="refresh"/i.test(body));
+  assert.ok(real.length >= 10, 'too few real pages built for this to mean anything');
+  const missing = real.filter(([, body]) => !/href="\/catalog\/?"/.test(body)).map(([f]) => routeOf(f)).sort();
+  assert.deepEqual(missing, [], 'pages with no route to the catalog:\n  ' + missing.join('\n  '));
+  assert.ok(real.some(([f]) => f === 'index.html'), 'the landing is not among the pages checked');
 });
 
-test('the navigation reaches every section it names, from every page', () => {
-  // The specific case the stale comment got wrong: the nav is shared, so its links have to work
-  // from /pricing and /docs, not only from the page that happens to contain the sections.
-  const nav = [...html].find(([f]) => f.startsWith('pricing'));
-  assert.ok(nav, 'no pricing page in the build — this check would be vacuous');
-  const frags = [...nav[1].matchAll(/href="\/#([a-z-]+)"/g)].map((m) => m[1]);
-  assert.ok(frags.length > 0, `the shared nav offers no product-section destinations`);
-  const landing = ids.get('index.html');
+// RESTATED 2026-10-05 (M2 rebuild). The old navigation offered `/#section` links, and the question was whether the landing really had
+// those ids. The new navigation offers pages, not sections. The property is the same one in its new form: the navigation is SHARED and
+// every link in it works from every page, so the primary navigation of every real page offers the same links as the front page's, and
+// any fragment among them names an id the landing has.
+test('the navigation is the same on every page, and any fragment in it names an id the landing has', () => {
+  const primary = (body) => [...(body.match(/<nav\b[^>]*id="primary-nav"[\s\S]*?<\/nav>/)?.[0] ?? '').matchAll(/<a\b[^>]*\shref="([^"]+)"/g)].map((m) => m[1]);
+  const landing = html.get('index.html');
   assert.ok(landing, 'no landing page in the build');
-  assert.deepEqual(frags.filter((f) => !landing.has(f)), [], 'the nav points at sections the landing does not have');
+  const reference = primary(landing);
+  assert.ok(reference.length >= 8, `the landing's navigation offers only ${reference.length} links`);
+  const real = [...html].filter(([, body]) => !/<meta http-equiv="refresh"/i.test(body));
+  for (const [file, body] of real) assert.deepEqual(primary(body), reference, `${routeOf(file)} has a different navigation from the front page`);
+  const landingIds = ids.get('index.html');
+  assert.deepEqual(reference.filter((h) => h.startsWith('/#')).map((h) => h.slice(2)).filter((f) => !landingIds.has(f)), [], 'the nav points at sections the landing does not have');
 });

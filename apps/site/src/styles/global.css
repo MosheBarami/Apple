@@ -1,5 +1,5 @@
 /*
- * CONTENT ROUTES — docs, pricing, changelog, status, proof, legal, 404.
+ * DOCUMENT ROUTES — docs, status, legal.
  *
  * Structure only. Every colour, type, radius and motion value is a token from packages/design/src/web/tokens.css,
  * which Base.astro imports before this file; nothing here redeclares one. The page grammar is the
@@ -55,11 +55,6 @@
   max-width: 70ch;
 }
 
-.btn-lg {
-  min-height: 44px;
-  padding-inline: 18px;
-}
-
 /* A panel is flat: a --surface fill and a hairline edge. It casts nothing and does not move; the
    edge darkens under the pointer. */
 .card,
@@ -82,7 +77,7 @@
 /* ------------------------------------------------------------------ prose */
 
 .prose {
-  max-width: 70ch;
+  max-width: var(--prose-measure);
   color: var(--ink-2);
 }
 
@@ -287,54 +282,6 @@ tr:last-child th {
   color: var(--ink);
   font-family: var(--font-mono);
   white-space: nowrap;
-}
-
-/* ------------------------------------------------------------------ reveal */
-
-/* Scroll reveals for the docs, changelog and pricing routes. Every path ends visible: without
-   scripting (.no-js), under reduced motion (declared after the hidden state so it wins on order),
-   and through the layout script's failsafe. apps/site/tests/reveal-cannot-hide-content.test.mjs. */
-.no-js [data-reveal],
-.no-js .kinetic {
-  opacity: 1;
-  transform: none;
-}
-
-/* A friendly entrance: up, a touch small, settling with a little give. */
-html:not(.no-js) [data-reveal],
-html:not(.no-js) .kinetic {
-  opacity: 0;
-  transform: translateY(18px) scale(0.985);
-  transition:
-    opacity var(--t-slow) var(--ease-out),
-    transform 700ms var(--ease-out),
-    translate var(--t-slow) var(--ease-out);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-html:not(.no-js) [data-reveal].is-in,
-html:not(.no-js) .kinetic.is-in {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html:not(.no-js) [data-reveal],
-  html:not(.no-js) .kinetic {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Printing, or any capture that does not scroll, gets every section rather than only the ones the
-   observer has reached. */
-@media print {
-  html:not(.no-js) [data-reveal],
-  html:not(.no-js) .kinetic {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
 }
 
 @media (max-width: 820px) {

@@ -172,19 +172,28 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(TEXT.length >= 4, `only ${TEXT.length} text tokens found (${TEXT.join(', ')}) — the use scan is blind`);
   for (const must of ['ink', 'muted', 'faint']) assert.ok(TEXT.includes(must), `--${must} is not spent as text anywhere; re-check the scan`);
   assert.ok(SURFACES.length >= 5, `only ${SURFACES.length} surfaces found (${SURFACES.join(', ')})`);
-  assert.ok(RULES.length > 500, `only ${RULES.length} rules read — the rule parse is blind`);
+  // RE-BASED 2026-10-05 (M2 rebuild): 473 rules are read now, not 500+, because the 1,139-line landing.css (and the picks components'
+  // own sheets) were deleted with the old front page. The floor is a vacuity check (a blind parse reads a handful, not hundreds), so
+  // it follows the tree down; every pair measured below is still derived from whatever the sheets say.
+  assert.ok(RULES.length > 300, `only ${RULES.length} rules read — the rule parse is blind`);
   for (const mode of Object.keys(THEMES)) {
-    assert.ok(MEASURED[mode].length > 150, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
+    // RE-BASED AGAIN 2026-10-05 (M2 site fix cycle 1): 150 pairs are derived now, not 151 or more, because the docs rewrite deleted the docs picks'
+    // own sheets (DocsKit's keycaps and line sidebar, the folder, the terminal, the code tabs). Still a vacuity floor (a blind pairing derives a
+    // handful), and every pair measured is derived from whatever the sheets say.
+    // FIX CYCLE 2 (finding 15): the floor had been lowered from 150 to 120 when the docs rewrite moved the count by 1 (151 to 150). Slack of 30 is 20 percent, so a
+    // pairing that went blind to 25 or 28 pairs (a whole component folder, a state class) still passed. 151 are derived now; the floor sits a few under that.
+    assert.ok(MEASURED[mode].length > 147, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived (151 were measured when this floor was set); the pairing is blind, or a sheet was deleted: re-base this with the reason`);
     // THE STATES AND CONTEXTS ARE READ, not just the resting rules: pairs exist for a hovered element and for one inside a context.
     assert.ok(MEASURED[mode].some((m) => m.pair.states.includes('hover')), `${mode}: no hovered pair was derived`);
     assert.ok(MEASURED[mode].some((m) => m.pair.context !== ''), `${mode}: no pair in a context (a descendant selector) was derived`);
   }
-  // The fills are FOUND in the CSS, not listed: the folder's paper on ink and ink-2, the accent button.
-  assert.ok(FILLS.length >= 4, `only ${FILLS.length} pairs of text on a fill were found`);
+  // The fills are FOUND in the CSS, not listed: the accent button, the skip link. RESTATED 2026-10-05 (M2 site fix cycle 1): the folder's paper on ink
+  // and ink-2 (the docs Folder component) was the other source of fills and was deleted by the docs rewrite, so the floor is the accent fills.
+  assert.ok(FILLS.length >= 3, `only ${FILLS.length} pairs of text on a fill were found`);
   const fillTokens = new Set(tokensIn(FILLS.flatMap((m) => m.pair.fgs)));
   const grounds = new Set(FILLS.flatMap((m) => m.pair.fills));
-  for (const must of ['paper', 'accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
-  for (const must of ['var(--ink)', 'var(--ink-2)', 'var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill pair`);
+  for (const must of ['accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
+  for (const must of ['var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill pair`);
 });
 
 for (const [name, t] of Object.entries(THEMES)) {
@@ -218,7 +227,7 @@ for (const [name, t] of Object.entries(THEMES)) {
       for (const u of m.unresolved) bad.push(`${describe(m)}: ${u} does not resolve to a colour (make it a token)`);
       for (const r of m.ratios) { measured += 1; if (r.ratio < 4.5) bad.push(`${describe(m)}: ${r.fg} on ${r.ground} is ${r.ratio.toFixed(2)}:1`); }
     }
-    assert.ok(measured >= 5, `only ${measured} text/fill pairs measured`);
+    assert.ok(measured >= 3, `only ${measured} text/fill pairs measured`);
     assert.deepEqual([...new Set(bad)], [], `${name}: text on a fill below 4.5:1:\n  ${[...new Set(bad)].join('\n  ')}`);
   });
 
@@ -236,7 +245,10 @@ for (const [name, t] of Object.entries(THEMES)) {
   test(`${name}: selected text clears 4.5:1 on every fill a control draws, and shows against it`, () => {
     const { subjects, problems } = selectionOnFills(RULES, name);
     // CANARIES: the fills were found in the sheets, not listed here. Each is a control a person selects text on.
-    for (const must of ['.btn-primary', '.cta', '.composer-send', '.skip-link', '.fold__paper']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
+    // RESTATED 2026-10-05 (M2 rebuild): `.cta` and `.composer-send` were the old landing's controls (the composer and its merged CTA button)
+    // and were deleted with it; `.fold__paper` (the docs Folder's paper on ink) went with the docs picks. The canaries are the fills the sheets
+    // still draw on an opaque non-surface fill: the primary button and the skip link.
+    for (const must of ['.btn-primary', '.skip-link']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
     assert.deepEqual(problems, [], `${name}: selected text on a fill:\n  ${problems.join('\n  ')}`);
   });
 

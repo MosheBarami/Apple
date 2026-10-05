@@ -14,6 +14,8 @@ import {
   fullRateDays,
   monthlyCeilingBitesFirst,
 } from '@studpilot/shared';
+import { NOT_DECIDED, dailyCapDecided } from '../../lib/plan-facts';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
 // documentation contradicting the thing it documents. Every figure is in PLAN_TABLE and BUILD_COSTS.
@@ -21,32 +23,34 @@ const free = PLAN_TABLE.free;
 const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
 /* The plans whose monthly ceiling arrives before the month does: on each of them the daily figure
    alone is not what a reader will meet. */
-const ceilingPlans = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id));
+const ceilingPlans = LISTED_PLAN_IDS.filter((id) => dailyCapDecided(id) && monthlyCeilingBitesFirst(id));
 const small = BUILD_COSTS.find((b) => b.id === 'small')!;
 const big = BUILD_COSTS.find((b) => b.id === 'big')!;
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
 ---
 
 <DocsLayout
-  title="Credits & limits — StudPilot Docs"
+  title="Credits & limits | StudPilot"
   description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free (up to ${free.creditsPerMonth} a month), what builds cost, how it is metered, daily reset, and exactly what happens when you run out.`}
   heading="Credits & limits"
+  order={3}
+  summary="What a Credit is, how many you get, how they are metered, and what happens when they run out."
 >
   <p>
-    Credits are StudPilot's unit of daily energy. Every AI request burns some; your balance refills to
-    full once a day, <strong>up to a monthly ceiling</strong>. The system exists for one reason:
-    real inference costs real compute, and a hard, transparent quota is what lets the free tier be
-    genuinely free — no card, no trial clock, no surprise bill.
+    A Credit is how StudPilot counts the AI work your requests use. Your balance refills once a day,
+    <strong>up to a monthly ceiling</strong>. Real AI work costs real compute, and a hard, plain quota is what lets
+    the Free plan stay free while StudPilot is in beta: no card and no surprise bill.
   </p>
+
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> New customers cannot get the Studio plugin yet, so a run that changes your place in Studio applies only to people who already have it. Chat requests spend Credits too. <a href="/docs/plugin">Where the plugin stands</a>.</p></div>}
 
   <h2>The numbers</h2>
   <ul>
     <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · up to {free.creditsPerMonth} a month.</li>
     {paid.map((id) => (
-      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_TABLE[id].creditsPerMonth} Credits a month · up to {PLAN_TABLE[id].creditsPerDay} a day. Planned: paid plans start later.</li>
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_TABLE[id].creditsPerMonth} Credits a month{dailyCapDecided(id) ? <> · up to {PLAN_TABLE[id].creditsPerDay} a day</> : <>. The daily limit is {NOT_DECIDED.toLowerCase()}</>}. Planned: paid plans start later.</li>
     ))}
     <li><strong>One Credit</strong> is about {formatMoney(CREDIT_USD, { currency: PRICE_CURRENCY })} of AI compute, and your balance shows with two decimals.</li>
     <li><strong>A typical build:</strong> about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits. A small one costs {formatCredits(small.creditsLow)} to {formatCredits(small.creditsHigh)}; a big one, which is still an estimate, {big.creditsLow} to {big.creditsHigh}.</li>
@@ -151,7 +155,7 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
     rate; the monthly figure is a ceiling, and a day's refill cannot take you past it.
     {ceilingPlans.length > 0 ? (
       <>
-        {' '}On every plan the ceiling is the one that bites if you spend the whole daily allowance
+        {' '}The ceiling is the one that bites if you spend the whole daily allowance
         every day:{' '}
         {ceilingPlans.map((id, i) => (
           <>
@@ -237,17 +241,9 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
 
   <h2>Other limits worth knowing</h2>
   <ul>
-    <li><strong>Rate limiting:</strong> requests are queued per account, and under heavy load a request may briefly wait. No plan buys a place further up that queue — paying changes your allowance, not your turn.</li>
     <li><strong>Checkpoints:</strong> StudPilot keeps your 25 most recent checkpoints per project. Taking the twenty-sixth deletes the oldest in the same write — by age, whether you took it yourself or StudPilot took it before a change. Restore the one you want before it falls off the end.</li>
-    <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
+    <li><strong>One account per person:</strong> making extra free accounts to get more quota is against the <a href="/terms">terms</a>.</li>
   </ul>
 
-  <div class="callout">
-    <p>
-      <strong>Making Credits go further:</strong> give StudPilot specific requests (“the door in Workspace.Lobby”) rather than vague ones. Nothing else moves the number much —
-      the expensive request is almost always the one that had to be sent twice.
-    </p>
-  </div>
 
-  <DocsKit />
 </DocsLayout>

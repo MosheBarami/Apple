@@ -28,7 +28,11 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
   const forbiddenStructure = [
     /class=["'][^"']*\b(?:ap-(?:demo|panel|place|steps|proof|wall)|(?:run|result|snapshot|metrics?))\b[^"']*["']/i,
     /aria-label=["'][^"']*(?:example\s+(?:run|place)|result|snapshot|demo|metrics?)[^"']*["']/i,
-    /<(?:table|ol|dl)\b/i,
+    // RESTATED 2026-10-05 (M2 rebuild): `<ol>` left this list. It was a crude proxy for "a numbered result list", and the rebuilt front
+    // page has a numbered rail of FOUR STEPS (sign in, pair, ask, follow). A result list is still banned: a table or a definition
+    // list of figures, and any ordered list that is not the step rail.
+    /<(?:table|dl)\b/i,
+    /<ol\b(?![^>]*\bclass=["']rail["'])/i,
     /class=["'][^"']*\b(?:ap-(?:slip|chips|hero__cta)|(?:fake|example)-(?:composer|prompt))\b[^"']*["']/i,
     // A FAKE FIELD, WHICH IS NOT THE SAME THING AS A FIELD. `contenteditable` and `role=textbox`
     // are the two ways to draw something that looks typable without being a control, and both
@@ -99,16 +103,7 @@ test('the landing contains no fabricated run, place, or result snapshot', () => 
     + 'would otherwise only verify absence');
 });
 
-test('the model cards are data-driven and do not revive the removed hand-counted sections', () => {
-  // Product model identity is supplied by the shared contract. Keep this independent from the
-  // autonomy mode names and from the former count-bearing modes/how-it-works sections.
-  const modelImport = /import\s*\{[^}]*\bPRODUCT_MODELS\b[^}]*\}\s*from\s*['"]@studpilot\/shared['"]/;
-  assert.match(PAGE, modelImport,
-    'the landing does not import the shared product model list');
-  assert.match(PAGE, /PRODUCT_MODELS\.map\s*\(/,
-    'the model grid is not derived from PRODUCT_MODELS');
-  assert.match(PAGE, /class=["']model-grid["']/,
-    'the model cards have no identifiable grid for this check to observe');
-  assert.doesNotMatch(PAGE, /\b(?:MODE_WORDS|MODE_COUNT_WORD|const\s+modes\s*=|assetWall)\b/,
-    'the landing still carries the removed hand-counted mode/result data');
-});
+// DELETED 2026-10-05 (M2 rebuild): 'the model cards are data-driven and do not revive the removed hand-counted sections'. Its subject, the
+// front page's "One engine" section with a grid of model cards built from PRODUCT_MODELS, is gone: the rebuilt front page names no model
+// (the plan keeps the model behind one switch), so there is no grid to derive. What it guarded against reviving, hand-counted mode and
+// result data, is held by the test above (the fabricated-evidence signatures) and by tests/no-fake-output.test.mjs.
