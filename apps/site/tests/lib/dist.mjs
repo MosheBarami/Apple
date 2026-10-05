@@ -71,7 +71,7 @@ export function walkFiles(root, keep = () => true) {
   return out.sort();
 }
 
-const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'", '&nbsp;': ' ', '&#160;': ' ', '&rsquo;': '’', '&lsquo;': '‘', '&ldquo;': '“', '&rdquo;': '”', '&mdash;': '—', '&ndash;': '–', '&hellip;': '…' };
+const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#x27;': "'", '&nbsp;': ' ', '&#160;': ' ', '&rsquo;': '’', '&lsquo;': '‘', '&ldquo;': '“', '&rdquo;': '”', '&mdash;': '—', '&ndash;': '–', '&hellip;': '…', '&copy;': '©', '&rarr;': '→', '&larr;': '←', '&times;': '×', '&middot;': '·' };
 
 /** What a reader sees: scripts, styles and tags out, entities in, whitespace flattened. */
 export function textOf(html) {

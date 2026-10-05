@@ -90,28 +90,29 @@ test('the operator is a name, not the product name repeated', () => {
   assert.ok(operator.length > PRODUCT.length, `"${operator}" is not a publisher's name`);
 });
 
-test('the footer byline is the operator, not the wordmark said twice', () => {
-  // Read on a page that is not the landing: the landing has its own layout and no Footer.astro.
+test('the footer names the operator once, in its copyright line, and carries no byline that repeats the wordmark', () => {
+  // RESTATED 2026-10-05 (owner decision D-13: the operator is StudPilot, the contact is support@studpilot.app). This test used to demand a
+  // `<p class="mono">` byline under the wordmark and demand that it equal the operator /terms names. With the operator and the product
+  // sharing one name, a byline would be the wordmark said twice, which is exactly the defect this file was written against; so the property
+  // is kept and its subject is restated: the footer's brand block holds no byline, and the one place it names who runs the site is the
+  // copyright line, which names the product's own operator. Whether /privacy and /terms say the same is the first test's subject and the
+  // legal lane's (they are rewritten there); until that lands they still say the former name, and this test does not pretend otherwise.
   const html = readFileSync(join(DIST, '404.html'), 'utf8');
-  const brand = html.slice(html.indexOf('foot__brand'), html.indexOf('foot__brand') + 2000);
-  assert.ok(brand.includes('foot__tag'), 'the footer brand block no longer holds its tagline — re-read this guard');
-
-  const byline = brand.match(/<p class="mono"[^>]*>([^<]+)<\/p>/);
-  assert.ok(
-    byline,
-    'the footer brand block no longer carries a byline. If it was removed on purpose, remove this ' +
-      'assertion on purpose too; it is here because the byline was silently turned into a duplicate.',
-  );
-  const text = byline[1].trim();
-  assert.notEqual(
-    text,
-    PRODUCT,
-    `the footer byline reads "${text}", directly under the "${PRODUCT}" wordmark and above ` +
-      `"© ${new Date().getFullYear()} ${PRODUCT}". Three lines, one word, on every page of the site.`,
-  );
-  assert.equal(
-    text,
-    operatorIn(page('terms/index.html'), '/terms'),
-    `the footer byline is "${text}" and /terms names a different operator`,
-  );
+  const at = html.indexOf('foot__brand');
+  assert.ok(at > 0, 'the footer brand block is gone: re-read this guard');
+  const brand = html.slice(at, html.indexOf('</div>', at));
+  assert.ok(brand.includes('foot__tag'), 'the footer brand block no longer holds its tagline: re-read this guard');
+  assert.doesNotMatch(brand, /<p class="mono"/, 'the footer has a byline under the wordmark again: with one operator name it repeats the wordmark');
+  const byline = [...brand.matchAll(/<p class="[^"]*"[^>]*>([^<]+)<\/p>/g)].map((m) => m[1].trim());
+  assert.ok(byline.length >= 1, 'the footer brand block holds no paragraph at all: the scan found nothing to judge');
+  assert.ok(!byline.includes(PRODUCT), `a footer paragraph reads exactly "${PRODUCT}", directly under the "${PRODUCT}" wordmark`);
+  const base = readFileSync(join(DIST, '404.html'), 'utf8');
+  const copyright = base.match(/<p[^>]*>&copy; (\d{4}) ([^<.]+)\./);
+  assert.ok(copyright, 'the footer has no copyright line naming who runs the site');
+  assert.equal(copyright[2].trim(), PRODUCT, `the copyright line names "${copyright[2]}", and the operator is ${PRODUCT} (OWNER-DECISIONS.md D-13)`);
+  assert.doesNotMatch(text(html), /Apple Labs|apple\.labs\.app/i, 'the footer still names the former operator or its inbox');
 });
+
+function text(html) {
+  return html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+}

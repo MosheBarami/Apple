@@ -2464,15 +2464,18 @@ export const PLAN_COPY: Record<PlanId, PlanCopy> = {
 /**
  * The one address support reaches a human at.
  *
- * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used
- * apple.labs.app@gmail.com; the plan ladder in the signed-in app — the only support-ish link
+ * IT WAS TWO. The marketing site, the docs footer, the status page and the FAQ all used the
+ * owner's personal Gmail inbox; the plan ladder in the signed-in app — the only support-ish link
  * anywhere behind the login — used hello@studpilot.build. A customer cannot tell which of those is
  * read, and writing to the wrong one looks, from their side, exactly like being ignored.
  *
  * Declared here so the two halves of the product cannot drift again, and asserted across both
  * trees by tests/support-expectations.test.mjs.
+ *
+ * support@studpilot.app is the owner's decision of 2026-10-05 (planning/proof/OWNER-DECISIONS.md D-13): Cloudflare
+ * Email Routing forwards it to the owner's own inbox, so a person still reads it.
  */
-export const SUPPORT_EMAIL = 'apple.labs.app@gmail.com';
+export const SUPPORT_EMAIL = 'support@studpilot.app';
 
 /** What a plan can expect when it writes in. */
 export interface PlanSupport {

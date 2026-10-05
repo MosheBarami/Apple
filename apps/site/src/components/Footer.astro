@@ -13,11 +13,12 @@ const year = new Date().getFullYear();
           <span class="brand__word">StudPilot</span>
         </a>
         <p class="foot__tag">An AI co-pilot for Roblox Studio.</p>
-        {/* THE OPERATOR LINE, KEPT EXACTLY AS IT WAS (owner item N6). The footer byline, the first sentence of
-            /privacy and the first sentence of /terms name one operator, and tests/one-operator.test.mjs holds
-            the three in agreement. The name and the contact inbox are the owner's to decide; this rebuild moved
-            nothing. */}
-        <p class="mono">Apple Labs</p>
+        {/* THE OPERATOR IS STUDPILOT AND THE CONTACT IS support@studpilot.app: the owner's decision of 2026-10-05
+            (planning/proof/OWNER-DECISIONS.md D-13). There is no byline under the wordmark any more: the operator and
+            the product have one name, so a second line saying it would be the wordmark twice (tests/one-operator.test.mjs).
+            The address is read from the shared config, the one home every surface uses. Before money is charged an
+            adult or a company has to become the named operator (planning/proof/BLOCKED.md, D-15). */}
+        <p class="foot__contact"><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
         <p class="foot__beta"><span class="badge">Beta</span> StudPilot is in beta. It changes often, and paid plans start later.</p>
       </div>
 
@@ -32,7 +33,7 @@ const year = new Date().getFullYear();
         </ul>
       </nav>
 
-      <nav aria-label="Documentation" class="foot__col">
+      <nav aria-label="Docs" class="foot__col">
         <h2>Docs</h2>
         <ul>
           <li><a href="/docs">Documentation</a></li>
@@ -50,7 +51,6 @@ const year = new Date().getFullYear();
           <li><a href="/terms">Terms</a></li>
           <li><a href="/status">Status</a></li>
           <li><a href="/discord">Discord</a></li>
-          <li><a href={`mailto:${SUPPORT_EMAIL}`}>Contact</a></li>
         </ul>
       </nav>
     </div>
@@ -112,8 +112,10 @@ const year = new Date().getFullYear();
     line-height: 1.5;
   }
 
-  .mono {
+  .foot__contact a {
     color: var(--ink-2);
+    font-size: 14px;
+    text-underline-offset: 0.2em;
   }
 
   .foot__col h2 {

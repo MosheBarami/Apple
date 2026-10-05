@@ -4,7 +4,7 @@ import { join, relative, sep } from 'node:path';
 // The asset id and the install href have exactly one definition in this repository. Asserting the
 // rendered href against the constant, rather than against a pasted URL, is what stops the site
 // and the shared package drifting apart.
-import { MODEL_REGISTRY, STUDIO_PLUGIN_STORE_LIVE } from '../../packages/shared/src/index';
+import { MODEL_REGISTRY, STUDIO_PLUGIN_STORE_LIVE, SUPPORT_EMAIL } from '../../packages/shared/src/index';
 
 /**
  * The landing page's invariants, RESTATED 2026-10-05 for the M2 rebuild (handoff 2.2).
@@ -160,10 +160,12 @@ test('holds the composition: the sections, the shared header and footer, a visib
   await expect(page.locator('#pieces .piece')).toHaveCount(4);
   await expect(page.locator('#how .rail > li')).toHaveCount(4);
 
-  // ONE header, the shared one, and one footer carrying the operator line (owner item N6).
+  // ONE header, the shared one, and one footer carrying the contact address (owner decision D-13: the operator is StudPilot, the contact
+  // is support@studpilot.app, read from the shared config).
   await expect(page.locator('header#site-nav')).toHaveCount(1);
   await expect(page.locator('footer[data-site-footer]')).toHaveCount(1);
-  await expect(page.locator('footer[data-site-footer]')).toContainText('Apple Labs');
+  await expect(page.locator('footer[data-site-footer]')).toContainText(SUPPORT_EMAIL);
+  await expect(page.locator('footer[data-site-footer]')).not.toContainText('Apple Labs');
 
   // THE MARK IS VISIBLE. A logo's class once collided with a demo's padding and drew nothing at all while every other check passed.
   const mark = await page.locator('header#site-nav .brand svg').evaluate((svg) => {

@@ -17,6 +17,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DIST, distPage, distPages, hrefsOf, regionsWith, textOf } from './lib/dist.mjs';
 
+const shared = await import('../../../packages/shared/src/index.ts');
+
 const APP_DOORS = new Set(['/app/login', '/app/signup']);
 
 /** What a built path resolves to: { kind: 'page' | 'redirect' | 'missing', file }. A fragment or a query is dropped first. */
@@ -95,7 +97,12 @@ test('the footer keeps its product links, Privacy, Terms, Status, Discord, the o
     assert.ok(bare.includes(want), `the footer does not link to ${want}`);
   }
   const text = textOf(footerHtml);
-  assert.match(text, /\bApple Labs\b/, 'the operator line (owner item N6) is not in the footer');
+  // THE OPERATOR AND THE CONTACT ARE THE OWNER'S DECISION OF 2026-10-05 (OWNER-DECISIONS.md D-13): the operator is StudPilot and the
+  // contact is support@studpilot.app. The address is read from the shared config, never typed here, and the footer carries it as a link.
+  assert.ok(text.includes(`© ${new Date().getFullYear()} StudPilot.`), 'the footer does not name the operator in its copyright line');
+  assert.ok(links.includes(`mailto:${shared.SUPPORT_EMAIL}`), `the footer does not link to mailto:${shared.SUPPORT_EMAIL}`);
+  assert.ok(text.includes(shared.SUPPORT_EMAIL), 'the footer does not print the contact address');
+  assert.doesNotMatch(text, /\bApple Labs\b|apple\.labs\.app/i, 'the footer still names the former operator or inbox');
   assert.match(text, /\bBeta\b/, 'the footer has no beta note');
   for (const href of links) {
     const kind = classify(href);
