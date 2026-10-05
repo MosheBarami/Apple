@@ -102,3 +102,22 @@
   - the 30-day log deletion cron;
   - Roblox-derived data deleted on loss of access;
   - the 6-bullet short version.
+
+## 2026-10-05: Cloudflare access through OAuth, and support@ forwarding is live
+- At 17:27 the owner replaced `CLOUDFLARE_API_TOKEN` in `.env`. Cloudflare rejects the new value (code 1000 on both
+  verify endpoints, 9109 from `wrangler whoami`).
+- At the owner's request, Claude Code ran `wrangler login` asking for every scope Wrangler offers (29). The owner
+  approved it.
+  - `whoami` lists 28 granted scopes, without email routing, yet the Email Routing API answers OK.
+  - Reached: Workers, D1, R2, KV, Vectorize, Queues, Turnstile, Email Routing and zone read.
+  - Not reached: AI Gateway, DNS and API tokens (Wrangler offers no scope for them).
+  - Deploys run with `CLOUDFLARE_API_TOKEN` unset, so Wrangler uses the OAuth login; `.env` is left as the owner
+    wrote it. `wrangler deployments list` and `wrangler secret list` (16 names) work that way.
+- **Email Routing (D-13, E1):**
+  - Switched on for studpilot.app; status `ready`.
+  - The destination is the owner's Gmail, which Cloudflare reported as already verified.
+  - The rule "support to owner" forwards `support@studpilot.app` there.
+  - Public DNS (1.1.1.1): `route1`/`route2`/`route3.mx.cloudflare.net` and `v=spf1 include:_spf.mx.cloudflare.net ~all`;
+    DKIM is still propagating.
+  - Not yet observed: a test message actually arriving.
+- **BLOCKED.md:** C1 and E1 removed. N4 stays, because the OAuth login cannot reach AI Gateway.

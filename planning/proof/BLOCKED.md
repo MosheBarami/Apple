@@ -6,33 +6,6 @@ no token here can reach. Work that does not depend on an item goes on. Done and 
 
 ## Urgent
 
-### C1. The new `CLOUDFLARE_API_TOKEN` in `.env` is rejected (deploys are paused)
-At 17:27 on 2026-10-05 the token in `.env` changed. Cloudflare answers "Invalid API Token" (code 1000) on both verify
-endpoints, and `wrangler whoami` fails with code 9109. Until a working token is in `.env`, nothing deploys and no
-Cloudflare API call works. Branches and merges go on; deploys wait.
-1. https://dash.cloudflare.com/profile/api-tokens → **Create Token** → **Create Custom Token**, named `studpilot-deploy`.
-2. Permissions:
-   - Account: **Workers Scripts** Edit, **D1** Edit, **Workers R2 Storage** Edit, **Workers KV Storage** Edit,
-     **Vectorize** Edit, **AI Gateway** Edit, **Queues** Edit, **Workers AI** Read, **Email Routing Addresses** Edit.
-   - Zone (studpilot.app): **Workers Routes** Edit, **DNS** Edit, **Email Routing Rules** Edit, **Zone Settings** Read.
-3. **Continue to summary** → **Create Token**. Copy the token value shown on the next screen. That value is the
-   secret, not the token's ID.
-4. Replace the value after `CLOUDFLARE_API_TOKEN=` in `~/Developer/StudPilot/.env`, save, and tell Claude Code "token
-   fixed". With **Email Routing** and **DNS** included, Claude Code also does E1 itself, except the verify click in your
-   Gmail.
-
-### E1. Forward support@studpilot.app to your Gmail (Cloudflare Email Routing; about 3 minutes)
-The legal pages are moving to support@studpilot.app (D-13). The Cloudflare API token cannot manage Email Routing or DNS
-(10000 "Authentication error", measured 2026-10-05), so this is in the dashboard.
-1. Open https://dash.cloudflare.com → your account → the **studpilot.app** zone → **Email** → **Email Routing**.
-2. Click **Get started** (or **Enable Email Routing**). When it offers to add the MX and TXT records, click **Add records
-   and enable**.
-3. Under **Routing rules** → **Custom addresses** → **Create address**: type `support`, action **Send to an email**,
-   destination: your Gmail address. Click **Save**.
-4. Open the verification email Cloudflare sends to your Gmail and click **Verify email address**.
-5. Tell Claude Code "email routing done". It sends one test message to support@studpilot.app and checks that it arrived
-   by asking you.
-
 ### N2. Google and Discord sign-in: the four `.env` lines were not found
 On 2026-10-05 `~/Developer/StudPilot/.env` had no Google lines and no Discord OAuth secret. Supabase shows both providers
 off, with no client id or secret set. Add these four lines to that file, with these exact names, and tell Claude Code "N2
@@ -86,7 +59,9 @@ through the stand-in until 2027-01-02.
 ## Anytime
 
 ### N4. One narrow Cloudflare token for the Worker (`CF_WORKER_OPS_TOKEN`); due before 2026-11-03
-Two jobs need it. The 30-day AI Gateway log retention you approved (D-14) is a daily deletion run by the Worker. The
+Claude Code now works through a Wrangler OAuth login (2026-10-05). It covers Workers, D1, R2, KV, Vectorize, Queues,
+Turnstile and Email Routing, but it has no AI Gateway, DNS or API-token scope, so this token is still needed. Two jobs
+need it. The 30-day AI Gateway log retention you approved (D-14) is a daily deletion run by the Worker. The
 second is the optional analytics readback. The main token cannot create tokens (measured 2026-10-04), and it is far too
 broad to put on the Worker. Until this token exists the deletion is run by hand. The new gateway's oldest log is from
 2026-10-04, so nothing passes 30 days before 2026-11-03.
