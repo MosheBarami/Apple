@@ -359,3 +359,298 @@ This is a heuristic in a defence-in-depth guard, not product behaviour:
 
 Write plan-first sentences until the rule is replaced by a parser of the pricing markup (M6, when the page
 gains the estimate-before-build copy).
+
+## 12. The app rebuild, M2 step 2.3 (`apps/web`; branch `studpilot/m2-app`, 2026-10-05)
+
+Decisions taken while building the web app's features on the design system. One subsection per item (C1 to C8 of the lane's
+task). Nothing here was deployed, pushed or sent; no Supabase or Cloudflare call was made, so everything that needs the
+live project is listed as unverified. The tests for each item are in `TEST-LEDGER.md`, section "App".
+
+### 12.1 C1: Google and Discord render only when the project says they are on
+
+- **The rule.** `lib/auth-providers.ts` asks `GET <SUPABASE_URL>/auth/v1/settings` (with the public key as `apikey`) and a
+  provider is on only when `external.<provider> === true`. The answer is fetched once per page load and shared by the sign-in
+  page, the sign-up page and Settings > Connections. Any failure (network, non-200, not JSON, wrong shape) means none, and a failure
+  is the page's answer too: nothing retries until a reload. Until the answer arrives nothing is drawn, so a button never appears
+  and is taken away.
+- **Today both are off (owner item N2), so no Google or Discord button renders anywhere.** The Roblox button is unchanged (it
+  waits for `/auth/roblox/status`). The three share one "or" (`AlternativeSignIn`); with nothing on there is no "or" either.
+- **Not verified live (no network in this task):** that the settings endpoint answers a browser at `https://studpilot.app` with
+  CORS headers. If it does not, the buttons never render, which is the safe failure. When the owner switches a provider on (N2) the
+  checks are: the button appears; the redirect URL `https://studpilot.app/app` is on the Supabase allow-list; and, for C6, manual
+  identity linking is enabled at the project. **No policy edit is part of that switch (fix cycle 1, 12.9):** the privacy pages used to say
+  "not offered yet ... we will update this policy before either is switched on", which a dashboard toggle cannot honour in order (no commit
+  accompanies it and no test can go red), so they now describe the sign-in without stating whether a provider is on, and are true before and
+  after the switch. The one thing to read at N2 is the Google and Discord sentence on both pages (`LEGAL-CLAIMS.md` section 9, A4 and A5), and
+  whether a Google or Discord sign-up should be asked the date of birth as well (12.2).
+- **Alternative not taken:** have the worker proxy and cache the settings. One more route and one more cache for a value the
+  project already publishes; the page-level cache is enough.
+- **The mock app** answers without a request: no providers, and `?providers=google,discord` (dev server only) turns them on so
+  the buttons and the Connections cards can be reviewed.
+- **`supabase-config.ts`** now holds the two public constants so the check can read the address without building a Supabase client.
+
+### 12.2 C2: the 13+ screen on email sign-up
+
+- **What it is.** The email sign-up form asks for a date of birth as a day, a month (named) and a year. It is neutral: no
+  number, no placeholder, no limit on the year that names a line, and the page says nothing about why. An impossible or empty date
+  is asked for again in one sentence that says nothing about age.
+- **Under 13.** Nothing is sent: no sign-up request, and not even the captcha script (a request to Cloudflare). The form is replaced
+  by a kind message ("We cannot make an account for you right now ... we are sorry"; no number, no rule, no second try offered) and
+  the browser remembers the refusal.
+- **13 or over.** The sign-up goes with `data: { age_gate: 'passed' }` (the user metadata) and nothing else. The birth date is in no
+  argument of any call and is stored nowhere.
+- **A SOFT BLOCK, and it is said so.** The refusal is a flag (`studpilot.age-gate.v1` = `1`) in `localStorage`, plus a flag in the
+  page's memory so it holds where storage is blocked. It stops changing the date and trying again at once, and a reload. It does not
+  stop anybody who clears site data or uses another browser, and the server never checks it. A neutral age screen without an identity
+  check can be no stronger, and the privacy pages say "the check goes by the date you give and is not an identity check".
+  - **A known cost.** A grown-up who typed the wrong year is refused in that browser and has no way back through the app. There is no
+    expiry. The alternative is a window (for example 24 hours) after which the form opens again; it makes the block weaker for the
+    people it is for and lets an honest slip heal. It is one constant to add if the owner prefers it. Not done.
+- **Roblox, Google and Discord sign-ups are not asked the date.** Roblox's OAuth service is for accounts held by people aged 13 and
+  older (an external claim, sourced to Roblox in `LEGAL-CLAIMS.md`). Plan section 7 also says Google and Discord already require 13 and
+  older; **the pages no longer say that** (fix cycle 1): it is an external claim about those providers' rules that nothing in this repo
+  shows, and Google offers supervised accounts to children under 13. The pages say what StudPilot does (no date is asked again) and that
+  Google and Discord apply their own age rules. **Open for the owner at N2: whether a Google or Discord sign-up should be asked the date
+  too.** Asking would close the gap for a supervised under-13 account; the cost is one more screen after a provider sign-in, which has
+  no form today. Nothing is promised either way.
+- **Existing accounts are not asked again.** They have the pages' 13-and-older terms already, and the flag lives only in the
+  user metadata of an account made after this change. *Alternative: ask at the next login.* It would have to ask every account that
+  lacks the flag, once, before the app opens, and write the answer back (`updateUser`), which blocks people who are mid-build on a
+  question the terms already answer. Revisit when the server stores the flag.
+- **No migration.** Whether the server copies `age_gate` into `profiles` (and whether the Worker refuses an account without it) is a
+  later step. The flag is client-supplied: any API caller can set it or leave it out. It is a record that the form was passed, not proof.
+- **Pages changed because this made them false.** `/privacy` and `/docs/privacy-and-data` said the sign-up form asked for nothing
+  but an address and a password; they now describe the date of birth, that it is checked in the browser and never sent or stored,
+  that a pass leaves one note on the account, that a refusal leaves a flag in the browser, and that the other ways in do not ask again
+  (and that Google and Discord apply their own age rules). `apps/site/tests/privacy-claims.test.mjs` was re-aimed (it said "no
+  birth-date field while the form has none").
+- **Digits from any keyboard (fix cycle 1).** The day and year fields kept only ASCII digits, so a person whose keyboard types
+  Arabic-Indic, Persian, Devanagari, Thai or full-width digits saw each keystroke vanish with the submit stuck disabled. The fields now keep
+  what is typed as the ASCII digit it stands for (`normaliseDigits`, checked against `Intl` for every numbering system the runtime knows),
+  and the verdict is the same date in any script.
+- **The refusal takes focus (fix cycle 1).** It replaces the form that held focus, so focus fell to the page and the inserted status line
+  was not reliably announced. The refusal's heading takes focus when the refusal appears (given or remembered) and is described by the
+  sentence under it; the status role is gone, because focus carries the announcement. The 320px phone gets a floor for the month column
+  ("Septemb" was "September" cut off), and the Roblox link now has the hairline and height its siblings have.
+
+### 12.3 C3: "New project" is one click
+
+- **What happens.** One press makes the project at once, named "Untitled piece N", and opens its conversation. N is one more than
+  the highest "Untitled piece N" the person already has (archived ones count, because they keep their names), so a name is not
+  handed out again while its project exists and deleting a lower one does not refill the gap. Only the exact pattern counts; a
+  person's own names never move the number.
+- **What is gone.** The create dialog (`CreateProjectModal`): its name field, its description field and its template picker.
+  A description and a better name are things a project grows (Edit project and the title rename are on the card and in the
+  workspace), and "what are you building" is the first message. The dialog's request-seeding survives in one place: the sentence a
+  person typed on the landing page still rides into their first project (it is moved, not copied; `lib/pending-start.ts`).
+- **Every entry point is one hook.** `lib/use-create-project.ts` serves the shelf's header button, the empty state's action, the
+  rail's "New chat", the palette's "New project" and the shortcut. It works from any screen, so nothing navigates to the shelf first
+  to find a dialog, and the shell no longer holds any new-project state (`registerNewProject`, `newProjectPending` and
+  `useProvideNewProject` were removed with the dialog: they existed only to open it). One creation can be in flight at a time in
+  a page, so a double press, or a button and the shortcut, make one project. A failure is a toast; success is the conversation opening.
+- **The five starting points stay**, in the composer's "Starting points" menu, where they insert a request into the message box
+  (`lib/project-templates.ts`). `templateSeed`, the dialog's lookup, was removed with its only caller.
+- **The docs page that described the dialog is corrected.** `/docs/getting-started` said "give it a name" before a project exists; it now says
+  the click opens the project, what a new project is called, and how to rename it (a test holds the page to the behaviour).
+- **Not verified live:** the two queries it makes (`projects` read by name, then one insert) run under the signed-in person's
+  row-level security exactly as the old dialog's insert did; no database was touched in this task.
+
+### 12.4 C4: Studio screenshots in the turn
+
+- **Frames flow today, so the strip fills against real data.** The worker broadcasts `studio_frame` from `emitFrame`, which
+  `capture_studio_viewport` (a native Studio capture, `source: 'studio_viewport'`), `render_view` (StudPilot's own preview render)
+  and the playtest loop call (`apps/worker/src/tools.ts`, `do/session.ts`). Nothing here is built against a message that is never sent.
+  When the agent captures nothing during a run the strip stays on its empty state ("Studio screenshots appear here while StudPilot
+  builds"); it fills the first time a capture tool runs. The vision tool `look` also emits frames today and is removed in M3 (plan
+  section 3); its frames would show here too until then.
+- **Each capture once (fix cycle 1).** The worker replays the frames it still holds, with their original ids and times, every time a
+  socket attaches during a playtest, so a reconnect appended copies: the strip repeated and older frames left the newest eight. The page
+  now drops a capture it already holds (`appendFrame`, used by the socket hook; a playtest frame is identified by its run and counter,
+  any other by what was captured and when, pixels included), and the strip shows each capture once.
+- **Which frames.** The newest eight of the run's own, oldest left. The worker stamps every frame with the id of the assistant
+  message it was taken for (`msgId`, which is the turn's id), so a frame from an earlier run, or one the worker could not attribute, is
+  never shown under this turn. The socket hook already kept the newest eight in memory and persisted none; that is unchanged.
+- **Honest names.** A native capture is a "Studio screenshot"; anything else is a "Preview render", so a preview of StudPilot's own
+  geometry renderer is never read as a screenshot of Studio. Captions carry the kind and the time in the person's clock setting, and
+  nothing technical (no tool name, instance path or camera name).
+- **Where it shows.** The latest assistant turn, while it runs, once it has a frame, or when it was a build (it used tools). A plain
+  chat reply and every earlier turn get no strip, so a conversation is not full of empty boxes. The offer to the latest turn only is made in
+  one place (`workspace.tsx` hands `frames` to the turn whose id is the last assistant message's) and is guarded there by a syntax-tree test.
+- **What it says with no frame (fix cycle 1).** It follows the run and Studio, because "appear here while StudPilot builds" is false under a
+  finished turn and told nobody what to do: running with Studio connected, "Studio screenshots appear here while StudPilot builds"; running
+  with Studio not connected, "Connect Studio to see screenshots here while StudPilot builds"; finished, Studio not connected, "No
+  screenshots were taken for this request. Connect Studio to see them next time." (**reworded in fix cycle 2, 12.10: the page cannot know that none were taken**); finished with Studio connected, no box at all (the turn holds none
+  and there is nothing to do; the page cannot tell a request that took none from a reload that cleared them, 12.10); and, from cycle 3 (12.11), no line at all
+  while the page has not yet heard whether Studio is connected. The enlarged view's Earlier and Later use the workspace's outline button, with a
+  visible disabled look and the focus ring (they were 18px of bare text, because the shared `.btn` chrome is scoped to other pages).
+- **What the page promises, and only that.** The enlarged view says "Shown only in this tab and kept only while it is open. This page
+  does not save or send them." It does not say "no model ever sees it": that is the worker's business, and the worker's `look` path
+  sends frames to a vision model today (removed in M3). A source-reading test holds that the strip, its dialog and its model touch no
+  storage and make no request.
+- **Supersedes** the frame-strip half of owner decision D-THINK-1 ("no playtest panel, frame strip or connection detail"), on the plan's
+  own line (section 6: "chat with a live step list and screenshots"). The playtest card and the connection detail stay undrawn.
+- **The mock app** holds no frames by default (the strip's empty state); `?frames=1` stamps the fixture renders for the last mock turn
+  so a full strip can be reviewed. Those are fixtures and are never shown in a production build.
+
+### 12.5 C5: piece history, and the per-piece settings panel
+
+**History (real data).** The Checkpoints drawer is the project's history: its real checkpoints grouped by the request that made them
+(`lib/checkpoint-history.ts`, `components/ws/checkpoint-history.tsx`). The API returns a checkpoint's id, label, kind, time, counts,
+coverage, author and description, and **no request id**, so the grouping is by time and says only what time can say:
+- A checkpoint StudPilot took (`auto` or `pre_agent`) is filed under the latest request the person had sent when it was taken, which is the
+  run that request started. A request that made no checkpoint is not listed.
+- A checkpoint the person saved by hand (`manual`) was not made by a request, so it is never filed under one: it sits in "Saved by you".
+- A checkpoint older than every request this page has loaded is "Earlier work", not the first request's.
+- The one weakness is the clock's: a request sent from this tab is stamped with the device's clock until the conversation is reloaded,
+  while a checkpoint carries the server's. A device whose clock is minutes out can file one under its neighbour; a reload restamps every
+  request from the server. If the owner wants exact grouping the worker must stamp each checkpoint with the message id of the run that took it
+  (a later step; it needs a migration of the session store, not done here).
+- The rows are the old rows, moved into the component with no change of content (author, date, counts, description, Restore, the restore's
+  own sentence and counts); three tests that read the row's text out of `workspace.tsx` were restated to read the component.
+
+**Settings panel (a stub, wired in M5).** The panel (`components/ws/pieces-panel.tsx`, a "Pieces" drawer in the workspace, reachable from a
+topbar button and the palette) has four controls: a number (typed, range and step enforced; a value it cannot hold is refused, not clamped),
+a colour (the browser's picker beside a hex field), a switch (a real button with the switch role, and the word On or Off), and a few words
+(length-capped). Every control is native, keyboard reachable, named, and carries the ring token.
+- **Production has no pieces, and (owner decision, fix cycle 1) does not offer the panel at all until M5.** The first version drew a topbar
+  button and a palette command into a drawer that could only say "Pieces appear here after a build", while nothing produces a piece before
+  M5: a dead end with a sentence that is false today. `PIECES_OFFERED` (`lib/pieces.ts`, `import.meta.env.DEV`) now gates the button, the
+  palette command and the drawer's mount, a remembered "pieces" drawer restores as closed where it is not offered, and the production build
+  does not contain the panel (not even its empty sentence). Development and tests keep the specimen panel. `lib/pieces.ts` loads the stub only
+  through a dynamic import behind the same constant. Proof: `tests/pieces-production.test.mjs` bundles the module both ways and reads the
+  output; `tests/pieces-panel.test.mjs` walks the syntax tree of `workspace.tsx` for every way in and requires the gate on each;
+  `scripts/check-app-bundle.mjs` fails when the stub's marker, a sample name, "Pieces and their settings" or the panel's specimen note is in
+  `dist` (run on the real production build, and red-first with the gate forced on); `tests/mock-mode-production.test.mjs` stays green.
+- **Every stub piece says SPECIMEN**, on the panel in a sentence and as a stamp on each card, and says a change stays in the panel: it is not
+  saved and changes nothing in Studio. A piece without `specimen: true` is never stamped.
+- **What M5 changes.** `PIECES_OFFERED` becomes the fact that a block has parameters to show. The panel reads a block's own parameter schema (`block.json`: the parameter JSON Schema with defaults) instead of the
+  stub; a change then edits that block's parameters and re-runs only that block. The four control kinds map to the schema's number, colour,
+  boolean and string types. Nothing here persists a change, and there is no request from the panel, so M5 adds the wiring and removes
+  `lib/pieces-stub.ts`.
+
+### 12.6 C6: account connections, and the avatar
+
+- **Two identity cards, drawn only for a provider that is on.** "Sign in with Google" and "Sign in with Discord" (`components/identity-card.tsx`)
+  use `supabase.auth.linkIdentity` to connect and `unlinkIdentity` to disconnect, and appear only when the project says the provider is on
+  (the same answer as C1, `lib/auth-providers.ts`). Today both are off (N2), so today neither card exists. The page holds the row, its
+  search result and its rail entry back on the same answer, so a search for "google" never finds a row that is not there.
+- **Disconnect is offered only with another way in.** Supabase refuses to remove an account's last identity, so the card says "This is the
+  only way you sign in to this account, so it cannot be disconnected" instead of offering a button that fails. The card also refuses before
+  the request if the list says so. An unloaded list is not a yes. A failed read of the identities is shown as a failure, never as "not connected".
+- **Separate from the other three things on that page.** The Roblox card, the Open Cloud key panel and the Discord bot link keep their own
+  rows. The Discord identity card says in words that it is "separate from the Discord link below, which starts builds from a Discord channel".
+  The rows run in this order: Roblox sign-in, Google, Discord sign-in, Open Cloud key, StudPilot API keys, Discord link.
+- **Unverified (no network here), for owner item N2:** that manual identity linking is enabled at the Supabase project (without it
+  `linkIdentity` fails, and the card says so in a toast), that `https://studpilot.app/app/settings` is on the redirect allow-list, and what
+  `identity_data` the two providers return (the card reads `email`, then Discord's `custom_claims.global_name`, then `full_name`, then `name`,
+  and says only "is connected" when none is readable).
+- **A Roblox-only account may connect Google or Discord** (it has its placeholder email identity and the new one, so two). That is a second
+  way in, not a change to how the Roblox account works; its Roblox card is unchanged.
+- **The avatar is never "?".** It took `(name ?? address)[0]` or "?", so an account with no address showed "?" in the rail, the account menu and
+  its header. `avatarInitial` takes the first letter of the display name, then the Roblox username, then the address, never a placeholder
+  address and never the words "Roblox account"; with nothing honest to take, all three places draw the same plain person mark. The line
+  beside it says "Your account" instead of being empty.
+
+### 12.7 C7: usage and plans
+
+Checked against the pricing slice (section 4): the usage page's Credits are printed with two decimals through the shared model
+(`usage-meter-model.ts`, `formatCredits`), and the plan ladder reads `PLAN_TABLE` and `LISTED_PLAN_IDS` (Free, Pro, Max; no Enterprise card).
+**One thing was still wrong:** the pricing page says "Free while in beta. Paid plans start later" above its cards, and the in-app ladder
+said nothing of beta. The Plans section of `/usage` now says the same words above the ladder (`BETA_LINE` in `components/plans.tsx`), and
+`tests/usage-beta.test.mjs` holds the two surfaces to each other by reading the site's heading. Nothing else was changed. No referral or
+bonus credit is promised anywhere on the page (they wait for M6).
+
+### 12.8 C8: growth (P2): an invite link and a "Made with StudPilot" line. It fits, small; the attribution is cut.
+
+- **The link** is `https://studpilot.app/app/signup?ref=<code>`. The code is the first ten hex digits of SHA-256 over a fixed label and the
+  account id, so it is stable per account, names no one and cannot be turned back into the id (`lib/growth.ts`). It is copied from "Invite a
+  friend to StudPilot" on a project's menu on the shelf and shown in full in Settings > Share, with a Copy button that says whether the copy
+  worked. A link with no valid code is not offered. (Fix cycle 1: it was "Copy invite link", among the project's own actions and as an icon
+  beside "Who can build here", the real invitation to the project. The link grants no access to any project, so a person who sent it to a
+  teammate expecting access sent them to a sign-up form. It is named for the product now, the copy says "Link to StudPilot copied. Send it
+  to a friend.", and the workspace's icon-only button is gone: an icon cannot say whose link it is.)
+- **Nothing records the code yet, and the rows say so.** The sign-up page ignores `ref`, no worker route accepts it, the sign-up's user metadata
+  carries only `age_gate`, and no migration stores a referral, so a sign-up through the link is recorded like any other. The task's rule
+  ("recorded at sign-up in the user metadata only if the server side already accepts it") therefore leaves it out. `tests/growth.test.mjs`
+  fails the day the sign-up page, the worker or a migration starts reading a referral code, so the copy is revisited then. **Attribution is a
+  later step (M6).** An alternative is to pass `ref` in the sign-up metadata now so M6 can backfill; it was not done because nothing consumes
+  it and the privacy pages would then have to describe a field that serves no purpose today.
+- **No referral credit is promised anywhere.** The invite row says "Nothing records it yet, and nothing is earned by sharing it". A test scans
+  the app and the site source for any sentence that offers credits for inviting or sharing, and the guard is run against sentences it must catch.
+- **The badge** is `Made with StudPilot - https://studpilot.app`: plain ASCII text and a link, because a Roblox description shows no formatting.
+  It is optional, lives in Settings > Share, and nothing inserts it into a game.
+- **The link is on every project's menu on the shelf, though it is about the product, not that project.** It says nothing about the
+  project's contents, and its label names StudPilot so it does not read as an invitation to the project.
+
+### 12.9 Fix cycle 1 (2026-10-05): what a two-skeptic review of this branch changed
+
+The review (`app-c1-findings.json`: 15 verified findings and 9 minor) found no wrong behaviour in the core of any item and nine things the branch
+made false, dead or unguarded. Each is fixed or recorded here; the guards and the planted breaks are in `TEST-LEDGER.md`, "Fix cycle 1".
+
+| Finding | What was decided or done |
+|---|---|
+| `LEGAL-CLAIMS.md` still described the old form and "no `signInWithOAuth`" | Updated: five rows changed and section 9 added (the date-of-birth screen, the pass note, the refusal flag, the other-ways-in sentence, the Google and Discord sentence), with file:line evidence and what is not verifiable here |
+| Privacy pages promised a policy update before a provider is switched on | **Decision (owner):** replace the promise with a plain description that is true whether or not a provider is on (12.1); the restated site tests hold the link (only gated call sites; the gate is the project's `external.<provider> === true`) |
+| "Google and Discord already require 13+" | Removed from both pages: external, unsourced, and Google offers supervised under-13 accounts. **Open (owner, N2):** whether provider sign-ups should be asked the date (12.2) |
+| Pieces entry point in production | **Decision (owner):** not shown at all until M5 (12.5). Production-bundle proof kept and extended |
+| Duplicate frames after a reconnect | Fixed at the hook (`appendFrame`) and in the strip (12.4) |
+| Restore button's click unguarded | The test presses the real button of an expanded row; planted `onClick={() => {}}`, no `onClick` and a wrong checkpoint each go red |
+| Offer to the latest turn only unguarded | A syntax-tree test on `workspace.tsx` (12.4) |
+| Roblox button wiring through `AlternativeSignIn` unguarded | The status hook's answer and the return path are run; planted `robloxConfigured={false}` and `from="/"` go red |
+| Referral-credit scan missed ordinary phrasings | A sentence-level pair scan (an invite word and a credit word within one sentence, either order); the four missed sentences and six more are in the must-fire list; the whole app and site read clean |
+| Restated privacy test promised "re-aimed in the same change" | Replaced by the property it can hold (above) and the reason |
+| Enlarge dialog's Earlier/Later unstyled, disabled invisible, no ring | Workspace outline button plus the strip's own disabled and focus rules (12.4); measured in the browser: 72x36, disabled quiet, ring 2px |
+| Strip's empty state stale and not actionable | 12.4 |
+| Day and year fields delete non-ASCII digits | 12.2; checked against `Intl` for every numbering system |
+| Focus and announcement after the refusal | 12.2 |
+| "Copy invite link" reads as a project invite | 12.8 |
+| Settings search counts hidden rows | `foundLine` takes the page's own total |
+| Strip's sentence under a finished turn (minor) | 12.4 |
+| Avatar astral-letter test (minor) | Asserts the letter itself; planted `split('')` goes red |
+| `usePieces` loaded gate and unmount guard (minor) | Run through the harness; three planted breaks go red |
+| Ledger missing the design-test edit (minor) | Recorded in `TEST-LEDGER.md` |
+| Roblox link borderless beside Google and Discord (minor) | The anchor carries the hairline and the 20px line; measured 1px solid, 46px, all three |
+| Checkpoint heading shows a time with no date (minor) | `clockOrDate`: time alone for today, the date with it otherwise, in the person's zone |
+| Month cut off at 320px (minor) | A floor for the month column below 400px and a stack below 300px; measured at 320, 340, 360, 390 and 1440 |
+| OAuth buttons held after Back from a provider (minor) | `pageshow` with `persisted` releases them; run with a stand-in `window`. **Not reproduced in a real browser** (Playwright's Chromium disables the back/forward cache): the release is proved by the stand-in, not by a restored page |
+
+**A mock flag added for review, development only:** `?studio=off` (`mockStudioConnected`, `lib/mock.ts`) makes the mock app's Studio disconnected so the strip's
+"Connect Studio" lines can be photographed. It folds to nothing in production like the other mock flags (`tests/mock-mode-production.test.mjs`).
+
+**Left as it was and said so:** the glyph `arrowUpRight` in `components/icons.ts` was used by the removed workspace button and now has no caller in this app; it is a shared icon
+table entry that existed before this branch, so it was not deleted.
+
+### 12.10 Fix cycle 2 (2026-10-05): what the third check of this branch changed
+
+The cycle 2 check (`app-c2-findings.json`) found nothing wrong in the cycle 1 fixes themselves: one item partly fixed and four things the cycle 1 fixes made
+false, loose or unguarded. The branch was also rebased onto main `30fbebd7` (`git rebase --onto origin/main eb4b2b12`): the 24 design-system commits it used to
+carry are on main as one squash (#32), so it now holds only its own app commits; the web suite measured on the rebased head before any change here was 2736 pass,
+0 fail, the same as before the rebase. The guards and the planted breaks are in `TEST-LEDGER.md`, "Fix cycle 2".
+
+| Finding | What was decided or done |
+|---|---|
+| A new playtest frame can be dropped as a replay | **Corrected in 12.11: the case this row describes cannot happen in the worker today; the key stays as a defence.** The page keyed a playtest frame on its run and counter (`playtestRunId`, `seq`). The check had said the worker's counter (`playtestSeq`, `apps/worker/src/do/session.ts`) restarts after a Durable Object eviction while the run id survives, and that new frames then arrive as seq 1, 2, ... under a run id the page holds; that was taken from the finding and was not read in the worker. **The key is now run, counter and the capture time** (`sameFrame`, `lib/studio-shots.ts`). A true replay carries the capture's own time, so an exact replay of the whole ring still adds nothing. Pixels are not part of the playtest key (a long string compared on every replayed frame): within one run the worker gives every frame the next counter value, so two frames of one run never share one. |
+| "No screenshots were taken for this request" can be false | It can: frames are held in the page's memory only and a reloaded conversation carries its tool steps, not its frames, so a build that did capture Studio, opened again after a reload with Studio closed, was told none were taken. **The line now says only what the page knows:** "No screenshots to show for this request: they are kept only while this tab stays open, so a reload clears them. To see them next time, connect Studio and keep this tab open during the request." The constant is `SHOTS_NONE_HERE` (it was `SHOTS_NONE_TAKEN`). The line is still drawn only when Studio is not connected; with Studio connected and nothing held, nothing is drawn (as in 12.4). A source test holds the fact the sentence rests on (the page sets its frames from the socket and from the development fixture, nowhere else), so if a later change keeps frames across a reload, the test fails and the sentence must be re-worded with it. **Not decided here:** keeping frames across a reload at all (it would need storage or a worker read, and `SHOTS_KEPT` says this page saves nothing). |
+| The Roblox link's rule also restyled the six primary anchor buttons | `.auth-page a.btn { border: 1px solid var(--control-line); line-height: 20px }` was meant for the Roblox link and also reached every `<Link className="btn btn-primary btn-block">` (`/confirm`, `/reset`, the recovery and the check-email screens): their accent border became the faint hairline and 47.7px became 46px. **The rule is on a class of its own, `auth-roblox-link`, which only the Roblox anchor wears.** Measured in Chromium on `/app/reset`: with the old rule `1px solid rgba(255, 255, 255, 0.12)` and 46px; now `1px solid rgb(166, 124, 255)` and 47.7px; the Roblox, Google and Discord buttons still measure `1px solid rgb(55, 59, 68)`, 20px, 46px. The restated test checks the property (no rule of the sheet gives a border or a line height to every anchor button; one element wears the class) and not the rule's text. |
+| `LEGAL-CLAIMS.md` cited `auth-pages.tsx` one line off, and nothing guarded it | The six cites are corrected, and **every line cite into a file of `apps/web/src` now carries the symbol it points at in the same code span** (`` `auth-pages.tsx:854 supabase.auth.signUp(` ``). `apps/web/tests/legal-claims-cites.test.mjs` reads each one: the text must be on the cited line (or one of a range's lines), a cite with no symbol fails, and a bare `:NNN` continuation fails; the message says where the text is now. It covers 27 cites in six files (10 of them `auth-pages.tsx`) (`auth-pages.tsx`, `age-gate.ts`, `auth-providers.ts`, `identity-card.tsx`, `roblox-signin.ts`, `settings.tsx`). **Four `settings.tsx` cites (display name, the Roblox card, the improvement-data row and its mutation) were already stale on main (`settings.tsx:2148` is a blank line there); they are repaired because the guard covers every app file.** The worker's cites are not read (their lanes own them), and a file name the worker shares (`turnstile.ts`, `index.ts`) is ambiguous and is skipped. What the guard cannot do: a symbol that is also on the cited line for another reason passes, and it says where the code is, not that the sentence beside it is still true. |
+
+**Left as it was and said so:** `empty-state-model.ts`'s help links (the site lane repoints them), the legal pages and `apps/site` (other lanes own them).
+
+### 12.11 Fix cycle 3 (2026-10-05): what the fourth check of this branch changed
+
+The cycle 3 check (a checker, and a regression hunter whose findings two skeptics each confirmed) found two claims in the cycle 2 work that were false or unguarded, four minor
+items and four guards that did not go red. The counts, the planted breaks and the screenshots are in `TEST-LEDGER.md`, "Fix cycle 3". Nothing in the worker, the legal pages or
+`apps/site` was touched.
+
+| Finding | What was decided or done |
+|---|---|
+| The playtest-counter restart that the cycle 2 key guards against cannot happen in the worker | **Confirmed by reading the worker, and the rationale is withdrawn.** A frame is published under a playtest run id by one place only, `PlaytestBus.captureFrame` (`session.ts`); it returns false when the run's frame gate (`this.frameRate`) is null, and `canCapture()` is false then too. The gate is declared null and assigned only in `begin()`, which also mints a new run id and zeroes `playtestSeq`; the boot restore brings back the stored run (`playtestRunBacking`) and neither the gate nor the counter; the whole playtest loop runs inside one `run_and_check` call, which calls `begin()` once. So after an eviction nothing more is published under the old run id, and a later playtest has a new one: "the same run id with seq 1 again" is a state the worker does not reach, and the cycle 2 note that it was "reproduced as the checker described it" reproduced a state the worker cannot be in. The comment on `sameFrame`, the test's header, its comment and its title, and the 12.10 row now say it is **a defence** that stops the key from mistaking a new capture for a replay if a counter ever restarts under a run id the page holds, and that it answers nothing the worker does today. The same note had said "one millisecond"; the Studio plugin stamps `capturedAt` in whole seconds (`os.time() * 1000`, `StudioCapture.luau`), and the comparison is exact, so no window of any size is right. **Not decided here and not done:** making the restart real by persisting the gate and the counter across an eviction (a worker change with its own suite; nobody asked for it, and the page's key already survives it). |
+| `THE LINE RESTS ON THIS` did not go red when frames were kept across a reload | It counted `setFrames(` calls and used a regex that cannot cross the `)` of `() =>`, so `useState<StudioFrame[]>(() => JSON.parse(sessionStorage.getItem(...)))` with an effect that wrote it back kept the frames across a reload and the whole web suite stayed green (the checker ran exactly that). **Restated as the property, read from the syntax tree:** the one state declaration starts from the literal `[]`; its setter is only ever called, twice (the development fixture under `if (MOCK_MODE)`, and the `studio_frame` message through `appendFrame`); its value is read once, as a plain member of the object the hook returns; and the workspace takes it by its own name with no default. Any new reader or setter fails it, which is meant: when it fires the review is whether the change keeps frames across a reload, and if it does the finished-turn sentence is re-worded with it. The checker's break (lazy initializer plus an effect) and seven more are planted in `TEST-LEDGER.md`. |
+| The finished-turn "connect Studio" line can show while the page is still loading | It could: `studio.connected` starts false and becomes true only when the socket says so, so after a reload a finished build turn drew the two-line "To see them next time, connect Studio" prompt and then took it back. **The hook now keeps `studio.known`**: false until the worker has said, on the open socket, whether Studio is connected (`hello` or `studio_status` sets it), and false again when the socket closes (a reconnect is a time nothing is heard). The workspace hands it to the latest turn and the strip draws **no line at all** while it is false, finished or running; once it is true the lines are what they were. A frame the page holds is shown whatever it has heard. The mock app is always known. The hook is not run under `node --test` (it needs more of React than the harness stands in for), so its three settings are read from the syntax tree and the decision, the strip and the turn are run. |
+| Primary anchor buttons 47.7px tall beside 46px `<button>`s | **Fixed, and the cycle 2 rule that blocked it is gone.** A `<button>` has a 20px line from the `button` element rule (`system.css`); an anchor inherits the page's 1.55, which at 14px is 21.7px, so the check-email card's "Send it again" (a button) sat 1.7px under "Go to sign in" (an anchor). `.auth-page a.btn-block { line-height:20px }` gives every full-width anchor the button's line; the Roblox rule keeps only the hairline. **This changes the six primary anchor buttons from 47.7px to 46px**; their accent border is untouched (measured, `TEST-LEDGER.md`). That is a decision: cycle 2 had asked that they keep their height, which meant the height they had on main, and on main they were 1.7px taller than the button next to them. If the owner prefers the old height, delete the one rule and the test's line check. |
+| The Roblox-anchor matcher did not see a child combinator | It split on whitespace and needed three exact container names. **Replaced by a small selector matcher** (`couldReach`, `auth-providers.test.mjs`): it tokenises a selector, reads `>`, `+` and `~` as combinators, handles `:not`, `:is`, `:where`, attributes and pseudo-elements, and asks whether the selector could match a primary anchor button standing in the page's real chain (page, form column, card, anchor), over-approximating what it cannot model. It is run on 18 selectors that must reach and 13 that must not (`.auth-page .auth-card > a` among the first), and on four that reach a primary `<button>` too and five that reach the anchor alone. The rule it enforces changed with it: **no rule may give the anchor a border that the primary `<button>` does not also get**, which is the defect, and not "no rule may touch an anchor button", which blocked a legitimate fix. A design change that styles both alike (`.auth-page .btn-primary { border-color: ... }`) is therefore allowed on purpose. The line a `<button>` has and the button's hairline are read from `system.css`, not written in the test. |
+| 12.4 and the test header still gave a reason 12.10 says the page cannot know | Both now say "once a finished turn holds none and Studio is connected", as the strip's source does. |
+| Four guards that did not go red | `1g` (a time window of 5 s): the test now asserts that captures 1 ms, 1 s and 4.999 s apart are distinct, so a window of any size under five seconds goes red. `2e`: the item above. `3j` (a `.btn-primary` border rule): **not a defect, left green by design**: it styles the primary button and the primary anchor alike, which cannot make them differ. `4e` (a cite written outside a code span): a scan for cites into an app file outside a span or deep inside one now fails (`unreadCites`), run on the document and on a sample with three of them. |
+| A process note from the checker: its first copy partly deleted another checker's working copy | Not a defect in the branch. This lane's probes this cycle were kept in their own folder (`probes/app/fix2r2/`) and nothing under `probes/app/check1/` was touched. |
+
+**Left as it was and said so:** `empty-state-model.ts`'s help links, the legal pages and `apps/site` (other lanes own them); the worker (no change, so the worker suite was not run).

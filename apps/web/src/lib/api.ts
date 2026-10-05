@@ -724,7 +724,7 @@ export interface ErasureReceipt {
   steps: ErasureStep[];
   residue: ErasureResidue[];
   complete: boolean;
-  /** FALSE. The sign-in identity outlives this route; the screen must not say otherwise. */
+  /** True only when Supabase removed the sign-in identity (or already had none). False while it is still there: the screen must say so. */
   accountRemoved: boolean;
   summary: string;
 }

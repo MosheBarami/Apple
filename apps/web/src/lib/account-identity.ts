@@ -7,11 +7,14 @@
 // has to respect: there is no password to re-enter, and the address is a placeholder a person must never be shown as theirs.
 
 const ROBLOX_SUB = /^\d{1,20}$/;
+/** The one-way code that replaces the Roblox id on the account when Roblox access is lost (the worker's `roblox_code`): 128 bits of a keyed digest, as hex. */
+const ROBLOX_CODE = /^[0-9a-f]{32}$/;
 
 /**
  * Was this account made by "Continue with Roblox"?
  *
- * Decided by `app_metadata.roblox_sub`, which only the Auth admin API can write (a person can write `user_metadata`, never
+ * Decided by `app_metadata.roblox_sub`, or by `app_metadata.roblox_code` once a lost Roblox grant has had the id cleared from the account
+ * (the worker keeps only that one-way code then), which only the Auth admin API can write (a person can write `user_metadata`, never
  * `app_metadata`), and NOT by the shape of the address: that is a hint somebody else's address could imitate. Such an account
  * has no password, and the app offers no way to give it one, so asking it for one is asking for something that does not
  * exist. It confirms who it is by signing in with Roblox again.
@@ -19,8 +22,8 @@ const ROBLOX_SUB = /^\d{1,20}$/;
 export function isRobloxAccount(user: unknown): boolean {
   const meta = (user as { app_metadata?: unknown } | null | undefined)?.app_metadata;
   if (!meta || typeof meta !== 'object') return false;
-  const sub = (meta as { roblox_sub?: unknown }).roblox_sub;
-  return typeof sub === 'string' && ROBLOX_SUB.test(sub);
+  const { roblox_sub: sub, roblox_code: code } = meta as { roblox_sub?: unknown; roblox_code?: unknown };
+  return (typeof sub === 'string' && ROBLOX_SUB.test(sub)) || (typeof code === 'string' && ROBLOX_CODE.test(code));
 }
 
 /** RFC 2606 reserves `.invalid`: nothing ending in it is anybody's real address, so it is never shown as one. */
@@ -48,4 +51,26 @@ export function accountIdentity(user: unknown, address: string | null | undefine
     label: name ? `Roblox: ${name}` : 'Roblox account',
     signedInAs: name ? `Signed in with Roblox as ${name}` : 'Signed in with Roblox',
   };
+}
+
+/**
+ * The letter in the avatar: the first letter of the first of these that has one. The profile's display name, then the Roblox username
+ * (an account that signed in with Roblox has no address to take it from), then the address, and never a placeholder address.
+ *
+ * Null when there is nothing honest to take a letter from, and the caller draws a neutral person mark: a "?" or a letter taken from
+ * the words "Roblox account" would say something about the person that nothing knows. A letter, a digit or any other character that
+ * is a letter in some alphabet counts; a symbol or a space does not, and the first CODE POINT is taken, so an emoji or an astral letter is not cut in half.
+ */
+export function avatarInitial(parts: {
+  displayName?: string | null;
+  robloxName?: string | null;
+  address?: string | null;
+}): string | null {
+  const candidates = [parts.displayName, parts.robloxName, isPlaceholderAddress(parts.address) ? null : parts.address];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const first = Array.from(candidate.trim()).find((ch) => /[\p{L}\p{N}]/u.test(ch));
+    if (first) return first.toLocaleUpperCase();
+  }
+  return null;
 }

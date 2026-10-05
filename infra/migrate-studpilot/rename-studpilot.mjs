@@ -113,8 +113,6 @@ const PROTECT = [
   /www\.apple\.com\/DTDs\/PropertyList-1\.0\.dtd/g, /podcasts\.apple\.com/g, /apple\/aimv2[\w.-]*/g, /apple-amlr/g,
   /apple\/ml-ferret/g, /Apple's SwiftUI/g, /AppleBlox/g, /appleblox/g, /Apple Silicon/g, /macOS \(Apple\)/g,
   /twitter\|apple\|android/g, // imagegen.ts BRAND_TERMS: Apple Inc.'s trademark
-  // the operator's legal name and inbox: owner decisions (see planning/proof/M1/LOG.md)
-  /Apple Labs/g, /apple\.labs\.app@gmail\.com/g,
   // the Creator Store listing title, until the owner retitles it (deferred, rename-inventory)
   /Apple Studio \(asset/g, /"Apple Studio" listing/g,
   // stored identifiers: formats, keys and ids already saved by users or in our stores

@@ -1,0 +1,22 @@
+/* The history in the Checkpoints drawer: a heading for each request, the checkpoints under it. Tokens only, flat. */
+
+.gx-history__note { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
+
+.gx-history__group { margin-block-end: var(--space-4); }
+
+/* The request is the heading: what the person asked for, and when. The words wrap (a request is a sentence), the time does not. */
+.gx-history__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: 0;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.gx-history__request { min-width: 0; overflow-wrap: anywhere; }
+.gx-history__when { flex: none; color: var(--muted); font-size: var(--text-xs); font-weight: 400; font-variant-numeric: tabular-nums; }

@@ -252,6 +252,45 @@
  *   Hover is a fact about the pointer; invalid is a fact about the value, and the value wins. ]]*/
 .auth-page .auth-form-col .field input[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); animation:auth-reject 160ms ease-out both; }
 
+/* THE DATE OF BIRTH IS THREE CONTROLS IN ONE ROW: a day and a year that take digits, and a month that is named, which is how a
+   date is said aloud and how nobody mistypes it. A group rather than a fieldset, because a fieldset inside a grid sizes its legend
+   as a cell. The month gets the wider track because "September" is the longest word in it. Each part carries its own small name
+   so a screen reader and a pointer both know which box is which. Nothing in the row shows a sample date. */
+.auth-page .field-date__row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr); gap:10px; }
+.auth-page .field-date__part { display:grid; gap:6px; min-width:0; }
+.auth-page .field-date__name { font-size:12px; line-height:1.2; color:var(--muted); }
+.auth-page .auth-form-col .field-date__part select { width:100%; min-width:0; min-height:48px; padding:0 12px; font-size:16px; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-md); }
+.auth-page .auth-form-col .field-date__part select:hover:not(:disabled) { border-color:color-mix(in srgb,var(--ink) 24%,var(--line)); }
+.auth-page .auth-form-col .field-date__part select:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--halo); }
+.auth-page .auth-form-col .field-date__part select[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); }
+
+/* A NARROW PHONE (320px gives the row 254px). The 1 : 2 : 1.4 split gave the month 106px, and "September" at 16px is 80px of text between 24px of
+   padding and the select's own arrow, so the chosen month read "Septemb". Here the month's track has a floor that holds the longest name, and
+   the day and the year trade some of their side padding for it (two digits and four digits still fit). Below 300px nothing fits on one line, so
+   the three stack in the order they are read; the page never scrolls sideways. Font size stays 16px (a smaller one makes iOS zoom the page). */
+@media (max-width:400px) {
+  .auth-page .field-date__row { grid-template-columns:minmax(40px,.8fr) minmax(124px,2.4fr) minmax(58px,1.2fr); gap:8px; }
+  .auth-page .auth-form-col .field-date__part input { padding-inline:10px; }
+  .auth-page .auth-form-col .field-date__part select { padding-inline:10px 6px; }
+}
+@media (max-width:300px) {
+  .auth-page .field-date__row { grid-template-columns:minmax(0,1fr); }
+}
+
+/* The refusal that replaces the sign-up form takes focus (so a keyboard or screen-reader user is not dropped on the page), and the heading shows
+   the ring when it has it: tabindex -1 makes it reachable by script and not a tab stop. */
+.auth-page .auth-card-title[tabindex='-1']:focus-visible { outline:2px solid var(--accent-ring); outline-offset:4px; }
+
+/* A full-width action drawn as an anchor has none of the chrome the `button` element rule (design/system.css) gives a <button>, and two things of it matter beside
+   its neighbours.
+   THE LINE: a <button> has a 20px line; an anchor inherits the page's 1.55, so at 14px it is 21.7px and the anchor stands 1.7px taller than the button over or
+   under it (the check-email card stacks "Send it again", a <button>, on "Go to sign in", an anchor). Every full-width anchor takes the button's line.
+   THE HAIRLINE: "Continue with Roblox" is a chrome button (the same variant as Google and Discord) and without the element rule it was a flat panel with no edge. It
+   carries the button's hairline on a class of its own and not on `a.btn`: the confirmation, reset and recovery screens draw their primary action as an anchor
+   too (<Link className="btn btn-primary btn-block">), and a border on every `a.btn` replaced their accent border with the faint one (cycle 1). */
+.auth-page a.btn-block { line-height:20px; }
+.auth-page a.auth-roblox-link { border:1px solid var(--control-line); }
+
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that
    disappears beneath a button is how people mistype a password twice. 28px is the bare-text-button

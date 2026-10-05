@@ -31,6 +31,7 @@ import { fetchCheckpoints, fetchMessages, stopRun } from './api';
 // One definition of what a client-minted id looks like, and one place that reconciles it with the
 // server's. Two would drift, and the drift is invisible until an Edit truncates from nowhere.
 import { adoptUserMessageId, localId } from './message-identity';
+import { appendFrame } from './studio-shots';
 import {
   MOCK_MODE,
   mockCheckpoints,
@@ -42,6 +43,7 @@ import {
   mockPlaytest,
   mockQuota,
   mockSelection,
+  mockStudioConnected,
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
@@ -203,6 +205,12 @@ export interface ProjectSocket {
     connected: boolean;
     state: StudioEventState | null;
     everConnected: boolean;
+    /**
+     * Whether the worker has said, on the socket that is open now, if Studio is connected. False on a page that has just loaded and again
+     * while a dropped socket reconnects: `connected` is false then because nothing has been heard, not because Studio is away, and a line
+     * that tells the person to connect it must not be drawn on that (components/ws/studio-shots.tsx).
+     */
+    known: boolean;
     /**
      * What is selected in Studio right now, from the `studio_selection` broadcast.
      *
@@ -399,12 +407,14 @@ export function useProjectSocket(
     connected: boolean;
     state: StudioEventState | null;
     everConnected: boolean;
+    known: boolean;
     selection: StudioEventSelection | null;
     link: StudioLinkFacts;
   }>({
     connected: false,
     state: null,
     everConnected: false,
+    known: false,
     selection: null,
     link: NO_LINK_FACTS,
   });
@@ -454,7 +464,7 @@ export function useProjectSocket(
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
+      setStudio({ connected: mockStudioConnected(), state: mockStudioState, everConnected: true, known: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -487,12 +497,14 @@ export function useProjectSocket(
     if (MOCK_MODE) {
       setCheckpoints(mockCheckpoints);
       setCheckpointsState('ready');
-      // The build renders, plus a playtest in progress. The playtest frames are
-      // stamped relative to now, so mock mode shows the card's real
-      // fresh -> stale -> dead progression as it sits there rather than a
-      // permanently "live" badge.
+      // A playtest in progress. Its frames are stamped relative to now, so the card's real
+      // fresh -> stale -> dead progression shows as it sits there rather than a permanently "live" badge.
+      // The screenshots strip draws only frames stamped for its own run, so by default the mock app holds none
+      // (which is the strip's empty state, and what a real run shows before its first capture); `?frames=1`
+      // adds the fixture renders to the last mock turn so the strip can be reviewed full.
       const pt = mockPlaytest();
-      setFrames([...mockFrames(), ...pt.frames]);
+      const withFrames = new URLSearchParams(window.location.search).get('frames') === '1';
+      setFrames(withFrames ? mockFrames().map((frame) => ({ ...frame, msgId: 'm4' })) : []);
       setPlaytest(pt.run);
       return;
     }
@@ -549,6 +561,7 @@ export function useProjectSocket(
         setStudio((s) => ({
           ...s,
           connected: msg.studioConnected,
+          known: true,
           everConnected: s.everConnected || msg.studioConnected,
           link: linkFactsFrom(s.link, msg),
         }));
@@ -558,6 +571,7 @@ export function useProjectSocket(
           ...s,
           connected: msg.connected,
           state: msg.state ?? null,
+          known: true,
           everConnected: s.everConnected || msg.connected,
           link: linkFactsFrom(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
@@ -955,8 +969,11 @@ export function useProjectSocket(
         break;
       case 'studio_frame':
         // Uncompressed RGB is heavy, so only the most recent handful are kept
-        // in memory. They are never persisted.
-        setFrames((list) => [...list, msg.frame].slice(-MAX_FRAMES));
+        // in memory. They are never persisted. The worker replays the frames it still
+        // holds each time a socket attaches during a playtest, so a capture this page
+        // already has is not added twice (it would repeat in the strip and push the
+        // run's older frames out of the newest eight).
+        setFrames((list) => appendFrame(list, msg.frame, MAX_FRAMES));
         break;
       case 'playtest_state':
         // Straight through. The worker owns every field on this record —
@@ -1151,7 +1168,7 @@ export function useProjectSocket(
       // report a link that is measurably fast while nothing can reach it at all; the heartbeat and
       // the queue depth DO survive, because they are facts about Studio rather than about this
       // socket, and dating the disconnection is the whole point of keeping them.
-      setStudio((s) => ({ ...s, connected: false, link: { ...s.link, rttMs: null } }));
+      setStudio((s) => ({ ...s, connected: false, known: false, link: { ...s.link, rttMs: null } }));
       const attempt = attemptsRef.current++;
       const delay = Math.min(30_000, 1000 * 2 ** attempt) + Math.random() * 500;
       reconnectTimer.current = window.setTimeout(() => void connect(), delay);

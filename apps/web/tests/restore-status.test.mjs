@@ -74,14 +74,19 @@ test('the socket hook handles the restore frame and exposes it', () => {
   assert.match(src, /restoreStatus/, 'and surfaced to the route that has to draw it');
 });
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C5). The row moved into components/ws/checkpoint-history.tsx, so the sentence and the counts are asked of the row,
+//   and "restoring does not close the drawer" is asked of the page that handles the press (the row only reports it). Both halves are as strict as
+//   before; the rendered row is run in tests/checkpoint-history.test.mjs. ]]
 test('the checkpoints drawer draws the restore and stops slamming itself shut', () => {
+  const row = readFileSync(join(WEB, 'src', 'components', 'ws', 'checkpoint-history.tsx'), 'utf8');
   const src = readFileSync(join(WEB, 'src', 'routes', 'workspace.tsx'), 'utf8');
-  assert.match(src, /restoreSentence/, 'the drawer must render the status sentence');
-  assert.match(src, /fidelityLine/, 'and what actually came back');
+  assert.match(row, /restoreSentence/, 'the drawer must render the status sentence');
+  assert.match(row, /fidelityLine/, 'and what actually came back');
   // The defect in one line: `restoreCheckpoint(c.id); setDrawer(null);` — the panel shut on the
   // click and the user never saw the result of the thing they had just started.
+  assert.match(src, /restoreCheckpoint\(c\.id\)/, 'the page no longer restores on the press');
   assert.ok(
-    !/restoreCheckpoint\(c\.id\);\s*\n\s*setDrawer\(null\);/.test(src),
+    !/restoreCheckpoint\(c\.id\);(\s*\/\/[^\n]*)*\s*setDrawer\(null\)/.test(src),
     'restoring must not close the drawer that is about to show the result',
   );
 });

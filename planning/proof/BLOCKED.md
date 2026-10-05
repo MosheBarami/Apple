@@ -6,19 +6,10 @@ no token here can reach. Work that does not depend on an item goes on. Done and 
 
 ## Urgent
 
-### N2. Google and Discord sign-in: the four `.env` lines were not found
-On 2026-10-05 `~/Developer/StudPilot/.env` had no Google lines and no Discord OAuth secret. Supabase shows both providers
-off, with no client id or secret set. Add these four lines to that file, with these exact names, and tell Claude Code "N2
-lines in":
-```
-GOOGLE_OAUTH_CLIENT_ID=
-GOOGLE_OAUTH_CLIENT_SECRET=
-DISCORD_OAUTH_CLIENT_ID=
-DISCORD_OAUTH_CLIENT_SECRET=
-```
-The Discord client id is the application id (`DISCORD_APPLICATION_ID` is already there). The secret is on the Discord
-developer page, under **OAuth2** → **Reset Secret**. That is not the bot token. Both apps need the redirect
-`https://npqvyijsvzkuwddyhtpm.supabase.co/auth/v1/callback`.
+### N2. Google and Discord sign-in: one live sign-in with each (after Claude Code switches them on)
+The four `.env` lines are in (found 2026-10-05). Claude Code enables both providers once the app with the buttons is
+live, and updates the pages. Then sign in once with Google and once with Discord on https://studpilot.app/app/signin
+and tell Claude Code it worked.
 
 ## Before charging money
 
@@ -58,17 +49,7 @@ through the stand-in until 2027-01-02.
 
 ## Anytime
 
-### N4. One narrow Cloudflare token for the Worker (`CF_WORKER_OPS_TOKEN`); due before 2026-11-03
-Claude Code now works through a Wrangler OAuth login (2026-10-05). It covers Workers, D1, R2, KV, Vectorize, Queues,
-Turnstile and Email Routing, but it has no AI Gateway, DNS or API-token scope, so this token is still needed. Two jobs
-need it. The 30-day AI Gateway log retention you approved (D-14) is a daily deletion run by the Worker. The
-second is the optional analytics readback. The main token cannot create tokens (measured 2026-10-04), and it is far too
-broad to put on the Worker. Until this token exists the deletion is run by hand. The new gateway's oldest log is from
-2026-10-04, so nothing passes 30 days before 2026-11-03.
-1. https://dash.cloudflare.com/profile/api-tokens → **Create Token** → **Create Custom Token**.
-2. Name it `studpilot-worker-ops`.
-3. Permissions: **Account** · **AI Gateway** · **Edit**, and **Account** · **Account Analytics** · **Read**. Account
-   resources: your account.
-4. **Continue to summary** → **Create Token**, then copy it.
-5. Add a line `CF_WORKER_OPS_TOKEN=<token>` to `~/Developer/StudPilot/.env`. Claude Code puts it on the Worker as a
-   secret, and the daily cron starts deleting logs older than 30 days.
+### N10. Copy code from stud (AGPL-3.0), or use its ideas only?
+madebyshaurya/stud is AGPL-3.0. Copying its code into StudPilot would require the whole hosted product to be
+offered under the AGPL, source included, to every user. Until the owner decides, the rebuild takes its
+ideas only (planning/REBUILD-PLAN.md). The other three named projects are MIT and are used.

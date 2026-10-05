@@ -14,19 +14,20 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ProjectSignature } from '../components/project-signature';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Failure } from '../components/failure';
 import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '@studpilot/shared';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { supabase, type ProjectRow } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
 import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
-import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../lib/project-templates';
-import { takePendingStart } from '../lib/pending-start';
+import { useCreateProject } from '../lib/use-create-project';
+import { useShareInvite } from '../lib/use-invite-link';
+import { INVITE_ACTION } from '../lib/growth';
+import { useAuth } from '../lib/auth';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, tagUniverse } from '../lib/tags';
 import { relativeTime, truncate } from '../lib/format';
@@ -38,8 +39,6 @@ import { confirmationFor } from '../lib/confirm-model';
 import { ConfirmDialog } from '../components/confirm-dialog';
 import { EmptyState } from '../components/empty-state';
 import { useCommands } from '../lib/commands';
-import { useProvideNewProject } from '../lib/shell';
-import { SHORTCUTS, shortcutLabel } from '../lib/shortcuts';
 import { filterProjects } from '../lib/project-search';
 import './dashboard.css';
 import './nonworkspace-minimal.css';
@@ -128,7 +127,7 @@ async function fetchTagUniverse(): Promise<{ tags?: string[] }[]> {
  * portal means a click can no longer bubble INTO the anchor, the handlers are what stop a stray
  * pointer sequence doing it and they cost nothing.
  */
-function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; archived: boolean; pinned: boolean }) {
+function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, onShare, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; onShare: () => void; archived: boolean; pinned: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
@@ -275,6 +274,22 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, arc
           >
             {archived ? 'Restore' : 'Archive'}
           </button>
+          {/* A link to StudPilot's sign-up page, to send to a friend. The same link on every project: it is about the product, not this
+              project, and it says nothing about this project's contents. The label names StudPilot so it does not read as an invitation to
+              this project (that one is "Who can build here", in the workspace). */}
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onShare();
+            }}
+          >
+            {INVITE_ACTION}
+          </button>
           {/* Markdown first: it is what someone actually reads. JSON is for feeding somewhere. */}
           <button
             type="button"
@@ -340,123 +355,6 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, arc
       </button>
       {open && host ? createPortal(pop, host) : null}
     </div>
-  );
-}
-
-function CreateProjectModal({ onClose }: { onClose: () => void }) {
-  const { session } = useAuth();
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const { toast } = useToast();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [template, setTemplate] = useState(BLANK_TEMPLATE_ID);
-
-  const create = useMutation({
-    mutationFn: async () => {
-      const ownerId = session?.user.id;
-      if (!ownerId) throw new Error('Not signed in');
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({ owner_id: ownerId, name: name.trim(), description: description.trim() || null })
-        .select('id')
-        .single();
-      if (error) throw new Error(error.message);
-      return data as { id: string };
-    },
-    onSuccess: (row) => {
-      void qc.invalidateQueries({ queryKey: ['projects'] });
-      void qc.invalidateQueries({ queryKey: ['projects-nav'] });
-      toast('Project created', 'success');
-      //[[ THE TEMPLATE IS A SEEDED REQUEST, NOT SEEDED CONTENT.
-      //
-      //   It rides the handoff the workspace already consumes — the same one the suggestion chips
-      //   and the roadmap's briefs use — so the message lands in the composer and the person reads
-      //   it and presses send. Nothing is built, and no Credit is spent, until they do.
-      //
-      //   A blank start navigates with no state at all rather than `{ seed: null }`: the workspace
-      //   consumes-and-clears any state it is handed, and handing it nothing to clear keeps the
-      //   history entry as it was. ]]
-      //[[ THE TEMPLATE WINS, AND THE LANDING'S SENTENCE IS THE FALLBACK.
-      //   Somebody who picked a template asked for that template; a sentence they typed minutes
-      //   earlier on the front page must not overrule the choice they just made in this dialog.
-      //   `takePendingStart` is a MOVE, so whichever branch runs the sentence is spent here and
-      //   the next project created in this tab starts empty. ]]
-      const seed = templateSeed(template) ?? takePendingStart();
-      navigate(`/projects/${row.id}`, seed ? { state: { seed } } : undefined);
-    },
-    onError: (e: Error) => toast(`Could not create project: ${e.message}`, 'error'),
-  });
-
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || create.isPending) return;
-    create.mutate();
-  };
-
-  return (
-    <Modal title="New project" onClose={onClose} locked={create.isPending}>
-      <form onSubmit={onSubmit}>
-        <label className="field">
-          <span className="field-label">Name</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={80}
-            required
-            name="projectName"
-            id="project-name"
-            placeholder="Obby of the Ancients"
-            autoFocus
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">
-            What are you building? <span className="field-hint">(optional)</span>
-          </span>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            maxLength={500}
-            name="projectDescription"
-            id="project-description"
-            placeholder="A lava-parkour obby with checkpoints, coins and a shop."
-          />
-        </label>
-        <fieldset className="field tpl">
-          <legend className="field-label">Starting point</legend>
-          {/* Said plainly, because the last template claim this product made was false: these fill
-              in the first message, they do not fill in the place. */}
-          <p className="field-hint tpl__note">
-            Each of these writes your first request for you. You can edit it before you send it.
-          </p>
-          <div className="tpl__grid">
-            {PROJECT_TEMPLATES.map((t) => (
-              <label key={t.id} className={`tpl__card${template === t.id ? ' is-on' : ''}`}>
-                <input
-                  type="radio"
-                  name="projectTemplate"
-                  value={t.id}
-                  checked={template === t.id}
-                  onChange={() => setTemplate(t.id)}
-                />
-                <span className="tpl__label">{t.label}</span>
-                <span className="tpl__blurb">{t.blurb}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <div className="modal-actions">
-          <button type="button" className="btn" onClick={onClose} disabled={create.isPending}>
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={!name.trim() || create.isPending}>
-            {create.isPending ? 'Creating…' : 'Create project'}
-          </button>
-        </div>
-      </form>
-    </Modal>
   );
 }
 
@@ -718,7 +616,12 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 }
 
 export function DashboardPage() {
-  const [showCreate, setShowCreate] = useState(false);
+  // One click makes the project and opens it (lib/use-create-project.ts). The same hook serves the rail, the palette and the shortcut.
+  const { create: createProject, pending: creatingProject } = useCreateProject();
+  // "Invite a friend to StudPilot" on a project's menu: the link to StudPilot's sign-up page (lib/growth.ts says what it is, and what it is not).
+  // It is named for the product, not the project, because it grants no access to the project it sits on.
+  const { session } = useAuth();
+  const { share: shareInvite } = useShareInvite(session?.user.id);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
   const [editing, setEditing] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -855,24 +758,12 @@ export function DashboardPage() {
     onError: (e: Error) => toast(`Could not archive: ${e.message}`, 'error'),
   });
 
-  // Stable identity: the shell stores this and re-registering on every render
-  // would reset the handoff each time the project list refetched.
-  const openCreate = useCallback(() => setShowCreate(true), []);
-  useProvideNewProject(openCreate);
-
-  // Two commands, not five. Rename, Delete and Export act on ONE project, and
+  // One command here, not five. Rename, Delete and Export act on ONE project, and
   // the palette has no notion of which card is selected — a "Rename project"
   // entry here would have to guess, and guessing wrong renames the wrong thing.
   // Those stay on the card menu until there is a selection model to target.
+  // "New project" is the shell's own command (components/layout.tsx), which works from every screen.
   useCommands([
-    {
-      id: 'dash-new',
-      title: 'New project',
-      section: 'Projects',
-      keywords: ['create', 'summon', 'start'],
-      hint: shortcutLabel(SHORTCUTS.newProject),
-      run: openCreate,
-    },
     {
       id: 'dash-refresh',
       title: 'Refresh projects',
@@ -956,7 +847,8 @@ export function DashboardPage() {
         <button
           type="button"
           className={`btn shelf__new${shelfIsEmpty ? '' : ' btn-primary'}`}
-          onClick={() => setShowCreate(true)}
+          onClick={createProject}
+          disabled={creatingProject}
         >
           {/* Drawn rather than typed. A text "+" sits on the baseline beside a word whose cap
               height it does not share, so the button reads as slightly broken at every size. */}
@@ -1108,9 +1000,9 @@ export function DashboardPage() {
         <EmptyState
           state="noProjects"
           illustration={<SummonIllustration />}
-          detail={<p className="es__body">Name a project, then describe your colorful cartoon game — an obby, a tycoon, a story world. StudPilot builds it in your Roblox place.</p>}
+          detail={<p className="es__body">Start a project, then ask for the first piece of your game in the chat. StudPilot builds it in your Roblox place.</p>}
           action={
-            <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            <button type="button" className="btn btn-primary" onClick={createProject} disabled={creatingProject}>
               Create a project
             </button>
           }
@@ -1180,6 +1072,7 @@ export function DashboardPage() {
                 onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
                 onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
                 onTags={() => setTagging(p)}
+                onShare={shareInvite}
                 archived={Boolean(p.archived_at)}
                 pinned={Boolean(p.pinned_at)}
               />
@@ -1216,7 +1109,6 @@ export function DashboardPage() {
         </footer>
       )}
 
-      {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}
       {editing && <EditProjectModal project={editing} onClose={() => setEditing(null)} />}
       {/* Fed the LIVE row from the current list rather than the one captured when the menu was
           clicked, so a chip removed in the dialog disappears from the dialog. The captured row is

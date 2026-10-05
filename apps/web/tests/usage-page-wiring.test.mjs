@@ -46,7 +46,9 @@ const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, 
 const usageCode = code(usage);
 
 test('THE PLAN LADDER IS ACTUALLY RENDERED — it had zero callers', () => {
-  assert.match(usageCode, /import \{ PlanLadder \}/, 'the usage route must import it');
+  // RESTATED 2026-10-05 (M2 step 2.3, C7): the route imports the beta label from the same module as the ladder, so the import list holds
+  // two names. The property is the same: the route imports the ladder and renders it.
+  assert.match(usageCode, /import \{[^}]*\bPlanLadder\b[^}]*\} from '\.\.\/components\/plans'/, 'the usage route must import it');
   assert.match(usageCode, /<PlanLadder\b/, 'and render it');
   assert.match(plans, /export function PlanLadder/, 'and it must still be what is exported');
 });

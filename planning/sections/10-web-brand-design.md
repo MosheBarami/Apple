@@ -54,7 +54,7 @@ Read via `curl https://apple.moshe-barami111.workers.dev/` and the built `apps/s
 8. Three tabbed interactive stages (Read order, Critique, Luau), each tagged "Illustration".
 9. "One screen, as the model wrote it": a real tycoon inventory screen the model drew, with measured figures (17,569 characters of Luau, 75 interface objects, 0 image assets), unretouched "including the parts it got wrong".
 10. "One engine": the page says Apple answers every request on every plan.
-11. Footer: product / docs / legal columns, "Apple Labs", "Apple is a beta service, provided as-is. Not affiliated with or endorsed by Roblox Corporation."
+11. Footer: product / docs / legal columns, "StudPilot", "Apple is a beta service, provided as-is. Not affiliated with or endorsed by Roblox Corporation."
 
 **Copy themes:** honesty about limits (edits are consent-gated, results include the defects, figures are measured and checked), "inside your own Studio", plain words for young creators, and no hype. This is enforced by `scripts/check-copy.mjs`, which bans the sentence shapes of four competitor sites ("describe it, watch it get built", "one prompt, a whole game", "Apple is not just X") and caps display type at 3.5rem (56 px) (`scripts/check-copy.mjs` lines 30-110 and 255-300).
 
@@ -64,7 +64,7 @@ Live `/pricing` (curl, 2026-10-04):
 
 - Headline: "Start free. Paid plans are not on sale yet." Four plans: **Free** $0 (231 Credits/day, 2,310/month, "about 30 quality-gated builds a month", available now), **Pro** $12/month (416/day, 12,600/month, about 163 builds, "Planned"), **Max** $40/month (700/day, 21,000/month, about 272 builds, "Planned"), **Enterprise** (email, 833/day, 25,000/month, negotiated).
 - Unit: "One build is about 77 Credits". "Every plan uses Apple; they differ only in how many Credits they include."
-- A month/build switch, a builds-per-month estimator, a "second, shared limit" explainer (a global daily pool of about 33,333,666 Credits that can stop a run with "Apple has reached today's shared building capacity"), a full capability table where every row is shown even when equal, tax and support notes (a person reads `apple.labs.app@gmail.com`; no reply time promised in beta).
+- A month/build switch, a builds-per-month estimator, a "second, shared limit" explainer (a global daily pool of about 33,333,666 Credits that can stop a run with "Apple has reached today's shared building capacity"), a full capability table where every row is shown even when equal, tax and support notes (a person reads `support@studpilot.app`; no reply time promised in beta).
 - Important honesty: **checkout is not open** ("Checkout not open", "Planned tier"), "Buy extra Credits: Unavailable", and every plan lists "Roblox Studio plugin · public installation unavailable". `/status` lists "Studio plugin installation is unavailable, open since 25 Sept 2026".
 - Figures come from a shared plan config, not typed. `scripts/check-credit-figures.mjs`, `scripts/check-offer.mjs` and `apps/site/tests/{build-cost-figures,credit-purchase-claim,pricing-availability,quota-ceiling-copy,unpurchasable-and-shared-cap}.test.mjs` pin them.
 
@@ -239,10 +239,10 @@ Not done: from the diff the thread layout (inverse user pill, unbubbled assistan
 
 ### 10.5.1 Names
 
-- **Product: Apple.** Renamed from **Golem** on 2026-09-14 (`7fb753ae feat(brand): rename the product to Apple`, 82 files, wire and storage literals left alone). The agent calls itself "You are Apple". Sub-brands in use: "Apple Labs" (footer), "Apple Studio" (the Studio plugin, Creator Store asset `107230158271368`, under the owner's personal account Shahar474 per `docs/PLUGIN-RELEASE.md`), "Apple MAX" (a retired premium model tier).
+- **Product: Apple.** Renamed from **Golem** on 2026-09-14 (`7fb753ae feat(brand): rename the product to Apple`, 82 files, wire and storage literals left alone). The agent calls itself "You are Apple". Sub-brands in use: "StudPilot" (footer), "Apple Studio" (the Studio plugin, Creator Store asset `107230158271368`, under the owner's personal account Shahar474 per `docs/PLUGIN-RELEASE.md`), "Apple MAX" (a retired premium model tier).
 - **Infrastructure stays `golem`** (worker name, D1, KV, Vectorize, Durable Object classes, wire literals such as `golem.v1`, `X-Golem-Token`) because renaming breaks live sessions (CLAUDE.md "Infrastructure names stay golem"). A later, larger codemod on the integration line renames repo identifiers to Apple while the worker still **accepts both wire spellings** (`fc3c4b98`; `/api/health` shows `"compat":"wire-both"` with 372 uses of the legacy headers). The owner's 2026-10-02 standing consent allows removing "golem" everywhere including Cloudflare/Supabase/Sentry (memory `owner-standing-consent-2026-10-02.md`); not done yet.
 - Guard: `scripts/check-rebrand.mjs` plus `tests/rebrand-enforced.test.mjs` check that no user-visible string says Golem, both in git and in the **deployed** bundle.
-- Contact: `apple.labs.app@gmail.com` (pricing page).
+- Contact: `support@studpilot.app` (pricing page).
 
 ### 10.5.2 Marks: three drawings in production
 

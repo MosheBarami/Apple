@@ -58,6 +58,7 @@ const QUERY_STUB = `
 export const queryControls = {
   queries: [],              // every options object a component passed to useQuery, in order
   mutations: [],            // and to useMutation
+  mutateCalls: [],          // the argument of every mutate(...) a component made, in order (the mutation function is NOT run: a test calls it)
   answer: () => undefined,  // (options) => the partial result to return for that query, or undefined while it is pending
 };
 export const useQuery = (options) => {
@@ -67,7 +68,7 @@ export const useQuery = (options) => {
 };
 export const useMutation = (options) => {
   queryControls.mutations.push(options);
-  return { mutate: () => {}, mutateAsync: async () => {}, isPending: false, isError: false, error: null, reset: () => {} };
+  return { mutate: (variables) => { queryControls.mutateCalls.push(variables); }, mutateAsync: async () => {}, isPending: false, isError: false, error: null, reset: () => {} };
 };
 export const useQueryClient = () => ({ invalidateQueries: async () => {}, setQueryData: () => {}, getQueryData: () => undefined });
 `;
@@ -77,13 +78,31 @@ export const controls = {
   session: null,            // what getSession() returns: null, or { user: { id, email, app_metadata } }
   sessionError: null,
   verifyResult: { data: { user: { id: 'the-new-user' } }, error: null },
+  signUpResult: { data: { session: null, user: { id: 'the-new-user' } }, error: null },
+  oauthResult: { data: {}, error: null },   // what signInWithOAuth and linkIdentity answer
+  identities: [],                            // what getUserIdentities lists
+  takenNames: { data: [], error: null },     // what select('name') then like(...) on projects answers
+  insertResult: { data: { id: 'the-new-project' }, error: null },  // what insert(...).select('id').single() answers
   calls: [],                // every call made on the client, in order: { method, args }
 };
 const record = (method, args) => controls.calls.push({ method, args });
-export const supabase = { auth: {
+// The two project queries the app makes to create a project: names read with like(), and one insert. Every call is recorded.
+const from = (table) => {
+  record('from', [table]);
+  return {
+    select: (columns) => { record('select', [columns]); return { like: async (column, pattern) => { record('like', [column, pattern]); return controls.takenNames; } }; },
+    insert: (row) => { record('insert', [row]); return { select: (columns) => { record('select', [columns]); return { single: async () => controls.insertResult }; } }; },
+  };
+};
+export const supabase = { from, auth: {
   getSession: async () => { record('getSession', []); return { data: { session: controls.session }, error: controls.sessionError }; },
   verifyOtp: async (args) => { record('verifyOtp', [args]); return controls.verifyResult; },
   signOut: async (options) => { record('signOut', [options]); return { error: null }; },
+  signUp: async (args) => { record('signUp', [args]); return controls.signUpResult; },
+  signInWithOAuth: async (args) => { record('signInWithOAuth', [args]); return controls.oauthResult; },
+  linkIdentity: async (args) => { record('linkIdentity', [args]); return controls.oauthResult; },
+  unlinkIdentity: async (identity) => { record('unlinkIdentity', [identity]); return { data: {}, error: null }; },
+  getUserIdentities: async () => { record('getUserIdentities', []); return { data: { identities: controls.identities }, error: null }; },
 } };
 export async function getAccessToken() { return null; }
 `;

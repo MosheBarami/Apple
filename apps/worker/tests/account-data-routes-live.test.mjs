@@ -178,7 +178,28 @@ function seedKv() {
 
 let DB = null;
 const PURGED = [];
+/** The Supabase Auth admin API, as far as account deletion uses it: which users exist, and what was asked of it. */
+const AUTH_USERS = new Set();
+const AUTH_CALLS = [];
+const SUPA = 'https://supa.test';
+const realFetch = globalThis.fetch;
+function mockAuth() {
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    if (!u.startsWith(`${SUPA}/auth/v1/admin/users/`)) return realFetch(url, init);
+    const id = decodeURIComponent(u.split('/').pop());
+    const method = init?.method ?? 'GET';
+    AUTH_CALLS.push(`${method} ${id}`);
+    const gone = () => Response.json({ error_code: 'user_not_found', msg: 'User not found' }, { status: 404 });
+    if (method === 'DELETE') return AUTH_USERS.delete(id) ? Response.json({}) : gone();
+    return AUTH_USERS.has(id) ? Response.json({ id, email: 'person@example.com' }) : gone();
+  };
+}
 const env = () => ({
+  SUPABASE_URL: SUPA,
+  SUPABASE_SECRET_KEY: 'sb_secret_fixture',
+  // The Discord link store with nothing linked (the real object is exercised by account-deletion-identity.test.mjs).
+  DISCORD_DO: { idFromName: (n) => n, get: () => ({ async fetch(url) { return Response.json(new URL(url).pathname === '/unlink' ? { removed: false, codesRemoved: 0 } : { link: null }); } }) },
   CORPUS: DB.CORPUS,
   KV: kv,
   SESSION_DO: {
@@ -205,6 +226,9 @@ function reset() {
   seedPostgres();
   seedKv();
   PURGED.length = 0;
+  AUTH_USERS.clear(); AUTH_USERS.add(ALICE); AUTH_USERS.add(BOB);
+  AUTH_CALLS.length = 0;
+  mockAuth();
   if (DB) DB.close();
   DB = seedD1();
 }
@@ -399,14 +423,18 @@ test('the account deletion erases every store the worker can reach', async () =>
   assert.ok(erased > 0, 'a deletion that reports erasing nothing has not been shown to erase anything');
 });
 
-test('the receipt says what is left, and does not claim the account is gone when it is not', async () => {
+test('the receipt says the account is gone only because Auth removed it, and still names what is left', async () => {
   reset();
   const receipt = await (await app.request('https://x/api/me/delete', post(ALICE, { confirm: 'DELETE MY ACCOUNT' }), env())).json();
-  assert.equal(receipt.accountRemoved, false);
+  // The sign-in identity is deleted by the last step (owner decision D-14), so the receipt may say so, and only because Auth confirmed it.
+  assert.equal(receipt.accountRemoved, true);
+  assert.equal(AUTH_USERS.has(ALICE), false, 'the receipt says the account is removed and Auth still has it');
+  assert.equal(AUTH_USERS.has(BOB), true);
   assert.ok(Array.isArray(receipt.residue) && receipt.residue.length >= 3, 'what survives a deletion must be named');
   for (const r of receipt.residue) assert.ok(r.target && r.why.length > 25, `${r.target}: a residue needs a reason`);
-  // The sign-in identity is the one that matters most to be honest about.
-  assert.ok(receipt.residue.some((r) => /auth\.users|sign-in/i.test(`${r.target} ${r.why}`)), 'the login identity is not mentioned');
+  // And what is named is what is KEPT: the sign-in identity is no longer among it.
+  assert.equal(receipt.residue.some((r) => /auth\.users/i.test(r.target)), false, 'the sign-in is deleted, so it is not listed as surviving');
+  assert.ok(receipt.residue.some((r) => /usage_events/.test(r.target)), 'the usage ledger the deletion keeps is not named');
   assert.ok(receipt.summary.length > 40, 'the receipt must be readable by the person who asked');
 });
 
@@ -420,7 +448,7 @@ test('the deletion is recorded, and the status route reads it back', async () =>
   const after = await (await app.request('https://x/api/me/delete', as(ALICE), env())).json();
   assert.equal(after.requested, true);
   assert.ok(after.requestedAt, 'a recorded deletion must say when');
-  assert.equal(after.accountRemoved, false);
+  assert.equal(after.accountRemoved, true, 'the recorded deletion says the sign-in was removed');
   assert.ok(after.residue.length >= 3);
   // Somebody else's status is their own.
   const bobs = await (await app.request('https://x/api/me/delete', as(BOB), env())).json();

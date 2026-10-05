@@ -17,6 +17,19 @@ export function d1() {
       db.exec(sql);
       return { count: 1, duration: 0 };
     },
+    /** D1's batch: the statements run in order inside one transaction, and answer one result each. A failure rolls the whole batch back. */
+    async batch(statements) {
+      db.exec('begin');
+      try {
+        const out = [];
+        for (const statement of statements) out.push(await statement.run());
+        db.exec('commit');
+        return out;
+      } catch (err) {
+        db.exec('rollback');
+        throw err;
+      }
+    },
     prepare(sql) {
       const make = (params) => ({
         bind: (...next) => make(next),

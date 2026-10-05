@@ -62,7 +62,11 @@ import {
   type SensitiveAction,
 } from '../lib/auth-flows';
 import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
-import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
+import { SETTING_FIELDS, foundLine, matchSettings } from '../lib/settings-search.ts';
+import { useEnabledProviders } from '../lib/auth-providers';
+import { fieldsForProviders } from '../lib/identity-links';
+import { IdentityCard } from '../components/identity-card';
+import { BadgeCard, InviteLinkCard } from '../components/growth-cards';
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -892,7 +896,8 @@ const SECTION_INDEX = [
     label: 'Security',
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
-  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'sharing', label: 'Share', fields: ['invite-link', 'made-with-badge'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -1689,7 +1694,11 @@ export function SettingsPage() {
   });
 
   const [query, setQuery] = useState('');
-  const matchedIds = useMemo(() => matchSettings(query), [query]);
+  // A sign-in provider's card exists only when the Supabase project says the provider is on (lib/auth-providers.ts). Its row, its rail
+  // entry and its search result go with it: a search for "google" must not find a row that is not there.
+  const oauthOn = useEnabledProviders();
+  const fields = useMemo(() => fieldsForProviders(SETTING_FIELDS, oauthOn), [oauthOn]);
+  const matchedIds = useMemo(() => matchSettings(query, fields), [query, fields]);
   const matches = useMemo(() => new Set(matchedIds), [matchedIds]);
   const shows = (id: string) => matches.has(id);
   const sectionShows = (...ids: string[]) => ids.some(shows);
@@ -2093,8 +2102,8 @@ export function SettingsPage() {
       subject: DELETE_ACCOUNT_PHRASE,
       body:
         'Your projects, conversations, checkpoints, workspace files, memory, notifications, automations, ' +
-        'API keys and your stored Roblox key are deleted from every store StudPilot can reach. None of it can be ' +
-        'brought back. Your sign-in itself is not removed by this — the receipt afterwards names everything that survives, and why.',
+        'API keys and your stored Roblox key are deleted from every store StudPilot can reach, then your Discord link is removed, ' +
+        'then your Roblox link if you have one, and your sign-in is deleted last. None of it can be brought back. The receipt afterwards names everything that survives, and why.',
     },
   };
 
@@ -2129,9 +2138,7 @@ export function SettingsPage() {
           guessing at the vocabulary. */}
       {query.trim() !== '' && (
         <p className="settings-note settings-found" role="status">
-          {matches.size === 0
-            ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
-            : `Showing ${matches.size} of ${SETTING_FIELDS.length} settings. Clear the box to see them all.`}
+          {foundLine(query, matches.size, fields.length)}
         </p>
       )}
 
@@ -2370,10 +2377,21 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord')}>
         <Row id="roblox-signin" visible={shows('roblox-signin')}>
           <RobloxConnectionCard userId={userId} />
         </Row>
+        {/* Only for a provider the project has switched on; today neither is (owner item N2), so neither row is here. */}
+        {oauthOn.includes('google') && (
+          <Row id="google-signin" visible={shows('google-signin')}>
+            <IdentityCard provider="google" userId={userId} />
+          </Row>
+        )}
+        {oauthOn.includes('discord') && (
+          <Row id="discord-signin" visible={shows('discord-signin')}>
+            <IdentityCard provider="discord" userId={userId} />
+          </Row>
+        )}
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>
@@ -2386,6 +2404,15 @@ export function SettingsPage() {
         </Row>
         <Row id="discord" visible={shows('discord')}>
           <DiscordCard userId={userId} />
+        </Row>
+      </Section>
+
+      <Section id="sharing" title="Share" visible={sectionShows('invite-link', 'made-with-badge')}>
+        <Row id="invite-link" visible={shows('invite-link')}>
+          <InviteLinkCard userId={userId || null} />
+        </Row>
+        <Row id="made-with-badge" visible={shows('made-with-badge')}>
+          <BadgeCard />
         </Row>
       </Section>
 
@@ -2676,12 +2703,14 @@ export function SettingsPage() {
         >
           <p className="settings-note">
             Deletes your projects, conversations, checkpoints, workspace files, memory, notifications, automations, API
-            keys and your stored Roblox key from every store StudPilot can reach. It cannot be undone.
+            keys and your stored Roblox key from every store StudPilot can reach, unlinks Discord, and then deletes your
+            sign-in. It cannot be undone.
           </p>
           <p className="settings-note">
-            It does not remove your sign-in. That needs an operator, and the receipt afterwards names it along with
-            everything else that survives and why — rather than telling you the account is gone while you can still log
-            in to it.
+            The order is your stores, then Discord, then your Roblox link, and your sign-in last, and only if every step before
+            it worked: if one fails, the receipt says which and your sign-in stays so you can run the deletion again (if the
+            sign-in itself is the step that fails, your Roblox link is put back so you can still confirm it is you). The
+            receipt also names everything that survives and why.
           </p>
           {/* MOVED INSIDE THE ROW. It used to sit between two <Row>s, which meant it was the one
               piece of prose on the page the search box could not hide: filtering to "delete

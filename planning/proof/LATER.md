@@ -1,0 +1,22 @@
+# Later (not blockers; owner rule 2026-10-05: one line each, fix after M7 or when touched)
+
+## owner-update (#33)
+- A wipe can write a `roblox_wiped` pointer for an account Auth no longer has; nothing sweeps it.
+- Guard gap: the roblox-oauth.ts header can drop the metadata-update (PUT) use without a test failing.
+- Guard gap: `robloxLinkHeld` can ignore the `roblox_wiped` pointer without a test failing.
+- /privacy and the data page refer to the deletion section for the profile-row removal, which that section does not list.
+- AI Gateway retention deletes at most 10,000 logs a night; a deletion that removes nothing raises no alarm.
+- LEGAL-CLAIMS row F1 still says the secret key makes three Auth calls and never a table query.
+- The retention step covers only AI_GATEWAY_ID; the `golem` and `default` gateways are pruned by hand until deleted (2026-10-11).
+
+## app (m2-app)
+- Guard gap: the Roblox anchor's line height is no longer held by the restated sheet test.
+- Guard gap: malformed LEGAL-CLAIMS cites inside a code span (en dash range, `:854:`) are skipped, not failed.
+- The finished-turn "connect Studio" line can flash for a connected Studio while the page loads.
+
+## m3-harness
+- A signal during the poll's retry back-off is noticed only after the back-off (up to ~30 s); README says "at once".
+- The 60 s never-started window is not pinned by a test.
+
+## site (m2-site)
+- Fix cycle 2's checker did not finish (stopped by the owner's new rules); its findings, if any, were not collected.
