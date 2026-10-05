@@ -4,6 +4,7 @@
 // "Branding" badge and the worker's provenance line, because a composed icon over an enlarged
 // capture must never be read as a screenshot of the game running (V3 gate G15).
 import './branding.css';
+import { BRANDING_COST_UNITS, creditsText } from '@studpilot/shared';
 import { Image } from '../ai-elements/image';
 import type { BrandingArt, BrandingEdit, BrandingView } from '../../lib/branding-api';
 
@@ -43,6 +44,9 @@ export interface BrandingDetailsProps {
   message?: { tone: 'error' | 'info'; text: string } | null;
 }
 
+/** What one generation charges, as the credits a person reads: the worker's charge is BRANDING_COST_UNITS ledger units. */
+const BRANDING_COST = creditsText(BRANDING_COST_UNITS);
+
 export function BrandingDetails({ view, draft, onDraft, onSave, onRegenerate, onDownload, saving, generating, message }: BrandingDetailsProps) {
   const record = view.branding;
   const dirty = isDirty(view, draft);
@@ -60,7 +64,7 @@ export function BrandingDetails({ view, draft, onDraft, onSave, onRegenerate, on
           <h2>No branding yet</h2>
           <p className="field-hint">
             StudPilot takes real pictures of your game from Roblox Studio, composes a 512x512 icon and 1920x1080 thumbnails from them, and
-            suggests names and descriptions. Studio must be connected with this place open. Uses 1 Credit.
+            suggests names and descriptions. Studio must be connected with this place open. Uses about {BRANDING_COST} Credits.
           </p>
           {status}
           <button type="button" className="btn btn-primary" onClick={onRegenerate} disabled={generating}>
@@ -169,7 +173,7 @@ export function BrandingDetails({ view, draft, onDraft, onSave, onRegenerate, on
             {generating ? 'Regenerating...' : 'Regenerate'}
           </button>
           <span className="field-hint">
-            Regenerate uses 1 Credit and replaces the names, descriptions and art. Saved {record.updatedAt.slice(0, 10)}.
+            Regenerate uses about {BRANDING_COST} Credits and replaces the names, descriptions and art. Saved {record.updatedAt.slice(0, 10)}.
           </span>
         </div>
       </form>

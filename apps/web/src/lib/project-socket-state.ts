@@ -118,6 +118,19 @@ export function mergeHistoryWithLive(history: ChatItem[], live: ChatItem[]): Cha
 }
 
 /**
+ * The cost a run settled to after its `msg_end`, put on that message (the `run_cost` frame: Stop while a step was
+ * in flight, the step paid for when its call resolved). Another message, or a figure that is not a number, changes nothing.
+ */
+export function withRunCost(list: ChatItem[], msgId: string, creditsSpent: unknown): ChatItem[] {
+  if (typeof creditsSpent !== 'number' || !Number.isFinite(creditsSpent) || creditsSpent < 0) return list;
+  const idx = list.findIndex((m) => m.id === msgId);
+  if (idx === -1) return list;
+  const next = [...list];
+  next[idx] = { ...list[idx]!, creditsSpent };
+  return next;
+}
+
+/**
  * G03: the composer is locked until the paired place is open in a connected Studio. `connected`
  * only turns true for a plugin holding this project's pairing token, so "paired" is part of it;
  * an open place other than the paired one locks it too. The worker refuses the same frames.

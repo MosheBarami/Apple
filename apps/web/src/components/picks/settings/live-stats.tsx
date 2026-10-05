@@ -16,6 +16,8 @@ import './live-stats.css';
 export interface LiveStat {
   label: string;
   value: number;
+  /** Fixed decimal places, for a credit figure ("3.54"). Whole numbers use the shared formatter. */
+  decimals?: number;
 }
 
 export function LiveStats({
@@ -33,7 +35,8 @@ export function LiveStats({
   now?: number;
 }) {
   const live = updatedAt > 0 && now - updatedAt < intervalMs * 2;
-  const max = Math.max(1, ...bars.map((b) => b.value));
+  // Bars are credits per day, so the scale never zooms below a hundredth of one.
+  const max = Math.max(0.01, ...bars.map((b) => b.value));
   const s = spring(300, 16);
   return (
     <section className="pk-live" aria-label="Right now" style={{ '--pk-live-ease': s.easing, '--pk-live-dur': `${s.duration}ms` } as CSSProperties}>
@@ -49,7 +52,7 @@ export function LiveStats({
           <div key={st.label} className="pk-live__stat">
             <dt>{st.label}</dt>
             <dd>
-              <RollingNumber value={formatNumber(st.value)} />
+              <RollingNumber value={st.decimals ? st.value.toFixed(st.decimals) : formatNumber(st.value)} />
             </dd>
           </div>
         ))}

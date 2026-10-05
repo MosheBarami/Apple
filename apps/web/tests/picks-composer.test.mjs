@@ -41,7 +41,7 @@ const PICKS = [
   ['ui-layouts--multi-selector-default', 'picks/composer/file-picker.tsx', /"Multi Selector"/, [[COMPOSER, /<FilePicker projectId=\{projectId\} onAdd=\{insertFiles\}/]]],
   ['ui-layouts--file-upload-default', 'picks/composer/drop-hint.tsx', /"File Upload"/, [[COMPOSER, /<DropHint active=\{dropping\} \/>/]]],
   ['ui-layouts--chat-form-dropzone', 'picks/composer/drop-hint.tsx', /"File Upload Chat Form Dropzone"/, [[COMPOSER, /<DropHint active=\{dropping\} \/>/]]],
-  ['animate-ui--sliding-number', 'picks/composer/credits-ring.tsx', /"Sliding Number"/, [[COMPOSER, /<SlidingNumber value=\{MESSAGE_MAX_CHARS - text\.length\} \/>/], [code('picks/composer/credits-ring.tsx'), /<SlidingNumber value=\{view\.allowanceRemaining\}/]]],
+  ['animate-ui--sliding-number', 'picks/composer/credits-ring.tsx', /"Sliding Number"/, [[COMPOSER, /<SlidingNumber value=\{MESSAGE_MAX_CHARS - text\.length\} \/>/], [code('picks/composer/credits-ring.tsx'), /<SlidingNumber value=\{internalToCredits\(view\.allowanceRemaining\)\} decimals=\{2\}/]]],
   ['ae-context', 'picks/composer/credits-ring.tsx', /meterView/, [[COMPOSER, /<CreditsRing \/>/], [code('picks/composer/credits-ring.tsx'), /<PromptInputHoverCard\b/]]],
   ['ae-speech-input', 'picks/composer/voice-input.tsx', /AI Elements "speech-input"/, [[COMPOSER, /<VoiceInput onText=\{insertPhrase\}/]]],
   ['reactbits--voice-pill', 'picks/composer/voice-input.tsx', /React Bits "Voice Pill"/, [[COMPOSER, /<VoiceInput\b/]]],

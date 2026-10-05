@@ -39,7 +39,7 @@ const sharedOut = join(mkdtempSync(join(tmpdir(), 'plans-shared-')), 'shared.mjs
 execFileSync(join(WEB, '..', 'worker', 'node_modules', '.bin', 'esbuild'),
   [join(WEB, '..', '..', 'packages', 'shared', 'src', 'index.ts'), '--bundle', '--format=esm',
    '--platform=neutral', '--main-fields=main,module', '--outfile=' + sharedOut], { stdio: 'pipe' });
-const { PLAN_IDS, PLAN_LIMITS, CREDITS_PER_BUILD } = await import(sharedOut);
+const { PLAN_IDS, PLAN_LIMITS, PLAN_TABLE, LISTED_PLAN_IDS, INTERNAL_PER_CREDIT, TYPICAL_BUILD_CREDITS, buildsPerDay } = await import(sharedOut);
 
 /** Source with comments stripped, so a class named in prose is not mistaken for one in use. */
 const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -51,9 +51,15 @@ test('THE PLAN LADDER IS ACTUALLY RENDERED — it had zero callers', () => {
   assert.match(plans, /export function PlanLadder/, 'and it must still be what is exported');
 });
 
-test('the ladder reads the enforced table, so it cannot drift from the server again', () => {
-  assert.match(plans, /PLAN_LIMITS/, 'allowances come from the enforced table');
-  assert.match(plans, /PLAN_IDS/, 'and every tier the server knows is listed');
+test('the ladder reads the plan table, so it cannot drift from the server again', () => {
+  // PLAN_TABLE is the one config; PLAN_LIMITS (what QuotaDO enforces, in ledger units) is derived
+  // from it, so reading the table IS reading what is enforced. The ladder quotes credits, so it must
+  // not read the ledger-unit table itself.
+  assert.match(plans, /PLAN_TABLE/, 'allowances and prices come from the plan table');
+  assert.match(plans, /LISTED_PLAN_IDS/, 'and every displayed tier is listed, Enterprise (a stored id) is not');
+  assert.doesNotMatch(code(plans), /PLAN_LIMITS|(?<![A-Z_])PLAN_IDS\b/, 'the ladder quotes credits and never the ledger-unit table');
+  assert.doesNotMatch(code(plans), /enterprise/i, 'and no Enterprise row or mailto');
+  assert.match(code(plans), /formatCredits\(table\.creditsPerMonth\)/, 'allowances are credits with two decimals');
   assert.match(plans, /from '@studpilot\/shared'/, 'from shared, not a local copy');
   // No tier count, no price and no allowance may be written into this file as a literal.
   assert.doesNotMatch(plans, /\bcreditsPerMonth:\s*\d/, 'an allowance literal would be a second source of truth');
@@ -218,46 +224,40 @@ test('cancelling says nothing was charged', () => {
 /**
  * NO TIER ADVERTISES A COUNT OF BUILDS IT CANNOT AFFORD.
  *
- * Free grants 60 Credits a day and a quality-gated build costs 77, so buildsPerDay floors to zero
- * and the pricing page said "up to 0 builds a day". I verified this ladder in a browser and read
- * the layout rather than the figures; scripts/check-offer.mjs is what named it, and it is the same
- * call usage-meter-model.ts already makes for the meter — "0 builds" reads as a fault in the
- * account rather than as a remainder smaller than one job.
+ * The pricing page once said "up to 0 builds a day" for a Free tier whose daily allowance sat below
+ * the cost of one build; scripts/check-offer.mjs named it, and usage-meter-model.ts withholds its own
+ * builds hint below one whole build for the same reason: "0 builds" reads as a fault in the account
+ * rather than as a remainder smaller than one job.
  *
- * The underlying incoherence is a pricing decision and is NOT fixed here. check-offer still reports
- * it, G-OFFER-1 still gates it. What is fixed is the page stating a number that is not useful.
+ * Since M2 the ladder prints `buildsPerDay(id)` (a typical build, TYPICAL_BUILD_CREDITS) with no
+ * zero branch, so the guard is the property: every displayed tier affords at least one such build a
+ * day, or the ladder would print "up to 0 builds a day".
  */
 test('NO TIER IS ADVERTISED AS AFFORDING ZERO BUILDS A DAY', () => {
-  const src = code(plans);
-  assert.match(src, /buildsPerDay\(id\) >= 1 \?/, 'the per-day claim must be conditional');
-  // The alternative branch has to say something true rather than nothing.
-  assert.match(src, /one build costs \{CREDITS_PER_BUILD\}/,
-    'a tier that cannot afford a daily build should state the two numbers instead');
+  assert.match(code(plans), /buildsPerDay\(id\)/, 'the ladder states builds a day from the shared helper');
+  assert.doesNotMatch(code(plans), /CREDITS_PER_BUILD/, 'a ledger-unit build cost is not what the ladder quotes');
+  for (const id of LISTED_PLAN_IDS) {
+    assert.ok(buildsPerDay(id) >= 1, `${id} would be advertised as "up to ${buildsPerDay(id)} builds a day"`);
+    assert.equal(buildsPerDay(id), Math.floor(PLAN_TABLE[id].creditsPerDay / TYPICAL_BUILD_CREDITS));
+  }
 });
 
 test('EVERY TIER NOW AFFORDS AT LEAST ONE BUILD A DAY', () => {
-  // This test used to say the opposite. It asserted that SOME tier floors to zero builds, as a
-  // tripwire: "if no tier floors to zero any more, the conditional branch above is dead and should
-  // go". The repricing on 2026-09-14 tripped it, which is the tripwire working — free went from 60
-  // Credits a day against a 77-Credit build to 231, exactly three builds.
-  //
-  // The branch STAYS, and the assertion is inverted rather than deleted. A pricing page printing
-  // "up to 0 builds a day" is a specific, public embarrassment, the branch costs four lines, and
-  // check-offer's rule 3 only guarantees the FREE tier clears one build — nothing stops a future
-  // paid tier being set below it. What changes is that the healthy state is now asserted as the
-  // expectation instead of the exception.
+  // The healthy state is asserted as the expectation, not the exception. check-offer's rule 3 only
+  // guarantees the FREE tier clears one build; nothing else stops a future paid tier being set below.
   for (const p of PLAN_IDS) {
-    assert.ok(Number.isFinite(PLAN_LIMITS[p].creditsPerDay), `${p} has no daily allowance`);
-    assert.ok(Number.isFinite(PLAN_LIMITS[p].creditsPerMonth), `${p} has no monthly allowance`);
+    assert.ok(Number.isFinite(PLAN_TABLE[p].creditsPerDay), `${p} has no daily allowance`);
+    assert.ok(Number.isFinite(PLAN_TABLE[p].creditsPerMonth), `${p} has no monthly allowance`);
     assert.ok(
-      PLAN_LIMITS[p].creditsPerMonth <= PLAN_LIMITS[p].creditsPerDay * 31,
+      PLAN_TABLE[p].creditsPerMonth <= PLAN_TABLE[p].creditsPerDay * 31,
       `${p} grants a month nobody can reach at its daily rate`,
     );
     assert.ok(
-      Math.floor(PLAN_LIMITS[p].creditsPerDay / CREDITS_PER_BUILD) >= 1,
-      `${p} grants ${PLAN_LIMITS[p].creditsPerDay} Credits a day and a build costs ${CREDITS_PER_BUILD} — ` +
-        'it would advertise itself as affording no builds',
+      PLAN_TABLE[p].creditsPerDay >= TYPICAL_BUILD_CREDITS,
+      `${p} grants ${PLAN_TABLE[p].creditsPerDay} credits a day and a typical build costs ${TYPICAL_BUILD_CREDITS}`,
     );
+    // The enforced table is the plan table in ledger units.
+    assert.equal(PLAN_LIMITS[p].creditsPerDay, PLAN_TABLE[p].creditsPerDay * INTERNAL_PER_CREDIT, `${p}: PLAN_LIMITS is not the plan table times the credit unit`);
   }
 });
 

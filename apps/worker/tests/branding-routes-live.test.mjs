@@ -16,6 +16,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { d1 } from './stubs/d1.mjs';
+import { BRANDING_COST_UNITS } from '../../../packages/shared/src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -165,7 +166,9 @@ test('owner generates branding from a real capture: images, names, descriptions;
   assert.equal(chatScript.calls.length, 1);
   assert.equal(chatScript.calls[0].req.model, 'plan');
   assert.match(chatScript.calls[0].req.messages[1].content, /lava obby/i);
-  assert.deepEqual(quotaCalls.at(-1), { credits: 1, kind: 'branding_copy' });
+  // The charge is the shared constant the app prints its "Uses about 0.01 Credits" from, so copy and charge cannot differ.
+  assert.equal(BRANDING_COST_UNITS, 1, 'one model pass is one ledger unit');
+  assert.deepEqual(quotaCalls.at(-1), { credits: BRANDING_COST_UNITS, kind: 'branding_copy' });
   // no run, and Studio was only READ
   const paths = doCalls.map((c) => c.path);
   assert.ok(paths.includes('/studio-op'));

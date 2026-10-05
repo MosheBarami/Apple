@@ -11,9 +11,13 @@
 import { formatNumber } from '../../../lib/format';
 import './sliding-number.css';
 
-export function SlidingNumber({ value, className }: { value: number; className?: string }) {
-  const safe = Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
-  const shown = formatNumber(safe);
+export function SlidingNumber({ value, className, decimals = 0 }: { value: number; className?: string; decimals?: number }) {
+  // Whole numbers go through the shared formatter. With `decimals` the figure is a credit balance
+  // and always shows exactly that many places ("3.54"), English separators like every credit figure.
+  const safe = Number.isFinite(value) ? Math.max(0, decimals > 0 ? value : Math.round(value)) : 0;
+  const shown = decimals > 0
+    ? safe.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    : formatNumber(safe);
   const chars = [...shown];
   let digitIndex = 0;
   const digitsTotal = chars.filter((c) => c >= '0' && c <= '9').length;

@@ -3,25 +3,27 @@
 // Before this, /usage knew about two plans — Free and a Pro you could join a waitlist for — while
 // the ledger enforcing quotas already had four. The page was not merely incomplete; it disagreed
 // with the server, and a plan page that disagrees with the thing enforcing it is a page that lies.
-// Everything here reads from PLAN_LIMITS and PLAN_COPY in @studpilot/shared, which is the same table
-// QuotaDO applies, so the two cannot drift apart again.
+// Everything here reads from PLAN_TABLE and PLAN_COPY in @studpilot/shared. PLAN_LIMITS, the table
+// QuotaDO applies, is derived from PLAN_TABLE (times INTERNAL_PER_CREDIT), so the two cannot drift
+// apart again. Only the displayed plans are listed: Free, Pro and Max. Enterprise is a stored id
+// and is not on the ladder.
 //
-// The allowance is stated in BUILDS as well as Credits. A five-figure Credit count means nothing on
-// first read; "about 78 builds" is the sentence someone can act on. The conversion is measured,
-// not marketing: a quality-gated build is ~2,300 neurons, and it is floored, because a rounded-up
-// figure is a promise the allowance cannot keep.
+// The allowance is stated in BUILDS as well as Credits: "about 70 builds" is the sentence someone
+// can act on. The count is the pricing doc's, bounded by what a typical build costs, so it can only
+// understate. Credits are shown with two decimals, like every balance in the app.
 import { formatNumber } from '../lib/format';
 import {
   PLAN_COPY,
-  PLAN_IDS,
-  PLAN_LIMITS,
   PLAN_SUPPORT,
+  PLAN_TABLE,
+  LISTED_PLAN_IDS,
   PRICE_CURRENCY,
-  SUPPORT_EMAIL,
   buildsPerDay,
   buildsPerMonth,
+  CREDIT_PURCHASE_LIVE,
+  formatCredits,
   formatMoney,
-  CREDITS_PER_BUILD,
+  type ListedPlanId,
   type PlanId,
 } from '@studpilot/shared';
 
@@ -56,22 +58,20 @@ export function PlanLadder({
    */
   currency?: string;
 }) {
-  const currentIndex = PLAN_IDS.indexOf(current);
+  const currentIndex = LISTED_PLAN_IDS.indexOf(current as ListedPlanId);
 
   return (
     <div className="plans">
-      {PLAN_IDS.map((id) => {
+      {LISTED_PLAN_IDS.map((id) => {
         const copy = PLAN_COPY[id];
-        const limits = PLAN_LIMITS[id];
+        const table = PLAN_TABLE[id];
         const isCurrent = id === current;
-        const index = PLAN_IDS.indexOf(id);
+        const index = LISTED_PLAN_IDS.indexOf(id);
         // "Downgrade" rather than a second "Choose": moving down a tier loses allowance, and a
         // control that does not say so reads as an upgrade to someone skimming.
         const direction = index > currentIndex ? 'up' : 'down';
-        // Narrowed to a number here so the formatter cannot be handed a null — `enterprise` has no
-        // price by design, and the branch below is the one that says so in words.
-        const price = copy.priceUsdMonthly;
-        const priced = price !== null;
+        // A listed plan always has a price (ListedPlanId excludes the stored `enterprise`, which has none).
+        const price = table.priceUsdMonthly;
         const canChoose = id === 'free' || purchasable.includes(id);
 
         return (
@@ -84,57 +84,40 @@ export function PlanLadder({
             </header>
 
             <p className="plan__price">
-              {price !== null ? (
-                price === 0 ? (
-                  <span className="plan__amount">Free</span>
-                ) : (
-                  <>
-                    {/* Formatted, not concatenated: the symbol's position belongs to the locale,
-                        and '$' alone does not name a currency. */}
-                    <span className="plan__amount">{formatMoney(price, { currency })}</span>
-                    <span className="plan__per">/month</span>
-                  </>
-                )
+              {price === 0 ? (
+                <span className="plan__amount">Free</span>
               ) : (
-                <span className="plan__amount plan__amount--talk">Let&rsquo;s talk</span>
+                <>
+                  {/* Formatted, not concatenated: the symbol's position belongs to the locale,
+                      and '$' alone does not name a currency. */}
+                  <span className="plan__amount">{formatMoney(price, { currency })}</span>
+                  <span className="plan__per">/month</span>
+                </>
               )}
             </p>
 
             <p className="plan__blurb">{copy.blurb}</p>
 
-            {/*
-              "UP TO 0 BUILDS A DAY" IS WHAT THIS RENDERED FOR FREE.
-              The free tier's daily allowance once sat below the cost of one quality-gated build, so
-              buildsPerDay floored to zero and
-              the pricing page advertised the tier as affording none. usage-meter-model.ts already
-              made this call for the meter — it withholds the builds hint below one whole build,
-              because "0 builds" reads as a fault in the account rather than as a remainder smaller
-              than one job — and I did not carry the rule one file across.
-              Stating the Credits and the price of a build is the honest version: it says the same
-              thing without pretending a countable number of builds exists.
-            */}
+            {/* The allowance in credits with two decimals, and in builds. The monthly pool leads for a
+                paid plan and the daily figure caps it; Free is given out by the day. */}
             <p className="plan__allowance">
               <strong>
                 About {formatNumber(buildsPerMonth(id))} builds a month
               </strong>
               <span className="plan__allowance-sub">
-                {buildsPerDay(id) >= 1 ? (
-                  <>
-                    {formatNumber(limits.creditsPerMonth)} Credits · up to {buildsPerDay(id)} builds a day
-                  </>
-                ) : (
-                  <>
-                    {formatNumber(limits.creditsPerMonth)} Credits · {formatNumber(limits.creditsPerDay)} a
-                    day, and one build costs {CREDITS_PER_BUILD}
-                  </>
-                )}
+                {formatCredits(table.creditsPerMonth)} Credits a month · {formatCredits(table.creditsPerDay)} a
+                day, up to {formatNumber(buildsPerDay(id))} builds a day
               </span>
             </p>
 
             <ul className="plan__list">
-              {copy.highlights.map((h) => (
-                <li key={h}>{h}</li>
-              ))}
+              {/* A highlight that sells buying Credits is withheld while they cannot be bought
+                  (CREDIT_PURCHASE_LIVE), the same filter the pricing page applies to the same copy. */}
+              {copy.highlights
+                .filter((h) => CREDIT_PURCHASE_LIVE || !/\bbuy\b.*\bcredits?\b/i.test(h))
+                .map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
             </ul>
 
             {/* Three of the four tiers said nothing at all about support, which a reader cannot
@@ -152,10 +135,6 @@ export function PlanLadder({
             <div className="plan__action">
               {isCurrent ? (
                 <span className="plan__on">You are on this plan</span>
-              ) : !priced ? (
-                <a className="btn" href={`mailto:${SUPPORT_EMAIL}?subject=Enterprise%20plan`}>
-                  Get in touch
-                </a>
               ) : availability === 'checking' ? (
                 // Not "unavailable". We have not asked yet, and saying which is the difference
                 // between a deployment that cannot sell this and a request still in flight.

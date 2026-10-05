@@ -17,7 +17,8 @@ test('the account menu opens on the picked user-button header', () => {
 
 test('the composer credits ring never shows 0 while extra credits remain', () => {
   const src = readFileSync(new URL('../src/components/picks/composer/credits-ring.tsx', import.meta.url), 'utf8');
-  assert.match(src, /view\.allowanceRemaining === 0 && view\.credits > 0[\s\S]{0,300}COMPACT\.format\(view\.credits\)/);
+  // The spendable balance is the extra credits, shown as the model's own credits text (two decimals).
+  assert.match(src, /view\.allowanceRemaining === 0 && view\.credits > 0[\s\S]{0,300}\{view\.creditsText\}/);
 });
 
 test('a click on the composer box outside the text still focuses the text', () => {

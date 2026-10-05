@@ -306,9 +306,9 @@ import {
   type RateLimitVerdict,
 } from './public-api';
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
-import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST } from '@studpilot/shared';
+import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
-import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@studpilot/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, quotaLimit, type ProductModel } from '@studpilot/shared';
 import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@studpilot/shared';
 
 /**
@@ -2272,7 +2272,7 @@ app.get('/api/projects/:id/roadmap', async (c) => {
       projectId: ctx.project.id,
       ...out.roadmap,
       shape: publicShape(out.shape),
-      notes: [...out.roadmap.notes, 'Daily Credits are used up, so this is the unranked roadmap.'],
+      notes: [...out.roadmap.notes, 'Your Credits are used up, so this is the unranked roadmap.'],
     });
   }
   const chat: RoadmapChat = async ({ system, user: prompt }) => {
@@ -2350,7 +2350,7 @@ app.post('/api/projects/:id/branding/generate', async (c) => {
     spend: async () => {
       const res = await c.env.QUOTA_DO.get(c.env.QUOTA_DO.idFromName(user.userId)).fetch('https://do/spend', {
         method: 'POST',
-        body: JSON.stringify({ credits: 1, kind: 'branding_copy' }),
+        body: JSON.stringify({ credits: BRANDING_COST_UNITS, kind: 'branding_copy' }),
       });
       return ((await res.json()) as { ok: boolean }).ok === true;
     },
@@ -3538,7 +3538,7 @@ app.get('/api/docs/search', async (c) => {
     body: JSON.stringify({ credits: 1, kind: 'docs_search' }),
   });
   const { ok } = (await spend.json()) as { ok: boolean };
-  if (!ok) return c.json({ error: 'Daily Credits used up', hits: [] }, 429);
+  if (!ok) return c.json({ error: 'Credits used up', hits: [] }, 429);
   try {
     const { hits, outcome, citations } = await searchDocsDetailed(c.env, q, 6);
     // `outcome` travels with the results, always — a caller that renders an empty list has to be
@@ -5171,13 +5171,13 @@ app.get('/v1/openapi.json', (c) => c.json(openApiDocument(new URL(c.req.url).ori
 app.get('/v1/models', (c) => c.json(publicModelList(Date.now())));
 
 // ---------------------------------------------------------------- /v1 completions
-async function quotaSpend(env: Env, userId: string, credits: number, kind: string, requestId: string) {
+async function quotaSpend(env: Env, userId: string, credits: number, kind: string, requestId: string, upTo = false) {
   const res = await env.QUOTA_DO.get(env.QUOTA_DO.idFromName(userId)).fetch('https://do/spend', {
     method: 'POST',
     headers: { [REQUEST_ID_HEADER]: requestId },
-    body: JSON.stringify({ credits, kind }),
+    body: JSON.stringify({ credits, kind, ...(upTo ? { upTo: true } : {}) }),
   });
-  return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number } };
+  return (await res.json()) as { ok: boolean; state?: Partial<QuotaState>; fromAllowance?: number; fromCredits?: number };
 }
 
 function idemStorageKey(keyId: string, idemKey: string): string {
@@ -5269,7 +5269,10 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     // Same order the agent loop uses — a call that is refused must not have cost anything.
     const admission = await quotaSpend(c.env, key.userId, 1, legacy ? 'api_completion' : 'api_chat', requestId);
     if (!admission.ok) {
-      return refuse(429, 'insufficient_quota', 'This account has no Credits left today.');
+      // The limit that binds, not always the day: Free's month is used up in six days, and "left today"
+      // promised a refill in hours that is weeks away. Code, status and headers are the published contract.
+      const limit = quotaLimit(admission.state);
+      return refuse(429, 'insufficient_quota', `This account's ${limit.label.toLowerCase()} Credits are used up. They refill ${limit.refillWhen}.`);
     }
     creditsSpent = 1;
     creditsRemaining = admission.state?.creditsRemaining ?? null;
@@ -5292,8 +5295,10 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     }
     const owed = creditsForNeurons(resp.neurons) - creditsSpent;
     if (owed > 0) {
-      const settle = await quotaSpend(c.env, key.userId, owed, legacy ? 'api_completion' : 'api_chat', requestId);
-      creditsSpent += owed;
+      // The model has already run, so the ledger takes what the account has left (upTo) instead of
+      // refusing the whole amount and letting the call go unpaid. The header reports what it took.
+      const settle = await quotaSpend(c.env, key.userId, owed, legacy ? 'api_completion' : 'api_chat', requestId, true);
+      creditsSpent += settle.ok ? owed : Math.max(0, settle.fromAllowance ?? 0) + Math.max(0, settle.fromCredits ?? 0);
       creditsRemaining = settle.state?.creditsRemaining ?? creditsRemaining;
     }
   }

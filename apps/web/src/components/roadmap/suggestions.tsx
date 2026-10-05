@@ -157,7 +157,7 @@ export function SuggestionPanel({
               rows={[
                 { label: 'Size', values: next.map((s) => COMPLEXITY[s.complexity]?.label ?? '') },
                 { label: 'Work', values: next.map((s) => effortLabel(s.effort)) },
-                { label: 'Cost', values: next.map((s) => creditRangeLabel(s.creditsLow, s.creditsHigh)) },
+                { label: 'Cost', values: next.map((s) => creditRangeLabel(s.creditsLow, s.creditsHigh, s.creditsEstimated)) },
                 {
                   label: 'Waits for',
                   values: next.map((s) => (s.blockedBy ?? []).map(titleOf).filter((t): t is string => t !== null).join(', ')),

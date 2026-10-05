@@ -405,11 +405,11 @@ function AccountPanel({ adminKey }: { adminKey: string }) {
             </div>
             <div>
               <dt>Allowance left today</dt>
-              <dd>{typeof a.quota.allowanceRemaining === 'number' ? formatNumber(a.quota.allowanceRemaining) : '—'} Credits</dd>
+              <dd>{typeof a.quota.allowanceRemaining === 'number' ? formatNumber(a.quota.allowanceRemaining) : '—'} ledger units</dd>
             </div>
             <div>
               <dt>Purchased balance</dt>
-              <dd>{typeof a.quota.credits === 'number' ? formatNumber(a.quota.credits) : '—'} Credits</dd>
+              <dd>{typeof a.quota.credits === 'number' ? formatNumber(a.quota.credits) : '—'} ledger units</dd>
             </div>
             <div>
               <dt>Stripe customer</dt>
@@ -462,7 +462,7 @@ function AccountPanel({ adminKey }: { adminKey: string }) {
           <h4 className="admin-subhead">Credit charges</h4>
           <table className="admin-table">
             <thead>
-              <tr><th>When</th><th>What for</th><th className="num">Credits</th></tr>
+              <tr><th>When</th><th>What for</th><th className="num">Ledger units</th></tr>
             </thead>
             <tbody>
               {a.credits.entries.map((e) => (

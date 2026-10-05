@@ -11,7 +11,7 @@
 import { Modal } from './modal';
 import { orderSummary } from '../lib/order-summary';
 import { formatNumber } from '../lib/format';
-import { PLAN_COPY, PLAN_LIMITS, PRICE_CURRENCY, formatMoney, type PlanId } from '@studpilot/shared';
+import { PLAN_COPY, PLAN_TABLE, PRICE_CURRENCY, formatMoney, type PlanId } from '@studpilot/shared';
 
 export function OrderSummaryDialog({
   plan,
@@ -34,9 +34,10 @@ export function OrderSummaryDialog({
   const summary = orderSummary({
     planName: PLAN_COPY[plan].name,
     priceMonthly: PLAN_COPY[plan].priceUsdMonthly,
-    creditsPerMonth: PLAN_LIMITS[plan].creditsPerMonth,
+    // Credits as a person reads them (PLAN_TABLE), not the ledger units PLAN_LIMITS counts in.
+    creditsPerMonth: PLAN_TABLE[plan].creditsPerMonth,
     currentPlanName: PLAN_COPY[currentPlan].name,
-    currentCreditsPerMonth: PLAN_LIMITS[currentPlan].creditsPerMonth,
+    currentCreditsPerMonth: PLAN_TABLE[currentPlan].creditsPerMonth,
     // The declared code is the fallback the ladder already uses while /api/billing/config is in
     // flight, and it is formatMoney's own default too, so the words and the figure cannot disagree.
     currency: currency ?? PRICE_CURRENCY,

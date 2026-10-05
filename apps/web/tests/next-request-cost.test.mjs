@@ -1,7 +1,7 @@
 /**
  * "AND WHAT THE NEXT REQUEST WILL COST" — the half of G1 that was nowhere in the app.
  *
- * Measured on the live product on 2026-09-20: /app/usage showed "Today's Credits 222 of 231",
+ * Measured on the live product on 2026-09-20: /app/usage showed a balance and a daily figure,
  * thirty days of bars and a breakdown of what the Credits went on, and no figure anywhere for what
  * spending them costs. The model menu read "StudPilot — Free · limited daily usage". `typicalCredits`
  * appeared nine times in the shipped bundle and every one of them was inside an object literal
@@ -24,7 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { MODE_INFO } from '@studpilot/shared';
+import { INTERNAL_PER_CREDIT, MODE_INFO, formatCredits } from '@studpilot/shared';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = join(WEB, '..', '..');
@@ -43,7 +43,7 @@ const dir = mkdtempSync(join(tmpdir(), 'reqcost-'));
 const src = join(dir, 'block.ts');
 writeFileSync(
   src,
-  `import { MODE_INFO } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
+  `import { MODE_INFO, formatCredits, internalToCredits } from ${JSON.stringify(join(ROOT, 'packages', 'shared', 'src', 'index.ts'))};\n` +
     `import { formatNumber } from ${JSON.stringify(join(WEB, 'src', 'lib', 'format.ts'))};\n` +
     PAGE.slice(from, to) +
     '\nexport { REQUEST_COST };\n',
@@ -55,8 +55,9 @@ const { REQUEST_COST, requestsLeftLine } = await import(`file://${out}`);
 /* ------------------------------------------------------------- the arithmetic --- */
 
 test('a cost that is a range answers with a range, and never only its flattering end', () => {
-  // 231 Credits against an Agent run at 4-18: 12 at worst, 57 at best. Quoting 57 alone is the
-  // number a customer would remember and the number they would not get.
+  // A balance against a run at 4-18 ledger units: the fewest at the dear end, the most at the cheap
+  // end. Quoting the most alone is the number a customer would remember and the number they would
+  // not get. (The units cancel: a balance and a cost in the same unit give the same count.)
   assert.equal(requestsLeftLine(231, 4, 18, 'day'), 'between 12 and 57 more today');
   assert.equal(requestsLeftLine(231, 2, 2, 'day'), 'about 115 more today');
   assert.equal(requestsLeftLine(231, 4, 18, 'month'), 'between 12 and 57 more this month');
@@ -79,7 +80,12 @@ test('a balance it cannot read produces a sentence, not a number', () => {
 test('there is one per-request figure, it is the published one, and it names no mode', () => {
   assert.ok(REQUEST_COST, 'the app shows no per-request cost at all');
   const published = String(MODE_INFO.agent.typicalCredits);
-  assert.equal(REQUEST_COST.published, published.replace('-', '–'), 'the page quotes a figure MODE_INFO does not');
+  // MODE_INFO is in ledger units; the page shows the same range as credits with two decimals.
+  const [lo, hi] = published.split('-').map(Number);
+  const asCredits = (n) => formatCredits(n / INTERNAL_PER_CREDIT);
+  assert.equal(REQUEST_COST.published, `${asCredits(lo)}–${asCredits(hi)}`, 'the page quotes a figure MODE_INFO does not');
+  assert.match(REQUEST_COST.published, /^\d+\.\d{2}–\d+\.\d{2}$/, 'two decimals, always');
+  // The division stays in ledger units, because the balance it divides is.
   assert.equal(REQUEST_COST.low, Number(published.split('-')[0]));
   assert.ok(Number.isFinite(REQUEST_COST.low) && Number.isFinite(REQUEST_COST.high) && REQUEST_COST.low > 0 && REQUEST_COST.high >= REQUEST_COST.low);
   assert.equal('mode' in REQUEST_COST, false);

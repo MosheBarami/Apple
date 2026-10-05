@@ -257,13 +257,17 @@ test('Plan and Agent effort lines pass through unchanged', () => {
 // without inventing anything the worker did not send.
 
 test('A CREDIT RANGE IS SHOWN AS A RANGE, in the unit the user is billed in', () => {
-  assert.equal(creditRangeLabel(20, 60), '20–60 Credits');
+  // The worker sends LEDGER units (runs x MODE_INFO.typicalCredits, 150 to a credit); the chip prints
+  // credits with two decimals. One Agent run is 4-18 units, which is 0.03-0.12 credits.
+  assert.equal(creditRangeLabel(150, 450), '1.00–3.00 Credits');
+  assert.equal(creditRangeLabel(4, 18), '0.03–0.12 Credits');
+  assert.doesNotMatch(creditRangeLabel(150, 450), /\b(150|450)\b/, 'a ledger-unit count reached the card');
 });
 
 test('a range of one number is not printed as a fake spread', () => {
   // Plan is published as "2", not "2-2". Rendering "2–2 Credits" would invent a spread.
-  assert.equal(creditRangeLabel(2, 2), '2 Credits');
-  assert.equal(creditRangeLabel(1, 1), '1 Credit');
+  assert.equal(creditRangeLabel(150, 150), '1.00 Credits');
+  assert.equal(creditRangeLabel(1, 1), '0.01 Credits');
 });
 
 test('NO RANGE MEANS NO CHIP — a missing price is never rendered as a zero', () => {
@@ -279,6 +283,23 @@ test('NO RANGE MEANS NO CHIP — a missing price is never rendered as a zero', (
 test('a range that runs backwards is refused rather than silently reordered', () => {
   // Reordering would hide a worker bug behind a plausible-looking chip.
   assert.equal(creditRangeLabel(60, 20), '');
+});
+
+test('AN ESTIMATED RANGE SAYS SO, as the pricing page does for the same build row; a measured one does not', () => {
+  // Review cycle 3, finding 6: the big-build row is flagged `estimated` in the shared build table, and a chip that
+  // dropped the flag would print an estimate as a quote. 600-1,800 ledger units is 4.00-12.00 credits.
+  assert.equal(creditRangeLabel(600, 1800, true), '4.00–12.00 Credits, estimated');
+  assert.equal(creditRangeLabel(210, 210, false), '1.40 Credits');
+  assert.equal(creditRangeLabel(210, 210), '1.40 Credits', 'no flag is not an estimate');
+  assert.equal(creditRangeLabel(null, null, true), '', 'and an estimate of nothing is still nothing');
+});
+
+test('the card and the comparison pass the worker\'s estimate flag to the label, so the flag reaches the chip', async () => {
+  const { readFileSync: read } = await import('node:fs');
+  for (const file of ['milestone-card.tsx', 'suggestions.tsx']) {
+    const tsx = read(new URL(`../src/components/roadmap/${file}`, import.meta.url), 'utf8').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    assert.match(tsx, /creditRangeLabel\((?:m|s)\.creditsLow, (?:m|s)\.creditsHigh, (?:m|s)\.creditsEstimated\)/, `${file} prints the range without the estimate flag`);
+  }
 });
 
 test('the card actually renders the range it is handed', async () => {

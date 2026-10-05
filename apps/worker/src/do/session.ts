@@ -38,7 +38,7 @@ import type {
   ProductModel,
   PluginCapabilityReportV1,
 } from '@studpilot/shared';
-import { isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
+import { creditsText, isRunFailure, MESSAGE_MAX_CHARS, normalizeModelId, quotaLimit, recordsRevision, type AssetSourcePolicy } from '@studpilot/shared';
 import { isRefusalRemedyCode, type RefusalRemedyCode } from '@studpilot/shared';
 import { asUiTheme, uiThemeContextLine, type UiTheme } from '@studpilot/shared';
 import { WIRE_HEADERS, echoSubprotocol, readWire } from '@studpilot/shared';
@@ -72,7 +72,7 @@ import { ASSET_CHOICE_MESSAGE, rejectedLibraryAssets, selectedLibraryAsset, sele
 import { playCheckReading } from '../library-object';
 import { checkpointEvidence, checkpointCoverageNote } from '../checkpoint-evidence';
 import { advance, isTerminal, startPlaytest } from '../playtest-stream';
-import { creditsForNeurons } from '../pricing';
+import { creditsForNeurons, MAX_NEURONS_PER_REQUEST } from '../pricing';
 import { chat as llmChat, reasoningEffortApplies, BudgetError, RateLimitedError } from '../gateway';
 import { systemPrompt, collapseArtDirection, MEMORY_UPDATE_PROMPT } from '../prompts';
 import { designBrief } from '../design-brief';
@@ -303,6 +303,13 @@ interface AgentState {
    */
   creditsFromAllowance?: number;
   creditsFromCredits?: number;
+  /**
+   * The run ended because the person's own allowance ran out: it could not pay for a model step that had
+   * already run (settleUsage), or it was empty between steps after earlier ones had been paid for. That
+   * compute was real, so refundVerdict does not hand its Credits back. A global capacity stop is the one
+   * 'quota' ending that does not set this: the person did not cause it.
+   */
+  allowanceUsedUp?: boolean;
   /** What was actually put back at the end of the run, once. Its presence is also the "done" mark. */
   creditsRefunded?: number;
   /** neurons this run has consumed, so Credits round once per run instead of once per call */
@@ -3542,7 +3549,9 @@ export class SessionDO extends DurableObject<Env> {
     // requires having some balance left — the user is never charged for an estimate.
     const quota = await this.quotaSpend(bind.ownerId, 1, `chat_${mode}`);
     if (!quota.ok) {
-      this.refuseOne(origin, { type: 'error', code: 'quota', message: 'Daily Credits are used up. They refill at midnight UTC.' });
+      // The limit that stopped them: Free's month is used up in six days, and midnight refills nothing then.
+      const limit = quotaLimit(quota.state);
+      this.refuseOne(origin, { type: 'error', code: 'quota', message: `${limit.label} Credits are used up. They refill ${limit.refillWhen}.` });
       this.broadcast({ type: 'quota', quota: quota.state });
       return;
     }
@@ -4054,7 +4063,12 @@ export class SessionDO extends DurableObject<Env> {
     if (agent.step > 1) {
       const state = await this.quotaState(agent.userId);
       if (state.unmetered !== true && state.creditsRemaining <= 0) {
-        agent.finalText = agent.finalText || 'I paused because your daily Credits ran out. Progress is saved.';
+        const limit = quotaLimit(state);
+        // The step before this one ran and was paid for from the person's allowance, which is what is now
+        // empty: a 'quota' ending that the person's own allowance caused is never refunded (the same
+        // marking as the settlement stop below; only a global capacity stop is not theirs).
+        agent.allowanceUsedUp = true;
+        agent.finalText = agent.finalText || `I paused because your ${limit.label.toLowerCase()} Credits ran out. They refill ${limit.refillWhen}. Progress is saved.`;
         await this.finishRun(agent, 'quota');
         return;
       }
@@ -4289,7 +4303,7 @@ export class SessionDO extends DurableObject<Env> {
       this.broadcast({ type: 'reasoning_delta', msgId: agent.msgId, step: agent.step, text: pending });
       pending = '';
     };
-    const raced = await this.untilStopped(llmChat(
+    const stepCall = llmChat(
       this.env,
       {
         model: gatewayModel,
@@ -4329,11 +4343,14 @@ export class SessionDO extends DurableObject<Env> {
       // paid work. See StepRefusedError.
       if (e instanceof RateLimitedError) throw new StepRefusedError(e.message);
       throw e;
-    }));
+    });
+    const raced = await this.untilStopped(stepCall);
     // G10: Stop pressed while the model is still thinking ends the run now instead of when the call
-    // returns. Nothing from that call is applied or charged: its answer, if it ever comes, is dropped.
+    // returns. Nothing from that call is applied: its answer, if it ever comes, is dropped. Its COST is
+    // not: the provider call is not cancelled, so what it used is charged when it finishes.
     if (raced === STOPPED_IN_FLIGHT) {
       agent.status = 'stopping';
+      this.settleAbandonedStep(agent, stepCall);
       await this.finishRun(agent, 'stopped');
       return;
     }
@@ -4423,28 +4440,15 @@ export class SessionDO extends DurableObject<Env> {
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + res.neurons;
     const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
     if (owed > 0) {
-      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      //[[ ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST.
-      //
-      //   This was `agent.creditsSpent += owed` unconditionally, on both sides of the branch below.
-      //   So a settlement REFUSED for want of Credits still moved the figure: the ledger took
-      //   nothing, and the transcript row, `msg_end.creditsSpent` and the run-complete notification
-      //   all reported the full amount as charged. Money the user still had, shown as money they
-      //   had spent — the product's own failure shape pointed at a balance.
-      //
-      //   It matters twice over now. `refundVerdict` reads this number, so an inflated one would
-      //   ask the ledger for Credits it never took and the reply would then explain the shortfall
-      //   with a reason that never happened. ]]
-      if (settle.ok) agent.creditsSpent += owed;
-      // Accumulated per settlement, not derived at the end: allowance can run out MID-RUN, so one
-      // run's Credits are genuinely split across both ledgers and only the charges themselves know
-      // where the boundary fell. See AgentState.creditsFromAllowance.
-      this.recordSpendSplit(agent, settle);
+      const settle = await this.settleUsage(agent, owed);
       if (!settle.ok) {
-        // they have run out mid-run: finish this step's work, then stop cleanly
+        // they have run out mid-run: finish this step's work, then stop cleanly. What was left is
+        // already taken (settleUsage) and the step is not refunded: see AgentState.allowanceUsedUp.
+        agent.allowanceUsedUp = true;
+        const limit = quotaLimit(settle.state);
         agent.finalText =
           (res.text || agent.finalText || '') +
-          '\n\nThat used the last of your Credits for today. Everything so far is saved — they refill at midnight UTC.';
+          `\n\nThat used the last of your Credits ${limit.window}. Everything so far is saved. They refill ${limit.refillWhen}.`;
         this.broadcast({ type: 'quota', quota: settle.state });
         await this.finishRun(agent, 'quota');
         return;
@@ -5721,11 +5725,30 @@ export class SessionDO extends DurableObject<Env> {
     if (!(neurons > 0)) return;
     agent.neuronsUsed = (agent.neuronsUsed ?? 0) + neurons;
     const owed = creditsForNeurons(agent.neuronsUsed) - agent.creditsSpent;
-    if (owed > 0) {
-      const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`);
-      if (settle.ok) agent.creditsSpent += owed;
-      this.recordSpendSplit(agent, settle);
-    }
+    if (owed > 0) await this.settleUsage(agent, owed);
+  }
+
+  /**
+   * A MODEL STEP THE RUN WALKED AWAY FROM STILL RUNS, AND STILL COSTS (review of d1a25c4e, finding 1).
+   *
+   * Stop ends a run at once and the provider call is not cancelled: it finishes, and the service pays for it
+   * (up to MAX_NEURONS_PER_REQUEST, 1,200 neurons = 40 ledger units). Only the 1-unit admission had been charged,
+   * so send-and-Stop in a loop bought a step of compute for 1 unit each time. The run is already over and its
+   * answer is dropped, but what the step used is charged to the person when it resolves: up to what they have
+   * left, like every settlement (settleUsage). Its measured usage when it reports one, the step's ceiling when
+   * it does not. A call that FAILS charges nothing: the gateway releases its reservation and records no spend.
+   * The run row and the meter are brought to what the ledger took, so the transcript and the balance agree.
+   */
+  private settleAbandonedStep(agent: AgentState, call: Promise<{ neurons: number }>): void {
+    void call.then(async (res) => {
+      const before = agent.creditsSpent;
+      await this.settleNeurons(agent, Number.isFinite(res?.neurons) && res.neurons >= 0 ? res.neurons : MAX_NEURONS_PER_REQUEST);
+      if (agent.creditsSpent === before) return;
+      this.sql.exec(`update messages set credits_spent = ? where id = ?`, agent.creditsSpent, agent.msgId);
+      // msg_end went out before the step resolved, with the cost known then: the message is told the settled one.
+      this.broadcast({ type: 'run_cost', msgId: agent.msgId, creditsSpent: agent.creditsSpent });
+      this.broadcast({ type: 'quota', quota: await this.quotaState(agent.userId) });
+    }).catch(() => {});
   }
 
   /** Run `look` on the agent's behalf, as a visible tool row, so the user sees what was looked at and the trace says so. */
@@ -6014,6 +6037,7 @@ export class SessionDO extends DurableObject<Env> {
       textDelivered: typeof agent.streamedText === 'string' && agent.streamedText.trim().length > 0 && !contentOverride,
       creditsSpent: agent.creditsSpent,
       studioDropped: agent.studioDropped === true,
+      allowanceUsedUp: agent.allowanceUsedUp === true,
     });
     let refundNote: string | null = null;
     if (verdict.refund && agent.creditsRefunded === undefined) {
@@ -6180,7 +6204,7 @@ export class SessionDO extends DurableObject<Env> {
         title: failed ? `That build did not finish` : `Your build finished`,
         body: failed
           ? (error ?? 'The run ended before it could make the change you asked for.')
-          : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${agent.creditsSpent} Credit(s).`,
+          : `${agent.trace.filter((t) => t.ok).length} change(s) applied for ${creditsText(agent.creditsSpent)} Credits.`,
         at: Date.now(),
       }).then(() => undefined);
       //[[ OFF THE CRITICAL PATH, AND ACTUALLY STARTED. This was `waitUntil(outcome)`, which drops
@@ -6207,17 +6231,21 @@ export class SessionDO extends DurableObject<Env> {
     //   one from before this run paid for itself. ]]
     if (agent.userId) {
       const state = await this.quotaState(agent.userId).catch(() => null);
-      const band = state ? usageBand(state.creditsRemaining, state.creditsDaily) : 'fine';
+      // Measured against the limit that binds: Free's 30 a month is spent in six days, and "2 of 5 left today" is
+      // false when the month has 2 left. The meter reads the same period (usage-meter-model.ts).
+      const limit = quotaLimit(state);
+      const total = state ? (limit.period === 'month' ? state.creditsMonthly : state.creditsDaily) : 0;
+      const band = state ? usageBand(state.creditsRemaining, total) : 'fine';
       if (state && band !== 'fine') {
         const usage = notify(this.env, {
           kind: 'usage_threshold',
           recipientId: agent.userId,
           subject: `usage:${dayKey(Date.now())}:${band}`,
-          title: band === 'exhausted' ? 'Your Credits for today are used up' : 'You are running low on Credits',
+          title: band === 'exhausted' ? `Your Credits for ${limit.window} are used up` : 'You are running low on Credits',
           body:
             band === 'exhausted'
-              ? `They refill at ${state.resetsAtIso}. Credits, or a bigger plan, cover the gap.`
-              : `${state.creditsRemaining} of ${state.creditsDaily} left today. They refill at ${state.resetsAtIso}.`,
+              ? `They refill at ${limit.resetsAtIso}.`
+              : `${creditsText(state.creditsRemaining)} of ${creditsText(total)} Credits left ${limit.window}. They refill at ${limit.resetsAtIso}.`,
           at: Date.now(),
         }).then(() => undefined);
         void usage.catch(() => {});
@@ -7676,23 +7704,49 @@ export class SessionDO extends DurableObject<Env> {
     userId: string,
     credits: number,
     kind: string,
+    upTo = false,
   ): Promise<{ ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number }> {
     const stub = this.env.QUOTA_DO.get(this.env.QUOTA_DO.idFromName(userId));
-    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind }) });
+    const res = await stub.fetch('https://do/spend', { method: 'POST', body: JSON.stringify({ credits, kind, ...(upTo ? { upTo: true } : {}) }) });
     const data = (await res.json()) as { ok: boolean; state: QuotaState; fromAllowance?: number; fromCredits?: number };
     return data;
   }
 
   /**
+   * Pay for model compute that has ALREADY RUN, with whatever the person has left.
+   *
+   * `ok: false` means the step was not paid in full. What was taken is still added to the run's cost
+   * and to its split, because a refund must reverse exactly what the ledger took.
+   *
+   * ONLY A SPEND THAT HAPPENED IS ADDED TO WHAT THE RUN COST. This was `agent.creditsSpent += owed`
+   * unconditionally, so a settlement refused for want of Credits still moved the figure and the
+   * transcript row, `msg_end.creditsSpent` and the run-complete notification reported money the user
+   * still had as money spent. `refundVerdict` reads this number, so an inflated one would ask the
+   * ledger for Credits it never took.
+   *
+   * It is not refused outright either (`upTo`): a step that owed 20 units against 4 left charged
+   * nothing, the 'quota' ending refunded the admission unit, and the same Free allowance paid for the
+   * next request, without end. Accumulated per settlement, not derived at the end: allowance can run
+   * out mid-run, so one run's Credits are split across both ledgers and only the charges know where
+   * the boundary fell. See AgentState.creditsFromAllowance.
+   */
+  private async settleUsage(agent: AgentState, owed: number) {
+    const settle = await this.quotaSpend(agent.userId, owed, `usage_${agent.mode}`, true);
+    agent.creditsSpent += settle.ok ? owed : Math.max(0, settle.fromAllowance ?? 0) + Math.max(0, settle.fromCredits ?? 0);
+    this.recordSpendSplit(agent, settle);
+    return settle;
+  }
+
+  /**
    * Remember which ledger a charge came out of.
    *
-   * ONLY ON A CHARGE THAT SUCCEEDED, and only when QuotaDO actually reported a split. A refused
-   * spend moved nothing, and a response with no split at all is one from a worker/DO pair mid-roll:
-   * leaving the fields undefined there is what makes `refundRun` decline rather than invent a
-   * proportion. Undefined and zero are different facts and are kept different.
+   * ONLY WHEN QuotaDO actually reported a split, which a spend it took nothing for does not (it
+   * answers `ok: false` with the state alone); a part-paid settlement reports what it did take. A
+   * response with no split at all is one from a worker/DO pair mid-roll: leaving the fields
+   * undefined there is what makes `refundRun` decline rather than invent a proportion. Undefined
+   * and zero are different facts and are kept different.
    */
   private recordSpendSplit(agent: AgentState, settle: { ok: boolean; fromAllowance?: number; fromCredits?: number }): void {
-    if (!settle.ok) return;
     if (typeof settle.fromAllowance !== 'number' || typeof settle.fromCredits !== 'number') return;
     agent.creditsFromAllowance = (agent.creditsFromAllowance ?? 0) + Math.max(0, settle.fromAllowance);
     agent.creditsFromCredits = (agent.creditsFromCredits ?? 0) + Math.max(0, settle.fromCredits);

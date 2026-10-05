@@ -16,6 +16,7 @@
 //
 // Nothing here reads a clock, a database or an environment. It is the decision and the wording,
 // separated from the Durable Object that has to carry them out, so both can be tested by argument.
+import { creditsText } from '@studpilot/shared';
 import type { BuildOutcome } from './analytics';
 
 /** The `stopReason` vocabulary `finishRun` takes — the browser's union, from @studpilot/shared. */
@@ -46,6 +47,12 @@ export interface RefundInputs {
   studioDropped?: boolean;
   /** Credits charged to this run so far. */
   creditsSpent: number;
+  /**
+   * The run ended because the person's own allowance could not pay for a model step that had already
+   * run. That step is real compute the person used, so it is not handed back: refunding it made a
+   * Free allowance repeatable (5 units left, admitted for 1, step settled short, the 1 refunded).
+   */
+  allowanceUsedUp?: boolean;
 }
 
 export interface RefundVerdict {
@@ -57,7 +64,7 @@ export interface RefundVerdict {
    * WHY, as a short stable code for the ledger and the oplog. Never shown to a user — the sentence
    * is `refundSentence` below, and a code is not a sentence.
    */
-  why: 'delivered' | 'not_a_failure' | 'nothing_charged' | 'no_usable_output';
+  why: 'delivered' | 'not_a_failure' | 'nothing_charged' | 'no_usable_output' | 'allowance_used';
 }
 
 /**
@@ -127,6 +134,7 @@ export function runDeliveredSomething(i: RefundInputs): boolean {
  * clamped NaN is a silent zero with a sentence on top of it.
  */
 export function refundVerdict(i: RefundInputs): RefundVerdict {
+  if (i.allowanceUsedUp === true) return { refund: false, credits: 0, why: 'allowance_used' };
   const refundable = REFUNDABLE_REASONS.has(i.reason) || REFUNDABLE_OUTCOMES.has(i.buildOutcome ?? '')
     // A person pressing Stop is their choice, not a failure; a dropped Studio link is not theirs.
     || (i.studioDropped === true && i.reason !== 'stopped');
@@ -138,12 +146,12 @@ export function refundVerdict(i: RefundInputs): RefundVerdict {
   return { refund: true, credits: i.creditsSpent, why: 'no_usable_output' };
 }
 
-const plural = (n: number): string => (n === 1 ? 'Credit' : 'Credits');
-
 /**
  * THE USER-VISIBLE SENTENCE, written from what the ledger ACTUALLY returned.
  *
- * `asked` is what the verdict wanted back; `returned` is what QuotaDO managed to put back. They
+ * `asked` and `returned` are LEDGER UNITS, the unit the run charged in, and the sentence prints
+ * them as the credits a person reads (creditsText: "0.02 Credits"). `asked` is what the verdict
+ * wanted back; `returned` is what QuotaDO managed to put back. They
  * differ in exactly one situation and it is worth stating rather than papering over: the allowance
  * is keyed by UTC day, so a run that began before midnight and ended after it is asking today's
  * ledger to reverse a charge that belongs to yesterday's. The ledger refuses to push a day's spend
@@ -155,17 +163,18 @@ const plural = (n: number): string => (n === 1 ? 'Credit' : 'Credits');
  */
 export function refundSentence(asked: number, returned: number): string | null {
   if (asked <= 0) return null;
+  const askedText = creditsText(asked);
   if (returned >= asked) {
-    return `You have not been charged for this run: the ${asked} ${plural(asked)} it used ${asked === 1 ? 'has' : 'have'} been put back.`;
+    return `You have not been charged for this run: the ${askedText} Credits it used have been put back.`;
   }
   if (returned > 0) {
     return (
-      `${returned} of the ${asked} ${plural(asked)} this run used ${returned === 1 ? 'has' : 'have'} been put back. ` +
+      `${creditsText(returned)} of the ${askedText} Credits this run used have been put back. ` +
       `The rest was charged against yesterday's allowance, which has already reset, so it could not be returned.`
     );
   }
   return (
-    `This run produced nothing, so its ${asked} ${plural(asked)} should not stand — but ${asked === 1 ? 'it was' : 'they were'} ` +
-    `charged against yesterday's allowance, which has already reset, so ${asked === 1 ? 'it' : 'they'} could not be returned automatically.`
+    `This run produced nothing, so its ${askedText} Credits should not stand — but they were ` +
+    `charged against yesterday's allowance, which has already reset, so they could not be returned automatically.`
   );
 }

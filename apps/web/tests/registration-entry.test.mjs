@@ -33,16 +33,21 @@ function astroFiles(dir) {
   return out;
 }
 
-/** Every `<a …>text</a>` on the public site, with its href and its visible words. */
+/**
+ * Every `<a …>text</a>` on the public site, with its href and its visible words. `<ShinyButton>` is
+ * included: it renders an `<a>` (picks-docs/ShinyButton.astro), and the pricing page's one live call to
+ * action is one, so a scraper that skipped it would stop seeing the CTA the moment the page used it
+ * alone.
+ */
 function links() {
   const found = [];
   for (const file of astroFiles(SITE)) {
     const body = readFileSync(file, 'utf8');
-    for (const m of body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)) {
-      const attrs = m[1];
+    for (const m of body.matchAll(/<(a|ShinyButton)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {
+      const attrs = m[2];
       const href = /href=(?:"([^"]*)"|\{([^}]*)\})/.exec(attrs);
       if (!href) continue;
-      const text = m[2]
+      const text = m[3]
         .replace(/<[^>]*>/g, ' ')
         .replace(/\{[^}]*\}/g, ' ')
         .replace(/\s+/g, ' ')

@@ -34,6 +34,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { legaciesOf } from '@studpilot/shared';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -783,6 +784,19 @@ test('usage headers omit headroom rather than inventing it', () => {
   }
 });
 
+test('the usage headers are a PUBLISHED CONTRACT: ledger units, unconverted, with the unit documented', () => {
+  // An SDK client reads these today. They stay whole numbers of ledger units (150 to one credit as
+  // the app shows it); what changed is only that the unit is now written down where a client reads.
+  const h = P.usageHeaders({ inputTokens: 10, outputTokens: 4, creditsSpent: 150, creditsRemaining: 1500 });
+  assert.equal(h['X-StudPilot-Usage-Credits'], '150', 'the value is not converted to the app\'s credits');
+  assert.equal(h['X-StudPilot-Credits-Remaining'], '1500');
+  const note = P.openApiDocument('https://studpilot.test').info.description;
+  assert.match(note, /X-StudPilot-Usage-Credits/);
+  assert.match(note, /X-StudPilot-Credits-Remaining/);
+  assert.match(note, /ledger units, 150 to one credit/);
+  assert.equal(P.API_USAGE_UNIT_NOTE.includes('150'), true);
+});
+
 test('the sandbox completion is deterministic and labels itself', () => {
   const req = P.parseChatCompletionRequest({ model: 'studpilot-chat', messages: [{ role: 'user', content: 'ping' }] }).value;
   const a = P.sandboxCompletion(req);
@@ -1403,6 +1417,62 @@ test('an account out of Credits gets 429 and the model does not run', async () =
   assert.equal(r.status, 429);
   assert.equal(r.json.error.code, 'insufficient_quota');
   assert.equal(bundle.trace.ai.length, 0, 'the model ran after the quota refused admission');
+});
+
+test('the 429 for an account out of Credits names the limit that binds and when it lifts, with the same code and headers', async () => {
+  //[[ Review cycle 3, finding 2. The refusal said "This account has no Credits left today." for a Free account
+  //   whose MONTH was used up, promising a refill in hours that is weeks away. The app's own refusals read the
+  //   binding limit from quotaLimit; the API now does too. The error code, type, status and headers are the
+  //   published contract and are asserted unchanged. ]]
+  const monthName = (offset) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + offset, 1))
+    .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+  const cases = [
+    ['the day', { creditsDaily: 750, creditsUsedToday: 750, creditsMonthly: 4500, creditsUsedThisMonth: 750 }, "This account's daily Credits are used up. They refill at midnight UTC."],
+    ['the month', { creditsDaily: 750, creditsUsedToday: 0, creditsMonthly: 4500, creditsUsedThisMonth: 4500 }, `This account's monthly Credits are used up. They refill on 1 ${monthName(1)} at 00:00 UTC.`],
+  ];
+  // A TRIPWIRE, deliberately exact: the refusal's header set is the published contract (the same call to refuse(), only its
+  // message argument changed). If the middleware changes it, this fires and the change gets a review; do not bump it.
+  // The version header goes out under both spellings; the former one is derived, not typed (the old-name guard counts a typed one).
+  const HEADERS = [legaciesOf('studpilot-version')[0], 'content-type', 'referrer-policy', 'strict-transport-security', 'studpilot-version', 'x-content-type-options', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'x-request-id'].sort().join(',');
+  for (const [what, figures, message] of cases) {
+    const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, ...figures, creditsRemaining: 0 } } : QUOTA_STATE) });
+    const key = await seedKey(bundle, { scopes: ['chat:write'] });
+    const r = await call('/v1/chat/completions', {
+      method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
+    });
+    assert.equal(r.status, 429, what);
+    assert.equal(r.json.error.code, 'insufficient_quota', what);
+    assert.equal(r.json.error.message, message, `${what} is what ran out, so the message says so`);
+    assert.doesNotMatch(r.json.error.message, /left today/);
+    assert.equal([...r.res.headers.keys()].sort().join(','), HEADERS, `${what}: the refusal's headers are the published contract`);
+  }
+});
+
+test('a call that overruns the account pays what is left and the header says what was taken (no free inference)', async () => {
+  // 200k tokens in and 20k out is far more than the 4 ledger units left after the 1-unit admission.
+  // The settlement used to be refused whole and `creditsSpent` still grew by the full amount, so the
+  // account paid 1 unit for the call and the header claimed the rest.
+  const state = { ...QUOTA_STATE, creditsRemaining: 5 };
+  const bundle = makeEnv({
+    aiResponse: { choices: [{ message: { content: 'Big answer.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 200_000, completion_tokens: 20_000 } },
+    quota: async ({ path, body }) => {
+      if (path !== '/spend') return state;
+      if (body.credits === 1) return { ok: true, state, fromAllowance: 1, fromCredits: 0 };
+      return body.upTo === true
+        ? { ok: false, state: { ...state, creditsRemaining: 0 }, fromAllowance: 4, fromCredits: 0 }
+        : { ok: false, state };
+    },
+  });
+  const key = await seedKey(bundle, { scopes: ['chat:write'] });
+  const r = await call('/v1/chat/completions', {
+    method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
+  });
+  assert.equal(r.status, 200);
+  const spends = bundle.trace.calls.filter((cc) => cc.ns === 'QUOTA_DO' && cc.path === '/spend');
+  assert.equal(spends.length, 2, 'admission, then the settlement');
+  assert.equal(spends[1].body.upTo, true, 'the settlement asks the ledger for what is left, not for an all-or-nothing amount');
+  assert.equal(r.res.headers.get('X-StudPilot-Usage-Credits'), '5', 'the header reports the 1 + 4 units the ledger took, not the amount that was owed');
+  assert.equal(r.res.headers.get('X-StudPilot-Credits-Remaining'), '0');
 });
 
 test('the event stream opens, reports the transition, and ends when the run ends', async () => {

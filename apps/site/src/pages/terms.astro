@@ -1,6 +1,6 @@
 ---
 import LegalLayout from '../layouts/LegalLayout.astro';
-import { PLAN_LIMITS, PLAN_COPY, PLAN_IDS, PRICE_CURRENCY, formatMoney, fullRateDays, monthlyCeilingBitesFirst } from '@studpilot/shared';
+import { PLAN_TABLE, PLAN_COPY, PLAN_IDS, PRICE_CURRENCY, formatMoney, fullRateDays, monthlyCeilingBitesFirst } from '@studpilot/shared';
 
 // §7 NAMED A TIER THAT DOES NOT EXIST. It said "The Pro plan exists only as a waitlist", and there
 // is no Pro plan: the published ladder is Builder and Studio, both with prices on /pricing. A terms
@@ -88,8 +88,8 @@ const planPrices = paidPlans
 
   <h2>5. Quotas and fair use</h2>
   <p>
-    The free tier includes a daily Credits quota (currently {PLAN_LIMITS.free.creditsPerDay}) <em>and</em> a monthly
-    ceiling ({PLAN_LIMITS.free.creditsPerMonth.toLocaleString()}); you have whichever is lower at the time, which on the free
+    The free tier includes a daily Credits quota (currently {PLAN_TABLE.free.creditsPerDay}) <em>and</em> a monthly
+    ceiling ({PLAN_TABLE.free.creditsPerMonth}); you have whichever is lower at the time, which on the free
     tier is {fullRateDays('free')} days at the full daily rate{monthlyCeilingBitesFirst('free') ? '' : ' or more'}. Quotas, rate limits and
     queueing exist so that the free tier can exist. We may adjust quota numbers with notice in the
     <a href="/changelog">changelog</a>. Attempting to evade quotas, automate accounts, or resell
@@ -112,7 +112,7 @@ const planPrices = paidPlans
       Paid subscriptions are open. The published plans are {planPrices}, and the prices, allowances
       and billing period on <a href="/pricing">the pricing page</a> are the terms of the sale. A
       subscription starts only from a checkout you confirm, renews monthly until cancelled, and can
-      be cancelled from your account's Plans &amp; Credits page at any time.
+      be cancelled from the Plan &amp; billing tab of your account's Usage and Credits page at any time.
       {purchasable.length < paidPlans.length ? ' Not every published plan is purchasable right now; the pricing page says which are.' : ''}
     </p>
   ) : (

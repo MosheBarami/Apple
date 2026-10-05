@@ -1,35 +1,38 @@
 ---
 import {
-  MODE_INFO,
+  BUILD_COSTS,
+  CREDIT_USD,
+  LISTED_PLAN_IDS,
   PLAN_COPY,
-  PLAN_IDS,
-  PLAN_LIMITS,
+  PLAN_TABLE,
+  PRICE_CURRENCY,
+  INTERNAL_PER_CREDIT,
+  TYPICAL_BUILD_CREDITS,
+  buildsPerDay,
+  formatCredits,
+  formatMoney,
   fullRateDays,
   monthlyCeilingBitesFirst,
 } from '@studpilot/shared';
 
 // Read, never restated: this page explains the quota, so a stale copy of it here would be the
-// documentation contradicting the thing it documents.
-const free = PLAN_LIMITS.free;
-const paid = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
+// documentation contradicting the thing it documents. Every figure is in PLAN_TABLE and BUILD_COSTS.
+const free = PLAN_TABLE.free;
+const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
+/* The plans whose monthly ceiling arrives before the month does: on each of them the daily figure
+   alone is not what a reader will meet. */
+const ceilingPlans = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id));
+const small = BUILD_COSTS.find((b) => b.id === 'small')!;
+const big = BUILD_COSTS.find((b) => b.id === 'big')!;
 import DocsLayout from '../../layouts/DocsLayout.astro';
 import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
-/* There is one kind of request, so there is one entry price, read from MODE_INFO.agent. */
-// "4-18" quotes 4. What a request STARTS at is the comparable number; the paragraph under the
-// list is where the rest of the range is explained, rather than in a figure that looks like two.
-const published = MODE_INFO.agent.typicalCredits;
-const requestCredits = Number(String(published).split('-')[0]);
-if (!Number.isFinite(requestCredits) || requestCredits <= 0) {
-  throw new Error(`credits-and-limits.astro: "${published}" does not start with a Credit count`);
-}
-const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 ---
 
 <DocsLayout
   title="Credits & limits — StudPilot Docs"
-  description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free, per-request costs, live metering, daily reset, and exactly what happens when you run out.`}
+  description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free (up to ${free.creditsPerMonth} a month), what builds cost, how it is metered, daily reset, and exactly what happens when you run out.`}
   heading="Credits & limits"
 >
   <p>
@@ -41,16 +44,17 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 
   <h2>The numbers</h2>
   <ul>
-    <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · {free.creditsPerMonth.toLocaleString()} a month.</li>
+    <li><strong>Free plan:</strong> {free.creditsPerDay} Credits per day · up to {free.creditsPerMonth} a month.</li>
     {paid.map((id) => (
-      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_LIMITS[id].creditsPerDay} Credits per day · {PLAN_LIMITS[id].creditsPerMonth.toLocaleString()} a month.</li>
+      <li><strong>{PLAN_COPY[id].name} plan:</strong> {PLAN_TABLE[id].creditsPerMonth} Credits a month · up to {PLAN_TABLE[id].creditsPerDay} a day. Planned: paid plans start later.</li>
     ))}
-    <li><strong>Each request:</strong> from {requestCredits} Credits.</li>
+    <li><strong>One Credit</strong> is about {formatMoney(CREDIT_USD, { currency: PRICE_CURRENCY })} of AI compute, and your balance shows with two decimals.</li>
+    <li><strong>A typical build:</strong> about {formatCredits(TYPICAL_BUILD_CREDITS)} Credits. A small one costs {formatCredits(small.creditsLow)} to {formatCredits(small.creditsHigh)}; a big one, which is still an estimate, {big.creditsLow} to {big.creditsHigh}.</li>
   </ul>
   <p>
-    Those are starting prices, not ceilings: a request settles against the compute it actually
-    used, so a short question lands on its figure and a long build climbs past it. In practice the
-    free allowance is a solid daily session — about {requestsPerFreeDay} requests.
+    Those are typical costs, not quotes: a build is charged for the compute it actually used, so a
+    long one climbs past its figure. In practice the Free daily allowance is a solid daily session,
+    about {buildsPerDay('free')} typical builds.
   </p>
 
   {/*
@@ -61,7 +65,7 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
     protocol has no cost-warning message, a run is admitted on a one-Credit spend whose only refusal
     is a zero balance, and the worker's own preferences.ts downgrades the `ask` tool permission to
     `deny` because "nothing in this product can interrupt a run to ask". The paragraph above already
-    describes the live running total truthfully and stands on its own; a warning BEFORE the spend is
+    describes what the app shows truthfully and stands on its own; a warning BEFORE the spend is
     a different promise, and it was not kept.
 
     THIS PARAGRAPH SAID "NOTHING COMES BACK" AND THAT STOPPED BEING TRUE on 2026-09-20, when
@@ -105,9 +109,12 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
     does not destructure `quota` from the hook, so the update is received and dropped. The figure a
     customer watches for an hour is the one from page load.
 
-    What IS live is the per-run total: thinking.tsx renders "<n> Credits this run" from
-    status.creditsSpent while the run works, which is why that sentence stays and the balance
-    sentence changed. Wiring the balance is an apps/web fix and was reported to the lead as one.
+    NOR IS THE PER-RUN TOTAL LIVE. This note used to say "What IS live is the per-run total:
+    thinking.tsx renders '<n> Credits this run' from status.creditsSpent while the run works".
+    thinking.tsx was removed on 2026-10-01 and nothing in apps/web renders `status.creditsSpent`:
+    the only cost the app draws is the settled figure under a finished reply (ws/turn.tsx). So no
+    sentence here or on /pricing may say a run's cost is counted while it runs; the guard is
+    apps/site/tests/no-live-cost-claim.test.mjs. Wiring the balance is an apps/web fix.
   */}
   <h2>How metering works</h2>
   <p>
@@ -117,10 +124,10 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
     workspace loads, so the meter itself is not on screen until you open it — once you do, it sits
     in the footer of the left rail beside your account, reading what is left, what your allowance is
     and when it resets. Either surface is read when the page loads and does not refresh itself while
-    you build — reload for the current figure. What does move as it happens is the run you are
-    watching: the thinking panel counts the Credits this run has spent, step by step. One Credit is taken when a request starts, and the
-    rest settles against the compute the run actually consumed, so a long build's cost arrives as
-    it is incurred rather than as a total you could not see coming.
+    you build — reload for the current figure. The app shows a request's cost under its reply once
+    the reply has finished, not while it works. A request is let in for
+    1/{INTERNAL_PER_CREDIT} of a Credit, and the rest settles against the compute the run actually
+    consumed after each model call, so a long build can cost more than the figures above.
   </p>
   <p>
     A step that fails on our side is not charged: Credits are settled from the compute a call
@@ -133,20 +140,27 @@ const requestsPerFreeDay = Math.floor(free.creditsPerDay / requestCredits);
 
   <h2>The daily reset — and the monthly ceiling behind it</h2>
   <p>
-    Quotas reset at midnight UTC — one fixed instant for every account, not a rolling window
+    The daily limit resets at midnight UTC — one fixed instant for every account, not a rolling window
     that starts when you do. That is worth knowing if you build late in the UTC day: credits
-    spent at 23:00 UTC are refilled an hour later. The workspace shows your exact
-    reset time. Unused Credits do not roll over — every day starts at your full allowance.
+    spent at 23:00 UTC are refilled an hour later. The monthly limit resets at 00:00 UTC on the 1st of
+    the next month, and a new day does not lift it. The workspace says which of the two stopped you and
+    shows its reset time. Unused Credits do not roll over — every day starts at your full allowance.
   </p>
   <p>
     <strong>There are two limits, and you have whichever is smaller.</strong> The daily figure is a
     rate; the monthly figure is a ceiling, and a day's refill cannot take you past it.
-    {monthlyCeilingBitesFirst('free') ? (
+    {ceilingPlans.length > 0 ? (
       <>
-        {' '}On the Free plan the ceiling is the one that bites: {free.creditsPerDay} a day against{' '}
-        {free.creditsPerMonth.toLocaleString()} a month is <strong>{fullRateDays('free')} full days</strong>.
-        Spend the whole daily allowance every day and the eleventh is where it stops until the month
-        turns. Pace it and the same total stretches across the month instead.
+        {' '}On every plan the ceiling is the one that bites if you spend the whole daily allowance
+        every day:{' '}
+        {ceilingPlans.map((id, i) => (
+          <>
+            {i > 0 ? '; ' : ''}{PLAN_COPY[id].name} gets {PLAN_TABLE[id].creditsPerDay} a day against{' '}
+            {PLAN_TABLE[id].creditsPerMonth} a month, which is <strong>{fullRateDays(id)} full days</strong>
+          </>
+        ))}
+        . After that nothing is left until the month turns. Pace it and the same total stretches
+        across the month instead.
       </>
     ) : (
       <>{' '}On every current plan the monthly ceiling clears a full month, so the daily figure is the

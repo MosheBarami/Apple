@@ -442,7 +442,7 @@ export async function generateBranding(env: Pick<Env, 'CORPUS' | 'MEDIA'>, proje
       error: `No branding was made: it needs real pictures of your game. Connect Roblox Studio with this place open, then press Generate again. (${shot.error})`,
     };
   }
-  if (!(await deps.spend())) return { status: 429, error: 'Daily Credits are used up, so branding was not generated.', modelCalls: 0 };
+  if (!(await deps.spend())) return { status: 429, error: 'Your Credits are used up, so branding was not generated.', modelCalls: 0 };
   const drafted = await draftBrandingCopy(deps.chat, brandingContext(await deps.context()));
   if ('error' in drafted) return { status: 502, error: drafted.error, modelCalls: drafted.calls };
 

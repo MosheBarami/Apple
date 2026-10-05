@@ -49,7 +49,7 @@ test('the failure line is a DIFFERENT word, so the two verdicts cannot be confus
   assert.equal('S1 UNPROVEN'.includes(TOKEN), false, 'the red token must not contain the green one');
 });
 
-test('an unreadable PLAN_LIMITS refuses the whole station rather than checking three of four', () => {
+test('an unreadable PLAN_TABLE refuses the whole station rather than checking three of four', () => {
   // The break that falsified G-S1, run as a test: clause 4 has no expected value, so the probe must
   // exit non-zero WITHOUT printing the success token. This is the case that was silently matching.
   const dir = mkdtempSync(join(tmpdir(), 'probe-s1-'));
@@ -59,7 +59,7 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   cpSync(PROBE, join(dir, 'scripts', 'probe-s1.mjs'));
   mkdirSync(join(dir, 'scripts', 'lib'), { recursive: true });
   cpSync(join(ROOT, 'scripts', 'lib', 'product-origin.mjs'), join(dir, 'scripts', 'lib', 'product-origin.mjs'));
-  // A shared module with no PLAN_LIMITS in it at all — and the origin the probe reads at import
+  // A shared module with no PLAN_TABLE in it at all — and the origin the probe reads at import
   // time, because the fixture is about clause 4 being underivable and nothing else. Leaving
   // PRODUCT_ORIGIN out would make the probe die one line earlier, for a reason this test is not
   // about, and the assertion below would be measuring the wrong refusal.
@@ -74,7 +74,7 @@ test('an unreadable PLAN_LIMITS refuses the whole station rather than checking t
   const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
   assert.notEqual(r.status, 0, `must not exit 0 with clause 4 underivable:\n${out}`);
   assert.ok(!out.includes(TOKEN), `a refused run must not print the success token:\n${out}`);
-  assert.match(out, /cannot read PLAN_LIMITS\.free/, out);
+  assert.match(out, /cannot read PLAN_TABLE\.free/, out);
 });
 
 test('clause 2 exempts platform spellings only: a former workers.dev host in a page is a finding', async () => {

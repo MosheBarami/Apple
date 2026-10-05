@@ -9,8 +9,8 @@
 
 /* The hidden copy is set on the columns' own 1.15em line, so its glyphs sit exactly where the
    visible figure is. On the paragraph's taller line they sat 3px below it: a screen reader's focus
-   box landed under the number, and tests/rendered-typography.test.mjs read "2,310" as a word
-   stranded on a line of its own in "That is 2,310 Credits a month." */
+   box landed under the number, and tests/rendered-typography.test.mjs read "28" as a word
+   stranded on a line of its own in "That is 28 Credits a month." */
 .rn-sr {
   position: absolute;
   width: 1px;

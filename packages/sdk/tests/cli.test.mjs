@@ -251,3 +251,10 @@ test('every command in COMMANDS is implemented — a declared-but-missing one ex
     await s.close();
   }
 });
+
+test('the `usage` help says what the command prints: ledger units, not Credits (the API contract is unchanged)', () => {
+  // /api/me/usage returns the ledger's own units, 150 to a Credit as the app shows it. "Credits spent per day" was 150x off.
+  assert.match(COMMANDS.usage.describe, /ledger units/);
+  assert.match(COMMANDS.usage.describe, /150 ledger units are 1 Credit/);
+  assert.doesNotMatch(COMMANDS.usage.describe, /^Credits spent/);
+});

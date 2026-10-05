@@ -14,7 +14,7 @@
 // THE THREE-SECOND WALL. Discord kills an interaction that is not answered within three seconds.
 // A build takes minutes. So `/build` answers with a DEFERRED response (type 5) — a loading state —
 // and the message is edited afterwards. Everything else here answers immediately.
-import type { QuotaState, RunSnapshot } from '@studpilot/shared';
+import { creditsText, isPlanId, PLAN_TABLE, quotaLimit, type QuotaState, type RunSnapshot } from '@studpilot/shared';
 
 // ---------------------------------------------------------------- wire constants
 // Values are Discord's, not ours. Named so a reader does not have to remember what 5 means.
@@ -199,8 +199,23 @@ export function thinking(): InteractionResponse {
  */
 export function balanceLine(q: QuotaState | null): string {
   if (!q) return 'StudPilot could not read your balance just now.';
-  const purchased = q.credits > 0 ? `, plus ${q.credits} purchased` : '';
-  return `**${q.creditsRemaining} Credits** left — ${q.allowanceRemaining} from today's ${q.plan} allowance${purchased}.`;
+  // The quota is in ledger units and a person reads credits (creditsText), and the plan is shown by
+  // its name ("Pro"), not by the stored id it is kept under ("builder").
+  const purchased = q.credits > 0 ? `, plus ${creditsText(q.credits)} purchased` : '';
+  const plan = isPlanId(q.plan) ? PLAN_TABLE[q.plan].name : q.plan;
+  const window = quotaLimit(q).period === 'month' ? "this month's" : "today's";
+  return `**${creditsText(q.creditsRemaining)} Credits** left — ${creditsText(q.allowanceRemaining)} from ${window} ${plan} allowance${purchased}.`;
+}
+
+/**
+ * When the allowance that is actually holding this person comes back. Free's month is used up in six days, and
+ * "today's allowance refills in about 3 hours" is false then: the month lifts on the 1st (see quotaLimit).
+ */
+export function refillLine(q: QuotaState): string {
+  const limit = quotaLimit(q);
+  return limit.period === 'month'
+    ? `This month's allowance refills ${limit.refillWhen}.`
+    : `Today's allowance refills ${friendlyReset(q.resetsAtIso)}.`;
 }
 
 /** One line describing where a run has got to, shared by `/status` and the progress pusher. */
@@ -357,7 +372,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
   if (name === 'credits') {
     const q = await ports.quota(link.appleUserId);
     if (!q) return { status: 200, body: say('StudPilot could not read your balance just now. Try again in a moment.') };
-    return { status: 200, body: say(`${balanceLine(q)}\nToday's allowance refills ${friendlyReset(q.resetsAtIso)}.`) };
+    return { status: 200, body: say(`${balanceLine(q)}\n${refillLine(q)}`) };
   }
 
   if (name === 'status') {
@@ -424,7 +439,7 @@ export async function handleInteraction(raw: unknown, ports: DiscordPorts): Prom
         if (q.creditsRemaining <= 0) {
           await edit(
             `You have no Credits left, so nothing was started — no Credit was spent on this.\n` +
-              `Today's allowance refills ${friendlyReset(q.resetsAtIso)}.`,
+              refillLine(q),
           );
           return;
         }

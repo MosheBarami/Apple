@@ -1,4 +1,5 @@
-// Credits spent per day, as a line you can run your finger along.
+// Credits spent per day, as a line you can run your finger along. The figures are credits as a person
+// reads them (two decimals), not the ledger units the worker counts in; usage.tsx converts first.
 //
 // Pick: Motion "Line graph" (Motion+ licence — re-implemented, nothing copied): the line draws itself
 // in when it scrolls into view, the area under it is lightly filled, and moving the pointer across
@@ -8,7 +9,8 @@
 // Keyboard too: the chart is one focusable control; Left/Right walk the days, Home/End jump to the
 // ends, and the day's figure is the slider's value text, so a screen reader reads it on each step.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { formatNumber, formatSettings } from '../../../lib/format';
+import { formatSettings } from '../../../lib/format';
+import { formatCredits } from '@studpilot/shared';
 import { reducedMotion } from './motion';
 import { RollingNumber } from './rolling-number';
 import './line-graph.css';
@@ -28,7 +30,8 @@ export function LineGraph({ series, totalLabel }: { series: LinePoint[]; totalLa
   const [at, setAt] = useState<number | null>(null);
   const svg = useRef<SVGSVGElement>(null);
   const box = useRef<HTMLDivElement>(null);
-  const max = Math.max(10, ...series.map((s) => s.credits));
+  // The axis never zooms below a tenth of a credit, so one cheap day does not fill the chart.
+  const max = Math.max(0.1, ...series.map((s) => s.credits));
   const total = series.reduce((n, s) => n + s.credits, 0);
   const n = series.length;
   const pt = (i: number) => [n > 1 ? (i / (n - 1)) * W : W / 2, H - ((series[i]?.credits ?? 0) / max) * (H - 8) - 4] as const;
@@ -81,7 +84,7 @@ export function LineGraph({ series, totalLabel }: { series: LinePoint[]; totalLa
       <div className="pk-line__readout">
         <span className="pk-line__label">{hovered ? dayLabel(hovered.day) : totalLabel}</span>
         <span className="pk-line__figure">
-          <RollingNumber value={formatNumber(hovered ? hovered.credits : total)} />
+          <RollingNumber value={formatCredits(hovered ? hovered.credits : total)} />
           <span className="pk-line__unit">Credits</span>
         </span>
       </div>
@@ -94,7 +97,7 @@ export function LineGraph({ series, totalLabel }: { series: LinePoint[]; totalLa
         aria-valuemin={0}
         aria-valuemax={Math.max(0, n - 1)}
         aria-valuenow={at ?? n - 1}
-        aria-valuetext={hovered ? `${dayLabel(hovered.day)}: ${hovered.credits} Credits` : `${totalLabel}: ${total} Credits`}
+        aria-valuetext={hovered ? `${dayLabel(hovered.day)}: ${formatCredits(hovered.credits)} Credits` : `${totalLabel}: ${formatCredits(total)} Credits`}
         onPointerMove={fromPointer}
         onPointerDown={fromPointer}
         onPointerLeave={() => setAt(null)}

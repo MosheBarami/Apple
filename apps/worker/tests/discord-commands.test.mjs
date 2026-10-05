@@ -48,15 +48,16 @@ const LINK = {
   linkedAt: 1,
 };
 
+// In LEDGER units, as QuotaDO reports them: 525 of them are 3.50 credits (INTERNAL_PER_CREDIT = 150).
 const QUOTA = {
-  creditsRemaining: 140,
+  creditsRemaining: 525,
   creditsDaily: 200,
   creditsMonthly: 4000,
   creditsUsedToday: 60,
   creditsUsedThisMonth: 900,
   resetsAtIso: new Date(Date.now() + 5 * 3600_000).toISOString(),
   plan: 'builder',
-  allowanceRemaining: 140,
+  allowanceRemaining: 525,
   credits: 0,
 };
 
@@ -150,7 +151,44 @@ test('/credits reports the balance, ephemerally', async () => {
   const out = await handleInteraction(cmd('credits'), ports());
   assert.equal(out.status, 200);
   assertMessage(out.body);
-  assert.match(out.body.data.content, /140 Credits/);
+  assert.match(out.body.data.content, /\*\*3\.50 Credits\*\* left — 3\.50 from today's Pro allowance\./, 'credits with two decimals and the plan by its name, not "builder"');
+  assert.doesNotMatch(out.body.data.content, /\b525\b|builder/, 'a ledger-unit count or a stored plan id reached the person');
+});
+
+test('/credits adds the purchased balance in credits too', async () => {
+  const out = await handleInteraction(cmd('credits'), ports({ quota: async () => ({ ...QUOTA, credits: 300 }) }));
+  assert.match(out.body.data.content, /plus 2\.00 purchased/);
+});
+
+// A Free-sized month nearly used up while the day still has plenty: the MONTH is the limit that binds, and
+// Discord must not promise "today's allowance" back in hours (review cycle 2, finding 3).
+const MONTH_BOUND = { ...QUOTA, creditsRemaining: 50, allowanceRemaining: 50, creditsUsedThisMonth: 3950 };
+const nextMonth = () => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1))
+  .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+
+test('/credits says when the limit that BINDS refills: the day in hours, the month on the first', async () => {
+  const day = await handleInteraction(cmd('credits'), ports());
+  assert.match(day.body.data.content, /Today's allowance refills in about 5 hours\./);
+
+  const month = await handleInteraction(cmd('credits'), ports({ quota: async () => MONTH_BOUND }));
+  const text = month.body.data.content;
+  assert.match(text, new RegExp(`This month's allowance refills on 1 ${nextMonth()} at 00:00 UTC\\.`));
+  assert.match(text, /from this month's Pro allowance/, 'the balance line names the period it is measured against');
+  assert.doesNotMatch(text, /today's|in about \d+ hours?/i, 'no daily refill promised while the month is what binds');
+});
+
+test('/build refused for want of Credits names the limit that binds', async () => {
+  const empty = { creditsRemaining: 0, allowanceRemaining: 0, credits: 0 };
+  const refuse = async (quota) => {
+    const out = await handleInteraction(cmd('build', [{ name: 'prompt', value: 'a lava obby' }]), ports({ quota: async () => quota }));
+    const edits = [];
+    await out.deferred(async (c) => void edits.push(c));
+    return edits[0];
+  };
+  assert.match(await refuse({ ...QUOTA, ...empty }), /Today's allowance refills in about 5 hours\./);
+  const month = await refuse({ ...QUOTA, ...empty, creditsUsedThisMonth: 4000 });
+  assert.match(month, new RegExp(`This month's allowance refills on 1 ${nextMonth()} at 00:00 UTC\\.`));
+  assert.doesNotMatch(month, /today's|in about \d+ hours?/i);
 });
 
 test('/status reports the live run using the same words the web app uses', async () => {
@@ -450,7 +488,8 @@ test('/status reports the balance as well as the run', async () => {
   const p = ports();
   const out = await handleInteraction(cmd('status'), p);
   assertMessage(out.body);
-  assert.match(out.body.data.content, /140 Credits/, '/status must say what is left');
+  assert.match(out.body.data.content, /3\.50 Credits/, '/status must say what is left, in credits');
+  assert.doesNotMatch(out.body.data.content, /\b525\b/);
   assert.ok(p.calls.some((c) => c[0] === 'quota' && c[1] === LINK.appleUserId), 'and read it for the LINKED account');
 });
 

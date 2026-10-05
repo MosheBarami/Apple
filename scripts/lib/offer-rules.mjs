@@ -28,8 +28,37 @@
  * Nothing here reads a file, runs git, or prints. That is the property that makes it testable.
  */
 
-/** Credit claims a page can make to a reader: "231 Credits a day", "12,600 Credits per month". */
-export const CREDIT_CLAIM = /(\d[\d,]{1,8})\s*(?:Credits?|credits?)\s*(?:a|per|\/)\s*(day|month)/g;
+/**
+ * A SPACE, as a page can write one: any Unicode space (a no-break U+00A0 or a narrow no-break U+202F is `\s` to the
+ * engine), a zero-width one, or the HTML entity for a no-break space in source text. `&nbsp;` is the usual way a
+ * page keeps "5 Credits a day" on one line, and it is eight characters of "not a space" to a plain `\s`.
+ */
+export const SPACE = String.raw`(?:[\s\u200b-\u200d\u2060\ufeff]|&nbsp;|&#0*160;|&#x0*a0;|&#0*8239;|&#x0*202f;|&NonBreakingSpace;|&thinsp;|&ensp;|&emsp;)`;
+
+/** "a", "per", "each", "every" (a word, then a space) or "/" (no space needed): the word that joins an amount to its period. */
+const EACH = String.raw`(?:(?:an?|per|each|every)${SPACE}+|\/${SPACE}*)`;
+
+/**
+ * Credit claims a page can make to a reader: "30 Credits a day", "1,200 Credits per month", and since
+ * the app and the pricing page quote credits, "5 Credits a day" (one digit) and "5.00 Credits a day"
+ * (decimals). The number used to need two characters, so every claim under ten was invisible and
+ * "5.00" read as "00".
+ *
+ * ALL THE WAYS A PERIOD IS WRITTEN: "a day", "per day", "/day", "each day", "every day", "daily", "per calendar
+ * month", "monthly", and the adjective before the noun ("5 daily Credits"); and any space may be a no-break one
+ * (SPACE). The period is the first of groups 2 to 4 that took part: `creditPeriod(m)`.
+ */
+export const CREDIT_CLAIM = new RegExp(
+  String.raw`(?<![\d.,])(\d[\d,]*(?:\.\d+)?)${SPACE}*(?:(daily|monthly)${SPACE}+)?credits?` +
+  String.raw`(?:${SPACE}*${EACH}(?:calendar${SPACE}+)?(day|month)\b|${SPACE}+(daily|monthly)\b)?`,
+  'gi',
+);
+
+/** 'day' or 'month' for one match of CREDIT_CLAIM, or null when the match names no period (a figure before "Credits" alone is no claim). */
+export function creditPeriod(m) {
+  const word = m[2] ?? m[3] ?? m[4];
+  return word === undefined ? null : word.toLowerCase().startsWith('d') ? 'day' : 'month';
+}
 
 /**
  * Terms, not descriptions. §12.5 puts contractual promises in the owner's hands, and this product
@@ -65,11 +94,11 @@ export const stripComments = (src) =>
  *
  * @param {object} o
  * @param {string[]} o.planIds
- * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits  ledger units (PLAN_LIMITS)
  * @param {Record<string, {priceUsdMonthly: number|null}>} o.copy
- * @param {number} o.ceilingCredits  what the WHOLE SERVICE can serve in a day
- * @param {number} o.creditsPerBuild
- * @param {number} o.usdPerCredit
+ * @param {number} o.ceilingCredits  what the WHOLE SERVICE can serve in a day, in ledger units
+ * @param {number} o.creditsPerBuild  ledger units in one quality-gated build
+ * @param {number} o.usdPerCredit  dollars of compute per ledger unit
  * @param {number} o.margin
  * @param {string} [o.ceilingDetail] a human sentence naming where the ceiling comes from
  * @returns {{problems: string[], notes: string[]}}
@@ -102,7 +131,7 @@ export function planProblems({
     const floor = serveCost * margin;
     if (price <= floor) {
       problems.push(
-        `${id} charges $${price}/month for ${limits[id].creditsPerMonth.toLocaleString()} Credits, ` +
+        `${id} charges $${price}/month for ${limits[id].creditsPerMonth.toLocaleString()} ledger units, ` +
         `which cost $${serveCost.toFixed(2)} to serve — below the $${floor.toFixed(2)} floor at ${margin}x`,
       );
     } else {
@@ -117,7 +146,7 @@ export function planProblems({
     const day = limits[id].creditsPerDay;
     if (day > ceilingCredits) {
       problems.push(
-        `${id} grants ${day} Credits/day but the WHOLE SERVICE can serve ${ceilingCredits}` +
+        `${id} grants ${day} ledger units/day but the WHOLE SERVICE can serve ${ceilingCredits}` +
         `${ceilingDetail} One user on this plan exhausts the day for everyone.`,
       );
     }
@@ -128,11 +157,11 @@ export function planProblems({
   if (freeDay !== undefined) {
     if (freeDay < creditsPerBuild) {
       problems.push(
-        `the free plan grants ${freeDay} Credits/day and one quality-gated build costs ${creditsPerBuild} — ` +
+        `the free plan grants ${freeDay} ledger units/day and one quality-gated build costs ${creditsPerBuild} — ` +
         `a free user cannot complete a single build in a day, so the trial demonstrates the product not working`,
       );
     } else {
-      notes.push(`free: ${freeDay} Credits/day affords ${Math.floor(freeDay / creditsPerBuild)} build(s)`);
+      notes.push(`free: ${freeDay} ledger units/day affords ${Math.floor(freeDay / creditsPerBuild)} build(s) of ${creditsPerBuild}`);
     }
   }
 
@@ -140,22 +169,80 @@ export function planProblems({
 }
 
 /**
- * Rule 4: every quota a user reads equals the enforced one.
+ * Tags that end a clause: a list item, a paragraph, a heading, a table row, a line break. Cells (td, th) and inline
+ * tags (strong, span, a) do not: "<td>Free</td><td>5 Credits a day</td>" is one clause, and "<strong>Max</strong>: 20" too.
+ */
+const CLAUSE_TAG = /<\/?(?:li|ul|ol|dl|dt|dd|p|tr|thead|tbody|table|br|hr|h[1-6]|div|section|article|header|footer|summary|details|figure|figcaption|blockquote)\b[^>]*>/gi;
+/** Where a clause ends: a sentence stop, a comma, a line break (every clause tag becomes one) or an interpolation. */
+const CLAUSE_END = /[.!?;,](?=\s)|\n|[{}]/;
+/** How far either side of a figure is read for the plan it belongs to. */
+const CLAUSE_REACH = 160;
+
+/**
+ * The plans named in the clause a claim sits in, as the plan(s) the claim is about: the NEAREST plan name, whether it
+ * comes before the figure ("Free: 5 Credits a day") or after it ("5 Credits a day (Free)", "5 Credits a day on Free,
+ * 20 on Pro"). Two names at the same distance are both returned, and the claim is held to either: a clause that is
+ * truly ambiguous must not be reported against the wrong plan.
+ *
+ * @returns {string[]} plan names, [] when the clause names none
+ */
+function plansOfClaim(text, start, end, named) {
+  const words = (raw) => raw.replace(CLAUSE_TAG, '\n').replace(/<[^>]*>/g, ' ');
+  const before = words(text.slice(Math.max(0, start - CLAUSE_REACH), start)).split(CLAUSE_END).pop() ?? '';
+  // A claim inside an attribute ("<span title=\"5 Credits a day\">Pro</span>") ends where its tag does.
+  let rest = text.slice(end, end + CLAUSE_REACH);
+  const close = rest.indexOf('>');
+  if (close !== -1 && (rest.indexOf('<') === -1 || close < rest.indexOf('<'))) rest = rest.slice(0, close);
+  const after = words(rest).split(CLAUSE_END)[0] ?? '';
+  const prev = [...before.matchAll(named)].pop();
+  const next = [...after.matchAll(named)][0];
+  const dPrev = prev ? before.length - (prev.index + prev[0].length) : Infinity;
+  const dNext = next ? next.index : Infinity;
+  if (dPrev === Infinity && dNext === Infinity) return [];
+  if (dPrev < dNext) return [prev[1]];
+  if (dNext < dPrev) return [next[1]];
+  return [prev[1], next[1]];
+}
+
+/**
+ * Rule 4: every quota a user reads equals the enforced one, FOR ITS PERIOD AND ITS PLAN.
  *
  * A page promising a number the ledger does not grant is a page that lies, and the user finds out
  * at the moment they hit the wall. Numbers are matched only in a Credits context, so an unrelated
  * 400 in a CSS rule is not a false positive.
  *
+ * THE PERIOD IS PART OF THE CLAIM. This read one set of figures for both ("Max gives 300 Credits a
+ * day" passed, because 300 is Max's MONTH), and a claim that NAMES a plan is held to that plan's own
+ * figure ("Free gives 30 Credits a day" passed, because 30 is Max's day).
+ *
+ * THE PLAN IS THE NEAREST PLAN NAME IN THE CLAIM'S OWN CLAUSE, ON EITHER SIDE (plansOfClaim). It was the last name
+ * BEFORE the figure, which reported correct copy that puts the plan after it ("<li>5 Credits a day (Free)</li>"
+ * under a Pro item) and said nothing about a wrong figure with its plan after it ("30 Credits a day (Free)").
+ *
  * @param {{rel: string, src: string}[]} files
- * @param {Set<number>} enforced every figure some plan actually grants
+ * @param {object} enforced
+ * @param {Set<number>} enforced.day    every figure some plan grants a day
+ * @param {Set<number>} enforced.month  every figure some plan grants a month
+ * @param {Record<string, {day: number, month: number}>} [enforced.plans]  by the name copy uses ("Free", "Pro", "Max")
  */
 export function copyProblems(files, enforced) {
   const problems = [];
+  const names = Object.keys(enforced.plans ?? {});
+  const named = names.length ? new RegExp(`\\b(${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'g') : null;
   for (const { rel, src } of files) {
-    for (const m of stripComments(src).matchAll(CREDIT_CLAIM)) {
+    const text = stripComments(src);
+    for (const m of text.matchAll(CREDIT_CLAIM)) {
+      const period = creditPeriod(m);
+      if (period === null) continue;
       const claimed = Number(m[1].replace(/,/g, ''));
-      if (!enforced.has(claimed)) {
-        problems.push(`${rel} states ${claimed} Credits a ${m[2]}, which no plan grants`);
+      if (!enforced[period].has(claimed)) {
+        problems.push(`${rel} states ${claimed} Credits a ${period}, which no plan grants a ${period}`);
+        continue;
+      }
+      if (!named) continue;
+      const plans = plansOfClaim(text, m.index, m.index + m[0].length, named);
+      if (plans.length && plans.every((plan) => enforced.plans[plan][period] !== claimed)) {
+        problems.push(`${rel} states ${claimed} Credits a ${period} for ${plans[0]}, which grants ${enforced.plans[plans[0]][period]} a ${period}`);
       }
     }
   }
@@ -176,6 +263,74 @@ export function termProblems(files) {
     for (const re of FOREVER) {
       const hit = re.exec(text);
       if (hit) problems.push(`${rel} promises "${hit[0]}" — a contractual term, and this product now has subscriptions`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Rule 6: what is enforced is what the table says, in the ledger's unit.
+ *
+ * The plan table is in credits (what a person is shown) and PLAN_LIMITS is in ledger units (what
+ * QuotaDO counts), INTERNAL_PER_CREDIT of them to a credit. They are one set of numbers only while
+ * the second is derived from the first; this is the check that says so, handed both tables, so a
+ * limit edited in one place and not the other is reported with both figures.
+ *
+ * @param {object} o
+ * @param {string[]} o.planIds
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.table credits
+ * @param {Record<string, {creditsPerDay: number, creditsPerMonth: number}>} o.limits ledger units
+ * @param {number} o.internalPerCredit
+ * @returns {string[]}
+ */
+export function limitProblems({ planIds, table, limits, internalPerCredit }) {
+  const problems = [];
+  for (const id of planIds) {
+    for (const [field, per] of [['creditsPerDay', 'day'], ['creditsPerMonth', 'month']]) {
+      const want = table[id][field] * internalPerCredit;
+      if (limits[id][field] !== want) {
+        problems.push(
+          `${id} is enforced at ${limits[id][field]} ledger units a ${per}, but its plan table says ` +
+          `${table[id][field]} credits a ${per}, which is ${want}`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * A monthly price in copy: "$9.99 a month", "$12/month", "$12 / month", "$24.99 per month", "$12 each month",
+ * "$12 every month", "$12 USD a month", "$12 monthly", "$12 billed monthly" (with or without a comma before it),
+ * "$12 per user per month" (and per seat, member, person or account), and a price with one decimal ("$12.5 a
+ * month"). Any space may be a no-break one (SPACE). The separator is optional only before "monthly", which says it
+ * by itself.
+ */
+export const PRICE_CLAIM = new RegExp(
+  String.raw`\$(\d(?:[\d,]*\d)?(?:\.\d{1,2})?)(?:${SPACE}*USD)?,?${SPACE}*` +
+  String.raw`(?:${EACH.replace(`(?:an?|per|each|every)`, `(?:a|per|each|every)`)}(?:(?:user|seat|member|person|account)s?${SPACE}*${EACH})?(?:month|mo\b)` +
+  String.raw`|(?:billed${SPACE}+)?monthly)`,
+  'gi',
+);
+
+/**
+ * Rule 7: a monthly price a page states is a price some plan charges.
+ *
+ * A price typed into copy is a price free to outlive the plan table: the site said $12 and $40 a
+ * month after the owner had decided $9.99 and $24.99. Prices are matched only in a "per month"
+ * context, so a dollar figure for AI compute ("$0.05") is not a plan price.
+ *
+ * @param {{rel: string, src: string}[]} files
+ * @param {Set<number>} prices every monthly price some plan charges
+ */
+export function priceProblems(files, prices) {
+  const problems = [];
+  for (const { rel, src } of files) {
+    for (const m of stripComments(src).matchAll(PRICE_CLAIM)) {
+      const claimed = Number(m[1].replace(/,/g, ''));
+      if (!prices.has(claimed)) {
+        problems.push(`${rel} states $${m[1]} a month, which no plan charges`);
+      }
     }
   }
   return problems;

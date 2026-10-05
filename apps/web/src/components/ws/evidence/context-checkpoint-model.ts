@@ -5,7 +5,7 @@
  * `checkpoint`, a sent `ChatAttachment`) and returns null/empty when they are absent. Unknown is
  * "unavailable", never zero. Pure and DOM-free.
  */
-import type { CheckpointMeta, ChatAttachment } from '@studpilot/shared';
+import { creditsText, type CheckpointMeta, type ChatAttachment } from '@studpilot/shared';
 import { contextBudgetLabel, contextFill, contextOverBudget, type ContextBudget } from '../context-model';
 
 export interface ContextView {
@@ -13,7 +13,7 @@ export interface ContextView {
   budget: { label: string; fill: number; over: boolean } | null;
   /** Dropped-turns note; only when the worker said turns were removed. */
   dropped: string | null;
-  /** null = unknown (absent, not a number, or negative). */
+  /** null = unknown (absent, not a number, or negative). In credits: the worker's ledger units divided down. */
   credits: string | null;
 }
 
@@ -21,7 +21,7 @@ export function contextView(context: ContextBudget | undefined | null, creditsSp
   const label = contextBudgetLabel(context);
   const fill = contextFill(context);
   const credits = typeof creditsSpent === 'number' && Number.isFinite(creditsSpent) && creditsSpent >= 0
-    ? `${creditsSpent} ${creditsSpent === 1 ? 'Credit' : 'Credits'} spent`
+    ? `${creditsText(creditsSpent)} Credits spent`
     : null;
   if (label === null && credits === null) return null;
   const d = context?.dropped;

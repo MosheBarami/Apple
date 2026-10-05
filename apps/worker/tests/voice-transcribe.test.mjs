@@ -40,7 +40,7 @@ function wav(seconds, rate = 16000) {
 }
 const b64 = (u8) => Buffer.from(u8).toString('base64');
 
-function harness({ credits = 60, aiResult = { text: ' build me a red tower', transcription_info: { duration: 2 } }, key, budgetOk = true } = {}) {
+function harness({ credits = 60, state = null, aiResult = { text: ' build me a red tower', transcription_info: { duration: 2 } }, key, budgetOk = true } = {}) {
   const log = [];
   const touched = [];
   const forbidden = (name) => new Proxy({}, { get() { touched.push(name); throw new Error(`${name} must not be touched`); } });
@@ -54,7 +54,7 @@ function harness({ credits = 60, aiResult = { text: ' build me a red tower', tra
     } }) },
     QUOTA_DO: { idFromName: (n) => n, get: () => ({ async fetch(url, init) {
       const path = new URL(url).pathname; log.push({ at: `quota${path}`, ...(init?.body ? JSON.parse(init.body) : {}) });
-      if (path === '/state') return Response.json({ creditsRemaining: credits });
+      if (path === '/state') return Response.json(state ?? { creditsRemaining: credits });
       return Response.json({ ok: true });
     } }) },
     KV: forbidden('KV'), MEDIA: forbidden('MEDIA'), CORPUS: forbidden('CORPUS'), SESSION_DO: forbidden('SESSION_DO'),
@@ -162,6 +162,18 @@ test('no Credits left: 402 and no provider runs', async () => {
   const { res } = await run(post(wav(1)), h.env, 'u1');
   assert.equal(res.status, 402);
   assert.ok(!h.log.some((l) => l.at === 'ai' || l.at === '/reserve'));
+});
+
+test('no Credits left: the message names the limit that binds and its real refill time', async () => {
+  const day = await run(post(wav(1)), harness({ credits: 0 }).env, 'u1');
+  assert.equal(day.body.error, 'Your Credits are used up for today. They refill at midnight UTC. You can still type.');
+
+  // Free's month used up (the day still has credits): midnight refills nothing.
+  const monthBound = { creditsRemaining: 0, creditsDaily: 750, creditsUsedToday: 10, creditsMonthly: 4500, creditsUsedThisMonth: 4500, resetsAtIso: new Date(Date.now() + 3600_000).toISOString() };
+  const month = await run(post(wav(1)), harness({ state: monthBound }).env, 'u1');
+  const name = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+  assert.equal(month.res.status, 402);
+  assert.equal(month.body.error, `Your Credits are used up for this month. They refill on 1 ${name} at 00:00 UTC. You can still type.`);
 });
 
 test('a refused global reservation means the provider is never called', async () => {

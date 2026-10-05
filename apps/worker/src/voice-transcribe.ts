@@ -22,6 +22,7 @@
 // the duration this worker MEASURED by decoding the WAV — never from a number the client sent.
 import type { Env } from './env';
 import { decodeWav, durationSeconds, isAudioFault } from './audio';
+import { quotaLimit, type QuotaState } from '@studpilot/shared';
 import { creditsForNeurons, USD_PER_NEURON } from './pricing';
 import { ASR_MODEL, transcribe, type SpeechProvider } from './speech';
 import { BudgetError } from './gateway';
@@ -210,9 +211,11 @@ export async function handleVoiceTranscribe(req: Request, env: Env, userId: stri
   // Affordability before any provider runs; the charge itself follows the measured work.
   const est = creditsForNeurons(neuronsFor(order[0]!, seconds));
   const stateRes = await quota(env, userId).fetch('https://do/state');
-  const state = (await stateRes.json().catch(() => null)) as { creditsRemaining?: number; unmetered?: boolean } | null;
+  const state = (await stateRes.json().catch(() => null)) as Partial<QuotaState> | null;
   if (!state || (state.unmetered !== true && !((state.creditsRemaining ?? 0) >= est))) {
-    return json({ error: 'Your Credits are used up for today. They refill at midnight UTC. You can still type.', reason: 'quota' }, 402);
+    // The limit that binds, not always the day: Free's month is used up in six days and midnight refills nothing then.
+    const limit = quotaLimit(state);
+    return json({ error: `Your Credits are used up for ${limit.window}. They refill ${limit.refillWhen}. You can still type.`, reason: 'quota' }, 402);
   }
 
   let result: TranscriptResult | null = null;
