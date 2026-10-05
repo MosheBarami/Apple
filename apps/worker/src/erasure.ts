@@ -15,21 +15,34 @@
 // and printed in the receipt — because the alternative is a green tick beside a row that is still
 // there, and that is worse than no deletion at all: the person stops asking.
 //
-// WHAT THE WORKER CANNOT REACH, AND WHY. Everything this worker does against Postgres goes through
-// the CALLER'S OWN JWT so RLS applies (see supa.ts). `projects` has a `for all` policy, so a person
-// can delete their own projects and Postgres cascades messages, checkpoints, pairings, memberships
-// and membership history with them. No other table has a delete policy for its owner, and there is
-// no service-role credential in `Env` — so `profiles`, `usage_events`, `feedback`, `waitlist` and
-// the `auth.users` identity itself are beyond this route. A DELETE against them would not error; it
-// would affect zero rows and return 200, which is the exact shape of a failure that renders as a
-// success. So they are not attempted. They are named.
+// WHAT THE WORKER DOES AGAINST POSTGRES. Everything it does there goes through the CALLER'S OWN JWT so
+// RLS applies (see supa.ts). `projects` has a `for all` policy, so a person can delete their own
+// projects and Postgres cascades messages, checkpoints, pairings, memberships and membership history
+// with them. No other table has a delete policy for its owner, so a DELETE against `profiles`,
+// `usage_events`, `feedback` or `waitlist` would not error; it would affect zero rows and return 200,
+// which is the exact shape of a failure that renders as a success. They are not attempted that way.
+//
+// THE SIGN-IN IDENTITY (owner decision D-14, 2026-10-05). The worker now holds a Supabase secret key
+// (roblox-oauth.ts, where every use of it lives), and the LAST step of a deletion uses it to delete
+// the `auth.users` row with the Auth admin API. Postgres then cascades what hangs from it, read from
+// the live schema on 2026-10-05 (planning/proof/M2/LEGAL-CLAIMS.md section 9): `profiles` (id
+// references auth.users on delete cascade), and through it the projects and everything under them, the
+// memberships and the pairings. `feedback` and `waitlist` are set to null by their own constraints, and
+// `usage_events` is detached by migration 0015 so that deleting the user does NOT cascade the ledger
+// away. What the deletion keeps is in `ACCOUNT_RESIDUE`.
+//
+// ORDER AND FAILURE. Discord is unlinked first (through the Discord Durable Object, as Settings does),
+// then everything else, and the Supabase account goes LAST and ONLY WHEN NOTHING BEFORE IT FAILED: a
+// person whose deletion half-ran must still be able to sign in and run it again, and the sign-in is
+// the thing that lets them. A failed unlink or a failed account deletion is a failed step, so the
+// receipt is incomplete and the route answers 207; a re-run is safe at every point (see the route).
 import type { Env, AuthedUser } from './env';
 import { supaRest } from './supa';
 import { ensureApiKeyTables } from './api-keys';
 import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
-import { ensureRobloxOAuthTables, revokeStoredRobloxGrant } from './roblox-oauth';
+import { deleteSignInIdentity, ensureRobloxOAuthTables, revokeStoredRobloxGrant } from './roblox-oauth';
 import { ensureMemoryTables } from './memory-store';
 import { ensureNotificationTables } from './notification-store';
 import { ensureProvenanceTables } from './provenance';
@@ -66,7 +79,7 @@ export interface ErasureReceipt {
   residue: readonly Residue[];
   /** False whenever any step failed. Never inferred from the absence of an exception. */
   complete: boolean;
-  /** THE HONEST HEADLINE: the sign-in identity is not removed by this route. */
+  /** THE HONEST HEADLINE: true only when the Supabase account was removed (or Auth said it was already gone). */
   accountRemoved: boolean;
   summary: string;
 }
@@ -74,10 +87,10 @@ export interface ErasureReceipt {
 /**
  * Everything a deletion leaves behind, with the reason it is left.
  *
- * Not a disclaimer — a worklist. Each line is either something the worker structurally cannot do
- * (no service-role credential) or something the business keeps on purpose (financial records).
- * Anything that is here for the FIRST reason stops being true the day a service-role credential
- * exists, and the line should move to the deletion rather than be quietly reworded.
+ * Not a disclaimer — a worklist. Each line is something this deletion does not reach or keeps on
+ * purpose (financial records, correspondence, other people's projects). Two lines that were here
+ * because the worker held no service-role credential (the sign-in identity, with the account row, and
+ * the Discord link) moved into the deletion when it gained one, as this comment said they should.
  */
 export const ACCOUNT_RESIDUE: readonly Residue[] = [
   {
@@ -85,49 +98,50 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     why: 'A preview already running can finish after the cache sweep and remain for up to one hour. The deleted-project fence prevents image retrieval through StudPilot.',
   },
   {
-    store: 'd1', target: 'generated_image_tombstones — deleted project identifiers',
+    store: 'd1',
+    target: 'generated_image_tombstones — deleted project identifiers',
     why: 'Only deleted project IDs are retained, without images or account details, to prevent an in-flight generation from recreating deleted images.',
-  },
-  {
-    store: 'postgres',
-    target: 'auth.users — your sign-in identity',
-    why:
-      'Removing a login takes a Supabase secret key. This worker holds one only to sign people in with ' +
-      'Roblox and never uses it to delete an account. Its other database queries carry your own token, so ' +
-      'row-level security applies, apart from a few narrow database functions that carry nobody\'s token: one ' +
-      'for visitors who open a share link, the rest for passing on membership changes. Your data is gone; the ' +
-      'empty account can still sign in until an operator removes it. An account made with Roblox also still ' +
-      'holds your Roblox user id and username there (they are how the account is found at sign-in); the ' +
-      'operator removes them with it.',
-  },
-  {
-    store: 'postgres',
-    target: 'public.profiles — the account row itself',
-    why:
-      'Its display name has been cleared and its consent flag reset to off, which is everything in the row ' +
-      'that describes you. Nothing acts on that flag while the training gate is closed, although a data ' +
-      'export still includes it. The row is anchored to the sign-in identity above and goes when that does.',
   },
   {
     store: 'postgres',
     target: 'public.usage_events — what your runs cost',
     why:
-      'The credit ledger behind invoices already issued. It is kept as an accounting record and has ' +
-      'no delete policy for its owner, so this route does not pretend to have removed it.',
+      'The credit ledger behind invoices already issued. It is kept as an accounting record, keyed by your account id, ' +
+      'which after this deletion belongs to no account (a database migration stops the ledger being removed with the ' +
+      'account). It has no delete policy for its owner, so this route does not pretend to have removed it.',
   },
   {
     store: 'postgres',
     target: 'public.feedback — bug reports and support messages you sent',
     why:
-      'They are part of a conversation with support that may still be open, and the table has no ' +
-      'owner delete policy. They stop pointing at you when the account row goes.',
+      'They are part of a conversation with support that may still be open. Deleting the account clears the link ' +
+      'to it (the database sets it to null), so they no longer point at you; their text stays, and so does anything ' +
+      'you wrote in it. The table has no owner delete policy.',
   },
   {
     store: 'postgres',
-    target: 'public.project_members and public.membership_events on OTHER people\'s projects',
+    target: 'public.waitlist — an email address left on the old waitlist, if you joined it',
     why:
-      'Your grants on projects you do not own are administered by those projects\' owners, and ' +
-      'removing them is their write, not yours. Ask the owner, or let the account removal cascade them.',
+      'The waitlist is closed and nothing reads or writes it now. If you ever joined it, the row holds the email ' +
+      'address you gave. Deleting the account clears the link to your account (the database sets it to null) but ' +
+      'not the address, which this route cannot delete with your own token. Ask support and it will be removed.',
+  },
+  {
+    store: 'kv',
+    target: 'share-link access you were given on projects other people own',
+    why:
+      'Your membership rows in the database go with the account. Access you were given by opening a share link is ' +
+      'recorded in storage under that project, which this deletion cannot search by person, so it stays there until ' +
+      'the project\'s owner removes it or the link\'s own expiry passes. It is of no use without a sign-in, and ' +
+      'yours is what this deletion removes last.',
+  },
+  {
+    store: 'postgres',
+    target: 'public.membership_events — what you did on projects other people own',
+    why:
+      'History entries in which you added, changed or removed somebody on a project you do not own are part of that ' +
+      'project\'s record. They stay, with your account cleared from them (the database sets it to null). The entries ' +
+      'about you as the person affected go with the account.',
   },
   {
     store: 'do',
@@ -142,8 +156,8 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     why:
       'Every request to a Cloudflare-hosted model (voice recordings aside) is logged by Cloudflare AI Gateway with its prompt and reply, labelled with the kind ' +
       'of call and the model, not with an account id (a project identifier travels with the call as a routing hint). This ' +
-      'route does not reach it, and how long entries stay is a setting of the gateway in Cloudflare, not something this ' +
-      'worker deletes.',
+      'route does not reach it. An entry is kept for 30 days and then deleted: a daily step of this worker removes ' +
+      'the older ones.',
   },
   {
     store: 'do',
@@ -154,14 +168,6 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
       'that trips the abuse check; the analytics opt-out covers only the entry for each request and the ' +
       'error entry for a request that failed) and are then evicted by the log\'s own retention sweep. ' +
       'Deleting them selectively would break the audit trail they exist for.',
-  },
-  {
-    store: 'do',
-    target: 'DiscordDO — the link to a Discord account',
-    why:
-      'If you linked a Discord account, the link (your Discord user id, your account id, and the id and ' +
-      'name of the project it was made for) stays until you unlink it, in Settings or with /unlink in ' +
-      'Discord. This route does not remove it, so unlink first if you want it gone.',
   },
   {
     store: 'd1',
@@ -441,16 +447,46 @@ export async function eraseAccountData(
   steps.push(await erasePostgresProjects(env, user));
   steps.push(await minimiseProfile(env, user));
 
-  //[[ THE ROBLOX LINK IS THE LAST THING SWEPT, AND ONLY WHEN EVERYTHING ELSE WENT.
+  // 4. DISCORD, through the Discord Durable Object, the way Settings' unlink does. Before the sign-in goes: a link to an account
+  //    that has been deleted is a pass to spend nothing for nobody, but it is also the person's Discord id kept for no reason.
+  steps.push(await eraseDiscordLink(env, user.userId));
+
+  //[[ THE ROBLOX LINK GOES WITH THE ACCOUNT, AND ONLY WHEN EVERYTHING ELSE WENT.
   //
   //   An account that signs in only with Roblox has no password, so the route lets it export or delete only inside ten minutes of a
   //   Roblox re-authentication, and that proof is a column of this very row (`reauth_at`); the re-authentication itself needs the
   //   row too, since it never makes an account. This sweep used to come before the Postgres steps. When one of them failed the
   //   route answered 207 "run it again", the row was already gone, and the retry answered 403 `reauth_required` that no
   //   re-authentication could ever satisfy: the part that failed could not be finished. So the row stays while any other step has
-  //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one. ]]
+  //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one.
+  //
+  //   THE SUPABASE ACCOUNT IS DELETED BEFORE THIS ROW IS SWEPT, and for the same reason: if Auth cannot be reached the row is still
+  //   there, so a Roblox-only account can confirm it is them and run the deletion again. The one gap, a sweep that fails after Auth
+  //   has already gone, leaves a failed step on the receipt and a row that the next Roblox sign-in drops as stale (`findLinked`). ]]
   const othersFailed = steps.some((s) => s.status === 'failed');
-  const holdsLink = othersFailed && (await robloxLinkHeld(env, user.userId));
+  let accountRemoved = false;
+  if (othersFailed) {
+    // THE SIGN-IN STAYS WHEN ANYTHING BEFORE IT FAILED: it is how the person gets back in to run this again. Said as a failed step,
+    // because the sign-in identity is still there and the receipt is not complete.
+    steps.push({
+      store: 'postgres',
+      target: 'auth.users — your sign-in identity (and your account row with it)',
+      status: 'failed',
+      rows: null,
+      detail: 'Not removed yet, on purpose: another step failed, and your sign-in is what lets you run the deletion again. It is removed in the run that finishes everything else.',
+    });
+  } else {
+    const gone = await deleteSignInIdentity(env, user.userId);
+    accountRemoved = gone.status !== 'failed';
+    steps.push({
+      store: 'postgres',
+      target: 'auth.users — your sign-in identity (and your account row with it)',
+      status: accountRemoved ? 'erased' : 'failed',
+      rows: gone.status === 'deleted' ? 1 : gone.status === 'already_gone' ? 0 : null,
+      detail: gone.detail,
+    });
+  }
+  const holdsLink = !accountRemoved && (await robloxLinkHeld(env, user.userId));
   steps.push(
     holdsLink
       ? {
@@ -464,20 +500,62 @@ export async function eraseAccountData(
   );
 
   const failed = steps.filter((s) => s.status === 'failed');
+  const authStep = steps.find((s) => s.target.startsWith('auth.users'));
   return {
     subject: user.userId,
     at,
     steps,
     residue: ACCOUNT_RESIDUE,
     complete: failed.length === 0,
-    accountRemoved: false,
+    accountRemoved,
     summary:
       failed.length === 0
         ? `Your data has been deleted from ${new Set(steps.map((s) => s.store)).size} stores and cannot be recovered. ` +
-          `Your sign-in still exists and is empty — see what is left, below, and why.`
+          (authStep?.rows === 0
+            ? 'Your sign-in had already been removed. '
+            : 'Your sign-in has been removed too, so this account cannot be used again. ') +
+          `See what is left, below, and why.`
         : `${failed.length} of ${steps.length} stores could not be cleared: ${failed.map((s) => s.target).join(', ')}. ` +
-          `Everything else listed as erased is gone for good. Ask support to finish the rest; nothing here will retry on its own.`,
+          `Everything else listed as erased is gone for good. ` +
+          (accountRemoved
+            ? 'Your sign-in was removed, so the rest needs support.'
+            : 'Your sign-in is still there so that you can run the deletion again; it is safe to repeat, and it finishes what is left.'),
   };
+}
+
+/**
+ * Unlink Discord for this account, through the Discord Durable Object and the route Settings' unlink uses (`/unlink` with the
+ * account id), then READ BACK that no link is left: an unlink that answered success while the link can still be read would be a
+ * receipt that says something the object does not. `removed: false` with nothing left to read is "there was no link", and is done.
+ * A missing binding, an object that errors, an answer that cannot be read and a link still there are each a failed step.
+ */
+async function eraseDiscordLink(env: Pick<Env, 'DISCORD_DO'>, userId: string): Promise<ErasureStep> {
+  const target = 'DiscordDO — the link to a Discord account';
+  const failed = (detail: string): ErasureStep => ({ store: 'do', target, status: 'failed', rows: null, detail });
+  try {
+    if (!env.DISCORD_DO) return failed('The Discord link store is not available on this deployment, so it could not be checked. Run the deletion again.');
+    const stub = env.DISCORD_DO.get(env.DISCORD_DO.idFromName('singleton'));
+    const res = await stub.fetch('https://do/unlink', { method: 'POST', body: JSON.stringify({ appleUserId: userId }) });
+    if (!res.ok) return failed(`The Discord link could not be removed (unlink returned ${res.status}). Run the deletion again.`);
+    const answer = (await res.json().catch(() => null)) as { removed?: unknown; codesRemoved?: unknown } | null;
+    if (!answer || typeof answer.removed !== 'boolean') return failed('The Discord link store gave an answer that could not be read. Run the deletion again.');
+    const check = await stub.fetch(`https://do/link-for-owner?appleUserId=${encodeURIComponent(userId)}`);
+    const left = check.ok ? ((await check.json().catch(() => undefined)) as { link?: unknown } | undefined)?.link : undefined;
+    if (left === undefined) return failed('The Discord link was removed, but a check afterwards could not be made. Run the deletion again.');
+    if (left !== null) return failed('The Discord link is still there after the unlink. Run the deletion again.');
+    const codes = typeof answer.codesRemoved === 'number' ? answer.codesRemoved : 0;
+    return {
+      store: 'do',
+      target,
+      status: 'erased',
+      rows: (answer.removed ? 1 : 0) + codes,
+      detail:
+        (answer.removed ? 'The link to your Discord account was removed.' : 'No Discord account was linked.') +
+        (codes > 0 ? ` ${codes} unused link code${codes === 1 ? ' was' : 's were'} withdrawn.` : ''),
+    };
+  } catch (err) {
+    return failed(`The Discord link could not be removed (${String((err as Error)?.message ?? err)}). Run the deletion again.`);
+  }
 }
 
 /** Is there a Roblox link to keep for this person? A lookup that throws is answered "yes": a link that could not be looked at is kept, not swept, and the receipt still goes out. */

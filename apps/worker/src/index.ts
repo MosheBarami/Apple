@@ -3454,10 +3454,17 @@ app.get('/api/me/export', async (c) => {
  *      project-scoped store would hand back a receipt that looks finished.
  *   3. THE RECEIPT IS THE PRODUCT. Counts per store, from the stores; the Postgres step re-reads to
  *      confirm; and everything that survives is listed with the reason.
- *   4. IT DOES NOT SAY THE ACCOUNT IS GONE. The sign-in identity lives in `auth.users` and removing
- *      it needs a service-role credential this worker deliberately does not hold. `accountRemoved`
- *      is false and the residue says so in words, because "your account has been deleted" beside a
- *      login that still works is the lie this whole file exists to avoid.
+ *   4. IT SAYS THE ACCOUNT IS GONE ONLY WHEN SUPABASE SAID SO. The sign-in identity lives in
+ *      `auth.users`; since 2026-10-05 (owner decision D-14) the LAST step of the deletion removes it
+ *      with the Auth admin API, after Discord was unlinked and every other store had been swept, and
+ *      only when none of them failed. `accountRemoved` is true only then, so "your account has been
+ *      deleted" never sits beside a login that still works. A failed unlink or a failed removal is a
+ *      failed step: the receipt is incomplete and the route answers 207.
+ *
+ * IT CAN BE RUN AGAIN at any point. After a part-finished run the sign-in is still there (it goes
+ * last, and only when nothing failed), so the same person can sign in and repeat the request, and
+ * every step is a no-op over what is already gone. After a finished run the same call finds no
+ * projects, nothing to sweep and Auth answering "no such user", and reports that as done.
  *
  * GET on the same path is the status: what was requested, when, how much succeeded, and what is
  * still outstanding.

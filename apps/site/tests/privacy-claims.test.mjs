@@ -105,17 +105,20 @@ test('the policy no longer says this product takes no payments', () => {
   }
 });
 
-test('nothing the deletion path cannot reach is described as deleted', () => {
-  // The residue is what erasure.ts could not remove with the credentials it holds. Each of these
-  // has to be ACKNOWLEDGED on the page — the old copy listed two of them as things deletion takes.
+test('nothing the deletion path does not remove is described as deleted, and what it now removes (the sign-in) is not described as surviving', () => {
+  // The residue is what erasure.ts keeps. Each of these has to be ACKNOWLEDGED on the page — the old copy listed two of them as
+  // things deletion takes. The sign-in identity is no longer one of them (owner decision D-14): the last step deletes it, so the
+  // pages say deletion removes it, and the residue must not name it.
   const residue = [
-    { keeps: 'the sign-in identity', mustSay: /sign-in|log in|login/i },
     { keeps: 'the usage ledger', mustSay: /usage ledger|credit ledger|billing record|accounting/i },
   ];
   assert.match(erasure, /ACCOUNT_RESIDUE/, 'erasure.ts no longer declares a residue — re-check this test');
-  assert.match(erasure, /auth\.users/, 'the residue no longer names the sign-in identity');
+  assert.match(erasure, /deleteSignInIdentity\(env, user\.userId\)/, 'erasure.ts no longer deletes the sign-in identity: the pages say deletion removes it');
   assert.match(erasure, /usage_events/, 'the residue no longer names the usage ledger');
+  assert.doesNotMatch(erasure.slice(erasure.indexOf('export const ACCOUNT_RESIDUE'), erasure.indexOf('];', erasure.indexOf('export const ACCOUNT_RESIDUE'))), /target: 'auth\.users/, 'the residue lists the sign-in identity, which this deletion removes');
   for (const [where, text] of PAGES) {
+    assert.match(text, /deletes your sign-in/i, `${where} does not say that deleting the account deletes the sign-in`);
+    assert.doesNotMatch(text, /sign-in identity[^.]{0,80}(can still log in|until an operator removes it)|until an operator removes it/i, `${where} still says the sign-in survives until an operator removes it`);
     for (const r of residue) {
       assert.match(text, r.mustSay, `${where} does not account for ${r.keeps}, which a deletion leaves behind`);
     }
@@ -369,15 +372,17 @@ test('Google and Discord sign-in are described conditionally while the app does 
 test('the Supabase secret key is described by what it does: used in one file, for the Auth admin calls the pages name, and the "no master key" claim is gone', () => {
   const users = WORKER_SRC.filter((f) => /SUPABASE_SECRET_KEY/.test(code(f))).map((f) => f.slice(WORKER.length + 1)).sort();
   assert.deepEqual(users, ['src/env.ts', 'src/roblox-oauth.ts'], 'the Supabase secret key is read somewhere else now: the pages say it is used in one place');
-  const calls = [...code(join(WORKER, 'src', 'roblox-oauth.ts')).matchAll(/admin\(env, cfg, '([A-Z]+)', (['`])([^'`]+)\2/g)]
+  const calls = [...code(join(WORKER, 'src', 'roblox-oauth.ts')).matchAll(/admin\(env, (?:cfg|auth), '([A-Z]+)', (['`])([^'`]+)\2/g)]
     .map((m) => `${m[1]} ${m[3].replace(/\$\{[^}]*\}/g, '')}`).sort();
-  assert.deepEqual(calls, ['GET /users/', 'POST /generate_link', 'POST /users'], 'the Auth admin calls changed: the pages name exactly what the key is used for');
+  assert.deepEqual(calls, ['DELETE /users/', 'GET /users/', 'POST /generate_link', 'POST /users'], 'the Auth admin calls changed: the pages name exactly what the key is used for');
   for (const [where, text] of BOTH) {
     assert.match(text, /create the account/, `${where} does not say the key creates the account`);
     assert.match(text, /read that account's sign-in address/, `${where} does not say the key reads the sign-in address`);
     assert.match(text, /one-time (sign-in )?link/, `${where} does not say the key issues the one-time link`);
+    assert.match(text, /delete your account there when you delete it/, `${where} does not say the key deletes the account when its owner deletes it`);
     assert.match(text, /not used (to read or write your projects or any other table|for your projects or any other table)/, `${where} does not say what the key is not used for`);
     assert.doesNotMatch(text, /no master key|hold(s)? no (master|service|secret)|no service[- ]role/i, `${where} still says the server holds no master key`);
+    assert.doesNotMatch(text, /not to delete accounts|and not used to delete/i, `${where} still says the key is not used to delete accounts`);
   }
 });
 
@@ -438,7 +443,7 @@ function survivorSection(raw, marker) {
 }
 const SURVIVORS = [['/privacy', survivorSection(policy, 'Some things survive deletion')], ['/docs/privacy-and-data', survivorSection(docs, 'Some things outlive that')]];
 
-test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTION of both pages, and what the receipt says about the Roblox data is what the pages say', () => {
+test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTION of both pages, and what the deletion now removes (the sign-in, the account row, the Discord link) is not described as surviving', () => {
   const residue = RECEIPT.ACCOUNT_RESIDUE;
   const targets = residue.map((r) => r.target);
   assert.ok(targets.length >= 12, `only ${targets.length} residue entries were read out of erasure.ts`);
@@ -447,15 +452,14 @@ test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTIO
   const ACKNOWLEDGED_AS = [
     ['in-flight temporary image previews', /temporary image previews/i],
     ['generated_image_tombstones', /deleted[- ]project (id|identifier)/i],
-    ['auth.users', /sign-in identity/i],
-    ['public.profiles', /account row/i],
     ['public.usage_events', /usage ledger/i],
     ['public.feedback', /support messages/i],
-    ['public.project_members', /other people's projects|projects other people own/i],
+    ['public.waitlist', /old <?s?t?r?o?n?g?>?waitlist|waitlist/i],
+    ['share-link access', /share link/i],
+    ['public.membership_events', /history entries/i],
     ['QuotaDO', /subscription records/i],
     ['AI Gateway', /AI Gateway log|model-call log/i],
     ['AdminDO', /request log,? for up to 30 days/i],
-    ['DiscordDO', /Discord link/i],
     ['account_deletions', /record of this deletion/i],
     ['SessionDO of projects other people own', /comments, reviews and messages you added/i],
   ];
@@ -467,17 +471,19 @@ test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTIO
     assert.ok(text.length > 300, `${where}: the survivor section is empty or was not found`);
     for (const [key, re] of ACKNOWLEDGED_AS) assert.match(text, re, `${where}: the section about what survives a deletion does not acknowledge what ${key} keeps`);
     assert.doesNotMatch(text, /two things (survive|outlive)/i, `${where} still says only two things survive a deletion`);
-    assert.match(text, /Roblox user id and username/, `${where} does not say a Roblox account's sign-in identity still holds the Roblox id and username`);
+    // WHAT THE LAST STEPS NOW REMOVE: none of these may be listed as surviving (owner decision D-14).
+    assert.doesNotMatch(text, /sign-in identity|account row|Discord link|Roblox user id and username|until an operator removes/i, `${where}: the survivor section lists something the deletion now removes (the sign-in identity, the account row or the Discord link)`);
   }
-  // THE RECEIPT'S OWN WORDS, read from the evaluated residue (not from the source's line breaks): the sign-in identity entry names the Roblox data, and the
-  // "one exception" to row-level security is no longer claimed. Two narrow database functions are named, as the pages name them.
-  const identity = residue.find((r) => r.target.includes('auth.users'));
-  assert.match(identity.why, /Roblox user id and\s+username/, 'the receipt no longer says a Roblox account still holds the id and username');
-  assert.match(identity.why, /a few narrow database functions that carry nobody's token/, 'the receipt no longer names the exceptions to row-level security');
-  assert.doesNotMatch(identity.why, /every other query it makes carries your own token/, 'the receipt still says every other query carries your own token');
-  const profile = residue.find((r) => r.target.includes('public.profiles'));
-  assert.doesNotMatch(profile.why, /training consent withdrawn/i, 'the receipt still talks about a training consent that nothing creates');
-  assert.doesNotMatch(profile.why, /\bconsent\b[^.]*\bwithdrawn\b/i, 'the receipt still says a consent was withdrawn');
+  // THE RECEIPT'S OWN WORDS: none of the three is in the residue, and the entries the pages rely on say what the pages say.
+  for (const gone of [/auth\.users/, /public\.profiles/, /DiscordDO/]) assert.equal(targets.some((t) => gone.test(t)), false, `${gone} is removed by the deletion and must not be listed as surviving it`);
+  const ledger = residue.find((r) => r.target.includes('public.usage_events'));
+  assert.match(ledger.why, /keyed by your account id, which after this deletion belongs to no account/, 'the receipt does not say the ledger is kept under an id that belongs to no account');
+  const feedback = residue.find((r) => r.target.includes('public.feedback'));
+  assert.match(feedback.why, /no longer point at you/, 'the receipt does not say support messages no longer point at the person');
+  const waitlist = residue.find((r) => r.target.includes('public.waitlist'));
+  assert.match(waitlist.why, /not the address/, 'the receipt does not say the waitlist address is not deleted');
+  const gateway = residue.find((r) => r.target.includes('AI Gateway'));
+  assert.match(gateway.why, /kept for 30 days and then deleted/, 'the receipt does not say how long the model-call log is kept');
 });
 
 test('THE PROFILE ROW\'S CONSENT FLAG is described as what it is, on the receipt AND on the live step: read into the export, the only proof the training gate accepts, and acted on by nothing while that gate is closed', async () => {
@@ -512,23 +518,26 @@ test('THE PROFILE ROW\'S CONSENT FLAG is described as what it is, on the receipt
   assert.equal(failed.status, 'failed');
 
   const UNREAD = /nothing reads|reads? (it|them|the flag) any more|any more|no longer (read|used|consulted)|\bunused\b|never read|(is|are) not read|\bold (consent )?flag\b|consent[^.]*\bwithdrawn/i;
-  const profile = RECEIPT.ACCOUNT_RESIDUE.find((r) => r.target.includes('public.profiles'));
-  for (const [where, text] of [['the residue entry for the account row', profile.why], ['the step label when the profile was cleared', done.target], ['the step label when it could not be', failed.target]]) {
+  // The profile row no longer survives a deletion (it goes with the sign-in, by cascade), so the receipt has no entry for it; what is left to
+  // describe is the step that clears it first, which still runs (and is all there is if the sign-in cannot be removed).
+  assert.equal(RECEIPT.ACCOUNT_RESIDUE.some((r) => r.target.includes('public.profiles')), false, 'the receipt lists the account row as surviving, which the sign-in deletion removes');
+  for (const [where, text] of [['the step label when the profile was cleared', done.target], ['the step label when it could not be', failed.target]]) {
     assert.doesNotMatch(text, UNREAD, `${where} says or implies nothing reads the consent flag, which the export and the training gate do: "${text}"`);
   }
   assert.match(done.target, /display name cleared, consent flag reset to off/, 'the live step label does not say what the step did to the display name and the flag');
-  assert.match(profile.why, /consent flag reset to off/, 'the residue entry does not say the flag was reset to off');
-  assert.match(profile.why, /Nothing acts on that flag while the training gate is closed/, 'the residue entry does not say what is true of the flag: nothing acts on it while the gate is closed');
-  assert.match(profile.why, /data export still includes it/, 'the residue entry does not admit the export includes the flag');
 });
 
-test('what deletion does with the Roblox data is what the code does: revoke first, delete the token, the link last and only when everything else went', () => {
+test('what deletion does with the Roblox data is what the code does: revoke first, delete the token, then the sign-in, and the link last and only when everything else went', () => {
+  // The ORDER is held by behaviour in apps/worker/tests/account-deletion-identity.test.mjs and roblox-oauth.test.mjs ("A PART-FAILED ERASURE CAN BE RUN AGAIN"); this is the
+  // shape of the source those tests exercise, kept so the sentences below are read against the code they describe.
   const grant = erasure.indexOf('revokeStoredRobloxGrant(env, user.userId)');
   const tokens = erasure.indexOf("'roblox_oauth_tokens'");
-  const link = erasure.indexOf("`delete from roblox_identities where user_id = ?`");
   const others = erasure.indexOf('const othersFailed = steps.some');
-  assert.ok(grant > 0 && tokens > grant && others > tokens && link > others, 'erasure.ts no longer revokes, deletes the token, then deletes the link last');
-  assert.match(erasure.slice(others, link), /const holdsLink = othersFailed &&[^;]*robloxLinkHeld/, 'the link is no longer held back while another step has failed');
+  const identity = erasure.indexOf('await deleteSignInIdentity(env, user.userId)');
+  const link = erasure.indexOf("`delete from roblox_identities where user_id = ?`");
+  assert.ok(grant > 0 && tokens > grant && others > tokens && identity > others && link > identity, 'erasure.ts no longer revokes, deletes the token, deletes the sign-in, then deletes the link last');
+  assert.match(erasure.slice(identity, link), /const holdsLink = !accountRemoved &&[^;]*robloxLinkHeld/, 'the link is no longer held back while the sign-in is still there');
+  assert.match(erasure.slice(others, identity + 40), /if \(othersFailed\) \{[\s\S]*?\} else \{\s*const gone = await deleteSignInIdentity/, 'the sign-in is deleted even when another step failed');
   for (const [where, text] of BOTH) {
     assert.match(text, /asks? Roblox to withdraw (its|StudPilot's) access/i, `${where} does not say Roblox is asked to withdraw its access`);
     assert.match(text, /If Roblox cannot be reached, our copy (of the token )?is (still )?deleted/i, `${where} does not say what happens when Roblox cannot be reached`);
@@ -859,19 +868,43 @@ test('THE NIGHTLY SWEEP is described as the three stores it runs, and the pages 
   assert.doesNotMatch(DOCS, /nightly sweep is what enforces/i, 'the data page still says the nightly sweep enforces the dated windows');
 });
 
-test('THE DISCORD LINK, the deletion record and what you wrote on other people\'s projects are disclosed as collected and as surviving deletion, exactly while the erasure does not remove them', () => {
+test('THE DISCORD LINK is disclosed as collected and as REMOVED by the deletion, the deletion record and what you wrote on other people\'s projects as surviving it, each exactly while the code does that', () => {
   const link = /interface LinkRecord \{([\s\S]*?)\}/.exec(read(WORKER, 'src', 'discord.ts'))?.[1] ?? '';
   // The record holds the Discord user id, the account id (a stored identifier with a former name, so it is counted, not spelled), the project id and name, and when it was made.
   const fields = [...link.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]);
   assert.equal(fields.length, 5, `the Discord link record now holds ${fields.join(', ')}: re-describe what is kept`);
   for (const f of ['discordUserId', 'projectId', 'projectName', 'linkedAt']) assert.ok(fields.includes(f), `the Discord link record no longer holds ${f}`);
   for (const [where, text] of BOTH) assert.match(text, /Discord user id, your account id and the id and name of the project/, `${where} does not say what the Discord link holds`);
+  // THE DELETION UNLINKS DISCORD (owner decision D-14): through the Discord Durable Object, by the route Settings' unlink uses, and the unlink is read back.
   const erase = erasure.slice(erasure.indexOf('export async function eraseAccountData'), erasure.indexOf('async function robloxLinkHeld'));
   assert.ok(erase.length > 1500, 'could not read eraseAccountData out of erasure.ts');
-  assert.equal(/discord/i.test(erase), false, 'the erasure now touches the Discord link: move the Discord entry out of ACCOUNT_RESIDUE and out of the pages\' survivor lists');
-  assert.ok(RECEIPT.ACCOUNT_RESIDUE.some((r) => r.target.includes('DiscordDO')), 'the receipt no longer lists the Discord link as surviving');
+  assert.match(erase, /steps\.push\(await eraseDiscordLink\(env, user\.userId\)\)/, 'the erasure no longer unlinks Discord: the pages say it does');
+  const unlink = erasure.slice(erasure.indexOf('async function eraseDiscordLink'), erasure.indexOf('/** Is there a Roblox link to keep'));
+  assert.match(unlink, /fetch\('https:\/\/do\/unlink', \{ method: 'POST', body: JSON\.stringify\(\{ appleUserId: userId \}\) \}\)/, 'the unlink is not the one Settings uses (/unlink with the account id)');
+  assert.match(unlink, /link-for-owner/, 'the unlink is no longer read back');
+  assert.equal(RECEIPT.ACCOUNT_RESIDUE.some((r) => r.target.includes('DiscordDO')), false, 'the receipt lists the Discord link as surviving, which the deletion removes');
   assert.equal(WORKER_SRC.some((f) => /delete from account_deletions/.test(wcode(f))), false, 'something now deletes the deletion record: the pages say it is kept with no end date');
-  for (const [where, text] of BOTH) assert.match(text, /kept with your account id(?: and no end date)?/, `${where} does not say the deletion record is kept`);
+  for (const [where, text] of BOTH) {
+    assert.match(text, /until you unlink it or delete your (StudPilot )?account/, `${where} does not say the Discord link is kept until you unlink it or delete your account`);
+    assert.match(text, /unlinks? (it|Discord|your Discord account)/i, `${where} does not say deleting the account unlinks Discord`);
+    assert.doesNotMatch(text, /Deleting your (StudPilot )?account does not remove it/, `${where} still says deleting the account leaves the Discord link`);
+    assert.match(text, /kept with your account id(?: and no end date)?/, `${where} does not say the deletion record is kept`);
+  }
+});
+
+test('THE ORDER AND THE FAILURE RULE of the deletion are on both pages: Discord first, the sign-in last and only if every step worked, a failure keeps the sign-in so the deletion can be run again, and an open browser can be answered until its pass runs out', () => {
+  // The behaviour is held in apps/worker/tests/account-deletion-identity.test.mjs. The last sentence is true because the worker verifies a token's signature and never asks Supabase again.
+  const auth = read(WORKER, 'src', 'auth.ts');
+  assert.match(code(join(WORKER, 'src', 'auth.ts')), /jwtVerify\(token, jwks/, 'the worker no longer verifies a token by its signature alone: "the server does not look up again" may be untrue');
+  assert.doesNotMatch(code(join(WORKER, 'src', 'auth.ts')), /\/auth\/v1\/user\b|admin\(/, 'the worker now asks Supabase about the user on each request: reword the sentence about an open browser');
+  assert.ok(auth.length > 100);
+  for (const [where, text] of BOTH) {
+    assert.match(text, /unlinks Discord, (clears )?(the stores|[^.]{0,80}), (and )?(removes|deletes) your sign-in last|unlinks Discord, and deletes your sign-in \(your Supabase account\) last/i, `${where} does not say Discord is unlinked first and the sign-in deleted last`);
+    assert.match(text, /only if every step before it worked/, `${where} does not say the sign-in is deleted only if every step before it worked`);
+    assert.match(text, /your sign-in stays so that you can (sign in and )?run the deletion again/, `${where} does not say a failed step keeps the sign-in so the deletion can be run again`);
+    assert.match(text, /safe to repeat/, `${where} does not say the deletion is safe to repeat`);
+    assert.match(text, /short-lived pass that the server does not look up again, so it can still be answered for a short time after the account is gone, until that pass runs out/, `${where} does not say an already-open browser can be answered until its pass runs out`);
+  }
 });
 
 /* ------------------------------------------------------------- no blanket promise anywhere in the product --- */

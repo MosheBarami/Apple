@@ -12,8 +12,10 @@
 //
 // THE TRUST CHANGE THIS FILE CARRIES. Until now the worker held no Supabase secret and every database call
 // travelled with the caller's own JWT. SUPABASE_SECRET_KEY is the first credential that can act as anyone.
-// It is used in this file and nowhere else, for three Auth admin calls (create a user, read a user's address,
-// mint a sign-in token), and when it is not set every route here answers 503 instead of degrading.
+// It is used in this file and nowhere else (env.ts only declares it). Its uses, all of which the privacy pages name:
+//   - create a user, read a user's address and mint a sign-in token, for Sign in with Roblox;
+//   - delete a user, when that person deletes their account (deleteSignInIdentity).
+// When it is not set every sign-in route here answers 503 instead of degrading.
 //
 // WHY EACH GUARD IS HERE:
 //   - state is single use and burned before anything else is read, so a replay is a 400;
@@ -112,9 +114,19 @@ interface Config {
 function configOf(env: Env): Config | null {
   const clientId = env.ROBLOX_OAUTH_CLIENT_ID?.trim();
   const clientSecret = env.ROBLOX_OAUTH_CLIENT_SECRET?.trim();
+  const auth = supabaseKeyOf(env);
+  if (!clientId || !clientSecret || !auth || !env.CREDENTIAL_KEY) return null;
+  return { clientId, clientSecret, supabaseKey: auth.supabaseKey };
+}
+
+/**
+ * The Supabase secret key and the project URL, and nothing else. The Auth admin calls that do not involve Roblox (deleting an
+ * account when its owner deletes it, below) need neither the Roblox client secret nor CREDENTIAL_KEY, so they are not refused for
+ * lacking them.
+ */
+function supabaseKeyOf(env: Env): { supabaseKey: string } | null {
   const supabaseKey = env.SUPABASE_SECRET_KEY?.trim();
-  if (!clientId || !clientSecret || !supabaseKey || !env.CREDENTIAL_KEY || !env.SUPABASE_URL) return null;
-  return { clientId, clientSecret, supabaseKey };
+  return supabaseKey && env.SUPABASE_URL ? { supabaseKey } : null;
 }
 
 export const robloxSignInConfigured = (env: Env): boolean => configOf(env) !== null;
@@ -357,7 +369,7 @@ async function revokeAtRoblox(cfg: Config, refreshToken: string): Promise<boolea
 // Supabase Auth admin
 // ---------------------------------------------------------------------------------------------
 
-async function admin(env: Env, cfg: Config, method: string, path: string, body?: unknown): Promise<{ status: number; json: Record<string, unknown> | null } | null> {
+async function admin(env: Env, cfg: Pick<Config, 'supabaseKey'>, method: string, path: string, body?: unknown): Promise<{ status: number; json: Record<string, unknown> | null } | null> {
   // sb_secret_ keys are not JWTs and go in `apikey` only. A legacy service-role key is a JWT and the
   // Auth server wants it as the bearer too.
   const headers: Record<string, string> = { apikey: cfg.supabaseKey, 'Content-Type': 'application/json' };
@@ -395,15 +407,62 @@ async function mintLink(env: Env, cfg: Config, email: string): Promise<{ hashedT
   return hashedToken && userId ? { hashedToken, userId, robloxSub: String(meta.roblox_sub ?? '') } : null;
 }
 
+/** Is this answer GoTrue's own "no such user"? A bare 404 (a wrong SUPABASE_URL, a proxy's error page) says nothing about a user. */
+const saysNoSuchUser = (res: { status: number; json: Record<string, unknown> | null }): boolean =>
+  res.status === 404 && /user_not_found|user.{0,12}not.{0,12}found/i.test(`${str(res.json?.error_code)} ${str(res.json?.msg)}`);
+
 /** One Supabase user as Auth holds them now: their address, 'gone' when Auth says there is no such user, null when we cannot tell. */
-async function authUser(env: Env, cfg: Config, userId: string): Promise<{ email: string } | 'gone' | null> {
+async function authUser(env: Env, cfg: Pick<Config, 'supabaseKey'>, userId: string): Promise<{ email: string } | 'gone' | null> {
   const res = await admin(env, cfg, 'GET', `/users/${encodeURIComponent(userId)}`);
   if (!res) return null;
   // Only GoTrue's own "no such user" counts as gone. A bare 404 (a wrong SUPABASE_URL, a proxy's error page) says
   // nothing about this user, and acting on it would delete the link of everybody who signs in.
-  if (res.status === 404) return /user_not_found|user.{0,12}not.{0,12}found/i.test(`${str(res.json?.error_code)} ${str(res.json?.msg)}`) ? 'gone' : null;
+  if (res.status === 404) return saysNoSuchUser(res) ? 'gone' : null;
   const email = str(res.json?.email);
   return res.status === 200 && email ? { email } : null;
+}
+
+/** What deleting a sign-in identity did. `detail` is a sentence for the receipt: it says exactly what happened and never carries anything Supabase sent. */
+export type IdentityDeletion = { status: 'deleted' | 'already_gone' | 'failed'; detail: string };
+
+/**
+ * DELETE THE SUPABASE ACCOUNT of a person who deleted theirs (owner decision D-14, 2026-10-05). The Auth admin API removes the
+ * `auth.users` row, and Postgres cascades the rest of it: `public.profiles` (id references auth.users on delete cascade), which in
+ * turn cascades the projects and everything under them, the memberships and the pairings. `usage_events` would have gone with it
+ * and is detached by migration 0015 first; `feedback` and `waitlist` are set to null by their own constraints. Read from the live
+ * schema on 2026-10-05: planning/proof/M2/LEGAL-CLAIMS.md section 9.
+ *
+ * IT SAYS EXACTLY WHAT HAPPENED. `deleted`: Auth answered success and a read afterwards found no such user (or could not be made, and
+ * the detail says so). `already_gone`: Auth already had no such user, which is what a re-run after a deletion that finished finds,
+ * and counts as done. `failed`: anything else (no key on this deployment, Auth unreachable, an answer that is not a success, an
+ * account still there after a success), and nothing was removed. A failure is never reported as a success, so the caller can run
+ * the deletion again.
+ *
+ * Only ever called for the verified id of the person asking, and only after every other step of the deletion has gone.
+ */
+export async function deleteSignInIdentity(env: Env, userId: string): Promise<IdentityDeletion> {
+  const auth = supabaseKeyOf(env);
+  if (!auth) {
+    note('delete identity without a key');
+    return { status: 'failed', detail: 'StudPilot holds no Supabase secret key on this deployment, so it could not remove your sign-in. Nothing was removed. Contact support.' };
+  }
+  const res = await admin(env, auth, 'DELETE', `/users/${encodeURIComponent(userId)}`);
+  if (!res) {
+    note('delete identity unreachable');
+    return { status: 'failed', detail: 'Supabase could not be reached, so your sign-in was not removed. Run the deletion again.' };
+  }
+  if (saysNoSuchUser(res)) return { status: 'already_gone', detail: 'Your sign-in identity was already removed.' };
+  if (res.status < 200 || res.status >= 300) {
+    note('delete identity refused');
+    return { status: 'failed', detail: `Supabase answered ${res.status}, so your sign-in was not removed. Run the deletion again.` };
+  }
+  // THE POST-CONDITION: ask again, as the project step does. A delete that answered success while the user can still be read would
+  // be a sign-in that outlived a receipt saying it had gone.
+  const after = await authUser(env, auth, userId);
+  if (after === 'gone') return { status: 'deleted', detail: 'Your sign-in identity was removed from Supabase, and your account row went with it.' };
+  if (after === null) return { status: 'deleted', detail: 'Supabase confirmed the removal of your sign-in identity; the follow-up read could not be made.' };
+  note('delete identity not gone');
+  return { status: 'failed', detail: 'Supabase said your sign-in was removed, but it can still be read. Run the deletion again.' };
 }
 
 /** The token hash for `userId`, minted for `email`, which must be that user's CURRENT address. Null if the link is for anyone else. */

@@ -127,7 +127,7 @@ function makeWorld() {
       return code;
     },
   };
-  const sb = { users: new Map(), links: new Map(), createCalls: 0, ghosts: 0, headers: [], strays: [] };
+  const sb = { users: new Map(), links: new Map(), createCalls: 0, ghosts: 0, headers: [], strays: [], deleteCalls: [], failDelete: null };
   const calls = [];
   const unexpected = [];
 
@@ -204,6 +204,13 @@ function makeWorld() {
       // GoTrue's own answer for an id it does not hold; the worker only believes a 404 that says this.
       return user ? json(200, user) : json(404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
     }
+    if (one && method === 'DELETE') {
+      // Account deletion (erasure.ts, last step). `failDelete` is a status to answer instead, for the tests that break it.
+      sb.deleteCalls.push(decodeURIComponent(one[1]));
+      if (sb.failDelete) return json(sb.failDelete, { msg: 'database error' });
+      const id = decodeURIComponent(one[1]);
+      return sb.users.delete(id) ? json(200, {}) : json(404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
+    }
     if (url.pathname === '/auth/v1/admin/generate_link' && method === 'POST') {
       if (body.type !== 'magiclink') return json(400, { msg: 'unsupported link type' });
       let user = userByEmail(body.email);
@@ -269,6 +276,8 @@ function scene(envOverrides = {}) {
     SESSION_DO: { idFromName: (n) => n, get: () => ({ async fetch() { return new Response('{}'); } }) },
     QUOTA_DO: { idFromName: (n) => n, get: () => ({ async fetch() { return new Response('{}'); } }) },
     ADMIN_DO: { idFromName: (n) => n, get: () => ({ async fetch() { return new Response('{}'); } }) },
+    // The Discord link store with nothing linked: what account deletion unlinks, and reads back (the real object is exercised by account-deletion-identity.test.mjs).
+    DISCORD_DO: { idFromName: (n) => n, get: () => ({ async fetch(url) { return Response.json(new URL(url).pathname === '/unlink' ? { removed: false, codesRemoved: 0 } : { link: null }); } }) },
     ...envOverrides,
   };
   return { db, kv, world, env };
@@ -1663,10 +1672,14 @@ test('A ROBLOX-ONLY ACCOUNT can export its data and delete it once it has confir
   assert.equal(s.world.roblox.revokeCalls.at(-1), s.world.roblox.lastRefreshIssued, 'the Roblox grant was revoked as part of it');
   assert.equal(identityCount(s.db), 0);
 
-  // Erasure does not remove the Supabase login (the worker holds no key to), so the same Roblox account signs back in to the SAME user.
+  // THE SUPABASE ACCOUNT WENT WITH IT (owner decision D-14): the receipt says so, Auth was asked to delete exactly this user, and
+  // the same Roblox account signing in again is a first sight that makes a NEW account, never the deleted one.
+  assert.equal(receipt.accountRemoved, true);
+  assert.deepEqual(s.world.sb.deleteCalls, [userId]);
+  assert.equal(s.world.sb.users.has(userId), false, 'the Supabase user is gone');
   const back = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
   assert.equal(back.res.status, 302);
-  assert.equal(userIdOf(s.db, SUB_A), userId);
+  assert.notEqual(userIdOf(s.db, SUB_A), userId, 'the deleted account is not brought back by signing in again');
   assert.equal(s.world.sb.users.size, 1);
   s.db.close();
 });
@@ -2382,8 +2395,11 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     const stepOf = (receipt, target) => receipt.steps.find((x) => x.target === target);
     const linkRows = () => countRows(s.db.raw, 'select count(*) from roblox_identities where user_id = ?', userId);
     await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+    const savedUser = { ...s.world.sb.users.get(userId) };
+    /** The Supabase account again, for the phases below that need it to exist (the first complete run deletes it). */
+    const restoreUser = () => s.world.sb.users.set(userId, { ...savedUser });
 
-    // FIRST RUN: a Postgres step (the last the route takes) is refused. The route answers 207 and says what is left.
+    // FIRST RUN: a Postgres step is refused. The route answers 207 and says what is left, and the Supabase account is NOT deleted.
     FAILING.set('profiles', 500);
     const first = await deleteAs();
     assert.equal(first.status, 207, 'a part-failed erasure answers 207');
@@ -2395,6 +2411,8 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     assert.equal(kept.status, 'failed', 'the receipt does not claim a sweep that was not done');
     assert.match(kept.detail, /again/, 'and says to run it again');
     assert.equal(linkRows(), 1, 'the link, and with it the re-authentication, is still there');
+    assert.deepEqual(s.world.sb.deleteCalls, [], 'the Supabase account is deleted LAST and only when nothing failed: it was not asked to go');
+    assert.equal(stepOf(receipt, 'auth.users — your sign-in identity (and your account row with it)').status, 'failed');
 
     // RETRY inside the window: the same account, with no new sign-in, is not refused and finishes the job.
     FAILING.clear();
@@ -2404,8 +2422,11 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     assert.equal(done.complete, true);
     assert.deepEqual(stepOf(done, 'roblox_identities'), { store: 'd1', target: 'roblox_identities', status: 'erased', rows: 1 });
     assert.equal(linkRows(), 0, 'and now that everything else has gone, so does the link');
+    assert.deepEqual(s.world.sb.deleteCalls, [userId], 'the run that finished everything else deleted the Supabase account');
+    assert.equal(done.accountRemoved, true);
 
     // THE WINDOW HAS LAPSED BEFORE THE RETRY: the account is asked to confirm it is them, and CAN, because the link survived.
+    restoreUser();
     s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at) values (?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now');
     FAILING.set('profiles', 500);
     await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
@@ -2419,6 +2440,7 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     assert.equal(linkRows(), 0);
 
     // THE SWEEP OF THE LINK ITSELF FAILS: that is a failed step too, and the link is still there to retry with.
+    restoreUser();
     s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, reauth_at) values (?, ?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now', Date.now());
     const realCorpus = s.env.CORPUS;
     s.env.CORPUS = { ...realCorpus, prepare: (sql) => { if (/^delete from roblox_identities/.test(sql)) throw new Error('D1 said no'); return realCorpus.prepare(sql); } };
@@ -2431,6 +2453,7 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     assert.equal(linkRows(), 0);
 
     // THE LINK CANNOT EVEN BE LOOKED AT while another step has failed: the receipt of everything else is still handed back, and the link is kept.
+    restoreUser();
     s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, reauth_at) values (?, ?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now', Date.now());
     FAILING.set('profiles', 500);
     s.env.CORPUS = { ...realCorpus, prepare: (sql) => { if (/^select 1 as held from roblox_identities/.test(sql)) throw new Error('D1 said no'); return realCorpus.prepare(sql); } };
@@ -2454,7 +2477,8 @@ test('an erasure that fails for an account with no Roblox link says nothing abou
     assert.equal(res.status, 207);
     const receipt = await res.json();
     assert.deepEqual(receipt.steps.find((x) => x.target === 'roblox_identities'), { store: 'd1', target: 'roblox_identities', status: 'erased', rows: 0 }, 'nothing to keep, nothing to retry: it is not reported as a failure');
-    assert.deepEqual(receipt.steps.filter((x) => x.status === 'failed').map((x) => x.target), ['profiles — display name']);
+    assert.deepEqual(receipt.steps.filter((x) => x.status === 'failed').map((x) => x.target), ['profiles — display name', 'auth.users — your sign-in identity (and your account row with it)'], 'the profile step failed, and so the sign-in was kept (it is how the person runs this again)');
+    assert.equal(s.world.sb.deleteCalls.length, 0);
   } finally {
     FAILING.clear();
     s.db.close();

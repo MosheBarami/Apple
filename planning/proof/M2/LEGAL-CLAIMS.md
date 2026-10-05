@@ -246,3 +246,65 @@ the minor item about the receipt's "old consent flag that nothing reads any more
 ### Left alone
 
 The operator line was untouched in that cycle (it changed afterwards, owner decision D-13: see section 9); `OO` is green (the site suite above).
+
+
+## 9. Owner decisions D-13 and D-14 (2026-10-05)
+
+The owner approved the legal review (N7) only after these fixes. Same rule as before: every sentence on `privacy.astro`, `terms.astro`,
+`docs/privacy-and-data.astro` and Settings > Privacy is true of the code, and the guards are restated to the property, never weakened.
+Evidence is `file:line` on branch `studpilot/m2-owner-update`. Written in parts, one per commit; the part for each commit is complete.
+
+### 9.1 D-13: the operator is StudPilot, the contact is support@studpilot.app
+
+| Claim | Evidence | Guard |
+|---|---|---|
+| Operator "StudPilot", contact `support@studpilot.app`, on /privacy, /terms, the data page, the footer byline, the docs layout, the status page, the FAQ, troubleshooting, pricing and billing docs | **policy** (owner decision D-13). `OPERATOR_NAME` and `SUPPORT_EMAIL` in `packages/shared/src/index.ts` are the values; no "Apple Labs" and no old Gmail address remain except the line in `planning/proof/OWNER-DECISIONS.md` that quotes the instruction | `OO` (three tests: one operator on /privacy and /terms; it is `OPERATOR_NAME`; the footer byline is the operator), `tests/support-expectations.test.mjs` (every `mailto:` is `SUPPORT_EMAIL`, and the three legal pages must NAME it) |
+| A product may be its own named operator only while nothing is charged | **policy** (BLOCKED N9: before any money is charged an adult or a company becomes the operator). The old guard "the operator is not the product name" guarded an accident; it is restated as: the terms page says "Paid subscriptions are open" while the operator is the bare product name = failure | `OO` "the product may be its own named operator only while nothing is charged" (the rule is also run on fixtures so it can fail) |
+| The mailbox is read | **policy / infrastructure, not verifiable here**: Cloudflare Email Routing forwarding `support@` to the owner's Gmail is BLOCKED E1 (the dashboard step). Until it is done a message to `support@studpilot.app` goes nowhere | none |
+
+### 9.2 D-14: deleting an account deletes the sign-in identity and the Discord link
+
+**What changed.** `eraseAccountData` (`apps/worker/src/erasure.ts`) now, in this order: sweeps the stores, then **unlinks Discord** through the Discord Durable
+Object (`/unlink` with the account id, the route Settings' unlink uses, and a read back of `/link-for-owner`), then, **last and only when nothing before it
+failed**, **deletes the Supabase account** (`deleteSignInIdentity` in `roblox-oauth.ts`: `DELETE /auth/v1/admin/users/<id>` with `SUPABASE_SECRET_KEY`, then a read
+that must answer "no such user"), and only then sweeps the Roblox link. `accountRemoved` is true only when Auth said so. The route answers 207 when any step failed.
+
+**Schema facts (read from the live database through the Management API on 2026-10-05, `pg_constraint`, `pg_trigger`, `information_schema`, `pg_stat_user_tables`, SELECT only;
+they matched the migrations exactly).** The only table outside the `auth` schema that references `auth.users` is `public.profiles` (`profiles_id_fkey`, ON DELETE CASCADE).
+Everything else hangs from `profiles` or `projects`. Effect of deleting the auth user:
+
+| Reference | On delete | Effect |
+|---|---|---|
+| `profiles.id` to `auth.users` | CASCADE | the account row goes |
+| `projects.owner_id` to `profiles` | CASCADE | their projects go, and from `projects.id` (all CASCADE): `messages`, `checkpoints`, `studio_pairings`, `project_members`, `membership_events`, `membership_access_state` (and its outbox rows) |
+| `messages`, `checkpoints`, `studio_pairings` `.owner_id` to `profiles` | CASCADE | the person's own rows go |
+| `project_members.user_id`, `membership_events.subject_id`, `membership_access_state.user_id` to `profiles` | CASCADE | their memberships on OTHER people's projects, and the history entries about them, go |
+| `feedback.owner_id`, `waitlist.owner_id`, `project_members.invited_by`, `project_members.suspended_by`, `membership_events.actor_id` to `profiles` | SET NULL | the row stays, the link to the person is cleared |
+| **`usage_events.owner_id` to `profiles`** | **CASCADE** | **the ledger would go with the account** |
+| `auth.identities`, `sessions`, `one_time_tokens`, `mfa_*`, `oauth_*`, `webauthn_*` to `auth.users` | CASCADE (`scim_users` SET NULL) | GoTrue's own records go |
+
+Nothing is NO ACTION or RESTRICT, so nothing blocks the deletion. There are no DELETE triggers (the one outbox trigger fires on INSERT and UPDATE of four columns), so a
+cascade writes nothing that could fail. The `private` schema holds functions only. Live row estimates (`pg_stat_user_tables`): `profiles` 36, `projects` 201, `waitlist` 1,
+`usage_events` 0, `feedback` 0: **the Postgres `usage_events` table is empty today** (the credit ledger is in the QuotaDO), so no ledger is lost whatever the order; the
+migration makes the stated policy hold the day anything writes to it.
+
+**Migration `infra/supabase/migrations/0015_usage_ledger_survives_account_deletion.sql` (written, NOT applied; the orchestrator applies it after review, and it must go in BEFORE the
+worker that deletes sign-in identities is deployed).** `alter table public.usage_events drop constraint if exists usage_events_owner_id_fkey;` and a column comment. `owner_id`
+stays NOT NULL and the key of each row; the index and the owner-read policy are untouched. `feedback` needs no migration: SET NULL already keeps support messages, detached from the
+person ("they no longer point at you", as the receipt says).
+
+| Claim | Evidence | Guard |
+|---|---|---|
+| Deleting the account unlinks Discord, clears the stores, and deletes the sign-in last, only if every step before it worked | `erasure.ts` `eraseAccountData` (the `othersFailed` branch, `eraseDiscordLink`, `deleteSignInIdentity`), `roblox-oauth.ts` `deleteSignInIdentity` | `PC` "THE ORDER AND THE FAILURE RULE", `PC` "what deletion does with the Roblox data", and by behaviour `apps/worker/tests/account-deletion-identity.test.mjs` (the order is read from a call log: Auth DELETE is last, then one read) |
+| A failed step keeps the sign-in so the deletion can be run again, and it is safe to repeat | the same code: nothing is deleted at Auth unless every earlier step was `erased`; Auth's "no such user" is `already_gone`, which counts as done | `account-deletion-identity.test.mjs`: five Discord failure shapes and four Auth failure shapes, each followed by a re-run that finishes; a re-run after a finished deletion; `roblox-oauth.test.mjs` "A PART-FAILED ERASURE CAN BE RUN AGAIN" |
+| A failure is never reported as a success; the receipt says exactly what happened | `deleteSignInIdentity` returns `deleted`, `already_gone` or `failed` with a sentence that never carries what Supabase sent; `eraseDiscordLink` reads back that no link is left | the same file ("a bare 404 is not no-such-user", "Auth says deleted but the user can still be read", "no secret key", "Auth unreachable") |
+| Unused Discord link codes are withdrawn with the link | `do/discord.ts` `/unlink` (StudPilot side only) answers `codesRemoved` | `discord-link.test.mjs` (two tests), `account-deletion-identity.test.mjs` |
+| What survives: the usage ledger (kept under an id that belongs to no account), support messages (no longer point at the person), an email left on the old waitlist, what you did on other people's projects (comments, reviews and messages; history entries with the account cleared; share-link access), the deletion record, the request log, previews, tombstones, the AI Gateway log | `ACCOUNT_RESIDUE` (12 entries) read against the schema table above | `PC` "EVERY ENTRY OF THE DELETION RESIDUE" (also refuses any survivor sentence about the sign-in identity, the account row or the Discord link), `account-deletion-identity.test.mjs` "the residue no longer lists ...", SCHEMA tests below |
+| The usage ledger is not cascaded away; every table that stores a person's id has a decided effect, and none can block the deletion | migration 0015; the table above | `account-deletion-identity.test.mjs` SCHEMA (reads the foreign keys out of the migrations in order: a new table that references `profiles` with no decision fails; a NO ACTION key fails; `usage_events.owner_id` with a key fails) |
+| An already-open browser can be answered until its short-lived pass runs out | `auth.ts` verifies a token by its signature (JWKS) and never asks Supabase about the user | `PC` "THE ORDER AND THE FAILURE RULE" (fails when the worker starts looking the user up) |
+| The Supabase secret key is used to delete an account, in addition to the three Roblox sign-in calls | `roblox-oauth.ts` `deleteSignInIdentity` (`DELETE /users/`, then `GET /users/`) | `PC` "the Supabase secret key is described by what it does" (the call list is read out of the source: `DELETE /users/`, `GET /users/`, `POST /generate_link`, `POST /users`) |
+
+**Open, said plainly.** (1) The membership rows that came from a redeemed share link live in KV under the project, which a deletion cannot search by person: they stay until the project's owner removes them
+(the receipt and pages say so). (2) Not verified here: whether the Session Durable Object of a project the person belonged to keeps listing them until it next reads the membership state. The cascade runs no
+outbox trigger (the trigger fires on INSERT and UPDATE only), so nothing tells that object; their access is moot without a sign-in, and the receipt does not claim otherwise. (3) A Roblox-only account whose identity-row sweep fails AFTER Auth was
+deleted cannot confirm itself again to retry (its sign-in is gone); the row is dropped as stale at the next Roblox sign-in. (4) The web app does not sign the person out when the deletion finishes; the Supabase refresh token is gone with the account, so the session ends when its access token runs out.

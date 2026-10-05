@@ -35,7 +35,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>A log of model calls</strong> — each request to a Cloudflare-hosted model (text, images, sound, speech) goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id (a project identifier travels with the call as a routing hint). Voice recordings are sent with logging off. The optional Hugging Face route (images and 3D models) and AssemblyAI (speech, where it is set up) are direct calls that do not go through AI Gateway.</li>
     <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
     <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters. StudPilot uses it only on your own Roblox account, only when you or an agent run you started asks, and only within the permissions you ticked: checking the key and reading your public profile; looking up your assets, an experience and its game passes; uploading a file (one you give it, or a model or image it made for you); and, if you ticked those permissions, creating a game pass or granting other people's experiences, groups or accounts use of your assets. Beside the key it keeps your Roblox creator id, the permissions and when it was last used, and a log of every write it made to your Roblox account (what, when, to what, and Roblox's answer). Deleting the key removes the key and those details; the log of writes stays until you delete your account.</li>
-    <li><strong>A Discord link, if you made one</strong> — so a build started in Discord reaches the right account. It holds your Discord user id, your account id and the id and name of the project you linked, until you unlink it.</li>
+    <li><strong>A Discord link, if you made one</strong> — so a build started in Discord reaches the right account. It holds your Discord user id, your account id and the id and name of the project you linked, until you unlink it or delete your account.</li>
   </ul>
 
   <h2>What you sign in with</h2>
@@ -85,7 +85,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>Where it lives</h2>
   <ul>
     <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs text, image, sound and speech inference through AI Gateway. Its Turnstile bot check guards the sign-in, sign-up, password-reset and account-recovery forms, and Cloudflare sees what that check collects.</li>
-    <li><strong>Supabase</strong> runs authentication and the account registry (your email or placeholder address, your display name, your project list). Rows are protected so that requests carrying <em>your</em> verified credentials can read what is yours. Two narrow exceptions exist. For Sign in with Roblox, StudPilot's server holds a Supabase secret key that it uses only to create the account for a new Roblox sign-in, read that account's sign-in address and issue the one-time sign-in link; it is not used for your projects or any other table, and not to delete accounts. And a few database functions run with no person's credentials, checked by a secret the database holds instead, each doing one narrow thing: one gives a project's name, place name and remembered notes to someone who opened a share link to it, and the others pass membership changes (who gained or lost access to which project, in what role) on to the running project.</li>
+    <li><strong>Supabase</strong> runs authentication and the account registry (your email or placeholder address, your display name, your project list). Rows are protected so that requests carrying <em>your</em> verified credentials can read what is yours. Two narrow exceptions exist. For Sign in with Roblox, StudPilot's server holds a Supabase secret key that it uses only to create the account for a new Roblox sign-in, read that account's sign-in address, issue the one-time sign-in link and delete your account there when you delete it; it is not used for your projects or any other table. And a few database functions run with no person's credentials, checked by a secret the database holds instead, each doing one narrow thing: one gives a project's name, place name and remembered notes to someone who opened a share link to it, and the others pass membership changes (who gained or lost access to which project, in what role) on to the running project.</li>
     <li><strong>Stripe</strong> takes the payments. It gets your email and billing identifiers and holds the payment method; we get back the subscription state. No card number reaches us.</li>
     <li><strong>Discord</strong> gets whatever StudPilot posts back to the channel you started a build from — only if you linked an account.</li>
     <li><strong>Roblox</strong> tells us who you are when you sign in, and is asked to withdraw its access when you disconnect or delete your account. If you gave an Open Cloud key, it also gets the requests listed above (uploads, lookups, and game passes and asset permissions if you allowed them), to your own account, under your own key. And whenever the agent looks for a ready-made model, Roblox's Creator Store search gets the search words the agent wrote, with StudPilot's own access and nothing of yours.</li>
@@ -134,7 +134,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
     <li><strong>The Roblox sign-in:</strong> your Roblox user id and username while the account exists or until you disconnect Roblox; the token until you disconnect, delete your account, sign in again, or Roblox reports the access lost and StudPilot next uses it.</li>
     <li><strong>A Roblox Open Cloud key:</strong> the key and its details until you delete it in Settings or delete your account; the log of writes made with it until you delete your account.</li>
-    <li><strong>A Discord link:</strong> until you unlink it. Deleting your account does not remove it.</li>
+    <li><strong>A Discord link:</strong> until you unlink it. Deleting your account unlinks it.</li>
     <li><strong>The record of a deletion:</strong> kept with your account id and no end date, so the receipt can be shown again.</li>
     <li><strong>The model-call log:</strong> not deleted by StudPilot's code.</li>
   </ul>
@@ -176,21 +176,21 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>A checkpoint:</strong> delete it in the workspace sidebar.</li>
     <li><strong>A project:</strong> deleting a project deletes its conversation, checkpoints, memory, notifications, automations, workspace files, generated media and any share links that opened it.</li>
     <li><strong>Roblox:</strong> Settings → Connections → Disconnect Roblox asks Roblox to withdraw StudPilot's access if StudPilot holds a token, changes nothing if Roblox does not confirm, and otherwise removes the token and the link. Your sign-in identity in Supabase, with your Roblox user id and username, is kept. It is not offered while Roblox is the only way you sign in, because the account would have no way back in. Today that is every Roblox account (the app offers no way to add an email address to one), so the button is not shown to any account yet; such an account can remove StudPilot in its Roblox settings or delete the account.</li>
-    <li><strong>Your account:</strong> Settings → Danger zone → delete account. It erases every store we can reach, including the key, the log of writes made with it and the Roblox sign-in, asks Roblox to withdraw its access first, deletes the Roblox token and then the Roblox link, and hands you a receipt of what it cleared and what it did not. If Roblox cannot be reached, our copy is still deleted and the receipt says so.</li>
+    <li><strong>Your account:</strong> Settings → Danger zone → delete account. It erases every store we can reach, including the key, the log of writes made with it and the Roblox sign-in, asks Roblox to withdraw its access first, deletes the Roblox token and then the Roblox link, unlinks Discord, and deletes your sign-in (your Supabase account) last, and only if every step before it worked. It hands you a receipt of what it cleared and what it did not. If a step fails the receipt says which, your sign-in stays so that you can run the deletion again, and it is safe to repeat. If Roblox cannot be reached, our copy is still deleted and the receipt says so. A browser that was already signed in holds a short-lived pass that the server does not look up again, so it can still be answered for a short time after the account is gone, until that pass runs out.</li>
   </ul>
   <p>
     Some things outlive that, and the receipt names them rather than leaving you to find out: your
-    <strong>sign-in identity</strong> (the empty account can still log in until an operator removes
-    it — ask and we will; for a Roblox account it still holds your Roblox user id and username until
-    then), your <strong>account row</strong> with its display name cleared, your <strong>usage ledger
-    and Credit and subscription records</strong>, which are accounting records, your <strong>support
-    messages</strong>, which are correspondence, your membership on other people's projects and the
-    comments, reviews and messages you added to them, a <strong>Discord link</strong> if you made one
-    (until you unlink it), the <strong>record of this deletion</strong>, the receipt itself, the request
-    log for up to 30 days (it can carry your account id), temporary image previews for up to an hour, a
-    bare deleted-project id kept so a late generation cannot recreate erased images, and the model-call
-    log. Backup copies expire within 30 days. Anything else
-    the UI cannot delete for you, a human will:
+    <strong>usage ledger and Credit and subscription records</strong>, which are accounting records
+    kept under an account id that no longer belongs to any account, your <strong>support
+    messages</strong>, which are correspondence and no longer point at you, an email address you left
+    on the old <strong>waitlist</strong> if you ever joined it (support removes it on request), what
+    you did on other people's projects, which stays with them (the comments, reviews and messages you
+    added, the history entries in which you changed who has access, with your account cleared from
+    them, and any access you were given by a share link, until their owner removes it), the
+    <strong>record of this deletion</strong>, the receipt itself, the request log for up to 30 days (it
+    can carry your account id), temporary image previews for up to an hour, a bare deleted-project id
+    kept so a late generation cannot recreate erased images, and the model-call log. Backup copies
+    expire within 30 days. Anything else the UI cannot delete for you, a human will:
     <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
   </p>
 
