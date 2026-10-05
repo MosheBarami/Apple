@@ -269,7 +269,19 @@ test.describe('the calm site', () => {
       const r = e.getBoundingClientRect();
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
     }));
-    await expect.poll(async () => new Set((await measure()).map((c) => c.top)).size, { timeout: 10_000 }).toBe(1);
+    //[[ RESTATED 2026-10-05 (M2 step 2.1). The settle used to be "all three tops are equal", which is
+    //   also true BEFORE the reveal starts (all three are hidden at the same offset), so the poll could
+    //   pass at once and the next measure land mid-reveal on a card 2px off its neighbours. And the
+    //   phone half below had no settle at all. Dropping the spring easing for --ease-out made the
+    //   reveal start faster and exposed it: the phone half failed 5 loads in 30, against 0 in 30 on
+    //   the build before. The property is unchanged (side by side on a desk, one column on a phone);
+    //   what changed is that both halves now wait until every card has FINISHED revealing (opaque, no
+    //   transform) before measuring where it is. ]]
+    const settled = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.length > 0 && els.every((e) => {
+      const cs = getComputedStyle(e);
+      return cs.opacity === '1' && cs.transform === 'none';
+    }));
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
     const desk = await measure();
     expect(desk.length, 'the plan rail holds no cards').toBe(3);
     expect(new Set(desk.map((c) => c.top)).size, `the cards do not share a row at 1440: ${JSON.stringify(desk)}`).toBe(1);
@@ -278,6 +290,7 @@ test.describe('the calm site', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/pricing');
+    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
     const phone = await page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
     expect(new Set(phone).size, 'on a phone the cards should stack in one column').toBe(1);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
