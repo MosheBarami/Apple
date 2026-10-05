@@ -99,3 +99,20 @@ test('a non-JSON body is an error with a short excerpt, not a crash', async () =
   const f = fakeFetch(() => reply(502, '<html>bad gateway</html>'));
   await assert.rejects(makeAdminApi({ apiBase: 'https://w.test', adminKey: KEY, fetchImpl: f }).spend(), /HTTP 502 <html>bad gateway/);
 });
+
+test('the conversation reset posts to the project with the owner named in the body, and hands the worker\'s refusals (403, 404, 409) back to the caller', async () => {
+  for (const status of [403, 404, 409]) {
+    const f = fakeFetch(() => reply(status, { ok: false, error: `refused ${status}` }));
+    const api = makeAdminApi({ apiBase: 'https://w.test', adminKey: KEY, fetchImpl: f });
+    const r = await api.conversationReset('p1', 'u1');
+    assert.equal(r.status, status);
+    assert.equal(f.calls[0].url, 'https://w.test/api/admin/conversation-reset/p1');
+    assert.equal(f.calls[0].init.method, 'POST');
+    assert.equal(f.calls[0].init.headers['X-Admin-Key'], KEY);
+    assert.deepEqual(JSON.parse(f.calls[0].init.body), { userId: 'u1' });
+  }
+  const ok = await makeAdminApi({ apiBase: 'https://w.test', adminKey: KEY, fetchImpl: fakeFetch(() => reply(200, { ok: true, removedMessages: 3 })) }).conversationReset('p', 'u');
+  assert.deepEqual(ok, { status: 200, json: { ok: true, removedMessages: 3 } });
+  // anything else is an error that names the path, never the key
+  await assert.rejects(makeAdminApi({ apiBase: 'https://w.test', adminKey: KEY, fetchImpl: fakeFetch(() => reply(500, { error: 'boom' })) }).conversationReset('p', 'u'), (e) => /HTTP 500/.test(e.message) && !e.message.includes(KEY));
+});
