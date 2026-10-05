@@ -54,27 +54,28 @@ const plain = (fragment) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** One plan card, from the <article> that names it to the </article> that closes it. Nothing outside it. */
-function card(id) {
-  const m = new RegExp(`<article[^>]*aria-labelledby="plan-${id}"[\\s\\S]*?</article>`).exec(html);
-  assert.ok(m, `no card for ${id}`);
-  return plain(m[0]);
+/**
+ * THE PLAN COLUMNS (restated 2026-10-05, M2 site fix cycle 1). The page no longer has three plan cards: every plan is a COLUMN of the one
+ * comparison table (the cells whose data-label is the plan's name), and the decision panel above it is Free's. What a card used to carry (its
+ * price, its allowance, its build count) is read off its column, and a column carries nothing of another plan's.
+ */
+function column(id) {
+  const name = PLAN_TABLE[id].name;
+  const table = /<table class="compare"[\s\S]*?<\/table>/.exec(html);
+  assert.ok(table, 'no comparison table on the page');
+  const cells = [...table[0].matchAll(/<td[^>]*data-label="([^"]*)"[^>]*>([\s\S]*?)<\/td>/g)].filter((m) => m[1] === name).map((m) => plain(m[2]));
+  assert.ok(cells.length >= 8, `the ${name} column holds only ${cells.length} cells: the table is not read`);
+  return cells.join(' | ');
 }
 
-/** The answer of the FAQ item whose question is `question`. */
-function faqAnswer(question) {
-  const item = html.split('<details class="acc__item"').find((chunk) => chunk.includes(`>${question}</span>`));
-  assert.ok(item, `no FAQ item asks "${question}"`);
-  const open = item.indexOf('class="acc__a"');
-  return plain(item.slice(item.indexOf('>', open) + 1));
-}
-
-/** A titled note under the cards ("A second, shared limit"): the paragraph that opens with that title. */
-function note(title) {
-  const m = new RegExp(`<p class="plan__note"[^>]*><strong class="note-title"[^>]*>${title}</strong>([\\s\\S]*?)</p>`).exec(html);
-  assert.ok(m, `no note titled "${title}"`);
+/** The answer under the limit that asks `question`, from the always-open limits grid (it was an accordion item, then a note under the cards). */
+function limitAnswer(question) {
+  const m = new RegExp(`<h3 class="limit__q"[^>]*>${question.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</h3>\\s*<div class="limit__a"[^>]*>([\\s\\S]*?)</div>`).exec(html);
+  assert.ok(m, `no limit asks "${question}"`);
   return plain(m[1]);
 }
+const faqAnswer = limitAnswer;
+const note = limitAnswer;
 
 /**
  * `phrase` in `t` with no digit, comma or point glued to its front: "25 Credits per day" is not "5 Credits per day",
@@ -96,38 +97,44 @@ test('the page says the owner\'s line, exactly', () => {
   assert.match(html, /<h1[^>]*>\s*Free while in beta\. Paid plans start later\s*<\/h1>/, 'and it is the page\'s one h1');
 });
 
-test('EACH CARD carries its own price, allowance and build count, from the plan table, and no other card\'s', () => {
+test('EACH PLAN COLUMN carries its own price, allowance and build count, from the plan table, and no other plan\'s', () => {
   assert.deepEqual([...LISTED_PLAN_IDS], ['free', 'builder', 'studio']);
-  const cards = Object.fromEntries(LISTED_PLAN_IDS.map((id) => [id, card(id)]));
+  const cols = Object.fromEntries(LISTED_PLAN_IDS.map((id) => [id, column(id)]));
   for (const id of LISTED_PLAN_IDS) {
     const plan = PLAN_TABLE[id];
-    const t = cards[id];
-    assert.ok(t.includes(plan.name), `${plan.name}: the card does not carry its own name`);
-    // Price. Free is $0 in beta; a paid card is "<price> a month", adjacent, inside the card.
-    if (plan.priceUsdMonthly === 0) assert.ok(has(t, '$0 in beta'), `${plan.name}: the card does not say it is $0 in beta`);
-    else assert.ok(has(t, `${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not on its card`);
-    // Allowance. Free leads with its day (that is how it is given out), a paid plan with its month (its pool).
-    const line = id === 'free'
-      ? `${plan.creditsPerDay} Credits per day · up to ${plan.creditsPerMonth} a month`
-      : `${plan.creditsPerMonth} Credits a month · up to ${plan.creditsPerDay} a day`;
-    assert.ok(has(t, line), `${plan.name}: "${line}" is not on its card`);
-    // Build count.
-    assert.ok(has(t, `About ${buildsPerMonth(id)} typical builds a month`), `${plan.name}: "About ${buildsPerMonth(id)} typical builds a month" is not on its card`);
+    const t = cols[id];
+    // Price. Free is "Free while in beta" in its Price cell; a paid column says "<price> a month", adjacent.
+    if (plan.priceUsdMonthly === 0) assert.ok(has(t, 'Free while in beta'), `${plan.name}: the column does not say it is free while in beta`);
+    else assert.ok(has(t, `${formatMoney(plan.priceUsdMonthly)} a month`), `${plan.name}: "${formatMoney(plan.priceUsdMonthly)} a month" is not in its column`);
+    // Allowance and builds: each in its own cell.
+    assert.ok(t.split(' | ').includes(String(plan.creditsPerDay)), `${plan.name}: its ${plan.creditsPerDay} Credits a day is not a cell of its column`);
+    assert.ok(t.split(' | ').includes(String(plan.creditsPerMonth)), `${plan.name}: its ${plan.creditsPerMonth} Credits a month is not a cell of its column`);
+    assert.ok(has(t, `About ${buildsPerMonth(id)}`), `${plan.name}: "About ${buildsPerMonth(id)}" typical builds is not in its column`);
   }
-  // Nothing crosses: a card never carries another plan's price or allowance (a swapped pair would pass the loop above).
+  // Nothing crosses: a column never carries another plan's price (a swapped pair would pass the loop above).
   for (const id of LISTED_PLAN_IDS) {
     for (const other of LISTED_PLAN_IDS.filter((o) => o !== id)) {
       const o = PLAN_TABLE[other];
-      if (o.priceUsdMonthly > 0) assert.ok(!cards[id].includes(formatMoney(o.priceUsdMonthly)), `the ${PLAN_TABLE[id].name} card carries the ${o.name} price`);
-      assert.ok(!cards[id].includes(`${o.creditsPerMonth} Credits a month`) || o.creditsPerMonth === PLAN_TABLE[id].creditsPerMonth, `the ${PLAN_TABLE[id].name} card carries the ${o.name} allowance`);
+      if (o.priceUsdMonthly > 0) assert.ok(!cols[id].includes(formatMoney(o.priceUsdMonthly)), `the ${PLAN_TABLE[id].name} column carries the ${o.name} price`);
     }
+  }
+  // The per-build price of a paid column is the monthly price over ITS builds, never another plan's.
+  for (const id of LISTED_PLAN_IDS.filter((p) => PLAN_TABLE[p].priceUsdMonthly > 0)) {
+    const perBuild = Math.round((PLAN_TABLE[id].priceUsdMonthly / buildsPerMonth(id)) * 100) / 100;
+    assert.ok(has(cols[id], `about ${formatMoney(perBuild)} a build at this price`), `${PLAN_TABLE[id].name}: the price a build is not its monthly price over its builds`);
   }
   // The exact figures the owner decided, typed once, so a config edit that is wrong is caught here too
   // and not only a page that disagrees with it.
-  assert.ok(has(cards.builder, '$9.99 a month') && has(cards.studio, '$24.99 a month'));
-  assert.ok(has(cards.free, '5 Credits per day · up to 30 a month'));
-  assert.ok(has(cards.builder, '100 Credits a month · up to 20 a day') && has(cards.studio, '300 Credits a month · up to 30 a day'));
-  assert.ok(has(cards.free, 'About 20 typical builds a month') && has(cards.builder, 'About 70 typical builds') && has(cards.studio, 'About 200 typical builds'));
+  assert.ok(has(cols.builder, '$9.99 a month') && has(cols.studio, '$24.99 a month'));
+  assert.ok(cols.free.split(' | ').includes('5') && cols.free.split(' | ').includes('30'));
+  assert.ok(cols.builder.split(' | ').includes('20') && cols.builder.split(' | ').includes('100'));
+  assert.ok(cols.studio.split(' | ').includes('30') && cols.studio.split(' | ').includes('300'));
+  assert.ok(has(cols.free, 'About 20') && has(cols.builder, 'About 70') && has(cols.studio, 'About 200'));
+  // And the decision panel is Free's, from the same table.
+  const panel = plain(/<section[^>]*aria-labelledby="now-title"[\s\S]*?<\/section>/.exec(html)?.[0] ?? '');
+  assert.ok(panel.includes(`${PLAN_TABLE.free.creditsPerDay} Credits per day · up to ${PLAN_TABLE.free.creditsPerMonth} a month`), 'the Free panel does not say its allowance');
+  assert.ok(has(panel, '$0 in beta'), 'the Free panel does not say it is $0 in beta');
+  assert.ok(has(panel, `About ${buildsPerMonth('free')} typical builds a month`));
 });
 
 /** One row of the comparison table, by its label: the cells keyed by the plan column they sit under, as a visitor reads them. */
@@ -296,8 +303,10 @@ test('THE SHARED-POOL SENTENCE gives the whole-service ceiling in credits and th
   assert.ok(n.includes('even though your own balance still shows Credits'), 'and what the user sees when the pool is gone');
 });
 
-test('THE BUILD COST TABLE has one row per build, with its credits and its dollars in that row', () => {
-  const rows = [...html.matchAll(/<tr[^>]*>\s*<td[^>]*data-label="Build"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*data-label="Credits"[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*data-label="AI compute"[^>]*>([\s\S]*?)<\/td>/g)]
+test('THE BUILD COST LIST has one row per build, with its credits and its dollars in that row', () => {
+  // RESTATED 2026-10-05: the cost table became a list with a bar per row (src/pages/pricing.astro, "What a Credit buys"); the property (one row
+  // per config build, its own credits and dollars, the estimate flag where the config sets it) is read off the list items.
+  const rows = [...html.matchAll(/<li class="cost"[^>]*>\s*<span class="cost__label"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<span class="cost__credits[^"]*"[^>]*>([\s\S]*?)<\/span>\s*<span class="cost__usd[^"]*"[^>]*>([\s\S]*?)<\/span>/g)]
     .map((m) => [plain(m[1]), plain(m[2]), plain(m[3])]);
   assert.equal(rows.length, BUILD_COSTS.length, 'one row per build cost');
   const cents = (credits) => formatMoney(Math.round(credits * CREDIT_USD * 100) / 100);
@@ -306,6 +315,10 @@ test('THE BUILD COST TABLE has one row per build, with its credits and its dolla
     const dollars = b.creditsLow === b.creditsHigh ? cents(b.creditsLow) : `${cents(b.creditsLow)}\u2013${cents(b.creditsHigh)}`;
     assert.deepEqual(rows[k], [`${b.label}${b.estimated ? ', estimated' : ''}`, credits, dollars], `row ${k} (${b.label}) is not the config's`);
   });
+  // The bars are widths, never figures: each is within the range of 0 to 100 and the biggest build's is the longest.
+  const widths = [...html.matchAll(/<span class="cost__bar"[^>]*><span style="width: (\d+)%"/g)].map((m) => Number(m[1]));
+  assert.equal(widths.length, BUILD_COSTS.length);
+  assert.equal(Math.max(...widths), widths[BUILD_COSTS.indexOf(BUILD_COSTS.reduce((a, b) => (b.creditsHigh > a.creditsHigh ? b : a)))], 'the longest bar is not the dearest build');
 });
 
 test('what a Credit buys comes from BUILD_COSTS and CREDIT_USD, not from the page', () => {

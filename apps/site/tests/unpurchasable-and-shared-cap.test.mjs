@@ -65,13 +65,17 @@ test('/pricing discloses the shared ceiling, with the figure derived from the wo
   assert.match(html, /your own balance still shows Credits/i);
 });
 
-test('the shared-cap sentence is the whole point, so it must be above the FAQ', () => {
+// RESTATED 2026-10-05 (M2 site fix cycle 1). The page no longer has plan cards, a heading "What each plan includes" or an accordion. The property is
+// the same: the shared ceiling is disclosed where people decide, BEFORE the comparison table and not only in the limits at the end, so nobody meets
+// "StudPilot has reached today's shared building capacity" first as an error. The table is the section with id="compare".
+test('the shared-cap sentence is the whole point, so it must come before the comparison table', () => {
   if (!existsSync(dist('pricing/index.html'))) return;
   const html = flat(readFileSync(dist('pricing/index.html'), 'utf8'));
   const cap = html.search(/shared building capacity/i);
-  const compare = html.search(/What each plan includes/i);
-  assert.ok(cap !== -1 && compare !== -1);
-  assert.ok(cap < compare, 'the disclosure is below the comparison table, not beside the plan cards');
+  const compare = html.search(/id="compare"/i);
+  assert.ok(cap !== -1 && compare !== -1, 'the cap sentence or the comparison section was not found');
+  assert.ok(cap < compare, 'the disclosure is below the comparison table, not above it');
+  assert.match(html.slice(cap - 400, cap + 400), /even though your own balance still shows Credits/i, 'the early disclosure does not say what the user sees');
 });
 
 test('/docs/billing says checkout is closed, and asks rather than asserts it', () => {

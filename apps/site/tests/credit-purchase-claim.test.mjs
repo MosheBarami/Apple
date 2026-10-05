@@ -131,15 +131,27 @@ test('the page does not advertise a purchase channel while none exists', () => {
     'the table renders PLAN_FEATURES directly — the override is being bypassed.',
   );
 
-  // The plan cards render PLAN_COPY highlights, and Builder's include "Buy credits when you need
-  // more" — a literal in packages/shared, so the source scan below cannot see it. The filter is
-  // what stops the card contradicting the row two sections down, and it is asserted directly.
-  assert.match(
-    pricing,
-    /highlights\s*\n?\s*\.filter\(\(h\) => CREDIT_PURCHASE_LIVE \|\| !\/\\bbuy\\b\.\*\\bcredits\?\\b\/i\.test\(h\)\)/,
-    'the plan cards no longer filter a "buy credits" highlight, so a card can offer a purchase the ' +
-      'comparison table on the same page calls unavailable.',
-  );
+  // RESTATED 2026-10-05 (M2 site fix cycle 1): the page has no plan cards any more. They rendered PLAN_COPY highlights, and Builder's include "Buy
+  // credits when you need more" (a literal in packages/shared that the source scan below cannot see), so they filtered it. The property is that a
+  // card-like list of highlights never reaches the page unfiltered: either the page does not render highlights at all, or it still filters the
+  // purchase one. And what is rendered must not contain it (read off the built page).
+  const code = pricing.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  if (/\.highlights\b/.test(code)) {
+    assert.match(
+      code,
+      /highlights\s*\n?\s*\.filter\(\(h\) => CREDIT_PURCHASE_LIVE \|\| !\/\\bbuy\\b\.\*\\bcredits\?\\b\/i\.test\(h\)\)/,
+      'the page renders PLAN_COPY highlights without filtering a "buy credits" one, so it can offer a purchase the comparison row calls unavailable.',
+    );
+  }
+  // The comparison table has a row "Buy extra Credits" (the shared feature list names the capability), and every cell of it must say Unavailable:
+  // that row is the honest answer, not an invitation. Everything else on the built page is read for an invitation.
+  const html = readFileSync(join(SITE, 'dist', 'pricing', 'index.html'), 'utf8');
+  const row = [...html.matchAll(/<tr[^>]*>\s*<th scope="row"[^>]*>[\s\S]*?<\/tr>/g)].map((m) => m[0]).find((r) => /Buy extra Credits/i.test(r));
+  assert.ok(row, 'the comparison table no longer has its "Buy extra Credits" row, so this check would read an answer that is not there');
+  const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1].replace(/<[^>]+>/g, '').trim());
+  assert.ok(cells.length >= 3 && cells.every((c) => c === 'Unavailable'), `a plan's cell of "Buy extra Credits" is not Unavailable: ${cells.join(' | ')}`);
+  const built = html.replace(row, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  assert.doesNotMatch(built, /\bbuy\b[^.]{0,30}\bcredits?\b|\badd\s+credits?\b|\btop\s*-?\s*up\b/i, 'the built pricing page invites a Credit purchase');
 
   // And no visible sentence on the page invites a purchase of Credits.
   const hay = visibleText(pricing);

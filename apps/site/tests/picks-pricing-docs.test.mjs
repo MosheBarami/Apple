@@ -59,13 +59,15 @@ for (const [id, [rel, name]] of Object.entries(PICKS)) {
   });
 }
 
-test('the pricing limits FAQ and the docs FAQ both open with the Accordion', () => {
-  assert.match(page('pricing.astro'), /<Accordion items=\{limitFaq\}/);
+// RESTATED 2026-10-05 (M2 site fix cycle 1): /pricing's limits are an always-open grid now (the accordion was the old page's), so the Accordion is
+// the docs FAQ's alone. The property (the FAQ opens with the Accordion, mounted and rendered) is kept for it.
+test('the docs FAQ opens with the Accordion, and /pricing no longer mounts one', () => {
   assert.match(page('docs/faq.astro'), /<Accordion items=\{general\}/);
-  assert.ok(mounts(page('pricing.astro'), 'Accordion'));
+  assert.ok(mounts(page('docs/faq.astro'), 'Accordion'));
+  assert.ok(!mounts(page('pricing.astro'), 'Accordion'), '/pricing mounts the Accordion again: its limits are an always-open grid');
 });
 
-test('the per-build price on each paid card is derived from the config, never typed', async () => {
+test('the per-build price of each paid column is derived from the config, never typed', async () => {
   const src = page('pricing.astro');
   assert.match(src, /buildsPerMonth\(id\)\)\) \* 100\) \/ 100/, 'the per-build price is no longer the monthly price over buildsPerMonth');
   const shared = await import('../../../packages/shared/src/index.ts');
