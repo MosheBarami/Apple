@@ -254,11 +254,12 @@ export async function initBaseline(opts, deps) {
 // ---------------------------------------------------------------------------------------------------------------
 /** The worker's AgentState.status is 'idle' | 'running' | 'stopping'. Only 'idle' is over: 'stopping' means a tool is still finishing. */
 const isIdle = (info) => info?.agentStatus === 'idle';
-const SIGNALS = ['SIGINT', 'SIGTERM'];
+// SIGHUP is what closing the terminal window sends: Node's default for it ends the process at once, like the other two.
+const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
 export async function runPiece(opts, deps) {
   const t0 = deps.now();
-  let interrupted = null; // the name of the first SIGINT or SIGTERM that arrived
+  let interrupted = null; // the name of the first SIGINT, SIGTERM or SIGHUP that arrived
   const timer = makeTimer(deps, () => interrupted);
   const secrets = [deps.adminKey];
   const request = getRequest(opts.requestId, deps.devSetPath);
@@ -305,14 +306,23 @@ export async function runPiece(opts, deps) {
   let playStarted = false;
   let runLive = false; // an agent run was started and has not been seen to end: whatever happens, it must be stopped
 
-  /** Stop the run and wait for it to go idle. Records what happened under manifest.run.stop; never throws. */
+  let stopAccepted = false; // the worker took a stop request: asking again changes nothing, so a run that still is not idle is not stopped twice
+
+  /**
+   * Stop the run and wait for it to go idle. Records what happened under manifest.run.stop; never throws. There is one record: a second
+   * attempt (only ever made when no stop request was accepted by the first) keeps the first attempt's reason and time and counts itself
+   * in `attempts`; `requested`, `idle` and `error` say how the latest one ended.
+   */
   const stopRun = async (reason) => {
     deps.log(`[eval] stopping the run (${reason})`);
-    const stop = { reason, requestedAt: new Date(deps.now()).toISOString(), requested: false, idle: false, error: null };
+    const stop = manifest.run?.stop ?? { reason, requestedAt: new Date(deps.now()).toISOString(), attempts: 0, requested: false, idle: false, error: null };
+    stop.attempts++;
+    stop.error = null;
     if (manifest.run) manifest.run.stop = stop;
     try {
       await deps.api.agentStop(opts.projectId);
       stop.requested = true;
+      stopAccepted = true;
     } catch (e) {
       stop.error = redact(e.message ?? String(e), secrets).slice(0, 300);
       deps.log(`[eval] stop request failed: ${stop.error}`);
@@ -337,7 +347,7 @@ export async function runPiece(opts, deps) {
     return stop;
   };
 
-  // Node's default for SIGINT and SIGTERM ends the process at once, without running the `finally` below, which would leave a paid run
+  // Node's default for SIGINT, SIGTERM and SIGHUP ends the process at once, without running the `finally` below, which would leave a paid run
   // going with nothing in the manifest. So the first signal is only noted: the step in flight finishes (the run's poll below does not
   // wait for its next tick), no further step begins, and the `finally` stops a live run and writes the files. The handlers are taken off
   // at the first signal, so a second Ctrl-C kills the process the ordinary way.
@@ -499,24 +509,27 @@ export async function runPiece(opts, deps) {
           const stop = await stopRun(reason);
           throw new Abort('agent-run', `${what}; the run was ${stop.idle ? 'stopped and is idle' : 'asked to stop but NOT confirmed idle: stop it by hand'}`);
         };
+        /** The worker said no: no run of ours exists, so none is recorded and nothing is stopped (a 409 is somebody else's run). Never returns. */
+        const refused = (message) => {
+          manifest.run = null;
+          runLive = false;
+          throw new Abort('agent-run', message);
+        };
         let started;
         try {
           started = await deps.api.agentRun(opts.projectId, { text: request.text });
         } catch (e) {
-          // No answer, or a 5xx: the worker may or may not have started the run, and a start that lands after the stop below is not ruled out
-          // either, so the manifest says the start was not confirmed and the run is stopped.
           const why = redact(e.message ?? String(e), secrets);
+          // A status the worker answered with and no retry could change (a 400, 401, 404) is a refusal, the same as a 403 or a 409: it comes
+          // from a request the worker did not act on. No answer, a 5xx, a 408 or a 429 leave open whether the worker had started the run (or
+          // will), and a start that lands after the stop below is not ruled out either: so the start is recorded as not confirmed and stopped.
+          if (!isTransient(e)) refused(`the worker refused the request to start the run: ${why}`);
           manifest.run.startError = why;
           await giveUp('start-failed', `the start request failed: ${why}`, `the request to start the run failed (${why}), so it is not known whether the worker started one`);
         }
-        if (started.status === 409 || started.status === 403) {
-          // The worker said no: no run of ours exists (a 409 is somebody else's run, which is not ours to stop).
-          manifest.run = null;
-          runLive = false;
-          if (started.status === 409) throw new Abort('agent-run', 'the project already has a run in progress');
-          throw new Abort('agent-run', `the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
-        }
-        manifest.run.startConfirmed = true;
+        if (started.status === 409) refused('the project already has a run in progress');
+        if (started.status === 403) refused(`the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
+        manifest.run.startConfirmed = started.status === 200;
         const deadline = startedAt + opts.timeoutMinutes * 60_000;
         const messagesBefore = manifest.plugin.messagesBefore ?? 0;
         const retry = { attempts: opts.pollAttempts ?? DEFAULTS.pollAttempts, everyMs: opts.pollMs };
@@ -539,7 +552,9 @@ export async function runPiece(opts, deps) {
             ended = 'finished';
             runLive = false;
             break;
-          } else if (deps.now() - startedAt > 60_000) {
+          } else if (!seenRunning && deps.now() - startedAt > 60_000) {
+            // Only a run that was never seen running. One that was seen and now reads 'stopping' (the owner pressed Stop, or access was
+            // revoked) is over when it reads 'idle', however long that takes, up to the timeout below.
             ended = 'never-started';
             break;
           }
@@ -769,7 +784,9 @@ export async function runPiece(opts, deps) {
   } finally {
     // A run that was started and not seen to end is stopped whatever went wrong, and the manifest says so.
     if (runLive) {
-      await stopRun(manifest.aborted ? `the harness stopped at ${manifest.aborted.step}: ${manifest.aborted.message}`.slice(0, 200) : 'the harness ended with the run still live');
+      // A stop the worker accepted and the run still not idle is not asked for again: the second wait would only hide the first record.
+      if (stopAccepted) deps.log('[eval] the worker accepted a stop and the run is still not idle; not asking again. Stop it by hand.');
+      else await stopRun(manifest.aborted ? `the harness stopped at ${manifest.aborted.step}: ${manifest.aborted.message}`.slice(0, 200) : 'the harness ended with the run still live');
       if (manifest.run && manifest.run.endedBy === null) manifest.run.endedBy = 'harness-stopped';
     }
     if (playStarted && tools) await tools.play(false, { timeoutMs: 60_000 }).catch(() => undefined);

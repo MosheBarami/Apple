@@ -107,6 +107,8 @@ function fakeApi(o = {}) {
     },
     conversationReset: async (...a) => {
       rec('conversationReset', ...a);
+      // `conversationAnswer`: the answer the route gives as it is (the chat is empty afterwards, as the route's own check would say).
+      if (o.conversationAnswer) { s.messages = 0; return o.conversationAnswer; }
       if (o.conversationStatus) return { status: o.conversationStatus, json: { ok: false, error: o.conversationStatus === 403 ? 'owner mismatch: that user does not own this project' : 'a run is in progress' } };
       s.messages = o.conversationLeaves ?? 0;
       // The worker's own `ok` is `left === 0` and it answers 200 either way, so `ok: false` arrives with a 200.
@@ -465,10 +467,14 @@ test('A POLL ERROR THAT NO RETRY CAN FIX (a 401) still stops the run; a stop tha
   const r = await runPiece(opts, d);
   assert.doesNotMatch(d.logs.join('\n'), /trying again/, 'a 401 is not retried: another try cannot fix it');
   assert.equal(r.manifest.aborted.step, 'agent-run');
-  assert.equal(calls(api, 'agentStop').length, 2, 'the stop was tried when the poll gave up, and once more at the end because the run was never confirmed idle');
+  assert.equal(calls(api, 'agentStop').length, 2, 'the stop was tried when the poll gave up, and once more at the end because the worker never ACCEPTED one');
   assert.equal(r.manifest.run.stop.requested, false);
   assert.match(r.manifest.run.stop.error, /HTTP 500 boom/);
   assert.equal(r.manifest.run.stop.idle, false);
+  // one record for the two attempts: the second keeps the first one's reason and time, and counts itself
+  assert.equal(r.manifest.run.stop.attempts, 2);
+  assert.match(r.manifest.run.stop.reason, /status could not be read/);
+  assert.doesNotMatch(r.manifest.run.stop.reason, /the harness stopped at/, 'the reason the run was given up on is not overwritten by the wind-up');
   assert.match(r.manifest.aborted.message, /NOT confirmed idle: stop it by hand/);
   assert.equal(calls(api, 'sessionInfo').filter((c) => true).length < 400, true, 'a 401 is not retried four times per poll forever');
 });
@@ -553,6 +559,42 @@ test('A START REQUEST THAT FAILS AFTER THE WORKER STARTED THE RUN (a 5xx, or no 
   assert.equal(ok.manifest.run.startError, null);
 });
 
+test('A START REQUEST THE WORKER ANSWERED WITH A 4xx IS A REFUSAL: no run of ours exists, nothing is stopped, and the piece is not counted as attempted', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  for (const status of [400, 401, 404]) {
+    const api = fakeApi({ startFails: { status, message: `POST /api/admin/agent-run/x: HTTP ${status} no` } });
+    const r = await runPiece({ ...opts, overwrite: true }, deps(api, {}));
+    assert.equal(r.ok, false, String(status));
+    assert.equal(r.manifest.aborted.step, 'agent-run', String(status));
+    assert.match(r.manifest.aborted.message, new RegExp(`worker refused the request to start the run: .*HTTP ${status}`), String(status));
+    assert.doesNotMatch(r.manifest.aborted.message, /not known whether/, `${status}: the worker did not act on it, so there is no doubt to record`);
+    assert.equal(r.manifest.run, null, `${status}: a refusal is not an attempt`);
+    assert.equal(calls(api, 'agentStop').length, 0, `${status}: there is no run of ours to stop`);
+    assert.equal(stepNames(r).includes('messages'), false, String(status));
+    const verdictless = aggregate([{ id: 'U01', category: 'ui', manifest: r.manifest, verdict: null, credits: null, timing: null }]).counts;
+    assert.equal(verdictless.attempted, 0, `${status}: not in the pass-rate denominator`);
+    assert.equal(verdictless.notRun, 1, String(status));
+  }
+  // a 408 and a 429 can come from a proxy in front of a request that did go through, and a 5xx or no answer say nothing either: those stay
+  // recorded as a start that may have happened, and the run is stopped
+  for (const status of [408, 429, 503]) {
+    const api = fakeApi({ startFails: { status } });
+    const r = await runPiece({ ...opts, overwrite: true }, deps(api, {}));
+    assert.equal(r.manifest.run?.endedBy, 'start-failed', String(status));
+    assert.equal(r.manifest.run.startConfirmed, false, String(status));
+    assert.equal(calls(api, 'agentStop').length, 1, `${status}: the run the worker may have started is stopped`);
+    assert.equal(aggregate([{ id: 'U01', category: 'ui', manifest: r.manifest, verdict: null, credits: null, timing: null }]).counts.attempted, 1, String(status));
+  }
+  // startConfirmed means the worker answered 200: any other answer that is not a refusal goes on to the poll but is not "confirmed"
+  const accepted = fakeApi({ runPolls: 1 });
+  const realRun = accepted.agentRun;
+  accepted.agentRun = async (...a) => ({ ...(await realRun(...a)), status: 202 });
+  const r = await runPiece({ ...opts, overwrite: true }, deps(accepted, { world: { min: [0, 0, 0], max: [4, 4, 4] } }));
+  assert.equal(r.manifest.run.startConfirmed, false, 'a 202 is not the 200 the worker sends for a started run');
+  assert.equal(r.manifest.run.endedBy, 'done', 'but the run it started is polled to its end all the same');
+});
+
 test('A RUN THE WORKER STILL SAYS IS "stopping" IS NOT IDLE: the stop waits for "idle", and a stop that never gets there ends the piece unmeasured', async () => {
   const { opts } = setup();
   await withBaseline(opts);
@@ -565,10 +607,18 @@ test('A RUN THE WORKER STILL SAYS IS "stopping" IS NOT IDLE: the stop waits for 
   assert.ok(stepNames(waited).includes('measure'), 'a stop that is confirmed lets the piece be measured');
   // the worker never leaves "stopping": the run is NOT confirmed idle, so the place may still be changing and is not measured
   const stuck = fakeApi({ neverEnds: true, stoppingReads: Infinity });
-  const r = await runPiece({ ...opts, overwrite: true }, deps(stuck, {}));
+  const stuckDeps = deps(stuck, {});
+  const t0 = stuckDeps.now();
+  const r = await runPiece({ ...opts, overwrite: true }, stuckDeps);
   assert.equal(r.manifest.run.stop.requested, true);
   assert.equal(r.manifest.run.stop.idle, false, '"stopping" is not "idle"');
   assert.equal(r.manifest.run.endedBy, 'timeout');
+  // a stop the worker accepted is not asked for again at the wind-up: one request, one 90 s wait, and the first record is the only one
+  assert.equal(calls(stuck, 'agentStop').length, 1, 'the stop was asked for once');
+  assert.equal(r.manifest.run.stop.attempts, 1);
+  assert.match(r.manifest.run.stop.reason, /the run passed 15 minutes/, 'the reason is the timeout, not the wind-up');
+  assert.ok(stuckDeps.now() - t0 < (15 * 60 + 150) * 1000, `one stop wait, not two: the piece took ${Math.round((stuckDeps.now() - t0) / 1000)} s on the fake clock`);
+  assert.match(stuckDeps.logs.join('\n'), /accepted a stop and the run is still not idle; not asking again/);
   assert.equal(r.manifest.aborted.step, 'agent-run');
   assert.match(r.manifest.aborted.message, /NOT confirmed idle: stop it by hand/);
   assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run'], 'no measuring, no pictures and no play test while a tool may still be changing the place');
@@ -578,6 +628,8 @@ test('A RUN THE WORKER STILL SAYS IS "stopping" IS NOT IDLE: the stop waits for 
   const never = await runPiece({ ...opts, overwrite: true }, deps(late, {}));
   assert.equal(never.manifest.run.endedBy, 'never-started');
   assert.equal(never.manifest.run.stop.idle, false);
+  assert.equal(calls(late, 'agentStop').length, 1, 'asked once here too');
+  assert.match(never.manifest.run.stop.reason, /never showed as running/);
   assert.equal(never.manifest.aborted.step, 'agent-run');
   assert.equal(stepNames(never).includes('measure'), false);
 });
@@ -594,6 +646,31 @@ test('A RUN THAT IS "stopping" IS NOT OVER: the poll waits for idle before the h
   assert.equal(calls(api, 'agentStop').length, 0, 'the harness did not stop a run that ended by itself');
 });
 
+test('A RUN THAT WAS SEEN RUNNING AND IS "stopping" AFTER 60 s IS STILL NOT OVER: it is not a run that never started', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  // the owner presses Stop 100 s into the run (20 polls of 5 s on the fake clock): running, then stopping while a tool finishes, then idle.
+  // The 60 s window is for a run that was never seen at all; this one was, so it waits for idle however long that takes
+  const api = fakeApi({ runPolls: 20, stoppingAfterRun: 3 });
+  const r = await runPiece(opts, deps(api, { world: { min: [0, 0, 0], max: [4, 4, 4] } }));
+  assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
+  assert.ok(r.manifest.run.minutes > 1.5, `the run lasted ${r.manifest.run.minutes} minutes on the fake clock, past the 60 s window`);
+  assert.equal(r.manifest.run.endedBy, 'done', 'a run that was seen running is never filed as never-started');
+  assert.equal(calls(api, 'agentStop').length, 0, 'the poll did not stop a run that was ending by itself');
+  assert.equal(r.manifest.run.stop, undefined);
+  const beforeMessages = api.calls.slice(0, api.calls.findIndex((c) => c.name === 'messages')).filter((c) => c.name === 'sessionInfo').map((c) => c.status);
+  assert.deepEqual(beforeMessages.slice(-5), ['running', 'stopping', 'stopping', 'stopping', 'idle'], 'the harness moved on only at idle');
+  assert.ok(stepNames(r).includes('measure'), 'and then measured the place');
+  // CONTROL: a run that never showed itself is still given up on after 60 s (that is what the window is for)
+  const unseen = fakeApi({ messages: 0 });
+  unseen.agentRun = async (...a) => { unseen.calls.push({ name: 'agentRun', args: a }); return { status: 200, json: { ok: true, started: true } }; };
+  const never = await runPiece({ ...opts, overwrite: true }, deps(unseen, {}));
+  assert.equal(never.manifest.run.endedBy, 'never-started');
+});
+
+const SIGNAL_NAMES = ['SIGINT', 'SIGTERM', 'SIGHUP']; // SIGHUP is what closing the terminal window sends
+const listening = (emitter) => SIGNAL_NAMES.map((n) => emitter.listenerCount(n));
+
 /** A run in flight, and a way to send it a signal from inside the fake worker, as a person at the terminal would. */
 function withSignal(signal, { atPoll = 2, ...o } = {}) {
   const signals = new EventEmitter();
@@ -603,20 +680,20 @@ function withSignal(signal, { atPoll = 2, ...o } = {}) {
     ...o,
     onSessionInfo: (info, s) => {
       if (!(s.running && info.agentStatus === 'running')) return;
-      if (s.polls === 1) seen.liveListeners = [signals.listenerCount('SIGINT'), signals.listenerCount('SIGTERM')];
+      if (s.polls === 1) seen.liveListeners = listening(signals);
       if (s.polls === atPoll) {
         signals.emit(signal);
-        seen.afterFirstSignal = [signals.listenerCount('SIGINT'), signals.listenerCount('SIGTERM')];
+        seen.afterFirstSignal = listening(signals);
       }
     },
   });
   return { signals, api, seen };
 }
 
-test('SIGINT OR SIGTERM WITH THE RUN LIVE STOPS THE RUN, waits for idle and writes the manifest: Node\'s default would end the process with the run still going', async () => {
+test('SIGINT, SIGTERM OR SIGHUP WITH THE RUN LIVE STOPS THE RUN, waits for idle and writes the manifest: Node\'s default would end the process with the run still going', async () => {
   const { opts } = setup();
   await withBaseline(opts);
-  for (const signal of ['SIGINT', 'SIGTERM']) {
+  for (const signal of SIGNAL_NAMES) {
     const { signals, api, seen } = withSignal(signal);
     const d = deps(api, {});
     d.signals = signals;
@@ -635,33 +712,33 @@ test('SIGINT OR SIGTERM WITH THE RUN LIVE STOPS THE RUN, waits for idle and writ
     assert.equal(JSON.parse(read(r.pieceDir, 'manifest.json')).run.endedBy, 'interrupted', `${signal}: the manifest was written`);
     for (const f of ['credits.json', 'timing.json', 'steps.json', 'reply.md', 'console.txt', 'request.txt']) assert.ok(existsSync(join(r.pieceDir, f)), `${signal}: ${f}`);
     assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run'], `${signal}: no further step starts`);
-    assert.deepEqual(seen.liveListeners, [1, 1], `${signal}: both signals were being listened for while the run was live`);
-    assert.deepEqual(seen.afterFirstSignal, [0, 0], `${signal}: the first signal gives the process back to Node, so a second one kills it at once`);
+    assert.deepEqual(seen.liveListeners, [1, 1, 1], `${signal}: all three signals were being listened for while the run was live`);
+    assert.deepEqual(seen.afterFirstSignal, [0, 0, 0], `${signal}: the first signal gives the process back to Node, so a second one kills it at once`);
   }
 });
 
 test('the signals are listened for on the real process by default, and not for a moment longer than the piece runs', async () => {
   const { opts } = setup();
   await withBaseline(opts);
-  const before = [process.listenerCount('SIGINT'), process.listenerCount('SIGTERM')];
+  const before = listening(process);
   let during = null;
   const api = fakeApi({ neverEnds: true, onSessionInfo: (info, s) => {
     if (!(s.running && info.agentStatus === 'running')) return;
-    if (s.polls === 1) during = [process.listenerCount('SIGINT'), process.listenerCount('SIGTERM')];
+    if (s.polls === 1) during = listening(process);
     if (s.polls === 2) process.emit('SIGINT'); // what Node does for a Ctrl-C, without sending one: it reaches only the handlers that were registered
   } });
   const r = await runPiece(opts, deps(api, {}));
-  assert.deepEqual(during, [before[0] + 1, before[1] + 1], 'one listener for each signal while the run is live');
+  assert.deepEqual(during, before.map((n) => n + 1), 'one listener for each of the three signals while the run is live');
   assert.match(r.manifest.aborted.message, /interrupted by SIGINT/);
   assert.equal(calls(api, 'agentStop').length, 1);
-  assert.deepEqual([process.listenerCount('SIGINT'), process.listenerCount('SIGTERM')], before, 'nothing is left registered');
+  assert.deepEqual(listening(process), before, 'nothing is left registered');
   // a piece that ends by itself leaves nothing registered either
   const quiet = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ runPolls: 1 }), { world: { min: [0, 0, 0], max: [4, 4, 4] } }));
   assert.equal(quiet.ok, true);
-  assert.deepEqual([process.listenerCount('SIGINT'), process.listenerCount('SIGTERM')], before);
+  assert.deepEqual(listening(process), before);
   // and one that is refused before it starts
   await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ agentStatus: 'running' }), {}));
-  assert.deepEqual([process.listenerCount('SIGINT'), process.listenerCount('SIGTERM')], before);
+  assert.deepEqual(listening(process), before);
 });
 
 test('A SIGNAL WHILE THE START REQUEST IS IN FLIGHT: the run it started is stopped, and the start is recorded as confirmed', async () => {
@@ -677,6 +754,30 @@ test('A SIGNAL WHILE THE START REQUEST IS IN FLIGHT: the run it started is stopp
   assert.equal(calls(api, 'agentStop').length, 1);
   assert.equal(r.manifest.run.stop.idle, true);
   assert.match(r.manifest.aborted.message, /interrupted by SIGTERM/);
+});
+
+test('A SIGNAL WAKES THE SLEEPING POLL AT ONCE: the run is stopped without waiting out the 5 s between polls', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  // The fake clock's sleep returns at once, so it cannot tell a wake from a sleep. This sleep is a real 1.5 s for the poll's own interval
+  // (and only until the signal), and the stop request records whether that sleep had ended by then: only a wake gets there first.
+  const signals = new EventEmitter();
+  let slow = true;
+  let pollSleepEnded = false;
+  let endedBeforeStop = null;
+  const api = fakeApi({ neverEnds: true, onAgentRun: () => setTimeout(() => { slow = false; signals.emit('SIGHUP'); }, 30) });
+  const realStop = api.agentStop;
+  api.agentStop = async (...a) => { endedBeforeStop = pollSleepEnded; return realStop(...a); };
+  const d = deps(api, {});
+  d.signals = signals;
+  const fakeSleep = d.sleep;
+  d.sleep = (ms) => (slow && ms === opts.pollMs ? new Promise((resolve) => setTimeout(() => { pollSleepEnded = true; resolve(); }, 1500)) : fakeSleep(ms));
+  const r = await runPiece(opts, d);
+  assert.equal(endedBeforeStop, false, 'the stop was asked for while the poll was still sleeping: the signal woke it');
+  assert.equal(r.manifest.run.endedBy, 'interrupted');
+  assert.match(r.manifest.aborted.message, /interrupted by SIGHUP/);
+  assert.equal(r.manifest.run.stop.idle, true);
+  assert.equal(calls(api, 'sessionInfo').filter((c) => c.status === 'running').length, 0, 'no status poll was made after the wake: the run was stopped, not polled again');
 });
 
 test('A SIGNAL BEFORE THE RUN: the next step does not start, nothing is spent, and there is no run to stop', async () => {
@@ -775,6 +876,21 @@ test('AN EMPTY CHAT IS ONE THE PROJECT SAYS HAS ZERO MESSAGES: no count, a null 
   assert.match(r.manifest.aborted.message, /could not be cleared \(HTTP 200/);
   assert.equal(r.manifest.conversation.cleared, false);
   assert.equal(calls(notOk, 'grantCredits', 'setPlan', 'agentRun').length, 0);
+  // and `ok: true` is not enough on its own: the answer must be a 200. A 403, 404 or 409 that carries ok true (or a 200 with no body) is a
+  // conversation that was not cleared, even when the count read afterwards says 0
+  for (const [label, conversationAnswer, pattern] of [
+    ['a 409 that says ok', { status: 409, json: { ok: true, removedMessages: 4, messagesAfter: 0 } }, /could not be cleared \(HTTP 409/],
+    ['a 403 that says ok', { status: 403, json: { ok: true, messagesAfter: 0 } }, /could not be cleared \(HTTP 403/],
+    ['a 404 that says ok', { status: 404, json: { ok: true, messagesAfter: 0 } }, /could not be cleared \(HTTP 404/],
+    ['a 200 with no body', { status: 200, json: null }, /could not be cleared \(HTTP 200/],
+  ]) {
+    const api = fakeApi({ conversationAnswer });
+    const refused = await runPiece({ ...opts, overwrite: true }, deps(api, {}));
+    assert.equal(refused.manifest.aborted.step, 'conversation', label);
+    assert.match(refused.manifest.aborted.message, pattern, label);
+    assert.equal(refused.manifest.conversation.cleared, false, label);
+    assert.equal(calls(api, 'grantCredits', 'setPlan', 'agentRun').length, 0, `${label}: nothing was spent`);
+  }
 });
 
 // ---------------------------------------------------------------------------------------------- terrain, the UI and the pictures
