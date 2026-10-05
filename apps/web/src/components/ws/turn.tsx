@@ -31,6 +31,8 @@ import { AssetChoice } from './asset-choice';
 import { visualOptions, visualSnapshot } from './asset-choice-model';
 import { Answer, RunSources } from './answer';
 import { RunSteps } from './run-steps';
+import { StudioShots } from './studio-shots';
+import { shotsForTurn } from '../../lib/studio-shots';
 import { cn } from '../../lib/utils';
 
 // The component registry's renderer arrives when a reply first has something to draw with it. It is
@@ -147,6 +149,7 @@ export function Turn({
   item,
   status,
   phaseMarks,
+  frames,
   isLast,
   onEdit,
   editable,
@@ -176,10 +179,13 @@ export function Turn({
    */
   onShowRevisions?: (messageId: string) => void;
   /**
-   * Accepted and not drawn (owner decision D-THINK-1): the turn shows one friendly status line and
-   * no playtest panel, frame strip or connection detail. Kept so callers need not change.
+   * Every Studio frame this page holds (the newest eight, in memory only). Offered to the latest assistant turn only; the turn shows
+   * the ones taken for its own run as a strip of screenshots for the person (components/ws/studio-shots.tsx). Since M2 step 2.3 (plan
+   * section 6: "chat with a live step list and screenshots"), which supersedes the frame-strip half of owner decision D-THINK-1. The
+   * playtest panel and the connection detail stay undrawn: the turn still has one friendly status line.
    */
   frames?: StudioFrame[];
+  /** Accepted and not drawn (owner decision D-THINK-1). Kept so callers need not change. */
   playtest?: PlaytestRun | null;
   studioConnected?: boolean;
   /**
@@ -197,6 +203,10 @@ export function Turn({
   // Whether this turn was still arriving when it mounted, so a figure it settles at can roll in and
   // its reply can land word by word, while a reloaded conversation simply sits there.
   const [arrivedLive] = useState(item.streaming);
+  // The screenshots of THIS run, for the person only. Offered to the latest assistant turn (`frames` is undefined for every other),
+  // and drawn while it runs, once it has any, or when it was a build at all (a plain chat reply gets no empty strip).
+  const shots = useMemo(() => (frames ? shotsForTurn(frames, item.id) : []), [frames, item.id]);
+  const showShots = item.role === 'assistant' && frames !== undefined && (item.streaming || shots.length > 0 || item.tools.length > 0);
 
   const parsed = useMemo(() => {
     if (item.role !== 'assistant' || !item.content) return { json: null as string | null, rest: item.content };
@@ -367,6 +377,9 @@ export function Turn({
             Reasoning — open and shimmering while it streams, "Thought for N seconds" once the step
             ends or a tool starts — with that step's tools after it as one Task. */}
         <RunSteps item={item} tools={item.tools} streaming={item.streaming} />
+
+        {/* STUDIO SCREENSHOTS (M2 2.3): the last few frames of this run, for the person only. Empty states its own sentence. */}
+        {showShots && <StudioShots frames={shots} />}
 
         {/* THE REPLY APPEARS ONCE, when the run ends and msg_end settles it to the stored answer
             (owner, 2026-09-30): the steps' in-between narration is not the reply. It answers in the

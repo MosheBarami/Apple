@@ -487,12 +487,14 @@ export function useProjectSocket(
     if (MOCK_MODE) {
       setCheckpoints(mockCheckpoints);
       setCheckpointsState('ready');
-      // The build renders, plus a playtest in progress. The playtest frames are
-      // stamped relative to now, so mock mode shows the card's real
-      // fresh -> stale -> dead progression as it sits there rather than a
-      // permanently "live" badge.
+      // A playtest in progress. Its frames are stamped relative to now, so the card's real
+      // fresh -> stale -> dead progression shows as it sits there rather than a permanently "live" badge.
+      // The screenshots strip draws only frames stamped for its own run, so by default the mock app holds none
+      // (which is the strip's empty state, and what a real run shows before its first capture); `?frames=1`
+      // adds the fixture renders to the last mock turn so the strip can be reviewed full.
       const pt = mockPlaytest();
-      setFrames([...mockFrames(), ...pt.frames]);
+      const withFrames = new URLSearchParams(window.location.search).get('frames') === '1';
+      setFrames(withFrames ? mockFrames().map((frame) => ({ ...frame, msgId: 'm4' })) : []);
       setPlaytest(pt.run);
       return;
     }

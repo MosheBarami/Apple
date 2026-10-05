@@ -1,0 +1,48 @@
+/* The Studio screenshots strip. Tokens only (packages/design), flat: a hairline edge and a surface, no shadow. */
+
+.shots { margin: 0; }
+
+/* Nothing yet: one quiet sentence in the muted ink, on the same surface the strip would sit on. */
+.shots__empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* The strip scrolls sideways when eight do not fit; it never wraps, so the order stays left to right in time. */
+.shots__strip {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+  overflow-x: auto;
+}
+.shots__item { flex: none; }
+
+.shots__thumb {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--paper-2);
+  overflow: hidden;
+  cursor: zoom-in;
+  line-height: 0;
+}
+.shots__thumb:hover { border-color: var(--line-strong); }
+/* The focus ring is drawn outside the thumbnail, in the token every other control's ring uses. */
+.shots__thumb:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+.shots__picture { display: block; height: 76px; width: auto; max-width: none; }
+
+.shots__big { display: grid; place-items: center; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; line-height: 0; }
+.shots__large { display: block; width: 100%; height: auto; max-height: 62vh; object-fit: contain; }
+
+.shots__caption { margin: var(--space-3) 0 0; color: var(--ink-2); font-size: var(--text-sm); }
+.shots__kept { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
+.shots__bad { display: block; padding: var(--space-3); color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }

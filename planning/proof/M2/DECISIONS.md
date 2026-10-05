@@ -435,3 +435,28 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   (`lib/project-templates.ts`). `templateSeed`, the dialog's lookup, was removed with its only caller.
 - **Not verified live:** the two queries it makes (`projects` read by name, then one insert) run under the signed-in person's
   row-level security exactly as the old dialog's insert did; no database was touched in this task.
+
+### 12.4 C4: Studio screenshots in the turn
+
+- **Frames flow today, so the strip fills against real data.** The worker broadcasts `studio_frame` from `emitFrame`, which
+  `capture_studio_viewport` (a native Studio capture, `source: 'studio_viewport'`), `render_view` (StudPilot's own preview render)
+  and the playtest loop call (`apps/worker/src/tools.ts`, `do/session.ts`). Nothing here is built against a message that is never sent.
+  When the agent captures nothing during a run the strip stays on its empty state ("Studio screenshots appear here while StudPilot
+  builds"); it fills the first time a capture tool runs. The vision tool `look` also emits frames today and is removed in M3 (plan
+  section 3); its frames would show here too until then.
+- **Which frames.** The newest eight of the run's own, oldest left. The worker stamps every frame with the id of the assistant
+  message it was taken for (`msgId`, which is the turn's id), so a frame from an earlier run, or one the worker could not attribute, is
+  never shown under this turn. The socket hook already kept the newest eight in memory and persisted none; that is unchanged.
+- **Honest names.** A native capture is a "Studio screenshot"; anything else is a "Preview render", so a preview of StudPilot's own
+  geometry renderer is never read as a screenshot of Studio. Captions carry the kind and the time in the person's clock setting, and
+  nothing technical (no tool name, instance path or camera name).
+- **Where it shows.** The latest assistant turn, while it runs, once it has a frame, or when it was a build (it used tools). A plain
+  chat reply and every earlier turn get no strip, so a conversation is not full of empty boxes.
+- **What the page promises, and only that.** The enlarged view says "Shown only in this tab and kept only while it is open. This page
+  does not save or send them." It does not say "no model ever sees it": that is the worker's business, and the worker's `look` path
+  sends frames to a vision model today (removed in M3). A source-reading test holds that the strip, its dialog and its model touch no
+  storage and make no request.
+- **Supersedes** the frame-strip half of owner decision D-THINK-1 ("no playtest panel, frame strip or connection detail"), on the plan's
+  own line (section 6: "chat with a live step list and screenshots"). The playtest card and the connection detail stay undrawn.
+- **The mock app** holds no frames by default (the strip's empty state); `?frames=1` stamps the fixture renders for the last mock turn
+  so a full strip can be reviewed. Those are fixtures and are never shown in a production build.
