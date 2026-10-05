@@ -1,7 +1,11 @@
 ---
-// The design tokens FIRST: one file, shared with the app. base.css is the site's shared base on top of
-// it and global.css adds the content routes' structure on top of that. Neither declares a colour or a
-// type token, so the cascade needs no `!important` to settle.
+// THE SITE'S ONE LAYOUT (M2 rebuild, handoff 2.2). Every route renders through it, the front page included:
+// the front page used to have a layout of its own (Landing.astro), which is how the two drifted apart.
+// DocsLayout and LegalLayout sit on top of this one and add only their inner structure.
+//
+// The design tokens come FIRST: one file, shared with the app. base.css is the shared base on top of it
+// and global.css adds the document routes' structure. Neither declares a colour or a type token, so the
+// cascade needs no `!important` to settle.
 import '@studpilot/design/tokens.css';
 import tokensCss from '@studpilot/design/tokens.css?raw';
 import { themeColor } from '@studpilot/design/css-tokens';
@@ -13,32 +17,22 @@ import Footer from '../components/Footer.astro';
 interface Props {
   title: string;
   description: string;
-  /** omit nav/footer chrome (unused today, kept for future embeds) */
-  bare?: boolean;
   /**
    * A page that must never be a search result, and must never nominate a canonical URL.
    *
-   * THE 404 PAGE WAS ADVERTISING ITSELF AS A DESTINATION. It is served at /404 as a cacheable HTTP
-   * 200 (apps/worker/src/static.ts — the status is that lane's to fix), and this layout gave it
-   * `<link rel="canonical" href=".../404/">`. So the one URL on the site whose own canonical
-   * answers 404 was also the one telling crawlers that URL is where this content lives. A crawler
-   * that believes both indexes "That page is not here" and points it at a dead address.
-   *
-   * `noindex` is the half this lane can fix and the half that actually decides indexing: it emits
-   * robots/googlebot noindex and suppresses the self-canonical, so there is no destination claim
-   * left to honour whatever status code the bytes arrive with.
+   * The 404 page is served at /404 as a cacheable HTTP 200 (apps/worker/src/static.ts, that lane's to fix), and
+   * a self-canonical there would advertise the one URL whose own content says "not here" as a destination.
+   * `noindex` emits robots/googlebot noindex and suppresses the self-canonical, so there is no destination
+   * claim left to honour whatever status the bytes arrive with.
    */
   noindex?: boolean;
 }
 
-const { title, description, bare = false, noindex = false } = Astro.props;
+const { title, description, noindex = false } = Astro.props;
 const site = Astro.site ?? new URL('https://studpilot.app');
 const canonical = new URL(Astro.url.pathname, site);
-// A PNG, not the SVG this was. Facebook, X, LinkedIn and Slack all document PNG/JPEG/GIF/WEBP
-// for og:image and none of them list SVG, so the old tag most likely produced no preview image at
-// all — a failure with no symptom anywhere inside this repository. Generated from
-// apps/site/brand/og.html by scripts/make-brand-assets.mjs; `pnpm brand:check` fails the build if
-// the committed PNG has drifted from its source.
+// A PNG, not an SVG: Facebook, X, LinkedIn and Slack document PNG, JPEG, GIF and WEBP for og:image and none of
+// them list SVG. Generated from apps/site/brand/og.html by scripts/make-brand-assets.mjs.
 const ogImage = new URL('/og.png', site);
 ---
 
@@ -58,9 +52,6 @@ const ogImage = new URL('/og.png', site);
       <link rel="canonical" href={canonical} />
     )}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    {/* The icon set is generated from favicon.svg by scripts/make-brand-assets.mjs, so
-        every size is the same drawing. The 1.2 MB of PNGs that used to sit in
-        public/brand/ showed a different mark entirely and were linked from nothing. */}
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" href="/sitemap-index.xml" />
@@ -74,23 +65,20 @@ const ogImage = new URL('/og.png', site);
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="StudPilot — an AI that writes Luau and places parts inside Roblox Studio." />
+    <meta property="og:image:alt" content="StudPilot, an AI co-pilot for Roblox Studio." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    {/* #080808 is the retired pre-warm-ramp black. It was typed here on all seven routes and the
-        toggle never touched it, so a phone showed an address-bar band a shade cooler than the
-        #141312 page beneath it — a visible seam at the top of every page — and in light mode that
-        near-black band sat over an almost-white page. The value is now read from `--theme-color` on
-        :root and rewritten on every toggle, so there is one definition per theme and it lives in the
-        stylesheet with the rest of the ramp. The server-rendered value is the dark ground, matching
-        this element's default `data-theme="dark"`. */}
+    {/* The address-bar band is read from `--theme-color` on :root and rewritten on every toggle, so there is
+        one definition per theme and it lives in the token file. The server-rendered value is the dark
+        ground, matching this element's default `data-theme="dark"`. */}
     <meta name="theme-color" id="theme-color" content={themeColor('dark', tokensCss)} />
 
     <script is:inline>
-      // Runs before first paint: no flash of the wrong theme, and reveals can
-      // safely start hidden because we know scripting is alive.
+      // Runs before first paint, so there is no flash of the wrong theme. The key 'apple-theme' is the
+      // stored identifier this site has always written and the app still reads (AGENTS.md section 2: a browser
+      // key already in people's browsers is read, never renamed away).
       (function () {
         var d = document.documentElement;
         d.classList.remove('no-js');
@@ -98,7 +86,7 @@ const ogImage = new URL('/og.png', site);
           var t = localStorage.getItem('apple-theme');
           if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
         } catch (e) {
-          /* private mode — fall back to prefers-color-scheme */
+          /* private mode: the dark default stands */
         }
       })();
     </script>
@@ -106,140 +94,69 @@ const ogImage = new URL('/og.png', site);
   <body>
     <a href="#main" class="skip-link">Skip to content</a>
 
-    {!bare && <Nav />}
+    <Nav />
 
     <main id="main">
       <slot />
     </main>
 
-    {!bare && <Footer />}
+    <Footer />
 
+    <script is:inline>
+      // The theme toggle and the narrow-screen menu: all the script this layout ships.
+      (function () {
+        var root = document.documentElement;
 
-    <script>
-      // ---------------------------------------------------------------
-      // Scroll reveals. Under prefers-reduced-motion the CSS neutralises
-      // the transform, so adding the class is harmless and nothing can
-      // ever stay invisible.
-      // ---------------------------------------------------------------
-      // Panels and section headings BELOW the first screen get the same
-      // entrance without every page marking them (owner, 2026-09-24). Only below
-      // it: tagging something already on screen would blink it out.
-      document
-        .querySelectorAll<HTMLElement>('main :is(.slab, .card, .callout, .table-scroll, .prose > h2)')
-        .forEach((el) => {
-          if (!el.closest('[data-reveal]') && el.getBoundingClientRect().top > window.innerHeight) {
-            el.setAttribute('data-reveal', '');
+        function paint() {
+          var meta = document.getElementById('theme-color');
+          var band = getComputedStyle(root).getPropertyValue('--theme-color').trim();
+          if (meta && band) meta.setAttribute('content', band);
+          var dark = root.getAttribute('data-theme') !== 'light';
+          document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(dark));
+            b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+          });
+        }
+
+        document.addEventListener('click', function (e) {
+          var t = e.target instanceof Element ? e.target : null;
+          if (!t) return;
+          if (t.closest('[data-theme-toggle]')) {
+            var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            root.setAttribute('data-theme', next);
+            try {
+              localStorage.setItem('apple-theme', next);
+            } catch (err) {
+              /* the choice holds for this page only */
+            }
+            paint();
+            return;
+          }
+          var burger = t.closest('#menu-toggle');
+          var nav = document.getElementById('primary-nav');
+          if (burger && nav) {
+            var open = nav.toggleAttribute('data-open');
+            burger.setAttribute('aria-expanded', String(open));
+            burger.setAttribute('aria-label', open ? 'Close the menu' : 'Open the menu');
           }
         });
-      const reveals = Array.from(
-        document.querySelectorAll<HTMLElement>('[data-reveal], .kinetic')
-      );
 
-      if (reveals.length) {
-        if ('IntersectionObserver' in window) {
-          const io = new IntersectionObserver(
-            (entries) => {
-              for (const entry of entries) {
-                if (!entry.isIntersecting) continue;
-                const el = entry.target as HTMLElement;
-                const delay = el.dataset.revealDelay;
-                if (delay) el.style.setProperty('--reveal-delay', `${delay}ms`);
-                el.classList.add('is-in');
-                io.unobserve(el);
-              }
-            },
-            { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }
-          );
-          reveals.forEach((el) => io.observe(el));
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return;
+          var nav = document.getElementById('primary-nav');
+          var burger = document.getElementById('menu-toggle');
+          if (nav && nav.hasAttribute('data-open')) {
+            nav.removeAttribute('data-open');
+            if (burger) {
+              burger.setAttribute('aria-expanded', 'false');
+              burger.setAttribute('aria-label', 'Open the menu');
+              burger.focus();
+            }
+          }
+        });
 
-          /* THE FAILSAFE, AND WHY IT IS HERE NOW.
-             These routes — docs, changelog, pricing — hide their content at opacity 0 and wait for
-             a class. The branch above covers a browser with no IntersectionObserver. NOTHING
-             covered an observer that is PRESENT and never fires, and in that case the copy is gone
-             permanently rather than late: a changelog that renders its releases to nobody.
-             Measured on the deployed /changelog on 2026-09-20: two of its three reveal targets sat
-             at opacity 0. That reading was taken in a background tab, where the observer legitimately
-             waits, so it is not by itself proof of a defect for a normal visitor — but it is proof
-             that "nothing has revealed yet" is a state this page really reaches, and the only thing
-             standing between that state and a permanent one was an observer firing.
-             The landing layout has carried this guarantee since earlier the same day, after a hero
-             effect shipped to production whose script never executed at all. Same guarantee, same
-             shape, and apps/site/tests/reveal-cannot-hide-content.test.mjs now asserts it for both
-             layouts rather than for whichever one somebody remembered. */
-          setTimeout(() => {
-            io.disconnect();
-            reveals.forEach((el) => el.classList.add('is-in'));
-          }, 2600);
-        } else {
-          reveals.forEach((el) => el.classList.add('is-in'));
-        }
-      }
-
-      // ---------------------------------------------------------------
-      // Theme. Explicit choice wins and persists; otherwise the OS decides.
-      // ---------------------------------------------------------------
-      const root = document.documentElement;
-      const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
-
-      function currentTheme(): 'light' | 'dark' {
-        const set = root.getAttribute('data-theme');
-        if (set === 'light' || set === 'dark') return set;
-        return mqDark.matches ? 'dark' : 'light';
-      }
-
-      /**
-       * The address-bar colour, read from the stylesheet rather than restated here. Called from
-       * paintToggles so every path that changes the theme — the button, and an OS change while no
-       * explicit choice is set — repaints the band as well as the page.
-       */
-      function paintBand() {
-        const meta = document.getElementById('theme-color');
-        if (!meta) return;
-        const v = getComputedStyle(root).getPropertyValue('--theme-color').trim();
-        if (v) meta.setAttribute('content', v);
-      }
-
-      function paintToggles() {
-        paintBand();
-        const theme = currentTheme();
-        document
-          .querySelectorAll<HTMLElement>('[data-theme-toggle]')
-          .forEach((btn) => {
-            btn.setAttribute('aria-pressed', String(theme === 'dark'));
-            btn.setAttribute(
-              'aria-label',
-              theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
-            );
-          });
-      }
-
-      document.addEventListener('click', (e) => {
-        const btn = (e.target as HTMLElement)?.closest('[data-theme-toggle]');
-        if (!btn) return;
-        const next = currentTheme() === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', next);
-        try {
-          localStorage.setItem('apple-theme', next);
-        } catch (err) {
-          /* ignore */
-        }
-        paintToggles();
-        window.dispatchEvent(
-          new CustomEvent('apple:theme', { detail: { theme: next } })
-        );
-      });
-
-      mqDark.addEventListener('change', () => {
-        if (!root.hasAttribute('data-theme')) {
-          paintToggles();
-          window.dispatchEvent(
-            new CustomEvent('apple:theme', { detail: { theme: currentTheme() } })
-          );
-        }
-      });
-
-      paintToggles();
-
+        paint();
+      })();
     </script>
   </body>
 </html>

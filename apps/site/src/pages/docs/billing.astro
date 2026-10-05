@@ -24,16 +24,11 @@ import { SUPPORT_EMAIL } from '@studpilot/shared';
 //   not available to purchase yet" and /terms says the same, so the docs nav's "Billing & payments"
 //   was the one door in the site that did not mention the lock.
 //
-//   ASKED, NOT TYPED, and asked the same way /pricing asks it: /api/billing/config is computed from
-//   the deployment's own environment, so the day Stripe is connected this page stops apologising on
-//   its own. An unreachable probe falls back to "closed", which is the safe error in both
-//   directions — a reader told checkout is shut loses nothing but a click, and the owner sees a
-//   wrong "closed" within a day, while the opposite mistake sends a customer at a 503.
-const BILLING_ORIGIN = 'https://studpilot.app';
-const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config')
-  .then((r) => (r.ok ? r.json() : null))
-  .catch(() => null);
-const checkoutOpen = billingProbe?.checkout === true;
+//   THE ANSWER IS A FACT, NOT A PROBE (M2). It used to be asked of the live deployment at build time
+//   (/api/billing/config), which made a build depend on the network. Checkout is off and paid plans start
+//   later (planning/proof/M2/DECISIONS.md section 3), so the page says so; the day charging starts it is
+//   changed on purpose, with /pricing and its tests in the same change. tests/hermetic-build.test.mjs holds it.
+const checkoutOpen = false;
 ---
 
 <DocsLayout

@@ -1,27 +1,22 @@
 ---
 import Base from '../layouts/Base.astro';
+import '../styles/site.css';
 
-/* PLAIN, LIKE THE REST OF THE SITE (2026-09-22). This page kept the stone direction's voice after
-   the site left it: "a path that was never carved", "Back to solid ground", "The studpilot wandered off
-   the map", and a large mark set between two digits. It now says what happened and where to go. */
+/* PLAIN AND LEFT-ALIGNED LIKE THE REST OF THE REBUILT SITE: it says what happened and where to go. The label and the
+   heading share one left edge (tests/rendered-typography.test.mjs measures it). */
 ---
 
-<Base
-  title="Page not found — StudPilot"
-  description="This page does not exist."
-  noindex
->
-  <section class="lost" aria-labelledby="lost-title">
-    <div class="wrap lost__inner">
-      <p class="eyebrow">Error 404</p>
+<Base title="Page not found | StudPilot" description="This page does not exist." noindex>
+  <section class="page-head lost" aria-labelledby="lost-title">
+    <div class="wrap">
+      <p class="kicker">Error 404</p>
       <h1 id="lost-title" class="carved">That page is not here</h1>
       <p class="lede">
-        The address may be mistyped, or the page may have moved. The home page and the docs are
-        both one click away.
+        The address may be mistyped, or the page may have moved. The home page and the docs are both one click away.
       </p>
       <div class="lost__ctas">
         <a href="/" class="btn btn-primary btn-lg">Go to the home page</a>
-        <a href="/docs" class="btn btn-ghost btn-lg">Browse the docs</a>
+        <a href="/docs" class="btn btn-lg">Browse the docs</a>
       </div>
     </div>
   </section>
@@ -29,39 +24,13 @@ import Base from '../layouts/Base.astro';
 
 <style>
   .lost {
-    min-height: 68vh;
-    display: flex;
-    align-items: center;
-    text-align: center;
-    padding-block: clamp(3rem, 8vw, 6rem);
-    position: relative;
-    background: var(--paper);
-  }
-
-  .lost__inner {
-    max-width: 640px;
-  }
-
-  /* THE ONE THING ON THIS PAGE THAT WAS VISIBLY OFF-AXIS. `.eyebrow` is `display: flex` in
-     global.css, and a flex container ignores the `text-align: center` it inherits — its items are
-     placed by `justify-content`, which defaults to flex-start. So on a page whose every other line
-     is centred, "ERROR 404" sat hard against the left edge of the 640px column: at 1280px the
-     heading began at x=413 and the label above it at x=320, and at 375px the label sat in the
-     gutter while the heading was centred. /pricing already solves this the same way for its three
-     centred eyebrows; this is that fix, applied to the one page that still had the defect. */
-  .lost .eyebrow {
-    justify-content: center;
-  }
-
-  .lost .lede {
-    margin-inline: auto;
+    min-height: 56vh;
   }
 
   .lost__ctas {
     display: flex;
-    gap: 12px;
-    justify-content: center;
     flex-wrap: wrap;
-    margin-top: 32px;
+    gap: 12px;
+    margin-top: 28px;
   }
 </style>

@@ -69,7 +69,7 @@ const shortDate = (iso: string) =>
         </button>
       </div>
 
-      <section class="known" aria-labelledby="known-title" data-reveal>
+      <section class="known" aria-labelledby="known-title">
         <h2 id="known-title">Known issues</h2>
         {
           open.length === 0 ? (
@@ -113,7 +113,7 @@ const shortDate = (iso: string) =>
         }
       </section>
 
-      <div class="status-legend" data-reveal>
+      <div class="status-legend">
         <h2>How to read this</h2>
         <ul>
           <li><span class="legend-orb legend-ok" aria-hidden="true"></span> <strong>Operational</strong> — the API answered and reported healthy.</li>
@@ -121,7 +121,7 @@ const shortDate = (iso: string) =>
           <li><span class="legend-orb legend-down" aria-hidden="true"></span> <strong>Unreachable or unknown</strong> — the API did not answer from your browser, or nothing at this address answers for it. That can mean an outage on our side or a network problem on yours.</li>
         </ul>
         <p>
-          Something look wrong for more than a few minutes?
+          Something look wrong for more than a few minutes?{' '}
           <a href="mailto:apple.labs.app@gmail.com">Tell us</a> — a human reads that inbox.
         </p>
       </div>

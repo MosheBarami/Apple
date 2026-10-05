@@ -1,590 +1,196 @@
 ---
-import Landing from '../layouts/Landing.astro';
-import Nav from '../components/Nav.astro';
-import Footer from '../components/Footer.astro';
-import ConsentProof from '../components/ConsentProof.astro';
-/* The one piece of MODEL OUTPUT on this page: a screen the deployed model built, shipped
-   byte-identical from docs/evidence. Its own header carries the reasons. */
-import BuiltScreen from '../components/BuiltScreen.astro';
-/* THE OWNER'S PICKED COMPONENTS (2026-09-23), each in the place it does a job. Every one is a
-   component of its own, with its reasons and its licence in its header:
-     NoiseField   the quiet moving ground under the hero, the capabilities and the closing line
-     PointerRim   the composer's rim turning toward the pointer
-     Marquee      the rows of ideas under the composer; pressing one types it into the field
-     BeamFlow     what a run reads and what it can make, as beams through a hub
-     DeviceFrame  the "try it" panel on a tablet that settles flat as it scrolls in
-     ArrowLink    the text links that lead somewhere
-     CtaButton    the one primary button
-   tests/picks-landing.test.mjs fails if any of them stops being mounted. */
-import NoiseField from '../components/picks/NoiseField.astro';
-import PointerRim from '../components/picks/PointerRim.astro';
-import Marquee from '../components/Marquee.astro';
-import BeamFlow from '../components/picks/BeamFlow.astro';
-import DeviceFrame from '../components/picks/DeviceFrame.astro';
-import ArrowLink from '../components/picks/ArrowLink.astro';
-import CtaButton from '../components/picks/CtaButton.astro';
-/* The site's one set of Roblox object glyphs, drawn for it (its header has the rules). */
-import ObjectIcon from '../components/ObjectIcon.astro';
-import {
-  PRODUCT_MODELS,
-  PRODUCT_MODEL_INFO,
-} from '@studpilot/shared';
-import { STUDIO_PLUGIN_INSTALL_HREF, STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+import Base from '../layouts/Base.astro';
+import ScreenSlot from '../components/ScreenSlot.astro';
+import PieceIcon from '../components/PieceIcon.astro';
+import '../styles/site.css';
+import { PIECES } from '../data/pieces';
+import { LISTED_PLAN_IDS, PLAN_COPY, PLAN_TABLE, PRICE_CURRENCY, formatMoney } from '@studpilot/shared';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 
 /*
- * THE FRONT PAGE, REBUILT TO THE FINAL DIRECTION (2026-09-22).
+ * THE FRONT PAGE, REBUILT (M2, handoff 2.2). A new layout, not the old one restyled.
  *
- * Near-black and matte, one type family, hairlines instead of shadows, blue only for an ordinary
- * active state. Every section is the same three things in
- * the same order: a title, one muted line, then the thing itself. The header and footer are the
- * shared components every other route renders, so the site has one header design.
+ * WHAT IT MAY SAY. The site ships before any piece has passed the quality bar, so this page makes the
+ * promise as the bar StudPilot is being built to and never as a result: no score, no sample build, no
+ * critique, no picture of anything StudPilot made. The only pictures it will ever hold are real product UI,
+ * in the fixed-size slots below (ScreenSlot.astro, src/data/screens.json). tests/no-fake-output.test.mjs and
+ * tests/beta-labels.test.mjs hold all of it.
  *
- * WHAT WENT, AND WHY. The glowing custom cursor, the floating sound dock and the spinning
- * wireframe mesh were decoration: none of them told a reader anything about the product. The
- * interactive stages that DO say something — the read order, the critique, the Luau refusal —
- * stay, as one quiet tabbed panel rather than four boxed cards.
- *
- * Every claim below is one this repository has evidence for; every number is an expression, never
- * typed (scripts/check-proof-figures.mjs); and the install line asks the shared constant.
+ * WHAT IT READS. The plan figures come from the shared pricing config (packages/shared), so the teaser
+ * cannot disagree with /pricing, and the plugin line asks the same flag the docs ask.
  */
-
-/* The composer's chip names the engine that would answer, read from the same constants the app's
-   own composer reads, so the picture cannot disagree with the product. */
-const composerModel = PRODUCT_MODEL_INFO[PRODUCT_MODELS[0]].name;
-
-/* THE THREE SENTENCES THE EMPTY FIELD CYCLES THROUGH. Examples of what a reader would TYPE — the
-   only content that can sit in that box without becoming a claim. Each is `white-space: nowrap`
-   and must hold ONE line at 320px; re-measure before editing a word. */
-const composerExamples = [
-  'Make a twelve-stage obby',
-  'Add a shop that saves what I buy',
-  'Build a lobby with a round timer',
-];
-
-/* MORE THINGS TO ASK FOR, one tap away under the composer (components/Marquee.astro). Like the
-   three above they are requests a reader might type, never results; each is short enough to sit
-   on one chip. */
-const promptIdeas = [
-  ['Make the coins spin', 'Add a lava floor', 'Give players a double jump', 'Add a day and night cycle', 'Make a shop with three swords', 'Add a timer to each stage'],
-  ['Spawn a pet that follows me', 'Add a leaderboard', 'Build a tycoon with droppers', 'Add rain', 'Make a racing track', 'Add a checkpoint every ten stages'],
-];
-
-/* THE CRITIQUE HAS ONE HOME. The score and the defect count are read by the activity figure and by
-   the critique stage from here, so the two cannot drift. `at` is the marker's position on the
-   render as a percentage; one array drives both the marker and the list item. */
-const defects = [
-  { id: 'd1', at: [22, 68], text: 'Floor is one flat slab — no material break' },
-  { id: 'd2', at: [58, 34], text: 'Two towers share an edge and read as one' },
-  { id: 'd3', at: [82, 72], text: 'Nothing marks where a player spawns' },
-];
-
-const critique = { score: 6, outOf: 10 };
-
-/* The four capabilities. The titles and bodies are the page's long-standing copy; each carries the
-   Roblox object it works on: the Workspace it reads, the Camera it renders through, the Script it
-   writes and the MeshPart generation returns. */
-const capabilities = [
-  { icon: 'Workspace', title: 'Reads before it writes', body: 'It walks your instance tree and scripts first, then proposes the change — and takes a checkpoint before touching anything.' },
-  { icon: 'Camera', title: 'Checks its own work', body: 'It renders the scene from inside Studio and scores the picture against a visual gate, with named defects rather than a verdict.' },
-  { icon: 'Script', title: 'Builds in Luau, not pseudocode', body: 'Scripts land in your place through Studio’s own editor APIs, and it refuses to write code that loads assets or calls the network.' },
-  { icon: 'MeshPart', title: 'Generates real geometry', body: 'Text-to-3D runs through Roblox’s own generation service, and a descendant scan refuses anything that arrives carrying code.' },
-] as const;
-
-/* THE THREE STAGES A READER CAN OPERATE, one panel at a time. `demo` is the hook the page script
-   switches on. Each stage is finished in the markup before any script runs, and without scripting
-   all three are shown stacked (the tabs are hidden under .no-js). What each is allowed to claim:
-     tree — the ORDER OF OPERATIONS, driven by the reader: the write gate stays shut until three
-            nodes are read. It is that rule, not a connection to anybody's Studio.
-     eye  — the SHAPE of a critique: a score out of ten and named defects. The scene and the three
-            defects are drawn here, and the head says it is a sample.
-     code — the SHAPE of the output and of the refusal: two asks produce Luau, the third the
-            refusal by name. */
-const stages = [
-  { demo: 'tree', tab: 'Read order', head: 'Try it · read order' },
-  { demo: 'eye', tab: 'Critique', head: 'Sample critique' },
-  { demo: 'code', tab: 'Luau', head: 'Try it · ask for three things' },
-];
-
-/* The instance tree the first stage reads: the empty-baseplate shape every new Studio file opens
-   with, which is the one tree a reader can check against their own screen. */
-const readTree = [
-  { path: 'Workspace', kids: 2, depth: 0, icon: 'Workspace' },
-  { path: 'Baseplate', kids: 0, depth: 1, icon: 'Part' },
-  { path: 'SpawnLocation', kids: 1, depth: 1, icon: 'SpawnLocation' },
-  { path: 'ServerScriptService', kids: 1, depth: 0, icon: 'ServerScriptService' },
-  { path: 'Main', kids: 0, depth: 1, icon: 'Script' },
-  { path: 'ReplicatedStorage', kids: 0, depth: 0, icon: 'ReplicatedStorage' },
-] as const;
-
-/* The three asks and what comes back. The first two are Luau; the third is the refusal. */
-const asks = [
-  {
-    label: 'A leaderstat',
-    lines: [
-      'local Players = game:GetService("Players")',
-      '',
-      'Players.PlayerAdded:Connect(function(player)',
-      '  local stats = Instance.new("Folder")',
-      '  stats.Name = "leaderstats"',
-      '  local coins = Instance.new("IntValue")',
-      '  coins.Name = "Coins"',
-      '  coins.Parent = stats',
-      '  stats.Parent = player',
-      'end)',
-    ],
-  },
-  {
-    label: 'Save what a player buys',
-    lines: [
-      'local DataStoreService = game:GetService("DataStoreService")',
-      'local store = DataStoreService:GetDataStore("Purchases")',
-      '',
-      'local function save(userId, owned)',
-      '  local ok, err = pcall(function()',
-      '    store:SetAsync("u_" .. userId, owned)',
-      '  end)',
-      '  if not ok then warn("save failed: " .. tostring(err)) end',
-      'end',
-    ],
-  },
-  {
-    label: 'Fetch a script from a URL',
-    refused: true,
-    lines: [
-      'refused  edit_script',
-      '',
-      '  A script that calls out to the network is not',
-      '  written. The reason is given rather than the',
-      '  request being dropped: code fetched at runtime',
-      '  cannot be reviewed before it runs in your place.',
-      '',
-      '  Nothing was written.',
-    ],
-  },
-];
-
-/* The install line. When the listing is live the shared href IS the store URL, and it leaves the
-   site, so it opens in a new tab without handing Roblox a window reference. */
-const installExternal = STUDIO_PLUGIN_STORE_LIVE;
+const free = PLAN_TABLE.free;
+const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
+const price = (id: (typeof paid)[number]) => formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY });
 ---
 
-<Landing
-  title="StudPilot — build Roblox games inside Studio"
-  description="Describe a colorful cartoon Roblox game, and StudPilot builds it in the Studio place you already have open. It reads before it writes, checks its own work, and edits nothing until you allow it."
+<Base
+  title="StudPilot: an AI co-pilot for Roblox Studio (beta)"
+  description="StudPilot is an AI co-pilot for Roblox Studio, in beta. Ask for a piece of your game and it builds it in your own Studio. Free while in beta."
 >
-  <a href="#main" class="skip-link">Skip to content</a>
-
-  <Nav />
-
-  <main id="main">
-    <section class="hero" aria-labelledby="hero-title" data-field-host>
-      <NoiseField mode="lines" />
-      <div class="shell hero-inner">
-        <p class="eyebrow hero-eyebrow">Inside Roblox Studio</p>
-        <h1 id="hero-title" class="display">Build it in the place you already have open.</h1>
-        <p class="lead">Describe a colorful cartoon Roblox game. StudPilot builds it inside your own Roblox Studio place, names every step while it happens, and changes nothing until you say so.</p>
-
-        {/* THE COMPOSER IS THE PRODUCT'S OWN CONTROL, NOT A PICTURE OF ONE: a real <form> with a
-            real <textarea> and a real submit, going where the page's primary action goes. What was
-            typed travels as `?start=`. Nothing in the app reads it yet — docs/backlog/
-            HANDOFF-HERO-START.md names that hop — so the page promises no prefill. The three
-            example sentences are the empty state, a ghost CSS hides the moment the field is
-            focused or holds a character. */}
-        <form class="composer" action="/app/signup" method="get" data-rim>
-          <PointerRim />
-          <div class="composer-field">
-            <label class="visually-hidden" for="hero-start">What do you want built in your Roblox Studio place?</label>
-            {/* `placeholder=" "` makes `:placeholder-shown` true while the field is empty, which is
-                what lets CSS alone hide the ghost below. */}
-            <textarea
-              id="hero-start"
-              name="start"
-              class="composer-input"
-              rows="2"
-              maxlength="280"
-              placeholder=" "
-              autocomplete="off"
-              spellcheck="false"
-            ></textarea>
-            <span class="composer-typed" aria-hidden="true">
-              {/* The first sentence is its own element: it is the one the single pass ends on. */}
-              <span class="composer-line composer-home" style="--turn:0">{composerExamples[0]}</span>
-              {composerExamples.slice(1).map((example, i) => (
-                <span class="composer-line" style={`--turn:${i + 1}`}>{example}</span>
-              ))}
-            </span>
-          </div>
-          <div class="composer-bar">
-            <div class="composer-chips">
-              <span class="chip chip-model">{composerModel}</span>
-            </div>
-            <button class="composer-send" type="submit">Build</button>
-          </div>
-        </form>
-
-        {/* The offer line sits straight under the composer, ABOVE the ideas: with the two rows of
-            ideas between them it ended 24px below the fold at 1366x768 on Linux's fallback font. */}
-        <p class="availability">
-          Free to start, no card.{' '}
-          {installExternal ? (
-            <a href={STUDIO_PLUGIN_INSTALL_HREF} target="_blank" rel="noopener noreferrer">Get StudPilot Studio from the Creator Store <span aria-hidden="true">↗</span></a>
-          ) : (
-            <ArrowLink href={STUDIO_PLUGIN_INSTALL_HREF}>Plugin availability</ArrowLink>
-          )}
+  <!-- ==================================================== hero -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero__grid">
+      <div class="hero__copy">
+        <p class="hero__meta">
+          <span class="badge">Beta</span>
+          <span class="kicker">The bar we are building to</span>
         </p>
-
-        <Marquee rows={promptIdeas} fills="hero-start" label="Ideas to try — pressing one writes it into the box above" caption="Or tap an idea" />
+        <h1 id="hero-title" class="display">Ask for any piece. It looks pro, it works, and we never claim what we didn't prove.</h1>
+        <p class="lede">
+          StudPilot is an AI co-pilot for Roblox Studio. You ask in the web app, and it builds the piece in your own
+          Studio place. The line above is the bar we are building to. It is not a result we are claiming.
+        </p>
+        <div class="hero__cta">
+          <a class="btn btn-primary btn-lg" href="/app/signup">Start free (beta)</a>
+          <a class="btn btn-lg" href="/how-it-works">How it works</a>
+        </div>
+        <p class="hero__note">Free while in beta. No card. For creators aged 13 and up.</p>
       </div>
-    </section>
+      <ScreenSlot slot="home-app" label="The StudPilot web app, ready for a request" width={1200} height={900} />
+    </div>
+  </section>
 
-    {/* PROOF, BEFORE ANY OF THE CLAIMS BELOW IT. Its reasons and every quote live in
-        components/ConsentProof.astro and data/consent-proof.ts. */}
-    <ConsentProof />
-
-    <section class="band" id="inside" aria-labelledby="sequence-title">
-      <div class="shell">
-        <div class="band-head" data-reveal>
-          <h2 id="sequence-title" class="section-title">How a run actually goes</h2>
-          <p class="section-sub">Three steps, in order, with the third one being the point.</p>
-        </div>
-        <BeamFlow />
-        <div class="sequence">
-          <figure class="sequence-figure" data-reveal>
-            <figcaption class="figure-head micro">Studio · while StudPilot works</figcaption>
-            <div class="activity" role="status" aria-live="off">
-              <span class="activity-orb" aria-hidden="true"></span>
-              <span class="activity-current" data-activity-current>Checking your place</span>
-            </div>
-          </figure>
-          <div class="steps">
-            <article class="step" data-reveal>
-              <h3>Pair one place</h3>
-              <p>A six-character code links StudPilot to the Studio place you have open. Nothing else in your account is in scope, and the pairing ends when you disconnect.</p>
-            </article>
-            <article class="step" data-reveal data-reveal-delay="60">
-              <h3>Say what you want</h3>
-              <p>Plain language. StudPilot reads the tree, plans the change, and takes a checkpoint before it writes. Individual writes stay in Studio&rsquo;s own Ctrl+Z history; restoring the checkpoint is the whole-run exit.</p>
-            </article>
-            <article class="step" data-reveal data-reveal-delay="120">
-              <h3>Look at what it did</h3>
-              <p>See what StudPilot is doing now as one clear step that gives way to the next. The result stays in your place, in Studio, where you can run it.</p>
-            </article>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="band" id="capabilities" aria-labelledby="cap-title" data-field-host>
-      <NoiseField mode="bricks" />
-      <div class="shell">
-        <div class="band-head" data-reveal>
-          <h2 id="cap-title" class="section-title">What it is good at</h2>
-          <p class="section-sub">Four things it does end to end today.</p>
-        </div>
-
-        <ul class="capabilities" role="list">
-          {capabilities.map((c, i) => (
-            <li class="capability" data-reveal data-reveal-delay={String(i * 60)}>
-              <span class="cap-icon"><ObjectIcon name={c.icon} size={20} /></span>
-              <h3>{c.title}</h3>
-              <p>{c.body}</p>
-            </li>
-          ))}
-        </ul>
-
-        {/* ONE PANEL, THREE STAGES. Every control is a <button>; the state lives in aria-pressed or
-            aria-selected rather than a class, and each readout is a live region so a change is
-            announced rather than only drawn. */}
-        <DeviceFrame class="demos-device">
-          <div class="demos">
-            <div class="stage-tabs" role="tablist" aria-label="Three of them, to try">
-              {stages.map((s, i) => (
-                <button
-                  type="button"
-                  class="stage-tab"
-                  role="tab"
-                  id={`tab-${s.demo}`}
-                  aria-controls={`stage-${s.demo}`}
-                  aria-selected={i === 0 ? 'true' : 'false'}
-                  tabindex={i === 0 ? '0' : '-1'}
-                  data-tab={s.demo}
-                >{s.tab}</button>
-              ))}
-            </div>
-
-            {stages.map((s) => (
-              <div class="demo-stage" role="tabpanel" id={`stage-${s.demo}`} aria-labelledby={`tab-${s.demo}`} data-demo={s.demo}>
-                <p class="micro demo-head">{s.head}</p>
-
-                {s.demo === 'tree' && (
-                  <div class="rd">
-                    <ul class="rd-tree" role="list">
-                      {readTree.map((n) => (
-                        <li class="rd-row" style={`--depth:${n.depth}`}>
-                          <button type="button" class="rd-node" data-path={n.path} data-kids={String(n.kids)} aria-pressed="false">
-                            <span class="rd-dot" aria-hidden="true"></span><ObjectIcon name={n.icon} size={16} class="rd-icon" />{n.path}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <div class="rd-side">
-                      <p class="rd-log" role="status" aria-live="polite">Read a node. That is the first thing it does.</p>
-                      <p class="rd-gate" data-read="0">0 of 3 read · writes still shut</p>
-                    </div>
-                  </div>
-                )}
-
-                {s.demo === 'eye' && (
-                  <div class="cw">
-                    <div class="cw-render">
-                      <svg class="cw-scene" viewBox="0 0 220 124" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-                        <rect class="cw-floor" x="0" y="74" width="220" height="50" />
-                        <rect class="cw-block" x="36" y="40" width="34" height="34" />
-                        <rect class="cw-block" x="112" y="26" width="26" height="48" />
-                        <rect class="cw-block" x="138" y="34" width="26" height="40" />
-                        <rect class="cw-block" x="176" y="56" width="20" height="18" />
-                        <path class="cw-edge" d="M0 74 H220" />
-                      </svg>
-                      {defects.map((d) => (
-                        <button type="button" class="cw-mark" data-defect={d.id} style={`left:${d.at[0]}%;top:${d.at[1]}%`} aria-label={d.text}></button>
-                      ))}
-                    </div>
-                    <div class="cw-side">
-                      <p class="cw-score"><span class="cw-score-n">{critique.score}</span><span class="cw-score-d">/{critique.outOf}</span></p>
-                      <ul class="cw-defects" role="list">
-                        {defects.map((d) => (
-                          <li>
-                            <button type="button" class="cw-defect" data-defect={d.id} aria-pressed="false">{d.text}</button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {s.demo === 'code' && (
-                  <div class="lu">
-                    <div class="lu-asks" role="group" aria-label="Ask for one of three things">
-                      {asks.map((a, n) => (
-                        <button
-                          type="button"
-                          class="lu-ask"
-                          data-ask={String(n)}
-                          data-lines={a.lines.join('\n')}
-                          data-refused={a.refused ? 'true' : 'false'}
-                          aria-pressed={n === 0 ? 'true' : 'false'}
-                        >{a.label}</button>
-                      ))}
-                    </div>
-                    <pre class="lu-out" role="status" aria-live="polite"><code>{asks[0].lines.join('\n')}</code></pre>
-                  </div>
-                )}
+  <!-- ==================================================== the four kinds of piece -->
+  <section class="sec sec--band" id="pieces" aria-labelledby="pieces-title">
+    <div class="wrap split">
+      <header class="split__head">
+        <p class="kicker">What you can ask for</p>
+        <h2 id="pieces-title" class="sec-title">Four kinds of pieces</h2>
+        <p class="sec-text">A piece is one part of your game, and it can be small or big. These are the four kinds StudPilot is built for.</p>
+        <a class="text-link" href="/catalog">See the catalog</a>
+      </header>
+      <ul class="pieces">
+        {
+          PIECES.map((piece) => (
+            <li class="piece">
+              <span class="piece__icon">
+                <PieceIcon piece={piece.id} />
+              </span>
+              <div>
+                <h3>{piece.title}</h3>
+                <p>{piece.short}</p>
               </div>
-            ))}
-          </div>
-        </DeviceFrame>
-      </div>
-    </section>
-
-    {/* AFTER the stages: they say what it does, and this says what came out. */}
-    <BuiltScreen />
-
-    <section class="band" id="models" aria-labelledby="plans-title">
-      <div class="shell">
-        <div class="band-head" data-reveal>
-          <h2 id="plans-title" class="section-title">One engine</h2>
-          <p class="section-sub">Describe the game; StudPilot shows a short plan and builds it. StudPilot answers every request, on every plan. Plans and Credits are on the <a href="/pricing">pricing page</a>.</p>
-        </div>
-
-        <div class="choice-group" data-reveal>
-          <h3 class="micro choice-label">Engine</h3>
-          <ul class="model-grid" role="list">
-            {PRODUCT_MODELS.map((model) => (
-              <li class="model-card">
-                <p class="model-name">{PRODUCT_MODEL_INFO[model].name}</p>
-                <p class="model-blurb">{PRODUCT_MODEL_INFO[model].blurb}</p>
-                <p class="micro model-plans">Included with every plan, Free too</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="closing" data-reveal data-field-host>
-      <NoiseField mode="contours" />
-      <div class="shell">
-        <h2 class="statement">Start with one place and one idea.</h2>
-        <CtaButton class="btn-closing" href="/app/signup">Create a free account</CtaButton>
-      </div>
-    </section>
-  </main>
-
-  <Footer />
-
-<script>
-  /*
-   * THE STAGES AND THE TABS THAT HOLD THEM. One script, independent set-ups.
-   *
-   * `document.querySelector`, NEVER `document.currentScript`: Astro bundles this as a module and
-   * `currentScript` is null in every module script by specification — that spelling once shipped a
-   * dead hero effect with every element present. tests/capability-demos-run.test.mjs executes this
-   * script against a recording DOM, because reading markup cannot tell a live control from a dead one.
-   *
-   * `safely` keeps one failing set-up from taking the others down with it. Every stage is already
-   * finished in the markup when this runs; nothing below creates content, it only responds.
-   *
-   * Parameter defaults are for `astro check` (strict mode, no implicit any) while the file stays
-   * plain JavaScript the test's `vm` can run.
-   */
-  const safely = (name = '', fn = () => {}) => {
-    try { fn(); } catch (err) { console.error('landing stage failed: ' + name, err); }
-  };
-
-  /* One calm phrase replaces the previous one. This is a demo, so it does not announce
-     every decorative change to a screen reader and it stays still under reduced motion. */
-  safely('activity', () => {
-    const line = document.querySelector('[data-activity-current]');
-    if (!line || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const phrases = ['Checking your place', 'Planning the next step', 'Placing your scene', 'Checking the result'];
-    let current = 0;
-    let timer = 0;
-    const advance = () => {
-      line.classList.add('is-changing');
-      window.setTimeout(() => {
-        current = (current + 1) % phrases.length;
-        line.textContent = phrases[current];
-        line.classList.remove('is-changing');
-      }, 220);
-    };
-    const start = () => { if (!timer && !document.hidden) timer = window.setInterval(advance, 3200); };
-    const stop = () => { if (timer) window.clearInterval(timer); timer = 0; };
-    let onscreen = false;
-    const observer = new IntersectionObserver(([entry]) => {
-      onscreen = entry.isIntersecting;
-      if (onscreen) start(); else stop();
-    }, { threshold: 0.1 });
-    observer.observe(line);
-    document.addEventListener('visibilitychange', () => { if (onscreen) { if (document.hidden) stop(); else start(); } });
-  });
-
-  /* --------------------------------------------------------------------------- the tabs --- */
-
-  /* Without scripting every panel is visible and the tab row is hidden (.no-js). With it, exactly
-     one panel shows and the row is a real tablist: click, or Left/Right/Home/End. */
-  safely('tabs', () => {
-    const tabs = [...document.querySelectorAll('.stage-tab')];
-    if (!tabs.length) return;
-
-    const select = (tab = tabs[0], focus = false) => {
-      for (const t of tabs) {
-        const on = t === tab;
-        t.setAttribute('aria-selected', String(on));
-        t.setAttribute('tabindex', on ? '0' : '-1');
-        const panel = document.getElementById(t.getAttribute('aria-controls') || '');
-        if (panel) {
-          if (on) panel.removeAttribute('hidden');
-          else panel.setAttribute('hidden', '');
+            </li>
+          ))
         }
-      }
-      if (focus) document.getElementById(tab.id)?.focus();
-    };
+      </ul>
+    </div>
+  </section>
 
-    for (const tab of tabs) {
-      tab.addEventListener('click', () => select(tab));
-      tab.addEventListener('keydown', (e) => {
-        /* `Element`'s event map types this as a plain Event, so the key is read defensively. */
-        const key = 'key' in e ? String(e.key) : '';
-        const i = tabs.indexOf(tab);
-        const next = key === 'ArrowRight' ? tabs[(i + 1) % tabs.length]
-          : key === 'ArrowLeft' ? tabs[(i - 1 + tabs.length) % tabs.length]
-          : key === 'Home' ? tabs[0]
-          : key === 'End' ? tabs[tabs.length - 1]
-          : null;
-        if (!next) return;
-        e.preventDefault();
-        select(next, true);
-      });
-    }
+  <!-- ==================================================== how it works, in short -->
+  <section class="sec" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="kicker">How it works</p>
+      <h2 id="how-title" class="sec-title">Four steps from sign-in to a piece in Studio</h2>
+      <ol class="rail">
+        <li>
+          <span class="rail__n">01</span>
+          <h3>Sign in</h3>
+          <p>Use your email. Sign in with Roblox is being switched on. Google and Discord are coming.</p>
+        </li>
+        <li>
+          <span class="rail__n">02</span>
+          <h3>Pair the plugin</h3>
+          <p>Open StudPilot in Roblox Studio and type the 6-character code from your project.</p>
+        </li>
+        <li>
+          <span class="rail__n">03</span>
+          <h3>Ask for a piece</h3>
+          <p>Type a request in the project chat. Short and plain is fine.</p>
+        </li>
+        <li>
+          <span class="rail__n">04</span>
+          <h3>Follow the steps</h3>
+          <p>A live step list shows what StudPilot is doing while it does it.</p>
+        </li>
+      </ol>
+      <a class="text-link" href="/how-it-works">All eight steps, and what works today</a>
+    </div>
+  </section>
 
-    select(tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]);
-  });
+  <!-- ==================================================== the bar, stated -->
+  <section class="sec sec--band" id="bar" aria-labelledby="bar-title">
+    <div class="wrap bar">
+      <div>
+        <p class="kicker">The quality bar</p>
+        <h2 id="bar-title" class="sec-title">The bar a piece has to clear</h2>
+        <p class="sec-text">
+          A fresh blind critic sees only the request and screenshots of the result. It does not know how the piece was
+          made. A piece goes in the catalog only when it clears all three lines.
+        </p>
+        <p class="note">
+          <strong>Beta:</strong> this is a target, not a score. No piece has passed it yet, so the catalog has no examples
+          yet. <a href="/blog/what-works-today">What works today</a> says what is built and what is not.
+        </p>
+      </div>
+      <ul class="bar__list" data-quality-bar>
+        <li class="bar__row">
+          <span class="bar__value">8/10</span>
+          <p class="bar__what">or better in every area the critic looks at, with no serious flaw.</p>
+        </li>
+        <li class="bar__row">
+          <span class="bar__value">0</span>
+          <p class="bar__what">errors when the piece is play tested in Studio.</p>
+        </li>
+        <li class="bar__row">
+          <span class="bar__value">0</span>
+          <p class="bar__what">false claims in the reply. It says what it proved, and lists what it did not.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
 
-  /* --------------------------------------------------------------- reads before it writes --- */
+  <!-- ==================================================== the price strip -->
+  <section class="sec" id="pricing" aria-labelledby="pricing-title">
+    <div class="wrap tease">
+      <div>
+        <p class="kicker">Pricing</p>
+        <h2 id="pricing-title" class="sec-title">Free while in beta. Paid plans start later</h2>
+        <p class="sec-text">
+          The Free plan gives you {free.creditsPerDay} Credits a day, up to {free.creditsPerMonth} a month. You do not need a card. The
+          paid plans are planned, and nobody can buy them yet.
+        </p>
+        <a class="text-link" href="/pricing">See the plans</a>
+      </div>
+      <ul class="mini">
+        <li>
+          <span class="mini__name">Free</span>
+          <span class="mini__what">{free.creditsPerDay} Credits a day, up to {free.creditsPerMonth} a month. Available now.</span>
+        </li>
+        {
+          paid.map((id) => (
+            <li>
+              <span class="mini__name">{PLAN_COPY[id].name}</span>
+              <span class="mini__what">
+                {price(id)} a month, {PLAN_TABLE[id].creditsPerMonth} Credits. Planned.
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
 
-  /* THE GATE IS THE CLAIM. Three reads open it; until they land the readout says writes are shut.
-     That order is the product's — apps/worker walks the tree and checkpoints before a write. */
-  safely('tree', () => {
-    const root = document.querySelector('[data-demo="tree"]');
-    if (!root) return;
-    const log = root.querySelector('.rd-log');
-    const gate = root.querySelector('.rd-gate');
-    const nodes = root.querySelectorAll('.rd-node');
-    if (!log || !gate || !nodes.length) return;
-
-    const NEEDED = 3;
-    const read = new Set();
-
-    for (const node of nodes) {
-      node.addEventListener('click', () => {
-        const path = node.getAttribute('data-path') || '';
-        read.add(path);
-        node.setAttribute('aria-pressed', 'true');
-
-        log.textContent = ['Checking your place', 'Looking around your world', 'Getting ready to suggest a change'][Math.min(read.size - 1, 2)];
-
-        const n = read.size;
-        gate.setAttribute('data-read', String(Math.min(n, NEEDED)));
-        gate.textContent = n >= NEEDED
-          ? 'Ready to suggest a change'
-          : 'Looking first · changes stay off';
-      });
-    }
-  });
-
-  /* ------------------------------------------------------------------- checks its own work --- */
-
-  /* A defect and its marker are one thing selected two ways: both carry the same data-defect. */
-  safely('eye', () => {
-    const root = document.querySelector('[data-demo="eye"]');
-    if (!root) return;
-    const marks = root.querySelectorAll('.cw-mark');
-    const items = root.querySelectorAll('.cw-defect');
-    if (!marks.length || !items.length) return;
-
-    const select = (id = '') => {
-      for (const m of marks) m.classList.toggle('is-on', m.getAttribute('data-defect') === id);
-      for (const b of items) b.setAttribute('aria-pressed', String(b.getAttribute('data-defect') === id));
-    };
-
-    for (const el of [...marks, ...items]) {
-      const id = el.getAttribute('data-defect') ?? '';
-      el.addEventListener('click', () => select(id));
-      el.addEventListener('mouseenter', () => select(id));
-      el.addEventListener('focus', () => select(id));
-    }
-  });
-
-  /* ----------------------------------------------------------- builds in Luau, not pseudocode --- */
-
-  /* The answer travels on the button that asks for it (`data-lines`), written by the page from the
-     same array that rendered the buttons, so the code shown cannot disagree with the label pressed. */
-  safely('code', () => {
-    const root = document.querySelector('[data-demo="code"]');
-    if (!root) return;
-    const asks = root.querySelectorAll('.lu-ask');
-    const out = root.querySelector('.lu-out');
-    const code = out && out.querySelector('code');
-    if (!asks.length || !out || !code) return;
-
-    for (const ask of asks) {
-      ask.addEventListener('click', () => {
-        for (const other of asks) other.setAttribute('aria-pressed', String(other === ask));
-        code.textContent = ask.getAttribute('data-lines') || '';
-        out.classList.toggle('refused', ask.getAttribute('data-refused') === 'true');
-      });
-    }
-  });
-</script>
-
-</Landing>
+  <!-- ==================================================== the closing call -->
+  <section class="sec sec--flush" aria-labelledby="cta-title">
+    <div class="wrap">
+      <div class="cta">
+        <div>
+          <h2 id="cta-title" class="sec-title">Try it while it is free.</h2>
+          <p class="sec-text">
+            {
+              STUDIO_PLUGIN_STORE_LIVE
+                ? 'Sign up, get the free Studio plugin, and ask for your first piece.'
+                : 'You can sign up and use the chat now. The Studio plugin is not on the Creator Store yet.'
+            }
+            {' '}<a href="/docs/plugin">Where the plugin stands</a>.
+          </p>
+        </div>
+        <div class="cta__row">
+          <a class="btn btn-primary btn-lg" href="/app/signup">Start free (beta)</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

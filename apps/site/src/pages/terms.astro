@@ -7,14 +7,13 @@ import { PLAN_TABLE, PLAN_COPY, PLAN_IDS, PRICE_CURRENCY, formatMoney, fullRateD
 // page is the one surface where naming a product that was withdrawn is worst, because it is the
 // document a dispute is read against.
 //
-// The FACT that section turns on — whether anyone can be charged — is asked, not typed, the same
-// way /pricing asks it. An unreachable probe means "cannot be charged", which is the safe claim
-// here: overstating that payment is impossible costs nothing, while a terms page silently
-// permitting charges it does not describe is the failure worth avoiding.
-const BILLING_ORIGIN = 'https://studpilot.app';
-const billingProbe = await fetch(BILLING_ORIGIN + '/api/billing/config').then((r) => (r.ok ? r.json() : null)).catch(() => null);
-const checkoutOpen = billingProbe?.checkout === true;
-const purchasable = Array.isArray(billingProbe?.purchasable) ? billingProbe.purchasable : [];
+// The FACT that section turns on is whether anyone can be charged, and today the answer is no: checkout is
+// off and paid plans start later (planning/proof/M2/DECISIONS.md section 3). It used to be asked of the live
+// deployment at build time (/api/billing/config), which made a build depend on the network and printed a
+// different terms page on a bad day; it is a fact now, and tests/hermetic-build.test.mjs fails if a build asks
+// again. The day charging starts this page is changed on purpose, with /pricing and its tests in the same change.
+const checkoutOpen = false;
+const purchasable: string[] = [];
 const paidPlans = PLAN_IDS.filter((id) => id !== 'free' && PLAN_COPY[id].priceUsdMonthly !== null);
 const planPrices = paidPlans
   .map((id) => {

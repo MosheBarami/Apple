@@ -1,0 +1,40 @@
+---
+import Base from '../../layouts/Base.astro';
+import '../../styles/site.css';
+import { getCollection } from 'astro:content';
+
+// The posts, newest first. A draft stays out of the build. The list is read from the collection (src/content/blog),
+// never typed here, so a post added tomorrow is listed tomorrow.
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const day = (d: Date) => d.toISOString().slice(0, 10);
+---
+
+<Base title="Blog (beta)" description="Short, honest posts from the StudPilot beta: what works, what does not yet, and what we are building next.">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="kicker"><span class="badge">Beta</span> Blog</p>
+      <h1 class="carved">Blog</h1>
+      <p class="lede">Short posts about the StudPilot beta. We say what works and what does not.</p>
+    </div>
+  </section>
+
+  <section class="sec sec--flush" aria-label="Posts">
+    <div class="wrap">
+      <ul class="posts">
+        {
+          posts.map((post) => (
+            <li class="post-row">
+              <time datetime={day(post.data.date)}>{day(post.data.date)}</time>
+              <div>
+                <h2>
+                  <a href={`/blog/${post.id}`}>{post.data.title}</a>
+                </h2>
+                <p>{post.data.description}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Base>

@@ -164,7 +164,7 @@ const decided = refusal
     </li>
   </ul>
 
-  <figure class="obj-strip" data-reveal>
+  <figure class="obj-strip">
     <figcaption>A few of the objects it creates or edits</figcaption>
     <ul role="list">
       {objects.map((name, i) => (
@@ -262,20 +262,8 @@ const decided = refusal
 
   :global(.prose) .obj-strip li :global(.obj-icon) {
     transition:
-      opacity var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
-      scale var(--t-slow) var(--ease-out) calc(var(--i) * 30ms + 160ms),
       translate var(--t-base) var(--ease-out),
       stroke var(--t-base) var(--ease-out);
-  }
-
-  :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
-    opacity: 0;
-    scale: 0.7;
-  }
-
-  :global(html:not(.no-js) .prose [data-reveal].is-in) li :global(.obj-icon) {
-    opacity: 1;
-    scale: 1;
   }
 
   :global(.prose) .obj-strip li:hover {
@@ -290,11 +278,6 @@ const decided = refusal
   }
 
   @media (prefers-reduced-motion: reduce), print {
-    :global(html:not(.no-js) .prose [data-reveal]) li :global(.obj-icon) {
-      opacity: 1;
-      scale: 1;
-    }
-
     :global(.prose) .obj-strip li:hover :global(.obj-icon) {
       translate: none;
     }

@@ -1,0 +1,174 @@
+---
+import Base from '../layouts/Base.astro';
+import ScreenSlot from '../components/ScreenSlot.astro';
+import '../styles/site.css';
+import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
+
+/*
+ * HOW STUDPILOT WORKS: the eight steps of plan section 1, each worded for what the code does TODAY.
+ *
+ * Every step carries one of three labels, and the label is the claim:
+ *   live      the step works in the product today;
+ *   partial   part of it works today, and the sentence says which part;
+ *   building  it describes how StudPilot is being built to work (the block engine, M3 to M5). It is NOT a claim that
+ *             any build does it today.
+ *
+ * What was checked in apps/worker before each step was worded:
+ *   2  pairing: the plugin takes a six-character code (apps/studpilot-plugin/src/init.server.luau); the code lasts
+ *      10 minutes and edits stay off until allowed (docs/getting-started).
+ *   3  no clarifying-question mechanism exists in the worker, so the one multiple-choice question is "building".
+ *   4  the chat shows the run live, and a run can be stopped (do/session.ts).
+ *   5  no block engine exists yet; the agent builds step by step with its tools (tools.ts). "building".
+ *   6  play_check, play_check_ui, check_ui_layout, audit_build and the claim audit (claim-audit.ts, SELF_CHECK on in
+ *      production) all exist and the agent may call them; nothing makes every build run all of them. "partial".
+ *   7  the reply is read by the claim audit; a reply that lists what was proven and what was not is not enforced. "partial".
+ *   8  the chat edits a piece today; there is no per-piece settings panel yet. "partial".
+ * Vision is left out on purpose: the plan's product has none, so no step describes the AI looking at a picture.
+ * Sign-in: the app offers email, and Roblox once the worker reports it configured. Google and Discord are not enabled.
+ */
+type Status = 'live' | 'partial' | 'building';
+const LABEL: Record<Status, string> = { live: 'Works today', partial: 'Partly works today', building: 'Being built' };
+
+const steps: Array<{ title: string; status: Status; body: string[] }> = [
+  {
+    title: 'Sign in',
+    status: 'live',
+    body: [
+      'Make an account with your email and a password. You do not need a card.',
+      'Sign in with Roblox is being switched on. Google and Discord sign-in are coming, so they are not on the sign-in page yet.',
+    ],
+  },
+  {
+    title: 'Pair the plugin',
+    status: 'live',
+    body: [
+      'Open your place in Roblox Studio and open the StudPilot plugin. In the web app, ask for a pairing code on your project. Type the 6-character code into the plugin.',
+      'A code works for 10 minutes. Edits stay off until you allow them for that connection.',
+      STUDIO_PLUGIN_STORE_LIVE
+        ? 'The plugin is free on the Creator Store.'
+        : 'The plugin is not on the Creator Store yet. The chat works without it. The docs say where the plugin stands.',
+    ],
+  },
+  {
+    title: 'Ask for a piece',
+    status: 'partial',
+    body: [
+      'Type a request in the project chat, such as “a chest that opens when you press E”. StudPilot starts work at once.',
+      'We are building it to ask one multiple-choice question first, only when your request is not clear. That question is not in the chat yet.',
+    ],
+  },
+  {
+    title: 'Follow the live steps',
+    status: 'live',
+    body: ['While StudPilot works, the chat shows a live list of the steps it is taking. You can stop a run at any time.'],
+  },
+  {
+    title: 'Built from reviewed blocks',
+    status: 'building',
+    body: [
+      'StudPilot is being built to put each piece together from reviewed building blocks, such as a shop screen or a currency system, and to write custom code only where no block fits. The AI picks the blocks and fills in their settings. The system runs them.',
+      'The blocks are not in yet. Today StudPilot builds each piece one step at a time.',
+    ],
+  },
+  {
+    title: 'Every build is checked',
+    status: 'partial',
+    body: [
+      'StudPilot has these checks: a play test, button presses, a layout check, an audit of what it built, and a check of its own reply. It uses them while it builds.',
+      'We are building it so that every build runs the checks in the same order, and a failed check is fixed before the reply. That is not true of every build yet.',
+    ],
+  },
+  {
+    title: 'A short, honest reply',
+    status: 'partial',
+    body: [
+      'When a build ends, StudPilot writes a short reply. A claim check reads it for things the build did not prove.',
+      'We are building the reply to say what was proven and to list any gaps, every time.',
+    ],
+  },
+  {
+    title: 'Change a piece any time',
+    status: 'partial',
+    body: ['To change a piece, ask in the chat. A settings panel for a piece’s numbers and colors is coming.'],
+  },
+];
+---
+
+<Base
+  title="How StudPilot works (beta)"
+  description="The eight steps from sign-in to a piece you can change, and which of them work today in the StudPilot beta."
+>
+  <section class="page-head">
+    <div class="wrap">
+      <p class="kicker"><span class="badge">Beta</span> How it works</p>
+      <h1 class="carved">How StudPilot works</h1>
+      <p class="lede">
+        Eight steps, from sign-in to a piece you can change. Each one says whether it works today or is still being built.
+      </p>
+      <p class="note">
+        <strong>Beta:</strong> some steps describe how StudPilot is being built to work. The label on each step says which.
+        Nothing on this page is a result.
+      </p>
+      <ul class="key" aria-label="What the labels mean">
+        <li class="status">Works today</li>
+        <li class="status status--partial">Partly works today</li>
+        <li class="status status--building">Being built</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec sec--flush" aria-label="The eight steps">
+    <div class="wrap">
+      <ol class="steps">
+        {
+          steps.map((s, i) => (
+            <li class="step">
+              <span class="step__n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h2>
+                  <span class="visually-hidden">Step {i + 1}: </span>
+                  {s.title}
+                </h2>
+                {s.body.map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+              <p class={`status status--${s.status} step__status`}>{LABEL[s.status]}</p>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="sec-text">
+        The details are in the docs: <a href="/docs/getting-started">Getting started</a>, <a href="/docs/connect">Connect a project</a> and{' '}
+        <a href="/docs/credits-and-limits">Credits &amp; limits</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="sec sec--band" aria-labelledby="look-title">
+    <div class="wrap">
+      <p class="kicker">What it looks like</p>
+      <h2 id="look-title" class="sec-title">The real product, not a mock-up</h2>
+      <p class="sec-text">Screenshots here are taken from the real web app and the real plugin. None of them shows a finished build.</p>
+      <div class="shots">
+        <ScreenSlot slot="how-pairing" label="Pairing a project with the plugin in Studio" width={1200} height={900} />
+        <ScreenSlot slot="how-steps" label="The live step list in the web app" width={1200} height={900} />
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .shots {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    margin-top: 32px;
+  }
+
+  @media (min-width: 800px) {
+    .shots {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
