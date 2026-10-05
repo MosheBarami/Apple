@@ -365,6 +365,15 @@ for (const route of AA_ROUTES) for (const theme of ['dark', 'light'] as const) {
     await page.goto(route);
     // Nothing reveals on scroll any more; let the first frame paint.
     await page.waitForTimeout(300);
+    // THE LAYOUT IS FINAL BEFORE ANYTHING IS MEASURED (added 2026-10-06). The boxes below are read now and
+    // the pixels after a full-page shot; a web font or an image that finishes loading in between moves
+    // every line under it, and the slow CI runner measured /catalog's badge and footer link against the
+    // wrong pixels (2.10:1 and 3.05:1 there, passing locally). Wait for fonts, and for every image to load.
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      // decode() also starts a lazy image, which the full-page shot would otherwise load mid-capture.
+      await Promise.all([...document.images].map((i) => i.decode().catch(() => undefined)));
+    });
     // ONE FRAME, HELD (RESTATED 2026-09-24 to the owner's picks, commit 3940085). The idea row now
     // slides 36px a second and the threads drift, so boxes measured here and pixels shot a second
     // later were two different pictures: a chip's stale box caught the next chip's hairline border
