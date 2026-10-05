@@ -123,6 +123,21 @@
     },
     {
       "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "59e80bc4cc414c9869f3a2f5ac77e1bc64fef75ceb2debb6640c3b9db793a1cf"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "ab4508272a1d5112e117709abc56091255b015c38d37510ef27dea946521963a"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
+      "pattern": "Assigned secret literal, unquoted",
+      "value_sha256": "efc05b5d48209c497b4773354aefb3fe764494a024c5b9140dc49b91c2f0075d"
+    },
+    {
+      "path": "apps/worker/tests/secret-redaction.test.mjs",
       "pattern": "JWT",
       "value_sha256": "2129124b5d4e26d8de2f5258f1c8c0a9b4756e6248371fec46e5837a46736531"
     },
