@@ -20,7 +20,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initBaseline, runPiece, resolveOptions, INTERNAL_PER_CREDIT, DEFAULT_PROJECT, DEFAULT_USER, Abort } from '../scripts/eval/run-piece.mjs';
+import { initBaseline, runPiece, resolveOptions, ignoreBrokenTerminal, INTERNAL_PER_CREDIT, DEFAULT_PROJECT, DEFAULT_USER, Abort } from '../scripts/eval/run-piece.mjs';
 import { StudioMcpClient } from '../scripts/eval/lib/studio-mcp.mjs';
 import { getRequest } from '../scripts/eval/lib/dev-set.mjs';
 import { aggregate } from '../scripts/eval/baseline.mjs';
@@ -464,6 +464,9 @@ test('A POLL ERROR THAT NO RETRY CAN FIX (a 401) still stops the run; a stop tha
   await withBaseline(opts);
   const api = fakeApi({ neverEnds: true, failInfo: () => ({ status: 401, message: 'GET /api/admin/session-info/x: HTTP 401 admin key refused' }), stopFails: true });
   const d = deps(api, {});
+  const stopTimes = [];
+  const agentStop = api.agentStop;
+  api.agentStop = async (...a) => { stopTimes.push(d.now()); return agentStop(...a); };
   const r = await runPiece(opts, d);
   assert.doesNotMatch(d.logs.join('\n'), /trying again/, 'a 401 is not retried: another try cannot fix it');
   assert.equal(r.manifest.aborted.step, 'agent-run');
@@ -473,6 +476,8 @@ test('A POLL ERROR THAT NO RETRY CAN FIX (a 401) still stops the run; a stop tha
   assert.equal(r.manifest.run.stop.idle, false);
   // one record for the two attempts: the second keeps the first one's reason and time, and counts itself
   assert.equal(r.manifest.run.stop.attempts, 2);
+  assert.equal(r.manifest.run.stop.requestedAt, new Date(stopTimes[0]).toISOString(), 'the time recorded is the first attempt\'s');
+  assert.ok(stopTimes[1] > stopTimes[0], 'CONTROL: the clock moved between the two attempts, so a time taken at the second would differ');
   assert.match(r.manifest.run.stop.reason, /status could not be read/);
   assert.doesNotMatch(r.manifest.run.stop.reason, /the harness stopped at/, 'the reason the run was given up on is not overwritten by the wind-up');
   assert.match(r.manifest.aborted.message, /NOT confirmed idle: stop it by hand/);
@@ -713,8 +718,62 @@ test('SIGINT, SIGTERM OR SIGHUP WITH THE RUN LIVE STOPS THE RUN, waits for idle 
     for (const f of ['credits.json', 'timing.json', 'steps.json', 'reply.md', 'console.txt', 'request.txt']) assert.ok(existsSync(join(r.pieceDir, f)), `${signal}: ${f}`);
     assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run'], `${signal}: no further step starts`);
     assert.deepEqual(seen.liveListeners, [1, 1, 1], `${signal}: all three signals were being listened for while the run was live`);
-    assert.deepEqual(seen.afterFirstSignal, [0, 0, 0], `${signal}: the first signal gives the process back to Node, so a second one kills it at once`);
+    assert.deepEqual(seen.afterFirstSignal, [0, 0, 1], `${signal}: the first signal gives Ctrl-C and SIGTERM back to Node, so a second one kills at once; SIGHUP stays held, because a closed terminal can send it twice`);
   }
+});
+
+test('SIGHUP TWICE IN A ROW (zsh forwards the closed terminal\'s SIGHUP to its jobs) still stops the run and writes the manifest: the second one never meets Node\'s default', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const signals = new EventEmitter();
+  let heldBetween = null;
+  const api = fakeApi({
+    neverEnds: true,
+    onSessionInfo: (info, s) => {
+      if (!(s.running && info.agentStatus === 'running') || s.polls !== 2) return;
+      signals.emit('SIGHUP');
+      heldBetween = signals.listenerCount('SIGHUP');
+      signals.emit('SIGHUP');
+    },
+  });
+  const d = deps(api, {});
+  d.signals = signals;
+  const r = await runPiece({ ...opts, overwrite: true }, d);
+  assert.equal(heldBetween, 1, 'after the first SIGHUP a listener still holds SIGHUP, so the real process ignores the second');
+  assert.equal(calls(api, 'agentStop').length, 1, 'the run was stopped once');
+  assert.equal(r.manifest.run.endedBy, 'interrupted');
+  assert.match(r.manifest.aborted.message, /interrupted by SIGHUP/);
+  assert.equal(JSON.parse(read(r.pieceDir, 'manifest.json')).run.endedBy, 'interrupted', 'the manifest was written');
+  assert.equal(signals.listenerCount('SIGHUP'), 0, 'and SIGHUP is let go when the piece is over');
+});
+
+test('WITH THE TERMINAL GONE, a log line that throws does not end the piece: the run is still stopped and the manifest written', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const signals = new EventEmitter();
+  let gone = false;
+  const api = fakeApi({
+    neverEnds: true,
+    onSessionInfo: (info, s) => {
+      if (s.running && info.agentStatus === 'running' && s.polls === 2) { gone = true; signals.emit('SIGHUP'); }
+    },
+  });
+  const d = deps(api, {});
+  d.signals = signals;
+  d.log = () => { if (gone) throw Object.assign(new Error('write EIO'), { code: 'EIO' }); };
+  const r = await runPiece({ ...opts, overwrite: true }, d);
+  assert.equal(calls(api, 'agentStop').length, 1, 'the run was stopped');
+  assert.equal(r.manifest.run.endedBy, 'interrupted');
+  assert.equal(JSON.parse(read(r.pieceDir, 'manifest.json')).run.endedBy, 'interrupted', 'the manifest was written');
+});
+
+test('ignoreBrokenTerminal: a write error on a closed terminal (an \'error\' event on stdout or stderr) does not crash the runner', () => {
+  const out = new EventEmitter();
+  const err = new EventEmitter();
+  assert.throws(() => err.emit('error', new Error('write EIO')), /EIO/, 'CONTROL: an error event nobody listens for throws, which in the real process is a crash');
+  ignoreBrokenTerminal([out, err]);
+  assert.doesNotThrow(() => out.emit('error', Object.assign(new Error('write ENXIO'), { code: 'ENXIO' })));
+  assert.doesNotThrow(() => err.emit('error', Object.assign(new Error('write EIO'), { code: 'EIO' })));
 });
 
 test('the signals are listened for on the real process by default, and not for a moment longer than the piece runs', async () => {
