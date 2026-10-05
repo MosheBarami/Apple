@@ -953,6 +953,27 @@ async function withOwnedProject(
 }
 
 /**
+ * THE STUDIO GRANT. The Studio agent runs inside its own Durable Object and holds no user credential, so
+ * its tool calls cannot re-run the owner check. Instead `openProject` (which runs `withOwnedProject` on
+ * every request the user makes to the agent) records a grant for the project id that check RESOLVED, and
+ * `studioGrantedStub` refuses any project without a live one. Same shape as the `/v1` key grant: proven
+ * under RLS when it is written, carried afterwards. A grant lives STUDIO_GRANT_TTL_S after the user's
+ * last request, so losing access to a project stops the agent within that time.
+ */
+const STUDIO_GRANT_TTL_S = 1800;
+const studioGrantKey = (projectId: string) => `studio-grant:${projectId}`;
+
+async function grantStudio(env: Env, resolvedProjectId: string): Promise<void> {
+  await env.KV.put(studioGrantKey(resolvedProjectId), '1', { expirationTtl: STUDIO_GRANT_TTL_S });
+}
+
+async function studioGrantedStub(env: Env, projectId: string): Promise<DurableObjectStub | null> {
+  if (!UUID_RE.test(projectId)) return null;
+  if ((await env.KV.get(studioGrantKey(projectId))) !== '1') return null;
+  return sessionStub(env, projectId);
+}
+
+/**
  * THE STUDIO GATE (rebuild R1, planning/REBUILD-PLAN.md).
  *
  * The new Flue agent worker (`apps/studio`) reaches a project's Studio only through this entrypoint,
@@ -969,7 +990,9 @@ export class StudioGate extends WorkerEntrypoint<Env> {
     const user = await verifyJwt(this.env, jwt);
     if (!user) return { ok: false };
     const ctx = await withOwnedProject({ env: this.env, get: () => user }, projectId);
-    return ctx ? { ok: true, projectName: ctx.project.name } : { ok: false };
+    if (!ctx) return { ok: false };
+    await grantStudio(this.env, ctx.project.id);
+    return { ok: true, projectName: ctx.project.name };
   }
 
   listTools(): McpToolDescriptor[] {
@@ -978,8 +1001,10 @@ export class StudioGate extends WorkerEntrypoint<Env> {
 
   async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
     const entry = mcpTool(name);
-    if (!entry || !UUID_RE.test(projectId)) return { ok: false, text: `Unknown tool '${name}'.` };
-    const res = await sessionStub(this.env, projectId).fetch('https://do/mcp-tool', {
+    if (!entry) return { ok: false, text: `Unknown tool '${name}'.` };
+    const stub = await studioGrantedStub(this.env, projectId);
+    if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
+    const res = await stub.fetch('https://do/mcp-tool', {
       method: 'POST',
       body: JSON.stringify({ tool: entry.tool, args }),
     });

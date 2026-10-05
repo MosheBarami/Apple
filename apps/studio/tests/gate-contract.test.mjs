@@ -23,7 +23,9 @@ test('the gate refuses anything that is not on that surface', () => {
   const index = read('../../worker/src/index.ts');
   const gate = index.slice(index.indexOf('export class StudioGate'));
   const callTool = gate.slice(gate.indexOf('async callTool'), gate.indexOf('async callTool') + 600);
-  assert.match(callTool, /const entry = mcpTool\(name\);\s*if \(!entry/);
+  assert.match(callTool, /const entry = mcpTool\(name\);\s*if \(!entry\)/);
+  // ...and reaches only a project the owner check granted (packages/evals security.test.mjs A3 holds the grant).
+  assert.match(callTool, /await studioGrantedStub\(this\.env, projectId\);\s*if \(!stub\)/);
 });
 
 test('every agent route checks the caller owns the project before Flue sees it', () => {

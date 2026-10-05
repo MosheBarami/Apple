@@ -58,7 +58,7 @@ export const source = (...p) => readFileSync(join(REPO, ...p), 'utf8');
 // file runs inside `pnpm -r test` on every push.
 // ---------------------------------------------------------------------------------------------
 const CF_SHIM = join(TMP, 'cf-workers-shim.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
 const W_SRC = (...p) => join(WORKER, 'src', ...p);
 const WEB_SRC = (...p) => join(REPO, 'apps', 'web', 'src', ...p);
