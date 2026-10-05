@@ -63,7 +63,9 @@ const WASH = {
 const isWash = (r) => r.file === WASH.file && r.selector.endsWith(WASH.selector);
 
 test('the walk found both apps and the rings they draw', () => {
-  assert.ok(SHEETS.length >= 150, `only ${SHEETS.length} stylesheets read; the walk has drifted`);
+  // RE-BASED 2026-10-05 (M2 site fix cycle 1): 148 stylesheets are read now, not 150 or more, because the docs rewrite deleted the docs picks' components
+  // (each carried a <style> block that counts as a sheet). A vacuity floor (a blind walk reads a handful), not a property: every focus ring drawn is still measured.
+  assert.ok(SHEETS.length >= 120, `only ${SHEETS.length} stylesheets read; the walk has drifted`);
   assert.ok(FOCUS_RULES.length >= 100, `only ${FOCUS_RULES.length} focus rules found; the selector match has drifted`);
   for (const mode of MODES) {
     const { lookup } = world(mode);
