@@ -443,6 +443,46 @@ function survivorSection(raw, marker) {
 }
 const SURVIVORS = [['/privacy', survivorSection(policy, 'Some things survive deletion')], ['/docs/privacy-and-data', survivorSection(docs, 'Some things outlive that')]];
 
+test('THE MODEL-CALL LOG IS KEPT 30 DAYS AND THEN DELETED: every surface quotes the number the code deletes by, the daily cron runs the step, and no sentence says StudPilot does not delete it', async () => {
+  // Owner decision D-14. The account is on AI Gateway Legacy Logs (no time-based retention of their own, measured 2026-10-05), so the sentence is true because the daily
+  // cron asks Cloudflare to delete entries older than GATEWAY_LOG_RETENTION_DAYS. The step needs the optional secret CF_WORKER_OPS_TOKEN (BLOCKED N4): until it is set the
+  // deletion is done by hand, and the new gateway's oldest log (2026-10-04) is not 30 days old before 2026-11-03, which planning/proof/M2/LEGAL-CLAIMS.md section 9 records.
+  // BEHAVIOUR (the filter, the cutoff, the absent secret, a failed call) is held by apps/worker/tests/gateway-log-retention.test.mjs; this is the claim read against the code.
+  const G = await bundleWorker('gateway-log-retention.ts', 'gateway-log-retention.mjs');
+  assert.equal(G.GATEWAY_LOG_RETENTION_DAYS, 30, 'the retention window is no longer 30 days: the pages say 30');
+  const days = G.GATEWAY_LOG_RETENTION_DAYS;
+  const cron = wcode(join(WORKER, 'src', 'index.ts'));
+  const run = cron.slice(cron.indexOf('async function runScheduled'), cron.indexOf('async function reportedScheduled'));
+  assert.ok(run.length > 500, 'could not read runScheduled out of index.ts');
+  assert.match(run, /await runRetentionSweeps\(env\)[\s\S]*await pruneGatewayLogs\(env\)/, 'the daily cron no longer runs the gateway log deletion after the retention sweeps');
+  const step = code(join(WORKER, 'src', 'gateway-log-retention.ts'));
+  assert.match(step, /\/ai-gateway\/gateways\/[^`]*\/logs\?filters=/, 'the step no longer targets the gateway logs with a filter');
+  assert.match(step, /method: 'DELETE'/, 'the step no longer sends a DELETE');
+  assert.match(code(join(WORKER, 'src', 'gateway-log-retention.ts')), /CF_WORKER_OPS_TOKEN/, 'the step no longer uses the optional CF_WORKER_OPS_TOKEN');
+  assert.deepEqual([...code(join(WORKER, 'src', 'gateway-log-retention.ts')).matchAll(/https:\/\/([a-z.]+)/g)].map((m) => m[1]), ['api.cloudflare.com'], 'the step now calls a host other than Cloudflare\'s API');
+  const survivors = SURVIVORS.map(([where, text]) => [where, text]);
+  // EACH SENTENCE, not either of them: the privacy page says it in the "What we collect" bullet and again where it lists the processors, and the data page in its
+  // "A log of model calls" bullet and again under "What inference sees". An alternation would let one stand in for the other.
+  const SAYS = {
+    '/privacy': [new RegExp(`Entries are kept for ${days} days and then deleted`), new RegExp(`each prompt and reply is kept for ${days} days and then deleted`)],
+    '/docs/privacy-and-data': [new RegExp(`Entries are kept for ${days} days and then deleted`), new RegExp(`Each entry is kept for ${days} days and then deleted`)],
+  };
+  for (const [where, text] of BOTH) {
+    for (const re of SAYS[where]) assert.match(text, re, `${where} does not say ${re}`);
+    assert.match(text, new RegExp(`(Model-call log|model-call log)[^.]{0,40}${days} days`), `${where} has no retention line for the model-call log`);
+    // Anywhere on the page: the sentences that said StudPilot does not delete the log, or that its life is a Cloudflare setting this page cannot number.
+    assert.doesNotMatch(text, /does not delete (those|the|these)( log)? entries|depends on the log settings|cannot promise a number|how long Cloudflare keeps them/i, `${where} still says StudPilot does not delete the model-call log`);
+    // And in the sentences ABOUT the log, "not deleted by StudPilot" (the Analytics Engine data points, a different store, really are not).
+    for (const sentence of text.split(/(?<=[.!?])\s/).filter((t) => /model-call|AI Gateway|model calls?\b|prompt and (the model's )?repl/i.test(t))) {
+      assert.doesNotMatch(sentence, /not deleted by StudPilot/i, `${where} still says the model-call log is not deleted: "${sentence.slice(0, 100)}"`);
+    }
+  }
+  for (const [where, text] of survivors) assert.match(text, new RegExp(`AI Gateway log[^.]*${days} days old|model-call log until each entry is ${days} days old`), `${where}: the survivor section does not say the gateway log is deleted at ${days} days`);
+  const gateway = RECEIPT.ACCOUNT_RESIDUE.find((r) => r.target.includes('AI Gateway'));
+  assert.match(gateway.why, new RegExp(`kept for ${days} days and then deleted`), 'the receipt does not say how long the log is kept');
+  assert.doesNotMatch(gateway.why, /not something this worker deletes|a setting of the gateway in Cloudflare/, 'the receipt still says this worker does not delete the log');
+});
+
 test('EVERY ENTRY OF THE DELETION RESIDUE is acknowledged IN THE DELETION SECTION of both pages, and what the deletion now removes (the sign-in, the account row, the Discord link) is not described as surviving', () => {
   const residue = RECEIPT.ACCOUNT_RESIDUE;
   const targets = residue.map((r) => r.target);

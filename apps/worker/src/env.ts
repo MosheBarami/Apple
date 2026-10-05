@@ -217,6 +217,12 @@ export interface Env {
   /** Account id and an "Account Analytics: Read" token, for reading that dataset back over SQL. */
   CF_ACCOUNT_ID?: string;
   CF_ANALYTICS_TOKEN?: string;
+  /**
+   * OPTIONAL SECRET (owner item N4): a narrow Cloudflare token with "AI Gateway: Edit" (and "Account Analytics: Read"). The daily cron uses it to delete AI
+   * Gateway logs older than 30 days (gateway-log-retention.ts). Absent, that step does nothing and records that it did nothing (the admin log, and
+   * GET /api/admin/gateway-log-retention). It is deliberately not the main Cloudflare token, which is far too broad to put on the Worker.
+   */
+  CF_WORKER_OPS_TOKEN?: string;
   /** Queue `studpilot-notifications` (notify-queue.ts). */
   NOTIFY_QUEUE?: Queue<unknown>;
   /** Workflow that finishes a slow 3D model upload and notifies the user (model-upload.ts). */

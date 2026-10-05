@@ -43,6 +43,7 @@ import {
 import { exportFilename, renderTranscriptMarkdown, type TranscriptExport } from './export';
 import { accountExportFilename, collectAccountExport } from './account-export';
 import { describeSweep, runRetentionSweeps } from './retention-sweep';
+import { describeGatewayRetention, pruneGatewayLogs, readGatewayRetention, rememberGatewayRetention } from './gateway-log-retention';
 import { analyticsActorId, consentIsStale, forgetAnalyticsConsent, refreshAnalyticsConsent } from './analytics-consent';
 import {
   ERASURE_CONFIRMATION,
@@ -3622,6 +3623,13 @@ app.get('/api/admin/product-analytics', async (c) => {
   const days = Number(c.req.query('days') ?? 7);
   return c.json(await readProductAnalytics(c.env, days));
 });
+
+/**
+ * The AI Gateway log retention (gateway-log-retention.ts): whether the daily deletion of logs older than 30 days CAN run, which setting is
+ * missing when it cannot (names only, never values), and what the last run did. `configured: false` is the honest answer until owner item N4
+ * has put CF_WORKER_OPS_TOKEN on the Worker: in that state the step does nothing and says so, rather than reading as a quiet night.
+ */
+app.get('/api/admin/gateway-log-retention', async (c) => c.json(await readGatewayRetention(c.env)));
 
 /**
  * The raw logs behind the rollups: request logs, model traces, error logs, build logs, audit logs.
@@ -7421,6 +7429,28 @@ async function runScheduled(env: Env, cron: string | null): Promise<void> {
       message: failure.error ?? 'the sweep did not run and gave no reason',
       // Not fatal to the request — there is no request — but it IS the retention policy not
       // happening, which is the thing somebody has to see.
+      fatal: false,
+      actorId: null,
+    });
+  }
+  // THE AI GATEWAY LOG, 30 DAYS (owner decision D-14). Its own step, after the sweeps and caught on its own: a refused call here must not
+  // cancel the retention sweep above, and a missing token (owner item N4) must not look like a night with nothing to delete. It is
+  // recorded either way, as an audit event in the admin log and as the last-run record GET /api/admin/gateway-log-retention reads.
+  const gateway = await pruneGatewayLogs(env);
+  await rememberGatewayRetention(env, gateway);
+  recordEvent({
+    kind: 'audit',
+    action: 'gateway_log_retention',
+    actorKind: 'system',
+    allowed: gateway.status === 'requested',
+    subject: describeGatewayRetention(gateway),
+  });
+  if (gateway.status === 'failed') {
+    recordEvent({
+      kind: 'error',
+      scope: 'retention:gateway_logs',
+      errorKind: 'sweep_failed',
+      message: gateway.reason ?? 'the gateway log deletion failed and gave no reason',
       fatal: false,
       actorId: null,
     });

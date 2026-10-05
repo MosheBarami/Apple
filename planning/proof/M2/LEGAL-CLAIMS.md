@@ -308,3 +308,25 @@ person ("they no longer point at you", as the receipt says).
 (the receipt and pages say so). (2) Not verified here: whether the Session Durable Object of a project the person belonged to keeps listing them until it next reads the membership state. The cascade runs no
 outbox trigger (the trigger fires on INSERT and UPDATE only), so nothing tells that object; their access is moot without a sign-in, and the receipt does not claim otherwise. (3) A Roblox-only account whose identity-row sweep fails AFTER Auth was
 deleted cannot confirm itself again to retry (its sign-in is gone); the row is dropped as stale at the next Roblox sign-in. (4) The web app does not sign the person out when the deletion finishes; the Supabase refresh token is gone with the account, so the session ends when its access token runs out.
+
+### 9.3 D-14: the AI Gateway log is kept 30 days and then deleted
+
+Supersedes the row of section 2 "Retention of the model-call log is not set by the code" and item 7 of section 5 (how long Cloudflare keeps AI Gateway entries is no longer left to a dashboard setting).
+
+**Measured on 2026-10-05 (owner's measurement, recorded here).** The account is on AI Gateway **Legacy Logs**, which keep logs until they are deleted and have no time-based retention
+(`developers.cloudflare.com/ai-gateway/observability/logging/legacy-logs/`). Logs are deleted with
+`DELETE https://api.cloudflare.com/client/v4/accounts/<account>/ai-gateway/gateways/<gateway>/logs?filters=<urlencoded JSON [{"key":"created_at","operator":"lt","value":["<ISO time>"]}]>`,
+which answers success and deletes asynchronously. The list endpoint's `result_info.total_count` stays stale for a while; the oldest log's `created_at` is what proves a deletion.
+
+| Claim | Evidence | Guard |
+|---|---|---|
+| Model calls and replies in the AI Gateway log are kept 30 days and then deleted (privacy: the "A log of model calls" bullet, the processors paragraph, the retention list, the survivor list; the data page: the same four places; the deletion receipt's AI Gateway entry) | `apps/worker/src/gateway-log-retention.ts` (`GATEWAY_LOG_RETENTION_DAYS = 30`, `pruneGatewayLogs`), called by the daily cron in `index.ts` `runScheduled` after the retention sweeps. **Live only once the owner's token exists (BLOCKED N4: a narrow Cloudflare token, `CF_WORKER_OPS_TOKEN`, AI Gateway: Edit).** Until then the step does nothing and says so, and the deletion is done by hand (it was done on 2026-10-05 for the old gateway). **The statement holds without the cron until 2026-11-03: the new gateway's oldest log is from 2026-10-04.** | `PC` "THE MODEL-CALL LOG IS KEPT 30 DAYS AND THEN DELETED" (each of four sentences required on each page, the number read from the module, the cron call, the DELETE and filter in the module, the only host `api.cloudflare.com`); `apps/worker/tests/gateway-log-retention.test.mjs` |
+| What is sent: a DELETE with only the `created_at < now - 30 days` filter and the bearer token; no body, no prompt, no account id | `gateway-log-retention.ts` | `gateway-log-retention.test.mjs` "THE CALL", "THE CUTOFF" (to the millisecond, three clocks) |
+| With the secret (or the gateway, or the account id) absent the step does nothing, and records that it did nothing | `pruneGatewayLogs` returns `skipped` with the names of what is missing (never a value) and "owner item N4"; the cron writes an audit event `gateway_log_retention` (not allowed) and the last-run record; `GET /api/admin/gateway-log-retention` (behind the admin key) answers `{configured, missing, last}` | `gateway-log-retention.test.mjs` (five absent-setting shapes through the function, and through the real `scheduled` export and the admin route) |
+| A failed call is a failed call, never a deletion; the other sweeps of the same night still run | `failed` with the status and a short Cloudflare error text; an audit event that is not allowed and an error event `retention:gateway_logs`; the retention sweeps run first | `gateway-log-retention.test.mjs` (403, 500, a 200 whose envelope says success:false, network error, timeout; through the cron: memory sweep still runs) |
+| A "requested" result means Cloudflare accepted the request, not that the rows are gone (the deletion is asynchronous) | the function names the status `requested`, never `deleted` | `gateway-log-retention.test.mjs` |
+| It runs once a day on the daily cron, never on the minute cron | `index.ts` `runScheduled` (the outbox branch returns before the sweeps) | `gateway-log-retention.test.mjs` "THE MINUTE CRON" (the outbox is configured so the minute run completes and is seen to stop) |
+
+**Policy rather than code.** That the log stays 30 days and not 31 is the owner's decision (D-14); the code deletes what is older than the cutoff once a day, so an entry can be up to 31 days old at its deletion. The page
+says "kept for 30 days and then deleted", which is true of the policy and within a day of the mechanism. That Cloudflare honours the delete call (it answers success and deletes asynchronously) is **external**,
+verified by the owner on 2026-10-05 against the old gateway.

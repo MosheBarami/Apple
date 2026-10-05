@@ -32,7 +32,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Usage ledger</strong> — when you spent Credits and on which mode, so quotas reset fairly.</li>
     <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Ordinary request entries log the route, not the raw path, so they carry no project id. They carry your account id for 30 days unless you turn that off in Settings → Privacy → Analytics; the request is still counted either way, with nobody's name on it. That switch covers only the entry for each request and the error entry for a request that failed: the log also holds one entry per agent run and one per model call, which carry your account id, the project id and the run id for the same 30 days whatever the switch says, and the error entry written when a chat message trips the abuse check (sent in a burst, repeated, oversized, or containing what looks like a pasted credential or an injection attempt), which carries your account id and the project id.</li>
     <li><strong>Product event data points</strong> — StudPilot also writes each event to Cloudflare Workers Analytics Engine as one data point: a request, a model call, an agent run, an error or an audit event, with its route or feature name, its outcome, how long it took and, where they apply, token, step and cost counts. A data point holds no message text and no account id or project id of its own; the exception is an error's label, which can contain a project id and the start of an account id (for example when delivery of a project membership change fails). Cloudflare keeps these data points for about three months, and StudPilot's code has no way to delete them.</li>
-    <li><strong>A log of model calls</strong> — each request to a Cloudflare-hosted model (text, images, sound, speech) goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id (a project identifier travels with the call as a routing hint). Voice recordings are sent with logging off. The optional Hugging Face route (images and 3D models) and AssemblyAI (speech, where it is set up) are direct calls that do not go through AI Gateway.</li>
+    <li><strong>A log of model calls</strong> — each request to a Cloudflare-hosted model (text, images, sound, speech) goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id (a project identifier travels with the call as a routing hint). Entries are kept for 30 days and then deleted. Voice recordings are sent with logging off. The optional Hugging Face route (images and 3D models) and AssemblyAI (speech, where it is set up) are direct calls that do not go through AI Gateway.</li>
     <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
     <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters. StudPilot uses it only on your own Roblox account, only when you or an agent run you started asks, and only within the permissions you ticked: checking the key and reading your public profile; looking up your assets, an experience and its game passes; uploading a file (one you give it, or a model or image it made for you); and, if you ticked those permissions, creating a game pass or granting other people's experiences, groups or accounts use of your assets. Beside the key it keeps your Roblox creator id, the permissions and when it was last used, and a log of every write it made to your Roblox account (what, when, to what, and Roblox's answer). Deleting the key removes the key and those details; the log of writes stays until you delete your account.</li>
     <li><strong>A Discord link, if you made one</strong> — so a build started in Discord reaches the right account. It holds your Discord user id, your account id and the id and name of the project you linked, until you unlink it or delete your account.</li>
@@ -107,8 +107,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <p>
     When you send a request, the model receives your message and the project context needed to
     answer it. The model runs on Cloudflare's Workers AI through AI Gateway, which logs the call,
-    prompt and reply included, as described above. StudPilot's code does not delete those entries, and
-    how long Cloudflare keeps them depends on the log settings of StudPilot's gateway.
+    prompt and reply included, as described above. Each entry is kept for 30 days and then deleted.
   </p>
 
   <h2>Who can read your data</h2>
@@ -136,7 +135,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>A Roblox Open Cloud key:</strong> the key and its details until you delete it in Settings or delete your account; the log of writes made with it until you delete your account.</li>
     <li><strong>A Discord link:</strong> until you unlink it. Deleting your account unlinks it.</li>
     <li><strong>The record of a deletion:</strong> kept with your account id and no end date, so the receipt can be shown again.</li>
-    <li><strong>The model-call log:</strong> not deleted by StudPilot's code.</li>
+    <li><strong>The model-call log:</strong> 30 days, then deleted.</li>
   </ul>
   <p>
     Each window is enforced where the data lives, not by one sweep: checkpoints are trimmed when a new
@@ -189,7 +188,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     them, and any access you were given by a share link, until their owner removes it), the
     <strong>record of this deletion</strong>, the receipt itself, the request log for up to 30 days (it
     can carry your account id), temporary image previews for up to an hour, a bare deleted-project id
-    kept so a late generation cannot recreate erased images, and the model-call log. Backup copies
+    kept so a late generation cannot recreate erased images, and the model-call log until each entry is 30 days old. Backup copies
     expire within 30 days. Anything else the UI cannot delete for you, a human will:
     <a href="mailto:support@studpilot.app">support@studpilot.app</a>.
   </p>
