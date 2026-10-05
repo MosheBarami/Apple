@@ -15,7 +15,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DIST, distPage, distPages, hrefsOf, regionsWith, textOf } from './lib/dist.mjs';
+import { DIST, SITE, distPage, distPages, hrefsOf, regionsWith, textOf, walkFiles } from './lib/dist.mjs';
 
 const shared = await import('../../../packages/shared/src/index.ts');
 
@@ -127,7 +127,7 @@ test('on every built page the header and footer links resolve (a page added tomo
 
 test('the removed routes are redirects the build emits: /models and /proof to the front page and the catalog, /showcase to the catalog, /changelog to the blog, and the three folded docs pages to the page that carries them', () => {
   // The docs ones are plan step 2.6 (M2 site fix cycle 1): connecting a project is pairing, in Getting started; updating the plugin and building it from
-  // source were folded into the plugin page. The web app still links /docs/connect (apps/web/src/components/empty-state-model.ts), so it must still land.
+  // source were folded into the plugin page. The redirects stay for old links and bookmarks; the web app no longer links them (the next test but one holds that).
   const want = {
     '/models/': '/', '/proof/': '/catalog/', '/showcase/': '/catalog/', '/changelog/': '/blog/',
     '/docs/connect/': '/docs/getting-started/', '/docs/updating/': '/docs/plugin/', '/docs/build-from-source/': '/docs/plugin/',
@@ -143,7 +143,7 @@ test('the removed routes are redirects the build emits: /models and /proof to th
   }
 });
 
-// NO PAGE LINKS TO A ROUTE THE BUILD REDIRECTS (M2 site fix cycle 1). A redirect stub keeps an old link working (the web app still links /docs/connect), but a
+// NO PAGE LINKS TO A ROUTE THE BUILD REDIRECTS (M2 site fix cycle 1). A redirect stub keeps an old link working (the web app linked /docs/connect until fix cycle 2), but a
 // page of this site that links to one names a page that is gone: How it works said "Connect a project" after /docs/connect had been folded into Getting started.
 // Derived from the built pages, never listed: every <a href> of every real page that resolves to a redirect stub fails.
 test('no built page links to a redirect stub: every internal link goes to a page that is there', () => {
@@ -159,4 +159,27 @@ test('no built page links to a redirect stub: every internal link goes to a page
   }
   assert.ok(checked > 200, `only ${checked} internal links were checked`);
   assert.deepEqual(bad, [], 'these links go to a route the build redirects (name the page it moved to instead)');
+});
+
+// THE WEB APP'S DOCS LINKS NAME PAGES, NOT REDIRECT STUBS (M2 site fix cycle 2, finding 6). Two empty states in apps/web linked /docs/connect after the docs rewrite folded
+// it into Getting started: the redirect kept the click working, and two apps/web tests (a help link names a page on disk) went red. The property is that no docs link in
+// the app's source names a route this build redirects. Derived from the app's source and the built site, never listed: a docs link added to the app tomorrow is read tomorrow.
+test('no docs link in the web app\'s source names a route the build redirects', async () => {
+  const { walkFiles } = await import('./lib/dist.mjs');
+  const webSrc = join(SITE, '..', 'web', 'src');
+  const files = walkFiles(webSrc, (p) => /\.(?:ts|tsx)$/.test(p) && !/\.test\./.test(p));
+  assert.ok(files.length > 100, `only ${files.length} source files of the web app were read: the walk is looking in the wrong place`);
+  const links = [];
+  for (const f of files) {
+    const text = readFileSync(join(webSrc, f), 'utf8');
+    for (const m of text.matchAll(/['"`](\/docs(?:\/[a-z0-9-]*)?(?:#[a-z0-9-]*)?)['"`]/g)) links.push({ f, href: m[1] });
+  }
+  assert.ok(links.length >= 3, `only ${links.length} docs links were found in the web app: the scan is blind`);
+  const bad = [];
+  for (const { f, href } of links) {
+    const r = resolveBuilt(href.split('#')[0] || '/docs');
+    if (r.kind === 'redirect') bad.push(`${f}: ${href} is a redirect stub`);
+    else if (r.kind === 'missing') bad.push(`${f}: ${href} is not in the build`);
+  }
+  assert.deepEqual(bad, [], 'the app links a docs route that is redirected or gone: name the page it moved to');
 });

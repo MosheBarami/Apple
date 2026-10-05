@@ -88,7 +88,7 @@ export const EMPTY_STATES = {
     title: 'Waiting for Studio',
     body: 'Open your place in Roblox Studio and pair it. StudPilot reads the project itself rather than guessing at it.',
     tone: 'studio',
-    help: { href: '/docs/connect', label: 'Connect a project' },
+    help: { href: '/docs/getting-started#pair', label: 'Pair Studio with a project' },
   },
   studioDisconnected: {
     canonical: 'M05',
@@ -99,7 +99,7 @@ export const EMPTY_STATES = {
     title: 'StudPilot needs your place open',
     body: 'The roadmap and the build both read the project itself. Reopen your place in Studio — everything StudPilot has already done is saved.',
     tone: 'studio',
-    help: { href: '/docs/connect', label: 'Connect a project' },
+    help: { href: '/docs/getting-started#pair', label: 'Pair Studio with a project' },
   },
   connectionFailed: {
     canonical: 'M07',
