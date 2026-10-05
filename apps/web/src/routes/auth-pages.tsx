@@ -5,7 +5,7 @@
 // account. Sign in instead." — which turned the sign-up form into a free membership lookup for
 // anyone with a list of addresses. A message table inside a component is a message table nothing
 // can test, so the table moved out and the screens below only render what the model decided.
-import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { safeInternalPath } from '../lib/safe-redirect';
 import { capturePendingStart } from '../lib/pending-start';
@@ -31,6 +31,8 @@ import {
   useRobloxLanding,
   type RobloxLandingState,
 } from '../lib/roblox-signin';
+import { PROVIDER_NAME, useEnabledProviders, type OAuthProvider } from '../lib/auth-providers';
+import { REFUSAL_BODY, REFUSAL_TITLE, dateDigits, refusalRemembered, signupGate, type BirthDate } from '../lib/age-gate';
 import { StudPilotGlyph } from '../components/glyphs';
 import {
   CHECK_EMAIL_LINE,
@@ -333,14 +335,14 @@ function PasswordField({
 
 /**
  * "Continue with Roblox", drawn only when `configured` (the worker said it can finish a sign-in). A plain link: the
- * whole flow is browser navigations, and the page that comes back is /auth/roblox below.
+ * whole flow is browser navigations, and the page that comes back is /auth/roblox below. The divider above it belongs to
+ * AlternativeSignInView, which draws one for every way in that is not email.
  */
 export function RobloxSignInView({ configured, from }: { configured: boolean; from: string }) {
   if (!configured) return null;
   return (
     <>
-      <p className="auth-switch">or</p>
-      <a className="btn btn-block" href={robloxStartHref(from)}>
+      <a className="btn btn-block auth-roblox-link" href={robloxStartHref(from)}>
         Continue with Roblox
       </a>
       <p className="field-hint">StudPilot reads your Roblox user ID and username, nothing else.</p>
@@ -348,8 +350,190 @@ export function RobloxSignInView({ configured, from }: { configured: boolean; fr
   );
 }
 
-export function RobloxSignIn({ from }: { from: string }) {
-  return <RobloxSignInView configured={useRobloxConfigured()} from={from} />;
+/**
+ * "Continue with Google" and "Continue with Discord", one button for each provider the project says is on and none otherwise.
+ * `supabase.auth.signInWithOAuth` takes the whole browser to the provider and back; nothing here needs a form. A sign-up this way is not
+ * asked for a date of birth (plan section 7 relies on the provider's own age rule); the privacy pages say only that, and that the providers
+ * apply their own age rules, because what Google's and Discord's rules say is not something this app can show (DECISIONS.md 12.2).
+ */
+export function OAuthButtonsView({
+  providers,
+  busy,
+  onChoose,
+}: {
+  providers: readonly OAuthProvider[];
+  busy: OAuthProvider | null;
+  onChoose: (provider: OAuthProvider) => void;
+}) {
+  return (
+    <>
+      {providers.map((provider) => (
+        <button
+          key={provider}
+          type="button"
+          className="btn btn-block"
+          disabled={busy !== null}
+          data-busy={busy === provider ? 'true' : undefined}
+          onClick={() => onChoose(provider)}
+        >
+          Continue with {PROVIDER_NAME[provider]}
+        </button>
+      ))}
+    </>
+  );
+}
+
+/** Every way in that is not email, under one "or". Nothing at all, not even the "or", when none of them is on. */
+export function AlternativeSignInView({
+  robloxConfigured,
+  providers,
+  from,
+  busy,
+  error,
+  onChoose,
+}: {
+  robloxConfigured: boolean;
+  providers: readonly OAuthProvider[];
+  from: string;
+  busy: OAuthProvider | null;
+  error: string | null;
+  onChoose: (provider: OAuthProvider) => void;
+}) {
+  if (!robloxConfigured && providers.length === 0) return null;
+  return (
+    <>
+      <p className="auth-switch">or</p>
+      <RobloxSignInView configured={robloxConfigured} from={from} />
+      <OAuthButtonsView providers={providers} busy={busy} onChoose={onChoose} />
+      {error && (
+        <p className="field-hint" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+export function AlternativeSignIn({ from }: { from: string }) {
+  const robloxConfigured = useRobloxConfigured();
+  const providers = useEnabledProviders();
+  const [busy, setBusy] = useState<OAuthProvider | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // A successful start leaves `busy` set, because the browser is on its way to the provider. If the person comes Back to this page and the
+  // browser restores it from its back/forward cache (`pageshow` with `persisted`), the page is exactly as it was left, buttons held and a
+  // spinner on the one pressed, with nothing in flight. Release them.
+  useEffect(() => {
+    const onShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setBusy(null);
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+
+  const choose = async (provider: OAuthProvider) => {
+    if (busy) return;
+    setError(null);
+    setBusy(provider);
+    // Back to the screen the person was heading for. `emailRedirectTo` is the one place a route becomes an absolute,
+    // same-origin address, so a provider is never sent back anywhere else.
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: emailRedirectTo(from) },
+    });
+    // On success the browser is already on its way to the provider. Only a failure to start comes back here.
+    if (err) {
+      setBusy(null);
+      setError(`We could not start signing in with ${PROVIDER_NAME[provider]}. Try again, or use your email.`);
+    }
+  };
+
+  return (
+    <AlternativeSignInView
+      robloxConfigured={robloxConfigured}
+      providers={providers}
+      from={from}
+      busy={busy}
+      error={error}
+      onChoose={(provider) => void choose(provider)}
+    />
+  );
+}
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
+
+/**
+ * The date of birth, as three controls: a day, a month and a year. A NEUTRAL SCREEN (lib/age-gate.ts): no placeholder shows a
+ * date, the year has no limit that names a threshold, and nothing here says why it is asked. Whatever is typed stays in this
+ * form's state; only the verdict leaves it.
+ */
+export function BirthDateField({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: BirthDate;
+  onChange: (next: BirthDate) => void;
+  invalid?: boolean;
+}) {
+  const id = useId();
+  const mark = invalid ? ('true' as const) : undefined;
+  return (
+    <div className="field field-date" role="group" aria-labelledby={`${id}-label`}>
+      <span className="field-label" id={`${id}-label`}>
+        Date of birth
+      </span>
+      <div className="field-date__row">
+        <label className="field-date__part">
+          <span className="field-date__name">Day</span>
+          <input
+            name="birthDay"
+            inputMode="numeric"
+            autoComplete="bday-day"
+            maxLength={2}
+            required
+            value={value.day}
+            aria-invalid={mark}
+            onChange={(e) => onChange({ ...value, day: dateDigits(e.target.value) })}
+          />
+        </label>
+        <label className="field-date__part">
+          <span className="field-date__name">Month</span>
+          <select
+            name="birthMonth"
+            autoComplete="bday-month"
+            required
+            value={value.month}
+            aria-invalid={mark}
+            onChange={(e) => onChange({ ...value, month: e.target.value })}
+          >
+            <option value=""> </option>
+            {MONTHS.map((name, index) => (
+              <option key={name} value={String(index + 1)}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field-date__part">
+          <span className="field-date__name">Year</span>
+          <input
+            name="birthYear"
+            inputMode="numeric"
+            autoComplete="bday-year"
+            maxLength={4}
+            required
+            value={value.year}
+            aria-invalid={mark}
+            onChange={(e) => onChange({ ...value, year: dateDigits(e.target.value) })}
+          />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 /* ------------------------------------------------------------------- sign in --- */
@@ -578,7 +762,7 @@ export function LoginPage() {
         >
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        <RobloxSignIn from={from} />
+        <AlternativeSignIn from={from} />
         <p className="auth-switch">
           {/* Carries the address they have already typed, so the next screen does not ask for it
               again. A "forgot password" link that restarts the form is how people give up. */}
@@ -624,16 +808,42 @@ export function SignupPage() {
   useEffect(() => { capturePendingStart(location.search); }, [location.search]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [birth, setBirth] = useState<BirthDate>({ day: '', month: '', year: '' });
+  const [dateRejected, setDateRejected] = useState(false);
+  // A browser that has already turned somebody away on this screen shows the refusal and no form (lib/age-gate.ts).
+  const [refused, setRefused] = useState(() => refusalRemembered());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent'>('idle');
   const navigate = useNavigate();
+  // The refusal REPLACES the form, and the form held keyboard focus (its submit button), so focus would fall to <body> and a screen reader
+  // would hear nothing: a live region that is inserted already holding its text is not reliably announced. Focus moves to the notice's
+  // heading instead (tabIndex -1: reachable by script, not a tab stop), which is described by the sentence under it, so the person hears
+  // both. It runs when the refusal appears, whether it was just given or remembered from this browser's last visit.
+  const refusalTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (refused && !sentTo) refusalTitle.current?.focus();
+  }, [refused, sentTo]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setError(null);
+    setDateRejected(false);
+    //[[ THE AGE SCREEN COMES FIRST, BEFORE ANYTHING ELSE LEAVES THIS FORM. A refusal makes no request at all: no sign-up,
+    //   and not even the captcha script, which is a request to Cloudflare. A pass sends one fact and never the date:
+    //   `data` is the user metadata, and `signupGate` returns `{ age_gate: 'passed' }` and nothing else. ]]
+    const gate = signupGate(birth);
+    if (gate.kind === 'refused') {
+      setRefused(true);
+      return;
+    }
+    if (gate.kind === 'ask') {
+      setDateRejected(true);
+      setError(gate.message);
+      return;
+    }
     const bad = passwordProblem(password, { email });
     if (bad) {
       setError(bad);
@@ -647,7 +857,7 @@ export function SignupPage() {
       // WITHOUT THIS the confirmation link points at Supabase's own site_url, which is not
       // necessarily this app — the link "works" and drops the user somewhere that cannot finish
       // the job. /confirm is the route that can.
-      options: { emailRedirectTo: emailRedirectTo('/confirm'), ...captchaOptions(await turnstileToken('signup')) },
+      options: { emailRedirectTo: emailRedirectTo('/confirm'), data: gate.data, ...captchaOptions(await turnstileToken('signup')) },
     });
     setBusy(false);
     const outcome: AuthOutcome = signupOutcome(data, err, address);
@@ -674,6 +884,20 @@ export function SignupPage() {
     });
     setResend('sent');
   };
+
+  if (refused && !sentTo) {
+    return (
+      <AuthShell>
+        <div className="auth-card" role="group" aria-labelledby="age-refused-title">
+          <h2 className="auth-card-title" id="age-refused-title" ref={refusalTitle} tabIndex={-1} aria-describedby="age-refused-body">{REFUSAL_TITLE}</h2>
+          <p className="auth-card-sub" id="age-refused-body">{REFUSAL_BODY}</p>
+          <p className="auth-switch">
+            Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
+          </p>
+        </div>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>
@@ -737,16 +961,17 @@ export function SignupPage() {
             strength
             onChange={setPassword}
           />
+          <BirthDateField value={birth} onChange={setBirth} invalid={dateRejected} />
           <button
             type="submit"
             className="btn btn-primary btn-block"
-            disabled={busy || !email.trim() || !password}
+            disabled={busy || !email.trim() || !password || !birth.day || !birth.month || !birth.year}
             data-busy={busy ? 'true' : undefined}
-            title={!email.trim() || !password ? 'Fill in both fields first' : undefined}
+            title={!email.trim() || !password || !birth.day || !birth.month || !birth.year ? 'Fill in every field first' : undefined}
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
-          <RobloxSignIn from={from} />
+          <AlternativeSignIn from={from} />
           <p className="auth-switch">
             Already have an account? <Link to="/login" state={from ? { from } : undefined}>Sign in</Link>
           </p>

@@ -10,9 +10,11 @@ test('there is no Plan card to build: no mode switch-over, no "Build this plan" 
   assert.doesNotMatch(WS, /onBuildPlan|setMode|buildQueued|Build this plan/);
 });
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C6). The header is handed the avatar's letter too (`initial`, from lib/account-identity.ts), so an account with no
+//   address is not drawn as "?". The property is unchanged: the account menu opens on the picked header, with the account's name and address. ]]
 test('the account menu opens on the picked user-button header', () => {
   assert.match(LAYOUT, /import \{ AccountMenuHeader \} from '\.\/picks\/settings\/user-button'/);
-  assert.match(LAYOUT, /label="Account">\s*<AccountMenuHeader name=\{name\} email=\{email\} \/>/);
+  assert.match(LAYOUT, /label="Account">\s*<AccountMenuHeader name=\{name\} email=\{email\} initial=\{initial\} \/>/);
 });
 
 test('the composer credits ring never shows 0 while extra credits remain', () => {

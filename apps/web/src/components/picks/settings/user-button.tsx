@@ -15,19 +15,22 @@ import { meterView } from '../../usage-meter-model';
 import { RollingNumber } from './rolling-number';
 import './user-button.css';
 
-export function AccountMenuHeader({ name, email }: { name: string | null; email: string }) {
+export function AccountMenuHeader({ name, email, initial }: { name: string | null; email: string; initial: string | null }) {
   const me = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const view = meterView(me.data?.quota, Date.now(), { pending: me.isPending, failed: me.isError });
   const known = view.tone !== 'unknown' && !me.isPending && !me.isError;
-  const primary = name ?? email ?? 'Account';
+  const primary = name || email || 'Your account';
   const secondary = name ? email : null;
-  const initial = (primary[0] ?? '?').toUpperCase();
 
   return (
     <div className="pk-ubtn" role="presentation">
       <div className="pk-ubtn__head">
         <span className="pk-ubtn__avatar" aria-hidden="true">
-          {initial}
+          {initial ?? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5 20a7 7 0 0 1 14 0" />
+            </svg>
+          )}
         </span>
         <span className="pk-ubtn__names">
           <span className="pk-ubtn__name">{primary}</span>

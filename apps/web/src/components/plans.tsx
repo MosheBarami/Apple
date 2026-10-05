@@ -28,6 +28,12 @@ import {
 } from '@studpilot/shared';
 
 /**
+ * What the plan ladder is while StudPilot is in beta, in the words the pricing page uses (apps/site/src/pages/pricing.astro: tests/usage-beta.test.mjs
+ * holds the two to each other). Free is the plan everybody is on; the paid tiers below it are decided and shown, and cannot be bought yet.
+ */
+export const BETA_LINE = 'Free while in beta. Paid plans start later.';
+
+/**
  * Whether this deployment can sell anything, as four states rather than two.
  *
  * `onChoose` being absent used to mean all of "still asking", "we asked and it cannot", and "we

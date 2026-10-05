@@ -28,7 +28,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
 
   <h2>What we collect</h2>
   <ul>
-    <li><strong>Account data.</strong> If you sign up with email: your email address and a hashed password, used to sign you in and to contact you about your account. That's the entire sign-up form. Your display name starts as the part of your email before the @ and you can change it in Settings. If you sign in with Roblox instead, see "Sign in with Roblox" below: there is no email address and no password.</li>
+    <li><strong>Account data.</strong> If you sign up with email: your email address and a hashed password, used to sign you in and to contact you about your account. The sign-up form also asks for your date of birth, to check that you are 13 or older. The date is checked in your browser and is never sent to us or stored: if you pass, we keep one note on your account that you passed; if you do not, nothing is sent at all and your browser remembers the refusal on your own device (a flag in its local storage, with no date in it). Your display name starts as the part of your email before the @ and you can change it in Settings. If you sign in with Roblox instead, see "Sign in with Roblox" below: there is no email address, no password and no date of birth to give.</li>
     <li><strong>Projects.</strong> Project names, descriptions, and metadata about the Roblox place you connect (place name and id, as reported by the Studio plugin).</li>
     <li><strong>Chat history.</strong> The messages you exchange with StudPilot, including attachments you add, and the record of tool actions StudPilot took (which scripts it edited, which instances it created). This is what lets a project remember its own past.</li>
     <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place StudPilot works on, so you can roll back changes. StudPilot processes them to provide rollback; authorized operators can access production systems for debugging under access controls.</li>
@@ -44,7 +44,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <ul>
     <li><strong>Email and password.</strong> Handled by Supabase (see below).</li>
     <li><strong>Roblox,</strong> where the sign-in and sign-up pages show "Continue with Roblox". Roblox tells us who you are; what we keep is listed in the next section. A Roblox sign-in makes its own StudPilot account: it does not attach to an email account you already have.</li>
-    <li><strong>Google or Discord, if you choose one.</strong> If you sign in with Google or Discord, Supabase receives from that provider the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity.</li>
+    <li><strong>Google or Discord, where the sign-in page offers them.</strong> A "Continue with Google" or "Continue with Discord" button appears only when StudPilot's sign-in service has that provider switched on; if you do not see the button, none of this applies to you. If you sign in with Google or Discord, Supabase receives from that provider the details you allow on its consent screen, typically your email address, your name or username and a link to your profile picture, and keeps them as your sign-in identity. The provider also learns that you signed in to StudPilot.</li>
   </ul>
 
   <h2>Sign in with Roblox</h2>
@@ -270,7 +270,10 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <p>
     StudPilot is for people aged 13 and older. Signing in with Roblox needs a Roblox account, and
     Roblox's sign-in service is for accounts held by people aged 13 and older. We do not knowingly
-    keep personal data about anyone under 13. If you believe an account belongs to someone under 13,
+    keep personal data about anyone under 13. Email sign-up asks for a date of birth and turns away
+    anyone under 13. Signing up with Roblox, or with Google or Discord where they are offered, does not ask
+    for a date of birth again; Google and Discord apply their own age rules. The check goes by the date
+    you give and is not an identity check. If you believe an account belongs to someone under 13,
     tell us at the address below and we will delete the account and its data, including its sign-in
     identity.
   </p>
