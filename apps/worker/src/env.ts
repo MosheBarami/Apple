@@ -111,9 +111,13 @@ export interface Env {
    * sealed with it). ROBLOX_OAUTH_CLIENT_ID is public but is kept with its pair.
    *
    * SUPABASE_SECRET_KEY IS THE FIRST CREDENTIAL THIS WORKER HOLDS THAT ACTS AS ANYONE. Every other database
-   * call travels with the caller's own JWT so row-level security decides. This one is used only for the Auth
-   * admin API in roblox-oauth.ts (create a user, read a user's address, mint a sign-in token) and must never
-   * be used for a table query. Why it exists: planning/proof/M2/ROBLOX-SIGNIN.md.
+   * call travels with the caller's own JWT so row-level security decides. This one is used only in
+   * roblox-oauth.ts, and only for these things: the Auth admin API (create a user, read a user, mint a sign-in
+   * token, update a user's metadata to clear the Roblox id and username when Roblox access is lost, and delete a
+   * user when that person deletes their account) and exactly ONE table call, the PATCH of a profile's
+   * display_name in that same wipe (`scrubRobloxFromAccount`). Nothing else may be queried with it. Why it
+   * exists: planning/proof/M2/ROBLOX-SIGNIN.md; what it is used for, as the privacy pages state it:
+   * planning/proof/M2/LEGAL-CLAIMS.md.
    */
   ROBLOX_OAUTH_CLIENT_ID?: string;
   ROBLOX_OAUTH_CLIENT_SECRET?: string;
@@ -215,6 +219,12 @@ export interface Env {
   /** Account id and an "Account Analytics: Read" token, for reading that dataset back over SQL. */
   CF_ACCOUNT_ID?: string;
   CF_ANALYTICS_TOKEN?: string;
+  /**
+   * OPTIONAL SECRET (owner item N4): a narrow Cloudflare token with "AI Gateway: Edit" (and "Account Analytics: Read"). The daily cron uses it to delete AI
+   * Gateway logs older than 30 days (gateway-log-retention.ts). Absent, that step does nothing and records that it did nothing (the admin log, and
+   * GET /api/admin/gateway-log-retention). It is deliberately not the main Cloudflare token, which is far too broad to put on the Worker.
+   */
+  CF_WORKER_OPS_TOKEN?: string;
   /** Queue `studpilot-notifications` (notify-queue.ts). */
   NOTIFY_QUEUE?: Queue<unknown>;
   /** Workflow that finishes a slow 3D model upload and notifies the user (model-upload.ts). */

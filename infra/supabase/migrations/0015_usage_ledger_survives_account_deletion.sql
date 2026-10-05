@@ -1,0 +1,41 @@
+-- 0015: deleting an account no longer deletes its usage ledger (owner decision D-14, 2026-10-05).
+--
+-- WHY NOW. Account deletion removes the Supabase sign-in identity (apps/worker/src/erasure.ts, last step,
+-- Auth admin API). `public.profiles.id` references `auth.users(id) on delete cascade`, and every table in
+-- `public` that stores a person's id hangs from `profiles`. Read from the LIVE schema on 2026-10-05
+-- (pg_constraint, SELECT only), this is what deleting an auth user does, table by table:
+--
+--   profiles.id -> auth.users                      CASCADE   the account row goes
+--   projects.owner_id -> profiles                  CASCADE   and with it, through projects.id:
+--     messages, checkpoints, studio_pairings, project_members, membership_events,
+--     membership_access_state (and its outbox rows)        all CASCADE from projects
+--   messages.owner_id, checkpoints.owner_id,
+--   studio_pairings.owner_id -> profiles           CASCADE   the person's own rows go
+--   project_members.user_id, membership_events.subject_id,
+--   membership_access_state.user_id -> profiles    CASCADE   the person's memberships on OTHER projects go
+--   feedback.owner_id, waitlist.owner_id,
+--   project_members.invited_by / suspended_by,
+--   membership_events.actor_id -> profiles         SET NULL  the row stays, the link to the person is cleared
+--   usage_events.owner_id -> profiles              CASCADE   THE LEDGER WOULD GO WITH THE ACCOUNT  <- this file
+--
+-- Nothing is NO ACTION or RESTRICT, so nothing blocks the deletion. There are no DELETE triggers on any
+-- of these tables (the outbox trigger fires on INSERT and UPDATE only). The auth schema's own tables
+-- (identities, sessions, refresh tokens, one-time tokens, MFA factors) cascade or set null by GoTrue's
+-- own constraints.
+--
+-- WHAT THIS CHANGES. The usage ledger is kept as an accounting record: the privacy pages and the deletion
+-- receipt say so. Dropping the foreign key keeps `owner_id` as the key of every row and stops the cascade.
+-- The column stays NOT NULL, the (owner_id, created_at) index and the owner-read policy are untouched,
+-- and the ledger survives the deletion keyed by an id that belongs to no account any more. `feedback`
+-- needs no change: SET NULL already keeps support messages, detached from the person, which is what the
+-- receipt says ("they no longer point at you").
+--
+-- ORDER. Apply this BEFORE the worker that deletes sign-in identities is deployed: with the old
+-- constraint in place a deletion would cascade the ledger away. Measured on 2026-10-05
+-- (pg_stat_user_tables): public.usage_events holds no rows today (the credit ledger is in the QuotaDO
+-- Durable Object), so nothing is lost by the order in which the two ship, but the rule is written
+-- here so that it holds the day something writes to it.
+alter table public.usage_events drop constraint if exists usage_events_owner_id_fkey;
+
+comment on column public.usage_events.owner_id is
+  'The account the row was recorded for. Not a foreign key since 0015: deleting an account keeps its ledger, keyed by this id.';

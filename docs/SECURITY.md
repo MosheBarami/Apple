@@ -14,8 +14,10 @@ rendered, and the confirmed ones were fixed and re-tested against the live deplo
 - **Update 2026-10-05: those two properties now have one stated exception.** Sign in with Roblox needs
   to create users and mint sign-in tokens, and Roblox gives no email, so when `SUPABASE_SECRET_KEY` is set
   the worker holds a Supabase secret key. It is used in `apps/worker/src/roblox-oauth.ts` and nowhere
-  else, for three Auth admin calls (create a user, read a user's address, mint a one-time sign-in token),
-  never for a table query, and the worker still signs no JWT: Supabase issues the session. With the key
+  else, for Auth admin calls (create a user, read a user's address, mint a one-time sign-in token, and, since
+  2026-10-05 (owner decision D-14), delete a user when that person deletes their account and clear the Roblox id
+  and username from a user whose Roblox grant was lost), and for one table call: the PATCH that clears a Roblox
+  username from a profile's display name. The worker still signs no JWT: Supabase issues the session. With the key
   unset the routes answer 503 and the two properties above hold as written. The reasoning and the
   rejected alternatives are in `planning/proof/M2/ROBLOX-SIGNIN.md`.
 - **Defence in depth on tenancy.** Ownership is checked in the worker *and* by RLS *and* by the

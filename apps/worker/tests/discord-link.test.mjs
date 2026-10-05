@@ -234,6 +234,36 @@ test('either side can revoke, and neither can revoke somebody else’s', async (
   assert.equal((await d.linkForOwner('owner-2')).link, null);
 });
 
+test('unlinking from the StudPilot side also withdraws the codes that account minted and nobody has redeemed, and only that account\'s', async () => {
+  const d = makeDO();
+  const mine = (await d.mint(...P1)).code;
+  const mine2 = (await d.mint(...P1)).code;
+  const theirs = (await d.mint(...P2)).code;
+  const answer = await d.unlink({ appleUserId: 'owner-1' });
+  // No link existed, so `removed` is false, and the two unused codes are reported as withdrawn.
+  assert.deepEqual(answer, { removed: false, codesRemoved: 2 });
+  assert.equal((await d.redeem('discord-a', mine)).ok, false, 'a withdrawn code still redeems');
+  assert.equal((await d.redeem('discord-a', mine2)).ok, false);
+  assert.equal((await d.redeem('discord-b', theirs)).ok, true, 'another account\'s code was withdrawn too');
+  // With a link AND a pending code: both go, and the answer says both.
+  await d.redeem('discord-c', (await d.mint(...P1)).code);
+  await d.mint(...P1);
+  assert.deepEqual(await d.unlink({ appleUserId: 'owner-1' }), { removed: true, codesRemoved: 1 });
+  assert.equal((await d.linkForOwner('owner-1')).link, null);
+});
+
+test('unlinking from the Discord side does not touch anybody\'s unused codes: only the account\'s own side can withdraw them', async () => {
+  const d = makeDO();
+  await d.redeem('discord-a', (await d.mint(...P1)).code);
+  const pending = (await d.mint(...P1)).code;
+  assert.deepEqual(await d.unlink({ discordUserId: 'discord-a' }), { removed: true, codesRemoved: 0 });
+  assert.equal((await d.redeem('discord-a', pending)).ok, true, 'a Discord user typing /unlink withdrew the owner\'s pending code');
+  // A call that names a Discord user is the Discord side's, even if it also carries the account id: it withdraws nothing.
+  const again = (await d.mint(...P1)).code;
+  assert.deepEqual(await d.unlink({ discordUserId: 'discord-a', appleUserId: 'owner-1' }), { removed: true, codesRemoved: 0 });
+  assert.equal((await d.redeem('discord-z', again)).ok, true, 'a call naming a Discord user withdrew the account\'s pending code');
+});
+
 test('revoking clears both directions, so a stale reverse index cannot resurrect a link', async () => {
   const d = makeDO();
   await d.redeem('discord-a', (await d.mint(...P1)).code);
