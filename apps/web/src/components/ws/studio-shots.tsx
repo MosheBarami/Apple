@@ -32,16 +32,19 @@ export function StudioShots({
   frames,
   running,
   studioConnected,
+  studioKnown = true,
 }: {
   frames: readonly StudioFrame[];
   /** The run this strip belongs to is still going. */
   running: boolean;
   studioConnected: boolean;
+  /** Whether the socket has said yet if Studio is there. False draws no line at all (shotsEmptyLine); a caller that does not say is taken to know. */
+  studioKnown?: boolean;
 }) {
   const [open, setOpen] = useState<StudioFrame | null>(null);
   const caption = (frame: StudioFrame) => shotCaption(frame, (at) => clockTime(at));
   const at = open ? frames.indexOf(open) : -1;
-  const empty = frames.length === 0 ? shotsEmptyLine({ running, studioConnected }) : null;
+  const empty = frames.length === 0 ? shotsEmptyLine({ running, studioConnected, studioKnown }) : null;
   // No frame and nothing true to say about it: no strip at all, not an empty box under a finished answer.
   if (frames.length === 0 && empty === null) return null;
 

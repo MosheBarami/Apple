@@ -8,13 +8,15 @@
  *      earlier run or one the worker could not attribute.
  *   1b. EACH CAPTURE ONCE. The worker replays the frames it holds each time a socket attaches during a playtest, so a reconnect must not
  *      repeat the strip or push the run's older frames out of the newest eight (M2 fix cycle 1).
- *   1c. A NEW PLAYTEST FRAME IS NOT A REPLAY EVEN WHEN THE WORKER'S COUNTER RESTARTS. The counter lives in the Durable Object's memory and
- *      the playtest run id survives an eviction, so new frames can arrive under a run id and a counter the page already holds; the capture
- *      time tells them apart, and a true replay carries the same one (M2 fix cycle 2).
+ *   1c. A PLAYTEST FRAME'S KEY CANNOT TAKE A NEW CAPTURE FOR A REPLAY, whatever the counter does. The key is the run, the counter and the exact
+ *      capture time, and a true replay carries the same one. This is a DEFENCE: the worker does not restart a counter under a run id the page holds
+ *      today (apps/worker/src/do/session.ts: the capture step needs a frame gate that only `begin` sets, in the call that mints a new run id), and
+ *      the test builds the case by hand. (M2 fix cycle 2, and its wording corrected in cycle 3.)
  *   2. WHAT IT SAYS. A Studio capture is a "Studio screenshot"; anything else is a "Preview render", so a preview is never read as
  *      a screenshot. With no frame the strip says what is true of THIS turn: still coming, how to get them (connect Studio), or nothing
- *      at all once a finished request took none. No finished turn keeps a sentence about "while StudPilot builds", and none says that no
- *      screenshot was taken: the page keeps frames in memory only, so after a reload it cannot know (M2 fix cycle 2).
+ *      at all once a finished turn holds none and Studio is connected, or while the page has not yet heard whether Studio is. No finished turn keeps
+ *      a sentence about "while StudPilot builds", and none says that no screenshot was taken: the page keeps frames in memory only, so after a reload
+ *      it cannot know (M2 fix cycle 2). The socket's `studio.known` says whether Studio's state has been heard (cycle 3).
  *   3. WHERE IT SHOWS. On the latest assistant turn while it runs, once it has a frame, or when it was a build at all. A plain chat
  *      reply, and every earlier turn, gets nothing. The offer to the latest turn only is held where it is made (workspace.tsx).
  *   4. THE PERSON ONLY, IN MEMORY ONLY. The strip and its dialog persist nothing and send nothing: no storage, no request, no
@@ -88,20 +90,27 @@ test('two different pictures are never taken for one: same second and view but d
   assert.equal(sameFrame(frame(1), frame(1, { msgId: 'run-2' })), false, 'the same capture time under another run');
 });
 
-// ADDED 2026-10-05 (M2 fix cycle 2). The worker's playtest counter `seq` is a plain in-memory field of the Durable Object (apps/worker/src/do/session.ts,
-// `playtestSeq`, reset only when a playtest begins) while the playtest run itself is stored, so after an eviction in the middle of a playtest the
-// worker keeps the SAME run id and counts from 1 again. Keyed on the run and the counter alone, the page took those new pictures for a replay and
-// never showed them. The capture time tells them apart: a replay carries the capture's original one.
-test('A NEW PLAYTEST FRAME AFTER THE WORKER’S COUNTER RESTARTS IS NOT A REPLAY: the same run and counter at another moment both stay, and an exact replay is still dropped', () => {
+// ADDED 2026-10-05 (M2 fix cycle 2), WORDING CORRECTED IN CYCLE 3. A DEFENCE, NOT A REPRODUCTION. The cycle 2 text said the worker, after a Durable Object
+// eviction in the middle of a playtest, keeps the same run id and counts `seq` from 1 again. It does not: a frame is published under a run id only by the
+// playtest's capture step (`PlaytestBus.captureFrame`), which returns false without the run's frame gate; the gate and the counter are plain fields that only
+// `begin` sets, in the same call that mints a new run id and zeroes the counter. So after an eviction nothing more is published under the stored run id. The
+// state built below (the same run and the same counter at another moment) is one the page's key is written to survive if the worker ever does it; it is built by
+// hand here and has not been seen. A replay carries the capture's own time, and the plugin's clock is whole seconds (`os.time() * 1000`), so the comparison
+// is exact and a window of any size is wrong.
+test('A PLAYTEST FRAME THAT SHARES A HELD ONE’S RUN AND COUNTER BUT NOT ITS MOMENT IS NOT A REPLAY: both stay, an exact replay is still dropped, and no window of time is used', () => {
   const play = (seq, n, pixels) => frame(n, { playtestRunId: 'pt_1', seq, rgbBase64: pixels });
   const held = [play(1, 1, 'AAAA'), play(2, 2, 'AAAA'), play(3, 3, 'AAAA')];
-  // After the eviction: new pictures (other pixels, later times) arrive as seq 1 and 2 of the run the page already holds.
+  // New pictures (other pixels, later times) arrive as seq 1 and 2 of the run the page already holds.
   const fresh = [play(1, 10, 'BBBB'), play(2, 11, 'CCCC')];
   assert.equal(sameFrame(held[0], fresh[0]), false, 'a later capture with other pixels, under the same run and counter, is not the held one');
   assert.equal(sameFrame(held[1], fresh[1]), false);
   const grown = fresh.reduce((list, f) => appendFrame(list, f, 8), held);
   assert.deepEqual(grown.map((f) => f.rgbBase64), ['AAAA', 'AAAA', 'AAAA', 'BBBB', 'CCCC'], 'the new frames were dropped as replays');
   assert.deepEqual(shotsForTurn(grown, 'run-1').map((f) => f.capturedAt), [1, 2, 3, 10, 11].map((n) => T0 + n * 1000), 'and the strip shows all five, in time order');
+  // The key is the exact moment, not a window: one millisecond apart and one plugin tick (a second) apart are two captures.
+  for (const apart of [1, 1000, 4999]) {
+    assert.equal(sameFrame(play(1, 1, 'AAAA'), { ...play(1, 1, 'AAAA'), capturedAt: T0 + 1000 + apart }), false, `${apart} ms apart is one capture`);
+  }
   // The worker's replay (same run, same counter, the capture's own time) still adds nothing, however often it arrives.
   const replay = [...held, ...fresh].map(copy);
   for (const [i, f] of replay.entries()) assert.equal(sameFrame(f, [...held, ...fresh][i]), true, `a copy of capture ${i} is that capture`);
@@ -167,15 +176,103 @@ test('THE FINISHED-TURN LINE NEVER SAYS NONE WERE TAKEN (the page cannot know af
 
 // What the sentence rests on: the page's frames live in memory and nowhere else. If a frame is ever kept across a reload (from history, storage or a
 // request), the line above is wrong again, so this fails and the line must be re-worded with the change that keeps them.
-test('THE LINE RESTS ON THIS: the frames come into the page from the socket alone, and nothing reloads them', () => {
-  const hook = readFileSync(join(WEB, 'src', 'lib', 'use-project-socket.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
-  const sets = [...hook.matchAll(/setFrames\(/g)];
-  assert.equal(sets.length, 2, 'the page sets its frames somewhere new: from the fixture (dev) and from a `studio_frame` message only');
-  assert.match(hook, /case 'studio_frame':[\s\S]*?setFrames\(\(list\) => appendFrame\(list, msg\.frame, MAX_FRAMES\)\)/);
-  assert.match(hook, /withFrames \? mockFrames\(\)/);
-  assert.doesNotMatch(hook, /useState<StudioFrame\[\]>\([^)]*(localStorage|sessionStorage|JSON\.parse)/, 'the frames start from stored data');
+//
+// RESTATED IN CYCLE 3 as the property and not as the spelling. It counted `setFrames(` calls and a regex that could not cross the `)` of `() =>`, so
+// `useState<StudioFrame[]>(() => JSON.parse(sessionStorage.getItem(...)))` plus an effect that wrote it back kept the frames across a reload and no test in
+// the web suite went red. A frame can reach the page's state in three ways only: the state's own initial value, a call of its setter, and a reader other than
+// the hook's caller (an effect that writes it somewhere is the half that makes a reader possible). Each is closed here by walking the syntax tree:
+//   * the one state declaration starts from the literal `[]` (not a function, not a call, not a lazy initializer);
+//   * its setter is only ever CALLED (never passed on or stored), twice: from the development fixture inside `if (MOCK_MODE)` and from a `studio_frame` message;
+//   * its value is read once, as a shorthand member of the hook's returned object (so nothing merges, copies or writes it on the way out);
+//   * the workspace takes it from the hook as a plain destructured name.
+// It is a tripwire and is meant to fire on any new reader or setter: when it does, the review is whether the change keeps frames across a reload, and if it
+// does, SHOTS_NONE_HERE is re-worded with it.
+const walk = (root) => { const all = []; const visit = (n) => { all.push(n); ts.forEachChild(n, visit); }; visit(root); return all; };
+const parseSrc = (...p) => ts.createSourceFile(p.at(-1), readFileSync(join(WEB, 'src', ...p), 'utf8'), ts.ScriptTarget.Latest, true, p.at(-1).endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+const ancestor = (n, test) => { for (let p = n.parent; p; p = p.parent) if (test(p)) return p; return null; };
+
+test('THE LINE RESTS ON THIS: the frames start empty, are set only by the socket (and the development fixture), and are read only by the hook’s caller', () => {
+  const nodes = walk(parseSrc('lib', 'use-project-socket.ts'));
+  const decls = nodes.filter((n) => ts.isVariableDeclaration(n) && ts.isArrayBindingPattern(n.name) && n.name.elements.some((e) => ts.isBindingElement(e) && e.name.getText() === 'setFrames'));
+  assert.equal(decls.length, 1, 'the frames state is not declared exactly once as [frames, setFrames]');
+  const [valueEl, setterEl] = decls[0].name.elements;
+  assert.deepEqual([valueEl.name.getText(), setterEl.name.getText()], ['frames', 'setFrames']);
+  const init = decls[0].initializer;
+  assert.ok(init && ts.isCallExpression(init) && init.expression.getText() === 'useState', `the frames are not a useState: ${init?.getText().slice(0, 60)}`);
+  assert.equal(init.typeArguments?.map((t) => t.getText()).join(), 'StudioFrame[]');
+  assert.equal(init.arguments.length, 1);
+  assert.ok(ts.isArrayLiteralExpression(init.arguments[0]) && init.arguments[0].elements.length === 0, `the page starts with frames from somewhere: ${init.arguments[0]?.getText().slice(0, 80)}`);
+  // The setter is only called, from two places.
+  const uses = nodes.filter((n) => ts.isIdentifier(n) && n.text === 'setFrames' && n !== setterEl.name);
+  const notCalled = uses.filter((n) => !(ts.isCallExpression(n.parent) && n.parent.expression === n));
+  assert.deepEqual(notCalled.map((n) => n.parent.getText().slice(0, 80)), [], 'the setter is passed on or stored, not called');
+  assert.equal(uses.length, 2, 'the page sets its frames somewhere new: from the fixture (dev) and from a `studio_frame` message only');
+  const calls = uses.map((n) => n.parent);
+  const inCase = calls.filter((c) => ancestor(c, (p) => ts.isCaseClause(p) && p.expression.getText() === "'studio_frame'"));
+  assert.equal(inCase.length, 1, 'no `studio_frame` call');
+  assert.equal(inCase[0].arguments[0].getText().replace(/\s+/g, ' '), '(list) => appendFrame(list, msg.frame, MAX_FRAMES)');
+  const fixture = calls.filter((c) => c !== inCase[0]);
+  assert.equal(fixture.length, 1);
+  assert.match(fixture[0].arguments[0].getText().replace(/\s+/g, ' '), /^withFrames \? mockFrames\(\)\.map\(.*\) : \[\]$/);
+  assert.ok(ancestor(fixture[0], (p) => ts.isIfStatement(p) && p.expression.getText() === 'MOCK_MODE'), 'the fixture is set outside `if (MOCK_MODE)`');
+  // The value is read once: handed back to the caller as a plain member of the returned object.
+  const reads = nodes.filter((n) => ts.isIdentifier(n) && n.text === 'frames' && n !== valueEl.name && !ts.isPropertySignature(n.parent));
+  assert.equal(reads.length, 1, `the frames are read ${reads.length} times in the hook (an effect that stores them, or a merge, is one more): ${reads.map((n) => n.parent.getText().slice(0, 50)).join(' | ')}`);
+  assert.ok(ts.isShorthandPropertyAssignment(reads[0].parent) && ts.isObjectLiteralExpression(reads[0].parent.parent), 'the frames leave the hook some way other than a plain returned member');
+  assert.ok(ancestor(reads[0], (p) => ts.isReturnStatement(p)) && ancestor(reads[0], (p) => ts.isFunctionDeclaration(p) && p.name?.text === 'useProjectSocket'), 'it is not returned by useProjectSocket');
+  // And the page takes them from the hook, by their own name, with no default and no rename.
+  const ws = walk(parseSrc('routes', 'workspace.tsx'));
+  const taking = ws.filter((n) => ts.isVariableDeclaration(n) && ts.isObjectBindingPattern(n.name) && n.initializer && ts.isCallExpression(n.initializer) && n.initializer.expression.getText() === 'useProjectSocket');
+  assert.equal(taking.length, 1, 'the workspace does not take the hook’s result in one destructuring');
+  const el = taking[0].name.elements.find((e) => (e.propertyName ?? e.name).getText() === 'frames');
+  assert.ok(el && !el.propertyName && !el.initializer && ts.isIdentifier(el.name), 'the workspace renames the frames or gives them a default');
 });
 
+// The sentence's second half: the strip is drawn only once the socket has said whether Studio is there, so the "connect Studio" lines are not drawn on a
+// page that has merely not heard yet (a reload, or a dropped socket coming back). Run on the strip's own function, and read as a syntax tree where
+// only source can be read (the hook is not run under node --test: it needs more of React than the harness stands in for).
+test('WHILE THE PAGE HAS NOT HEARD WHETHER STUDIO IS CONNECTED the strip says nothing, finished or running; once it has, what it said before', () => {
+  for (const running of [true, false]) {
+    for (const studioConnected of [true, false]) {
+      assert.equal(shotsEmptyLine({ running, studioConnected, studioKnown: false }), null, `running ${running}, connected ${studioConnected}: a line is drawn on a guess`);
+    }
+  }
+  assert.equal(shotsEmptyLine({ running: false, studioConnected: false, studioKnown: true }), SHOTS_NONE_HERE);
+  assert.equal(shotsEmptyLine({ running: true, studioConnected: false, studioKnown: true }), SHOTS_CONNECT);
+  assert.equal(shotsEmptyLine({ running: true, studioConnected: true, studioKnown: true }), SHOTS_EMPTY);
+  assert.equal(shotsEmptyLine({ running: false, studioConnected: false }), SHOTS_NONE_HERE, 'a caller that does not say is taken to know');
+});
+
+test('studio.known is false until the worker speaks, true after `hello` and `studio_status`, and false again when the socket closes', () => {
+  const hook = parseSrc('lib', 'use-project-socket.ts');
+  const nodes = walk(hook);
+  const prop = (obj, name) => obj.properties.find((p) => p.name?.getText() === name);
+  const studioDecl = nodes.find((n) => ts.isVariableDeclaration(n) && ts.isArrayBindingPattern(n.name) && n.name.elements[0]?.name.getText() === 'studio');
+  const initial = studioDecl.initializer.arguments[0];
+  assert.ok(ts.isObjectLiteralExpression(initial));
+  assert.equal(prop(initial, 'known')?.initializer.getText(), 'false', 'the page starts out knowing');
+  const setsIn = (scope) => walk(scope).filter((n) => ts.isCallExpression(n) && n.expression.getText() === 'setStudio');
+  const objectOf = (call) => { const a = call.arguments[0]; const body = ts.isArrowFunction(a) ? a.body : a; return ts.isParenthesizedExpression(body) ? body.expression : body; };
+  for (const name of ['hello', 'studio_status']) {
+    const clause = nodes.find((n) => ts.isCaseClause(n) && n.expression.getText() === `'${name}'`);
+    assert.ok(clause, `no case '${name}'`);
+    const [call] = setsIn(clause);
+    assert.equal(prop(objectOf(call), 'known')?.initializer.getText(), 'true', `'${name}' does not mark Studio's state as heard`);
+  }
+  const onclose = nodes.find((n) => ts.isBinaryExpression(n) && n.left.getText() === 'ws.onclose');
+  assert.ok(onclose, 'no ws.onclose handler');
+  const closing = setsIn(onclose.right).filter((c) => prop(objectOf(c), 'connected')?.initializer.getText() === 'false');
+  assert.equal(closing.length, 1);
+  assert.equal(prop(objectOf(closing[0]), 'known')?.initializer.getText(), 'false', 'a closed socket leaves Studio’s state marked as heard');
+  const mock = nodes.find((n) => ts.isCallExpression(n) && n.expression.getText() === 'setStudio' && ts.isObjectLiteralExpression(n.arguments[0]) && prop(n.arguments[0], 'everConnected')?.initializer.getText() === 'true');
+  assert.equal(prop(mock.arguments[0], 'known')?.initializer.getText(), 'true', 'the mock app never hears, so it would never draw the line');
+  // The turn is handed it by the workspace, from the same place as `studioConnected`.
+  const workspace = walk(parseSrc('routes', 'workspace.tsx'));
+  const turn = workspace.find((n) => ts.isJsxSelfClosingElement(n) && n.tagName.getText() === 'Turn');
+  const attr = (name) => turn.attributes.properties.find((a) => ts.isJsxAttribute(a) && a.name.getText() === name)?.initializer?.expression?.getText();
+  assert.equal(attr('studioConnected'), 'studio.connected');
+  assert.equal(attr('studioKnown'), 'studio.known', 'the turn is not told whether Studio’s state has been heard');
+});
 
 test('the words are exact, short and plain', () => {
   assert.equal(SHOTS_EMPTY, 'Studio screenshots appear here while StudPilot builds');
@@ -238,6 +335,17 @@ test('A FINISHED BUILD keeps its screenshots; one with none says what to do when
   assert.equal(text(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false }))), SHOTS_NONE_HERE);
   assert.equal(strip(turn({ tools: [tool] }, { frames: [], studioConnected: true })), null, 'a finished turn that took no screenshot keeps no "appear here while it builds" sentence');
   assert.doesNotMatch(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false })), /while StudPilot builds/);
+});
+
+test('A FINISHED OR RUNNING TURN ON A PAGE THAT HAS NOT HEARD WHETHER STUDIO IS CONNECTED draws no line, and the same turn draws it once it has', () => {
+  const tool = { toolId: 't1', tool: 'create_instances', summary: 'x', ok: true, done: true, startedAt: T0, durationMs: 5, startObserved: true };
+  assert.equal(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false, studioKnown: false })), null, 'a finished turn: the connect line is drawn before Studio has been heard');
+  assert.equal(text(strip(turn({ tools: [tool] }, { frames: [], studioConnected: false, studioKnown: true }))), SHOTS_NONE_HERE, 'and when it has been heard that Studio is off');
+  assert.equal(strip(turn({ streaming: true }, { frames: [], studioConnected: false, studioKnown: false })), null, 'a running turn');
+  assert.equal(text(strip(turn({ streaming: true }, { frames: [], studioConnected: false, studioKnown: true }))), SHOTS_CONNECT);
+  assert.equal(render(ui.h(ui.StudioShots, { frames: [], running: false, studioConnected: false, studioKnown: false })), '', 'the strip on its own');
+  // A frame the page holds is shown whatever it has heard about Studio.
+  assert.equal((strip(turn({ tools: [tool] }, { frames: [frame(1)], studioConnected: false, studioKnown: false })).match(/shots__thumb/g) ?? []).length, 1);
 });
 
 test('a plain chat reply (no tools, not running) gets no strip at all, and neither does an earlier turn', () => {
@@ -354,12 +462,21 @@ test('the socket hook keeps at most the strip’s limit, through appendFrame, an
   assert.doesNotMatch(around.replace(/\/\/.*$/gm, ''), /localStorage|sessionStorage|indexedDB|fetch\(/, 'a frame is stored or sent from the socket hook');
 });
 
+//[[ RESTATED 2026-10-05 (M2 fix cycle 3). It pinned the whole opening tag as text, `<StudioShots frames={shots} running={item.streaming} studioConnected={...} />`,
+//   and the tag gained a fourth prop (`studioKnown`: the line is not drawn before Studio has been heard). The property is the same and now read from the tree:
+//   the strip is handed this run's frames and whether the run is going, and Studio's state, and nothing else draws frames in the turn. ]]
 test('the strip is mounted by the turn, and is the only thing that draws frames there', () => {
-  const src = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
-  // Restated 2026-10-05 (M2 fix cycle 1): the strip is also told whether the run is still going and whether Studio is connected, so its
-  // empty sentence is true of this turn. The property is unchanged: it is handed this run's frames and nothing else draws them.
-  assert.match(src, /<StudioShots frames=\{shots\} running=\{item\.streaming\} studioConnected=\{studioConnected \?\? false\} \/>/);
-  assert.doesNotMatch(src, /PlaytestCard|<canvas|paintFrame/, 'the turn draws frames some other way');
+  const bare = readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  const src = ts.createSourceFile('turn.tsx', readFileSync(join(WEB, 'src', 'components', 'ws', 'turn.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const mounts = walk(src).filter((n) => ts.isJsxSelfClosingElement(n) && n.tagName.getText() === 'StudioShots');
+  assert.equal(mounts.length, 1, 'the turn mounts the strip in one place');
+  const given = Object.fromEntries(mounts[0].attributes.properties.filter(ts.isJsxAttribute).map((a) => [a.name.getText(), a.initializer?.expression?.getText()]));
+  assert.equal(given.frames, 'shots', 'the strip is handed something other than this run’s frames');
+  assert.equal(given.running, 'item.streaming');
+  assert.equal(given.studioConnected, 'studioConnected ?? false');
+  assert.equal(given.studioKnown, 'studioKnown ?? true');
+  assert.deepEqual(Object.keys(given).sort(), ['frames', 'running', 'studioConnected', 'studioKnown'], 'the strip is handed something new');
+  assert.doesNotMatch(bare, /PlaytestCard|<canvas|paintFrame/, 'the turn draws frames some other way');
 });
 
 /* ------------------------------------------------------------------ the offer is made to the latest turn only (workspace) --- */

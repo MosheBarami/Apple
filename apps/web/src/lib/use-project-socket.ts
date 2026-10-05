@@ -206,6 +206,12 @@ export interface ProjectSocket {
     state: StudioEventState | null;
     everConnected: boolean;
     /**
+     * Whether the worker has said, on the socket that is open now, if Studio is connected. False on a page that has just loaded and again
+     * while a dropped socket reconnects: `connected` is false then because nothing has been heard, not because Studio is away, and a line
+     * that tells the person to connect it must not be drawn on that (components/ws/studio-shots.tsx).
+     */
+    known: boolean;
+    /**
      * What is selected in Studio right now, from the `studio_selection` broadcast.
      *
      * THE MESSAGE WAS ARRIVING AND BEING DROPPED. The plugin captured the selection, the worker
@@ -401,12 +407,14 @@ export function useProjectSocket(
     connected: boolean;
     state: StudioEventState | null;
     everConnected: boolean;
+    known: boolean;
     selection: StudioEventSelection | null;
     link: StudioLinkFacts;
   }>({
     connected: false,
     state: null,
     everConnected: false,
+    known: false,
     selection: null,
     link: NO_LINK_FACTS,
   });
@@ -456,7 +464,7 @@ export function useProjectSocket(
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: mockStudioConnected(), state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
+      setStudio({ connected: mockStudioConnected(), state: mockStudioState, everConnected: true, known: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
@@ -553,6 +561,7 @@ export function useProjectSocket(
         setStudio((s) => ({
           ...s,
           connected: msg.studioConnected,
+          known: true,
           everConnected: s.everConnected || msg.studioConnected,
           link: linkFactsFrom(s.link, msg),
         }));
@@ -562,6 +571,7 @@ export function useProjectSocket(
           ...s,
           connected: msg.connected,
           state: msg.state ?? null,
+          known: true,
           everConnected: s.everConnected || msg.connected,
           link: linkFactsFrom(s.link, msg),
           // A selection belongs to an attached Studio. Keeping the last one after the plugin
@@ -1158,7 +1168,7 @@ export function useProjectSocket(
       // report a link that is measurably fast while nothing can reach it at all; the heartbeat and
       // the queue depth DO survive, because they are facts about Studio rather than about this
       // socket, and dating the disconnection is the whole point of keeping them.
-      setStudio((s) => ({ ...s, connected: false, link: { ...s.link, rttMs: null } }));
+      setStudio((s) => ({ ...s, connected: false, known: false, link: { ...s.link, rttMs: null } }));
       const attempt = attemptsRef.current++;
       const delay = Math.min(30_000, 1000 * 2 ** attempt) + Math.random() * 500;
       reconnectTimer.current = window.setTimeout(() => void connect(), delay);

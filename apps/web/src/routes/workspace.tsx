@@ -1141,6 +1141,7 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               frames={item.id === lastAssistantId ? frames : undefined}
               playtest={item.id === lastAssistantId ? playtest : null}
               studioConnected={studio.connected}
+              studioKnown={studio.known}
               onChooseAsset={item.id === lastAssistantId && !running && chatAllowed && conn === 'open'
                 ? (index) => { send(index === null ? 'None of these look right. Find different visual options.' : `Use visual option ${index} and continue.`); }
                 : undefined}

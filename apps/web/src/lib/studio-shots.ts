@@ -36,9 +36,21 @@ export const SHOTS_NONE_HERE =
  * Studio is connected, screenshots are on their way; while it is going and Studio is not connected they are not, and the line says how to
  * get them; once the run is over with no frame in this page, a line is drawn only when there is something to do (connect Studio), and nothing
  * is drawn when Studio is connected (the request may simply have taken none, a web search or a file read, and the page cannot tell that from a
- * reload that cleared them), so no finished turn keeps a promise or claims what it cannot know.
+ * reload that cleared them), so no finished turn keeps a promise or claims what it cannot know. And while the page has not yet heard whether
+ * Studio is connected (`studioKnown` false) it draws nothing at all, in either case.
  */
-export function shotsEmptyLine({ running, studioConnected }: { running: boolean; studioConnected: boolean }): string | null {
+export function shotsEmptyLine({
+  running,
+  studioConnected,
+  studioKnown = true,
+}: {
+  running: boolean;
+  studioConnected: boolean;
+  studioKnown?: boolean;
+}): string | null {
+  // Before the socket has said whether Studio is there (a page just loaded, or a socket that dropped and is coming back) `studioConnected` is false
+  // because nothing has been heard, not because Studio is away; a line telling the person to connect it would be drawn and then taken back.
+  if (!studioKnown) return null;
   if (running) return studioConnected ? SHOTS_EMPTY : SHOTS_CONNECT;
   return studioConnected ? null : SHOTS_NONE_HERE;
 }
@@ -53,9 +65,14 @@ export const SHOTS_KEPT = 'Shown only in this tab and kept only while it is open
  * other by what was captured and when. Two different pictures never compare equal: the pixels are part of the identity when nothing else
  * tells them apart.
  *
- * THE MOMENT IS PART OF A PLAYTEST FRAME'S KEY because the counter alone cannot tell a new frame from a replay: `seq` is a plain field of the
- * Durable Object (`playtestSeq`, reset only when a playtest begins) while the playtest run is stored, so after an eviction in the middle of a
- * playtest the worker keeps the same run id and counts from 1 again. A replay carries the capture's original time; a new frame does not.
+ * THE MOMENT IS PART OF A PLAYTEST FRAME'S KEY AS A DEFENCE, NOT AS THE ANSWER TO ANYTHING THE WORKER DOES TODAY. A key of the run and the counter
+ * alone would take a new capture for a replay if the counter ever restarted under a run id this page already holds, and the page would never
+ * show that picture. The worker does not do that now: a frame is published under a run id only by the playtest's capture step, which needs the
+ * run's frame gate, and the gate (like the counter, `playtestSeq`) is a plain field of the Durable Object that only `begin` sets, in the same
+ * call that mints a new run id and zeroes the counter (apps/worker/src/do/session.ts, `playtestBus`). After an eviction the stored run id
+ * survives without its gate, so nothing more is published under it. So this adds a case that cannot be reached today; it costs one comparison.
+ * A replay carries the capture's original time and a new frame does not. The comparison is exact: the Studio plugin stamps `capturedAt` in
+ * whole seconds (`os.time() * 1000`), so a window of any size would take two real captures a second apart for one.
  */
 export function sameFrame(a: StudioFrame, b: StudioFrame): boolean {
   if (a === b) return true;

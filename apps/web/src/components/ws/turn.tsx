@@ -151,6 +151,7 @@ export function Turn({
   phaseMarks,
   frames,
   studioConnected,
+  studioKnown,
   isLast,
   onEdit,
   editable,
@@ -190,6 +191,8 @@ export function Turn({
   playtest?: PlaytestRun | null;
   /** Whether Studio is connected now. Read only by the screenshots strip, for what it says when it has no frame (what to do about it). */
   studioConnected?: boolean;
+  /** Whether the socket has said yet if Studio is there (use-project-socket.ts, `studio.known`). Until it has, the strip says nothing about Studio. */
+  studioKnown?: boolean;
   /**
    * The phase transitions observed on THIS run, when this turn is the run in
    * flight. Undefined for every other turn, because `agent_status` carries no
@@ -383,7 +386,7 @@ export function Turn({
 
         {/* STUDIO SCREENSHOTS (M2 2.3): the last few frames of this run, for the person only. With none it says what is true of this
             turn (still coming, how to get them, or nothing at all once a finished turn holds none and Studio is connected). */}
-        {showShots && <StudioShots frames={shots} running={item.streaming} studioConnected={studioConnected ?? false} />}
+        {showShots && <StudioShots frames={shots} running={item.streaming} studioConnected={studioConnected ?? false} studioKnown={studioKnown ?? true} />}
 
         {/* THE REPLY APPEARS ONCE, when the run ends and msg_end settles it to the stored answer
             (owner, 2026-09-30): the steps' in-between narration is not the reply. It answers in the
