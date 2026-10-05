@@ -128,13 +128,18 @@ export function resolveOptions(argv, { env = process.env } = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-/** Records each step with its start, duration, outcome and a note. A failing step is recorded, then re-thrown. */
-function makeTimer(deps) {
+/**
+ * Records each step with its start, duration, outcome and a note. A failing step is recorded, then re-thrown. `interrupted()` names the
+ * signal that has arrived (or null): a step that has not begun does not begin after one, and the one in flight is left to finish.
+ */
+function makeTimer(deps, interrupted = () => null) {
   const steps = [];
   const clean = (text) => redact(String(text), [deps.adminKey]);
   return {
     steps,
     async step(name, fn) {
+      const signal = interrupted();
+      if (signal) throw new Abort(name, `interrupted by ${signal} before this step began`);
       const startedAt = deps.now();
       const entry = { name, startedAt: new Date(startedAt).toISOString(), ms: 0, ok: true, note: null };
       steps.push(entry);
@@ -247,9 +252,14 @@ export async function initBaseline(opts, deps) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+/** The worker's AgentState.status is 'idle' | 'running' | 'stopping'. Only 'idle' is over: 'stopping' means a tool is still finishing. */
+const isIdle = (info) => info?.agentStatus === 'idle';
+const SIGNALS = ['SIGINT', 'SIGTERM'];
+
 export async function runPiece(opts, deps) {
   const t0 = deps.now();
-  const timer = makeTimer(deps);
+  let interrupted = null; // the name of the first SIGINT or SIGTERM that arrived
+  const timer = makeTimer(deps, () => interrupted);
   const secrets = [deps.adminKey];
   const request = getRequest(opts.requestId, deps.devSetPath);
   const pieceDir = join(opts.proofRoot, opts.milestone, request.id);
@@ -312,7 +322,7 @@ export async function runPiece(opts, deps) {
         deps,
         async () => {
           try {
-            return (await deps.api.sessionInfo(opts.projectId))?.agentStatus !== 'running';
+            return isIdle(await deps.api.sessionInfo(opts.projectId)); // 'stopping' (a tool still finishing) is not idle
           } catch {
             return false; // the status cannot be read either: not known to be idle
           }
@@ -326,6 +336,23 @@ export async function runPiece(opts, deps) {
     else deps.log('[eval] WARNING: the run did not go idle after the stop request; stop it by hand (POST /api/admin/agent-stop/<project>)');
     return stop;
   };
+
+  // Node's default for SIGINT and SIGTERM ends the process at once, without running the `finally` below, which would leave a paid run
+  // going with nothing in the manifest. So the first signal is only noted: the step in flight finishes (the run's poll below does not
+  // wait for its next tick), no further step begins, and the `finally` stops a live run and writes the files. The handlers are taken off
+  // at the first signal, so a second Ctrl-C kills the process the ordinary way.
+  const signals = deps.signals ?? process;
+  let wake;
+  const interruption = new Promise((resolve) => { wake = resolve; });
+  const listeners = SIGNALS.map((name) => [name, () => {
+    if (interrupted) return;
+    interrupted = name;
+    unlisten();
+    deps.log(`[eval] ${name}: stopping the run if one is live, then writing the manifest; press Ctrl-C again to kill the runner at once`);
+    wake();
+  }]);
+  const unlisten = () => { for (const [name, fn] of listeners) signals.off(name, fn); };
+  for (const [name, fn] of listeners) signals.on(name, fn);
 
   try {
     // ----------------------------------------------------------------------------------------------- preflight
@@ -459,31 +486,56 @@ export async function runPiece(opts, deps) {
 
       await timer.step('agent-run', async (entry) => {
         const startedAt = deps.now();
-        const started = await deps.api.agentRun(opts.projectId, { text: request.text });
-        if (started.status === 409) throw new Abort('agent-run', 'the project already has a run in progress');
-        if (started.status === 403) throw new Abort('agent-run', `the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
-        manifest.run = { startedAt: new Date(startedAt).toISOString(), endedBy: null, stopReason: null, minutes: null, timeoutMinutes: opts.timeoutMinutes };
-        runLive = true; // from here, every way out of this function stops the run (the finally below), and the poll below does it on its own failures
+        const minutesSince = () => Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100;
+        // From the moment the request is sent the worker may have a run going, whatever its answer says: a 5xx or a timeout does not tell
+        // us the run did not start, and a run nobody watches goes on spending the credits granted above. So the run is recorded first and is
+        // live from here; every way out of this step, and the `finally` below, stops it.
+        manifest.run = { startedAt: new Date(startedAt).toISOString(), startConfirmed: false, startError: null, endedBy: null, stopReason: null, minutes: null, timeoutMinutes: opts.timeoutMinutes };
+        runLive = true;
+        /** End the step with the run stopped: record how it ended, stop it, wait for idle, and say so in the abort. Never returns. */
+        const giveUp = async (endedBy, reason, what) => {
+          manifest.run.endedBy = endedBy;
+          manifest.run.minutes = minutesSince();
+          const stop = await stopRun(reason);
+          throw new Abort('agent-run', `${what}; the run was ${stop.idle ? 'stopped and is idle' : 'asked to stop but NOT confirmed idle: stop it by hand'}`);
+        };
+        let started;
+        try {
+          started = await deps.api.agentRun(opts.projectId, { text: request.text });
+        } catch (e) {
+          // No answer, or a 5xx: the worker may or may not have started the run, and a start that lands after the stop below is not ruled out
+          // either, so the manifest says the start was not confirmed and the run is stopped.
+          const why = redact(e.message ?? String(e), secrets);
+          manifest.run.startError = why;
+          await giveUp('start-failed', `the start request failed: ${why}`, `the request to start the run failed (${why}), so it is not known whether the worker started one`);
+        }
+        if (started.status === 409 || started.status === 403) {
+          // The worker said no: no run of ours exists (a 409 is somebody else's run, which is not ours to stop).
+          manifest.run = null;
+          runLive = false;
+          if (started.status === 409) throw new Abort('agent-run', 'the project already has a run in progress');
+          throw new Abort('agent-run', `the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
+        }
+        manifest.run.startConfirmed = true;
         const deadline = startedAt + opts.timeoutMinutes * 60_000;
         const messagesBefore = manifest.plugin.messagesBefore ?? 0;
         const retry = { attempts: opts.pollAttempts ?? DEFAULTS.pollAttempts, everyMs: opts.pollMs };
         let seenRunning = false;
         let ended = null;
         for (;;) {
-          await deps.sleep(opts.pollMs);
+          await Promise.race([deps.sleep(opts.pollMs), interruption]);
+          if (interrupted) await giveUp('interrupted', `${interrupted} arrived while the run was live`, `interrupted by ${interrupted}`);
           let info;
           try {
             info = await sessionInfoWithRetry(deps, opts.projectId, retry);
           } catch (e) {
             // The status cannot be read: the run keeps going and keeps spending whatever the harness knows. Stop it, and say so.
             const why = redact(e.message ?? String(e), secrets);
-            manifest.run.endedBy = 'poll-failed';
-            manifest.run.minutes = Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100;
-            const stop = await stopRun(`the run's status could not be read: ${why}`);
-            throw new Abort('agent-run', `the run's status could not be read (${why}); the run was ${stop.idle ? 'stopped and is idle' : 'asked to stop but NOT confirmed idle: stop it by hand'}`);
+            await giveUp('poll-failed', `the run's status could not be read: ${why}`, `the run's status could not be read (${why})`);
           }
+          // The run is over only when the worker says 'idle': 'stopping' is a tool still finishing and the place is not at rest.
           if (info?.agentStatus === 'running') seenRunning = true;
-          else if (seenRunning || (info?.messages ?? 0) >= messagesBefore + 2) {
+          else if (isIdle(info) && (seenRunning || (info?.messages ?? 0) >= messagesBefore + 2)) {
             ended = 'finished';
             runLive = false;
             break;
@@ -496,11 +548,13 @@ export async function runPiece(opts, deps) {
             break;
           }
         }
-        if (ended === 'timeout') await stopRun(`the run passed ${opts.timeoutMinutes} minutes`);
+        manifest.run.endedBy = ended === 'finished' ? 'done' : ended;
         // A run that never showed itself may still start late; a stop on an idle run is harmless and a late start is not.
-        else if (ended === 'never-started') await stopRun('the run never showed as running');
-        manifest.run.endedBy = ended === 'timeout' ? 'timeout' : ended === 'never-started' ? 'never-started' : 'done';
-        manifest.run.minutes = Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100;
+        const why = ended === 'timeout' ? `the run passed ${opts.timeoutMinutes} minutes` : 'the run never showed as running';
+        const stop = ended === 'finished' ? null : await stopRun(why);
+        manifest.run.minutes = minutesSince();
+        // Not idle means a tool may still be changing the place: it is not measured, photographed or play-tested, and the next reset is not safe.
+        if (stop && !stop.idle) throw new Abort('agent-run', `${why} and the run was asked to stop but NOT confirmed idle: stop it by hand; the piece is not measured while the place may still be changing`);
         entry.note = `${manifest.run.minutes} min, ${manifest.run.endedBy}`;
       });
 
@@ -720,6 +774,7 @@ export async function runPiece(opts, deps) {
     }
     if (playStarted && tools) await tools.play(false, { timeoutMs: 60_000 }).catch(() => undefined);
     if (client) await client.close().catch(() => undefined);
+    unlisten();
   }
 
   // ------------------------------------------------------------------------------------------------- spend after
