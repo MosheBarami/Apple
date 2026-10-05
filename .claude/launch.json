@@ -60,6 +60,52 @@
         "4777"
       ],
       "port": 4777
+    },
+    {
+      "name": "owner-dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/Users/moshe/Developer/StudPilot/scripts/owner-dashboard/server.mjs",
+        "4777"
+      ],
+      "port": 4777
+    },
+    {
+      "name": "new-design-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4331",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "/Users/moshe/Developer/RbxAI-integration/apps/site/dist"
+      ],
+      "port": 4331
+    },
+    {
+      "name": "new-design-app",
+      "runtimeExecutable": "/Users/moshe/Developer/RbxAI-integration/apps/web/node_modules/.bin/vite",
+      "runtimeArgs": [
+        "/Users/moshe/Developer/RbxAI-integration/apps/web",
+        "--config",
+        "/Users/moshe/Developer/RbxAI-integration/apps/web/vite.config.ts",
+        "--port",
+        "5183",
+        "--strictPort"
+      ],
+      "port": 5183
+    },
+    {
+      "name": "repo-chat",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "tools/repo-chat",
+      "port": 4790
     }
   ]
 }
