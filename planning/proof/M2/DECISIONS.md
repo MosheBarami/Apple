@@ -514,3 +514,12 @@ a colour (the browser's picker beside a hex field), a switch (a real button with
   its header. `avatarInitial` takes the first letter of the display name, then the Roblox username, then the address, never a placeholder
   address and never the words "Roblox account"; with nothing honest to take, all three places draw the same plain person mark. The line
   beside it says "Your account" instead of being empty.
+
+### 12.7 C7: usage and plans
+
+Checked against the pricing slice (section 4): the usage page's Credits are printed with two decimals through the shared model
+(`usage-meter-model.ts`, `formatCredits`), and the plan ladder reads `PLAN_TABLE` and `LISTED_PLAN_IDS` (Free, Pro, Max; no Enterprise card).
+**One thing was still wrong:** the pricing page says "Free while in beta. Paid plans start later" above its cards, and the in-app ladder
+said nothing of beta. The Plans section of `/usage` now says the same words above the ladder (`BETA_LINE` in `components/plans.tsx`), and
+`tests/usage-beta.test.mjs` holds the two surfaces to each other by reading the site's heading. Nothing else was changed. No referral or
+bonus credit is promised anywhere on the page (they wait for M6).

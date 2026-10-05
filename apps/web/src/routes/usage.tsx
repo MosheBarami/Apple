@@ -5,7 +5,7 @@
 // figures are the measured typical range, not a price list.
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { PlanLadder } from '../components/plans';
+import { BETA_LINE, PlanLadder } from '../components/plans';
 import { OrderSummaryDialog } from '../components/order-summary';
 import { creditsText, daysInCredits, meterView, periodComparisonLine, spendByKind } from '../components/usage-meter-model';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
@@ -905,6 +905,10 @@ export function UsagePage() {
               </p>
             </div>
           </div>
+          {/* BETA, said above the ladder and in the pricing page's own words: every tier below is shown at its decided price and none but Free can be bought yet. */}
+          <p className="plans-note" data-testid="plans-beta">
+            <strong>{BETA_LINE}</strong>
+          </p>
           {billing.data?.testMode && (
             <p className="plans-note" role="status" data-testid="billing-test-mode">
               <strong>Test mode — no real charge.</strong> Checkout opens Stripe&apos;s sandbox; pay with
