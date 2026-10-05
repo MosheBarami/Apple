@@ -12,19 +12,22 @@
  * layouts, and no other sheet declares a colour token (theme-on-every-route.test.mjs holds that). So
  * this reads that file, in both themes, and:
  *
- *   - derives the TEXT tokens from use, not from a list: every token any site stylesheet or
- *     component style spends in a `color:` declaration carries text somewhere. A use sits on a FILL
- *     when the element's own rules (any state, any sheet) give it only opaque backgrounds that are
- *     not page surfaces (`--paper` on the docs folder's `--ink`, `--accent-ink` on the accent button):
- *     that use is measured against exactly those fills, found in the CSS. Every other use is measured
- *     on every surface. No token is exempt by name: a `color: var(--paper)` on a rule with no fill
- *     of its own is measured on the surfaces, where paper on paper is 1:1, and fails;
+ *   - derives the TEXT from use, not from a list: every `color:` any site stylesheet or component style
+ *     sets (a token, a token with a fallback, a literal, a color-mix) is text somewhere. It is PAIRED
+ *     with the fill that wins in the SAME STATE AND CONTEXT (tests/lib/cascade-pairs.mjs): the colour and the
+ *     background of an element at rest, hovered, focused, or inside a modal are each a pair, so text that is only
+ *     on a fill when hovered is measured at rest on the page, and a fill that another rule overrides in a
+ *     context is measured with the text that sits on it there. Where a pair has an opaque fill that is not a
+ *     page surface (`--paper` on the docs folder's `--ink`, `--accent-ink` on the accent button) the text is
+ *     measured on exactly that fill; a translucent fill is laid over each surface; and where it has no fill
+ *     (or a surface) it is measured on every surface. No token is exempt by name: a `color: var(--paper)`
+ *     with no fill of its own is measured on the surfaces, where paper on paper is 1:1, and fails;
  *   - derives the SURFACES from the sheet: every `--paper*` and `--surface*` step;
  *   - requires 4.5:1 for every text token on every surface: worst case, not typical case, because
  *     a token used for text on one surface today is used on another tomorrow;
  *   - requires 3:1 for the focus ring (--accent) on every surface: non-text contrast, WCAG 1.4.11;
- *   - requires every fill use to clear 4.5:1 on each of its fills, in both themes (the accent button's
- *     --accent-ink on --accent and on its hover step --accent-strong, the folder's --paper on --ink and --ink-2);
+ *   - requires every pair to clear 4.5:1 in both themes (the accent button's --accent-ink on --accent at rest and on
+ *     --accent-strong hovered, the folder's --paper on --ink and --ink-2);
  *   - and requires the ink ramp to still descend, so the fix cannot collapse three tiers into one.
  *
  * Every derivation is asserted non-empty: a check that found no tokens reports a perfect page.
@@ -35,6 +38,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { blend, colourOf, contrast, contrastRgb, expandVars, rgbOfHex, splitTop, surfacesOf, theme, themeBlocks } from '@studpilot/design/css-tokens';
+import { entriesOf, measure, pairsFor, rulesOf } from './lib/cascade-pairs.mjs';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -64,76 +68,27 @@ function styles() {
 
 const STYLES = styles();
 
-/** Every rule of every site style source: { selector, body }. */
-const rulesOf = (styleSources) => styleSources
-  .flatMap((css) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].split(';').pop().trim().replace(/\s+/g, ' '), body: m[2] })))
-  .filter((r) => r.selector && !r.selector.startsWith('@'));
 const declOf = (body, prop) => {
   const found = [...body.matchAll(new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;}]+)`, 'g'))];
   return found.length ? found[found.length - 1][1].trim() : null;
 };
-/** A selector part without its states and structural pseudo-classes: the element it styles, in any state. */
-const element = (part) => part
-  .replace(/:not\((?:[^()]|\([^)]*\))*\)/g, '')
-  .replace(/:(?:hover|focus-visible|focus|active|disabled|checked|nth-child\([^)]*\)|first-child|last-child|first-of-type|last-of-type)/g, '')
-  .replace(/\s+/g, ' ').trim();
-const SURFACE_TOKEN = /^var\(--(?:paper|surface)(?:-\d)?\)$/;
-
-/**
- * Every spend of a token as text colour (`color: var(--x)`, the `color` property and not
- * `background-color`) as { token, part, grounds }, where `grounds` are the backgrounds the SAME
- * element is given by any rule that styles it, in any state, in any site sheet.
- */
-function usesOf(rules) {
-  const uses = [];
-  for (const r of rules) {
-    const m = /(?:^|[;\s])color\s*:\s*var\(--([a-z0-9-]+)\)/.exec(r.body);
-    if (!m) continue;
-    for (const part of splitTop(r.selector)) {
-      const grounds = rules
-        .filter((q) => splitTop(q.selector).some((p) => element(p) === element(part)))
-        .map((q) => declOf(q.body, 'background') ?? declOf(q.body, 'background-color'))
-        .filter((g) => g && g !== 'none' && g !== 'transparent');
-      uses.push({ token: m[1], part, grounds: [...new Set(grounds)] });
-    }
-  }
-  return uses;
-}
-
-/** Is the use drawn on a fill: it has grounds, and every one is an opaque colour that is not a page surface. */
-function onFill(use, lookup) {
-  if (use.grounds.length === 0) return false;
-  return use.grounds.every((g) => {
-    if (SURFACE_TOKEN.test(g)) return false;
-    const text = expandVars(g, lookup);
-    const c = text && colourOf(text);
-    return Boolean(c) && c[3] === 1;
-  });
-}
 
 const RULES = rulesOf(STYLES);
-const USES = usesOf(RULES);
+const ENTRIES = entriesOf(RULES);
 const lookupOf = (name) => { const raw = THEMES[name].raw; return (n) => raw[n.slice(2)]; };
-/** The uses drawn on a fill are the same in both themes: a token's SPELLING decides, not its value. */
-const FILL_USES = USES.filter((u) => onFill(u, lookupOf('dark')));
-/** Tokens spent as text on the surfaces (every use that is not on a fill). */
-const TEXT = [...new Set(USES.filter((u) => !FILL_USES.includes(u)).map((u) => u.token))].sort();
 const SURFACES = Object.keys(THEMES.dark.raw).filter((n) => /^(paper|surface)(-\d)?$/.test(n)).sort();
+const surfaceList = (mode) => SURFACES.map((n) => [n, rgbOfHex(THEMES[mode].resolve(n))]);
 
-/** The measured pair of one fill use: [{ token, ground, ratio }] in one theme, with a note for a translucent fill. */
-function fillPairs(uses, mode) {
-  const t = THEMES[mode];
-  const lookup = lookupOf(mode);
-  const out = [];
-  for (const u of uses) {
-    const fg = t.resolve(u.token);
-    for (const g of u.grounds) {
-      const c = colourOf(expandVars(g, lookup));
-      out.push({ use: u, ground: g, ratio: fg && c && c[3] === 1 ? contrastRgb(rgbOfHex(fg), c.slice(0, 3)) : null });
-    }
-  }
-  return out;
-}
+/** The pairs of each theme, measured: [{ pair, kind: 'fill' | 'surface', ratios, unresolved }]. */
+const MEASURED = Object.fromEntries(Object.keys(THEMES).map((mode) => [mode, pairsFor(ENTRIES, mode).map((pair) => ({ pair, ...measure(pair, lookupOf(mode), surfaceList(mode), { contrastRgb, blend }) }))]));
+/** The custom properties a list of colour values spends: `var(--ink)` -> ink. */
+const tokensIn = (values) => [...new Set(values.flatMap((v) => [...v.matchAll(/var\(--([a-z0-9-]+)/g)].map((m) => m[1])))].sort();
+const stateOf = (pair) => [pair.context && `inside ${pair.context}`, pair.states.length ? `:${pair.states.join(':')}` : 'at rest'].filter(Boolean).join(' ');
+const describe = (m) => `${m.pair.raw[0]} (${stateOf(m.pair)})`;
+const FILLS = MEASURED.dark.filter((m) => m.kind === 'fill');
+const FREE = MEASURED.dark.filter((m) => m.kind === 'surface');
+/** Text spent on the page surfaces: the tokens, as before, now derived from the pairs. */
+const TEXT = tokensIn(FREE.flatMap((m) => m.pair.fgs));
 
 /** Every `::selection` rule of the site: selected text is drawn on a translucent background over whatever surface it sits on. */
 const SELECTION = RULES.filter((r) => splitTop(r.selector).some((p) => /::(?:-moz-)?selection/.test(p)));
@@ -161,31 +116,31 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
   for (const must of ['ink', 'muted', 'faint']) assert.ok(TEXT.includes(must), `--${must} is not spent as text anywhere; re-check the scan`);
   assert.ok(SURFACES.length >= 5, `only ${SURFACES.length} surfaces found (${SURFACES.join(', ')})`);
   assert.ok(RULES.length > 500, `only ${RULES.length} rules read — the rule parse is blind`);
+  for (const mode of Object.keys(THEMES)) {
+    assert.ok(MEASURED[mode].length > 150, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
+    // THE STATES AND CONTEXTS ARE READ, not just the resting rules: pairs exist for a hovered element and for one inside a context.
+    assert.ok(MEASURED[mode].some((m) => m.pair.states.includes('hover')), `${mode}: no hovered pair was derived`);
+    assert.ok(MEASURED[mode].some((m) => m.pair.context !== ''), `${mode}: no pair in a context (a descendant selector) was derived`);
+  }
   // The fills are FOUND in the CSS, not listed: the folder's paper on ink and ink-2, the accent button.
-  assert.ok(FILL_USES.length >= 4, `only ${FILL_USES.length} uses of text on a fill were found`);
-  const fillTokens = new Set(FILL_USES.map((u) => u.token));
-  const grounds = new Set(FILL_USES.flatMap((u) => u.grounds));
+  assert.ok(FILLS.length >= 4, `only ${FILLS.length} pairs of text on a fill were found`);
+  const fillTokens = new Set(tokensIn(FILLS.flatMap((m) => m.pair.fgs)));
+  const grounds = new Set(FILLS.flatMap((m) => m.pair.fills));
   for (const must of ['paper', 'accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
-  for (const must of ['var(--ink)', 'var(--ink-2)', 'var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill use`);
+  for (const must of ['var(--ink)', 'var(--ink-2)', 'var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill pair`);
 });
 
 for (const [name, t] of Object.entries(THEMES)) {
-  test(`${name}: every text token clears 4.5:1 on every surface`, () => {
+  test(`${name}: every colour of text drawn on the page surfaces clears 4.5:1 on every surface`, () => {
+    // Text with no fill of its own, or on a page surface, or on a translucent wash (laid over each surface), in the state and context it is drawn in.
     const bad = [];
-    let pairs = 0;
-    for (const ink of TEXT) {
-      const fg = t.resolve(ink);
-      assert.ok(fg, `${name}: --${ink} is spent as text but does not resolve to a solid colour`);
-      for (const surface of SURFACES) {
-        const bg = t.resolve(surface);
-        assert.ok(bg, `${name}: --${surface} does not resolve to a solid colour`);
-        const r = contrast(fg, bg);
-        pairs += 1;
-        if (r < 4.5) bad.push(`--${ink} ${fg} on --${surface} ${bg} is ${r.toFixed(2)}:1`);
-      }
+    let measured = 0;
+    for (const m of MEASURED[name].filter((x) => x.kind === 'surface')) {
+      for (const u of m.unresolved) bad.push(`${describe(m)}: ${u} does not resolve to a colour (make it a token)`);
+      for (const r of m.ratios) { measured += 1; if (r.ratio < 4.5) bad.push(`${describe(m)}: ${r.fg} on ${r.ground} is ${r.ratio.toFixed(2)}:1`); }
     }
-    assert.ok(pairs >= 20, `only ${pairs} pairs measured`);
-    assert.deepEqual(bad, [], `${name}: text below 4.5:1:\n  ${bad.join('\n  ')}`);
+    assert.ok(measured >= 500, `only ${measured} text/surface pairs measured`);
+    assert.deepEqual([...new Set(bad)], [], `${name}: text below 4.5:1:\n  ${[...new Set(bad)].join('\n  ')}`);
   });
 
   test(`${name}: the focus ring clears 3:1 on every surface, and the accent button reads`, () => {
@@ -197,11 +152,17 @@ for (const [name, t] of Object.entries(THEMES)) {
     }
   });
 
-  test(`${name}: every use of text on a fill clears 4.5:1 on every fill the CSS gives that element`, () => {
-    const pairs = fillPairs(FILL_USES, name);
-    const bad = pairs.filter((p) => p.ratio === null || p.ratio < 4.5).map((p) => `--${p.use.token} on ${p.ground} (${p.use.part}): ${p.ratio === null ? 'not an opaque colour' : p.ratio.toFixed(2) + ':1'}`);
-    assert.ok(pairs.length >= 5, `only ${pairs.length} text/fill pairs measured`);
-    assert.deepEqual(bad, [], `${name}: text on a fill below 4.5:1:\n  ${bad.join('\n  ')}`);
+  test(`${name}: every text colour on a fill clears 4.5:1 on the fill that wins in its own state and context`, () => {
+    // Paired by state: the hover step of a button is its own pair, and a fill a descendant rule changes is measured with the text that sits on it there.
+    const pairs = MEASURED[name].filter((x) => x.kind === 'fill');
+    const bad = [];
+    let measured = 0;
+    for (const m of pairs) {
+      for (const u of m.unresolved) bad.push(`${describe(m)}: ${u} does not resolve to a colour (make it a token)`);
+      for (const r of m.ratios) { measured += 1; if (r.ratio < 4.5) bad.push(`${describe(m)}: ${r.fg} on ${r.ground} is ${r.ratio.toFixed(2)}:1`); }
+    }
+    assert.ok(measured >= 5, `only ${measured} text/fill pairs measured`);
+    assert.deepEqual([...new Set(bad)], [], `${name}: text on a fill below 4.5:1:\n  ${[...new Set(bad)].join('\n  ')}`);
   });
 
   test(`${name}: selected text clears 4.5:1 on its selection background over every surface`, () => {
@@ -237,8 +198,16 @@ test('the guard has teeth: the --faint that shipped fails it', () => {
   assert.ok(contrast('#818791', THEMES.light.resolve('surface-3')) < 4.5);
 });
 
+/** Pair and measure a fixture sheet in a theme: the worst ratio and the kind of each pair, keyed `subject[:states][ @ context]`. */
+function fixture(css, mode = 'dark') {
+  const pairs = pairsFor(entriesOf(rulesOf([css])), mode).map((pair) => ({ pair, ...measure(pair, lookupOf(mode), surfaceList(mode), { contrastRgb, blend }) }));
+  const worst = (m) => Math.min(...m.ratios.map((r) => r.ratio));
+  const key = (m) => `${m.pair.subject}${m.pair.states.length ? `:${m.pair.states.join(':')}` : ''}${m.pair.context ? ` @ ${m.pair.context}` : ''}`;
+  return { pairs, by: Object.fromEntries(pairs.map((m) => [key(m), worst(m)])), kind: Object.fromEntries(pairs.map((m) => [key(m), m.kind])) };
+}
+
 test('the guard has teeth: no token is exempt by name, a text colour with no fill of its own is measured on the surfaces, and a failing fill is reported', () => {
-  const rules = rulesOf([[
+  const f = fixture([
     '.free { color: var(--paper); }',
     '.on-surface { color: var(--paper); background: var(--surface); }',
     '.ok { color: var(--paper); background: var(--ink); }',
@@ -246,21 +215,57 @@ test('the guard has teeth: no token is exempt by name, a text colour with no fil
     '.wash { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }',
     '.multi { color: var(--accent-ink); background: var(--accent); }',
     '.multi:hover { background: var(--accent-strong); }',
-  ].join('\n')]);
-  const uses = usesOf(rules);
-  const dark = lookupOf('dark');
-  assert.deepEqual(Object.fromEntries(uses.map((u) => [u.part, onFill(u, dark)])), {
-    '.free': false, '.on-surface': false, '.ok': true, '.bad': true, '.wash': false, '.multi': true,
+  ].join('\n'));
+  assert.deepEqual(f.kind, {
+    '.free': 'surface', '.on-surface': 'surface', '.ok': 'fill', '.bad': 'fill', '.wash': 'surface',
+    '.multi': 'fill', '.multi:hover': 'fill',
   }, 'the fill classification drifted');
-  assert.deepEqual(uses.find((u) => u.part === '.multi').grounds.sort(), ['var(--accent)', 'var(--accent-strong)'], 'the hover state of an element is not one of its grounds');
   // --paper with no fill of its own lands in the surface measurement, where it is the colour of the page.
-  const worst = Math.min(...Object.values(surfacesOf(THEMES.dark)).map((s) => contrast(THEMES.dark.resolve('paper'), s)));
-  assert.ok(worst < 4.5, `--paper on the surfaces is ${worst.toFixed(2)}:1; a free use of it would pass`);
-  assert.ok(uses.filter((u) => !onFill(u, dark)).some((u) => u.token === 'paper'), 'a free use of --paper did not reach the surface measurement');
+  assert.ok(f.by['.free'] < 1.2, `a free use of --paper is ${f.by['.free']}:1 and was not failed`);
+  assert.ok(f.by['.on-surface'] < 1.2, 'paper on a page surface was not failed');
   // A fill that fails is reported: ink on the accent is 2.6:1 in dark.
-  const bad = fillPairs(uses.filter((u) => u.part === '.bad'), 'dark');
-  assert.equal(bad.length, 1);
-  assert.ok(bad[0].ratio < 4.5, `the fixture is not a failing fill (${bad[0].ratio})`);
+  assert.ok(f.by['.bad'] < 4.5, `the fixture is not a failing fill (${f.by['.bad']})`);
+  // The hover state of an element is its own pair: the accent button's label on the hover step.
+  assert.ok(f.by['.multi:hover'] >= 4.5 && f.by['.multi'] >= 4.5, 'the accent button read as failing');
+  assert.ok(f.by['.ok'] >= 4.5, 'paper on ink was failed');
+});
+
+test('the guard has teeth: text that is only on a fill when HOVERED is measured at rest, on the page', () => {
+  // The review\'s first shape, verified green against the old guard: paper text, and a fill that appears on hover. At rest it is paper on paper.
+  const f = fixture('.zz-btn { color: var(--paper); } .zz-btn:hover { background: var(--accent); }');
+  assert.ok(f.by['.zz-btn'] < 1.2, `paper text with no fill at rest was measured against its hover fill (${f.by['.zz-btn']}:1)`);
+  assert.equal(f.kind['.zz-btn'], 'surface');
+  assert.ok(f.by['.zz-btn:hover'] >= 4.5, 'the hovered pair (paper on the accent) was failed');
+  // A hover that changes only the fill under a resting colour pairs the resting colour with the hover fill.
+  const g = fixture('.a { color: var(--accent-ink); background: var(--accent); } .a:hover { background: var(--surface-3); }');
+  assert.ok(g.by['.a:hover'] < 4.5, 'a hover fill that takes the label off its ground was not failed');
+  assert.ok(g.by['.a'] >= 4.5, 'the resting pair was failed');
+});
+
+test('the guard has teeth: a fill that a descendant rule changes is measured with the text that sits on it there', () => {
+  // The review\'s second shape: the accent label is on the accent everywhere but inside a modal, where a rule with another selector changes the fill.
+  const f = fixture('.zz-b2 { color: var(--accent-ink); background: var(--accent); } .zz-modal .zz-b2 { background: var(--surface-3); }');
+  assert.ok(f.by['.zz-b2'] >= 4.5, 'the plain pair was failed');
+  const inModal = Object.entries(f.by).find(([k]) => /@ \.zz-modal/.test(k));
+  assert.ok(inModal, 'the context the descendant rule names was not paired');
+  assert.ok(inModal[1] < 4.5, `the label on the modal's surface-3 fill was not failed (${inModal[1]}:1)`);
+  // Specificity decides which fill wins: a descendant fill beats the plain one, and a plain fill declared later does not beat a more specific one.
+  const g = fixture('.m .b { background: var(--ink); color: var(--paper); } .b { background: var(--accent); }');
+  const inCtx = Object.entries(g.by).find(([k]) => /@ \.m$/.test(k));
+  assert.ok(inCtx && inCtx[1] >= 4.5, `the descendant rule's paper-on-ink did not win over the plain accent fill (${inCtx?.[1]})`);
+});
+
+test('the guard has teeth: a colour with a fallback, a literal and a color-mix are uses, and a theme-bound rule is read only in its theme', () => {
+  // `color: var(--paper, #000)` was not matched as a use at all (the pattern wanted var(--x) with nothing after it).
+  const fb = fixture('.fb { color: var(--paper, #000); }');
+  assert.ok(fb.by['.fb'] < 1.2, `a use with a fallback was not measured (${fb.by['.fb']})`);
+  const lit = fixture('.lit { color: #ffffff; background: var(--ink); } .lit2 { color: color-mix(in srgb, var(--ink) 50%, transparent); }');
+  assert.ok(lit.by['.lit'] < 4.5, 'a literal white on --ink (dark) was not measured');
+  assert.ok(lit.by['.lit2'] !== undefined, 'a color-mix text colour was not a use');
+  // A rule bound to the light theme does not apply in dark: only the light pair is measured in light, and the dark pair in dark.
+  const css = ".t { color: var(--ink); } [data-theme='light'] .t { color: var(--paper); }";
+  assert.ok(fixture(css, 'light').by['.t'] < 1.2, 'the light-only colour was not read in light');
+  assert.ok(fixture(css, 'dark').by['.t'] >= 4.5, 'the light-only colour was read in dark');
 });
 
 test('the guard has teeth: the selection that shipped fails in dark, and a selection with no colour is reported', () => {
