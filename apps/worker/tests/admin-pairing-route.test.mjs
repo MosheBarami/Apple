@@ -192,13 +192,24 @@ test('a project id or owner id that is not a UUID is a 400 before any Durable Ob
 test('the ids are lower-cased and trimmed before a Durable Object is named: an upper-case id must not address another session', async () => {
   // UUID_RE is case-insensitive but a Durable Object name is not, and the user routes name the session by the database's
   // lower-case id: an upper-case project id would reach a different, never-initialised session and answer a misleading 409.
-  fresh();
-  const r = await mint(PROJECT.toUpperCase(), { userId: ` ${OWNER.toUpperCase()} ` });
-  assert.equal(r.status, 200, JSON.stringify(r.json));
-  const addressed = calls.filter((c) => c.addressed !== undefined && c.ns === 'SESSION_DO').map((c) => c.addressed);
-  assert.deepEqual(addressed, [PROJECT], 'the session is named by the lower-case id');
-  assert.deepEqual(calls.find((c) => c.path === '/owner-check').body, { userId: OWNER }, 'the owner is asked about in lower case');
-  assert.deepEqual(calls.find((c) => c.ns === 'PAIRING_DO' && c.path === '/create').body, { projectId: PROJECT, userId: OWNER, projectName: 'Tower Defence' }, 'and the minted code carries the lower-case ids');
+  // Each case changes ONE thing about ONE id, so removing the trim or the lower-casing of the project id or of the owner id turns
+  // exactly the case that depends on it red (UUID_RE refuses a padded id).
+  const pad = (id) => encodeURIComponent(` \n${id}\t `); // the id as a caller can put it in the path: spaces, a newline, a tab
+  for (const [label, projectId, userId] of [
+    ['an upper-case project id', PROJECT.toUpperCase(), OWNER],
+    ['a padded project id', pad(PROJECT), OWNER],
+    ['an upper-case owner id', PROJECT, OWNER.toUpperCase()],
+    ['a padded owner id', PROJECT, ` \n${OWNER}\t `],
+    ['both ids padded and upper-case', pad(PROJECT.toUpperCase()), ` ${OWNER.toUpperCase()} `],
+  ]) {
+    fresh();
+    const r = await mint(projectId, { userId });
+    assert.equal(r.status, 200, `${label}: ${JSON.stringify(r.json)}`);
+    const addressed = calls.filter((c) => c.addressed !== undefined && c.ns === 'SESSION_DO').map((c) => c.addressed);
+    assert.deepEqual(addressed, [PROJECT], `${label}: the session is named by the lower-case, trimmed id`);
+    assert.deepEqual(calls.find((c) => c.path === '/owner-check').body, { userId: OWNER }, `${label}: the owner is asked about in lower case, trimmed`);
+    assert.deepEqual(calls.find((c) => c.ns === 'PAIRING_DO' && c.path === '/create').body, { projectId: PROJECT, userId: OWNER, projectName: 'Tower Defence' }, `${label}: and the minted code carries the lower-case ids`);
+  }
 });
 
 test('the 429 for too many live codes is passed through unchanged', async () => {

@@ -161,12 +161,23 @@ test('a project id or owner id that is not a UUID is a 400 before any Durable Ob
 });
 
 test('the ids are lower-cased and trimmed before a Durable Object is named: the session answers to the lower-case id only', async () => {
-  fresh();
-  const r = await reset(PROJECT.toUpperCase(), { userId: ` ${OWNER.toUpperCase()} ` });
-  assert.equal(r.status, 200, JSON.stringify(r.json));
-  const addressed = calls.filter((c) => c.addressed !== undefined && c.ns === 'SESSION_DO').map((c) => c.addressed);
-  assert.deepEqual(addressed, [PROJECT], 'the one session addressed is named by the lower-case id');
-  assert.deepEqual(calls.find((c) => c.path === '/owner-check').body, { userId: OWNER });
+  // Each of the four cases changes ONE thing about ONE id, so removing the trim or the lower-casing of the project id or of the owner id
+  // turns exactly the case that depends on it red (UUID_RE refuses a padded id, and a Durable Object name is case-sensitive).
+  const pad = (id) => encodeURIComponent(` \n${id}\t `); // the id as a caller can put it in the path: spaces, a newline, a tab
+  for (const [label, projectId, userId] of [
+    ['an upper-case project id', PROJECT.toUpperCase(), OWNER],
+    ['a padded project id', pad(PROJECT), OWNER],
+    ['an upper-case owner id', PROJECT, OWNER.toUpperCase()],
+    ['a padded owner id', PROJECT, ` \n${OWNER}\t `],
+    ['both ids padded and upper-case', pad(PROJECT.toUpperCase()), ` ${OWNER.toUpperCase()} `],
+  ]) {
+    fresh();
+    const r = await reset(projectId, { userId });
+    assert.equal(r.status, 200, `${label}: ${JSON.stringify(r.json)}`);
+    const addressed = calls.filter((c) => c.addressed !== undefined && c.ns === 'SESSION_DO').map((c) => c.addressed);
+    assert.deepEqual(addressed, [PROJECT], `${label}: the one session addressed is named by the lower-case, trimmed id`);
+    assert.deepEqual(calls.find((c) => c.path === '/owner-check').body, { userId: OWNER }, `${label}: the owner is asked about in lower case, trimmed`);
+  }
 });
 
 test('a run in progress, and an owner who may not build, are the session\'s refusals and reach the caller unchanged', async () => {
@@ -262,12 +273,18 @@ test('SESSION: what a user would miss beyond that stays: the pairing, the identi
   const keep = { pluginTokenHash: 'hash', pluginTokenIssuedAt: 1, pluginClient: { v: 1 }, pluginPlace: { id: 7 }, pluginState: { placeName: 'EvalBaseplate' }, seq: 9 };
   const h = seeded({ store: keep });
   h.sql.exec(`insert into checkpoints (id, label, kind, created_at) values ('cp1', 'before the shop', 'manual', 1)`);
+  // The snapshot bytes are what a restore reads: a checkpoint row with no chunks is 'checkpoint not found', so the chunks ARE the baseline.
+  const bytes = new Uint8Array([7, 1, 4, 2]);
+  h.sql.exec(`insert into checkpoint_chunks (checkpoint_id, idx, data) values ('cp1', 0, ?)`, bytes);
   h.sql.exec(`insert into oplog (op_id, kind, ok, summary, created_at) values ('op1', 'create', 1, 'made a part', 1)`);
   const bind = h.store.get('bind');
   await doReset(h);
   assert.deepEqual(h.store.get('bind'), bind, 'the project keeps its identity');
   for (const [k, v] of Object.entries(keep)) assert.deepEqual(h.store.get(k), v, `${k} was touched`);
   assert.equal(h.sql.exec('select count(*) as n from checkpoints').toArray()[0].n, 1, 'checkpoints stay');
+  const chunks = h.sql.exec(`select checkpoint_id, idx, data from checkpoint_chunks`).toArray();
+  assert.equal(chunks.length, 1, 'the snapshot bytes of the checkpoint stay');
+  assert.deepEqual([chunks[0].checkpoint_id, chunks[0].idx, [...new Uint8Array(chunks[0].data)]], ['cp1', 0, [...bytes]], 'and are the same bytes');
   assert.equal(h.sql.exec('select count(*) as n from oplog').toArray()[0].n, 1, 'the op log stays');
 });
 
