@@ -23,6 +23,14 @@ export default defineConfig({
     '/changelog': '/blog',
   },
   integrations: [sitemap()],
+  // THE SPACE BETWEEN A WORD AND THE INLINE TAG AFTER IT. Since Astro 7 the default is `compressHTML: 'jsx'`, which applies React's JSX whitespace
+  // rules: a line break between the last word of a source line and an inline tag that starts the next one is REMOVED, so `with it?\n<a href>Build</a>`
+  // was built as `with it?<a href>Build</a>` and a reader saw "with it?Build the plugin". Measured on the build before this was set: 61 such joins on
+  // 13 pages (the docs, /privacy and /terms), and a new one in the first page written after the count ("Credits.<a href>The details</a>"). The cause
+  // is this one setting, not 61 sites. `true` compresses losslessly (it keeps the space a reader sees), so it is set once. The cost is under 300 bytes
+  // of gzip on the front page, inside the landing budget. tests/rendered-text-joins.test.mjs holds every built page to zero and goes red if this
+  // line is removed (the default comes back).
+  compressHTML: true,
   build: {
     inlineStylesheets: 'auto',
   },

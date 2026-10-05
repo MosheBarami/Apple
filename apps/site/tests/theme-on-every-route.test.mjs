@@ -72,6 +72,31 @@ test('every built page applies the stored theme before paint, has a toggle in it
   }
 });
 
+// ONE PATTERN FOR A TOGGLE: A CONSTANT NAME AND aria-pressed (M2 site fix cycle 1).
+//
+// The theme button flipped its label ("Switch to light theme" / "Switch to dark theme") AND set aria-pressed, so a screen reader announced the action
+// and the state together and they pointed opposite ways: "Switch to light theme, toggle button, pressed" on a dark page. The menu button did the same
+// with aria-expanded ("Open the menu" / "Close the menu"). The rule: a control that announces its state through aria-pressed or aria-expanded keeps
+// ONE name, in the markup, and the script changes only the state attribute. Read off the built header, and off the script that ships in every page.
+test('the theme toggle and the menu button keep one name and announce their state through aria-pressed and aria-expanded only', () => {
+  const pages = realPages();
+  for (const { route, html } of pages) {
+    const header = html.match(/<header\b[\s\S]*?<\/header>/i)?.[0] ?? '';
+    const toggle = header.match(/<button[^>]*data-theme-toggle[^>]*>/)?.[0] ?? '';
+    assert.match(toggle, /aria-pressed="(?:true|false)"/, `${route}: the theme toggle has no aria-pressed`);
+    const label = toggle.match(/aria-label="([^"]+)"/)?.[1] ?? '';
+    assert.ok(label && !/\b(?:switch|turn|toggle|change)\b/i.test(label), `${route}: the theme toggle's name "${label}" is an action; with aria-pressed the name is constant ("Dark theme")`);
+    const burger = header.match(/<button[^>]*id="menu-toggle"[^>]*>/)?.[0] ?? '';
+    assert.match(burger, /aria-expanded="false"/, `${route}: the menu button has no aria-expanded`);
+    const burgerLabel = burger.match(/aria-label="([^"]+)"/)?.[1] ?? '';
+    assert.ok(burgerLabel && !/\b(?:open|close)\b/i.test(burgerLabel), `${route}: the menu button's name "${burgerLabel}" is an action; with aria-expanded the name is constant ("Menu")`);
+    // And the script never rewrites either name.
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
+    assert.doesNotMatch(scripts, /setAttribute\(\s*'aria-label'/, `${route}: a script rewrites an aria-label, so the control announces its action and its state together`);
+  }
+  assert.ok(pages.length > 15);
+});
+
 test('an Astro expression never sits between <!doctype> and <html>', () => {
   // This is not style. One was written there and Astro stopped emitting <html> and <head> at all,
   // so data-theme was absent at runtime while the source read correctly — a fix that looked done

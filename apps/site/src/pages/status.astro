@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { SUPPORT_EMAIL } from '@studpilot/shared';
 import { openIssues, resolvedIssues } from '../data/known-issues';
 
 // The live probe answers "is the API up". These answer "is the thing I am hitting already known
@@ -18,7 +19,7 @@ const shortDate = (iso: string) =>
 ---
 
 <Base
-  title="Status — StudPilot"
+  title="Status | StudPilot"
   description="Live operational status of the StudPilot service, checked directly against the API from your browser and refreshed every 30 seconds."
 >
   <section class="section" aria-labelledby="status-title">
@@ -36,10 +37,14 @@ const shortDate = (iso: string) =>
         refreshes every 30 seconds.
       </p>
 
-      <div class="status-card card" id="status-card" data-state="checking" aria-live="polite">
+      {/* NO aria-live ON THE CARD. It held the per-second "next check" countdown and the 30-second poll, so a screen reader spoke
+          continuously (a polite region announces every text change inside it). The card is plain text now, and the one announcement is the
+          visually hidden #status-announce below, rewritten only when the STATE changes. */}
+      <div class="status-card card" id="status-card" data-state="checking">
+        <p class="visually-hidden" id="status-announce" role="status"></p>
         <div class="status-row">
           <span class="status-orb" id="status-orb" aria-hidden="true"></span>
-          <div>
+          <div class="status-text">
             <p class="status-headline" id="status-headline">Checking…</p>
             <p class="status-sub" id="status-sub">Reaching the StudPilot API.</p>
           </div>
@@ -122,7 +127,7 @@ const shortDate = (iso: string) =>
         </ul>
         <p>
           Something look wrong for more than a few minutes?{' '}
-          <a href="mailto:apple.labs.app@gmail.com">Tell us</a> — a human reads that inbox.
+          <a href={`mailto:${SUPPORT_EMAIL}`}>Tell us</a> — a human reads that inbox.
         </p>
       </div>
     </div>
@@ -202,6 +207,19 @@ const shortDate = (iso: string) =>
     margin: 2px 0 0;
     color: var(--muted);
     font-size: 14px;
+  }
+
+  /* THE TEXT BOX KEEPS ITS HEIGHT WHETHER THE ANSWER IS ONE LINE OR FOUR. The first check replaces "Reaching the StudPilot API." with a longer
+     sentence that wraps on a phone, and everything under it (the known issues, the button, the orb) moved with it: CLS 0.16 at 390px, over
+     the 0.1 "good" line. The longest answer is four lines at 390px and two at 600px and up. */
+  .status-text {
+    min-height: 7.4rem;
+  }
+
+  @media (min-width: 600px) {
+    .status-text {
+      min-height: 4.6rem;
+    }
   }
 
   .status-meta {
@@ -401,10 +419,19 @@ const shortDate = (iso: string) =>
   let countdownTimer = 0;
   let pollTimer = 0;
 
+  const announce = document.getElementById('status-announce');
+  let announced = '';
+
   function setState(state: 'checking' | 'ok' | 'degraded' | 'down', head: string, detail: string) {
     card?.setAttribute('data-state', state);
     if (headline) headline.textContent = head;
     if (sub) sub.textContent = detail;
+    // ONE ANNOUNCEMENT PER CHANGE OF STATE, never per poll and never per second: the headline names the state, the detail carries a timing that
+    // changes on every check, and "Checking…" is a step, not a state worth speaking.
+    if (state !== 'checking' && head !== announced && announce) {
+      announced = head;
+      announce.textContent = head;
+    }
   }
 
   function startCountdown() {

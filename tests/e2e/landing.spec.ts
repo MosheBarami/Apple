@@ -587,3 +587,28 @@ test('no link anywhere on the site points at a section or route that does not ex
 
   expect(bad, `dead links:\n${bad.join('\n')}`).toEqual([]);
 });
+
+// THE STATUS PAGE DOES NOT SHIFT WHEN ITS FIRST CHECK ANSWERS (M2 site fix cycle 1). The answer is a longer sentence than "Reaching the StudPilot API.",
+// it wraps on a phone, and the known issues, the button and the orb moved down with it (measured in review: 0.163 at 390px, 0.025 at 1440; measured again
+// here with the answer delayed half a second so that it lands after the first paint: 0.018 at 390px, 0.002 at 1440, the same four sources). The text box
+// now keeps its height, so the property is the strict one: NOTHING moves (under 0.001), not "under the 0.1 line", which the old page also met here.
+test('/status does not shift when the first check answers: no layout shift at 390px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/health', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ status: 404, body: 'nothing here' });
+  });
+  await page.addInitScript(() => {
+    (window as unknown as { __cls: number }).__cls = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as unknown as Array<{ hadRecentInput: boolean; value: number }>) {
+        if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+  await page.goto('/status');
+  await page.waitForFunction(() => document.getElementById('status-headline')?.textContent !== 'Checking…');
+  await page.waitForTimeout(800);
+  const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+  expect(cls, `/status shifted by ${cls} when its first check answered`).toBeLessThan(0.001);
+});

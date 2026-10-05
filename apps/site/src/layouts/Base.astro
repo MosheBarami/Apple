@@ -111,10 +111,12 @@ const ogImage = new URL('/og.png', site);
           var meta = document.getElementById('theme-color');
           var band = getComputedStyle(root).getPropertyValue('--theme-color').trim();
           if (meta && band) meta.setAttribute('content', band);
+          // ONE PATTERN, THE STATE ONLY: the button keeps one name ("Dark theme", in the markup) and aria-pressed says whether it is on. It used to
+          // flip its label as well ("Switch to light theme"), so a screen reader said the action and the state together and they pointed
+          // opposite ways ("Switch to light theme, toggle button, pressed" on a dark page).
           var dark = root.getAttribute('data-theme') !== 'light';
           document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
             b.setAttribute('aria-pressed', String(dark));
-            b.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
           });
         }
 
@@ -137,7 +139,6 @@ const ogImage = new URL('/og.png', site);
           if (burger && nav) {
             var open = nav.toggleAttribute('data-open');
             burger.setAttribute('aria-expanded', String(open));
-            burger.setAttribute('aria-label', open ? 'Close the menu' : 'Open the menu');
           }
         });
 
@@ -149,7 +150,6 @@ const ogImage = new URL('/og.png', site);
             nav.removeAttribute('data-open');
             if (burger) {
               burger.setAttribute('aria-expanded', 'false');
-              burger.setAttribute('aria-label', 'Open the menu');
               burger.focus();
             }
           }
