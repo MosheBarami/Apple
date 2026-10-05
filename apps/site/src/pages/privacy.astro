@@ -35,8 +35,8 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li><strong>Checkpoints.</strong> Compressed snapshots of the parts of your place StudPilot works on, so you can roll back changes. StudPilot processes them to provide rollback; authorized operators can access production systems for debugging under access controls.</li>
     <li><strong>Usage data.</strong> A ledger of your Credits usage (which mode, when, how many), used to enforce daily quotas fairly and to keep the free tier viable. We also keep coarse, aggregated counters (e.g. total requests per day service-wide) that contain no content.</li>
     <li><strong>A request log.</strong> Which API route was called, when, how long it took and whether it failed — so a broken feature can be told from a slow one. Routes are recorded as routes, never as the raw path, so a project id is never in the log. Each entry carries your account id for 30 days unless you switch that off in Settings → Privacy, in which case the request is still counted with nobody's name on it.</li>
-    <li><strong>A log of model calls.</strong> Each request StudPilot sends to an AI model goes through Cloudflare AI Gateway, which keeps a log entry holding the prompt and the model's reply. The entry is labelled with the kind of call and the model; StudPilot adds no account id to it. Voice recordings are the exception: they are sent with logging switched off.</li>
-    <li><strong>Billing identifiers.</strong> If you subscribe or buy Credits, Stripe handles the payment and we keep the subscription state and invoice references it sends back. We never see or store your card. (Checkout is not open yet: see the Terms.)</li>
+    <li><strong>A log of model calls.</strong> Each request StudPilot sends to an AI model goes through Cloudflare AI Gateway, which keeps a log entry holding the prompt and the model's reply. The entry is labelled with the kind of call and the model; StudPilot adds no account id to it, though a project identifier travels with the call as a routing hint. Voice recordings are the exception: they are sent with logging switched off.</li>
+    <li><strong>Billing identifiers.</strong> If you subscribe or buy Credits, Stripe handles the payment and we keep the subscription state and invoice references it sends back. We never see or store your card.</li>
     <li><strong>A Roblox Open Cloud key, if you give us one.</strong> Only so StudPilot can upload assets to your own Roblox account when you ask it to. It is encrypted at rest with a key the database does not hold, it is never returned to anyone — including you; the settings page shows a fingerprint and the last four characters — and deleting it from Settings removes it outright.</li>
     <li><strong>A Discord account id, if you link one.</strong> Only so builds you start from Discord reach the right account.</li>
   </ul>
@@ -61,16 +61,15 @@ import LegalLayout from '../layouts/LegalLayout.astro';
   <ul>
     <li><strong>Your Roblox user id, your Roblox username and the time the link was made,</strong> next to your StudPilot account id. The id is how your account is found each time you sign in (never the username, which Roblox lets people change and reuse). The username is shown in Settings → Connections and is refreshed at each sign-in.</li>
     <li><strong>A Roblox refresh token, encrypted</strong> with a key the database does not hold. It is the only handle StudPilot has for asking Roblox to withdraw its access, which it does when you disconnect, delete your account, or decline a new account on your first sign-in. It is never returned to anyone, including you, and the data export names it as withheld.</li>
-    <li><strong>The permissions Roblox granted</strong> (the two named above) and <strong>technical bookkeeping</strong> for the token: a version counter, a lock held for a few seconds while a refresh is in flight, and when the token was last replaced.</li>
-    <li><strong>The time you last confirmed with Roblox that it is you,</strong> kept only for an account that signs in with Roblox alone (it has no password to type), and good for ten minutes. It is what lets that account export or delete its data.</li>
+    <li><strong>The permissions Roblox granted</strong> (the two named above) and <strong>technical bookkeeping</strong> for the token: a version counter, a lock held for up to 30 seconds while a refresh is in flight, and when the token was last replaced.</li>
+    <li><strong>The time you last confirmed with Roblox that it is you.</strong> An account that signs in with Roblox alone has no password to type, so it confirms with Roblox before it exports or deletes its data; the confirmation is good for ten minutes.</li>
     <li><strong>In Supabase, an account with a placeholder address</strong> ending in users.studpilot.invalid, which no mail can reach, carrying your Roblox user id and, as its display name, your Roblox username.</li>
     <li><strong>For a few minutes only,</strong> while you decide whether to create a new account on your first sign-in: your Roblox user id, username and the encrypted token wait in short-term storage for up to five minutes. Choosing "Go back" deletes them and withdraws the authorization that was just given.</li>
   </ul>
   <p>
-    Roblox is not offered anything to remember beyond the fact that you authorized StudPilot. Uploading
-    assets to your Roblox account through this connection is not built yet; when it is, it will need
-    permissions that Roblox asks you for on a screen of its own, and this policy will be updated before
-    it exists.
+    Uploading assets to your Roblox account through this connection is not built yet; when it is, it
+    will need permissions that Roblox asks you for on a screen of its own, and this policy will be
+    updated before it exists.
   </p>
   <p>
     <strong>Roblox data is never used for AI training.</strong> That covers the Roblox sign-in data
@@ -203,7 +202,7 @@ import LegalLayout from '../layouts/LegalLayout.astro';
     <li>Your <strong>usage ledger</strong>, and the Credit and subscription records kept for accounting, which are records of money rather than profile data, and any <strong>support messages</strong> you sent, which are correspondence.</li>
     <li>Your membership on projects other people own, which their owners administer.</li>
     <li>The request log, for up to 30 days; temporary previews, for up to an hour; and a bare deleted-project id, kept so a late generation cannot recreate erased images.</li>
-    <li>The Cloudflare AI Gateway log of past model calls, which carries no account id, so it cannot be searched for you.</li>
+    <li>The Cloudflare AI Gateway log of past model calls, which carries no account id.</li>
   </ul>
   <p>
     Residual copies in backups expire on the backup rotation schedule (at most 30 days). If anything

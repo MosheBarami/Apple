@@ -31,7 +31,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place StudPilot works on, kept so rollback works across sessions.</li>
     <li><strong>Usage ledger</strong> — when you spent Credits and on which mode, so quotas reset fairly.</li>
     <li><strong>A request log</strong> — which route, when, how long, and whether it failed. Routes are logged as routes, never as raw paths, so no project id is in it. It carries your account id for 30 days unless you turn that off in Settings → Privacy; the request is still counted either way, with nobody's name on it.</li>
-    <li><strong>A log of model calls</strong> — each request to an AI model goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id. Voice recordings are sent with logging off.</li>
+    <li><strong>A log of model calls</strong> — each request to an AI model goes through Cloudflare AI Gateway, which keeps a log entry with the prompt and the model's reply. It is labelled with the kind of call and the model, with no account id (a project identifier travels with the call as a routing hint). Voice recordings are sent with logging off.</li>
     <li><strong>Billing state</strong> — if you subscribe or buy Credits, the subscription and invoice references Stripe sends back. Your card stays with Stripe.</li>
     <li><strong>Your Roblox Open Cloud key, if you gave one</strong> — encrypted at rest and never returned to anybody, including you: the settings page shows a fingerprint and the last four characters, which is what a key looks like when the only thing that can use it is the uploader.</li>
     <li><strong>A Discord account id, if you linked one</strong> — so a build started in Discord reaches the right account.</li>
@@ -54,8 +54,8 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <ul>
     <li><strong>Your Roblox user id, your Roblox username and the time the link was made,</strong> next to your StudPilot account id. The id is how your account is found at sign-in; the username is shown in Settings → Connections.</li>
     <li><strong>A Roblox refresh token, encrypted</strong> with a key the database does not hold, never returned to anyone and never in your data export. It exists so StudPilot can ask Roblox to withdraw its access when you disconnect, delete your account, or decline a new account on first sign-in.</li>
-    <li><strong>The permissions Roblox granted</strong> and <strong>technical bookkeeping</strong> for the token: a version counter, a lock held for seconds during a refresh, and when it was last replaced.</li>
-    <li><strong>The time you last confirmed with Roblox that it is you,</strong> only for an account with no password, good for ten minutes, so that it can export or delete its data.</li>
+    <li><strong>The permissions Roblox granted</strong> and <strong>technical bookkeeping</strong> for the token: a version counter, a lock held for up to 30 seconds during a refresh, and when it was last replaced.</li>
+    <li><strong>The time you last confirmed with Roblox that it is you.</strong> An account with no password confirms this way before it exports or deletes its data; the confirmation is good for ten minutes.</li>
     <li><strong>In Supabase,</strong> a placeholder address ending in users.studpilot.invalid, your Roblox user id and your Roblox username as the display name.</li>
     <li><strong>Up to five minutes</strong> in short-term storage while you decide whether to create the account on first sign-in; "Go back" deletes it and withdraws the authorization.</li>
   </ul>

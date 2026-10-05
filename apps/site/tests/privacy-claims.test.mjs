@@ -29,7 +29,7 @@
  * made three published sentences false ("our servers hold no master key", "the only personal information signup asks for",
  * "children below the age of consent") and the same sweep found others that were already false: the pages said a prompt is "not
  * retained by the inference layer" while providers/workers-ai.ts logs every text call in Cloudflare AI Gateway with
- * `collectLog: true`, and named five recipients of data where the worker's source calls fifteen hosts. So this half derives from
+ * `collectLog: true`, and named five recipients of data where the worker's source calls fourteen hosts that receive it. So this half derives from
  * the source and fails when the two disagree, in the direction that matters (the page says something the code does not do):
  *
  *   THE ROBLOX DATA LIST IS THE COLUMNS THE CODE STORES, read from the CREATE TABLE statements, and every column is accounted
@@ -232,14 +232,16 @@ test('what is held outside those two tables is on the pages too: the placeholder
   const domain = /const SYNTHETIC_EMAIL_DOMAIN = '([^']+)'/.exec(oauth)?.[1];
   const hold = Number(/const HANDLE_TTL_SECONDS = (\d+)/.exec(oauth)?.[1]);
   const window = Number(/const REAUTH_WINDOW_MS = (\d+) \* 60_000/.exec(oauth)?.[1]);
+  const lease = Number(/const REFRESH_LEASE_MS = (\d+)_000/.exec(oauth)?.[1]);
   const WORDS = { 5: 'five', 10: 'ten' };
-  assert.ok(domain && hold && window, 'could not read the address domain, the hold or the window out of roblox-oauth.ts');
+  assert.ok(domain && hold && window && lease, 'could not read the address domain, the hold, the window or the lease out of roblox-oauth.ts');
   assert.ok(WORDS[hold / 60] && WORDS[window], `no word for ${hold / 60} or ${window} minutes: extend WORDS`);
   for (const [where, text] of BOTH) {
     assert.ok(text.includes(domain), `${where} does not name the placeholder address domain ${domain}`);
     // ANCHORED to the sentence each number belongs to: the two numbers are both minutes, and a bare "ten minutes" would satisfy either.
     assert.ok(new RegExp(`up to ${WORDS[hold / 60]} minutes`, 'i').test(text), `${where} does not say a first sight is held for up to ${WORDS[hold / 60]} minutes`);
     assert.ok(new RegExp(`good for ${WORDS[window]} minutes`, 'i').test(text), `${where} does not say a confirmation is good for ${WORDS[window]} minutes`);
+    assert.ok(new RegExp(`lock held for up to ${lease} seconds`, 'i').test(text), `${where} does not say the refresh lock is held for up to ${lease} seconds`);
   }
 });
 

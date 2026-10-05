@@ -138,8 +138,9 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     target: 'AI Gateway — the log of model calls',
     why:
       'Every request to an AI model is logged by Cloudflare AI Gateway with its prompt and reply, labelled with the kind ' +
-      'of call and the model and carrying no account id, so it cannot be searched for one person. This route does not ' +
-      'reach it, and how long entries stay is a setting of the gateway in Cloudflare, not something this worker deletes.',
+      'of call and the model, not with an account id (a project identifier travels with the call as a routing hint). This ' +
+      'route does not reach it, and how long entries stay is a setting of the gateway in Cloudflare, not something this ' +
+      'worker deletes.',
   },
   {
     store: 'do',
