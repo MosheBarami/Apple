@@ -378,7 +378,11 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
 - **Not verified live (no network in this task):** that the settings endpoint answers a browser at `https://studpilot.app` with
   CORS headers. If it does not, the buttons never render, which is the safe failure. When the owner switches a provider on (N2) the
   checks are: the button appears; the redirect URL `https://studpilot.app/app` is on the Supabase allow-list; and, for C6, manual
-  identity linking is enabled at the project.
+  identity linking is enabled at the project. **No policy edit is part of that switch (fix cycle 1, 12.9):** the privacy pages used to say
+  "not offered yet ... we will update this policy before either is switched on", which a dashboard toggle cannot honour in order (no commit
+  accompanies it and no test can go red), so they now describe the sign-in without stating whether a provider is on, and are true before and
+  after the switch. The one thing to read at N2 is the Google and Discord sentence on both pages (`LEGAL-CLAIMS.md` section 9, A4 and A5), and
+  whether a Google or Discord sign-up should be asked the date of birth as well (12.2).
 - **Alternative not taken:** have the worker proxy and cache the settings. One more route and one more cache for a value the
   project already publishes; the page-level cache is enough.
 - **The mock app** answers without a request: no providers, and `?providers=google,discord` (dev server only) turns them on so
@@ -402,9 +406,13 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   - **A known cost.** A grown-up who typed the wrong year is refused in that browser and has no way back through the app. There is no
     expiry. The alternative is a window (for example 24 hours) after which the form opens again; it makes the block weaker for the
     people it is for and lets an honest slip heal. It is one constant to add if the owner prefers it. Not done.
-- **Roblox, Google and Discord sign-ups need no form.** Roblox's OAuth service is for accounts held by people aged 13 and older,
-  and Google and Discord already require their account holders to be at least that old (plan section 7). Asking again would
-  collect a birth date nobody needs. The privacy pages say so.
+- **Roblox, Google and Discord sign-ups are not asked the date.** Roblox's OAuth service is for accounts held by people aged 13 and
+  older (an external claim, sourced to Roblox in `LEGAL-CLAIMS.md`). Plan section 7 also says Google and Discord already require 13 and
+  older; **the pages no longer say that** (fix cycle 1): it is an external claim about those providers' rules that nothing in this repo
+  shows, and Google offers supervised accounts to children under 13. The pages say what StudPilot does (no date is asked again) and that
+  Google and Discord apply their own age rules. **Open for the owner at N2: whether a Google or Discord sign-up should be asked the date
+  too.** Asking would close the gap for a supervised under-13 account; the cost is one more screen after a provider sign-in, which has
+  no form today. Nothing is promised either way.
 - **Existing accounts are not asked again.** They have the pages' 13-and-older terms already, and the flag lives only in the
   user metadata of an account made after this change. *Alternative: ask at the next login.* It would have to ask every account that
   lacks the flag, once, before the app opens, and write the answer back (`updateUser`), which blocks people who are mid-build on a
@@ -413,8 +421,17 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   later step. The flag is client-supplied: any API caller can set it or leave it out. It is a record that the form was passed, not proof.
 - **Pages changed because this made them false.** `/privacy` and `/docs/privacy-and-data` said the sign-up form asked for nothing
   but an address and a password; they now describe the date of birth, that it is checked in the browser and never sent or stored,
-  that a pass leaves one note on the account, that a refusal leaves a flag in the browser, and that the other ways in rely on their own
-  age rules. `apps/site/tests/privacy-claims.test.mjs` was re-aimed (it said "no birth-date field while the form has none").
+  that a pass leaves one note on the account, that a refusal leaves a flag in the browser, and that the other ways in do not ask again
+  (and that Google and Discord apply their own age rules). `apps/site/tests/privacy-claims.test.mjs` was re-aimed (it said "no
+  birth-date field while the form has none").
+- **Digits from any keyboard (fix cycle 1).** The day and year fields kept only ASCII digits, so a person whose keyboard types
+  Arabic-Indic, Persian, Devanagari, Thai or full-width digits saw each keystroke vanish with the submit stuck disabled. The fields now keep
+  what is typed as the ASCII digit it stands for (`normaliseDigits`, checked against `Intl` for every numbering system the runtime knows),
+  and the verdict is the same date in any script.
+- **The refusal takes focus (fix cycle 1).** It replaces the form that held focus, so focus fell to the page and the inserted status line
+  was not reliably announced. The refusal's heading takes focus when the refusal appears (given or remembered) and is described by the
+  sentence under it; the status role is gone, because focus carries the announcement. The 320px phone gets a floor for the month column
+  ("Septemb" was "September" cut off), and the Roblox link now has the hairline and height its siblings have.
 
 ### 12.3 C3: "New project" is one click
 
@@ -446,6 +463,10 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   When the agent captures nothing during a run the strip stays on its empty state ("Studio screenshots appear here while StudPilot
   builds"); it fills the first time a capture tool runs. The vision tool `look` also emits frames today and is removed in M3 (plan
   section 3); its frames would show here too until then.
+- **Each capture once (fix cycle 1).** The worker replays the frames it still holds, with their original ids and times, every time a
+  socket attaches during a playtest, so a reconnect appended copies: the strip repeated and older frames left the newest eight. The page
+  now drops a capture it already holds (`appendFrame`, used by the socket hook; a playtest frame is identified by its run and counter,
+  any other by what was captured and when, pixels included), and the strip shows each capture once.
 - **Which frames.** The newest eight of the run's own, oldest left. The worker stamps every frame with the id of the assistant
   message it was taken for (`msgId`, which is the turn's id), so a frame from an earlier run, or one the worker could not attribute, is
   never shown under this turn. The socket hook already kept the newest eight in memory and persisted none; that is unchanged.
@@ -453,7 +474,14 @@ live project is listed as unverified. The tests for each item are in `TEST-LEDGE
   geometry renderer is never read as a screenshot of Studio. Captions carry the kind and the time in the person's clock setting, and
   nothing technical (no tool name, instance path or camera name).
 - **Where it shows.** The latest assistant turn, while it runs, once it has a frame, or when it was a build (it used tools). A plain
-  chat reply and every earlier turn get no strip, so a conversation is not full of empty boxes.
+  chat reply and every earlier turn get no strip, so a conversation is not full of empty boxes. The offer to the latest turn only is made in
+  one place (`workspace.tsx` hands `frames` to the turn whose id is the last assistant message's) and is guarded there by a syntax-tree test.
+- **What it says with no frame (fix cycle 1).** It follows the run and Studio, because "appear here while StudPilot builds" is false under a
+  finished turn and told nobody what to do: running with Studio connected, "Studio screenshots appear here while StudPilot builds"; running
+  with Studio not connected, "Connect Studio to see screenshots here while StudPilot builds"; finished, Studio not connected, "No
+  screenshots were taken for this request. Connect Studio to see them next time."; finished with Studio connected, no box at all (the
+  request simply took none, and there is nothing to do). The enlarged view's Earlier and Later use the workspace's outline button, with a
+  visible disabled look and the focus ring (they were 18px of bare text, because the shared `.btn` chrome is scoped to other pages).
 - **What the page promises, and only that.** The enlarged view says "Shown only in this tab and kept only while it is open. This page
   does not save or send them." It does not say "no model ever sees it": that is the worker's business, and the worker's `look` path
   sends frames to a vision model today (removed in M3). A source-reading test holds that the strip, its dialog and its model touch no
@@ -483,13 +511,18 @@ coverage, author and description, and **no request id**, so the grouping is by t
 topbar button and the palette) has four controls: a number (typed, range and step enforced; a value it cannot hold is refused, not clamped),
 a colour (the browser's picker beside a hex field), a switch (a real button with the switch role, and the word On or Off), and a few words
 (length-capped). Every control is native, keyboard reachable, named, and carries the ring token.
-- **Production has no pieces.** `lib/pieces.ts` loads the stub only through a dynamic import behind `import.meta.env.DEV`, so a production
-  build does not contain it, and the panel shows exactly "Pieces appear here after a build". Proof: `tests/pieces-production.test.mjs` bundles
-  the module both ways and reads the output; `scripts/check-app-bundle.mjs` now fails when the stub's marker or a sample name is in
-  `dist` (it ran green on this branch's production build); `tests/mock-mode-production.test.mjs` stays green.
+- **Production has no pieces, and (owner decision, fix cycle 1) does not offer the panel at all until M5.** The first version drew a topbar
+  button and a palette command into a drawer that could only say "Pieces appear here after a build", while nothing produces a piece before
+  M5: a dead end with a sentence that is false today. `PIECES_OFFERED` (`lib/pieces.ts`, `import.meta.env.DEV`) now gates the button, the
+  palette command and the drawer's mount, a remembered "pieces" drawer restores as closed where it is not offered, and the production build
+  does not contain the panel (not even its empty sentence). Development and tests keep the specimen panel. `lib/pieces.ts` loads the stub only
+  through a dynamic import behind the same constant. Proof: `tests/pieces-production.test.mjs` bundles the module both ways and reads the
+  output; `tests/pieces-panel.test.mjs` walks the syntax tree of `workspace.tsx` for every way in and requires the gate on each;
+  `scripts/check-app-bundle.mjs` fails when the stub's marker, a sample name, "Pieces and their settings" or the panel's specimen note is in
+  `dist` (run on the real production build, and red-first with the gate forced on); `tests/mock-mode-production.test.mjs` stays green.
 - **Every stub piece says SPECIMEN**, on the panel in a sentence and as a stamp on each card, and says a change stays in the panel: it is not
   saved and changes nothing in Studio. A piece without `specimen: true` is never stamped.
-- **What M5 changes.** The panel reads a block's own parameter schema (`block.json`: the parameter JSON Schema with defaults) instead of the
+- **What M5 changes.** `PIECES_OFFERED` becomes the fact that a block has parameters to show. The panel reads a block's own parameter schema (`block.json`: the parameter JSON Schema with defaults) instead of the
   stub; a change then edits that block's parameters and re-runs only that block. The four control kinds map to the schema's number, colour,
   boolean and string types. Nothing here persists a change, and there is no request from the panel, so M5 adds the wiring and removes
   `lib/pieces-stub.ts`.
@@ -529,9 +562,12 @@ bonus credit is promised anywhere on the page (they wait for M6).
 ### 12.8 C8: growth (P2): an invite link and a "Made with StudPilot" line. It fits, small; the attribution is cut.
 
 - **The link** is `https://studpilot.app/app/signup?ref=<code>`. The code is the first ten hex digits of SHA-256 over a fixed label and the
-  account id, so it is stable per account, names no one and cannot be turned back into the id (`lib/growth.ts`). It is copied from "Copy
-  invite link" on a project's menu (the shelf card, and an icon button among the workspace's project actions) and shown in full in
-  Settings > Share, with a Copy button that says whether the copy worked. A link with no valid code is not offered.
+  account id, so it is stable per account, names no one and cannot be turned back into the id (`lib/growth.ts`). It is copied from "Invite a
+  friend to StudPilot" on a project's menu on the shelf and shown in full in Settings > Share, with a Copy button that says whether the copy
+  worked. A link with no valid code is not offered. (Fix cycle 1: it was "Copy invite link", among the project's own actions and as an icon
+  beside "Who can build here", the real invitation to the project. The link grants no access to any project, so a person who sent it to a
+  teammate expecting access sent them to a sign-up form. It is named for the product now, the copy says "Link to StudPilot copied. Send it
+  to a friend.", and the workspace's icon-only button is gone: an icon cannot say whose link it is.)
 - **Nothing records the code yet, and the rows say so.** The sign-up page ignores `ref`, no worker route accepts it, the sign-up's user metadata
   carries only `age_gate`, and no migration stores a referral, so a sign-up through the link is recorded like any other. The task's rule
   ("recorded at sign-up in the user metadata only if the server side already accepts it") therefore leaves it out. `tests/growth.test.mjs`
@@ -542,5 +578,43 @@ bonus credit is promised anywhere on the page (they wait for M6).
   the app and the site source for any sentence that offers credits for inviting or sharing, and the guard is run against sentences it must catch.
 - **The badge** is `Made with StudPilot - https://studpilot.app`: plain ASCII text and a link, because a Roblox description shows no formatting.
   It is optional, lives in Settings > Share, and nothing inserts it into a game.
-- **The link is on every project's menu, though it is about the product, not that project.** It says nothing about the project's contents.
-  Putting it where a person is looking at their work is the point of the item ("a share button on a project").
+- **The link is on every project's menu on the shelf, though it is about the product, not that project.** It says nothing about the
+  project's contents, and its label names StudPilot so it does not read as an invitation to the project.
+
+### 12.9 Fix cycle 1 (2026-10-05): what a two-skeptic review of this branch changed
+
+The review (`app-c1-findings.json`: 15 verified findings and 9 minor) found no wrong behaviour in the core of any item and nine things the branch
+made false, dead or unguarded. Each is fixed or recorded here; the guards and the planted breaks are in `TEST-LEDGER.md`, "Fix cycle 1".
+
+| Finding | What was decided or done |
+|---|---|
+| `LEGAL-CLAIMS.md` still described the old form and "no `signInWithOAuth`" | Updated: five rows changed and section 9 added (the date-of-birth screen, the pass note, the refusal flag, the other-ways-in sentence, the Google and Discord sentence), with file:line evidence and what is not verifiable here |
+| Privacy pages promised a policy update before a provider is switched on | **Decision (owner):** replace the promise with a plain description that is true whether or not a provider is on (12.1); the restated site tests hold the link (only gated call sites; the gate is the project's `external.<provider> === true`) |
+| "Google and Discord already require 13+" | Removed from both pages: external, unsourced, and Google offers supervised under-13 accounts. **Open (owner, N2):** whether provider sign-ups should be asked the date (12.2) |
+| Pieces entry point in production | **Decision (owner):** not shown at all until M5 (12.5). Production-bundle proof kept and extended |
+| Duplicate frames after a reconnect | Fixed at the hook (`appendFrame`) and in the strip (12.4) |
+| Restore button's click unguarded | The test presses the real button of an expanded row; planted `onClick={() => {}}`, no `onClick` and a wrong checkpoint each go red |
+| Offer to the latest turn only unguarded | A syntax-tree test on `workspace.tsx` (12.4) |
+| Roblox button wiring through `AlternativeSignIn` unguarded | The status hook's answer and the return path are run; planted `robloxConfigured={false}` and `from="/"` go red |
+| Referral-credit scan missed ordinary phrasings | A sentence-level pair scan (an invite word and a credit word within one sentence, either order); the four missed sentences and six more are in the must-fire list; the whole app and site read clean |
+| Restated privacy test promised "re-aimed in the same change" | Replaced by the property it can hold (above) and the reason |
+| Enlarge dialog's Earlier/Later unstyled, disabled invisible, no ring | Workspace outline button plus the strip's own disabled and focus rules (12.4); measured in the browser: 72x36, disabled quiet, ring 2px |
+| Strip's empty state stale and not actionable | 12.4 |
+| Day and year fields delete non-ASCII digits | 12.2; checked against `Intl` for every numbering system |
+| Focus and announcement after the refusal | 12.2 |
+| "Copy invite link" reads as a project invite | 12.8 |
+| Settings search counts hidden rows | `foundLine` takes the page's own total |
+| Strip's sentence under a finished turn (minor) | 12.4 |
+| Avatar astral-letter test (minor) | Asserts the letter itself; planted `split('')` goes red |
+| `usePieces` loaded gate and unmount guard (minor) | Run through the harness; three planted breaks go red |
+| Ledger missing the design-test edit (minor) | Recorded in `TEST-LEDGER.md` |
+| Roblox link borderless beside Google and Discord (minor) | The anchor carries the hairline and the 20px line; measured 1px solid, 46px, all three |
+| Checkpoint heading shows a time with no date (minor) | `clockOrDate`: time alone for today, the date with it otherwise, in the person's zone |
+| Month cut off at 320px (minor) | A floor for the month column below 400px and a stack below 300px; measured at 320, 340, 360, 390 and 1440 |
+| OAuth buttons held after Back from a provider (minor) | `pageshow` with `persisted` releases them; run with a stand-in `window`. **Not reproduced in a real browser** (Playwright's Chromium disables the back/forward cache): the release is proved by the stand-in, not by a restored page |
+
+**A mock flag added for review, development only:** `?studio=off` (`mockStudioConnected`, `lib/mock.ts`) makes the mock app's Studio disconnected so the strip's
+"Connect Studio" lines can be photographed. It folds to nothing in production like the other mock flags (`tests/mock-mode-production.test.mjs`).
+
+**Left as it was and said so:** the glyph `arrowUpRight` in `components/icons.ts` was used by the removed workspace button and now has no caller in this app; it is a shared icon
+table entry that existed before this branch, so it was not deleted.
