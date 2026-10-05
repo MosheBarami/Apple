@@ -2083,15 +2083,23 @@ app.post('/api/projects/:id/purge', async (c) => {
   });
 });
 
-app.post('/api/projects/:id/pairing', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
-  if (!ctx) return c.json({ error: 'not found' }, 404);
-  void count(c.env, 'pairing_create');
-  const res = await pairingStub(c.env).fetch('https://do/create', {
+/**
+ * Mint a pairing code for a project and report whether it supersedes a live pairing. Shared by the user's
+ * route below and by `POST /api/admin/pairing/:id`, so the two cannot disagree about what a code carries.
+ * The caller has already proven who owns the project; this proves nothing and asks no one but the
+ * PairingDO and the session.
+ */
+async function mintPairingCode(
+  env: Env,
+  stub: DurableObjectStub,
+  who: { projectId: string; userId: string; projectName: string },
+): Promise<{ status: number; body: unknown }> {
+  const res = await pairingStub(env).fetch('https://do/create', {
     method: 'POST',
-    body: JSON.stringify({ projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name }),
+    body: JSON.stringify({ projectId: who.projectId, userId: who.userId, projectName: who.projectName }),
   });
-  if (!res.ok) return res; // the 429 for too many live codes, passed through unchanged
+  // the 429 for too many live codes, passed through unchanged
+  if (!res.ok) return { status: res.status, body: await res.json().catch(() => ({ error: 'pairing refused' })) };
   //[[ A SECOND PAIRING SUPERSEDES THE FIRST, AND THE USER IS TOLD BEFORE IT HAPPENS.
   //
   //   The session holds exactly one plugin token, so pairing again disconnects whatever was paired
@@ -2106,7 +2114,7 @@ app.post('/api/projects/:id/pairing', async (c) => {
   const dto = (await res.json()) as PairingCodeDto;
   let existingLink: StudioLinkSummary | null = null;
   try {
-    const link = await ctx.stub.fetch('https://do/studio/link');
+    const link = await stub.fetch('https://do/studio/link');
     if (link.ok) {
       const summary = (await link.json()) as StudioLinkSummary;
       if (summary.paired) existingLink = summary;
@@ -2114,7 +2122,15 @@ app.post('/api/projects/:id/pairing', async (c) => {
   } catch {
     /* the code is already minted and is what the user came for */
   }
-  return c.json({ ...dto, existingLink } satisfies PairingCodeDto);
+  return { status: 200, body: { ...dto, existingLink } satisfies PairingCodeDto };
+}
+
+app.post('/api/projects/:id/pairing', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  void count(c.env, 'pairing_create');
+  const minted = await mintPairingCode(c.env, ctx.stub, { projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name });
+  return c.json(minted.body, minted.status as 200);
 });
 
 /**
@@ -4607,6 +4623,38 @@ app.post('/api/projects/:id/bench/evaluate', async (c) => {
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const res = await ctx.stub.fetch('https://do/bench-evaluate', { method: 'POST', body: JSON.stringify(await c.req.json().catch(() => ({}))) });
   return c.json(await res.json(), res.status as 200);
+});
+
+/**
+ * Mint a Studio pairing code for the evaluation harness, with no sign-in (M3, scripts/eval).
+ *
+ * The user's route needs the owner's token and the harness must never sign in with a password, so this
+ * is the same minting behind the admin key, for one project and the one owner the caller names.
+ * What keeps it from being a way to pair a Studio to someone else's project:
+ *   - both ids must be UUIDs before any Durable Object is named;
+ *   - the SESSION is the authority on who owns the project (`/owner-check`), so the owner id never
+ *     leaves it and Supabase is not asked (this route adds no use of SUPABASE_SECRET_KEY);
+ *   - a session with a different owner is refused (403), and a session with no owner on record is
+ *     refused too (409): it would otherwise adopt whoever the caller named at the first claim.
+ * The audit row is filed before the mint, as set-plan's is, and names the owner the code is for.
+ */
+app.post('/api/admin/pairing/:id', async (c) => {
+  const projectId = c.req.param('id');
+  const body = await c.req.json<{ userId?: unknown }>().catch(() => null);
+  const userId = typeof body?.userId === 'string' ? body.userId.trim().toLowerCase() : '';
+  if (!UUID_RE.test(projectId) || !UUID_RE.test(userId)) {
+    return c.json({ error: 'a project id in the path and a userId in the body are required, both UUIDs' }, 400);
+  }
+  auditAdminAction(c, 'admin.pairing', userId);
+  const stub = sessionStub(c.env, projectId);
+  const owner = await stub.fetch('https://do/owner-check', { method: 'POST', body: JSON.stringify({ userId }) });
+  if (owner.status === 403) return c.json({ error: 'owner mismatch: that user does not own this project' }, 403);
+  if (!owner.ok) {
+    return c.json({ error: 'this project has no session with an owner on record yet; open it once in the web app, then try again' }, 409);
+  }
+  const known = (await owner.json()) as { projectName?: string };
+  const minted = await mintPairingCode(c.env, stub, { projectId, userId, projectName: known.projectName ?? '' });
+  return c.json(minted.body, minted.status as 200);
 });
 
 /** A fresh chat on a benchmark project, owner-key gated: conversation and memory gone, pairing and checkpoints kept. */
