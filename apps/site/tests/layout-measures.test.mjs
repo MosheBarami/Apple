@@ -37,15 +37,20 @@ function compareRows() {
   return rows;
 }
 
-/** The problems in a table's rows on a phone: plans side by side, a plan out of order, a cell with its own rule, buttons of different heights. */
-function phoneProblems(rows) {
+/**
+ * The problems in a table's rows on a phone: in a STACK (480 px and under) plans side by side, a plan out of order, a cell with its own rule or buttons of
+ * different heights; in a ROW (481 to 640 px, three narrow columns) a plan that is not on the same line as the others or is out of order, and the same two
+ * footer problems.
+ */
+function phoneProblems(rows, mode = 'stack') {
   const out = [];
   for (const row of rows) {
     const plans = row.cells.map((c) => c.plan).join('/');
     for (let i = 1; i < row.cells.length; i += 1) {
-      if (row.cells[i].top <= row.cells[i - 1].top) out.push(`${row.label}: ${row.cells[i].plan} is not under ${row.cells[i - 1].plan} (${plans})`);
+      if (mode === 'stack' && row.cells[i].top <= row.cells[i - 1].top) out.push(`${row.label}: ${row.cells[i].plan} is not under ${row.cells[i - 1].plan} (${plans})`);
+      if (mode === 'row' && (Math.abs(row.cells[i].top - row.cells[0].top) > 1 || row.cells[i].left <= row.cells[i - 1].left)) out.push(`${row.label}: ${row.cells[i].plan} is not beside ${row.cells[i - 1].plan} on one line (${plans})`);
     }
-    if (new Set(row.cells.map((c) => c.left)).size > 1) out.push(`${row.label}: the plans do not share a left edge`);
+    if (mode === 'stack' && new Set(row.cells.map((c) => c.left)).size > 1) out.push(`${row.label}: the plans do not share a left edge`);
     if (row.foot) {
       if (row.cells.some((c) => c.borderTop !== '0px')) out.push(`${row.label}: a plan's cell carries its own hairline`);
       const heights = row.cells.map((c) => c.btn).filter(Boolean);
@@ -77,19 +82,19 @@ test('the phone-table measure can see: three plans in two columns (the third alo
   });
 });
 
-test('/pricing at 390 and 320 px: every row of the comparison reads Free, Pro, Max one under the other; the "Get it" row has no hairlines of its own and one button size', async () => {
+test('/pricing on a phone: at 480 px and under every row of the comparison reads Free, Pro, Max one under the other, at 481 to 640 px the three plans share a line; the "Get it" row has no hairlines of its own and one button size at every width', async () => {
   const bad = [];
   let rows = 0;
   await withBrowser(async (browser, base) => {
-    for (const width of [390, 320]) {
+    for (const [width, mode] of [[390, 'stack'], [320, 'stack'], [480, 'stack'], [520, 'row'], [600, 'row']]) {
       const { page, context } = await open(browser, base, '/pricing/', width, 844);
       const measured = await page.evaluate(compareRows);
       rows += measured.length;
-      for (const p of phoneProblems(measured)) bad.push(`${width}px: ${p}`);
+      for (const p of phoneProblems(measured, mode)) bad.push(`${width}px: ${p}`);
       await context.close();
     }
   });
-  assert.ok(rows >= 2 * 10, `only ${rows} rows of the table were measured`);
+  assert.ok(rows >= 5 * 10, `only ${rows} rows of the table were measured`);
   assert.deepEqual(bad, []);
 });
 

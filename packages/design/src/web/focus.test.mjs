@@ -65,7 +65,9 @@ const isWash = (r) => r.file === WASH.file && r.selector.endsWith(WASH.selector)
 test('the walk found both apps and the rings they draw', () => {
   // RE-BASED 2026-10-05 (M2 site fix cycle 1): 148 stylesheets are read now, not 150 or more, because the docs rewrite deleted the docs picks' components
   // (each carried a <style> block that counts as a sheet). A vacuity floor (a blind walk reads a handful), not a property: every focus ring drawn is still measured.
-  assert.ok(SHEETS.length >= 120, `only ${SHEETS.length} stylesheets read; the walk has drifted`);
+  // FIX CYCLE 2 (finding 15): the floor was lowered from 150 to 120 for a count that moved by 7 (155 to 148); slack of 28 is 19 percent, so a walk blind to a whole
+  // component folder still passed. 148 are read; the floor sits a few under that, so losing 4 or more sheets fails and is re-based with its reason.
+  assert.ok(SHEETS.length >= 145, `only ${SHEETS.length} stylesheets read (148 were read when this floor was set); the walk has drifted, or sheets were deleted: re-base this with the reason`);
   assert.ok(FOCUS_RULES.length >= 100, `only ${FOCUS_RULES.length} focus rules found; the selector match has drifted`);
   for (const mode of MODES) {
     const { lookup } = world(mode);

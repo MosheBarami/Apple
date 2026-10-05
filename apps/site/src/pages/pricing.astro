@@ -673,13 +673,12 @@ const limits = [...limitFaq, sharedLimit];
   }
 
   /* THE "GET IT" BUTTONS ARE ONE SIZE: the live Start button and the two off ones ("Checkout not open" wraps onto two lines in a narrow cell) were 36px and
-     53px tall beside each other. One minimum height, centred text, and the cell's full width. */
+     53px tall beside each other. Centred text and the cell's full width here; the one minimum height that fits two lines is in the phone block below. */
   .compare tfoot td .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 52px;
   }
 
   .compare-note {
@@ -947,6 +946,10 @@ const limits = [...limitFaq, sharedLimit];
 
     .table-scroll.stack-sm table :global(th[scope='row'])::after {
       content: none;
+    }
+
+    .compare tfoot td .btn {
+      min-height: 56px;
     }
 
     .stack-sm td[data-label]::before {

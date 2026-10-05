@@ -180,7 +180,9 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
     // RE-BASED AGAIN 2026-10-05 (M2 site fix cycle 1): 150 pairs are derived now, not 151 or more, because the docs rewrite deleted the docs picks'
     // own sheets (DocsKit's keycaps and line sidebar, the folder, the terminal, the code tabs). Still a vacuity floor (a blind pairing derives a
     // handful), and every pair measured is derived from whatever the sheets say.
-    assert.ok(MEASURED[mode].length > 120, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
+    // FIX CYCLE 2 (finding 15): the floor had been lowered from 150 to 120 when the docs rewrite moved the count by 1 (151 to 150). Slack of 30 is 20 percent, so a
+    // pairing that went blind to 25 or 28 pairs (a whole component folder, a state class) still passed. 151 are derived now; the floor sits a few under that.
+    assert.ok(MEASURED[mode].length > 147, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived (151 were measured when this floor was set); the pairing is blind, or a sheet was deleted: re-base this with the reason`);
     // THE STATES AND CONTEXTS ARE READ, not just the resting rules: pairs exist for a hovered element and for one inside a context.
     assert.ok(MEASURED[mode].some((m) => m.pair.states.includes('hover')), `${mode}: no hovered pair was derived`);
     assert.ok(MEASURED[mode].some((m) => m.pair.context !== ''), `${mode}: no pair in a context (a descendant selector) was derived`);
