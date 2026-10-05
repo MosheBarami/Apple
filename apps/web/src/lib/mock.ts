@@ -61,6 +61,19 @@ export function mockEnabledProviders(): string[] {
   }
 }
 
+/**
+ * Whether the mock app's Studio is connected: yes, unless the address says `?studio=off` (development only), so the screenshots strip's
+ * "Connect Studio" lines can be reviewed. Everything else about the mock's Studio stays as it is.
+ */
+export function mockStudioConnected(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return new URLSearchParams(window.location.search).get('studio') !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Operator fixtures
 // ---------------------------------------------------------------------------

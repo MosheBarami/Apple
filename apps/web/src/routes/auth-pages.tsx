@@ -352,8 +352,9 @@ export function RobloxSignInView({ configured, from }: { configured: boolean; fr
 
 /**
  * "Continue with Google" and "Continue with Discord", one button for each provider the project says is on and none otherwise.
- * `supabase.auth.signInWithOAuth` takes the whole browser to the provider and back; nothing here needs a form, because Google
- * and Discord only make accounts for people aged 13 and over (plan section 7).
+ * `supabase.auth.signInWithOAuth` takes the whole browser to the provider and back; nothing here needs a form. A sign-up this way is not
+ * asked for a date of birth (plan section 7 relies on the provider's own age rule); the privacy pages say only that, and that the providers
+ * apply their own age rules, because what Google's and Discord's rules say is not something this app can show (DECISIONS.md 12.2).
  */
 export function OAuthButtonsView({
   providers,

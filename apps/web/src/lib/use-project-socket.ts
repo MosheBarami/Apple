@@ -43,6 +43,7 @@ import {
   mockPlaytest,
   mockQuota,
   mockSelection,
+  mockStudioConnected,
   mockStudioState,
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
@@ -455,7 +456,7 @@ export function useProjectSocket(
       setMessages(mockHistory());
       setHistoryState('ready');
       setConn('open');
-      setStudio({ connected: true, state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
+      setStudio({ connected: mockStudioConnected(), state: mockStudioState, everConnected: true, selection: mockSelection, link: NO_LINK_FACTS });
       setQuota(mockQuota);
       setLogs(mockLogs);
       return;
