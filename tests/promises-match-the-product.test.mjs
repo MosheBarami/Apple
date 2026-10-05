@@ -11,9 +11,16 @@
  *    not your turn.
  *
  * 2. The account settings offered a switch to "Contribute anonymised snippets to improve StudPilot",
- *    while both published privacy pages promise StudPilot never trains on a customer's work — the
- *    policy states outright that no opt-in programme exists. A careful reader could not reconcile
+ *    while both published privacy pages promised StudPilot never trains on a customer's work — the
+ *    policy stated outright that no opt-in programme exists. A careful reader could not reconcile
  *    them, and whichever they believed, one of the two was lying to them.
+ *
+ *    The owner removed the switch (2026-09-20) and the pages' promise stood. On 2026-10-05 the owner decided the other half
+ *    (planning/STUDPILOT-FINAL-PLAN.md section 7): StudPilot may collect ANONYMISED improvement data, as an OPT-OUT, never
+ *    including data from Roblox, an Open Cloud key, credentials or payment details, and Roblox data is never used for AI training
+ *    at all (Roblox Third-Party App Policy). Collection is NOT active. So the blanket promise is gone from the pages, and what must
+ *    hold instead is the THREE-WAY LOCK below: the published rule, the Settings control and the gate in the training pipeline say
+ *    one thing, and none of the three can move without the other two (the test fails on whichever moved).
  *
  * The rule these share: a sentence a customer can act on is a promise, and a promise with no
  * mechanism behind it is the defect — not the missing feature.
@@ -82,11 +89,11 @@ test('no plan advertises queue priority, unless the same entry retracts it', () 
   assert.deepEqual(offenders, [], `queue priority is advertised without a retraction in: ${offenders.join(', ')}`);
 });
 
-test('the app offers no training opt-in, because the privacy policy promises there is none', () => {
+test('the app offers no training opt-IN: the only control is an opt-OUT from improvement data', () => {
   const offenders = [];
   for (const f of SOURCES) {
     const body = code(f);
-    // The control, not the word: a page may DESCRIBE the promise. What must not exist is a switch.
+    // The control, not the word: a page may DESCRIBE the rule. What must not exist is a switch that opts somebody IN to training.
     if (/name=["']trainingOptIn["']/.test(body) || /id=["']training-opt-in["']/.test(body)) {
       offenders.push(f.slice(ROOT.length + 1));
     }
@@ -94,24 +101,58 @@ test('the app offers no training opt-in, because the privacy policy promises the
   assert.deepEqual(offenders, [], `a training opt-in control is back in: ${offenders.join(', ')}`);
 });
 
-test('the promise itself is still published — removing the switch must not remove the commitment', () => {
-  // The opposite failure: someone deletes the privacy copy along with the control, and the product
-  // quietly stops promising anything at all.
-  const privacy = SOURCES.filter((f) => /privacy/i.test(f));
-  assert.ok(privacy.length > 0, 'no privacy page found at all');
-  const text = privacy.map((f) => readFileSync(f, 'utf8')).join('\n');
-  assert.match(text, /train/i, 'the privacy pages no longer say anything about training');
+// -------------------------------------------------------------------------- the three-way lock ---
+
+const norm = (src) =>
+  src
+    .replace(/^---[\s\S]*?\n---/, ' ')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ');
+
+const PRIVACY = norm(readFileSync(join(ROOT, 'apps/site/src/pages/privacy.astro'), 'utf8'));
+const DOCS = norm(readFileSync(join(ROOT, 'apps/site/src/pages/docs/privacy-and-data.astro'), 'utf8'));
+const SETTINGS_SRC = readFileSync(join(ROOT, 'apps/web/src/routes/settings.tsx'), 'utf8');
+const ROW = SETTINGS_SRC.slice(SETTINGS_SRC.indexOf('<Row id="improvement-opt-out"'), SETTINGS_SRC.indexOf('</Row>', SETTINGS_SRC.indexOf('<Row id="improvement-opt-out"')));
+const WORKER_PREFS = readFileSync(join(ROOT, 'apps/worker/src/preferences.ts'), 'utf8');
+const GATE = readFileSync(join(ROOT, 'packages/training/src/consent-staging.mjs'), 'utf8');
+
+const RULE = 'never includes data from Roblox, an Open Cloud key, credentials or payment details';
+const NOT_ACTIVE = 'Collection is not active yet';
+
+test('LOCK 1 of 3, the published rule: both privacy pages state the improvement-data rule, and that Roblox data is never used for AI training', () => {
+  for (const [where, text] of [['privacy.astro', PRIVACY], ['docs/privacy-and-data.astro', DOCS]]) {
+    assert.ok(text.includes(RULE), `${where} does not state the rule: "${RULE}"`);
+    assert.match(text, /anonymised/, `${where} does not say improvement data is anonymised`);
+    assert.match(text, /opt-out/, `${where} does not say it is opt-out`);
+    assert.match(text, /Roblox data is never used for AI training/, `${where} does not say Roblox data is never used for AI training`);
+  }
 });
 
-test('the training gate is closed while the promise is published and the switch is gone', () => {
-  // THREE THINGS MUST AGREE, and this is the only place that holds them to each other:
-  //   the published promise ("never trains on your work"),
-  //   the absence of an opt-in control in the app,
-  //   and the processing gate in the training pipeline.
-  // Removing the control while leaving the gate open is exactly the regression a security review
-  // caught here on 2026-09-20: the copy said "revocable any time" and the pipeline still read
-  // profiles.training_opt_in = true as permission, so anyone opted in had no way out.
-  const gate = readFileSync(join(ROOT, 'packages/training/src/consent-staging.mjs'), 'utf8');
-  assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/,
-    'the pipeline may train on customer work again while the product promises it never will');
+test('LOCK 2 of 3, the Settings control: an opt-OUT switch in Settings > Privacy, written through the preferences layer the worker accepts, saying the same rule', () => {
+  assert.ok(ROW.length > 200, 'the improvement-data row is not in settings.tsx');
+  assert.match(ROW, /<Switch[\s\S]*?name="improvementOptOut"/, 'the control is not a switch named improvementOptOut');
+  assert.match(SETTINGS_SRC, /savePreferences\('user', userId, \{ \.\.\.base, improvement_opt_out: optOut \}\)/, 'the switch does not write improvement_opt_out at user scope');
+  assert.match(WORKER_PREFS, /'improvement_opt_out',\n\] as const;/, 'the worker would refuse the key the switch writes');
+  assert.ok(norm(ROW).includes(RULE), 'the Settings row does not say what the published pages say');
+  assert.ok(norm(ROW).includes(NOT_ACTIVE), 'the Settings row does not say collection is not active');
+});
+
+test('LOCK 3 of 3, the gate: the training pipeline refuses customer work, and the surfaces say "not active" exactly while it does', () => {
+  const closed = /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/.test(GATE);
+  const open = /export const CUSTOMER_WORK_TRAINING_ENABLED = true;/.test(GATE);
+  assert.ok(closed !== open, 'could not read the gate out of packages/training/src/consent-staging.mjs');
+  // THE THREE MOVE TOGETHER. With the gate closed every surface must say collection is not active; with it open none may.
+  // Opening the gate alone, or deleting the sentence alone, fails here. Turning collection on is a product decision that changes
+  // the pages, the Settings row (its copy and the email to account holders) and this constant in one change.
+  for (const [where, text] of [['privacy.astro', PRIVACY], ['docs/privacy-and-data.astro', DOCS], ['the Settings row', norm(ROW)]]) {
+    assert.equal(text.includes(NOT_ACTIVE), closed,
+      closed
+        ? `${where} does not say "${NOT_ACTIVE}" while the gate is closed`
+        : `${where} still says "${NOT_ACTIVE}" while the gate is OPEN: collection is on, and the email to every account holder and the policy update are owed first`);
+  }
+  assert.equal(closed, true, 'the pipeline may process customer work: the published rule says collection is not active');
 });
