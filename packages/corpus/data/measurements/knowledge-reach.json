@@ -1,0 +1,3192 @@
+{
+ "measuredAt": "2026-09-20T11:23:33.781Z",
+ "what": "RETRIEVAL ONLY: whether the right entry appears in the shortlist the model is handed. Not generation, not tool-call rate, not install correctness.",
+ "settings": {
+  "limit": 5,
+  "entryPoints": [
+   "askVerifiedModule({need})",
+   "getUIConstruction({id})"
+  ],
+  "source": "apps/worker/src bundled with the repo esbuild — the Worker's own code, not a copy"
+ },
+ "moduleCount": 80,
+ "contract": {
+  "set": "contract",
+  "n": 80,
+  "limit": 5,
+  "top1": 80,
+  "top1Pct": 100,
+  "inTop5": 80,
+  "inTop5Pct": 100,
+  "wrongAtOne": 0,
+  "emptyResult": 0,
+  "rows": [
+   {
+    "id": "purchase-transaction",
+    "query": "Write a standalone Luau module returning purchase(balance, price, owned). Both amounts must be finite nonnegative safe integers, price must be positive, and owned must be a boolean. Return the unchanged balance and false for invalid input, an already owned item, or insufficient funds; otherwise return the deducted balance and true. This is pure server-side business logic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "purchase-transaction",
+     "trade-offer-check",
+     "auction-bid",
+     "prestige-conversion",
+     "seat-assignment"
+    ],
+    "family": "economy-transaction"
+   },
+   {
+    "id": "bounded-reward",
+    "query": "Write a standalone Luau module returning award(balance, reward, cap). Accept only finite nonnegative safe integers with balance <= cap. Return nil on invalid inputs. Otherwise return balance plus reward capped at cap, without overflowing the safe-integer range in an intermediate addition. No external state or Roblox services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "bounded-reward",
+     "inventory-capacity",
+     "team-balance",
+     "damage-mitigation",
+     "seeded-shuffle"
+    ],
+    "family": "bounded-reward"
+   },
+   {
+    "id": "cooldown-clock",
+    "query": "Write a standalone Luau module returning ready(now, previous, delay). Times and delay must be finite nonnegative numbers. previous may be nil, meaning no previous use. Return false for invalid input or a clock earlier than previous. Otherwise allow use exactly when elapsed time is at least delay. Do not read a clock or mutate state.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "cooldown-clock",
+     "session-window",
+     "auction-bid",
+     "chest-respawn",
+     "finite-normalization"
+    ],
+    "family": "cooldown-clock"
+   },
+   {
+    "id": "ordered-checkpoints",
+    "query": "Write a standalone Luau module returning advance(current, touched, total). All arguments must be finite safe integers, total positive, current in 0..total and touched in 1..total. Return nil for invalid input. Advance only to the immediately next checkpoint; duplicate, earlier and skipped checkpoints leave current unchanged. Do not teleport or save anything.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ordered-checkpoints",
+     "elevator-next-floor",
+     "loot-budget",
+     "notification-queue",
+     "prestige-conversion"
+    ],
+    "family": "ordered-checkpoints"
+   },
+   {
+    "id": "inventory-capacity",
+    "query": "Write a standalone Luau module returning fit(count, incoming, capacity). All values must be finite nonnegative safe integers and count cannot exceed capacity. Invalid input returns nil. Valid input returns two numbers: the resulting count and the rejected incoming amount. Fill available capacity without losing or creating items and without unsafe intermediate addition. No mutation or external dependencies.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "inventory-capacity",
+     "stack-into-slots",
+     "trade-offer-check",
+     "ui-grid-columns",
+     "bounded-reward"
+    ],
+    "family": "inventory-capacity"
+   },
+   {
+    "id": "round-transitions",
+    "query": "Write a standalone Luau module returning transition(state, event). Valid transitions: waiting + enoughPlayers -> countdown; countdown + elapsed -> playing; countdown + tooFewPlayers -> waiting; playing + finished -> results; results + elapsed -> waiting. Any other combination of strings returns the unchanged state. Non-string arguments return nil. Do not start timers or access services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "round-transitions",
+     "auction-bid",
+     "session-window",
+     "day-night-phase",
+     "chest-respawn"
+    ],
+    "family": "round-transitions"
+   },
+   {
+    "id": "level-from-xp",
+    "query": "Write a standalone Luau module returning level(xp, step, maximum). xp is a finite nonnegative safe integer; step and maximum are finite positive safe integers. Return nil for invalid input. Every step XP adds one level starting at level 1; cap the result at maximum. Do not loop once per XP point or add beyond the safe-integer limit.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "level-from-xp",
+     "honest-percent",
+     "inventory-capacity",
+     "notification-queue",
+     "trade-offer-check"
+    ],
+    "family": "level-from-xp"
+   },
+   {
+    "id": "unlock-prerequisites",
+    "query": "Write a standalone Luau module returning unlocked(required, completed). required is an array of prerequisite string IDs and completed is a set table whose satisfied entries are exactly true. Both tables must have no metatable; otherwise return false. Every required ID must be a nonempty string mapped to true, not merely a truthy value. An empty requirement array passes. Non-table arguments fail. Inputs are trusted array/set shapes, but their values still need validation. No mutation or external services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "unlock-prerequisites",
+     "merge-settings",
+     "notification-queue",
+     "turn-rotation",
+     "dense-sample-mean"
+    ],
+    "family": "unlock-prerequisites"
+   },
+   {
+    "id": "finite-normalization",
+    "query": "Write a standalone Luau module returning fraction(value, maximum). Both arguments must be finite numbers and maximum strictly positive, otherwise return nil. Clamp the ratio to [0,1]. Negative value maps to zero and value greater than maximum maps to one. Avoid division when already at or beyond either bound. Do not mutate GUI objects.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "finite-normalization",
+     "honest-percent",
+     "snap-slider-value",
+     "prestige-conversion",
+     "zoom-notches"
+    ],
+    "family": "finite-normalization"
+   },
+   {
+    "id": "stable-leaderboard",
+    "query": "Write a standalone Luau module returning rank(rows). Input is a trusted array of records {userId = string, score = finite number}. Return a new array of fresh records ordered by descending score, then lexicographically ascending userId for ties. Preserve the original array and records, drop all fields other than userId and score, and use no services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stable-leaderboard",
+     "leaderboard-insert",
+     "sort-inventory-rows",
+     "due-respawns",
+     "compact-under-ceiling"
+    ],
+    "family": "stable-leaderboard"
+   },
+   {
+    "id": "weighted-selection",
+    "query": "Write a standalone Luau module returning pick(weights, ticket). weights must be a plain nonempty array of finite nonnegative numbers whose accumulated total stays finite and positive, and ticket must be finite in the half-open range [0, total). Return the 1-based index selected by cumulative weights, or nil for invalid input or a non-finite total. Do not mutate the array, use randomness, or access Roblox services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "weighted-selection",
+     "session-window",
+     "route-cost",
+     "dense-sample-mean",
+     "seeded-shuffle"
+    ],
+    "family": "weighted-selection"
+   },
+   {
+    "id": "interval-overlap",
+    "query": "Write a standalone Luau module returning overlap(aStart, aFinish, bStart, bFinish). All four endpoints must be finite numbers with each start no greater than its finish. Return the length of the intersection, including zero for disjoint or merely touching intervals, and nil for invalid input. Do not use a clock or mutate state.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "interval-overlap",
+     "cooldown-clock",
+     "session-window",
+     "merge-ranges",
+     "damage-mitigation"
+    ],
+    "family": "interval-overlap"
+   },
+   {
+    "id": "merge-ranges",
+    "query": "Write a standalone Luau module returning merge(ranges). ranges must be a plain array of records {start = finite number, finish = finite number} with start no greater than finish. Return a fresh array sorted by start, merging overlapping or touching ranges; return nil for invalid input. Preserve the input records and use no services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "merge-ranges",
+     "compact-under-ceiling",
+     "interval-overlap",
+     "seeded-shuffle",
+     "weighted-selection"
+    ],
+    "family": "range-normalization"
+   },
+   {
+    "id": "dependency-order",
+    "query": "Write a standalone Luau module returning order(nodes, edges). nodes is a plain array of unique nonempty string IDs. edges is a plain array of records {before = ID, after = ID}; endpoints must be known, distinct, and not repeated. Return a deterministic topological order, choosing the lexicographically smallest currently available ID, or nil for invalid data or a cycle. Do not mutate the inputs or access services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "dependency-order",
+     "turn-rotation",
+     "notification-queue",
+     "route-cost",
+     "sort-inventory-rows"
+    ],
+    "family": "dependency-order"
+   },
+   {
+    "id": "crafting-batches",
+    "query": "Write a standalone Luau module returning craft(inventory, recipe, requested). inventory and recipe are plain maps from nonempty item IDs to finite nonnegative safe integers; recipe requirements must be positive. requested must be a finite nonnegative safe integer. Return the maximum batch count no greater than requested and a fresh remaining-inventory map, or nil for invalid input. Missing ingredients count as zero, and the input inventory must not change.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "crafting-batches",
+     "trade-offer-check",
+     "loot-budget",
+     "stack-into-slots",
+     "notification-queue"
+    ],
+    "family": "crafting-batches"
+   },
+   {
+    "id": "seeded-shuffle",
+    "query": "Write a standalone Luau module returning shuffle(items, seed). items must be a plain array with no holes, and seed must be a finite nonnegative safe integer. Return a deterministic fresh permutation using modulus 2147483647, multiplier 48271, state = seed % modulus, and a descending Fisher-Yates loop whose index is (state % i) + 1. Preserve the input and use no randomness APIs, clocks, or services. Return nil for invalid input.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "seeded-shuffle",
+     "weighted-selection",
+     "compact-under-ceiling",
+     "team-balance",
+     "crafting-batches"
+    ],
+    "family": "seeded-shuffle"
+   },
+   {
+    "id": "turn-rotation",
+    "query": "Write a standalone Luau module returning nextActor(order, current, disabled). order must be a plain array of unique nonempty actor IDs, current must be an active ID in that order, and disabled must be a plain set whose listed values are exactly true. Scan circularly after current, never return current, skip disabled actors, and return the next active ID or nil when none exists. Do not mutate inputs or access services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "turn-rotation",
+     "dependency-order",
+     "notification-queue",
+     "unlock-prerequisites",
+     "elevator-next-floor"
+    ],
+    "family": "turn-rotation"
+   },
+   {
+    "id": "damage-mitigation",
+    "query": "Write a standalone Luau module returning damage(power, armor, multiplier, minimum). All four inputs must be finite nonnegative numbers; compute power times multiplier reduced by armor using raw * 100 / (100 + armor), round to the nearest integer, and apply the minimum damage floor. Return nil for invalid input or a non-finite intermediate. Do not access engine services or mutate state.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "damage-mitigation",
+     "radial-damage-falloff",
+     "session-window",
+     "seeded-shuffle",
+     "combo-multiplier"
+    ],
+    "family": "damage-mitigation"
+   },
+   {
+    "id": "route-cost",
+    "query": "Write a standalone Luau module returning cost(path, terrainCosts). path must be a plain nonempty array of nonempty string terrain IDs, and terrainCosts must be a plain map from those IDs to finite positive numbers. Return the finite sum of each terrain cost, or nil for invalid input, an unknown terrain, or a non-finite total. Do not mutate either table or access services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "route-cost",
+     "grid-route-cost",
+     "weighted-selection",
+     "dense-sample-mean",
+     "notification-queue"
+    ],
+    "family": "route-cost"
+   },
+   {
+    "id": "team-balance",
+    "query": "Write a standalone Luau module returning chooseTeam(loads, capacity). loads must be a plain nonempty array of finite nonnegative safe integers no greater than capacity, and capacity must be a positive safe integer. Return the lowest-index team with the smallest load among teams below capacity, or nil if invalid or all teams are full. Do not mutate the array or use services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "team-balance",
+     "crafting-batches",
+     "inventory-capacity",
+     "loot-budget",
+     "notification-queue"
+    ],
+    "family": "team-balance"
+   },
+   {
+    "id": "fit-ui-aspect",
+    "query": "Write a standalone Luau module returning fit(contentWidth, contentHeight, boxWidth, boxHeight). Each input must be a finite number in [1,1000000]. Return width, height for the largest aspect-preserving fit inside the box; upscaling is allowed. Return nil for invalid input. No Roblox services or state.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "fit-ui-aspect",
+     "anchor-inside-bounds",
+     "distribute-column-widths",
+     "ui-grid-columns",
+     "compact-under-ceiling"
+    ],
+    "family": "ui-aspect-fitting"
+   },
+   {
+    "id": "visible-ui-rows",
+    "query": "Write a standalone Luau module returning visible(count, rowHeight, scroll, viewportHeight). count is an integer in [0,1000000], rowHeight is in (0,1000000], scroll and viewportHeight are in [0,1000000], all finite numbers. Rows have no spacing, are indexed from 1, and intersect the half-open viewport [scroll, scroll + viewportHeight). Return the first and last intersecting row indices, or nil if none or input is invalid. Do not clamp scroll back into content.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "visible-ui-rows",
+     "session-window",
+     "scrollbar-thumb",
+     "sort-inventory-rows",
+     "stack-into-slots"
+    ],
+    "family": "ui-viewport-window"
+   },
+   {
+    "id": "ui-grid-columns",
+    "query": "Write a standalone Luau module returning columns(width, minimumCellWidth, gap, limit). width and gap are finite numbers in [0,1000000], minimumCellWidth is finite in (0,1000000], and limit is an integer in [1,10000]. Return the largest number of cells that fits the width with gaps only BETWEEN cells, capped by limit; return 0 if even one cell cannot fit, or nil on invalid input. Do not force a cell wider than the available width.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ui-grid-columns",
+     "distribute-column-widths",
+     "fit-ui-aspect",
+     "grid-cell-position",
+     "visible-ui-rows"
+    ],
+    "family": "ui-grid-capacity"
+   },
+   {
+    "id": "escape-ui-richtext",
+    "query": "Write a standalone Luau module returning escape(text). For a string of at most 4096 bytes, return a new string escaping ampersand, less-than, greater-than, double quote and apostrophe as &amp; &lt; &gt; &quot; &apos; respectively. Preserve all other bytes, including UTF-8 and newlines. Escape original characters exactly once (existing entity syntax is ordinary input and its ampersand must be escaped). Return nil for nonstrings or oversized input.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "escape-ui-richtext",
+     "truncate-display-name",
+     "wrap-label-text",
+     "interval-overlap",
+     "radial-damage-falloff"
+    ],
+    "family": "ui-richtext-escaping"
+   },
+   {
+    "id": "session-window",
+    "query": "Write a standalone Luau module returning active(now, startsAt, duration). All inputs must be finite nonnegative numbers and duration must be positive; fractional values are valid. Return nil for invalid input or a non-finite finish. Otherwise return whether now lies in the half-open interval [startsAt, startsAt + duration). Do not read a clock, mutate state, or access Roblox services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "session-window",
+     "cooldown-clock",
+     "meter-band",
+     "damage-mitigation",
+     "compact-under-ceiling"
+    ],
+    "family": "half-open-time-window"
+   },
+   {
+    "id": "dense-sample-mean",
+    "query": "Write a standalone Luau module returning mean(samples). samples must be a plain nonempty dense array with no metatable or extra keys. Every element must be a finite number; negative and fractional values are valid, and the running total must remain finite. Return the arithmetic mean or nil for invalid input. Do not mutate the array or use services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "dense-sample-mean",
+     "compact-under-ceiling",
+     "notification-queue",
+     "weighted-selection",
+     "meter-band"
+    ],
+    "family": "dense-sample-mean"
+   },
+   {
+    "id": "meter-band",
+    "query": "Write a standalone Luau module returning band(value, low, high). All inputs must be finite numbers and low must be strictly less than high; fractional and negative values are valid. Return \"low\" when value < low, \"middle\" when low <= value < high, and \"high\" when value >= high. Return nil for invalid input. Do not mutate state or access services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "meter-band",
+     "compact-under-ceiling",
+     "session-window",
+     "cooldown-clock",
+     "damage-mitigation"
+    ],
+    "family": "fractional-band-classification"
+   },
+   {
+    "id": "compact-under-ceiling",
+    "query": "Write a standalone Luau module returning compact(values, ceiling). values must be a plain dense array with no metatable or extra keys, and every value and ceiling must be a finite nonnegative number; fractional values are valid. Return a fresh array preserving the order of values less than or equal to ceiling. Return nil for invalid input, and an empty array when no value qualifies. Do not mutate the input or use services.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "compact-under-ceiling",
+     "dense-sample-mean",
+     "meter-band",
+     "notification-queue",
+     "deep-table-equality"
+    ],
+    "family": "dense-filter-preservation"
+   },
+   {
+    "id": "radial-damage-falloff",
+    "query": "Write a standalone Luau module returning falloff(power, distance, innerRadius, outerRadius). All four arguments must be finite numbers, power, distance and innerRadius nonnegative, and outerRadius strictly greater than innerRadius; anything else returns nil. Inside innerRadius return the full power, at or beyond outerRadius return 0, and between them interpolate linearly on power * (outerRadius - distance) / (outerRadius - innerRadius). This is pure blast arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "radial-damage-falloff",
+     "anchor-inside-bounds",
+     "smoothstep-between",
+     "speed-audit",
+     "zoom-notches"
+    ],
+    "family": "damage-falloff"
+   },
+   {
+    "id": "due-respawns",
+    "query": "Write a standalone Luau module returning due(queue, now). queue must be a plain array of plain records {userId = nonempty string, readyAt = finite number} with unique userIds, and now must be a finite number; anything else returns nil. Return two fresh arrays: the userIds whose readyAt is at or before now ordered by ascending readyAt then ascending userId, and fresh copies of the still-waiting records in their original order. The input queue and its records must not change. This is pure queue arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "due-respawns",
+     "leaderboard-insert",
+     "loot-budget",
+     "notification-queue",
+     "buff-stacks"
+    ],
+    "family": "respawn-queue"
+   },
+   {
+    "id": "rating-bracket",
+    "query": "Write a standalone Luau module returning bracket(rating, floorRating, width, count). rating and floorRating must be finite numbers, width a finite positive number, and count a finite positive safe integer; anything else returns nil. A rating at or below floorRating is bracket 1, otherwise the bracket is math.floor((rating - floorRating) / width) + 1 clamped upward to count. This is pure bracket arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "rating-bracket",
+     "distribute-column-widths",
+     "honest-percent",
+     "progress-segments",
+     "zoom-notches"
+    ],
+    "family": "matchmaking-brackets"
+   },
+   {
+    "id": "loot-budget",
+    "query": "Write a standalone Luau module returning allocate(entries, budget). entries must be a plain array of plain records {id = nonempty unique string, cost = positive safe integer, maximum = positive safe integer} and budget a finite nonnegative safe integer; anything else returns nil. Walk the entries in order taking as many of each as the remaining budget allows up to its maximum, and return a fresh array of {id, count} records for the entries with a nonzero count plus the unspent budget. The input must not change. This is pure allocation arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "loot-budget",
+     "stack-into-slots",
+     "leaderboard-insert",
+     "buff-stacks",
+     "due-respawns"
+    ],
+    "family": "loot-budget-allocation"
+   },
+   {
+    "id": "stamina-regen",
+    "query": "Write a standalone Luau module returning regenerate(current, maximum, idle, rate, delay). All five arguments must be finite numbers with maximum positive, current in [0, maximum], idle nonnegative, rate positive and delay nonnegative; anything else returns nil. Only the idle time beyond delay regenerates, at rate per second, and the result is capped at maximum; a non-finite intermediate saturates to maximum. This is pure stamina arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stamina-regen",
+     "combo-multiplier",
+     "token-bucket-spend",
+     "hunger-drain",
+     "radial-damage-falloff"
+    ],
+    "family": "stamina-regeneration"
+   },
+   {
+    "id": "hunger-drain",
+    "query": "Write a standalone Luau module returning decay(level, rate, elapsed). All three arguments must be finite numbers with level nonnegative, rate positive and elapsed nonnegative; anything else returns nil. Return two values: the level remaining after draining rate per second for elapsed seconds, floored at zero, and the number of seconds spent at zero during that interval. A non-finite drain empties the level for the whole interval. This is pure survival arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "hunger-drain",
+     "token-bucket-spend",
+     "combo-multiplier",
+     "day-night-phase",
+     "stamina-regen"
+    ],
+    "family": "hunger-decay"
+   },
+   {
+    "id": "prestige-conversion",
+    "query": "Write a standalone Luau module returning prestige(level, requirement, prestigeCount, maximum). All four arguments must be finite safe integers with level nonnegative, requirement positive, prestigeCount nonnegative and no greater than maximum, and maximum positive; anything else returns nil. Return the level, the prestige count and a boolean: refuse unchanged when the count is already at maximum or the level is below the requirement, otherwise spend the requirement in levels and add one prestige. This is pure progression arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "prestige-conversion",
+     "auction-bid",
+     "honest-percent",
+     "loot-budget",
+     "wave-difficulty"
+    ],
+    "family": "prestige-reset"
+   },
+   {
+    "id": "quest-step",
+    "query": "Write a standalone Luau module returning currentStep(requirements, progress). requirements must be a plain nonempty array of positive safe integers and progress a plain array of the same length holding safe integers in [0, requirement] for each index; anything else returns nil. Steps are strictly ordered, so any progress recorded on a step after the first incomplete one is inconsistent and returns nil. Return the 1-based index of the first incomplete step and the amount still needed for it, or the length plus one and zero when every step is complete. This is pure quest bookkeeping, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "quest-step",
+     "grid-route-cost",
+     "buff-stacks",
+     "leaderboard-insert",
+     "loot-budget"
+    ],
+    "family": "quest-step-gating"
+   },
+   {
+    "id": "ability-charges",
+    "query": "Write a standalone Luau module returning recharge(stored, maximum, elapsed, rechargeTime). stored and maximum must be finite safe integers with stored in [0, maximum] and maximum positive, elapsed a finite nonnegative number, and rechargeTime a finite positive number; anything else returns nil. Return the new charge count and the elapsed time carried into the next charge, which is zero whenever the count reaches maximum. This is pure charge arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ability-charges",
+     "stack-into-slots",
+     "chest-respawn",
+     "zoom-notches",
+     "auction-bid"
+    ],
+    "family": "ability-charges"
+   },
+   {
+    "id": "projectile-lead",
+    "query": "Write a standalone Luau module returning intercept(dx, dy, vx, vy, speed). All five arguments must be finite numbers and speed positive; anything else returns nil. The target sits at offset (dx, dy) moving at constant velocity (vx, vy) and the projectile leaves the origin at the given speed, so solve for the smallest strictly positive time t where the target distance equals speed * t, treating an offset of zero as t = 0. Return that time, or nil when no positive solution exists. This is pure lead arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "projectile-lead",
+     "speed-audit",
+     "scrollbar-thumb",
+     "leaderboard-insert",
+     "radial-damage-falloff"
+    ],
+    "family": "projectile-intercept"
+   },
+   {
+    "id": "grid-snap",
+    "query": "Write a standalone Luau module returning snap(x, z, origin, size). All four arguments must be finite numbers and size positive; anything else returns nil, as does a non-finite snapped coordinate. Snap each axis to the nearest grid node with origin + math.floor((axis - origin) / size + 0.5) * size, so a value exactly halfway rounds upward. Return the two snapped coordinates. This is pure placement arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "grid-snap",
+     "snap-slider-value",
+     "grid-route-cost",
+     "tooltip-placement",
+     "hunger-drain"
+    ],
+    "family": "grid-snapping"
+   },
+   {
+    "id": "grid-route-cost",
+    "query": "Write a standalone Luau module returning cheapest(grid, startRow, startColumn, goalRow, goalColumn). grid must be a plain nonempty array of plain equal-length nonempty rows whose cells are either false for blocked or a finite positive entry cost, and the four coordinates must be safe integers inside the grid naming unblocked cells; anything else returns nil. Moving is four-directional and each move pays the entry cost of the cell moved into, so return the minimum total cost from start to goal, zero when they are the same cell, or nil when the goal is unreachable. This is pure grid arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "grid-cell-position",
+     "leaderboard-insert",
+     "loot-budget",
+     "notification-queue"
+    ],
+    "family": "grid-path-search"
+   },
+   {
+    "id": "stack-into-slots",
+    "query": "Write a standalone Luau module returning store(existing, incoming, maxStack, slots). existing must be a plain array of safe integers in [1, maxStack], incoming a finite nonnegative safe integer, and maxStack and slots finite positive safe integers with slots no smaller than the existing stack count; anything else returns nil. Top up the existing stacks in order first, then open new stacks while free slots remain, and return a fresh array of the resulting stack counts plus the amount that did not fit. The input array must not change. This is pure inventory arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stack-into-slots",
+     "buff-stacks",
+     "loot-budget",
+     "auction-bid",
+     "leaderboard-insert"
+    ],
+    "family": "inventory-stacking"
+   },
+   {
+    "id": "trade-offer-check",
+    "query": "Write a standalone Luau module returning check(offer, request, ownedByOffer, ownedByRequest, maxItems). offer and request must be plain maps from nonempty item names to positive safe integers, the two owned maps the same shape with nonnegative counts, and maxItems a positive safe integer. Return false plus a reason string, or true plus nil. Reasons are checked in this order: \"invalid-input\", \"empty-side\" when either side lists nothing, \"too-many-items\" when either side lists more than maxItems entries, \"duplicate-item\" when an item appears on both sides, and \"insufficient-stock\" when a side does not own everything it offers. This is pure trade validation, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "trade-offer-check",
+     "seat-assignment",
+     "grid-route-cost",
+     "notification-queue",
+     "purchase-transaction"
+    ],
+    "family": "trade-validation"
+   },
+   {
+    "id": "auction-bid",
+    "query": "Write a standalone Luau module returning bid(highBid, highBidder, amount, bidder, increment, now, endsAt, antiSnipe). highBid must be a nonnegative safe integer, amount and increment positive safe integers, now, endsAt and antiSnipe finite numbers with antiSnipe nonnegative, bidder a nonempty string, and highBidder nil exactly when highBid is zero and a nonempty string otherwise; anything else returns nil. Return accepted plus the resulting high bid, high bidder and deadline. Refuse unchanged when now is at or past endsAt, when the bidder already leads, or when amount is below highBid plus increment; otherwise accept and push the deadline to now plus antiSnipe whenever less than antiSnipe remained. This is pure auction arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "auction-bid",
+     "prestige-conversion",
+     "leaderboard-insert",
+     "stack-into-slots",
+     "ability-charges"
+    ],
+    "family": "auction-bidding"
+   },
+   {
+    "id": "token-bucket-spend",
+    "query": "Write a standalone Luau module returning spend(tokens, capacity, refillPerSecond, elapsed, cost). All five arguments must be finite numbers with capacity positive, tokens in [0, capacity], refillPerSecond positive, elapsed nonnegative and cost positive; anything else returns nil. Refill by refillPerSecond times elapsed capped at capacity, then return whether the cost fits and the tokens remaining afterwards, leaving the refilled balance untouched on refusal. This is pure rate-limit arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "token-bucket-spend",
+     "hunger-drain",
+     "stamina-regen",
+     "combo-multiplier",
+     "loot-budget"
+    ],
+    "family": "token-bucket"
+   },
+   {
+    "id": "speed-audit",
+    "query": "Write a standalone Luau module returning audit(distance, elapsed, maxSpeed, tolerance, grace). All five arguments must be finite numbers with distance nonnegative, elapsed positive, maxSpeed positive, tolerance at least 1 and grace nonnegative; anything else returns nil. Return whether the movement is suspicious and the measured speed, flagging only a distance strictly greater than maxSpeed * tolerance * elapsed + grace and never flagging when that allowance is not finite. This is pure movement auditing, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "speed-audit",
+     "radial-damage-falloff",
+     "projectile-lead",
+     "scrollbar-thumb",
+     "zoom-notches"
+    ],
+    "family": "movement-speed-audit"
+   },
+   {
+    "id": "seat-assignment",
+    "query": "Write a standalone Luau module returning sit(seats, userId, preferred). seats must be a plain nonempty array whose entries are either false for empty or a nonempty unique occupant string, userId a nonempty string, and preferred either nil or a safe integer seat index inside the array; anything else returns nil, as does an already seated user or a full vehicle. Take the preferred seat when it is free, otherwise the lowest-index free seat, and return the chosen index plus a fresh seats array with the user placed. The input array must not change. This is pure seating logic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "seat-assignment",
+     "leaderboard-insert",
+     "buff-stacks",
+     "grid-route-cost",
+     "loot-budget"
+    ],
+    "family": "vehicle-seating"
+   },
+   {
+    "id": "elevator-next-floor",
+    "query": "Write a standalone Luau module returning nextFloor(current, direction, requests, topFloor). current and topFloor must be safe integers with topFloor positive and current in [1, topFloor], direction exactly \"up\", \"down\" or \"idle\", and requests a plain array of unique safe integer floors inside [1, topFloor]; anything else returns nil. A request for the current floor wins and reports \"idle\". Otherwise keep going the current way to the nearest request in that direction and only reverse when none remains, with \"idle\" preferring upward, returning the floor and the direction travelled, or nil when nothing is requested. This is pure dispatch logic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "elevator-next-floor",
+     "seat-assignment",
+     "quest-step",
+     "distribute-column-widths",
+     "grid-route-cost"
+    ],
+    "family": "elevator-dispatch"
+   },
+   {
+    "id": "day-night-phase",
+    "query": "Write a standalone Luau module returning phase(elapsed, dayLength, nightLength). All three arguments must be finite numbers with elapsed nonnegative and both lengths positive, and the combined cycle must stay finite; anything else returns nil. Day runs first, so return \"day\" and the seconds left in it while the position inside the cycle is strictly below dayLength, otherwise \"night\" and the seconds left in the cycle. This is pure cycle arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "day-night-phase",
+     "hunger-drain",
+     "tool-durability",
+     "anchor-inside-bounds",
+     "honest-percent"
+    ],
+    "family": "day-night-phase"
+   },
+   {
+    "id": "wave-difficulty",
+    "query": "Write a standalone Luau module returning wave(index, baseCount, growth, maximumCount, bossEvery). All five arguments must be finite safe integers with index at least 1, baseCount at least 1, growth nonnegative, maximumCount no smaller than baseCount and bossEvery at least 1; anything else returns nil. Return the enemy count, which is baseCount plus growth for every wave after the first, capped at maximumCount, and a boolean that is true exactly when index is a multiple of bossEvery. This is pure difficulty arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "wave-difficulty",
+     "stack-into-slots",
+     "prestige-conversion",
+     "ability-charges",
+     "auction-bid"
+    ],
+    "family": "wave-scaling"
+   },
+   {
+    "id": "combo-multiplier",
+    "query": "Write a standalone Luau module returning combo(multiplier, idle, decayPerSecond, step, maximum). All five arguments must be finite numbers with maximum at least 1, multiplier in [1, maximum], idle nonnegative, decayPerSecond nonnegative and step positive; anything else returns nil. Decay the multiplier by decayPerSecond for each idle second with a floor of 1, then add step and cap the result at maximum, treating a non-finite intermediate as the relevant bound. This is pure scoring arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "combo-multiplier",
+     "stamina-regen",
+     "hunger-drain",
+     "token-bucket-spend",
+     "wave-difficulty"
+    ],
+    "family": "combo-multiplier"
+   },
+   {
+    "id": "leaderboard-insert",
+    "query": "Write a standalone Luau module returning insert(board, userId, score, limit). board must be a plain array of at most limit plain records {userId = nonempty unique string, score = finite number} already ordered by non-increasing score, userId a nonempty string, score a finite number, and limit a positive safe integer; anything else returns nil. Return a fresh board and the new 1-based rank, or the fresh board and nil when the entry does not place. A returning user keeps their better score and never occupies two rows, and a score equal to an incumbent ranks below it. This is pure leaderboard arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "leaderboard-insert",
+     "due-respawns",
+     "seat-assignment",
+     "sort-inventory-rows",
+     "loot-budget"
+    ],
+    "family": "top-n-insertion"
+   },
+   {
+    "id": "spawn-clearance",
+    "query": "Write a standalone Luau module returning choose(spawns, occupied, minimumDistance). spawns must be a plain nonempty array and occupied a plain array of plain points {x = finite number, z = finite number}, and minimumDistance a finite nonnegative number; anything else returns nil. Return the index of the spawn whose distance to the nearest occupied point is largest with ties going to the lowest index, that clearance, and whether it is at least minimumDistance; with nothing occupied the first spawn wins and its clearance is math.huge. This is pure spacing arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "spawn-clearance",
+     "due-respawns",
+     "distribute-column-widths",
+     "chest-respawn",
+     "leaderboard-insert"
+    ],
+    "family": "spawn-spacing"
+   },
+   {
+    "id": "chest-respawn",
+    "query": "Write a standalone Luau module returning state(lootedAt, now, respawnTime). now must be a finite number and respawnTime a finite positive number; lootedAt is either nil, meaning never looted, or a finite number no later than now. Anything else returns nil. Return whether the chest is available and the seconds still to wait, which is zero whenever it is available and respawnTime minus the elapsed time otherwise, with the boundary counting as available. This is pure respawn arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "chest-respawn",
+     "ability-charges",
+     "auction-bid",
+     "due-respawns",
+     "scrollbar-thumb"
+    ],
+    "family": "chest-respawn"
+   },
+   {
+    "id": "tool-durability",
+    "query": "Write a standalone Luau module returning swing(durability, wear, swings). All three arguments must be finite safe integers with durability nonnegative, wear positive and swings nonnegative; anything else returns nil. A swing is only possible while the durability still covers the wear, so return the durability left, how many of the requested swings actually happened, and whether the tool is now spent, meaning the remainder is below wear. This is pure durability arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "tool-durability",
+     "loot-budget",
+     "day-night-phase",
+     "prestige-conversion",
+     "stack-into-slots"
+    ],
+    "family": "tool-durability"
+   },
+   {
+    "id": "buff-stacks",
+    "query": "Write a standalone Luau module returning active(buffs, now, maxStacks). buffs must be a plain array of plain records {id = nonempty string, stacks = positive safe integer, expiresAt = finite number}, now a finite number, and maxStacks a positive safe integer; anything else returns nil. Drop every buff whose expiresAt is at or before now, sum the surviving stacks per id capped at maxStacks, and return that fresh map plus the earliest surviving expiry or nil when none survives. The input must not change. This is pure buff bookkeeping, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "buff-stacks",
+     "notification-queue",
+     "due-respawns",
+     "leaderboard-insert",
+     "loot-budget"
+    ],
+    "family": "buff-stacking"
+   },
+   {
+    "id": "abbreviate-counter",
+    "query": "Write a standalone Luau module returning abbreviate(value). value must be a finite safe integer in [0, 999999999999999]; anything else returns nil. Below 1000 return the plain decimal digits. Otherwise scale by the largest of 1000 (K), 1000000 (M), 1000000000 (B) or 1000000000000 (T) that does not exceed the value, TRUNCATE towards zero to one decimal place rather than rounding, and drop a trailing \".0\": 1000 is \"1K\", 1199 is \"1.1K\", 999999 is \"999.9K\", 1000000 is \"1M\". This is pure display formatting, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "abbreviate-counter",
+     "progress-segments",
+     "snap-slider-value",
+     "honest-percent",
+     "truncate-display-name"
+    ],
+    "family": "ui-count-abbreviation"
+   },
+   {
+    "id": "format-duration",
+    "query": "Write a standalone Luau module returning formatDuration(seconds). seconds must be a finite safe integer in [0, 359999]; anything else returns nil. Under one hour return \"mm:ss\" with both fields zero-padded to two digits. From one hour return \"h:mm:ss\" with the hour unpadded and the minute and second fields zero-padded, so 3599 is \"59:59\" and 3600 is \"1:00:00\". This is pure display formatting, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "format-duration",
+     "honest-percent",
+     "abbreviate-counter",
+     "truncate-display-name",
+     "notification-queue"
+    ],
+    "family": "ui-duration-format"
+   },
+   {
+    "id": "ordinal-suffix",
+    "query": "Write a standalone Luau module returning ordinal(place). place must be a finite safe integer in [1, 999999999]; anything else returns nil. Return the digits followed by the English ordinal suffix: \"st\" for a final digit of 1, \"nd\" for 2 and \"rd\" for 3, except that any number whose last two digits are 11, 12 or 13 takes \"th\", so 11 is \"11th\", 21 is \"21st\" and 113 is \"113th\". This is pure display formatting, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ordinal-suffix",
+     "abbreviate-counter",
+     "format-duration",
+     "notification-queue",
+     "truncate-display-name"
+    ],
+    "family": "ui-ordinal-suffix"
+   },
+   {
+    "id": "truncate-display-name",
+    "query": "Write a standalone Luau module returning truncate(text, budget). text must be a string of at most 256 bytes containing only printable ASCII (space through tilde), and budget must be a finite safe integer in [4, 256]; anything else returns nil. Return text unchanged when it already fits the budget, otherwise return exactly budget characters: the first budget minus three characters followed by three dots. This is pure display formatting, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "truncate-display-name",
+     "wrap-label-text",
+     "auction-bid",
+     "honest-percent",
+     "notification-queue"
+    ],
+    "family": "ui-name-truncation"
+   },
+   {
+    "id": "wrap-label-text",
+    "query": "Write a standalone Luau module returning wrap(text, width). text must be a string of at most 512 bytes containing only printable ASCII (space through tilde), and width must be a finite safe integer in [1, 200]; anything else returns nil. Split on runs of spaces and greedily pack words into lines of at most width characters, counting the single separating space, hard-splitting any word longer than width. Return a fresh array of nonempty lines with no leading or trailing spaces; text with no words returns an empty array. This is pure layout logic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "wrap-label-text",
+     "truncate-display-name",
+     "filter-by-search",
+     "notification-queue",
+     "leaderboard-insert"
+    ],
+    "family": "ui-text-wrap"
+   },
+   {
+    "id": "paginate-list",
+    "query": "Write a standalone Luau module returning page(total, pageSize, index). total must be a finite safe integer in [0, 1000000], pageSize a finite safe integer in [1, 1000000] and index a finite safe integer of at least 1; anything else returns nil. The page count is the number of whole pages needed, but never less than one, so an empty list still has a single page. Return nil for an index past the last page; otherwise return the first index, the last index and the page count, where an empty page reports first 1 and last 0. This is pure list arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "paginate-list",
+     "distribute-column-widths",
+     "auction-bid",
+     "abbreviate-counter",
+     "honest-percent"
+    ],
+    "family": "ui-pagination"
+   },
+   {
+    "id": "grid-cell-position",
+    "query": "Write a standalone Luau module returning place(index, columns). index must be a finite safe integer in [1, 1000000] and columns a finite safe integer in [1, 1000]; anything else returns nil. Treat the items as filling a grid left to right then top to bottom and return the one-based row and one-based column of the item at index, so index 1 is row 1 column 1 and index columns plus one is row 2 column 1. This is pure layout arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "grid-cell-position",
+     "distribute-column-widths",
+     "grid-route-cost",
+     "leaderboard-insert",
+     "tooltip-placement"
+    ],
+    "family": "ui-grid-placement"
+   },
+   {
+    "id": "scrollbar-thumb",
+    "query": "Write a standalone Luau module returning thumb(contentHeight, viewportHeight, scroll, trackHeight, minimumThumb). All five must be finite numbers with contentHeight, viewportHeight and trackHeight strictly positive, minimumThumb strictly positive and no larger than trackHeight, and scroll at least zero; anything else returns nil. When the viewport is at least as tall as the content return the full track height and offset zero. Otherwise scroll must not exceed contentHeight minus viewportHeight, and the thumb is the track scaled by the visible fraction but never shorter than minimumThumb, with the offset spreading the scroll across the leftover track so a full scroll puts the thumb exactly at the track end. Return the thumb size and its offset. This is pure layout arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "scrollbar-thumb",
+     "anchor-inside-bounds",
+     "distribute-column-widths",
+     "tooltip-placement",
+     "auction-bid"
+    ],
+    "family": "ui-scrollbar-thumb"
+   },
+   {
+    "id": "anchor-inside-bounds",
+    "query": "Write a standalone Luau module returning anchor(x, y, width, height, boundsWidth, boundsHeight). All six must be finite numbers and width, height, boundsWidth and boundsHeight strictly positive; anything else returns nil. Return the x and y the element must move to so it lies fully inside the bounds: push it back from the far edge before pinning it at zero, and when the element is at least as large as the bounds on an axis pin that axis at zero. This is pure layout arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "anchor-inside-bounds",
+     "tooltip-placement",
+     "scrollbar-thumb",
+     "distribute-column-widths",
+     "honest-percent"
+    ],
+    "family": "ui-edge-anchoring"
+   },
+   {
+    "id": "progress-segments",
+    "query": "Write a standalone Luau module returning segments(value, maximum, count). value and maximum must be finite numbers with maximum strictly positive, and count a finite safe integer in [1, 1000]; anything else returns nil. Return how many of the count discrete pips are filled: zero at or below zero, all of them at or above maximum, and otherwise the completed whole pips, rounding DOWN so a partly filled pip does not count. This is pure display arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "progress-segments",
+     "honest-percent",
+     "abbreviate-counter",
+     "snap-slider-value",
+     "loot-budget"
+    ],
+    "family": "ui-progress-segments"
+   },
+   {
+    "id": "honest-percent",
+    "query": "Write a standalone Luau module returning percent(value, maximum). Both must be finite numbers and maximum strictly positive; anything else returns nil. Return an integer from 0 to 100 that never lies about completion: 0 only when value is at or below zero, 100 only when value is at or above maximum, otherwise the floor of the ratio held inside 1 to 99 so that any real progress shows at least 1 and an almost complete task shows at most 99. This is pure display arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent",
+     "progress-segments",
+     "anchor-inside-bounds",
+     "zoom-notches",
+     "scrollbar-thumb"
+    ],
+    "family": "ui-percent-display"
+   },
+   {
+    "id": "remap-range",
+    "query": "Write a standalone Luau module returning remap(value, fromLow, fromHigh, toLow, toHigh). All five must be finite numbers and fromLow must differ from fromHigh; anything else returns nil. Map value linearly from the input range onto the output range, clamping the interpolation fraction to [0,1] so a value outside the input range lands exactly on the nearer output endpoint, and return nil if the result is not finite. Inverted input or output ranges are valid. This is pure arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "remap-range",
+     "snap-slider-value",
+     "smoothstep-between",
+     "radial-damage-falloff",
+     "grid-snap"
+    ],
+    "family": "ui-value-remap"
+   },
+   {
+    "id": "smoothstep-between",
+    "query": "Write a standalone Luau module returning ease(from, to, fraction). All three must be finite numbers; anything else returns nil. Clamp fraction to [0,1], apply the smoothstep curve fraction squared times three minus twice fraction, and return the interpolation between from and to at that eased position, or nil if the result is not finite. The curve is flat at both ends, so a quarter of the way through covers 15.625 percent of the distance. This is pure arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "smoothstep-between",
+     "honest-percent",
+     "radial-damage-falloff",
+     "remap-range",
+     "scrollbar-thumb"
+    ],
+    "family": "ui-eased-interpolation"
+   },
+   {
+    "id": "parse-hex-colour",
+    "query": "Write a standalone Luau module returning parse(hex). hex must be a string, case insensitive, with an optional leading hash followed by exactly three or six hexadecimal digits; anything else returns nil. Return the red, green and blue channels as integers in [0,255], expanding each shorthand digit by multiplying it by 17 so \"#f80\" is 255, 136, 0. This is pure parsing, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "parse-hex-colour",
+     "distribute-column-widths",
+     "truncate-display-name",
+     "zoom-notches",
+     "ability-charges"
+    ],
+    "family": "ui-hex-colour"
+   },
+   {
+    "id": "deep-table-equality",
+    "query": "Write a standalone Luau module returning equal(left, right). Compare plain values structurally: numbers, strings, booleans and nil compare with the equality operator, and tables compare key by key in both directions so an extra key on either side makes them unequal. Return nil, meaning the comparison cannot be trusted, when either side carries a metatable, when a value is a function, thread or userdata, or when nesting passes eight levels. NaN is never equal to itself. This is pure comparison, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "deep-table-equality",
+     "merge-settings",
+     "honest-percent",
+     "snap-slider-value",
+     "tooltip-placement"
+    ],
+    "family": "data-deep-equality"
+   },
+   {
+    "id": "merge-settings",
+    "query": "Write a standalone Luau module returning merge(defaults, overrides). Both must be plain tables with no metatable whose keys are nonempty strings and whose values are numbers, strings, booleans or nested plain tables no more than four levels deep; anything else returns nil. Return a fresh deep copy of defaults in which an override replaces a default only when it has the same type, nested tables merge recursively, and a key absent from defaults is dropped so a client cannot introduce a setting. Neither argument is mutated. This is pure data shaping, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "merge-settings",
+     "deep-table-equality",
+     "notification-queue",
+     "project-client-fields",
+     "sort-inventory-rows"
+    ],
+    "family": "ui-settings-merge"
+   },
+   {
+    "id": "validate-action-payload",
+    "query": "Write a standalone Luau module returning validate(payload). payload must be a plain table with no metatable whose only keys are action, slot, amount and an optional note. action must be one of \"equip\", \"drop\" or \"split\"; slot a finite safe integer in [1,9]; amount a finite safe integer in [1,999]; note, when present, a string of at most 64 bytes. On success return a fresh normalised record holding exactly those fields. On failure return nil and one of the reasons \"not-a-plain-table\", \"unknown-field\", \"bad-action\", \"bad-slot\", \"bad-amount\" or \"bad-note\". This is pure shape validation of an untrusted request, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "validate-action-payload",
+     "project-client-fields",
+     "notification-queue",
+     "merge-settings",
+     "trade-offer-check"
+    ],
+    "family": "contract-payload-shape"
+   },
+   {
+    "id": "filter-by-search",
+    "query": "Write a standalone Luau module returning filter(items, query). items must be a plain dense array with no metatable whose entries are nonempty strings of at most 64 bytes, and query a string of at most 64 bytes; anything else returns nil. Trim leading and trailing whitespace from the query and match it case insensitively as a LITERAL substring, never as a pattern, so a query of \".\" matches only items containing a dot. An empty or whitespace-only query keeps every item. Return a fresh array in the original order without mutating the input. This is pure list filtering, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "filter-by-search",
+     "notification-queue",
+     "sort-inventory-rows",
+     "leaderboard-insert",
+     "merge-settings"
+    ],
+    "family": "ui-search-filter"
+   },
+   {
+    "id": "sort-inventory-rows",
+    "query": "Write a standalone Luau module returning sortItems(items). items must be a plain dense array with no metatable whose entries are plain tables with no metatable holding a nonempty string id, a nonempty string name and a rarity that is one of \"common\", \"uncommon\", \"rare\", \"epic\" or \"legendary\"; anything else returns nil. Return a fresh array of fresh records ordered by rarity from legendary down to common, then by name ascending compared case insensitively, then by id ascending as a deterministic tiebreak. The input and its records are not mutated. This is pure sorting, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "sort-inventory-rows",
+     "filter-by-search",
+     "notification-queue",
+     "due-respawns",
+     "project-client-fields"
+    ],
+    "family": "data-inventory-sort-key"
+   },
+   {
+    "id": "tooltip-placement",
+    "query": "Write a standalone Luau module returning tooltip(anchorX, anchorY, tipWidth, tipHeight, screenWidth, screenHeight, gap). All seven must be finite numbers, the four sizes strictly positive and gap at least zero; anything else returns nil. Place the tip at the anchor horizontally and gap below it vertically, flipping to the left of the anchor when it would pass the right screen edge and above the anchor when the gapped tip would pass the bottom edge, then push the result back inside the screen and finally pin it at zero. Return x, y and the two flip booleans. This is pure layout arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "tooltip-placement",
+     "anchor-inside-bounds",
+     "scrollbar-thumb",
+     "zoom-notches",
+     "combo-multiplier"
+    ],
+    "family": "ui-tooltip-flip"
+   },
+   {
+    "id": "zoom-notches",
+    "query": "Write a standalone Luau module returning zoom(current, notches, minimum, maximum, factor). current, minimum, maximum and factor must be finite numbers with minimum strictly positive, maximum at least minimum, factor greater than 1 and at most 8, and current inside the closed range; notches must be a finite safe integer with magnitude at most 64; anything else returns nil. Multiply by factor once per positive notch and divide once per negative notch, then clamp into the range, returning the clamped scale and whether clamping changed it. Return nil if the unclamped scale is not finite. This is pure arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "zoom-notches",
+     "snap-slider-value",
+     "stack-into-slots",
+     "honest-percent",
+     "ability-charges"
+    ],
+    "family": "ui-zoom-step"
+   },
+   {
+    "id": "snap-slider-value",
+    "query": "Write a standalone Luau module returning snap(value, minimum, maximum, steps). value, minimum and maximum must be finite numbers with maximum strictly greater than minimum and a finite span, and steps a finite safe integer in [1, 1000000]; anything else returns nil. Divide the range into steps equal intervals and return the snapped value together with its zero-based step index, choosing the nearest boundary with an exact half rounding UP, and clamping a value outside the range to index 0 or index steps. This is pure arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "snap-slider-value",
+     "zoom-notches",
+     "remap-range",
+     "grid-snap",
+     "progress-segments"
+    ],
+    "family": "ui-slider-snap"
+   },
+   {
+    "id": "notification-queue",
+    "query": "Write a standalone Luau module returning push(queue, message, limit). queue must be a plain dense array with no metatable whose entries are nonempty strings of at most 80 bytes, message such a string, and limit a finite safe integer in [1, 64]; anything else returns nil. Return a fresh array: append message unless it repeats the current last entry, then drop entries from the front until at most limit remain, so an over-long incoming queue is trimmed too. The input array is never mutated. This is pure data shaping, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "notification-queue",
+     "filter-by-search",
+     "sort-inventory-rows",
+     "leaderboard-insert",
+     "merge-settings"
+    ],
+    "family": "ui-notification-queue"
+   },
+   {
+    "id": "project-client-fields",
+    "query": "Write a standalone Luau module returning project(record, allowed). record must be a plain table with no metatable and allowed a plain dense array with no metatable of unique nonempty string field names; anything else returns nil. Return a fresh table holding only those allowed fields that are present, plus the count of fields copied, skipping fields the record does not have. Refuse the whole projection, returning nil, when an allowed field holds a table, function, thread or userdata, because copying a reference would leak whatever it points at. This is pure outbound data shaping, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "project-client-fields",
+     "sort-inventory-rows",
+     "validate-action-payload",
+     "notification-queue",
+     "merge-settings"
+    ],
+    "family": "contract-field-projection"
+   },
+   {
+    "id": "distribute-column-widths",
+    "query": "Write a standalone Luau module returning distribute(total, weights). total must be a finite safe integer in [0, 1000000] and weights a plain dense array with no metatable of one to sixty-four finite strictly positive numbers with a finite positive sum; anything else returns nil. Return a fresh array of integer widths that sums to EXACTLY total: give each column the floor of its weighted share, then hand the remaining whole units one each to the columns with the largest fractional remainder, breaking ties by lower index. This is pure layout arithmetic, not a RemoteEvent handler or persistent save.",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "distribute-column-widths",
+     "notification-queue",
+     "grid-route-cost",
+     "loot-budget",
+     "elevator-next-floor"
+    ],
+    "family": "ui-column-widths"
+   }
+  ]
+ },
+ "customer": {
+  "set": "customer",
+  "n": 80,
+  "limit": 5,
+  "top1": 49,
+  "top1Pct": 61,
+  "inTop5": 67,
+  "inTop5Pct": 84,
+  "wrongAtOne": 31,
+  "emptyResult": 0,
+  "rows": [
+   {
+    "id": "purchase-transaction",
+    "query": "when a player buys something take the coins off them but only if they can afford it and do not already own it",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "trade-offer-check",
+     "cooldown-clock",
+     "radial-damage-falloff",
+     "truncate-display-name",
+     "deep-table-equality"
+    ],
+    "family": "economy-transaction"
+   },
+   {
+    "id": "bounded-reward",
+    "query": "give coins for a win but never go over the maximum they can hold",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "distribute-column-widths",
+     "interval-overlap",
+     "scrollbar-thumb",
+     "session-window",
+     "ability-charges"
+    ],
+    "family": "bounded-reward"
+   },
+   {
+    "id": "cooldown-clock",
+    "query": "stop the player using an ability too often",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "tool-durability",
+     "cooldown-clock",
+     "ability-charges",
+     "round-transitions",
+     "tooltip-placement"
+    ],
+    "family": "cooldown-clock"
+   },
+   {
+    "id": "ordered-checkpoints",
+    "query": "obby checkpoints have to be touched in order, do not let them skip ahead",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ordered-checkpoints",
+     "dependency-order",
+     "notification-queue",
+     "progress-segments",
+     "project-client-fields"
+    ],
+    "family": "ordered-checkpoints"
+   },
+   {
+    "id": "inventory-capacity",
+    "query": "how many more items can fit in the backpack before it is full",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "fit-ui-aspect",
+     "inventory-capacity",
+     "trade-offer-check",
+     "anchor-inside-bounds",
+     "merge-settings"
+    ],
+    "family": "inventory-capacity"
+   },
+   {
+    "id": "round-transitions",
+    "query": "manage the game states, waiting then countdown then playing then results",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "round-transitions",
+     "chest-respawn",
+     "combo-multiplier",
+     "due-respawns",
+     "stack-into-slots"
+    ],
+    "family": "round-transitions"
+   },
+   {
+    "id": "level-from-xp",
+    "query": "work out what level someone is from their experience points",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "level-from-xp",
+     "grid-route-cost",
+     "route-cost",
+     "ordered-checkpoints",
+     "project-client-fields"
+    ],
+    "family": "level-from-xp"
+   },
+   {
+    "id": "unlock-prerequisites",
+    "query": "only let them open this one if they finished the earlier ones",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent",
+     "buff-stacks",
+     "elevator-next-floor",
+     "filter-by-search",
+     "grid-route-cost"
+    ],
+    "family": "unlock-prerequisites"
+   },
+   {
+    "id": "finite-normalization",
+    "query": "turn a health value into a 0 to 1 number for the bar",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "snap-slider-value",
+     "scrollbar-thumb",
+     "remap-range",
+     "stack-into-slots",
+     "turn-rotation"
+    ],
+    "family": "finite-normalization"
+   },
+   {
+    "id": "stable-leaderboard",
+    "query": "sort players by score for the leaderboard, ties should stay in the same order",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stable-leaderboard",
+     "leaderboard-insert",
+     "sort-inventory-rows",
+     "dependency-order",
+     "ordered-checkpoints"
+    ],
+    "family": "stable-leaderboard"
+   },
+   {
+    "id": "weighted-selection",
+    "query": "pick a random prize where the rare ones come up less",
+    "rank": 3,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent",
+     "paginate-list",
+     "weighted-selection",
+     "auction-bid",
+     "compact-under-ceiling"
+    ],
+    "family": "weighted-selection"
+   },
+   {
+    "id": "interval-overlap",
+    "query": "check if two time slots clash",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "trade-offer-check",
+     "ordered-checkpoints",
+     "stack-into-slots",
+     "session-window",
+     "ability-charges"
+    ],
+    "family": "interval-overlap"
+   },
+   {
+    "id": "merge-ranges",
+    "query": "combine overlapping number ranges into one tidy list",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "merge-ranges",
+     "paginate-list",
+     "honest-percent",
+     "snap-slider-value",
+     "stack-into-slots"
+    ],
+    "family": "range-normalization"
+   },
+   {
+    "id": "dependency-order",
+    "query": "figure out what order to build things in when some need others first",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "honest-percent",
+     "ordered-checkpoints",
+     "project-client-fields",
+     "quest-step"
+    ],
+    "family": "dependency-order"
+   },
+   {
+    "id": "crafting-batches",
+    "query": "how many of this recipe can they craft with what is in their bag",
+    "rank": 3,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "inventory-capacity",
+     "stack-into-slots",
+     "crafting-batches",
+     "sort-inventory-rows",
+     "progress-segments"
+    ],
+    "family": "crafting-batches"
+   },
+   {
+    "id": "seeded-shuffle",
+    "query": "shuffle a list the same way every time from a seed",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "seeded-shuffle",
+     "level-from-xp",
+     "paginate-list",
+     "trade-offer-check",
+     "filter-by-search"
+    ],
+    "family": "seeded-shuffle"
+   },
+   {
+    "id": "turn-rotation",
+    "query": "whose turn is next, skipping anyone who left",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "turn-rotation",
+     "elevator-next-floor",
+     "buff-stacks",
+     "due-respawns",
+     "filter-by-search"
+    ],
+    "family": "turn-rotation"
+   },
+   {
+    "id": "damage-mitigation",
+    "query": "reduce incoming damage by armour but always do at least a little",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "damage-mitigation",
+     "distribute-column-widths",
+     "radial-damage-falloff",
+     "paginate-list",
+     "scrollbar-thumb"
+    ],
+    "family": "damage-mitigation"
+   },
+   {
+    "id": "route-cost",
+    "query": "add up the cost of walking a path over different ground types",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "route-cost",
+     "interval-overlap",
+     "bounded-reward",
+     "loot-budget"
+    ],
+    "family": "route-cost"
+   },
+   {
+    "id": "team-balance",
+    "query": "put a joining player on the team that has fewer people",
+    "rank": 3,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "purchase-transaction",
+     "day-night-phase",
+     "team-balance",
+     "interval-overlap",
+     "abbreviate-counter"
+    ],
+    "family": "team-balance"
+   },
+   {
+    "id": "fit-ui-aspect",
+    "query": "scale an image to fit inside a box without stretching it",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "fit-ui-aspect",
+     "anchor-inside-bounds",
+     "zoom-notches",
+     "day-night-phase",
+     "elevator-next-floor"
+    ],
+    "family": "ui-aspect-fitting"
+   },
+   {
+    "id": "visible-ui-rows",
+    "query": "which rows of a scrolling list are on screen right now",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "visible-ui-rows",
+     "sort-inventory-rows",
+     "paginate-list",
+     "chest-respawn",
+     "deep-table-equality"
+    ],
+    "family": "ui-viewport-window"
+   },
+   {
+    "id": "ui-grid-columns",
+    "query": "how many columns fit across depending on the width",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ui-grid-columns",
+     "distribute-column-widths",
+     "fit-ui-aspect",
+     "inventory-capacity",
+     "progress-segments"
+    ],
+    "family": "ui-grid-capacity"
+   },
+   {
+    "id": "escape-ui-richtext",
+    "query": "stop player typed text breaking my rich text label",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "escape-ui-richtext",
+     "wrap-label-text",
+     "truncate-display-name",
+     "abbreviate-counter",
+     "distribute-column-widths"
+    ],
+    "family": "ui-richtext-escaping"
+   },
+   {
+    "id": "session-window",
+    "query": "is the event running right now, it starts at a time and lasts a while",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "session-window",
+     "chest-respawn",
+     "round-transitions",
+     "tool-durability",
+     "ability-charges"
+    ],
+    "family": "half-open-time-window"
+   },
+   {
+    "id": "dense-sample-mean",
+    "query": "average a list of numbers safely",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "paginate-list",
+     "ability-charges",
+     "auction-bid",
+     "buff-stacks",
+     "distribute-column-widths"
+    ],
+    "family": "dense-sample-mean"
+   },
+   {
+    "id": "meter-band",
+    "query": "colour the meter green yellow or red depending on the value",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "parse-hex-colour",
+     "meter-band",
+     "ordered-checkpoints",
+     "snap-slider-value",
+     "hunger-drain"
+    ],
+    "family": "fractional-band-classification"
+   },
+   {
+    "id": "compact-under-ceiling",
+    "query": "drop anything above a limit out of a list and keep the rest in order",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "filter-by-search",
+     "grid-route-cost",
+     "leaderboard-insert",
+     "ordered-checkpoints",
+     "paginate-list"
+    ],
+    "family": "dense-filter-preservation"
+   },
+   {
+    "id": "radial-damage-falloff",
+    "query": "explosion does less damage the further away you are",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "damage-mitigation",
+     "radial-damage-falloff",
+     "compact-under-ceiling",
+     "distribute-column-widths",
+     "grid-snap"
+    ],
+    "family": "damage-falloff"
+   },
+   {
+    "id": "due-respawns",
+    "query": "which dead enemies are ready to come back now",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "auction-bid",
+     "session-window",
+     "chest-respawn",
+     "cooldown-clock",
+     "deep-table-equality"
+    ],
+    "family": "respawn-queue"
+   },
+   {
+    "id": "rating-bracket",
+    "query": "put a player into a skill bracket from their rating",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "rating-bracket",
+     "level-from-xp",
+     "stack-into-slots",
+     "visible-ui-rows",
+     "format-duration"
+    ],
+    "family": "matchmaking-brackets"
+   },
+   {
+    "id": "loot-budget",
+    "query": "share out a loot budget between the drops",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "loot-budget",
+     "grid-route-cost",
+     "route-cost",
+     "smoothstep-between",
+     "distribute-column-widths"
+    ],
+    "family": "loot-budget-allocation"
+   },
+   {
+    "id": "stamina-regen",
+    "query": "stamina should come back after they stop sprinting for a bit",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stamina-regen",
+     "anchor-inside-bounds",
+     "dependency-order",
+     "grid-route-cost",
+     "hunger-drain"
+    ],
+    "family": "stamina-regeneration"
+   },
+   {
+    "id": "hunger-drain",
+    "query": "hunger goes down over time",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "cooldown-clock",
+     "hunger-drain",
+     "interval-overlap",
+     "round-transitions",
+     "session-window"
+    ],
+    "family": "hunger-decay"
+   },
+   {
+    "id": "prestige-conversion",
+    "query": "reset them to level 1 and give a prestige star when they max out",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "prestige-conversion",
+     "grid-route-cost",
+     "level-from-xp",
+     "deep-table-equality",
+     "honest-percent"
+    ],
+    "family": "prestige-reset"
+   },
+   {
+    "id": "quest-step",
+    "query": "which step of the quest are they on based on what they have done",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "quest-step",
+     "smoothstep-between",
+     "project-client-fields",
+     "snap-slider-value",
+     "crafting-batches"
+    ],
+    "family": "quest-step-gating"
+   },
+   {
+    "id": "ability-charges",
+    "query": "the ability has 3 charges that refill one at a time",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "ability-charges",
+     "day-night-phase",
+     "honest-percent",
+     "purchase-transaction",
+     "tool-durability"
+    ],
+    "family": "ability-charges"
+   },
+   {
+    "id": "projectile-lead",
+    "query": "aim ahead of a moving target so the shot actually hits",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "projectile-lead",
+     "grid-route-cost",
+     "tool-durability"
+    ],
+    "family": "projectile-intercept"
+   },
+   {
+    "id": "grid-snap",
+    "query": "snap a placed block to the build grid",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "grid-snap",
+     "grid-cell-position",
+     "grid-route-cost",
+     "snap-slider-value",
+     "ui-grid-columns"
+    ],
+    "family": "grid-snapping"
+   },
+   {
+    "id": "grid-route-cost",
+    "query": "cheapest way across a grid of tiles from one tile to another",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "grid-cell-position",
+     "grid-snap",
+     "honest-percent",
+     "level-from-xp"
+    ],
+    "family": "grid-path-search"
+   },
+   {
+    "id": "stack-into-slots",
+    "query": "put picked up items into stacks in the inventory slots",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "stack-into-slots",
+     "inventory-capacity",
+     "sort-inventory-rows",
+     "buff-stacks",
+     "crafting-batches"
+    ],
+    "family": "inventory-stacking"
+   },
+   {
+    "id": "trade-offer-check",
+    "query": "check a trade is legit before it goes through",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "trade-offer-check",
+     "ordered-checkpoints",
+     "anchor-inside-bounds",
+     "buff-stacks",
+     "dependency-order"
+    ],
+    "family": "trade-validation"
+   },
+   {
+    "id": "auction-bid",
+    "query": "handle bidding on an auction including last second bids",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "auction-bid",
+     "chest-respawn",
+     "combo-multiplier",
+     "day-night-phase",
+     "format-duration"
+    ],
+    "family": "auction-bidding"
+   },
+   {
+    "id": "token-bucket-spend",
+    "query": "rate limit how often a player can fire a remote",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "cooldown-clock",
+     "token-bucket-spend",
+     "honest-percent",
+     "hunger-drain",
+     "progress-segments"
+    ],
+    "family": "token-bucket"
+   },
+   {
+    "id": "speed-audit",
+    "query": "detect someone moving faster than they should be",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "abbreviate-counter",
+     "auction-bid",
+     "chest-respawn",
+     "compact-under-ceiling"
+    ],
+    "family": "movement-speed-audit"
+   },
+   {
+    "id": "seat-assignment",
+    "query": "sit a player in a free seat in the car",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "seat-assignment",
+     "round-transitions",
+     "grid-cell-position",
+     "unlock-prerequisites",
+     "ability-charges"
+    ],
+    "family": "vehicle-seating"
+   },
+   {
+    "id": "elevator-next-floor",
+    "query": "which floor should the lift go to next",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "elevator-next-floor",
+     "ability-charges",
+     "chest-respawn",
+     "combo-multiplier",
+     "damage-mitigation"
+    ],
+    "family": "elevator-dispatch"
+   },
+   {
+    "id": "day-night-phase",
+    "query": "is it day or night and how far through",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "day-night-phase",
+     "anchor-inside-bounds",
+     "honest-percent",
+     "progress-segments",
+     "smoothstep-between"
+    ],
+    "family": "day-night-phase"
+   },
+   {
+    "id": "wave-difficulty",
+    "query": "each wave gets harder and every fifth one has a boss",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "wave-difficulty",
+     "honest-percent",
+     "day-night-phase",
+     "paginate-list",
+     "purchase-transaction"
+    ],
+    "family": "wave-scaling"
+   },
+   {
+    "id": "combo-multiplier",
+    "query": "combo multiplier that goes up on hits and drops if you stop",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "combo-multiplier",
+     "abbreviate-counter",
+     "anchor-inside-bounds",
+     "buff-stacks",
+     "damage-mitigation"
+    ],
+    "family": "combo-multiplier"
+   },
+   {
+    "id": "leaderboard-insert",
+    "query": "keep a top ten list of high scores",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "leaderboard-insert",
+     "paginate-list",
+     "elevator-next-floor",
+     "filter-by-search",
+     "auction-bid"
+    ],
+    "family": "top-n-insertion"
+   },
+   {
+    "id": "spawn-clearance",
+    "query": "pick a spawn point that is not too close to another player",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "spawn-clearance",
+     "chest-respawn",
+     "due-respawns",
+     "notification-queue",
+     "ordered-checkpoints"
+    ],
+    "family": "spawn-spacing"
+   },
+   {
+    "id": "chest-respawn",
+    "query": "chest refills a while after it is looted",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "chest-respawn",
+     "token-bucket-spend",
+     "ability-charges",
+     "crafting-batches",
+     "day-night-phase"
+    ],
+    "family": "chest-respawn"
+   },
+   {
+    "id": "tool-durability",
+    "query": "pickaxe wears out after so many swings",
+    "rank": 3,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "route-cost",
+     "tool-durability",
+     "anchor-inside-bounds",
+     "bounded-reward"
+    ],
+    "family": "tool-durability"
+   },
+   {
+    "id": "buff-stacks",
+    "query": "buffs that expire and only stack so many times",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "buff-stacks",
+     "stack-into-slots",
+     "stamina-regen",
+     "tool-durability",
+     "ability-charges"
+    ],
+    "family": "buff-stacking"
+   },
+   {
+    "id": "abbreviate-counter",
+    "query": "show 1500 coins as 1.5K",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent"
+    ],
+    "family": "ui-count-abbreviation"
+   },
+   {
+    "id": "format-duration",
+    "query": "show the seconds left as a timer like 1:05",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "chest-respawn",
+     "day-night-phase",
+     "stamina-regen",
+     "token-bucket-spend",
+     "ability-charges"
+    ],
+    "family": "ui-duration-format"
+   },
+   {
+    "id": "ordinal-suffix",
+    "query": "show 1st 2nd 3rd next to the place number",
+    "rank": 3,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "tooltip-placement",
+     "elevator-next-floor",
+     "ordinal-suffix",
+     "ability-charges",
+     "grid-cell-position"
+    ],
+    "family": "ui-ordinal-suffix"
+   },
+   {
+    "id": "truncate-display-name",
+    "query": "cut a long username with dots so it fits",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "truncate-display-name",
+     "notification-queue",
+     "token-bucket-spend",
+     "ui-grid-columns",
+     "wrap-label-text"
+    ],
+    "family": "ui-name-truncation"
+   },
+   {
+    "id": "wrap-label-text",
+    "query": "wrap text onto lines of a set width",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "wrap-label-text",
+     "escape-ui-richtext",
+     "distribute-column-widths",
+     "merge-settings",
+     "prestige-conversion"
+    ],
+    "family": "ui-text-wrap"
+   },
+   {
+    "id": "paginate-list",
+    "query": "split a list into pages with next and back",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "paginate-list",
+     "elevator-next-floor",
+     "stack-into-slots",
+     "ability-charges",
+     "turn-rotation"
+    ],
+    "family": "ui-pagination"
+   },
+   {
+    "id": "grid-cell-position",
+    "query": "work out the row and column for item number 14 in a grid",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "grid-route-cost",
+     "grid-cell-position",
+     "ui-grid-columns",
+     "distribute-column-widths",
+     "grid-snap"
+    ],
+    "family": "ui-grid-placement"
+   },
+   {
+    "id": "scrollbar-thumb",
+    "query": "size and position of the scrollbar handle",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "scrollbar-thumb",
+     "grid-cell-position",
+     "grid-snap",
+     "tooltip-placement",
+     "ability-charges"
+    ],
+    "family": "ui-scrollbar-thumb"
+   },
+   {
+    "id": "anchor-inside-bounds",
+    "query": "keep a popup fully on screen",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "anchor-inside-bounds",
+     "buff-stacks",
+     "elevator-next-floor",
+     "filter-by-search",
+     "leaderboard-insert"
+    ],
+    "family": "ui-edge-anchoring"
+   },
+   {
+    "id": "progress-segments",
+    "query": "a progress bar made of ten chunks, how many are lit",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "progress-segments",
+     "tool-durability",
+     "deep-table-equality",
+     "ability-charges",
+     "scrollbar-thumb"
+    ],
+    "family": "ui-progress-segments"
+   },
+   {
+    "id": "honest-percent",
+    "query": "show a percentage for the bar",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "scrollbar-thumb",
+     "honest-percent",
+     "smoothstep-between"
+    ],
+    "family": "ui-percent-display"
+   },
+   {
+    "id": "remap-range",
+    "query": "convert a number from one range to another",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent",
+     "remap-range",
+     "level-from-xp",
+     "merge-ranges",
+     "merge-settings"
+    ],
+    "family": "ui-value-remap"
+   },
+   {
+    "id": "smoothstep-between",
+    "query": "ease a value between two numbers smoothly",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "smoothstep-between",
+     "snap-slider-value",
+     "grid-snap",
+     "hunger-drain",
+     "inventory-capacity"
+    ],
+    "family": "ui-eased-interpolation"
+   },
+   {
+    "id": "parse-hex-colour",
+    "query": "turn a hex colour string into a Color3",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "parse-hex-colour",
+     "stack-into-slots",
+     "snap-slider-value",
+     "turn-rotation",
+     "wrap-label-text"
+    ],
+    "family": "ui-hex-colour"
+   },
+   {
+    "id": "deep-table-equality",
+    "query": "compare two tables to see if they are the same",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "compact-under-ceiling",
+     "deep-table-equality",
+     "grid-route-cost",
+     "merge-settings",
+     "quest-step"
+    ],
+    "family": "data-deep-equality"
+   },
+   {
+    "id": "merge-settings",
+    "query": "apply the player saved settings on top of the defaults",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "merge-settings",
+     "leaderboard-insert",
+     "abbreviate-counter",
+     "elevator-next-floor",
+     "format-duration"
+    ],
+    "family": "ui-settings-merge"
+   },
+   {
+    "id": "validate-action-payload",
+    "query": "check what the client sent me has the right shape",
+    "rank": null,
+    "top1": false,
+    "inTop": false,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "project-client-fields",
+     "merge-settings",
+     "trade-offer-check",
+     "day-night-phase",
+     "ordered-checkpoints"
+    ],
+    "family": "contract-payload-shape"
+   },
+   {
+    "id": "filter-by-search",
+    "query": "filter a list as they type in a search box",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "filter-by-search",
+     "grid-route-cost",
+     "paginate-list",
+     "compact-under-ceiling",
+     "fit-ui-aspect"
+    ],
+    "family": "ui-search-filter"
+   },
+   {
+    "id": "sort-inventory-rows",
+    "query": "sort the inventory by rarity then name",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "sort-inventory-rows",
+     "inventory-capacity",
+     "stack-into-slots",
+     "truncate-display-name",
+     "combo-multiplier"
+    ],
+    "family": "data-inventory-sort-key"
+   },
+   {
+    "id": "tooltip-placement",
+    "query": "put a tooltip next to the cursor but flip it near the edge",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "tooltip-placement",
+     "elevator-next-floor",
+     "distribute-column-widths",
+     "anchor-inside-bounds",
+     "damage-mitigation"
+    ],
+    "family": "ui-tooltip-flip"
+   },
+   {
+    "id": "zoom-notches",
+    "query": "zoom in and out by steps with the scroll wheel",
+    "rank": 2,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "scrollbar-thumb",
+     "zoom-notches",
+     "grid-route-cost",
+     "route-cost",
+     "snap-slider-value"
+    ],
+    "family": "ui-zoom-step"
+   },
+   {
+    "id": "snap-slider-value",
+    "query": "make a slider snap to steps",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "snap-slider-value",
+     "grid-snap",
+     "combo-multiplier",
+     "level-from-xp",
+     "quest-step"
+    ],
+    "family": "ui-slider-snap"
+   },
+   {
+    "id": "notification-queue",
+    "query": "show notifications one after another and only keep the last few",
+    "rank": 4,
+    "top1": false,
+    "inTop": true,
+    "wrongAtOne": true,
+    "emptyResult": false,
+    "returned": [
+     "honest-percent",
+     "elevator-next-floor",
+     "filter-by-search",
+     "notification-queue",
+     "quest-step"
+    ],
+    "family": "ui-notification-queue"
+   },
+   {
+    "id": "project-client-fields",
+    "query": "only send the fields the client is allowed to see",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "project-client-fields",
+     "seeded-shuffle",
+     "merge-settings",
+     "speed-audit",
+     "validate-action-payload"
+    ],
+    "family": "contract-field-projection"
+   },
+   {
+    "id": "distribute-column-widths",
+    "query": "split a row width between columns by weight",
+    "rank": 1,
+    "top1": true,
+    "inTop": true,
+    "wrongAtOne": false,
+    "emptyResult": false,
+    "returned": [
+     "distribute-column-widths",
+     "ui-grid-columns",
+     "smoothstep-between",
+     "sort-inventory-rows",
+     "visible-ui-rows"
+    ],
+    "family": "ui-column-widths"
+   }
+  ]
+ },
+ "uiConstruction": {
+  "n": 53,
+  "found": 18,
+  "missed": [
+   "tower_defense",
+   "fps_arena",
+   "anime_battle",
+   "pet_simulator",
+   "tower defense",
+   "pet simulator",
+   "shooter",
+   "battle royale",
+   "clicker",
+   "idle",
+   "sandbox",
+   "story game",
+   "minigame",
+   "fighting",
+   "sports",
+   "fishing",
+   "farming",
+   "escape room",
+   "parkour",
+   "rpg",
+   "open world",
+   "card game",
+   "tower_defence",
+   "quest log",
+   "daily rewards",
+   "battle pass",
+   "trading",
+   "crafting",
+   "skill tree",
+   "main menu",
+   "pause menu",
+   "loading screen",
+   "death screen",
+   "chat",
+   "friends list"
+  ],
+  "rows": [
+   {
+    "query": "shop",
+    "found": true,
+    "id": "screen-shop",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "inventory",
+    "found": true,
+    "id": "screen-inventory",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "leaderboard",
+    "found": true,
+    "id": "screen-leaderboard",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "settings",
+    "found": true,
+    "id": "screen-settings",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "hud",
+    "found": true,
+    "id": "screen-hud",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "rewards",
+    "found": true,
+    "id": "screen-rewards",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "codes",
+    "found": true,
+    "id": "screen-codes",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "progress",
+    "found": true,
+    "id": "screen-progress",
+    "kind": "screen",
+    "incomplete": false
+   },
+   {
+    "query": "obby",
+    "found": true,
+    "id": "obby",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "tycoon",
+    "found": true,
+    "id": "tycoon",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "simulator",
+    "found": true,
+    "id": "simulator",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "racing",
+    "found": true,
+    "id": "racing",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "horror",
+    "found": true,
+    "id": "horror",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "roleplay",
+    "found": true,
+    "id": "roleplay",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "survival",
+    "found": true,
+    "id": "survival",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "tower_defense",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "fps_arena",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "anime_battle",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "pet_simulator",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "studio",
+    "found": true,
+    "id": "studio",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "web-landing",
+    "found": true,
+    "id": "web-landing",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "tower defense",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "pet simulator",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "fps",
+    "found": true,
+    "id": "fps_arena",
+    "kind": "genre",
+    "incomplete": false
+   },
+   {
+    "query": "shooter",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "battle royale",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "clicker",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "idle",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "sandbox",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "story game",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "minigame",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "fighting",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "sports",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "fishing",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "farming",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "escape room",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "parkour",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "rpg",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "open world",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "card game",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "tower_defence",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "quest log",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "daily rewards",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "battle pass",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "trading",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "crafting",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "skill tree",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "main menu",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "pause menu",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "loading screen",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "death screen",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "chat",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   },
+   {
+    "query": "friends list",
+    "found": false,
+    "id": null,
+    "kind": null,
+    "incomplete": null
+   }
+  ],
+  "coverage": {
+   "genres": [
+    "anime_battle",
+    "fps_arena",
+    "horror",
+    "obby",
+    "pet_simulator",
+    "racing",
+    "roleplay",
+    "simulator",
+    "studio",
+    "survival",
+    "tower_defense",
+    "tycoon",
+    "web-landing"
+   ],
+   "screens": [
+    "screen-codes",
+    "screen-hud",
+    "screen-inventory",
+    "screen-leaderboard",
+    "screen-progress",
+    "screen-rewards",
+    "screen-settings",
+    "screen-shop"
+   ]
+  }
+ }
+}

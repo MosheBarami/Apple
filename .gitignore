@@ -125,6 +125,8 @@ packages/corpus/raw/*
 # arithmetic check while reporting green — a guard that passes by not finding its evidence.
 # It is 1.1 MB, and it is re-derivable only by re-reading 1,022 repositories over the network.
 !packages/corpus/data/ui-assets-github-v1.json
+# Recorded measurements (moved from packages/training in M4 stage 2): records, not cache.
+!packages/corpus/data/measurements/
 packages/evals/results/raw/
 
 # THE HARVESTED ROBLOXQA ROWS: derived, third-party, and 4.8 MB. The EVIDENCE about them is not.
