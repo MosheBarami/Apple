@@ -34,7 +34,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { colourOf, contrast, contrastRgb, expandVars, rgbOfHex, splitTop, surfacesOf, theme, themeBlocks } from '@studpilot/design/css-tokens';
+import { blend, colourOf, contrast, contrastRgb, expandVars, rgbOfHex, splitTop, surfacesOf, theme, themeBlocks } from '@studpilot/design/css-tokens';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -135,6 +135,25 @@ function fillPairs(uses, mode) {
   return out;
 }
 
+/** Every `::selection` rule of the site: selected text is drawn on a translucent background over whatever surface it sits on. */
+const SELECTION = RULES.filter((r) => splitTop(r.selector).some((p) => /::(?:-moz-)?selection/.test(p)));
+
+/** The ratios of one selection rule's text on its background over each surface: [{ surface, ratio }], or { missing } when it sets no pair. */
+function selectionRatios(rule, mode) {
+  const t = THEMES[mode];
+  const lookup = lookupOf(mode);
+  const bg = declOf(rule.body, 'background') ?? declOf(rule.body, 'background-color');
+  const fg = declOf(rule.body, 'color');
+  if (!bg || !fg) return { missing: `${rule.selector} sets ${bg ? '' : 'no background'}${!bg && !fg ? ' and ' : ''}${fg ? '' : 'no colour'}` };
+  const [bgC, fgC] = [bg, fg].map((v) => { const text = expandVars(v, lookup); return text && colourOf(text); });
+  if (!bgC || !fgC) return { missing: `${rule.selector}: "${bg}" or "${fg}" does not resolve to a colour` };
+  return SURFACES.map((surface) => {
+    const under = rgbOfHex(t.resolve(surface));
+    const painted = blend(under, bgC);
+    return { surface, ratio: contrastRgb(blend(painted, fgC), painted) };
+  });
+}
+
 test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(STYLES.length >= 8, `only ${STYLES.length} style sources read — the walk has drifted`);
   // 4, not 5: --autonomous-ink left with the landing's Autonomous toggle (V3 gate G01, no mode surface).
@@ -185,6 +204,17 @@ for (const [name, t] of Object.entries(THEMES)) {
     assert.deepEqual(bad, [], `${name}: text on a fill below 4.5:1:\n  ${bad.join('\n  ')}`);
   });
 
+  test(`${name}: selected text clears 4.5:1 on its selection background over every surface`, () => {
+    assert.ok(SELECTION.length >= 1, 'the site has no ::selection rule; the scan is blind or the highlight is the browser\'s own');
+    const bad = [];
+    for (const rule of SELECTION) {
+      const r = selectionRatios(rule, name);
+      if (r.missing) { bad.push(r.missing); continue; }
+      for (const { surface, ratio } of r) if (ratio < 4.5) bad.push(`${rule.selector} { ${rule.body.trim().replace(/\s+/g, ' ')} } is ${ratio.toFixed(2)}:1 over --${surface}`);
+    }
+    assert.deepEqual(bad, [], `${name}: selected text below 4.5:1:\n  ${bad.join('\n  ')}`);
+  });
+
   test(`${name}: the accent is legible as text on every surface, because links and active labels spend it`, () => {
     for (const surface of SURFACES) {
       const r = contrast(t.resolve('accent'), t.resolve(surface));
@@ -231,4 +261,16 @@ test('the guard has teeth: no token is exempt by name, a text colour with no fil
   const bad = fillPairs(uses.filter((u) => u.part === '.bad'), 'dark');
   assert.equal(bad.length, 1);
   assert.ok(bad[0].ratio < 4.5, `the fixture is not a failing fill (${bad[0].ratio})`);
+});
+
+test('the guard has teeth: the selection that shipped fails in dark, and a selection with no colour is reported', () => {
+  // The rule as it was written: the focus ring's token (the accent at 75%) behind --ink. 4.03:1 over --surface-3 in dark.
+  const shipped = rulesOf(['::selection { background: var(--accent-ring); color: var(--ink); }'])[0];
+  const dark = selectionRatios(shipped, 'dark');
+  assert.ok(Math.min(...dark.map((d) => d.ratio)) < 4.5, `the shipped selection is no longer under 4.5:1 in dark (${Math.min(...dark.map((d) => d.ratio)).toFixed(2)}); the fixture has drifted`);
+  assert.ok(Math.min(...selectionRatios(shipped, 'light').map((d) => d.ratio)) >= 4.5, 'the shipped selection was already readable in light; the fixture has drifted');
+  const fixed = rulesOf(['::selection { background: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--ink); }'])[0];
+  for (const mode of Object.keys(THEMES)) assert.ok(Math.min(...selectionRatios(fixed, mode).map((d) => d.ratio)) >= 4.5, `${mode}: a 45% accent selection behind --ink was failed`);
+  assert.ok(selectionRatios(rulesOf(['::selection { background: var(--accent-ring); }'])[0], 'dark').missing, 'a selection with no colour was not reported');
+  assert.ok(selectionRatios(rulesOf(['::selection { color: var(--ink); }'])[0], 'dark').missing, 'a selection with no background was not reported');
 });

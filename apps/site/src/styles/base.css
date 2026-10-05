@@ -74,8 +74,11 @@ svg {
   max-width: 100%;
 }
 
+/* A SELECTION IS ITS OWN COLOUR, NOT THE FOCUS RING'S. It spent --accent-ring, which review fix 3 raised to 75% so a
+   ring reaches 3:1; --ink on that was 4.03:1 over --surface-3 in dark (4.16 to 4.43 elsewhere). The accent at 45% reads
+   as a highlight and keeps --ink above 4.5:1 over all five surfaces in both themes (tests/contrast.test.mjs). */
 ::selection {
-  background: var(--accent-ring);
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--ink);
 }
 
