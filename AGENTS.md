@@ -104,8 +104,8 @@ This tree uses the right column. The cutover (handoff step 1.3) is recorded step
 | Durable Object namespaces | `apple_SessionDO` and the other `apple_*` and `golem_*` names | the `apple_*` names are unchanged (Cloudflare has no rename for them); the `golem_*` ones belong to `studpilot` now |
 | Old hosts | `apple.moshe-barami111.workers.dev` and the `golem` host | proxy API calls and 301 page loads for 90 days (the `apple` host to 2027-01-02) |
 | Supabase project | `AppleAI` (the URL never changes) | `StudPilot` (step 1.4) |
-| GitHub | `MosheBarami/Apple` | `MosheBarami/StudPilot` (step 1.4) |
-| Local folder | `~/Developer/RbxAI` | `~/Developer/StudPilot`, only after asking the owner (step 1.6) |
+| GitHub | `MosheBarami/Apple` | `MosheBarami/StudPilot` (renamed 2026-10-05; the old URL redirects) |
+| Local folder | `~/Developer/RbxAI` | `~/Developer/StudPilot` (owner decision D-6, done at the end of M1; a symlink at the old path is transitional) |
 
 The old resources are deleted 7 days after their replacement is verified by counts (handoff M1). Binding names in
 code (`CORPUS`, `KV`, `VEC`, `MEDIA` and the rest of section 4) never change; only the resources behind them do. The

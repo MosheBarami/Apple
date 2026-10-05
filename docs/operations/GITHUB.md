@@ -1,6 +1,6 @@
 # GitHub: rulesets, packages, Codespaces and the files around them
 
-Repository: `MosheBarami/Apple` (the GitHub API reports it as **public**, measured 2026-10-02; a task text
+Repository: `MosheBarami/StudPilot` (renamed from `MosheBarami/Apple` on 2026-10-05; GitHub redirects the old name) (the GitHub API reports it as **public**, measured 2026-10-02; a task text
 called it private, so confirm the visibility is what the owner intends before relying on anything below).
 Everything here is a file in git. **Nothing in this document has been applied to GitHub.** Applying is a
 separate, explicit step, and the two steps that change repository behaviour (rulesets, Actions settings)
@@ -63,12 +63,12 @@ These are repository settings, not rulesets. Each is one command and reversible:
 
 ```bash
 # Actions: read-only token by default, and Actions may not approve pull requests.
-gh api -X PUT repos/MosheBarami/Apple/actions/permissions/workflow \
+gh api -X PUT repos/MosheBarami/StudPilot/actions/permissions/workflow \
   -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
 # Delete a branch when its PR merges.
-gh api -X PATCH repos/MosheBarami/Apple -F delete_branch_on_merge=true
+gh api -X PATCH repos/MosheBarami/StudPilot -F delete_branch_on_merge=true
 # Public repository: secret scanning and push protection (free).
-gh api -X PATCH repos/MosheBarami/Apple \
+gh api -X PATCH repos/MosheBarami/StudPilot \
   -f 'security_and_analysis[secret_scanning][status]=enabled' \
   -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
 ```
