@@ -46,6 +46,21 @@ function queryFlag(): boolean {
  */
 export const MOCK_MODE: boolean = import.meta.env.DEV && (FLAG || queryFlag());
 
+/**
+ * Which sign-in providers the mock app says are switched on: none, which is what production says today
+ * (Google and Discord are off at the project). `?providers=google,discord` turns them on so the cards and
+ * buttons that wait for them can be reviewed; only these two names are ever returned.
+ */
+export function mockEnabledProviders(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const asked = (new URLSearchParams(window.location.search).get('providers') ?? '').split(',');
+    return ['google', 'discord'].filter((name) => asked.includes(name));
+  } catch {
+    return [];
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Operator fixtures
 // ---------------------------------------------------------------------------

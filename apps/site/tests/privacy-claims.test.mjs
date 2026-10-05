@@ -302,19 +302,44 @@ test('Roblox data is never used for AI training, stated on every page, and the w
 
 /* ----------------------------------------------------------------------------------- 13 and older --- */
 
-test('13 AND OLDER: no "parent\'s permission" or "age of consent", the sign-up form does not ask for a birth date, and no page claims it does', () => {
+//[[ RESTATED 2026-10-05 (M2 step 2.3, item C2). It said "no birth-date field while the form has none, and no page may claim one". The form has the
+//   field now (apps/web/src/lib/age-gate.ts; apps/web/tests/age-gate.test.mjs runs it), so the property is asked from the other side and
+//   is the same property: THE PAGES AND THE FORM AGREE. The form asks for a date of birth on email sign-up and for nothing else about age;
+//   the date is judged in the browser and never sent or stored (only a pass flag is sent, and a refusal is a flag in the browser's own
+//   storage); and both policy pages say exactly that. A page that said the date is stored or sent, or that did not mention the question,
+//   fails here. ]]
+test('13 AND OLDER: no "parent\'s permission" or "age of consent"; the sign-up form asks for a date of birth that is never sent; both pages say so', () => {
   for (const [where, text] of [...BOTH, ['/terms', TERMS]]) {
     assert.match(text, /13 (or|and) older/, `${where} does not say StudPilot is for people 13 and older`);
     assert.doesNotMatch(text, /parent|guardian|age of consent|old enough to consent|consent to online services/i, `${where} still has the old age wording`);
   }
   assert.match(PRIVACY, /under 13[\s\S]{0,200}delete/i, 'the policy does not say what happens to an account found to belong to someone under 13');
   assert.match(PRIVACY, /Roblox's sign-in service is for accounts held by people aged 13 and older/, 'the policy no longer says Roblox sign-in needs a 13+ Roblox account');
-  // THE BIRTH-DATE GATE IS A LATER LANE. While the sign-up form has no such field, no page may say it asks for one.
+
+  // THE FORM. The email sign-up form (SignupPage) asks for the date and runs the gate; the other ways in do not.
   const form = signup.slice(signup.indexOf('export function SignupPage'), signup.indexOf('export function ForgotPasswordPage'));
   assert.ok(form.length > 2000, 'could not read the sign-up form out of auth-pages.tsx: this test would check nothing');
-  const gateBuilt = /birth|date of birth|dob\b/i.test(form.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/^\s*\/\/.*$/gm, ''));
-  assert.equal(gateBuilt, false, 'the sign-up form now asks for a birth date: the pages may say so, so re-aim this test (and say it on the pages)');
-  for (const [where, text] of [...BOTH, ['/terms', TERMS]]) assert.doesNotMatch(text, /date of birth|birth ?date|birthday/i, `${where} claims a birth-date gate that sign-up does not have`);
+  const formCode = form.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(formCode, /<BirthDateField /, 'the sign-up form does not ask for a date of birth, but the pages say it does');
+  assert.match(formCode, /signupGate\(/, 'the sign-up form does not run the age gate');
+  // WHAT LEAVES THE BROWSER: the pass flag only. The module that decides is read from source, comments out.
+  const gateSrc = code(join(ROOT, 'apps', 'web', 'src', 'lib', 'age-gate.ts'));
+  assert.match(gateSrc, /AGE_GATE_PASSED = \{ age_gate: 'passed' \} as const/, 'the sign-up carries something other than the pass flag');
+  assert.equal(/fetch\(|sendBeacon|XMLHttpRequest|sessionStorage|document\.cookie/.test(gateSrc), false, 'the age module sends or stores something');
+  assert.deepEqual([...gateSrc.matchAll(/\.setItem\(([^)]*)\)/g)].map((m) => m[1]), ["AGE_GATE_KEY, '1'"], 'the browser stores more than the refusal flag');
+  assert.match(formCode, /data: gate\.data/, 'the sign-up metadata is not the gate\'s answer');
+
+  // THE PAGES. Both say it is asked, that it is judged in the browser and never sent or stored, and what is kept instead.
+  for (const [where, text] of BOTH) {
+    assert.match(text, /date of birth/i, `${where} does not say the sign-up form asks for a date of birth`);
+    assert.match(text, /checked in your browser and is never sent (to us )?or stored/, `${where} does not say the date is checked in the browser and is never sent or stored`);
+    assert.match(text, /(one|a) note[^.]{0,30}that you passed/, `${where} does not say what is kept instead of the date`);
+    assert.match(text, /turns? away anyone under 13/, `${where} does not say email sign-up turns away anyone under 13`);
+    assert.match(text, /Roblox, Google and Discord already require/, `${where} does not say the other ways in rely on their own age rules`);
+    assert.doesNotMatch(text, /(we|StudPilot) (store|keep|save|record)s? (your |the )?(date of birth|birth ?date|birthday)|date of birth (is|are) (stored|kept|saved|recorded|sent)/i, `${where} says the date of birth is kept or sent, and the code sends only the pass flag`);
+    assert.doesNotMatch(text, /entire sign-?up form|only personal information[^.]{0,40}sign-?up asks for/i, `${where} still says sign-up asks for nothing but an address and a password`);
+  }
+  assert.match(PRIVACY, /remembers the refusal on your own device/, 'the policy does not say the browser keeps the refusal');
 });
 
 /* ------------------------------------------------------------------------------ improvement data --- */
@@ -356,9 +381,20 @@ test('improvement data: anonymised, opt-out, never Roblox data, NOT collected ye
 
 /* ------------------------------------------------------------------------------------ identity --- */
 
-test('Google and Discord sign-in are described conditionally while the app does not offer them', () => {
-  const offered = WORKER_SRC.length > 0 && sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']).some((f) => /signInWithOAuth/.test(code(f)));
-  assert.equal(offered, false, 'the app now calls signInWithOAuth: a provider is offered, so the pages must say which, and this test must be re-aimed');
+//[[ RESTATED 2026-10-05 (M2 step 2.3, item C1). It asserted that no file in apps/web/src calls signInWithOAuth, because no provider was on. The
+//   app calls it now, from ONE component that draws a button only for a provider the Supabase project's own settings say is on
+//   (apps/web/src/lib/auth-providers.ts; apps/web/tests/auth-providers.test.mjs runs it). Both providers are still off at the project (owner
+//   item N2), so the pages still say "not offered yet", and this test holds the link between the two: the only call site is the gated
+//   component, and the Connections cards (linkIdentity) read the same gate. When a provider is switched on, the pages are re-aimed in the
+//   same change; until then they must keep describing it conditionally. ]]
+test('Google and Discord sign-in are described conditionally, and the app calls the provider APIs only behind the project\'s own answer', () => {
+  const webFiles = sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']);
+  assert.ok(webFiles.length > 50, 'the scan found almost no web source: this test would check nothing');
+  const callers = (needle) => webFiles.filter((f) => needle.test(code(f))).map((f) => f.slice(join(ROOT, 'apps', 'web', 'src').length + 1)).sort();
+  assert.deepEqual(callers(/\.signInWithOAuth\(/), ['routes/auth-pages.tsx'], 'signInWithOAuth is called from somewhere other than the gated sign-in component');
+  for (const file of callers(/\.(signInWithOAuth|linkIdentity)\(/)) {
+    assert.match(code(join(ROOT, 'apps', 'web', 'src', file)), /useEnabledProviders\(/, `${file} calls a provider API without reading the project's list of enabled providers`);
+  }
   for (const [where, text] of BOTH) {
     assert.match(text, /If you sign in with Google or Discord, when offered/, `${where} does not describe Google and Discord conditionally`);
     assert.match(text, /Google or Discord — not offered yet/, `${where} does not say neither is offered yet`);

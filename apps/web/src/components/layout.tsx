@@ -28,6 +28,7 @@ import { accountIdentity } from '../lib/account-identity';
 import { useRobloxUsername } from '../lib/use-roblox-username';
 import { fetchBillingConfig, fetchMe } from '../lib/api';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
+import { useCreateProject } from '../lib/use-create-project';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
 import { ShellProvider, useShell } from '../lib/shell';
 import { useCommands } from '../lib/commands';
@@ -459,7 +460,9 @@ function Shell() {
   const { session, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { railOpen, openRail, closeRail, railCollapsed, newProject } = useShell();
+  const { railOpen, openRail, closeRail, railCollapsed } = useShell();
+  // One click makes a project and opens it, from any screen (lib/use-create-project.ts).
+  const { create: newProject, pending: creatingProject } = useCreateProject();
   const { theme, setTheme } = useTheme();
   const dockRef = useRef<HTMLElement>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -523,25 +526,23 @@ function Shell() {
       //
       // This used to end at navigate('/'), which is not what the binding is called: the user
       // pressed "New project" and landed on the shelf with nothing open, having to find the
-      // button by hand. It now asks the shell, which opens the dialog here or arms it for the
-      // dashboard to open as it mounts.
+      // button by hand. It makes the project now, wherever you are, and opens it.
       if (matchesShortcut(e, SHORTCUTS.newProject)) {
         e.preventDefault();
         closeRail();
-        if (location.pathname !== '/') navigate('/');
         newProject();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [railOpen, closeRail, navigate, newProject, location.pathname]);
+  }, [railOpen, closeRail, newProject]);
 
   useGlobalShortcut(SHORTCUTS.help, () => setShowShortcuts(true));
 
   // Global commands: available on every route because the shell is mounted on every route.
   useCommands([
     { id: 'nav-projects', title: 'Go to projects', section: 'Navigate', keywords: ['dashboard', 'home'], run: () => navigate('/') },
-    { id: 'new-project', title: 'New project', section: 'Navigate', keywords: ['create', 'chat', 'summon'], hint: shortcutLabel(SHORTCUTS.newProject), run: () => { if (location.pathname !== '/') navigate('/'); newProject(); } },
+    { id: 'new-project', title: 'New project', section: 'Navigate', keywords: ['create', 'chat', 'summon'], hint: shortcutLabel(SHORTCUTS.newProject), run: newProject },
     { id: 'nav-usage', title: 'Usage', section: 'Navigate', keywords: ['credits', 'spend', 'billing'], run: () => navigate('/usage') },
     { id: 'nav-settings', title: 'Settings', section: 'Navigate', keywords: ['preferences', 'account', 'profile'], run: () => navigate('/settings') },
     ...(isAdmin ? [{ id: 'nav-admin', title: 'Admin', section: 'Navigate', keywords: ['ops'], run: () => navigate('/admin') }] : []),
@@ -639,7 +640,8 @@ function Shell() {
                 aria-label="New chat"
                 title="New chat"
                 data-tour="new-chat"
-                onClick={() => { if (location.pathname !== '/') navigate('/'); newProject(); }}
+                onClick={newProject}
+                disabled={creatingProject}
               >
                 <AnimatedIcon motion="write"><Icon d={PATH.compose} size={16} /></AnimatedIcon>
                 <span className="studio-dock__label">New chat</span>

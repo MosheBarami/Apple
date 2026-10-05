@@ -92,11 +92,11 @@ const ui = await bundle(`
   import { renderToStaticMarkup } from 'react-dom/server';
   import { MemoryRouter } from 'react-router-dom';
   import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-  import { RobloxCallbackPage, RobloxLandingView, RobloxSignIn, RobloxSignInView } from './src/routes/auth-pages';
+  import { AlternativeSignIn, RobloxCallbackPage, RobloxLandingView, RobloxSignInView } from './src/routes/auth-pages';
   import { RobloxConnectionCard } from './src/components/roblox-connection-card';
   import { ReauthDialog } from './src/components/reauth-dialog';
   import { AuthContext } from './src/lib/auth';
-  export { h, renderToStaticMarkup, MemoryRouter, QueryClient, QueryClientProvider, RobloxCallbackPage, RobloxLandingView, RobloxSignIn, RobloxSignInView, RobloxConnectionCard, ReauthDialog, AuthContext };
+  export { h, renderToStaticMarkup, MemoryRouter, QueryClient, QueryClientProvider, AlternativeSignIn, RobloxCallbackPage, RobloxLandingView, RobloxSignInView, RobloxConnectionCard, ReauthDialog, AuthContext };
 `, { name: 'roblox-signin', resolveDir: WEB });
 const render = (element) => renderWith(ui.renderToStaticMarkup, ui.h(ui.MemoryRouter, null, element));
 const noop = () => {};
@@ -161,8 +161,12 @@ test('"Continue with Roblox" is drawn only when told the worker can finish a sig
   assert.match(render(ui.h(ui.RobloxSignInView, { configured: true, from: '/usage' })), /href="\/auth\/roblox\/start\?return=%2Fusage"/);
 });
 
-test('the button the pages use is NOT in the first render: it waits for the worker', () => {
-  assert.equal(render(ui.h(ui.RobloxSignIn, { from: '/' })), '', 'the markup a visitor first receives has no Roblox button');
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C1). The pages no longer mount the Roblox button on its own: they mount AlternativeSignIn, which
+//   draws every way in other than email under one "or" (Roblox, and Google and Discord when the project has them on:
+//   tests/auth-providers.test.mjs). The property is unchanged: the first markup a visitor receives has NO Roblox button, because
+//   the worker has not said yet whether it can finish a sign-in. It is now asserted on the component the pages actually use. ]]
+test('the ways in the pages use are NOT in the first render: they wait for the worker', () => {
+  assert.equal(render(ui.h(ui.AlternativeSignIn, { from: '/' })), '', 'the markup a visitor first receives has no Roblox button, and no "or" with nothing under it');
 });
 
 /* ------------------------------------------------------------------ where it goes --- */
@@ -460,19 +464,34 @@ const attr = (n, name) => (ts.isJsxElement(n) ? n.openingElement : n).attributes
 const attrText = (n, name) => attr(n, name)?.initializer?.getText().replace(/^["{]|["}]$/g, '');
 const ancestors = (n) => { const out = []; for (let p = n.parent; p; p = p.parent) out.push(p); return out; };
 
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C1). It asked for a `RobloxSignIn` tag in each page. The pages mount AlternativeSignIn now, so the
+//   property is asked in two steps: each page mounts it, and it is the thing that holds the Roblox button (RobloxSignInView, drawn
+//   only when the worker says yes: the status-check tests above). Deleting the Roblox button from the component goes red here. ]]
 test('the sign-in page and the sign-up page both offer Roblox', () => {
   const source = parse('routes', 'auth-pages.tsx');
   for (const page of ['LoginPage', 'SignupPage']) {
     const fn = nodes(source).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === page);
     assert.ok(fn, `${page} is not declared`);
-    assert.ok(nodes(fn).some((n) => isTag(n) && tagOf(n) === 'RobloxSignIn'), `${page} does not offer "Continue with Roblox"`);
+    assert.ok(nodes(fn).some((n) => isTag(n) && tagOf(n) === 'AlternativeSignIn'), `${page} does not offer the ways in`);
   }
+  const holder = nodes(source).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'AlternativeSignInView');
+  assert.ok(holder, 'AlternativeSignInView is not declared');
+  assert.ok(nodes(holder).some((n) => isTag(n) && tagOf(n) === 'RobloxSignInView'), 'the component the pages mount does not hold "Continue with Roblox"');
+  const mounted = nodes(source).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'AlternativeSignIn');
+  assert.ok(mounted && /useRobloxConfigured\(\)/.test(mounted.getText()), 'the component does not wait for the worker before it draws Roblox');
 });
 
-test('only Roblox is added: no Supabase OAuth button exists, because no other provider is enabled', () => {
-  const calls = nodes(parse('routes', 'auth-pages.tsx')).filter((n) => ts.isCallExpression(n)).map((n) => n.expression.getText());
-  assert.equal(calls.some((c) => /signInWithOAuth$/.test(c)), false, 'a Supabase OAuth call was added');
-  assert.equal(nodes(parse('routes', 'auth-pages.tsx')).some((n) => ts.isJsxText(n) && /Continue with (Google|Discord|GitHub|Facebook)/i.test(n.getText())), false);
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C1). It said "no Supabase OAuth call exists, because no other provider is enabled". Google and
+//   Discord buttons now exist, and the property that matters survived the change: NO BUTTON FOR A PROVIDER THAT IS NOT ON. It is held
+//   in tests/auth-providers.test.mjs (the hook, the screens and the click are run; signInWithOAuth is one call in one component that
+//   draws only what the project's settings say is on). What stays here is the half about Roblox: it is a link to the worker, not a
+//   Supabase provider, so no provider call carries its name, and no other provider's button is typed by hand into the markup. ]]
+test('Roblox is not a Supabase OAuth provider here, and no other provider has a button typed by hand', () => {
+  const source = parse('routes', 'auth-pages.tsx');
+  const calls = nodes(source).filter((n) => ts.isCallExpression(n)).map((n) => n.expression.getText());
+  assert.ok(calls.length > 0, 'the scan found no calls at all');
+  assert.equal(nodes(source).some((n) => ts.isStringLiteral(n) && n.text === 'roblox' && n.parent && ts.isPropertyAssignment(n.parent) && n.parent.name.getText() === 'provider'), false, 'Roblox is passed to Supabase as a provider');
+  assert.equal(nodes(source).some((n) => ts.isJsxText(n) && /Continue with (Google|Discord|GitHub|Facebook)/i.test(n.getText())), false, 'a provider button is typed into the markup');
 });
 
 /**
@@ -1021,6 +1040,8 @@ const Shell = await loadPage({
   fakes: {
     'lib/auth.tsx': { useAuth: '() => globalThis.__pageFakes.auth' },
     'lib/shell.tsx': { useShell: '() => globalThis.__pageFakes.shell' },
+    // The shell makes a project through this hook (one click, from any screen); its own behaviour is tests/create-project.test.mjs.
+    'lib/use-create-project.ts': { useCreateProject: '() => ({ create() {}, pending: false })' },
     'lib/theme.tsx': { useTheme: '() => ({ theme: "dark", setTheme() {} })' },
     'lib/mock.ts': { MOCK_MODE: 'false' },
     'lib/api.ts': { fetchRobloxConnection: '() => null' },

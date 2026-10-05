@@ -25,7 +25,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
 
   <h2>What StudPilot stores, and why</h2>
   <ul>
-    <li><strong>Your email + password hash</strong> — so you can sign in. This is the only personal information email sign-up asks for. If you sign in with Roblox instead, there is no email and no password; see the Roblox section below.</li>
+    <li><strong>Your email + password hash</strong> — so you can sign in. Email sign-up also asks for a date of birth, to check that you are 13 or older: it is checked in your browser and is never sent or stored, and we keep only a note that you passed. If you sign in with Roblox instead, there is no email and no password; see the Roblox section below.</li>
     <li><strong>Projects</strong> — names, descriptions, and the connected place's name and id, so the workspace can show what belongs where.</li>
     <li><strong>Chat history</strong> — your conversations with StudPilot plus the tool trace of what it did. This is your project's memory; deleting a project deletes it.</li>
     <li><strong>Checkpoints</strong> — compressed snapshots of the parts of your place StudPilot works on, kept so rollback works across sessions.</li>
@@ -197,8 +197,9 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>Age</h2>
   <p>
     StudPilot is for people aged 13 and older, and Roblox's sign-in service is for accounts held by
-    people aged 13 and older. If you believe an account belongs to someone under 13, tell us and we
-    will delete it.
+    people aged 13 and older. Email sign-up asks for a date of birth and turns away anyone under 13;
+    Roblox, Google and Discord already require 13 and older, so they do not ask again. If you believe an
+    account belongs to someone under 13, tell us and we will delete it.
   </p>
 
   <h2>Beta honesty</h2>

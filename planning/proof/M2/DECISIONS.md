@@ -359,3 +359,79 @@ This is a heuristic in a defence-in-depth guard, not product behaviour:
 
 Write plan-first sentences until the rule is replaced by a parser of the pricing markup (M6, when the page
 gains the estimate-before-build copy).
+
+## 12. The app rebuild, M2 step 2.3 (`apps/web`; branch `studpilot/m2-app`, 2026-10-05)
+
+Decisions taken while building the web app's features on the design system. One subsection per item (C1 to C8 of the lane's
+task). Nothing here was deployed, pushed or sent; no Supabase or Cloudflare call was made, so everything that needs the
+live project is listed as unverified. The tests for each item are in `TEST-LEDGER.md`, section "App".
+
+### 12.1 C1: Google and Discord render only when the project says they are on
+
+- **The rule.** `lib/auth-providers.ts` asks `GET <SUPABASE_URL>/auth/v1/settings` (with the public key as `apikey`) and a
+  provider is on only when `external.<provider> === true`. The answer is fetched once per page load and shared by the sign-in
+  page, the sign-up page and Settings > Connections. Any failure (network, non-200, not JSON, wrong shape) means none, and a failure
+  is the page's answer too: nothing retries until a reload. Until the answer arrives nothing is drawn, so a button never appears
+  and is taken away.
+- **Today both are off (owner item N2), so no Google or Discord button renders anywhere.** The Roblox button is unchanged (it
+  waits for `/auth/roblox/status`). The three share one "or" (`AlternativeSignIn`); with nothing on there is no "or" either.
+- **Not verified live (no network in this task):** that the settings endpoint answers a browser at `https://studpilot.app` with
+  CORS headers. If it does not, the buttons never render, which is the safe failure. When the owner switches a provider on (N2) the
+  checks are: the button appears; the redirect URL `https://studpilot.app/app` is on the Supabase allow-list; and, for C6, manual
+  identity linking is enabled at the project.
+- **Alternative not taken:** have the worker proxy and cache the settings. One more route and one more cache for a value the
+  project already publishes; the page-level cache is enough.
+- **The mock app** answers without a request: no providers, and `?providers=google,discord` (dev server only) turns them on so
+  the buttons and the Connections cards can be reviewed.
+- **`supabase-config.ts`** now holds the two public constants so the check can read the address without building a Supabase client.
+
+### 12.2 C2: the 13+ screen on email sign-up
+
+- **What it is.** The email sign-up form asks for a date of birth as a day, a month (named) and a year. It is neutral: no
+  number, no placeholder, no limit on the year that names a line, and the page says nothing about why. An impossible or empty date
+  is asked for again in one sentence that says nothing about age.
+- **Under 13.** Nothing is sent: no sign-up request, and not even the captcha script (a request to Cloudflare). The form is replaced
+  by a kind message ("We cannot make an account for you right now ... we are sorry"; no number, no rule, no second try offered) and
+  the browser remembers the refusal.
+- **13 or over.** The sign-up goes with `data: { age_gate: 'passed' }` (the user metadata) and nothing else. The birth date is in no
+  argument of any call and is stored nowhere.
+- **A SOFT BLOCK, and it is said so.** The refusal is a flag (`studpilot.age-gate.v1` = `1`) in `localStorage`, plus a flag in the
+  page's memory so it holds where storage is blocked. It stops changing the date and trying again at once, and a reload. It does not
+  stop anybody who clears site data or uses another browser, and the server never checks it. A neutral age screen without an identity
+  check can be no stronger, and the privacy pages say "the check goes by the date you give and is not an identity check".
+  - **A known cost.** A grown-up who typed the wrong year is refused in that browser and has no way back through the app. There is no
+    expiry. The alternative is a window (for example 24 hours) after which the form opens again; it makes the block weaker for the
+    people it is for and lets an honest slip heal. It is one constant to add if the owner prefers it. Not done.
+- **Roblox, Google and Discord sign-ups need no form.** Roblox's OAuth service is for accounts held by people aged 13 and older,
+  and Google and Discord already require their account holders to be at least that old (plan section 7). Asking again would
+  collect a birth date nobody needs. The privacy pages say so.
+- **Existing accounts are not asked again.** They have the pages' 13-and-older terms already, and the flag lives only in the
+  user metadata of an account made after this change. *Alternative: ask at the next login.* It would have to ask every account that
+  lacks the flag, once, before the app opens, and write the answer back (`updateUser`), which blocks people who are mid-build on a
+  question the terms already answer. Revisit when the server stores the flag.
+- **No migration.** Whether the server copies `age_gate` into `profiles` (and whether the Worker refuses an account without it) is a
+  later step. The flag is client-supplied: any API caller can set it or leave it out. It is a record that the form was passed, not proof.
+- **Pages changed because this made them false.** `/privacy` and `/docs/privacy-and-data` said the sign-up form asked for nothing
+  but an address and a password; they now describe the date of birth, that it is checked in the browser and never sent or stored,
+  that a pass leaves one note on the account, that a refusal leaves a flag in the browser, and that the other ways in rely on their own
+  age rules. `apps/site/tests/privacy-claims.test.mjs` was re-aimed (it said "no birth-date field while the form has none").
+
+### 12.3 C3: "New project" is one click
+
+- **What happens.** One press makes the project at once, named "Untitled piece N", and opens its conversation. N is one more than
+  the highest "Untitled piece N" the person already has (archived ones count, because they keep their names), so a name is not
+  handed out again while its project exists and deleting a lower one does not refill the gap. Only the exact pattern counts; a
+  person's own names never move the number.
+- **What is gone.** The create dialog (`CreateProjectModal`): its name field, its description field and its template picker.
+  A description and a better name are things a project grows (Edit project and the title rename are on the card and in the
+  workspace), and "what are you building" is the first message. The dialog's request-seeding survives in one place: the sentence a
+  person typed on the landing page still rides into their first project (it is moved, not copied; `lib/pending-start.ts`).
+- **Every entry point is one hook.** `lib/use-create-project.ts` serves the shelf's header button, the empty state's action, the
+  rail's "New chat", the palette's "New project" and the shortcut. It works from any screen, so nothing navigates to the shelf first
+  to find a dialog, and the shell no longer holds any new-project state (`registerNewProject`, `newProjectPending` and
+  `useProvideNewProject` were removed with the dialog: they existed only to open it). One creation can be in flight at a time in
+  a page, so a double press, or a button and the shortcut, make one project. A failure is a toast; success is the conversation opening.
+- **The five starting points stay**, in the composer's "Starting points" menu, where they insert a request into the message box
+  (`lib/project-templates.ts`). `templateSeed`, the dialog's lookup, was removed with its only caller.
+- **Not verified live:** the two queries it makes (`projects` read by name, then one insert) run under the signed-in person's
+  row-level security exactly as the old dialog's insert did; no database was touched in this task.

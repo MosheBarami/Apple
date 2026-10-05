@@ -252,6 +252,18 @@
  *   Hover is a fact about the pointer; invalid is a fact about the value, and the value wins. ]]*/
 .auth-page .auth-form-col .field input[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); animation:auth-reject 160ms ease-out both; }
 
+/* THE DATE OF BIRTH IS THREE CONTROLS IN ONE ROW: a day and a year that take digits, and a month that is named, which is how a
+   date is said aloud and how nobody mistypes it. A group rather than a fieldset, because a fieldset inside a grid sizes its legend
+   as a cell. The month gets the wider track because "September" is the longest word in it. Each part carries its own small name
+   so a screen reader and a pointer both know which box is which. Nothing in the row shows a sample date. */
+.auth-page .field-date__row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr); gap:10px; }
+.auth-page .field-date__part { display:grid; gap:6px; min-width:0; }
+.auth-page .field-date__name { font-size:12px; line-height:1.2; color:var(--muted); }
+.auth-page .auth-form-col .field-date__part select { width:100%; min-width:0; min-height:48px; padding:0 12px; font-size:16px; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r-md); }
+.auth-page .auth-form-col .field-date__part select:hover:not(:disabled) { border-color:color-mix(in srgb,var(--ink) 24%,var(--line)); }
+.auth-page .auth-form-col .field-date__part select:focus { background:var(--surface); border-color:var(--accent-ring); box-shadow:var(--halo); }
+.auth-page .auth-form-col .field-date__part select[aria-invalid='true'] { border-color:color-mix(in srgb,var(--bad) 55%,transparent); }
+
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that
    disappears beneath a button is how people mistype a password twice. 28px is the bare-text-button

@@ -1,8 +1,9 @@
 // Starting points for a new project.
 //
-// A TEMPLATE HERE IS THE FIRST REQUEST, WRITTEN OUT. It is not content: no geometry ships with it,
-// no scripts, no place. Choosing one fills the composer with a message the person then reads and
-// sends, through the same handoff the suggestion chips and the roadmap's briefs already use.
+// A TEMPLATE HERE IS A REQUEST, WRITTEN OUT. It is not content: no geometry ships with it,
+// no scripts, no place. Choosing one in the composer's Starting points menu puts a message in the box
+// that the person then reads and sends. (A project is made in one click now and nothing is picked at
+// creation: lib/use-create-project.ts.)
 //
 // That definition is deliberate and it is load-bearing. apps/site/src/pages/index.astro carries a
 // comment recording that this product once published "3,017 game templates" and had to take the
@@ -79,18 +80,6 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
       'enemies along it, and a placeable tower that damages the nearest enemy in range.',
   },
 ];
-
-/**
- * The prompt for a chosen id, or null.
- *
- * Null for the blank start AND for anything unrecognised. The picker's value survives a reload and
- * can outlive the build that wrote it, and an unknown id must seed nothing rather than crash or
- * fall through to another template's request.
- */
-export function templateSeed(id: string | null | undefined): string | null {
-  if (!id) return null;
-  return PROJECT_TEMPLATES.find((t) => t.id === id)?.prompt ?? null;
-}
 
 /**
  * The templates a composer may insert: everything that has a prompt.

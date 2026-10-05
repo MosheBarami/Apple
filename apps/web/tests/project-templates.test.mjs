@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, templateSeed } from '../src/lib/project-templates.ts';
+import { BLANK_TEMPLATE_ID, PROJECT_TEMPLATES, insertableTemplates } from '../src/lib/project-templates.ts';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DASH = readFileSync(join(WEB, 'src', 'routes', 'dashboard.tsx'), 'utf8');
@@ -69,34 +69,35 @@ test('NOTHING CLAIMS TO SHIP WITH ANYTHING', () => {
   }
 });
 
-test('templateSeed answers null for anything it does not know', () => {
-  // The picker's value is a string that survives a reload and a stale bundle. An unknown id must
-  // produce no seed rather than a crash or, worse, someone else's prompt.
-  assert.equal(templateSeed(BLANK_TEMPLATE_ID), null);
-  assert.equal(templateSeed('a-template-from-a-future-build'), null);
-  assert.equal(templateSeed(undefined), null);
-  const obby = PROJECT_TEMPLATES.find((t) => t.id !== BLANK_TEMPLATE_ID);
-  assert.equal(templateSeed(obby.id), obby.prompt);
+//[[ RESTATED 2026-10-05 (M2 step 2.3, C3: one-click create). Five tests here were about the CREATE DIALOG, which is gone: it offered the set, started on
+//   blank and handed the chosen template's request to the workspace as `state.seed`. A project is made in one click now and nothing is picked
+//   first, so `templateSeed` (the dialog's lookup) was removed with its only caller. The set itself is unchanged and still has a home: the
+//   composer's "Starting points" menu inserts these same requests (tests/composer-templates.test.mjs). What the dialog tests guarded is kept in
+//   the form that still has a subject: THE SET IS NOT A CREATION-TIME PICKER ANY MORE, AND THE ONE THING THAT STILL SEEDS A NEW PROJECT IS THE
+//   SENTENCE THE PERSON TYPED ON THE LANDING PAGE, handed over only as a string the workspace actually reads. ]]
+test('the set is offered where a request is written, as requests to insert, and the blank start is not one of them', () => {
+  const offered = insertableTemplates();
+  assert.ok(offered.length > 0, 'nothing is offered, so the checks below would pass over an empty list');
+  assert.ok(!offered.some((t) => t.id === BLANK_TEMPLATE_ID), 'an empty start is not something to insert');
+  for (const t of offered) assert.equal(typeof t.prompt, 'string');
 });
 
-// --------------------------------------------------------------- the chain, end to end ---
-
-test('the create dialog offers the set and starts on blank', () => {
-  assert.match(DASH, /PROJECT_TEMPLATES/, 'the dialog does not offer the templates');
-  assert.match(DASH, /useState\(BLANK_TEMPLATE_ID\)/, 'the dialog starts on something other than a blank project');
+test('NO TEMPLATE PICKER AT CREATION: the dashboard offers no starting point and creates nothing from one', () => {
+  assert.doesNotMatch(DASH, /PROJECT_TEMPLATES|templateSeed|BLANK_TEMPLATE_ID|projectTemplate|Starting point/, 'the dashboard still offers a starting point at creation');
+  assert.equal(/from '\.\.\/lib\/project-templates'/.test(DASH), false);
 });
 
 test('THE SEED IS HANDED TO A ROUTE THAT ACTUALLY READS IT', () => {
-  // The defect this codebase keeps finding is a control wired to nothing. The create dialog hands
-  // the seed over in router state; the workspace consumes `state.seed` and clears it. Both halves
-  // are asserted here so neither can be removed without the other going red.
-  assert.match(DASH, /templateSeed/, 'nothing turns the chosen template into a seed');
-  assert.match(DASH, /state: \{ seed/, 'the seed is never handed over');
+  // The defect this codebase keeps finding is a control wired to nothing. The creation hook hands the landing sentence over in router
+  // state; the workspace consumes `state.seed` and clears it. Both halves are asserted here so neither can be removed without the other going red.
+  const HOOK = readFileSync(join(WEB, 'src', 'lib', 'use-create-project.ts'), 'utf8');
+  assert.match(HOOK, /takePendingStart\(\)/, 'nothing turns the landing sentence into a seed');
+  assert.match(HOOK, /state: \{ seed \}/, 'the seed is never handed over');
   assert.match(WS, /typeof handoff\.seed === 'string'/, 'the workspace no longer reads a seeded request');
 });
 
 test('a blank project is navigated to with no state at all', () => {
-  // Passing `{ seed: null }` would leave router state on the entry and make the workspace's
-  // consume-and-clear effect run for nothing.
-  assert.match(DASH, /seed \? \{ state: \{ seed \} \} : undefined|seed === null/, 'blank still carries a handoff');
+  // Passing `{ seed: null }` would leave router state on the entry and make the workspace's consume-and-clear effect run for nothing.
+  const HOOK = readFileSync(join(WEB, 'src', 'lib', 'use-create-project.ts'), 'utf8');
+  assert.match(HOOK, /seed \? \{ state: \{ seed \} \} : undefined/, 'a blank start still carries a handoff');
 });
