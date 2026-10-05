@@ -275,8 +275,9 @@ function scene(envOverrides = {}) {
 }
 
 // Each flow gets its own client address, because the limiter's counters outlive a test.
+// A counter that does not wrap: a test that exhausts an address (the limiter tests do) must never meet it again in the same minute.
 let nextIp = 0;
-const freshIp = () => `198.51.100.${(nextIp += 1) % 250}`;
+const freshIp = () => { nextIp += 1; return `198.51.${100 + Math.floor(nextIp / 250)}.${nextIp % 250}`; };
 
 async function startFlow(env, { origin = PROD, returnTo, reauth, ip = freshIp() } = {}) {
   const params = [];
@@ -580,7 +581,7 @@ test('on the registered http://localhost dev origin, and only there, the cookies
   const handleLine = callback.headers.getSetCookie().find((c) => c.startsWith('rbx_oauth_handle=') && !/Max-Age=0/.test(c));
   assert.ok(handleLine, 'and sets a bare handle cookie');
   assert.doesNotMatch(handleLine, /; Secure|__Host-/);
-  assert.match(handleLine, /; Path=\/auth\/roblox\/redeem(;|$)/);
+  assert.match(handleLine, /; Path=\/auth\/roblox\/(;|$)/, 'scoped to the routes, and to all three the SPA posts to (the next test is the browser’s path match)');
   // A first sight is held until the person presses Continue, here as everywhere.
   const asked = await routes.request(`${DEV}/redeem`, { method: 'POST', headers: { Origin: DEV, Cookie: handleLine.split(';')[0] } }, env);
   assert.equal((await asked.json()).confirm, 'new-account');
@@ -1827,21 +1828,44 @@ test('ROUTE-LEVEL CATCH: an exception that escapes a handler answers the one gen
   db.close();
 });
 
-test('NO SECRET, TOKEN, CODE, STATE OR QUERY STRING IS WRITTEN TO ANY LOG LINE, through success and every failure', async () => {
+test('NO SECRET, TOKEN, CODE, STATE OR QUERY STRING IS WRITTEN TO ANY LOG LINE, through a real sign-in (the account made by Continue, the sign-in token minted and redeemed) and every failure', async () => {
   LOGS.length = 0;
   const { db, world, env } = scene();
   const secrets = new Set([CLIENT_SECRET, SB_SECRET, KEY_B64]);
-  // success
+  // success, the whole way: the person is asked, presses Continue (the account is made, the token stored, the sign-in token minted) and redeems it
   const flow = await startFlow(env);
   const ok = await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });
   secrets.add(flow.state); secrets.add(ok.code); secrets.add(world.roblox.lastRefreshIssued);
   secrets.add(world.roblox.tokenCalls[0].code_verifier);
-  secrets.add(handleCookieOf(ok.res).split('=')[1]);
+  const handle = handleCookieOf(ok.res).split('=')[1];
+  secrets.add(handle);
+  assert.equal(isPending(env, ok.res), true, 'a first sight: nothing is made until Continue');
+  assert.equal(world.sb.users.size, 0);
+  assert.equal((await (await redeemFor(env, ok.res)).json()).confirm, 'new-account');
+  assert.equal((await createRequest(env, { cookie: handleCookieOf(ok.res) })).status, 200, 'Continue');
+  assert.equal(world.sb.users.size, 1, 'the account was made');
   const redeemed = await redeemFor(env, ok.res);
-  secrets.add((await redeemed.json()).token_hash);
+  const tokenHash = (await redeemed.json()).token_hash;
+  assert.match(tokenHash, /^ht_/, 'the sign-in token was minted and redeemed');
+  secrets.add(tokenHash);
+  for (const minted of world.sb.links.keys()) secrets.add(minted);       // every sign-in token Auth made
+  for (const row of rowsOf(db, 'select sealed_refresh from roblox_oauth_tokens')) secrets.add(row.sealed_refresh);
   await redeemFor(env, ok.res);                                          // a replay
   await redeemFor(env, ok.res, { origin: 'https://evil.example' });      // a hostile origin
   for (const at of world.roblox.access.keys()) secrets.add(at);
+  // Go back with Roblox unable to revoke, and a Continue whose account cannot be made: the log lines the two new routes can write
+  const goBack = await signIn(env, world, { sub: '3141592', username: 'Gale' }, { confirm: false });
+  secrets.add(goBack.flow.state); secrets.add(goBack.code); secrets.add(handleCookieOf(goBack.res).split('=')[1]); secrets.add(world.roblox.lastRefreshIssued);
+  world.roblox.failRevoke = 503;
+  assert.equal((await declineRequest(env, { cookie: handleCookieOf(goBack.res) })).status, 200);
+  world.roblox.failRevoke = null;
+  const noAccount = await signIn(env, world, { sub: '2718281', username: 'Nia' }, { confirm: false });
+  secrets.add(noAccount.flow.state); secrets.add(noAccount.code); secrets.add(handleCookieOf(noAccount.res).split('=')[1]); secrets.add(world.roblox.lastRefreshIssued);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, i = {}) => (String(u).endsWith('/auth/v1/admin/users') && (i.method ?? 'GET') === 'POST' ? new Response('{}', { status: 500 }) : realFetch(u, i));
+  assert.equal((await createRequest(env, { cookie: handleCookieOf(noAccount.res) })).status, 502);
+  globalThis.fetch = realFetch;
+  assert.ok(LOGS.includes('[roblox-oauth] decline revoke') && LOGS.includes('[roblox-oauth] account link'), 'the stage words of the two new routes were reached');
   // replay, forged state, failed exchange, a provider error, a failure inside the handler
   await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });
   const f2 = await startFlow(env);
@@ -2329,6 +2353,16 @@ test('A PART-FAILED ERASURE CAN BE RUN AGAIN by a Roblox-only account: the link 
     s.env.CORPUS = realCorpus;
     assert.equal((await deleteAs()).status, 200, 'and the next run finishes it');
     assert.equal(linkRows(), 0);
+
+    // THE LINK CANNOT EVEN BE LOOKED AT while another step has failed: the receipt of everything else is still handed back, and the link is kept.
+    s.db.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, reauth_at) values (?, ?, ?, ?, ?)').run(SUB_A, userId, 'Builder1', 'now', Date.now());
+    FAILING.set('profiles', 500);
+    s.env.CORPUS = { ...realCorpus, prepare: (sql) => { if (/^select 1 as held from roblox_identities/.test(sql)) throw new Error('D1 said no'); return realCorpus.prepare(sql); } };
+    const unreadable = await deleteAs();
+    assert.equal(unreadable.status, 207, 'the receipt is not lost to a lookup that threw');
+    assert.equal(stepOf(await unreadable.json(), 'roblox_identities').status, 'failed');
+    assert.equal(linkRows(), 1, 'and a link that could not be looked at is kept, not swept');
+    s.env.CORPUS = realCorpus;
   } finally {
     FAILING.clear();
     s.db.close();
@@ -2348,5 +2382,226 @@ test('an erasure that fails for an account with no Roblox link says nothing abou
   } finally {
     FAILING.clear();
     s.db.close();
+  }
+});
+
+test('JUNK CANNOT SPEND A REAL FLOW’S STRAY ALLOWANCE: sixty cross-site requests with no cookie or a foreign Origin from one address leave that address’s own redeem, create, decline and callback served, and are themselves bounded', async () => {
+  // A request with no usable cookie, or from another origin, is the only kind a hostile page can make (the browser sends it no
+  // SameSite=Lax cookie). It used to share the per-address stray bucket with a request that carries a well-formed flow cookie, so
+  // sixty of them refused the person's own real flow at that address for a minute. They have a bucket of their own now.
+  const random = () => randomBytes(32).toString('base64url');
+  const FOREIGN = 'https://evil.example';
+  const image = (query, extra = {}) => (env, ip) => hit(`${PROD}/auth/roblox/callback?${query()}`, { headers: { 'CF-Connecting-IP': ip, ...extra } }, env);
+  const floods = [
+    ['cross-site POSTs to redeem (no cookie, a foreign Origin)', (env, ip) => redeemRequest(env, { ip, origin: FOREIGN })],
+    ['cross-site POSTs to create', (env, ip) => createRequest(env, { ip, origin: FOREIGN })],
+    ['cross-site POSTs to decline', (env, ip) => declineRequest(env, { ip, origin: FOREIGN })],
+    ['POSTs from a page with no Origin at all', (env, ip) => redeemRequest(env, { ip, origin: '' })],
+    ['a sibling subdomain’s POSTs: a foreign Origin, and a well-formed cookie of the right name', (env, ip) => redeemRequest(env, { ip, origin: FOREIGN, cookie: `${HANDLE_C}=${random()}` })],
+    ['POSTs under the bare cookie name, which production never reads', (env, ip) => redeemRequest(env, { ip, cookie: `rbx_oauth_handle=${random()}` })],
+    ['<img> callback loads with a random well-formed state and no cookie', image(() => `code=x&state=${random()}`)],
+    ['<img> callback loads with no state at all', image(() => 'code=x')],
+    ['<img> callback loads under the bare state cookie name', (env, ip) => { const state = random(); return hit(`${PROD}/auth/roblox/callback?code=x&state=${state}`, { headers: { 'CF-Connecting-IP': ip, Cookie: `rbx_oauth_state=${state}` } }, env); }],
+  ];
+  for (const [name, flood] of floods) {
+    const { db, kv, world, env } = scene();
+    const ip = freshIp();
+    // The person, at the same address, with three flows begun before the flood: one about to come back from Roblox, one asked
+    // about a new account, one that will say Go back.
+    const comingBack = await startFlow(env, { ip });
+    const asked = await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { ip, confirm: false });
+    const leaving = await signIn(env, world, { sub: SUB_B, username: 'Bob' }, { ip, confirm: false });
+
+    const answers = [];
+    for (let i = 0; i < 60; i += 1) answers.push((await flood(env, ip)).status);
+    assert.equal(answers.includes(429), false, `${name}: the first sixty are answered, not refused`);
+    const reads = kv.reads;
+    const over = [(await flood(env, ip)).status, (await flood(env, ip)).status];
+    assert.deepEqual(over, [429, 429], `${name}: and the junk is bounded: the sixty-first is refused`);
+    assert.equal(kv.reads, reads, `${name}: without a KV read`);
+
+    // Now the person's own, real requests from that very address.
+    const back = await finish(env, world, comingBack, { sub: '2468024', username: 'Cara' });
+    assert.equal(back.res.status, 302, `${name}: the callback of the flow that was already at Roblox`);
+    const question = await redeemFor(env, asked.res, { ip });
+    assert.equal(question.status, 200, `${name}: redeem`);
+    assert.equal((await question.json()).confirm, 'new-account');
+    assert.equal((await createRequest(env, { cookie: handleCookieOf(asked.res), ip })).status, 200, `${name}: create (Continue)`);
+    const signedIn = await redeemFor(env, asked.res, { ip });
+    assert.equal(signedIn.status, 200, `${name}: redeem after Continue`);
+    assert.match((await signedIn.json()).token_hash, /^ht_/);
+    assert.equal((await declineRequest(env, { cookie: handleCookieOf(leaving.res), ip })).status, 200, `${name}: decline (Go back)`);
+    db.close();
+  }
+});
+
+test('STRAYS AT /create AND /decline ARE COUNTED, each in the handle routes’ own stray bucket: it bounds them and costs no read once spent, and it is neither the callback’s bucket nor the junk bucket, nor ever a real flow’s', async () => {
+  const random = () => randomBytes(32).toString('base64url');
+  for (const [name, post] of [['create', createRequest], ['decline', declineRequest]]) {
+    const { db, kv, world, env } = scene();
+    const ip = freshIp();
+    const waiting = await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { ip, confirm: false });
+    const waitingKey = `roblox-oauth:handle:${handleCookieOf(waiting.res).split('=')[1]}`;
+
+    // Sixty well-formed handles that nobody holds, offered to this one route: each is read, found wanting and answered.
+    const reads0 = kv.reads;
+    const answers = [];
+    for (let i = 0; i < 60; i += 1) answers.push((await post(env, { ip, cookie: `${HANDLE_C}=${random()}` })).status);
+    assert.deepEqual(answers, Array(60).fill(400), `${name}: sixty strays are answered`);
+    assert.equal(kv.reads - reads0, 60, `${name}: each cost one read`);
+
+    // The allowance is spent, and it is the handle routes' one allowance: all three kinds are refused now, with no read.
+    const before = kv.reads;
+    for (const [kind, other] of [['redeem', redeemRequest], ['create', createRequest], ['decline', declineRequest]]) {
+      assert.equal((await other(env, { ip, cookie: `${HANDLE_C}=${random()}` })).status, 429, `${name} flood, then a stray at ${kind}`);
+    }
+    assert.equal(kv.reads, before, `${name}: and none of them read KV`);
+    // A real handle from that address is refused too until the minute is out, and nothing of it is spent.
+    const held = await redeemFor(env, waiting.res, { ip });
+    assert.equal(held.status, 429, `${name}: the person’s own redeem waits`);
+    assert.equal(held.headers.getSetCookie().length, 0, `${name}: and its cookie is not cleared`);
+    assert.equal(kv.rows.has(waitingKey), true, `${name}: and the held first sight is not deleted`);
+
+    // The other two buckets are not this route's: a stray state with its cookie, and a request with no cookie, are still answered.
+    const state = random();
+    assert.equal((await hit(`${PROD}/auth/roblox/callback?code=x&state=${state}`, { headers: { 'CF-Connecting-IP': ip, Cookie: `${STATE_C}=${state}` } }, env)).status, 400, `${name}: the callback's stray bucket is untouched`);
+    assert.equal((await post(env, { ip })).status, 400, `${name}: so is the junk bucket (own Origin, no cookie)`);
+    // Another address is not the flood's business, and a minute on the first one's flow goes through.
+    const other = await signIn(env, world, { sub: SUB_B, username: 'Bob' }, { ip: freshIp(), confirm: false });
+    assert.equal((await redeemFor(env, other.res, { ip: other.flow.ip })).status, 200);
+    const realNow = Date.now;
+    Date.now = () => realNow() + 61_000;
+    try {
+      assert.equal((await redeemFor(env, waiting.res, { ip })).status, 200, `${name}: a minute on, the held first sight is still there`);
+    } finally {
+      Date.now = realNow;
+    }
+    db.close();
+  }
+});
+
+test('A REFUSED HANDLE ROUTE TOUCHES NOTHING OF THE PERSON’S: no Set-Cookie line (so their handle cookie is not cleared) and the held record is byte for byte as it was, for redeem, create and decline, whatever the refusal', async () => {
+  const random = () => randomBytes(32).toString('base64url');
+  const routes = [['redeem', redeemRequest], ['create', createRequest], ['decline', declineRequest]];
+  // [what is refused, how to make it happen, the status that comes back]. `held`: what waits behind the handle.
+  const refusals = [
+    ['another origin', 'pending', (post, e) => post(e.env, { cookie: e.cookie, ip: e.ip, origin: 'https://evil.example' }), 403],
+    ['no Origin', 'pending', (post, e) => post(e.env, { cookie: e.cookie, ip: e.ip, origin: '' }), 403],
+    ['a secret missing', 'pending', (post, e) => { delete e.env.SUPABASE_SECRET_KEY; return post(e.env, { cookie: e.cookie, ip: e.ip }); }, 503],
+    ['the handle’s own allowance spent', 'pending', async (post, e) => { for (let i = 0; i < 5; i += 1) await redeemRequest(e.env, { cookie: e.cookie, ip: e.ip }); return post(e.env, { cookie: e.cookie, ip: e.ip }); }, 429],
+    ['the address’s stray allowance spent', 'pending', async (post, e) => { for (let i = 0; i < 60; i += 1) await redeemRequest(e.env, { ip: e.ip, cookie: `${HANDLE_C}=${random()}` }); return post(e.env, { cookie: e.cookie, ip: e.ip }); }, 429],
+    ['a sign-in that is not a waiting first sight (Continue and Go back)', 'ready', (post, e) => post(e.env, { cookie: e.cookie, ip: e.ip }), 400, ['create', 'decline']],
+  ];
+  for (const [what, held, refuse, status, only] of refusals) {
+    for (const [name, post] of routes) {
+      if (only && !only.includes(name)) continue;
+      const { db, kv, world, env } = scene();
+      const ip = freshIp();
+      if (held === 'ready') await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { ip });     // so the next sign-in of that account is a returning one
+      const signed = await signIn(env, world, { sub: SUB_A, username: 'Builder1' }, { ip, confirm: held === 'ready' });
+      const cookie = handleCookieOf(signed.res);
+      const key = `roblox-oauth:handle:${cookie.split('=')[1]}`;
+      const record = kv.rows.get(key);
+      assert.ok(record, `${what} / ${name}: something is held`);
+      assert.equal('pending' in JSON.parse(record), held === 'pending', `${what} / ${name}: the held record is the one the case says`);
+
+      const refused = await refuse(post, { env, cookie, ip });
+      assert.equal(refused.status, status, `${what} / ${name}: refused`);
+      assert.equal(refused.headers.getSetCookie().length, 0, `${what} / ${name}: no Set-Cookie at all, so the person's handle cookie is left in their browser`);
+      assert.equal(kv.rows.get(key), record, `${what} / ${name}: the held record is untouched`);
+      assert.equal(world.sb.createCalls, held === 'ready' ? 1 : 0, `${what} / ${name}: nothing was made`);
+
+      // ... and the person, with the same cookie, carries on: the secret back, a minute on.
+      env.SUPABASE_SECRET_KEY = SB_SECRET;
+      const realNow = Date.now;
+      Date.now = () => realNow() + 61_000;
+      try {
+        const after = await redeemRequest(env, { cookie, ip });
+        assert.equal(after.status, 200, `${what} / ${name}: the person's own redeem still answers`);
+        const answer = await after.json();
+        assert.equal(held === 'pending' ? answer.confirm : answer.token_hash?.slice(0, 3), held === 'pending' ? 'new-account' : 'ht_', `${what} / ${name}: with what was held`);
+      } finally {
+        Date.now = realNow;
+      }
+      db.close();
+    }
+  }
+});
+
+/**
+ * RFC 6265 section 5.1.4, the rule a browser applies before it sends a cookie: the cookie-path and the request-path are identical, or the
+ * cookie-path is a prefix of the request-path and either ends in "/" or is followed in the request-path by "/".
+ */
+function pathMatches(cookiePath, requestPath) {
+  if (cookiePath === requestPath) return true;
+  if (!requestPath.startsWith(cookiePath)) return false;
+  return cookiePath.endsWith('/') || requestPath.charAt(cookiePath.length) === '/';
+}
+const pathAttrOf = (line) => /;\s*Path=([^;]*)/i.exec(line)?.[1];
+
+test('THE BROWSER’S PATH MATCH (RFC 6265 5.1.4): the handle cookie reaches redeem, create and decline, and the state cookie reaches the callback, in production and on the dev origin, and a clearing line has the path it must have to delete them', async () => {
+  // the rule itself, on cases whose answers are known
+  for (const [cookiePath, requestPath, expected] of [
+    ['/', '/auth/roblox/create', true], ['/auth/roblox', '/auth/roblox/create', true], ['/auth/roblox/', '/auth/roblox/create', true],
+    ['/auth/roblox/redeem', '/auth/roblox/create', false], ['/auth/roblox/redeem', '/auth/roblox/redeem', true],
+    ['/auth/roblox', '/auth/robloxx', false], ['/auth/roblox/', '/auth/roblox', false], ['/auth/roblox/', '/api/me/export', false],
+  ]) assert.equal(pathMatches(cookiePath, requestPath), expected, `${cookiePath} against ${requestPath}`);
+
+  const HANDLE_ROUTES = ['/auth/roblox/redeem', '/auth/roblox/create', '/auth/roblox/decline'];
+  const clearedLine = (res, name) => res.headers.getSetCookie().find((c) => c.startsWith(`${name}=`) && /; Max-Age=0(;|$)/.test(c));
+  const liveLine = (res, name) => res.headers.getSetCookie().find((c) => c.startsWith(`${name}=`) && !/; Max-Age=0(;|$)/.test(c));
+
+  // PRODUCTION: the real app, the __Host- names. A __Host- cookie has Path=/, which matches everything.
+  {
+    const { db, world, env } = scene();
+    const flow = await startFlow(env);
+    assert.equal(pathMatches(pathAttrOf(flow.setCookie), '/auth/roblox/callback'), true, 'production: the state cookie reaches the callback');
+    const done = await finish(env, world, flow, { sub: SUB_A, username: 'Builder1' });
+    const live = liveLine(done.res, HANDLE_C);
+    for (const route of HANDLE_ROUTES) assert.equal(pathMatches(pathAttrOf(live), route), true, `production: the handle cookie reaches ${route}`);
+    assert.equal(pathAttrOf(clearedLine(done.res, STATE_C)), pathAttrOf(flow.setCookie), 'production: the state cookie is cleared on the path it was set on');
+    const declined = await declineRequest(env, { cookie: handleCookieOf(done.res) });
+    assert.equal(pathAttrOf(clearedLine(declined, HANDLE_C)), pathAttrOf(live), 'production: the handle cookie is cleared on the path it was set on');
+    db.close();
+  }
+
+  // THE DEV ORIGIN: the bare names, the narrow paths, and a mini cookie jar that sends a cookie to a route only when the browser would.
+  {
+    const { db, world, env } = scene();
+    const routes = R.robloxOAuthRoutes(() => false);                      // index.ts redirects plain http, so the routes are driven directly
+    const asBrowser = (setCookieLine, route, init = {}) => {
+      const sent = pathMatches(pathAttrOf(setCookieLine), route);
+      return routes.request(`${DEV}${route.replace('/auth/roblox', '')}`, { method: 'POST', headers: { Origin: DEV, ...(sent ? { Cookie: setCookieLine.split(';')[0] } : {}), ...init.headers } }, env);
+    };
+    const cameBack = async (sub, username) => {
+      const start = await routes.request(`${DEV}/start`, {}, env);
+      const stateLine = start.headers.getSetCookie()[0];
+      assert.equal(pathMatches(pathAttrOf(stateLine), '/auth/roblox/callback'), true, 'dev: the state cookie reaches the callback');
+      const auth = new URL(start.headers.get('Location'));
+      const state = auth.searchParams.get('state');
+      const code = world.roblox.issueCode({ sub, username, challenge: auth.searchParams.get('code_challenge'), redirectUri: `${DEV}/auth/roblox/callback` });
+      const callback = await routes.request(`${DEV}/callback?code=${code}&state=${state}`, { headers: { Cookie: `rbx_oauth_state=${state}` } }, env);
+      assert.equal(callback.status, 302);
+      assert.equal(pathAttrOf(clearedLine(callback, 'rbx_oauth_state')), pathAttrOf(stateLine), 'dev: the state cookie is cleared on the path it was set on');
+      return liveLine(callback, 'rbx_oauth_handle');
+    };
+
+    const a = await cameBack(SUB_A, 'Dev');
+    for (const route of HANDLE_ROUTES) assert.equal(pathMatches(pathAttrOf(a), route), true, `dev: the handle cookie reaches ${route}`);
+    for (const outside of ['/auth/roblox', '/auth/robloxx/create', '/api/me/export', '/app/auth/roblox', '/']) assert.equal(pathMatches(pathAttrOf(a), outside), false, `dev: and not ${outside}`);
+    // the person's whole first sight, with the cookie going only where the browser would send it
+    assert.equal((await (await asBrowser(a, '/auth/roblox/redeem')).json()).confirm, 'new-account', 'dev: redeem asks');
+    assert.equal((await asBrowser(a, '/auth/roblox/create')).status, 200, 'dev: Continue (create) is sent the cookie and is answered');
+    const redeemed = await asBrowser(a, '/auth/roblox/redeem');
+    assert.equal(redeemed.status, 200);
+    assert.match((await redeemed.json()).token_hash, /^ht_/);
+    assert.equal(pathAttrOf(clearedLine(redeemed, 'rbx_oauth_handle')), pathAttrOf(a), 'dev: the handle cookie is cleared on the path it was set on');
+
+    // Go back on the dev origin, and the clearing line it sends
+    const b = await cameBack(SUB_B, 'DevBob');
+    const declined = await asBrowser(b, '/auth/roblox/decline');
+    assert.equal(declined.status, 200, 'dev: Go back (decline) is sent the cookie and is answered');
+    assert.equal(pathAttrOf(clearedLine(declined, 'rbx_oauth_handle')), pathAttrOf(b), 'dev: and clears it on the path it was set on');
+    db.close();
   }
 });

@@ -64,7 +64,12 @@ const LANDING_PATH = '/app/auth/roblox';
 const HANDLE_PREFIX = 'roblox-oauth:handle:';
 const HANDLE_TTL_SECONDS = 300;
 const HANDLE_COOKIE = 'rbx_oauth_handle';
-const REDEEM_PATH = '/auth/roblox/redeem';
+/**
+ * Where the handle cookie goes on the dev origin, where it is not `__Host-` prefixed and keeps a narrow path. It is sent to /redeem, /create and
+ * /decline, so it is scoped to the directory they share (RFC 6265 5.1.4: a cookie-path that ends in "/" matches every path under it).
+ * It was scoped to /redeem alone, which is the one route of the three the browser then sent it to.
+ */
+const HANDLE_DEV_PATH = '/auth/roblox/';
 /** The shape of a state (in the authorize URL) and of a handle (in the cookie): random base64url, never shorter than this. */
 const FLOW_TOKEN = /^[A-Za-z0-9_-]{20,128}$/;
 /** The only origins a redirect_uri may be built from: the product, and the registered dev server. */
@@ -195,8 +200,8 @@ const flowCookieName = (base: string, dev: boolean): string => (dev ? base : HOS
 const flowCookieAttrs = (devPath: string, dev: boolean): string => (dev ? `Path=${devPath}; HttpOnly; SameSite=Lax` : 'Path=/; HttpOnly; SameSite=Lax; Secure');
 const stateCookie = (state: string, dev: boolean): string => `${flowCookieName(STATE_COOKIE, dev)}=${state}; Max-Age=${STATE_TTL_SECONDS}; ${flowCookieAttrs('/auth/roblox', dev)}`;
 const clearedStateCookie = (dev: boolean): string => `${flowCookieName(STATE_COOKIE, dev)}=; Max-Age=0; ${flowCookieAttrs('/auth/roblox', dev)}`;
-const handleCookie = (handle: string, dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=${handle}; Max-Age=${HANDLE_TTL_SECONDS}; ${flowCookieAttrs(REDEEM_PATH, dev)}`;
-const clearedHandleCookie = (dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=; Max-Age=0; ${flowCookieAttrs(REDEEM_PATH, dev)}`;
+const handleCookie = (handle: string, dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=${handle}; Max-Age=${HANDLE_TTL_SECONDS}; ${flowCookieAttrs(HANDLE_DEV_PATH, dev)}`;
+const clearedHandleCookie = (dev: boolean): string => `${flowCookieName(HANDLE_COOKIE, dev)}=; Max-Age=0; ${flowCookieAttrs(HANDLE_DEV_PATH, dev)}`;
 const readStateCookie = (req: Request): string => readCookie(req, flowCookieName(STATE_COOKIE, isDevOrigin(req)));
 const readHandleCookie = (req: Request): string => readCookie(req, flowCookieName(HANDLE_COOKIE, isDevOrigin(req)));
 
@@ -795,10 +800,17 @@ async function declineAccount(req: Request, env: Env, strays: Strays): Promise<R
  *   there throws that sign-in away. So they are keyed by their own state or handle (5 a minute: one use, and a reload or two),
  *   never by the shared address; a state and a handle are single use anyway, which is the replay protection, and the bucket only
  *   bounds how hard one already-spent value can be hammered. A request with no usable state or handle is never a legitimate one,
- *   and shares a per-address bucket of its own (60 a minute) that no real flow touches; so does a well-formed state or handle that
- *   nobody holds (random, replayed, expired), which the handler counts against that same bucket, because a bucket per value would
- *   otherwise let fresh random values through for ever. That bucket is asked BEFORE KV is read (`Strays.spent`), so an address
- *   that has used it up costs no more reads.
+ *   and is counted per address (60 a minute); so is a well-formed state or handle that nobody holds (random, replayed, expired),
+ *   because a bucket per value would otherwise let fresh random values through for ever. That count is asked BEFORE KV is read
+ *   (`Strays.spent`), so an address that has used it up costs no more reads.
+ *
+ *   THE STRAY COUNT HAS TWO BUCKETS PER KIND, SPLIT BY WHAT THE REQUEST CARRIES. A page on another site can make a request with no
+ *   cookie (the browser sends it no SameSite=Lax cookie) or from another origin, and can make as many as it likes: a `<img>` of
+ *   the callback, a cross-site POST to a handle route. If those shared a bucket with the strays of a request that carries a
+ *   well-formed flow cookie of the right name, sixty of them would refuse the person's own real flow at that address for a minute.
+ *   So the `junk` bucket takes what has no usable cookie (absent, malformed, or only the bare name that production never reads) or a
+ *   foreign Origin, and the `stray` bucket takes only what carries one. Both are bounded at 60 a minute; the real flow never reads
+ *   or writes the first.
  *
  * `ipLimited` is per isolate and evicts the least active key first under a flood, so none of this is a global ceiling:
  * flooding is for Cloudflare's own rate limiting in front of the worker.
@@ -809,22 +821,32 @@ function limitFor(req: Request, ip: string): { key: string; limit: number } {
   if (path.endsWith('/start')) return { key: `rbx-start:${ip}`, limit: 60 };
   if (path.endsWith('/callback')) {
     const state = new URL(req.url).searchParams.get('state') ?? '';
-    return FLOW_TOKEN.test(state) ? { key: `rbx-callback:${state}`, limit: 5 } : { key: `rbx-callback-stray:${ip}`, limit: 60 };
+    return FLOW_TOKEN.test(state)
+      ? { key: `rbx-callback:${state}`, limit: 5 }
+      : { key: strayKey('callback', carriesFlowCookie(req, 'callback'), ip), limit: STRAY_LIMIT };
   }
   if (path.endsWith('/redeem') || path.endsWith('/create') || path.endsWith('/decline')) {
     // Only a request from the app's own origin spends the handle's bucket, so another page (or a sibling subdomain, whose
-    // requests do carry the cookie) cannot use up a person's allowance and make their real redeem fail.
+    // requests do carry the cookie) cannot use up a person's allowance and make their real redeem fail. Whatever else arrives
+    // (no usable cookie, or another origin) is junk, and is counted in a bucket no request of the person's can be.
     const handle = readHandleCookie(req);
     const own = ownOrigin(req);
     return FLOW_TOKEN.test(handle) && own !== null && req.headers.get('Origin') === own
       ? { key: `rbx-redeem:${handle}`, limit: 5 }
-      : { key: `rbx-redeem-stray:${ip}`, limit: 60 };
+      : { key: strayKey('redeem', false, ip), limit: STRAY_LIMIT };
   }
   return { key: `rbx-other:${ip}`, limit: 60 };
 }
 
-/** The stray allowance of one kind of request (the bucket `limitFor` names for a request with no usable value). */
+/** The stray allowance of one kind of request, in each of its two buckets (see `limitFor`). */
 export const STRAY_LIMIT = 60;
+
+/** Does this request carry a well-formed flow cookie of the right name for its origin (`kind`: the callback's state, or the handle routes' handle)? */
+const carriesFlowCookie = (req: Request, kind: 'callback' | 'redeem'): boolean =>
+  FLOW_TOKEN.test(kind === 'callback' ? readStateCookie(req) : readHandleCookie(req));
+
+/** The per-address bucket for what is not held by anybody: `stray` when the request carries a well-formed flow cookie, `junk` when it does not. */
+const strayKey = (kind: 'callback' | 'redeem', carriesCookie: boolean, ip: string): string => `rbx-${kind}-${carriesCookie ? 'stray' : 'junk'}:${ip}`;
 
 /** `spent(key, limit)`: has `key` already used `limit` in its window? Counts nothing. The router's own (index.ts `ipSpent`). */
 export type IpSpent = (key: string, limit: number) => boolean;
@@ -836,8 +858,8 @@ export type IpSpent = (key: string, limit: number) => boolean;
 export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => false): Hono<{ Bindings: Env }> {
   const routes = new Hono<{ Bindings: Env }>();
   const ipOf = (c: { req: { header(name: string): string | undefined } }): string => c.req.header('CF-Connecting-IP') ?? 'unknown';
-  const straysOf = (kind: 'callback' | 'redeem', ip: string): Strays => {
-    const key = `rbx-${kind}-stray:${ip}`;
+  const straysOf = (kind: 'callback' | 'redeem', req: Request, ip: string): Strays => {
+    const key = strayKey(kind, carriesFlowCookie(req, kind), ip);
     return { spent: () => spent(key, STRAY_LIMIT), strike: () => limited(key, STRAY_LIMIT) };
   };
 
@@ -861,7 +883,7 @@ export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => fal
   });
   routes.get('/callback', async (c) => {
     try {
-      return await callback(c.req.raw, c.env, straysOf('callback', ipOf(c)));
+      return await callback(c.req.raw, c.env, straysOf('callback', c.req.raw, ipOf(c)));
     } catch {
       note('unexpected failure');
       return page(500, MESSAGES.failed, [clearedStateCookie(isDevOrigin(c.req.raw))]);
@@ -869,7 +891,7 @@ export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => fal
   });
   routes.post('/redeem', async (c) => {
     try {
-      return await redeem(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
+      return await redeem(c.req.raw, c.env, straysOf('redeem', c.req.raw, ipOf(c)));
     } catch {
       note('unexpected failure');
       return jsonReply(500, { error: MESSAGES.failed }, [clearedHandleCookie(isDevOrigin(c.req.raw))]);
@@ -878,7 +900,7 @@ export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => fal
   // These two leave the cookie alone when they fail: the person is still holding a pending first sight and can press the button again.
   routes.post('/create', async (c) => {
     try {
-      return await createAccount(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
+      return await createAccount(c.req.raw, c.env, straysOf('redeem', c.req.raw, ipOf(c)));
     } catch {
       note('unexpected failure');
       return jsonReply(500, { error: MESSAGES.failed });
@@ -886,7 +908,7 @@ export function robloxOAuthRoutes(limited: IpLimiter, spent: IpSpent = () => fal
   });
   routes.post('/decline', async (c) => {
     try {
-      return await declineAccount(c.req.raw, c.env, straysOf('redeem', ipOf(c)));
+      return await declineAccount(c.req.raw, c.env, straysOf('redeem', c.req.raw, ipOf(c)));
     } catch {
       note('unexpected failure');
       return jsonReply(500, { error: MESSAGES.failed });

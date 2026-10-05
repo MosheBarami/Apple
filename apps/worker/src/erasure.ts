@@ -412,7 +412,7 @@ export async function eraseAccountData(
   //   re-authentication could ever satisfy: the part that failed could not be finished. So the row stays while any other step has
   //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one. ]]
   const othersFailed = steps.some((s) => s.status === 'failed');
-  const holdsLink = othersFailed && (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ?').bind(user.userId).first().catch(() => ({ held: 1 })));
+  const holdsLink = othersFailed && (await robloxLinkHeld(env, user.userId));
   steps.push(
     holdsLink
       ? {
@@ -440,6 +440,15 @@ export async function eraseAccountData(
         : `${failed.length} of ${steps.length} stores could not be cleared: ${failed.map((s) => s.target).join(', ')}. ` +
           `Everything else listed as erased is gone for good. Ask support to finish the rest; nothing here will retry on its own.`,
   };
+}
+
+/** Is there a Roblox link to keep for this person? A lookup that throws is answered "yes": a link that could not be looked at is kept, not swept, and the receipt still goes out. */
+async function robloxLinkHeld(env: Pick<Env, 'CORPUS'>, userId: string): Promise<boolean> {
+  try {
+    return (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ?').bind(userId).first()) !== null;
+  } catch {
+    return true;
+  }
 }
 
 async function erasePostgresProjects(env: Env, user: AuthedUser): Promise<ErasureStep> {
