@@ -15,6 +15,13 @@ could not use, a Connections card that sent people to a dead end, tests that did
 handlers, and two minor gaps. Section 11 says what each was and what changed. Sections 1, 2, 4 to 8 are rewritten to the
 current design; section 9c is the cycle's mutations.
 
+**Updated a third time 2026-10-05 after a third review round ("cycle 3", the last).** It found that re-authenticating a Roblox-only
+account proved nothing while roblox.com was still signed in in that browser, that a device clock that was off could send the same
+account round the re-authentication for ever, that "Continue with Roblox" under the password form quietly made a second, empty
+account for somebody who already had an email account, that the stray allowance was consulted after the KV read it was meant to
+protect, and gaps in the tests. Section 12 says what each was and what changed. Sections 1, 2, 5 to 8 are rewritten to the current
+design; section 9d is the cycle's mutations.
+
 ## 1. What a person sees
 
 1. On the sign-in and sign-up pages a "Continue with Roblox" button appears, but only when the worker says it can
@@ -25,12 +32,16 @@ current design; section 9c is the cycle's mutations.
    that browser, the page asks first ("Switch to my Roblox account" or "Stay signed in"; for a session that is itself a Roblox
    account, which is how a Roblox-only account confirms it is the person in Settings, "Continue with Roblox" or "Cancel") and
    replaces nothing until they choose. When the session that results belongs to a different account, the previous account's
-   drafts, recent searches and view state are cleared.
+   drafts, recent searches and view state are cleared. **A Roblox account that nobody here has seen is not given an account
+   straight away.** The page says "This creates a new StudPilot account. Already have one? Sign in with your email instead." and
+   names the Roblox account, with Continue and Go back. Only Continue makes the user; Go back goes to the sign-in page and
+   withdraws the Roblox authorization that was given for it.
 3. In Settings, under Connections, a card "Sign in with Roblox" shows the linked Roblox username and a "Disconnect Roblox"
    button. While Roblox is the account's only way in (a Roblox-only account) there is no button: the card says Roblox is how
    the account signs in, that it cannot be disconnected because there would be no way back in, and how to withdraw StudPilot's
    access (section 11, item 4). Such an account is shown by its Roblox username, never by its placeholder address, and has no
-   email or password form; export, delete and the other gated actions ask it to sign in with Roblox again (item 3).
+   email or password form; export, delete and the other gated actions ask it to sign in with Roblox again, and the action carries on
+   by itself when it comes back (sections 11 and 12).
 4. Only `openid profile` is requested. The asset scopes (`asset:read asset:write`) arrive with uploads (M5c), with
    their own consent screen. Adding scopes later makes every user consent again, so none is asked for early.
 
@@ -42,21 +53,29 @@ redirect URI here is built on it.
 ```
 browser            worker (studpilot.app)                       Roblox                 Supabase Auth
   | GET /auth/roblox/start          |                              |                        |
-  |-------------------------------->| state + PKCE verifier -> KV (600 s, single use)
+  |-------------------------------->| state + PKCE verifier + purpose -> KV (600 s, single use)
   |<-- 302 authorize?...S256 --------| Set-Cookie __Host-rbx_oauth_state (HttpOnly, Secure, Lax, Path=/)
+  |                                 |   a re-authentication (start?reauth=<action>) adds prompt=login and max_age=0
   |------------------------------------------------------------>| user consents
   |<-- 302 /auth/roblox/callback?code&state ---------------------|
   |-------------------------------->| state read and DELETED; cookie must match
   |                                 |-- POST v1/token (code + verifier + client secret) -->|
   |                                 |-- GET v1/userinfo ---------->|  sub, preferred_username
-  |                                 | link by sub (D1 roblox_identities); a link to a deleted user is dropped; first sight:
-  |                                 |-- POST /auth/v1/admin/users (KEYED synthetic address) -->|
-  |                                 |-- POST .../generate_link (the user's CURRENT address) -->|
-  |                                 | token_hash -> KV under a random handle (300 s, single use)
+  |                                 | link by sub (D1 roblox_identities); a link to a deleted user is dropped
+  |                                 | KNOWN: token_hash -> KV under a random handle (300 s, single use), READY
+  |                                 |   (a re-authentication also writes reauth_at = the server's clock)
+  |                                 |   -- POST .../generate_link (the user's CURRENT address) -->|
+  |                                 | NEW:   nothing is made. The Roblox identity and the SEALED refresh token wait in KV
+  |                                 |        under the handle as PENDING. (A re-authentication never makes an account: 403.)
   |<-- 302 /app/auth/roblox   NOTHING in the URL; Set-Cookie __Host-rbx_oauth_handle (HttpOnly, Secure, Lax, Path=/)
   | SPA: somebody already signed in here? Ask, redeem nothing. Otherwise:
-  |-- POST /auth/roblox/redeem (same Origin, cookie, no body) -->| handle read and DELETED; cookie cleared
-  |<-- { token_hash, next } ---------------------------------------|
+  |-- POST /auth/roblox/redeem (same Origin, cookie, no body) -->| READY: handle read and DELETED; cookie cleared
+  |<-- { token_hash, next } ---------------------------------------|   PENDING: { confirm: "new-account", username }, nothing spent
+  | SPA, a first sight: "This creates a new StudPilot account. Already have one? Sign in with your email instead."
+  |-- POST /auth/roblox/create  (Continue) -->| NOW the user is made (admin API), the token stored, the link minted:
+  |                                            | the record becomes READY under the same handle; { created: true }
+  |-- POST /auth/roblox/redeem -->| { token_hash, next } once
+  |-- POST /auth/roblox/decline (Go back) -->| the pending record is deleted, the Roblox authorization revoked; nothing was made
   | SPA: supabase.auth.verifyOtp({ token_hash, type: 'magiclink' }) ------------------------>|
   |<-- a real Supabase session (the worker never signed a JWT) ---------------------------------|
 ```
@@ -94,6 +113,29 @@ browser            worker (studpilot.app)                       Roblox          
   travels with every request to this host while it lives (state until the callback clears it, at most 10 minutes; handle
   until redeem clears it, at most 5); both are HttpOnly and single use. The registered `http://localhost:5173` dev origin,
   where a Secure cookie is not reliable, keeps the bare names and the narrow paths.
+- **A NEW account is made only after the person has said so (cycle 3).** The callback for a Roblox account nobody here has seen makes
+  nothing: no Supabase user, no D1 row. It writes a `pending` record to KV under the handle (the verified `sub`, the cleaned username,
+  the Roblox refresh token sealed with `CREDENTIAL_KEY`, the scope; five minutes) and redirects as for any sign-in. `POST
+  /auth/roblox/redeem` answers such a record `{confirm: "new-account", username}` and spends nothing, so a reload asks again. The SPA
+  shows the card. **Continue** is `POST /auth/roblox/create`: only then does the worker find or make the user (the existing keyed
+  address logic, unchanged), store the held token, mint the sign-in link and turn the same record into a ready one, which `redeem`
+  hands over once. Nothing is burned when a Continue fails, so it can be pressed again; making the user is idempotent. **Go back** is
+  `POST /auth/roblox/decline`: the record is deleted and the held token is revoked at Roblox (a failed revoke is logged as `decline
+  revoke` and the record is deleted all the same). Both are same-origin POSTs checked before anything is read, and both share the
+  handle's own bucket with `redeem`. A returning account (found by `sub`) is never asked. A link to a deleted user (the stale link
+  of cycle 1) is dropped and the sign-in then IS a first sight, so it is asked like one.
+- **A re-authentication is a flow of its own (cycle 3).** `/auth/roblox/start?reauth=<action>` (an action id is lower-case words and
+  hyphens, nothing else; anything else is an ordinary sign-in) stores `purpose: "reauth"` with the state, asks Roblox for a fresh
+  login (`prompt=login` and `max_age=0`; section 6, item 8 says what is and is not confirmed about them) and sends the browser back to
+  `/settings?resume=<action>`. At the callback a re-authentication never makes an account (an unlinked Roblox account is refused with
+  403, and the authorization it was just given is revoked), and on success the worker writes `roblox_identities.reauth_at`, the time by
+  its own clock, as the last step, after the sign-in token has been minted. An ordinary sign-in writes nothing. That record is what
+  decides a Roblox-only account's gate, in two places: `GET /api/me/export` and `POST /api/me/delete` refuse a Roblox-only account
+  (its address is the placeholder) with 403 `reauth_required` unless it was written in the last ten minutes, and
+  `GET /api/me/roblox/connection` answers `reauthFresh` for the SPA's gate. The window is the web's `REAUTH_WINDOW_MS`, held equal by a
+  test, and is read and written by the worker's clock only: a device clock never takes part. The session's `last_sign_in_at` is not
+  consulted for a Roblox-only account at all (any sign-in sets it, and a roblox.com session that is still open satisfies a sign-in by
+  itself). Everyone else proves who they are with their password in the SPA, as before.
 - **The refresh token** is sealed with `CREDENTIAL_KEY` (the same AES-GCM helper the Open Cloud key uses) in
   `roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, rotated_at, lease_until)`. Roblox refresh
   tokens are single use. A fresh sign-in REPLACES the stored token and deliberately does not revoke the previous one
@@ -125,14 +167,18 @@ browser            worker (studpilot.app)                       Roblox          
   redaction rule was added to the worker's `redaction.ts` (credential shapes only; it blocks egress, so a field NAME is not
   enough) and, as a wider net for a log line, to the browser's Sentry scrub.
 
-- **Rate limits are per kind of request, sized for a shared address.** `status` 120 a minute per address. `start` 60 a minute per
-  address (a lab of thirty can sign in together). `callback` and `redeem` come after the person has consented at Roblox, so a
-  refusal there throws a sign-in away: they are keyed by their OWN state or handle (5 a minute: one use and a reload or two),
-  never by the shared address, and a request from another origin never spends a handle's bucket. A request with no usable state
-  or handle, and a well-formed state or handle that nobody holds (random, replayed, expired), count against a per-address stray
-  bucket (60 a minute) that no real flow touches. Replay protection is unchanged: a state and a handle are single use and burned
-  on first read; the buckets only bound how hard a spent value can be hammered. One shared bucket of 20 for all three, which this
-  replaced, locked a lab out at its seventh sign-in.
+- **Rate limits are per kind of request, sized for a shared address.** `status` 120 a minute per address (pinned by a test: a hundred
+  calls from one address are served, the 121st is not, and thirty other addresses never meet it). `start` 60 a minute per
+  address (a lab of thirty can sign in together). `callback` and the handle routes (`redeem`, `create`, `decline`) come after the person
+  has consented at Roblox, so a refusal there throws a sign-in away: they are keyed by their OWN state or handle (5 a minute: one use and
+  a reload or two), never by the shared address, and a request from another origin never spends a handle's bucket. A request with no
+  usable state or handle, and a well-formed state or handle that nobody holds (random, replayed, expired), count against a per-address
+  stray bucket (60 a minute) that no real flow touches. **That stray bucket is asked BEFORE KV is read (cycle 3):** an address that
+  has already used its sixty is answered 429 without a single KV read, so fresh random values cannot cost reads; the price is that a
+  real flow from that same address is refused too until the minute is out (nothing of it is read, burned or cleared, so it finishes
+  afterwards: its state lives ten minutes). Replay protection is unchanged: a state and a handle are single use and burned on first
+  read; the buckets only bound how hard a spent value can be hammered. One shared bucket of 20 for all three, which cycle 2 replaced,
+  locked a lab out at its seventh sign-in.
 
 ## 3. The decision: the Worker now holds a Supabase secret key
 
@@ -200,17 +246,23 @@ private mode, 10 users, until review) and lands in the app.
 
 ## 5. What was built, and where
 
-Worker: `apps/worker/src/roblox-oauth.ts` (new; cycle 2 changed its cookies, limits and token row); `keyedId` in `user-credentials.ts`; wiring in `index.ts`; `env.ts` (three
-optional secrets); `erasure.ts`, `user-export.ts`, `account-export.ts`; `redaction.ts`.
+Worker: `apps/worker/src/roblox-oauth.ts` (new; cycle 2 changed its cookies, limits and token row; cycle 3 added the re-authentication purpose
+and its server-side record, the held first sight with `/create` and `/decline`, and the stray allowance asked first); `keyedId` in `user-credentials.ts`;
+wiring in `index.ts` (cycle 3: `ipSpent`, the read-only twin of `ipLimited`, and the gate on `GET /api/me/export` and `POST /api/me/delete`); `env.ts` (three
+optional secrets); `erasure.ts`, `user-export.ts` (cycle 3: `reauth_at` named as bookkeeping), `account-export.ts`; `redaction.ts`.
 Web: `lib/roblox-signin.ts` (the button's and the landing page's logic and hooks), `components/roblox-connection-card.tsx`
 (new); `routes/auth-pages.tsx` (button, landing page), `app.tsx` (route `/auth/roblox`, outside both guards like
 `/confirm`), `routes/settings.tsx`, `lib/settings-search.ts`, `lib/api.ts`, `lib/sentry.ts`. Cycle 2 added
 `lib/account-identity.ts` (who an account is: Roblox-only by `app_metadata.roblox_sub`; what to show instead of a placeholder
 address), `lib/account-state.ts` (clears the previous account's drafts, searches and view state) and `lib/use-roblox-username.ts`,
-and changed `components/reauth-dialog.tsx`, `components/layout.tsx` and `lib/auth.tsx` (one word: `AuthContext` is exported).
-Tests: `apps/worker/tests/roblox-oauth.test.mjs` (77), `apps/web/tests/roblox-signin.test.mjs` (41) with its helpers
-`apps/web/tests/hook-harness.mjs` and, new in cycle 2, `apps/web/tests/page-harness.mjs` (runs a page component's own code:
-section 11, item 5), plus cases in `secret-redaction.test.mjs` and `sentry.test.mjs`.
+and changed `components/reauth-dialog.tsx`, `components/layout.tsx` and `lib/auth.tsx` (one word: `AuthContext` is exported). Cycle 3
+added to `lib/roblox-signin.ts` the first-sight card's calls (`createRobloxAccount`, `declineRobloxAccount`, `continueRobloxNewAccount`, the
+`confirm-new` state, `robloxReauthHref`), to `lib/auth-flows.ts` `resumeActionFrom`, and changed `routes/settings.tsx` (the Roblox gate and the
+resume on arrival), `routes/auth-pages.tsx` (the card and its wiring) and `components/reauth-dialog.tsx` (the link carries the action).
+Tests: `apps/worker/tests/roblox-oauth.test.mjs` (92), `apps/web/tests/roblox-signin.test.mjs` (60) with its helpers
+`apps/web/tests/hook-harness.mjs` and `apps/web/tests/page-harness.mjs` (runs a page component's own code: section 11, item 5; cycle 3 gave
+it a stand-in for the query layer, `fakes` that replace a module for every importer, and `expose` for an export the app does not make, so
+`SettingsPage`, the shell and `useRobloxUsername` are executed), plus cases in `secret-redaction.test.mjs` and `sentry.test.mjs`.
 
 **Additions beyond the brief, each with its reason:**
 - *The state is also bound to the browser by a cookie, and so is the sign-in token.* A state that lives only in KV allows
@@ -262,17 +314,34 @@ services. In order of how likely each is to need a fix:
 6. **Cycle 2: the `__Host-` cookies in a real browser.** The state cookie is set on a 302 that answers a top-level navigation and
    must come back on the callback, a cross-site top-level GET from Roblox; `SameSite=Lax` allows that. Not observed. If a
    browser refused it, every sign-in would answer 400 "state not bound to this browser".
-7. **Cycle 2: a fresh Roblox sign-in counts as re-authentication because `verifyOtp` stamps the new session's
-   `last_sign_in_at`,** which `freshestAuth` already reads. That GoTrue updates it on a magic-link verify is from memory, not
-   observed. If it did not, a password-less account would be asked again in a loop after each Roblox round trip; the fix would be to
-   stamp the re-authentication in `AuthProvider` after the landing page's sign-in. First live check: press Export, confirm with
-   Roblox, press Export again: no second prompt.
-8. **Cycle 2: re-auth is only as strong as the person's Roblox session.** If they are already signed in to Roblox in that browser,
-   Roblox may sign them straight back without asking for a password, so the confirmation proves "somebody at this browser can
-   complete a Roblox sign-in", which is weaker than typing a password. `prompt=login` would force a prompt; it is not requested
-   because whether Roblox supports it could not be confirmed here.
+7. **Cycle 3, replacing cycle 2's item 7: a re-authentication no longer rests on `last_sign_in_at`.** The worker records it itself
+   (`roblox_identities.reauth_at`, its own clock) and the gate reads that. What is unobserved is the whole round trip: press Export in
+   Settings as a Roblox-only account, confirm with Roblox, come back, and the export starts by itself with no second press; press it
+   again within ten minutes and nothing asks; wait eleven and it asks. If a browser does not return to `/settings?resume=<action>`
+   intact, the action does not resume and the person presses it again (the gate is still the server's record, so no loop).
+8. **Cycle 3: `prompt=login` and `max_age=0` are TO VERIFY LIVE and are not claimed as documented.** A re-authentication adds both to the
+   authorize request, so that a roblox.com session that is already open in the browser is not enough by itself. What the repository's own
+   saved Roblox notes say (`planning/roblox-oauth-setup.md`, "Endpoints") is that the discovery document is
+   `https://apis.roblox.com/oauth/.well-known/openid-configuration` and that the endpoints are `v1/authorize`, `v1/token`, `v1/userinfo`,
+   `v1/token/revoke` and `v1/token/introspect`; it lists no authorize parameters, and nothing could be fetched here, so neither parameter is
+   confirmed. They are OpenID Connect Core's own parameters and are sent because they cost nothing if ignored. First live checks, in
+   order: read the discovery document for what the authorize endpoint supports; run a re-authentication with roblox.com signed in and see
+   whether Roblox asks for the password. If it does not, a re-authentication proves only that somebody at that browser can finish a Roblox
+   sign-in, which is the weaker proof of cycle 2 (and the id token's `auth_time` is the next thing to look at: nothing here reads it,
+   because whether Roblox sends one is not known either). If Roblox REJECTS a parameter it does not know, every re-authentication fails at
+   the authorize step (the callback answers 400 "no code"): remove that parameter in `start()`, one line.
 9. **Cycle 2: `session.user.app_metadata.roblox_sub`** is what the SPA reads to recognise a Roblox-only account. The Auth API returns
-   `app_metadata` on the user object supabase-js hands the page; not observed.
+   `app_metadata` on the user object supabase-js hands the page; not observed. Cycle 3 leans on it twice more: the Settings gate and the
+   resume only apply to an account the SPA recognises this way (the worker's own gate on export and delete reads the placeholder address
+   instead, as `disconnect` does).
+10. **Cycle 3: the held first sight lives in KV for five minutes.** `redeem`, `create` and `decline` read and rewrite one KV key across
+   several requests, and KV is eventually consistent, so a Continue that reaches another location within seconds of the question may find
+   nothing (the failure card; the person starts again). The record carries the Roblox refresh token sealed with `CREDENTIAL_KEY`, like the
+   stored one. Not observed.
+11. **Cycle 3: Go back revokes the authorization it was given.** For a Roblox account with no StudPilot account here that is the only
+   token anywhere; for one whose link was dropped as stale, revoking may also end the old, dead user's token, which nobody holds. Not
+   observed. If Roblox words an already-revoked token differently the revoke is logged (`decline revoke`) and the record is deleted
+   all the same.
 
 ## 7. Deferred, and not done here
 
@@ -301,14 +370,20 @@ services. In order of how likely each is to need a fix:
 - **A Roblox-only account cannot change its email or set a password.** Settings shows no form for either (the address is a
   placeholder, so Supabase's secure email change would wait for a confirmation nobody can give). Making that possible needs a
   decision about the Supabase setting and a real-address step; it is the owner's.
-- **Re-authentication does not resume the action.** The round trip leaves and re-enters Settings, so the person presses the button
-  again, and it does not ask for ten minutes. The dialog says so.
+- **On return from a re-authentication the landing page still asks "Confirm it is you?"** (Continue or Cancel), because a session exists
+  in that browser (cycle 2): one more click after Roblox's own login. The action then resumes by itself (cycle 3). Skipping the click
+  would need the redeem answer before the choice, and the choice exists to keep the handle unspent.
+- **A flood from one address also refuses that address's real flows for the rest of the minute** (cycle 3: the stray allowance is asked
+  before KV is read). Nothing of a refused flow is read, burned or cleared, so it finishes afterwards.
+- **A password account is still gated by `last_sign_in_at` against the device clock** (`needsReauth`). It does not loop: the dialog runs the
+  action at once and does not re-evaluate it; only a second gated action within ten minutes, on a device whose clock is off, asks again.
+- **The first-sight hold is five minutes,** the handle's life.
 - **The data export file records what is stored:** `user.email` and the `profiles` row carry the placeholder address of a Roblox-only
   account. It is a data record, not a screen; no screen shows it.
-- **The Settings page is not rendered in a test** (no DOM): what a Roblox-only account sees there is checked by reading the syntax
-  tree (the control of the email and password rows branches on the account kind; no address is printed from the session) and by
-  rendering the pieces that carry the words (the dialog, the card, the landing view). The first live run is the first time the page
-  is seen as such an account.
+- **The Settings page is not rendered to a browser** (no DOM): since cycle 3 `SettingsPage` is CALLED in a test and the element tree it
+  returns is read (the email and password rows, the gate, the resume), and the pieces that carry the words (the dialog, the card, the
+  landing view) are rendered to markup; what no test has seen is the page painted. The first live run is the first time the page is seen
+  as such an account.
 - **The worker's `signInKept` disconnect answer is no longer reachable from the UI.** The route still produces it, tested.
 - **The access-token cache is per isolate.** Parallel callers in different isolates are still kept apart by the lease
   (one is told `busy`), not by the cache.
@@ -318,25 +393,26 @@ services. In order of how likely each is to need a fix:
 
 ## 8. Measured results (2026-10-05, branch `studpilot/m2-roblox`, Node 26.8.1)
 
-After the second review round (section 11). The last column is what this section said after the first one (section 10).
+After the third review round (section 12). The middle column is what this section said after the second one (section 11), the last after
+the first (section 10).
 
-| Command | Result | After the first review round |
-|---|---|---|
-| `cd apps/worker && pnpm typecheck` | exit 0 | exit 0 |
-| `cd apps/worker && node --test` | tests 5508, pass 5502, fail 0, skipped 6 | 5495, 5489, 0, 6 |
-| `cd apps/web && pnpm typecheck` | exit 0 | exit 0 |
-| `cd apps/web && node --test` | tests 2496, pass 2496, fail 0 | 2478, 2478, 0 |
-| `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16. The two failures are the scratchpad-location cases in `tests/check-pixels.test.mjs` ("THE CONTROL: against a SAME-ORIGIN baseline..." and "against a baseline with NO provenance..."), which fail when the clone lives under a scratchpad path | the same |
-| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move; `build-allowlist.mjs` reads UNCLASSIFIED: 0 row(s), 0 hit(s)) | the same |
-| `pnpm build` in `apps/web` (exit 0), then `node scripts/check-app-bundle.mjs` | entry 141.9 kB gzipped (budget 150), eager graph 267.6 kB | 141.5 kB, 267.1 kB |
+| Command | Result | After the second round | After the first round |
+|---|---|---|---|
+| `cd apps/worker && pnpm typecheck` | exit 0 | exit 0 | exit 0 |
+| `cd apps/worker && node --test` | tests 5523, pass 5517, fail 0, skipped 6 | 5508, 5502, 0, 6 | 5495, 5489, 0, 6 |
+| `cd apps/web && pnpm typecheck` | exit 0 | exit 0 | exit 0 |
+| `cd apps/web && node --test` | tests 2515, pass 2515, fail 0 | 2496, 2496, 0 | 2478, 2478, 0 |
+| `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16. The two failures are the scratchpad-location cases in `tests/check-pixels.test.mjs` ("THE CONTROL: against a SAME-ORIGIN baseline..." and "against a baseline with NO provenance..."), which fail when the clone lives under a scratchpad path | the same | the same |
+| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move; `build-allowlist.mjs` reads UNCLASSIFIED: 0 row(s), 0 hit(s)) | the same | the same |
+| `pnpm build` in `apps/web` (exit 0), then `node scripts/check-app-bundle.mjs` | entry 142.4 kB gzipped (budget 150), eager graph 268.0 kB | 141.9 kB, 267.6 kB | 141.5 kB, 267.1 kB |
 
-New tests in cycle 2: `roblox-oauth.test.mjs` 64 to 77 (+13), `roblox-signin.test.mjs` 23 to 41 (+18; the old tests that touch the
-landing state, the choice card, the Connections card and the route-guard check were restated, not only added to). Worker +13, web +18.
-
-The new worker test file, run against the unfixed `roblox-oauth.ts` (the version at the start of cycle 2): 77 tests, 12 pass,
-65 fail. Most of those are the sign-in tests, which fail because the cookies now carry other names; the per-item evidence is the
-mutations of 9c. The web tests cannot load against the old web source (the modules they test did not exist), so for them the
-mutations are the evidence.
+New tests in cycle 3: `roblox-oauth.test.mjs` 77 to 92 (+15), `roblox-signin.test.mjs` 41 to 60 (+19). Several of the existing ones were restated,
+not only added to, because the contract changed on purpose: a first sight is made by Continue, not by the callback (the helpers `signIn` and
+`tokenHashOf` press Continue for the tests that are not about it); a Roblox-only account's export and delete need a re-authentication; an
+address over its stray allowance is refused before KV is read, so "a real flow from that address is untouched" became "nothing of it is
+burned"; the landing hook and view gained the first-sight state and props; the dialog's link carries the action; and the old "the gate lets a
+Roblox-only account through after a fresh sign-in" test, which asserted the device-clock comparison this cycle removed, was replaced by tests
+that execute `SettingsPage`.
 
 A local-only browser check was made on the first version (the Vite dev server, every non-localhost request aborted, the
 status route stubbed): the button shows on `/app/login` and `/app/signup` at 1280 and at 375 pixels with no horizontal
@@ -676,6 +752,202 @@ RED  c2.W42 the landing route is wrapped in AuthGuard itself: app.tsx -> red 1 (
 RED  c2.W43 the landing route is wrapped in GuestGuard itself: app.tsx -> red 1 (1 of 41)
 ```
 
+### 9d. Cycle 3: 168 changes, 168 red
+
+Same method and the same runner as 9b and 9c (each change made alone, the named test file run, the exact reverse replacement made, the
+file checked byte-identical afterwards, `git diff` before the first and after the last the same SHA-256, a baseline run first that must
+be green, and each red checked to be a test of the group it was aimed at, not a different guard that happened to fail first). `red N (N
+of M)` is how many tests in that file failed; M is the same on every run of a file (92 for the worker file, 60 for the web file), so a
+red is a failing assertion and not a file that stopped loading. The first runs found five survivors, each a real gap in the tests and each
+fixed before it was recorded as red: `c3.A09` (a state stored without a purpose could be read as a re-authentication), `c3.B06` (the
+stamp could be written before the sign-in token was minted), `c3.D22` (a held record without a numeric `sub` was accepted), `c3.L12`
+(stray callbacks could spend the address's start bucket) and `c3.N08` (Go back left the card on screen while the worker was told); and
+one more, `c3.H01`, was aimed at the wrong test file first. The prefixes: `A` the authorize request, `B` the stamp and its window, `C`
+the gate on export and delete, `D` the first sight (and `D26` to `D29` the squatter tests this cycle restated), `E` the stray allowance
+asked first, `F` the status ceiling, `G` the refresh lease, `H` the export spec, `L` and `S` the limits and strays the restated tests
+guard; in the web file `W` Settings, `U` the username hook and the shell, `P` `isPlaceholderAddress`, `R` the dialog and helpers, `N`
+the first-sight card, calls and page wiring..
+
+```
+RED  c3.A01 a re-authentication does not ask Roblox to prompt for a login: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A02 a re-authentication does not say max_age=0: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A03 every sign-in asks for a fresh login (the lab would type its password at every sign-in): roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A04 the purpose is never stored as a re-authentication: roblox-oauth.ts -> red 5 (5 of 92)
+RED  c3.A05 the action does not ride back to Settings: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.A06 the action id is not checked at all: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A07 the action id may be upper case: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A08 the action id may be unanchored (a query smuggled behind a word): roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.A09 a record without a purpose is read as a re-authentication: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B01 an ordinary sign-in is stamped as a re-authentication too: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.B02 a re-authentication writes no stamp: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.B03 the stamp is written to every account, not the one that confirmed: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B04 the stamp is written for the wrong user (a constant): roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.B05 the stamp is a counter, not the time: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.B06 the stamp is written before the sign-in token has been minted: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B07 the window is twenty minutes: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.B08 the window is five minutes: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B09 a stamp from a minute in the future is believed: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B10 a stamp ahead of this clock by any amount is not believed (no noise allowed): roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B11 a stamp never expires: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.B12 a stamp is believed from the future without limit: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B13 the connection answer says fresh whatever the record says: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.B14 the connection answer never says fresh: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B15 a reauthentication for an unlinked Roblox account makes an account: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B16 a reauthentication for an unlinked account is held as a first sight: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.B17 the authorization given to an unlinked reauthentication is left alive: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.C01 export is not gated: index.ts -> red 2 (2 of 92)
+RED  c3.C02 delete is not gated: index.ts -> red 2 (2 of 92)
+RED  c3.C03 the gate asks every account, not only a Roblox-only one: roblox-oauth.ts -> red 6 (6 of 92)
+RED  c3.C04 the gate never refuses: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.C06 a refusal still lets a stale stamp through (window ignored): roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.D01 the callback makes the account itself (no question): roblox-oauth.ts -> red 9 (9 of 92)
+RED  c3.D02 a returning account is asked too: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.D03 the held refresh token is stored in the clear: roblox-oauth.ts -> red 21 (21 of 92)
+RED  c3.D04 the held record is kept for an hour: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D05 asking burns the held record: roblox-oauth.ts -> red 4 (4 of 92)
+RED  c3.D06 asking clears the handle cookie: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D07 asking also hands over a token: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.D08 the question does not name the account: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D09 Continue does not check the origin: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D10 Go back does not check the origin: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D11 Continue makes an account for a sign-in that is not waiting: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D12 Go back answers for a sign-in that is not waiting: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D13 Continue stores no token for the new account: roblox-oauth.ts -> red 27 (27 of 92)
+RED  c3.D14 Continue burns the held record before it has worked: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D15 Continue leaves the held record as it was (no ready sign-in): roblox-oauth.ts -> red 10 (10 of 92)
+RED  c3.D16 a failed Continue loses the reference: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.D17 Go back does not withdraw the authorization: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D18 Go back keeps what was held: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D19 Go back leaves the handle cookie: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D20 Go back hides a failed withdrawal from the operator: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D21 Continue and Go back have no bucket of their own for the handle: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D22 a pending record without a numeric sub is accepted: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D23 the route for Continue is not mounted: roblox-oauth.ts -> red 70 (70 of 92)
+RED  c3.D24 the route for Go back is not mounted: roblox-oauth.ts -> red 4 (4 of 92)
+RED  c3.D25 a stale link is no longer a first sight (it is signed in as nobody): roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.E01 the callback does not ask the stray budget before it reads KV: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.E02 the handle routes do not ask the stray budget before they read KV: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.E03 the callback asks the stray budget only AFTER the read: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.E04 the refusal before the read clears the state cookie: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.E05 the stray budget is read through a different bucket than the strikes: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.E06 the router is not given the read-only twin: index.ts -> red 1 (1 of 92)
+RED  c3.E07 the read-only twin allows one read more: index.ts -> red 1 (1 of 92)
+RED  c3.E08 the read-only twin forgets the window: index.ts -> red 1 (1 of 92)
+RED  c3.E09 the read-only twin counts a hit: index.ts -> red 1 (1 of 92)
+RED  c3.E10 the stray allowance is 120: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.F01 the status check is limited to 60 a minute: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.F02 the status check is limited to 1000 a minute: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.F03 the status check has one bucket for every address: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.F04 the status check shares the start bucket: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.G01 the lease claim ignores the generation: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.G02 the lease release ignores the generation: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.G04 the lease release is never run after a refusal: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.H01 the new column is neither exported nor excluded: user-export.ts -> red 1 (1 of 13)
+RED  c3.L01 start allows 20 a minute for an address: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.L02 start allows 600 a minute for an address: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.L04 callback is limited by the shared address, 20 a minute: roblox-oauth.ts -> red 3 (3 of 92)
+RED  c3.L05 the handle routes are limited by the shared address, 20 a minute: roblox-oauth.ts -> red 5 (5 of 92)
+RED  c3.L06 a replayed state is never limited: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.L07 a replayed handle is never limited: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.L08 a callback with no usable state is never limited: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.L09 a handle request with no usable handle is never limited: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.L10 a request from another origin spends the handle’s bucket: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.L12 stray callbacks spend the address’s start bucket: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.L13 the state bucket is shared by every flow: roblox-oauth.ts -> red 75 (75 of 92)
+RED  c3.S01 a state nobody holds is not counted against the address: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.S02 a handle nobody holds is not counted against the address: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.S05 a state HELD by a flow is counted as a stray: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.S06 a handle HELD by a flow is counted as a stray: roblox-oauth.ts -> red 1 (1 of 92)
+RED  c3.D26 a squatter on the address is adopted when the account is made: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.D27 an address that is taken is answered as a generic failure: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.D28 an address that is taken logs the generic stage word: roblox-oauth.ts -> red 2 (2 of 92)
+RED  c3.D29 an address that is taken answers 502: roblox-oauth.ts -> red 2 (2 of 92)
+```
+
+The web file:
+
+```
+RED  c3.W01 a Roblox-only account is gated like everyone else (timestamp against the device clock): settings.tsx -> red 3 (3 of 60)
+RED  c3.W02 the gate also trusts the session’s last_sign_in_at: settings.tsx -> red 2 (2 of 60)
+RED  c3.W03 any truthy answer is a yes: settings.tsx -> red 1 (1 of 60)
+RED  c3.W04 a failed request lets the action through: settings.tsx -> red 2 (2 of 60)
+RED  c3.W05 the gate re-checks the server’s yes against the device clock: settings.tsx -> red 2 (2 of 60)
+RED  c3.W06 a yes opens the dialog and a no runs the action: settings.tsx -> red 3 (3 of 60)
+RED  c3.W07 the password gate no longer asks: settings.tsx -> red 1 (1 of 60)
+RED  c3.W08 the gate is decided by the account’s address, not by roblox_sub: settings.tsx -> red 3 (3 of 60)
+RED  c3.W09 the resume never runs: settings.tsx -> red 2 (2 of 60)
+RED  c3.W10 the resume leaves ?resume= in the address: settings.tsx -> red 2 (2 of 60)
+RED  c3.W11 the resume runs for any account, not only a Roblox one: settings.tsx -> red 1 (1 of 60)
+RED  c3.W12 the resume strips every query parameter, not only its own: settings.tsx -> red 1 (1 of 60)
+RED  c3.W13 the resume runs on every render, not once on arrival: settings.tsx -> red 1 (1 of 60)
+RED  c3.W14 the resume does not ask the server, it runs the action: settings.tsx -> red 1 (1 of 60)
+RED  c3.W15 resumeActionFrom accepts any word: auth-flows.ts -> red 2 (2 of 60)
+RED  c3.W16 resumeActionFrom reads the wrong parameter: auth-flows.ts -> red 3 (3 of 60)
+RED  c3.W17 the Roblox account row control branch is inverted (email): settings.tsx -> red 2 (2 of 60)
+RED  c3.W18 the Roblox account row control branch is inverted (password): settings.tsx -> red 2 (2 of 60)
+RED  c3.W19 the password note is inverted: settings.tsx -> red 2 (2 of 60)
+RED  c3.W20 the email note is inverted: settings.tsx -> red 2 (2 of 60)
+RED  c3.W21 identity.roblox is disabled for every account: settings.tsx -> red 1 (1 of 60)
+RED  c3.W22 identity.roblox is on for every account: settings.tsx -> red 1 (1 of 60)
+RED  c3.W23 Settings never asks for the Roblox username: settings.tsx -> red 1 (1 of 60)
+RED  c3.W24 Settings drops the Roblox username from the identity: settings.tsx -> red 1 (1 of 60)
+RED  c3.W25 Settings names the account by the session address: settings.tsx -> red 1 (1 of 60)
+RED  c3.U01 the username query is asked for every account: use-roblox-username.ts -> red 2 (2 of 60)
+RED  c3.U02 the username query is never asked: use-roblox-username.ts -> red 2 (2 of 60)
+RED  c3.U03 the username is returned for every account: use-roblox-username.ts -> red 1 (1 of 60)
+RED  c3.U04 the username query has another key: use-roblox-username.ts -> red 4 (4 of 60)
+RED  c3.U05 the username query asks something else: use-roblox-username.ts -> red 1 (1 of 60)
+RED  c3.U06 the username is never returned: use-roblox-username.ts -> red 3 (3 of 60)
+RED  c3.U07 the shell never asks for the Roblox username: layout.tsx -> red 1 (1 of 60)
+RED  c3.U08 the shell drops the username from the label: layout.tsx -> red 1 (1 of 60)
+RED  c3.U09 the shell shows the address instead of the label: layout.tsx -> red 1 (1 of 60)
+RED  c3.U10 the shell prints the session address: layout.tsx -> red 2 (2 of 60)
+RED  c3.P01 a placeholder address is any .invalid anywhere: account-identity.ts -> red 1 (1 of 60)
+RED  c3.P02 the dot before invalid is any character: account-identity.ts -> red 1 (1 of 60)
+RED  c3.P03 a placeholder address is case sensitive: account-identity.ts -> red 1 (1 of 60)
+RED  c3.P04 a placeholder address is not trimmed: account-identity.ts -> red 1 (1 of 60)
+RED  c3.P05 every string is a placeholder address: account-identity.ts -> red 5 (5 of 60)
+RED  c3.R01 the dialog links to a plain sign-in: reauth-dialog.tsx -> red 1 (1 of 60)
+RED  c3.R02 the dialog does not say the action resumes: reauth-dialog.tsx -> red 1 (1 of 60)
+RED  c3.R03 robloxReauthHref is a plain sign-in: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.R04 robloxReauthHref does not encode: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.R05 robloxReauthHref uses the wrong parameter: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N01 the landing page signs in on a question (ignores confirmNew): roblox-signin.ts -> red 5 (5 of 60)
+RED  c3.N02 Continue redeems even when the account could not be made: roblox-signin.ts -> red 3 (3 of 60)
+RED  c3.N03 a failed Continue loses the reference: roblox-signin.ts -> red 3 (3 of 60)
+RED  c3.N04 Continue forgets who was signed in: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N05 Go back does not tell the worker: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N06 Go back does not leave: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N07 Continue does not show it is working: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N08 Go back leaves the card on screen: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N09 create is a GET: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N10 create goes to the wrong path: roblox-signin.ts -> red 4 (4 of 60)
+RED  c3.N11 decline goes to the wrong path: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N12 any 200 from create is a success: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N13 a failed status with created:true is a success: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N14 a hostile reference is shown: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N15 a thrown decline is not swallowed: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N16 an empty username is a question: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N17 the question is only read on a 200: roblox-signin.ts -> red 2 (2 of 60)
+RED  c3.N18 the question is not a question unless it says new-account: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N19 the page does not wire Continue: auth-pages.tsx -> red 3 (3 of 60)
+RED  c3.N20 the page does not wire Go back: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N21 the page sends Go back home, not to sign-in: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N22 the page does not hand the hook the create call: auth-pages.tsx -> red 2 (2 of 60)
+RED  c3.N23 the page does not hand the hook the decline call: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N24 the card words the question differently: roblox-signin.ts -> red 1 (1 of 60)
+RED  c3.N25 the card has no Go back: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N26 the card has no Continue: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N27 the card does not name the Roblox account: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N28 the card is an alert: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N29 the failure card hides the reference: auth-pages.tsx -> red 1 (1 of 60)
+RED  c3.N30 the first-sight card is never drawn: auth-pages.tsx -> red 1 (1 of 60)
+```
+
+The new test files, run against the sources as they were at the start of this cycle: the worker file, 92 tests, 70 pass, 22 fail;
+the web file does not load at all (`SyntaxError: The requested module '../src/lib/roblox-signin.ts' does not provide an export named
+'ROBLOX_CREATE_PATH'`), so for it the mutations are the evidence.
+
 ## 10. The independent review of this branch, and what it changed (2026-10-05)
 
 Seven findings, each fixed with a test that failed before the fix. Measured: the worker test file, run against the unfixed
@@ -750,14 +1022,15 @@ Six items, each with tests that failed before the fix or fail when the fix is un
    `c2.L13`, `c2.S01` to `c2.S05`.
 3. **A Roblox-only account could not use Settings (breaks users).** It has no password, but export, delete, change email, change
    password, sign out everywhere and remove two-step all asked for one. Now `ReauthDialog` asks such an account to sign in with Roblox
-   again (a link to `/auth/roblox/start?return=/settings`); the new session's `last_sign_in_at` is the fresh proof the gate already reads
-   (section 6, item 7). The account is recognised by `app_metadata.roblox_sub`, which only the Auth admin API can write: not by the
+   again (a link to `/auth/roblox/start?return=/settings`); **superseded in cycle 3 (section 12): the link is now a re-authentication that
+   carries the action, and the proof is the worker's own record, not the new session's `last_sign_in_at`.** The account is recognised by `app_metadata.roblox_sub`, which only the Auth admin API can write: not by the
    shape of its address (an email account whose address merely looks like the placeholder still gets the password box), and not by
    `user_metadata`, which a person can write. The landing page words a Roblox account that is already signed in as a confirmation
    ("Continue with Roblox" / "Cancel"). Tests: the dialog for every gated action; the unchanged password dialog; the gate's window;
    in the worker harness a Roblox-only account (bearer carrying only the placeholder address) exports its data and deletes it with no
    password step, the Roblox grant is revoked by the erasure, and the same Roblox account then signs back in to the same user.
-   Mutations `c2.W25` to `c2.W27`, `c2.W34` to `c2.W40`, `c2.E01`, `c2.E02`. Not done: resuming the action after the round trip.
+   Mutations `c2.W25` to `c2.W27`, `c2.W34` to `c2.W40`, `c2.E01`, `c2.E02`. Not done in cycle 2 (done in cycle 3): resuming the action after
+   the round trip. `c2.E01` and `c2.E02` were restated in cycle 3: export and delete now need the re-authentication first.
 4. **The Connections card told people to do something impossible (breaks users).** "Change your email address and set a password"
    cannot work while the address is a placeholder that Supabase's secure email change would need a confirmation from. The card now says
    that Roblox is how the account signs in, that it cannot be disconnected and why (no email address or password, so no way back in),
@@ -800,6 +1073,110 @@ Six items, each with tests that failed before the fix or fail when the fix is un
 
 **Not fixed, or not verifiable here, and why.** Everything in the second half of section 7 added in cycle 2, and sections 6.6 to 6.9. In
 short: nothing was run against Roblox, Supabase or a browser (the rules of this work); a Roblox-only account cannot change its email or set
-a password (an owner decision about Supabase); re-authentication does not resume the action; its strength is that of the person's Roblox
-session; the Settings page is checked by its syntax tree and its pieces, not rendered whole; the export file records the placeholder
+a password (an owner decision about Supabase); (re-authentication did not resume the action: fixed in cycle 3); its strength is that of the person's Roblox
+session (cycle 3 asks Roblox for a fresh login, which is unconfirmed: section 6, item 8); the Settings page is checked by its syntax tree and its pieces, not rendered whole; the export file records the placeholder
 address as stored.
+
+## 12. The third independent review, and what it changed (2026-10-05, "cycle 3", the last)
+
+Five items, each with tests that failed before the fix or fail when the fix is undone (9d). Where a number is quoted it is measured.
+
+1. **A re-authentication proved nothing while roblox.com was still signed in (security).** The authorize request had no `prompt` or
+   `max_age`, so for a person who was already signed in to Roblox in that browser, Roblox bounced straight back, and whoever sat at an
+   unlocked screen "confirmed it was them" by clicking. And the gate trusted the new session's `last_sign_in_at`, which every sign-in
+   sets, ordinary or not. Now:
+   - a re-authentication is a flow of its own: `/auth/roblox/start?reauth=<action>` stores `purpose: "reauth"` with the state (an
+     action id is lower-case words and hyphens; anything else is an ordinary sign-in), and adds `prompt=login` and `max_age=0` to the
+     authorize request. **Whether Roblox honours them is not confirmed from anything saved in this repository; see section 6, item 8,
+     which marks them "to verify live". They are not claimed as documented.** What the repository's own saved Roblox notes
+     (`planning/roblox-oauth-setup.md`, "Endpoints") do name is the discovery document, `https://apis.roblox.com/oauth/.well-known/openid-configuration`,
+     and the five endpoints; they list no authorize parameters, and nothing could be fetched in this work;
+   - the callback of a re-authentication never makes an account (403, and the authorization it was given is revoked), and on success
+     writes `roblox_identities.reauth_at`, by the worker's clock, as its last step. An ordinary sign-in writes nothing;
+   - that record, and nothing else, is what a Roblox-only account's gate reads: `GET /api/me/export` and `POST /api/me/delete`
+     refuse it with 403 `reauth_required` until it is fresh (ten minutes, the web's `REAUTH_WINDOW_MS`, held equal by a test), and
+     `GET /api/me/roblox/connection` answers `reauthFresh` for the SPA's gate. Settings asks that, on every gated action, for a
+     Roblox-only account (`app_metadata.roblox_sub`, as the dialog does) and never consults `last_sign_in_at`.
+
+   Tests: the authorize request with and without the parameters, for every action in the web's own `SENSITIVE_ACTIONS` and for eleven
+   things that are not an action id; the stamp written by a re-authentication and by nothing else, by the server's clock, for exactly
+   the window (to the millisecond) and with five seconds of tolerance for a stamp a little ahead; another Roblox account's
+   re-authentication opening nothing; a start that is never finished confirming nothing; a re-authentication that cannot finish its
+   sign-in leaving no stamp; a state stored before purposes existed being an ordinary sign-in; export and delete refused, then
+   allowed, then refused again when the stamp is ten minutes and a second old; an email account asked nothing. Mutations `c3.A01` to `c3.A09`,
+   `c3.B01` to `c3.B17`, `c3.C01` to `c3.C04`, `c3.C06`, `c3.H01`.
+2. **A device clock that was off looped a Roblox-only account (breaks users).** `needsReauth` compared the server's `last_sign_in_at` with
+   the device's `Date.now()`: a device 30 seconds behind (the stamp is "in the future") or ten minutes ahead (it is "too old") was
+   asked again after every confirmation, for ever. Now (a) the decision for a Roblox-only account is the server's answer in the
+   server's own time, so no clock of the device's takes part, and (b) the round trip carries the action: the browser comes back to
+   `/settings?resume=<action>` and Settings carries the action on by itself, once (the parameter is taken out of the address, so a
+   reload does not repeat it; a link that names an action opens nothing, because the gate is still asked; only a real gated action is
+   accepted; nothing is resumed for an account with a password). Tests execute `SettingsPage` (below) with the device clock 31 seconds
+   behind, an hour behind, 11 minutes ahead and a day ahead, for every gated action: with a confirmation on record the action goes
+   ahead, without one it asks, once; and the resume under three clocks. A password account is gated exactly as before, by its sign-in
+   time against the device clock, and a test shows the server is never asked for it. Mutations `c3.W01` to `c3.W16`.
+3. **"Continue with Roblox" silently made a second, empty account (breaks users).** Somebody with an email account who pressed it under
+   the password form was given a brand-new account with none of their projects (and a second free allowance), and believed their work
+   was gone. Now the callback makes nothing for a Roblox account nobody here has seen: it holds it (section 2) and the page asks, in the
+   words "This creates a new StudPilot account. Already have one? Sign in with your email instead.", naming the Roblox account, with
+   Continue and Go back. Only Continue (`POST /auth/roblox/create`) makes the user, and Go back (`POST /auth/roblox/decline`) deletes
+   what was held and revokes the Roblox authorization. Tests: the callback creates no Supabase user, no D1 row and no token row, and
+   makes no Supabase call at all; what is held is sealed and is not a sign-in; asking repeatedly spends nothing; Continue makes exactly
+   one user and the held token is the one stored; Go back makes nothing, deletes the record and revokes at Roblox (and is logged when
+   Roblox cannot be reached); a returning account is never asked; Continue and Go back are same-origin POSTs that burn nothing when
+   refused and do nothing for a sign-in that is not a waiting first sight; a failed Continue burns nothing and can be pressed again;
+   the handle's bucket covers all three routes; two callbacks and two presses at once still make one user. In the browser half: the
+   card in its exact words, the redeem answer read as a question, the calls Continue and Go back make (same-origin POSTs, no body),
+   and the landing PAGE run end to end: asked, then create, then redeem, then trade; Go back declines, leaves for `/login` and trades
+   nothing; a failure shows the worker's reference; somebody already signed in is asked twice, in order. Mutations `c3.D01` to
+   `c3.D29`, `c3.N01` to `c3.N30`.
+4. **The stray allowance came after the read it was meant to protect.** `callback` and `redeem` read KV, and only then counted a
+   state or handle nobody held, so fresh random values cost a read each, however many. Now the address's allowance is asked first
+   (`ipSpent`, the read-only twin of `ipLimited`, in `index.ts`): an address that has used its sixty gets 429 with no KV read at
+   all, and nothing of a real flow from it is read, burned or cleared. The test counts the reads: twenty requests of every kind
+   (callback, redeem, create, decline, fresh random values) over budget make zero, a flow from that address is refused and its state is
+   still in KV, and a minute later the same state finishes the flow. Ten real sign-ins from the address before the strays leave the
+   allowance whole. **The price is stated in section 2:** a flood from one address also refuses that address's real flows until
+   the minute is out. The two earlier tests that said a real flow from that address "is untouched" were restated, because the contract
+   changed on purpose. Mutations `c3.E01` to `c3.E10`, `c3.S01`, `c3.S02`, `c3.S05` and `c3.S06` (the strays), `c3.L01` to `c3.L13` (the limits).
+5. **The tests.**
+   - *Settings' Roblox-only branching is executed.* `SettingsPage` is called for real (`tests/page-harness.mjs`, extended: a stand-in
+     for the query layer that records every query and answers it, `fakes` that replace a module for every importer, and `expose` for an
+     export the app does not make) and the element tree it returns is read: the control of the email and password rows is `null` for a
+     Roblox-only account and a form for everyone else, the notes and the identity line say what they should, and the Roblox username
+     is asked for only by the account that has one. Inverting or disabling `identity.roblox`, either row, either note, the username
+     hook or the identity it feeds each fail (`c3.W17` to `c3.W25`).
+   - *`/auth/roblox/status` is pinned:* a hundred calls from one address are all served, the 121st is not, thirty other addresses
+     are never refused, and it is its own bucket (`c3.F01` to `c3.F04`).
+   - *The generation guard on the refresh lease is pinned with the two probe scenarios.* Claim: the row is replaced between the read
+     and the claim by another grant at the same version, which must not be claimed and must not cost a Roblox call. Release: Roblox
+     refuses, and the row has meanwhile become another grant that holds a lease of its own, which must be left alone (`c3.G01`,
+     `c3.G02`, `c3.G04`). `release`'s `version` term is redundant with its `generation` term (a sign-in always makes a new
+     generation, and a refresh keeps it), so no test can tell them apart; it is left as it was.
+   - *`useRobloxUsername` and its call sites run:* the hook (key, `enabled`, the function it asks, what it returns for a Roblox-only
+     account, an email account, nobody and an account with no id), the Settings page (above) and the shell's account line, run with
+     its own `Shell` exposed (`c3.U01` to `c3.U10`).
+   - *A near-miss negative control for `isPlaceholderAddress`:* eleven addresses that resemble the `.invalid` ending without being it
+     (`me@example.invalid.com`, `me@exampleinvalid`, `invalid@example.com`, and so on), against four that are (`c3.P01` to `c3.P05`).
+   - *The tautological assertion is gone.* The confirm card's test asserted that the rendered text included
+     `EXISTING_ROBLOX_SESSION_LINE`, the constant the card is made of. It stays checked by the title, the buttons and the absence
+     of the placeholder address.
+
+**Not fixed, or not verifiable here, and why.**
+- **Whether Roblox honours `prompt=login` and `max_age=0` is not known** (section 6, item 8). If it does not, a re-authentication is
+  still only as strong as the person's Roblox session. Nothing here checks the id token's `auth_time`, because whether Roblox sends one
+  is not known either.
+- Nothing was run against Roblox, Supabase or a browser (the rules of this work). The first-sight card, the re-authentication round
+  trip and the resume are executed against stand-ins, and the first live run is the first time they are seen together.
+- Only the two gated actions that are worker routes (export and delete) are enforced on the server. The others (sign out everywhere, reset
+  settings, remove two-step, change email and password) are Supabase calls or per-user preference writes the worker never sees, so their
+  gate stays in the SPA, now on the server's answer; a client that skips the SPA is not stopped from them by this work.
+- A password account is still gated by `last_sign_in_at` against the device clock (`needsReauth`). It does not loop: after the password
+  is accepted the action runs at once and is not re-evaluated; only a SECOND gated action within ten minutes, on a device whose clock is
+  off, asks again. The finding was the Roblox-only loop.
+- On return from a re-authentication the landing page still shows "Confirm it is you?" with Continue and Cancel, because a session
+  exists in that browser (cycle 2): one more click after Roblox's own login. Skipping it would need the redeem answer before the choice,
+  and the choice exists to keep the handle unspent.
+- The first-sight hold is five minutes (the handle's life): a person who takes longer finds the sign-in gone and starts again.
+- The pending record is read by redeem, create and decline across requests; KV is eventually consistent (section 7), so a Continue
+  that reaches another location within seconds of the question may find nothing and show the failure card. The person starts again.
