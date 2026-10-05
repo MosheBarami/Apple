@@ -1,6 +1,6 @@
 {
  "tag": "new-local",
- "note": "taken from `astro preview` of the rebuilt site on branch studpilot/m2-site, before any deploy; the old counterparts are in ../old",
+ "note": "retaken after fix cycle 1 from `astro preview` of the site at 7f38be22 (branch studpilot/m2-site), before any deploy; the old counterparts are in ../old",
  "shots": [
   {
    "file": "new-home-desktop.png",
@@ -11,8 +11,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 409161,
-   "sha256": "b7d5a69153f4ec4b8976733baa22a8d914345a5d5ebb08725d37174bb5ccc9a3"
+   "bytes": 460763,
+   "sha256": "58bb768f5af89f797a523bd4379dc99d49645e6678a5b614f39f7f69fbdbcb0d"
   },
   {
    "file": "new-how-it-works-desktop.png",
@@ -23,8 +23,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 387509,
-   "sha256": "08b5a2901df0647fd3ef3b91fc63a458a0eb3659d3be221621dd58d340debacc"
+   "bytes": 458066,
+   "sha256": "afb171c76b786d29b8b304646ab7a2d96b36ef9836ebbe3836a9f4943ee83327"
   },
   {
    "file": "new-catalog-desktop.png",
@@ -35,8 +35,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 350933,
-   "sha256": "6905993717759d516da84e2f6e97c57e0f2d7549908169453ce3ada5ec3119e1"
+   "bytes": 425758,
+   "sha256": "5cdd8af43cbc81bbe86eae492bd4a76af66c5044efd4b57f6c22a9365b1e7fb3"
   },
   {
    "file": "new-pricing-desktop.png",
@@ -47,8 +47,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 513020,
-   "sha256": "64a29090b020f7801602082fb4ba613b3a74cb9caa76b8f045dd260f17dd6832"
+   "bytes": 687550,
+   "sha256": "d3ac1136bf8522fca744aae9f6ae337fac45faf16acc1c148f0cd42a67b964bd"
   },
   {
    "file": "new-blog-desktop.png",
@@ -59,8 +59,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 91822,
-   "sha256": "741165c4c984e26552b009ac36c84ce4dd0d5dc98c7b42d46e57aafe50231ba4"
+   "bytes": 92702,
+   "sha256": "e267c6735c883e22d79df2884bad40b95007ad04d80fe1aef9baf3a690ae685d"
   },
   {
    "file": "new-blog-post-desktop.png",
@@ -71,8 +71,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 332567,
-   "sha256": "c18ae2e6470517fa0d8de83b2abe64a2fdc8479c2a0277e9b17e6114bb8e4725"
+   "bytes": 345156,
+   "sha256": "33991a8aa67831dbf8c78122f1ebcfa6fffff83a1da2382f1a85b9c5b700e9e4"
   },
   {
    "file": "new-docs-desktop.png",
@@ -83,32 +83,32 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 266532,
-   "sha256": "2c1d5b1e145504d42669582465c77c02aa57ddfd5981cefb1e6f40bbaf3dc3d7"
+   "bytes": 216994,
+   "sha256": "21ef5a4203b2ff5f656ed0c54d09e375499026c052e4478171c5b226ec4d63ea"
   },
   {
-   "file": "new-privacy-desktop.png",
-   "url": "https://studpilot.app/privacy",
+   "file": "new-docs-getting-started-desktop.png",
+   "url": "https://studpilot.app/docs/getting-started",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 200,
    "viewport": "1440x900",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 2502670,
-   "sha256": "8f3f3a3302efcde0ccfa173d466166fd0fd35ca18f93ef1d7375a5a87d17b2e4"
+   "bytes": 415118,
+   "sha256": "800ad7a4af1bfc46fa7df0ac1b105faf310ffdf0bc4ecb8112a7717292d9f34b"
   },
   {
-   "file": "new-terms-desktop.png",
-   "url": "https://studpilot.app/terms",
+   "file": "new-docs-plugin-desktop.png",
+   "url": "https://studpilot.app/docs/plugin",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 200,
    "viewport": "1440x900",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 625952,
-   "sha256": "cd2a8f545207907f1edb78f2b295db35755e0bf4bf73d433771ac973a667c274"
+   "bytes": 336809,
+   "sha256": "f2c35bd1e51c3a0ad7ad47273d2bbb6ce9eee60b3340312898c14ceb58d0d8d5"
   },
   {
    "file": "new-status-desktop.png",
@@ -119,20 +119,44 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 247372,
-   "sha256": "41ade2d41715b9852b5390c5631b6b3b59afe02d97297f1520a9d3e5337346b6"
+   "bytes": 248015,
+   "sha256": "e1ac06adbd5f41d1c572c773739897a43ebc8ef7692ec055ca7d63ebcdfbbf91"
+  },
+  {
+   "file": "new-privacy-desktop.png",
+   "url": "https://studpilot.app/privacy",
+   "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
+   "status": 200,
+   "viewport": "1440x900",
+   "colorScheme": "dark",
+   "reducedMotion": true,
+   "horizontalScroll": false,
+   "bytes": 2503239,
+   "sha256": "57ec0e5a7eb42f5cc482d53d02627435e3488b21ce7a4ba052b2ee4db9d3f127"
+  },
+  {
+   "file": "new-terms-desktop.png",
+   "url": "https://studpilot.app/terms",
+   "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
+   "status": 200,
+   "viewport": "1440x900",
+   "colorScheme": "dark",
+   "reducedMotion": true,
+   "horizontalScroll": false,
+   "bytes": 626678,
+   "sha256": "5f35f0d4b7adbaa6813cfcd6aa49a890c1bc962afd20527a874958407060df86"
   },
   {
    "file": "new-404-desktop.png",
-   "url": "https://studpilot.app/404",
+   "url": "https://studpilot.app/this-page-does-not-exist",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 404,
    "viewport": "1440x900",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 86359,
-   "sha256": "884aa7579ca6ac0e615fb877e8255b9516cbc1dadfe661205006a84e7c3478cb"
+   "bytes": 86933,
+   "sha256": "b861e60fe8986539d75ee7bbb576f86010f6a5e14078559e4e95bae094d84aec"
   },
   {
    "file": "new-home-phone.png",
@@ -143,8 +167,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 354225,
-   "sha256": "fa53b4fc17f44e556a9f71c97ec26a36bb7f7ed8ecab90180ab18cc6601b43f0"
+   "bytes": 384400,
+   "sha256": "b8260f8118a5c9bb72c7f9b09d1fd24f2a72519e08ca3972706c4074bc3904a5"
   },
   {
    "file": "new-how-it-works-phone.png",
@@ -155,8 +179,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 350150,
-   "sha256": "80f766dcf509b71e389439c8d4ea39424baee7f678704dfb89553290e2f7dd77"
+   "bytes": 388204,
+   "sha256": "ffe7fe2f6c458a85a099f696bcb0902416afa5fdc5f227542f54402ecb5f6526"
   },
   {
    "file": "new-catalog-phone.png",
@@ -167,8 +191,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 303089,
-   "sha256": "f3c850095ffd3900306ea9c0608d6261b6042739420498ddd3973886acd58dc5"
+   "bytes": 373223,
+   "sha256": "e8a3bfc4b7de929bc2c6d96b3386aea3c354357f2bed40529803d14dfd8897fe"
   },
   {
    "file": "new-pricing-phone.png",
@@ -179,8 +203,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 503980,
-   "sha256": "e0c3ac2116973ac9702d4ea855cbefa61bf8d1d50f76c79bff293cc58067d75f"
+   "bytes": 646542,
+   "sha256": "abb6da975aaad051d4483347bd02f2f321c35a485eb7eb7a47ad85b3e81a998b"
   },
   {
    "file": "new-blog-phone.png",
@@ -191,8 +215,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 80754,
-   "sha256": "090a505e65523f78a2f47e58567e4fb37c4e561c828bcbafe39d8113e266a531"
+   "bytes": 80939,
+   "sha256": "fe91431e6201b06d30531d224944a4be7a1fa0676b8c0b95031f7fe15b8f8b51"
   },
   {
    "file": "new-blog-post-phone.png",
@@ -203,8 +227,8 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 292750,
-   "sha256": "0e8cbaf272cc32306b0f45d45bd4fae09bf8b5adb2d2d2ddba083e1b7b6f24e8"
+   "bytes": 299698,
+   "sha256": "132ac43749c311ede8502f3057b26e4096200b3c33d2c412314e962c63a14d03"
   },
   {
    "file": "new-docs-phone.png",
@@ -215,32 +239,32 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 211863,
-   "sha256": "30667d74e4ad317facf3c97ee81d575651c2d9490005f66d315a990e0373752c"
+   "bytes": 182529,
+   "sha256": "92a2056a92e51201b698035965b8a994c9694f5890ab88181bb5712ff4887e86"
   },
   {
-   "file": "new-privacy-phone.png",
-   "url": "https://studpilot.app/privacy",
+   "file": "new-docs-getting-started-phone.png",
+   "url": "https://studpilot.app/docs/getting-started",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 200,
    "viewport": "390x844",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 2155334,
-   "sha256": "e8b7002e4263179d7ce236b742d32753cc537f85bac0c9af40cabf51905c8ed2"
+   "bytes": 348544,
+   "sha256": "bfe1b602b4202469037caa7551c299e255810abfe11fc3d78bdd209a8925f7e9"
   },
   {
-   "file": "new-terms-phone.png",
-   "url": "https://studpilot.app/terms",
+   "file": "new-docs-plugin-phone.png",
+   "url": "https://studpilot.app/docs/plugin",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 200,
    "viewport": "390x844",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 530828,
-   "sha256": "1b28880c22338b8c0cc1387e98aab3b26d20b4182389c4a89f52541569a63449"
+   "bytes": 279862,
+   "sha256": "4e06c84e2aea7c833d20396496e99e8f8d33638e0d385301da92c4b4cd6ee55d"
   },
   {
    "file": "new-status-phone.png",
@@ -251,20 +275,44 @@
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 223565,
-   "sha256": "1bdec8772b0126873e29fe994d507440657689ae2fd875f1e7825607458be9ac"
+   "bytes": 223716,
+   "sha256": "93ded4e29630a5bcc3ec7aa8a5873650a8850ceb8d88b8f65fcf4182e4ee5ef4"
+  },
+  {
+   "file": "new-privacy-phone.png",
+   "url": "https://studpilot.app/privacy",
+   "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
+   "status": 200,
+   "viewport": "390x844",
+   "colorScheme": "dark",
+   "reducedMotion": true,
+   "horizontalScroll": false,
+   "bytes": 2154338,
+   "sha256": "d45bec3fdb57a4266e9989df5551012fc278be2919c39a032b592283d2321501"
+  },
+  {
+   "file": "new-terms-phone.png",
+   "url": "https://studpilot.app/terms",
+   "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
+   "status": 200,
+   "viewport": "390x844",
+   "colorScheme": "dark",
+   "reducedMotion": true,
+   "horizontalScroll": false,
+   "bytes": 530686,
+   "sha256": "91a24190fdc5f46c90a90cf0e34d22459aa0b2fd1b4a5803bb6c98ffbaa4312a"
   },
   {
    "file": "new-404-phone.png",
-   "url": "https://studpilot.app/404",
+   "url": "https://studpilot.app/this-page-does-not-exist",
    "servedBy": "http://localhost:PORT (astro preview of apps/site/dist)",
    "status": 404,
    "viewport": "390x844",
    "colorScheme": "dark",
    "reducedMotion": true,
    "horizontalScroll": false,
-   "bytes": 74959,
-   "sha256": "51668e7f59b3df8b42e6c76826cfb7b01f6aa4fec3a53bddd8458e05a5bc0df5"
+   "bytes": 75157,
+   "sha256": "05a4fc7f0fa0d2137ee3d3353f25d90ed9fa75a2768b788d400a2aa4bc9f5323"
   }
  ]
 }
