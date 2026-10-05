@@ -359,3 +359,100 @@ This is a heuristic in a defence-in-depth guard, not product behaviour:
 
 Write plan-first sentences until the rule is replaced by a parser of the pricing markup (M6, when the page
 gains the estimate-before-build copy).
+
+## 12. M2 step 2.2: the marketing site rebuilt on new layouts (2026-10-05)
+
+Branch `studpilot/m2-site`, from `eb4b2b12` (the design system, in review as PR #32). Handoff 2.2 and the owner's rule: a redesign that
+keeps the old layouts fails, and it is judged side by side against the old pages (`planning/proof/M2/old/` against
+`planning/proof/M2/new-local/`, composed side by side for the landing, pricing and docs in `planning/proof/M2/side-by-side/`). The guards were written and run red against the old build first (`RED-FIRST.md`); every test that pinned an
+old page is in `TEST-LEDGER.md`.
+
+### 12.1 What the site is now
+
+One layout, `Base.astro`, for every route (the docs and legal layouts sit on it). Header: How it works, Catalog, Pricing, Docs, Blog,
+Discord (`/discord`), Sign in (`/app/login`) and the primary "Start free (beta)" (`/app/signup`); on a phone the links fold into a panel and the
+primary button stays in the bar. Footer: product links, docs links, Privacy, Terms, Status, Discord, Contact, the operator line
+"Apple Labs" exactly as it was (owner item N6) and the beta note. The theme toggle keeps its stored key, `apple-theme` (a browser key already in
+people's browsers, `AGENTS.md` section 2; the site and the app both read it, so there was no second key to read).
+
+Pages: the landing (a left-aligned headline beside a fixed-size slot for a real screenshot, four kinds of piece in a sticky-heading list, a rail of
+four steps, the bar stated in a recessed band, a flat price strip, a closing call), `/how-it-works` (eight steps, each labelled **Works today**,
+**Partly works today** or **Being built**), `/catalog` (the four kinds, each with three example requests copied word for word from the frozen
+dev test set, "No examples yet"), `/pricing` (the same figures and guards, a new layout, no Enterprise, no checkout), `/blog` (a content
+collection of Markdown, one post, "What works today in the StudPilot beta"), `/404`. `/status`, `/discord`, the docs and the legal pages are kept and
+take the new header and footer; their inner structure is untouched. The four removed routes, `/models`, `/proof`, `/showcase` and `/changelog`, are
+Astro redirects (to `/`, `/catalog`, `/catalog`, `/blog`), so the built files overwrite the old static rows.
+
+The look, using only the tokens: no gradient, no shadow on a card, no motion of its own (nothing reveals on scroll, nothing loops), system
+fonts, one accent. Measured with `scripts/check-landing-budget.mjs` (nothing raised): markup plus stylesheets **10,382 B gzip of 20,000** (was
+17,481), inline JavaScript **2,882 B in 2 blocks of 36,000** (was 23,714 in 4), images **2,996 B of 40,000** (was 25,873). Lighthouse on the local preview (mobile): Accessibility 100, Best Practices 100 and SEO 100 on `/` and on `/pricing`; a local trace of `/pricing`
+read LCP 74 ms and CLS 0.00. (Lighthouse's performance score is the step 2.5 measurement, on the deployed site.) The only script on any
+page is the theme toggle and the menu (two inline blocks, 2,882 B raw: the pre-paint theme read and the click and Escape handlers).
+
+### 12.2 What was deleted, and the owner pick each one was
+
+Each one is "replaced by the M2 rebuild, handoff 2.2" (the rule: do not reuse old layouts); `tests/old-layouts-gone.test.mjs` keeps them gone.
+
+| Deleted | The owner pick it was | Why it is not reused |
+|---|---|---|
+| `layouts/Landing.astro`, `styles/landing.css` | the front page's own layout and sheet (the 2026-09-22 and 2026-09-24 redesigns) | one Base layout for every route |
+| `picks/NoiseField` (+ `noise.ts`, `noise-field.*`) | React Bits Waves, Shape Waves, Topography, Dither | a moving ground; the new layout is flat and still |
+| `picks/PointerRim` | Motion Conic Gradient Pointer | rim effect on the composer, which is gone |
+| `Marquee.astro`, `picks/ticker.*` | Motion Ticker, GSAP Modifiers | the idea chips under the composer; no composer |
+| `picks/BeamFlow` | UI Layouts Animated Beam (default, multiple input, multiple output, unidirectional) | the "what it reads, what it makes" diagram, which described tools |
+| `picks/DeviceFrame` | Eldora iPad, Motion Screenshot Scroll Reveal | the tablet around the old demo stages |
+| `picks/ArrowLink` | Motion ArrowLink | text links are plain now |
+| `picks/CtaButton` | UI Layouts Button Arrow Right, Liquid Button, Button Background Shine; React Bits Specular Button | the one primary button is `.btn-primary` in the base sheet |
+| `picks/ParticleWord`, `picks/motion.ts` | Componentry Cursor-driven Particle Typography | the footer wordmark of scattering bricks |
+| `picks/scramble.ts` | Motion Scramble Text Hover | the nav links' scramble |
+| `BuiltScreen.astro`, `data/showcase-proof.ts`, `public/assets/proof/model-screen-inventory-*.svg` | not a pick: the "One screen, as the model wrote it" band | a model-built screen is a build result (no fake output) |
+| `ConsentProof.astro`, `data/consent-proof.ts`, `public/assets/proof/studpilot-consent-panel-*.webp` | not a pick: the "same request, sent twice" band, a recorded run of 2026-09-19 | replaced by empty slots for real UI recorded in `screens.json` |
+| `FAQ.astro` | an earlier FAQ component, already unused (`Accordion` replaced it) | dead |
+| `picks-docs/BeamBorder` | Motion UI Border Beam, React Bits Electric Border | decoration on the Free card |
+| `picks-docs/BuildEstimator`, `picks-docs/PriceSwitch`, `picks-docs/rolling-number.*` | Motion Number Counter, Number Formatting, Price Switcher | interactive extras; the figure they derived (the price a build) is printed on each paid card |
+| `picks-docs/ShinyButton` | Eldora Animated Shiny Button | decoration |
+| `picks-docs/Spotlight` | GSAP quickSetter | decoration |
+| `pages/models.astro`, `pages/proof.astro`, `pages/changelog.astro`, `data/recorded-run.ts` | not picks: the engine page, the recorded-run page, the release log | redirects; a recorded run and a changelog are not what the beta shows |
+| `lib/billing-probe.ts` | not a pick: the build-time `fetch` of `/api/billing/config` | the build is hermetic; `terms` and `docs/billing` now say what is true (`checkoutOpen = false`) |
+
+Kept: the docs picks (`Accordion`, `CodeTabs`, `DocsKit`, `Folder`, `Terminal`, `copy-button`) because the docs rewrite is a separate task, the
+mark, and `ObjectIcon` (the plugin page uses it).
+
+### 12.3 Where the task text and the code disagree, and what I wrote
+
+- **Roblox sign-in.** The task says Roblox and email sign-in are live. `ROBLOX-SIGNIN.md` says nothing is switched on or deployed
+  (`/auth/roblox/status` answers `false` until three secrets are on the Worker), and the Roblox app is in private mode. The pages say email sign-in
+  works and Roblox sign-in "is being switched on", which is true either way, and Google and Discord are "coming". If the owner has switched Roblox on by
+  deploy time, change "being switched on" in four places (`how-it-works`, the landing rail, the blog post, and `tests/how-it-works.test.mjs`).
+- **Screenshots in the step list.** The plan's step 4 mentions Studio screenshots. They reach the browser only from a play test or from the `look`
+  tool (vision, removed in M3), and the app's strip for them is another lane's. The page says "a live step list" and no more.
+- **The block engine and the checks** are worded as "being built to", with "Partly works today" where the tools exist (play test, button presses,
+  layout check, audit, claim check are registered and the agent may call them; nothing makes every build run all of them).
+- **The one multiple-choice question** is "Being built": the worker has no such tool (`how-it-works.test.mjs` fails the day one appears).
+- **No whole-game framing, no text-to-3D, no vision, no results.** Held by `no-fake-output` and `how-it-works`.
+- **Reveals.** The scroll-reveal system is gone from every page, and with it `data-reveal` on `/status` and the plugin page; the nav and menu need
+  the 2.9 KB of inline script above and nothing else.
+- **Pricing.** Every figure and guard kept. The "a month / a build" switch and the build estimator went with their components; the price a build is
+  now a static line on each paid card, derived from the same two numbers and held to the config.
+- **The standing exemptions** that named deleted pages were updated, each with the reason: `scripts/check-site-links.mjs` (the `/showcase`
+  exemption, which its own test demanded be removed), `scripts/check-site-semantics.mjs` (redirect stubs have no heading by design, and are
+  counted), `scripts/check-pixels.mjs` (one layout, and the blog post route), `scripts/release.mjs` (the release ledger was checked against the
+  changelog page; it is now checked against `docs/releases` when the config redirects `/changelog`, and still fails if a tree has neither),
+  `planning/rename-allowlist.txt` (six lines for deleted files removed; the pins of `Base.astro`, `Footer.astro` and `theme-on-every-route` set to the
+  measured counts; one line added for the operator-line guard).
+
+### 12.4 Open, and not made true here
+
+1. The screenshot slots are empty (`screens.json` is `[]`): the captures step fills them with real product UI, and `no-fake-output` then
+   requires each picture's hash. The empty frame says "A real screenshot goes here"; do not deploy the site before the captures land.
+2. `infra/deploy-showcase.mjs` still exists and would put the old gallery back over the `/showcase` redirect. It must not be run again;
+   retiring it (and `docs/evidence/ui-showcase`) is a separate decision.
+3. `docs/evidence/pixels/baseline` (87 frames of the old look) is stale; `scripts/check-pixels.mjs` rule 4 fires on every frame until it is re-taken
+   with `--write-baseline` once the app lane lands (DESIGN-SYSTEM section 7: once, not twice).
+4. Left alone on purpose: `public/assets/wall` and `data/asset-wall.json` (CI runs `check-asset-wall` over them; the owner library goes in M3);
+   `scripts/check-offer.mjs` still lists `changelog.astro` as an exception (harmless; its test uses the path as a fixture).
+5. Pre-existing, not mine: about 60 places in the docs, `/privacy` and `/terms` where a line break before an inline tag swallows the space
+   ("with it?Build the plugin"; the compiler drops the space between a word at a line end and a tag on the next line). `rendered-text-joins` does not
+   see it. Every page this step wrote is free of it, and `rendered-text-joins` now holds them to zero and names the docs, `/privacy` and `/terms` as a debt
+   that can only shrink (a listed page that is clean fails until it is removed), because the docs rewrite and the legal lane own those pages.
+   Also the docs Terminal demo keeps its output `visibility: hidden` until its own observer fires.
