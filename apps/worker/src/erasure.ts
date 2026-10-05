@@ -134,6 +134,14 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
       'long as the law requires, which is a decision about money rather than about privacy.',
   },
   {
+    store: 'cloudflare',
+    target: 'AI Gateway — the log of model calls',
+    why:
+      'Every request to an AI model is logged by Cloudflare AI Gateway with its prompt and reply, labelled with the kind ' +
+      'of call and the model and carrying no account id, so it cannot be searched for one person. This route does not ' +
+      'reach it, and how long entries stay is a setting of the gateway in Cloudflare, not something this worker deletes.',
+  },
+  {
     store: 'do',
     target: 'AdminDO — the request log',
     why:
