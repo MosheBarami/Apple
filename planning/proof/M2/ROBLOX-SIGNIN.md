@@ -22,6 +22,12 @@ account for somebody who already had an email account, that the stray allowance 
 protect, and gaps in the tests. Section 12 says what each was and what changed. Sections 1, 2, 5 to 8 are rewritten to the current
 design; section 9d is the cycle's mutations.
 
+**Updated a fourth time 2026-10-05 after a final narrow pass ("final pass").** It found that a deletion that part-failed could not be run
+again by a Roblox-only account (the retry answered 403), that a page on another site could use up an address's stray allowance and so
+refuse the person's own real flow for a minute, that on the dev origin the handle cookie never reached Continue or Go back, and four
+places where a test was weaker than its name. Section 13 says what each was and what changed; sections 2, 5, 7 and 8 carry the current
+design and numbers; section 9e is the pass's mutations.
+
 ## 1. What a person sees
 
 1. On the sign-in and sign-up pages a "Continue with Roblox" button appears, but only when the worker says it can
@@ -112,7 +118,9 @@ browser            worker (studpilot.app)                       Roblox          
   have suited: a sibling subdomain can still set one with `Domain=studpilot.app`. The price of `Path=/` is that each cookie
   travels with every request to this host while it lives (state until the callback clears it, at most 10 minutes; handle
   until redeem clears it, at most 5); both are HttpOnly and single use. The registered `http://localhost:5173` dev origin,
-  where a Secure cookie is not reliable, keeps the bare names and the narrow paths.
+  where a Secure cookie is not reliable, keeps the bare names and the narrow paths: the state cookie `/auth/roblox`, the handle cookie
+  `/auth/roblox/`, the directory that redeem, create and decline share (it was `/auth/roblox/redeem`, which the browser never sent to the
+  other two; section 13, item 3).
 - **A NEW account is made only after the person has said so (cycle 3).** The callback for a Roblox account nobody here has seen makes
   nothing: no Supabase user, no D1 row. It writes a `pending` record to KV under the handle (the verified `sub`, the cleaned username,
   the Roblox refresh token sealed with `CREDENTIAL_KEY`, the scope; five minutes) and redirects as for any sign-in. `POST
@@ -159,7 +167,12 @@ browser            worker (studpilot.app)                       Roblox          
   the route still answers that case as above for any other caller.
 - **Export and erasure.** Both tables are in the account export (`user-export.ts`; the sealed token and the
   lease are withheld and the file says why) and in account erasure (`erasure.ts`): the grant is revoked at Roblox
-  first, then both tables are swept, with a receipt line each and a note on whether Roblox was reached.
+  first, then the token table is swept, with a receipt line each and a note on whether Roblox was reached. **The `roblox_identities` row
+  is swept last, and only when every other step succeeded.** For a Roblox-only account that row is the proof of its re-authentication
+  (`reauth_at`) and the thing a re-authentication needs to exist at all, so while any other step has failed it stays, the receipt carries a
+  `failed` step for it that says to run the deletion again, and the run that completes the rest removes it. Swept earlier, a part-failed
+  deletion (207, "run it again") could not be run again by such an account: the retry answered 403 `reauth_required` (section 13, item 1).
+  An account with no such row is not told about one.
 - **Hardening on `/auth/roblox/*`:** `Cache-Control: no-store`, `Referrer-Policy: no-referrer`,
   `X-Content-Type-Options: nosniff`, the router's `ipLimited` with a bucket per kind of request (next bullet),
   one fixed sentence on every error page (nothing Roblox sent is reflected), and no log line that carries a query
@@ -173,7 +186,12 @@ browser            worker (studpilot.app)                       Roblox          
   has consented at Roblox, so a refusal there throws a sign-in away: they are keyed by their OWN state or handle (5 a minute: one use and
   a reload or two), never by the shared address, and a request from another origin never spends a handle's bucket. A request with no
   usable state or handle, and a well-formed state or handle that nobody holds (random, replayed, expired), count against a per-address
-  stray bucket (60 a minute) that no real flow touches. **That stray bucket is asked BEFORE KV is read (cycle 3):** an address that
+  stray allowance (60 a minute). **That allowance has two buckets per kind (the final pass):** `stray` for a request that carries a
+  well-formed flow cookie of the right name (the state cookie at the callback, the handle cookie at redeem, create and decline), and `junk`
+  for one that does not (no cookie, a malformed one, only the bare name production never reads) or that comes from another origin. A page
+  on another site can send any number of the second kind (an `<img>` of the callback, a cross-site POST: the browser sends it no
+  SameSite=Lax cookie) and, when they shared a bucket with the first, sixty of them refused the person's own real flow at that address for
+  a minute. The real flow never reads or writes `junk`; both are bounded at 60. **The stray bucket is asked BEFORE KV is read (cycle 3):** an address that
   has already used its sixty is answered 429 without a single KV read, so fresh random values cannot cost reads; the price is that a
   real flow from that same address is refused too until the minute is out (nothing of it is read, burned or cleared, so it finishes
   afterwards: its state lives ten minutes). Replay protection is unchanged: a state and a handle are single use and burned on first
@@ -247,7 +265,9 @@ private mode, 10 users, until review) and lands in the app.
 ## 5. What was built, and where
 
 Worker: `apps/worker/src/roblox-oauth.ts` (new; cycle 2 changed its cookies, limits and token row; cycle 3 added the re-authentication purpose
-and its server-side record, the held first sight with `/create` and `/decline`, and the stray allowance asked first); `keyedId` in `user-credentials.ts`;
+and its server-side record, the held first sight with `/create` and `/decline`, and the stray allowance asked first; the final pass split the
+stray allowance into `stray` and `junk` and gave the dev handle cookie the path `/auth/roblox/`); `erasure.ts` (the final pass sweeps the Roblox
+link last, and only when everything else succeeded); `keyedId` in `user-credentials.ts`;
 wiring in `index.ts` (cycle 3: `ipSpent`, the read-only twin of `ipLimited`, and the gate on `GET /api/me/export` and `POST /api/me/delete`); `env.ts` (three
 optional secrets); `erasure.ts`, `user-export.ts` (cycle 3: `reauth_at` named as bookkeeping), `account-export.ts`; `redaction.ts`.
 Web: `lib/roblox-signin.ts` (the button's and the landing page's logic and hooks), `components/roblox-connection-card.tsx`
@@ -259,7 +279,7 @@ and changed `components/reauth-dialog.tsx`, `components/layout.tsx` and `lib/aut
 added to `lib/roblox-signin.ts` the first-sight card's calls (`createRobloxAccount`, `declineRobloxAccount`, `continueRobloxNewAccount`, the
 `confirm-new` state, `robloxReauthHref`), to `lib/auth-flows.ts` `resumeActionFrom`, and changed `routes/settings.tsx` (the Roblox gate and the
 resume on arrival), `routes/auth-pages.tsx` (the card and its wiring) and `components/reauth-dialog.tsx` (the link carries the action).
-Tests: `apps/worker/tests/roblox-oauth.test.mjs` (92), `apps/web/tests/roblox-signin.test.mjs` (60) with its helpers
+Tests: `apps/worker/tests/roblox-oauth.test.mjs` (98), `apps/web/tests/roblox-signin.test.mjs` (60) with its helpers
 `apps/web/tests/hook-harness.mjs` and `apps/web/tests/page-harness.mjs` (runs a page component's own code: section 11, item 5; cycle 3 gave
 it a stand-in for the query layer, `fakes` that replace a module for every importer, and `expose` for an export the app does not make, so
 `SettingsPage`, the shell and `useRobloxUsername` are executed), plus cases in `secret-redaction.test.mjs` and `sentry.test.mjs`.
@@ -360,21 +380,33 @@ services. In order of how likely each is to need a fix:
   state; the cookie (cleared on first use) and Roblox's own single-use code are what stop it. The same holds for the
   handle: a redeem that reached another colo before the callback's write had propagated would see no handle and the page
   would say it could not sign the person in (they try again); a replayed redeem needs the cookie as well.
-- **"Stay signed in" leaves the handle for its five minutes.** It is HttpOnly, scoped to the redeem route, tied to this
-  browser and its own Roblox account, and only same-origin script can spend it, so it is left to expire rather than spent.
+- **"Stay signed in" leaves the handle for its five minutes.** It is HttpOnly, tied to this browser and its own Roblox account (in
+  production `Path=/`, as `__Host-` demands; on the dev origin `/auth/roblox/`), and only same-origin script can spend it, so it is left to
+  expire rather than spent.
 - **The choice appears for any existing session,** including one for the same Roblox account: who the token is for is not
   known until it is redeemed, and redeeming is what must wait for the person.
 - **The dev origin's cookies are bare-named and not Secure.** Production is always https and uses the `__Host-` names; the
   registered dev origin `http://localhost:5173` is plain http, where some browsers refuse a Secure cookie, so it has no prefix to
-  lean on and keeps the narrow paths. A planted cookie is therefore possible there, which is acceptable for a developer's machine.
+  lean on and keeps the narrow paths (`/auth/roblox` for the state, `/auth/roblox/` for the handle). A planted cookie is therefore possible
+  there, which is acceptable for a developer's machine.
 - **A Roblox-only account cannot change its email or set a password.** Settings shows no form for either (the address is a
   placeholder, so Supabase's secure email change would wait for a confirmation nobody can give). Making that possible needs a
   decision about the Supabase setting and a real-address step; it is the owner's.
 - **On return from a re-authentication the landing page still asks "Confirm it is you?"** (Continue or Cancel), because a session exists
   in that browser (cycle 2): one more click after Roblox's own login. The action then resumes by itself (cycle 3). Skipping the click
   would need the redeem answer before the choice, and the choice exists to keep the handle unspent.
-- **A flood from one address also refuses that address's real flows for the rest of the minute** (cycle 3: the stray allowance is asked
-  before KV is read). Nothing of a refused flow is read, burned or cleared, so it finishes afterwards.
+- **A flood of strays that carry a cookie of the right name from one address also refuses that address's real flows for the rest of the
+  minute** (cycle 3: the stray allowance is asked before KV is read). Nothing of a refused flow is read, burned or cleared, so it finishes
+  afterwards. **Requests with no usable cookie, or from another origin, no longer do that** (the final pass: the `junk` bucket, section 2),
+  which is every request a page on another site can make. What is left: somebody at the same address who can send a well-formed cookie of the
+  right name AND, for the handle routes, this site's own Origin (a script on this origin, or a hand-made request) can still spend that
+  address's `stray` bucket; that is a person inside the lab, and a per-address bucket cannot tell them from their neighbour.
+- **`/auth/roblox/start` still shares one bucket per address** (60 a minute). A request to it carries no cookie yet, real or not, so nothing
+  tells a person's start from an `<img>` of it on another site, and sixty of those refuse the address's starts for a minute. A refused start
+  costs the person a retry and nothing else (nothing was spent at Roblox); the stray allowance is the one that threw away a consented sign-in.
+- **`strike()` in the stray count is redundant with `spent()` when requests arrive one after another** (mutation `f.J6` survived and is
+  reported as it was): `spent()` refuses the sixty-first before any read, so `strike()` can only answer `true` for requests that interleave
+  inside one isolate, and then the read has already happened. It changes the status of those requests, not what they cost.
 - **A password account is still gated by `last_sign_in_at` against the device clock** (`needsReauth`). It does not loop: the dialog runs the
   action at once and does not re-evaluate it; only a second gated action within ten minutes, on a device whose clock is off, asks again.
 - **The first-sight hold is five minutes,** the handle's life.
@@ -393,18 +425,25 @@ services. In order of how likely each is to need a fix:
 
 ## 8. Measured results (2026-10-05, branch `studpilot/m2-roblox`, Node 26.8.1)
 
-After the third review round (section 12). The middle column is what this section said after the second one (section 11), the last after
-the first (section 10).
+After the final pass (section 13). The next columns are what this section said after the third review round (section 12), the second
+(section 11) and the first (section 10).
 
-| Command | Result | After the second round | After the first round |
-|---|---|---|---|
-| `cd apps/worker && pnpm typecheck` | exit 0 | exit 0 | exit 0 |
-| `cd apps/worker && node --test` | tests 5523, pass 5517, fail 0, skipped 6 | 5508, 5502, 0, 6 | 5495, 5489, 0, 6 |
-| `cd apps/web && pnpm typecheck` | exit 0 | exit 0 | exit 0 |
-| `cd apps/web && node --test` | tests 2515, pass 2515, fail 0 | 2496, 2496, 0 | 2478, 2478, 0 |
-| `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16. The two failures are the scratchpad-location cases in `tests/check-pixels.test.mjs` ("THE CONTROL: against a SAME-ORIGIN baseline..." and "against a baseline with NO provenance..."), which fail when the clone lives under a scratchpad path | the same | the same |
-| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move; `build-allowlist.mjs` reads UNCLASSIFIED: 0 row(s), 0 hit(s)) | the same | the same |
-| `pnpm build` in `apps/web` (exit 0), then `node scripts/check-app-bundle.mjs` | entry 142.4 kB gzipped (budget 150), eager graph 268.0 kB | 141.9 kB, 267.6 kB | 141.5 kB, 267.1 kB |
+| Command | After the final pass | After the third round | After the second round | After the first round |
+|---|---|---|---|---|
+| `cd apps/worker && pnpm typecheck` | exit 0 | exit 0 | exit 0 | exit 0 |
+| `cd apps/worker && node --test` | tests 5529, pass 5523, fail 0, skipped 6 | 5523, 5517, 0, 6 | 5508, 5502, 0, 6 | 5495, 5489, 0, 6 |
+| `cd apps/web && pnpm typecheck` | exit 0 | exit 0 | exit 0 | exit 0 |
+| `cd apps/web && node --test` | tests 2515, pass 2515, fail 0 | 2515, 2515, 0 | 2496, 2496, 0 | 2478, 2478, 0 |
+| `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16. The two failures are the scratchpad-location cases in `tests/check-pixels.test.mjs` ("THE CONTROL: against a SAME-ORIGIN baseline..." and "against a baseline with NO provenance..."), which fail when the clone lives under a scratchpad path | the same | the same | the same |
+| `node scripts/check-old-names.mjs` | CLEAN, 0 violations, 46138 hits, all allowlisted (the count did not move) | CLEAN, 0 violations, 46138 hits, all allowlisted | the same | the same |
+| `pnpm build` in `apps/web` (exit 0), then `node scripts/check-app-bundle.mjs` | entry 142.4 kB gzipped (budget 150), eager graph 268.0 kB | 142.4 kB, 268.0 kB | 141.9 kB, 267.6 kB | 141.5 kB, 267.1 kB |
+
+New tests in the final pass: `roblox-oauth.test.mjs` 92 to 98 (+6: a part-failed erasure that can be run again, an erasure that fails for an account with no
+link, junk that cannot spend a real flow's allowance (nine shapes), strays at `/create` and `/decline`, a refused handle route that touches nothing of
+the person's, and the browser's path match in production and on the dev origin); `roblox-signin.test.mjs` stays at 60 (two assertions restored in one test).
+Restated, not added: the dev-origin test's path assertion (now `/auth/roblox/`), and the `NO SECRET, TOKEN, CODE, STATE OR QUERY STRING...` test, which
+now runs a real sign-in through Continue and the two new routes' log lines. The fresh-address helper of the worker test no longer wraps at 250 (the file
+allocated 318), so a test that exhausts an address never meets it again.
 
 New tests in cycle 3: `roblox-oauth.test.mjs` 77 to 92 (+15), `roblox-signin.test.mjs` 41 to 60 (+19). Several of the existing ones were restated,
 not only added to, because the contract changed on purpose: a first sight is made by Continue, not by the callback (the helpers `signIn` and
@@ -948,6 +987,64 @@ The new test files, run against the sources as they were at the start of this cy
 the web file does not load at all (`SyntaxError: The requested module '../src/lib/roblox-signin.ts' does not provide an export named
 'ROBLOX_CREATE_PATH'`), so for it the mutations are the evidence.
 
+### 9e. The final pass: 35 changes, 34 red, 1 survivor
+
+Made the way 9d was: one exact replacement in one source file at a time (it must match exactly once), the test file that should notice it run
+at once, then the file put back from a saved copy and checked to be byte-identical by SHA-256 (`restored identical: true` on all 35).
+`red N (N of M)` is how many tests failed; M is 98 for the worker file and 60 for the web file. Prefixes: `E` erasure (the Roblox link is last),
+`J` the stray and junk buckets, `P` cookie paths, `R` a refused handle route touches nothing of the person's, `L` the log test, `W` the web card.
+
+```
+RED  f.E1 the Roblox link is swept even when another step failed: erasure.ts -> red 1 (1 of 98)
+RED  f.E2 a kept-link step is reported for an account with no link: erasure.ts -> red 1 (1 of 98)
+RED  f.E3 a link lookup that throws is not caught (the receipt is lost): erasure.ts -> red 1 (1 of 98)
+RED  f.E4 a link that cannot be looked at is swept as if absent: erasure.ts -> red 1 (1 of 98)
+RED  f.E5 the kept step claims it was erased: erasure.ts -> red 1 (1 of 98)
+RED  f.E6 the kept step does not say to run it again: erasure.ts -> red 1 (1 of 98)
+RED  f.J1 the junk and the stray bucket are one (key ignores the cookie): roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.J2 handle-route junk counted in the cookie-carrying stray bucket: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.J3 callback junk with no state counted in the cookie-carrying stray bucket: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.J4 the handler spends the stray bucket whatever the request carries: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.J5 the handle-route junk bucket is unbounded: roblox-oauth.ts -> red 2 (2 of 98)
+SURVIVED f.J6 the callback junk bucket is unbounded (handler side): roblox-oauth.ts -> red 0 (0 of 98)
+RED  f.J7 Continue counts its strays in the callback bucket: roblox-oauth.ts -> red 4 (4 of 98)
+RED  f.J8 Go back counts its strays in the callback bucket: roblox-oauth.ts -> red 4 (4 of 98)
+RED  f.J9 Continue counts no strays at all: roblox-oauth.ts -> red 3 (3 of 98)
+RED  f.J10 Go back counts no strays at all: roblox-oauth.ts -> red 3 (3 of 98)
+RED  f.J11 a foreign Origin spends the handle bucket again: roblox-oauth.ts -> red 3 (3 of 98)
+RED  f.P1 dev handle cookie scoped to /redeem only: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.P2 dev handle cookie scoped to /create only: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.P3 dev handle cookie scoped to /decline only: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.P4 the clearing line has another path than the cookie (dev): roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.P5 production handle cookie narrowed to /redeem: roblox-oauth.ts -> red 5 (5 of 98)
+RED  f.P6 dev state cookie scoped so the callback does not receive it: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.R1 a cross-origin refusal clears the handle cookie: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.R2 a spent address allowance clears the handle cookie: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.R3 a missing secret on Continue clears the handle cookie: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.R4 Continue on a ready sign-in deletes the held handle: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.R5 Go back on a ready sign-in deletes the held handle: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.R6 Continue on a ready sign-in clears the handle cookie: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.R7 the per-handle allowance refusal clears the handle cookie: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.L1 sign-in token logged on Continue: roblox-oauth.ts -> red 1 (1 of 98)
+RED  f.L2 the Roblox token logged when Go back cannot revoke it: roblox-oauth.ts -> red 2 (2 of 98)
+RED  f.W1 the confirm card for a Roblox session shows the email-account sentence: auth-pages.tsx -> red 1 (1 of 60)
+RED  f.W2 the email-account card shows the Roblox sentence: auth-pages.tsx -> red 1 (1 of 60)
+RED  f.J12 the callback junk bucket (no state in the URL) is unbounded: roblox-oauth.ts -> red 2 (2 of 98)
+```
+
+**The one survivor, `f.J6`,** makes the `strike()` half of the stray count unbounded (`limited(key, 1_000_000)`). It is not caught because
+`spent()` is asked first and refuses the sixty-first request before anything is read, so `strike()` can only answer `true` for requests that
+interleave in one isolate, after their read; the two are redundant in sequential use (section 7). It is old code and none of this pass's
+tests is aimed at it. The first run of the harness also showed that its `--test-name-pattern` flag must come before the file name (after it, Node
+treats it as a file), which is why `f.L1` is run with the pattern in front.
+
+**Measured, besides the mutations.** (1) The new worker file run against the sources as they were at the start of the pass (`89f45997`):
+98 tests, 93 pass, 5 fail: the part-failed erasure test, the junk-flood test, the create/decline strays test, the path-match test and the
+restated dev-origin test. The two tests that pin behaviour that was already right (a refused handle route, the log test) pass there;
+`f.R1` to `f.R7` and `f.L1` and `f.L2` show them. (2) The defect of item 1 itself: the new erasure test with its three assertions on the kept step
+taken out, run against the old `erasure.ts`, fails at the retry with `403 !== 200`. (3) The old log test (the commit before this pass), filtered to
+that one test, with the sign-in token logged on Continue (`f.L1`): green, 0 of 1, because it never pressed Continue; the new one is red, 1 of 1.
+
 ## 10. The independent review of this branch, and what it changed (2026-10-05)
 
 Seven findings, each fixed with a test that failed before the fix. Measured: the worker test file, run against the unfixed
@@ -1158,9 +1255,9 @@ Five items, each with tests that failed before the fix or fail when the fix is u
      its own `Shell` exposed (`c3.U01` to `c3.U10`).
    - *A near-miss negative control for `isPlaceholderAddress`:* eleven addresses that resemble the `.invalid` ending without being it
      (`me@example.invalid.com`, `me@exampleinvalid`, `invalid@example.com`, and so on), against four that are (`c3.P01` to `c3.P05`).
-   - *The tautological assertion is gone.* The confirm card's test asserted that the rendered text included
-     `EXISTING_ROBLOX_SESSION_LINE`, the constant the card is made of. It stays checked by the title, the buttons and the absence
-     of the placeholder address.
+   - *The assertion on `EXISTING_ROBLOX_SESSION_LINE` was dropped here, and restored in the final pass (section 13, item 4).* The
+     argument for dropping it was that the card is made of that constant; the card chooses between it and the email-account sentence, and
+     only an assertion on the sentence notices the choice swapped (`f.W1`, `f.W2`).
 
 **Not fixed, or not verifiable here, and why.**
 - **Whether Roblox honours `prompt=login` and `max_age=0` is not known** (section 6, item 8). If it does not, a re-authentication is
@@ -1180,3 +1277,67 @@ Five items, each with tests that failed before the fix or fail when the fix is u
 - The first-sight hold is five minutes (the handle's life): a person who takes longer finds the sign-in gone and starts again.
 - The pending record is read by redeem, create and decline across requests; KV is eventually consistent (section 7), so a Continue
   that reaches another location within seconds of the question may find nothing and show the failure card. The person starts again.
+
+## 13. The final narrow pass, and what it changed (2026-10-05)
+
+Four items, narrow on purpose. Each has tests that fail when the fix is undone (9e); where a number is quoted it is measured.
+
+1. **A deletion that part-failed could not be run again by a Roblox-only account (breaks users).** `POST /api/me/delete` lets such an
+   account through only inside ten minutes of a Roblox re-authentication, and that proof is `roblox_identities.reauth_at`.
+   `eraseAccountData` swept the whole `roblox_identities` row before the Postgres steps, so when one of them failed the route answered 207
+   "run it again", and the retry found no row and answered 403 `reauth_required`, which no re-authentication could satisfy either (it needs
+   the row too: it never makes an account). Now the link is the last thing swept, and only when every other step succeeded. While any step
+   has failed it stays, and the receipt carries a `failed` step for it that says why and to run the deletion again, so the receipt does not
+   claim a sweep that was not done; the run that completes the rest removes it. An account with no link is not told about one (an
+   email account's receipt is unchanged), a lookup of the link that throws (even synchronously) keeps the link and still returns the
+   receipt, and a sweep of the link that itself fails is a `failed` step that the next run finishes. Tests: a Postgres step fails on the
+   first run (207), the same account's retry inside the window answers 200 and removes the link; a retry after the window is asked to
+   confirm (403) and CAN, because the link survived, then succeeds; the failing link sweep and the unreadable link above; an account
+   with no link. Measured: against the old `erasure.ts` the retry answers `403 !== 200`. Mutations `f.E1` to `f.E6`.
+2. **A page on another site could refuse the person's own sign-in for a minute (breaks users).** Sixty cross-site POSTs to
+   `/auth/roblox/redeem` (no cookie, a foreign Origin), or sixty `<img>` loads of the callback, spent the per-address stray allowance that
+   the person's own real redeem, create, decline or callback at that address also consult, so each of those was answered 429. Each kind now
+   has two buckets per address, `stray` and `junk`, 60 a minute each (section 2): `junk` takes a request with no usable cookie of the right
+   name (absent, malformed, only the bare name production never reads) or a foreign Origin, `stray` takes only one that carries a
+   well-formed cookie of the right name. The real flow never reads or writes `junk`, and `junk` is bounded and costs no KV read once spent.
+   Tests: nine shapes of junk (cross-site POSTs to redeem, create and decline; no Origin; a foreign Origin with a well-formed cookie, which
+   is what a sibling subdomain sends; the bare cookie name; three `<img>` shapes for the callback), sixty each from the address, each
+   answered and not refused, the sixty-first and sixty-second refused without a KV read, and then the same address's own callback (a flow
+   already at Roblox), redeem, Continue, the redeem after it, and Go back, all served. Mutations `f.J1` to `f.J5`, `f.J11`, `f.J12`.
+3. **On the dev origin the handle cookie never reached Continue or Go back (breaks developers).** It was `Path=/auth/roblox/redeem`, so the
+   browser sent it to redeem only; create and decline answered 400 for want of a cookie. It is `Path=/auth/roblox/` now, on set and on clear
+   (a clearing line must carry the same path or the browser keeps the cookie). Production is unchanged: `Path=/` is what `__Host-` demands.
+   The test implements RFC 6265 section 5.1.4 (checked first against eight cases whose answers are known), and drives the whole dev first
+   sight, and a Go back, through a cookie jar that sends the cookie to a route only when that rule says a browser would: redeem asks, Continue
+   is answered, redeem hands over the sign-in, Go back is answered; and the same path match for the three routes in production, for the state
+   cookie at the callback in both, and for the clearing lines. The dev path must not match `/api/me/export`, `/app/auth/roblox` or `/`.
+   Mutations `f.P1` to `f.P6`.
+4. **Tests that were weaker than their names.**
+   - *The log test now runs a real sign-in through Continue*: the callback holds the first sight, the person is asked, Continue makes the
+     account and mints the sign-in token, the token is redeemed, and every value on the way (state, code, verifier, handle, refresh token,
+     sealed refresh token, every access token, every sign-in token Auth made, the redeemed token hash) must be absent from every log line. It
+     also reaches the two new routes' own log lines (`decline revoke`, `account link`). Measured: with the sign-in token logged on Continue
+     the old log test stayed green (it never pressed Continue) and the new one is red (`f.L1`, `f.L2`).
+   - *Stray counting at `/create` and `/decline` is pinned.* Sixty strays through either route are answered and cost one read each;
+     then all three handle routes are refused with no read (it is one bucket for the three); the callback's stray bucket and the junk bucket
+     are untouched; the person's own redeem is refused too, with no cookie cleared and the held record kept, and a minute later it is
+     served. `f.J7` to `f.J10`.
+   - *A refused handle route touches nothing of the person's.* For redeem, create and decline, and for each refusal (another origin, no
+     Origin, a missing secret, the handle's own allowance spent, the address's stray allowance spent, and Continue or Go back on a sign-in that is
+     not a waiting first sight): no `Set-Cookie` line at all, so the handle cookie stays in the person's browser; the held record is byte for byte
+     as it was; nothing was made; and a minute later the person's own redeem still answers with what was held. `f.R1` to `f.R7`.
+   - *The confirm card for a signed-in Roblox account is asserted to show `EXISTING_ROBLOX_SESSION_LINE` again,* with its converse (the
+     email-account choice card does not). `f.W1`, `f.W2`.
+
+**Not fixed, or not verifiable here, and why.**
+- **`/auth/roblox/start` still has one bucket per address (60 a minute)** shared by real and junk starts (section 7). A start carries no
+  cookie, so nothing separates them; a refused start costs a retry and nothing spent at Roblox. Telling them apart would need a header
+  such as `Sec-Fetch-Site`, which the brief did not ask for.
+- **A request that carries a well-formed cookie of the right name and, for the handle routes, this site's own Origin can still spend the
+  `stray` bucket** (section 7): that is somebody inside the lab, not a page on another site.
+- **`f.J6` survived** (9e): `strike()` and `spent()` are redundant in sequential use, and the difference only shows for interleaved requests.
+- **A `failed` step for a link that was kept on purpose** counts in the receipt's `complete: false` and its summary line ("N of M stores
+  could not be cleared: ..., roblox_identities"), which is true, and the same text as any other failure. A person who reads "Ask support
+  to finish the rest" is told to run the deletion again by the step's own detail; the summary sentence is old text and was not reworded.
+- Nothing was run against Roblox, Supabase or a browser (the rules of this work). The cookie path match is the RFC's rule executed in a
+  test, not a browser, and the dev origin is still unreachable end to end (section 7, "Local dev").
