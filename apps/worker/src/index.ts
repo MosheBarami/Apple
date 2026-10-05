@@ -308,7 +308,7 @@ import {
 import type { RenderViewResult, OpResult, StudioOp, QuotaState, RunSnapshot, PairingCodeDto, StudioLinkSummary } from '@studpilot/shared';
 import { PRODUCT_ORIGIN, LEGACY_PRODUCT_HOST, BRANDING_COST_UNITS } from '@studpilot/shared';
 import { WIRE_HEADERS, bothWire, legacyWireCounts, readWire, setWire, stripWire } from '@studpilot/shared';
-import { isPlanId, normalizeModelId, PRICE_CURRENCY, type ProductModel } from '@studpilot/shared';
+import { isPlanId, normalizeModelId, PRICE_CURRENCY, quotaLimit, type ProductModel } from '@studpilot/shared';
 import { MAX_IMAGE_ATTACHMENT_BYTES, attachmentRefusalMessage, type AttachmentRefusal } from '@studpilot/shared';
 
 /**
@@ -5177,7 +5177,7 @@ async function quotaSpend(env: Env, userId: string, credits: number, kind: strin
     headers: { [REQUEST_ID_HEADER]: requestId },
     body: JSON.stringify({ credits, kind, ...(upTo ? { upTo: true } : {}) }),
   });
-  return (await res.json()) as { ok: boolean; state?: { creditsRemaining?: number }; fromAllowance?: number; fromCredits?: number };
+  return (await res.json()) as { ok: boolean; state?: Partial<QuotaState>; fromAllowance?: number; fromCredits?: number };
 }
 
 function idemStorageKey(keyId: string, idemKey: string): string {
@@ -5269,7 +5269,10 @@ async function handleCompletion(c: PublicCtx, legacy: boolean): Promise<Response
     // Same order the agent loop uses — a call that is refused must not have cost anything.
     const admission = await quotaSpend(c.env, key.userId, 1, legacy ? 'api_completion' : 'api_chat', requestId);
     if (!admission.ok) {
-      return refuse(429, 'insufficient_quota', 'This account has no Credits left today.');
+      // The limit that binds, not always the day: Free's month is used up in six days, and "left today"
+      // promised a refill in hours that is weeks away. Code, status and headers are the published contract.
+      const limit = quotaLimit(admission.state);
+      return refuse(429, 'insufficient_quota', `This account's ${limit.label.toLowerCase()} Credits are used up. They refill ${limit.refillWhen}.`);
     }
     creditsSpent = 1;
     creditsRemaining = admission.state?.creditsRemaining ?? null;

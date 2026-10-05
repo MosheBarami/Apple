@@ -700,13 +700,13 @@ async function until(ok, what, ms = 3000) {
  * reports `neurons`. Returns what the session did and whether the step ran at all (false when the
  * request was refused at the door).
  */
-async function sendAndStopInFlight(book, neurons) {
+async function sendAndStopInFlight(book, neurons, providerCalls = { n: 0 }) {
   let release;
   const gate = new Promise((r) => { release = r; });
   let entered = false;
   const h = makeSession({
     book,
-    chat: async () => { entered = true; await gate; return gatewayResponse({ finishReason: 'stop', text: 'Half an answer.', neurons }); },
+    chat: async () => { entered = true; providerCalls.n += 1; await gate; return gatewayResponse({ finishReason: 'stop', text: 'Half an answer.', neurons }); },
   });
   await start(h, 'build a small tower');
   if (h.sent.some((m) => m.type === 'error' && m.code === 'quota')) return { h, ran: false };
@@ -724,21 +724,25 @@ test('STOP IN FLIGHT IS NOT FREE: the abandoned step is settled when it finishes
   //   the 1-unit admission charged, and the abandoned provider call still finished and was billed to
   //   the service: up to MAX_NEURONS_PER_REQUEST (1,200 neurons = 40 ledger units). A Free account
   //   could send and Stop in a loop at 40 units of compute for every 1 it paid. The fix settles the
-  //   step's measured usage when the call resolves, capped by what the person has left. ]]
+  //   step's measured usage when the call resolves, capped by what the person has left.
+  //
+  //   Cycle 3 restated two assertions that could not fail: "compute that ran" was the loop's own counter times 40
+  //   (so it was true by construction), and "the meter is told" was satisfied by the ADMISSION's quota frame. The
+  //   compute is now counted where it happens (the provider call), the billing is read off the ledger, and the
+  //   meter's last frame must be the one the settlement sent. ]]
   const q = quota();
   await q.spend(600);
   assert.equal((await q.state()).allowanceRemaining, 150, 'the fixture: 150 ledger units left of Free\'s 750');
   const book = realBook(q);
 
-  let computeRun = 0; // ledger units of provider compute that ran, whoever paid for it
+  const providerCalls = { n: 0 }; // each one is an abandoned step that the provider ran in full: 1,200 neurons = 40 ledger units
   let lastRun;
   let iterations = 0;
   for (; iterations < 12; iterations++) {
-    const { h, ran } = await sendAndStopInFlight(book, 1200);
+    const { h, ran } = await sendAndStopInFlight(book, 1200, providerCalls);
     if (!ran) break;
-    computeRun += 40;
     // The step is settled in the background once it resolves: give the ledger time to hear of it.
-    // (Not asserted here: unfixed, nothing ever arrives and the loop below is what shows it.)
+    // (Not asserted here: unfixed, nothing ever arrives and the assertions below are what show it.)
     await until(() => book.spends.length >= 2 * (iterations + 1), 'the settlement', 400).catch(() => {});
     lastRun = h;
   }
@@ -746,10 +750,49 @@ test('STOP IN FLIGHT IS NOT FREE: the abandoned step is settled when it finishes
   const state = await q.state();
   assert.equal(state.allowanceRemaining, 0, 'the allowance is spent by the compute that ran, so the next request is refused at the door');
   assert.equal(iterations, 4, '150 units buy 4 abandoned 40-unit steps (the last one is part-paid), not 150 requests');
-  assert.ok(computeRun <= 150 + 40, `compute that ran (${computeRun} units) is bounded by the allowance plus one step`);
+  assert.equal(providerCalls.n, 4, 'the provider really ran four steps');
+  const computeRun = providerCalls.n * 40;
+  const billed = book.spends.reduce((n, s) => n + (s.fromAllowance ?? 0) + (s.fromCredits ?? 0), 0);
+  assert.equal(billed, 150, 'the ledger took the whole allowance: 40 + 40 + 40 + the 30 that was left');
+  assert.ok(computeRun - billed <= 40, `compute that ran (${computeRun} units) is billed but for at most one step's overrun (${billed} taken)`);
   assert.equal(book.spends.filter((s) => s.ok === false && s.fromAllowance > 0).length, 1, 'the last step is paid as far as the balance goes (upTo), not dropped');
   assert.equal(book.refunds.length, 0, 'a Stop is not a refund');
-  assert.ok(lastRun.sent.some((m) => m.type === 'quota'), 'the meter is told what the settlement took');
+  // The meter: the LAST quota frame of the final run is the settlement's, and it is the ledger's state, not the admission's.
+  const frames = lastRun.sent.filter((m) => m.type === 'quota');
+  assert.ok(frames.length >= 2, 'the admission sent one frame and the settlement must send another');
+  assert.notEqual(frames[0].quota.creditsRemaining, 0, 'fixture: the admission left something');
+  assert.equal(frames.at(-1).quota.creditsRemaining, 0, 'the settlement\'s own frame says the allowance is spent');
+});
+
+/** What the live turn footer ends on: msg_end's figure for the message, then any later run_cost for it (use-project-socket.ts). */
+const footerFigure = (h, msgId) => h.sent.filter((m) => (m.type === 'msg_end' || m.type === 'run_cost') && m.msgId === msgId).at(-1)?.creditsSpent;
+
+test('THE LIVE FOOTER AND THE ROW AGREE AFTER A STOP IN FLIGHT: the settled figure is broadcast for that message', async () => {
+  //[[ Review cycle 3, finding 3. finishRun broadcast msg_end with the pre-step creditsSpent (the 1-unit admission)
+  //   and settleAbandonedStep later brought the ROW and the quota meter to the settled figure but told the
+  //   message nothing, so the turn footer said 0.01 Credits while the row and the balance said 0.07. The
+  //   invariant is written above msg_end in finishRun: one number for the transcript, the meter and the footer. ]]
+  const q = quota();
+  const book = realBook(q);
+  const { h } = await sendAndStopInFlight(book, 300); // 10 ledger units in all
+  await until(() => assistantRow(h)?.credits_spent === 10, 'the run row to carry the settled cost');
+  const row = assistantRow(h);
+  assert.equal(lastEnd(h).creditsSpent, 1, 'fixture: msg_end went out before the step resolved, with the admission only');
+  const cost = h.sent.filter((m) => m.type === 'run_cost');
+  assert.equal(cost.length, 1, 'the settlement tells the message what it settled to, once');
+  assert.deepEqual(cost[0], { type: 'run_cost', msgId: row.id, creditsSpent: 10 });
+  assert.equal(footerFigure(h, row.id), row.credits_spent, 'so the live footer ends on the row\'s figure');
+});
+
+test('a step abandoned by Stop that costs the person nothing more broadcasts no second figure', async () => {
+  // Nothing was taken at settlement (the whole 1 unit of balance was the admission): msg_end already said it.
+  const q = quota();
+  await q.spend(749); // 1 unit left: it is the admission, and the settlement finds nothing to take
+  const book = realBook(q);
+  const { h } = await sendAndStopInFlight(book, 300);
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(h.sent.filter((m) => m.type === 'run_cost').length, 0);
+  assert.equal(footerFigure(h, assistantRow(h).id), assistantRow(h).credits_spent);
 });
 
 test('a Stop in flight charges the step\'s MEASURED usage, not its ceiling, and records it on the run row', async () => {
@@ -895,6 +938,51 @@ test('A RUN PAUSED BETWEEN STEPS names the limit that ran out', async () => {
     if (lastEnd(h) === undefined) await h.session.alarm();
     assert.match(assistantRow(h).content, expected);
   }
+});
+
+test('A RUN PAUSED BETWEEN STEPS HAS NOT BEEN REFUNDED: a read-only step that ran was paid for and stays paid for', async () => {
+  //[[ Review cycle 3, finding 1 (money). The between-steps 'quota' pause did not set allowanceUsedUp, so
+  //   refundVerdict saw a refundable ending ('quota'), nothing mutated, and handed back EVERY unit the run
+  //   was charged. Reproduced: Free, 51 units left, one read-only step of 1,530 neurons settles the 51
+  //   exactly, step 2 pauses, 51 units refunded, and the reply said "You have not been charged for this
+  //   run". The person had used 1,530 neurons of compute and kept the allowance. Every 'quota' ending that
+  //   follows a step the person's allowance paid for is the same ending. ]]
+  for (const account of [{ today: 699 }, { earlierThisMonth: 4449 }]) {
+    const { q, book } = freeAccount(account);
+    const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'obby checkpoint' }) };
+    const h = makeSession({ book, responses: [gatewayResponse({ finishReason: 'tool_calls', neurons: 1530, toolCalls: [{ id: 's1', ...call }] })] });
+    await start(h);
+    await h.session.alarm();
+    if (lastEnd(h) === undefined) await h.session.alarm();
+    assert.equal(lastEnd(h).stopReason, 'quota');
+    assert.match(assistantRow(h).content, /Credits ran out\. They refill/, 'fixture: this is the between-steps pause, not the settlement stop');
+    assert.equal(book.spends.length, 2, 'the admission and the one step that ran: the pause itself charges nothing');
+    assert.equal(book.spends.reduce((n, s) => n + s.credits, 0), 51, 'fixture: the step used up the 51 units that were left');
+    assert.equal(book.refunds.length, 0, 'the compute ran, so none of it is handed back');
+    assert.equal(h.sql.oplog.some((o) => o.kind === 'credits_refunded'), false, 'and no refund is written down');
+    assert.equal((await q.state()).creditsRemaining, 0, 'the allowance stays spent');
+    assert.equal(lastEnd(h).creditsSpent, 51, 'the meter ends where the ledger does');
+    assert.equal(assistantRow(h).credits_spent, 51);
+    assert.doesNotMatch(assistantRow(h).content, /not been charged|put back/, 'and the reply does not say the run was free');
+  }
+});
+
+test('THE ONE QUOTA ENDING THAT STILL REFUNDS is the service being full, which the person did not cause', async () => {
+  // The counterpart of the test above, so the distinction is pinned both ways: a person whose own allowance
+  // ran out keeps what the compute cost; a person turned away by StudPilot's shared capacity, with nothing
+  // delivered, gets it back (DECISIONS.md section 8 A).
+  const book = ledger(100);
+  const call = { name: 'search_creation_skills', arguments: JSON.stringify({ query: 'obby checkpoint' }) };
+  const steps = [gatewayResponse({ finishReason: 'tool_calls', neurons: 60, toolCalls: [{ id: 's1', ...call }] })];
+  const h = makeSession({ book, chat: async () => { if (steps.length) return structuredClone(steps.shift()); throw new Error('CAPACITY_EXHAUSTED'); } });
+  await start(h);
+  await h.session.alarm();
+  if (lastEnd(h) === undefined) await h.session.alarm();
+  assert.equal(lastEnd(h).stopReason, 'quota');
+  assert.match(assistantRow(h).content, /very busy today/, 'fixture: the capacity ending, not the allowance one');
+  assert.equal(book.refunds.length, 1, 'the service was full and nothing was delivered: the person is not charged');
+  assert.equal(book.allowanceSpent, 0);
+  assert.match(assistantRow(h).content, /You have not been charged for this run/);
 });
 
 test('THE EMPTY-CREDITS NOTIFICATION AND THE LOW-CREDITS WARNING NAME THE MONTH WHEN THE MONTH IS WHAT BINDS', async () => {

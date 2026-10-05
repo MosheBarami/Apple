@@ -1418,6 +1418,34 @@ test('an account out of Credits gets 429 and the model does not run', async () =
   assert.equal(bundle.trace.ai.length, 0, 'the model ran after the quota refused admission');
 });
 
+test('the 429 for an account out of Credits names the limit that binds and when it lifts, with the same code and headers', async () => {
+  //[[ Review cycle 3, finding 2. The refusal said "This account has no Credits left today." for a Free account
+  //   whose MONTH was used up, promising a refill in hours that is weeks away. The app's own refusals read the
+  //   binding limit from quotaLimit; the API now does too. The error code, type, status and headers are the
+  //   published contract and are asserted unchanged. ]]
+  const monthName = (offset) => new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + offset, 1))
+    .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+  const cases = [
+    ['the day', { creditsDaily: 750, creditsUsedToday: 750, creditsMonthly: 4500, creditsUsedThisMonth: 750 }, "This account's daily Credits are used up. They refill at midnight UTC."],
+    ['the month', { creditsDaily: 750, creditsUsedToday: 0, creditsMonthly: 4500, creditsUsedThisMonth: 4500 }, `This account's monthly Credits are used up. They refill on 1 ${monthName(1)} at 00:00 UTC.`],
+  ];
+  // A TRIPWIRE, deliberately exact: the refusal's header set is the published contract (the same call to refuse(), only its
+  // message argument changed). If the middleware changes it, this fires and the change gets a review; do not bump it.
+  const HEADERS = 'apple-version,content-type,referrer-policy,strict-transport-security,studpilot-version,x-content-type-options,x-ratelimit-limit,x-ratelimit-remaining,x-ratelimit-reset,x-request-id';
+  for (const [what, figures, message] of cases) {
+    const bundle = makeEnv({ quota: async ({ path }) => (path === '/spend' ? { ok: false, state: { ...QUOTA_STATE, ...figures, creditsRemaining: 0 } } : QUOTA_STATE) });
+    const key = await seedKey(bundle, { scopes: ['chat:write'] });
+    const r = await call('/v1/chat/completions', {
+      method: 'POST', key: key.key, env: bundle.env, body: { model: 'studpilot-chat', messages: [{ role: 'user', content: 'hi' }] },
+    });
+    assert.equal(r.status, 429, what);
+    assert.equal(r.json.error.code, 'insufficient_quota', what);
+    assert.equal(r.json.error.message, message, `${what} is what ran out, so the message says so`);
+    assert.doesNotMatch(r.json.error.message, /left today/);
+    assert.equal([...r.res.headers.keys()].sort().join(','), HEADERS, `${what}: the refusal's headers are the published contract`);
+  }
+});
+
 test('a call that overruns the account pays what is left and the header says what was taken (no free inference)', async () => {
   // 200k tokens in and 20k out is far more than the 4 ledger units left after the 1-unit admission.
   // The settlement used to be refused whole and `creditsSpent` still grew by the full amount, so the

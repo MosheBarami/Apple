@@ -304,8 +304,10 @@ interface AgentState {
   creditsFromAllowance?: number;
   creditsFromCredits?: number;
   /**
-   * The run ended because the person's own allowance could not pay for a model step that had already
-   * run (settleUsage). That step was real compute, so refundVerdict does not hand its Credits back.
+   * The run ended because the person's own allowance ran out: it could not pay for a model step that had
+   * already run (settleUsage), or it was empty between steps after earlier ones had been paid for. That
+   * compute was real, so refundVerdict does not hand its Credits back. A global capacity stop is the one
+   * 'quota' ending that does not set this: the person did not cause it.
    */
   allowanceUsedUp?: boolean;
   /** What was actually put back at the end of the run, once. Its presence is also the "done" mark. */
@@ -4062,6 +4064,10 @@ export class SessionDO extends DurableObject<Env> {
       const state = await this.quotaState(agent.userId);
       if (state.unmetered !== true && state.creditsRemaining <= 0) {
         const limit = quotaLimit(state);
+        // The step before this one ran and was paid for from the person's allowance, which is what is now
+        // empty: a 'quota' ending that the person's own allowance caused is never refunded (the same
+        // marking as the settlement stop below; only a global capacity stop is not theirs).
+        agent.allowanceUsedUp = true;
         agent.finalText = agent.finalText || `I paused because your ${limit.label.toLowerCase()} Credits ran out. They refill ${limit.refillWhen}. Progress is saved.`;
         await this.finishRun(agent, 'quota');
         return;
@@ -5739,6 +5745,8 @@ export class SessionDO extends DurableObject<Env> {
       await this.settleNeurons(agent, Number.isFinite(res?.neurons) && res.neurons >= 0 ? res.neurons : MAX_NEURONS_PER_REQUEST);
       if (agent.creditsSpent === before) return;
       this.sql.exec(`update messages set credits_spent = ? where id = ?`, agent.creditsSpent, agent.msgId);
+      // msg_end went out before the step resolved, with the cost known then: the message is told the settled one.
+      this.broadcast({ type: 'run_cost', msgId: agent.msgId, creditsSpent: agent.creditsSpent });
       this.broadcast({ type: 'quota', quota: await this.quotaState(agent.userId) });
     }).catch(() => {});
   }

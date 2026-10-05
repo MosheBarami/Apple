@@ -1492,6 +1492,16 @@ export type ServerMsg =
       dropped?: { groups: number; chars: number };
     }
   | { type: 'quota'; quota: QuotaState }
+  /**
+   * A RUN'S COST, SETTLED AFTER ITS `msg_end` WENT OUT.
+   *
+   * Stop ends a run at once while its model step is still in flight, so `msg_end` carries the cost known at
+   * that instant (the admission). The abandoned step is paid for when the provider call resolves (`settleAbandonedStep`
+   * in do/session.ts), and this tells the message what the run cost in the end, in
+   * ledger units like `msg_end.creditsSpent`, so the live turn footer and the stored row agree. Sent only when
+   * the settlement took something; a client that does not know it keeps the `msg_end` figure.
+   */
+  | { type: 'run_cost'; msgId: string; creditsSpent: number }
   | { type: 'checkpoint'; checkpoint: CheckpointMeta }
   /**
    * A RESTORE, WHILE IT IS HAPPENING AND WHEN IT IS OVER.

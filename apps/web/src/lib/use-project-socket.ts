@@ -46,7 +46,7 @@ import {
 } from './mock';
 import { getAccessToken, supabase } from './supabase';
 import { NO_LINK_FACTS, linkFactsFrom, type StudioLinkFacts } from './studio-connection';
-import { chatItemFromMessageDto, createProjectRequestFence, mergeHistoryWithLive } from './project-socket-state';
+import { chatItemFromMessageDto, createProjectRequestFence, mergeHistoryWithLive, withRunCost } from './project-socket-state';
 // Reasoning, the order of the run's steps, and its sources (AI Elements Reasoning, Task, Sources).
 import { withReasoning, withReasoningClosed, withSources, withToolStart, type TraceFields } from './run-trace.ts';
 
@@ -936,6 +936,10 @@ export function useProjectSocket(
         break;
       case 'quota':
         setQuota(msg.quota);
+        break;
+      case 'run_cost':
+        // After msg_end, so it must not touch running/paused/status: only the one message's figure.
+        setMessages((list) => withRunCost(list, msg.msgId, msg.creditsSpent));
         break;
       case 'checkpoint':
         setCheckpoints((list) => {
