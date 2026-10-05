@@ -48,6 +48,15 @@ export function inviteLink(code: string | null | undefined): string | null {
   return isRefCode(code) ? `${INVITE_BASE}?ref=${code}` : null;
 }
 
+/**
+ * What the press is called wherever it appears (a project's menu on the shelf). It names StudPilot, so it cannot be read as an invitation to
+ * the project it sits on: the real invitation to a project is "Who can build here" in the workspace, and this link grants no access to anything.
+ */
+export const INVITE_ACTION = 'Invite a friend to StudPilot';
+
+/** What a copy says: whose link it is, so the person sends it knowing it opens StudPilot and not their project. */
+export const INVITE_COPIED = 'Link to StudPilot copied. Send it to a friend.';
+
 /** What the invite link's row says about it, and only what is true of it today. */
 export const INVITE_NOTE =
   'Anyone who opens it lands on StudPilot’s sign-up page. The code in it is made from your account with a one-way hash, so it does not name you. Nothing records it yet, and nothing is earned by sharing it.';

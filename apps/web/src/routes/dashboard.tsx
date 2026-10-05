@@ -26,6 +26,7 @@ import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditPro
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
 import { useCreateProject } from '../lib/use-create-project';
 import { useShareInvite } from '../lib/use-invite-link';
+import { INVITE_ACTION } from '../lib/growth';
 import { useAuth } from '../lib/auth';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, tagUniverse } from '../lib/tags';
@@ -274,7 +275,8 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, onS
             {archived ? 'Restore' : 'Archive'}
           </button>
           {/* A link to StudPilot's sign-up page, to send to a friend. The same link on every project: it is about the product, not this
-              project, and it says nothing about this project's contents. */}
+              project, and it says nothing about this project's contents. The label names StudPilot so it does not read as an invitation to
+              this project (that one is "Who can build here", in the workspace). */}
           <button
             type="button"
             role="menuitem"
@@ -286,7 +288,7 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, onS
               onShare();
             }}
           >
-            Copy invite link
+            {INVITE_ACTION}
           </button>
           {/* Markdown first: it is what someone actually reads. JSON is for feeding somewhere. */}
           <button
@@ -616,7 +618,8 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 export function DashboardPage() {
   // One click makes the project and opens it (lib/use-create-project.ts). The same hook serves the rail, the palette and the shortcut.
   const { create: createProject, pending: creatingProject } = useCreateProject();
-  // "Copy invite link" on a project's menu: the link to StudPilot's sign-up page (lib/growth.ts says what it is, and what it is not).
+  // "Invite a friend to StudPilot" on a project's menu: the link to StudPilot's sign-up page (lib/growth.ts says what it is, and what it is not).
+  // It is named for the product, not the project, because it grants no access to the project it sits on.
   const { session } = useAuth();
   const { share: shareInvite } = useShareInvite(session?.user.id);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);

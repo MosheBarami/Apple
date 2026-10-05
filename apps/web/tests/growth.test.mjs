@@ -4,8 +4,9 @@
  *   1. THE LINK is `https://studpilot.app/app/signup?ref=<code>`, the code is a one-way hash of the account id (it names no one, and is the
  *      same each time), and a link with no valid code is not offered at all.
  *   2. THE BADGE is plain text and a link: nothing a Roblox description would show as stray markup.
- *   3. WHERE THEY ARE: a share press on a project (the shelf card's menu and the workspace), and Settings > Share with the full text and a
- *      Copy button that says what happened.
+ *   3. WHERE THEY ARE: "Invite a friend to StudPilot" on a project's menu on the shelf (named for the product, so it does not read as an
+ *      invitation to the project it sits on), and Settings > Share with the full text and a Copy button that says what happened. The
+ *      workspace has no icon for it: beside "Who can build here" an icon cannot say whose link it is (M2 fix cycle 1).
  *   4. WHAT IS NOT PROMISED. Nothing reads `ref` yet (the sign-up page, the worker, the user metadata), the pages say so, and NO REFERRAL
  *      CREDIT IS PROMISED ANYWHERE: those wait for M6. The first guard here fails the day something does read it, so this copy is revisited.
  */
@@ -19,7 +20,7 @@ import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { loadWithReact } from './hook-harness.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
 import {
-  BADGE_NOTE, BADGE_TEXT, COPIED, COPY_FAILED, INVITE_BASE, INVITE_NOTE, REF_CODE_LENGTH, SITE_URL, inviteLink, isRefCode, referralCode,
+  BADGE_NOTE, BADGE_TEXT, COPIED, COPY_FAILED, INVITE_ACTION, INVITE_BASE, INVITE_COPIED, INVITE_NOTE, REF_CODE_LENGTH, SITE_URL, inviteLink, isRefCode, referralCode,
 } from '../src/lib/growth.ts';
 
 const sha = (id) => createHash('sha256').update(`studpilot-invite:${id}`).digest('hex').slice(0, REF_CODE_LENGTH);
@@ -89,16 +90,32 @@ function sources(dir, exts, out = []) {
 const strip = (s) => s.replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/^\s*\/\/.*$/gm, '');
 const ROOT = join(WEB, '..', '..');
 
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1). The scan was two regular expressions that needed "receive credits" with nothing between the verb and the
+//   noun, and the invite word BEFORE the credit word in the second: "Invite a friend and you receive 5 Credits", "Every friend who joins adds 5
+//   Credits to your balance", "Give 5 Credits to every friend you invite" and "Refer someone and unlock 10 Credits" all passed it, and planting
+//   the first in lib/growth.ts left the test green. The property is the same (no copy offers credit for inviting or sharing) and is asked of
+//   the pair instead of a phrasing: an invite word and a credit word within one sentence, in either order, whatever sits between them. ]]
+const SOCIAL = String.raw`(?:refer(?:ral|rals|rer|red|s)?|invit\w*|friends?|teammates?|share|shares|sharing)`;
+const CREDIT = String.raw`(?:credits?|bonus(?:es)?|rewards?|free (?:builds?|months?|days?))`;
+const GAP = String.raw`[^.!?]{0,80}`;
+const REFERRAL_CREDIT_PROMISE = new RegExp(String.raw`\b${SOCIAL}\b${GAP}\b${CREDIT}\b|\b${CREDIT}\b${GAP}\b${SOCIAL}\b`, 'i');
+const squash = (s) => s.replace(/\s+/g, ' ');
+
 test('NO REFERRAL CREDIT IS PROMISED ANYWHERE in the app or the site (it waits for M6)', () => {
   const files = [...sources(join(WEB, 'src'), ['.ts', '.tsx']), ...sources(join(ROOT, 'apps', 'site', 'src'), ['.astro', '.ts', '.tsx', '.md'])];
   assert.ok(files.length > 150, `the scan read ${files.length} files`);
-  const promise = /\b(refer(ral|rals|rer)?|invite[sd]?|friends?)\b[^.\n]{0,80}\b(earn|reward|bonus|free credits?|extra credits?|get (\d+ )?credits?|receive credits?|credits? (for|when|each))\b|\b(earn|get|receive)\b[^.\n]{0,40}\bcredits?\b[^.\n]{0,60}\b(refer|invit|friend|share)|\b(share|sharing|shares)\b[^.\n]{0,60}\b(earn|receive|get|win)\b[^.\n]{0,30}\bcredits?\b/i;
-  const hits = files.map((f) => [relative(ROOT, f), promise.exec(strip(readFileSync(f, 'utf8')))?.[0]]).filter(([, hit]) => hit);
+  const hits = files.map((f) => [relative(ROOT, f), REFERRAL_CREDIT_PROMISE.exec(squash(strip(readFileSync(f, 'utf8'))))?.[0]]).filter(([, hit]) => hit);
   assert.deepEqual(hits, [], 'a page promises a credit for sharing StudPilot');
-  // The guard has teeth: it fires on the sentences it exists for.
-  for (const bad of ['Invite a friend and earn 5 free credits', 'Refer a friend: get 10 credits each', 'Share your link, receive credits when they join', 'Every invite earns a bonus']) assert.match(bad, promise, bad);
-  // And it does not fire on the rows' own words.
-  for (const fine of [INVITE_NOTE, BADGE_NOTE, 'Invite a friend', 'Copy invite link', 'Made with StudPilot']) assert.doesNotMatch(fine, promise, fine);
+  // The guard has teeth: it fires on the sentences it exists for, including the four the first version missed.
+  for (const bad of [
+    'Invite a friend and earn 5 free credits', 'Refer a friend: get 10 credits each', 'Share your link, receive credits when they join', 'Every invite earns a bonus',
+    'Invite a friend and you receive 5 Credits', 'Every friend who joins adds 5 Credits to your balance', 'Give 5 Credits to every friend you invite', 'Refer someone and unlock 10 Credits',
+    'Your friends get 5 bonus credits', 'Share StudPilot and your next month is free of credits',
+  ]) assert.match(bad, REFERRAL_CREDIT_PROMISE, bad);
+  // And it does not fire on the rows' own words, or on a sentence that merely has credits in it.
+  for (const fine of [INVITE_NOTE, BADGE_NOTE, INVITE_ACTION, INVITE_COPIED, 'Invite a friend', 'Made with StudPilot', 'Free while in beta. Paid plans start later.', 'Credits reset every day. Share nothing to keep them.']) {
+    assert.doesNotMatch(fine, REFERRAL_CREDIT_PROMISE, fine);
+  }
 });
 
 test('THE ROWS SAY WHAT IS TRUE TODAY: the link opens the sign-up page, nothing records it, and nothing is earned', () => {
@@ -250,14 +267,15 @@ test('a late answer for a previous account is not applied to the new one', async
   assert.equal(hook.result.link, `https://studpilot.app/app/signup?ref=${sha('second')}`);
 });
 
-test('the share press copies and says Invite link copied; a failure says so; no link yet says to try again', async () => {
+test('the share press copies and says whose link it is; a failure says so; no link yet says to try again', async () => {
   globalThis.__pageFakes = { toasts: [], written: [], ok: true };
   const ok = Hook.mountStub(() => Hook.useShareInvite('u-1'));
   await ok.settle();
   await until(ok, () => ok.renders > 1);
   ok.result.share();
   await until(ok, () => globalThis.__pageFakes.toasts.length > 0);
-  assert.deepEqual(globalThis.__pageFakes.toasts, [['Invite link copied', 'success']]);
+  assert.deepEqual(globalThis.__pageFakes.toasts, [[INVITE_COPIED, 'success']]);
+  assert.equal(INVITE_COPIED, 'Link to StudPilot copied. Send it to a friend.');
   globalThis.__pageFakes = { toasts: [], written: [], ok: false };
   const bad = Hook.mountStub(() => Hook.useShareInvite('u-1'));
   await bad.settle();
@@ -282,24 +300,36 @@ const isTag = (n) => ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n);
 const tagOf = (n) => (ts.isJsxElement(n) ? n.openingElement : n).tagName.getText();
 const attr = (n, name) => (ts.isJsxElement(n) ? n.openingElement : n).attributes.properties.find((a) => ts.isJsxAttribute(a) && a.name.getText() === name)?.initializer?.getText();
 
-test('a project’s menu on the shelf has "Copy invite link", and the shelf hands it the share press', () => {
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1). The item was "Copy invite link", sitting among Rename, Tags, Archive and Delete, which all act on THAT project, and
+//   it copies the sign-up page's link, which grants no access to it. It is named for what it is now. The property is unchanged (a project's menu has
+//   the share press and the shelf hands it the press) and the name is held: it names StudPilot, says nothing of the project, and is not the old
+//   label that read as an invitation to the project. ]]
+test('a project’s menu on the shelf has "Invite a friend to StudPilot", and the shelf hands it the share press', () => {
+  assert.equal(INVITE_ACTION, 'Invite a friend to StudPilot');
+  assert.match(INVITE_ACTION, /StudPilot/, 'the label does not name the product, so it reads as an invitation to the project');
+  assert.doesNotMatch(INVITE_ACTION, /project|copy invite link|collaborat|member/i, 'the label reads as an invitation to the project');
   const dash = parse('routes', 'dashboard.tsx');
   const menu = nodes(dash).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'ProjectMenu');
   assert.ok(menu);
-  const items = nodes(menu).filter((n) => ts.isJsxElement(n) && attr(n, 'role') === '"menuitem"' && /Copy invite link/.test(n.getText()));
-  assert.equal(items.length, 1, 'one "Copy invite link" item');
+  const items = nodes(menu).filter((n) => ts.isJsxElement(n) && attr(n, 'role') === '"menuitem"' && /\{INVITE_ACTION\}/.test(n.getText()));
+  assert.equal(items.length, 1, 'one "Invite a friend to StudPilot" item');
+  assert.doesNotMatch(menu.getText(), /Copy invite link/, 'the old label is back on a project\'s menu');
   assert.match(items[0].getText(), /onShare\(\)/);
   const page = nodes(dash).find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'DashboardPage');
   assert.match(page.getText(), /const \{ share: shareInvite \} = useShareInvite\(session\?\.user\.id\);/);
   assert.match(page.getText(), /onShare=\{shareInvite\}/);
 });
 
-test('the workspace has a share button among the project’s actions, named for what it does', () => {
+//[[ RESTATED 2026-10-05 (M2 fix cycle 1). It required an icon button for the link among the workspace's project actions, right beside "Who can build here",
+//   the REAL invitation to the project. An icon cannot say that it copies the sign-up page's link and grants no access, so a person could send it
+//   to a teammate expecting access. The share is named in words where it stays (the shelf's menu, Settings > Share), and the workspace carries
+//   no icon for it. The property asked now: the one real invitation in the workspace is not shadowed by a second, unlabelled one. ]]
+test('the workspace has NO icon for the invite link beside "Who can build here"; the project’s real invitation is the only one there', () => {
   const ws = parse('routes', 'workspace.tsx');
-  const buttons = nodes(ws).filter((n) => isTag(n) && tagOf(n) === 'button' && attr(n, 'aria-label') === '"Copy a link to invite someone to StudPilot"');
-  assert.equal(buttons.length, 1);
-  assert.equal(attr(buttons[0], 'onClick'), '{shareInvite}');
-  assert.equal(attr(buttons[0], 'type'), '"button"');
+  assert.equal(nodes(ws).some((n) => ts.isIdentifier(n) && n.text === 'useShareInvite'), false, 'the workspace still wires the share press');
+  assert.equal(nodes(ws).some((n) => ts.isIdentifier(n) && n.text === 'shareInvite'), false);
+  assert.equal(nodes(ws).some((n) => isTag(n) && tagOf(n) === 'button' && /invite/i.test(attr(n, 'aria-label') ?? '')), false, 'a workspace button with "invite" in its name that is not the members panel');
+  assert.ok(nodes(ws).some((n) => isTag(n) && tagOf(n) === 'button' && attr(n, 'aria-label') === '"Who can build here"'), 'the real invitation (Who can build here) is gone');
 });
 
 test('Settings has a Share section with both rows, and the search and the rail know them', async () => {

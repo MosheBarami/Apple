@@ -52,7 +52,6 @@ import { replyAnnouncement } from '../lib/announce';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { restoreInFlight } from '../lib/restore-status';
 import { rosterNames } from '../lib/checkpoint-author';
-import { useShareInvite } from '../lib/use-invite-link';
 import { groupCheckpointsByRequest, requestsFromMessages } from '../lib/checkpoint-history';
 import { CheckpointHistory, HISTORY_NOTE } from '../components/ws/checkpoint-history';
 import { PiecesDrawer } from '../components/ws/pieces-panel';
@@ -407,7 +406,6 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
   // The resolved policy — org, user and project already layered by the server. Re-deriving the
   // precedence here would be a second implementation of it, and the two would diverge.
   const userId = session?.user.id ?? '';
-  const { share: shareInvite } = useShareInvite(userId || null);
   //[[ NAMES FOR THE PEOPLE WHO TOOK THE CHECKPOINTS.
   //
   //   Asked only while the checkpoints drawer is open. The roster rather than presence: a
@@ -957,17 +955,10 @@ function WorkspaceProjectPage({ projectId }: { projectId: string }) {
               <Icon d={PATH.settings} />
             </button>
           )}
-          {/* A link to StudPilot's sign-up page to send to a friend (lib/growth.ts: nothing records it yet, nothing is earned). An icon button
-              among the project's others; Settings > Share has the same link in full. */}
-          <button
-            type="button"
-            className="gx-icon-btn"
-            onClick={shareInvite}
-            aria-label="Copy a link to invite someone to StudPilot"
-            title="Copy invite link"
-          >
-            <Icon d={PATH.arrowUpRight} />
-          </button>
+          {/* NO "INVITE A FRIEND" ICON HERE. It was an icon button between "Who can build here" (the real invitation to this project) and the
+              files button, and an icon alone cannot say that it copies a link to StudPilot's sign-up page and grants no access to this project.
+              The link is "Invite a friend to StudPilot" on a project's menu on the shelf (a text label that names the product) and in
+              Settings > Share. */}
           {/* The way into the files StudPilot keeps for this project — notes, plans and generated
               data, which are StudPilot's own storage and not the Roblox place. Beside memory because
               it is the same kind of thing: something that persists between turns and is read
