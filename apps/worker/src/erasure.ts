@@ -95,7 +95,8 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
       'Removing a login takes a Supabase secret key. This worker holds one only to sign people in with ' +
       'Roblox and never uses it to delete an account; every other query it makes carries your own token ' +
       'so row-level security applies. Your data is gone; the empty account can still sign in until an ' +
-      'operator removes it.',
+      'operator removes it. An account made with Roblox also still holds your Roblox user id and ' +
+      'username there (they are how the account is found at sign-in); the operator removes them with it.',
   },
   {
     store: 'postgres',
