@@ -246,10 +246,20 @@ export const USER_EXPORT: readonly ExportTable[] = [
     table: 'roblox_identities',
     access: 'worker',
     ownerColumn: 'user_id',
-    fields: ['roblox_sub', 'user_id', 'username', 'created_at'],
+    fields: ['roblox_sub', 'user_id', 'username', 'created_at', 'created_username'],
     excluded: {
       reauth_at: 'when this account last confirmed it is them with Roblox, for the ten-minute window that gates export and deletion; internal bookkeeping, not a fact about the person',
     },
+  },
+  {
+    // What a wipe on loss of Roblox access leaves next to the account id: the one-way code that stands in for the Roblox user id, so a re-authentication can find the account.
+    // It is the person's own and says nothing a person could read: the code is a keyed digest and cannot be turned back into the id without the server's key.
+    store: 'd1',
+    table: 'roblox_wiped',
+    access: 'worker',
+    ownerColumn: 'user_id',
+    fields: ['code', 'user_id'],
+    excluded: {},
   },
   {
     store: 'd1',

@@ -6,8 +6,12 @@
  * daily cron ("0 3 * * *") calls `pruneGatewayLogs`, which sends Cloudflare's own delete call with a created_at filter, using the optional secret
  * CF_WORKER_OPS_TOKEN (owner item N4). This file drives it with a mocked fetch, alone and through the Worker's real `scheduled` export:
  *
- *   - THE CALL. DELETE to the account's gateway logs, the filter [{"key":"created_at","operator":"lt","value":[<now - 30 days>]}] urlencoded, the token as a
- *     bearer, and nothing else sent: not the prompt, not an account id, not the token anywhere but the header.
+ *   - THE CALL. Three calls to the account's gateway logs, each with the token as a bearer and nothing else sent (not the prompt, not an account id, not the
+ *     token anywhere but the header): a list with the filter [{"key":"created_at","operator":"lt","value":[<now - 30 days>]}] urlencoded (newest first, one log),
+ *     which must not return a log newer than the cutoff; the DELETE with the identical filter and an explicit limit; a list of the oldest log left. The call shapes are
+ *     written from Cloudflare's API reference and are TO BE VERIFIED on the first live run (owner item N4).
+ *   - THE FILTER IS CHECKED BEFORE THE DELETE. A list that comes back with a log newer than the cutoff (or that cannot be read) is `failed`, and no DELETE is sent.
+ *   - THE TIME GUARD. Each call carries an AbortSignal with a timeout, and a call that never answers is aborted and reported, not waited for.
  *   - THE CUTOFF. Exactly 30 days before the run, to the millisecond, from the one constant the pages are held to.
  *   - THE ABSENT SECRET. With CF_WORKER_OPS_TOKEN (or the gateway, or the account) missing nothing is sent at all, and the run says it did nothing, naming what
  *     is missing and never a value: in the result, in the admin log as an audit event, and on GET /api/admin/gateway-log-retention.
@@ -59,56 +63,84 @@ const FULL = { CF_WORKER_OPS_TOKEN: TOKEN, CF_ACCOUNT_ID: ACCOUNT, AI_GATEWAY_ID
 function recorder(answer) {
   const calls = [];
   const fn = async (url, init) => {
-    calls.push({ url: String(url), method: init?.method, headers: init?.headers ?? {}, body: init?.body });
+    calls.push({ url: String(url), method: init?.method ?? 'GET', headers: init?.headers ?? {}, body: init?.body, signal: init?.signal });
     return answer(calls.at(-1));
   };
   return { calls, fn };
 }
 const ok = () => Response.json({ success: true, errors: [], messages: [], result: {} });
+const NEWEST_EXPIRED = new Date(NOW - 31 * DAY).toISOString();
+const OLDEST_LEFT = new Date(NOW - 29 * DAY).toISOString();
+const CUTOFF = new Date(NOW - 30 * DAY).toISOString();
+/** Cloudflare's List Gateway Logs envelope with at most one log in it. */
+const logsList = (createdAt) => Response.json({ success: true, errors: [], messages: [], result: createdAt ? [{ id: 'log-1', created_at: createdAt }] : [], result_info: { count: createdAt ? 1 : 0, page: 1, per_page: 1, total_count: 1234 } });
+/**
+ * Cloudflare as it should behave: the list WITH the filter returns the newest log older than the cutoff, the list without it the oldest log left, and the DELETE is accepted.
+ * `state` is what the test wants it to say, and it counts what was deleted.
+ */
+const honest = (state = {}) => (call) => {
+  if (call.method === 'DELETE') { state.deleted = (state.deleted ?? 0) + 1; return ok(); }
+  if (new URL(call.url).searchParams.has('filters')) return logsList(state.newestExpired === undefined ? NEWEST_EXPIRED : state.newestExpired);
+  return logsList(state.oldest === undefined ? OLDEST_LEFT : state.oldest);
+};
 
 // ------------------------------------------------------------------------------------------ the call ---
 
-test('THE CALL: a DELETE to the account\'s gateway logs, filtered to created_at before the cutoff, with the token as a bearer and nothing else sent', async () => {
-  const r = recorder(ok);
+test('THE CALL: a list that checks the filter, a DELETE with the identical filter and an explicit limit, and a list of the oldest log left, each with the token as a bearer and nothing else sent', async () => {
+  const r = recorder(honest());
   const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
   assert.equal(result.status, 'requested');
-  assert.equal(r.calls.length, 1, 'one call, not one per log');
-  const [call] = r.calls;
-  assert.equal(call.method, 'DELETE');
-  const url = new URL(call.url);
-  assert.equal(url.origin + url.pathname, `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/${GATEWAY}/logs`);
-  assert.deepEqual([...url.searchParams.keys()], ['filters'], 'the filter is the only query parameter');
+  assert.deepEqual(r.calls.map((c) => c.method), ['GET', 'DELETE', 'GET'], 'the order is the check, the deletion, the look at what is left');
+  assert.equal(r.calls.filter((c) => c.method === 'DELETE').length, 1, 'one deletion, not one per log');
+  const [before, del, after] = r.calls.map((c) => new URL(c.url));
+  for (const url of [before, del, after]) assert.equal(url.origin + url.pathname, `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/ai-gateway/gateways/${GATEWAY}/logs`);
+  // THE DELETE: the filter and the limit, and nothing else.
+  assert.deepEqual([...del.searchParams.keys()].sort(), ['filters', 'limit']);
+  assert.equal(del.searchParams.get('limit'), String(G.GATEWAY_DELETE_LIMIT));
+  assert.equal(G.GATEWAY_DELETE_LIMIT, 10_000, 'the limit is the API\'s documented maximum');
   // The urlencoded form is on the wire, and it decodes to exactly the filter the owner measured on 2026-10-05.
-  assert.match(call.url, /\?filters=%5B%7B%22key%22%3A%22created_at%22%2C%22operator%22%3A%22lt%22%2C%22value%22%3A%5B%22/);
-  const filters = JSON.parse(url.searchParams.get('filters'));
-  assert.deepEqual(filters, [{ key: 'created_at', operator: 'lt', value: [new Date(NOW - 30 * DAY).toISOString()] }]);
-  assert.equal(new Headers(call.headers).get('authorization'), `Bearer ${TOKEN}`);
-  assert.equal(call.body, undefined, 'nothing is sent in a body');
-  assert.equal(call.url.includes(TOKEN), false, 'the token is in the URL');
+  assert.match(r.calls[1].url, /\?filters=%5B%7B%22key%22%3A%22created_at%22%2C%22operator%22%3A%22lt%22%2C%22value%22%3A%5B%22/);
+  const filters = JSON.parse(del.searchParams.get('filters'));
+  assert.deepEqual(filters, [{ key: 'created_at', operator: 'lt', value: [CUTOFF] }]);
+  // THE CHECK uses the IDENTICAL filter value, newest first, one log: what is checked is what is sent.
+  assert.equal(before.searchParams.get('filters'), del.searchParams.get('filters'), 'the list and the delete carry different filters');
+  assert.deepEqual([...before.searchParams.keys()].sort(), ['filters', 'order_by', 'order_by_direction', 'page', 'per_page']);
+  assert.deepEqual([before.searchParams.get('order_by'), before.searchParams.get('order_by_direction'), before.searchParams.get('per_page')], ['created_at', 'desc', '1']);
+  // THE LOOK AT WHAT IS LEFT: no filter, oldest first, one log.
+  assert.equal(after.searchParams.has('filters'), false);
+  assert.deepEqual([after.searchParams.get('order_by'), after.searchParams.get('order_by_direction'), after.searchParams.get('per_page')], ['created_at', 'asc', '1']);
+  for (const call of r.calls) {
+    assert.equal(new Headers(call.headers).get('authorization'), `Bearer ${TOKEN}`);
+    assert.equal(call.body, undefined, 'nothing is sent in a body');
+    assert.equal(call.url.includes(TOKEN), false, 'the token is in the URL');
+  }
   assert.equal(JSON.stringify(result).includes(TOKEN), false, 'the token is in the result');
+  assert.equal(result.newestExpired, NEWEST_EXPIRED);
+  assert.equal(result.oldestAfter, OLDEST_LEFT);
 });
 
 test('THE CUTOFF is exactly the retention window before the run, to the millisecond, and the window is the one constant the pages are held to', async () => {
   assert.equal(G.GATEWAY_LOG_RETENTION_DAYS, 30);
   for (const now of [NOW, NOW + 7 * 3_600_000 + 123, Date.UTC(2027, 0, 31, 23, 59, 59, 999)]) {
-    const r = recorder(ok);
+    // The logs Cloudflare lists are older than whatever cutoff this run uses.
+    const r = recorder(honest({ newestExpired: new Date(now - 40 * DAY).toISOString() }));
     const result = await G.pruneGatewayLogs(FULL, now, r.fn);
-    const sent = JSON.parse(new URL(r.calls[0].url).searchParams.get('filters'))[0].value[0];
+    const sent = JSON.parse(new URL(r.calls.find((c) => c.method === 'DELETE').url).searchParams.get('filters'))[0].value[0];
     assert.equal(sent, new Date(now - 30 * DAY).toISOString());
     assert.equal(result.cutoff, sent, 'the result reports the cutoff that was sent');
     assert.ok(Date.parse(sent) < now, 'the cutoff is in the past');
   }
   // Nothing newer than 30 days is ever asked for: a cutoff later than that would delete logs the page says are kept.
-  const r = recorder(ok);
+  const r = recorder(honest());
   await G.pruneGatewayLogs(FULL, NOW, r.fn);
-  assert.ok(Date.parse(JSON.parse(new URL(r.calls[0].url).searchParams.get('filters'))[0].value[0]) <= NOW - 30 * DAY);
+  assert.ok(Date.parse(JSON.parse(new URL(r.calls.find((c) => c.method === 'DELETE').url).searchParams.get('filters'))[0].value[0]) <= NOW - 30 * DAY);
 });
 
 test('the account and the gateway are put in the path encoded, so a setting cannot change which route is called', async () => {
-  const r = recorder(ok);
+  const r = recorder(honest());
   await G.pruneGatewayLogs({ ...FULL, CF_ACCOUNT_ID: 'a/../b', AI_GATEWAY_ID: 'g?x=1#' }, NOW, r.fn);
-  const url = new URL(r.calls[0].url);
-  assert.equal(url.pathname, '/client/v4/accounts/a%2F..%2Fb/ai-gateway/gateways/g%3Fx%3D1%23/logs');
+  assert.equal(r.calls.length, 3);
+  for (const call of r.calls) assert.equal(new URL(call.url).pathname, '/client/v4/accounts/a%2F..%2Fb/ai-gateway/gateways/g%3Fx%3D1%23/logs');
 });
 
 // -------------------------------------------------------------------------------- the absent secret ---
@@ -147,7 +179,8 @@ for (const [name, answer, pattern] of [
   test(`A FAILED CALL (${name}): reported as failed, with the reason, and never as a deletion; the token is in no sentence`, async () => {
     const r = recorder(answer);
     const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
-    assert.equal(r.calls.length, 1);
+    assert.equal(r.calls.length, 1, 'the first call failed, so nothing else was sent');
+    assert.equal(r.calls.some((c) => c.method === 'DELETE'), false, 'a deletion was sent after the check failed');
     assert.equal(result.status, 'failed');
     assert.match(result.reason, pattern);
     assert.equal(JSON.stringify(result).includes(TOKEN), false, 'the token is in the result');
@@ -158,8 +191,139 @@ for (const [name, answer, pattern] of [
 test('the function never throws, whatever the fetch does, so one broken step cannot cancel the cron', async () => {
   const result = await G.pruneGatewayLogs(FULL, NOW, () => { throw new Error('synchronous throw'); });
   assert.equal(result.status, 'failed');
-  const jsonThrows = await G.pruneGatewayLogs(FULL, NOW, async () => ({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } }));
-  assert.equal(jsonThrows.status, 'requested', 'an accepted call with an unreadable body is accepted: the status said so');
+  // A check whose answer cannot be read is NOT agreement: nothing is deleted. A deletion that was accepted with an unreadable body IS accepted: the status said so.
+  const unreadableCheck = recorder(async () => ({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } }));
+  const refused = await G.pruneGatewayLogs(FULL, NOW, unreadableCheck.fn);
+  assert.equal(refused.status, 'failed');
+  assert.equal(unreadableCheck.calls.some((c) => c.method === 'DELETE'), false);
+  const unreadableDelete = recorder((call) => (call.method === 'DELETE' ? { ok: true, status: 200, json: async () => { throw new Error('bad json'); } } : honest()(call)));
+  assert.equal((await G.pruneGatewayLogs(FULL, NOW, unreadableDelete.fn)).status, 'requested', 'an accepted call with an unreadable body is accepted: the status said so');
+});
+
+// ------------------------------------------------------------- the filter is checked before the delete ---
+
+test('THE FILTER IS CHECKED BEFORE THE DELETE: a list that returns a log NEWER than the cutoff means the filter is not honoured, so nothing is deleted and the night is failed', async () => {
+  for (const [what, newest] of [
+    ['a log from yesterday', new Date(NOW - DAY).toISOString()],
+    ['the newest log of all, from this minute', new Date(NOW).toISOString()],
+    ['a log created exactly at the cutoff (not older than it)', CUTOFF],
+  ]) {
+    const r = recorder(honest({ newestExpired: newest }));
+    const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
+    assert.equal(result.status, 'failed', what);
+    assert.match(result.reason, /^filter not honoured: listed a log from .*, newer than the cutoff, so no log was deleted$/, what);
+    assert.deepEqual(r.calls.map((c) => c.method), ['GET'], `${what}: a DELETE was sent although the filter was not honoured: it would have deleted logs the page says are kept`);
+    assert.equal(G.describeGatewayRetention(result).startsWith('failed:'), true);
+  }
+  // One millisecond older than the cutoff is honoured.
+  const r = recorder(honest({ newestExpired: new Date(NOW - 30 * DAY - 1).toISOString() }));
+  assert.equal((await G.pruneGatewayLogs(FULL, NOW, r.fn)).status, 'requested');
+  assert.deepEqual(r.calls.map((c) => c.method), ['GET', 'DELETE', 'GET']);
+});
+
+test('A CHECK THAT CANNOT BE READ IS NOT AGREEMENT: a result that is not a list, a log with no usable date, and an envelope with nothing in it each refuse the deletion', async () => {
+  for (const [what, body] of [
+    ['a result that is an object, not a list', { success: true, result: {} }],
+    ['no result at all', { success: true }],
+    ['a log with no created_at', { success: true, result: [{ id: 'x' }] }],
+    ['a created_at that is not a date', { success: true, result: [{ created_at: 'yesterday-ish' }] }],
+    ['a created_at that is a number', { success: true, result: [{ created_at: 1759000000000 }] }],
+    ['a body that is not JSON', null],
+  ]) {
+    const r = recorder(() => (body === null ? new Response('not json', { status: 200 }) : Response.json(body)));
+    const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
+    assert.equal(result.status, 'failed', what);
+    assert.match(result.reason, /shape this step cannot read, so no log was deleted/, what);
+    assert.deepEqual(r.calls.map((c) => c.method), ['GET'], what);
+  }
+});
+
+test('A CHECK THAT FINDS NOTHING OLDER THAN THE CUTOFF still sends the delete (the same filter just matched nothing, so it deletes nothing), and says so', async () => {
+  const r = recorder(honest({ newestExpired: null, oldest: OLDEST_LEFT }));
+  const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
+  assert.equal(result.status, 'requested');
+  assert.equal(result.newestExpired, null);
+  assert.match(G.describeGatewayRetention(result), /; newest none; oldest left /);
+});
+
+test('A DELETE THAT IS REFUSED after a good check is failed, and the look at what is left is not made', async () => {
+  const r = recorder((call) => (call.method === 'DELETE' ? Response.json({ success: false, errors: [{ code: 10000, message: 'Authentication error' }] }, { status: 403 }) : honest()(call)));
+  const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
+  assert.equal(result.status, 'failed');
+  assert.match(result.reason, /Cloudflare answered 403 \(10000 Authentication error\), so no log was deleted/);
+  assert.deepEqual(r.calls.map((c) => c.method), ['GET', 'DELETE']);
+});
+
+test('WHAT IS LEFT IS RECORDED: the oldest log listed after the delete is in the result and in the line the audit event carries, so a deletion that did nothing shows as an oldest log that does not move', async () => {
+  const stuck = new Date(NOW - 90 * DAY).toISOString();
+  const r = recorder(honest({ oldest: stuck }));
+  const result = await G.pruneGatewayLogs(FULL, NOW, r.fn);
+  assert.equal(result.status, 'requested', 'an accepted deletion is not turned into a failure by what is listed after it: it is asynchronous');
+  assert.equal(result.oldestAfter, stuck);
+  const line = G.describeGatewayRetention(result);
+  assert.ok(line.startsWith(`requested: older than ${CUTOFF}; `), line);
+  assert.ok(line.endsWith(`; oldest left ${stuck}`), line);
+  assert.ok(line.length <= 120, `the audit event clips its subject at 120 characters, and this is ${line.length}: ${line}`);
+  // An empty gateway after the delete says so; a look that could not be made says THAT, and is not an error.
+  const empty = await G.pruneGatewayLogs(FULL, NOW, recorder(honest({ oldest: null })).fn);
+  assert.match(G.describeGatewayRetention(empty), /; oldest left none$/);
+  const unlooked = await G.pruneGatewayLogs(FULL, NOW, recorder((call) => { if (call.method === 'GET' && !new URL(call.url).searchParams.has('filters')) throw new TypeError('fetch failed'); return honest()(call); }).fn);
+  assert.equal(unlooked.status, 'requested');
+  assert.equal('oldestAfter' in unlooked, false);
+  assert.match(G.describeGatewayRetention(unlooked), /; oldest left unread$/);
+});
+
+// ----------------------------------------------------------------------------------- the time guard ---
+
+/** Races a promise against a clock of the test's own, so that a guard that has been removed FAILS the test instead of hanging it. */
+const within = (ms, promise, what) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`${what}: still waiting after ${ms}ms: nothing aborted the call`)), ms).unref())]);
+/** A fetch that never answers, and gives up only when the signal it was handed fires, as a real one does. */
+const hangs = (init) => new Promise((_, reject) => { init?.signal?.addEventListener('abort', () => reject(init.signal.reason)); });
+
+test('EVERY CALL CARRIES A TIME LIMIT: an AbortSignal that is not yet aborted goes with the check, the delete and the look at what is left', async () => {
+  const r = recorder(honest());
+  await G.pruneGatewayLogs(FULL, NOW, r.fn);
+  assert.equal(r.calls.length, 3);
+  for (const [i, call] of r.calls.entries()) {
+    assert.ok(call.signal instanceof AbortSignal, `call ${i} (${call.method}) was sent with no AbortSignal: it could wait for ever`);
+    assert.equal(call.signal.aborted, false);
+  }
+  assert.equal(new Set(r.calls.map((c) => c.signal)).size, 3, 'each call has a time limit of its own');
+});
+
+test('A CALL THAT NEVER ANSWERS IS ABORTED AT THE TIME LIMIT, in the check and in the delete: the result is failed and says it could not be reached, and nothing waits or is sent after it', async () => {
+  for (const [stage, hangAt] of [['the check', 0], ['the delete', 1]]) {
+    let n = 0;
+    const calls = [];
+    const fetchImpl = (url, init) => {
+      calls.push(init?.method ?? 'GET');
+      const answer = honest()({ url: String(url), method: init?.method ?? 'GET' });
+      return n++ === hangAt ? hangs(init) : Promise.resolve(answer);
+    };
+    const result = await within(3000, G.pruneGatewayLogs(FULL, NOW, fetchImpl, { timeoutMs: 40 }), stage);
+    assert.equal(result.status, 'failed', stage);
+    assert.match(result.reason, /Cloudflare could not be reached \(TimeoutError\), so no log was deleted/, stage);
+    assert.equal(calls.length, hangAt + 1, `${stage}: nothing was sent after the call that hung`);
+  }
+  // The look at what is left hanging does not fail an accepted deletion: it only leaves the oldest log unknown.
+  let n = 0;
+  const lookHangs = (url, init) => (n++ === 2 ? hangs(init) : Promise.resolve(honest()({ url: String(url), method: init?.method ?? 'GET' })));
+  const result = await within(3000, G.pruneGatewayLogs(FULL, NOW, lookHangs, { timeoutMs: 40 }), 'the look');
+  assert.equal(result.status, 'requested');
+  assert.equal('oldestAfter' in result, false);
+});
+
+test('THE TIME LIMIT THE WORKER RUNS WITH is the one constant, handed to every AbortSignal.timeout, and short enough for a cron that must still run the Roblox check after three calls', async () => {
+  assert.ok(G.GATEWAY_CALL_TIMEOUT_MS > 0 && G.GATEWAY_CALL_TIMEOUT_MS <= 30_000, `${G.GATEWAY_CALL_TIMEOUT_MS}ms per call, three calls a night: the rest of the cron would be starved`);
+  const real = AbortSignal.timeout;
+  const seen = [];
+  AbortSignal.timeout = (ms) => { seen.push(ms); return real.call(AbortSignal, ms); };
+  try {
+    await G.pruneGatewayLogs(FULL, NOW, recorder(honest()).fn);
+  } finally {
+    AbortSignal.timeout = real;
+  }
+  assert.deepEqual(seen, [G.GATEWAY_CALL_TIMEOUT_MS, G.GATEWAY_CALL_TIMEOUT_MS, G.GATEWAY_CALL_TIMEOUT_MS]);
 });
 
 // ------------------------------------------------------------------------- through the real cron ---
@@ -196,11 +360,12 @@ const withFetch = async (answer, fn) => { const r = recorder(answer); globalThis
 test('THE DAILY CRON deletes the old logs once, records it in the admin log and for the admin route, and runs the other sweeps too', async () => {
   const env = world(FULL);
   const before = Date.now();
-  await withFetch(ok, async (r) => {
+  await withFetch(honest(), async (r) => {
     await worker.scheduled(DAILY, env, ctx());
     const deletes = r.calls.filter((c) => c.method === 'DELETE');
     assert.equal(deletes.length, 1, 'the gateway delete is asked once a night');
     assert.match(deletes[0].url, new RegExp(`/accounts/${ACCOUNT}/ai-gateway/gateways/${GATEWAY}/logs\\?filters=`));
+    assert.deepEqual(r.calls.filter((c) => c.url.includes('api.cloudflare.com')).map((c) => c.method), ['GET', 'DELETE', 'GET'], 'the check, the delete, the look at what is left');
   });
   assert.equal(countRows(DB.raw, `select count(*) from memory_entries where key = 'stale'`), 0, 'the other retention sweep did not run');
   const audit = eventsOf().find((e) => e.kind === 'audit' && e.action === 'gateway_log_retention');
@@ -209,12 +374,28 @@ test('THE DAILY CRON deletes the old logs once, records it in the admin log and 
   assert.equal(audit.actorKind, 'system');
   // The cron's own clock is the time of the run (as the retention sweep's is), so the cutoff is read back and held to 30 days before it.
   const after = Date.now();
-  const cutoff = /^requested: logs older than (\S+)$/.exec(audit.subject)?.[1];
+  const cutoff = /^requested: older than (\S+?);/.exec(audit.subject)?.[1];
   assert.ok(cutoff, `the audit subject does not carry the cutoff: ${audit.subject}`);
   assert.ok(Date.parse(cutoff) >= before - 30 * DAY && Date.parse(cutoff) <= after - 30 * DAY, `the cutoff ${cutoff} is not 30 days before the run`);
+  assert.ok(audit.subject.endsWith(`; oldest left ${OLDEST_LEFT}`), `the audit event does not carry what is left (it is clipped at 120 characters): ${audit.subject}`);
   const last = JSON.parse(KV.get('ops:gateway-log-retention'));
   assert.equal(last.status, 'requested');
   assert.equal(last.cutoff, cutoff);
+  assert.equal(last.oldestAfter, OLDEST_LEFT);
+});
+
+test('A FILTER THAT IS NOT HONOURED THROUGH THE CRON: no delete is sent, the audit event is not allowed, an error event is written, and the other sweeps still ran', async () => {
+  const env = world(FULL);
+  await withFetch(honest({ newestExpired: new Date(NOW - DAY).toISOString() }), async (r) => {
+    await worker.scheduled(DAILY, env, ctx());
+    assert.equal(r.calls.filter((c) => c.method === 'DELETE').length, 0, 'a delete went out although the filter was not honoured');
+  });
+  assert.equal(countRows(DB.raw, `select count(*) from memory_entries where key = 'stale'`), 0, 'a refused check cancelled the other sweeps');
+  const audit = eventsOf().find((e) => e.action === 'gateway_log_retention');
+  assert.equal(audit.allowed, false);
+  assert.match(audit.subject, /^failed: filter not honoured: listed a log from .*, newer than the cutoff, so no log was deleted$/, 'the reason is short enough to survive the 120-character clip of an audit subject');
+  assert.ok(eventsOf().find((e) => e.kind === 'error' && e.scope === 'retention:gateway_logs'), 'a refused deletion left no error event');
+  assert.equal(JSON.parse(KV.get('ops:gateway-log-retention')).status, 'failed');
 });
 
 test('THE ABSENT SECRET THROUGH THE CRON: nothing is sent to Cloudflare, and the admin log and the admin route both say it did nothing', async () => {

@@ -112,8 +112,10 @@ export interface Env {
    *
    * SUPABASE_SECRET_KEY IS THE FIRST CREDENTIAL THIS WORKER HOLDS THAT ACTS AS ANYONE. Every other database
    * call travels with the caller's own JWT so row-level security decides. This one is used only in
-   * roblox-oauth.ts, for the Auth admin API (create a user, read a user's address, mint a sign-in token, and
-   * delete a user when that person deletes their account) and must never be used for a table query. Why it
+   * roblox-oauth.ts, and only for these things: the Auth admin API (create a user, read a user, mint a sign-in
+   * token, update a user's metadata to clear the Roblox id and username when Roblox access is lost, and delete a
+   * user when that person deletes their account) and exactly ONE table call, the PATCH of a profile's
+   * display_name in that same wipe (`scrubRobloxFromAccount`). Nothing else may be queried with it. Why it
    * exists: planning/proof/M2/ROBLOX-SIGNIN.md; what it is used for, as the privacy pages state it:
    * planning/proof/M2/LEGAL-CLAIMS.md.
    */

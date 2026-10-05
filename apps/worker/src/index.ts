@@ -7457,20 +7457,29 @@ async function runScheduled(env: Env, cron: string | null): Promise<void> {
   }
   // ROBLOX GRANTS (owner decision D-14): ask Roblox whether each stored token is still valid, and wipe the Roblox data of a person whose grant is lost
   // (Roblox Third-Party App Policy). Its own step, after the others: a Roblox outage must not cancel the retention sweep. The counts are recorded either
-  // way, so a night that checked nothing (no Roblox sign-in on this deployment) reads as that and not as a quiet night. `disagreed` and `kept` are the two
-  // results a person has to look at: Roblox contradicted itself (the introspection call is wrong), or a wipe could not finish and is retried tomorrow.
+  // way, so a night that checked nothing (no Roblox sign-in on this deployment) reads as that and not as a quiet night.
+  //
+  // A NIGHT THAT DID NOT DO ITS JOB IS NOT A GOOD NIGHT, and each way it can fail to is its own error event (and turns `allowed` off): `disagreed` (Roblox
+  // contradicted itself: the introspection call is wrong), `kept` (a wipe could not finish and is retried tomorrow), `unreadable` (CREDENTIAL_KEY rotated or lost: no
+  // token can be opened, so nothing is checked), `inconclusive` (Roblox ANSWERED and no answer could be acted on, or every token went unanswered: the call
+  // shape or the client credentials are wrong, and the check silently does nothing every night, which reads as a healthy one) and `unchecked` (the run reached its cap
+  // or its time budget, so some grants were not asked about tonight). The introspection call was written from a note and has never been seen to work live, so the
+  // two that would hide a call that never works are the two this must not leave silent.
   const grants = await checkRobloxGrants(env);
+  const inconclusive = grants.unusable > 0 || (grants.checked > 0 && grants.unknown === grants.checked);
   recordEvent({
     kind: 'audit',
     action: 'roblox_grant_check',
     actorKind: 'system',
-    allowed: !grants.skipped && grants.disagreed === 0 && grants.kept === 0 && grants.unreadable === 0,
+    allowed: !grants.skipped && grants.disagreed === 0 && grants.kept === 0 && grants.unreadable === 0 && !inconclusive && grants.unchecked === 0,
     subject: describeGrantCheck(grants),
   });
   for (const [count, scope, message] of [
     [grants.disagreed, 'roblox-grants:introspection', 'Roblox reported a token inactive and a refresh then worked: the introspection call is misread and no grant was wiped for it'],
     [grants.kept, 'roblox-grants:wipe', 'a grant Roblox reports lost could not be wiped yet (Supabase or the database could not be reached); it is retried at the next check'],
     [grants.unreadable, 'roblox-grants:unreadable', 'a stored Roblox token could not be opened (CREDENTIAL_KEY rotated or lost), so it was not checked'],
+    [inconclusive ? 1 : 0, 'roblox-grants:inconclusive', 'Roblox gave no answer the check could act on (a refused request or credentials, an answer that is not a plain active flag, or no answer for any token): no grant was wiped for it, and the daily check is not working until this is fixed'],
+    [grants.unchecked, 'roblox-grants:unchecked', 'stored Roblox grants were not checked tonight because the run reached its cap or its time budget; tomorrow\'s run starts after the last one it reached'],
   ] as const) {
     if (count > 0) recordEvent({ kind: 'error', scope, errorKind: 'sweep_failed', message, fatal: false, actorId: null });
   }

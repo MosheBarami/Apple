@@ -1526,7 +1526,7 @@ test('THE ONE-WAY CODE IS THE PROOF, and nothing else is: a user at that address
 /* --------------------------------------------------------------------------- the daily check (introspection) --- */
 
 const checkGrants = (s, now) => R.checkRobloxGrants(s.env, now);
-const COUNTS = (o = {}) => ({ checked: 0, active: 0, lost: 0, kept: 0, unknown: 0, disagreed: 0, unreadable: 0, unchecked: 0, ...o });
+const COUNTS = (o = {}) => ({ checked: 0, active: 0, lost: 0, kept: 0, unknown: 0, unusable: 0, disagreed: 0, unreadable: 0, unchecked: 0, ...o });
 
 test('THE DAILY CHECK asks Roblox about each stored token with the client credentials, leaves a grant Roblox says is active exactly as it was, and spends nothing: a healthy grant is never refreshed', async () => {
   const s = await connected();
@@ -1593,21 +1593,22 @@ test('INTROSPECTION THAT IS MISREAD CANNOT WIPE ANYONE: Roblox says "inactive" f
   s.db.close();
 });
 
-for (const [name, mode] of [
-  ['a 500', { status: 500, body: {} }],
-  ['a 401 invalid_client (the client secret was rotated and the Worker still holds the old one)', { status: 401, body: { error: 'invalid_client' } }],
-  ['a 400', { status: 400, body: { error: 'invalid_request' } }],
-  ['a 429', { status: 429, body: { error: 'rate_limit_exceeded' } }],
-  ['a page that is not JSON', 'junk'],
-  ['a 200 with no "active" boolean', { status: 200, body: { sub: '1' } }],
-  ['a 200 whose "active" is a string', { status: 200, body: { active: 'false' } }],
-  ['a 200 whose "active" is null', { status: 200, body: { active: null } }],
+// `unusable`: Roblox ANSWERED and the answer cannot be acted on (a 4xx other than 429, a body that is not a plain boolean): the check itself is wrong. Not unusable: an outage (a 5xx, a 429).
+for (const [name, mode, unusable] of [
+  ['a 500', { status: 500, body: {} }, 0],
+  ['a 401 invalid_client (the client secret was rotated and the Worker still holds the old one)', { status: 401, body: { error: 'invalid_client' } }, 1],
+  ['a 400', { status: 400, body: { error: 'invalid_request' } }, 1],
+  ['a 429', { status: 429, body: { error: 'rate_limit_exceeded' } }, 0],
+  ['a page that is not JSON', 'junk', 1],
+  ['a 200 with no "active" boolean', { status: 200, body: { sub: '1' } }, 1],
+  ['a 200 whose "active" is a string', { status: 200, body: { active: 'false' } }, 1],
+  ['a 200 whose "active" is null', { status: 200, body: { active: null } }, 1],
 ]) {
-  test(`INTROSPECTION THAT SAYS NOTHING (${name}) wipes nothing, refreshes nothing, and is counted as unknown`, async () => {
+  test(`INTROSPECTION THAT SAYS NOTHING (${name}) wipes nothing, refreshes nothing, and is counted as unknown${unusable ? ' AND unusable (an answer that cannot be acted on)' : ' but not unusable (an outage passes)'}`, async () => {
     const s = await connected();
     s.world.roblox.introspect = mode;
     const tokenCalls = s.world.roblox.tokenCalls.length;
-    assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, unknown: 1 }));
+    assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, unknown: 1, unusable }));
     assert.equal(s.world.roblox.tokenCalls.length, tokenCalls);
     assert.equal(identityRows(s).length, 1);
     assert.ok(s.row());
@@ -1728,7 +1729,7 @@ test('THE DAILY CRON runs the check, wipes a lost grant, and records the counts 
   assert.ok(audit, `no roblox_grant_check event: ${admin.events.map((e) => e.action ?? e.kind).join(', ')}`);
   assert.equal(audit.allowed, true);
   assert.equal(audit.actorKind, 'system');
-  assert.equal(audit.subject, 'checked=2 active=1 lost=1 kept_for_retry=0 unknown=0 disagreed=0 unreadable=0 unchecked=0');
+  assert.equal(audit.subject, 'checked=2 active=1 lost=1 kept_for_retry=0 unknown=0 unusable=0 disagreed=0 unreadable=0 unchecked=0');
   assert.equal(admin.events.some((e) => e.kind === 'error' && /roblox-grants/.test(e.scope ?? '')), false);
   for (const e of admin.events) for (const secret of [CLIENT_SECRET, SB_SECRET, SUB_A, 'Builder1', s.userId]) assert.equal(JSON.stringify(e).includes(secret), false, 'the event log carries a secret or a person');
   s.db.close();
@@ -1970,7 +1971,7 @@ test('the connection card is told who is linked, and whether Roblox is the only 
 
 /* ------------------------------------------------------------- export and erasure --- */
 
-test('the account export includes both tables, with no token in it, and nobody else’s rows', async () => {
+test('the account export includes the Roblox tables, with no token in it, and nobody else’s rows', async () => {
   ROWS.clear();
   const s = scene();
   await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
@@ -1986,7 +1987,10 @@ test('the account export includes both tables, with no token in it, and nobody e
     assert.equal(doc.tables[t].rows.length, 1);
     assert.ok(!doc.incomplete.includes(t));
   }
-  assert.deepEqual(doc.tables.roblox_identities.rows[0], { roblox_sub: SUB_A, user_id: alice, username: 'Builder1', created_at: doc.tables.roblox_identities.rows[0].created_at });
+  // A person whose grant was never lost has nothing in the table a wipe fills, and it is not marked incomplete.
+  assert.equal(doc.tables.roblox_wiped?.status, 'ok', 'the wiped-code table is in the export');
+  assert.equal(doc.tables.roblox_wiped.rows.length, 0);
+  assert.deepEqual(doc.tables.roblox_identities.rows[0], { roblox_sub: SUB_A, user_id: alice, username: 'Builder1', created_at: doc.tables.roblox_identities.rows[0].created_at, created_username: 'Builder1' });
   assert.deepEqual(Object.keys(doc.tables.roblox_oauth_tokens.rows[0]).sort(), ['rotated_at', 'scopes', 'sub', 'user_id', 'version']);
   assert.equal(text.includes(sealed), false, 'the sealed token is not in the file');
   assert.equal(text.includes(refresh), false);
@@ -3132,4 +3136,524 @@ test('THE BROWSER’S PATH MATCH (RFC 6265 5.1.4): the handle cookie reaches red
     assert.equal(pathAttrOf(clearedLine(declined, 'rbx_oauth_handle')), pathAttrOf(b), 'dev: and clears it on the path it was set on');
     db.close();
   }
+});
+
+/* ======================================================================================================
+ * OWNER-UPDATE LANE, FIX CYCLE 1: a wiped account stays reachable, a rename is wiped too, a deletion ends with the sign-in,
+ * and the daily check says when it did not do its job. Every test here has a red-first proof in planning/proof/M2/LEGAL-CLAIMS.md section 10.
+ * ==================================================================================================== */
+
+const wipedScene = async (extra) => {
+  const s = await connected(extra);
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped', 'POSITIVE CONTROL: the grant is lost and wiped');
+  return s;
+};
+const pointerRows = (s) => rowsOf(s.db, 'select code, user_id from roblox_wiped').map((r) => ({ ...r }));
+const bearerOf = (s) => settingsBearer(s);
+const deleteAsBearer = (s, bearer = bearerOf(s)) => hit(`${PROD}/api/me/delete`, { method: 'POST', headers: { ...bearer.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE MY ACCOUNT' }) }, s.env);
+const exportAsBearer = (s, bearer = bearerOf(s)) => hit(`${PROD}/api/me/export`, bearer, s.env);
+const sbCalls = (s) => s.world.calls.filter((c) => c.url.startsWith(SB)).length;
+
+test('A WIPED ROBLOX-ONLY ACCOUNT STAYS REACHABLE: the in-app re-authentication finds it by its one-way code (it makes nothing, no ghost), links it again, and then export and delete pass the gate', async () => {
+  ROWS.clear();
+  const s = await wipedScene();
+  // The wipe left the account findable: a pointer from the one-way code to the account, and nothing that holds the Roblox id.
+  assert.deepEqual(pointerRows(s), [{ code: CODE_OF(SUB_A), user_id: s.userId }]);
+  assert.equal(identityRows(s).length, 0, 'the link is gone, which is what used to lock this account out of its own export and deletion');
+  assert.equal(JSON.stringify(pointerRows(s)).includes(SUB_A), false, 'the pointer is not the Roblox id');
+  for (const [what, refused] of [['export', await exportAsBearer(s)], ['delete', await deleteAsBearer(s)]]) {
+    assert.equal(refused.status, 403, `${what}: a wiped Roblox-only account has not confirmed it is them`);
+    assert.equal((await refused.json()).code, 'reauth_required', what);
+  }
+  assert.equal((await connectionOf(s)).reauthFresh, false);
+
+  // THE RE-AUTHENTICATION, as the app's "sign in with Roblox again" button starts it.
+  const users = s.world.sb.users.size;
+  const creates = s.world.sb.createCalls;
+  const revokes = s.world.roblox.revokeCalls.length;
+  const again = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1 (renamed)' }, { reauth: 'export-data' });
+  assert.equal(again.res.status, 302, 'the re-authentication is not refused, and the authorization Roblox just gave is not withdrawn');
+  assert.equal(s.world.sb.users.size, users, 'no account was made');
+  assert.equal(s.world.sb.createCalls, creates, 'and Auth was not asked to make one');
+  assert.equal(s.world.sb.ghosts, 0, 'and no empty stranger was signed up at the address by asking for a link');
+  assert.equal(s.world.roblox.revokeCalls.length, revokes, 'the new authorization is the one the link now holds');
+  const link = identityRows(s);
+  assert.equal(link.length, 1, 'the link is made again');
+  assert.deepEqual([link[0].roblox_sub, link[0].user_id, link[0].username], [SUB_A, s.userId, 'Builder1 (renamed)']);
+  assert.equal(typeof link[0].reauth_at, 'number', 'and carries the confirmation');
+  assert.equal(s.row().version, 1, 'the new grant is stored');
+  assert.equal(await C.openSecret({ CREDENTIAL_KEY: KEY_B64 }, s.row().sealed_refresh), s.world.roblox.lastRefreshIssued);
+  assert.deepEqual(pointerRows(s), [], 'and the pointer has done its job');
+  const redeemed = await (await redeemFor(s.env, again.res)).json();
+  assert.equal(s.world.sb.links.get(redeemed.token_hash), s.userId, 'the sign-in token is for this account and nobody else');
+  assert.equal(redeemed.next, '/settings?resume=export-data');
+  assert.equal((await connectionOf(s)).reauthFresh, true, 'the Settings gate (the SPA) now lets the action through');
+
+  // EXPORT, then DELETE, through the gate.
+  const exported = await exportAsBearer(s);
+  assert.equal(exported.status, 200, 'export passes the gate');
+  assert.equal(JSON.parse(await exported.text()).user.id, s.userId);
+  const erased = await deleteAsBearer(s);
+  assert.equal(erased.status, 200, 'delete passes the gate');
+  const receipt = await erased.json();
+  assert.equal(receipt.complete, true, JSON.stringify(receipt.steps.filter((x) => x.status === 'failed')));
+  assert.equal(receipt.accountRemoved, true);
+  assert.deepEqual(s.world.sb.deleteCalls, [s.userId]);
+  assert.equal(s.world.roblox.revokeCalls.at(-1), s.world.roblox.lastRefreshIssued, 'the Roblox grant the re-authentication gave is withdrawn by the deletion');
+  assert.equal(identityRows(s).length, 0);
+  s.db.close();
+});
+
+test('THE RE-AUTHENTICATION OF A WIPED ACCOUNT NEEDS THE SAME PROOF AS A SIGN-IN, and a Roblox account that cannot prove it is still refused, its authorization withdrawn, and nothing made', async () => {
+  const refusals = [
+    ['a Roblox account that no wiped account belongs to', () => {}, 'SUB_B'],
+    ['a pointer whose account holds the code of ANOTHER Roblox account', (s) => { supaUser(s).app_metadata = { roblox_code: CODE_OF('999') }; }, 'SUB_A'],
+    ['a pointer whose account holds no code', (s) => { supaUser(s).app_metadata = {}; }, 'SUB_A'],
+    ['a pointer whose account holds a code that is not a string', (s) => { supaUser(s).app_metadata = { roblox_code: 12345 }; }, 'SUB_A'],
+    ['a pointer whose account is at somebody else\'s address', (s) => { supaUser(s).email = 'someone@example.com'; }, 'SUB_A'],
+    ['a pointer whose account is at the keyed address of ANOTHER Roblox account', (s) => { supaUser(s).email = SYNTHETIC(SUB_B); }, 'SUB_A'],
+  ];
+  for (const [what, tamper, who] of refusals) {
+    const s = await wipedScene();
+    tamper(s);
+    const users = s.world.sb.users.size;
+    const pointers = pointerRows(s);
+    const revokes = s.world.roblox.revokeCalls.length;
+    const handles = kvHandles(s.env).length;
+    LOGS.length = 0;
+    const attempt = await signIn(s.env, s.world, { sub: who === 'SUB_A' ? SUB_A : SUB_B, username: 'Somebody' }, { reauth: 'delete-account' });
+    assert.equal(attempt.res.status, 403, `${what}: refused`);
+    assert.ok((await attempt.res.text()).includes(GENERIC), `${what}: with the one generic sentence`);
+    assert.equal(handleCookieOf(attempt.res), '', `${what}: no handle`);
+    assert.equal(kvHandles(s.env).length, handles, `${what}: nothing new waits in KV`);
+    assert.equal(s.world.roblox.revokeCalls.length, revokes + 1, `${what}: the authorization it was just given is withdrawn`);
+    assert.equal(identityRows(s).length, 0, `${what}: nothing was linked`);
+    assert.equal(s.world.sb.users.size, users, `${what}: no account was made`);
+    assert.equal(s.world.sb.createCalls, 1, `${what}: and Auth was not asked to make one (the one call is the first sign-up)`);
+    assert.equal(s.world.sb.ghosts, 0, `${what}: no ghost`);
+    assert.deepEqual(pointerRows(s), pointers, `${what}: the pointer is left as it was`);
+    assert.ok(LOGS.includes('[roblox-oauth] reauthentication without a linked account'), what);
+    assert.equal((await exportAsBearer(s)).status, 403, `${what}: and the gate is still shut`);
+    s.db.close();
+  }
+});
+
+test('THE RE-AUTHENTICATION OF A ROBLOX ACCOUNT NOBODY HAS SEEN ASKS SUPABASE NOTHING: it is found by the pointer, so there is no link requested for an address that may not exist', async () => {
+  const s = await wipedScene();
+  const before = sbCalls(s);
+  const stranger = await signIn(s.env, s.world, { sub: SUB_B, username: 'Stranger' }, { reauth: 'export-data' });
+  assert.equal(stranger.res.status, 403);
+  assert.equal(sbCalls(s), before, 'Supabase was not asked anything for a Roblox account that no wiped account belongs to');
+  assert.equal(s.world.sb.ghosts, 0);
+  s.db.close();
+});
+
+test('THE POINTER IS STALE OR UNREADABLE: an account Auth no longer has is refused and its pointer dropped, and an Auth that cannot be reached is a 502 that makes and keeps nothing', async () => {
+  const gone = await wipedScene();
+  gone.world.sb.users.delete(gone.userId);
+  const refused = await signIn(gone.env, gone.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'export-data' });
+  assert.equal(refused.res.status, 403);
+  assert.deepEqual(pointerRows(gone), [], 'a pointer to an account that is gone is dropped');
+  assert.equal(gone.world.sb.ghosts, 0);
+  gone.db.close();
+
+  const down = await wipedScene();
+  const inner = down.world.fetch;
+  globalThis.fetch = async (u, i = {}) => { if (/\/auth\/v1\/admin\/users\/[^/]+$/.test(String(u)) && (i.method ?? 'GET') === 'GET') throw new TypeError('network down'); return inner(u, i); };
+  const attempt = await signIn(down.env, down.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'export-data' });
+  assert.equal(attempt.res.status, 502, 'an account that cannot be looked at is neither adopted nor refused as a stranger');
+  assert.equal(identityRows(down).length, 0);
+  assert.equal(pointerRows(down).length, 1, 'and the pointer is kept for the next try');
+  down.db.close();
+});
+
+test('SIGNING IN WITH ROBLOX AGAIN (not a re-authentication) also ends the pointer: the account is linked and nothing stale is left', async () => {
+  const s = await wipedScene();
+  assert.equal(pointerRows(s).length, 1);
+  const back = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(back.res.status, 302);
+  assert.equal(userIdOf(s.db, SUB_A), s.userId);
+  assert.deepEqual(pointerRows(s), []);
+  s.db.close();
+});
+
+test('A WIPE LEAVES NO POINTER when a sign-in landed meanwhile and kept its new grant, and a wipe that could not finish leaves none either', async () => {
+  const kept = await connected();
+  kept.world.roblox.removeApp(SUB_A);
+  kept.world.sb.failUpdate = 500;
+  assert.equal((await R.refreshRobloxAccessToken(kept.env, kept.userId)).lost, 'kept');
+  assert.equal(rowsOf(kept.db, "select name from sqlite_master where name = 'roblox_wiped'").length, 1, 'POSITIVE CONTROL: the table exists, so an empty result means no pointer, not no table');
+  assert.deepEqual(pointerRows(kept), [], 'a wipe that did not finish wrote no pointer');
+  assert.equal(identityRows(kept).length, 1);
+  kept.db.close();
+
+  const raced = await connected();
+  raced.world.roblox.removeApp(SUB_A);
+  raced.world.sb.onUpdate = () => {
+    // A new sign-in lands between the Auth update and the batch: the token row is replaced, so the batch deletes nothing and writes no pointer.
+    raced.db.raw.prepare('update roblox_oauth_tokens set version = version + 1, generation = ? where user_id = ?').run('new-grant', raced.userId);
+  };
+  const result = await R.refreshRobloxAccessToken(raced.env, raced.userId);
+  assert.notEqual(result.lost, 'wiped');
+  assert.deepEqual(pointerRows(raced), [], 'a grant that was replaced meanwhile leaves no pointer');
+  assert.equal(identityRows(raced).length, 1);
+  raced.db.close();
+});
+
+/* ---------------------------------------------------------- a rename does not keep the old name --- */
+
+const roblox2 = (s, sub, username) => signIn(s.env, s.world, { sub, username });
+const namesIn = (s) => JSON.stringify([supaUser(s), s.world.sb.profiles.get(s.userId)]);
+
+test('RENAME THEN WIPE: the display name holds the username the account was MADE with, so the wipe clears that one too, in Auth and in the profile, whatever the account is called on Roblox now', async () => {
+  const s = await connected();
+  assert.equal(identityRows(s)[0].created_username, 'Builder1', 'the name the account was made with is recorded once');
+  await roblox2(s, SUB_A, 'Builder1Renamed');
+  await roblox2(s, SUB_A, 'BuilderThird');
+  const row = identityRows(s)[0];
+  assert.equal(row.username, 'BuilderThird', 'the link follows Roblox');
+  assert.equal(row.created_username, 'Builder1', 'and the name the account was made with is not overwritten by a rename');
+  assert.equal(supaUser(s).user_metadata.display_name, 'Builder1', 'POSITIVE CONTROL: the display name is still the first username, which is no longer the current one');
+  assert.equal(profileName(s), 'Builder1');
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+  assert.equal(supaUser(s).user_metadata.display_name, undefined, 'the old Roblox username is cleared from the Auth display name');
+  assert.equal(profileName(s), null, 'and from the profile row');
+  for (const name of ['Builder1', 'Builder1Renamed', 'BuilderThird', SUB_A]) assert.equal(namesIn(s).includes(name), false, `${name} is still on the account`);
+  assert.deepEqual(s.world.sb.profilePatches.map((p) => p.search).sort(), [`?id=eq.${s.userId}&display_name=eq.Builder1`, `?id=eq.${s.userId}&display_name=eq.BuilderThird`].sort(), 'one request per Roblox name the display name could hold, each for this person only');
+  assert.equal(identityRows(s).length, 0);
+  s.db.close();
+});
+
+test('RENAME THEN WIPE leaves a name the person chose: only a Roblox username of this account is cleared, in Auth and in the profile', async () => {
+  const s = await connected();
+  await roblox2(s, SUB_A, 'Builder1Renamed');
+  supaUser(s).user_metadata.display_name = 'My Own Name';
+  s.world.sb.profiles.get(s.userId).display_name = 'My Own Name';
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+  assert.equal(supaUser(s).user_metadata.display_name, 'My Own Name');
+  assert.equal(profileName(s), 'My Own Name');
+  assert.equal(JSON.stringify(s.world.sb.updateCalls.map((c) => c.body)).includes('user_metadata'), false, 'the display name was not even sent for clearing');
+  s.db.close();
+});
+
+test('RENAME THEN WIPE clears each store on its own: a person who changed only the profile name keeps it, and the Auth name that is still the old Roblox username goes', async () => {
+  const s = await connected();
+  await roblox2(s, SUB_A, 'Builder1Renamed');
+  s.world.sb.profiles.get(s.userId).display_name = 'Profile Name I Chose';
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+  assert.equal(supaUser(s).user_metadata.display_name, undefined);
+  assert.equal(profileName(s), 'Profile Name I Chose');
+  s.db.close();
+});
+
+test('A SIGN-UP THAT STOPPED HALFWAY and was finished after a rename remembers the name the account was made with (read from the account), and an account adopted by its code remembers none', async () => {
+  const half = scene();
+  const orphan = { id: randomUUID(), email: SYNTHETIC(SUB_A), app_metadata: { roblox_sub: SUB_A }, user_metadata: { display_name: 'FirstTry' } };
+  half.world.sb.users.set(orphan.id, orphan);
+  half.world.sb.profiles.set(orphan.id, { display_name: 'FirstTry' });
+  assert.equal((await signIn(half.env, half.world, { sub: SUB_A, username: 'SecondTry' })).res.status, 302);
+  const made = rowsOf(half.db, 'select username, created_username from roblox_identities')[0];
+  assert.deepEqual([made.username, made.created_username], ['SecondTry', 'FirstTry']);
+  half.db.close();
+
+  const s = await wipedScene();
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
+  assert.equal(identityRows(s)[0].created_username, null, 'the wipe cleared the Roblox name from the account, so there is none to remember');
+  s.db.close();
+});
+
+test('A TABLE MADE BEFORE `created_username` EXISTED GAINS THE COLUMN and keeps its rows', async () => {
+  const db = d1();
+  db.raw.exec('create table roblox_identities(roblox_sub text primary key, user_id text not null, username text not null, created_at text not null, reauth_at integer)');
+  db.raw.prepare('insert into roblox_identities values (?, ?, ?, ?, ?)').run(SUB_A, 'u-1', 'Old Row', 'then', null);
+  await R.ensureRobloxOAuthTables({ CORPUS: db.CORPUS });
+  const cols = rowsOf({ raw: db.raw }, 'pragma table_info(roblox_identities)').map((c) => c.name);
+  assert.ok(cols.includes('created_username'), cols.join(','));
+  assert.equal(rowsOf({ raw: db.raw }, 'select username, created_username from roblox_identities')[0].username, 'Old Row');
+  await R.ensureRobloxOAuthTables({ CORPUS: db.CORPUS });        // and a second run is not an error
+  db.close();
+});
+
+/* --------------------------------- a deletion ends with the sign-in, and a failure keeps the account runnable --- */
+
+test('AUTH CANNOT REMOVE THE SIGN-IN AFTER THE LINK WAS SWEPT: the link is put back, and a retry through the re-authentication finishes the deletion', async () => {
+  ROWS.clear();
+  const s = await connected();
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+  const stamp = identityRows(s)[0].reauth_at;
+  s.world.sb.failDelete = 500;
+  const first = await deleteAsBearer(s);
+  assert.equal(first.status, 207);
+  const receipt = await first.json();
+  assert.equal(receipt.accountRemoved, false);
+  assert.deepEqual(s.world.sb.deleteCalls, [s.userId], 'the sign-in was asked to go, once, and only after everything before it');
+  const link = receipt.steps.find((x) => x.target === 'roblox_identities');
+  assert.equal(link.status, 'failed', 'a link that was swept and put back is not reported as removed');
+  assert.match(receipt.summary, /Your sign-in is still there so that you can run the deletion again/, 'a link that WAS put back leaves the ordinary advice: run it again');
+  assert.match(link.detail, /Put back on purpose/);
+  assert.equal(identityRows(s).length, 1, 'the link is back');
+  assert.equal(identityRows(s)[0].reauth_at, stamp, 'with the confirmation it had');
+  assert.equal(rowsOf(s.db, 'select count(*) as n from roblox_oauth_tokens where user_id = ?', s.userId)[0].n, 0, 'the token went and stays gone: a retry never needs Roblox again');
+
+  // INSIDE THE WINDOW: the retry is not asked to confirm again.
+  s.world.sb.failDelete = null;
+  s.db.raw.prepare('update roblox_identities set reauth_at = ? where user_id = ?').run(Date.now() - REAUTH_WINDOW_MS - 1000, s.userId);
+  assert.equal((await deleteAsBearer(s)).status, 403, 'ten minutes on, the account is asked to confirm it is them');
+  // ...and it CAN, through the app's own re-authentication, because the link was put back.
+  const again = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+  assert.equal(again.res.status, 302, 'the re-authentication is answered');
+  const done = await deleteAsBearer(s);
+  assert.equal(done.status, 200);
+  const finished = await done.json();
+  assert.equal(finished.complete, true);
+  assert.equal(finished.accountRemoved, true);
+  assert.deepEqual(s.world.sb.deleteCalls, [s.userId, s.userId]);
+  assert.equal(identityRows(s).length, 0);
+  s.db.close();
+});
+
+test('A WIPED ACCOUNT WHOSE SIGN-IN CANNOT BE REMOVED gets its pointer back too (the account has since been given an email address, so no Roblox confirmation is asked), and the retry finishes and leaves nothing', async () => {
+  ROWS.clear();
+  const s = await wipedScene();
+  const withEmail = as(s.userId, 'person@example.com');
+  assert.equal(pointerRows(s).length, 1, 'POSITIVE CONTROL: the account is in the wiped state');
+  s.world.sb.failDelete = 500;
+  const first = await deleteAsBearer(s, withEmail);
+  assert.equal(first.status, 207);
+  const link = (await first.json()).steps.find((x) => x.target === 'roblox_identities');
+  assert.equal(link.status, 'failed');
+  assert.match(link.detail, /Put back on purpose/);
+  assert.deepEqual(pointerRows(s), [{ code: CODE_OF(SUB_A), user_id: s.userId }], 'the pointer is back, so a re-authentication can still find this account');
+  s.world.sb.failDelete = null;
+  const done = await (await deleteAsBearer(s, withEmail)).json();
+  assert.equal(done.complete, true);
+  assert.equal(done.accountRemoved, true);
+  assert.deepEqual(pointerRows(s), [], 'and the run that removes the sign-in leaves no pointer');
+  s.db.close();
+});
+
+test('THE LINK THAT CANNOT BE PUT BACK is said, not hidden: the receipt says contact support, and the account cannot confirm itself until support finishes it', async () => {
+  ROWS.clear();
+  const s = await connected();
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+  s.world.sb.failDelete = 500;
+  const real = s.env.CORPUS;
+  s.env.CORPUS = { ...real, prepare: (sql) => { if (/^insert into roblox_identities/.test(sql)) throw new Error('D1 said no'); return real.prepare(sql); } };
+  const first = await deleteAsBearer(s);
+  assert.equal(first.status, 207);
+  const receipt = await first.json();
+  const link = receipt.steps.find((x) => x.target === 'roblox_identities');
+  assert.equal(link.status, 'failed');
+  assert.match(link.detail, /could not be put back/);
+  assert.match(link.detail, /Contact support/);
+  assert.match(receipt.summary, /could not be put back: contact support to finish the deletion/, 'the headline does not tell this person to run it again: that cannot work');
+  assert.doesNotMatch(receipt.summary, /so that you can run the deletion again/);
+  assert.equal(receipt.accountRemoved, false);
+  assert.equal(identityRows(s).length, 0, 'the link is gone');
+  s.env.CORPUS = real;
+  assert.equal((await deleteAsBearer(s)).status, 403, 'and the account cannot pass the gate: this is the one case that needs support');
+  s.db.close();
+});
+
+test('A LINK THAT CANNOT BE LOOKED AT BEFORE THE DELETION IS NOT SWEPT, and the sign-in is not removed: the step says so, and the account runs the deletion again', async () => {
+  ROWS.clear();
+  const s = await connected();
+  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { reauth: 'delete-account' });
+  const real = s.env.CORPUS;
+  s.env.CORPUS = { ...real, prepare: (sql) => { if (/^select roblox_sub, user_id, username, created_at, reauth_at/.test(sql)) throw new Error('D1 said no'); return real.prepare(sql); } };
+  const first = await deleteAsBearer(s);
+  assert.equal(first.status, 207);
+  const receipt = await first.json();
+  const link = receipt.steps.find((x) => x.target === 'roblox_identities');
+  assert.equal(link.status, 'failed');
+  assert.match(link.detail, /could not be looked at/);
+  assert.equal(identityRows(s).length, 1, 'the link was not swept');
+  assert.deepEqual(s.world.sb.deleteCalls, [], 'and the sign-in was not asked to go');
+  s.env.CORPUS = real;
+  assert.equal((await deleteAsBearer(s)).status, 200, 'the next run finishes it');
+  s.db.close();
+});
+
+/* ---------------------------------------- the daily check says when it did not do its job --- */
+
+const NIGHT = { scheduledTime: Date.now(), cron: '0 3 * * *' };
+const errorScopes = (admin) => admin.events.filter((e) => e.kind === 'error' && /^roblox-grants:/.test(e.scope ?? '')).map((e) => e.scope).sort();
+const grantAudit = (admin) => admin.events.find((e) => e.kind === 'audit' && e.action === 'roblox_grant_check');
+
+test('A NIGHT WHERE ROBLOX ANSWERS AND NO ANSWER CAN BE ACTED ON IS NOT A GOOD NIGHT: introspection answering 400 invalid_request through the real cron is allowed:false with its own error event', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  s.world.roblox.introspect = { status: 400, body: { error: 'invalid_request' } };
+  await app.scheduled(NIGHT, s.env, ctx);
+  const audit = grantAudit(admin);
+  assert.equal(audit.allowed, false, 'a check that never worked read as a healthy night');
+  assert.equal(audit.subject, 'checked=1 active=0 lost=0 kept_for_retry=0 unknown=1 unusable=1 disagreed=0 unreadable=0 unchecked=0');
+  assert.deepEqual(errorScopes(admin), ['roblox-grants:inconclusive']);
+  assert.equal(s.row() !== undefined, true, 'and nothing was wiped for it');
+  s.db.close();
+});
+
+test('A NIGHT WHERE EVERY GRANT WENT UNANSWERED (Roblox down: 5xx) is inconclusive too, but one unanswered grant among answered ones is an outage that passes', async () => {
+  const down = adminRecorder();
+  const s = await connected({ ADMIN_DO: down.ns });
+  await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  s.world.roblox.introspect = { status: 503, body: {} };
+  await app.scheduled(NIGHT, s.env, ctx);
+  assert.equal(grantAudit(down).allowed, false);
+  assert.deepEqual(errorScopes(down), ['roblox-grants:inconclusive']);
+  s.db.close();
+
+  const some = adminRecorder();
+  const t = await connected({ ADMIN_DO: some.ns });
+  await signIn(t.env, t.world, { sub: SUB_B, username: 'Bob' });
+  const inner = t.world.roblox;
+  let n = 0;
+  const original = inner.introspect;
+  // The first token asked about gets a 503, the second the truth.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, i = {}) => (String(u).includes('/token/introspect') && (n += 1) === 1 ? new Response('{}', { status: 503 }) : realFetch(u, i));
+  try {
+    await app.scheduled(NIGHT, t.env, ctx);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.equal(inner.introspect, original);
+  assert.equal(grantAudit(some).allowed, true, 'one unanswered grant among answered ones is an outage that passes');
+  assert.deepEqual(errorScopes(some), []);
+  assert.match(grantAudit(some).subject, /checked=2 active=1 .* unknown=1 unusable=0 /);
+  t.db.close();
+});
+
+test('ONE GRANT WHOSE INTROSPECTION IS REFUSED (a 4xx) AMONG ANSWERED ONES is inconclusive too: Roblox answered and the answer cannot be acted on, which is not an outage that passes', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  const realFetch = globalThis.fetch;
+  let n = 0;
+  globalThis.fetch = async (u, i = {}) => (String(u).includes('/token/introspect') && (n += 1) === 1 ? new Response(JSON.stringify({ error: 'invalid_request' }), { status: 400 }) : realFetch(u, i));
+  try {
+    await app.scheduled(NIGHT, s.env, ctx);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+  assert.match(grantAudit(admin).subject, /checked=2 active=1 .* unknown=1 unusable=1 /, 'POSITIVE CONTROL: one answered, one refused: unknown is not every grant, so only the unusable count can flag this night');
+  assert.equal(grantAudit(admin).allowed, false);
+  assert.deepEqual(errorScopes(admin), ['roblox-grants:inconclusive']);
+  s.db.close();
+});
+
+test('A TOKEN THAT CANNOT BE OPENED (a wrong CREDENTIAL_KEY) THROUGH THE REAL CRON is allowed:false with the unreadable error event, and nothing is asked of Roblox', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  s.env.CREDENTIAL_KEY = Buffer.alloc(32, 9).toString('base64');
+  await app.scheduled(NIGHT, s.env, ctx);
+  assert.equal(grantAudit(admin).allowed, false);
+  assert.equal(grantAudit(admin).subject, 'checked=1 active=0 lost=0 kept_for_retry=0 unknown=0 unusable=0 disagreed=0 unreadable=1 unchecked=0');
+  assert.deepEqual(errorScopes(admin), ['roblox-grants:unreadable']);
+  assert.equal(s.world.roblox.introspectCalls.length, 0);
+  s.db.close();
+});
+
+test('GRANTS THE RUN DID NOT REACH ARE NOT A GOOD NIGHT: with every grant answered active and nothing else wrong, the cron still records allowed:false and an unchecked error event', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  // 2,000 more grants that are perfectly healthy (each holds the real sealed token, which Roblox says is active): the only thing wrong with the night is that the run cannot reach them all.
+  s.db.raw.prepare("insert into roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, generation, rotated_at, lease_until) select 'filler-' || n, (select sealed_refresh from roblox_oauth_tokens where user_id = ?), '1', 'openid profile', 1, 'g', 'now', null from (with recursive c(n) as (select 1 union all select n + 1 from c where n < 2000) select n from c)").run(s.userId);
+  await app.scheduled(NIGHT, s.env, ctx);
+  assert.equal(grantAudit(admin).subject, 'checked=2000 active=2000 lost=0 kept_for_retry=0 unknown=0 unusable=0 disagreed=0 unreadable=0 unchecked=1', 'POSITIVE CONTROL: nothing is wrong with the night except that it did not reach everybody');
+  assert.equal(grantAudit(admin).allowed, false);
+  assert.deepEqual(errorScopes(admin), ['roblox-grants:unchecked']);
+  s.db.close();
+});
+
+test('A QUIET NIGHT IS STILL A GOOD ONE: every grant answered active is allowed:true with no roblox-grants error event (the positive control of the rules above)', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  await app.scheduled(NIGHT, s.env, ctx);
+  assert.equal(grantAudit(admin).allowed, true);
+  assert.deepEqual(errorScopes(admin), []);
+  s.db.close();
+});
+
+/* ---------------------------------------------- the two time guards, the clock, and the cursor --- */
+
+/** A clock that moves `step` ms every time it is read: the whole run's notion of time, in the test's hands. */
+const steppingClock = (start, step) => { let t = start - step; return () => (t += step); };
+
+test('THE TIME BUDGET STOPS THE RUN: a clock that runs past the budget leaves the rest unchecked and says how many, and the budget the Worker runs with is the one that keeps the cron inside its wall-clock allowance', async () => {
+  assert.ok(R.GRANT_CHECK_BUDGET_MS > 0 && R.GRANT_CHECK_BUDGET_MS <= 10 * 60_000, `the budget is ${R.GRANT_CHECK_BUDGET_MS}ms: more than ten minutes of a cron that has fifteen, and the rest of the night still has to run`);
+  assert.ok(R.GRANT_CHECK_MAX >= 1 && R.GRANT_CHECK_MAX <= 5000);
+  const s = await connected();
+  for (const sub of ['11', '12', '13', '14']) await signIn(s.env, s.world, { sub, username: `U${sub}` });
+  // The injected budget: each read of the clock moves it a second, the budget is 2.5 seconds, so three rows are reached and two are not.
+  const report = await R.checkRobloxGrants(s.env, undefined, { clock: steppingClock(1_000_000, 1000), budgetMs: 2500 });
+  assert.equal(report.checked + report.unchecked, 5);
+  assert.ok(report.unchecked > 0 && report.checked > 0, JSON.stringify(report));
+  assert.equal(s.world.roblox.introspectCalls.length, report.checked, 'Roblox was asked about the rows that were reached and no others');
+  // The DEFAULT budget is applied when none is injected: a clock that jumps past it after the first reading leaves everything but the first row unchecked.
+  const jumps = (() => { let calls = 0; return () => (calls++ < 2 ? 5_000_000 : 5_000_000 + R.GRANT_CHECK_BUDGET_MS + 1); })();
+  s.world.roblox.introspectCalls.length = 0;
+  const cut = await R.checkRobloxGrants(s.env, undefined, { clock: jumps });
+  assert.ok(cut.unchecked >= 1, `the default budget did not stop the run: ${JSON.stringify(cut)}`);
+  assert.equal(cut.checked + cut.unchecked, 5);
+  s.db.close();
+});
+
+test('THE CAP STOPS THE RUN AND TOMORROW STARTS WHERE TONIGHT STOPPED: the rows past the cap are not the same rows every night, and every grant is reached', async () => {
+  const s = await connected();
+  const subs = ['21', '22', '23', '24', '25'];
+  for (const sub of subs) await signIn(s.env, s.world, { sub, username: `U${sub}` });
+  const total = rowsOf(s.db, 'select user_id from roblox_oauth_tokens order by user_id').map((r) => r.user_id);
+  assert.equal(total.length, 6);
+  const reached = [];
+  for (let night = 0; night < 3; night += 1) {
+    s.world.roblox.introspectCalls.length = 0;
+    const report = await R.checkRobloxGrants(s.env, undefined, { max: 2 });
+    assert.equal(report.checked, 2, `night ${night}: the cap`);
+    assert.ok(report.unchecked >= 1, `night ${night}: and the rest is said to be unchecked`);
+    reached.push(...s.world.roblox.introspectCalls.map((c) => c.token));
+  }
+  assert.equal(new Set(reached).size, 6, `three nights at a cap of two reach all six grants, in turn: ${reached.length} asked, ${new Set(reached).size} different`);
+  // The cursor is cleared once a run reaches the end, so a table that fits starts from the beginning again.
+  const full = await R.checkRobloxGrants(s.env);
+  assert.equal(full.checked, 6);
+  assert.equal(full.unchecked, 0);
+  assert.equal(s.env.KV.rows.has(R.CHECK_CURSOR_KEY), false, 'a run that reached the end leaves no cursor');
+  s.db.close();
+});
+
+test('A CURSOR THAT CANNOT BE READ OR KEPT does not stop the check: it starts from the beginning, as it did before there was one', async () => {
+  const s = await connected();
+  s.env.KV = { ...s.env.KV, get: async () => { throw new Error('KV down'); }, put: async () => { throw new Error('KV down'); }, delete: async () => { throw new Error('KV down'); } };
+  const report = await R.checkRobloxGrants(s.env, undefined, { max: 1 });
+  assert.deepEqual(report, COUNTS({ checked: 1, active: 1 }));
+  s.db.close();
+});
+
+test('EVERY REFRESH THE CHECK MAKES IS GIVEN THE CLOCK OF THAT MOMENT: a grant reached minutes into the run takes a lease that is not already lapsed', async () => {
+  const s = await connected();
+  await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  s.world.roblox.removeApp(SUB_A);
+  s.world.roblox.removeApp(SUB_B);
+  const leases = [];
+  s.world.roblox.duringRefresh = async () => { leases.push(...rowsOf(s.db, 'select lease_until from roblox_oauth_tokens where lease_until is not null').map((r) => r.lease_until)); };
+  const step = 5 * 60_000;
+  const report = await R.checkRobloxGrants(s.env, undefined, { clock: steppingClock(10_000_000, step), budgetMs: 1e12 });
+  assert.equal(report.lost, 2);
+  assert.equal(leases.length, 2, 'each refresh held a lease while Roblox answered');
+  assert.ok(leases[1] - leases[0] >= step, `the second lease (${leases[1]}) was written with the same clock as the first (${leases[0]}): a lease already in the past by real time is no lease`);
+  // `now` stays what a test may pass: it is used as given.
+  const t = await connected();
+  t.world.roblox.removeApp(SUB_A);
+  const seen = [];
+  t.world.roblox.duringRefresh = async () => { seen.push(...rowsOf(t.db, 'select lease_until from roblox_oauth_tokens where lease_until is not null').map((r) => r.lease_until)); };
+  await R.checkRobloxGrants(t.env, 123_456_789, { clock: steppingClock(10_000_000, 1000) });
+  assert.deepEqual(seen, [123_456_789 + 30_000]);
+  s.db.close();
+  t.db.close();
 });

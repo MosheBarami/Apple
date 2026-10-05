@@ -31,18 +31,24 @@
 // `usage_events` is detached by migration 0015 so that deleting the user does NOT cascade the ledger
 // away. What the deletion keeps is in `ACCOUNT_RESIDUE`.
 //
-// ORDER AND FAILURE. Discord is unlinked first (through the Discord Durable Object, as Settings does),
-// then everything else, and the Supabase account goes LAST and ONLY WHEN NOTHING BEFORE IT FAILED: a
-// person whose deletion half-ran must still be able to sign in and run it again, and the sign-in is
-// the thing that lets them. A failed unlink or a failed account deletion is a failed step, so the
-// receipt is incomplete and the route answers 207; a re-run is safe at every point (see the route).
+// ORDER AND FAILURE, ONE ORDER, and the pages (privacy, the data page, Settings) say this one:
+//   1. each project's Durable Object is purged, and everything the project left outside it is swept;
+//   2. the stores addressed by the person: memory, notifications, automations, API keys, stored credentials, and the Roblox token (the grant is revoked at Roblox first);
+//   3. Postgres: the projects (which cascade), and the profile is minimised;
+//   4. Discord is unlinked (through the Discord Durable Object, as Settings does);
+//   5. the Roblox link, which is what lets a Roblox-only account confirm it is the person asking;
+//   6. the Supabase account, LAST, and ONLY WHEN NOTHING BEFORE IT FAILED.
+// A person whose deletion half-ran must still be able to sign in and run it again, and the sign-in is the thing that lets them. A failed step anywhere, the unlink and the
+// link sweep included, keeps the sign-in: the receipt is incomplete and the route answers 207; a re-run is safe at every point (see the route). If the sign-in is the step
+// that fails, the Roblox link is PUT BACK (step 5 is undone), so that a Roblox-only account can still confirm it is them for the re-run. Nothing is done after the sign-in
+// is removed, so an account that is gone is a deletion that finished.
 import type { Env, AuthedUser } from './env';
 import { supaRest } from './supa';
 import { ensureApiKeyTables } from './api-keys';
 import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
-import { deleteSignInIdentity, ensureRobloxOAuthTables, revokeStoredRobloxGrant } from './roblox-oauth';
+import { deleteSignInIdentity, ensureRobloxOAuthTables, readRobloxLink, restoreRobloxLink, revokeStoredRobloxGrant, type RobloxLinkSnapshot } from './roblox-oauth';
 import { ensureMemoryTables } from './memory-store';
 import { ensureNotificationTables } from './notification-store';
 import { ensureProvenanceTables } from './provenance';
@@ -441,7 +447,7 @@ export async function eraseAccountData(
       : 'Roblox could not be asked to revoke the authorization. StudPilot no longer holds the token; you can remove StudPilot under Connections in your Roblox account settings.';
   }
   steps.push(tokens);
-  // `roblox_identities` is NOT swept here: see the end of this function.
+  // `roblox_identities` is NOT swept here: see step 5 below.
 
   // 3. Postgres: the projects, which cascade, and then a CHECK that they really went.
   steps.push(await erasePostgresProjects(env, user));
@@ -451,44 +457,24 @@ export async function eraseAccountData(
   //    that has been deleted is a pass to spend nothing for nobody, but it is also the person's Discord id kept for no reason.
   steps.push(await eraseDiscordLink(env, user.userId));
 
-  //[[ THE ROBLOX LINK GOES WITH THE ACCOUNT, AND ONLY WHEN EVERYTHING ELSE WENT.
+  //[[ 5. THE ROBLOX LINK GOES WITH THE ACCOUNT, AND ONLY WHEN EVERYTHING ELSE WENT; AND THE SUPABASE ACCOUNT STILL GOES AFTER IT.
   //
   //   An account that signs in only with Roblox has no password, so the route lets it export or delete only inside ten minutes of a
   //   Roblox re-authentication, and that proof is a column of this very row (`reauth_at`); the re-authentication itself needs the
-  //   row too, since it never makes an account. This sweep used to come before the Postgres steps. When one of them failed the
-  //   route answered 207 "run it again", the row was already gone, and the retry answered 403 `reauth_required` that no
+  //   row too (or, after a lost grant was wiped, the pointer in `roblox_wiped`). This sweep used to come before the Postgres steps. When one of them
+  //   failed the route answered 207 "run it again", the row was already gone, and the retry answered 403 `reauth_required` that no
   //   re-authentication could ever satisfy: the part that failed could not be finished. So the row stays while any other step has
-  //   failed, the receipt says so, and the run that completes the rest removes it. A person with no such row is not told about one.
+  //   failed, the receipt says so, and the run that completes the rest removes it.
   //
-  //   THE SUPABASE ACCOUNT IS DELETED BEFORE THIS ROW IS SWEPT, and for the same reason: if Auth cannot be reached the row is still
-  //   there, so a Roblox-only account can confirm it is them and run the deletion again. The one gap, a sweep that fails after Auth
-  //   has already gone, leaves a failed step on the receipt and a row that the next Roblox sign-in drops as stale (`findLinked`). ]]
+  //   THE SUPABASE ACCOUNT IS DELETED AFTER THIS ROW, so that nothing is left to do once the account is gone (an account that is gone cannot run a deletion again,
+  //   and a sweep that failed after it would have been a part of the deletion that nobody could finish). The cost is that the sign-in can fail after this row went: then the row
+  //   is PUT BACK, from what was read before it was swept, so the account is exactly as able to confirm itself and run the deletion again as it was. A row that cannot be
+  //   read is not swept at all. A put-back that fails too is said, and is the one case a person needs support for. ]]
   const othersFailed = steps.some((s) => s.status === 'failed');
-  let accountRemoved = false;
+  let snapshot: RobloxLinkSnapshot | null = null;
+  let linkStep: ErasureStep;
   if (othersFailed) {
-    // THE SIGN-IN STAYS WHEN ANYTHING BEFORE IT FAILED: it is how the person gets back in to run this again. Said as a failed step,
-    // because the sign-in identity is still there and the receipt is not complete.
-    steps.push({
-      store: 'postgres',
-      target: 'auth.users — your sign-in identity (and your account row with it)',
-      status: 'failed',
-      rows: null,
-      detail: 'Not removed yet, on purpose: another step failed, and your sign-in is what lets you run the deletion again. It is removed in the run that finishes everything else.',
-    });
-  } else {
-    const gone = await deleteSignInIdentity(env, user.userId);
-    accountRemoved = gone.status !== 'failed';
-    steps.push({
-      store: 'postgres',
-      target: 'auth.users — your sign-in identity (and your account row with it)',
-      status: accountRemoved ? 'erased' : 'failed',
-      rows: gone.status === 'deleted' ? 1 : gone.status === 'already_gone' ? 0 : null,
-      detail: gone.detail,
-    });
-  }
-  const holdsLink = !accountRemoved && (await robloxLinkHeld(env, user.userId));
-  steps.push(
-    holdsLink
+    linkStep = (await robloxLinkHeld(env, user.userId))
       ? {
           store: 'd1',
           target: 'roblox_identities',
@@ -496,8 +482,56 @@ export async function eraseAccountData(
           rows: null,
           detail: 'Not removed yet, on purpose: it is what lets this account confirm it is the person asking, and it goes in the run that finishes everything else. Run the deletion again.',
         }
-      : await d1Sweep(env, 'roblox_identities', `delete from roblox_identities where user_id = ?`, user.userId),
-  );
+      : { store: 'd1', target: 'roblox_identities', status: 'erased', rows: 0 };
+  } else {
+    snapshot = await readRobloxLink(env, user.userId);
+    linkStep = snapshot === null
+      ? {
+          store: 'd1',
+          target: 'roblox_identities',
+          status: 'failed',
+          rows: null,
+          detail: 'Not removed yet, on purpose: it could not be looked at, and it is what lets this account confirm it is the person asking. Run the deletion again.',
+        }
+      : await sweepRobloxLink(env, user.userId);
+  }
+  steps.push(linkStep);
+
+  // 6. THE SUPABASE ACCOUNT, LAST.
+  const authTarget = 'auth.users — your sign-in identity (and your account row with it)';
+  let accountRemoved = false;
+  let linkNotPutBack = false;
+  if (steps.some((s) => s.status === 'failed')) {
+    // THE SIGN-IN STAYS WHEN ANYTHING BEFORE IT FAILED: it is how the person gets back in to run this again. Said as a failed step,
+    // because the sign-in identity is still there and the receipt is not complete.
+    steps.push({
+      store: 'postgres',
+      target: authTarget,
+      status: 'failed',
+      rows: null,
+      detail: 'Not removed yet, on purpose: another step failed, and your sign-in is what lets you run the deletion again. It is removed in the run that finishes everything else.',
+    });
+  } else {
+    const gone = await deleteSignInIdentity(env, user.userId);
+    accountRemoved = gone.status !== 'failed';
+    if (!accountRemoved && snapshot !== null && (snapshot.identity !== null || snapshot.wiped !== null)) {
+      // The sign-in is still there, so the link goes back: it is what lets this account confirm itself for the next run.
+      const back = await restoreRobloxLink(env, snapshot);
+      linkNotPutBack = !back;
+      linkStep.status = 'failed';
+      linkStep.rows = null;
+      linkStep.detail = back
+        ? 'Put back on purpose: your sign-in could not be removed, so this account must still be able to confirm it is the person asking when you run the deletion again. It goes in the run that removes your sign-in.'
+        : 'Removed, and it could not be put back after your sign-in failed to go. Contact support: this account cannot confirm itself until it is.';
+    }
+    steps.push({
+      store: 'postgres',
+      target: authTarget,
+      status: accountRemoved ? 'erased' : 'failed',
+      rows: gone.status === 'deleted' ? 1 : gone.status === 'already_gone' ? 0 : null,
+      detail: gone.detail,
+    });
+  }
 
   const failed = steps.filter((s) => s.status === 'failed');
   const authStep = steps.find((s) => s.target.startsWith('auth.users'));
@@ -517,8 +551,9 @@ export async function eraseAccountData(
           `See what is left, below, and why.`
         : `${failed.length} of ${steps.length} stores could not be cleared: ${failed.map((s) => s.target).join(', ')}. ` +
           `Everything else listed as erased is gone for good. ` +
-          (accountRemoved
-            ? 'Your sign-in was removed, so the rest needs support.'
+          // THE SIGN-IN IS ONLY REMOVED WHEN NOTHING ELSE FAILED, so a receipt with failed steps always has it still there.
+          (linkNotPutBack
+            ? 'Your sign-in is still there, but the Roblox link that lets this account confirm it is you could not be put back: contact support to finish the deletion.'
             : 'Your sign-in is still there so that you can run the deletion again; it is safe to repeat, and it finishes what is left.'),
   };
 }
@@ -558,12 +593,25 @@ async function eraseDiscordLink(env: Pick<Env, 'DISCORD_DO'>, userId: string): P
   }
 }
 
-/** Is there a Roblox link to keep for this person? A lookup that throws is answered "yes": a link that could not be looked at is kept, not swept, and the receipt still goes out. */
+/** Is there a Roblox link to keep for this person (the link row, or the pointer a wipe left)? A lookup that throws is answered "yes": a link that could not be looked at is kept, not swept, and the receipt still goes out. */
 async function robloxLinkHeld(env: Pick<Env, 'CORPUS'>, userId: string): Promise<boolean> {
   try {
-    return (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ?').bind(userId).first()) !== null;
+    return (await env.CORPUS.prepare('select 1 as held from roblox_identities where user_id = ? union all select 1 from roblox_wiped where user_id = ?').bind(userId, userId).first()) !== null;
   } catch {
     return true;
+  }
+}
+
+/** Sweep what lets a Roblox-only account confirm itself: the link row and the pointer a wipe left, in one batch (one transaction). Rows are what the store said it removed. */
+async function sweepRobloxLink(env: Pick<Env, 'CORPUS'>, userId: string): Promise<ErasureStep> {
+  try {
+    const [link, wiped] = await env.CORPUS.batch([
+      env.CORPUS.prepare('delete from roblox_identities where user_id = ?').bind(userId),
+      env.CORPUS.prepare('delete from roblox_wiped where user_id = ?').bind(userId),
+    ]);
+    return { store: 'd1', target: 'roblox_identities', status: 'erased', rows: Number(link?.meta?.changes ?? 0) + Number(wiped?.meta?.changes ?? 0) };
+  } catch (err) {
+    return { store: 'd1', target: 'roblox_identities', status: 'failed', rows: null, detail: String((err as Error)?.message ?? err) };
   }
 }
 

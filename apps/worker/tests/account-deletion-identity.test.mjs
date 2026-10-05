@@ -6,9 +6,10 @@
  * survived too. This file drives the real route (the whole worker bundled, the real Discord Durable Object, a
  * Supabase Auth that records what it was asked) and holds the behaviour that makes the new receipt honest:
  *
- *   - THE ORDER. Discord is unlinked, every other store is swept, and the Auth DELETE is the LAST call, made only
- *     when nothing before it failed. A deletion that half-ran must leave the sign-in standing, because the sign-in
- *     is how the person gets back in to run it again.
+ *   - THE ORDER, ONE ORDER (the pages, erasure.ts and Settings say it): the project objects are purged and the stores swept, then Discord is unlinked
+ *     (and checked), then the Roblox link is swept, then the Auth DELETE, the LAST call, made only when nothing before it failed. A deletion that
+ *     half-ran must leave the sign-in standing, because the sign-in is how the person gets back in to run it again; and when the sign-in is the step
+ *     that fails, the Roblox link is put back so a Roblox-only account can still confirm itself for the re-run. Read from a call log.
  *   - A FAILURE IS NEVER A SUCCESS. A Discord object that errors, a link that is still there after the unlink, an
  *     Auth that is unreachable, answers 500, answers a bare 404 (a wrong URL, not "no such user"), has no key at all,
  *     or says it deleted a user it can still read: each is a failed step, the receipt is incomplete, the route
@@ -117,6 +118,9 @@ function authFetch() {
     LOG.push(`auth ${method} /users/${id === ALICE ? 'ALICE' : id}`);
     if (AUTH.mode === 'unreachable') throw new Error('network down');
     if (method === 'DELETE') {
+      // The answer is lost on the way back: Supabase did (or did not) do the deletion, and the Worker hears nothing.
+      if (AUTH.mode === 'times-out-after-deleting') { AUTH.users.delete(id); throw new Error('timed out'); }
+      if (AUTH.mode === 'times-out') throw new Error('timed out');
       if (AUTH.mode === 'http500') return new Response(JSON.stringify({ msg: 'database error' }), { status: 500 });
       if (AUTH.mode === 'bare404') return new Response('<html>not found</html>', { status: 404 });
       if (!AUTH.users.has(id)) return Response.json({ error_code: 'user_not_found', msg: 'User not found' }, { status: 404 });
@@ -149,8 +153,18 @@ function reset(opts = {}) {
   return opts;
 }
 
+/** The D1 binding, with the writes that decide the order of a deletion (the Roblox link swept, and put back) written into the call log. */
+const loggedCorpus = () => ({
+  ...DB.CORPUS,
+  prepare(sql) {
+    if (/^delete from roblox_identities/.test(sql)) LOG.push('d1 delete roblox_identities');
+    if (/^insert into roblox_identities/.test(sql)) LOG.push('d1 put back roblox_identities');
+    return DB.CORPUS.prepare(sql);
+  },
+});
+
 const env = (extra = {}) => ({
-  CORPUS: DB.CORPUS,
+  CORPUS: loggedCorpus(),
   KV: { async get() { return null; }, async put() {}, async delete() {}, async list() { return { keys: [], list_complete: true }; } },
   SESSION_DO: { idFromName: (n) => n, get: (n) => ({ async fetch(url) { LOG.push(`session ${new URL(url).pathname} ${n === PROJECT ? 'PROJECT' : n}`); return new Response('{}', { status: 200 }); } }) },
   QUOTA_DO: { idFromName: (n) => n, get: () => ({ async fetch() { return new Response('{}'); } }) },
@@ -206,22 +220,59 @@ test('POSITIVE CONTROL: with everything working, the deletion unlinks Discord, s
   assert.equal(new Headers(del.headers).get('apikey'), SECRET);
 });
 
-test('THE ORDER: Discord first, the other stores next, and the Auth DELETE is the LAST call (a read after it checks the result)', async () => {
+test('THE ORDER, ONE ORDER, read from the call log: the project object is purged, then Discord is unlinked and checked, then the Roblox link is swept, then the Auth DELETE, the LAST call, and only the read that checks it follows', async () => {
   reset();
   await linkAlice();
   await remove();
   const at = (re) => LOG.findIndex((l) => re.test(l));
-  const unlink = at(/^discord POST \/unlink$/);
   const purge = at(/^session \/purge PROJECT$/);
+  const unlink = at(/^discord POST \/unlink$/);
+  const linkSweep = at(/^d1 delete roblox_identities$/);
   const authDelete = at(/^auth DELETE/);
-  assert.ok(unlink >= 0 && purge >= 0 && authDelete >= 0, `a call is missing: ${LOG.join(' | ')}`);
-  assert.ok(purge < authDelete, 'the project object was purged AFTER the account was deleted');
-  assert.ok(unlink < authDelete, 'Discord was unlinked AFTER the account was deleted');
+  assert.ok(purge >= 0 && unlink >= 0 && linkSweep >= 0 && authDelete >= 0, `a call is missing: ${LOG.join(' | ')}`);
+  assert.ok(purge < unlink, 'Discord was unlinked BEFORE the project object was purged: the pages, erasure.ts and Settings say the stores go first');
+  assert.ok(unlink < linkSweep, 'the Roblox link was swept before Discord was unlinked');
+  assert.ok(linkSweep < authDelete, 'the account was deleted BEFORE the Roblox link was swept: the sign-in is the last thing to go');
   // Nothing at all is asked of Auth before the DELETE, and after it only the read that checks it.
   assert.equal(at(/^auth/), authDelete, 'Auth was called before the delete');
   assert.deepEqual(LOG.slice(authDelete), ['auth DELETE /users/ALICE', 'auth GET /users/ALICE'], 'something else happens after the account is deleted');
-  // Unlink first, then the check that nothing is left.
+  // Unlink first, then the check that nothing is left, and the link is not put back when the sign-in went.
   assert.deepEqual(LOG.filter((l) => l.startsWith('discord')), ['discord POST /unlink', 'discord GET /link-for-owner']);
+  assert.equal(LOG.some((l) => /put back/.test(l)), false, 'a link was put back for a deletion that finished');
+});
+
+test('A FAILED STEP BEFORE THE SIGN-IN keeps the Roblox link and the sign-in: neither the link sweep nor the Auth DELETE is in the call log', async () => {
+  reset();
+  await linkAlice();
+  DISCORD_MODE = 'http500';
+  const receipt = await (await remove()).json();
+  assert.equal(receipt.accountRemoved, false);
+  assert.equal(LOG.some((l) => /^d1 delete roblox_identities$/.test(l)), false, 'the link was swept although Discord failed: a Roblox-only account could not confirm itself to run it again');
+  assert.equal(LOG.some((l) => /^auth DELETE/.test(l)), false);
+});
+
+test('WHEN THE SIGN-IN IS THE STEP THAT FAILS the link that was swept for it is put back, after the Auth DELETE, so the account can confirm itself and run the deletion again', async () => {
+  reset();
+  const R = await esbuildModule('roblox-oauth.ts');
+  await R.ensureRobloxOAuthTables({ CORPUS: DB.CORPUS });
+  DB.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at, reauth_at, created_username) values (?, ?, ?, ?, ?, ?)').run('1234567', ALICE, 'Builder1', 'then', 1234, 'Builder1');
+  AUTH.mode = 'http500';
+  const receipt = await (await remove()).json();
+  const at = (re) => LOG.findIndex((l) => re.test(l));
+  const sweep = at(/^d1 delete roblox_identities$/);
+  const authDelete = at(/^auth DELETE/);
+  const putBack = at(/^d1 put back roblox_identities$/);
+  assert.ok(sweep >= 0 && authDelete > sweep && putBack > authDelete, `the order is swept, then the Auth DELETE, then put back: ${LOG.join(' | ')}`);
+  const link = stepOf(receipt, 'roblox_identities');
+  assert.equal(link.status, 'failed');
+  assert.match(link.detail, /Put back on purpose/);
+  const back = DB.raw.prepare('select roblox_sub, username, reauth_at, created_username from roblox_identities where user_id = ?').get(ALICE);
+  assert.deepEqual({ ...back }, { roblox_sub: '1234567', username: 'Builder1', reauth_at: 1234, created_username: 'Builder1' }, 'the row is back exactly as it was, with its confirmation');
+  // The retry finishes, and takes the link with it.
+  AUTH.mode = 'ok';
+  const done = await (await remove()).json();
+  assert.equal(done.complete, true);
+  assert.equal(DB.raw.prepare('select count(*) as n from roblox_identities where user_id = ?').get(ALICE).n, 0);
 });
 
 test('the Discord unlink is the one Settings uses: the account id goes to /unlink, and unused link codes are withdrawn with the link', async () => {
@@ -328,6 +379,40 @@ for (const [mode, expect, why] of [
     assert.equal(after.accountRemoved, true, 'the record of the deletion was not updated by the run that finished it');
   });
 }
+
+test('A DELETE WHOSE ANSWER WAS LOST BUT WHICH WENT THROUGH is reported as deleted, from a read afterwards, not as a sign-in that is still there: no retry is asked for an account that is gone, and no link is put back', async () => {
+  reset();
+  const R = await esbuildModule('roblox-oauth.ts');
+  await R.ensureRobloxOAuthTables({ CORPUS: DB.CORPUS });
+  DB.raw.prepare('insert into roblox_identities(roblox_sub, user_id, username, created_at) values (?, ?, ?, ?)').run('1234567', ALICE, 'Builder1', 'then');
+  AUTH.mode = 'times-out-after-deleting';
+  const res = await remove();
+  assert.equal(res.status, 200);
+  const receipt = await res.json();
+  assert.equal(receipt.accountRemoved, true);
+  assert.equal(receipt.complete, true, JSON.stringify(receipt.steps.filter((s) => s.status === 'failed')));
+  const auth = stepOf(receipt, AUTH_STEP);
+  assert.equal(auth.status, 'erased');
+  assert.match(auth.detail, /did not answer the deletion in time, but a read afterwards found your sign-in removed/);
+  assert.equal(AUTH.users.has(ALICE), false);
+  assert.equal(stepOf(receipt, 'roblox_identities').status, 'erased', 'the Roblox link is gone with the account');
+  assert.equal(DB.raw.prepare('select count(*) as n from roblox_identities where user_id = ?').get(ALICE).n, 0);
+  assert.equal(LOG.some((l) => /put back/.test(l)), false);
+  assert.deepEqual(LOG.slice(LOG.findIndex((l) => /^auth DELETE/.test(l))), ['auth DELETE /users/ALICE', 'auth GET /users/ALICE'], 'the read that found it gone is the only thing after the delete');
+});
+
+test('A DELETE THAT TIMED OUT AND DID NOT GO THROUGH is still a failure (the read finds the sign-in), and a re-run finishes it', async () => {
+  reset();
+  AUTH.mode = 'times-out';
+  const res = await remove();
+  assert.equal(res.status, 207);
+  const receipt = await res.json();
+  assert.equal(receipt.accountRemoved, false);
+  assert.match(stepOf(receipt, AUTH_STEP).detail, /Supabase could not be reached/);
+  assert.equal(AUTH.users.has(ALICE), true);
+  AUTH.mode = 'ok';
+  assert.equal((await (await remove()).json()).accountRemoved, true);
+});
 
 test('NO SECRET KEY on the deployment: the sign-in cannot be removed, the receipt says so in plain words, and nothing is claimed', async () => {
   reset();
