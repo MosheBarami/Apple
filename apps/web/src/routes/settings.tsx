@@ -62,7 +62,7 @@ import {
   type SensitiveAction,
 } from '../lib/auth-flows';
 import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
-import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
+import { SETTING_FIELDS, foundLine, matchSettings } from '../lib/settings-search.ts';
 import { useEnabledProviders } from '../lib/auth-providers';
 import { fieldsForProviders } from '../lib/identity-links';
 import { IdentityCard } from '../components/identity-card';
@@ -2138,9 +2138,7 @@ export function SettingsPage() {
           guessing at the vocabulary. */}
       {query.trim() !== '' && (
         <p className="settings-note settings-found" role="status">
-          {matches.size === 0
-            ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
-            : `Showing ${matches.size} of ${SETTING_FIELDS.length} settings. Clear the box to see them all.`}
+          {foundLine(query, matches.size, fields.length)}
         </p>
       )}
 

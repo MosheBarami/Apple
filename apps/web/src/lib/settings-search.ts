@@ -207,6 +207,16 @@ export function matchSettings(query: unknown, fields: readonly SettingField[] = 
   return [...best.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
 
+/**
+ * The line under the search box. `total` is the number of settings THIS PAGE HAS, not the registry's: a sign-in provider that is off has no
+ * row, so counting it ("Showing 4 of 33" on a page of 31) names settings that cannot be found.
+ */
+export function foundLine(query: string, shown: number, total: number): string {
+  return shown === 0
+    ? `Nothing matches “${query.trim()}”. Try a word from the setting itself, like “theme”, “password”, “time zone” or “delete”.`
+    : `Showing ${shown} of ${total} settings. Clear the box to see them all.`;
+}
+
 /** Is this control visible under the current query? What each row's `hidden` is bound to. */
 export function settingMatches(id: string, query: unknown): boolean {
   return matchSettings(query).includes(id);

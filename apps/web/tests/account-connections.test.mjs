@@ -20,6 +20,7 @@ import { WEB, bundle, element, renderWith, text } from './ui-bundle.mjs';
 import { findAll, loadPage, textOf } from './page-harness.mjs';
 import { SETTING_FIELDS, matchSettings } from '../src/lib/settings-search.ts';
 import { avatarInitial } from '../src/lib/account-identity.ts';
+import { foundLine } from '../src/lib/settings-search.ts';
 import { IDENTITY_COPY, IDENTITY_FIELD, NOT_CONNECTED, ONLY_WAY_IN, canUnlink, connectedLine, fieldsForProviders, identityFor, identityLabel } from '../src/lib/identity-links.ts';
 
 const email = { provider: 'email', identity_id: 'i-email', identity_data: { email: 'me@example.com' } };
@@ -78,6 +79,19 @@ test('with no provider on, no settings row for either exists: not in the list, n
   // The positive controls: the same search finds the rows once the provider is on, and the bot-link row is never held back.
   assert.equal(matchSettings('google', SETTING_FIELDS).includes('google-signin'), true);
   assert.equal(matchSettings('discord', none).includes('discord'), true, 'the Discord bot link is not a sign-in provider and stays');
+});
+
+test('THE SEARCH COUNT IS OF THE SETTINGS THE PAGE HAS: with no provider on it is of 31, not 33', () => {
+  const none = fieldsForProviders(SETTING_FIELDS, []);
+  const found = matchSettings('theme', none);
+  assert.ok(found.length > 0 && found.length < none.length, 'the query matches something and not everything');
+  assert.equal(foundLine('theme', found.length, none.length), `Showing ${found.length} of ${SETTING_FIELDS.length - 2} settings. Clear the box to see them all.`);
+  assert.doesNotMatch(foundLine('theme', found.length, none.length), new RegExp(`of ${SETTING_FIELDS.length} settings`), 'the denominator counts the two rows that are not on the page');
+  assert.match(foundLine('zzz', 0, none.length), /^Nothing matches “zzz”\. Try a word from the setting itself/);
+  // The page hands the sentence ITS OWN total (`fields`, the provider-filtered list) and never the registry's.
+  const src = readFileSync(join(WEB, 'src', 'routes', 'settings.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  assert.match(src, /foundLine\(query, matches\.size, fields\.length\)/);
+  assert.doesNotMatch(src, /SETTING_FIELDS\.length/, 'the page counts the registry again');
 });
 
 test('each provider brings only its own row', () => {
@@ -274,7 +288,9 @@ test('the avatar letter: display name, then Roblox username, then address; never
   assert.equal(avatarInitial({ displayName: '  ', robloxName: null, address: '' }), null);
   assert.equal(avatarInitial({}), null);
   assert.equal(avatarInitial({ displayName: '🙂 Dev' }), 'D', 'a symbol is not a letter; the next character is');
-  assert.equal(avatarInitial({ displayName: '𝒜lice' }) !== null, true);
+  // The first CODE POINT, not the first UTF-16 unit: a unit-wise split would cut this letter in half, find no letter in either half, and come back with "L".
+  assert.equal(avatarInitial({ displayName: '𝒜lice' }), '𝒜');
+  assert.equal(avatarInitial({ displayName: '𝒜' }), '𝒜', 'an astral letter on its own');
   assert.equal(avatarInitial({ displayName: 'שרה' }), 'ש', 'any alphabet');
   assert.equal(avatarInitial({ displayName: 'élan' }), 'É');
   assert.equal(avatarInitial({ displayName: '42nd' }), '4');
