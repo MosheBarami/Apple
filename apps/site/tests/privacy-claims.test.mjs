@@ -801,6 +801,56 @@ test('THE WORKSPACE FILES: the export lists them (name, size, date, and the tras
   }
 });
 
+test('THE PRODUCT EVENTS IN WORKERS ANALYTICS ENGINE are disclosed: every event is written, a data point has no account or project id of its own, an error label can carry ids, and Cloudflare keeps them about three months', async () => {
+  // THE WIRING. The dataset is bound in the deployment config, and every flushed batch goes to it before the Admin DO store, whatever the analytics opt-out says.
+  const wrangler = readFileSync(join(WORKER, 'wrangler.studpilot.jsonc'), 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/\/\/\[\[[\s\S]*?\]\]/g, '');
+  assert.match(wrangler, /"analytics_engine_datasets":\s*\[\s*\{\s*"binding":\s*"PRODUCT_EVENTS",\s*"dataset":\s*"studpilot_product_events"/, 'the Analytics Engine dataset is no longer bound in wrangler.studpilot.jsonc: the pages say every event is written to it');
+  const flush = wcode(join(WORKER, 'src', 'analytics-sink.ts'));
+  const flushBody = flush.slice(flush.indexOf('export async function flushEvents'), flush.indexOf('export function maybeFlush'));
+  assert.ok(/writeProductEvents\(env, batch\)/.test(flushBody) && flushBody.indexOf('writeProductEvents') < flushBody.indexOf("adminStub(env).fetch"), 'flushEvents no longer writes the whole batch to Analytics Engine before it stores it');
+  // THE CONTENT. Events are normalised and turned into data points by the code itself; sentinels in every id field must not reach a data point, except through an error's label.
+  const A = await bundleWorker('analytics.ts', 'analytics.mjs');
+  const AE = await bundleWorker('analytics-engine.ts', 'analytics-engine.mjs');
+  const ids = { actorId: 'ACTOR-SENTINEL-0001', projectId: 'PROJECT-SENTINEL-0001', runId: 'RUN-SENTINEL-0001' };
+  const RAW = {
+    request: { kind: 'request', route: '/api/projects/:id', method: 'GET', status: 200, durationMs: 12 },
+    model_call: { kind: 'model_call', provider: 'workers-ai', model: 'a-model', feature: 'chat', outcome: 'ok', latencyMs: 5, inputTokens: 1, outputTokens: 2, neurons: 3 },
+    build: { kind: 'build', outcome: 'done', steps: 2, opsApplied: 1, opsFailed: 0, durationMs: 9, neurons: 4 },
+    audit: { kind: 'audit', action: 'account_delete', actorKind: 'user', allowed: true, subject: 'ACTOR-SENTINEL-0001 PROJECT-SENTINEL-0001' },
+    error: { kind: 'error', scope: '/api/projects/:id', errorKind: 'server_error', message: 'boom ACTOR-SENTINEL-0001', fatal: true },
+  };
+  assert.deepEqual(Object.keys(RAW).sort(), [...A.EVENT_KINDS].sort(), 'there is a kind of event this test does not feed: say whether its data point can carry an id');
+  for (const [kind, raw] of Object.entries(RAW)) {
+    const n = A.normalizeEvent({ ...raw, ...ids, at: Date.now() });
+    assert.ok(n.ok, `${kind}: the sample event was rejected (${n.reason})`);
+    const point = JSON.stringify(AE.dataPointFor(n.event));
+    for (const [field, sentinel] of Object.entries(ids)) assert.equal(point.includes(sentinel), false, `a ${kind} data point carries the ${field}: the pages say it has no account id or project id of its own`);
+    assert.equal(point.includes('boom'), false, `a ${kind} data point carries message text`);
+  }
+  // THE EXCEPTION. The label of an error is its scope, and the one scope that names ids is the membership-outbox failure; it is cut at 60 characters, so the whole project id and only
+  // the start of the user id get through. Read the scope's shape out of index.ts, then run it through the same normaliser and data point.
+  const index = wcode(join(WORKER, 'src', 'index.ts'));
+  assert.match(index, /scope: `membership-access:\$\{failure\.projectId\}:\$\{failure\.userId\}:\$\{failure\.version\}`/, 'the membership-outbox failure no longer names its scope with the project and user ids: the pages say an error label can carry them, so re-read what they must say');
+  const projectId = '3f2b8c1e-9d4a-4e7b-8a61-0c5d2e9f7a14';
+  const userId = 'b7c1d2e3-4f50-4a6b-9c8d-1e2f3a4b5c6d';
+  const scoped = A.normalizeEvent({ kind: 'error', scope: `membership-access:${projectId}:${userId}:3`, errorKind: 'outbox_delivery_failed', message: 'x', fatal: false, at: Date.now() });
+  const label = AE.dataPointFor(scoped.event).blobs[1];
+  assert.ok(label.includes(projectId), 'the project id no longer reaches the data point through an error label');
+  assert.ok(label.includes(userId.slice(0, 4)) && !label.includes(userId), 'the user id is no longer cut: the pages say the START of an account id reaches the data point');
+  // NOTHING IN THE CODE DELETES FROM IT, and the retention is the one the code's own header states for the product (Cloudflare's, not a window this software sets).
+  assert.equal(/\bdelete\b/i.test(wcode(join(WORKER, 'src', 'analytics-engine.ts'))), false, 'analytics-engine.ts now deletes something: the pages say StudPilot\'s code has no way to delete the data points');
+  assert.match(read(WORKER, 'src', 'analytics-engine.ts'), /retention is three months/, 'analytics-engine.ts no longer states the three-month retention the pages quote');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /Workers Analytics Engine/, `${where} does not name Workers Analytics Engine, which receives every event`);
+    assert.match(text, /one data point: a request, a model call, an agent run, an error or an audit event/, `${where} does not say what is written to Analytics Engine`);
+    assert.match(text, /holds no message text and no account id or project id of its own/, `${where} does not say what a data point holds`);
+    assert.match(text, /an error's label, which can contain a project id and the start of an account id \(for example when delivery of a project membership change fails\)/, `${where} does not disclose the ids an error label can carry`);
+    assert.match(text, /Cloudflare keeps these data points for about three months, and StudPilot's code has no way to delete them/, `${where} does not say how long Cloudflare keeps the data points`);
+    assert.match(text, /Analytics Engine data points[^.]{0,6}\s*(—|:)? about three months, kept by Cloudflare; not deleted by StudPilot's code/, `${where} has no retention line for the data points`);
+  }
+  assert.doesNotMatch(PRIVACY, /coarse, aggregated counters/, '/privacy still calls the event record "coarse, aggregated counters"');
+});
+
 test('THE NIGHTLY SWEEP is described as the three stores it runs, and the pages do not say it enforces every dated window', () => {
   const sweeps = [...wcode(join(WORKER, 'src', 'retention-sweep.ts')).matchAll(/results\.push\(await one\('([a-z_]+)'/g)].map((m) => m[1]);
   assert.deepEqual(sweeps, ['memory_entries', 'notifications', 'automation_runs'], 'the nightly sweep runs a different set of stores: re-describe it on the data page');
