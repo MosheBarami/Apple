@@ -8,7 +8,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateSync } from 'node:zlib';
 import {
-  DEFAULT_SPAWN, EMPTY_BOUNDS, EYE_HEIGHT, cameraPlan, classifyBuild, classifyConsole, consoleDelta, extractImage, imageSize, orbit, playTestCounts, sizeLabel, uiShotName,
+  DEFAULT_SPAWN, EMPTY_BOUNDS, EYE_HEIGHT, WORLD_CAMERAS, cameraPlan, classifyBuild, classifyConsole, consoleDelta, extractImage, fileExtension, framingFor, imageSize, orbit, playTestCounts,
+  playTestEvidence, plannedShotNames, sizeLabel, terrainFallbackBounds, uiShotName,
 } from '../scripts/eval/lib/capture-plan.mjs';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -87,6 +88,40 @@ test('classifyBuild: world, ui, both or none; a ScreenGui with nothing in it is 
   assert.equal(classifyBuild(null).kind, 'none');
 });
 
+test('classifyBuild: TERRAIN IS WORLD. A piece built from terrain alone has no parts and is still a world piece', () => {
+  // the finding: {addedParts: 0, terrainCells: 5000} was classified `none` and photographed as the empty square at the spawn
+  assert.equal(classifyBuild({ addedParts: 0, terrainCells: 5000, terrain: { cells: 5000, baselineCells: 0, edited: true }, screenGuis: [] }).kind, 'world');
+  assert.equal(classifyBuild({ addedParts: 0, terrain: { edited: true }, screenGuis: [{ name: 'G', guiObjects: 2 }] }).kind, 'both');
+  assert.equal(classifyBuild({ addedParts: 0, terrain: { cells: 5000, baselineCells: 5000, edited: false }, screenGuis: [] }).kind, 'none', 'terrain that was already there is not what the run built');
+  assert.equal(classifyBuild({ addedParts: 0, terrainCells: 5000, screenGuis: [] }).kind, 'none', 'a bare cell count with no verdict on whether it was edited is not read as an edit');
+});
+
+test('the pictures a piece is supposed to have are decided in one place, from its kind, and are derived from the camera plan', () => {
+  assert.deepEqual(WORLD_CAMERAS, cameraPlan(null).cameras.map((c) => c.name));
+  assert.deepEqual(plannedShotNames('world'), WORLD_CAMERAS);
+  assert.deepEqual(plannedShotNames('none'), WORLD_CAMERAS, 'an empty place is photographed with the same four cameras');
+  assert.deepEqual(plannedShotNames('ui'), ['ui']);
+  assert.deepEqual(plannedShotNames('both'), [...WORLD_CAMERAS, 'ui']);
+  assert.equal(plannedShotNames('bogus'), null, 'an unknown kind plans nothing and says so');
+  assert.equal(plannedShotNames(undefined), null);
+});
+
+test('framingFor: the box the cameras frame, and where it came from; terrain the engine cannot place gets a window around the spawn', () => {
+  const parts = { min: [0, 0, 0], max: [10, 10, 10] };
+  const terrain = { min: [-200, 0, -200], max: [200, 60, 200] };
+  assert.deepEqual(framingFor({ bounds: parts, partBounds: parts, terrain: { edited: false } }), { bounds: parts, basis: 'parts' });
+  assert.deepEqual(framingFor({ bounds: terrain, terrain: { edited: true, extents: terrain } }), { bounds: terrain, basis: 'terrain' });
+  assert.equal(framingFor({ bounds: terrain, partBounds: parts, terrain: { edited: true, extents: terrain } }).basis, 'parts+terrain');
+  const guess = framingFor({ terrain: { edited: true, cells: 9000 }, spawn: { position: [10, 5, -10], size: [6, 1, 6] } });
+  assert.equal(guess.basis, 'terrain-fallback');
+  assert.deepEqual(guess.bounds, terrainFallbackBounds({ position: [10, 5, -10], size: [6, 1, 6] }));
+  assert.deepEqual(guess.bounds, { min: [-118, 1, -138], max: [138, 49, 118] });
+  assert.deepEqual(framingFor({ terrain: { edited: false } }), { bounds: null, basis: 'empty' });
+  assert.deepEqual(framingFor(null), { bounds: null, basis: 'empty' });
+  // a terrain piece is framed as a big piece, not as the 4-stud empty square
+  assert.ok(cameraPlan(framingFor({ bounds: terrain, terrain: { edited: true, extents: terrain } }).bounds).radius > 200);
+});
+
 // ---------------------------------------------------------------- pictures
 function crc32(buf) {
   let crc = ~0;
@@ -136,6 +171,17 @@ test('extractImage finds the picture however the server sends it: an image item,
   assert.equal(extractImage({ text: 'A'.repeat(300) }), null, 'base64 that is not a picture is not accepted');
 });
 
+test('A PICTURE IS NAMED BY THE BYTES IT HAS: a JPEG is .jpg, a PNG is .png, and the size still comes from the pixels', () => {
+  assert.equal(uiShotName({ format: 'jpeg', width: 1920, height: 1080 }).file, 'ui-1920x1080.jpg');
+  assert.equal(uiShotName({ format: 'png', width: 1280, height: 720 }).file, 'ui-1280x720.png');
+  assert.equal(uiShotName({ width: 1280, height: 720 }).file, 'ui-1280x720.png', 'no format given: the default is png');
+  assert.equal(uiShotName({ format: 'jpeg', width: 1920, height: 1080 }).target, '1920x1080');
+  assert.equal(fileExtension({ format: 'jpeg' }), 'jpg');
+  assert.equal(fileExtension({ format: 'png' }), 'png');
+  assert.equal(fileExtension(null), 'png');
+  assert.equal(fileExtension(imageSize(jpeg(8, 8))), 'jpg', 'the extension follows what imageSize read from the bytes');
+});
+
 test('A PICTURE IS NAMED BY THE PIXELS IT HAS: only an exact target size is labelled a target', () => {
   assert.deepEqual(uiShotName({ width: 1920, height: 1080 }), { label: '1920x1080', file: 'ui-1920x1080.png', target: '1920x1080' });
   assert.deepEqual(uiShotName({ width: 1280, height: 720 }), { label: '1280x720', file: 'ui-1280x720.png', target: '1280x720' });
@@ -174,9 +220,46 @@ test('consoleDelta is what the console gained; a console that was cleared is rea
   assert.equal(consoleDelta(null, 'x'), 'x');
 });
 
-test('playTestCounts uses the LARGER of the console and the typed log, and says when nothing could be read', () => {
-  assert.equal(playTestCounts({ console: { errors: 1, warnings: 0 }, logServer: { errors: 0, warnings: 3 }, logClient: null }).errors, 1);
-  assert.equal(playTestCounts({ console: { errors: 0, warnings: 0 }, logServer: { errors: 2, warnings: 0 }, logClient: { errors: 1, warnings: 1 } }).errors, 3);
-  assert.equal(playTestCounts({ console: { errors: 0, warnings: 0 }, logServer: null, logClient: null }).errors, 0);
-  assert.equal(playTestCounts({ console: null, logServer: null, logClient: null }), null, 'no reading is null, never zero');
+const ran = { started: true, serverAnswered: true };
+
+test('playTestCounts uses the LARGER of the console and the typed log', () => {
+  assert.equal(playTestCounts({ ...ran, console: { errors: 1, warnings: 0 }, logServer: { errors: 0, warnings: 3 }, logClient: null }).errors, 1);
+  assert.equal(playTestCounts({ ...ran, console: { errors: 0, warnings: 0 }, logServer: { errors: 2, warnings: 0 }, logClient: { errors: 1, warnings: 1 } }).errors, 3);
+  assert.equal(playTestCounts({ ...ran, console: { errors: 0, warnings: 0 }, logServer: { errors: 0, warnings: 4 }, logClient: { errors: 0, warnings: 1 } }).warnings, 5);
+  const clean = playTestCounts({ ...ran, console: { errors: 0, warnings: 0 }, logServer: { errors: 0, warnings: 0 }, logClient: null });
+  assert.equal(clean.errors, 0);
+  assert.equal(clean.established, true);
+  assert.deepEqual(clean.missing, []);
+});
+
+test('THE PLAY TEST NEEDS EVIDENCE THE PLACE RAN: each missing source leaves the errors null, never 0', () => {
+  const full = { ...ran, console: { errors: 0, warnings: 0 }, logServer: { errors: 0, warnings: 0 }, logClient: { errors: 0, warnings: 0 } };
+  assert.equal(playTestCounts(full).errors, 0, 'CONTROL: everything read, nothing wrong');
+  // the finding's two probes, and each other way a source can be missing
+  for (const [label, over, pattern] of [
+    ['only the client log was read', { console: null, logServer: null }, /server log.*console/s],
+    ['only the console was read', { logServer: null, logClient: null }, /server log could not be read/],
+    ['the server log is missing', { logServer: null }, /server log could not be read/],
+    ['the console is missing', { console: null }, /console could not be read/],
+    ['play never started', { started: false }, /play did not start/],
+    ['the server never answered', { serverAnswered: false }, /server did not answer/],
+    ['nothing was read at all', { console: null, logServer: null, logClient: null }, /server log/],
+  ]) {
+    const r = playTestCounts({ ...full, ...over });
+    assert.equal(r.errors, null, `${label}: errors must be null, not ${r.errors}`);
+    assert.equal(r.established, false, label);
+    assert.match(r.missing.join('; '), pattern, label);
+  }
+  // an error that was SEEN stands without the other sources: evidence of a problem needs no evidence of the rest
+  assert.equal(playTestCounts({ ...full, logServer: null, console: { errors: 2, warnings: 0 } }).errors, 2);
+  assert.equal(playTestCounts({ ...full, console: null, logServer: { errors: 1, warnings: 0 } }).errors, 1);
+  // the client log and the picture frames are not required
+  assert.equal(playTestCounts({ ...full, logClient: null }).errors, 0);
+});
+
+test('playTestEvidence says what is missing, and never trusts a record that is not there', () => {
+  assert.deepEqual(playTestEvidence({ started: true, serverAnswered: true, logServer: { errors: 0 }, console: { errors: 0 } }), { established: true, missing: [] });
+  assert.deepEqual(playTestEvidence(null), { established: false, missing: ['no play-test record'] });
+  assert.deepEqual(playTestEvidence({ errors: 0, warnings: 0 }).missing, ['play did not start'], 'a record that only says errors: 0 proves nothing');
+  assert.match(playTestEvidence({ started: false, error: 'start_stop_play failed: no place' }).missing[0], /play did not start \(start_stop_play failed: no place\)/);
 });

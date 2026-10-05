@@ -18,13 +18,13 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeAdminApi } from './lib/api.mjs';
-import { DEFAULT_SPAWN, cameraPlan, classifyBuild, classifyConsole, consoleDelta, extractImage, imageSize, playTestCounts, sizeLabel, uiShotName, UI_TARGETS } from './lib/capture-plan.mjs';
+import { DEFAULT_SPAWN, WORLD_CAMERAS, cameraPlan, classifyBuild, classifyConsole, consoleDelta, extractImage, fileExtension, framingFor, imageSize, playTestCounts, plannedShotNames, sizeLabel, uiShotName, UI_TARGETS } from './lib/capture-plan.mjs';
 import { REPO_ROOT, getRequest } from './lib/dev-set.mjs';
 import { loadHarnessEnv, redact } from './lib/env.mjs';
 import { StudioMcpClient, listStudios, studioTools } from './lib/studio-mcp.mjs';
-import { baselineProblems, baselineWarnings, isClean, parseLuauJson, verifyCounts, worldScript } from './lib/world.mjs';
+import { BASELINE_FORMAT, baselineProblems, baselineWarnings, isClean, parseLuauJson, verifyCounts, worldScript } from './lib/world.mjs';
 
-export const HARNESS_VERSION = 1;
+export const HARNESS_VERSION = 2;
 /** The test account and its most recent project (handoff M3). Both are overridable and are echoed at the start of a run. */
 export const DEFAULT_USER = '8722e4df-ab9c-47f6-8a57-02f5a5dd1d44';
 export const DEFAULT_PROJECT = '1ea443f2-6232-43c1-a8bd-f425e2df4f4d';
@@ -36,6 +36,8 @@ export const DEFAULTS = {
   timeoutMinutes: 15,
   maxMonthUsd: 20, // the owner's Workers AI test ceiling (CLAUDE.md consent section)
   pollMs: 5000,
+  pollAttempts: 4, // tries per status poll before the run is given up on (and stopped)
+  stopWaitMs: 90_000, // how long to wait for a stopped run to go idle
   playWarmupMs: 3000,
   playFrameGapMs: 2000,
   playFrames: 3,
@@ -183,6 +185,36 @@ async function waitFor(deps, predicate, { timeoutMs, everyMs = 1000 }) {
   }
 }
 
+/** An error that another try may clear: no answer, a 5xx, a 429 or a 408. A 401, 403 or 404 will not get better. */
+const isTransient = (e) => e?.status === undefined || e.status >= 500 || e.status === 429 || e.status === 408;
+
+/** The project's session-info, retrying the failures a retry can fix. Throws the last error when it gives up or the error is not transient. */
+async function sessionInfoWithRetry(deps, projectId, { attempts, everyMs }) {
+  let last;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await deps.api.sessionInfo(projectId);
+    } catch (e) {
+      last = e;
+      if (!isTransient(e) || attempt === attempts) break;
+      deps.log(`[eval] session-info failed (try ${attempt} of ${attempts}): ${redact(e.message ?? String(e), [deps.adminKey])}; trying again`);
+      await deps.sleep(everyMs * attempt);
+    }
+  }
+  throw last;
+}
+
+/** The picture inside a screen_capture answer, with its real size; throws what is wrong. Used for every picture the harness saves. */
+export function pictureFrom(r) {
+  if (!r.ok) throw new Error(r.text.slice(0, 200) || 'screen_capture reported an error');
+  const img = extractImage(r);
+  if (!img) throw new Error(`screen_capture returned no picture (text: ${r.text.slice(0, 120)})`);
+  const size = imageSize(img.bytes);
+  // Bytes that are neither a PNG nor a JPEG are not saved under a picture's name: a viewer that trusts the name would reject them.
+  if (!size) throw new Error(`screen_capture returned bytes that are neither a PNG nor a JPEG (first bytes ${img.bytes.subarray(0, 8).toString('hex')}); the harness records the failure and saves nothing`);
+  return { img, size };
+}
+
 const luauJson = async (tools, mode, baseline, datamodel = 'Edit', timeoutMs = 90_000) => {
   const r = await tools.luau(worldScript(mode, baseline), datamodel, { timeoutMs });
   if (!r.ok) throw new Error(`execute_luau (${mode}) failed: ${r.text.slice(0, 300)}`);
@@ -232,6 +264,7 @@ export async function runPiece(opts, deps) {
     plugin: null,
     baseline: null,
     reset: null,
+    conversation: null,
     spend: { before: null, after: null },
     run: null,
     build: null,
@@ -243,7 +276,10 @@ export async function runPiece(opts, deps) {
     files: {},
   };
   const credits = { ledgerPerCredit: INTERNAL_PER_CREDIT, plan: 'free', grant: null, before: null, afterGrant: null, after: null, spentLedger: null, spentCredits: null, balanceDeltaLedger: null, dryRun: opts.dryRun };
-  const out = { reply: '(dry run: no agent run was made)\n', steps: { dryRun: opts.dryRun, steps: [], count: 0 }, console: '' };
+  // What console.txt holds when the play test did not read one. Never an empty file: the claim auditor is told an empty console means
+  // nothing was printed, and a console that was never read must not say that.
+  const noConsole = (why) => `(the console was not read: ${why})\n`;
+  const out = { reply: '(dry run: no agent run was made)\n', steps: { dryRun: opts.dryRun, steps: [], count: 0 }, console: noConsole('the play test did not run') };
   const shots = []; // { file, bytes }
 
   if (existsSync(join(pieceDir, 'manifest.json'))) {
@@ -257,6 +293,40 @@ export async function runPiece(opts, deps) {
   let client = null;
   let tools = null;
   let playStarted = false;
+  let runLive = false; // an agent run was started and has not been seen to end: whatever happens, it must be stopped
+
+  /** Stop the run and wait for it to go idle. Records what happened under manifest.run.stop; never throws. */
+  const stopRun = async (reason) => {
+    deps.log(`[eval] stopping the run (${reason})`);
+    const stop = { reason, requestedAt: new Date(deps.now()).toISOString(), requested: false, idle: false, error: null };
+    if (manifest.run) manifest.run.stop = stop;
+    try {
+      await deps.api.agentStop(opts.projectId);
+      stop.requested = true;
+    } catch (e) {
+      stop.error = redact(e.message ?? String(e), secrets).slice(0, 300);
+      deps.log(`[eval] stop request failed: ${stop.error}`);
+    }
+    try {
+      stop.idle = await waitFor(
+        deps,
+        async () => {
+          try {
+            return (await deps.api.sessionInfo(opts.projectId))?.agentStatus !== 'running';
+          } catch {
+            return false; // the status cannot be read either: not known to be idle
+          }
+        },
+        { timeoutMs: opts.stopWaitMs ?? DEFAULTS.stopWaitMs, everyMs: opts.pollMs },
+      );
+    } catch (e) {
+      stop.error = stop.error ?? redact(e.message ?? String(e), secrets).slice(0, 300);
+    }
+    if (stop.idle) runLive = false;
+    else deps.log('[eval] WARNING: the run did not go idle after the stop request; stop it by hand (POST /api/admin/agent-stop/<project>)');
+    return stop;
+  };
+
   try {
     // ----------------------------------------------------------------------------------------------- preflight
     const baseline = await timer.step('preflight', async (entry) => {
@@ -304,10 +374,15 @@ export async function runPiece(opts, deps) {
       }
       const baselineBytes = readFileSync(opts.baselineFile);
       const baselineObj = JSON.parse(baselineBytes.toString('utf8'));
+      if (baselineObj.format !== BASELINE_FORMAT) {
+        throw new Abort('preflight', `the baseline file is format ${baselineObj.format ?? 1}, not ${BASELINE_FORMAT}: it predates the per-instance properties. With the pristine place open, run: node scripts/eval/run-piece.mjs --init-baseline --milestone ${opts.milestone}`);
+      }
       manifest.baseline = { file: relative(REPO_ROOT, opts.baselineFile), sha256: sha256(baselineBytes), capturedAt: baselineObj.capturedAt ?? null };
       return baselineObj;
     });
     const baselineForLuau = (({ harnessVersion, capturedAt, studio, ...rest }) => rest)(baseline);
+    // `measure` and `ui-enable` read only the inventory and the terrain count: they are sent without the per-instance state, which is most of the file.
+    const baselineLite = { inventory: baselineForLuau.inventory, terrainCells: baselineForLuau.terrainCells };
 
     // ----------------------------------------------------------------------------------------------- reset
     await timer.step('reset', async (entry) => {
@@ -326,6 +401,7 @@ export async function runPiece(opts, deps) {
         removedByService: Array.isArray(reset.removedByService) ? {} : reset.removedByService ?? {},
         restored: reset.restored ?? [],
         rebuilt: reset.rebuilt ?? [],
+        restoreFailed: reset.restoreFailed ?? [],
         terrainCleared: reset.terrainCleared === true,
         verifyAfter: counts,
         clean: isClean(verify),
@@ -337,8 +413,38 @@ export async function runPiece(opts, deps) {
       }
     });
 
-    // ----------------------------------------------------------------------------------------------- credits and the run
-    if (!opts.dryRun) {
+    // ----------------------------------------------------------------------------------------------- a fresh conversation, credits and the run
+    if (opts.dryRun) {
+      manifest.conversation = { cleared: false, skipped: 'dry run: no agent run follows, so the project\'s chat is left as it is' };
+    } else {
+      // The next request must not see an earlier one: the messages, the memory they produced and the build ledger of the project go
+      // (POST /api/admin/conversation-reset/:id; scripts/eval/README.md says exactly what that is). A piece that cannot get one does
+      // not run: it would be scored on a conversation it shared with the pieces before it.
+      await timer.step('conversation', async (entry) => {
+        const res = await deps.api.conversationReset(opts.projectId, opts.userId);
+        const body = res.json ?? {};
+        manifest.conversation = {
+          cleared: res.status === 200 && body.ok === true,
+          route: 'POST /api/admin/conversation-reset/:id',
+          status: res.status,
+          removedMessages: body.removedMessages ?? null,
+          memoryCleared: body.memoryCleared ?? null,
+          planCleared: body.planCleared ?? null,
+          ledgerCleared: body.ledgerCleared ?? null,
+          messagesAfter: body.messagesAfter ?? null,
+          at: new Date(deps.now()).toISOString(),
+        };
+        if (!manifest.conversation.cleared) {
+          const why = res.status === 404 ? 'the deployed worker has no conversation-reset route yet: deploy the worker first' : redact(String(body.error ?? body.code ?? 'no reason given'), secrets);
+          throw new Abort('conversation', `the project's conversation could not be cleared (HTTP ${res.status}: ${why}); nothing was spent`);
+        }
+        // Believe the project, not the route: the message count is what the run's end is measured against.
+        const info = await deps.api.sessionInfo(opts.projectId);
+        manifest.plugin.messagesBefore = info?.messages ?? null;
+        if (info?.messages !== 0) throw new Abort('conversation', `the conversation still holds ${info?.messages ?? 'an unknown number of'} messages after it was cleared; nothing was spent`);
+        entry.note = `${manifest.conversation.removedMessages} messages removed, memory ${manifest.conversation.memoryCleared ? 'cleared' : 'was empty'}, ledger ${manifest.conversation.ledgerCleared ? 'cleared' : 'was empty'}`;
+      });
+
       await timer.step('credits', async (entry) => {
         const before = await deps.api.account(opts.userId);
         credits.before = quotaSnapshot(before);
@@ -357,16 +463,29 @@ export async function runPiece(opts, deps) {
         if (started.status === 409) throw new Abort('agent-run', 'the project already has a run in progress');
         if (started.status === 403) throw new Abort('agent-run', `the run was refused: ${started.json?.code ?? started.json?.error ?? 'HTTP 403'}`);
         manifest.run = { startedAt: new Date(startedAt).toISOString(), endedBy: null, stopReason: null, minutes: null, timeoutMinutes: opts.timeoutMinutes };
+        runLive = true; // from here, every way out of this function stops the run (the finally below), and the poll below does it on its own failures
         const deadline = startedAt + opts.timeoutMinutes * 60_000;
         const messagesBefore = manifest.plugin.messagesBefore ?? 0;
+        const retry = { attempts: opts.pollAttempts ?? DEFAULTS.pollAttempts, everyMs: opts.pollMs };
         let seenRunning = false;
         let ended = null;
         for (;;) {
           await deps.sleep(opts.pollMs);
-          const info = await deps.api.sessionInfo(opts.projectId);
+          let info;
+          try {
+            info = await sessionInfoWithRetry(deps, opts.projectId, retry);
+          } catch (e) {
+            // The status cannot be read: the run keeps going and keeps spending whatever the harness knows. Stop it, and say so.
+            const why = redact(e.message ?? String(e), secrets);
+            manifest.run.endedBy = 'poll-failed';
+            manifest.run.minutes = Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100;
+            const stop = await stopRun(`the run's status could not be read: ${why}`);
+            throw new Abort('agent-run', `the run's status could not be read (${why}); the run was ${stop.idle ? 'stopped and is idle' : 'asked to stop but NOT confirmed idle: stop it by hand'}`);
+          }
           if (info?.agentStatus === 'running') seenRunning = true;
           else if (seenRunning || (info?.messages ?? 0) >= messagesBefore + 2) {
             ended = 'finished';
+            runLive = false;
             break;
           } else if (deps.now() - startedAt > 60_000) {
             ended = 'never-started';
@@ -377,11 +496,9 @@ export async function runPiece(opts, deps) {
             break;
           }
         }
-        if (ended === 'timeout') {
-          deps.log(`[eval] the run passed ${opts.timeoutMinutes} minutes: stopping it`);
-          await deps.api.agentStop(opts.projectId).catch((e) => deps.log(`[eval] stop request failed: ${redact(e.message, secrets)}`));
-          await waitFor(deps, async () => (await deps.api.sessionInfo(opts.projectId))?.agentStatus !== 'running', { timeoutMs: 90_000, everyMs: opts.pollMs });
-        }
+        if (ended === 'timeout') await stopRun(`the run passed ${opts.timeoutMinutes} minutes`);
+        // A run that never showed itself may still start late; a stop on an idle run is harmless and a late start is not.
+        else if (ended === 'never-started') await stopRun('the run never showed as running');
         manifest.run.endedBy = ended === 'timeout' ? 'timeout' : ended === 'never-started' ? 'never-started' : 'done';
         manifest.run.minutes = Math.round(((deps.now() - startedAt) / 60_000) * 100) / 100;
         entry.note = `${manifest.run.minutes} min, ${manifest.run.endedBy}`;
@@ -433,10 +550,11 @@ export async function runPiece(opts, deps) {
 
     // ----------------------------------------------------------------------------------------------- measure
     const measured = await timer.step('measure', async (entry) => {
-      const m = await luauJson(tools, 'measure', baselineForLuau);
+      const m = await luauJson(tools, 'measure', baselineLite);
       const cls = classifyBuild(m);
       manifest.build = { kind: cls.kind, emptyScreenGuis: cls.emptyScreenGuis, ...m };
-      entry.note = `${cls.kind}: ${m.addedInstances} instances, ${m.addedParts} parts, ${(m.screenGuis ?? []).length} screen UI(s)`;
+      const terrain = m.terrain?.edited ? `, terrain edited (${m.terrain.cells ?? '?'} cells)` : '';
+      entry.note = `${cls.kind}: ${m.addedInstances} instances, ${m.addedParts} parts${terrain}, ${(m.screenGuis ?? []).length} screen UI(s)`;
       return { m, cls };
     });
 
@@ -447,17 +565,13 @@ export async function runPiece(opts, deps) {
         const rec = { name, file: null, width: null, height: null, bytes: null, camera: camera ?? null, error: null };
         manifest.captures.push(rec);
         try {
-          const r = await tools.capture(`ScreenCapture_${++n}`, camera, { timeoutMs: 60_000 });
-          if (!r.ok) throw new Error(r.text.slice(0, 200) || 'screen_capture reported an error');
-          const img = extractImage(r);
-          if (!img) throw new Error(`screen_capture returned no picture (text: ${r.text.slice(0, 120)})`);
-          const size = imageSize(img.bytes);
-          rec.width = size?.width ?? null;
-          rec.height = size?.height ?? null;
-          rec.format = size?.format ?? null;
+          const { img, size } = pictureFrom(await tools.capture(`ScreenCapture_${++n}`, camera, { timeoutMs: 60_000 }));
+          rec.width = size.width;
+          rec.height = size.height;
+          rec.format = size.format;
           rec.imageSource = img.source;
-          let file = `${name}.${size?.format === 'jpeg' ? 'jpg' : 'png'}`;
-          if (name === 'ui' && size) {
+          let file = `${name}.${fileExtension(size)}`;
+          if (name === 'ui') {
             const ui = uiShotName(size);
             file = ui.file;
             rec.target = ui.target;
@@ -473,24 +587,55 @@ export async function runPiece(opts, deps) {
         return rec;
       };
       const { m, cls } = measured;
-      const wantsWorld = cls.hasWorld || cls.kind === 'none';
-      if (wantsWorld) {
-        const plan = cameraPlan(m.bounds ?? null, m.spawn ?? DEFAULT_SPAWN);
-        manifest.build.cameraPlan = plan;
+      const planned = plannedShotNames(cls.kind);
+      if (planned.some((name) => WORLD_CAMERAS.includes(name))) {
+        const framing = framingFor(m);
+        const plan = cameraPlan(framing.bounds, m.spawn ?? DEFAULT_SPAWN);
+        manifest.build.cameraPlan = { ...plan, basis: framing.basis, spawnSource: m.spawn?.source ?? null, framing: m.framing ?? null };
         for (const cam of plan.cameras) await save(cam.name, { position: cam.position, lookAt: cam.lookAt });
       }
-      if (cls.hasUi) {
-        const rec = await save('ui', null);
+      if (planned.includes('ui')) {
+        // A screen UI the run left switched off (a modal opened by a button) is not drawn: it is switched on for the picture and put back.
+        const switchedOff = (m.screenGuis ?? []).filter((g) => g.enabled === false && g.guiObjects > 0).map((g) => g.name);
+        const shown = { switchedOff, enabledForCapture: [], enableError: null, restoreError: null };
+        if (switchedOff.length) {
+          try {
+            shown.enabledForCapture = (await luauJson(tools, 'ui-enable', baselineLite)).enabled ?? [];
+          } catch (e) {
+            shown.enableError = String(e.message ?? e).slice(0, 200);
+            deps.log(`[eval] could not switch the UI on for the capture: ${shown.enableError}`);
+          }
+        }
+        let rec;
+        try {
+          rec = await save('ui', null);
+        } finally {
+          if (shown.enabledForCapture.length) {
+            try {
+              await luauJson(tools, 'ui-restore', null);
+            } catch (e) {
+              shown.restoreError = String(e.message ?? e).slice(0, 200);
+              deps.log(`[eval] could not put the UI back after the capture: ${shown.restoreError}`);
+            }
+          }
+        }
+        const switchNote = !switchedOff.length
+          ? ''
+          : shown.enabledForCapture.length
+            ? `; ${shown.enabledForCapture.join(', ')} ${shown.enabledForCapture.length === 1 ? 'was' : 'were'} switched off by the run, switched on for the picture${shown.restoreError ? ' and NOT put back' : ' and put back'}`
+            : `; ${switchedOff.join(', ')} ${switchedOff.length === 1 ? 'is' : 'are'} switched off and could not be switched on, so ${switchedOff.length === 1 ? 'it is' : 'they are'} not in the picture`;
         manifest.ui = {
           requested: UI_TARGETS,
           viewportReported: m.viewport ?? null,
           captured: rec.file ? sizeLabel(rec) : null,
           met: rec.target ?? null,
-          note: rec.file
-            ? rec.target
-              ? `captured at ${rec.target}, one of the two target sizes; the other was not captured (the harness cannot resize the Studio viewport)`
-              : `captured at ${sizeLabel(rec)}, which is not a target size; it is named by the pixels actually captured`
-            : 'no UI picture was captured',
+          ...shown,
+          note:
+            (rec.file
+              ? rec.target
+                ? `captured at ${rec.target}, one of the two target sizes; the other was not captured (the harness cannot resize the Studio viewport)`
+                : `captured at ${sizeLabel(rec)}, which is not a target size; it is named by the pixels actually captured`
+              : 'no UI picture was captured') + switchNote,
         };
       }
       const ok = manifest.captures.filter((c) => c.file).length;
@@ -499,12 +644,22 @@ export async function runPiece(opts, deps) {
 
     // ----------------------------------------------------------------------------------------------- the play test
     await timer.step('play-test', async (entry) => {
-      const play = { started: false, frames: [], consoleChars: 0, console: null, logServer: null, logClient: null, stateAfterStart: null, errors: null, error: null };
+      const play = { started: false, serverAnswered: false, frames: [], consoleChars: 0, console: null, logServer: null, logClient: null, stateAfterStart: null, errors: null, unestablished: null, error: null };
       manifest.playTest = play;
-      const before = await tools.console({ timeoutMs: 30_000 }).catch(() => ({ ok: false, text: '' }));
+      const settle = () => {
+        const counts = playTestCounts({ console: play.console, logServer: play.logServer, logClient: play.logClient, started: play.started, serverAnswered: play.serverAnswered, error: play.error });
+        play.errors = counts.errors;
+        play.warnings = counts.warnings;
+        play.sources = counts.sources;
+        play.unestablished = counts.established ? null : counts.missing;
+        return counts;
+      };
+      const before = await tools.console({ timeoutMs: 30_000 }).catch((e) => ({ ok: false, text: String(e.message ?? e) }));
       const s = await tools.play(true, { timeoutMs: 60_000 });
       if (!s.ok) {
         play.error = `start_stop_play failed: ${s.text.slice(0, 200)}`;
+        out.console = noConsole(`play did not start (${s.text.slice(0, 120)})`);
+        settle();
         entry.note = play.error;
         return;
       }
@@ -518,13 +673,10 @@ export async function runPiece(opts, deps) {
         if (i > 1) await deps.sleep(DEFAULTS.playFrameGapMs);
         const rec = { name: `play-${i}`, file: null, error: null };
         try {
-          const r = await tools.capture(`ScreenCapture_play_${i}`, null, { timeoutMs: 60_000 });
-          const img = r.ok ? extractImage(r) : null;
-          if (!img) throw new Error(r.ok ? 'no picture in the answer' : r.text.slice(0, 160));
-          const size = imageSize(img.bytes);
-          rec.file = `shots/play-${i}.${size?.format === 'jpeg' ? 'jpg' : 'png'}`;
-          rec.width = size?.width ?? null;
-          rec.height = size?.height ?? null;
+          const { img, size } = pictureFrom(await tools.capture(`ScreenCapture_play_${i}`, null, { timeoutMs: 60_000 }));
+          rec.file = `shots/play-${i}.${fileExtension(size)}`;
+          rec.width = size.width;
+          rec.height = size.height;
           rec.bytes = img.bytes.length;
           writeFileSync(join(pieceDir, rec.file), img.bytes);
           shots.push(rec.file);
@@ -533,11 +685,17 @@ export async function runPiece(opts, deps) {
         }
         play.frames.push(rec);
       }
-      const after = await tools.console({ timeoutMs: 30_000 }).catch(() => ({ ok: false, text: '' }));
-      const delta = consoleDelta(before.ok ? before.text : '', after.ok ? after.text : '');
-      out.console = delta;
-      play.consoleChars = delta.length;
-      play.console = after.ok ? classifyConsole(delta) : null;
+      const after = await tools.console({ timeoutMs: 30_000 }).catch((e) => ({ ok: false, text: String(e.message ?? e) }));
+      if (after.ok && before.ok) {
+        out.console = consoleDelta(before.text, after.text);
+      } else if (after.ok) {
+        // No reading from before play: everything the console holds is shown, and it says so, so the earlier output is not taken for the play session's.
+        out.console = `(the console before play could not be read, so this is everything it holds)\n${after.text}`;
+      } else {
+        out.console = noConsole(`get_console_output failed after the play test: ${String(after.text).slice(0, 120)}`);
+      }
+      play.consoleChars = after.ok ? out.console.length : 0;
+      play.console = after.ok ? classifyConsole(before.ok ? out.console : after.text) : null;
       for (const [key, dm] of [['logServer', 'Server'], ['logClient', 'Client']]) {
         const r = await tools.luau(LOG_SERVICE_LUAU, dm, { timeoutMs: 20_000 }).catch(() => ({ ok: false, text: '' }));
         try {
@@ -548,17 +706,18 @@ export async function runPiece(opts, deps) {
       }
       await tools.play(false, { timeoutMs: 60_000 }).catch(() => undefined);
       playStarted = false;
-      const backInEdit = await waitFor(deps, async () => (await tools.luau('return "edit"', 'Edit', { timeoutMs: 10_000 }).catch(() => ({ ok: false }))).ok, { timeoutMs: 40_000 });
-      play.backInEdit = backInEdit;
-      const counts = playTestCounts({ console: play.console, logServer: play.logServer, logClient: play.logClient });
-      play.errors = counts?.errors ?? null;
-      play.warnings = counts?.warnings ?? null;
-      play.sources = counts?.sources ?? null;
-      entry.note = `${play.errors ?? '?'} errors, ${play.warnings ?? '?'} warnings, ${play.frames.filter((f) => f.file).length} of ${DEFAULTS.playFrames} frames${backInEdit ? '' : ', STUDIO DID NOT RETURN TO EDIT MODE'}`;
+      play.backInEdit = await waitFor(deps, async () => (await tools.luau('return "edit"', 'Edit', { timeoutMs: 10_000 }).catch(() => ({ ok: false }))).ok, { timeoutMs: 40_000 });
+      settle();
+      entry.note = `${play.errors ?? 'NOT ESTABLISHED'} errors, ${play.warnings ?? '?'} warnings, ${play.frames.filter((f) => f.file).length} of ${DEFAULTS.playFrames} frames${play.backInEdit ? '' : ', STUDIO DID NOT RETURN TO EDIT MODE'}${play.unestablished ? ` (${play.unestablished.join('; ')})` : ''}`;
     });
   } catch (e) {
     manifest.aborted = { step: e.step ?? timer.steps.at(-1)?.name ?? 'unknown', message: redact(e.message ?? String(e), secrets) };
   } finally {
+    // A run that was started and not seen to end is stopped whatever went wrong, and the manifest says so.
+    if (runLive) {
+      await stopRun(manifest.aborted ? `the harness stopped at ${manifest.aborted.step}: ${manifest.aborted.message}`.slice(0, 200) : 'the harness ended with the run still live');
+      if (manifest.run && manifest.run.endedBy === null) manifest.run.endedBy = 'harness-stopped';
+    }
     if (playStarted && tools) await tools.play(false, { timeoutMs: 60_000 }).catch(() => undefined);
     if (client) await client.close().catch(() => undefined);
   }
@@ -584,7 +743,7 @@ export async function runPiece(opts, deps) {
   write('steps.json', JSON.stringify(out.steps, null, 1) + '\n');
   write('credits.json', JSON.stringify(credits, null, 1) + '\n');
   write('timing.json', JSON.stringify(timing, null, 1) + '\n');
-  write('console.txt', out.console ?? '');
+  write('console.txt', out.console);
   for (const name of ['request.txt', 'reply.md', 'steps.json', 'credits.json', 'timing.json', 'console.txt', ...unique(shots)]) {
     const bytes = readFileSync(join(pieceDir, name));
     manifest.files[name] = { sha256: sha256(bytes), bytes: bytes.length };

@@ -54,6 +54,10 @@ export function makeAdminApi({ apiBase, adminKey, fetchImpl = fetch, timeoutMs =
     // 409 is the worker's own "a run is already in progress"; the caller decides what that means.
     agentRun: (projectId, body) => call('POST', `/api/admin/agent-run/${projectId}`, body, { allow: [403, 409] }),
     agentStop: (projectId) => call('POST', `/api/admin/agent-stop/${projectId}`, {}).then((r) => r.json),
+    // A fresh conversation in the project (messages, the memory they produced, the build ledger and plan): the next piece must not see
+    // an earlier one. The owner is named and the session confirms it; 403 and 409 are the worker's refusals and 404 is a worker that has no
+    // such route yet (not deployed): the caller reads them.
+    conversationReset: (projectId, userId) => call('POST', `/api/admin/conversation-reset/${projectId}`, { userId }, { allow: [403, 404, 409] }),
     mintPairingCode: (projectId, userId) => call('POST', `/api/admin/pairing/${projectId}`, { userId }, { allow: [403, 409, 429] }),
   };
 }

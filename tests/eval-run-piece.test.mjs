@@ -44,6 +44,11 @@ function fakeApi(o = {}) {
     spend: async () => (rec('spend'), { state: { killed: false, estimatedMonthUsd: o.monthUsd ?? 3.9, monthBillableNeurons: 1, ...(o.spendState ?? {}) } }),
     sessionInfo: async () => {
       rec('sessionInfo');
+      if (s.running && o.failInfo) {
+        s.infoCalls = (s.infoCalls ?? 0) + 1;
+        const f = o.failInfo(s.infoCalls);
+        if (f) throw Object.assign(new Error(f.message ?? `GET /api/admin/session-info/x: HTTP ${f.status}`), { status: f.status });
+      }
       if (s.running) {
         s.polls++;
         if (o.neverEnds || s.polls <= s.runPolls) return { project: { name: 'Bench' }, agentStatus: 'running', messages: s.messages, pluginConnected: true };
@@ -66,7 +71,18 @@ function fakeApi(o = {}) {
       s.polls = 0;
       return { status: 200, json: { ok: true, started: true } };
     },
-    agentStop: async (...a) => (rec('agentStop', ...a), (s.running = false), { ok: true }),
+    agentStop: async (...a) => {
+      rec('agentStop', ...a);
+      if (o.stopFails) throw new Error('POST /api/admin/agent-stop/x: HTTP 500 boom');
+      if (!o.stopIgnored) s.running = false;
+      return { ok: true };
+    },
+    conversationReset: async (...a) => {
+      rec('conversationReset', ...a);
+      if (o.conversationStatus) return { status: o.conversationStatus, json: { ok: false, error: o.conversationStatus === 403 ? 'owner mismatch: that user does not own this project' : 'a run is in progress' } };
+      s.messages = o.conversationLeaves ?? 0;
+      return { status: 200, json: { ok: true, removedMessages: 4, messagesAfter: s.messages, memoryCleared: true, planCleared: false, ledgerCleared: true } };
+    },
     messages: async () => (rec('messages'), { messages: o.transcript ?? [
       { id: 'u1', role: 'user', content: o.userEcho ?? getRequest('U01').text, createdAt: 'x' },
       { id: 'a1', role: 'assistant', content: 'I built the shop.\n\nIt has 6 eggs.', stopReason: o.stopReason ?? 'done', creditsSpent: 270, createdAt: 'y',
@@ -172,7 +188,7 @@ test('A REAL RUN: credits are set, the request goes in exactly as written, the r
   const d = deps(api, { world: { min: [0, 0, 0], max: [20, 8, 12] }, removed: 7 });
   const r = await runPiece(opts, d);
   assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
-  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'credits', 'agent-run', 'messages', 'credits-after', 'measure', 'captures', 'play-test']);
+  assert.deepEqual(stepNames(r), ['preflight', 'reset', 'conversation', 'credits', 'agent-run', 'messages', 'credits-after', 'measure', 'captures', 'play-test']);
   const run = api.calls.find((c) => c.name === 'agentRun');
   assert.deepEqual(run.args, [DEFAULT_PROJECT, { text: getRequest('U01').text }], 'the text is sent exactly as written and nothing else');
   const grant = api.calls.find((c) => c.name === 'grantCredits');
@@ -259,6 +275,10 @@ test('THE HARD TIMEOUT: a run still going after the limit is stopped, and the pi
   const r = await runPiece(opts, d);
   assert.ok(api.calls.some((c) => c.name === 'agentStop'), 'agent-stop was sent');
   assert.equal(r.manifest.run.endedBy, 'timeout');
+  // by the timeout itself, not by the fallback that stops any run still live at the end: the reason says which
+  assert.match(r.manifest.run.stop.reason, /the run passed 15 minutes/);
+  assert.equal(r.manifest.run.stop.requested, true);
+  assert.equal(r.manifest.run.stop.idle, true);
   assert.ok(r.manifest.run.minutes >= 15, `waited ${r.manifest.run.minutes} minutes`);
 });
 
@@ -352,4 +372,258 @@ test('option parsing: one request id, known flags only, sane numbers', () => {
   assert.equal(o.dryRun, true);
   assert.equal(o.timeoutMinutes, 15);
   assert.equal(o.maxMonthUsd, 20);
+});
+
+// =====================================================================================================================
+// What a failing poll does to the agent, and the other things the first review found.
+
+const calls = (api, ...names) => api.calls.filter((c) => names.includes(c.name));
+const unavailable = (n) => ({ status: 503, message: `GET /api/admin/session-info/x: HTTP 503 try ${n}` });
+
+test('A STATUS POLL THAT FAILS ONCE IS RETRIED: the run is not abandoned for a transient 503 or a timeout', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  // the second and third status reads of the run fail (a 503, then no answer at all), and the run still finishes
+  const api = fakeApi({ runPolls: 4, failInfo: (n) => (n === 2 ? { status: 503 } : n === 3 ? { status: undefined, message: 'GET /api/admin/session-info/x: no answer in 30000 ms' } : null) });
+  const d = deps(api, { world: { min: [0, 0, 0], max: [4, 4, 4] } });
+  const r = await runPiece(opts, d);
+  assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
+  assert.equal(r.manifest.run.endedBy, 'done');
+  assert.equal(calls(api, 'agentStop').length, 0, 'a run that finished is not stopped');
+  assert.equal(r.manifest.run.stop, undefined);
+  assert.match(d.logs.join('\n'), /session-info failed \(try 1 of 4\).*HTTP 503.*trying again/s);
+});
+
+test('A STATUS POLL THAT KEEPS FAILING STOPS THE RUN, and the manifest says it was stopped, why, and whether it went idle', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  // every status read after the run started fails with a 503: the harness cannot see the run, so it stops it
+  const api = fakeApi({ neverEnds: true, failInfo: () => null });
+  let failing = false;
+  let failed = 0;
+  const realInfo = api.sessionInfo;
+  api.sessionInfo = async (...a) => {
+    if (failing) { failed++; throw Object.assign(new Error('GET /api/admin/session-info/x: HTTP 503 down'), { status: 503 }); }
+    return realInfo(...a);
+  };
+  const realRun = api.agentRun;
+  api.agentRun = async (...a) => { const res = await realRun(...a); failing = true; return res; };
+  const realStop = api.agentStop;
+  api.agentStop = async (...a) => { const res = await realStop(...a); failing = false; return res; }; // the API is back once the stop lands
+  const r = await runPiece(opts, deps(api, {}));
+  assert.equal(r.ok, false);
+  assert.equal(r.manifest.aborted.step, 'agent-run');
+  assert.match(r.manifest.aborted.message, /status could not be read.*HTTP 503.*stopped and is idle/s);
+  assert.equal(calls(api, 'agentStop').length, 1, 'agent-stop was sent');
+  assert.equal(r.manifest.run.endedBy, 'poll-failed');
+  assert.equal(r.manifest.run.stop.requested, true);
+  assert.equal(r.manifest.run.stop.idle, true);
+  assert.match(r.manifest.run.stop.reason, /status could not be read/);
+  assert.equal(failed, 4, 'the poll was tried four times before the run was given up on');
+});
+
+test('A POLL ERROR THAT NO RETRY CAN FIX (a 401) still stops the run; a stop that fails or is not confirmed is recorded, not hidden', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const api = fakeApi({ neverEnds: true, failInfo: () => ({ status: 401, message: 'GET /api/admin/session-info/x: HTTP 401 admin key refused' }), stopFails: true });
+  const d = deps(api, {});
+  const r = await runPiece(opts, d);
+  assert.doesNotMatch(d.logs.join('\n'), /trying again/, 'a 401 is not retried: another try cannot fix it');
+  assert.equal(r.manifest.aborted.step, 'agent-run');
+  assert.equal(calls(api, 'agentStop').length, 2, 'the stop was tried when the poll gave up, and once more at the end because the run was never confirmed idle');
+  assert.equal(r.manifest.run.stop.requested, false);
+  assert.match(r.manifest.run.stop.error, /HTTP 500 boom/);
+  assert.equal(r.manifest.run.stop.idle, false);
+  assert.match(r.manifest.aborted.message, /NOT confirmed idle: stop it by hand/);
+  assert.equal(calls(api, 'sessionInfo').filter((c) => true).length < 400, true, 'a 401 is not retried four times per poll forever');
+});
+
+test('ANY OTHER WAY OUT with the run live stops it too: an exception in the harness leaves no agent running', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const api = fakeApi({ neverEnds: true });
+  const d = deps(api, {});
+  let slept = 0;
+  const realSleep = d.sleep;
+  d.sleep = async (ms) => { if (++slept === 1) throw new Error('the harness broke while waiting'); return realSleep(ms); };
+  const r = await runPiece(opts, d);
+  assert.match(r.manifest.aborted.message, /broke while waiting/);
+  assert.equal(calls(api, 'agentStop').length, 1, 'the run was stopped by the finally');
+  assert.equal(r.manifest.run.endedBy, 'harness-stopped');
+  assert.match(r.manifest.run.stop.reason, /harness stopped at agent-run/);
+  assert.equal(r.manifest.run.stop.idle, true);
+});
+
+test('a run that never showed itself is stopped too: a late start must not run on unseen', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const api = fakeApi({ messages: 0 });
+  api.agentRun = async (...a) => { api.calls.push({ name: 'agentRun', args: a }); return { status: 200, json: { ok: true, started: true } }; }; // accepted, never running
+  const r = await runPiece(opts, deps(api, {}));
+  assert.equal(r.manifest.run.endedBy, 'never-started');
+  assert.equal(calls(api, 'agentStop').length, 1);
+  assert.match(r.manifest.run.stop.reason, /never showed as running/);
+});
+
+// ---------------------------------------------------------------------------------------------- a fresh conversation
+test('EVERY REAL PIECE GETS A FRESH CONVERSATION: after the reset, before any credit, and the run is measured against the empty chat', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const api = fakeApi({ messages: 12 });
+  const r = await runPiece(opts, deps(api, { world: { min: [0, 0, 0], max: [4, 4, 4] } }));
+  assert.equal(r.ok, true, JSON.stringify(r.manifest.aborted));
+  const names = api.calls.map((c) => c.name);
+  assert.deepEqual(api.calls.find((c) => c.name === 'conversationReset').args, [DEFAULT_PROJECT, DEFAULT_USER], 'the project and its named owner');
+  assert.ok(names.indexOf('conversationReset') < names.indexOf('grantCredits'), 'before any credit is granted');
+  assert.ok(names.indexOf('conversationReset') < names.indexOf('agentRun'), 'before the run');
+  const c = r.manifest.conversation;
+  assert.equal(c.cleared, true);
+  assert.equal(c.route, 'POST /api/admin/conversation-reset/:id');
+  assert.equal(c.removedMessages, 4);
+  assert.equal(c.memoryCleared, true);
+  assert.equal(c.ledgerCleared, true);
+  assert.equal(c.messagesAfter, 0);
+  assert.equal(r.manifest.plugin.messagesBefore, 0, 'the count the run is measured against is the one read AFTER the reset');
+  assert.equal(r.manifest.run.endedBy, 'done');
+});
+
+test('A DRY RUN LEAVES THE CHAT ALONE, and says so in the manifest', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const api = fakeApi({ pluginConnected: false });
+  const r = await runPiece(opts, deps(api, {}));
+  assert.equal(calls(api, 'conversationReset').length, 0);
+  assert.equal(r.manifest.conversation.cleared, false);
+  assert.match(r.manifest.conversation.skipped, /dry run/);
+});
+
+test('A PIECE THAT CANNOT GET A FRESH CONVERSATION DOES NOT RUN: refused by the worker, or not actually empty afterwards', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  for (const [o, pattern] of [[{ conversationStatus: 403 }, /could not be cleared \(HTTP 403: owner mismatch/], [{ conversationStatus: 404 }, /HTTP 404: the deployed worker has no conversation-reset route yet/], [{ conversationStatus: 409 }, /could not be cleared \(HTTP 409: a run is in progress/], [{ conversationLeaves: 3 }, /still holds 3 messages/]]) {
+    const api = fakeApi(o);
+    const r = await runPiece({ ...opts, overwrite: true }, deps(api, {}));
+    assert.equal(r.ok, false);
+    assert.equal(r.manifest.aborted.step, 'conversation');
+    assert.match(r.manifest.aborted.message, pattern);
+    assert.match(r.manifest.aborted.message, /nothing was spent/);
+    assert.equal(calls(api, 'grantCredits', 'setPlan', 'agentRun').length, 0, 'no credit, no plan change, no run');
+  }
+});
+
+// ---------------------------------------------------------------------------------------------- terrain, the UI and the pictures
+test('A PIECE BUILT FROM TERRAIN ALONE IS A WORLD PIECE, framed on the terrain, not photographed as the empty square at the spawn', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const terrain = { cells: 9000, extents: { min: [-200, 0, -200], max: [200, 60, 200] } };
+  const r = await runPiece(opts, deps(fakeApi({ pluginConnected: false }), { terrain }));
+  assert.equal(r.manifest.build.kind, 'world');
+  assert.deepEqual(r.manifest.captures.map((c) => c.name), ['overview', 'three-quarter', 'close-up', 'spawn-eye']);
+  const plan = r.manifest.build.cameraPlan;
+  assert.equal(plan.basis, 'terrain');
+  assert.equal(plan.built, true);
+  assert.deepEqual(plan.bounds, { min: [-200, 0, -200], max: [200, 60, 200] });
+  assert.ok(plan.radius > 200, `framed on a ${plan.radius}-stud radius, not the 4-stud empty square`);
+  assert.equal(r.manifest.build.terrain.edited, true);
+});
+
+test('terrain the engine cannot place is framed on a window around the spawn, and the manifest says it is a guess', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const r = await runPiece(opts, deps(fakeApi({ pluginConnected: false }), { terrain: { cells: 9000, extents: null }, spawnSource: 'added' }));
+  assert.equal(r.manifest.build.kind, 'world');
+  const plan = r.manifest.build.cameraPlan;
+  assert.equal(plan.basis, 'terrain-fallback');
+  assert.equal(plan.built, true);
+  assert.equal(plan.spawnSource, 'added');
+  assert.ok(plan.radius > 100);
+});
+
+test('a UI piece\'s picture keeps the name its bytes call for: a JPEG is .jpg, and bytes that are not a picture are a recorded failure', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const jpg = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), { ui: true, size: [1920, 1080], jpeg: true }));
+  assert.ok(existsSync(join(jpg.pieceDir, 'shots', 'ui-1920x1080.jpg')), 'the JPEG is saved as .jpg');
+  assert.equal(existsSync(join(jpg.pieceDir, 'shots', 'ui-1920x1080.png')), false);
+  assert.equal(jpg.manifest.captures[0].file, 'shots/ui-1920x1080.jpg');
+  assert.equal(jpg.manifest.captures[0].format, 'jpeg');
+  assert.equal(jpg.manifest.ui.met, '1920x1080');
+  const bad = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), { ui: true, badBytes: true }));
+  assert.equal(bad.manifest.captures[0].file, null);
+  assert.match(bad.manifest.captures[0].error, /neither a PNG nor a JPEG/);
+  assert.equal(bad.manifest.ui.captured, null);
+  assert.match(bad.manifest.ui.note, /no UI picture was captured/);
+  assert.equal(readdirSync(join(bad.pieceDir, 'shots')).some((f) => /^ui-/.test(f)), false, 'nothing is saved under a picture\'s name');
+});
+
+test('A SCREEN UI THE RUN LEFT SWITCHED OFF is switched on for its picture and put back, in that order, and the manifest says so', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const d = deps(fakeApi({ pluginConnected: false }), { ui: true, uiDisabled: true, size: [1280, 720] });
+  const r = await runPiece({ ...opts, overwrite: true }, d);
+  const tools = d.studioCalls().map((c) => (c.tool === 'execute_luau' ? `luau:${/MODE = "([\w-]+)"/.exec(c.args.code ?? '')?.[1] ?? 'other'}` : c.tool));
+  const enable = tools.indexOf('luau:ui-enable');
+  const capture = tools.indexOf('screen_capture', enable);
+  const restore = tools.indexOf('luau:ui-restore');
+  assert.ok(enable > 0 && enable < capture && capture < restore, `ui-enable, then the capture, then ui-restore: ${tools.join(' ')}`);
+  assert.deepEqual(r.manifest.ui.switchedOff, ['ModalGui']);
+  assert.deepEqual(r.manifest.ui.enabledForCapture, ['ModalGui']);
+  assert.equal(r.manifest.ui.restoreError, null);
+  assert.match(r.manifest.ui.note, /ModalGui was switched off by the run, switched on for the picture and put back/);
+  // a UI that is already on is left alone: no ui-enable at all
+  const on = deps(fakeApi({ pluginConnected: false }), { ui: true });
+  await runPiece({ ...opts, overwrite: true }, on);
+  assert.equal(on.studioCalls().some((c) => /MODE = "ui-enable"/.test(c.args.code ?? '')), false);
+  // and a restore that fails is recorded, not hidden
+  const failing = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), { ui: true, uiDisabled: true, restoreFails: true }));
+  assert.match(failing.manifest.ui.restoreError, /could not restore|execute_luau/);
+  assert.match(failing.manifest.ui.note, /NOT put back/);
+});
+
+// ---------------------------------------------------------------------------------------------- the play test is evidence or it is nothing
+test('THE PLAY TEST COUNTS ZERO ONLY WITH EVIDENCE THE PLACE RAN: each missing source leaves the errors unestablished, never 0', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const clean = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), {}));
+  assert.equal(clean.manifest.playTest.errors, 0, 'CONTROL: with every source read, a clean place counts 0');
+  assert.equal(clean.manifest.playTest.unestablished, null);
+  for (const [label, scenario, pattern] of [
+    ['play would not start', { startPlayFails: true }, /play did not start/],
+    ['the server never answered', { serverSilent: true }, /the server did not answer while the place was playing/],
+    ['the typed server log could not be read', { logServerFails: true }, /the server log could not be read/],
+    ['the console could not be read after play', { consoleFailsAfter: true }, /the console could not be read/],
+    ['the console could never be read', { consoleFails: true }, /the console could not be read/],
+  ]) {
+    const r = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), scenario));
+    assert.equal(r.manifest.playTest.errors, null, `${label}: errors must not be 0`);
+    assert.match(r.manifest.playTest.unestablished.join('; '), pattern, label);
+  }
+  // an error that WAS seen stands even when another source is missing
+  const seen = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), { consoleFailsAfter: true, serverErrors: 2 }));
+  assert.equal(seen.manifest.playTest.errors, 2);
+  assert.ok(seen.manifest.playTest.unestablished.length > 0);
+});
+
+test('A CONSOLE THAT WAS NOT READ IS NEVER SAVED AS AN EMPTY FILE: console.txt says it was not read, and why', async () => {
+  const { opts } = setup({ dryRun: true });
+  await withBaseline(opts);
+  const empty = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), { playConsole: [] }));
+  assert.equal(read(empty.pieceDir, 'console.txt').trim(), '', 'CONTROL: a console that was read and printed nothing holds nothing');
+  assert.doesNotMatch(read(empty.pieceDir, 'console.txt'), /not read/);
+  for (const [scenario, pattern] of [[{ consoleFailsAfter: true }, /^\(the console was not read: get_console_output failed after the play test: console unavailable\)/], [{ startPlayFails: true }, /^\(the console was not read: play did not start/]]) {
+    const r = await runPiece({ ...opts, overwrite: true }, deps(fakeApi({ pluginConnected: false }), scenario));
+    assert.match(read(r.pieceDir, 'console.txt'), pattern);
+    assert.notEqual(read(r.pieceDir, 'console.txt').trim(), '');
+  }
+});
+
+test('a baseline file in the old format is refused at preflight, with the way to record a new one', async () => {
+  const { opts } = setup();
+  await withBaseline(opts);
+  const file = JSON.parse(read(dirname(opts.baselineFile), 'place-baseline.json'));
+  delete file.format;
+  writeFileSync(opts.baselineFile, JSON.stringify(file));
+  const r = await runPiece({ ...opts, overwrite: true }, deps(fakeApi(), {}));
+  assert.equal(r.manifest.aborted.step, 'preflight');
+  assert.match(r.manifest.aborted.message, /format 1, not 2.*--init-baseline/s);
 });

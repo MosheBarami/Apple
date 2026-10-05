@@ -68,14 +68,52 @@ export function cameraPlan(bounds, spawn = DEFAULT_SPAWN) {
 }
 
 /**
- * What a piece is, from what the measure step found: `world` (new parts in Workspace), `ui` (a new ScreenGui that
- * holds at least one GuiObject; an empty ScreenGui is not a UI), `both`, or `none` (nothing was built).
+ * What a piece is, from what the measure step found: `world` (new parts in Workspace, or terrain the run edited), `ui` (a
+ * new ScreenGui that holds at least one GuiObject; an empty ScreenGui is not a UI), `both`, or `none` (nothing was built).
+ * Terrain counts as world: a canyon, a lake or an island is built from terrain and no part at all.
  */
 export function classifyBuild(measure) {
-  const hasWorld = (measure?.addedParts ?? 0) > 0;
+  const hasWorld = (measure?.addedParts ?? 0) > 0 || measure?.terrain?.edited === true;
   const hasUi = (measure?.screenGuis ?? []).some((g) => g.guiObjects > 0);
   const kind = hasWorld && hasUi ? 'both' : hasWorld ? 'world' : hasUi ? 'ui' : 'none';
   return { kind, hasWorld, hasUi, emptyScreenGuis: (measure?.screenGuis ?? []).filter((g) => g.guiObjects === 0).map((g) => g.name) };
+}
+
+/** The camera names, in the order critics see them, read from the plan itself so the two cannot drift apart. */
+export const WORLD_CAMERAS = cameraPlan(null).cameras.map((c) => c.name);
+
+/**
+ * The pictures a piece of this kind is supposed to have, by capture name: the four world cameras for a world piece, for a
+ * piece with nothing built (the empty Baseplate is photographed the same way) and for both; `ui` for a UI piece and for
+ * both. run-piece captures exactly these and the verdict asks for exactly these, so a picture that was planned and is
+ * missing is known to be missing. The play frames are not here: the rubric lets a piece be scored without them.
+ */
+export function plannedShotNames(kind) {
+  if (!['world', 'ui', 'both', 'none'].includes(kind)) return null;
+  return [...(kind === 'ui' ? [] : WORLD_CAMERAS), ...(kind === 'ui' || kind === 'both' ? ['ui'] : [])];
+}
+
+/**
+ * What the cameras frame, from the measure step: the box `measure` reported (the parts, the terrain the run edited, or
+ * both) and where it came from; a window around the spawn when terrain was edited and the engine could not say where it
+ * is; nothing when nothing was built. Returns { bounds, basis } with basis `parts`, `terrain`, `parts+terrain`,
+ * `terrain-fallback` or `empty`.
+ */
+export function framingFor(measure) {
+  const terrainBox = measure?.terrain?.extents ?? null;
+  const partsBox = measure?.partBounds ?? null;
+  if (measure?.bounds) return { bounds: measure.bounds, basis: terrainBox && partsBox ? 'parts+terrain' : terrainBox ? 'terrain' : 'parts' };
+  if (measure?.terrain?.edited === true) return { bounds: terrainFallbackBounds(measure.spawn ?? DEFAULT_SPAWN), basis: 'terrain-fallback' };
+  return { bounds: null, basis: 'empty' };
+}
+
+/**
+ * The box to frame when the run edited terrain and the engine could not say where it is (no `terrain.extents`): a window
+ * around the spawn, wide enough for a lake or a canyon. The manifest says it was a fallback; it is a guess, never a measurement.
+ */
+export function terrainFallbackBounds(spawn = DEFAULT_SPAWN) {
+  const [x, y, z] = spawn.position;
+  return { min: [x - 128, y - 4, z - 128], max: [x + 128, y + 44, z + 128] };
 }
 
 /** The pixel size of a PNG or JPEG buffer, or null when it is neither. Never trusts a file name. */
@@ -139,8 +177,11 @@ export const UI_TARGETS = ['1920x1080', '1280x720'];
  */
 export function uiShotName(size) {
   const label = sizeLabel(size);
-  return { label, file: `ui-${label}.png`, target: UI_TARGETS.includes(label) ? label : null };
+  return { label, file: `ui-${label}.${fileExtension(size)}`, target: UI_TARGETS.includes(label) ? label : null };
 }
+
+/** The extension that matches the bytes: a JPEG is `.jpg`, never `.png` (a viewer that trusts the name rejects the mismatch). */
+export const fileExtension = (size) => (size?.format === 'jpeg' ? 'jpg' : 'png');
 
 /**
  * Read a play-test console and count errors and warnings. The console is text with no level column, so this is
@@ -187,19 +228,45 @@ export function consoleDelta(before, after) {
 }
 
 /**
- * Combine the console reading and the typed LogService readings into the play-test error count the verdict uses:
- * the LARGER of them, because the verdict must not miss an error one source can see. Sources that failed are null.
+ * Whether the play test is ESTABLISHED, and what is missing when it is not. "0 errors" means "the place ran and nothing
+ * went wrong", so it needs evidence that the place ran and that the two places a script error shows up were read:
+ *   - play started (start_stop_play answered ok) and the server datamodel answered while it ran;
+ *   - the typed server LogService history was read (where the errors of a Script land);
+ *   - the console text was read (it carries server and client output alike).
+ * The client log is kept when it can be read and is not required: a LocalScript's errors reach the console too. The
+ * picture frames are not required either: they are not an error source and the rubric scores a piece without them.
  */
-export function playTestCounts({ console: c, logServer, logClient }) {
+export function playTestEvidence(play) {
+  const missing = [];
+  if (!play || typeof play !== 'object') return { established: false, missing: ['no play-test record'] };
+  if (play.started !== true) missing.push(play.error ? `play did not start (${String(play.error).slice(0, 120)})` : 'play did not start');
+  else {
+    if (play.serverAnswered !== true) missing.push('the server did not answer while the place was playing');
+    if (!play.logServer) missing.push('the server log could not be read');
+    if (!play.console) missing.push('the console could not be read');
+  }
+  return { established: missing.length === 0, missing };
+}
+
+/**
+ * The play-test error count the verdict uses: the LARGER of the console reading and the typed LogService readings, because
+ * the verdict must not miss an error one source can see. Sources that failed are null.
+ *
+ * `errors` is null (not established) unless `playTestEvidence` holds; the one exception is an error that WAS seen: that
+ * stands, because evidence that something went wrong needs no evidence that everything else was read.
+ * Returns { established, missing, errors, warnings, sources }.
+ */
+export function playTestCounts({ console: c, logServer, logClient, started, serverAnswered, error }) {
   const typedErrors = [logServer, logClient].filter(Boolean).reduce((n, l) => n + (l.errors ?? 0), 0);
   const typedWarnings = [logServer, logClient].filter(Boolean).reduce((n, l) => n + (l.warnings ?? 0), 0);
   const typed = Boolean(logServer || logClient);
-  const consoleErrors = c ? c.errors : null;
-  const consoleWarnings = c ? c.warnings : null;
-  if (!typed && consoleErrors === null) return null; // nothing could be read: the verdict will say the play test did not run
+  const seen = Math.max(typed ? typedErrors : 0, c ? c.errors : 0);
+  const evidence = playTestEvidence({ started, serverAnswered, logServer, console: c, error });
   return {
-    errors: Math.max(typed ? typedErrors : 0, consoleErrors ?? 0),
-    warnings: Math.max(typed ? typedWarnings : 0, consoleWarnings ?? 0),
+    established: evidence.established,
+    missing: evidence.missing,
+    errors: seen > 0 ? seen : evidence.established ? 0 : null,
+    warnings: typed || c ? Math.max(typed ? typedWarnings : 0, c ? c.warnings : 0) : null,
     sources: { console: c ? { errors: c.errors, warnings: c.warnings } : null, logServer: logServer ?? null, logClient: logClient ?? null },
   };
 }

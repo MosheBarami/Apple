@@ -7,6 +7,20 @@
 
 local state = setmetatable({}, { __mode = "k" })
 
+-- The plain `luau` interpreter's typeof does not read a metatable's __type, Roblox's does: this stand-in does.
+local function typeof(v)
+	if type(v) == "table" then
+		local mt = getmetatable(v)
+		if mt and mt.__type then
+			return mt.__type
+		end
+	end
+	return type(v)
+end
+local function typed(kind, t)
+	return setmetatable(t, { __type = kind })
+end
+
 local PARENT_CLASS = {
 	Part = "BasePart", SpawnLocation = "Part", MeshPart = "BasePart", BasePart = "PVInstance", Model = "PVInstance",
 	PVInstance = "Instance", Folder = "Instance", Decal = "Instance", Sky = "Instance", Atmosphere = "Instance",
@@ -29,18 +43,30 @@ local function classIsA(class, target)
 end
 
 local function Vector3_new(x, y, z)
-	return { X = x, Y = y, Z = z }
+	return typed("Vector3", { X = x, Y = y, Z = z })
 end
 local Vector3 = { new = Vector3_new }
+local Vector2 = { new = function(x, y) return typed("Vector2", { X = x, Y = y }) end }
+local UDim2 = {
+	new = function(xs, xo, ys, yo)
+		return typed("UDim2", { X = { Scale = xs, Offset = xo }, Y = { Scale = ys, Offset = yo } })
+	end,
+}
+local NumberRange = { new = function(lo, hi) return typed("NumberRange", { Min = lo, Max = hi }) end }
+local PhysicalProperties = {
+	new = function(d, f, e, fw, ew)
+		return typed("PhysicalProperties", { Density = d, Friction = f, Elasticity = e, FrictionWeight = fw, ElasticityWeight = ew })
+	end,
+}
 
-local Color3 = { new = function(r, g, b) return { R = r, G = g, B = b } end }
+local Color3 = { new = function(r, g, b) return typed("Color3", { R = r, G = g, B = b }) end }
 
 local function CFrame_new(x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
 	if r00 == nil then
 		r00, r01, r02, r10, r11, r12, r20, r21, r22 = 1, 0, 0, 0, 1, 0, 0, 0, 1
 	end
 	local comps = { x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 }
-	local cf = {
+	local cf = typed("CFrame", {
 		Position = Vector3_new(x, y, z),
 		RightVector = Vector3_new(r00, r10, r20),
 		UpVector = Vector3_new(r01, r11, r21),
@@ -48,7 +74,7 @@ local function CFrame_new(x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
 		GetComponents = function()
 			return table.unpack(comps)
 		end,
-	}
+	})
 	return cf
 end
 local CFrame = { new = CFrame_new }
@@ -61,21 +87,44 @@ end
 
 local Enum = setmetatable({}, {
 	__index = function(_, enumName)
-		return setmetatable({}, { __index = function(_, item) return { Name = item, EnumType = enumName } end })
+		return setmetatable({}, { __index = function(_, item) return typed("EnumItem", { Name = item, EnumType = enumName }) end })
 	end,
 })
 
+-- What a class HAS, as real Roblox classes do: reading a name a class does not have is an error (the script's pcall
+-- relies on it), reading one that is nil is not. Anything a scenario assigns is a property from then on.
 local DEFAULTS = {
 	BasePart = function()
 		return {
-			Size = Vector3_new(4, 1, 2), CFrame = CFrame_new(0, 0, 0), Anchored = false, CanCollide = true,
-			Transparency = 0, Reflectance = 0, Material = Enum.Material.Plastic, Color = Color3.new(0.63, 0.63, 0.63),
+			Size = Vector3_new(4, 1, 2), CFrame = CFrame_new(0, 0, 0), Anchored = false, CanCollide = true, CanQuery = true,
+			CanTouch = true, CastShadow = true, Massless = false, Locked = false, Transparency = 0, Reflectance = 0, Friction = 0.3, Elasticity = 0.5,
+			Material = Enum.Material.Plastic, Color = Color3.new(0.63, 0.63, 0.63), TopSurface = Enum.SurfaceType.Smooth,
 		}
 	end,
+	SpawnLocation = function() return { Enabled = true } end,
 	ScreenGui = function() return { Enabled = true } end,
 	TextLabel = function() return { Text = "Label" } end,
 	TextButton = function() return { Text = "Button" } end,
+	ColorGradingEffect = function() return { Contrast = 0, Saturation = 0, Brightness = 0, Enabled = true } end,
+	Atmosphere = function() return { Density = 0.3, Haze = 0, Offset = 0 } end,
 }
+-- Properties that exist and are nil by default (a real read of them returns nil, it does not raise).
+local NILABLE = {
+	BasePart = { "CustomPhysicalProperties" },
+	Workspace = { "CurrentCamera" },
+}
+local function nilable(class, key)
+	local c = class
+	while c do
+		for _, name in ipairs(NILABLE[c] or {}) do
+			if name == key then
+				return true
+			end
+		end
+		c = PARENT_CLASS[c]
+	end
+	return false
+end
 
 local methods = {}
 local function descendantsOf(inst, out)
@@ -87,7 +136,7 @@ local function descendantsOf(inst, out)
 end
 
 local Instance = {}
-local instMt = {}
+local instMt = { __type = "Instance" }
 
 local function detach(inst)
 	local st = state[inst]
@@ -132,6 +181,15 @@ function methods.Destroy(self)
 	detach(self)
 	state[self].destroyed = true
 end
+function methods.GetAttributes(self)
+	return table.clone(state[self].attrs)
+end
+function methods.GetAttribute(self, name)
+	return state[self].attrs[name]
+end
+function methods.SetAttribute(self, name, value)
+	state[self].attrs[name] = value
+end
 function methods.CountCells(self)
 	return state[self].props.cells or 0
 end
@@ -162,7 +220,10 @@ instMt.__index = function(self, key)
 			return c
 		end
 	end
-	return nil
+	if nilable(st.class, key) then
+		return nil
+	end
+	error(key .. " is not a valid member of " .. st.class)
 end
 instMt.__newindex = function(self, key, value)
 	local st = state[self]
@@ -193,7 +254,7 @@ function Instance.new(class, parent)
 		end
 		c = PARENT_CLASS[c]
 	end
-	state[inst] = { name = class, class = class, parent = nil, children = {}, props = props }
+	state[inst] = { name = class, class = class, parent = nil, children = {}, props = props, attrs = {} }
 	if parent then
 		inst.Parent = parent
 	end
