@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SURFACES, TEXT_INKS, contrast, theme, themeBlocks } from '@studpilot/design/css-tokens';
+import { SURFACES, TEXT_INKS, contrast, customPropertyWrites, stripScriptComments, theme, themeBlocks } from '@studpilot/design/css-tokens';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BLOCKS = themeBlocks();
@@ -69,18 +69,32 @@ test('the app and the public site use one ramp: both load the token file and nei
   assert.ok(withHtml.length >= 2, 'expected the site to have at least two document layouts');
   for (const src of withHtml) assert.match(src, /import\s+['"]@studpilot\/design\/tokens\.css['"]/, 'a site layout does not import the shared tokens');
 
-  // No other app stylesheet re-declares an ink: a second --faint is how the two products drift.
+  // No other app file writes an ink: a second --faint is how the two products drift. Stylesheets AND
+  // scripts: a React `style={{ '--faint': c }}` or `el.style.setProperty('--muted', c)` re-declares an ink
+  // as surely as a rule does, and a walk that read only .css never saw either.
   const stray = [];
+  const walked = { css: 0, script: 0 };
   const walk = (dir) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith('.css')) {
-        const css = readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
-        for (const m of css.matchAll(/(?:^|[;{\s])--(ink|ink-2|muted|faint)\s*:/g)) stray.push(`${p.replace(WEB, '')}: --${m[1]}`);
+      else if (/\.(?:css|tsx?)$/.test(e.name)) {
+        const isCss = e.name.endsWith('.css');
+        walked[isCss ? 'css' : 'script'] += 1;
+        const code = isCss ? readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ') : stripScriptComments(readFileSync(p, 'utf8'));
+        for (const w of customPropertyWrites(code)) if (['--ink', '--ink-2', '--muted', '--faint'].includes(w.name)) stray.push(`${p.replace(WEB, '')}: ${w.name} (${w.form})`);
       }
     }
   };
   walk(join(WEB, 'src'));
+  assert.ok(walked.css > 100 && walked.script > 200, `the walk read ${walked.css} stylesheets and ${walked.script} scripts; it has drifted, or it is not reading .ts and .tsx`);
   assert.deepEqual(stray, [], `the app re-declares an ink the token file owns:\n  ${stray.join('\n  ')}`);
+});
+
+test('the guard has teeth: an ink written from a script is seen, and an ink read is not', () => {
+  const inks = (src) => customPropertyWrites(stripScriptComments(src)).map((w) => `${w.name} ${w.form}`);
+  assert.deepEqual(inks(`<div style={{ '--faint': c }} />`), ['--faint object key']);
+  assert.deepEqual(inks(`el.style.setProperty('--muted', c);`), ['--muted setProperty']);
+  assert.deepEqual(inks('const s = { "--ink-2": c };'), ['--ink-2 object key']);
+  assert.deepEqual(inks(`const c = getComputedStyle(el).getPropertyValue('--faint'); const x = 'var(--muted)';`), []);
 });

@@ -40,4 +40,23 @@ export function walkText(dirs, { skipPaths = SKIP_PATHS } = {}) {
   return out;
 }
 
+/** Every file under `dirs` (repo-relative) whose NAME matches `re`, text or not, as repo-relative paths. */
+export function walkNames(dirs, re, { skipPaths = SKIP_PATHS } = {}) {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      const rel = relative(ROOT, p).split(sep).join('/');
+      if (skipPaths.some((s) => rel === s || rel.startsWith(s + '/'))) continue;
+      if (e.isDirectory()) {
+        if (!SKIP_DIRS.has(e.name)) walk(p);
+      } else if (re.test(e.name)) {
+        out.push(rel);
+      }
+    }
+  };
+  for (const d of dirs) walk(join(ROOT, d));
+  return out;
+}
+
 export const readText = (file) => readFileSync(file.path, 'utf8');

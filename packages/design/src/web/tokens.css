@@ -127,6 +127,12 @@
 
 /* Theme-independent tokens. */
 :root {
+  /* The one coloured shadow left over from the first pass: the hover lift of the start sheet's idea
+     buttons (apps/web/src/components/studio-icon.css), a card that moves and casts the accent. That is
+     not this language ("cards cast nothing and do not move"); it goes when that sheet is rebuilt.
+     Declared here so that no sheet writes a colour on the root. */
+  --motion-lift-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent);
+
   /* A fixed near-white ground for what a camera reads: the two-step-verification QR code is black on
      transparent, so on the dark theme it needs a light surface of its own. Not a theme surface:
      it is the same white in both themes, and a QR is read at 21:1 against it. */

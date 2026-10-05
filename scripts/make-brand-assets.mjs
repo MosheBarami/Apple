@@ -41,10 +41,10 @@ import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+// A static import, so the dead-end gate sees a product module behind the recipe (a computed dynamic import is invisible to it).
+import { FAVICON_COPIES, MANIFEST_FILE, PNGS, WEB_FAVICON_FILE, brandSources, iconSvg, manifestOf, manifestProblems, sha256, withWebFavicon } from '../packages/design/src/web/brand-recipe.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const recipe = await import(pathToFileURL(join(ROOT, 'packages/design/src/web/brand-recipe.mjs')).href);
-const { FAVICON_COPIES, MANIFEST_FILE, PNGS, WEB_FAVICON_FILE, brandSources, iconSvg, manifestOf, manifestProblems, sha256, withWebFavicon } = recipe;
 
 const argv = process.argv.slice(2);
 const CHECK = argv.includes('--check');

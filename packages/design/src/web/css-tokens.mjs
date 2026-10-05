@@ -16,10 +16,16 @@ export const ACCENTS_JSON_PATH = fileURLToPath(new URL('./accents.json', import.
  * The accent of the system before M2 (dark, light and their translucent forms). It may appear in
  * no tracked source file outside packages/design: a surface that needs the accent reads the token.
  * Listed here, in the one place allowed to name them, so a guard elsewhere never types one.
+ *
+ * Two generations: the azure of the system before M2 (first row), and the violets and blue of the
+ * earlier landing and app palettes that M2's own first pass let drop out of the list (second row).
+ * A retired colour that is allowed to come back is a palette that never settles; none of the nine
+ * appears anywhere outside this package.
  */
 export const OLD_ACCENT_LITERALS = [
   '#5b7cfa', '#4568e8', '#8ca4ff', '#4264e8', '#3155d4',
   'rgba(91,124,250', 'rgba(69,104,232',
+  '#8b5cf6', '#7550de', '#7657ff', '#4f7cff',
 ];
 
 export const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -338,3 +344,25 @@ export function accentRingOf(decls) {
     return c;
   };
 }
+
+/* ------------------------------------------------------------------ who writes a custom property */
+
+/**
+ * Every custom property a source file WRITES, as { name, form }, in the forms this code base uses:
+ *   declaration   `--x: v` in a stylesheet, a <style> block, an inline `style="--x: v"` or a template string
+ *   object key    `{ '--x': v }`, `{ "--x": v }` or a template-quoted key: a React `style` object
+ *   setProperty   `el.style.setProperty('--x', v)`
+ * A READ (`var(--x)`, `getPropertyValue('--x')`) is not a write. A guard that only knew the first
+ * form was blind to the other two, which is where a script that paints one element in "its" accent
+ * would write it.
+ */
+export function customPropertyWrites(src) {
+  const out = [];
+  for (const m of src.matchAll(/(?:^|[;{\s'"`])(--[a-z0-9-]+)\s*:/gi)) out.push({ name: m[1], form: 'declaration' });
+  for (const m of src.matchAll(/['"`](--[a-z0-9-]+)['"`]\s*:/gi)) out.push({ name: m[1], form: 'object key' });
+  for (const m of src.matchAll(/setProperty\(\s*['"`](--[a-z0-9-]+)['"`]/gi)) out.push({ name: m[1], form: 'setProperty' });
+  return out;
+}
+
+/** The text of a script with its comments removed (`//` not preceded by a scheme colon, and block comments). */
+export const stripScriptComments = (src) => stripComments(src).replace(/(^|[^:\w'"`])\/\/[^\n]*/g, '$1');

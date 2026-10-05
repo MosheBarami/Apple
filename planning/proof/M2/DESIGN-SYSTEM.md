@@ -268,8 +268,7 @@ this clone after the change.
 `.settings-card .mfa-qr` took its ground from `--accent-ink`. That token is the ink for a label on the
 accent button: near-white while the accent was dark, `#0c0816` (near-black) in the dark theme once the
 accent became violet. The provider's QR is black on transparent, so the code sat on near-black:
-**1.06:1 black on the old ground in the dark theme** (21.00:1 in light, which is why nobody saw it in
-a light-theme check).
+**1.06:1 black on the old ground in the dark theme** (21.00:1 in light, where `--accent-ink` is white).
 
 Fix: a token meant for it, `--qr-ground: #ffffff` in the theme-independent block of `tokens.css`
 (the same white in both themes), and the rule spends it. `drawn.test.mjs` resolves the ground through
@@ -289,16 +288,15 @@ projects-page button: dark rest `rgb(166, 124, 255)`, hover `rgb(191, 162, 255)`
 `rgb(114, 64, 216)`, hover `rgb(95, 47, 196)`. `drawn.test.mjs` finds every hover rule of a primary
 button in both apps (11 selector parts in 6 files that set a background; 8 of them pair with a resting
 rule of the same selector, 12 hover/rest pairs), and fails when a pair resolves to the same colour, in
-either theme. The
-label on the hovered button is `--accent-ink` on `--accent-strong`: 9.25:1 dark, 7.81:1 light.
+either theme. The label on the hovered button is `--accent-ink` on `--accent-strong`: 9.25:1 dark, 7.81:1 light.
 
 ### 10.3 The focus-ring gate measured something nothing draws
 
 `measureAccent` measured the SOLID accent as the focus ring, which is the same number as the accent's
 text contrast (`ringWorst == textWorst`), so the 3:1 check could never fire on its own. The outlines the
 apps actually drew used `--accent-ring`, the accent at 45% alpha: **2.09:1 on the worst surface in dark
-and 1.97:1 in light** (measured by composing the token over each surface). Six rules drew a ring at
-that strength: `picks/composer/file-picker.css`, `picks/tech/line-thread.css`,
+and 1.97:1 in light** (measured by composing the token over each surface). Six rules drew a ring
+under 3:1: `picks/composer/file-picker.css`, `picks/tech/line-thread.css`,
 `picks/chat/context-menu.css`, the composer card and the sign-in fields in `system.css` and `auth.css`
 (their border colour, beside the 14% halo), and `picks/composer/composer-fx.css`.
 
@@ -377,6 +375,93 @@ Fixed:
   here: the first CI run is its first measurement there, and the tolerance above is sized from the
   noise measured on this machine, not from a Linux render.
 
+### 10.5 The guards had blind spots; each is closed and each blind spot is measured
+
+For every row below the OLD guard (the one in `3c310cb8`) was run against the same planted break and
+passed; the new one fails.
+
+| Guard | What it missed | Now |
+|---|---|---|
+| `flat.test.mjs`: no colour written on a theme root outside `tokens.css` | a hex colour on `:root` inside `@media`; inside `@layer`; `html.dark`; an unquoted `[data-theme=light]`; `oklch()`; `lab()`; a named colour (all seven planted, old guard 0 of 7) | reads every rule at any nesting depth (4,603 rules in 178 sheets), reads a theme root in any spelling (`:root`, `html`, `body`, an attribute quoted or not, `.dark`, `.light`, `:not()` guards), and flags hex, any colour function, any named colour or `transparent`; 11 theme-root selector parts are read today |
+| `tokens.test.mjs`: the accent family is written only by `tokens.css` | `style={{ '--accent': c }}`, `{ "--accent-strong": c }`, `el.style.setProperty('--accent', c)`: the old regex, run on the three, matches none | `customPropertyWrites` finds a declaration, an object key and a `setProperty` call; the scan reads 547 files, 351 of them scripts; none writes an accent token |
+| `app-ink-ramp.test.mjs`: the app declares no ink | walked `.css` only | walks `.css`, `.ts` and `.tsx` with the same finder (116 stylesheets, 331 scripts) |
+| `tokens.test.mjs`: no retired accent literal | four retired colours were not in `OLD_ACCENT_LITERALS` any more | `#8b5cf6`, `#7550de`, `#7657ff`, `#4f7cff` are back in the list, and a test holds the list; restoring them found one hit, a comment in `apps/site/tests/living-background.test.mjs` that typed two of them, now reworded |
+| `apps/site/tests/contrast.test.mjs` | `--paper` and `--accent-ink` were filtered out of the text tokens BY NAME, so a `color: var(--paper)` on any ground passed (old test run with a planted fill-less use: 10 of 10 pass) | no token is exempt. A use is on a FILL when the element's own rules, in any state and any sheet, give it only opaque backgrounds that are not page surfaces; it is measured against exactly those. Every other use is measured on all five surfaces, where paper on paper is 1:1. Found in the CSS: 6 fill uses (`--paper` on `--ink` and `--ink-2`; `--accent-ink` on `--accent` and `--accent-strong`, in the CTA, its knob, the skip link, `.btn-primary` and the composer send); 9 pairs per theme, worst 6.54:1 dark and 6.10:1 light; no free use of either token |
+
+One real finding came out of the stricter root guard: `apps/web/src/components/studio-icon.css`
+declared `--motion-lift-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 55%, transparent)` on
+`:root`, a coloured shadow outside the token file. It moved to `tokens.css` (the file the app loads
+first) and `studio-icons.test.mjs`, which asserted every motion token is declared on `:root` in that
+sheet, was restated to accept the token file (a dated note, and an assertion that the token is in the
+token file alone). Not fixed: what the token is FOR, a start-sheet idea button that rises 2 px and
+casts an accent glow on hover, is not the flat language ("cards cast nothing and do not move"); it goes
+when that sheet is rebuilt.
+
+### 10.6 The minor items
+
+- **AA on unrounded ratios**: section 10.3.
+- **Mark intricacy**: the proxy counted `M L H V Q A Z` and every lowercase letter, so an absolute `C`,
+  `S` or `T` was not counted and a mark drawn in cubics read as simple. It counts every command
+  letter of either case (and not an exponent's `e`). The mark has 13 commands against a bar of 24; a
+  path of thirty cubics fails it, and the test holds that.
+- **No webfont**: also `@fontsource`, `fontsource.org`, `typeface-*`, any `.woff`, `.woff2`, `.ttf`,
+  `.otf` or `.eot` named in a file, a font file on disk under either app, the brand folder or the
+  design package, and a font package in the dependencies of either app or of the design package. The
+  old pattern, run on an `@fontsource` import, a `url(...woff2)` and a `url(...ttf)`: none matched.
+- **`.auth__aura`**: a blurred (`filter: blur(46px)`) radial gradient on a 22-second drift, which is
+  exactly the aurora the flat language removed. No component renders any `auth__*` class
+  (`git grep` over `apps/web/src` for the class names in a `.tsx`: 0), so it was dead CSS; its three
+  rules, its `auth-drift` keyframes and its reduced-motion entry are removed, and the class guard now
+  matches a glass, aurora or aura WORD in any class name (`.auth__aura`, `.hero-aurora`,
+  `.card__glass`), where the old pattern matched only the block form (it returned nothing on
+  `.auth__aura`, `.hero-aurora` and `.card__glass`). Not removed, because it was not asked and is
+  equally unrendered: `.auth__atmosphere` and `.auth__grid`, a masked repeating-gradient plane.
+
+### 10.7 Found and not fixed here
+
+- The vendored shadcn `ScrollArea` viewport (`components/ui/scroll-area.tsx`) draws only `ring-ring/50`
+  on focus (1.84:1 dark, 1.74:1 light). The file is byte-pinned to its upstream hash, so it is not
+  edited; it needs an owner decision (a local rule that outranks the utility, or an unpinned copy).
+  The focus test does not read Tailwind utility classes; it reads `--color-ring`, which passes.
+- The start sheet's idea buttons rise 2 px and cast an accent glow on hover (`studio-icon.css`, token
+  now in `tokens.css`): not the flat language, and out of this review's six items.
+- `.auth__atmosphere` and `.auth__grid` in `auth.css` are not rendered by any component and the grid
+  is a masked repeating gradient. Dead decoration, not asked about, left in place.
+- The brand check on a Linux runner: the tolerance (section 10.4) is sized from the noise measured on
+  this machine. If the first CI run fails on an icon, the report line names the mean difference and the
+  share of pixels off, and `SAME_PICTURE` in `scripts/make-brand-assets.mjs` is the one number to move.
+- Every token edit now needs a `pnpm brand` (the share card links the whole token file, so its input
+  hash moves). The PNG bytes come out identical when nothing the card draws moved, as they did for the
+  two token edits in this review; the cost is one command and a one-line manifest diff.
+
+### 10.8 Verification of the review fixes (2026-10-05, in the clone, on the final tree)
+
+Section 9 stays as the record of the first pass. These are the numbers after the review fixes.
+
+| Command | Result |
+|---|---|
+| `cd packages/design && node --test` | tests 137, pass 137, fail 0 (113 before the review fixes) |
+| `cd packages/design && pnpm typecheck` | exit 0 |
+| `cd apps/web && pnpm typecheck && node --test && pnpm build` | tsc exit 0; tests 2445, pass 2445, fail 0; built in 8.57s |
+| `cd apps/site && npx astro build && node --test tests/*.test.mjs` | 21 pages built; tests 316, pass 316, fail 0 |
+| `node --test tests/` (root) | tests 631, pass 613, fail 2, skipped 16: the two failures are the scratchpad-location check-pixels cases (`THE CONTROL: against a SAME-ORIGIN baseline...`, `against a baseline with NO provenance...`), as before |
+| `node scripts/make-brand-assets.mjs --check` | BRAND ASSETS OK: 12 asset(s), all current (4 favicon copies, 8 PNGs, the manifest) |
+| `node scripts/check-landing-budget.mjs` | markup and CSS 17,420 B of 20,000 (17,394 after the first pass; the lift-shadow token and the ring and QR comments are the difference); inline JS 23,714 of 36,000; images 25,873 of 40,000 |
+| `node scripts/check-old-names.mjs` | CLEAN, 0 violations; `build-allowlist.mjs --write` UNCLASSIFIED 0 (counts moved: 4 lines added, 2 pins changed, for `apple-touch-icon` in the two new brand files and `-apple-system` in the font-stack tests) |
+| `node scripts/check-deadends.mjs --gate` | ALL DISPOSITIONED, 43 entries |
+| `node scripts/check-ci-references.mjs` | CI REFERENCES OK, 22 paths |
+
+Two things the first run of this list caught, both mine and both fixed in the same change: the brand
+recipe module was imported by the generator through a computed dynamic `import()`, which the dead-end
+gate cannot see (`UNDISPOSITIONED: brand-recipe.mjs`, 1 of 44), so the generator imports it statically;
+and the two new brand files and the font-stack tests moved the old-names allowlist pins.
+
+Not run: the Playwright e2e suite (219 passed in the first pass; this change touches no layout), the
+worker and evals suites (nothing under `apps/worker` or `packages/evals` changed), Lighthouse, a real
+device, the brand check on a Linux CI runner (the CI step is new and its first run is its first
+measurement there), and a render of the app's focus rings by a real keyboard (they are measured from the
+sheets, section 10.3).
+
 ### 10.9 Mutations of the review fixes: every new or restated test went red, then green
 
 Each row: one planted break (the anchor was asserted to occur exactly once; the file was restored byte
@@ -404,3 +489,17 @@ for byte and the hash compared), and the test that went red. The harness is not 
 | 4 | the CI step replaced by `echo skipped` | `CI runs the brand check, headless, after Chromium is installed` |
 | 4 | the CI step moved before the Chromium install | the same |
 | 4 | `icon-192.png` replaced by a cyan render and its manifest hash edited to match | `--check` by render alone (mean difference 17.57, 29.4% far); the no-browser test passes, as designed |
+| 5 | a hex colour on `:root` inside `@media` in a site sheet | `no sheet but tokens.css writes a colour on a theme root...` (old guard: passes) |
+| 5 | the same inside `@layer`; as `html.dark`; as an unquoted `[data-theme=light]`; as `oklch()`; as a named colour; as `lab()` | the same, each one (old guard: passes all six) |
+| 5 | a hex colour on `:root` inside `@layer` in `system.css` | the same |
+| 5 | `studio-icon.css` writes the coloured lift shadow on `:root` again | the same |
+| 5 | `el.style.setProperty('--accent', ...)` in `main.tsx`; a `'--accent-strong'` style-object key in `main.tsx` | `no other stylesheet, component style or script in either app writes a token of the accent family` (old regex: blind to both) |
+| 5 | `el.style.setProperty('--faint', ...)` in `main.tsx` | web `app-ink-ramp`: `the app and the public site use one ramp...` |
+| 5 | `/* #8B5CF6 */` in a site sheet | `no retired accent literal exists in any tracked source outside packages/design` |
+| 5 | `#7550de` dropped from `OLD_ACCENT_LITERALS` | `the ban names every retired accent...` |
+| 5 | the folder's `--paper` text set to `--ink` on an `--ink` fill | site `contrast`: `dark:` and `light: every use of text on a fill clears 4.5:1...`, and the derivation floor |
+| 5 | a fill-less `color: var(--paper)` in the folder's hover label | site `contrast`: `dark:` and `light: every text token clears 4.5:1 on every surface` (old test: 10 of 10 pass) |
+| 5 | the lift shadow token deleted from `tokens.css` | `studio-icons.test.mjs`: `motion reads its timing from :root tokens...` |
+| 6 | an `@fontsource` import in `main.tsx`; a `url(...woff2)` in a site sheet; a `.woff2` file under `apps/site/public`; an `@fontsource` dependency in `apps/site/package.json` | `the type tokens are the system stack, and no webfont is requested anywhere`, each one |
+| 6 | the intricacy proxy's regex loses the uppercase `C`, `S`, `T` | `the guard has teeth: the intricacy proxy counts every path command...` |
+| 6 | an `.auth__aura` rule in the auth sheet | `no glass or aurora token, class, component or file exists in either app` (old pattern: blind) |

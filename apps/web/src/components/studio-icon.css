@@ -4,7 +4,9 @@
  * --studio-icon-size, so it is crisp on a 2x screen. Studio ships a dark and a light set; each theme
  * takes its own, and only the one in use is ever fetched.
  *
- * Motion tokens live on :root so a surface can retune them without restating a keyframe. Every
+ * Motion tokens live on :root so a surface can retune them without restating a keyframe. (The one
+ * that carries a colour, --motion-lift-shadow, lives in tokens.css with the other shadows: no sheet
+ * writes a colour on the root.) Every
  * animation here has its finished frame as the element's resting style, so under reduced motion
  * (the OS setting, or the app's own .motion-reduced) the row is simply there. */
 :root {
@@ -13,7 +15,6 @@
   --motion-row-rise:4px;
   --motion-work:1.6s;
   --motion-lift:-2px;
-  --motion-lift-shadow:0 6px 18px -10px color-mix(in srgb,var(--accent) 55%,transparent);
 }
 
 .studio-icon {

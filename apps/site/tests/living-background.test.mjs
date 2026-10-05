@@ -95,7 +95,8 @@ test('the composer is a flat panel on the shared radius, and no site sheet decla
 //
 //   RESTATED 2026-09-22: VIOLET ONLY WHEN AUTONOMOUS IS ON, AND NO GLOW ANYWHERE.
 //
-//   The old version required the hexes #7657ff and #4f7cff and a gradient-plus-glow rule — the
+//   The old version required two literal hexes (a violet and a blue; the retired-accent guard in
+//   packages/design/src/web/tokens.test.mjs bans them, so they are not typed here) and a gradient-plus-glow rule — the
 //   exact treatment the owner rejected ("blue for ordinary active state, violet ONLY when Autonomous
 //   is active"). The property is now asserted over every stylesheet and component style the site
 //   ships: a rule that spends a violet token must be the active Autonomous state, no rule paints a

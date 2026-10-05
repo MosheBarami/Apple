@@ -13,13 +13,18 @@
  * this reads that file, in both themes, and:
  *
  *   - derives the TEXT tokens from use, not from a list: every token any site stylesheet or
- *     component style spends in a `color:` declaration carries text somewhere;
+ *     component style spends in a `color:` declaration carries text somewhere. A use sits on a FILL
+ *     when the element's own rules (any state, any sheet) give it only opaque backgrounds that are
+ *     not page surfaces (`--paper` on the docs folder's `--ink`, `--accent-ink` on the accent button):
+ *     that use is measured against exactly those fills, found in the CSS. Every other use is measured
+ *     on every surface. No token is exempt by name: a `color: var(--paper)` on a rule with no fill
+ *     of its own is measured on the surfaces, where paper on paper is 1:1, and fails;
  *   - derives the SURFACES from the sheet: every `--paper*` and `--surface*` step;
  *   - requires 4.5:1 for every text token on every surface: worst case, not typical case, because
  *     a token used for text on one surface today is used on another tomorrow;
  *   - requires 3:1 for the focus ring (--accent) on every surface: non-text contrast, WCAG 1.4.11;
- *   - requires the accent button's own pair (--accent-ink on --accent, and on its hover step
- *     --accent-strong) to clear 4.5:1;
+ *   - requires every fill use to clear 4.5:1 on each of its fills, in both themes (the accent button's
+ *     --accent-ink on --accent and on its hover step --accent-strong, the folder's --paper on --ink and --ink-2);
  *   - and requires the ink ramp to still descend, so the fix cannot collapse three tiers into one.
  *
  * Every derivation is asserted non-empty: a check that found no tokens reports a perfect page.
@@ -29,7 +34,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contrast, theme, themeBlocks } from '@studpilot/design/css-tokens';
+import { colourOf, contrast, contrastRgb, expandVars, rgbOfHex, splitTop, surfacesOf, theme, themeBlocks } from '@studpilot/design/css-tokens';
 
 const SITE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -58,13 +63,77 @@ function styles() {
 }
 
 const STYLES = styles();
-/** Tokens spent as a text colour: `color: var(--x)` — the `color` property, not `background-color`. */
-const TEXT = [...new Set(STYLES.flatMap((css) => [...css.matchAll(/(?:^|[;{\s])color\s*:\s*var\(--([a-z0-9-]+)\)/g)].map((m) => m[1])))]
-  // Spent only ON a fill: --accent-ink on the accent, --paper on the inverse --ink fill of the docs
-  // folder. Each is checked as its own pair below, not against surfaces it is never drawn on.
-  .filter((n) => n !== 'accent-ink' && n !== 'paper')
-  .sort();
+
+/** Every rule of every site style source: { selector, body }. */
+const rulesOf = (styleSources) => styleSources
+  .flatMap((css) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].split(';').pop().trim().replace(/\s+/g, ' '), body: m[2] })))
+  .filter((r) => r.selector && !r.selector.startsWith('@'));
+const declOf = (body, prop) => {
+  const found = [...body.matchAll(new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;}]+)`, 'g'))];
+  return found.length ? found[found.length - 1][1].trim() : null;
+};
+/** A selector part without its states and structural pseudo-classes: the element it styles, in any state. */
+const element = (part) => part
+  .replace(/:not\((?:[^()]|\([^)]*\))*\)/g, '')
+  .replace(/:(?:hover|focus-visible|focus|active|disabled|checked|nth-child\([^)]*\)|first-child|last-child|first-of-type|last-of-type)/g, '')
+  .replace(/\s+/g, ' ').trim();
+const SURFACE_TOKEN = /^var\(--(?:paper|surface)(?:-\d)?\)$/;
+
+/**
+ * Every spend of a token as text colour (`color: var(--x)`, the `color` property and not
+ * `background-color`) as { token, part, grounds }, where `grounds` are the backgrounds the SAME
+ * element is given by any rule that styles it, in any state, in any site sheet.
+ */
+function usesOf(rules) {
+  const uses = [];
+  for (const r of rules) {
+    const m = /(?:^|[;\s])color\s*:\s*var\(--([a-z0-9-]+)\)/.exec(r.body);
+    if (!m) continue;
+    for (const part of splitTop(r.selector)) {
+      const grounds = rules
+        .filter((q) => splitTop(q.selector).some((p) => element(p) === element(part)))
+        .map((q) => declOf(q.body, 'background') ?? declOf(q.body, 'background-color'))
+        .filter((g) => g && g !== 'none' && g !== 'transparent');
+      uses.push({ token: m[1], part, grounds: [...new Set(grounds)] });
+    }
+  }
+  return uses;
+}
+
+/** Is the use drawn on a fill: it has grounds, and every one is an opaque colour that is not a page surface. */
+function onFill(use, lookup) {
+  if (use.grounds.length === 0) return false;
+  return use.grounds.every((g) => {
+    if (SURFACE_TOKEN.test(g)) return false;
+    const text = expandVars(g, lookup);
+    const c = text && colourOf(text);
+    return Boolean(c) && c[3] === 1;
+  });
+}
+
+const RULES = rulesOf(STYLES);
+const USES = usesOf(RULES);
+const lookupOf = (name) => { const raw = THEMES[name].raw; return (n) => raw[n.slice(2)]; };
+/** The uses drawn on a fill are the same in both themes: a token's SPELLING decides, not its value. */
+const FILL_USES = USES.filter((u) => onFill(u, lookupOf('dark')));
+/** Tokens spent as text on the surfaces (every use that is not on a fill). */
+const TEXT = [...new Set(USES.filter((u) => !FILL_USES.includes(u)).map((u) => u.token))].sort();
 const SURFACES = Object.keys(THEMES.dark.raw).filter((n) => /^(paper|surface)(-\d)?$/.test(n)).sort();
+
+/** The measured pair of one fill use: [{ token, ground, ratio }] in one theme, with a note for a translucent fill. */
+function fillPairs(uses, mode) {
+  const t = THEMES[mode];
+  const lookup = lookupOf(mode);
+  const out = [];
+  for (const u of uses) {
+    const fg = t.resolve(u.token);
+    for (const g of u.grounds) {
+      const c = colourOf(expandVars(g, lookup));
+      out.push({ use: u, ground: g, ratio: fg && c && c[3] === 1 ? contrastRgb(rgbOfHex(fg), c.slice(0, 3)) : null });
+    }
+  }
+  return out;
+}
 
 test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(STYLES.length >= 8, `only ${STYLES.length} style sources read — the walk has drifted`);
@@ -72,6 +141,13 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
   assert.ok(TEXT.length >= 4, `only ${TEXT.length} text tokens found (${TEXT.join(', ')}) — the use scan is blind`);
   for (const must of ['ink', 'muted', 'faint']) assert.ok(TEXT.includes(must), `--${must} is not spent as text anywhere; re-check the scan`);
   assert.ok(SURFACES.length >= 5, `only ${SURFACES.length} surfaces found (${SURFACES.join(', ')})`);
+  assert.ok(RULES.length > 500, `only ${RULES.length} rules read — the rule parse is blind`);
+  // The fills are FOUND in the CSS, not listed: the folder's paper on ink and ink-2, the accent button.
+  assert.ok(FILL_USES.length >= 4, `only ${FILL_USES.length} uses of text on a fill were found`);
+  const fillTokens = new Set(FILL_USES.map((u) => u.token));
+  const grounds = new Set(FILL_USES.flatMap((u) => u.grounds));
+  for (const must of ['paper', 'accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
+  for (const must of ['var(--ink)', 'var(--ink-2)', 'var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill use`);
 });
 
 for (const [name, t] of Object.entries(THEMES)) {
@@ -100,16 +176,13 @@ for (const [name, t] of Object.entries(THEMES)) {
       const r = contrast(ring, t.resolve(surface));
       assert.ok(r >= 3, `${name}: the focus ring --accent on --${surface} is ${r.toFixed(2)}:1, needs 3:1`);
     }
-    // The accent is the one primary fill on both apps: its label, at rest and on hover.
-    for (const fill of ['accent', 'accent-strong']) {
-      const on = contrast(t.resolve('accent-ink'), t.resolve(fill));
-      assert.ok(on >= 4.5, `${name}: --accent-ink on --${fill} is ${on.toFixed(2)}:1, needs 4.5:1`);
-    }
-    // And the inverse fills: the page colour drawn as text on --ink and --ink-2 (the docs folder).
-    for (const fill of ['ink', 'ink-2']) {
-      const on = contrast(t.resolve('paper'), t.resolve(fill));
-      assert.ok(on >= 4.5, `${name}: --paper on --${fill} is ${on.toFixed(2)}:1, needs 4.5:1`);
-    }
+  });
+
+  test(`${name}: every use of text on a fill clears 4.5:1 on every fill the CSS gives that element`, () => {
+    const pairs = fillPairs(FILL_USES, name);
+    const bad = pairs.filter((p) => p.ratio === null || p.ratio < 4.5).map((p) => `--${p.use.token} on ${p.ground} (${p.use.part}): ${p.ratio === null ? 'not an opaque colour' : p.ratio.toFixed(2) + ':1'}`);
+    assert.ok(pairs.length >= 5, `only ${pairs.length} text/fill pairs measured`);
+    assert.deepEqual(bad, [], `${name}: text on a fill below 4.5:1:\n  ${bad.join('\n  ')}`);
   });
 
   test(`${name}: the accent is legible as text on every surface, because links and active labels spend it`, () => {
@@ -132,4 +205,30 @@ test('the guard has teeth: the --faint that shipped fails it', () => {
   assert.ok(contrast('#777777', THEMES.dark.resolve('surface')) < 4.5);
   // #818791 is the app's light --faint: under 4.5:1 on the light raised surface.
   assert.ok(contrast('#818791', THEMES.light.resolve('surface-3')) < 4.5);
+});
+
+test('the guard has teeth: no token is exempt by name, a text colour with no fill of its own is measured on the surfaces, and a failing fill is reported', () => {
+  const rules = rulesOf([[
+    '.free { color: var(--paper); }',
+    '.on-surface { color: var(--paper); background: var(--surface); }',
+    '.ok { color: var(--paper); background: var(--ink); }',
+    '.bad { color: var(--ink); background: var(--accent); }',
+    '.wash { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }',
+    '.multi { color: var(--accent-ink); background: var(--accent); }',
+    '.multi:hover { background: var(--accent-strong); }',
+  ].join('\n')]);
+  const uses = usesOf(rules);
+  const dark = lookupOf('dark');
+  assert.deepEqual(Object.fromEntries(uses.map((u) => [u.part, onFill(u, dark)])), {
+    '.free': false, '.on-surface': false, '.ok': true, '.bad': true, '.wash': false, '.multi': true,
+  }, 'the fill classification drifted');
+  assert.deepEqual(uses.find((u) => u.part === '.multi').grounds.sort(), ['var(--accent)', 'var(--accent-strong)'], 'the hover state of an element is not one of its grounds');
+  // --paper with no fill of its own lands in the surface measurement, where it is the colour of the page.
+  const worst = Math.min(...Object.values(surfacesOf(THEMES.dark)).map((s) => contrast(THEMES.dark.resolve('paper'), s)));
+  assert.ok(worst < 4.5, `--paper on the surfaces is ${worst.toFixed(2)}:1; a free use of it would pass`);
+  assert.ok(uses.filter((u) => !onFill(u, dark)).some((u) => u.token === 'paper'), 'a free use of --paper did not reach the surface measurement');
+  // A fill that fails is reported: ink on the accent is 2.6:1 in dark.
+  const bad = fillPairs(uses.filter((u) => u.part === '.bad'), 'dark');
+  assert.equal(bad.length, 1);
+  assert.ok(bad[0].ratio < 4.5, `the fixture is not a failing fill (${bad[0].ratio})`);
 });

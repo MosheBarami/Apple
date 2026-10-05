@@ -143,3 +143,53 @@ export function worldFor(mode, appProps) {
   const t = theme(themeBlocks()[mode], sharedBlock());
   return { t, lookup: lookupFor(t.raw, appProps), surfaces: Object.entries(surfacesOf(t)).map(([name, hex]) => [name, rgbOfHex(hex)]) };
 }
+
+/* ------------------------------------------------------------------ colours written on a theme root */
+
+/** CSS Color Module named colours, and `transparent`. A spec constant, not a repo list. */
+const NAMED_COLOURS = new Set(('aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen transparent').split(' '));
+const COLOUR_FUNCTION = /(?<![\w-])(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\(/i;
+
+/** True when a declaration value writes a literal colour: hex, any colour function, or a named colour. */
+export function carriesColour(value) {
+  if (/#[0-9a-f]{3,8}(?![\w-])/i.test(value)) return true;
+  if (COLOUR_FUNCTION.test(value)) return true;
+  const words = value.replace(/(['"])(?:(?!\1).)*\1/g, ' ').replace(/url\([^)]*\)/gi, ' ');
+  for (const m of words.matchAll(/(?<![\w-])([a-z]+)(?![\w(-])/gi)) if (NAMED_COLOURS.has(m[1].toLowerCase())) return true;
+  return false;
+}
+
+/**
+ * Is one selector of a list a THEME ROOT: the document element, or the element a theme is switched
+ * on, in any spelling this code base or another could use: `:root`, `html`, `body`, `[data-theme]`
+ * quoted or not, `html.dark`, `:root.light`, `:root:not([data-theme='light'])`, `html:where(.dark)`.
+ * A descendant (`html .card`) is not a root: it is a component scoping its own value.
+ */
+export function isThemeRoot(part) {
+  const compact = part.trim().replace(/\[[^\]]*\]/g, (m) => m.replace(/\s+/g, ''));
+  const flat = compact.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
+  if (!flat || /[\s>+~,]/.test(flat)) return false;
+  const head = /^(?::root|html|body)/i.exec(flat);
+  if (!head && !/\[data-theme|\.(?:dark|light)\b|\.theme-/i.test(flat)) return false;
+  return /^(?:\[data-theme[^\]]*\]|\.(?:dark|light|theme-[\w-]+)|:[\w-]+)*$/i.test(flat.slice(head ? head[0].length : 0));
+}
+
+/**
+ * Every colour a stylesheet writes on a theme root, in any nesting (`@media`, `@layer`, `@supports`)
+ * and in any colour syntax: as { selector, prop, value }.
+ */
+export function themeRootColours(css) {
+  const out = [];
+  for (const m of stripComments(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = m[1].split(';').pop().trim().replace(/\s+/g, ' ');
+    if (!selector || selector.startsWith('@')) continue;
+    if (!splitTop(selector).some(isThemeRoot)) continue;
+    for (const d of splitTop(m[2], ';')) {
+      const colon = d.indexOf(':');
+      if (colon === -1) continue;
+      const [prop, value] = [d.slice(0, colon).trim(), d.slice(colon + 1).trim()];
+      if (carriesColour(value)) out.push({ selector, prop, value });
+    }
+  }
+  return out;
+}

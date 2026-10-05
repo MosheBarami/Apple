@@ -22,10 +22,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   AA, ACCENTS_JSON_PATH, OLD_ACCENT_LITERALS, SURFACES, STATUS_INKS, TEXT_INKS, TOKENS_CSS_PATH,
-  aaFailures, accentRingOf, contrast, declarations, measureAccentExact, readTokensCss, roundRatios, stripComments,
-  surfacesOf, theme, themeBlocks, topLevelRules,
+  aaFailures, accentRingOf, contrast, customPropertyWrites, declarations, measureAccentExact, readTokensCss, roundRatios,
+  stripComments, stripScriptComments, surfacesOf, theme, themeBlocks, topLevelRules,
 } from './css-tokens.mjs';
-import { ROOT, readText, walkText } from './tests/repo-walk.mjs';
+import { ROOT, readText, walkNames, walkText } from './tests/repo-walk.mjs';
 
 const CSS = readTokensCss();
 const BLOCKS = themeBlocks(CSS);
@@ -78,19 +78,44 @@ test('the token file declares exactly one --accent per theme, and has exactly tw
   assert.equal(selectors.filter((s) => /data-theme/.test(s) || s === ':root, :root[data-theme=\'dark\']').length, 2, 'expected exactly the dark and the light theme blocks');
 });
 
-test('no other stylesheet or component style in either app declares a token of the accent family', () => {
+const ACCENT_FAMILY = /^--accent(?:-strong|-ink|-wash|-ring)?$/;
+/** Every write of an accent-family token in one source: CSS, a style object, or setProperty. */
+const accentWrites = (src, isScript) => customPropertyWrites(isScript ? stripScriptComments(src) : stripComments(src)).filter((w) => ACCENT_FAMILY.test(w.name));
+
+test('no other stylesheet, component style or script in either app writes a token of the accent family', () => {
   const files = walkText(['apps/site/src', 'apps/web/src']).concat([{ path: join(ROOT, 'apps/web/index.html'), rel: 'apps/web/index.html' }]);
   assert.ok(files.length > 300, `only ${files.length} app files scanned; the walk has drifted`);
+  assert.ok(files.filter((f) => /\.tsx?$/.test(f.rel)).length > 100, 'the walk found almost no scripts; the style-object and setProperty forms are not being looked for');
   const stray = [];
   for (const f of files) {
     // The vendored AI Elements CSS (Tailwind's own `--accent` for shadcn) is third-party and byte-pinned.
     if (f.rel.startsWith('apps/web/src/components/ai-elements/') || f.rel.startsWith('apps/web/src/components/aicss/') || f.rel.startsWith('apps/web/src/components/ui/')) continue;
-    for (const m of stripComments(readText(f)).matchAll(/(?:^|[;{\s'"])(--accent(?:-strong|-ink|-wash|-ring)?)\s*:/g)) stray.push(`${f.rel}: ${m[1]}`);
+    for (const w of accentWrites(readText(f), /\.(?:tsx?|jsx?|mjs)$/.test(f.rel))) stray.push(`${f.rel}: ${w.name} (${w.form})`);
   }
-  assert.deepEqual(stray, [], `the accent family is declared outside tokens.css:\n  ${stray.join('\n  ')}`);
+  assert.deepEqual(stray, [], `the accent family is written outside tokens.css:\n  ${stray.join('\n  ')}`);
+});
+
+test('the guard has teeth: a stylesheet, a style object and a setProperty call that write the accent are all seen', () => {
+  const names = (src, isScript = true) => accentWrites(src, isScript).map((w) => `${w.name} ${w.form}`);
+  assert.deepEqual(names('.a { --accent: red; }', false), ['--accent declaration']);
+  assert.deepEqual(names('<div style="--accent-ink: #000">', false), ['--accent-ink declaration']);
+  assert.deepEqual(names(`<div style={{ '--accent': c }} />`), ['--accent object key']);
+  assert.deepEqual(names('const style = { "--accent-strong": c };'), ['--accent-strong object key']);
+  assert.deepEqual(names(`el.style.setProperty('--accent-wash', c);`), ['--accent-wash setProperty']);
+  assert.deepEqual(names('el.style.setProperty(`--accent-ring`, c);'), ['--accent-ring setProperty']);
+  // Reads are not writes, other names are not the family, and a comment is not code.
+  assert.deepEqual(names(`const c = getComputedStyle(el).getPropertyValue('--accent'); a.style.color = 'var(--accent)';`), []);
+  assert.deepEqual(names(`el.style.setProperty('--accent-x', c); el.style.setProperty('--chip-accent', c);`), []);
+  assert.deepEqual(names('// el.style.setProperty(\'--accent\', c)\n/* { \'--accent\': c } */\nconst x = 1;'), []);
 });
 
 /* ------------------------------------------------------------------ 3. no accent literals in the apps */
+
+/** The retired accent literals a source still carries, matched case-insensitively and across rgba spacing. */
+const retiredIn = (text) => {
+  const src = text.toLowerCase().replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, 'rgba($1,$2,$3');
+  return OLD_ACCENT_LITERALS.filter((lit) => src.includes(lit));
+};
 
 test('no retired accent literal exists in any tracked source outside packages/design', () => {
   const files = walkText(['apps', 'packages', 'scripts', 'tools', 'infra', 'tests', '.github', 'supabase'], { skipPaths: [
@@ -98,11 +123,24 @@ test('no retired accent literal exists in any tracked source outside packages/de
   ] });
   assert.ok(files.length > 1500, `only ${files.length} files scanned; the walk has drifted`);
   const hits = [];
-  for (const f of files) {
-    const src = readText(f).toLowerCase().replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, 'rgba($1,$2,$3');
-    for (const lit of OLD_ACCENT_LITERALS) if (src.includes(lit)) hits.push(`${f.rel}: ${lit}`);
-  }
+  for (const f of files) for (const lit of retiredIn(readText(f))) hits.push(`${f.rel}: ${lit}`);
   assert.deepEqual(hits, [], `a retired accent literal is still in the tree:\n  ${hits.join('\n  ')}`);
+});
+
+test('the ban names every retired accent, including the three violets and the blue the first pass let drop out of the list', () => {
+  // Spelled out here on purpose: a ban that is a list is only as good as the list, so the list is held.
+  for (const lit of ['#5b7cfa', '#4568e8', '#8ca4ff', '#4264e8', '#3155d4', '#8b5cf6', '#7550de', '#7657ff', '#4f7cff']) {
+    assert.ok(OLD_ACCENT_LITERALS.includes(lit), `${lit} is not banned`);
+  }
+  assert.ok(OLD_ACCENT_LITERALS.some((l) => l.startsWith('rgba(91,124,250')) && OLD_ACCENT_LITERALS.some((l) => l.startsWith('rgba(69,104,232')), 'a translucent form of the old azure is not banned');
+});
+
+test('the guard has teeth: each retired literal is found in the forms it was written, and today\'s accent is not', () => {
+  for (const lit of OLD_ACCENT_LITERALS.filter((l) => l.startsWith('#'))) {
+    assert.deepEqual(retiredIn(`a { color: ${lit.toUpperCase()}; }`), [lit], `${lit} was not found in upper case`);
+  }
+  assert.deepEqual(retiredIn('a { background: rgba( 91 , 124 , 250 , .2 ); }'), ['rgba(91,124,250'], 'a spaced rgba of the old azure was not found');
+  assert.deepEqual(retiredIn(`a { color: ${ACCENTS.candidates[0].dark.accent}; }`), [], 'the shipping accent trips the retired-literal guard');
 });
 
 test('no accent value of any candidate is typed into an app: an app reads the token', () => {
@@ -239,6 +277,14 @@ for (const mode of ['dark', 'light']) {
 
 /* ------------------------------------------------------------------ 6. the system font, nothing downloaded */
 
+/**
+ * Everything that would make a page wait for, or phone out for, a font: a declared face, a hosted
+ * font service, a font package (Fontsource and its predecessors), and a font FILE named from a
+ * stylesheet or an import (woff, woff2, ttf, otf, eot).
+ */
+const WEBFONT = /@font-face|fonts\.googleapis|fonts\.gstatic|use\.typekit|fonts\.bunny|@fontsource|fontsource\.org|typeface-[a-z]|\.(?:woff2?|ttf|otf|eot)\b/i;
+const FONT_PACKAGE = /^(?:@fontsource(?:-variable)?\/|typeface-|@expo-google-fonts\/|fontsource-)/i;
+
 test('the type tokens are the system stack, and no webfont is requested anywhere', () => {
   const body = Object.fromEntries(topLevelRules(CSS).flatMap((r) => declarations(r.body)).map((d) => [d.name, d.value]));
   for (const name of ['--font-body', '--font-display', '--font-sans', '--font-mono']) assert.ok(body[name], `${name} is missing`);
@@ -249,16 +295,41 @@ test('the type tokens are the system stack, and no webfont is requested anywhere
       assert.ok(SYSTEM.has(fam), `${name} names "${fam}", which is not a system face`);
     }
   }
-  const files = walkText(['apps/site/src', 'apps/site/brand', 'apps/site/public', 'apps/web/src', 'packages/design/src/web', 'packages/design/brand'])
-    .concat(['apps/web/index.html'].map((rel) => ({ path: join(ROOT, rel), rel })));
+  const dirs = ['apps/site/src', 'apps/site/brand', 'apps/site/public', 'apps/web/src', 'packages/design/src/web', 'packages/design/brand'];
+  const files = walkText(dirs).concat(['apps/web/index.html'].map((rel) => ({ path: join(ROOT, rel), rel })));
   assert.ok(files.length > 300, `only ${files.length} files scanned; the walk has drifted`);
   const hits = [];
   for (const f of files) {
     if (f.rel.endsWith('tokens.test.mjs') || f.rel.endsWith('flat.test.mjs') || f.rel.endsWith('brand.test.mjs')) continue;
-    const src = readText(f);
-    if (/@font-face|fonts\.googleapis|fonts\.gstatic|use\.typekit|fonts\.bunny/i.test(src)) hits.push(f.rel);
+    if (WEBFONT.test(readText(f))) hits.push(f.rel);
   }
-  assert.deepEqual(hits, [], `a webfont is requested or declared:\n  ${hits.join('\n  ')}`);
+  // A font file on disk is a webfont even when nothing names it yet: the next stylesheet will.
+  for (const rel of walkNames([...dirs, 'apps/web/public'].filter((d) => existsSync(join(ROOT, d))), /\.(?:woff2?|ttf|otf|eot)$/i)) hits.push(`${rel} (a font file)`);
+  // And a font package in a dependency list of either app or of this one.
+  for (const pkg of ['apps/site/package.json', 'apps/web/package.json', 'packages/design/package.json']) {
+    const json = JSON.parse(readFileSync(join(ROOT, pkg), 'utf8'));
+    for (const name of Object.keys({ ...json.dependencies, ...json.devDependencies, ...json.peerDependencies, ...json.optionalDependencies })) if (FONT_PACKAGE.test(name)) hits.push(`${pkg} depends on ${name}`);
+  }
+  assert.deepEqual(hits, [], `a webfont is requested, declared, packaged or shipped:\n  ${hits.join('\n  ')}`);
+});
+
+test('the guard has teeth: every way a font could be pulled in is seen, and the system stack is not', () => {
+  for (const src of [
+    '@font-face { font-family: X; src: url(x.woff2); }',
+    '@import url("https://fonts.googleapis.com/css2?family=Inter");',
+    '<link href="https://fonts.bunny.net/css?family=inter">',
+    "import '@fontsource/inter/400.css';",
+    "import '@fontsource-variable/inter';",
+    "import 'typeface-roboto';",
+    'a { src: url(../fonts/Inter.woff); }',
+    "import inter from './fonts/inter.ttf?url';",
+    'src: url(x.otf), url(y.eot);',
+  ]) assert.ok(WEBFONT.test(src), `a font request was not seen: ${src}`);
+  for (const src of ['font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', 'font-family: ui-monospace, Menlo, monospace;', '.fontsize { font-size: 14px }']) {
+    assert.equal(WEBFONT.test(src), false, `the system stack was reported as a webfont: ${src}`);
+  }
+  for (const name of ['@fontsource/inter', '@fontsource-variable/inter', 'typeface-inter', '@expo-google-fonts/inter']) assert.ok(FONT_PACKAGE.test(name), `${name} is not recognised as a font package`);
+  assert.equal(FONT_PACKAGE.test('react'), false, 'an ordinary package was reported as a font package');
 });
 
 test('the hand-written vocabulary the pixel checker reads names only tokens this file declares', async () => {
