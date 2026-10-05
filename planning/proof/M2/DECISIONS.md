@@ -344,3 +344,18 @@ route; what is open is who pays for the compute inside the bound.
 milestone-cost assumption in item 6. The roadmap chip's per-request scale (section 8) is closed by item 6. The SDK's stream fold does not
 apply `run_cost` (an SDK run resolves at `msg_end`), so an SDK client that watched a Stop mid-step reads the cost known at that instant; the
 stored row, the web footer and the meter agree. Not changed: checkout stays off and nothing was deployed, pushed or sent.
+
+## 11. Accepted after three review cycles (2026-10-05)
+The pricing slice stops here; the handoff allows 3 honest fix cycles. The third review left only one kind of
+finding: the copy guard's rule 4 (`scripts/lib/offer-rules.mjs`) attributes a figure to the nearest plan name by
+character distance. So correct figure-first copy joined by "and" ("5 Credits a day with Free and 20 Credits a day
+with Pro") is reported against the wrong plan. And a plan name followed by a comma ("On Free, you get 30 Credits a
+day") is not tied to its figure.
+
+This is a heuristic in a defence-in-depth guard, not product behaviour:
+- Every figure on `/pricing` and in the app is read from the shared config.
+- `check-offer` reports the live copy coherent (4 plans, 406 files).
+- A figure that no plan grants for that period is still reported, however it is phrased.
+
+Write plan-first sentences until the rule is replaced by a parser of the pricing markup (M6, when the page
+gains the estimate-before-build copy).
