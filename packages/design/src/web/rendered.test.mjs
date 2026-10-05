@@ -588,6 +588,11 @@ for (const mode of MODES) {
         assert.ok(found.length >= 1, `${mode}: the primary button of ${route.name} was not measured ${state}`);
       }
     }
+    // A press is a state of its own (system.css: "PRESSED IS A STATE, not a missing one"): the fill it draws is not the hover's.
+    for (const route of ROUTES.filter((r) => r.guest)) {
+      const [hover, press] = ['hover', 'press'].map((state) => DRAWN[mode].find((v) => v.route === route.name && v.state === state).elements.find((e) => /\bbtn-primary\b/.test(e.cls)).fill);
+      assert.ok([0, 1, 2].some((i) => Math.abs(hover[i] - press[i]) >= 8), `${mode}: the primary of ${route.name} draws the same fill pressed as hovered (rgb(${hover.slice(0, 3).map(Math.round).join(', ')})), so a press looks like a hover`);
+    }
     for (const route of ROUTES.filter((r) => r.fill)) assert.ok(DRAWN[mode].find((v) => v.route === route.name && v.state === 'disabled').elements.length >= 1, `${mode}: the disabled submit of ${route.name} was not measured`);
     // A STATE THAT WAS NEVER REACHED IS NOT A CLEAN READ: each hover read is of a hovered element, each press of an :active one, each focus of a :focus-visible one.
     const unreached = [['hover', 'hover'], ['press', 'active'], ['focus', 'focus']].flatMap(([state, flag]) => drawn(state).flatMap((v) => v.elements.filter((e) => !e.states[flag]).map((e) => `${v.route} ${state} <${e.tag} class="${e.cls}"> "${e.name}"`)));
