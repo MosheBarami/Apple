@@ -6,15 +6,24 @@
  * the favicons, the share card, the dashboards) carries that same path, and this file holds them
  * equal by READING each one, not by being told they are.
  *
+ * The generated assets are held to their sources without a browser: a manifest records a hash of what
+ * every PNG is made from and of every PNG as written (brand-recipe.mjs), and this file recomputes both
+ * from the tree, so a changed mark, a changed token or a PNG that was swapped or left behind fails in
+ * `pnpm -r test` on any machine. scripts/make-brand-assets.mjs --check adds a re-render and runs in CI.
+ *
  * It also holds the retirement: the azure studded brick, the folded-sheet outline and the hexagon
  * holding a cube were three drawings in production at once (planning/sections/10-web-brand-design.md
  * 10.5.2). None of their files, none of their geometry and none of their palette may come back.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { readTokensCss, theme, themeBlocks } from './css-tokens.mjs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import {
+  FAVICON_COPIES, MANIFEST_FILE, MARK_FILE, OG_SOURCE, PNGS, TOKENS_FILE, WEB_FAVICON_FILE,
+  brandSources, iconSvg, manifestOf, manifestProblems, readManifest, withWebFavicon,
+} from './brand-recipe.mjs';
 import { ROOT, readText, walkText } from './tests/repo-walk.mjs';
 
 const abs = (rel) => join(ROOT, rel);
@@ -63,22 +72,24 @@ test('the wordmark lockup is the mark plus live text in the system font', () => 
 
 /* ------------------------------------------------------------------ one drawing, everywhere */
 
-/** The default dark base and accent: what the favicon is made of. */
-const dark = theme(themeBlocks(readTokensCss()).dark);
-const PAPER = dark.resolve('paper');
-const ACCENT = dark.resolve('accent');
-
-/** The favicon exactly as scripts/make-brand-assets.mjs composes it (kept in step by this test). */
-const SCALE = 0.74;
-const OFFSET = ((32 - 32 * SCALE) / 2).toFixed(2);
-const faviconText = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="StudPilot">` +
-  `<rect width="32" height="32" rx="7" fill="${PAPER}"/>` +
-  `<path transform="translate(${OFFSET} ${OFFSET}) scale(${SCALE})" fill="${ACCENT}" fill-rule="evenodd" d="${MARK_PATH}"/></svg>\n`;
+/** The favicon exactly as the generator composes it: both read the one recipe in brand-recipe.mjs. */
+const faviconText = iconSvg(brandSources());
 
 test('the favicon is composed from the mark and the tokens, and every copy of it is identical', () => {
-  for (const rel of [`${BRAND}/favicon.svg`, 'apps/site/public/favicon.svg', 'tools/repo-chat/public/favicon.svg']) {
+  assert.ok(FAVICON_COPIES.length >= 3, 'the generator lists fewer than three standalone favicon copies');
+  for (const rel of FAVICON_COPIES) {
     assert.equal(read(rel), faviconText, `${rel} is not the favicon composed from the mark and tokens.css; run \`pnpm brand\``);
   }
+});
+
+test('no file carries a favicon the generator does not write', () => {
+  // The recipe's signature: a 32 unit tile with a radius of 7, in either quoting (the app inlines it as
+  // a data: URI). A copy made by hand somewhere new would be stale the next time the mark or the accent moves.
+  const signature = /width=['"]32['"] height=['"]32['"] rx=['"]7['"]/;
+  const files = walkText(['apps', 'packages', 'tools', 'scripts', 'infra', 'tests', '.github']);
+  assert.ok(files.length > 1500, `only ${files.length} files scanned; the walk has drifted`);
+  const carriers = files.filter((f) => !f.rel.startsWith('packages/design/src/web/') && signature.test(readText(f))).map((f) => f.rel).sort();
+  assert.deepEqual(carriers, [...FAVICON_COPIES, WEB_FAVICON_FILE].sort(), 'a favicon copy exists that scripts/make-brand-assets.mjs does not regenerate, or one it regenerates is gone');
 });
 
 test('every place that draws the mark draws the same path', () => {
@@ -99,11 +110,12 @@ test('every place that draws the mark draws the same path', () => {
 });
 
 test("the app's inline favicon decodes to the same favicon", () => {
-  const html = read('apps/web/index.html');
+  const html = read(WEB_FAVICON_FILE);
   const href = /rel="icon"\s+href="(data:image\/svg\+xml,[^"]+)"/.exec(html)?.[1];
   assert.ok(href, 'apps/web/index.html has no inline SVG favicon');
   const svg = decodeURIComponent(href.slice('data:image/svg+xml,'.length));
   assert.equal(svg.replace(/'/g, '"') + '\n', faviconText, 'the web app favicon is not the brand favicon');
+  assert.equal(withWebFavicon(html, faviconText), html, `${WEB_FAVICON_FILE} is not what the generator writes around its inline favicon; run \`pnpm brand\``);
 });
 
 /* ------------------------------------------------------------------ the raster set */
@@ -124,6 +136,80 @@ test('the PNG icon set exists at the right sizes, and the site serves the same b
   }
   assert.ok(readFileSync(abs(`${BRAND}/icon-512.png`)).equals(readFileSync(abs('apps/site/public/icon-512.png'))), 'the site icon-512 is not the brand icon-512');
   assert.ok(readFileSync(abs(`${BRAND}/icon-180.png`)).equals(readFileSync(abs('apps/site/public/apple-touch-icon.png'))), 'the apple-touch-icon is not the brand icon-180');
+});
+
+/* ------------------------------------------------------------------ the PNGs are tied to what they are made from */
+
+const STORED = readManifest();
+
+test('the manifest names every PNG the generator writes, and the input each is made from', () => {
+  assert.deepEqual(Object.keys(STORED.outputs).sort(), PNGS.map((p) => p.out).sort(), `${MANIFEST_FILE} lists a different set of PNGs than the generator writes`);
+  assert.deepEqual(Object.keys(STORED.inputs).sort(), ['icon', 'iconSquare', 'og'], 'the manifest must hash the three inputs: the round icon, the touch icon and the share card');
+  for (const p of PNGS) assert.equal(STORED.outputs[p.out].input, p.input, `${p.out} is recorded as made from the wrong input`);
+  assert.match(STORED.renderedOn, /^(darwin|linux|win32)$/, 'the manifest does not say which platform drew the share card');
+});
+
+test('every PNG is the one the generator wrote, from the mark, the tokens and the card as they are now', () => {
+  // Recomputed from the tree, no browser: the icon SVG as composed from the mark and the dark tokens,
+  // the share card's HTML with the token file it links, and the bytes of every PNG on disk.
+  assert.deepEqual(manifestProblems(STORED, manifestOf(ROOT, STORED.renderedOn)), [], 'a PNG is stale: it was not made from the sources as they are now');
+});
+
+test('the guard has teeth: a swapped PNG, a moved mark, an edited card or a moved token is reported', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'brand-teeth-'));
+  try {
+    const copy = (rel) => { mkdirSync(dirname(join(tmp, rel)), { recursive: true }); cpSync(abs(rel), join(tmp, rel)); };
+    for (const rel of [MARK_FILE, TOKENS_FILE, OG_SOURCE, ...PNGS.map((p) => p.out)]) copy(rel);
+    const probe = () => manifestProblems(STORED, manifestOf(tmp, STORED.renderedOn));
+    assert.deepEqual(probe(), [], 'the copy of the tree is not current; the fixture is wrong');
+
+    // 1. an old or wrong PNG put in place of a current one
+    const victim = PNGS.find((p) => p.out === 'apps/site/public/icon-192.png').out;
+    const keep = readFileSync(join(tmp, victim));
+    writeFileSync(join(tmp, victim), readFileSync(abs('packages/design/brand/icon-32.png')));
+    assert.ok(probe().some((m) => m.startsWith(victim) && /not the PNG the generator wrote/.test(m)), 'a swapped PNG was not reported');
+    writeFileSync(join(tmp, victim), keep);
+
+    // 2. the mark moves and nobody regenerates
+    const mark = readFileSync(join(tmp, MARK_FILE), 'utf8');
+    writeFileSync(join(tmp, MARK_FILE), mark.replace(/Q29 3 29 4\.2/, 'Q29 3 29 5.2'));
+    assert.notEqual(readFileSync(join(tmp, MARK_FILE), 'utf8'), mark, 'the fixture did not change the mark');
+    const moved = probe();
+    assert.ok(moved.some((m) => /"icon" render inputs changed/.test(m)) && moved.some((m) => /"iconSquare" render inputs changed/.test(m)), 'a moved mark was not reported');
+    writeFileSync(join(tmp, MARK_FILE), mark);
+
+    // 3. the share card is edited
+    const card = readFileSync(join(tmp, OG_SOURCE), 'utf8');
+    writeFileSync(join(tmp, OG_SOURCE), card + '\n<!-- edited -->\n');
+    assert.ok(probe().some((m) => /"og" render inputs changed/.test(m)), 'an edited card was not reported');
+    writeFileSync(join(tmp, OG_SOURCE), card);
+
+    // 4. a token moves (the card links the whole token file)
+    const tokens = readFileSync(join(tmp, TOKENS_FILE), 'utf8');
+    writeFileSync(join(tmp, TOKENS_FILE), tokens.replace('--paper: #0a0b0d;', '--paper: #0a0b0e;'));
+    const dim = probe();
+    assert.ok(dim.some((m) => /"og" render inputs changed/.test(m)) && dim.some((m) => /"icon" render inputs changed/.test(m)), 'a moved base colour was not reported for the icon and the card');
+    writeFileSync(join(tmp, TOKENS_FILE), tokens);
+
+    // 5. a PNG the manifest does not know, and one it lists that the generator dropped
+    assert.ok(manifestProblems({ ...STORED, outputs: { ...STORED.outputs, 'apps/site/public/old.png': { input: 'icon', sha256: '0' } } }, manifestOf(tmp, STORED.renderedOn)).some((m) => /no longer writes/.test(m)), 'a stale manifest entry was not reported');
+    assert.deepEqual(probe(), [], 'the fixture was not restored');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('CI runs the brand check, headless, after Chromium is installed', () => {
+  const ci = read('.github/workflows/ci.yml');
+  const start = ci.indexOf('\n  typecheck-and-test:');
+  assert.ok(start > 0, 'ci.yml has no typecheck-and-test job');
+  const rest = ci.slice(start + 1);
+  const end = rest.search(/\n  [a-z][\w-]*:\n/);
+  const job = end === -1 ? rest : rest.slice(0, end);
+  const install = job.search(/playwright install --with-deps chromium/);
+  const check = job.search(/^\s+run: node scripts\/make-brand-assets\.mjs --check\s*$/m);
+  assert.ok(install > 0, 'the job that runs the tests no longer installs Chromium; the brand check has no browser');
+  assert.ok(check > install, 'ci.yml does not run `node scripts/make-brand-assets.mjs --check` after installing Chromium in the typecheck-and-test job');
 });
 
 test('the site links the favicon and touch icon, and its manifest points at icons that exist', () => {

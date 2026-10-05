@@ -24,11 +24,18 @@ accent wherever it is placed and works on any ground.
 
 ## What was made from it
 
-`node scripts/make-brand-assets.mjs` renders `favicon.svg` (the mark in the default accent from
-`tokens.css`, on a tile in the dark base colour) and the PNG icons `icon-16.png`, `icon-32.png`,
-`icon-180.png` and `icon-512.png` from it, copies the site's set into `apps/site/public/`, and
-renders the share card `apps/site/public/og.png` from `apps/site/brand/og.html`. `--check` fails if
-any of them is out of date with its source.
+`node scripts/make-brand-assets.mjs` composes `favicon.svg` (the mark in the default accent from
+`tokens.css`, on a tile in the dark base colour) and writes it to every place that carries a copy:
+`packages/design/brand/`, `apps/site/public/`, `tools/repo-chat/public/` and the inline `data:` URI of
+`<link rel="icon">` in `apps/web/index.html`. It renders the PNG icons `icon-16.png`, `icon-32.png`,
+`icon-180.png` and `icon-512.png` from it, copies the site's set into `apps/site/public/`, and renders
+the share card `apps/site/public/og.png` from `apps/site/brand/og.html`. It also writes
+`brand-manifest.json`: a hash of what each render is made from and of every PNG as written.
+
+`--check` fails if any of them is out of date with its source: the four favicon copies are compared
+exactly, every icon is re-rendered and compared with the committed PNG picture for picture, and the
+manifest must match the mark, the tokens, the card and the PNGs on disk. CI runs it, and
+`packages/design/src/web/brand.test.mjs` holds the manifest half in `pnpm -r test` without a browser.
 
 ## What it replaced
 

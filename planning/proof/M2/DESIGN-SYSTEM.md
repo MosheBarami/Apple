@@ -84,7 +84,8 @@ Rendered at 16, 32 and 180 px in `planning/proof/M2/logo/` (`favicon-16.png`, `f
 mark: it composes `favicon.svg` from the mark and the tokens, renders `icon-16/32/180/512.png` into
 `packages/design/brand/` and the site's set (`apple-touch-icon.png`, `icon-192.png`, `icon-512.png`,
 `og.png`) into `apps/site/public/`. It fetches nothing: a request to anything but `file://` fails the
-run. `node scripts/make-brand-assets.mjs --check` verifies every output is current.
+run. `node scripts/make-brand-assets.mjs --check` verifies every output is current (at first it wrote and
+checked two of the four favicon copies; section 10.4 is what it checks now).
 
 Every use of an old mark was replaced:
 
@@ -172,7 +173,8 @@ column on a phone); a planted `display: block` on the rail turns it red.
 - `--faint` and the other tokens are measured against the five surfaces only; text on photographs or
   on a real Studio screenshot is the blind critic's job.
 - `og.png` is rendered in the system font of the machine that runs `pnpm brand`, so it is not
-  byte-identical across operating systems; `--check` is a local command, not a CI step.
+  byte-identical across operating systems. (`--check` is a CI step now, and compares the card by its
+  manifest hashes on any other platform than the one that drew it: section 10.4.)
 - `scripts/check-pixels.mjs` rule 4 (a frame differing from its baseline by more than 2%) fires on every
   frame, because the look changed on purpose. The 80-frame baseline (11 MB) is re-taken with
   `--write-baseline` when the rebuilt layouts land, not twice.
@@ -331,6 +333,50 @@ editable here). They draw with `--color-ring`, which passes. One of them, the `S
 (`scroll-area.tsx`), draws only `ring-ring/50` (a 3 px ring at half of `--accent-ring`, 1.84:1 dark and
 1.74:1 light) beside `outline-none`; it is not fixed here and is listed in the final report.
 
+### 10.4 The brand script regenerates every favicon copy, and the PNGs are tied to the mark
+
+Found: the favicon exists in four places, and the script wrote two (`packages/design/brand/` and
+`apps/site/public/`). The third, `tools/repo-chat/public/favicon.svg`, and the fourth, the inline
+`data:` URI in `apps/web/index.html`, were copies made by hand that `brand.test.mjs` compared but the
+generator never wrote or checked: change the accent and `pnpm brand` left two stale favicons, and
+`--check` passed. The PNGs were checked only by re-rendering and comparing bytes on the same machine,
+which is a local command (another machine encodes differently), so nothing in CI or in `pnpm -r test`
+could see an old or hand-swapped PNG.
+
+Fixed:
+
+- The recipe moved to `packages/design/src/web/brand-recipe.mjs`, read by the generator and by the test,
+  so they cannot drift. The generator writes all four favicon copies (the app's by rewriting the one
+  `<link rel="icon">` href around its own inline data: URI) and `--check` compares all four exactly.
+  Changing the inline favicon by one hex digit, or the repo-chat one, now fails `--check`; running
+  `pnpm brand` restores both byte for byte (measured).
+- A new test finds every file in the tree that carries the favicon's signature (a 32 unit tile with
+  `rx` 7) and requires that set to equal what the generator writes (4 files).
+- `packages/design/brand/brand-manifest.json`, written by the generator: a sha-256 of each input (the
+  round icon SVG, the touch icon SVG, and the share card's HTML with the token file it links) and of
+  each of the eight PNGs as written. `brand.test.mjs` recomputes all of it from the tree with no
+  browser, in `pnpm -r test`. It fails on a moved mark, a moved token, an edited card, and a PNG that
+  was swapped, left behind or edited. Its teeth test builds a copy of the tree and plants each of those.
+- `--check` also re-renders every icon and compares it with the committed PNG picture for picture
+  (decoded pixels: mean difference per channel and the share of pixels far off), not byte for byte.
+  The tolerance is `mean <= 8` and `far <= 5%`. Measured against the committed icons: the same recipe
+  in four other Chromium configurations differs by 0.00; the software-GL configuration, the
+  furthest one found, by a mean of 2.21 at 16 px, 1.69 at 32, 0.26 at 180, 0.23 at 192, 0.08 at 512
+  (at most 0.01% of pixels far off). A cyan accent differs by a mean of 17.2 to 17.8 (26 to 30% far),
+  the old azure-brick icons by 28.8 to 32.0 (32 to 37% far), a scale of 0.70 for 0.74 by 6.4 to 7.5
+  (5.7 to 7.2% far). A one-unit change to a corner of the mark (mean 0.03), a radius of 8 for 7 (0.9)
+  and a base colour of `#131519` for `#0a0b0d` (5.4) are NOT visible at that tolerance, which is why
+  the manifest hashes exist: they catch those exactly. A stale PNG whose manifest hash was also
+  edited to match is caught by the render and not by the hashes, and the reverse; the two are one check.
+- `og.png` is drawn in the system font of the machine that made it. `--check` compares it by render
+  only on the platform the manifest records (`renderedOn`, `darwin`); on any other it says so in its
+  report line and the manifest hashes are its check.
+- CI: `typecheck-and-test` already installs Playwright Chromium before `pnpm -r test`, so
+  `node scripts/make-brand-assets.mjs --check` is a step there, after the install (a test fails if the
+  step is removed or moved before the install). It fetches nothing. Not run on a Linux runner from
+  here: the first CI run is its first measurement there, and the tolerance above is sized from the
+  noise measured on this machine, not from a Linux render.
+
 ### 10.9 Mutations of the review fixes: every new or restated test went red, then green
 
 Each row: one planted break (the anchor was asserted to occur exactly once; the file was restored byte
@@ -350,3 +396,11 @@ for byte and the hash compared), and the test that went red. The harness is not 
 | 1 | `--qr-ground` made translucent | the same, dark and light |
 | 2 | `dashboard.css` hover back to the mix of two accents | `dark:` and `light: a primary button's hover background differs from its resting background...` |
 | 2 | `apps/site` `base.css` `.btn-primary:hover` background set to the rest colour | the same two |
+| 4 | the old azure-brick `icon-512.png` put in `apps/site/public/` | `every PNG is the one the generator wrote...`; `--check`: mean difference 31.97, 36.5% far, and the manifest hash |
+| 4 | the mark's corner moved by one unit (`Q29 3 29 5.2`) | `the favicon is composed from the mark...`, `every PNG is the one the generator wrote...`, the wordmark and path tests; `--check`: all four favicon copies and the manifest inputs |
+| 4 | `tools/repo-chat/public/favicon.svg` drifts by one hex digit | `--check` (it did not see this copy before) |
+| 4 | the inline favicon in `apps/web/index.html` drifts by one hex digit | `--check`; `the app's inline favicon decodes to the same favicon` |
+| 4 | a hand-made `favicon-copy.svg` appears in `tools/repo-chat/public/` | `no file carries a favicon the generator does not write` |
+| 4 | the CI step replaced by `echo skipped` | `CI runs the brand check, headless, after Chromium is installed` |
+| 4 | the CI step moved before the Chromium install | the same |
+| 4 | `icon-192.png` replaced by a cyan render and its manifest hash edited to match | `--check` by render alone (mean difference 17.57, 29.4% far); the no-browser test passes, as designed |

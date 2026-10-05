@@ -115,6 +115,16 @@ jobs:
         # them. Same install the Playwright smoke job runs; free, and it downloads no model.
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: The brand assets are current
+        # The icons and the share card are PNGs, which no check that reads text can see go stale, and the
+        # favicon is copied into four places. `make-brand-assets.mjs --check` re-renders every icon in the
+        # Chromium installed above and compares it with the committed PNG picture for picture (not byte
+        # for byte: this runner antialiases a little differently from the machine that ran `pnpm brand`),
+        # compares every favicon copy exactly, and checks the manifest of input and output hashes. The
+        # share card is drawn in the system font of the machine that made it, so on this runner its
+        # manifest hashes are its check. It fetches nothing: a request to anything but a file fails it.
+        run: node scripts/make-brand-assets.mjs --check
+
       - name: Tests
         # Offline by construction. See the cost policy at the top of this file.
         run: pnpm -r test
