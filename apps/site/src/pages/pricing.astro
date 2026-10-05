@@ -994,6 +994,17 @@ const limits = [...limitFaq, sharedLimit];
       align-items: center;
     }
 
+    /* The visually-hidden "Included" of a tick cell is out of flow, and in a grid its phantom box sat in the first column, over the plan's label
+       (the e2e contrast audit measured it against the label's glyphs). It is placed in the value column instead, where the tick is. */
+    .stack-sm td[data-label] {
+      position: relative;
+    }
+
+    .stack-sm td[data-label] > :global(.visually-hidden) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
     .stack-sm td[data-label]::before {
       margin-bottom: 0;
     }
