@@ -94,25 +94,67 @@ for (const [kind, secret] of [
   });
 }
 
-test('an OAuth token named in a form body, a URL fragment or a JSON object is removed, and prose about one is not', () => {
-  // Sign in with Roblox moves tokens through exactly these three shapes, and the name beside the value is
-  // what says it is a credential: a sign-in token hash has no prefix of its own.
-  for (const shape of [
-    'refresh_token=Zx9Qw8Er7Ty6Ui5Op4',
-    'client_secret=Zx9Qw8Er7Ty6Ui5Op4',
-    '#token_hash=Zx9Qw8Er7Ty6Ui5Op4&next=%2Fusage',
-    '{"refresh_token":"Zx9Qw8Er7Ty6Ui5Op4"}',
-    "access_token: 'Zx9Qw8Er7Ty6Ui5Op4'",
-    'code_verifier=Zx9Qw8Er7Ty6Ui5Op4',
+// What a real credential looks like once it is NAMED: Roblox's own tokens and the opaque ones Sign in with Roblox moves
+// (a refresh token, a client secret, a PKCE verifier, a sign-in token hash). Mixed-case random, or a long hex digest.
+const OAUTH_OPAQUE = 'Zx9Qw8Er7Ty6Ui5Op4Aa3Ss2Dd1Ff0Gg';
+const OAUTH_VERIFIER = 'dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk-A7b3C9d1E5f2G';
+const OAUTH_HEX_HASH = 'a3f1c9e07b5d42868f0e1d2c3b4a59687766554433221100ffeeddcc';
+
+test('an OAuth token named in a form body, a URL fragment or a JSON object is removed, whatever shape it has', () => {
+  // Sign in with Roblox moves tokens through exactly these shapes, and the name beside the value is what says it is a
+  // credential: a sign-in token hash has no prefix of its own.
+  for (const [shape, secret] of [
+    [`refresh_token=${OAUTH_OPAQUE}`, OAUTH_OPAQUE],
+    [`client_secret=${OAUTH_OPAQUE}`, OAUTH_OPAQUE],
+    [`code_verifier=${OAUTH_VERIFIER}`, OAUTH_VERIFIER],
+    [`#token_hash=${OAUTH_HEX_HASH}&next=%2Fusage`, OAUTH_HEX_HASH],
+    [`{"token_hash":"${OAUTH_HEX_HASH}","next":"/"}`, OAUTH_HEX_HASH],
+    [`{"refresh_token":"${OAUTH_OPAQUE}"}`, OAUTH_OPAQUE],
+    [`access_token: '${OAUTH_OPAQUE}'`, OAUTH_OPAQUE],
+    [`grant_type=refresh_token&refresh_token=${OAUTH_OPAQUE}&client_id=123`, OAUTH_OPAQUE],
   ]) {
     const message = `exchange failed: ${shape} (retrying)`;
     assert.ok(R.scanSecrets(message).some((f) => f.kind === 'oauth_token'), `${shape} was not found as an oauth_token`);
-    assert.equal(R.redactSecrets(message).text.includes('Zx9Qw8Er7Ty6Ui5Op4'), false, `the value survived in ${shape}`);
+    assert.ok(R.scanSecrets(message, { minConfidence: 'high' }).some((f) => f.kind === 'oauth_token'), `${shape} must be caught by the egress gate too`);
+    assert.equal(R.redactSecrets(message).text.includes(secret), false, `the value survived in ${shape}`);
   }
-  // The false-positive direction: a sentence that names the field without a value is not a credential.
-  const prose = 'the refresh_token is rotated on every use and the code_verifier is kept for ten minutes';
-  assert.equal(R.redact(prose).text, prose);
-  assert.equal(R.scanSecrets(prose, { minConfidence: 'high' }).length, 0, 'and the egress gate, which reads high-confidence rules only, leaves it alone');
+});
+
+test('code that merely NAMES an OAuth field, or prose about one, is not a credential: the rule matches real credential shapes only', () => {
+  // Every line here is ordinary source or documentation. Matching any of them is the egress gate deleting a working
+  // tool (an agent reading its own Luau or TypeScript) and teaching whoever debugs it to turn the gate off.
+  for (const code of [
+    'local refresh_token = response.refresh_token',
+    'local access_token = tokens.access_token or ""',
+    'refresh_token = refreshToken',
+    'const { access_token, refresh_token } = await res.json();',
+    'client_secret = os.getenv("CLIENT_SECRET")',
+    'client_secret = process.env.ROBLOX_OAUTH_CLIENT_SECRET',
+    'code_verifier = base64url(randomBytes(32))',
+    'const code_verifier = generateCodeVerifier()',
+    'refresh_token: string;',
+    '"refresh_token": null',
+    'refresh_token=<redacted>',
+    'refresh_token=${REFRESH_TOKEN}',
+    'client_secret="your-client-secret-here"',
+    'client_secret=REPLACE_ME_WITH_THE_SECRET_FROM_THE_DASHBOARD',
+    'token_hash = "ht_example"',
+    'self.refresh_token = data["refresh_token"]',
+    'local refresh_token = session.RefreshToken1234567890abc',      // a dotted path that happens to be long and mixed
+    'access_token = getAccessTokenFromTheSessionStore',             // a camelCase identifier: no digit
+    'client_secret=ROBLOX_OAUTH_CLIENT_SECRET_FROM_THE_ENVIRONMENT', // a SHOUTING identifier: no lower case
+    'client_secret=ROBLOX_OAUTH_CLIENT_SECRET_V2_FROM_THE_ENV',      // ... even with a digit in it
+    'client_secret = roblox_oauth_client_secret_v2_from_vault',      // a snake_case identifier with a digit: no upper case
+    'access_token: Abc123Def',                                       // short: not a credential's length
+    'the refresh_token is rotated on every use and the code_verifier is kept for ten minutes',
+  ]) {
+    assert.deepEqual(R.scanSecrets(code).filter((f) => f.kind === 'oauth_token'), [], `${code} was read as a credential`);
+    assert.equal(R.redact(code).text, code, `${code} was redacted`);
+    assert.equal(R.scanSecrets(code, { minConfidence: 'high' }).length, 0, `${code} would be blocked at the egress gate`);
+  }
+  // And the gate itself: an outbound body that is only code is let through, the same body with a real value is not.
+  assert.equal(R.checkEgress({ url: 'https://example.com/x', body: 'local refresh_token = response.refresh_token' }).ok, true);
+  assert.equal(R.checkEgress({ url: 'https://example.com/x', body: `refresh_token=${OAUTH_OPAQUE}` }).ok, false);
 });
 
 test('the finding carries a preview, and the preview is not the secret', () => {
