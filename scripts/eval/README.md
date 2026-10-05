@@ -111,22 +111,32 @@ Steps, each timed in `timing.json`:
    event id `eval-<milestone>-<id>-<time>`. A displayed credit is 150 ledger units (`INTERNAL_PER_CREDIT`).
 5. **agent-run**: the request text exactly as written, nothing else. From the moment the start request is sent the worker may have a
    run going, so the run is recorded first (`manifest.run`: `startConfirmed` is true only when the worker answered 200, and
-   `startError` holds the error otherwise) and treated as live. A 5xx or no answer on the start request is NOT "the run did not
-   start": the runner stops the run it may have started (`endedBy: start-failed`), and the piece counts as attempted. A 403 or 409
-   is the worker saying no: no run of ours exists, none is recorded and nothing is stopped. Then it polls `session-info` every 5 s.
+   `startError` holds the error otherwise) and treated as live. A 5xx, a 408, a 429 or no answer on the start request is NOT "the
+   run did not start": the runner stops the run it may have started (`endedBy: start-failed`), and the piece counts as attempted.
+   A 403 or 409, and any other 4xx the worker answers with (a 400, 401 or 404), is the worker saying no: no run of ours exists,
+   none is recorded, nothing is stopped and the piece does not count as attempted. Then it polls `session-info` every 5 s.
    A poll that fails with something a retry can fix (no answer, a 5xx, a 429) is tried again up to four times; a poll that cannot be
-   read at all, a Ctrl-C or SIGTERM (below), and any other way out of the runner while the run is live STOP the run (`agent-stop`,
-   then waits for it to go idle) and record it under `manifest.run.stop` (why, whether the stop was accepted, whether the run went
-   idle); `manifest.run.endedBy` says which (`poll-failed`, `interrupted`, `harness-stopped`) and the piece cannot pass. After 15
-   minutes (`--timeout-minutes`) it does the same and records `endedBy: timeout`; a run that never showed itself as running is
-   stopped too, so a late start cannot run on unseen. Only `idle` counts as finished and as stopped: the worker says `stopping`
-   while a tool is still finishing, the poll keeps waiting through it, and after a stop the runner waits for `idle` for up to 90 s. If the worker never says `idle` after a stop, the
-   piece ends there, unmeasured and not photographed (the place may still be changing), the runner says so, and you stop the run
-   by hand (`POST /api/admin/agent-stop/<project>`).
-   **Ctrl-C and SIGTERM.** Node's default would end the runner at once with the paid run still going and nothing written, so the
-   first signal is only noted: the step in flight finishes (during the run the poll notices at its next tick), no further step
-   begins, a live run is stopped, and the files are written with `aborted` saying `interrupted by SIGINT` (or `SIGTERM`). A second
-   Ctrl-C kills the runner the ordinary way, with nothing written and a live run still going: stop it by hand.
+   read at all, a signal (below), and any other way out of the runner while the run is live STOP the run (`agent-stop`, then waits
+   for it to go idle) and record it under `manifest.run.stop` (why, when, whether the stop was accepted, whether the run went idle);
+   `manifest.run.endedBy` says which (`poll-failed`, `interrupted`, `harness-stopped`) and the piece cannot pass. After 15
+   minutes (`--timeout-minutes`) it does the same and records `endedBy: timeout`. A run that was never seen as running within
+   60 s is stopped too (`never-started`), so a late start cannot run on unseen; a run that WAS seen running is never filed that way.
+   Only `idle` counts as finished and as stopped: the worker says `stopping` while a tool is still finishing (the owner pressed
+   Stop in the app, or access was revoked), and the poll keeps waiting through it, for as long as it takes up to the timeout.
+   After a stop the runner waits for `idle` for up to 90 s. A stop the worker accepted is asked for once: if the run still is
+   not idle after the wait, the piece ends there, unmeasured and not photographed (the place may still be changing), the runner
+   says so, and you stop the run by hand (`POST /api/admin/agent-stop/<project>`). A stop request the worker did NOT accept
+   (a 5xx, no answer) is tried once more when the runner winds up; `manifest.run.stop.attempts` says how many, and the reason and
+   time recorded are those of the first.
+   **Ctrl-C, SIGTERM and SIGHUP** (closing the terminal window). Node's default would end the runner at once with the paid run
+   still going and nothing written, so the first signal is only noted: it wakes the poll at once, the step in flight finishes, no
+   further step begins, a live run is stopped, and the files are written with `aborted` saying `interrupted by SIGINT` (or
+   `SIGTERM`, or `SIGHUP`). A second Ctrl-C kills the runner the ordinary way, with nothing written and a live run still going: stop
+   it by hand. SIGKILL and a power cut cannot be caught: the same. A terminal's Ctrl-C goes to the whole foreground process
+   group, which includes the Studio MCP process the runner starts; if that process exits on it, a Studio step in flight (reset,
+   measure, captures, play test) fails with "MCP server exited" instead of finishing (not observed against the real Studio MCP,
+   which these tests do not use). That never affects stopping a live run, which only talks to the worker; the files are still
+   written, with that step as the abort. Re-run the piece.
 6. **messages**: the reply, the tool trace (steps), the stop reason and `creditsSpent` of this run.
 7. **measure**: what the run added: instances and parts, the box to frame, the screen UIs (a ScreenGui with nothing in it is
    not a UI), the terrain it edited, and where the player spawns. World, UI, both, or none. Terrain counts as world: a piece
@@ -240,7 +250,7 @@ Read these before trusting a number.
   `bench-reset` (refused: it clears checkpoints and Lighting and M4 removes it).
 - **A start request whose answer was lost** may still land after the harness's stop: the runner stops what it may have started and
   says so, but it cannot rule out a start that arrives later, and the manifest keeps `startConfirmed: false` for it. The signal
-  handling was proved with signals delivered inside the test process (once also with a real SIGINT sent to it), never against a
+  handling was proved with signals delivered inside the test process (once also with a real SIGINT and a real SIGHUP sent to it, in a throwaway copy: the handler caught each, and without the SIGHUP handler the signal ended the test process), never against a
   live Studio or worker.
 - **No button-press log.** Plan 4.2 lists one; nothing presses buttons in M3, so critics judge UI state cues from stills.
 - **Console noise.** The text heuristic reads error lines from a console that has no level column; the typed `LogService`
@@ -268,7 +278,7 @@ Read these before trusting a number.
 - `the request to start the run failed ... not known whether the worker started one`: the start request got a 5xx or no answer.
   The runner stopped whatever it may have started (`manifest.run.startConfirmed` is false, `endedBy` is `start-failed`). Look at the
   project's chat and the account's credit balance before the next piece: a start whose answer was lost can still land.
-- `interrupted by SIGINT` (or `SIGTERM`): the runner was stopped by a person or a wrapper; the run, if live, was stopped and the files
+- `interrupted by SIGINT` (or `SIGTERM` or `SIGHUP`): the runner was stopped by a person, a closed terminal or a wrapper; the run, if live, was stopped and the files
   were written. `NOT confirmed idle` means stop it by hand.
 - `... NOT confirmed idle: stop it by hand; the piece is not measured while the place may still be changing`: the worker still said
   `stopping` (or nothing) 90 s after the stop. Stop the run by hand, wait for the project to say idle, then run the piece again.
