@@ -55,9 +55,15 @@ go to `THIRD_PARTY_NOTICES.md`.
 
 - **R1, the shell (built).** `apps/studio`: a Flue agent with Kumo and `@flue/react`, reading a place through
   `StudioGate`.
-- **R2, the Studio side.** Port roblox-ai-studio's ScriptOps, InstanceOps, LogOps, PlaytestOps and TestOps
-  into the plugin, behind the allowlist, with one undo waypoint per call. Tool schemas follow robloxstudio-mcp.
-  `StudioGate` gains the write tools; the UI asks for approval before each write.
+- **R2, the Studio side.** Checked against our plugin (2026-10-05): it already has what ScriptOps,
+  InstanceOps and LogOps do (get_tree, get_instance, list/read/search scripts, edit_script, create/set/delete,
+  get_logs), plus run_mode and play_check for playtests. roblox-ai-studio's `run_tests` (TestOps) and `RunLuau`
+  execute received text through `loadstring` with full plugin authority, which our plugin refuses on purpose
+  (`run_code` is UNSUPPORTED: it could reach account, upload and publish services). So they are not ported;
+  the Test Engineer tests through play_check and get_logs. What R2 does: `StudioGate` serves the post-M4 write
+  tools through a new SessionDO route (checkpointed like an agent run), the UI asks for approval before each
+  write (agents-starter's approval cards), and tool names and schemas follow robloxstudio-mcp where they overlap.
+  Built on top of #38 (M4).
 - **R3, the team.** Coordinator, Planner, Coder, Reviewer and Test Engineer as Flue subagents, with the
   `run_tests` QA loop. The M4 rule still holds: blocks are chosen only by the model.
 - **R4, the app.** `/app` rebuilt with Kumo; plus the in-Studio chat panel from roblox-ai-studio talking to
@@ -71,4 +77,6 @@ go to `THIRD_PARTY_NOTICES.md`.
 - #35 (site): its Playwright contrast check fails on /catalog. R5 replaces those pages, so there is no fix cycle;
   its text, legal and docs changes are taken into R5.
 - #36 (M3 harness): still needed to measure the old agent as the baseline; merge once green.
-- M4 (the cleanup branch): continues, because it shrinks what R2 has to port.
+- M4 (the cleanup branch, #38): stages 1 and 2 done (vision, the whole-game path and the owner library removed).
+  Stages 3 and 4 move to the new agent: the Flue StudPilot agent's instructions stay at 10,000 characters or fewer
+  and it is offered 25 tools or fewer per run, each with a test (R2 and R3), because the old loop is retired in R6.

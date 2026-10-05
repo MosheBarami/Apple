@@ -40,7 +40,7 @@ registerHooks({
       return {
         format: 'module',
         shortCircuit: true,
-        source: 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }',
+        source: 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }',
       };
     }
     return next(url, ctx);

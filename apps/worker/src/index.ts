@@ -7,6 +7,7 @@ import {
 import { checkRobloxCredential } from './roblox-check';
 import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
+import { WorkerEntrypoint } from 'cloudflare:workers';
 import type { Context } from 'hono';
 import {
   verifyStripeSignature,
@@ -241,6 +242,7 @@ import {
   rpcError,
   rpcResult,
   toolResult,
+  type McpToolDescriptor,
 } from './mcp';
 import { creditsForNeurons } from './pricing';
 import {
@@ -575,6 +577,21 @@ app.use('*', async (c, next) => {
   const target = new URL(url.pathname + url.search, PRODUCT_ORIGIN);
   return c.redirect(target.toString(), 308);
 });
+
+/**
+ * STUDPILOT STUDIO (rebuild R1, planning/REBUILD-PLAN.md). `/studio/*` belongs to the `studpilot-studio`
+ * worker, reached over the STUDIO service binding (static files with the prefix removed). Same origin on purpose: the
+ * signed-in Supabase session of /app is the one Studio uses. Without the binding the path does not exist.
+ */
+app.all('/studio/*', async (c) => {
+  if (!c.env.STUDIO) return c.notFound();
+  const url = new URL(c.req.url);
+  // The agent API keeps its full path: Flue writes that path into the stream URLs it hands back, so a
+  // stripped one would point the browser at a path that is not this proxy. Static files lose the prefix.
+  if (!url.pathname.startsWith('/studio/api/')) url.pathname = url.pathname.slice('/studio'.length) || '/';
+  return c.env.STUDIO.fetch(new Request(url, c.req.raw));
+});
+app.get('/studio', (c) => c.redirect('/studio/', 308));
 
 app.use('/api/*', async (c, next) => {
   await next();
@@ -930,6 +947,68 @@ async function withOwnedProject(
   });
   if (!init.ok) return null; // owner mismatch on a recycled id — refuse
   return { user, project: row, stub, membership, role: membership.role };
+}
+
+/**
+ * THE STUDIO GRANT. The Studio agent runs inside its own Durable Object and holds no user credential, so
+ * its tool calls cannot re-run the owner check. Instead `openProject` (which runs `withOwnedProject` on
+ * every request the user makes to the agent) records a grant for the project id that check RESOLVED, and
+ * `studioGrantedStub` refuses any project without a live one. Same shape as the `/v1` key grant: proven
+ * under RLS when it is written, carried afterwards. A grant lives STUDIO_GRANT_TTL_S after the user's
+ * last request, so losing access to a project stops the agent within that time.
+ */
+const STUDIO_GRANT_TTL_S = 1800;
+const studioGrantKey = (projectId: string) => `studio-grant:${projectId}`;
+
+async function grantStudio(env: Env, resolvedProjectId: string): Promise<void> {
+  await env.KV.put(studioGrantKey(resolvedProjectId), '1', { expirationTtl: STUDIO_GRANT_TTL_S });
+}
+
+async function studioGrantedStub(env: Env, projectId: string): Promise<DurableObjectStub | null> {
+  if (!UUID_RE.test(projectId)) return null;
+  if ((await env.KV.get(studioGrantKey(projectId))) !== '1') return null;
+  return sessionStub(env, projectId);
+}
+
+/**
+ * THE STUDIO GATE (rebuild R1, planning/REBUILD-PLAN.md).
+ *
+ * The new Flue agent worker (`apps/studio`) reaches a project's Studio only through this entrypoint,
+ * which is reachable only through a service binding, never from the internet. It is the Cloudflare OS
+ * "gatekeeper" shape: the agent gets one typed capability and never sees a credential.
+ *
+ * `openProject` is the only door that takes a user: it verifies the Supabase JWT and applies the
+ * same owner gate as every `/api/projects/*` route. `callTool` then serves only the read-only MCP
+ * surface (`MCP_TOOL_NAMES`) of a project that has a live session, so a bug in the agent worker can
+ * read a place but never write one.
+ */
+export class StudioGate extends WorkerEntrypoint<Env> {
+  async openProject(jwt: string, projectId: string): Promise<{ ok: true; projectName: string } | { ok: false }> {
+    const user = await verifyJwt(this.env, jwt);
+    if (!user) return { ok: false };
+    const ctx = await withOwnedProject({ env: this.env, get: () => user }, projectId);
+    if (!ctx) return { ok: false };
+    await grantStudio(this.env, ctx.project.id);
+    return { ok: true, projectName: ctx.project.name };
+  }
+
+  listTools(): McpToolDescriptor[] {
+    return mcpToolList(toolDefs(true, new Set(MCP_TOOL_NAMES)));
+  }
+
+  async callTool(projectId: string, name: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> {
+    const entry = mcpTool(name);
+    if (!entry) return { ok: false, text: `Unknown tool '${name}'.` };
+    const stub = await studioGrantedStub(this.env, projectId);
+    if (!stub) return { ok: false, text: 'This project is not open in StudPilot Studio. Reload the page.' };
+    const res = await stub.fetch('https://do/mcp-tool', {
+      method: 'POST',
+      body: JSON.stringify({ tool: entry.tool, args }),
+    });
+    const out = (await res.json()) as { ok?: boolean; resultForLlm?: string; error?: string };
+    if (!res.ok) return { ok: false, text: out.error ?? 'The session could not serve that call.' };
+    return { ok: out.ok !== false, text: out.resultForLlm ?? '{}' };
+  }
 }
 
 app.get('/api/projects/:id/ws', async (c) => {
@@ -2079,15 +2158,23 @@ app.post('/api/projects/:id/purge', async (c) => {
   });
 });
 
-app.post('/api/projects/:id/pairing', async (c) => {
-  const ctx = await withOwnedProject(c, c.req.param('id'));
-  if (!ctx) return c.json({ error: 'not found' }, 404);
-  void count(c.env, 'pairing_create');
-  const res = await pairingStub(c.env).fetch('https://do/create', {
+/**
+ * Mint a pairing code for a project and report whether it supersedes a live pairing. Shared by the user's
+ * route below and by `POST /api/admin/pairing/:id`, so the two cannot disagree about what a code carries.
+ * The caller has already proven who owns the project; this proves nothing and asks no one but the
+ * PairingDO and the session.
+ */
+async function mintPairingCode(
+  env: Env,
+  stub: DurableObjectStub,
+  who: { projectId: string; userId: string; projectName: string },
+): Promise<{ status: number; body: unknown }> {
+  const res = await pairingStub(env).fetch('https://do/create', {
     method: 'POST',
-    body: JSON.stringify({ projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name }),
+    body: JSON.stringify({ projectId: who.projectId, userId: who.userId, projectName: who.projectName }),
   });
-  if (!res.ok) return res; // the 429 for too many live codes, passed through unchanged
+  // the 429 for too many live codes, passed through unchanged
+  if (!res.ok) return { status: res.status, body: await res.json().catch(() => ({ error: 'pairing refused' })) };
   //[[ A SECOND PAIRING SUPERSEDES THE FIRST, AND THE USER IS TOLD BEFORE IT HAPPENS.
   //
   //   The session holds exactly one plugin token, so pairing again disconnects whatever was paired
@@ -2102,7 +2189,7 @@ app.post('/api/projects/:id/pairing', async (c) => {
   const dto = (await res.json()) as PairingCodeDto;
   let existingLink: StudioLinkSummary | null = null;
   try {
-    const link = await ctx.stub.fetch('https://do/studio/link');
+    const link = await stub.fetch('https://do/studio/link');
     if (link.ok) {
       const summary = (await link.json()) as StudioLinkSummary;
       if (summary.paired) existingLink = summary;
@@ -2110,7 +2197,15 @@ app.post('/api/projects/:id/pairing', async (c) => {
   } catch {
     /* the code is already minted and is what the user came for */
   }
-  return c.json({ ...dto, existingLink } satisfies PairingCodeDto);
+  return { status: 200, body: { ...dto, existingLink } satisfies PairingCodeDto };
+}
+
+app.post('/api/projects/:id/pairing', async (c) => {
+  const ctx = await withOwnedProject(c, c.req.param('id'));
+  if (!ctx) return c.json({ error: 'not found' }, 404);
+  void count(c.env, 'pairing_create');
+  const minted = await mintPairingCode(c.env, ctx.stub, { projectId: ctx.project.id, userId: ctx.user.userId, projectName: ctx.project.name });
+  return c.json(minted.body, minted.status as 200);
 });
 
 /**
@@ -4546,6 +4641,76 @@ app.post('/api/projects/:id/bench/reset', async (c) => {
   const ctx = await withOwnedProject(c, c.req.param('id'));
   if (!ctx) return c.json({ error: 'not found' }, 404);
   const res = await ctx.stub.fetch('https://do/bench-reset', { method: 'POST' });
+  return c.json(await res.json(), res.status as 200);
+});
+
+/**
+ * The project and the owner an admin route names, or null when either is not a UUID. Both are lower-cased: UUID_RE is
+ * case-insensitive but a Durable Object name is not, and the user routes name the session by the database's lower-case
+ * id, so an upper-case id would address a different, never-initialised session. Nothing is addressed before this passes.
+ */
+function namedProjectAndOwner(projectIdParam: string, body: { userId?: unknown } | null): { projectId: string; userId: string } | null {
+  const projectId = projectIdParam.trim().toLowerCase();
+  const userId = typeof body?.userId === 'string' ? body.userId.trim().toLowerCase() : '';
+  return UUID_RE.test(projectId) && UUID_RE.test(userId) ? { projectId, userId } : null;
+}
+
+/**
+ * The session of a named project, once IT has said the named user is its owner (it never says who the owner is). A
+ * different owner is 403; a session with no owner on record is 409, because it would otherwise adopt whoever the caller named.
+ */
+async function sessionOfNamedOwner(env: Env, named: { projectId: string; userId: string }): Promise<{ ok: true; stub: DurableObjectStub; projectName: string } | { ok: false; status: number; error: string }> {
+  const stub = sessionStub(env, named.projectId);
+  const owner = await stub.fetch('https://do/owner-check', { method: 'POST', body: JSON.stringify({ userId: named.userId }) });
+  if (owner.status === 403) return { ok: false, status: 403, error: 'owner mismatch: that user does not own this project' };
+  if (!owner.ok) return { ok: false, status: 409, error: 'this project has no session with an owner on record yet; open it once in the web app, then try again' };
+  const known = (await owner.json()) as { projectName?: string };
+  return { ok: true, stub, projectName: known.projectName ?? '' };
+}
+
+/**
+ * Mint a Studio pairing code for the evaluation harness, with no sign-in (M3, scripts/eval).
+ *
+ * The user's route needs the owner's token and the harness must never sign in with a password, so this
+ * is the same minting behind the admin key, for one project and the one owner the caller names.
+ * What keeps it from being a way to pair a Studio to someone else's project:
+ *   - both ids must be UUIDs before any Durable Object is named;
+ *   - the SESSION is the authority on who owns the project (`/owner-check`), so the owner id never
+ *     leaves it and Supabase is not asked (this route adds no use of SUPABASE_SECRET_KEY);
+ *   - a session with a different owner is refused (403), and a session with no owner on record is
+ *     refused too (409): it would otherwise adopt whoever the caller named at the first claim.
+ * The audit row is filed before the mint, as set-plan's is, and names the owner the code is for.
+ */
+app.post('/api/admin/pairing/:id', async (c) => {
+  const named = namedProjectAndOwner(c.req.param('id'), await c.req.json<{ userId?: unknown }>().catch(() => null));
+  if (!named) return c.json({ error: 'a project id in the path and a userId in the body are required, both UUIDs' }, 400);
+  auditAdminAction(c, 'admin.pairing', named.userId);
+  const session = await sessionOfNamedOwner(c.env, named);
+  if (!session.ok) return c.json({ error: session.error }, session.status as 403);
+  const minted = await mintPairingCode(c.env, session.stub, { projectId: named.projectId, userId: named.userId, projectName: session.projectName });
+  return c.json(minted.body, minted.status as 200);
+});
+
+/**
+ * A fresh conversation in one project, for the evaluation harness (M3): the next request must not see an earlier one.
+ * The product has no clear-chat button (New chat starts another project), so this is what its own actions already do,
+ * in one step and for no more: the messages go as `edit_resend` on the first message discards them, the memory the chats
+ * produced is emptied as the memory editor can, and the build ledger and game plan go as they do when a place is put
+ * back. The pairing, the checkpoints, the place and the settings stay (this is not `bench-reset`).
+ * What keeps it from wiping a customer's chat:
+ *   - the caller must NAME the project's owner, and the session is the authority on who that is (`/owner-check`, as for
+ *     the pairing route above): a different owner is 403, a session with no owner on record is 409;
+ *   - the session acts only for an owner who may build (the `/agent-run` gate, 403 otherwise) and only while no run is
+ *     live (409);
+ *   - both ids must be UUIDs before any Durable Object is named, and the audit row is filed before the delete.
+ */
+app.post('/api/admin/conversation-reset/:id', async (c) => {
+  const named = namedProjectAndOwner(c.req.param('id'), await c.req.json<{ userId?: unknown }>().catch(() => null));
+  if (!named) return c.json({ error: 'a project id in the path and a userId in the body are required, both UUIDs' }, 400);
+  auditAdminAction(c, 'admin.conversation-reset', named.userId);
+  const session = await sessionOfNamedOwner(c.env, named);
+  if (!session.ok) return c.json({ error: session.error }, session.status as 403);
+  const res = await session.stub.fetch('https://do/conversation-reset', { method: 'POST' });
   return c.json(await res.json(), res.status as 200);
 });
 

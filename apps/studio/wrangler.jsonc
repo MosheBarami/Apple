@@ -1,0 +1,22 @@
+{
+  // StudPilot Studio: the rebuilt chat workspace (planning/REBUILD-PLAN.md, stage R1).
+  // Flue adds `main` and one Durable Object binding per agent; the migrations below are ours.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "studpilot-studio",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Reached only through the `studpilot` worker, which proxies studpilot.app/studio/* here (static files with the prefix
+  // removed, /studio/api/* unchanged) (same origin,
+  // so the signed-in Supabase session carries over). No workers.dev route.
+  "workers_dev": false,
+  "ai": { "binding": "AI" },
+  // The one capability the agent has: the read-only Studio gate on the main worker.
+  "services": [{ "binding": "GATE", "service": "studpilot", "entrypoint": "StudioGate" }],
+  "vars": {
+    "SUPABASE_URL": "https://npqvyijsvzkuwddyhtpm.supabase.co",
+    "AI_GATEWAY_ID": "studpilot"
+  },
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/studio/api/*"] },
+  "observability": { "enabled": true },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FlueStudPilotAgent"] }]
+}

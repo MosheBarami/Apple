@@ -1,5 +1,7 @@
 export interface Env {
   AI: Ai;
+  /** The `studpilot-studio` worker (apps/studio), served at /studio. Optional until it is deployed. */
+  STUDIO?: Fetcher;
   CORPUS: D1Database;
   KV: KVNamespace;
   /**

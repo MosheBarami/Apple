@@ -23,7 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const TMP = mkdtempSync(join(tmpdir(), 'effort-applied-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
 function bundle(rel, name) {
   const out = join(TMP, `${name}.mjs`);

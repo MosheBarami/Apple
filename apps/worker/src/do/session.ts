@@ -2635,6 +2635,38 @@ export class SessionDO extends DurableObject<Env> {
       return json({ ok: left.length === 0, reset: true, left: left.slice(0, 20) });
     }
 
+    //[[ A FRESH CONVERSATION IN THIS PROJECT, for the evaluation harness (M3, scripts/eval): no request may see an earlier one.
+    //
+    //   The product has no "clear this chat" button: New chat starts another PROJECT. What it does have, each a user's own
+    //   action, is what this does in one step, and nothing else:
+    //     - `edit_resend` on the FIRST message discards every message from it on (messages and their model picks) and tells
+    //       every open tab (`history_truncated`), and it refuses while a run is not idle. This is that, without the resend.
+    //     - the memory editor empties what StudPilot remembered from the conversation (`memory`, `memoryEditedAt`): the
+    //       summary and facts a model distilled from the earlier chats go into the next run's prompt.
+    //     - putting the place back (`restoreCheckpoint`) forgets the build ledger and the game plan, which name the earlier
+    //       requests and what they built. The harness has just put the place back to its baseline.
+    //     (The game plan it also forgot went with the whole-game path in M4.)
+    //   Not touched: the Studio pairing, the project's identity, the checkpoints, the op log, the files, the settings and
+    //   the place (this is not `/bench-reset`, which also clears checkpoints and Lighting). It acts only on a project whose
+    //   owner may build, the gate `/agent-run` applies, so the admin key cannot wipe an arbitrary customer's chat; the
+    //   worker route also makes the caller NAME the owner. Reached only through that route. ]]
+    if (path === '/conversation-reset' && req.method === 'POST') {
+      if (!buildApproved(this.env, bind.ownerId)) return json({ ok: false, code: 'account_not_approved', error: ACCOUNT_NOT_APPROVED }, 403);
+      const running = await this.ctx.storage.get<AgentState>('agent');
+      if (running && running.status !== 'idle') return json({ ok: false, error: 'a run is in progress' }, 409);
+      const first = this.sql.exec(`select id from messages order by created_at asc, rowid asc limit 1`).toArray()[0] as { id: string } | undefined;
+      const removed = (this.sql.exec(`select count(*) as n from messages`).one() as { n: number }).n;
+      this.sql.exec(`delete from message_models where message_id in (select id from messages)`);
+      this.sql.exec(`delete from messages`);
+      if (first) this.broadcast({ type: 'history_truncated', fromMessageId: first.id, removed });
+      const had = async (key: string) => (await this.ctx.storage.get(key)) !== undefined;
+      const memoryCleared = (await had('memory')) || (await had('memoryEditedAt'));
+      const ledgerCleared = await had(LEDGER_KEY);
+      for (const key of ['memory', 'memoryEditedAt', LEDGER_KEY]) await this.ctx.storage.delete(key);
+      const left = (this.sql.exec(`select count(*) as n from messages`).one() as { n: number }).n;
+      return json({ ok: left === 0, removedMessages: removed, messagesAfter: left, memoryCleared, ledgerCleared });
+    }
+
     if (path === '/purge' && req.method === 'POST') {
       for (const ws of this.ctx.getWebSockets()) {
         try {
@@ -2931,6 +2963,14 @@ export class SessionDO extends DurableObject<Env> {
       this.placeMismatch = null;
       this.pollWaiter?.();
       return json({ ok: true });
+    }
+
+    // Is this person the owner of this project? Asked by the admin pairing route so that the owner id
+    // never leaves the session: `/info` deliberately omits it, and this answers a yes or a no.
+    if (path === '/owner-check' && req.method === 'POST') {
+      const asked = (await req.json().catch(() => null)) as { userId?: unknown } | null;
+      if (typeof asked?.userId !== 'string' || asked.userId !== bind.ownerId) return json({ error: 'owner mismatch' }, 403);
+      return json({ ok: true, projectId: bind.projectId, projectName: bind.projectName });
     }
 
     if (path === '/info') {

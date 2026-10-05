@@ -11,5 +11,9 @@ allowBuilds:
   esbuild: true
   workerd: true
   sharp: true
+  # Pulled in by Flue (apps/studio); their install scripts are not needed.
+  '@google/genai': false
+  core-js-pure: false
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@cloudflare/workers-types@5.20260830.1'

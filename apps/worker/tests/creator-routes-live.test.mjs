@@ -50,7 +50,7 @@ const jose = require_('jose');
 
 const TMP = mkdtempSync(join(tmpdir(), 'studpilot-creator-routes-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'worker.mjs');
 execFileSync(join(WORKER, 'node_modules', '.bin', 'esbuild'),
   [join(WORKER, 'src', 'index.ts'), '--bundle', '--format=esm', '--target=es2022',

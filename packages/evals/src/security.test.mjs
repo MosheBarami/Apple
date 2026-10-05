@@ -190,7 +190,7 @@ const TMP = mkdtempSync(join(tmpdir(), 'studpilot-security-'));
 // the DurableObject base class, so a two-line shim lets the REAL entry module — routes, middleware
 // and all — be imported and exercised.
 const CF_SHIM = join(TMP, 'cf-workers-shim.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
 let bundleSeq = 0;
 function bundle(entry, label) {
@@ -1969,7 +1969,16 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
   //                      passes a set-membership test against the grant proven under RLS at key
   //                      mint time — the same test whether the id came from the path or from
   //                      JSON-RPC arguments, which is the whole reason the function exists.
-  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub']);
+  //   studioGrantedStub  REVIEWED 2026-10-05 (rebuild R1). The Studio agent's tool calls, reached only
+  //                      through the StudioGate service binding. A session is materialised only for a
+  //                      project holding a live grant, and `grantStudio` is called only inside
+  //                      StudioGate.openProject, after withOwnedProject succeeded, with the id that
+  //                      check RESOLVED. Both halves are asserted below.
+  //   sessionOfNamedOwner REVIEWED 2026-10-05 (M3 evaluation harness). It addresses a session by a project id that came
+  //                      from a request, and hands the stub back only after THAT session has said the named user owns it
+  //                      (`/owner-check`: another owner is 403, no owner on record is 409). That is safe only because its
+  //                      callers are admin-key routes, so the assertion under the list holds both halves to the code.
+  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub', 'sessionOfNamedOwner']);
   for (const s of sites) {
     const ok =
       reviewed.has(s.owner) ||
@@ -1979,6 +1988,19 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
       s.owner === '/api/health';
     assert.equal(ok, true, `sessionStub is reached from ${s.owner} (index.ts:${s.at}), which is neither ownership-checked nor admin-gated`);
   }
+
+  // THE TWO HALVES THAT MAKE sessionOfNamedOwner SAFE. Every caller is an admin route (the key gate is what protects the
+  // project id the request names), and the stub is handed back only after the session's own owner check has passed.
+  const calls = [...src.matchAll(/sessionOfNamedOwner\(/g)].map((m) => ({
+    owner: owners.filter((o) => o.start < m.index && m.index < o.end)[0]?.name ?? 'module',
+  })).filter((c) => c.owner !== 'sessionOfNamedOwner');
+  assert.ok(calls.length >= 2, 'no caller of sessionOfNamedOwner was found — this test would check nothing');
+  for (const c of calls) assert.ok(c.owner.startsWith('/api/admin/'), `sessionOfNamedOwner is called from ${c.owner}, which is not an admin-key route`);
+  const sono = owners.find((o) => o.name === 'sessionOfNamedOwner');
+  assert.ok(sono, 'sessionOfNamedOwner is gone — re-review how the admin pairing and conversation-reset routes confirm the owner');
+  const sonoBody = src.slice(sono.start, sono.end);
+  assert.ok(sonoBody.indexOf("'https://do/owner-check'") > 0 && sonoBody.indexOf("'https://do/owner-check'") < sonoBody.indexOf('ok: true, stub'),
+    'the stub must be handed back only after the session answered the owner check');
 
   // THE CHECK THAT MAKES grantedProjectStub SAFE, held to the code the same way: the id is tested
   // against the grant BEFORE a session is materialised, and the refusal is a null, not a stub.
@@ -1993,6 +2015,19 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
     true,
     'the grant membership test must precede the stub — a session materialised first is a session an ungranted key created',
   );
+
+  // THE CHECK THAT MAKES studioGrantedStub SAFE: the grant is read before the session is addressed,
+  // and a grant is only ever written behind the owner check, for the id that check resolved.
+  const sgsOwner = owners.find((o) => o.name === 'studioGrantedStub');
+  assert.ok(sgsOwner, 'studioGrantedStub is gone — re-review how the Studio agent reaches a session');
+  const sgs = src.slice(sgsOwner.start, sgsOwner.end);
+  assert.ok(sgs.includes('sessionStub(') && sgs.indexOf('studioGrantKey(') < sgs.indexOf('sessionStub('),
+    'the studio grant must be checked before the session is addressed');
+  const grantCalls = [...src.matchAll(/await grantStudio\(/g)];
+  assert.equal(grantCalls.length, 1, 'a studio grant is written from somewhere other than StudioGate.openProject');
+  const openProject = src.slice(src.indexOf('async openProject('), grantCalls[0].index + 80);
+  assert.match(openProject, /const ctx = await withOwnedProject\([^]*if \(!ctx\) return \{ ok: false \};\s*await grantStudio\(this\.env, ctx\.project\.id\)/,
+    'the studio grant must be written only after withOwnedProject succeeded, for the id it resolved');
 
   // THE EARLIER CHECK THAT MAKES discordPorts SAFE. A Discord link's project id is only ever
   // whatever the mint route wrote, and the mint route must resolve ownership first.
@@ -2369,6 +2404,20 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
       // refuses during a run, and it refuses any project without a `bench-baseline` checkpoint, so the key cannot
       // wipe a customer's project with it (apps/worker/tests/bench-reset-scope.test.mjs).
       'POST /api/admin/bench-reset/:id',
+      // Reviewed 2026-10-05 (M3 evaluation harness): the second entry that DELETES tenant data, and the narrower one. It
+      // empties one project's conversation (the messages `edit_resend` on the first message discards), the memory the
+      // chats produced, and the build ledger and game plan a restore forgets, so the next request sees no earlier one. It
+      // keeps the pairing, the checkpoints, the place and the settings. The caller must NAME the owner and the session
+      // confirms it (`/owner-check`: a different owner is 403, none on record 409), the session acts only for an owner
+      // who may build (the `/agent-run` gate) and only while no run is live, both ids are UUIDs before a Durable Object
+      // is named, and the audit row is filed before the delete (apps/worker/tests/admin-conversation-reset.test.mjs).
+      'POST /api/admin/conversation-reset/:id',
+      // Reviewed 2026-10-05 (M3 evaluation harness): mints a Studio pairing code for one project and one NAMED owner, so
+      // the harness needs no password sign-in. The session is the authority on ownership (`/owner-check`: a different
+      // owner is 403, a session with no owner on record is 409), both ids are validated as UUIDs before a Durable Object
+      // is named, no Supabase call is added, the audit row is filed before the mint, and PairingDO's own cap of five
+      // live codes per user still applies (apps/worker/tests/admin-pairing-route.test.mjs).
+      'POST /api/admin/pairing/:id',
       'POST /api/admin/recovery-requests/:id',
       'POST /api/admin/run-tool/:id',
       'POST /api/admin/studio-op/:id',
@@ -2470,7 +2519,9 @@ test('A4 PRE-EXISTING FINDING — admin routes carry no user identity and bypass
   assert.deepEqual(byBodyUser.sort(), [
     'GET /api/admin/account/:userId',
     'GET /api/admin/billing-reconcile',
+    'POST /api/admin/conversation-reset/:id',
     'POST /api/admin/grant-credits',
+    'POST /api/admin/pairing/:id',
     'POST /api/admin/quota-reset',
     'POST /api/admin/set-plan',
   ], 'an admin route that acts on a named user was added or removed — review it');
