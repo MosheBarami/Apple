@@ -22,12 +22,25 @@ import { STUDIO_PLUGIN_STORE_LIVE } from '../lib/studio-plugin';
 const free = PLAN_TABLE.free;
 const paid = LISTED_PLAN_IDS.filter((id) => id !== 'free');
 const price = (id: (typeof paid)[number]) => formatMoney(PLAN_COPY[id].priceUsdMonthly ?? 0, { currency: PRICE_CURRENCY });
+
+/*
+ * THE STUDIO PLUGIN IS ASKED, NOT TYPED. STUDIO_PLUGIN_STORE_LIVE is false while the Creator Store listing is unavailable, and then a new
+ * customer cannot get the plugin: they can sign up and use the chat, and cannot build in Studio. Every sentence below that says the piece is
+ * built in Studio is qualified where it is said (the hero, the description, step 02), never only in the last line of the page. The sentence
+ * the repository itself uses is in src/data/known-issues.ts ("new customers can chat and plan but cannot build inside Studio yet").
+ */
+const pluginHero = STUDIO_PLUGIN_STORE_LIVE
+  ? 'The Studio plugin is free on the Creator Store.'
+  : 'The Studio plugin is not open to new customers yet, so for now you can sign up and use the chat.';
+const description = STUDIO_PLUGIN_STORE_LIVE
+  ? 'StudPilot is an AI co-pilot for Roblox Studio, in beta. Ask for a piece of your game and a free plugin builds it in your own Studio place. Free while in beta.'
+  : 'StudPilot is an AI co-pilot for Roblox Studio, in beta. The Studio plugin is not open to new customers yet; you can sign up and use the chat. Free while in beta.';
+const pairStep = STUDIO_PLUGIN_STORE_LIVE
+  ? 'Open StudPilot in Roblox Studio and type the 6-character code from your project.'
+  : 'Pairing needs the Studio plugin, which is not open to new customers yet. People who have it type a 6-character code from their project.';
 ---
 
-<Base
-  title="StudPilot: an AI co-pilot for Roblox Studio (beta)"
-  description="StudPilot is an AI co-pilot for Roblox Studio, in beta. Ask for a piece of your game and it builds it in your own Studio. Free while in beta."
->
+<Base title="StudPilot: an AI co-pilot for Roblox Studio (beta)" description={description}>
   <!-- ==================================================== hero -->
   <section class="hero" aria-labelledby="hero-title">
     <div class="wrap hero__grid">
@@ -38,16 +51,17 @@ const price = (id: (typeof paid)[number]) => formatMoney(PLAN_COPY[id].priceUsdM
         </p>
         <h1 id="hero-title" class="display">Ask for any piece. It looks pro, it works, and we never claim what we didn't prove.</h1>
         <p class="lede">
-          StudPilot is an AI co-pilot for Roblox Studio. You ask in the web app, and it builds the piece in your own
+          StudPilot is an AI co-pilot for Roblox Studio. You ask in the web app, and a plugin builds the piece in your own
           Studio place. The line above is the bar we are building to. It is not a result we are claiming.
         </p>
+        <p class="hero__plugin" data-plugin-line>{pluginHero} <a href="/docs/plugin">Where the plugin stands</a>.</p>
         <div class="hero__cta">
           <a class="btn btn-primary btn-lg" href="/app/signup">Start free (beta)</a>
           <a class="btn btn-lg" href="/how-it-works">How it works</a>
         </div>
         <p class="hero__note">Free while in beta. No card. For creators aged 13 and up.</p>
       </div>
-      <ScreenSlot slot="home-app" label="The StudPilot web app, ready for a request" width={1200} height={900} />
+      <ScreenSlot id="app-idle" priority />
     </div>
   </section>
 
@@ -82,17 +96,17 @@ const price = (id: (typeof paid)[number]) => formatMoney(PLAN_COPY[id].priceUsdM
   <section class="sec" id="how" aria-labelledby="how-title">
     <div class="wrap">
       <p class="kicker">How it works</p>
-      <h2 id="how-title" class="sec-title">Four steps from sign-in to a piece in Studio</h2>
+      <h2 id="how-title" class="sec-title">From sign-in to your first piece, in four steps</h2>
       <ol class="rail">
         <li>
           <span class="rail__n">01</span>
           <h3>Sign in</h3>
-          <p>Use your email. Sign in with Roblox is being switched on. Google and Discord are coming.</p>
+          <p>Use your email, or sign in with Roblox. Google and Discord are coming.</p>
         </li>
         <li>
           <span class="rail__n">02</span>
           <h3>Pair the plugin</h3>
-          <p>Open StudPilot in Roblox Studio and type the 6-character code from your project.</p>
+          <p>{pairStep}</p>
         </li>
         <li>
           <span class="rail__n">03</span>

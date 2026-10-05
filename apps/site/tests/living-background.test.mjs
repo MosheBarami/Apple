@@ -74,8 +74,9 @@ test('the hero is content and product UI rather than a decorative scene', () => 
 // flat-panel contract is held there: a --surface panel on the shared radius, no frosted blur and no shadow.
 test('the screenshot slot is a flat panel on the shared radius, and no site sheet declares a design token of its own', () => {
   const slotCss = withoutComments(slot.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '');
-  const panel = /\.slot\s*\{([^}]*)\}/.exec(slotCss);
-  assert.ok(panel, 'ScreenSlot.astro has no .slot rule');
+  // The panel is the frame around the picture (`.slot__frame`); the figure itself only carries the caption under it.
+  const panel = /\.slot__frame\s*\{([^}]*)\}/.exec(slotCss);
+  assert.ok(panel, 'ScreenSlot.astro has no .slot__frame rule');
   assert.match(panel[1], /border-radius:\s*var\(--r-lg\)/, 'the slot is no longer on the shared --r-lg radius');
   assert.match(panel[1], /background:\s*var\(--surface\)/, 'the slot is not a --surface panel');
   assert.doesNotMatch(panel[1], /backdrop-filter|box-shadow/, 'the slot is frosted or casts a shadow; surfaces here are flat');

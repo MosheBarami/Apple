@@ -58,6 +58,12 @@ main > .sec--band:last-child {
   text-transform: uppercase;
 }
 
+/* A kicker sits one step above the title it names, not on it: the same 14px the title keeps from its paragraph. (Measured on /: the kicker
+   was 1px from the h2 on every section, against 16px under a page head and 20px in the hero.) */
+.kicker + .sec-title {
+  margin-top: 14px;
+}
+
 /* ------------------------------------------------------------------ type */
 
 /* The front page's headline. One notch above a document title and no more: it is a promise of two short
@@ -144,6 +150,19 @@ main > .sec--band:last-child {
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+/* The plugin line sits directly under the promise it qualifies, in the ink of body text, so it is read with it. */
+.hero__plugin {
+  max-width: 52ch;
+  margin: 14px 0 0;
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.hero__plugin a {
+  text-underline-offset: 0.2em;
 }
 
 /* ------------------------------------------------------------------ a sticky heading beside a list */
@@ -380,9 +399,10 @@ main > .sec--band:last-child {
   gap: 12px;
 }
 
+/* No margin of its own: the paragraph is a .sec-text and keeps that class's 14px under its title. (`.cta p { margin: 0 }` had higher
+   specificity than `.sec-text` and put the sentence directly against the heading.) */
 .cta p {
   max-width: 58ch;
-  margin: 0;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.6;
