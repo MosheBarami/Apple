@@ -9,10 +9,15 @@
 //   3. the play test shows 0 errors;
 //   4. every scripted functional check passes;
 //   5. the claim audit finds 0 unsupported claims.
-// Two clauses are this harness's own additions, both of which can only make a piece harder to pass:
+// Four clauses are this harness's own additions, all of which can only make a piece harder to pass:
 //   - the run itself ended normally (a run stopped by the 15 minute limit, or that errored, is not a
-//     finished piece);
-//   - each critic looked at every screenshot it was given (a verdict from half the pictures is not one).
+//     finished piece; a run record that is missing is not a normal ending either);
+//   - each critic looked at every screenshot it was given (a verdict from half the pictures is not one);
+//   - every picture the piece was PLANNED to have exists (the four world cameras, the UI picture): a piece
+//     is not scored on the pictures that happened to be saved, and the critics' scores of an incomplete set
+//     are not counted;
+//   - the UI area is scored when the piece is a UI piece: both critics marking it N/A on a piece with a
+//     screen UI (or in the UI category) leaves the area unscored, and the piece unevaluable.
 //
 // FUNCTIONAL CHECKS THAT ARE NOT DEFINED. The block engine brings per-request scripted checks in
 // M5, so in M3 every request records `functionalChecks: { defined: false }`. "Every check passes" is
@@ -97,10 +102,14 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
  * @param {object|null} i.criticA                    parsed critic JSON (rubric shape) or null
  * @param {object|null} i.criticB
  * @param {string[]} [i.shotsGiven]                  the screenshot file names each critic was handed
- * @param {{errors:number, warnings?:number}|null} i.playTest   null when no play test ran
+ * @param {{errors:number|null, warnings?:number|null, why?:string[]}|null} i.playTest   null when no play test ran; errors null
+ *        when the play test was not established (`why` names what was missing: play did not start, the server log was not read...)
+ * @param {{names:string[], missing:{name:string, why?:string}[]}|null} [i.planned]   the pictures the piece should have and the ones that are
+ *        missing; null when the manifest cannot say, which leaves the clause unestablished
+ * @param {string|null} [i.uiRequired]   why the UI area cannot be N/A (a string), or falsy when it may be
  * @param {{defined:false}|{defined:true, results:{id:string, pass:boolean}[]}} i.functionalChecks
  * @param {{unsupported:{claim:string}[]}|null} i.claims         null when the claim audit did not run
- * @param {{endedBy?:string}} [i.run]                'done' is the only normal ending
+ * @param {{endedBy?:string}} [i.run]                'done' is the only normal ending; no record is not one
  */
 export function computeVerdict(i) {
   const failed = []; // clauses that decidedly failed
@@ -110,15 +119,30 @@ export function computeVerdict(i) {
   // ---- the critics
   const checkA = validateCritic(i.criticA, { shotsGiven });
   const checkB = validateCritic(i.criticB, { shotsGiven });
-  const criticsUsable = checkA.ok && checkB.ok;
   if (!checkA.ok) unestablished.push(`critic A is not usable: ${checkA.problems.join('; ')}`);
   if (!checkB.ok) unestablished.push(`critic B is not usable: ${checkB.problems.join('; ')}`);
+
+  // ---- the pictures the piece was planned to have
+  const planned = i.planned ?? null;
+  let picturesComplete = true;
+  if (!planned || !Array.isArray(planned.names) || !Array.isArray(planned.missing)) {
+    picturesComplete = false;
+    unestablished.push('screenshots: the manifest does not say which pictures the piece should have, so a missing one cannot be ruled out');
+  } else if (planned.missing.length > 0) {
+    picturesComplete = false;
+    unestablished.push(`screenshots: ${planned.missing.length} of ${planned.names.length} planned pictures are missing (${planned.missing.map((m) => `${m.name}${m.why ? `: ${m.why}` : ''}`).join('; ')}), so the critics did not see all of what the piece built and their scores are not counted`);
+  }
+  // Scores given on an incomplete set of pictures are not counted at all, whatever they say.
+  const criticsUsable = checkA.ok && checkB.ok && picturesComplete;
 
   let lower = {};
   let na = [];
   const severe = { a: [], b: [] };
   if (criticsUsable) {
     ({ lower, na } = lowerScores(i.criticA, i.criticB));
+    if (i.uiRequired && na.includes('ui')) {
+      unestablished.push(`ui: both critics marked UI/UX N/A, but ${i.uiRequired}, so the area was not scored and the piece cannot pass`);
+    }
     for (const area of AREAS) {
       if (na.includes(area)) continue;
       const a = i.criticA.scores[area];
@@ -136,8 +160,11 @@ export function computeVerdict(i) {
 
   // ---- the play test
   const play = i.playTest ?? null;
-  if (!play || !Number.isFinite(play.errors)) unestablished.push('play test: it did not run, so its errors were not counted');
-  else if (play.errors > 0) failed.push(`play test: ${plural(play.errors, 'error')}`);
+  if (!play) unestablished.push('play test: it did not run, so its errors were not counted');
+  else if (!Number.isFinite(play.errors)) {
+    const why = Array.isArray(play.why) && play.why.length ? play.why.join('; ') : 'no error count was recorded';
+    unestablished.push(`play test: not established (${why}), so its errors were not counted`);
+  } else if (play.errors > 0) failed.push(`play test: ${plural(play.errors, 'error')}`);
 
   // ---- the scripted functional checks
   const fc = i.functionalChecks ?? { defined: false };
@@ -160,14 +187,17 @@ export function computeVerdict(i) {
   else if (claims.unsupported.length > 0) failed.push(`claim audit: ${plural(claims.unsupported.length, 'unsupported claim')}`);
 
   // ---- the run itself
-  const endedBy = i.run?.endedBy ?? 'done';
+  // A missing run record is not a normal ending: every other absent input here fails closed, and so does this one.
+  const endedBy = i.run?.endedBy ?? 'unknown';
   if (endedBy !== 'done') failed.push(`the run did not end normally (${endedBy})`);
 
   const status = failed.length ? 'fail' : unestablished.length ? 'unevaluable' : 'pass';
 
   // The same rule with clause 4 waived: what the other four clauses say. Never the headline.
+  // It needs the functional clause to be the ONLY thing not established: a piece whose claim audit never ran, whose play test
+  // was not established or whose pictures are incomplete is not "everything but the checks passed", whatever order the reasons come in.
   const onlyFunctionalUnestablished =
-    failed.length === 0 && unestablished.length === 1 && unestablished[0].startsWith('functional checks: none are defined');
+    failed.length === 0 && unestablished.length > 0 && unestablished.every((u) => u.startsWith('functional checks: none are defined'));
   const passIgnoringFunctionalChecks = status === 'pass' || onlyFunctionalUnestablished;
 
   return {
@@ -184,7 +214,8 @@ export function computeVerdict(i) {
       b: i.criticB ? { scores: i.criticB.scores ?? null, na: i.criticB.na ?? [], severeFlaws: i.criticB.severeFlaws ?? [] } : null,
     },
     nonCritic: {
-      playTest: play ? { errors: play.errors, warnings: play.warnings ?? null } : null,
+      playTest: play ? { errors: Number.isFinite(play.errors) ? play.errors : null, warnings: play.warnings ?? null, ...(Array.isArray(play.why) && play.why.length ? { why: play.why } : {}) } : null,
+      screenshots: planned && Array.isArray(planned.names) ? { planned: planned.names, missing: planned.missing ?? [] } : null,
       functionalChecks: fc.defined ? { defined: true, results: fc.results ?? [] } : { defined: false },
       claimAudit: claims ? { unsupported: claims.unsupported.length } : null,
       runEndedBy: endedBy,

@@ -32,6 +32,7 @@ const good = (over = {}) => ({
   criticA: critic(),
   criticB: critic(),
   shotsGiven: SHOTS,
+  planned: { names: SHOTS, missing: [] },
   playTest: { errors: 0, warnings: 2 },
   functionalChecks: { defined: true, results: [{ id: 'opens-on-e', pass: true }] },
   claims: { unsupported: [] },
@@ -190,9 +191,98 @@ test('validateCritic accepts the rubric shape and names each defect', () => {
   assert.match(validateCritic(critic({ severeFlaws: 'none' })).problems.join(), /severeFlaws is not a list/);
 });
 
-test('the verdict records what produced it: both critics, the lower scores, the four non-critic results', () => {
+test('the verdict records what produced it: both critics, the lower scores, the non-critic results', () => {
   const v = computeVerdict(good());
   assert.ok(v.critics.a && v.critics.b);
-  assert.deepEqual(Object.keys(v.nonCritic).sort(), ['claimAudit', 'functionalChecks', 'playTest', 'runEndedBy']);
+  assert.deepEqual(Object.keys(v.nonCritic).sort(), ['claimAudit', 'functionalChecks', 'playTest', 'runEndedBy', 'screenshots']);
   assert.equal(v.threshold, 8);
+});
+
+// ================================================================================ the clauses the first review found unguarded
+test('THE RUN RECORD: a missing run, or a run with no ending recorded, is NOT a normal ending (it fails closed like every other absent input)', () => {
+  for (const run of [undefined, null, {}, { endedBy: undefined }, { endedBy: null }]) {
+    const v = computeVerdict(good({ run }));
+    assert.equal(v.pass, false, JSON.stringify(run));
+    assert.equal(v.status, 'fail');
+    assert.match(v.reasons.join('\n'), /did not end normally \(unknown\)/);
+    assert.equal(v.nonCritic.runEndedBy, 'unknown');
+  }
+  const omitted = good();
+  delete omitted.run;
+  assert.equal(computeVerdict(omitted).status, 'fail', 'no `run` key at all');
+});
+
+test('THE PLANNED PICTURES: a piece is not scored on the pictures that happened to be saved; the critics\' scores of an incomplete set are not counted', () => {
+  const one = computeVerdict(good({ planned: { names: SHOTS, missing: [{ name: 'close-up', why: 'screen_capture returned no picture' }] } }));
+  assert.equal(one.pass, false);
+  assert.equal(one.status, 'unevaluable');
+  assert.match(one.reasons.join('\n'), /screenshots: 1 of 4 planned pictures are missing \(close-up: screen_capture returned no picture\).*scores are not counted/s);
+  assert.equal(one.lower, null, 'no mean is reported from scores given on an incomplete set');
+  assert.equal(one.na, null);
+  assert.deepEqual(one.nonCritic.screenshots, { planned: SHOTS, missing: [{ name: 'close-up', why: 'screen_capture returned no picture' }] });
+  // all of them missing, and the scores are glowing: still nothing
+  const none = computeVerdict(good({ planned: { names: SHOTS, missing: SHOTS.map((name) => ({ name })) } }));
+  assert.equal(none.status, 'unevaluable');
+  assert.equal(none.passIgnoringFunctionalChecks, false);
+  // a manifest that cannot say what was planned leaves the clause unestablished, not satisfied
+  for (const planned of [undefined, null, {}, { names: SHOTS }, { missing: [] }]) {
+    const v = computeVerdict(good({ planned }));
+    assert.equal(v.status, 'unevaluable', JSON.stringify(planned));
+    assert.match(v.reasons.join('\n'), /screenshots: the manifest does not say which pictures the piece should have/);
+  }
+  // a decided failure still outranks it
+  assert.equal(computeVerdict(good({ planned: { names: SHOTS, missing: [{ name: 'overview' }] }, playTest: { errors: 1 } })).status, 'fail');
+});
+
+test('THE UI AREA ON A UI PIECE: both critics marking it N/A leaves it unscored, and the piece unevaluable; one critic scoring it is enough', () => {
+  const because = 'the harness found a screen UI in what was built';
+  const both = computeVerdict(good({ uiRequired: because }));
+  assert.equal(both.pass, false);
+  assert.equal(both.status, 'unevaluable');
+  assert.match(both.reasons.join('\n'), /ui: both critics marked UI\/UX N\/A, but the harness found a screen UI in what was built/);
+  // CONTROLS: the same two critics on a piece that may be N/A pass; one critic scoring the UI is the pass rule as written
+  assert.equal(computeVerdict(good({ uiRequired: null })).pass, true, 'a world piece may have its UI area N/A');
+  assert.equal(computeVerdict(good({ uiRequired: undefined })).pass, true);
+  const oneScores = computeVerdict(good({ uiRequired: because, criticA: critic({ scores: { ui: 9 }, na: [] }) }));
+  assert.equal(oneScores.pass, true, JSON.stringify(oneScores.reasons));
+  assert.equal(oneScores.lower.ui, 9);
+  const bothScore = computeVerdict(good({ uiRequired: because, criticA: critic({ scores: { ui: 9 }, na: [] }), criticB: critic({ scores: { ui: 8 }, na: [] }) }));
+  assert.equal(bothScore.pass, true);
+  // a low UI score still fails, N/A or not
+  assert.equal(computeVerdict(good({ uiRequired: because, criticA: critic({ scores: { ui: 3 }, na: [] }) })).status, 'fail');
+});
+
+test('THE PLAY TEST WITHOUT EVIDENCE: an error count of null (not established) is unevaluable and names what was missing; a count of 0 stands', () => {
+  const v = computeVerdict(good({ playTest: { errors: null, warnings: null, why: ['the server log could not be read', 'the console could not be read'] } }));
+  assert.equal(v.status, 'unevaluable');
+  assert.match(v.reasons.join('\n'), /play test: not established \(the server log could not be read; the console could not be read\), so its errors were not counted/);
+  assert.deepEqual(v.nonCritic.playTest.why, ['the server log could not be read', 'the console could not be read']);
+  assert.equal(v.nonCritic.playTest.errors, null);
+  assert.match(computeVerdict(good({ playTest: { errors: undefined } })).reasons.join('\n'), /not established \(no error count was recorded\)/);
+  assert.equal(computeVerdict(good({ playTest: { errors: 0, warnings: 0, why: [] } })).pass, true);
+});
+
+test('passIgnoringFunctionalChecks is true ONLY when the functional clause is the single thing not established: no other gap may ride along', () => {
+  const noChecks = { functionalChecks: { defined: false } };
+  assert.equal(computeVerdict(good(noChecks)).passIgnoringFunctionalChecks, true, 'CONTROL: only the checks are missing');
+  // each other way a clause can be merely unestablished, alone and beside the functional gap
+  for (const [label, over] of [
+    ['the claim audit never ran', { claims: null }],
+    ['the play test never ran', { playTest: null }],
+    ['the play test is not established', { playTest: { errors: null, why: ['play did not start'] } }],
+    ['a critic is not usable', { criticB: null }],
+    ['a critic skipped a picture', { criticA: critic({ shotsViewed: ['overview.png'] }) }],
+    ['a planned picture is missing', { planned: { names: SHOTS, missing: [{ name: 'overview' }] } }],
+    ['the pictures planned are unknown', { planned: null }],
+    ['the UI area is N/A on a UI piece', { uiRequired: 'the request is in the UI category' }],
+    ['the functional checks are defined but recorded no result', { functionalChecks: { defined: true, results: [] } }],
+  ]) {
+    const v = computeVerdict(good({ ...noChecks, ...over }));
+    assert.equal(v.status, 'unevaluable', label);
+    assert.equal(v.passIgnoringFunctionalChecks, false, `${label}: the side figure must not count it`);
+  }
+  // a decided failure clears it too
+  assert.equal(computeVerdict(good({ ...noChecks, playTest: { errors: 2 } })).passIgnoringFunctionalChecks, false);
+  // and a piece that passes outright is, of course, counted
+  assert.equal(computeVerdict(good()).passIgnoringFunctionalChecks, true);
 });

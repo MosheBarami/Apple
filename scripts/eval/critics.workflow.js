@@ -15,7 +15,7 @@ export const meta = {
 //   args = {
 //     rubric:   the full text of planning/critic-rubric.md,
 //     rubricSha256, rubricVersion,
-//     pieces: [{ dir, requestId, category, request, shots: [{ name, path }], reply, consoleText, steps }],
+//     pieces: [{ dir, requestId, category, request, shots: [{ name, path }], reply, consoleText, steps, measured }],
 //     model?:   optional model override for the critics (omit to inherit the session's)
 //   }
 //
@@ -135,7 +135,12 @@ function auditPrompt(piece) {
     typeof piece.steps === 'string' ? piece.steps : JSON.stringify(piece.steps, null, 1),
     'STEPS>>>',
     '',
-    'THE PLAY-TEST CONSOLE (what the log printed while the place ran; empty means nothing was printed):',
+    'WHAT THE HARNESS MEASURED (counts read from Studio itself, not from the builder; a claim about a quantity is checked against these):',
+    '<<<MEASURED',
+    JSON.stringify(piece.measured ?? null, null, 1),
+    'MEASURED>>>',
+    '',
+    'THE PLAY-TEST CONSOLE (what the log printed while the place ran. A line in parentheses saying the console was not read means it could NOT be read: that is not the same as nothing printed, and "no errors" is then unsupported):',
     '<<<CONSOLE',
     piece.consoleText || '(empty)',
     'CONSOLE>>>',

@@ -14,6 +14,9 @@
 //                  nothing can pass and this strict number is 0 by construction (lib/verdict.mjs says why).
 //   ...ignoring    the same count with only the functional-check clause waived. It is labelled as what it is and is
 //                  never the headline: it says how many pieces would pass if the checks existed and passed.
+//   conversation   whether each attempted piece ran in a fresh conversation (the project's chat, memory and build ledger cleared
+//                  just before the run). A piece that did not (an older manifest, a harness that could not clear it) shared the
+//                  chat of the pieces before it, and the report says so beside the numbers.
 //   area means     the mean of the LOWER of the two critics' scores per area, per category, over the pieces that were
 //                  scored by both critics (an area both critics marked N/A is left out of that mean).
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -69,7 +72,9 @@ export function reasonKey(reason) {
   if ((m = /^(\w+): the lower score/.exec(reason))) return `${m[1]}: lower score below 8`;
   if ((m = /^severe flaw (\d)/.exec(reason))) return `severe flaw ${m[1]}`;
   if (/^play test: \d+ error/.test(reason)) return 'play test errors';
-  if (/^play test: it did not run/.test(reason)) return 'play test did not run';
+  if (/^play test: (it did not run|not established)/.test(reason)) return 'play test not established';
+  if (/^screenshots: /.test(reason)) return 'planned pictures missing';
+  if (/^ui: both critics marked UI\/UX N\/A/.test(reason)) return 'UI area marked N/A on a UI piece';
   if (/^claim audit: \d+ unsupported/.test(reason)) return 'unsupported claims';
   if (/^claim audit: it did not run/.test(reason)) return 'claim audit did not run';
   if (/^functional checks: none are defined/.test(reason)) return 'functional checks not defined (they arrive in M5)';
@@ -121,6 +126,9 @@ export function aggregate(pieces) {
     after: byEnd.at(-1)?.manifest.spend?.after ?? null,
   };
 
+  const fresh = attempted.filter((p) => p.manifest.conversation?.cleared === true);
+  const sharedChat = attempted.filter((p) => p.manifest.conversation?.cleared !== true);
+
   const reasonCounts = {};
   for (const p of scored) for (const r of p.verdict.reasons ?? []) {
     const key = reasonKey(r);
@@ -130,6 +138,7 @@ export function aggregate(pieces) {
   const distinct = (fn) => [...new Set(attempted.map(fn).filter(Boolean))];
   return {
     counts: { devSetFolders: pieces.length, dryRuns: dry.length, attempted: attempted.length, scored: scored.length, awaiting: awaiting.length, passing: passing.length, failing: failing.length, unevaluable: unevaluable.length, passingIgnoringFunctional: passingIgnoringFunctional.length, notRun: notRun.length },
+    conversation: { freshChat: fresh.length, attempted: attempted.length, sharedChat: sharedChat.map((p) => p.id) },
     ids: { awaiting: awaiting.map((p) => p.id), notRun: notRun.map((p) => `${p.id} (${p.manifest.aborted?.step ?? 'no run'})`), passing: passing.map((p) => p.id) },
     byCategory,
     overall,
@@ -173,6 +182,10 @@ export function renderMarkdown(milestone, agg) {
   L.push(`- **Passing / attempted: ${c.passing} / ${c.attempted} (${pctDown(c.passing, c.attempted)})**`);
   L.push(`- failing ${c.failing}, not evaluable ${c.unevaluable}, awaiting critics ${c.awaiting}`);
   L.push(`- attempted = pieces whose agent run was made. Dry runs not counted: ${c.dryRuns}. Not run (harness stopped first): ${c.notRun}${agg.ids.notRun.length ? ` (${agg.ids.notRun.join(', ')})` : ''}.`);
+  L.push(`- Conversation: ${agg.conversation.freshChat} of ${c.attempted} attempted pieces ran in a FRESH conversation (the project's chat, the memory it produced and the build ledger were cleared just before the run, by POST /api/admin/conversation-reset).`);
+  if (agg.conversation.sharedChat.length) {
+    L.push(`- **${agg.conversation.sharedChat.length} attempted piece(s) SHARED THE PROJECT'S EARLIER CONVERSATION (it was not cleared before them): ${agg.conversation.sharedChat.join(', ')}.** The agent saw the earlier requests and replies as history, which can change its cost and behaviour, so their scores are not comparable with a fresh-chat piece's.`);
+  }
   L.push(`- **Passing, with the functional-check clause waived: ${c.passingIgnoringFunctional} / ${c.attempted} (${pctDown(c.passingIgnoringFunctional, c.attempted)})**. This is NOT the plan's pass rate. Per-request scripted functional checks do not exist before M5, so the strict rate above cannot be above 0 by construction; this line says how many pieces satisfy the other four clauses (critics, severe flaws, play test, claim audit).`);
   if (Object.keys(agg.reasonCounts).length) {
     L.push('', 'Why pieces did not pass (a piece can have several reasons):', '');

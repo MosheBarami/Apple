@@ -4,7 +4,8 @@
 //   node scripts/eval/prepare-critics.mjs <piece folder>... [--rubric planning/critic-rubric.md] [--out args.json] [--include-dry-run]
 //
 // Prints (or writes) one JSON object: the full rubric text with its version and sha256, and per piece the request, the
-// absolute screenshot paths, the reply, the play-test console and the step list. A piece whose run aborted, or that is
+// absolute screenshot paths, the reply, the play-test console, the step list and what the harness measured (what the run
+// added, what the play test read: for the claim auditor only; a critic never sees any of it). A piece whose run aborted, or that is
 // a dry run, or that has no screenshots, is left out and listed under `skipped` with the reason: it is never scored on
 // pictures that do not exist. A dry run is included only with --include-dry-run (to prove the plumbing).
 import { createHash } from 'node:crypto';
@@ -12,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { REPO_ROOT } from './lib/dev-set.mjs';
-import { readPiece, stepsText } from './lib/piece-files.mjs';
+import { measuredSummary, readPiece, stepsText } from './lib/piece-files.mjs';
 
 export const DEFAULT_RUBRIC = join(REPO_ROOT, 'planning', 'critic-rubric.md');
 const CONSOLE_LIMIT = 20_000;
@@ -55,6 +56,7 @@ export function prepare(dirs, { rubricPath = DEFAULT_RUBRIC, includeDryRun = fal
       reply: p.reply,
       consoleText: p.consoleText.length > CONSOLE_LIMIT ? `${p.consoleText.slice(0, CONSOLE_LIMIT)}\n[console cut at ${CONSOLE_LIMIT} characters]` : p.consoleText,
       steps: stepsText(p.steps),
+      measured: measuredSummary(p.manifest),
     });
   }
   return { rubric: rubric.rubric, rubricSha256: rubric.rubricSha256, rubricVersion: rubric.rubricVersion, pieces, skipped };
