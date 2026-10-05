@@ -56,7 +56,7 @@ import { useToast } from '../components/toast';
 import './usage.css';
 import './nonworkspace-minimal.css';
 // The owner's picked account-screen components (apps/web/src/components/picks/settings).
-import { useTweenedNumber } from '../components/picks/settings/motion';
+import { useReducedMotion, useTweenedNumber } from '../components/picks/settings/motion';
 import { LineGraph } from '../components/picks/settings/line-graph';
 import { ActivityCalendar } from '../components/picks/settings/activity-calendar';
 import { LiveStats } from '../components/picks/settings/live-stats';
@@ -156,12 +156,15 @@ export function requestsLeftLine(spendable: number, low: number, high: number, p
  * spending them is a different decision from spending an allowance. This is the same rule
  * usage-meter-model.ts is built around, applied to the surface that states it in the largest type.
  */
-function CreditsRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
+export function CreditsRing({ remaining, daily, period }: { remaining: number; daily: number; period: 'day' | 'month' }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   // The arc and the figure GLIDE to the balance instead of snapping (picks: GSAP AttrPlugin — the
-  // attribute tween is done natively in motion.ts). The label always carries the real number.
-  const shown = useTweenedNumber(remaining, 900, 0);
+  // attribute tween is done natively in motion.ts). The label always carries the real number. Under reduced
+  // motion there is no glide, so the ring starts AT the balance instead of drawing 0.00 until the effect runs
+  // (and a test can read the figure that is drawn, not only the label).
+  const reduced = useReducedMotion();
+  const shown = useTweenedNumber(remaining, 900, reduced ? remaining : 0);
   const frac = daily > 0 ? Math.max(0, Math.min(1, shown / daily)) : 0;
   const window = period === 'month' ? 'this month' : 'today';
   return (
@@ -557,7 +560,8 @@ function RightNow({ left, days, updatedAt }: { left: number; days: UsageDay[]; u
       stats={[
         { label: 'Credits left', value: left, decimals: 2 },
         { label: 'Spent today', value: todayRow?.credits ?? 0, decimals: 2 },
-        { label: 'Builds today', value: todayRow?.events ?? 0 },
+        // A ledger row is one CHARGE (a request's admission, a model step's settlement), not a build or a request.
+        { label: 'Charges today', value: todayRow?.events ?? 0 },
       ]}
       bars={bars}
       updatedAt={updatedAt}

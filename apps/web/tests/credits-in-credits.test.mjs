@@ -24,7 +24,9 @@ const ui = await bundle(`
   export { renderToStaticMarkup } from 'react-dom/server';
   export { QueryClient, QueryClientProvider } from '@tanstack/react-query';
   export { Turn } from './src/components/ws/turn';
-  export { UsagePage } from './src/routes/usage';
+  export { UsagePage, CreditsRing } from './src/routes/usage';
+  export { AccountMenuHeader } from './src/components/picks/settings/user-button';
+  export { SlidingNumber } from './src/components/picks/composer/sliding-number';
   export { PlanLadder } from './src/components/plans';
   export { BrandingDetails } from './src/components/branding/branding-details';
   export * as shared from '@studpilot/shared';
@@ -71,13 +73,17 @@ test('THE USAGE PAGE: every figure it draws is credits, from the balance to the 
   inPage(/2\.00 extra credits/, 'the purchased balance');
   inPage(/Credits left5\.50/, 'the live panel balance (allowance plus purchased: 825 units)');
   inPage(/Spent today3\.00/, 'the live panel spend today (450 units)');
+  // The count beside it is ledger ROWS (charges), and is not called builds: three rows were written today.
+  inPage(/Charges today3/, 'the live panel count of ledger rows, called what it is');
+  assert.doesNotMatch(page, /Builds today|Days you built/, 'a ledger-row count is labelled as builds');
+  inPage(/Days you spent Credits/, 'the calendar heading');
   // The history: the month comparison, the 30-day line, the day bars and the calendar.
   inPage(/13\.00 Credits this month, down from 20\.00 last month/, 'the month comparison (1950 and 3000 units)');
   inPage(/Spent in 30 days13\.00/, 'the 30-day total');
   inLabels(/Spent in 30 days: 13\.00 Credits/, 'the line graph');
   inLabels(new RegExp(`${today}: 3\\.00 Credits`), "today's bar");
   inLabels(new RegExp(`${yesterday}: 10\\.00 Credits`), "yesterday's bar");
-  inLabels(/: 3 requests, 3\.00 Credits/, "the calendar's tooltip for today");
+  inLabels(/: 3 charges, 3\.00 Credits/, "the calendar's tooltip for today (a ledger row is a charge)");
   inPage(/What those Credits went on[\s\S]*Requests13\.00/, 'the spend breakdown');
   // What the next request costs, and what a request is.
   inPage(/A request typically costs 0\.03\u20130\.12 Credits/, 'the per-request cost (4-18 units)');
@@ -86,6 +92,72 @@ test('THE USAGE PAGE: every figure it draws is credits, from the balance to the 
   // And none of the worker's own numbers survives anywhere a person could read it.
   for (const raw of ['525', '825', '450', '1500', '1950', '3000', '4500', '750']) {
     assert.doesNotMatch(`${page}\n${labels}`, new RegExp(`(^|[^\\d.])${raw}([^\\d]|$)`), `the ledger figure ${raw} reached the page`);
+  }
+});
+
+// ----------------------------------- the three conversions the usage-page test above cannot see
+
+/**
+ * Review cycle 2, finding 6. Each of these three printed a figure through a conversion nothing pinned:
+ * reverting it left every suite green. They are rendered here with a ledger-unit input and read.
+ */
+const meQuery = (quota) => {
+  const qc = new ui.QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  qc.setQueryData(['me'], { quota });
+  return qc;
+};
+// LEDGER units: 525 of Free's 750 a day left (3.50 credits) and 300 purchased (2.00): 825 spendable, 5.50 credits.
+const QUOTA = {
+  plan: 'free', creditsRemaining: 825, creditsDaily: 750, creditsMonthly: 4500, creditsUsedToday: 225, creditsUsedThisMonth: 600,
+  resetsAtIso: new Date(Date.now() + 5 * 3600_000).toISOString(), allowanceRemaining: 525, credits: 300,
+};
+
+test('THE ACCOUNT MENU: the balance in the header is credits (5.50), not the 825 ledger units the worker holds', () => {
+  const markup = render(h(ui.QueryClientProvider, { client: meQuery(QUOTA) }, h(ui.AccountMenuHeader, { name: 'Ada', email: 'ada@example.com' })));
+  assert.match(markup, /aria-label="5\.50 Credits left"/, 'the accessible label does not carry the converted balance');
+  assert.match(markup, /<span class="pk-roll__sr">5\.50<\/span>/, 'the rolling counter does not announce the converted balance');
+  assert.doesNotMatch(markup, /\b825\b|\b525\b/, 'a ledger-unit figure reached the account menu');
+});
+
+test('THE ACCOUNT MENU says it does not know, rather than print a balance, when the quota is unreadable', () => {
+  const markup = render(h(ui.QueryClientProvider, { client: meQuery({ nonsense: true }) }, h(ui.AccountMenuHeader, { name: null, email: 'ada@example.com' })));
+  assert.match(markup, /Not known right now/);
+  assert.doesNotMatch(markup, /Credits left/);
+});
+
+test('THE COMPOSER\'S SLIDING NUMBER: with `decimals` it prints a credit balance to exactly that many places; without, a whole number', () => {
+  const read = (props) => /<span class="gx-sr">([^<]*)<\/span>/.exec(render(h(ui.SlidingNumber, props)))?.[1];
+  assert.equal(read({ value: 3.54, decimals: 2 }), '3.54', 'the decimals branch dropped the fraction');
+  assert.equal(read({ value: 3.5, decimals: 2 }), '3.50', 'a credit balance always shows two places');
+  assert.equal(read({ value: 0, decimals: 2 }), '0.00');
+  assert.equal(read({ value: 1204.1, decimals: 2 }), '1,204.10', 'English separators, like every credit figure');
+  assert.equal(read({ value: -3, decimals: 2 }), '0.00', 'a balance is never shown below zero');
+  assert.equal(read({ value: NaN, decimals: 2 }), '0.00', 'an unreadable value is not a number to print');
+  // Without `decimals` it is the characters-left counter: a whole number, rounded, through the shared formatter.
+  assert.equal(read({ value: 1204.4 }), '1,204');
+  assert.equal(read({ value: 7 }), '7');
+  // The rolling columns are decoration: one digit column per digit of the SAME figure.
+  const cols = (props) => (render(h(ui.SlidingNumber, props)).match(/class="pk-num__col"/g) ?? []).length;
+  assert.equal(cols({ value: 3.54, decimals: 2 }), 3, '3.54 rolls three digit columns');
+});
+
+test('THE USAGE PAGE RING: the figure DRAWN in its centre is the balance in credits, not only the label', () => {
+  // The drawn number animates up from zero; under reduced motion it is the balance from the first paint, which is
+  // also what makes it readable here. (The usage-page test above reads the label, because it renders with motion.)
+  globalThis.window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} });
+  globalThis.document = { documentElement: { classList: { contains: () => false } } };
+  try {
+    const ring = render(h(ui.CreditsRing, { remaining: 525, daily: 750, period: 'day' }));
+    assert.match(ring, /<text[^>]*class="ring-number"[^>]*>3\.50<\/text>/, 'the centre figure is not 3.50 credits');
+    assert.match(ring, /<text[^>]*class="ring-caption"[^>]*>of 5\.00<\/text>/, 'the caption is not the daily allowance in credits');
+    assert.match(ring, /aria-label="3\.50 of 5\.00 Credits of allowance remaining today"/);
+    assert.doesNotMatch(ring, />525<|>750</, 'a ledger-unit figure is drawn in the ring');
+    const month = render(h(ui.CreditsRing, { remaining: 4500, daily: 4500, period: 'month' }));
+    assert.match(month, /class="ring-number"[^>]*>30\.00<\/text>/, 'the month ring draws 30.00 credits');
+    assert.match(month, /remaining this month"/);
+  } finally {
+    globalThis.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+    delete globalThis.document;
   }
 });
 
@@ -146,6 +218,8 @@ test('THE PLAN LADDER: allowances are credits from the table, and a purchase hig
     assert.ok(ladder.includes(`${shared.formatCredits(t.creditsPerDay)} a day`), `${t.name}: its daily credits`);
   }
   assert.doesNotMatch(ladder, /Buy credits/i, 'the Pro card sells buying Credits that nothing can sell');
+  assert.doesNotMatch(ladder, /build mode/i, 'a plan card names build modes, and there are none: one engine, one kind of request');
+  assert.match(ladder, /The same StudPilot engine as every plan/, 'the Free card says what it does include');
   assert.match(ladder, /Everything in Free/, 'the rest of the Pro highlights are still there');
 });
 

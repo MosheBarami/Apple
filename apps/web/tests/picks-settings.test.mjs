@@ -54,7 +54,7 @@ const MOUNTS = [
   ['reactbits--bell-toggle', 'components/notification-inbox.tsx', /import '\.\/picks\/settings\/bell-ring\.css'/, /className=\{`pk-bell\$\{ring > 0 \? ' is-ringing' : ''\}`\}/],
   ['motion--clerk-user-button', 'components/notification-inbox.tsx', /import '\.\/picks\/settings\/user-button\.css'/, /./],
   // Usage
-  ['gsap--attrplugin', 'routes/usage.tsx', /import \{ useTweenedNumber \}/, /useTweenedNumber\(remaining/],
+  ['gsap--attrplugin', 'routes/usage.tsx', /import \{[^}]*\buseTweenedNumber\b[^}]*\} from/, /useTweenedNumber\(remaining/],
   ['motion--line-graph', 'routes/usage.tsx', /import \{ LineGraph \}/, /<LineGraph\b/],
   ['componentry--github-calendar', 'routes/usage.tsx', /import \{ ActivityCalendar \}/, /<ActivityCalendar\b/],
   ['motion--section-stats-live-panel', 'routes/usage.tsx', /import \{ LiveStats \}/, /<LiveStats\b/],
