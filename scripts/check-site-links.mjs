@@ -34,26 +34,15 @@ const SERVED_ELSEWHERE = {
   '/app': 'the web app and every route under it, served by apps/worker — see index.ts',
 };
 
-/** EXACT paths served elsewhere. Kept separate from the prefixes above on purpose.
+/** EXACT paths served elsewhere. Kept separate from the prefixes above on purpose: `/app` has to be a prefix because it is a
+ *  single-page app (the worker returns the same shell for any path beneath it), and an exact path must not excuse a prefix.
  *
- *  `/app` has to be a prefix because it is a single-page app: the worker returns the same shell
- *  for any path beneath it. `/showcase` is the opposite — one object in the worker's D1 static
- *  store, uploaded by `infra/deploy-showcase.mjs`. Measured against the live origin on 2026-09-21:
- *  `/showcase` and `/showcase/` are 200 and `/showcase/nope` is 404. So excusing it as a prefix
- *  would excuse twenty links that do not exist in order to excuse one that does, and the narrower
- *  rule is the true one.
- *
- *  THE FAILURE THIS COMES FROM. The Showcase nav entry landed in `e85fe18`, and it is the only
- *  link to the single best piece of evidence this product has. The lane that added it taught
- *  `apps/site/tests/links-resolve.test.mjs` about the page — it carries a `WORKER_SERVED` map with
- *  this same path in it — and did not teach THIS file, which is the one CI runs as the "Internal
- *  links resolve" step. So the step went from green to twenty broken links on every page of the
- *  site, and nobody saw it, because GitHub stopped starting jobs the same night for an unpaid bill.
- *  Two checkers over one fact, and updating one of them is the same shape as the rename that
- *  missed `.github` and held CI red for five days. */
-const SERVED_ELSEWHERE_EXACT = {
-  '/showcase': 'the showcase page, an object in the worker D1 static store — see infra/deploy-showcase.mjs',
-};
+ *  EMPTY SINCE 2026-10-05 (M2 rebuild). It held `/showcase`, one object in the worker's D1 static store that
+ *  `infra/deploy-showcase.mjs` uploaded, and the rule was added after a nav entry for it turned the "Internal links resolve" step
+ *  from green to twenty broken links on every page. `/showcase` is built by Astro now (a redirect to /catalog, see
+ *  astro.config.mjs), so it is an ordinary route and needs no exemption. The map stays as the mechanism for the next one.
+ *  `apps/site/tests/links-resolve.test.mjs` holds the same fact from the test side. */
+const SERVED_ELSEWHERE_EXACT = {};
 
 const servedElsewhere = (p) =>
   Object.prototype.hasOwnProperty.call(SERVED_ELSEWHERE_EXACT, p.replace(/\/$/, '') || '/')
