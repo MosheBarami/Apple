@@ -10,8 +10,8 @@
  * serves its fixtures only when `import.meta.env.DEV` is true (that gate is deliberate: a production
  * bundle never carries fake projects). The stylesheet is compiled by the same plugins from the same
  * sources, minus minification, so a colour that is wrong here is wrong in production. Measured
- * (planning/proof/M2/DESIGN-SYSTEM.md section 11): the Send button drew the same pair in this build as in
- * the production one.
+ * (planning/proof/M2/DESIGN-SYSTEM.md section 11.1): the production stylesheet draws the same pair on a
+ * default-variant Button, which is the pair the Send button draws here.
  *
  * IT FAILS RATHER THAN SKIPS. No Vite, no Chromium and a failed build are each a failure to observe,
  * and a failure to observe must not render as a clean page: the error names which.
