@@ -142,8 +142,43 @@ test('LOCK 2 of 3, the Settings control: an opt-OUT switch in Settings > Privacy
   assert.ok(declared.length > 5, 'could not read PREFERENCE_KEYS out of the worker: this test would check nothing');
   assert.ok(declared.includes("'improvement_opt_out'"), 'the worker would refuse the key the switch writes');
   assert.ok(norm(ROW).includes(RULE), 'the Settings row does not say what the published pages say');
-  assert.ok(norm(ROW).includes(NOT_ACTIVE), 'the Settings row does not say collection is not active');
+  // "Collection is not active yet" is held by LOCK 3, as an equivalence with the gate: asserted here too it would forbid ever opening the gate.
 });
+
+/**
+ * WHAT MUST EXIST BEFORE THE GATE MAY BE TRUE.
+ *
+ * The pages promise two things about the day collection starts, and neither has a mechanism today:
+ *
+ *   1. THE OPT-OUT IS HONOURED. `improvement_opt_out` is stored (preferences.ts) and nothing reads it. The only consent reader in
+ *      the training pipeline accepts proof from `profiles.training_opt_in`, an opt-IN column the switch never writes, so opening
+ *      the gate with the pipeline as it stands would stage the work of people who opted out. The gate source must READ the
+ *      preference (comments do not count).
+ *   2. EVERY ACCOUNT HOLDER IS TOLD FIRST, including an account that signs in only with Roblox, which has no email address
+ *      (its address is a placeholder nothing can deliver to). The pages say "in the app" for those accounts, and no in-app
+ *      notice exists. The evidence this test looks for is a notification kind named `policy_notice` in the worker's
+ *      NOTIFICATION_KINDS: the inbox is the one in-app channel that reaches every account. If the notice is built some other
+ *      way, re-aim THIS check in the same change that builds it; do not delete it (planning/proof/M2/LEGAL-CLAIMS.md, section 5).
+ *
+ * So the gate cannot be flipped alone: opening it needs both pieces of evidence AND every surface to stop saying "not active".
+ */
+const NOTICE_KIND = 'policy_notice';
+const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/** What is missing before the gate may be open: [] means nothing is. Pure, so the cases below can be fed by hand. */
+export function gateEvidenceMissing({ gateSrc, notificationsSrc }) {
+  const missing = [];
+  if (!/\bimprovement_opt_out\b|\bimprovementOptOut\b/.test(stripComments(gateSrc))) {
+    missing.push('the training gate does not read improvement_opt_out (the only consent proof it accepts is profiles.training_opt_in, an opt-in column the Settings switch never writes)');
+  }
+  const kinds = /NOTIFICATION_KINDS = \[([\s\S]*?)\] as const/.exec(stripComments(notificationsSrc))?.[1] ?? '';
+  if (!new RegExp(`'${NOTICE_KIND}'`).test(kinds)) {
+    missing.push(`no in-app notice exists: the worker's NOTIFICATION_KINDS has no '${NOTICE_KIND}', and an account that signs in only with Roblox has no email address to be told at`);
+  }
+  return missing;
+}
+
+const NOTIFICATIONS_SRC = readFileSync(join(ROOT, 'apps/worker/src/notifications.ts'), 'utf8');
 
 test('LOCK 3 of 3, the gate: the training pipeline refuses customer work, and the surfaces say "not active" exactly while it does', () => {
   const closed = /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/.test(GATE);
@@ -151,12 +186,32 @@ test('LOCK 3 of 3, the gate: the training pipeline refuses customer work, and th
   assert.ok(closed !== open, 'could not read the gate out of packages/training/src/consent-staging.mjs');
   // THE THREE MOVE TOGETHER. With the gate closed every surface must say collection is not active; with it open none may.
   // Opening the gate alone, or deleting the sentence alone, fails here. Turning collection on is a product decision that changes
-  // the pages, the Settings row (its copy and the email to account holders) and this constant in one change.
+  // the pages, the Settings row (its copy and the notice to account holders) and this constant in one change.
   for (const [where, text] of [['privacy.astro', PRIVACY], ['docs/privacy-and-data.astro', DOCS], ['the Settings row', norm(ROW)]]) {
     assert.equal(text.includes(NOT_ACTIVE), closed,
       closed
         ? `${where} does not say "${NOT_ACTIVE}" while the gate is closed`
-        : `${where} still says "${NOT_ACTIVE}" while the gate is OPEN: collection is on, and the email to every account holder and the policy update are owed first`);
+        : `${where} still says "${NOT_ACTIVE}" while the gate is OPEN: collection is on, and the notice to every account holder and the policy update are owed first`);
   }
-  assert.equal(closed, true, 'the pipeline may process customer work: the published rule says collection is not active');
+  // AND THE GATE MAY BE OPEN ONLY WITH THE TWO THINGS THE PAGES PROMISE (see above). Closed, nothing is demanded.
+  if (open) {
+    const missing = gateEvidenceMissing({ gateSrc: GATE, notificationsSrc: NOTIFICATIONS_SRC });
+    assert.deepEqual(missing, [], `the gate is open and the pages' promises have no mechanism:\n  - ${missing.join('\n  - ')}`);
+  }
+});
+
+test('the gate evidence check can fail: opened alone, with only the opt-out read, with only the notice, and with the read in a comment, it refuses', () => {
+  const GATE_WITHOUT = 'export const CUSTOMER_WORK_TRAINING_ENABLED = true;\n// reads improvement_opt_out one day\nif (proof.source !== "profiles.training_opt_in") fail();';
+  const GATE_WITH = 'export const CUSTOMER_WORK_TRAINING_ENABLED = true;\nif (profile.improvement_opt_out === true) skip();';
+  const KINDS_WITHOUT = "export const NOTIFICATION_KINDS = [\n  'run_complete',\n  'security_event',\n] as const;";
+  const KINDS_WITH = "export const NOTIFICATION_KINDS = [\n  'run_complete',\n  'policy_notice',\n] as const;";
+  const asks = (g, n) => gateEvidenceMissing({ gateSrc: g, notificationsSrc: n });
+  assert.equal(asks(GATE_WITHOUT, KINDS_WITHOUT).length, 2, 'opened alone, both pieces of evidence are missing');
+  assert.equal(asks(GATE_WITH, KINDS_WITHOUT).length, 1, 'the opt-out is read but nobody can be told');
+  assert.match(asks(GATE_WITH, KINDS_WITHOUT)[0], /no in-app notice/);
+  assert.equal(asks(GATE_WITHOUT, KINDS_WITH).length, 1, 'the notice exists but the gate ignores the opt-out (a mention in a comment is not a read)');
+  assert.match(asks(GATE_WITHOUT, KINDS_WITH)[0], /does not read improvement_opt_out/);
+  assert.deepEqual(asks(GATE_WITH, KINDS_WITH), [], 'with both, the gate may be open');
+  // The check is reading the real sources (LOCK 3 above runs it on them whenever the gate is open).
+  assert.ok(GATE.length > 500 && NOTIFICATIONS_SRC.includes('NOTIFICATION_KINDS'), 'the real sources were not read: this test would check nothing');
 });

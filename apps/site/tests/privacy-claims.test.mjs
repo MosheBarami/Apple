@@ -39,8 +39,8 @@
  *   EVERY RESIDUE ENTRY IS ACKNOWLEDGED on both pages, not just the two the first version of this file knew.
  *   THE MODEL-CALL LOG IS DISCLOSED WHILE THE CODE COLLECTS IT.
  *   13 AND OLDER, NO PARENT'S PERMISSION; NO CLAIM THAT SIGN-UP ASKS FOR A BIRTH DATE WHILE IT DOES NOT.
- *   NO BLANKET "NEVER TRAINS" ANYWHERE IN THE PRODUCT'S SOURCE: the owner's rule is Roblox data never, improvement data opt-out and
- *   not collected yet. A sentence about "never" and "train" must be about Roblox.
+ *   NO BLANKET NO-TRAINING PROMISE, IN ANY WORDS, IN apps/site/src, apps/web/src, packages/shared/src AND apps/site/public: the owner's rule is Roblox data never, improvement data opt-out and
+ *   not collected yet. A sentence that denies training, in any words, must be about Roblox data.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -456,20 +456,89 @@ test('the terms: 13+, Roblox account linking with disconnect, free while in beta
 
 /* ------------------------------------------------------------- no blanket promise anywhere in the product --- */
 
-test('NO BLANKET "NEVER TRAINS" REMAINS in apps/site/src or apps/web/src: a sentence with "never" and "train" is about Roblox data', () => {
-  const files = [...sourceFiles(join(SITE, 'src'), ['.astro', '.ts', '.tsx', '.md', '.js']), ...sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx'])];
-  assert.ok(files.length > 100, `only ${files.length} source files were read`);
-  const BANNED = [/never\s+trains?\b/i, /never\s+used\s+to\s+train/i, /no\s+fine-print\s+exception/i];
-  const offenders = [];
-  for (const f of files) {
-    const body = code(f).replace(/\s+/g, ' ');
-    for (const re of BANNED) if (re.test(body)) offenders.push(`${f.slice(ROOT.length + 1)}: ${re}`);
-    for (const sentence of body.split(/(?<=[.!?])\s/)) {
-      if (/\bnever\b[^.!?]*\btrain/i.test(sentence) && !/Roblox/.test(sentence)) offenders.push(`${f.slice(ROOT.length + 1)}: "${sentence.slice(0, 90)}"`);
+/**
+ * THE BLANKET PROMISE, IN ANY WORDS. The owner's rule (plan section 7) is: Roblox data is never used for AI training; improvement
+ * data is anonymised, opt-out and not collected yet. So a sentence that denies training, without being about Roblox data, is the
+ * retracted promise coming back, whatever its wording: "never trains", "does not train", "are not used to train", "won't be used
+ * for training", "no training on your projects". The first version of this scan needed the word "never" before "train" and so
+ * passed both the Settings sentence this lane removed ("not used to train models") and "We do not train on your projects".
+ *
+ * A NEGATOR within ninety characters before the train word (or forty after it) makes it a denial; a sentence that is about Roblox
+ * data is allowed, unless it goes on to name the customer's own work after the Roblox mention ("Roblox data and your projects are
+ * never used to train" is the blanket promise with Roblox in front of it). A block that carries its own retraction
+ * (`release__since`, "Since replaced") may quote the old promise: the changelog records what was announced and corrects it in the
+ * open, the same convention tests/promises-match-the-product.test.mjs applies to the withdrawn queue priority.
+ */
+const TRAIN_WORD = /\btrain(?:s|ed|ing)?\b/i;
+const NEGATOR = /\b(?:never|not|no|without|cannot)\b|n[’']t\b/i;
+const CUSTOMER_WORK_AFTER_ROBLOX = /projects?|chats?|prompts?|checkpoints?|customer|private|your (?:work|code|content|data)/i;
+const RETRACTED_HERE = /release__since|Since (?:replaced|withdrawn)/i;
+const OLD_BLANKET = [/never\s+trains?\b/i, /never\s+used\s+to\s+train/i, /no\s+fine-print\s+exception/i];
+/** The old promise's second sentence has no train word of its own: "There is no fine-print exception." */
+const FINE_PRINT = /no\s+fine-print\s+exception/i;
+
+/** The sentences in `src` that deny training without being about Roblox data. `src` has had its comments removed. */
+export function blanketTrainingSentences(src) {
+  const found = [];
+  for (const block of src.split(/<\/li>|<\/p>|\n\s*\n/)) {
+    if (RETRACTED_HERE.test(block)) continue;
+    const text = block.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ');
+    for (const sentence of text.split(/(?<=[.!?])\s/)) {
+      const t = TRAIN_WORD.exec(sentence);
+      if (!t && !FINE_PRINT.test(sentence)) continue;
+      const near = t ? sentence.slice(Math.max(0, t.index - 90), t.index + t[0].length + 40) : sentence;
+      const denies = NEGATOR.test(near) || OLD_BLANKET.some((re) => re.test(sentence));
+      if (!denies) continue;
+      const roblox = sentence.lastIndexOf('Roblox');
+      const aboutRobloxOnly = roblox !== -1 && !CUSTOMER_WORK_AFTER_ROBLOX.test(sentence.slice(roblox + 'Roblox'.length));
+      if (!aboutRobloxOnly) found.push(sentence.trim().slice(0, 120));
     }
   }
-  assert.deepEqual(offenders, [], 'a blanket never-train promise is back; the owner\'s rule is Roblox data never, improvement data opt-out and not collected yet');
-  // And it can fail: the scanner finds the sentence the old page carried.
-  const old = 'Your private project data is never used to train AI models.';
-  assert.ok(BANNED.some((re) => re.test(old)), 'the scanner would not have caught the old promise');
+  return found;
+}
+
+test('NO BLANKET "NEVER TRAINS" REMAINS in apps/site/src, apps/web/src, packages/shared/src or apps/site/public, in any wording: a sentence that denies training is about Roblox data', () => {
+  const files = [
+    ...sourceFiles(join(SITE, 'src'), ['.astro', '.ts', '.tsx', '.md', '.js']),
+    ...sourceFiles(join(ROOT, 'apps', 'web', 'src'), ['.ts', '.tsx']),
+    ...sourceFiles(join(ROOT, 'packages', 'shared', 'src'), ['.ts']),
+    ...sourceFiles(join(SITE, 'public'), ['.txt', '.html', '.md', '.json', '.webmanifest']),
+  ];
+  assert.ok(files.length > 100, `only ${files.length} source files were read`);
+  const offenders = [];
+  for (const f of files) for (const sentence of blanketTrainingSentences(code(f))) offenders.push(`${f.slice(ROOT.length + 1)}: "${sentence}"`);
+  assert.deepEqual(offenders, [], 'a blanket no-training promise is back; the owner\'s rule is Roblox data never, improvement data opt-out and not collected yet');
+  // The scan found the Roblox sentences it must allow, so it is reading the pages it is meant to read.
+  assert.ok(blanketTrainingSentences(code(join(SITE, 'src', 'pages', 'privacy.astro')).replace(/Roblox/g, 'Acme')).length >= 2,
+    'the scan read no training sentence out of the privacy page: it would pass on any page');
+});
+
+test('the never-trains scan can fail: it catches the old wordings, the Settings sentence this lane removed, and phrasings with no "never"', () => {
+  const MUST_FLAG = [
+    'Private projects are never used to train models.',
+    'Your private project data is never used to train AI models.',
+    // The sentence the Settings row carried before this lane removed it: no "never" before "train".
+    'Your projects, your prompts and the code StudPilot writes for you are yours. They are not used to train models.',
+    'We do not train on your projects, chats or checkpoints, and we never will.',
+    'Your chats won’t be used to train anything.',
+    "Your code won't be used for training.",
+    'No training on your projects.',
+    'StudPilot does not train on customer work.',
+    'There is no fine-print exception.',
+    // Roblox in front of the customer's own work is still the blanket promise.
+    'Roblox data and your projects are never used to train models.',
+  ];
+  for (const sentence of MUST_FLAG) assert.equal(blanketTrainingSentences(`<p>${sentence}</p>`).length > 0, true, `not caught: ${sentence}`);
+  const MUST_ALLOW = [
+    'Data that comes from Roblox is never used for AI training.',
+    'Roblox data is never used for AI training, as set out above, whatever else this section says.',
+    'Your projects stay yours, and data that comes from Roblox is never used for AI training.',
+    'Improvement data is anonymised, is opt-out, and never includes data from Roblox, an Open Cloud key, credentials or payment details.',
+    'Settings gives you a switch to opt out of improvement data.',
+  ];
+  for (const sentence of MUST_ALLOW) assert.deepEqual(blanketTrainingSentences(`<p>${sentence}</p>`), [], `wrongly flagged: ${sentence}`);
+  // A block that retracts the old promise in the same breath may quote it (the changelog's convention); the same sentence alone may not.
+  const quoted = '<li>Private projects are never used to train models. <span class="release__since">Since replaced: see the Privacy Policy.</span></li>';
+  assert.deepEqual(blanketTrainingSentences(quoted), []);
+  assert.equal(blanketTrainingSentences('<li>Private projects are never used to train models.</li>').length, 1);
 });
