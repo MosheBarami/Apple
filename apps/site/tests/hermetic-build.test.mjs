@@ -39,15 +39,75 @@ test('the network scanner can see: it catches fetch( in frontmatter and ignores 
   assert.match(stripComments('const r = await fetch(url);'), NETWORK);
 });
 
-test('no build-time code in apps/site/src calls fetch( or any other network API (a browser <script> may)', () => {
+/** The module specifiers a source imports: static `import … from 'x'`, `import 'x'`, `export … from 'x'` and `import('x')` with a literal. */
+function specifiersOf(code) {
+  const out = [];
+  for (const m of code.matchAll(/\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]/g)) out.push(m[1]);
+  for (const m of code.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) out.push(m[1]);
+  return out;
+}
+
+/** Where a relative specifier from `from` (a path under src, posix) lands among the files read, or null (a package, or a file outside src). */
+function resolveInSrc(from, spec, known) {
+  if (!spec.startsWith('.')) return null;
+  const base = join('/', from, '..', spec).slice(1);
+  for (const c of [base, `${base}.ts`, `${base}.js`, `${base}.mjs`, `${base}/index.ts`, `${base}/index.js`]) if (known.has(c)) return c;
+  return null;
+}
+
+/**
+ * Every module that runs at build time. A page's frontmatter runs at build time, and so does every module it imports, however deep. A plain
+ * .ts under components/ is a BROWSER script when only a <script> block imports it (the copy button) and a BUILD-TIME module when a frontmatter
+ * imports it. The first version skipped every components/*.ts on the strength of a comment saying an imported one "is judged through the .astro
+ * file's own imports", and nothing followed an import, so a build-time fetch( in a component module (a probe imported from 404.astro's
+ * frontmatter, measured in review) built cleanly with this test green. This follows them.
+ */
+function buildTimeModules(files) {
+  const known = new Map(files.map((f) => [f.file, f]));
+  const keep = new Set();
+  const visit = (rel) => {
+    if (keep.has(rel)) return;
+    keep.add(rel);
+    for (const spec of specifiersOf(stripComments(known.get(rel).text))) {
+      const next = resolveInSrc(rel, spec, known);
+      if (next && !next.endsWith('.astro')) visit(next);
+    }
+  };
+  for (const f of files) {
+    if (f.file.endsWith('.astro')) {
+      for (const spec of specifiersOf(stripComments(buildTimePart(f.text)))) {
+        const next = resolveInSrc(f.file, spec, known);
+        if (next && !next.endsWith('.astro')) visit(next);
+      }
+    } else if (!/^components\/.*\.(?:ts|js)$/.test(f.file)) {
+      visit(f.file);
+    }
+  }
+  return files.filter((f) => f.file.endsWith('.astro') || keep.has(f.file));
+}
+
+test('the import follower can see: a component module imported from a frontmatter is build time, one imported only from a <script> is not', () => {
+  const files = [
+    { file: 'pages/a.astro', text: "---\nimport { v } from '../components/net.ts';\n---\n<p>x</p>" },
+    { file: 'pages/b.astro', text: "---\n---\n<script>import { w } from '../components/browser.ts';</script>" },
+    { file: 'components/net.ts', text: "import { h } from './deep';\nexport const v = 1;" },
+    { file: 'components/deep.ts', text: 'export const h = 2;' },
+    { file: 'components/browser.ts', text: 'export const w = fetch(1);' },
+  ];
+  const names = buildTimeModules(files).map((f) => f.file).sort();
+  assert.deepEqual(names, ['components/deep.ts', 'components/net.ts', 'pages/a.astro', 'pages/b.astro']);
+});
+
+test('no build-time code in apps/site/src calls fetch( or any other network API (a browser <script> may), including a module a frontmatter imports', () => {
   const files = sources();
-  for (const { file, text } of files) {
+  const judged = buildTimeModules(files);
+  assert.ok(judged.length > 25, `only ${judged.length} build-time sources were judged`);
+  for (const { file, text } of judged) {
     const visible = stripComments(file.endsWith('.astro') ? buildTimePart(text) : text);
-    // A plain .ts module under components/ is a browser script (rolling numbers, the copy button): it is judged as one only
-    // when a page imports it from frontmatter, which would put it on this list through the .astro file's own imports.
-    if (/^components\/.*\.(?:ts|js)$/.test(file)) continue;
     assert.doesNotMatch(visible, NETWORK, `${file} reaches the network at build time: ${visible.match(NETWORK)?.[0]}`);
   }
+  // Modules outside src (the shared package's pricing config, the worker's pricing constants) are imported at build time too; each has its own
+  // tests, and this guard judges the site's own code.
 });
 
 test('billing-probe.ts is gone and nothing asks whether a plan can be bought', () => {

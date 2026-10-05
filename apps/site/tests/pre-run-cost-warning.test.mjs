@@ -31,17 +31,18 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visibleText } from './lib/visible-copy.mjs';
+import { copyFiles } from './lib/site-sources.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SITE = join(HERE, '..');
 const ROOT = join(SITE, '..', '..');
 
 /** Every page a reader can land on, by path, so a new page is covered the day it is written. */
+// RESTATED 2026-10-05 (M2 site fix cycle 1): this walked src/pages for `.astro` files only, and the rebuild moved copy into the blog's Markdown,
+// src/data and the components, so a promise put there left this guard green. It reads every source of words under apps/site/src
+// (tests/lib/site-sources.mjs, derived from the tree) and tests/copy-sources.test.mjs holds the derivation.
 function pages() {
-  const dir = join(SITE, 'src', 'pages');
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.astro'))
-    .map((e) => join(e.parentPath ?? e.path, e.name));
+  return copyFiles();
 }
 
 /**

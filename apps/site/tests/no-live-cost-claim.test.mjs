@@ -26,6 +26,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { visibleCopy, visibleText } from './lib/visible-copy.mjs';
+import { copyFiles } from './lib/site-sources.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SITE = join(HERE, '..');
@@ -76,9 +77,9 @@ const scan = (named) =>
   });
 
 test('no page says a run\'s cost is counted live, or that one Credit is taken when a request starts', () => {
-  const pages = readdirSync(join(SITE, 'src', 'pages'), { recursive: true, withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith('.astro'))
-    .map((e) => join(e.parentPath ?? e.path, e.name));
+  // RESTATED 2026-10-05 (M2 site fix cycle 1): every source of words under apps/site/src, not the `.astro` files of src/pages alone (the blog
+  // post, src/data and the components hold copy now; tests/lib/site-sources.mjs, held by tests/copy-sources.test.mjs).
+  const pages = copyFiles();
   assert.ok(pages.length > 10, 'found too few pages — this guard is looking in the wrong place');
   const found = scan(pages.map((p) => [p.slice(SITE.length + 1), readFileSync(p, 'utf8')]));
   assert.deepEqual(
