@@ -22,7 +22,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unusedNames } from '../scripts/lib/config-reads.mjs';
@@ -127,9 +128,106 @@ test('a page that only IMPORTS the config has not read it, and a page that uses 
   assert.deepEqual(unusedNames(some, NAMES), ['BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']);
 });
 
-test('the guard hands the real pricing page to that function, and the page does use all four', () => {
-  const script = readFileSync(CHECKER, 'utf8');
-  assert.match(script, /unusedNames\(page, CONFIG_NAMES\)/, 'check-credit-figures does not ask for a USE');
+test('the real pricing page does use all four config names', () => {
   const page = readFileSync(join(ROOT, 'apps/site/src/pages/pricing.astro'), 'utf8');
   assert.deepEqual(unusedNames(page, ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']), [], 'pricing.astro only imports one of them');
+});
+
+/* ============================================================================================
+   THE SCRIPT IS RUN, NOT READ.
+
+   This section used to match the text of the script (`unusedNames(page, CONFIG_NAMES)`), which stays true while
+   the loop that REPORTS what unusedNames returns is deleted, and while CONFIG_NAMES is cut from four names to
+   three (the dropped name is then never asked about). The real script (and the helpers it imports) is run here
+   against a copy of the site's sources in which only the pricing page is replaced by a fixture, and what it says
+   and how it exits is what is asserted.
+   ============================================================================================ */
+
+const NAMES = ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS'];
+const USES = { PLAN_TABLE: '{PLAN_TABLE.free.creditsPerDay}', BUILD_COSTS: '{BUILD_COSTS.length}', CREDIT_USD: '{CREDIT_USD}', TYPICAL_BUILD_CREDITS: '{TYPICAL_BUILD_CREDITS}' };
+
+/** A pricing page that imports all four names and USES the ones in `used`. It says "midnight UTC", which the script also asks of it. */
+const fixturePage = (used) => [
+  '---',
+  `import { ${NAMES.join(', ')} } from '@studpilot/shared';`,
+  '---',
+  '<p>Credits refill at midnight UTC.</p>',
+  `<p>${used.map((n) => USES[n]).join(' ')}</p>`,
+].join('\n');
+
+/** Run the REAL check-credit-figures.mjs in a tree whose pricing page is `page`; everything else is the real thing. */
+function runOnFixture(page, { shared = null } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'check-credit-figures-'));
+  try {
+    mkdirSync(join(dir, 'scripts', 'lib'), { recursive: true });
+    for (const f of ['check-credit-figures.mjs', 'lib/config-reads.mjs', 'lib/offer-rules.mjs']) {
+      writeFileSync(join(dir, 'scripts', f), readFileSync(join(ROOT, 'scripts', f), 'utf8'));
+    }
+    writeFileSync(join(dir, 'package.json'), '{"type":"module"}');
+    mkdirSync(join(dir, 'apps'), { recursive: true });
+    const links = [['docs', 'docs'], ['apps/worker', 'apps/worker']];
+    if (shared === null) links.push(['packages', 'packages']);
+    for (const [link, target] of links) symlinkSync(join(ROOT, target), join(dir, link));
+    if (shared !== null) {
+      // A real copy of the shared package's sources, with `shared(text)` applied to index.ts: the figures the script reads.
+      cpSync(join(ROOT, 'packages/shared/src'), join(dir, 'packages/shared/src'), { recursive: true });
+      const index = join(dir, 'packages/shared/src/index.ts');
+      writeFileSync(index, shared(readFileSync(index, 'utf8')));
+    }
+    // A real copy, not links: the script walks apps/site/src for .astro files and a symbolic link is not a file to that walk.
+    cpSync(join(ROOT, 'apps/site/src'), join(dir, 'apps/site/src'), { recursive: true });
+    writeFileSync(join(dir, 'apps/site/src/pages/pricing.astro'), page);
+    const p = spawnSync('node', [join(dir, 'scripts', 'check-credit-figures.mjs')], { cwd: dir, encoding: 'utf8', timeout: 120_000 });
+    return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}` };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('FIXTURE CONTROL: a page that uses all four names passes, and the run counts four config reads', () => {
+  // Without this every case below could fail because the fixture tree is broken, not because of the guard.
+  const r = runOnFixture(fixturePage(NAMES));
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /plan figures: 4 config reads on \/pricing/);
+});
+
+test('THE SCRIPT REPORTS EVERY ONE OF THE FOUR NAMES a page imports and does not use, one at a time', () => {
+  // One case per name, each page using the other three: the name left out must be reported and no other. A script that
+  // stopped reporting what unusedNames returns passes none of them; a CONFIG_NAMES that lost a name passes the case for it.
+  for (const name of NAMES) {
+    const r = runOnFixture(fixturePage(NAMES.filter((n) => n !== name)));
+    assert.equal(r.exit, 1, `${name}: ${r.out}`);
+    assert.match(r.out, new RegExp(`pricing\\.astro no longer reads ${name} from packages/shared`), name);
+    const reported = NAMES.filter((n) => r.out.includes(`no longer reads ${n} `));
+    assert.deepEqual(reported, [name], `${name}: only the unused name is reported`);
+  }
+});
+
+test('THE SCRIPT REPORTS A PAGE THAT ONLY IMPORTS THE CONFIG: all four, and it counts none as read', () => {
+  const r = runOnFixture(fixturePage([]));
+  assert.equal(r.exit, 1, r.out);
+  for (const name of NAMES) assert.match(r.out, new RegExp(`no longer reads ${name} from packages/shared`), name);
+  assert.match(r.out, /4 disagreement\(s\)/, 'exactly the four, and nothing else is wrong with the fixture');
+});
+
+test('THE SCRIPT HOLDS THE MILESTONE PRICE TO THE BUILD TABLE: a derivation that reads the per-request edit price, or types a build figure, fails the run', () => {
+  const body = (text) => text.slice(text.indexOf('export function creditRangeForRuns'));
+  const edit = (from, to) => (text) => {
+    const at = text.indexOf('export function creditRangeForRuns');
+    const end = text.indexOf('\n}\n', at);
+    const fn = text.slice(at, end);
+    assert.ok(fn.includes(from), `the fixture edit found no "${from}" in creditRangeForRuns`);
+    return text.slice(0, at) + fn.replace(from, to) + text.slice(end);
+  };
+  assert.ok(body(readFileSync(join(ROOT, 'packages/shared/src/index.ts'), 'utf8')).includes('BUILD_COSTS.find('), 'the real derivation reads BUILD_COSTS');
+  assert.equal(runOnFixture(fixturePage(NAMES), { shared: (t) => t }).exit, 0, 'control: an unedited copy of the shared package passes');
+
+  const edit1 = runOnFixture(fixturePage(NAMES), { shared: edit('BUILD_COSTS.find(', 'MODE_INFO.agent.typicalCredits.concat(') });
+  assert.equal(edit1.exit, 1, edit1.out);
+  assert.match(edit1.out, /creditRangeForRuns does not read BUILD_COSTS/);
+  assert.match(edit1.out, /creditRangeForRuns reads MODE_INFO, the per-request edit price/);
+
+  const typed = runOnFixture(fixturePage(NAMES), { shared: edit('const low = Math.round(build.creditsLow * INTERNAL_PER_CREDIT);', 'const low = 210;') });
+  assert.equal(typed.exit, 1, typed.out);
+  assert.match(typed.out, /creditRangeForRuns hard-codes the published figure 210; it must read it from BUILD_COSTS/);
 });

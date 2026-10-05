@@ -11,7 +11,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -359,6 +360,106 @@ test('RULE 4 HOLDS A CLAIM THAT NAMES A PLAN TO THAT PLAN: "Max gives 300 a day"
   assert.deepEqual(copyProblems(page('Free is the plan to start on. 20 Credits a day buys more.'), TABLES), []);
 });
 
+test('RULE 4 ATTRIBUTES A FIGURE TO THE NEAREST PLAN NAME IN ITS OWN CLAUSE, whichever side the name is on', () => {
+  //[[ Review cycle 3, finding 4. The plan was "the last plan named BEFORE the figure", so correct copy that puts the
+  //   plan AFTER it ("<li>5 Credits a day (Free)</li>" after a Pro item, "5 Credits a day on Free, 20 on Pro" after
+  //   a plan in the same sentence) was reported against the wrong plan and would have turned CI red; and a wrong
+  //   figure put before its plan ("30 Credits a day (Free)") named no plan at all and passed, because 30 is
+  //   Max's day. A list item, a cell, a heading and a comma end a clause. ]]
+  const page = (words) => [{ rel: 'fake/page.astro', src: words }];
+  const right = [
+    // figure first, plan after
+    '<ul><li>20 Credits a day (Pro)</li><li>5 Credits a day (Free)</li></ul>',
+    '<ul><li>5 Credits a day (Free)</li><li>20 Credits a day (Pro)</li><li>30 Credits a day (Max)</li></ul>',
+    '<table><tr><td>Pro</td><td>20 Credits a day for Pro</td></tr><tr><td>5 Credits a day for Free</td></tr></table>',
+    'Pro and Max get more, but 5 Credits a day on Free, 20 Credits a day on Pro.',
+    '30 Credits a day on Max and 5 Credits a day on Free',
+    '5 Credits a day on Free, 20 Credits a day on Pro, 30 Credits a day on Max',
+    // plan first
+    '<ul><li>Pro: 20 Credits a day</li><li>Free: 5 Credits a day</li></ul>',
+    '<h3>Max</h3><p>30 Credits a day</p><h3>Free</h3><p>5 Credits a day</p>',
+    'Free: 5 Credits a day, Pro: 20 Credits a day, Max: 30 Credits a day',
+    'Free 5 Credits a day and Pro 20 Credits a day',
+    // a month figure beside its plan, either side
+    '<li>100 Credits a month (Pro)</li><li>30 Credits a month (Free)</li>',
+    // a list item ends a clause: a plan in the NEIGHBOURING item owns nothing here, before or after
+    '<ul><li>Pro: 20 Credits a day</li><li>5 Credits a day</li></ul>',
+    '<ul><li>5 Credits a day</li><li>Pro: 20 Credits a day</li></ul>',
+    // two plans at the same distance: the figure is held to either, so a truly ambiguous clause is not reported
+    'Free 5 Credits a day Pro 20 Credits a day',
+  ];
+  for (const words of right) assert.deepEqual(copyProblems(page(words), TABLES), [], `${words}: correct copy was reported`);
+
+  const wrong = [
+    ['<li>30 Credits a day (Free)</li>', /states 30 Credits a day for Free, which grants 5 a day/],
+    ['30 Credits a day on Free', /states 30 Credits a day for Free, which grants 5 a day/],
+    ['<li>20 Credits a day (Pro)</li><li>20 Credits a day (Free)</li>', /states 20 Credits a day for Free, which grants 5 a day/],
+    ['<li>Pro: 20 Credits a day</li><li>5 Credits a day (Pro)</li>', /states 5 Credits a day for Pro, which grants 20 a day/],
+    ['5 Credits a day on Free, 30 Credits a day on Pro', /states 30 Credits a day for Pro, which grants 20 a day/],
+    ['300 Credits a month for Pro', /states 300 Credits a month for Pro, which grants 100 a month/],
+    ['<td>Free</td><td>100 Credits a month</td>', /states 100 Credits a month for Free, which grants 30 a month/],
+    // a tie, and the figure is neither plan's
+    ['Free 30 Credits a day Pro', /states 30 Credits a day for Free, which grants 5 a day/],
+  ];
+  for (const [words, expected] of wrong) {
+    const problems = copyProblems(page(words), TABLES);
+    assert.equal(problems.length, 1, `${words}: ${JSON.stringify(problems)}`);
+    assert.match(problems[0], expected, words);
+  }
+  // A figure inside an attribute is not owned by the text that follows the tag.
+  assert.deepEqual(copyProblems(page('<span title="5 Credits a day">Pro</span>'), TABLES), []);
+});
+
+test('RULE 4 READS EVERY WAY A PERIOD AND A SPACE ARE WRITTEN: "every day", "each day", "daily", "per calendar month", &nbsp;', () => {
+  const enforced = { day: new Set([5, 20, 30]), month: new Set([30, 100, 300]) };
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
+  // 6 is no plan's day figure and 7 no plan's month figure: each spelling must be READ as a claim to be reported.
+  const day = ['6 Credits every day', '6 Credits each day', '6 Credits daily', '6 daily Credits', '6 Credits a calendar day', '6 CREDITS A DAY',
+    '6&nbsp;Credits&nbsp;a&nbsp;day', '6&#160;Credits a day', '6&#xA0;Credits a day', '6\u00a0Credits\u00a0a\u00a0day', '6\u202fCredits a day', '6&NonBreakingSpace;Credits a day', '6 Credits&nbsp;/&nbsp;day'];
+  const month = ['7 Credits per calendar month', '7 Credits each month', '7 Credits every month', '7 Credits monthly', '7 monthly Credits', '7 Credits a calendar month',
+    '7&nbsp;Credits&nbsp;per&nbsp;month', '7 Credits per&nbsp;calendar&nbsp;month'];
+  for (const words of day) {
+    const problems = copyProblems(page(words), enforced);
+    assert.equal(problems.length, 1, `${words}: expected one finding, got ${JSON.stringify(problems)}`);
+    assert.match(problems[0], /states 6 Credits a day, which no plan grants a day/, words);
+  }
+  for (const words of month) {
+    const problems = copyProblems(page(words), enforced);
+    assert.equal(problems.length, 1, `${words}: expected one finding, got ${JSON.stringify(problems)}`);
+    assert.match(problems[0], /states 7 Credits a month, which no plan grants a month/, words);
+  }
+  // The same spellings with an ENFORCED figure are silent (and the period is the right one: 30 is a month, not a day, figure).
+  for (const words of ['5 Credits every day', '5 daily Credits', '5&nbsp;Credits&nbsp;a&nbsp;day', '30 Credits per calendar month', '30 Credits monthly', '30&nbsp;Credits&nbsp;each&nbsp;month']) {
+    assert.deepEqual(copyProblems(page(words), enforced), [], `${words}: an enforced figure was reported`);
+  }
+  assert.equal(copyProblems(page('30 Credits every day'), { day: new Set([5, 20]), month: new Set([30]) }).length, 1, 'a month figure read as a day claim is reported');
+  // Not claims: no figure, or the figure belongs to a longer number.
+  for (const words of ['Your daily Credits refill at midnight.', 'Credits every day', 'Release 1.2.5 Credits every day']) {
+    assert.deepEqual(copyProblems(page(words), { day: new Set(), month: new Set() }), [], words);
+  }
+});
+
+test('RULE 7 READS "billed monthly", "per user per month" AND A ONE-DECIMAL PRICE, with nbsp as the space', () => {
+  const prices = new Set([9.99, 24.99]);
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>Pro is ${words}.</p>` }];
+  const wrong = [
+    ['$12 billed monthly', '12'], ['$12, billed monthly', '12'], ['$12 USD billed monthly', '12'],
+    ['$12 per user per month', '12'], ['$12 per seat / month', '12'], ['$12/user/month', '12'], ['$12 a user a month', '12'],
+    ['$12.5 a month', '12.5'], ['$12.5/month', '12.5'], ['$9.9 a month', '9.9'], ['$12.5 billed monthly', '12.5'],
+    ['$12&nbsp;a&nbsp;month', '12'], ['$12\u00a0per\u00a0month', '12'],
+  ];
+  for (const [words, figure] of wrong) {
+    const problems = priceProblems(page(words), prices);
+    assert.equal(problems.length, 1, `${words}: expected one finding, got ${JSON.stringify(problems)}`);
+    assert.match(problems[0], new RegExp(`states \\$${figure.replace('.', '\\.')} a month, which no plan charges`), words);
+  }
+  for (const words of ['$9.99 billed monthly', '$9.99 per user per month', '$24.99/user/month', '$24.99 a user a month', '$9.99&nbsp;a&nbsp;month']) {
+    assert.deepEqual(priceProblems(page(words), prices), [], `${words}: a plan's own price was reported`);
+  }
+  // Not a monthly price: a compute figure, and a yearly one.
+  assert.deepEqual(priceProblems(page('$0.05 of compute, or $99 a year'), prices), []);
+});
+
 test('RULE 5 FIRES: a contractual term in copy is reported', () => {
   // The rule that could be deleted outright without this suite noticing.
   const problems = termProblems([{ rel: 'fake/page.astro', src: '<p>Free forever. You will never be charged.</p>' }]);
@@ -442,28 +543,144 @@ test('RULE 7 IS SILENT on a plan price, a compute price, and a comment', () => {
   );
 });
 
-test('THE SCRIPT HANDS RULES 4, 6 AND 7 THE REAL TABLES: credits for copy, ledger units for enforcement', () => {
-  // The rule functions above are pure, so they cannot tell which table they were handed. What makes
-  // the real run meaningful is the wiring in check-offer.mjs, asserted here: copy is held to the
-  // credits the plan table grants (never to ledger units, which no page quotes), the enforced limits
-  // are held to the table times the unit, and prices in copy are held to the table's prices.
-  // Raw source: its glob strings ('apps/site/**') defeat a comment stripper, and the patterns below are
-  // specific enough that a comment cannot satisfy them.
-  const src = readFileSync(join(ROOT, 'scripts', 'check-offer.mjs'), 'utf8');
-  assert.match(src, /day: new Set\(PLAN_IDS\.map\(\(id\) => PLAN_TABLE\[id\]\.creditsPerDay\)\)/, 'a day figure in copy is checked against the credits in the plan table');
-  assert.match(src, /month: new Set\(PLAN_IDS\.map\(\(id\) => PLAN_TABLE\[id\]\.creditsPerMonth\)\)/, 'a month figure in copy is checked against the credits in the plan table');
-  assert.match(src, /plans: Object\.fromEntries\(PLAN_IDS\.map\(\(id\) => \[PLAN_COPY\[id\]\.name, \{ day: PLAN_TABLE\[id\]\.creditsPerDay, month: PLAN_TABLE\[id\]\.creditsPerMonth \}\]\)\)/, 'and a plan named in a sentence is checked against that plan, by the name copy uses');
-  assert.doesNotMatch(src, /PLAN_LIMITS\[id\]\.creditsPer(Day|Month)\b/, 'copy must not be checked against ledger units');
-  assert.match(src, /limitProblems\(\{ planIds: PLAN_IDS, table: PLAN_TABLE, limits: PLAN_LIMITS, internalPerCredit: INTERNAL_PER_CREDIT \}\)/);
-  assert.match(src, /priceProblems\(sources, prices\)/);
+/* ============================================================================================
+   THE SCRIPT IS THE WIRING, SO THE SCRIPT IS RUN.
 
-  // And with the tables the script builds, a ledger figure in a page is a finding, a credit figure is not.
-  const enforced = {
-    day: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerDay)),
-    month: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerMonth)),
-    plans: Object.fromEntries(PLAN_IDS.map((id) => [PLAN_COPY[id].name, { day: PLAN_TABLE[id].creditsPerDay, month: PLAN_TABLE[id].creditsPerMonth }])),
-  };
-  const ledger = copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_LIMITS.free.creditsPerMonth} Credits a month.</p>` }], enforced);
-  assert.equal(ledger.length, 1, 'a ledger-unit figure printed as credits is 150x too large and must be reported');
-  assert.deepEqual(copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_TABLE.free.creditsPerMonth} Credits a month.</p>` }], enforced), []);
+   The rule functions above are pure, so they cannot tell whether check-offer.mjs still applies them. This section
+   used to read the script's SOURCE and match the text of its calls, which passes while a call sits in dead code
+   and fails when the call is reformatted. It now runs the real script (a copy of it, with its rules) against a
+   small tree of its own, with one violation planted per rule, and reads what it says and how it exits. If the
+   script stops applying a rule, or stops reading the copy files, or stops honouring an exception, a case below is
+   the one that goes red.
+
+   The fixture tree has the shape the script reads: scripts/ (the script and its rules, copied), packages/shared
+   and apps/worker/src/pricing.ts (the tables, small and healthy here), and tracked copy files under apps/site
+   and apps/web/src (the script lists them with `git ls-files`).
+   ============================================================================================ */
+
+const FIXTURE_SHARED = `
+export const PLAN_IDS = ['free', 'paid'];
+export const INTERNAL_PER_CREDIT = 150;
+export const CREDITS_PER_BUILD = 77;
+export const PLAN_TABLE = {
+  free: { creditsPerDay: 5, creditsPerMonth: 30 },
+  paid: { creditsPerDay: 20, creditsPerMonth: 100 },
+};
+export const PLAN_LIMITS = {
+  free: { creditsPerDay: 750, creditsPerMonth: 4500 },
+  paid: { creditsPerDay: 3000, creditsPerMonth: 15000 },
+};
+export const PLAN_COPY = {
+  free: { name: 'Free', priceUsdMonthly: 0 },
+  paid: { name: 'Pro', priceUsdMonthly: 9.99 },
+};
+`;
+const FIXTURE_PRICING = `
+export const USD_PER_NEURON = 0.011 / 1000;
+export const FREE_NEURONS_PER_DAY = 10_000;
+export const BILLABLE_NEURONS_PER_DAY = 150_000;
+export const DAILY_NEURON_CEILING = 160_000;
+export const NEURONS_PER_CREDIT = 30;
+`;
+const HEALTHY_PAGES = {
+  'apps/site/src/pages/pricing.astro': '<h1>Plans</h1><p>Free: 5 Credits a day. Pro: 20 Credits a day, 100 Credits a month, $9.99 a month.</p>',
+  'apps/web/src/components/plans.tsx': '<ul><li>5 Credits a day (Free)</li><li>20 Credits a day (Pro)</li></ul>',
+  // EXCEPTIONS the script honours: a changelog records what WAS true, and a test asserts wrong numbers on purpose.
+  'apps/site/src/pages/changelog.astro': '<p>Free used to be 60 Credits a day, $12 a month, free forever.</p>',
+  'apps/web/src/components/plans.test.tsx': '<p>60 Credits a day, never be charged</p>',
+};
+
+/** Build a fixture tree and run the REAL check-offer.mjs (and its rules, copied) in it. `over` replaces files by path. */
+function runOnFixture(over = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'check-offer-'));
+  try {
+    const files = {
+      'package.json': '{"type":"module"}',
+      'scripts/check-offer.mjs': readFileSync(join(ROOT, 'scripts', 'check-offer.mjs'), 'utf8'),
+      'scripts/lib/offer-rules.mjs': readFileSync(join(ROOT, 'scripts', 'lib', 'offer-rules.mjs'), 'utf8'),
+      'packages/shared/src/index.ts': FIXTURE_SHARED,
+      'apps/worker/src/pricing.ts': FIXTURE_PRICING,
+      ...HEALTHY_PAGES,
+      ...over,
+    };
+    for (const [rel, body] of Object.entries(files)) {
+      if (body === null) continue;
+      mkdirSync(dirname(join(dir, rel)), { recursive: true });
+      writeFileSync(join(dir, rel), body);
+    }
+    const git = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+    git('init', '-q');
+    git('add', 'apps');
+    const p = spawnSync('node', [join(dir, 'scripts', 'check-offer.mjs')], { cwd: dir, encoding: 'utf8', timeout: 120_000 });
+    return { exit: p.status, out: `${p.stdout ?? ''}${p.stderr ?? ''}`, first: (p.stdout ?? '').split('\n')[0] };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('FIXTURE CONTROL: the healthy tree is COHERENT, reads exactly its copy files, and honours its two exceptions', () => {
+  // Without this every violation case below could pass because the fixture is broken in some other way.
+  const r = runOnFixture();
+  assert.equal(r.exit, 0, r.out);
+  assert.match(r.out, /OFFER COHERENT — 2 plans, 2 copy files checked/, 'the changelog and the .test. file are exceptions, so 4 tracked files are 2 checked');
+  assert.match(r.first, /^DENOMINATOR 2 files; EXCEPTIONS 4:/);
+});
+
+test('THE SCRIPT APPLIES RULE 4: a quota no plan grants, in a tracked copy file, fails the run', () => {
+  const r = runOnFixture({ 'apps/site/src/pages/pricing.astro': '<p>Start with 60 Credits a day.</p>' });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /BROKEN: apps\/site\/src\/pages\/pricing\.astro states 60 Credits a day, which no plan grants a day/);
+});
+
+test('THE SCRIPT APPLIES RULE 4 PER PLAN, with the names copy uses: a figure printed beside the wrong plan fails the run', () => {
+  const r = runOnFixture({ 'apps/web/src/components/plans.tsx': '<ul><li>20 Credits a day (Free)</li></ul>' });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /states 20 Credits a day for Free, which grants 5 a day/);
+});
+
+test('THE SCRIPT HOLDS COPY TO CREDITS, NEVER TO LEDGER UNITS: a ledger figure printed as credits fails, the credit figure does not', () => {
+  const ledger = runOnFixture({ 'apps/site/src/pages/pricing.astro': '<p>Free is 4500 Credits a month.</p>' });
+  assert.equal(ledger.exit, 1, ledger.out);
+  assert.match(ledger.out, /states 4500 Credits a month, which no plan grants a month/);
+  assert.equal(runOnFixture({ 'apps/site/src/pages/pricing.astro': '<p>Free is 30 Credits a month.</p>' }).exit, 0);
+});
+
+test('THE SCRIPT APPLIES RULE 5: a contractual term in a tracked copy file fails the run', () => {
+  const r = runOnFixture({ 'apps/site/src/pages/pricing.astro': '<p>Free forever. You will never be charged.</p>' });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /BROKEN: apps\/site\/src\/pages\/pricing\.astro promises "Free forever" — a contractual term/);
+});
+
+test('THE SCRIPT APPLIES RULE 7: a monthly price no plan charges fails the run', () => {
+  const r = runOnFixture({ 'apps/site/src/pages/pricing.astro': '<p>Pro is $12 a month.</p>' });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /BROKEN: apps\/site\/src\/pages\/pricing\.astro states \$12 a month, which no plan charges/);
+});
+
+test('THE SCRIPT APPLIES RULES 1 TO 3 (planIssues) to the tables it imports: a priced plan below its floor, and a free day below one build', () => {
+  const cheap = runOnFixture({
+    'packages/shared/src/index.ts': FIXTURE_SHARED.replace('priceUsdMonthly: 9.99', 'priceUsdMonthly: 1'),
+  });
+  assert.equal(cheap.exit, 1, cheap.out);
+  assert.match(cheap.out, /BROKEN: paid charges \$1\/month for 15,000 ledger units, which cost \$4\.95 to serve — below the \$6\.93 floor at 1\.4x/);
+
+  const over = runOnFixture({
+    'packages/shared/src/index.ts': FIXTURE_SHARED.replace('paid: { creditsPerDay: 3000,', 'paid: { creditsPerDay: 6000,'),
+  });
+  assert.equal(over.exit, 1, over.out);
+  assert.match(over.out, /BROKEN: paid grants 6000 ledger units\/day but the WHOLE SERVICE can serve 5333/);
+
+  const starved = runOnFixture({
+    'packages/shared/src/index.ts': FIXTURE_SHARED.replace('free: { creditsPerDay: 750,', 'free: { creditsPerDay: 60,'),
+  });
+  assert.equal(starved.exit, 1, starved.out);
+  assert.match(starved.out, /BROKEN: the free plan grants 60 ledger units\/day and one quality-gated build costs 77/);
+});
+
+test('THE SCRIPT APPLIES RULE 6: an enforced limit that is not the table times the unit fails the run, with both figures', () => {
+  const r = runOnFixture({
+    'packages/shared/src/index.ts': FIXTURE_SHARED.replace('free: { creditsPerDay: 750, creditsPerMonth: 4500 }', 'free: { creditsPerDay: 231, creditsPerMonth: 4500 }'),
+  });
+  assert.equal(r.exit, 1, r.out);
+  assert.match(r.out, /BROKEN: free is enforced at 231 ledger units a day, but its plan table says 5 credits a day, which is 750/);
 });
