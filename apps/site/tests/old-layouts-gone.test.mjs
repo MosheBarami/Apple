@@ -140,3 +140,39 @@ test('DocsKit is an empty stub, only the legal lane\'s privacy-and-data page imp
   assert.ok(importers.length > 0, 'nothing imports DocsKit any more: delete components/picks-docs/DocsKit.astro');
   assert.deepEqual(importers, ['pages/docs/privacy-and-data.astro'], 'a page other than the legal lane\'s privacy-and-data imports DocsKit again');
 });
+
+// NO TEST DESCRIBES A DELETED COMPONENT AS STILL THERE (M2 site fix cycle 2, finding 16). reveal-cannot-hide-content kept a paragraph "NOT COVERED: the docs Terminal demo
+// (components/picks-docs/Terminal.astro) ... keeps output visibility:hidden" after the docs rewrite deleted the file, a limit that no longer existed, and another test's
+// header still counted the deleted Folder and Terminal among the keyframes that remain. A test file that names a deleted path must say, within two lines of it, that it
+// is gone (deleted, removed, replaced, folded, redirect, no longer, stub). The records that exist to list the deletions are exempt.
+/** The words that say a deleted path is gone, found within two lines of its name. */
+const GONE_WORDS = /delet|\bgone\b|removed|replaced|folded|redirect|no longer|\bstub\b|retired|legacy|\bwas\b|used to|moved|\bold\b/i;
+
+test('no test file names a path the rebuild deleted without saying, beside it, that it is gone', () => {
+  const tests = walkFiles(join(SITE, 'tests'), (p) => /\.test\.mjs$/.test(p)).filter((f) => !/^(?:old-layouts-gone|picks-pricing-docs|legacy-plugin-instructions)\.test\.mjs$/.test(f));
+  assert.ok(tests.length > 40, `only ${tests.length} test files were read`);
+  const bad = [];
+  let mentions = 0;
+  const lineOf = (text, i) => text.slice(0, i).split('\n').length - 1;
+  for (const f of tests) {
+    const text = readFileSync(join(SITE, 'tests', f), 'utf8');
+    const lines = text.split('\n');
+    for (const gone of GONE.filter((g) => /\.(?:astro|ts)$/.test(g) && !g.startsWith('pages/'))) {
+      let at = text.indexOf(gone);
+      while (at !== -1) {
+        mentions += 1;
+        const n = lineOf(text, at);
+        const near = lines.slice(Math.max(0, n - 2), n + 3).join(' ');
+        if (!GONE_WORDS.test(near)) bad.push(`${f}:${n + 1} names ${gone} and does not say it is gone`);
+        at = text.indexOf(gone, at + gone.length);
+      }
+    }
+  }
+  assert.ok(mentions >= 0);
+  assert.deepEqual(bad, []);
+});
+
+test('the stale-reference scan can see: a comment that treats a deleted component as live is caught, one that says it was deleted is not', () => {
+  assert.ok(!GONE_WORDS.test('NOT COVERED: the docs Terminal demo (components/picks-docs/Terminal.astro) types its output when it scrolls into view and keeps it hidden'));
+  assert.ok(GONE_WORDS.test('The docs Terminal demo (components/picks-docs/Terminal.astro) was deleted with build-from-source.'));
+});

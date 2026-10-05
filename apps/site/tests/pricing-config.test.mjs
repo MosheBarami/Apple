@@ -95,6 +95,19 @@ test('the card assertions are BOUNDED: a leading extra digit, or a trailing one,
   assert.ok(!has('1100 Credits a month · up to 20 a day', '100 Credits a month · up to 20 a day'), 'four digits passed for three');
 });
 
+// THE LEDE DOES NOT CONTRADICT THE TABLE UNDER IT (M2 site fix cycle 2, finding 4). It said "they differ only in how many Credits they include" while the table's Support row
+// gave Pro and Max "Email support, answered before Free" and the support note said paid accounts are answered first. The property: if any page text says paid plans are answered
+// first, the lede that says how the plans differ names support too, and it never says "only".
+test('the lede says how the plans differ, and it agrees with the support the table gives them', () => {
+  const lede = plain(/<p class="lede[^"]*"[^>]*>([\s\S]*?)<\/p>/.exec(html)?.[1] ?? '');
+  assert.ok(lede.includes('differ'), `the lede no longer says how the plans differ: "${lede}"`);
+  assert.doesNotMatch(lede, /differ only/i, `the lede says the plans differ only in Credits: "${lede}"`);
+  const support = matrixRow('Support');
+  const paidFirst = Object.entries(support).some(([plan, v]) => plan !== 'Free' && /answered before Free/i.test(v)) || /Paid\s+plans are planned to be answered first/i.test(text);
+  assert.ok(paidFirst, 'the page no longer gives paid plans priority support: re-read the lede and the support note');
+  assert.match(lede, /support/i, `the table gives paid plans priority support and the lede does not mention support: "${lede}"`);
+});
+
 test('the page says the owner\'s line, exactly', () => {
   assert.ok(text.includes('Free while in beta. Paid plans start later'), 'the headline is not the decided line');
   assert.match(html, /<h1[^>]*>\s*Free while in beta\. Paid plans start later\s*<\/h1>/, 'and it is the page\'s one h1');
