@@ -15,6 +15,9 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE, distPage, regionsWith, textOf } from './lib/dist.mjs';
+import { CONSENT_SENTENCE, assertCodeFactsHold, assertConsentPromiseHolds } from './lib/plugin-promises.mjs';
+
+const shared = await import('../../../packages/shared/src/index.ts');
 
 const LABELS = ['Works today', 'Partly works today', 'Being built'];
 
@@ -79,12 +82,37 @@ test('the question and the claims it relies on: the worker has no multiple-choic
   assert.match(step3.text, /That question is not in the chat yet/);
 });
 
-test('the pairing step matches the plugin: a six-character code, and the page names how long it lasts only as the docs do', () => {
-  const plugin = readFileSync(join(SITE, '..', 'studpilot-plugin', 'src', 'init.server.luau'), 'utf8');
-  assert.match(plugin, /six-character/i, 'the plugin no longer asks for a six-character code');
+test('the pairing step matches the plugin and the worker: a six-character code, ten minutes, and edits that stay off until allowed', () => {
+  assertCodeFactsHold();
   const step2 = stepsOf(distPage('/how-it-works/').html)[1];
   assert.match(step2.text, /6-character code/);
-  const docs = textOf(distPage('/docs/getting-started/').html);
-  assert.match(docs, /Codes expire after 10 minutes/, 'the docs no longer say how long a code lasts');
   assert.match(step2.text, /works for 10 minutes/);
+  const docs = textOf(distPage('/docs/getting-started/').html);
+  assert.match(docs, /10 minutes/, 'the docs no longer say how long a code lasts');
+  // THE CONSENT PROMISE, held to the plugin (it lost its source check when the ConsentProof band was deleted).
+  assert.match(step2.text, CONSENT_SENTENCE, 'step 2 no longer carries the consent promise in the words the pages use');
+  assertConsentPromiseHolds();
+});
+
+test('a step is labelled "Works today" only when it holds for someone who can get the plugin: while the Creator Store listing is down, pairing and building in Studio are "Partly works today"', () => {
+  const steps = stepsOf(distPage('/how-it-works/').html);
+  assert.equal(shared.STUDIO_PLUGIN_STORE_LIVE, false, 'the plugin can be had now: re-aim this test and the three steps that follow the flag');
+  for (const s of steps) {
+    if (s.label !== 'Works today') continue;
+    assert.doesNotMatch(s.text, /\bplugin\b|\bStudio\b/, `step ${s.n} (${s.title}) is "Works today" and talks about Studio or the plugin, which new customers cannot get`);
+  }
+  assert.equal(steps[1].label, 'Partly works today', 'pairing is "Works today" for someone who cannot get the plugin');
+  assert.match(steps[1].text, /not on the Creator Store, so new customers cannot get it yet/);
+  assert.equal(steps[3].label, 'Partly works today', 'following the live steps of a build is "Works today" for someone who cannot build in Studio');
+  assert.match(steps[2].text, /Without the plugin, StudPilot can plan it with you in the chat, but it cannot build it in Studio/);
+});
+
+test('step 1 says Sign in with Roblox works, and the worker and the app have it; Google and Discord stay "coming"', () => {
+  const step1 = stepsOf(distPage('/how-it-works/').html)[0];
+  assert.match(step1.text, /sign in with Roblox/i);
+  assert.equal(step1.label, 'Works today');
+  const apps = join(SITE, '..');
+  assert.match(readFileSync(join(apps, 'worker', 'src', 'index.ts'), 'utf8'), /app\.route\('\/auth\/roblox'/, 'the worker no longer serves Sign in with Roblox');
+  assert.ok(readFileSync(join(apps, 'web', 'src', 'lib', 'roblox-signin.ts'), 'utf8').includes("'/auth/roblox/start'"), 'the app no longer links to /auth/roblox/start');
+  assert.doesNotMatch(step1.text, /being switched on/, 'the page still says Sign in with Roblox is being switched on');
 });

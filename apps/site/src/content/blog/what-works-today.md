@@ -8,19 +8,19 @@ StudPilot is in beta. This post says what you can do today and what you cannot. 
 
 ## What works today
 
-**You can sign in with your email.** Make an account with an email and a password. You do not need a card.
+**You can sign in with your email, or with Roblox.** Make an account with an email and a password, or use Sign in with Roblox. You do not need a card.
 
 **You can make a project and chat with StudPilot.** A project holds the chat for one Roblox place. Type a request and StudPilot starts work.
 
-**You can pair a project with Roblox Studio.** The plugin takes a 6-character code from your project. A code works for 10 minutes. Edits stay off until you allow them for that connection.
-
-**You can watch what it does.** The chat shows a live list of the steps StudPilot is taking, and you can stop a run at any time.
-
-**StudPilot has checks.** It can play test a place, press buttons in a running game, check a screen's layout, audit what it built, and check its own reply for claims it cannot back up. It uses them while it builds.
+**You can watch what it does in the chat.** The chat shows a live list of the steps StudPilot is taking, and you can stop a run at any time.
 
 **Free costs nothing.** The Free plan gives you 5 Credits a day, up to 30 a month. A Credit is about $0.05 of AI compute, and you are charged for the AI work a build actually used. A typical build uses about 1.40 Credits. That is an estimate, and a long build costs more.
 
 ## What is not there yet
+
+**New customers cannot build in Studio.** The plugin that builds in your place is not on the Creator Store, so you cannot get it today. The chat works without it, and StudPilot can plan with you there. People who already have the plugin can pair a project with a 6-character code. A code works for 10 minutes, and edits stay off until you allow them for that connection. The [plugin page](/docs/plugin) says where it stands.
+
+**The checks need the plugin.** StudPilot has tools to play test a place, press buttons in a running game, check a screen's layout and audit what it built, and it checks its own reply for claims it cannot back up. They run inside Studio, so a new customer cannot use most of them yet.
 
 **The quality bar has not been met.** The bar is a blind critic that rates a piece 8 or better in every area, no play-test errors, and no false claims. No piece has passed it yet. That is why the [catalog](/catalog) has no examples.
 
@@ -32,9 +32,7 @@ StudPilot is in beta. This post says what you can do today and what you cannot. 
 
 **There is no settings panel for a piece yet.** To change a piece, ask in the chat.
 
-**Sign in with Roblox is being switched on.** Google and Discord sign-in are coming. They are not on the sign-in page.
-
-**The plugin is not on the Creator Store.** The chat works without it, but building in Studio needs it. The [plugin page](/docs/plugin) says where it stands.
+**Google and Discord sign-in are coming.** They are not on the sign-in page.
 
 **Paid plans are not for sale.** Pro and Max are planned, and there is no checkout. See [pricing](/pricing).
 
