@@ -261,7 +261,8 @@ try {
 
   for (const { cmd } of toRun) {
     let actual = cmd;
-    if (cmd === 'node --test tests/*.test.mjs') {
+    const rootSuite = /^node --test (--test-timeout=\d+ )?tests\/\*\.test\.mjs$/.exec(cmd);
+    if (rootSuite) {
       const all = readdirSync(join(clone, 'tests')).filter((f) => f.endsWith('.test.mjs')).sort();
       for (const declared of TEST_FILES_NEEDING_AN_INSTALL.keys()) {
         if (!all.includes(declared.replace('tests/', ''))) {
@@ -273,7 +274,7 @@ try {
         const d = TEST_FILES_NEEDING_AN_INSTALL.get(f);
         return !d || (withBuild && d.needs === 'install');
       });
-      actual = `node --test ${kept.join(' ')}`;
+      actual = `node --test ${rootSuite[1] ?? ''}${kept.join(' ')}`;
     }
     const [bin, ...rest] = actual.split(/\s+/);
     const r = spawnSync(bin, rest, { cwd: clone, encoding: 'utf8', shell: false, maxBuffer: 256 * 1024 * 1024 });

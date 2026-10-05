@@ -136,9 +136,7 @@ jobs:
         # check-workspace-coverage.mjs exists for, one level out.
         # A per-test ceiling (2026-10-06): a hung test fails under its own name instead of the job being
         # cut off at its timeout with nothing said about which file hung.
-        env:
-          NODE_OPTIONS: --test-timeout=240000
-        run: node --test tests/*.test.mjs
+        run: node --test --test-timeout=240000 tests/*.test.mjs
 
       - name: Ledger is well-formed
         # Executes nothing: seconds, not the ten minutes a full gate pass costs. It checks the
