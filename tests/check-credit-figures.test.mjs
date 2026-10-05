@@ -25,6 +25,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unusedNames } from '../scripts/lib/config-reads.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECKER = join(ROOT, 'scripts', 'check-credit-figures.mjs');
@@ -93,4 +94,42 @@ test('THE SUCCESS LINE CLAIMS THE CALCULATOR ONLY IF A PAGE RENDERS IT', () => {
       );
     }
   }
+});
+
+/**
+ * THE PAGE MUST READ THE CONFIG, NOT ONLY IMPORT IT.
+ *
+ * "pricing.astro reads PLAN_TABLE, BUILD_COSTS, CREDIT_USD and TYPICAL_BUILD_CREDITS" was checked by
+ * finding each name anywhere in the source, so the import list alone satisfied it and a page that had
+ * typed every figure still counted four "config reads". unusedNames takes comments and imports out first.
+ */
+test('a page that only IMPORTS the config has not read it, and a page that uses it has', () => {
+  const NAMES = ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS'];
+  const importOnly = [
+    '---',
+    "import {",
+    '  PLAN_TABLE,',
+    '  BUILD_COSTS,',
+    '  CREDIT_USD,',
+    '  type PlanId,',
+    '  TYPICAL_BUILD_CREDITS } from \'@studpilot/shared\';',
+    '---',
+    '<h1>Free: 5 Credits a day</h1>',
+  ].join('\n');
+  assert.deepEqual(unusedNames(importOnly, NAMES), NAMES, 'an import list was counted as a use');
+
+  const used = importOnly.replace('<h1>Free: 5 Credits a day</h1>',
+    '<p>{PLAN_TABLE.free.creditsPerDay} {BUILD_COSTS.length} {CREDIT_USD} {TYPICAL_BUILD_CREDITS}</p>');
+  assert.deepEqual(unusedNames(used, NAMES), [], 'a page that uses every name was reported');
+
+  // One use among four: only the other three are reported. And a name that is only in a comment is not a use.
+  const some = importOnly.replace('<h1>Free: 5 Credits a day</h1>', '<p>{PLAN_TABLE.free.name}</p>\n<!-- BUILD_COSTS CREDIT_USD -->\n{/* TYPICAL_BUILD_CREDITS */}');
+  assert.deepEqual(unusedNames(some, NAMES), ['BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']);
+});
+
+test('the guard hands the real pricing page to that function, and the page does use all four', () => {
+  const script = readFileSync(CHECKER, 'utf8');
+  assert.match(script, /unusedNames\(page, CONFIG_NAMES\)/, 'check-credit-figures does not ask for a USE');
+  const page = readFileSync(join(ROOT, 'apps/site/src/pages/pricing.astro'), 'utf8');
+  assert.deepEqual(unusedNames(page, ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']), [], 'pricing.astro only imports one of them');
 });

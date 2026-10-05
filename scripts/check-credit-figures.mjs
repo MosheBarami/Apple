@@ -46,6 +46,7 @@
  * Usage: node scripts/check-credit-figures.mjs
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { unusedNames } from './lib/config-reads.mjs';
 import {
   BUILD_COSTS,
   CREDIT_USD,
@@ -340,10 +341,11 @@ for (const id of PLAN_IDS) {
   }
 }
 const pageSrc = stripComments(page);
-for (const name of ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS']) {
-  if (new RegExp(`\\b${name}\\b`).test(pageSrc)) derived += 1;
-  else problems.push(`pricing.astro no longer reads ${name} from packages/shared, so a figure on it is typed`);
-}
+// A USE, not the import line: `unusedNames` takes comments and import statements out first.
+const CONFIG_NAMES = ['PLAN_TABLE', 'BUILD_COSTS', 'CREDIT_USD', 'TYPICAL_BUILD_CREDITS'];
+const notUsed = unusedNames(page, CONFIG_NAMES);
+derived += CONFIG_NAMES.length - notUsed.length;
+for (const name of notUsed) problems.push(`pricing.astro no longer reads ${name} from packages/shared (only imports it, if that), so a figure on it is typed`);
 if (/\b\d[\d,.]*\s+Credits?\b/.test(pageSrc.replace(/\{[^}]*\}/g, ''))) {
   problems.push('pricing.astro types a Credit figure into its copy instead of reading the plan table');
 }

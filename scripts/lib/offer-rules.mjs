@@ -145,22 +145,42 @@ export function planProblems({
 }
 
 /**
- * Rule 4: every quota a user reads equals the enforced one.
+ * Rule 4: every quota a user reads equals the enforced one, FOR ITS PERIOD AND ITS PLAN.
  *
  * A page promising a number the ledger does not grant is a page that lies, and the user finds out
  * at the moment they hit the wall. Numbers are matched only in a Credits context, so an unrelated
  * 400 in a CSS rule is not a false positive.
  *
+ * THE PERIOD IS PART OF THE CLAIM. This read one set of figures for both ("Max gives 300 Credits a
+ * day" passed, because 300 is Max's MONTH), and a claim that NAMES a plan is held to that plan's own
+ * figure ("Free gives 30 Credits a day" passed, because 30 is Max's day). The plan is the last plan
+ * name in the clause before the figure; a clause ends at a sentence stop, a line break or an
+ * interpolation, and tags are not words.
+ *
  * @param {{rel: string, src: string}[]} files
- * @param {Set<number>} enforced every figure some plan actually grants
+ * @param {object} enforced
+ * @param {Set<number>} enforced.day    every figure some plan grants a day
+ * @param {Set<number>} enforced.month  every figure some plan grants a month
+ * @param {Record<string, {day: number, month: number}>} [enforced.plans]  by the name copy uses ("Free", "Pro", "Max")
  */
 export function copyProblems(files, enforced) {
   const problems = [];
+  const names = Object.keys(enforced.plans ?? {});
+  const named = names.length ? new RegExp(`\\b(${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'g') : null;
   for (const { rel, src } of files) {
-    for (const m of stripComments(src).matchAll(CREDIT_CLAIM)) {
+    const text = stripComments(src);
+    for (const m of text.matchAll(CREDIT_CLAIM)) {
       const claimed = Number(m[1].replace(/,/g, ''));
-      if (!enforced.has(claimed)) {
-        problems.push(`${rel} states ${claimed} Credits a ${m[2]}, which no plan grants`);
+      const period = m[2];
+      if (!enforced[period].has(claimed)) {
+        problems.push(`${rel} states ${claimed} Credits a ${period}, which no plan grants a ${period}`);
+        continue;
+      }
+      if (!named) continue;
+      const clause = text.slice(Math.max(0, m.index - 80), m.index).replace(/<[^>]*>/g, ' ').split(/[.!?;](?=\s)|\n|[{}]/).pop() ?? '';
+      const plan = [...clause.matchAll(named)].pop()?.[1];
+      if (plan && enforced.plans[plan][period] !== claimed) {
+        problems.push(`${rel} states ${claimed} Credits a ${period} for ${plan}, which grants ${enforced.plans[plan][period]} a ${period}`);
       }
     }
   }
@@ -217,8 +237,12 @@ export function limitProblems({ planIds, table, limits, internalPerCredit }) {
   return problems;
 }
 
-/** A monthly price in copy: "$9.99 a month", "$12/month", "$24.99 per month". */
-export const PRICE_CLAIM = /\$(\d[\d,]*(?:\.\d{2})?)\s*(?:\/|a\s+|per\s+)(month|mo\b)/gi;
+/**
+ * A monthly price in copy: "$9.99 a month", "$12/month", "$12 / month", "$24.99 per month", "$12 each month",
+ * "$12 every month", "$12 USD a month", "$12 monthly". The separator is optional only before "monthly", which
+ * says it by itself.
+ */
+export const PRICE_CLAIM = /\$(\d[\d,]*(?:\.\d{2})?)\s*(?:USD\s*)?(?:(?:\/|a|per|each|every)\s*(?:month|mo\b)|monthly)/gi;
 
 /**
  * Rule 7: a monthly price a page states is a price some plan charges.

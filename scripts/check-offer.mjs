@@ -21,7 +21,8 @@
 //      does not work.
 //   4. A quota stated in the marketing site or the app that differs from the plan table. Copy states
 //      credits (PLAN_TABLE), so a figure is checked against the credits a plan grants, not against the
-//      ledger units QuotaDO counts in.
+//      ledger units QuotaDO counts in; against the same PERIOD (a day or a month); and, when the sentence
+//      names a plan, against that plan's own figure.
 //   5. A contractual term ("free forever", "never be charged") in copy.
 //   6. An enforced limit (PLAN_LIMITS, ledger units) that is not the plan table times INTERNAL_PER_CREDIT.
 //   7. A monthly price in copy that no plan charges.
@@ -94,7 +95,13 @@ console.log(`DENOMINATOR ${copySurface.length} files; EXCEPTIONS ${EXCEPTIONS.le
 // Measured: the daily-ceiling rule replaced by `if (false)` and the contractual-terms list emptied
 // to `[]` both left that suite at 12/12 green, and G-ORACLE-3 could not be falsified. Violating
 // inputs have to come from somewhere other than the tree being checked.
-const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_TABLE[id].creditsPerDay, PLAN_TABLE[id].creditsPerMonth]));
+// Per period, and per plan by the name copy uses: "Max gives 300 Credits a day" and "Free gives 30 Credits a day" are
+// both claims some plan's month or day figure makes true taken alone, and both are wrong.
+const enforced = {
+  day: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerDay)),
+  month: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerMonth)),
+  plans: Object.fromEntries(PLAN_IDS.map((id) => [PLAN_COPY[id].name, { day: PLAN_TABLE[id].creditsPerDay, month: PLAN_TABLE[id].creditsPerMonth }])),
+};
 const prices = new Set(PLAN_IDS.map((id) => PLAN_COPY[id].priceUsdMonthly).filter((p) => p !== null && p > 0));
 const ceilingCredits = Math.floor(DAILY_NEURON_CEILING / NEURONS_PER_CREDIT);
 

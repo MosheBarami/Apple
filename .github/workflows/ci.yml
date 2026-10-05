@@ -347,6 +347,15 @@ jobs:
         # tests/check-old-names.test.mjs proves it can fail.
         run: node scripts/check-old-names.mjs
 
+      - name: The offer holds together
+        # scripts/check-offer.mjs: what a plan charges, what it grants, what that costs to serve and what the whole
+        # service can deliver in a day must agree, and no page may state a quota (for its period and its plan) or
+        # a monthly price that no plan has, or a contractual term ("free forever"). It was run only by its own test
+        # file, which accepted an INCOHERENT verdict, so nothing in CI could go red for a wrong figure on a page.
+        # It reads tracked files and the shared tables only: deterministic and offline. tests/check-offer.test.mjs
+        # hands each rule an input that breaks it, to prove it can fail.
+        run: node scripts/check-offer.mjs
+
       - name: Every script CI invokes exists
         # This checker was written for the rename that missed .github and left main red for five
         # days (04d3800, runs 34934918501 / 35002022585 / 35474815515). It was reachable only from

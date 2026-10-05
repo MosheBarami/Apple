@@ -261,12 +261,31 @@ test('the real QuotaDO refuses a Free spend past 5 credits in a day and reports 
   assert.equal(over.ok, false, 'one ledger unit past 5 credits is refused');
 });
 
+/**
+ * Does `src` (comments out) write `figure` as a literal? Numeric separators are read first: `4_500` is the number
+ * 4500 and `\b4500\b` does not match it, so a restated limit spelled the way this codebase spells its big numbers
+ * (see the 4_500 below) got through.
+ */
+const writesFigure = (src, figure) =>
+  new RegExp(`\\b${figure}\\b`).test(
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1').replace(/(?<=\d)_(?=\d)/g, ''),
+  );
+
+test('the literal scan reads a number as it is spelled: 4500, 4_500 and 1_2_3_4 are all the figure', () => {
+  assert.equal(writesFigure('const m = 4500;', 4500), true);
+  assert.equal(writesFigure('const m = 4_500;', 4500), true, 'a numeric separator hid the figure');
+  assert.equal(writesFigure('const m = 1_2_3_4;', 1234), true);
+  assert.equal(writesFigure('const m = 14_500;', 4500), false, 'the tail of a longer number is not the figure');
+  assert.equal(writesFigure('const m = 4_5000;', 4500), false);
+  assert.equal(writesFigure('// was 4_500\nconst m = 1;', 4500), false, 'a comment is not a literal');
+});
+
 test('the DO and the arithmetic carry no plan figure of their own', () => {
   for (const file of ['src/do/quota.ts', 'src/quota-math.ts']) {
-    const src = readFileSync(join(WORKER, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    const src = readFileSync(join(WORKER, file), 'utf8');
     for (const id of PLAN_IDS) {
       for (const figure of [PLAN_LIMITS[id].creditsPerDay, PLAN_LIMITS[id].creditsPerMonth]) {
-        assert.doesNotMatch(src, new RegExp(`\\b${figure}\\b`), `${file} restates ${figure}, a ${id} limit`);
+        assert.equal(writesFigure(src, figure), false, `${file} restates ${figure}, a ${id} limit`);
       }
     }
   }

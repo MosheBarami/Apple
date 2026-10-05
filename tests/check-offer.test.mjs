@@ -31,11 +31,24 @@ const run = () => {
 
 /* ----------------------------------------------------------- the checker runs --- */
 
-test('the checker reaches a verdict on the real repository', () => {
-  // Exit 0 or 1, never 2 — the second means it fell over rather than judged.
+test('the real repository holds together: the checker exits 0', () => {
+  // WAS "exit 0 or 1, never 2": a verdict of INCOHERENT passed. The checker runs in CI (Static checks), where it
+  // must be green, and a test that accepted a red verdict could not have said so. Exit 2 would mean it fell over.
+  // It reads only tracked files and the shared tables, so it has no way to be red for a reason outside the tree.
   const r = run();
-  assert.ok(r.exit === 0 || r.exit === 1, `unexpected exit ${r.exit}:\n${r.out}`);
-  assert.match(r.out, /OFFER (COHERENT|INCOHERENT)/);
+  assert.equal(r.exit, 0, `the offer is incoherent on the real tree:\n${r.out}`);
+  assert.match(r.out, /OFFER COHERENT/);
+});
+
+test('CI RUNS IT: the Static checks job has a step that runs scripts/check-offer.mjs', () => {
+  // It was invoked by nothing but this file, and this file accepted an incoherent verdict, so no gate could go red
+  // for a figure a page got wrong. The job is cut from "name: Static checks" to the next job header.
+  const ci = readFileSync(join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8');
+  const start = ci.indexOf('    name: Static checks');
+  assert.ok(start > 0, 'the Static checks job is not in ci.yml');
+  const rest = ci.slice(start);
+  const job = rest.slice(0, rest.search(/\n  [a-z][\w-]*:\n/));
+  assert.match(job, /^\s+run: node scripts\/check-offer\.mjs\s*$/m, 'the Static checks job does not run check-offer.mjs');
 });
 
 test('it prints a real denominator first', () => {
@@ -251,17 +264,17 @@ test('RULE 1 EXEMPTS the free tier, and only from that rule', () => {
 test('RULE 4 FIRES: a stated quota no plan grants is reported', () => {
   const problems = copyProblems(
     [{ rel: 'fake/page.astro', src: '<p>Start with 60 Credits a day, then 9,000 Credits per month.</p>' }],
-    new Set([231, 2_310]),
+    { day: new Set([231]), month: new Set([2_310]) },
   );
   assert.equal(problems.length, 2, problems.join('\n'));
-  assert.match(problems[0], /fake\/page\.astro states 60 Credits a day, which no plan grants/);
-  assert.match(problems[1], /states 9000 Credits a month/);
+  assert.match(problems[0], /fake\/page\.astro states 60 Credits a day, which no plan grants a day/);
+  assert.match(problems[1], /states 9000 Credits a month, which no plan grants a month/);
 });
 
 test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Credit claim', () => {
   const problems = copyProblems(
     [{ rel: 'fake/page.astro', src: '<p>231 Credits a day.</p><style>.x{width:400px;margin:60px}</style>' }],
-    new Set([231]),
+    { day: new Set([231]), month: new Set() },
   );
   assert.deepEqual(problems, []);
 });
@@ -269,13 +282,13 @@ test('RULE 4 IS SILENT on an enforced figure, and on a number that is not a Cred
 test('RULE 4 READS A ONE-DIGIT CLAIM AND A DECIMAL ONE: "5 Credits a day", "5.00 Credits a day", "7 credits per month"', () => {
   // The claim used to need two characters, so every figure under ten was invisible to the rule, and
   // "5.00" was read as "00". Free is 5 a day, which is exactly the claim that was unguarded.
-  const enforced = new Set([5, 30, 100, 20, 300]);
+  const enforced = { day: new Set([5, 20, 30]), month: new Set([30, 100, 300]) };
   const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
   for (const words of ['5 Credits a day', '5.00 Credits a day', '30 credits per month', '30.00 Credits/month', '100 Credits a month, 20 a day']) {
     assert.deepEqual(copyProblems(page(words), enforced), [], `${words}: an enforced figure was reported`);
   }
   const wrong = [
-    ['7 credits per month', /fake\/page\.astro states 7 Credits a month, which no plan grants/],
+    ['7 credits per month', /fake\/page\.astro states 7 Credits a month, which no plan grants a month/],
     ['6 Credits a day', /states 6 Credits a day/],
     ['7.50 Credits a day', /states 7\.5 Credits a day/],
     ['5.50 Credits per month', /states 5\.5 Credits a month/],
@@ -287,7 +300,63 @@ test('RULE 4 READS A ONE-DIGIT CLAIM AND A DECIMAL ONE: "5 Credits a day", "5.00
     assert.match(problems[0], expected, words);
   }
   // The tail of a longer number is not a claim of its own: "1.5.5" and "2,5" are not "5".
-  assert.deepEqual(copyProblems(page('version 1.5 Credits a day'), new Set([1.5])), []);
+  assert.deepEqual(copyProblems(page('version 1.5 Credits a day'), { day: new Set([1.5]), month: new Set() }), []);
+});
+
+test('RULE 4 READS A CLAIM WHOLE: the lookbehind keeps the tail of a longer number from being a claim of its own', () => {
+  // "1.2.5 Credits a day" is not a figure at all. Without the (?<![\d.,]) lookbehind the engine fails at "1" (the
+  // pattern allows one decimal point), moves on, and reads "2.5" - or "5" - as the claim. The enforced set has
+  // neither, so a regex that read them would report; and the same text without the version prefix is a real claim.
+  const none = { day: new Set(), month: new Set() };
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
+  assert.deepEqual(copyProblems(page('Release 1.2.5 Credits a day'), none), [], 'the tail of 1.2.5 was read as a claim');
+  assert.deepEqual(copyProblems(page('Build 10.2.5 Credits per month'), { day: new Set(), month: new Set([5]) }), [], 'the tail of 10.2.5 was read as a claim');
+  assert.equal(copyProblems(page('Release: 5 Credits a day'), none).length, 1, 'the same figure, standing alone, is a claim');
+});
+
+/** The tables check-offer.mjs builds, in miniature: Free 5/30, Pro 20/100, Max 30/300 (credits a day / a month). */
+const TABLES = {
+  day: new Set([5, 20, 30]),
+  month: new Set([30, 100, 300]),
+  plans: { Free: { day: 5, month: 30 }, Pro: { day: 20, month: 100 }, Max: { day: 30, month: 300 } },
+};
+
+test('RULE 4 USES THE PERIOD: a month figure claimed as a day figure (and the reverse) is reported', () => {
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
+  // 300 is Max's MONTH and no plan's day; 5 is Free's DAY and no plan's month.
+  const day = copyProblems(page('300 Credits a day'), TABLES);
+  assert.equal(day.length, 1, JSON.stringify(day));
+  assert.match(day[0], /states 300 Credits a day, which no plan grants a day/);
+  const month = copyProblems(page('5 Credits a month'), TABLES);
+  assert.equal(month.length, 1, JSON.stringify(month));
+  assert.match(month[0], /states 5 Credits a month, which no plan grants a month/);
+  // And the same figures in their own period are fine.
+  assert.deepEqual(copyProblems(page('300 Credits a month. 5 Credits a day.'), TABLES), []);
+});
+
+test('RULE 4 HOLDS A CLAIM THAT NAMES A PLAN TO THAT PLAN: "Max gives 300 a day", "Free gives 30 a day", "Free gives 5 a month"', () => {
+  const page = (words) => [{ rel: 'fake/page.astro', src: `<p>${words}</p>` }];
+  const cases = [
+    ['Max gives 300 Credits a day', /states 300 Credits a day, which no plan grants a day/],
+    // 30 IS a day figure (Max's), so only the plan the sentence names can show it is wrong.
+    ['Free gives 30 Credits a day', /states 30 Credits a day for Free, which grants 5 a day/],
+    ['Free gives 5 Credits a month', /states 5 Credits a month, which no plan grants a month/],
+    ['Pro gives 30 Credits a month', /states 30 Credits a month for Pro, which grants 100 a month/],
+    ['<li><strong>Max</strong>: 20 Credits a day</li>', /for Max, which grants 30 a day/],
+  ];
+  for (const [words, expected] of cases) {
+    const problems = copyProblems(page(words), TABLES);
+    assert.equal(problems.length, 1, `${words}: ${JSON.stringify(problems)}`);
+    assert.match(problems[0], expected, words);
+  }
+  // The controls: each plan's own figure, in either order, and two plans in one sentence.
+  for (const words of [
+    'Free gives 5 Credits a day', 'Free: 30 Credits a month', 'Max gives 30 Credits a day', 'Max gives 300 Credits a month',
+    'Free gives 5 Credits a day; Pro gives 20 Credits a day', 'Compared with Free, Max gets 300 Credits a month',
+    'Pro is 100 Credits a month. Free is 5 Credits a day.',
+  ]) assert.deepEqual(copyProblems(page(words), TABLES), [], words);
+  // A plan named in a PREVIOUS sentence, or before an interpolation, does not own the next figure.
+  assert.deepEqual(copyProblems(page('Free is the plan to start on. 20 Credits a day buys more.'), TABLES), []);
 });
 
 test('RULE 5 FIRES: a contractual term in copy is reported', () => {
@@ -313,11 +382,11 @@ test('RULES 4 AND 5 READ THE SOURCE, NOT THE COMMENTARY ON IT', () => {
       '<a href="https://example.com/x">231 Credits a day</a>',
     ].join('\n'),
   }];
-  assert.deepEqual(copyProblems(commented, new Set([231])), []);
+  assert.deepEqual(copyProblems(commented, { day: new Set([231]), month: new Set() }), []);
   assert.deepEqual(termProblems(commented), []);
 
   // And the href's `//` must not have eaten the real claim on that line.
-  assert.equal(copyProblems(commented, new Set([1])).length, 1);
+  assert.equal(copyProblems(commented, { day: new Set([1]), month: new Set() }).length, 1);
 });
 
 test('RULE 6 FIRES: a limit that is not the table times the unit is reported, with both figures', () => {
@@ -348,6 +417,20 @@ test('RULE 7 FIRES: a monthly price no plan charges is reported', () => {
   assert.match(problems[1], /states \$40 a month/);
 });
 
+test('RULE 7 READS EVERY WAY A MONTHLY PRICE IS WRITTEN: "$12 / month", "$12 monthly", "$12 each month", "$12 USD a month"', () => {
+  const prices = new Set([9.99, 24.99]);
+  const spelled = ['$12 / month', '$12 monthly', '$12 each month', '$12 every month', '$12 USD a month', '$12 USD/month', '$12/mo', '$12 per month', '$12 a month', '$12/month'];
+  for (const words of spelled) {
+    const problems = priceProblems([{ rel: 'fake/page.astro', src: `<p>Pro is ${words}.</p>` }], prices);
+    assert.equal(problems.length, 1, `${words}: ${JSON.stringify(problems)}`);
+    assert.match(problems[0], /states \$12 a month, which no plan charges/, words);
+  }
+  // The same spellings of a price some plan DOES charge are fine.
+  for (const words of ['$9.99 / month', '$9.99 monthly', '$24.99 each month', '$24.99 USD a month', '$9.99/mo']) {
+    assert.deepEqual(priceProblems([{ rel: 'fake/page.astro', src: `<p>${words}</p>` }], prices), [], words);
+  }
+});
+
 test('RULE 7 IS SILENT on a plan price, a compute price, and a comment', () => {
   const prices = new Set([9.99]);
   assert.deepEqual(
@@ -367,13 +450,19 @@ test('THE SCRIPT HANDS RULES 4, 6 AND 7 THE REAL TABLES: credits for copy, ledge
   // Raw source: its glob strings ('apps/site/**') defeat a comment stripper, and the patterns below are
   // specific enough that a comment cannot satisfy them.
   const src = readFileSync(join(ROOT, 'scripts', 'check-offer.mjs'), 'utf8');
-  assert.match(src, /PLAN_TABLE\[id\]\.creditsPerDay, PLAN_TABLE\[id\]\.creditsPerMonth/, 'copy is checked against the credits in the plan table');
-  assert.doesNotMatch(src, /PLAN_LIMITS\[id\]\.creditsPerDay, PLAN_LIMITS\[id\]\.creditsPerMonth/, 'copy must not be checked against ledger units');
+  assert.match(src, /day: new Set\(PLAN_IDS\.map\(\(id\) => PLAN_TABLE\[id\]\.creditsPerDay\)\)/, 'a day figure in copy is checked against the credits in the plan table');
+  assert.match(src, /month: new Set\(PLAN_IDS\.map\(\(id\) => PLAN_TABLE\[id\]\.creditsPerMonth\)\)/, 'a month figure in copy is checked against the credits in the plan table');
+  assert.match(src, /plans: Object\.fromEntries\(PLAN_IDS\.map\(\(id\) => \[PLAN_COPY\[id\]\.name, \{ day: PLAN_TABLE\[id\]\.creditsPerDay, month: PLAN_TABLE\[id\]\.creditsPerMonth \}\]\)\)/, 'and a plan named in a sentence is checked against that plan, by the name copy uses');
+  assert.doesNotMatch(src, /PLAN_LIMITS\[id\]\.creditsPer(Day|Month)\b/, 'copy must not be checked against ledger units');
   assert.match(src, /limitProblems\(\{ planIds: PLAN_IDS, table: PLAN_TABLE, limits: PLAN_LIMITS, internalPerCredit: INTERNAL_PER_CREDIT \}\)/);
   assert.match(src, /priceProblems\(sources, prices\)/);
 
   // And with the tables the script builds, a ledger figure in a page is a finding, a credit figure is not.
-  const enforced = new Set(PLAN_IDS.flatMap((id) => [PLAN_TABLE[id].creditsPerDay, PLAN_TABLE[id].creditsPerMonth]));
+  const enforced = {
+    day: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerDay)),
+    month: new Set(PLAN_IDS.map((id) => PLAN_TABLE[id].creditsPerMonth)),
+    plans: Object.fromEntries(PLAN_IDS.map((id) => [PLAN_COPY[id].name, { day: PLAN_TABLE[id].creditsPerDay, month: PLAN_TABLE[id].creditsPerMonth }])),
+  };
   const ledger = copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_LIMITS.free.creditsPerMonth} Credits a month.</p>` }], enforced);
   assert.equal(ledger.length, 1, 'a ledger-unit figure printed as credits is 150x too large and must be reported');
   assert.deepEqual(copyProblems([{ rel: 'fake/page.astro', src: `<p>${PLAN_TABLE.free.creditsPerMonth} Credits a month.</p>` }], enforced), []);
