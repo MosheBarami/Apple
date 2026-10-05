@@ -137,6 +137,22 @@ test('screens.json: every record is complete, claims no build result, and matche
   }
 });
 
+test('a picture taken from the app\'s mock fixture says, in its caption and alt, that nothing in it is a connected Studio, while the fixture reports a Studio selection (the "2 selected" chip)', () => {
+  const mock = readFileSync(join(SITE, '..', 'web', 'src', 'lib', 'mock.ts'), 'utf8');
+  const selection = /selectionCount:\s*(\d+)/.exec(mock);
+  assert.ok(selection, 'apps/web/src/lib/mock.ts no longer carries a selectionCount: re-read what the pictures show');
+  const mocked = loadScreens().filter((r) => /mock mode/.test(r.source));
+  assert.ok(mocked.length >= 1, 'no record says it was taken in mock mode: the guard has nothing to read');
+  for (const r of mocked) {
+    for (const [what, words] of [['caption', r.caption], ['alt', r.alt]]) {
+      assert.match(words, /sample data/, `${r.id}: the ${what} does not say the numbers are sample data`);
+      // The composer draws "N selected" only when the plugin reports a Studio selection. The fixture reports one, so the picture shows a state a new customer cannot reach
+      // while the plugin cannot be had; the words say that the chip is not a connected Studio. If the fixture stops reporting one, this stops asking.
+      if (Number(selection[1]) > 0) assert.match(words, /No Studio is connected/, `${r.id}: the ${what} does not say that no Studio is connected, and the picture shows the "${selection[1]} selected" chip`);
+    }
+  }
+});
+
 test('public/assets/screens holds exactly the recorded pictures: no file without a record, no record without a file', () => {
   const records = loadScreens();
   const files = walkFiles(join(SITE, 'public', 'assets', 'screens'));
