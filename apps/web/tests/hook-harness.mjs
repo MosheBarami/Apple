@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 
 export const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const REACT_STUB = String.raw`
+export const REACT_STUB = String.raw`
 let current = null;
 
 export function useState(initial) {
@@ -47,6 +47,9 @@ export function useRef(initial) {
   if (!(i in inst.slots)) inst.slots[i] = { value: { current: initial } };
   return inst.slots[i].value;
 }
+
+// A page that calls it for an id it never reads in the part under test.
+export const useId = () => ':stub:';
 
 const sameDeps = (a, b) => Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, k) => Object.is(v, b[k]));
 

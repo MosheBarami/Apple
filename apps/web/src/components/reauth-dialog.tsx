@@ -12,7 +12,9 @@ import { useState, type FormEvent } from 'react';
 import { Modal } from './modal';
 import { supabase } from '../lib/supabase';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
-import { authErrorMessage, type SensitiveAction } from '../lib/auth-flows';
+import { REAUTH_WINDOW_MS, authErrorMessage, type SensitiveAction } from '../lib/auth-flows';
+import { isRobloxAccount } from '../lib/account-identity';
+import { robloxStartHref } from '../lib/roblox-signin';
 import { useAuth } from '../lib/auth';
 import { PasswordInput } from './picks/settings/password-input';
 
@@ -28,18 +30,63 @@ const WHY: Readonly<Record<SensitiveAction, string>> = {
   'delete-account': 'This deletes your data from every store we can reach, and none of it can be brought back.',
 };
 
-export function ReauthDialog({
-  action,
-  title,
-  onConfirmed,
-  onClose,
-}: {
+interface ReauthProps {
   action: SensitiveAction;
   title: string;
   /** Called once the password has been accepted. The caller then does the actual work. */
   onConfirmed: () => void;
   onClose: () => void;
-}) {
+}
+
+/**
+ * Ask who is at the keyboard, in the way this account can answer.
+ *
+ * A Roblox-only account has no password (apps/worker/src/roblox-oauth.ts makes it without one), so a password box on it could
+ * never be satisfied and Settings would be closed to it: no export, no delete, no sign out everywhere. It answers by signing in
+ * with Roblox again instead.
+ */
+export function ReauthDialog(props: ReauthProps) {
+  const { session } = useAuth();
+  return isRobloxAccount(session?.user) ? (
+    <RobloxReauthDialog action={props.action} title={props.title} onClose={props.onClose} />
+  ) : (
+    <PasswordReauthDialog {...props} />
+  );
+}
+
+/**
+ * Confirm it is you with Roblox. A plain link, because the flow is browser navigations: the worker's start route, Roblox, the
+ * callback, and the landing page, which signs the person in again and sends them back to Settings. That fresh sign-in is the
+ * proof: it stamps the new session's `last_sign_in_at`, which `freshestAuth` reads, so the gate lets the action through for the
+ * next REAUTH_WINDOW_MS. The page is left and re-entered, so the action is not resumed: the person presses its button again.
+ */
+export function RobloxReauthDialog({ action, title, onClose }: Pick<ReauthProps, 'action' | 'title' | 'onClose'>) {
+  const minutes = Math.round(REAUTH_WINDOW_MS / 60_000);
+  return (
+    <Modal title={title} onClose={onClose}>
+      <p className="danger-copy">{WHY[action]}</p>
+      <p className="settings-note">
+        This account signs in with Roblox, so there is no password to type. Sign in with Roblox again to confirm it is you. You
+        will come back to Settings; press the button again and it will not ask for {minutes} minutes.
+      </p>
+      <div className="modal-actions">
+        <button type="button" className="btn" onClick={onClose}>
+          Cancel
+        </button>
+        <a className="btn btn-primary" href={robloxStartHref('/settings')}>
+          Confirm with Roblox
+        </a>
+      </div>
+    </Modal>
+  );
+}
+
+function PasswordReauthDialog({
+  action,
+  title,
+  onConfirmed,
+  onClose,
+}: ReauthProps) {
   const { session, markReauthenticated } = useAuth();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);

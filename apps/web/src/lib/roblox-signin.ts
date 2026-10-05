@@ -3,7 +3,7 @@
 // apps/worker/src/roblox-oauth.ts and planning/proof/M2/ROBLOX-SIGNIN.md says how the two fit.
 //
 // No JSX and no Supabase import, so `node --test` can load it: the calls that need the Supabase client are
-// handed in. The two hooks use only useState, useEffect and useRef, and tests/roblox-hooks.test.mjs runs them
+// handed in. The two hooks use only useState, useEffect and useRef, and tests/roblox-signin.test.mjs runs them
 // for real against a small stand-in for React (there is no DOM package in this app).
 import { useEffect, useRef, useState } from 'react';
 import { safeInternalPath } from './safe-redirect.ts';
@@ -79,27 +79,55 @@ export async function redeemRobloxSignIn(fetchImpl: typeof fetch = fetch): Promi
   }
 }
 
+/** Who is signed in in this browser right now, as far as the landing page needs to know. */
+export interface RobloxLandingAccount {
+  id: string;
+  email: string | null;
+  /** True when that account is itself a Roblox account (account-identity.ts `isRobloxAccount`). */
+  roblox: boolean;
+}
+
 export interface RobloxLandingDeps {
   /** Who is signed in right now: null when nobody, a throw when that cannot be told. */
-  currentAccount(): Promise<{ email: string | null } | null>;
+  currentAccount(): Promise<RobloxLandingAccount | null>;
   redeem(): Promise<{ tokenHash: string; next: string } | null>;
-  verifyOtp(args: { token_hash: string; type: 'magiclink' }): Promise<{ error: unknown }>;
+  verifyOtp(args: { token_hash: string; type: 'magiclink' }): Promise<{ data?: { user?: { id?: string } | null } | null; error: unknown }>;
+  /** A different account has just replaced the one that was signed in here: drop what the old one left on this device. */
+  accountSwitched(): void;
 }
 
 export type RobloxLandingState =
   | { kind: 'working' }
   /** Somebody is already signed in here. Nothing has been redeemed, and nothing is replaced until they say so. */
-  | { kind: 'choice'; email: string | null }
+  | { kind: 'choice'; id: string; email: string | null; roblox: boolean }
   | { kind: 'signed-in'; next: string }
   | { kind: 'failed' };
 
-/** Redeem the handle and trade the token for a Supabase session. Supabase issues it; the worker never signs one. */
-export async function completeRobloxSignIn(deps: Pick<RobloxLandingDeps, 'redeem' | 'verifyOtp'>): Promise<RobloxLandingState> {
+/**
+ * Redeem the handle and trade the token for a Supabase session. Supabase issues it; the worker never signs one.
+ *
+ * `previous` is the account that was signed in here when the person chose to switch. Signing in over it fires SIGNED_IN, not
+ * SIGNED_OUT, so the app's sign-out cleanup would never run and the old account's drafts, searches and view state would stay for
+ * the new one. When the session that results belongs to somebody else (or cannot be said to be the same), that cleanup is run.
+ * The same account signing in again (confirming it is them) keeps its own drafts.
+ */
+export async function completeRobloxSignIn(
+  deps: Pick<RobloxLandingDeps, 'redeem' | 'verifyOtp' | 'accountSwitched'>,
+  previous: { id: string } | null = null,
+): Promise<RobloxLandingState> {
   const redeemed = await deps.redeem();
   if (!redeemed) return { kind: 'failed' };
   try {
-    const { error } = await deps.verifyOtp({ token_hash: redeemed.tokenHash, type: 'magiclink' });
-    return error ? { kind: 'failed' } : { kind: 'signed-in', next: redeemed.next };
+    const { data, error } = await deps.verifyOtp({ token_hash: redeemed.tokenHash, type: 'magiclink' });
+    if (error) return { kind: 'failed' };
+    if (previous && data?.user?.id !== previous.id) {
+      try {
+        deps.accountSwitched();
+      } catch {
+        /* the cleanup is best effort; the person is signed in either way */
+      }
+    }
+    return { kind: 'signed-in', next: redeemed.next };
   } catch {
     return { kind: 'failed' };
   }
@@ -110,13 +138,13 @@ export async function completeRobloxSignIn(deps: Pick<RobloxLandingDeps, 'redeem
  * when there is one it asks (state `choice`) and redeems nothing yet. When it cannot tell, it fails rather than guess.
  */
 export async function startRobloxLanding(deps: RobloxLandingDeps): Promise<RobloxLandingState> {
-  let account: { email: string | null } | null;
+  let account: RobloxLandingAccount | null;
   try {
     account = await deps.currentAccount();
   } catch {
     return { kind: 'failed' };
   }
-  return account ? { kind: 'choice', email: account.email } : completeRobloxSignIn(deps);
+  return account ? { kind: 'choice', id: account.id, email: account.email, roblox: account.roblox } : completeRobloxSignIn(deps);
 }
 
 /** The words that say whose session would be replaced. A placeholder address is not somebody's name. */
@@ -125,11 +153,21 @@ export function existingSessionLine(email: string | null): string {
   return `You are already signed in${named}. Signing in with Roblox would replace that session.`;
 }
 
+/**
+ * The same, for a session that is itself a Roblox account. That is what a person has when they came here from Settings to
+ * confirm it is them (a Roblox-only account has no password to type), so it says what continuing does.
+ */
+export const EXISTING_ROBLOX_SESSION_LINE =
+  'You are signed in with Roblox. Continue to sign in again with the Roblox account you just used. If it is a different Roblox account, it replaces this session.';
+
 /** The landing page's state, and the one thing a person can do from `choice`. The hook runs once, whatever re-renders it. */
 export function useRobloxLanding(deps: RobloxLandingDeps, onSignedIn: (next: string) => void): { state: RobloxLandingState; switchNow: () => void } {
   const [state, setState] = useState<RobloxLandingState>({ kind: 'working' });
   const started = useRef(false);
+  /** Who was signed in when the choice was put to the person: the account a switch replaces. */
+  const replaced = useRef<{ id: string } | null>(null);
   const apply = (outcome: RobloxLandingState): void => {
+    if (outcome.kind === 'choice') replaced.current = { id: outcome.id };
     if (outcome.kind === 'signed-in') onSignedIn(outcome.next);
     else setState(outcome);
   };
@@ -140,7 +178,7 @@ export function useRobloxLanding(deps: RobloxLandingDeps, onSignedIn: (next: str
   }, []); // once per mount, on purpose: the handle can be redeemed only once
   const switchNow = (): void => {
     setState({ kind: 'working' });
-    void completeRobloxSignIn(deps).then(apply);
+    void completeRobloxSignIn(deps, replaced.current).then(apply);
   };
   return { state, switchNow };
 }
@@ -180,11 +218,19 @@ export function describeConnection(c: RobloxConnection): ConnectionView {
       canDisconnect: false,
     };
   }
+  if (c.signInOnly) {
+    // What a Roblox-only account can do today, said plainly. There is no email address or password to fall back on (the address
+    // is a placeholder nothing can be delivered to, so it cannot be changed through a confirmation email either), so Disconnect
+    // is not offered: it would leave no way back in.
+    return {
+      status: `Connected as ${c.username ?? 'your Roblox account'}.`,
+      caution: 'Roblox is how you sign in to this account, and it cannot be disconnected: this account has no email address or password, so there would be no way back in. To withdraw StudPilot’s access to your Roblox account, check Connected apps in your Roblox account settings, or delete your StudPilot account under Danger zone.',
+      canDisconnect: false,
+    };
+  }
   return {
     status: `Connected as ${c.username ?? 'your Roblox account'}.`,
-    caution: c.signInOnly
-      ? 'Roblox is how you sign in to this account. Disconnect withdraws StudPilot’s access to your Roblox account and you will still sign in with Roblox. To remove the sign-in too, first change your email address and set a password under Security.'
-      : 'Disconnect withdraws StudPilot’s access at Roblox and removes the link, so you can no longer sign in with Roblox.',
+    caution: 'Disconnect withdraws StudPilot’s access at Roblox and removes the link, so you can no longer sign in with Roblox.',
     canDisconnect: true,
   };
 }

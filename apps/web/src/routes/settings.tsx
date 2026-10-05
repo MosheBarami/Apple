@@ -27,6 +27,8 @@ import { ApiKeysPanel } from '../components/api-keys-panel';
 import { RobloxKeyPanel } from '../components/roblox-key-panel';
 import { RobloxConnectionCard } from '../components/roblox-connection-card';
 import { useAuth } from '../lib/auth';
+import { accountIdentity } from '../lib/account-identity';
+import { useRobloxUsername } from '../lib/use-roblox-username';
 import { useToast } from '../components/toast';
 import { usePrefs } from '../lib/theme';
 import { ConfirmDialog } from '../components/confirm-dialog';
@@ -1651,6 +1653,10 @@ export function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const userId = session?.user.id ?? '';
+  // A Roblox-only account has no email address to show or change (what it has is a placeholder nothing can be delivered to) and
+  // no password to change: Security says so instead of offering forms that cannot work, and names the Roblox username.
+  const robloxName = useRobloxUsername(session?.user);
+  const identity = accountIdentity(session?.user, session?.user.email, robloxName);
 
   useEffect(() => {
     if (session?.user.email?.toLowerCase() !== 'moshe.barami111@gmail.com') return;
@@ -1754,7 +1760,7 @@ export function SettingsPage() {
 
   /* --- email -------------------------------------------------------------- */
 
-  const verification = emailVerification(session?.user);
+  const verification = identity.roblox ? 'unknown' : emailVerification(session?.user);
   const [newEmail, setNewEmail] = useState('');
   const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
 
@@ -2046,7 +2052,7 @@ export function SettingsPage() {
       <div className="settings-head">
         <div className="settings-head__who">
           <h1 className="settings-title">Settings</h1>
-          <p className="settings-signed">Signed in as {session?.user.email}</p>
+          <p className="settings-signed">{identity.signedInAs}</p>
         </div>
         <label className="settings-find" htmlFor="settings-search">
           <span className="gx-sr">Search settings</span>
@@ -2137,7 +2143,7 @@ export function SettingsPage() {
           visible={shows('email-address')}
           title="Email address"
           control={
-            emailSentTo ? null : (
+            emailSentTo || identity.roblox ? null : (
               <form
                 className="settings-inline"
                 onSubmit={(e) => {
@@ -2169,13 +2175,19 @@ export function SettingsPage() {
           }
         >
           <p className="settings-current">
-            <strong>{session?.user.email}</strong>{' '}
+            <strong>{identity.label}</strong>{' '}
             {/* Three states, not two. An absent user object is not an unverified address, and a
                 badge that says otherwise accuses someone of something on the strength of a
                 missing field. */}
             {verification === 'verified' && <span className="pill pill-good">Verified</span>}
             {verification === 'unverified' && <span className="pill pill-warn">Not confirmed</span>}
           </p>
+          {identity.roblox && (
+            <p className="settings-note">
+              This account signs in with Roblox and has no email address, so there is no address to confirm or change here.
+              Sign in with Roblox is how you get back in; the Connections section below says what that means.
+            </p>
+          )}
           {verification === 'unverified' && (
             <p className="settings-note settings-note-warn">
               This address has not been confirmed yet.{' '}
@@ -2203,6 +2215,7 @@ export function SettingsPage() {
           title="Password"
           controlStacks
           control={
+            identity.roblox ? null : (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -2257,11 +2270,19 @@ export function SettingsPage() {
                 {changePassword.isPending ? 'Saving…' : 'Change password'}
               </button>
             </form>
+            )
           }
         >
-          <p className="settings-note">
-            At least {PASSWORD_MIN} characters. Changing it asks you to confirm who you are first.
-          </p>
+          {identity.roblox ? (
+            <p className="settings-note">
+              This account has no password: it signs in with Roblox, and confirms it is you by asking Roblox again before an
+              action like exporting or deleting your data.
+            </p>
+          ) : (
+            <p className="settings-note">
+              At least {PASSWORD_MIN} characters. Changing it asks you to confirm who you are first.
+            </p>
+          )}
         </Row>
 
         <Row id="two-step" visible={shows('two-step')}>

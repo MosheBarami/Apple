@@ -24,6 +24,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
+import { accountIdentity } from '../lib/account-identity';
+import { useRobloxUsername } from '../lib/use-roblox-username';
 import { fetchBillingConfig, fetchMe } from '../lib/api';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
 import { MOCK_MODE, mockProjects } from '../lib/mock';
@@ -553,7 +555,10 @@ function Shell() {
     { id: 'sign-out', title: 'Sign out', section: 'Account', keywords: ['logout', 'log out', 'leave'], run: () => void signOut() },
   ]);
 
-  const email = session?.user.email ?? me.data?.email ?? (MOCK_MODE ? 'builder@example.com' : '');
+  // A Roblox-only account's address is a placeholder nothing can be delivered to: it is never shown as the person's. The line says
+  // which Roblox account is signed in instead.
+  const robloxName = useRobloxUsername(session?.user);
+  const email = accountIdentity(session?.user, session?.user.email ?? me.data?.email ?? (MOCK_MODE ? 'builder@example.com' : ''), robloxName).label;
   const name = me.data?.profile?.display_name ?? null;
   // Who the rail's account row says you are: the profile name if there is one, otherwise the
   // address. Never a placeholder — an avatar reading "?" beside "Settings" is honest about a

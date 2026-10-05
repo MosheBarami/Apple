@@ -16,7 +16,10 @@ import { codeProblem, normaliseCode, secondStep, verifiedTotpFactors } from '../
 import { canSubmit as canSubmitRecovery, recoveryOutcome, type RecoveryOutcome } from '../lib/account-recovery';
 import { submitRecoveryRequest } from '../lib/api';
 import { captchaOptions, turnstileToken } from '../lib/turnstile';
+import { clearAccountState } from '../lib/account-state';
+import { isRobloxAccount } from '../lib/account-identity';
 import {
+  EXISTING_ROBLOX_SESSION_LINE,
   ROBLOX_SIGNIN_FAILED,
   existingSessionLine,
   redeemRobloxSignIn,
@@ -1066,15 +1069,18 @@ export function RobloxLandingView({ state, onSwitch, onStay }: { state: RobloxLa
     );
   }
   if (state.kind === 'choice') {
+    // A Roblox account that is already signed in here is the person confirming it is them (Settings sends a password-less
+    // account here instead of asking for a password), so the card says what continuing does instead of "switch".
+    const confirming = state.roblox;
     return (
       <div className="auth-card" role="group" aria-labelledby="roblox-choice-title">
-        <h2 className="auth-card-title" id="roblox-choice-title">Sign in as your Roblox account?</h2>
-        <p className="auth-card-sub">{existingSessionLine(state.email)}</p>
+        <h2 className="auth-card-title" id="roblox-choice-title">{confirming ? 'Confirm it is you?' : 'Sign in as your Roblox account?'}</h2>
+        <p className="auth-card-sub">{confirming ? EXISTING_ROBLOX_SESSION_LINE : existingSessionLine(state.email)}</p>
         <button type="button" className="btn btn-primary btn-block" onClick={onSwitch}>
-          Switch to my Roblox account
+          {confirming ? 'Continue with Roblox' : 'Switch to my Roblox account'}
         </button>
         <button type="button" className="btn btn-block" onClick={onStay}>
-          Stay signed in
+          {confirming ? 'Cancel' : 'Stay signed in'}
         </button>
       </div>
     );
@@ -1102,10 +1108,12 @@ export function RobloxCallbackPage() {
       currentAccount: async () => {
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
-        return data.session ? { email: data.session.user.email ?? null } : null;
+        const user = data.session?.user;
+        return user ? { id: user.id, email: user.email ?? null, roblox: isRobloxAccount(user) } : null;
       },
       redeem: () => redeemRobloxSignIn(),
       verifyOtp: (args) => supabase.auth.verifyOtp(args),
+      accountSwitched: clearAccountState,
     },
     (next) => navigate(next, { replace: true }),
   );
