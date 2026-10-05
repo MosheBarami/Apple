@@ -105,6 +105,19 @@ export interface Env {
   //   neither deployment and sent the reader to look for it in a file that has never had it. ]]
   /** 32 bytes, base64. Wraps customers' own third-party credentials; without it they are refused. */
   CREDENTIAL_KEY?: string;
+  /**
+   * Sign in with Roblox (roblox-oauth.ts). All three are secrets, set with `wrangler secret put`, and the
+   * routes answer 503 until every one is present (CREDENTIAL_KEY above is the fourth: the refresh token is
+   * sealed with it). ROBLOX_OAUTH_CLIENT_ID is public but is kept with its pair.
+   *
+   * SUPABASE_SECRET_KEY IS THE FIRST CREDENTIAL THIS WORKER HOLDS THAT ACTS AS ANYONE. Every other database
+   * call travels with the caller's own JWT so row-level security decides. This one is used only for the Auth
+   * admin API in roblox-oauth.ts (create a user, read a user's address, mint a sign-in token) and must never
+   * be used for a table query. Why it exists: planning/proof/M2/ROBLOX-SIGNIN.md.
+   */
+  ROBLOX_OAUTH_CLIENT_ID?: string;
+  ROBLOX_OAUTH_CLIENT_SECRET?: string;
+  SUPABASE_SECRET_KEY?: string;
   /** The Roblox account library assets are created under. Public id, not a credential;
    *  the credential is ROBLOX_API_KEY, declared further down beside the other asset fields. */
   ROBLOX_CREATOR_USER_ID?: string;

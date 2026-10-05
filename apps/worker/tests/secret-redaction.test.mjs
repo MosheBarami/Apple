@@ -75,6 +75,7 @@ for (const [kind, secret] of [
   ['aws_access_key_id', AWS],
   ['google_api_key', GOOGLE],
   ['slack_token', SLACK],
+  ['oauth_token', 'RBX-' + 'Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56'],
   ['private_key_block', PEM],
 ]) {
   test(`a ${kind} in a message is found by name and is gone from the redacted text`, () => {
@@ -92,6 +93,27 @@ for (const [kind, secret] of [
     assert.match(text, /provider call failed/, 'the rest of the message must survive');
   });
 }
+
+test('an OAuth token named in a form body, a URL fragment or a JSON object is removed, and prose about one is not', () => {
+  // Sign in with Roblox moves tokens through exactly these three shapes, and the name beside the value is
+  // what says it is a credential: a sign-in token hash has no prefix of its own.
+  for (const shape of [
+    'refresh_token=Zx9Qw8Er7Ty6Ui5Op4',
+    'client_secret=Zx9Qw8Er7Ty6Ui5Op4',
+    '#token_hash=Zx9Qw8Er7Ty6Ui5Op4&next=%2Fusage',
+    '{"refresh_token":"Zx9Qw8Er7Ty6Ui5Op4"}',
+    "access_token: 'Zx9Qw8Er7Ty6Ui5Op4'",
+    'code_verifier=Zx9Qw8Er7Ty6Ui5Op4',
+  ]) {
+    const message = `exchange failed: ${shape} (retrying)`;
+    assert.ok(R.scanSecrets(message).some((f) => f.kind === 'oauth_token'), `${shape} was not found as an oauth_token`);
+    assert.equal(R.redactSecrets(message).text.includes('Zx9Qw8Er7Ty6Ui5Op4'), false, `the value survived in ${shape}`);
+  }
+  // The false-positive direction: a sentence that names the field without a value is not a credential.
+  const prose = 'the refresh_token is rotated on every use and the code_verifier is kept for ten minutes';
+  assert.equal(R.redact(prose).text, prose);
+  assert.equal(R.scanSecrets(prose, { minConfidence: 'high' }).length, 0, 'and the egress gate, which reads high-confidence rules only, leaves it alone');
+});
 
 test('the finding carries a preview, and the preview is not the secret', () => {
   const [f] = R.scanSecrets(`token=${JWT}`);

@@ -29,6 +29,7 @@ import { ensureApiKeyTables } from './api-keys';
 import { eraseProjectMedia } from './media-store';
 import { ensureAutomationTables } from './automation-store';
 import { ensureCredentialTable } from './user-credentials';
+import { ensureRobloxOAuthTables, revokeStoredRobloxGrant } from './roblox-oauth';
 import { ensureMemoryTables } from './memory-store';
 import { ensureNotificationTables } from './notification-store';
 import { ensureProvenanceTables } from './provenance';
@@ -91,9 +92,10 @@ export const ACCOUNT_RESIDUE: readonly Residue[] = [
     store: 'postgres',
     target: 'auth.users — your sign-in identity',
     why:
-      'Removing a login takes a Supabase service-role credential, and this worker holds none by ' +
-      'design: it acts only with your own token so row-level security applies to every query it ' +
-      'makes. Your data is gone; the empty account can still sign in until an operator removes it.',
+      'Removing a login takes a Supabase secret key. This worker holds one only to sign people in with ' +
+      'Roblox and never uses it to delete an account; every other query it makes carries your own token ' +
+      'so row-level security applies. Your data is gone; the empty account can still sign in until an ' +
+      'operator removes it.',
   },
   {
     store: 'postgres',
@@ -370,6 +372,7 @@ export async function eraseAccountData(
     ensureApiKeyTables(env).catch(() => {}),
     ensureCredentialTable(env).catch(() => {}),
     ensureWriteTable(env).catch(() => {}),
+    ensureRobloxOAuthTables(env).catch(() => {}),
   ]);
   steps.push(await d1Sweep(env, 'memory_entries (user)', `delete from memory_entries where scope = 'user' and scope_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'memory_audit (user)', `delete from memory_audit where scope = 'user' and scope_id = ?`, user.userId));
@@ -383,6 +386,18 @@ export async function eraseAccountData(
   steps.push(await d1Sweep(env, 'api_keys', `delete from api_keys where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'user_credentials', `delete from user_credentials where user_id = ?`, user.userId));
   steps.push(await d1Sweep(env, 'creator_write_log', `delete from creator_write_log where user_id = ?`, user.userId));
+  //[[ THE ROBLOX SIGN-IN, and the grant is revoked at Roblox BEFORE our copy of the token is deleted: the
+  //   sealed refresh token is the only handle there is to revoke it with. A failed revoke does not stop
+  //   the deletion (the data this product holds must go either way), but the receipt says it happened. ]]
+  const grant = await revokeStoredRobloxGrant(env, user.userId);
+  const tokens = await d1Sweep(env, 'roblox_oauth_tokens', `delete from roblox_oauth_tokens where user_id = ?`, user.userId);
+  if (tokens.status === 'erased' && grant !== 'none') {
+    tokens.detail = grant === 'revoked'
+      ? 'The Roblox authorization was revoked at Roblox.'
+      : 'Roblox could not be asked to revoke the authorization. StudPilot no longer holds the token; you can remove StudPilot under Connections in your Roblox account settings.';
+  }
+  steps.push(tokens);
+  steps.push(await d1Sweep(env, 'roblox_identities', `delete from roblox_identities where user_id = ?`, user.userId));
 
   // 3. Postgres: the projects, which cascade, and then a CHECK that they really went.
   steps.push(await erasePostgresProjects(env, user));

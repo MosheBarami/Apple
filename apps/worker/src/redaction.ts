@@ -50,6 +50,7 @@ export const DISCLOSURE_KINDS = [
   'aws_access_key_id',
   'google_api_key',
   'slack_token',
+  'oauth_token',
   'private_key_block',
   'bearer_credential',
   'long_hex',
@@ -223,6 +224,18 @@ export const DISCLOSURE_RULES: readonly DisclosureRule[] = [
     confidence: 'high',
     pattern: /\bxox[baprs]-[0-9A-Za-z-]{10,}/g,
     why: 'a Slack token',
+  },
+  {
+    kind: 'oauth_token',
+    cls: 'secret',
+    confidence: 'high',
+    // Two shapes, because an OAuth token turns up in two places. Roblox's own tokens and client secrets are
+    // prefixed `RBX-`, so they are found wherever they land. The rest are named in a form body, a URL
+    // fragment or a JSON object (`refresh_token=…`, `"client_secret":"…"`), where the NAME is what says
+    // the value is a credential: the sign-in token hash in /app/auth/roblox#token_hash=… is one.
+    pattern:
+      /\b(?:RBX-[A-Za-z0-9_-]{20,}|(?:access_token|refresh_token|id_token|client_secret|code_verifier|token_hash)["']?\s*[:=]\s*["']?[A-Za-z0-9._~+/%-]{8,})/g,
+    why: 'an OAuth token, client secret or sign-in token hash',
   },
   {
     kind: 'bearer_credential',

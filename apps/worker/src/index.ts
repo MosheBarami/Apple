@@ -5,6 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
+import { describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes } from './roblox-oauth';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -694,6 +695,13 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.route('/api/owner-corpus', ownerCorpusRoutes);
+
+/**
+ * SIGN IN WITH ROBLOX. Outside /api on purpose: these are browser navigations to and from Roblox, so there
+ * is no bearer token to check, and they carry their own guards (single-use state, a browser-bound cookie,
+ * PKCE, an IP limit) in roblox-oauth.ts. `ipLimited` is handed in because it lives here.
+ */
+app.route('/auth/roblox', robloxOAuthRoutes(ipLimited));
 
 /**
  * Compare two secrets without leaking their contents through timing.
@@ -4089,6 +4097,18 @@ app.delete('/api/me/roblox-key', async (c) => {
     );
   }
   return c.json({ removed });
+});
+
+/**
+ * THE ROBLOX SIGN-IN LINK, as the settings card shows it and removes it. Like the key routes above, the user id
+ * comes off the verified JWT and never off the body. See roblox-oauth.ts `disconnectRoblox` for what a
+ * disconnect does and when it keeps the sign-in link.
+ */
+app.get('/api/me/roblox/connection', async (c) => c.json(await describeRobloxConnection(c.env, c.get('user'))));
+
+app.post('/api/me/roblox/disconnect', async (c) => {
+  const result = await disconnectRoblox(c.env, c.get('user'));
+  return c.json(result.body, result.status);
 });
 
 /**
