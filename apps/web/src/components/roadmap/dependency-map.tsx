@@ -52,20 +52,19 @@ function MilestoneNode({ data }: FlowNodeProps<MilestoneFlowNode>) {
       className={cn(
         'h-[88px] w-[208px] overflow-hidden transition-opacity',
         selected && 'border-primary ring-2 ring-primary/60',
-        // The focus ring is the CARD's, an OUTLINE drawn outside it and clear of the selection ring (4px offset). The button is the whole
-        // card and the card clips (overflow-hidden), so a ring on the button was drawn outside the clip and never seen, on every node; an
-        // inset one is painted under the header's fill; and a box-shadow ring on the card replaces the selected node's own ring, so a
-        // focused selected node looked the same as an unfocused one (1.4:1 against it).
-        'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-ring',
         // A faded node comes back to full strength while it has focus: a ring on a card at 40% is drawn at 40% (about 1.2:1).
         faded && 'opacity-40 focus-within:opacity-100',
       )}
     >
       {/* A real button over the whole card: in the tab order, chosen with Enter or Space, and it
-          says whether it is the selected one. The card around it is only presentation, and draws the focus ring (see above). */}
+          says whether it is the selected one. The card around it is only presentation. The focus ring is an INSIDE outline of the button:
+          the button is the whole card and the card clips (overflow-hidden), so the box-shadow ring it had (focus-visible:ring-2, outside
+          the button) was clipped and never drawn on any node; an inset box-shadow is painted under the header's fill; and a ring on the
+          card replaces the selected node's own ring (a focused selected node read 1.4:1 against an unfocused one). An outline is painted
+          over the header, is not clipped, and is its own property, so it shows on the selected node too. */}
       <button
         type="button"
-        className="flex size-full flex-col items-stretch text-left outline-none"
+        className="flex size-full flex-col items-stretch text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         aria-pressed={selected}
         aria-label={`${m.title}, ${READINESS_LABEL[placed.readiness]}`}
         onClick={onSelect}
