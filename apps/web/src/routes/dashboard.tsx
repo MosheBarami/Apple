@@ -25,6 +25,8 @@ import { downloadExport, purgeProject, ApiError } from '../lib/api';
 import { PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX, projectEditPatch, useEditProject } from '../lib/rename-project';
 import { PROJECT_COLUMNS, PROJECT_LIST_KEYS, PROJECT_SCOPES, scopeToShow, type ProjectScope } from '../lib/archive';
 import { useCreateProject } from '../lib/use-create-project';
+import { useShareInvite } from '../lib/use-invite-link';
+import { useAuth } from '../lib/auth';
 import { readViewChoice, writeViewChoice } from '../lib/view-state';
 import { TAG_MAX_LEN, TAGS_MAX, addTag, normaliseTag, tagUniverse } from '../lib/tags';
 import { relativeTime, truncate } from '../lib/format';
@@ -124,7 +126,7 @@ async function fetchTagUniverse(): Promise<{ tags?: string[] }[]> {
  * portal means a click can no longer bubble INTO the anchor, the handlers are what stop a stray
  * pointer sequence doing it and they cost nothing.
  */
-function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; archived: boolean; pinned: boolean }) {
+function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, onShare, archived, pinned }: { onDelete: () => void; onExport: (format: 'md' | 'json') => void; onEdit: () => void; onArchive: () => void; onPin: () => void; onTags: () => void; onShare: () => void; archived: boolean; pinned: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
@@ -270,6 +272,21 @@ function ProjectMenu({ onDelete, onExport, onEdit, onArchive, onPin, onTags, arc
             }}
           >
             {archived ? 'Restore' : 'Archive'}
+          </button>
+          {/* A link to StudPilot's sign-up page, to send to a friend. The same link on every project: it is about the product, not this
+              project, and it says nothing about this project's contents. */}
+          <button
+            type="button"
+            role="menuitem"
+            className="menu-item"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              onShare();
+            }}
+          >
+            Copy invite link
           </button>
           {/* Markdown first: it is what someone actually reads. JSON is for feeding somewhere. */}
           <button
@@ -599,6 +616,9 @@ function DeleteProjectModal({ project, onClose }: { project: ProjectRow; onClose
 export function DashboardPage() {
   // One click makes the project and opens it (lib/use-create-project.ts). The same hook serves the rail, the palette and the shortcut.
   const { create: createProject, pending: creatingProject } = useCreateProject();
+  // "Copy invite link" on a project's menu: the link to StudPilot's sign-up page (lib/growth.ts says what it is, and what it is not).
+  const { session } = useAuth();
+  const { share: shareInvite } = useShareInvite(session?.user.id);
   const [deleting, setDeleting] = useState<ProjectRow | null>(null);
   const [editing, setEditing] = useState<ProjectRow | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -1049,6 +1069,7 @@ export function DashboardPage() {
                 onArchive={() => setArchived.mutate({ project: p, archive: !p.archived_at })}
                 onPin={() => setPinned.mutate({ project: p, pin: !p.pinned_at })}
                 onTags={() => setTagging(p)}
+                onShare={shareInvite}
                 archived={Boolean(p.archived_at)}
                 pinned={Boolean(p.pinned_at)}
               />

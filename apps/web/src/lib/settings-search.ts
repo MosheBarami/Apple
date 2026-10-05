@@ -80,6 +80,18 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['discord', 'sign in', 'log in', 'login', 'connect', 'disconnect', 'unlink', 'link', 'account'],
   },
   {
+    id: 'invite-link',
+    title: 'Invite link',
+    section: 'Share',
+    keywords: ['invite', 'friend', 'friends', 'share', 'link', 'sign up', 'tell someone'],
+  },
+  {
+    id: 'made-with-badge',
+    title: 'Made with StudPilot badge',
+    section: 'Share',
+    keywords: ['badge', 'made with', 'description', 'game description', 'share', 'attribution', 'text'],
+  },
+  {
     id: 'roblox-key',
     title: 'Your Roblox account',
     section: 'Connections',

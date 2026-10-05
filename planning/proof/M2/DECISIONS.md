@@ -523,3 +523,22 @@ Checked against the pricing slice (section 4): the usage page's Credits are prin
 said nothing of beta. The Plans section of `/usage` now says the same words above the ladder (`BETA_LINE` in `components/plans.tsx`), and
 `tests/usage-beta.test.mjs` holds the two surfaces to each other by reading the site's heading. Nothing else was changed. No referral or
 bonus credit is promised anywhere on the page (they wait for M6).
+
+### 12.8 C8: growth (P2): an invite link and a "Made with StudPilot" line. It fits, small; the attribution is cut.
+
+- **The link** is `https://studpilot.app/app/signup?ref=<code>`. The code is the first ten hex digits of SHA-256 over a fixed label and the
+  account id, so it is stable per account, names no one and cannot be turned back into the id (`lib/growth.ts`). It is copied from "Copy
+  invite link" on a project's menu (the shelf card, and an icon button among the workspace's project actions) and shown in full in
+  Settings > Share, with a Copy button that says whether the copy worked. A link with no valid code is not offered.
+- **Nothing records the code yet, and the rows say so.** The sign-up page ignores `ref`, no worker route accepts it, the sign-up's user metadata
+  carries only `age_gate`, and no migration stores a referral, so a sign-up through the link is recorded like any other. The task's rule
+  ("recorded at sign-up in the user metadata only if the server side already accepts it") therefore leaves it out. `tests/growth.test.mjs`
+  fails the day the sign-up page, the worker or a migration starts reading a referral code, so the copy is revisited then. **Attribution is a
+  later step (M6).** An alternative is to pass `ref` in the sign-up metadata now so M6 can backfill; it was not done because nothing consumes
+  it and the privacy pages would then have to describe a field that serves no purpose today.
+- **No referral credit is promised anywhere.** The invite row says "Nothing records it yet, and nothing is earned by sharing it". A test scans
+  the app and the site source for any sentence that offers credits for inviting or sharing, and the guard is run against sentences it must catch.
+- **The badge** is `Made with StudPilot - https://studpilot.app`: plain ASCII text and a link, because a Roblox description shows no formatting.
+  It is optional, lives in Settings > Share, and nothing inserts it into a game.
+- **The link is on every project's menu, though it is about the product, not that project.** It says nothing about the project's contents.
+  Putting it where a person is looking at their work is the point of the item ("a share button on a project").

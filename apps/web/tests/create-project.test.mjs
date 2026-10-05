@@ -201,6 +201,9 @@ const Dash = await loadPage({
   real: ['lib/archive.ts', 'lib/project-search.ts', 'lib/view-state.ts', 'lib/tags.ts', 'lib/format.ts', 'lib/rename-project.ts', 'lib/rename-rules.ts'],
   fakes: {
     'lib/use-create-project.ts': { useCreateProject: '() => globalThis.__pageFakes.creator' },
+    // The shelf also holds the invite-link press (a project's menu), which is not what this file is about.
+    'lib/use-invite-link.ts': { useShareInvite: '() => ({ share() {} })' },
+    'lib/auth.tsx': { useAuth: '() => ({ session: { user: { id: "u1" } } })' },
     'components/toast.tsx': { useToast: '() => ({ toast() {} })' },
     'lib/mock.ts': { MOCK_MODE: 'false', mockProjects: '[]' },
     'lib/commands.tsx': { useCommands: '(list) => { globalThis.__pageFakes.commands = list; }' },

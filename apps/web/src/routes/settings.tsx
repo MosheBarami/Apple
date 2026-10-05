@@ -66,6 +66,7 @@ import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
 import { useEnabledProviders } from '../lib/auth-providers';
 import { fieldsForProviders } from '../lib/identity-links';
 import { IdentityCard } from '../components/identity-card';
+import { BadgeCard, InviteLinkCard } from '../components/growth-cards';
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -896,6 +897,7 @@ const SECTION_INDEX = [
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
   { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'sharing', label: 'Share', fields: ['invite-link', 'made-with-badge'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -2404,6 +2406,15 @@ export function SettingsPage() {
         </Row>
         <Row id="discord" visible={shows('discord')}>
           <DiscordCard userId={userId} />
+        </Row>
+      </Section>
+
+      <Section id="sharing" title="Share" visible={sectionShows('invite-link', 'made-with-badge')}>
+        <Row id="invite-link" visible={shows('invite-link')}>
+          <InviteLinkCard userId={userId || null} />
+        </Row>
+        <Row id="made-with-badge" visible={shows('made-with-badge')}>
+          <BadgeCard />
         </Row>
       </Section>
 
