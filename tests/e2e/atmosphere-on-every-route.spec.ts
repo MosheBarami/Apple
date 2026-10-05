@@ -13,10 +13,10 @@ import { join, relative, sep } from 'node:path';
  *   - no <canvas> and no ambient layer anywhere;
  *   - under prefers-reduced-motion nothing moves: two screenshots a second apart are the same picture, no animation frame is requested
  *     at idle and no animation loops;
- *   - off screen nothing draws or loops (the docs terminal's caret and the status orb are the only loops left, and both idle off screen);
+ *   - off screen nothing draws or loops (the status orb is the only loop left, and it idles off screen);
  *   - one header design and the one accent of the design tokens, never green;
  *   - reduced motion stops everything and leaves no content invisible;
- *   - /pricing lays its three plans side by side on a desk and stacks them on a phone.
+ *   - /pricing's one table holds the three plans as columns on a desk and stacks them on a phone, and its Free panel is beside its figures.
  * The routes are DERIVED from the build, never listed: a page added tomorrow is held tomorrow.
  *
  * HISTORY KEPT. The method is the 2026-09-22 file's: assert on PIXELS, because "the element exists" and "the script runs" say nothing
@@ -195,10 +195,9 @@ test.describe('the calm site', () => {
           return found;
         }, [from, end] as const));
       }
-      // KNOWN DEBT, NAMED: the docs' Terminal demo (components/picks-docs/Terminal.astro, owned by the docs rewrite) blinks its caret forever even
-      // while it is out of view. Only that caret is excused, and only on the page that has the terminal (on a wide screen it is in view and nothing is excused); any other mover there still fails.
-      const excused = route === '/docs/build-from-source' ? moving.filter((m) => /term__caret/.test(m)) : [];
-      expect(moving.filter((m) => !excused.includes(m)), `${route} moves where nobody can see it`).toEqual([]);
+      // The docs' Terminal demo (a caret that blinked forever, named here as a debt) was deleted with build-from-source by the docs rewrite (M2 site
+      // fix cycle 1), so nothing is excused any more: every mover off screen fails.
+      expect(moving, `${route} moves where nobody can see it`).toEqual([]);
     });
 
     test(`${route} has one header design and the one accent of the design tokens, not green`, async ({ page }) => {
@@ -253,42 +252,35 @@ test.describe('the calm site', () => {
     }
   });
 
-  test('pricing lays its three plans side by side on a desk and stacks them on a phone', async ({ page }) => {
+  // RESTATED 2026-10-05 (M2 site fix cycle 1): /pricing is a new layout. The three plan cards (`.plan-rail > .plan`) are gone: every plan is a COLUMN of
+  // one table, and the decision a visitor came with is one panel. The property is the same (side by side on a desk, no sideways scroll on a phone),
+  // read off the new structure: on a desk the table's three plan header cells share a row, in three columns; on a phone the table stacks and the page
+  // does not scroll sideways at 320 or 390; the Free panel puts its copy beside its figures on a desk and above them on a phone.
+  test('pricing holds its three plans as columns on a desk and stacks on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/pricing');
-    // The cards reveal with a stagger (8px of travel); measured mid-reveal they are a pixel apart
-    // in height and read as two rows. Settle first — the failsafe is 2.6s plus a 420ms fade. A fixed
-    // 3.5s wait was not enough on a loaded machine (2026-10-04: red twice under a full parallel run,
-    // green alone), so the measure waits until the reveal has finished, for up to 10s.
-    const measure = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => {
+    const heads = await page.locator('table.compare thead th[scope="col"]').evaluateAll((els) => els.map((e) => {
       const r = e.getBoundingClientRect();
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
     }));
-    //[[ RESTATED 2026-10-05 (M2 step 2.1). The settle used to be "all three tops are equal", which is
-    //   also true BEFORE the reveal starts (all three are hidden at the same offset), so the poll could
-    //   pass at once and the next measure land mid-reveal on a card 2px off its neighbours. And the
-    //   phone half below had no settle at all. Dropping the spring easing for --ease-out made the
-    //   reveal start faster and exposed it: the phone half failed 5 loads in 30, against 0 in 30 on
-    //   the build before. The property is unchanged (side by side on a desk, one column on a phone);
-    //   what changed is that both halves now wait until every card has FINISHED revealing (opaque, no
-    //   transform) before measuring where it is. ]]
-    const settled = () => page.locator('.plan-rail > .plan').evaluateAll((els) => els.length > 0 && els.every((e) => {
-      const cs = getComputedStyle(e);
-      return cs.opacity === '1' && cs.transform === 'none';
-    }));
-    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
-    const desk = await measure();
-    expect(desk.length, 'the plan rail holds no cards').toBe(3);
-    expect(new Set(desk.map((c) => c.top)).size, `the cards do not share a row at 1440: ${JSON.stringify(desk)}`).toBe(1);
-    expect(new Set(desk.map((c) => c.left)).size, 'the cards overlap in one column').toBe(3);
-    expect(Math.min(...desk.map((c) => c.w)), 'a card is too narrow to read').toBeGreaterThan(300);
+    expect(heads.length, 'the comparison table has no plan columns: capability plus three plans is four headers').toBe(4);
+    expect(new Set(heads.map((c) => c.top)).size, `the headers do not share a row at 1440: ${JSON.stringify(heads)}`).toBe(1);
+    expect(new Set(heads.map((c) => c.left)).size, 'two headers overlap in one column').toBe(4);
+    expect(Math.min(...heads.slice(1).map((c) => c.w)), 'a plan column is too narrow to read').toBeGreaterThan(120);
+    const panel = await page.locator('.now').evaluate((el) => {
+      const copy = el.querySelector('.now__copy')!.getBoundingClientRect();
+      const stats = el.querySelector('.now__stats')!.getBoundingClientRect();
+      return { copyLeft: copy.left, statsLeft: stats.left };
+    });
+    expect(panel.statsLeft, 'on a desk the Free figures sit beside its copy, not under it').toBeGreaterThan(panel.copyLeft + 300);
 
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/pricing');
-    await expect.poll(settled, { timeout: 10_000 }).toBe(true);
-    const phone = await page.locator('.plan-rail > .plan').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
-    expect(new Set(phone).size, 'on a phone the cards should stack in one column').toBe(1);
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow, '/pricing scrolls sideways on a phone').toBeLessThanOrEqual(1);
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/pricing');
+      const rows = await page.locator('table.compare tbody tr').first().evaluate((tr) => getComputedStyle(tr).display);
+      expect(rows, `on a ${width}px phone the table rows should stack as blocks, not scroll sideways`).toBe('grid');
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `/pricing scrolls sideways at ${width}px`).toBeLessThanOrEqual(1);
+    }
   });
 });

@@ -25,21 +25,21 @@ const ceilingPlans = LISTED_PLAN_IDS.filter((id) => monthlyCeilingBitesFirst(id)
 const small = BUILD_COSTS.find((b) => b.id === 'small')!;
 const big = BUILD_COSTS.find((b) => b.id === 'big')!;
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
 import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_COUNT } from '../../../../worker/src/generated-image-limits';
 
 ---
 
 <DocsLayout
-  title="Credits & limits — StudPilot Docs"
+  title="Credits & limits | StudPilot"
   description={`How StudPilot's Credits quota works: ${free.creditsPerDay} per day free (up to ${free.creditsPerMonth} a month), what builds cost, how it is metered, daily reset, and exactly what happens when you run out.`}
   heading="Credits & limits"
+  order={3}
+  summary="What a Credit is, how many you get, how they are metered, and what happens when they run out."
 >
   <p>
-    Credits are StudPilot's unit of daily energy. Every AI request burns some; your balance refills to
-    full once a day, <strong>up to a monthly ceiling</strong>. The system exists for one reason:
-    real inference costs real compute, and a hard, transparent quota is what lets the free tier be
-    genuinely free — no card, no trial clock, no surprise bill.
+    A Credit is how StudPilot counts the AI work your requests use. Your balance refills once a day,
+    <strong>up to a monthly ceiling</strong>. Real AI work costs real compute, and a hard, plain quota is what lets
+    the Free plan stay free while StudPilot is in beta: no card and no surprise bill.
   </p>
 
   <h2>The numbers</h2>
@@ -237,17 +237,9 @@ import { GENERATED_IMAGE_MAX_BYTES, GENERATED_PROJECT_BYTES, GENERATED_PROJECT_C
 
   <h2>Other limits worth knowing</h2>
   <ul>
-    <li><strong>Rate limiting:</strong> requests are queued per account, and under heavy load a request may briefly wait. No plan buys a place further up that queue — paying changes your allowance, not your turn.</li>
     <li><strong>Checkpoints:</strong> StudPilot keeps your 25 most recent checkpoints per project. Taking the twenty-sixth deletes the oldest in the same write — by age, whether you took it yourself or StudPilot took it before a change. Restore the one you want before it falls off the end.</li>
-    <li><strong>One account per person:</strong> multiplying free accounts to farm quota is against the <a href="/terms">terms</a> and gets caught.</li>
+    <li><strong>One account per person:</strong> making extra free accounts to get more quota is against the <a href="/terms">terms</a>.</li>
   </ul>
 
-  <div class="callout">
-    <p>
-      <strong>Making Credits go further:</strong> give StudPilot specific requests (“the door in Workspace.Lobby”) rather than vague ones. Nothing else moves the number much —
-      the expensive request is almost always the one that had to be sent twice.
-    </p>
-  </div>
 
-  <DocsKit />
 </DocsLayout>

@@ -126,8 +126,13 @@ test('on every built page the header and footer links resolve (a page added tomo
   assert.ok(checked > 100, `only ${checked} chrome links were checked across ${pages.length} pages`);
 });
 
-test('the removed routes are redirects the build emits: /models and /proof to the front page and the catalog, /showcase to the catalog, /changelog to the blog', () => {
-  const want = { '/models/': '/', '/proof/': '/catalog/', '/showcase/': '/catalog/', '/changelog/': '/blog/' };
+test('the removed routes are redirects the build emits: /models and /proof to the front page and the catalog, /showcase to the catalog, /changelog to the blog, and the three folded docs pages to the page that carries them', () => {
+  // The docs ones are plan step 2.6 (M2 site fix cycle 1): connecting a project is pairing, in Getting started; updating the plugin and building it from
+  // source were folded into the plugin page. The web app still links /docs/connect (apps/web/src/components/empty-state-model.ts), so it must still land.
+  const want = {
+    '/models/': '/', '/proof/': '/catalog/', '/showcase/': '/catalog/', '/changelog/': '/blog/',
+    '/docs/connect/': '/docs/getting-started/', '/docs/updating/': '/docs/plugin/', '/docs/build-from-source/': '/docs/plugin/',
+  };
   for (const [from, to] of Object.entries(want)) {
     const r = resolveBuilt(from);
     assert.equal(r.kind, 'redirect', `${from} is ${r.kind} in the build: it must be an Astro redirect so the built file overwrites the old static row`);

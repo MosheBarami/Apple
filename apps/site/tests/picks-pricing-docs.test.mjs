@@ -33,23 +33,15 @@ function mounts(src, name) {
 
 // pick id -> [page, component that carries it]
 //
-// RESTATED 2026-10-05 (M2 rebuild, handoff 2.2). Seven of the fifteen picks were the pricing page's: the shiny button, the spotlight, the
-// beam border, the number counter and formatter (the build estimator) and the price switcher. The rebuilt pricing page does not use them
-// (flat panels, no motion, no script of its own), so ShinyButton, Spotlight, BeamBorder, BuildEstimator, PriceSwitch and rolling-number
-// are deleted (planning/proof/M2/DECISIONS.md section 12, with the owner pick each one was) and their seven mount tests, 'every plan card
-// is lit by the spotlight', 'both rolling-number users share one implementation' and the estimator half of 'the estimator and the
-// per-build price are derived' went with them. What is kept: the eight docs picks, the Accordion on /pricing, and the per-build price,
-// which is still printed (on each paid card) and is still held to the config below.
+// RESTATED 2026-10-05 (M2 rebuild, handoff 2.2), AND AGAIN IN THE FIX CYCLE (plan step 2.6, the docs rewrite). Seven of the fifteen picks were the
+// pricing page's and went with the pricing rebuild (the shiny button, the spotlight, the beam border, the number counter and formatter, the price
+// switcher). The docs rewrite then deleted the docs picks that decorated pages: the Folder (getting-started), the Terminal and the Code Tabs
+// (build-from-source, itself deleted and redirected), and DocsKit's three touches (the line sidebar, the mac keyboard and the button hover underline:
+// pointer-driven motion on a site that has none, on a nav that is derived now). Each is recorded with the owner pick it was in
+// planning/proof/M2/DECISIONS.md section 12.6, and tests/old-layouts-gone.test.mjs keeps them gone. What is kept: the Accordion, which is a
+// disclosure the FAQ needs, and the per-build price on /pricing, still held to the config below.
 const PICKS = {
   'motion--accordion': ['docs/faq.astro', 'Accordion'],
-  'reactbits--folder': ['docs/getting-started.astro', 'Folder'],
-  'eldora--terminal': ['docs/build-from-source.astro', 'Terminal'],
-  'ui-layouts--code-tabs': ['docs/build-from-source.astro', 'CodeTabs'],
-  'ui-layouts--code-tabs-mdx': ['docs/build-from-source.astro', 'CodeTabs'],
-  // These three upgrade what DocsLayout already draws, so they ride on DocsKit (tested below).
-  'reactbits--line-sidebar': ['docs/index.astro', 'DocsKit'],
-  'componentry--mac-keyboard': ['docs/getting-started.astro', 'DocsKit'],
-  'ui-layouts--button-hover-6': ['docs/faq.astro', 'DocsKit'],
 };
 
 for (const [id, [rel, name]] of Object.entries(PICKS)) {
@@ -84,44 +76,6 @@ test('the per-build price of each paid column is derived from the config, never 
     );
   }
   assert.ok(text.includes(`A typical build costs about ${shared.formatCredits(shared.TYPICAL_BUILD_CREDITS)} Credits`), 'the typical build is not the shared one');
-});
-
-test('every docs page mounts DocsKit, last, so the nav, keys and links are upgraded everywhere', () => {
-  const dir = join(SITE, 'src', 'pages', 'docs');
-  const files = readdirSync(dir).filter((f) => f.endsWith('.astro'));
-  assert.ok(files.length >= 10, `only ${files.length} docs pages found — the walk is blind`);
-  for (const f of files) {
-    const src = page(`docs/${f}`);
-    assert.ok(mounts(src, 'DocsKit'), `docs/${f} does not mount DocsKit`);
-    assert.match(src, /<DocsKit \/>\s*<\/DocsLayout>/, `docs/${f}: DocsKit is not the last thing in the page`);
-  }
-});
-
-test('DocsKit still has the layout hooks it upgrades', () => {
-  const layout = read('src', 'layouts', 'DocsLayout.astro');
-  const kit = readFileSync(join(KIT, 'DocsKit.astro'), 'utf8');
-  for (const hook of ['id="docs-nav-list"', 'class="docs__main"', 'class="docs__foot"']) {
-    assert.ok(layout.includes(hook), `DocsLayout.astro lost ${hook}; DocsKit would upgrade nothing`);
-  }
-  assert.match(kit, /getElementById\('docs-nav-list'\)/);
-  assert.match(kit, /\.docs__main kbd/);
-  assert.match(kit, /\.prose a:not\(\.btn\)/);
-});
-
-test('the terminal on /docs/build-from-source prints only lines the build really prints', () => {
-  const src = read('src', 'pages', 'docs', 'build-from-source.astro');
-  const block = /const buildOutput = \[([\s\S]*?)\];/.exec(src);
-  assert.ok(block, 'build-from-source.astro no longer declares buildOutput');
-  const lines = [...block[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).filter((l) => l !== '…');
-  assert.ok(lines.length >= 1, 'the terminal quotes no output — this check would pass on nothing');
-  const scripts = [
-    readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'scripts', 'build.mjs'), 'utf8'),
-    readFileSync(join(ROOT, 'apps', 'studpilot-plugin', 'scripts', 'verify-artifact.py'), 'utf8'),
-  ].join('\n');
-  for (const line of lines) {
-    assert.ok(scripts.includes(line), `the terminal prints "${line}", which no build script prints`);
-  }
-  assert.match(visibleCopy(src), /<Terminal command="node apps\/studpilot-plugin\/scripts\/build\.mjs"/);
 });
 
 test('the picks are dependency-free: no Motion, GSAP or Radix import anywhere in the kit', () => {

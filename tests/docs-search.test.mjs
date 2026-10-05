@@ -43,7 +43,9 @@ test('every docs page is in the index, under the URL it is actually served at', 
     const expected = slug === 'index' ? '/docs' : `/docs/${slug}`;
     assert.equal(paths.has(expected), true, `${expected} is not in the index`);
   }
-  assert.ok(index.length >= 10, `only ${index.length} pages indexed`);
+  // RESTATED 2026-10-05 (M2 site fix cycle 1, plan step 2.6): the docs were trimmed to the essential pages, so the floor of TEN (eleven pages then) is
+  // SEVEN (the overview and the six pages below it, privacy-and-data included). It is a vacuity check, and the set it counts is read from the directory.
+  assert.ok(index.length >= 7 && index.length === Object.keys(sources).length, `only ${index.length} pages indexed`);
 });
 
 test('every entry carries a real title and real prose, not just a filename', () => {

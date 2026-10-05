@@ -21,6 +21,14 @@ export default defineConfig({
     '/proof': '/catalog',
     '/showcase': '/catalog',
     '/changelog': '/blog',
+    // THE DOCS PAGES THAT WERE FOLDED INTO OTHERS (M2 site fix cycle 1, plan step 2.6: "Redirect connect, updating and build-from-source"). Connecting
+    // a project is pairing, which Getting started carries; updating the plugin is a section of the plugin page; building the plugin from source was a
+    // developer path that said it was not how anyone installs StudPilot, and the plugin page is the nearest page about the plugin. The web app still links
+    // /docs/connect (apps/web/src/components/empty-state-model.ts), so the redirect keeps that link working. Each is emitted as a built stub that
+    // overwrites the old static row in the Worker's store.
+    '/docs/connect': '/docs/getting-started',
+    '/docs/updating': '/docs/plugin',
+    '/docs/build-from-source': '/docs/plugin',
   },
   integrations: [sitemap()],
   // THE SPACE BETWEEN A WORD AND THE INLINE TAG AFTER IT. Since Astro 7 the default is `compressHTML: 'jsx'`, which applies React's JSX whitespace

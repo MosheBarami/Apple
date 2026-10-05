@@ -1,123 +1,103 @@
 ---
 import { PLAN_TABLE } from '@studpilot/shared';
 import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocsKit from '../../components/picks-docs/DocsKit.astro';
-import Folder from '../../components/picks-docs/Folder.astro';
 import { STUDIO_PLUGIN_STORE_LIVE } from '../../lib/studio-plugin';
 
-// The free allowance is read from the shared product contract so this guide cannot outlive a quota
-// change independently.
+// The free allowance is read from the shared product contract so this guide cannot outlive a quota change independently.
 /*
- * THE BODY WAS GATED AND THE METADATA WAS NOT, WHICH IS THE HALF PEOPLE ACTUALLY SHARE.
- *
- * A <meta name="description"> and its og:description twin are what a search result and a pasted
- * link show. This page's body has asked STUDIO_PLUGIN_STORE_LIVE since the listing was removed,
- * while its description went on promising a Creator Store install path in every snippet — so the
- * promise reached the reader BEFORE the correction did, and the correction only arrived if they
- * clicked. Same constant, same answer, one sentence earlier.
+ * REWRITTEN FOR THE BETA (M2 site fix cycle 1, plan step 2.6). What it says, and where each claim was checked:
+ *   - sign-in: email and a password, or Sign in with Roblox (live since 2026-10-05, owner decision D-10; the worker serves /auth/roblox and the
+ *     app's sign-in page links /auth/roblox/start). Google and Discord are not on the sign-in page (nothing in apps/web calls an OAuth sign-in yet).
+ *   - the pairing dialog is the app's "Studio connection" window (apps/web/src/components/pairing-dialog.tsx): "Your pairing code", a countdown, and
+ *     the instruction this page repeats ("click StudPilot in the Plugins tab, enter this code and press Connect to StudPilot").
+ *   - a code lasts 10 minutes and works once (apps/worker/src/do/pairing.ts, TTL_MS); the pairing itself lasts until Studio closes (the plugin's own
+ *     first line: "A pairing lasts until Studio closes; after a restart, enter a new code from your StudPilot project"), and the session token
+ *     expires after 30 days (do/session.ts, PLUGIN_TOKEN_TTL_MS). The old Connect page said the connection "survives restarts"; the plugin says it
+ *     does not, so this page does not.
+ *   - edits start off and are turned on in two steps in the panel (apps/studpilot-plugin/src/init.server.luau); tests/lib/plugin-promises.mjs holds it.
+ *   - THE METADATA IS ASKED OF THE FLAG TOO, not just the body: a <meta name="description"> is what a search result and a pasted link show, and it
+ *     must never promise an install path the body denies (tests/plugin-availability-metadata.test.mjs).
  */
 const free = PLAN_TABLE.free;
 ---
 
 <DocsLayout
-  title="Getting started — StudPilot Docs"
+  title="Getting started | StudPilot"
   description={STUDIO_PLUGIN_STORE_LIVE
-    ? 'From signup to your first AI-built feature in Roblox Studio: create an account, make a project, install the plugin, pair, and chat your first build.'
-    : 'From signup to your first conversation with StudPilot: create an account, make a project and start chatting. Public Studio installation is unavailable right now, so the Studio steps apply only to an existing working plugin.'}
+    ? 'From a new account to your first request: sign in, make a project, pair the Studio plugin and ask for a piece.'
+    : 'From a new account to your first request: sign in, make a project and ask in the chat. Public Studio installation is unavailable right now, so the Studio steps apply only to someone who already has the plugin.'}
   heading="Getting started"
+  order={1}
+  summary="From a new account to your first request, and what you cannot do yet."
 >
   <p>
+    StudPilot is in beta. This page takes you from a new account to your first request, and says plainly what does not work yet.
+  </p>
+
+  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> Steps 1 to 3 work today. Steps 4 and 5 need the Studio plugin, which new customers cannot get yet. <a href="/docs/plugin">Where the plugin stands</a>.</p></div>}
+
+  <h2>1. Make an account</h2>
+  <p>
+    Go to <a href="/app">the app</a> and sign up with an email address and a password, or use Sign in with Roblox on the sign-in page. There is no
+    card to enter. You start with your full daily allowance of <strong>{free.creditsPerDay} Credits</strong> immediately. Google and Discord
+    sign-in are coming. They are not on the sign-in page yet.
+  </p>
+
+  <h2>2. Make a project</h2>
+  <p>
+    A <strong>project</strong> is StudPilot's workspace for one Roblox place: its chat, and what you have built together. Press
+    <strong>New project</strong> in the app and you land in the project's chat.
+  </p>
+
+  <h2>3. Ask for something</h2>
+  <p>
+    Type a request in the project chat. Short and plain is fine, such as “a chest that opens when you press E”. StudPilot starts work at once, and
+    the chat shows a live list of the steps it takes. You can stop a run at any time.
+  </p>
+  {!STUDIO_PLUGIN_STORE_LIVE && <p>Without the plugin, StudPilot can plan the piece with you in the chat. It cannot change your place in Studio.</p>}
+
+  <h2 id="pair">4. {STUDIO_PLUGIN_STORE_LIVE ? 'Pair the Studio plugin' : 'Pair the plugin, if you already have it'}</h2>
+  <p>
     {STUDIO_PLUGIN_STORE_LIVE
-      ? 'Create an account, install the StudPilot Studio plugin, pair it with a project, and ask for your first change.'
-      : 'Create your workspace, start a conversation, and check Studio availability before building.'}
+      ? <>StudPilot changes your place through the <strong>StudPilot Studio</strong> plugin. It is free on the Roblox Creator Store: follow <a href="/docs/plugin">The Studio plugin</a> to get it, then come back here.</>
+      : <>StudPilot changes your place through the <strong>StudPilot Studio</strong> plugin, and there is no working public Creator Store install right now. If you do not already have the plugin, stop here and use the chat. <a href="/docs/plugin">The Studio plugin</a> says where it stands. If you do have it:</>}
   </p>
-
-  {!STUDIO_PLUGIN_STORE_LIVE && <div class="callout"><p><strong>Public Studio installation is unavailable right now.</strong> Steps 1–2 work now. Continue to the Studio steps only if you already have a working plugin. <a href="/docs/plugin">Plugin availability</a>.</p></div>}
-
-  <h2>1. Create an account</h2>
-  <p>
-    Go to <a href="/app">the app</a> and sign up with an email address and a password. That is the
-    whole form — no card, no phone number. You start with your full daily allowance of
-    <strong>{free.creditsPerDay} Credits</strong> immediately.
-  </p>
-
-  <h2>2. Create a project</h2>
-  <p>
-    A <strong>project</strong> is StudPilot's workspace for one Roblox place: its chat history, its
-    checkpoints, and its memory of what you have built together. Click
-    <strong>New project</strong>, give it a name (naming it after the place helps), and you land in
-    the chat workspace.
-  </p>
-  <Folder
-    label="What a project keeps"
-    items={[
-      { name: 'Chat', text: 'everything you and StudPilot have said about this place.' },
-      { name: 'Checkpoints', text: 'saved copies of your place from before each run.' },
-      { name: 'Memory', text: 'what you have built together, so StudPilot remembers next time.' },
-    ]}
-  />
-  <p>
-    Projects are unlimited on the free tier, so make one per place rather than reusing a single
-    project — the per-project memory works much better that way.
-  </p>
-
-  <h2>3. {STUDIO_PLUGIN_STORE_LIVE ? 'Install the Studio plugin' : 'Check Studio availability'}</h2>
-  <p>
-    {STUDIO_PLUGIN_STORE_LIVE ? <>StudPilot changes your place through the <strong>StudPilot Studio</strong> plugin. It is free on the Roblox Creator Store — follow <a href="/docs/plugin">Install the plugin</a> before continuing.</> : <>There is no working public Creator Store installation path right now. If you do not already have the plugin, stop here and use the chat workspace. Check <a href="/docs/plugin">plugin status</a> for availability; the remaining steps describe connecting an existing working installation.</>}
-  </p>
-
-  <h2>4. Connect it to your project</h2>
   <ol>
-    <li>Open your place in Roblox Studio and click <strong>StudPilot</strong> in the Plugins tab. The <strong>StudPilot Studio</strong> panel docks.</li>
-    <li>
-      In the StudPilot web workspace, open the project and press <strong>Enter pairing code</strong> in
-      the <strong>Connect Roblox Studio</strong> block. You get a six-character code like
-      <code>K7M3QP</code>.
-    </li>
+    <li>Open the place you want StudPilot to work on in Roblox Studio, and click <strong>StudPilot</strong> in the Plugins tab. The panel reads <strong>Not connected</strong>.</li>
+    <li>In the web app, open your project and open the <strong>Studio connection</strong> window. It shows a six-character code with a countdown.</li>
     <li>Type the code into the panel in Studio and press <strong>Connect to StudPilot</strong>.</li>
   </ol>
   <p>
-    The panel reads <strong>Connected</strong> followed by the project name, and the workspace shows
-    your place. Codes expire after 10 minutes; if yours does, generate another. Edits stay off until
-    you allow them for that connection — see <a href="/docs/connect">Connect a project</a>.
+    The panel then reads <strong>Connected</strong> and the name of your project. A code works once and expires after 10 minutes. If yours does, ask
+    for a new one. Treat the code as a temporary credential: type it only into your own StudPilot plugin and do not share it.
+  </p>
+  <p>
+    A pairing lasts until Studio closes. After a restart, enter a new code. One Studio window pairs with one project, so a second window needs its
+    own code.
   </p>
 
-  <h2>5. Ask for your first build</h2>
+  <h2>5. Allow edits, then check the result</h2>
   <p>
-    Describe what you want. StudPilot shows a short plan and then builds it:
+    Edits stay off until you allow them for that connection. The panel starts at <strong>Access: inspect only</strong>. Press
+    <strong>Enable edits…</strong>, then <strong>Allow edits for this connection</strong>. Press <strong>Turn edits off</strong> at any time, or
+    <strong>Disconnect</strong> to end the connection.
   </p>
-  <ul>
-    <li>“make a lobby with a spinning obby door”</li>
-    <li>“add a coin leaderboard that saves between sessions”</li>
-    <li>“the kill brick in Workspace.Stage2 doesn't kill — fix it”</li>
-  </ul>
   <p>
-    Watch the compact activity line and open details when needed. A chat response alone is not
-    proof that your place changed: check the reported result, then test it in Studio.
-  </p>
-
-  <h2>6. Iterate like you mean it</h2>
-  <p>
-    The first result is a first draft. React to it the way you would with a collaborator: “make
-    the door slower”, “the door should only open for players with the key”. StudPilot keeps the
-    context of everything it has done in this project.
+    A chat reply is not proof that your place changed. Look at what changed in Studio, and test it yourself.
   </p>
 
   <div class="callout">
     <p>
-      <strong>Safety net:</strong> every individual change is one native undo step
-      (<kbd>Ctrl+Z</kbd> / <kbd>⌘Z</kbd> in Studio), so undoing a whole run means one press per
-      step. StudPilot also checkpoints your place before every agent run, and restoring that checkpoint
-      from the workspace sidebar takes the whole run back at once — even days later.
+      <strong>Taking a change back:</strong> every change StudPilot makes is its own undo step in Studio (<kbd>Ctrl+Z</kbd> or <kbd>⌘Z</kbd>), so a
+      run of several steps needs one press per step. Before a run starts changing your place, StudPilot takes a checkpoint of it when it can, and restoring
+      that checkpoint from the project takes the whole run back at once.
     </p>
   </div>
 
   <h2>Where next</h2>
   <ul>
-    <li><a href="/docs/credits-and-limits">Credits &amp; limits</a> — how far {free.creditsPerDay} Credits goes.</li>
-    <li><a href="/docs/updating">Updating the plugin</a> — Roblox will not do it for you.</li>
-    <li><a href="/docs/troubleshooting">Troubleshooting</a> — when the panel says something you didn't expect.</li>
+    <li><a href="/docs/credits-and-limits">Credits &amp; limits</a>: how far {free.creditsPerDay} Credits a day goes.</li>
+    <li><a href="/docs/troubleshooting">Troubleshooting</a>: when the panel says something you did not expect.</li>
+    <li><a href="/docs/faq">FAQ</a>: quick answers.</li>
   </ul>
-
-  <DocsKit />
 </DocsLayout>

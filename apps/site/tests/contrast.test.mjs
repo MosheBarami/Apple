@@ -177,17 +177,21 @@ test('the derivations found real tokens, so nothing below is vacuous', () => {
   // it follows the tree down; every pair measured below is still derived from whatever the sheets say.
   assert.ok(RULES.length > 300, `only ${RULES.length} rules read — the rule parse is blind`);
   for (const mode of Object.keys(THEMES)) {
-    assert.ok(MEASURED[mode].length > 150, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
+    // RE-BASED AGAIN 2026-10-05 (M2 site fix cycle 1): 150 pairs are derived now, not 151 or more, because the docs rewrite deleted the docs picks'
+    // own sheets (DocsKit's keycaps and line sidebar, the folder, the terminal, the code tabs). Still a vacuity floor (a blind pairing derives a
+    // handful), and every pair measured is derived from whatever the sheets say.
+    assert.ok(MEASURED[mode].length > 120, `${mode}: only ${MEASURED[mode].length} text/ground pairs were derived; the pairing is blind`);
     // THE STATES AND CONTEXTS ARE READ, not just the resting rules: pairs exist for a hovered element and for one inside a context.
     assert.ok(MEASURED[mode].some((m) => m.pair.states.includes('hover')), `${mode}: no hovered pair was derived`);
     assert.ok(MEASURED[mode].some((m) => m.pair.context !== ''), `${mode}: no pair in a context (a descendant selector) was derived`);
   }
-  // The fills are FOUND in the CSS, not listed: the folder's paper on ink and ink-2, the accent button.
-  assert.ok(FILLS.length >= 4, `only ${FILLS.length} pairs of text on a fill were found`);
+  // The fills are FOUND in the CSS, not listed: the accent button, the skip link. RESTATED 2026-10-05 (M2 site fix cycle 1): the folder's paper on ink
+  // and ink-2 (the docs Folder component) was the other source of fills and was deleted by the docs rewrite, so the floor is the accent fills.
+  assert.ok(FILLS.length >= 3, `only ${FILLS.length} pairs of text on a fill were found`);
   const fillTokens = new Set(tokensIn(FILLS.flatMap((m) => m.pair.fgs)));
   const grounds = new Set(FILLS.flatMap((m) => m.pair.fills));
-  for (const must of ['paper', 'accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
-  for (const must of ['var(--ink)', 'var(--ink-2)', 'var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill pair`);
+  for (const must of ['accent-ink']) assert.ok(fillTokens.has(must), `--${must} is not found as text on a fill; the fill scan is blind`);
+  for (const must of ['var(--accent)', 'var(--accent-strong)']) assert.ok(grounds.has(must), `${must} is not found as a ground of a fill pair`);
 });
 
 for (const [name, t] of Object.entries(THEMES)) {
@@ -221,7 +225,7 @@ for (const [name, t] of Object.entries(THEMES)) {
       for (const u of m.unresolved) bad.push(`${describe(m)}: ${u} does not resolve to a colour (make it a token)`);
       for (const r of m.ratios) { measured += 1; if (r.ratio < 4.5) bad.push(`${describe(m)}: ${r.fg} on ${r.ground} is ${r.ratio.toFixed(2)}:1`); }
     }
-    assert.ok(measured >= 5, `only ${measured} text/fill pairs measured`);
+    assert.ok(measured >= 3, `only ${measured} text/fill pairs measured`);
     assert.deepEqual([...new Set(bad)], [], `${name}: text on a fill below 4.5:1:\n  ${[...new Set(bad)].join('\n  ')}`);
   });
 
@@ -240,8 +244,9 @@ for (const [name, t] of Object.entries(THEMES)) {
     const { subjects, problems } = selectionOnFills(RULES, name);
     // CANARIES: the fills were found in the sheets, not listed here. Each is a control a person selects text on.
     // RESTATED 2026-10-05 (M2 rebuild): `.cta` and `.composer-send` were the old landing's controls (the composer and its merged CTA button)
-    // and were deleted with it. The canaries are the three fills the sheets still draw on an opaque non-surface fill.
-    for (const must of ['.btn-primary', '.skip-link', '.fold__paper']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
+    // and were deleted with it; `.fold__paper` (the docs Folder's paper on ink) went with the docs picks. The canaries are the fills the sheets
+    // still draw on an opaque non-surface fill: the primary button and the skip link.
+    for (const must of ['.btn-primary', '.skip-link']) assert.ok(subjects.includes(must), `${must} was not found as a control drawn on an opaque fill (${subjects.join(', ')}); the fill scan is blind`);
     assert.deepEqual(problems, [], `${name}: selected text on a fill:\n  ${problems.join('\n  ')}`);
   });
 

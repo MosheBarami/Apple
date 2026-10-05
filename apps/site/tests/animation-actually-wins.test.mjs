@@ -53,7 +53,9 @@ test('the harness read real sheets, so nothing below is vacuous', () => {
   const sources = styleSources();
   assert.ok(sources.length >= 8, `only ${sources.length} style sources read: the walk has drifted`);
   for (const f of MARKETING) assert.ok(sources.some((s) => s.file === f), `${f} was not read`);
-  assert.ok(sources.flatMap((s) => declared(s.css)).length >= 3, 'no keyframes were found anywhere: the parse has drifted (the docs and status components declare three)');
+  // RESTATED 2026-10-05 (M2 site fix cycle 1): the floor was THREE (the docs picks, the terminal's caret among them, and the status page's orb). The docs
+  // rewrite deleted the picks, so the one keyframe left is the status page's orb-checking, which this must still find: a parse that finds none is blind.
+  assert.ok(sources.flatMap((s) => declared(s.css)).includes('orb-checking'), 'the status page\'s one keyframe (orb-checking) was not found: the parse has drifted');
   assert.deepEqual(used('.x { animation: fold-in 360ms var(--ease-out) both; }\n.y { animation-name: a, b }'), ['fold-in', 'a', 'b'], 'the animation-name parser is blind');
 });
 

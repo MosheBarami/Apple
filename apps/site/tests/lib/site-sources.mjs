@@ -26,7 +26,7 @@ const SKIP = new Set(['data/asset-wall.json']);
 export function copySources() {
   const files = walkFiles(SRC, (p) => /\.(?:astro|md|mdx|ts|js|mjs|json)$/.test(p)).filter((f) => !SKIP.has(f));
   const out = files.map((f) => ({ file: join(SRC, f), rel: relative(SITE, join(SRC, f)), text: readFileSync(join(SRC, f), 'utf8') }));
-  if (out.length < 40) throw new Error(`the walk of apps/site/src found only ${out.length} sources of words: it is looking in the wrong place`);
+  if (out.length < 30) throw new Error(`the walk of apps/site/src found only ${out.length} sources of words: it is looking in the wrong place`);
   return out;
 }
 

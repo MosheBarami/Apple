@@ -53,6 +53,18 @@ const GONE = [
   'pages/models.astro',
   'pages/proof.astro',
   'pages/changelog.astro',
+  // M2 site fix cycle 1, plan step 2.6 (the docs rewrite): the three docs pages that were folded into others and are Astro redirects now
+  // (/docs/connect to getting-started, /docs/updating and /docs/build-from-source to the plugin page) ...
+  'pages/docs/connect.astro',
+  'pages/docs/updating.astro',
+  'pages/docs/build-from-source.astro',
+  // ... and the docs components that only decorated them: the Folder (getting-started), the Terminal and the Code Tabs (build-from-source), the
+  // copy button they shared, and the plugin page's strip of object icons. DocsKit is not here: see the next-to-last test.
+  'components/picks-docs/Folder.astro',
+  'components/picks-docs/Terminal.astro',
+  'components/picks-docs/CodeTabs.astro',
+  'components/picks-docs/copy-button.ts',
+  'components/ObjectIcon.astro',
 ];
 
 const GONE_DIRS = ['components/picks'];
@@ -114,4 +126,17 @@ test('index.astro is on Base and carries no copy of the old front page', () => {
   const index = readFileSync(join(SRC, 'pages', 'index.astro'), 'utf8');
   assert.match(index, /layouts\/Base\.astro/);
   assert.doesNotMatch(stripComments(index), /Landing|NoiseField|BuiltScreen|ConsentProof|Marquee|BeamFlow|DeviceFrame|PointerRim/);
+});
+
+// DocsKit WAS THE DOCS' POINTER EFFECTS AND IS A STUB (M2 site fix cycle 1). It cannot be deleted yet because the privacy-and-data page, which the
+// legal lane owns and is rewriting, still imports and mounts it. So the property is: it holds no markup, no style and no script (nothing of the old
+// effects survives in it), nothing but that one page imports it, and the day that page stops importing it this fails, so the file is deleted.
+test('DocsKit is an empty stub, only the legal lane\'s privacy-and-data page imports it, and it is deleted the day that stops', () => {
+  const kit = join(SRC, 'components', 'picks-docs', 'DocsKit.astro');
+  if (!existsSync(kit)) return; // deleted: the end of its life
+  const body = stripComments(readFileSync(kit, 'utf8')).replace(/^---\s*---\s*/m, '').trim();
+  assert.equal(body, '', `DocsKit.astro carries markup, a style or a script again: ${body.slice(0, 80)}`);
+  const importers = walkFiles(SRC, (p) => /\.(?:astro|ts|js|mjs)$/.test(p)).filter((f) => importsOf(readFileSync(join(SRC, f), 'utf8')).some((spec) => names(spec, f, 'components/picks-docs/DocsKit.astro')));
+  assert.ok(importers.length > 0, 'nothing imports DocsKit any more: delete components/picks-docs/DocsKit.astro');
+  assert.deepEqual(importers, ['pages/docs/privacy-and-data.astro'], 'a page other than the legal lane\'s privacy-and-data imports DocsKit again');
 });

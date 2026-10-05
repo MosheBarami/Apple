@@ -61,13 +61,21 @@ function assertDisclosure(html, storeLive, assetId) {
   assert.doesNotMatch(content, /nothing sensitive ever/);
 }
 
+// RESTATED 2026-10-05 (M2 site fix cycle 1, plan step 2.6): the connection steps (open the place, the six-character code, Connect to StudPilot) moved
+// from /docs/connect, now an Astro redirect, into Getting started. The property is unchanged and is now held where the steps are.
+const CONNECTION_STEPS_PAGE = 'docs/getting-started';
+
 test('connection instructions disclose installation availability before the steps', () => {
   assert.ok(FLAG && ASSET, 'the plugin flag or asset id is no longer readable from packages/shared');
-  assertDisclosure(page('docs/connect'), FLAG[1] === 'true', ASSET[1]);
+  assertDisclosure(page(CONNECTION_STEPS_PAGE), FLAG[1] === 'true', ASSET[1]);
 });
 
-test('the disclosure guard rejects a connect page that hides availability', () => {
-  const html = page('docs/connect');
+test('/docs/connect is a redirect to the page that carries the connection steps now', () => {
+  assert.match(page('docs/connect'), /<meta http-equiv="refresh" content="0;\s*url=\/docs\/getting-started/);
+});
+
+test('the disclosure guard rejects a connection page that hides availability', () => {
+  const html = page(CONNECTION_STEPS_PAGE);
   const live = FLAG[1] === 'true';
   const stripped = live
     ? html.replaceAll(`https://create.roblox.com/store/asset/${ASSET[1]}`, '/nowhere')

@@ -9,7 +9,7 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort((a, 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 ---
 
-<Base title="Blog (beta)" description="Short, honest posts from the StudPilot beta: what works, what does not yet, and what we are building next.">
+<Base title="Blog | StudPilot" description="Short, honest posts from the StudPilot beta: what works, what does not yet, and what we are building next.">
   <section class="page-head">
     <div class="wrap">
       <p class="kicker"><span class="badge">Beta</span> Blog</p>
