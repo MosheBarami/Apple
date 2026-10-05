@@ -49,3 +49,25 @@ export function accountIdentity(user: unknown, address: string | null | undefine
     signedInAs: name ? `Signed in with Roblox as ${name}` : 'Signed in with Roblox',
   };
 }
+
+/**
+ * The letter in the avatar: the first letter of the first of these that has one. The profile's display name, then the Roblox username
+ * (an account that signed in with Roblox has no address to take it from), then the address, and never a placeholder address.
+ *
+ * Null when there is nothing honest to take a letter from, and the caller draws a neutral person mark: a "?" or a letter taken from
+ * the words "Roblox account" would say something about the person that nothing knows. A letter, a digit or any other character that
+ * is a letter in some alphabet counts; a symbol or a space does not, and the first CODE POINT is taken, so an emoji or an astral letter is not cut in half.
+ */
+export function avatarInitial(parts: {
+  displayName?: string | null;
+  robloxName?: string | null;
+  address?: string | null;
+}): string | null {
+  const candidates = [parts.displayName, parts.robloxName, isPlaceholderAddress(parts.address) ? null : parts.address];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const first = Array.from(candidate.trim()).find((ch) => /[\p{L}\p{N}]/u.test(ch));
+    if (first) return first.toLocaleUpperCase();
+  }
+  return null;
+}

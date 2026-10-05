@@ -491,3 +491,26 @@ a colour (the browser's picker beside a hex field), a switch (a real button with
   stub; a change then edits that block's parameters and re-runs only that block. The four control kinds map to the schema's number, colour,
   boolean and string types. Nothing here persists a change, and there is no request from the panel, so M5 adds the wiring and removes
   `lib/pieces-stub.ts`.
+
+### 12.6 C6: account connections, and the avatar
+
+- **Two identity cards, drawn only for a provider that is on.** "Sign in with Google" and "Sign in with Discord" (`components/identity-card.tsx`)
+  use `supabase.auth.linkIdentity` to connect and `unlinkIdentity` to disconnect, and appear only when the project says the provider is on
+  (the same answer as C1, `lib/auth-providers.ts`). Today both are off (N2), so today neither card exists. The page holds the row, its
+  search result and its rail entry back on the same answer, so a search for "google" never finds a row that is not there.
+- **Disconnect is offered only with another way in.** Supabase refuses to remove an account's last identity, so the card says "This is the
+  only way you sign in to this account, so it cannot be disconnected" instead of offering a button that fails. The card also refuses before
+  the request if the list says so. An unloaded list is not a yes. A failed read of the identities is shown as a failure, never as "not connected".
+- **Separate from the other three things on that page.** The Roblox card, the Open Cloud key panel and the Discord bot link keep their own
+  rows. The Discord identity card says in words that it is "separate from the Discord link below, which starts builds from a Discord channel".
+  The rows run in this order: Roblox sign-in, Google, Discord sign-in, Open Cloud key, StudPilot API keys, Discord link.
+- **Unverified (no network here), for owner item N2:** that manual identity linking is enabled at the Supabase project (without it
+  `linkIdentity` fails, and the card says so in a toast), that `https://studpilot.app/app/settings` is on the redirect allow-list, and what
+  `identity_data` the two providers return (the card reads `email`, then Discord's `custom_claims.global_name`, then `full_name`, then `name`,
+  and says only "is connected" when none is readable).
+- **A Roblox-only account may connect Google or Discord** (it has its placeholder email identity and the new one, so two). That is a second
+  way in, not a change to how the Roblox account works; its Roblox card is unchanged.
+- **The avatar is never "?".** It took `(name ?? address)[0]` or "?", so an account with no address showed "?" in the rail, the account menu and
+  its header. `avatarInitial` takes the first letter of the display name, then the Roblox username, then the address, never a placeholder
+  address and never the words "Roblox account"; with nothing honest to take, all three places draw the same plain person mark. The line
+  beside it says "Your account" instead of being empty.

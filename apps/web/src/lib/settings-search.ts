@@ -67,6 +67,19 @@ export const SETTING_FIELDS: readonly SettingField[] = [
     keywords: ['roblox', 'sign in', 'log in', 'login', 'disconnect', 'unlink', 'revoke', 'username', 'oauth', 'connect'],
   },
   {
+    id: 'google-signin',
+    title: 'Sign in with Google',
+    section: 'Connections',
+    keywords: ['google', 'sign in', 'log in', 'login', 'connect', 'disconnect', 'unlink', 'link', 'gmail', 'account'],
+  },
+  {
+    id: 'discord-signin',
+    title: 'Sign in with Discord',
+    section: 'Connections',
+    // Not the Discord bot link (the row named "Discord"): this is how a person signs in, and the words say so.
+    keywords: ['discord', 'sign in', 'log in', 'login', 'connect', 'disconnect', 'unlink', 'link', 'account'],
+  },
+  {
     id: 'roblox-key',
     title: 'Your Roblox account',
     section: 'Connections',

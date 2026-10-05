@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../lib/auth';
-import { accountIdentity } from '../lib/account-identity';
+import { accountIdentity, avatarInitial } from '../lib/account-identity';
 import { useRobloxUsername } from '../lib/use-roblox-username';
 import { fetchBillingConfig, fetchMe } from '../lib/api';
 import { maxUpgradeAvailable } from '../lib/creation-intent';
@@ -83,7 +83,15 @@ async function fetchRecentProjects(): Promise<ProjectRow[]> {
 
 /* ------------------------------------------------------------ user card --- */
 
-function AccountMenu({ name, email, isAdmin }: { name: string | null; email: string; isAdmin: boolean }) {
+/**
+ * What stands in the avatar when there is no honest letter to put in it (lib/account-identity.ts `avatarInitial`): a plain person mark,
+ * never a "?" and never a letter taken from the words "Roblox account".
+ */
+function AvatarMark({ initial }: { initial: string | null }) {
+  return initial ? <>{initial}</> : <Icon d="M12 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5 20a7 7 0 0 1 14 0" size={15} />;
+}
+
+function AccountMenu({ name, email, initial, isAdmin }: { name: string | null; email: string; initial: string | null; isAdmin: boolean }) {
   const [open, setOpen] = useState(false);
   /*
    * GET HELP LIVES BESIDE DOCS, NOT INSTEAD OF IT.
@@ -102,9 +110,8 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
   // Only ever the user's own data: a display name if the profile has one,
   // otherwise the address itself. Nothing is invented to fill the line.
-  const primary = name ?? email ?? 'Account';
+  const primary = name || email || 'Your account';
   const secondary = name ? email : null;
-  const initial = (primary[0] ?? '?').toUpperCase();
 
   return (
     <div className="gx-user-card">
@@ -117,7 +124,7 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
           onClick={() => setOpen((v) => !v)}
         >
           <span className="gx-avatar" aria-hidden="true">
-            {initial}
+            <AvatarMark initial={initial} />
           </span>
           <span className="gx-user-card__names">
             <span className="gx-user-card__name">{primary}</span>
@@ -129,7 +136,7 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
         </button>
 
         <Popover open={open} onClose={() => setOpen(false)} placement="up" label="Account">
-          <AccountMenuHeader name={name} email={email} />
+          <AccountMenuHeader name={name} email={email} initial={initial} />
           <Link to="/settings" className="gx-pop__item" role="menuitem" onClick={() => setOpen(false)}>
             <Icon d={PATH.settings} size={15} />
             Settings
@@ -225,8 +232,8 @@ function AccountMenu({ name, email, isAdmin }: { name: string | null; email: str
 
 /* ----------------------------------------------------------------- rail --- */
 
-function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeAvailable, width, onWidth }:
-  { name: string | null; email: string; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean;
+function Rail({ name, email, initial, isAdmin, quota, quotaPending, quotaFailed, upgradeAvailable, width, onWidth }:
+  { name: string | null; email: string; initial: string | null; isAdmin: boolean; quota: unknown; quotaPending: boolean; quotaFailed: boolean;
     upgradeAvailable: boolean | null;
     width: number; onWidth: (next: number, persist: boolean) => void }) {
   const { railOpen, closeRail, railCollapsed, toggleRailCollapsed, openCheckpoints } = useShell();
@@ -404,7 +411,7 @@ function Rail({ name, email, isAdmin, quota, quotaPending, quotaFailed, upgradeA
         </button>
 
         <UsageMeter quota={quota} pending={quotaPending} failed={quotaFailed} upgradeAvailable={upgradeAvailable} />
-        <AccountMenu name={name} email={email} isAdmin={isAdmin} />
+        <AccountMenu name={name} email={email} initial={initial} isAdmin={isAdmin} />
       </div>
 
       {/* Announced as a separator with a value, so a screen reader says what the width is as it
@@ -563,7 +570,9 @@ function Shell() {
   // Who the rail's account row says you are: the profile name if there is one, otherwise the
   // address. Never a placeholder — an avatar reading "?" beside "Settings" is honest about a
   // profile that has not loaded, and a fabricated initial is not.
-  const who = name ?? email;
+  const who = name || email;
+  // The avatar's letter: the display name, else the Roblox username, else the address; never a placeholder, and never "?".
+  const initial = avatarInitial({ displayName: name, robloxName, address: session?.user.email ?? me.data?.email ?? null });
 
   return (
     <div
@@ -582,6 +591,7 @@ function Shell() {
       {railOpen && <Rail
         name={name}
         email={email}
+        initial={initial}
         isAdmin={isAdmin}
         quota={me.data?.quota}
         quotaPending={me.isPending}
@@ -681,7 +691,7 @@ function Shell() {
                 who-you-are is the second line rather than the first. Nothing is invented to fill
                 it — with no profile name and no address the line is simply absent. */}
             <NavLink to="/settings" className="studio-dock__row studio-dock__account" aria-label="Settings" title="Settings">
-              <span className="studio-dock__avatar" aria-hidden="true">{(who[0] ?? '?').toUpperCase()}</span>
+              <span className="studio-dock__avatar" aria-hidden="true"><AvatarMark initial={initial} /></span>
               <span className="studio-dock__stack">
                 <span className="studio-dock__label">Settings</span>
                 {who && <span className="studio-dock__who">{who}</span>}

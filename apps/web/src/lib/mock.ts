@@ -107,6 +107,19 @@ export function mockSpend() {
 }
 
 /**
+ * The identities the mock account has: the email one every account has, and a Google or Discord one when the address asks for it
+ * (`?linked=google,discord`, development only), so the connected state of the Connections cards can be reviewed.
+ */
+export function mockIdentities(): { provider: string; identity_id: string; identity_data: Record<string, unknown> }[] {
+  const asked = typeof window === 'undefined' ? [] : (new URLSearchParams(window.location.search).get('linked') ?? '').split(',');
+  const linked = ['google', 'discord'].filter((name) => asked.includes(name));
+  return [
+    { provider: 'email', identity_id: 'mock-email', identity_data: { email: 'builder@example.com' } },
+    ...linked.map((name) => ({ provider: name, identity_id: `mock-${name}`, identity_data: { email: `builder@${name}.example` } })),
+  ];
+}
+
+/**
  * One account as the admin lookup returns it, so the panel can be READ before it is trusted.
  *
  * The lookup is behind an admin key and a real user id, which means the one surface in this product

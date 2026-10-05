@@ -784,9 +784,11 @@ test('no screen prints a raw account address: Settings and the shell go through 
 const Settings = await loadPage({
   entry: 'src/routes/settings.tsx',
   name: 'roblox-settings',
-  real: ['lib/account-identity.ts', 'lib/auth-flows.ts', 'lib/use-roblox-username.ts', 'lib/prefs.ts', 'lib/settings-search.ts', 'lib/confirm-model.ts', 'lib/notification-prefs.ts', 'lib/notification-inbox.ts', 'lib/security-history.ts', 'lib/mfa.ts', 'lib/format.ts', 'lib/roblox-signin.ts'],
+  real: ['lib/account-identity.ts', 'lib/auth-flows.ts', 'lib/use-roblox-username.ts', 'lib/prefs.ts', 'lib/settings-search.ts', 'lib/confirm-model.ts', 'lib/notification-prefs.ts', 'lib/notification-inbox.ts', 'lib/security-history.ts', 'lib/mfa.ts', 'lib/format.ts', 'lib/roblox-signin.ts', 'lib/identity-links.ts'],
   fakes: {
     'lib/auth.tsx': { useAuth: '() => globalThis.__pageFakes.auth' },
+    // The sign-in providers are off at the project today (owner item N2): the page is run as it is today, with neither identity row.
+    'lib/auth-providers.ts': { useEnabledProviders: '() => []' },
     'lib/theme.tsx': { usePrefs: '() => globalThis.__pageFakes.prefs' },
     'components/toast.tsx': { useToast: '() => ({ toast: () => {} })' },
     'lib/api.ts': { DELETE_ACCOUNT_PHRASE: "'DELETE MY ACCOUNT'", fetchRobloxConnection: '(...a) => globalThis.__pageFakes.api.fetchRobloxConnection(...a)' },

@@ -63,6 +63,9 @@ import {
 } from '../lib/auth-flows';
 import { fullStamp, formatNumber, relativeTime } from '../lib/format.ts';
 import { SETTING_FIELDS, matchSettings } from '../lib/settings-search.ts';
+import { useEnabledProviders } from '../lib/auth-providers';
+import { fieldsForProviders } from '../lib/identity-links';
+import { IdentityCard } from '../components/identity-card';
 import {
   DELETE_ACCOUNT_PHRASE,
   deleteAccount,
@@ -892,7 +895,7 @@ const SECTION_INDEX = [
     label: 'Security',
     fields: ['email-address', 'password', 'two-step', 'sign-out-everywhere', 'security-history'],
   },
-  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'roblox-key', 'api-keys', 'discord'] },
+  { group: 'Account', id: 'connections', label: 'Connections', fields: ['roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord'] },
   {
     group: 'Building',
     id: 'notifications',
@@ -1689,7 +1692,11 @@ export function SettingsPage() {
   });
 
   const [query, setQuery] = useState('');
-  const matchedIds = useMemo(() => matchSettings(query), [query]);
+  // A sign-in provider's card exists only when the Supabase project says the provider is on (lib/auth-providers.ts). Its row, its rail
+  // entry and its search result go with it: a search for "google" must not find a row that is not there.
+  const oauthOn = useEnabledProviders();
+  const fields = useMemo(() => fieldsForProviders(SETTING_FIELDS, oauthOn), [oauthOn]);
+  const matchedIds = useMemo(() => matchSettings(query, fields), [query, fields]);
   const matches = useMemo(() => new Set(matchedIds), [matchedIds]);
   const shows = (id: string) => matches.has(id);
   const sectionShows = (...ids: string[]) => ids.some(shows);
@@ -2370,10 +2377,21 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'roblox-key', 'api-keys', 'discord')}>
+      <Section id="connections" title="Connections" visible={sectionShows('roblox-signin', 'google-signin', 'discord-signin', 'roblox-key', 'api-keys', 'discord')}>
         <Row id="roblox-signin" visible={shows('roblox-signin')}>
           <RobloxConnectionCard userId={userId} />
         </Row>
+        {/* Only for a provider the project has switched on; today neither is (owner item N2), so neither row is here. */}
+        {oauthOn.includes('google') && (
+          <Row id="google-signin" visible={shows('google-signin')}>
+            <IdentityCard provider="google" userId={userId} />
+          </Row>
+        )}
+        {oauthOn.includes('discord') && (
+          <Row id="discord-signin" visible={shows('discord-signin')}>
+            <IdentityCard provider="discord" userId={userId} />
+          </Row>
+        )}
         <Row id="roblox-key" visible={shows('roblox-key')}>
           <RobloxKeyPanel />
         </Row>
