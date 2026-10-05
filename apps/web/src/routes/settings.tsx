@@ -77,6 +77,7 @@ import {
   type ErasureReceipt,
 } from '../lib/api';
 import { historyState, occurrenceNote, unreadSecurityIds } from '../lib/security-history';
+import { preferencesLoaded, preferencesToSave } from '../lib/stored-preferences.ts';
 import { KIND_LABELS, MANDATORY_KINDS, NOTIFICATION_KINDS } from '../lib/notification-inbox.ts';
 import {
   DEFAULT_DELIVERY,
@@ -1113,13 +1114,11 @@ function NotificationSettings({
   const save = useMutation({
     mutationFn: async () => {
       // Everything already stored, plus the two keys this section owns. See the header: what is
-      // not sent is deleted.
-      const base = stored.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, {
-        ...base,
+      // not sent is deleted, so a blank base is refused (lib/stored-preferences.ts), never saved.
+      return savePreferences('user', userId, preferencesToSave(stored.data, {
         notify_delivery: withQuietHours(delivery, window.hours),
         notify_events: events,
-      });
+      }));
     },
     onSuccess: (out) => {
       setDirty(false);
@@ -1295,7 +1294,7 @@ function NotificationSettings({
       <button
         type="button"
         className="btn btn-primary"
-        disabled={!dirty || save.isPending || window.problem !== null || stored.isPending}
+        disabled={!dirty || save.isPending || window.problem !== null || !preferencesLoaded(stored)}
         // Four ways to be disabled and four different things to do about it. Without this the
         // button is dead for a reason nobody on the page states.
         title={
@@ -1303,11 +1302,13 @@ function NotificationSettings({
             ? undefined
             : stored.isPending
               ? 'Still reading your settings'
-              : window.problem !== null
-                ? 'Fix the quiet window first'
-                : !dirty
-                  ? 'Nothing has changed yet'
-                  : undefined
+              : !preferencesLoaded(stored)
+                ? 'Your saved settings could not be read. Reload the page'
+                : window.problem !== null
+                  ? 'Fix the quiet window first'
+                  : !dirty
+                    ? 'Nothing has changed yet'
+                    : undefined
         }
         onClick={() => save.mutate()}
       >
@@ -1932,9 +1933,9 @@ export function SettingsPage() {
 
   const setAnalyticsOptOut = useMutation({
     mutationFn: async (optOut: boolean) => {
-      // Everything already stored plus the one key this row owns: what is not sent is deleted.
-      const base = storedPrefs.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, { ...base, analytics_opt_out: optOut });
+      // Everything already stored plus the one key this row owns: what is not sent is deleted, so a read that never
+      // answered is refused (lib/stored-preferences.ts) rather than saved over everything.
+      return savePreferences('user', userId, preferencesToSave(storedPrefs.data, { analytics_opt_out: optOut }));
     },
     onSuccess: (out) => {
       void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
@@ -1952,8 +1953,8 @@ export function SettingsPage() {
   // The same shape as the analytics switch, one key over. Collection is not active, so what is confirmed is that the choice is KEPT.
   const setImprovementOptOut = useMutation({
     mutationFn: async (optOut: boolean) => {
-      const base = storedPrefs.data?.preferences.prefs ?? {};
-      return savePreferences('user', userId, { ...base, improvement_opt_out: optOut });
+      // The loaded preferences plus this one key, or a refusal: see the analytics switch above.
+      return savePreferences('user', userId, preferencesToSave(storedPrefs.data, { improvement_opt_out: optOut }));
     },
     onSuccess: (out) => {
       void qc.invalidateQueries({ queryKey: ['scope-memory', 'user', userId] });
@@ -2510,7 +2511,7 @@ export function SettingsPage() {
                 id="improvement-opt-out"
                 checked={storedPrefs.data?.preferences.prefs.improvement_opt_out ?? false}
                 onChange={(e) => setImprovementOptOut.mutate(e.target.checked)}
-                disabled={storedPrefs.isPending || setImprovementOptOut.isPending}
+                disabled={!preferencesLoaded(storedPrefs) || setImprovementOptOut.isPending}
               />
               <span className="gx-sr">Opt out of improvement data</span>
             </label>
@@ -2547,7 +2548,7 @@ export function SettingsPage() {
                 id="analytics-opt-out"
                 checked={storedPrefs.data?.preferences.prefs.analytics_opt_out ?? false}
                 onChange={(e) => setAnalyticsOptOut.mutate(e.target.checked)}
-                disabled={storedPrefs.isPending || setAnalyticsOptOut.isPending}
+                disabled={!preferencesLoaded(storedPrefs) || setAnalyticsOptOut.isPending}
               />
               <span className="gx-sr">Keep my account id out of analytics</span>
             </label>

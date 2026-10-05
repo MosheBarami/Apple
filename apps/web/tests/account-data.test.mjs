@@ -25,6 +25,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SETTING_FIELDS, matchSettings } from '../src/lib/settings-search.ts';
 import { confirmationFor } from '../src/lib/confirm-model.ts';
+import { PREFERENCES_NOT_LOADED, preferencesLoaded, preferencesToSave } from '../src/lib/stored-preferences.ts';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const api = readFileSync(join(WEB, 'src', 'lib', 'api.ts'), 'utf8');
@@ -150,17 +151,63 @@ test('the improvement-data switch writes the preference the worker validates, at
   // The worker accepts the key only if preferences.ts declares it (a key it does not know is thrown away, so the switch would look
   // saved and be forgotten), and the page reads what the SERVER returned rather than what it sent.
   const worker = readFileSync(join(WEB, '..', 'worker', 'src', 'preferences.ts'), 'utf8');
-  assert.match(worker, /'improvement_opt_out',\n\] as const;/, "the worker's preference vocabulary does not declare the key the switch writes");
+  // The key list is READ OUT of the array (comments stripped), so it holds wherever in the list the key sits and not when it is gone.
+  const declared = /PREFERENCE_KEYS = \[([\s\S]*?)\n\] as const/.exec(worker)?.[1].replace(/\/\/.*$/gm, '').match(/'[a-z_]+'/g) ?? [];
+  assert.ok(declared.length > 5, 'could not read PREFERENCE_KEYS out of the worker: this test would check nothing');
+  assert.ok(declared.includes("'improvement_opt_out'"), "the worker's preference vocabulary does not declare the key the switch writes");
   assert.match(api, /improvement_opt_out\?: boolean/, 'the preference is not in the client’s vocabulary');
   const at = page.indexOf('const setImprovementOptOut');
   assert.ok(at > 0, 'nothing on the settings page sets it');
   const mutation = page.slice(at, at + 900);
-  assert.match(mutation, /savePreferences\('user', userId, \{ \.\.\.base, improvement_opt_out: optOut \}\)/, 'it must be written at user scope, with everything already stored kept');
+  // The property: written at user scope, on top of what was LOADED (preferencesToSave keeps everything stored and refuses a blank base), carrying the key.
+  assert.match(mutation, /savePreferences\('user', userId, preferencesToSave\(storedPrefs\.data, \{ improvement_opt_out: optOut \}\)\)/, 'it must be written at user scope, with everything already stored kept');
   assert.match(mutation, /out\.preferences\.improvement_opt_out/, 'the confirmation must say what came back, not what was sent');
   const row = copy.slice(copy.indexOf('<Row id="improvement-opt-out"'), copy.indexOf('</Row>', copy.indexOf('<Row id="improvement-opt-out"')));
   assert.match(row, /checked=\{storedPrefs\.data\?\.preferences\.prefs\.improvement_opt_out \?\? false\}/, 'default must be not opted out');
   assert.match(row, /onChange=\{\(e\) => setImprovementOptOut\.mutate\(e\.target\.checked\)\}/, 'checked means opted OUT');
   assert.match(row, /storedPrefs\.isError/, 'a failed read must not render as "not opted out"');
+});
+
+/* ------------------------------------------- a failed read must never become a delete-everything save --- */
+
+test('A SWITCH SAVES ON TOP OF WHAT WAS LOADED, AND REFUSES WHEN NOTHING WAS: a blank base would delete every other preference', () => {
+  const stored = {
+    preferences: {
+      prefs: { analytics_opt_out: true, notify_events: { run_complete: false }, model: 'm' },
+      rejected: [],
+    },
+  };
+  // Loaded: everything stored stays, the change is added, and the change wins over a stored value of its own key.
+  assert.deepEqual(preferencesToSave(stored, { improvement_opt_out: true }), {
+    analytics_opt_out: true, notify_events: { run_complete: false }, model: 'm', improvement_opt_out: true,
+  });
+  assert.equal(preferencesToSave(stored, { analytics_opt_out: false }).analytics_opt_out, false);
+  assert.equal(stored.preferences.prefs.analytics_opt_out, true, 'the loaded object must not be mutated');
+  // Not loaded, in every shape a failed or pending read leaves behind: nothing is saved, and the person is told so.
+  for (const none of [undefined, null, {}, { preferences: {} }, { preferences: { prefs: null } }]) {
+    assert.throws(() => preferencesToSave(none, { improvement_opt_out: true }), { message: PREFERENCES_NOT_LOADED }, JSON.stringify(none));
+    assert.equal(preferencesLoaded({ data: none }), false, `${JSON.stringify(none)} is not a loaded read`);
+  }
+  assert.equal(preferencesLoaded({ data: stored }), true);
+  // An empty stored set is a real answer (a person who has set nothing), and is not mistaken for a failed read.
+  assert.deepEqual(preferencesToSave({ preferences: { prefs: {}, rejected: [] } }, { improvement_opt_out: true }), { improvement_opt_out: true });
+});
+
+test('BOTH PRIVACY SWITCHES ARE DISABLED UNTIL THE PREFERENCES HAVE LOADED, and no preference save takes a blank base', () => {
+  for (const [id, mutation] of [['improvement-opt-out', 'setImprovementOptOut'], ['analytics-opt-out', 'setAnalyticsOptOut']]) {
+    const at = copy.indexOf(`<Row id="${id}"`);
+    assert.ok(at > 0, `the ${id} row is not on the page`);
+    const row = copy.slice(at, copy.indexOf('</Row>', at));
+    // Disabled on "not loaded", which covers pending AND failed. `isPending` alone left the switch live after a failed read.
+    assert.match(row, new RegExp(`disabled=\\{!preferencesLoaded\\(storedPrefs\\) \\|\\| ${mutation}\\.isPending\\}`), `the ${id} switch is not disabled until the preferences have loaded`);
+  }
+  // Every preference save in the page is built by preferencesToSave, and none falls back to a blank object.
+  const saves = [...copy.matchAll(/savePreferences\('user', userId, /g)];
+  assert.ok(saves.length >= 3, `only ${saves.length} preference saves were read out of settings.tsx: this test would check nothing`);
+  for (const m of saves) {
+    assert.ok(copy.slice(m.index, m.index + 160).includes('preferencesToSave('), `a preference save at offset ${m.index} is not built by preferencesToSave`);
+  }
+  assert.doesNotMatch(copy, /preferences\.prefs \?\? \{\}/, 'a stored-preferences base falls back to a blank object again');
 });
 
 test('the switch says when it takes effect, and quotes the window the worker really keeps', () => {

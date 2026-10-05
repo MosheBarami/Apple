@@ -135,8 +135,12 @@ test('LOCK 1 of 3, the published rule: both privacy pages state the improvement-
 test('LOCK 2 of 3, the Settings control: an opt-OUT switch in Settings > Privacy, written through the preferences layer the worker accepts, saying the same rule', () => {
   assert.ok(ROW.length > 200, 'the improvement-data row is not in settings.tsx');
   assert.match(ROW, /<Switch[\s\S]*?name="improvementOptOut"/, 'the control is not a switch named improvementOptOut');
-  assert.match(SETTINGS_SRC, /savePreferences\('user', userId, \{ \.\.\.base, improvement_opt_out: optOut \}\)/, 'the switch does not write improvement_opt_out at user scope');
-  assert.match(WORKER_PREFS, /'improvement_opt_out',\n\] as const;/, 'the worker would refuse the key the switch writes');
+  // The property, not the spelling: user scope, on top of the LOADED preferences (preferencesToSave refuses a blank base), carrying the key.
+  assert.match(SETTINGS_SRC, /savePreferences\('user', userId, preferencesToSave\(storedPrefs\.data, \{ improvement_opt_out: optOut \}\)\)/, 'the switch does not write improvement_opt_out at user scope');
+  // Read OUT of the array with its comments stripped: it holds wherever in the list the key sits, and not once it is gone.
+  const declared = /PREFERENCE_KEYS = \[([\s\S]*?)\n\] as const/.exec(WORKER_PREFS)?.[1].replace(/\/\/.*$/gm, '').match(/'[a-z_]+'/g) ?? [];
+  assert.ok(declared.length > 5, 'could not read PREFERENCE_KEYS out of the worker: this test would check nothing');
+  assert.ok(declared.includes("'improvement_opt_out'"), 'the worker would refuse the key the switch writes');
   assert.ok(norm(ROW).includes(RULE), 'the Settings row does not say what the published pages say');
   assert.ok(norm(ROW).includes(NOT_ACTIVE), 'the Settings row does not say collection is not active');
 });
