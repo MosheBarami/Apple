@@ -281,11 +281,15 @@
    the ring when it has it: tabindex -1 makes it reachable by script and not a tab stop. */
 .auth-page .auth-card-title[tabindex='-1']:focus-visible { outline:2px solid var(--accent-ring); outline-offset:4px; }
 
-/* "Continue with Roblox" is an anchor, and a button's chrome (the 1px hairline, the 20px line) comes from the `button` element rule, which an anchor does
-   not match: beside Google and Discord it was a flat panel with no edge, 2px shorter. The anchor carries the same hairline and line height. It does so on a
-   class of its own and not on `a.btn`: the confirmation, reset and recovery screens draw their primary action as an anchor too (<Link className="btn
-   btn-primary btn-block">), and `a.btn` gave those the faint hairline in place of their accent border and took them from 47.7px to 46px. */
-.auth-page a.auth-roblox-link { border:1px solid var(--control-line); line-height:20px; }
+/* A full-width action drawn as an anchor has none of the chrome the `button` element rule (design/system.css) gives a <button>, and two things of it matter beside
+   its neighbours.
+   THE LINE: a <button> has a 20px line; an anchor inherits the page's 1.55, so at 14px it is 21.7px and the anchor stands 1.7px taller than the button over or
+   under it (the check-email card stacks "Send it again", a <button>, on "Go to sign in", an anchor). Every full-width anchor takes the button's line.
+   THE HAIRLINE: "Continue with Roblox" is a chrome button (the same variant as Google and Discord) and without the element rule it was a flat panel with no edge. It
+   carries the button's hairline on a class of its own and not on `a.btn`: the confirmation, reset and recovery screens draw their primary action as an anchor
+   too (<Link className="btn btn-primary btn-block">), and a border on every `a.btn` replaced their accent border with the faint one (cycle 1). */
+.auth-page a.btn-block { line-height:20px; }
+.auth-page a.auth-roblox-link { border:1px solid var(--control-line); }
 
 /* The reveal control lives INSIDE the well, so the input keeps the whole field and the button is
    read as part of it. The input reserves its width rather than running under it: text that

@@ -369,37 +369,153 @@ test('the hook module draws nothing and imports no client: it can be loaded with
 
 /* ------------------------------------------------------------------ the three look alike --- */
 
-//[[ RESTATED 2026-10-05 (M2 fix cycle 2). It pinned the rule's text `.auth-page a.btn { ... }`, and that selector also reached the six primary anchor
-//   buttons (<Link className="btn btn-primary btn-block">: the confirmation, reset and recovery screens): their accent border turned into the faint
-//   control hairline and their height from 47.7px to 46px. The property it keeps is the one the rule was written for: the Roblox anchor, and only
-//   it, carries the hairline and the 20px line a <button> gets from the element rule. ]]
-test('"Continue with Roblox" is an anchor and carries the hairline and line height a button gets from the element rule, on a class of its own, so the three match under one "or" and no other anchor button is touched', () => {
-  const css = readFileSync(join(WEB, 'src', 'routes', 'auth.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
-  // Every rule of the sheet, outside or inside an @media block: a selector list and its declarations.
-  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }));
-  assert.ok(rules.length > 40, `the scan read ${rules.length} rules of auth.css`);
-  const sets = (r, what) => new RegExp(`(^|[;\\s])(${what})\\s*:`).test(r.body);
-  // A rule that gives a border or a line height to EVERY anchor button (a subject of `a`, `a.btn` or `.btn`, reached through the containers every
-  // anchor button sits in) reaches the six primary ones too. A pseudo-element (the busy mark) and a rule scoped under another control (the theme
-  // toggle) are not an anchor button; the Roblox link's own class is the one scoping allowed.
-  const reaches = (selector) => selector.split(',').some((one) => {
-    const parts = one.trim().split(/\s+/);
-    const subject = parts.pop();
-    if (subject.includes('::') || /\.auth-roblox-link(?![\w-])/.test(subject)) return false;
-    if (!/^a?\.btn(?![\w-])/.test(subject) && !/^a(?![\w-])/.test(subject)) return false;
-    return parts.every((c) => ['.auth-page', '.auth-card', '.auth-form-col'].includes(c));
+//[[ RESTATED 2026-10-05 (M2 fix cycle 2), AND AGAIN IN CYCLE 3. Cycle 2: it pinned the rule's text `.auth-page a.btn { ... }`, and that selector also reached the
+//   six primary anchor buttons (<Link className="btn btn-primary btn-block">: the confirmation, reset and recovery screens): their accent border turned into
+//   the faint control hairline. Cycle 3, three things the cycle 2 matcher got wrong: (1) it split a selector on whitespace and required every container to be
+//   one of three names, so `.auth-page .auth-card > a { border: ... }` (a child combinator) was not seen; (2) it forbade a LINE HEIGHT on every anchor button,
+//   which is what kept the primary anchors 1.7px taller than the <button> beside them (47.7px against 46px), so the fix for that was blocked by the test; (3) it
+//   carried the 20px and the hairline as numbers of its own. The properties it keeps: only the Roblox anchor carries the hairline; no rule gives a primary
+//   anchor button a border that the primary <button> beside it does not get too (a design change that styles both alike is not this defect); and every full-width
+//   anchor has the line a <button> has, read from the button element rule and not written here. ]]
+
+// A small selector matcher, for the one question this test asks: COULD THIS SELECTOR MATCH A PRIMARY ANCHOR BUTTON? It over-approximates (a sibling or a state
+// it cannot model counts as possible), because a rule that might reach the button is the one to look at, and it is run on selectors of its own below so it is known
+// to see what it must. The chain is the markup's: the page, the form column, the card, then the anchor.
+const PRIMARY_CHAIN = (anchorClasses, last = { tag: 'a', classes: anchorClasses, attrs: ['href'] }) => [
+  { tag: 'html', classes: [], attrs: ['data-theme', 'lang'] },
+  { tag: 'body', classes: [], attrs: [] },
+  { tag: null, classes: ['auth-page'], attrs: [] }, // the containers are a <div> or a <form>: any tag
+  { tag: null, classes: ['auth-form-col'], attrs: [] },
+  { tag: null, classes: ['auth-card'], attrs: [] },
+  last,
+];
+const NEVER_ON_AN_ANCHOR = new Set(['disabled', 'enabled', 'checked', 'invalid', 'valid', 'required', 'optional', 'placeholder-shown', 'read-only', 'read-write']);
+const splitTop = (selector, at) => { // split on `at` outside parentheses and brackets
+  const parts = []; let depth = 0; let cur = '';
+  for (const ch of selector) {
+    if ('(['.includes(ch)) depth++; if (')]'.includes(ch)) depth--;
+    if (depth === 0 && at(ch)) { if (cur) parts.push(cur); cur = ''; parts.push(ch.trim() ? ch : ' '); continue; }
+    cur += ch;
+  }
+  if (cur) parts.push(cur);
+  return parts;
+};
+/** One compound selector (`a.btn:not(.btn-primary):hover`) against one element: could it match? Pseudo-elements are not elements (null). */
+function compoundMatches(compound, el) {
+  if (/::|:(before|after|first-line|first-letter)(?![\w-])/.test(compound)) return null;
+  let rest = compound; const need = { classes: [], attrs: [] }; let tag = null; let ok = true;
+  const lead = /^(\*|[a-zA-Z][\w-]*)/.exec(rest); if (lead) { tag = lead[1]; rest = rest.slice(lead[0].length); }
+  while (rest) {
+    let m;
+    if ((m = /^\.([\w-]+)/.exec(rest))) need.classes.push(m[1]);
+    else if ((m = /^#([\w-]+)/.exec(rest))) ok = false;
+    else if ((m = /^\[\s*([\w-]+)[^\]]*\]/.exec(rest))) need.attrs.push(m[1]);
+    else if ((m = /^:([\w-]+)\(/.exec(rest))) {
+      let depth = 1, i = m[0].length; for (; i < rest.length && depth; i++) { if (rest[i] === '(') depth++; if (rest[i] === ')') depth--; }
+      const args = rest.slice(m[0].length, i - 1); m = [rest.slice(0, i)];
+      const alternatives = splitTop(args, (ch) => ch === ',').filter((a) => a !== ',');
+      const any = alternatives.some((a) => compoundMatches(a.trim(), el) === true);
+      if (m && /^:not\(/.test(rest) && any) ok = false;
+      if (/^:(is|where)\(/.test(rest) && !any) ok = false;
+    } else if ((m = /^:([\w-]+)/.exec(rest))) {
+      if (NEVER_ON_AN_ANCHOR.has(m[1])) ok = false;
+      if (m[1] === 'root' && el.tag !== 'html') ok = false;
+    } else return null; // something this matcher does not know: not read as a match
+    rest = rest.slice(m[0].length);
+  }
+  if (tag && tag !== '*' && el.tag && tag.toLowerCase() !== el.tag) ok = false;
+  if (!need.classes.every((c) => el.classes.includes(c))) ok = false;
+  if (!need.attrs.every((a) => el.attrs.includes(a))) ok = false;
+  return ok;
+}
+/** Could `selector` (a list) match the last element of `chain`? Every combinator is read as "somewhere above, in this order"; a compound before `+` or `~` is a sibling and is not held. */
+export function couldReach(selector, chain) {
+  return selector.split(/,(?![^(\[]*[)\]])/).some((one) => {
+    const tokens = splitTop(one.trim(), (ch) => /[\s>+~]/.test(ch)).filter((t) => t.trim() || t === ' ');
+    const compounds = []; // [compound, combinator that follows it]
+    for (const t of tokens) {
+      if (/^[>+~]$/.test(t.trim()) && t.trim()) { if (compounds.length) compounds[compounds.length - 1][1] = t.trim(); continue; }
+      if (t === ' ') { if (compounds.length && !compounds[compounds.length - 1][1]) compounds[compounds.length - 1][1] = ' '; continue; }
+      compounds.push([t, null]);
+    }
+    if (!compounds.length) return false;
+    const subject = compounds.pop()[0];
+    if (compoundMatches(subject, chain.at(-1)) !== true) return false;
+    const held = compounds.filter(([, next]) => next !== '+' && next !== '~').map(([c]) => c);
+    let at = 0;
+    for (const c of held) {
+      while (at < chain.length - 1 && compoundMatches(c, chain[at]) !== true) at++;
+      if (at >= chain.length - 1) return false;
+      at++;
+    }
+    return true;
   });
-  const broad = rules.filter((r) => sets(r, 'border|border-color|border-width|line-height') && reaches(r.selector));
-  assert.deepEqual(broad.map((r) => r.selector), [], 'a rule of auth.css gives a border or a line height to every anchor button, the primary ones among them');
-  assert.ok(rules.some((r) => reaches(r.selector)), 'the matcher found no rule that reaches an anchor button at all, so it cannot tell a broad rule from a scoped one');
-  // The hairline and the line height sit on the Roblox link's own class.
+}
+const BORDERS = /^border(?!-radius|-collapse|-spacing|-image)[\w-]*$/;
+const declaredIn = (body, prop) => new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;]+)`).exec(body)?.[1].trim();
+const bordersOf = (body) => [...body.matchAll(/(?:^|[;\s])([\w-]+)\s*:/g)].map((m) => m[1]).filter((n) => BORDERS.test(n));
+
+test('THE MATCHER SEES A RULE THAT REACHES A PRIMARY ANCHOR BUTTON, however it is written, and passes the ones that do not', () => {
+  const chain = PRIMARY_CHAIN(['btn', 'btn-primary', 'btn-block']);
+  for (const reaches of [
+    '.auth-page a.btn', '.auth-page .btn', '.auth-page a', 'a.btn', '.btn', '.auth-page .auth-card > a', '.auth-page > .auth-form-col .auth-card a', '.auth-page .auth-card>a.btn-primary',
+    '.auth-page a[href]', '.auth-page a:not(.auth-roblox-link)', '.auth-page a.btn-block', ':root[data-theme="light"] .auth-page .btn-primary', '.auth-page .btn-block, .auth-page .nope',
+    '.auth-page .auth-card .btn-block + .btn-block', '.auth-page .auth-card ~ a', '.auth-page a.btn:hover', '.auth-page .btn-primary:is(a, button)', 'a.btn:where(.btn-primary)',
+  ]) assert.equal(couldReach(reaches, chain), true, `a rule on \`${reaches}\` is not seen as reaching the primary anchor`);
+  for (const misses of [
+    '.auth-page a.auth-roblox-link', '.auth-page .auth-theme-toggle .btn', '.auth-page .btn[data-busy="true"]', '.auth-page .btn[data-busy="true"]::before', '.auth-page button.btn', '.auth-page .btn:disabled',
+    '.auth-page .auth-card .btn-block:not(.btn-primary):hover:not(:disabled)', '.auth-page .auth-switch a', '.auth-page .auth-card .field input', '.auth-page .btn-ghost', '.auth-page .auth-switch .btn-ghost',
+    '.auth-page a.btn-block:before', '.auth-page a.btn-block::after',
+  ]) assert.equal(couldReach(misses, chain), false, `a rule on \`${misses}\` is seen as reaching the primary anchor`);
+  // The primary <button> beside it: a rule that reaches both styles them alike, and one that reaches only the anchor is the defect.
+  const button = PRIMARY_CHAIN(null, { tag: 'button', classes: ['btn', 'btn-primary', 'btn-block'], attrs: ['type'] });
+  for (const both of ['.auth-page .btn-primary', '.auth-page .btn-block', '.auth-page .btn', '.auth-page .auth-card .btn-block + .btn-block']) assert.equal(couldReach(both, button), true, `\`${both}\` is not seen as reaching a primary button`);
+  for (const anchorOnly of ['.auth-page a.btn', '.auth-page a', '.auth-page .auth-card > a', '.auth-page a[href]', '.auth-page a.btn-block']) assert.equal(couldReach(anchorOnly, button), false, `\`${anchorOnly}\` is seen as reaching a button`);
+  assert.deepEqual(bordersOf('border:1px solid red; line-height:20px'), ['border']);
+  assert.deepEqual(bordersOf('border-color:red;border-block-start-color:blue;border-radius:6px;margin:0'), ['border-color', 'border-block-start-color']);
+});
+
+test('"Continue with Roblox" is an anchor with the hairline a button gets from the element rule, on a class of its own; no other anchor button gets a border, and every full-width anchor has a button’s line', () => {
+  const stripped = (...p) => readFileSync(join(WEB, 'src', ...p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  // Every rule of the sheet, outside or inside an @media block: a selector list and its declarations.
+  const rulesOf = (css) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }));
+  const rules = rulesOf(stripped('routes', 'auth.css'));
+  assert.ok(rules.length > 40, `the scan read ${rules.length} rules of auth.css`);
+  // The element every primary anchor button is, from the markup (not written here): its classes.
+  const source = parse('routes', 'auth-pages.tsx');
+  const primaries = nodes(source).filter((n) => ts.isJsxOpeningElement(n) && n.tagName.getText() === 'Link' && /btn-primary/.test(n.attributes.getText()));
+  assert.ok(primaries.length >= 6, `${primaries.length} primary anchor buttons found`);
+  const classesOf = (el) => /className="([^"]*)"/.exec(el.attributes.getText())?.[1].split(/\s+/).sort().join(' ');
+  const shapes = new Set(primaries.map(classesOf));
+  assert.deepEqual([...shapes], ['btn btn-block btn-primary'], 'the primary anchor buttons are not all one shape');
+  const chain = PRIMARY_CHAIN(['btn', 'btn-primary', 'btn-block']);
+  const src = readFileSync(join(WEB, 'src', 'routes', 'auth-pages.tsx'), 'utf8');
+  for (const container of ['auth-page', 'auth-form-col', 'auth-card']) assert.match(src, new RegExp(`className="${container}"`), `the markup has no .${container}, so the chain this matcher asks about is not the page's`);
+  const buttonChain = PRIMARY_CHAIN(null, { tag: 'button', classes: ['btn', 'btn-primary', 'btn-block'], attrs: ['type'] });
+  const reaching = rules.filter((r) => couldReach(r.selector, chain));
+  assert.ok(reaching.length > 3, 'the matcher found almost no rule that reaches a primary anchor button, so it cannot tell a broad rule from a scoped one');
+  const anchorOnly = reaching.filter((r) => !couldReach(r.selector, buttonChain));
+  // (1) None of the anchor-only rules gives it a border (its own comes from the primary variant: the accent), so it can never differ from the button beside it.
+  const bordered = anchorOnly.filter((r) => bordersOf(r.body).length);
+  assert.deepEqual(bordered.map((r) => r.selector), [], 'a rule of auth.css gives a border to the anchor buttons and not to the buttons, the primary ones among them');
+  // (2) Every full-width anchor has the line a <button> has, and that is read from the button element rule.
+  const system = rulesOf(stripped('design', 'system.css'));
+  const element = system.filter((r) => r.selector.startsWith('button:where(') && !/:(hover|active|disabled|focus)/.test(r.selector) && declaredIn(r.body, 'line-height'));
+  assert.equal(element.length, 1, 'the button element rule of system.css (the one with a line height) was not found exactly once');
+  const buttonLine = declaredIn(element[0].body, 'line-height');
+  const buttonBorder = declaredIn(element[0].body, 'border');
+  assert.match(buttonLine, /^\d+px$/);
+  assert.match(buttonBorder, /^1px solid var\(--control-line\)$/);
+  const lines = reaching.filter((r) => declaredIn(r.body, 'line-height'));
+  assert.ok(lines.length >= 1, 'no rule gives the primary anchor buttons a line height, so they inherit the page’s and stand taller than a <button>');
+  for (const r of lines.filter((l) => anchorOnly.includes(l))) assert.equal(declaredIn(r.body, 'line-height'), buttonLine, `\`${r.selector}\` gives an anchor button a line other than a <button>'s ${buttonLine}`);
+  // (3) The hairline sits on the Roblox link's own class and is the button's own.
   const mine = rules.filter((r) => /\.auth-roblox-link(?![\w-])/.test(r.selector));
   assert.equal(mine.length, 1, 'the Roblox link has one rule of its own');
   assert.equal(mine[0].selector, '.auth-page a.auth-roblox-link');
-  assert.match(mine[0].body, /border:\s*1px solid var\(--control-line\)/);
-  assert.match(mine[0].body, /line-height:\s*20px/);
+  assert.equal(declaredIn(mine[0].body, 'border'), buttonBorder, 'the Roblox link’s border is not the button element rule’s');
+  assert.equal(couldReach(mine[0].selector, chain), false, 'the Roblox rule reaches a primary anchor button');
   // The class is on the Roblox anchor and on no other element, and no primary button wears it.
-  const source = parse('routes', 'auth-pages.tsx');
   const wearing = nodes(source).filter((n) => ts.isJsxAttribute(n) && n.name.getText() === 'className' && /(^|[\s"'`])auth-roblox-link(?![\w-])/.test(n.initializer?.getText() ?? ''));
   assert.equal(wearing.length, 1, 'the class is worn by more or fewer than the one Roblox link');
   const opening = wearing[0].parent.parent;
@@ -407,11 +523,8 @@ test('"Continue with Roblox" is an anchor and carries the hairline and line heig
   assert.match(opening.getText(), /href=\{robloxStartHref\(from\)\}/);
   assert.doesNotMatch(wearing[0].initializer.getText(), /btn-primary/);
   // The anchor is the only one of the three that is not a <button> (it is a navigation, not an action), and it says so in the markup.
-  const view = readFileSync(join(WEB, 'src', 'routes', 'auth-pages.tsx'), 'utf8');
-  assert.match(view, /<a className="btn btn-block auth-roblox-link" href=\{robloxStartHref\(from\)\}>/);
-  assert.match(view, /<button\s+key=\{provider\}\s+type="button"\s+className="btn btn-block"/);
-  // And the six primary anchor buttons are still there to be protected (a scan over an empty list would pass for nothing).
-  const primaries = nodes(source).filter((n) => ts.isJsxOpeningElement(n) && n.tagName.getText() === 'Link' && /btn-primary/.test(n.attributes.getText()));
-  assert.ok(primaries.length >= 6, `${primaries.length} primary anchor buttons found`);
+  assert.match(src, /<a className="btn btn-block auth-roblox-link" href=\{robloxStartHref\(from\)\}>/);
+  assert.match(src, /<button\s+key=\{provider\}\s+type="button"\s+className="btn btn-block"/);
+  // The Roblox anchor is a full-width anchor too, so it has the line without a rule of its own.
+  assert.equal(couldReach('.auth-page a.btn-block', PRIMARY_CHAIN(['btn', 'btn-block', 'auth-roblox-link'])), true);
 });
-
