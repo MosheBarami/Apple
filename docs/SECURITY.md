@@ -11,6 +11,13 @@ rendered, and the confirmed ones were fixed and re-tested against the live deplo
   JWKS (ES256). Compromising the worker yields no ability to mint sessions.
 - **The worker never uses a service-role key.** Every database call travels with the *user's own*
   JWT through PostgREST, so Postgres RLS is the enforcement point, not application code.
+- **Update 2026-10-05: those two properties now have one stated exception.** Sign in with Roblox needs
+  to create users and mint sign-in tokens, and Roblox gives no email, so when `SUPABASE_SECRET_KEY` is set
+  the worker holds a Supabase secret key. It is used in `apps/worker/src/roblox-oauth.ts` and nowhere
+  else, for three Auth admin calls (create a user, read a user's address, mint a one-time sign-in token),
+  never for a table query, and the worker still signs no JWT: Supabase issues the session. With the key
+  unset the routes answer 503 and the two properties above hold as written. The reasoning and the
+  rejected alternatives are in `planning/proof/M2/ROBLOX-SIGNIN.md`.
 - **Defence in depth on tenancy.** Ownership is checked in the worker *and* by RLS *and* by the
   Durable Object's owner binding. Verified live: cross-tenant reads return 404, cross-tenant
   WebSocket upgrades are rejected, and a cross-tenant PostgREST select returns 0 rows
