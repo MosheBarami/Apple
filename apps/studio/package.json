@@ -1,0 +1,38 @@
+{
+  "name": "@studpilot/studio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@cloudflare/kumo": "^2.14.0",
+    "@flue/react": "2.2.2",
+    "@flue/runtime": "2.2.2",
+    "@flue/sdk": "2.2.2",
+    "@phosphor-icons/react": "^2.1.10",
+    "@supabase/supabase-js": "^2.112.4",
+    "hono": "^4.13.12",
+    "jose": "^6.2.12",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "streamdown": "^2.7.0",
+    "valibot": "^1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.62.5",
+    "@cloudflare/workers-types": "^5.20260830.1",
+    "@flue/vite": "2.2.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "wrangler": "^4.147.0"
+  }
+}

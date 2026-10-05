@@ -234,6 +234,9 @@ images, generated audio and chat attachments, keyed `<kind>/<projectId>/<id>`, s
 caller keeps its KV path. Optional in `env.ts`: `PRODUCT_EVENTS` (Analytics Engine, product events with no person in
 them), `NOTIFY_QUEUE` (notifications written by a queue consumer with retries), `MODEL_UPLOAD_WORKFLOW` (finishes a
 slow 3D upload and tells the user) and `IMAGES` (display-sized WebP copies of generated images).
+`STUDIO` (service binding to the `studpilot-studio` worker, `apps/studio`, served at `/studio`; rebuild R1) is
+optional too; that worker reaches back through the `StudioGate` entrypoint, which serves only the read-only MCP tools
+for a project its owner opened (a 30-minute grant in `KV`).
 
 **Auth and data:** Supabase Postgres with RLS on every table. The worker forwards the caller's own JWT to
 PostgREST, so **RLS is the thing deciding**, not the worker. `infra/supabase/tests/rls-isolation.mjs` proves tenants

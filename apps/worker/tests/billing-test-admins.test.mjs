@@ -35,7 +35,7 @@ const bundle = (entry, name, extra = []) => {
   return import(`file://${out}`);
 };
 const CF_SHIM = join(TMP, 'cf.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const B = await bundle('billing.ts', 'billing.mjs');
 const AUTHORITY = await bundle('billing-origin-authority.ts', 'authority.mjs');
 const APP = (await bundle('index.ts', 'worker.mjs', [`--alias:cloudflare:workers=${CF_SHIM}`])).default;

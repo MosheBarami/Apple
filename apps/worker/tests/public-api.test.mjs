@@ -45,7 +45,7 @@ const TMP = mkdtempSync(join(tmpdir(), 'studpilot-public-api-'));
 process.on('exit', () => rmSync(TMP, { recursive: true, force: true }));
 
 const CF_SHIM = join(TMP, 'cf-shim.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
 let seq = 0;
 function bundle(entry, label) {

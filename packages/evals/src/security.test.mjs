@@ -190,7 +190,7 @@ const TMP = mkdtempSync(join(tmpdir(), 'studpilot-security-'));
 // the DurableObject base class, so a two-line shim lets the REAL entry module — routes, middleware
 // and all — be imported and exercised.
 const CF_SHIM = join(TMP, 'cf-workers-shim.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 
 let bundleSeq = 0;
 function bundle(entry, label) {
@@ -1991,7 +1991,12 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
   //                      passes a set-membership test against the grant proven under RLS at key
   //                      mint time — the same test whether the id came from the path or from
   //                      JSON-RPC arguments, which is the whole reason the function exists.
-  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub']);
+  //   studioGrantedStub  REVIEWED 2026-10-05 (rebuild R1). The Studio agent's tool calls, reached only
+  //                      through the StudioGate service binding. A session is materialised only for a
+  //                      project holding a live grant, and `grantStudio` is called only inside
+  //                      StudioGate.openProject, after withOwnedProject succeeded, with the id that
+  //                      check RESOLVED. Both halves are asserted below.
+  const reviewed = new Set(['sessionStub', 'withOwnedProject', 'discordPorts', 'grantedProjectStub', 'studioGrantedStub']);
   for (const s of sites) {
     const ok =
       reviewed.has(s.owner) ||
@@ -2015,6 +2020,19 @@ test('A3 STATIC CHECK — sessionStub is only reached from withOwnedProject, adm
     true,
     'the grant membership test must precede the stub — a session materialised first is a session an ungranted key created',
   );
+
+  // THE CHECK THAT MAKES studioGrantedStub SAFE: the grant is read before the session is addressed,
+  // and a grant is only ever written behind the owner check, for the id that check resolved.
+  const sgsOwner = owners.find((o) => o.name === 'studioGrantedStub');
+  assert.ok(sgsOwner, 'studioGrantedStub is gone — re-review how the Studio agent reaches a session');
+  const sgs = src.slice(sgsOwner.start, sgsOwner.end);
+  assert.ok(sgs.includes('sessionStub(') && sgs.indexOf('studioGrantKey(') < sgs.indexOf('sessionStub('),
+    'the studio grant must be checked before the session is addressed');
+  const grantCalls = [...src.matchAll(/await grantStudio\(/g)];
+  assert.equal(grantCalls.length, 1, 'a studio grant is written from somewhere other than StudioGate.openProject');
+  const openProject = src.slice(src.indexOf('async openProject('), grantCalls[0].index + 80);
+  assert.match(openProject, /const ctx = await withOwnedProject\([^]*if \(!ctx\) return \{ ok: false \};\s*await grantStudio\(this\.env, ctx\.project\.id\)/,
+    'the studio grant must be written only after withOwnedProject succeeded, for the id it resolved');
 
   // THE EARLIER CHECK THAT MAKES discordPorts SAFE. A Discord link's project id is only ever
   // whatever the mint route wrote, and the mint route must resolve ownership first.

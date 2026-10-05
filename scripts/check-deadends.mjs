@@ -125,6 +125,9 @@ const ENTRYPOINTS = new Set([
     } catch { return []; }
   })(),
   'apps/web/src/main.tsx',
+  // apps/studio (rebuild R1): Flue builds its Worker entry from app.ts; Vite loads main.tsx from index.html.
+  'apps/studio/src/app.ts',
+  'apps/studio/src/ui/main.tsx',
 ]);
 
 const isExcepted = (rel) =>

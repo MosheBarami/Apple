@@ -25,7 +25,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
 const TMP = mkdtempSync(join(tmpdir(), 'studpilot-session-sql-'));
 const CF_SHIM = join(TMP, 'cf.mjs');
-writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
+writeFileSync(CF_SHIM, 'export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } } export class WorkerEntrypoint { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }\n');
 const OUT = join(TMP, 'session.mjs');
 execFileSync(
   join(WORKER, 'node_modules', '.bin', 'esbuild'),

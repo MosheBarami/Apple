@@ -3,3 +3,8 @@
 export class DurableObject {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
 }
+
+// The service-binding entrypoint base class (StudioGate in index.ts), stubbed the same way.
+export class WorkerEntrypoint {
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+}

@@ -83,6 +83,8 @@
   "ai": {
     "binding": "AI"
   },
+  // apps/studio (rebuild R1), served at /studio. Deploy studpilot-studio before this worker.
+  "services": [{ "binding": "STUDIO", "service": "studpilot-studio" }],
   "d1_databases": [
     {
       "binding": "CORPUS",
