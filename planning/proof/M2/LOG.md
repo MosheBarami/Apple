@@ -57,3 +57,20 @@
   - the Analytics Engine retention figure, which still needs confirming;
   - the in-app policy notice, which has to exist before the training gate may open;
   - the owner's legal read (BLOCKED N7).
+
+## 2026-10-05: the design system is live (PR #32, `b306a33e`)
+
+- **Review:** one implementation pass, a two-lens review with two skeptics per finding, then three fix cycles, each
+  checked. Cycle 3 closed the sign-in button's hover and press label (1.96:1 → 9.25:1 hover, 4.99:1 press, dark),
+  the roadmap node focus ring (clipped, and dimmed to 1.18:1 → 3.65:1 at worst), and selection on accent fills
+  (2.77:1 → 6.54:1).
+- **On the rebased tree before the PR** (run by me):
+  - design 165/165, web 2537/2537, site 381/381;
+  - root 643/661 (the 2 known check-pixels cases);
+  - brand check OK; landing budget markup + CSS 17,481 / 20,000 B gzip; check-offer coherent; old names CLEAN.
+- **CI:** 7 of 7 green.
+- **Deploys:** the Worker verified `b306a33e` on studpilot.app; static uploaded and verified.
+- **Residuals** (DESIGN-SYSTEM.md, section 12): `gx-chip` hovered in light at 4.41:1; pixel-read rings cover the map
+  nodes only; the owner dashboards hand-copy the accent.
+- **Process:** the cycle-3 agent ran `git checkout --` on one file in its own scratch clone (the rule forbids it in the
+  shared checkout only), and it wrote one draft into `/tmp/_x` and then removed it.

@@ -34,6 +34,20 @@ accepts the redirect, and that the whole round trip works.
    and Disconnect.
 Roblox allows at most 10 users until the app passes review (X9).
 
+### S1. Roblox Studio: sign in, open the eval place, pair once (10 minutes; M3 cannot run its baseline without it)
+Roblox Studio on this Mac is signed out: every Studio MCP call answered 401. Claude Code does not sign in for
+you, and computer access to Studio was refused, so the steps that need Studio's own screens are yours.
+1. Open **Roblox Studio** and sign in with your Roblox account.
+2. Open the local place `~/Developer/StudPilot-eval/EvalBaseplate.rbxlx` with **File → Open from File**. Claude Code
+   puts that file there; the M3 runbook `scripts/eval/README.md` says how it is made. Do not publish it.
+3. Check that the StudPilot plugin shows in the **Plugins** tab. If it does not, tell Claude Code; it installs the
+   build into `~/Documents/Roblox/Plugins`.
+4. Tell Claude Code "studio ready". It mints a pairing code for the eval project with the admin route and gives it
+   to you.
+5. Type the 6-character code into the plugin's pairing box and click **Connect**. Leave Studio open on that place
+   while the 60 runs go. Closing Studio ends the pairing.
+Alternative: allow Claude Code computer access to **RobloxStudio** when it asks, and it does steps 2 and 5 itself.
+
 ## Before charging money
 
 ### X5. An adult holds the Stripe account
