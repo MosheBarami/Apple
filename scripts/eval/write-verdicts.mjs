@@ -80,7 +80,9 @@ export function verdictFor(piece, { criticA, criticB, claims, extraReasons = [] 
     planned: plannedPictures(piece),
     uiRequired: uiRequiredBecause(piece),
     playTest: play,
-    functionalChecks: m.functionalChecks ?? { defined: false },
+    // No default here: a manifest with no record of the checks is decided in one place, computeVerdict, which counts it as not defined
+    // (unevaluable). A second default here could never change the verdict, so no test could ever catch it being wrong.
+    functionalChecks: m.functionalChecks,
     claims: unsupported ? { unsupported } : null,
     run: { endedBy: dryRun ? 'dry-run' : m.aborted ? 'aborted' : m.run?.endedBy ?? 'unknown' },
   });
