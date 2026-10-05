@@ -193,3 +193,62 @@ inside its answer, the shared-pool sentence inside its note, and the build-cost 
 - `apps/web/src/lib/generative-ui` `quotaToDocument` hands a raw `QuotaState` to the `usage_summary` block. Nothing calls it
   (only `ui-lab` draws that block, from literals), and the block's numbers are unit-free, so it was left alone.
 - The SDK `usage` command prints what `/api/me/usage` sends, in ledger units, which is the public contract.
+
+## 9. What the second review changed (cycle 2, HEAD `d1a25c4e`)
+
+A fresh review of `d1a25c4e` left seven groups of defects. Each has a test that was run red against the unfixed code (or against
+a mutation of the fix) and then green; the mutations are in the report.
+
+**1. Stop while a step is in flight no longer leaves the step unbilled (money).** Stop ended the run at once with only the 1-unit
+admission charged, and the abandoned provider call still finished and was billed to the service: up to `MAX_NEURONS_PER_REQUEST`
+(1,200 neurons = 40 ledger units). A Free account could send and Stop in a loop at 40 units of compute for every 1 it paid. Now
+`settleAbandonedStep` pays for the step when the call resolves, with the same `upTo` settlement as every other step (capped by
+what the person has left): its measured neurons, or the ceiling when it reports none; a call that fails is not charged (the
+gateway releases its reservation and records no spend). The run row and the meter are brought to what the ledger took. Measured
+in `run-refund.test.mjs`: with 150 units left, send-and-Stop ends after 4 abandoned steps (40, 40, 40 and 30 units charged, the last part-paid) and
+the 5th request is refused at the door; before the fix 150 units paid for 150 requests and it never ended. **Left open:** steps
+that are abandoned at the same moment are each paid when they resolve, so the unbilled window is the number in flight at once (a
+few seconds of send-and-Stop) times 40 units, once per day per account, instead of unbounded; the global caps are the other bound.
+
+**2. The `upTo` ceiling is tested.** `Math.min(credits, st.allowanceRemaining)` (dropping `+ st.credits`) passed every test, because
+every fixture had no purchased credits or an allowance that covered the amount. A settlement now has to draw 20 units from 30
+purchased credits with the allowance spent, and stop at the 10 that remain on the next.
+
+**3. Every refill sentence names the limit that binds.** `quotaState` spends `min(dayLeft, monthLeft)`, and Free's 30 credits a
+month are used up in 6 full days, so "Daily Credits are used up. They refill at midnight UTC" promised the allowance back in hours
+when it is weeks away. `quotaLimit` (packages/shared; the web meter's rule, a tie names the month) gives the period, the instant it
+lifts (the next UTC midnight, or the first instant of the next UTC month) and the words. Used by: the admission refusal, the
+between-steps pause, the settlement stop, the `usage_threshold` notification (title, body and the low-balance band, now measured
+against the period's total), Discord `/credits`, `/status` and `/build`, voice typing, the web meter's empty-balance line, the
+pricing FAQ (two answers) and `/docs/credits-and-limits`. Three refusals that said only "Daily Credits used up" (branding, the
+unranked roadmap, docs search) say "Your Credits are used up" with no refill promised. The activity timeline's ending label no
+longer says "for today". Both periods are tested on each surface.
+
+**4. `/pricing` pins.** The comparison table's Price, Credits a day, Credits a month and builds rows are compared cell by cell with
+`PLAN_TABLE` (not with `PLAN_FEATURES`, which is what the page renders) and with the decided figures typed once, so reverting a row to
+the `PLAN_LIMITS` ledger figures, or the Free price cell to "Free forever", fails. The card assertions are bounded (`has`: no digit,
+comma or point glued to the front), so "15 Credits per day" no longer passes for "5 Credits per day".
+
+**5. Guards.** `offer-rules.mjs` rule 4 reads the period (day or month) and holds a claim that names a plan (Free, Pro, Max) to that
+plan's own figure: "Max gives 300 Credits a day", "Free gives 30 Credits a day" and "Free gives 5 Credits a month" are reported.
+`PRICE_CLAIM` also reads "$12 / month", "$12 monthly", "$12 each month", "$12 every month" and "$12 USD a month". The `CREDIT_CLAIM`
+lookbehind has a test of its own (`1.2.5 Credits a day` is not a claim). `scripts/check-offer.mjs` is a CI step in Static checks,
+and the real-tree test requires exit 0 (it read only tracked files and the shared tables, so nothing outside the tree can turn it
+red). `check-credit-figures.mjs` requires the pricing page to USE `PLAN_TABLE`, `BUILD_COSTS`, `CREDIT_USD` and
+`TYPICAL_BUILD_CREDITS` (comments and import statements taken out first), not to import them. The plan-economics literal scan reads
+numeric separators, so `4_500` is the figure 4500.
+
+**6. Three web conversions are pinned.** The account-menu balance, the composer's `SlidingNumber` decimals branch (renders `3.54`,
+`3.50`, `0.00`, `1,204.10`) and the usage-page ring's centre figure are rendered and read. The ring starts at the balance under
+reduced motion instead of drawing 0.00 until the tween runs, which is what makes the drawn figure readable; `CreditsRing` is
+exported for the test.
+
+**7. Small.** The changelog no longer defines "1 Credit = 30 neurons" (it says what the ledger unit was and what a Credit is now).
+The Free card says "The same StudPilot engine as every plan" instead of "Every build mode". `/pricing` FAQ and `/terms` point to the
+Plan & billing tab of the Usage and Credits page, which exists. The SDK's `studpilot usage` help says ledger units (150 to a
+Credit); the API contract is unchanged. The count beside "Spent today" is a count of ledger rows, each one a CHARGE (a request's
+admission, a model step's settlement), so it is labelled "Charges today" and the calendar says "N charges" under "Days you spent
+Credits" (it said "Builds today", "N requests" and "Days you built").
+
+**Still open after cycle 2:** the M6 one-pool profit gap (section 3), the roadmap chip's per-request scale (section 8), and the
+paid daily caps (section 5), all as written there. Not changed: checkout stays off and nothing was deployed, pushed or sent.
