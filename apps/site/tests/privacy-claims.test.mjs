@@ -278,7 +278,7 @@ test('what is held outside those two tables is on the pages too: the placeholder
   }
 });
 
-test('Roblox data is never used for AI training, stated on every page, and the wipe the pages describe is in the code', () => {
+test('Roblox data is never used for AI training, stated on every page, and the stored token is used only for what the pages say', () => {
   for (const [where, text] of [...BOTH, ['/terms', TERMS]]) {
     assert.match(text, /Roblox data is never used for AI training|data that comes from Roblox is never used for AI training/i, `${where} does not state the Roblox no-training rule`);
   }
@@ -286,21 +286,74 @@ test('Roblox data is never used for AI training, stated on every page, and the w
   // No code path trains on anything today: the gate that would is closed (promises-match-the-product.test.mjs holds it to the copy).
   assert.match(gate, /export const CUSTOMER_WORK_TRAINING_ENABLED = false;/);
 
-  // The mechanism: refreshRobloxAccessToken, the one function that uses the stored token, deletes it when Roblox says invalid_grant.
-  assert.match(oauth, /async function robloxSaysGrantGone[\s\S]{0,400}=== 'invalid_grant'/);
-  // (The version and generation binding of that delete is held by behaviour, not by its SQL text: roblox-oauth.test.mjs "ACCESS LOST deletes only the row that was refreshed".)
-  assert.match(oauth, /async function wipeDeadGrant[\s\S]{0,500}delete from roblox_oauth_tokens/);
-  const at = oauth.indexOf('export async function refreshRobloxAccessToken');
-  const refresh = oauth.slice(at, oauth.indexOf('\nexport ', at + 10));
-  assert.match(refresh, /if \(await robloxSaysGrantGone\(res\)\) \{\s*await wipeDeadGrant\(env, userId, row\);/, 'the refresh no longer wipes the token when Roblox says the grant is gone');
-
-  // THE LIMITATION THE PAGES ADMIT IS TRUE ONLY WHILE NOTHING CALLS THE REFRESH. The day M5c calls it, "nothing uses it yet" is false and must go.
+  // WHAT THE STORED TOKEN IS USED FOR (owner decision D-14): asking Roblox to withdraw access, and the daily check. Nothing else calls the refresh: the only caller of
+  // `refreshRobloxAccessToken` is `checkRobloxGrants` (the confirming refresh), in roblox-oauth.ts itself, and nothing outside that file calls it at all.
   const callers = WORKER_SRC.filter((f) => !f.endsWith('roblox-oauth.ts') && /refreshRobloxAccessToken/.test(code(f)));
-  assert.deepEqual(callers, [], 'something now calls refreshRobloxAccessToken: the pages still say nothing uses the Roblox token yet. Reword them, and say what the connection is used for');
-  // INSIDE roblox-oauth.ts TOO, where a new caller is most likely to appear: the function is named once (its definition) and nothing there calls it.
-  assert.equal([...code(join(WORKER, 'src', 'roblox-oauth.ts')).matchAll(/\brefreshRobloxAccessToken\b/g)].length, 1,
-    'roblox-oauth.ts now calls refreshRobloxAccessToken (or names it twice): the pages still say nothing uses the Roblox token yet');
-  for (const [where, text] of BOTH) assert.match(text, /nothing uses it yet/, `${where} no longer says the token is not used yet`);
+  assert.deepEqual(callers, [], 'something outside roblox-oauth.ts now calls refreshRobloxAccessToken: the pages say the stored token is used for two things only. Reword them, and say what it is used for');
+  const oauthCode = code(join(WORKER, 'src', 'roblox-oauth.ts'));
+  const checkBody = oauthCode.slice(oauthCode.indexOf('export async function checkRobloxGrants'), oauthCode.indexOf('export function describeGrantCheck'));
+  assert.ok(checkBody.length > 800, 'could not read checkRobloxGrants out of roblox-oauth.ts');
+  assert.equal([...oauthCode.matchAll(/\brefreshRobloxAccessToken\(/g)].length, 2, 'roblox-oauth.ts calls refreshRobloxAccessToken somewhere other than its definition and the daily check: the pages say the stored token is used for two things only');
+  assert.match(checkBody, /await refreshRobloxAccessToken\(env, row\.user_id, now\)/, 'the daily check no longer confirms an "inactive" answer with a refresh');
+  // The token is sent to Roblox in three places, and the pages name all three: the code exchange does not hold it, revoke (disconnect, delete, Go back) and introspect (the daily check).
+  const sends = [...oauthCode.matchAll(/postToRoblox\('(\/[a-z/]+)'/g)].map((m) => m[1]).sort();
+  assert.deepEqual(sends, ['/token', '/token', '/token/introspect', '/token/revoke'], 'the worker now sends Roblox something else: the pages list what it is asked');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /(uses|used for) (the stored token for )?two things only|The stored token is used for two things only/, `${where} does not say the stored token is used for two things only`);
+    assert.match(text, /is sent your stored token once a day to say whether it is still valid|sends it your stored token once a day to ask whether the token is still valid/, `${where} does not name Roblox as the recipient of the daily validity question`);
+    assert.doesNotMatch(text, /nothing uses it yet|learns this only when it next tries to use|until you sign in with Roblox again \(which replaces it\)\. Your Roblox user id and username are not part of that deletion/, `${where} still says nothing uses the Roblox token yet, or that a lost grant leaves the id and username`);
+  }
+});
+
+test('WHEN ROBLOX ACCESS IS LOST, ALL THE ROBLOX DATA IS DELETED: the pages state the rule and the mechanism as the code does them, and the code is read, not assumed', () => {
+  // Owner decision D-14 (Roblox Third-Party App Policy: wipe all Roblox-API data if access is lost). BEHAVIOUR is held by apps/worker/tests/roblox-oauth.test.mjs ("ACCESS LOST ...",
+  // "THE DAILY CHECK ...", "AFTER A WIPE, signing in with Roblox again finds the SAME account"). Here: every sentence the pages make is read against the source.
+  const cron = wcode(join(WORKER, 'src', 'index.ts'));
+  const run = cron.slice(cron.indexOf('async function runScheduled'), cron.indexOf('async function reportedScheduled'));
+  assert.match(run, /await runRetentionSweeps\(env\)[\s\S]*await checkRobloxGrants\(env\)/, 'the daily cron no longer runs the Roblox grant check after the sweeps');
+  const src = code(join(WORKER, 'src', 'roblox-oauth.ts'));
+  // "asks whether it is still valid": the introspection endpoint, with the token and the client's credentials.
+  assert.match(src, /postToRoblox\('\/token\/introspect', \{ token, client_id: cfg\.clientId, client_secret: cfg\.clientSecret \}\)/, 'the daily check no longer asks Roblox\'s introspection endpoint');
+  // "says it is not ... asks once more to be sure ... a refresh that Roblox refuses because the access is gone counts the same way".
+  assert.match(src, /if \(await robloxSaysGrantGone\(res\)\) \{\s*const wiped = await wipeLostGrant\(env, userId, row\);/, 'a refresh refused with invalid_grant no longer wipes');
+  assert.match(src, /async function robloxSaysGrantGone[\s\S]{0,400}=== 'invalid_grant'/);
+  // "deletes the stored token, deletes the link holding your Roblox user id and username": one batch, the link only while no token is left.
+  const wipe = src.slice(src.indexOf('async function wipeLostGrant'), src.indexOf('async function scrubRobloxFromAccount'));
+  assert.ok(wipe.length > 800, 'could not read wipeLostGrant out of roblox-oauth.ts');
+  assert.match(wipe, /delete from roblox_oauth_tokens where user_id = \? and version = \? and generation = \?/);
+  assert.match(wipe, /delete from roblox_identities where user_id = \? and not exists \(select 1 from roblox_oauth_tokens where user_id = \?\)/);
+  // "clears your Roblox user id and username from your sign-in account and, while it is still your display name, from your profile": the Auth update, then ONE table call.
+  const scrubStart = src.indexOf('async function scrubRobloxFromAccount');
+  const scrubBody = src.slice(scrubStart, src.indexOf('\n}\n', scrubStart) + 3);
+  assert.ok(scrubBody.length > 800, 'could not read scrubRobloxFromAccount out of roblox-oauth.ts');
+  assert.match(scrubBody, /admin\(env, auth, 'PUT', `\/users\/\$\{encodeURIComponent\(userId\)\}`/, 'the wipe no longer updates the Auth user');
+  assert.match(scrubBody, /app_metadata: \{ roblox_sub: null, roblox_code: await robloxCode\(env, sub\) \}/, 'the wipe no longer clears the Roblox id and keeps the one-way code');
+  assert.match(scrubBody, /str\(user\.userMetadata\.display_name\) === username/, 'the Auth display name is cleared whatever it is: the pages say only while it is still the Roblox username');
+  assert.match(scrubBody, /rest\/v1\/profiles\?id=eq\.\$\{encodeURIComponent\(userId\)\}&display_name=eq\.\$\{encodeURIComponent\(username\)\}/, 'the profile update is no longer limited to this person and to a name that is still the Roblox username');
+  assert.match(scrubBody, /body: JSON\.stringify\(\{ display_name: null \}\)/, 'the profile update writes something other than clearing the display name');
+  assert.equal([...src.matchAll(/\/rest\/v1\//g)].length, 1, 'roblox-oauth.ts now makes another table call with the secret key: the pages say the only table it touches is the display name in the profile row');
+  // "keeps only a one-way code ... made with a secret key that only StudPilot's server holds": a keyed digest, with a purpose label of its own, and the adoption proof reads it.
+  assert.match(src, /const CODE_PURPOSE = 'roblox-signin-code';/);
+  assert.match(src, /const robloxCode = \(env: Env, sub: string\): Promise<string> => keyedId\(env, CODE_PURPOSE, sub\);/);
+  assert.match(src, /const provesCode = link\.robloxCode !== '' && link\.robloxCode === \(await robloxCode\(env, who\.sub\)\);/, 'the account is no longer found again by its one-way code');
+  // "If Supabase cannot be reached ... nothing is deleted yet and the next daily check tries again": the wipe is `kept`, and the token row (the marker) stays.
+  assert.match(wipe, /return 'kept';/);
+  // "An account that signs in only with Roblox has to sign in with Roblox again before it can export or delete": the gate reads the identity row's confirmation time, which the wipe deleted.
+  assert.match(src, /select reauth_at from roblox_identities where user_id = \?/, 'the re-authentication no longer reads the identity row: the sentence about a Roblox-only account after a loss may be untrue');
+  // "A Roblox Open Cloud key is your own key and is not part of this": the wipe touches neither the credential table nor the write log.
+  assert.doesNotMatch(wipe + scrubBody, /user_credentials|creator_write_log/, 'the wipe now touches the Open Cloud key or its log: reword the pages');
+  for (const [where, text] of BOTH) {
+    assert.match(text, /When Roblox access is lost, all the Roblox data is deleted/, `${where} does not state the rule`);
+    assert.match(text, /Once a day StudPilot\s+sends Roblox each stored token and asks whether it is still valid/, `${where} does not say the daily check`);
+    assert.match(text, /asks Roblox once more to be sure, by trying to refresh the token/, `${where} does not say a refresh confirms an inactive answer`);
+    assert.match(text, /a refresh that\s+Roblox refuses because the access is gone, at any other time, counts the same way/, `${where} does not say a refused refresh counts the same way`);
+    assert.match(text, /deletes the stored token(, deletes the link| and the link)[^.]{0,120}Roblox user id and\s+username, and clears your Roblox user id and username from your\s+sign-in account and, while it is\s+still your display name, from your profile/, `${where} does not list what is deleted and cleared`);
+    assert.match(text, /one-way code that cannot be turned back into your Roblox id[^.]{0,120}only StudPilot's server holds[^.]*\), so signing in with Roblox again finds your account/, `${where} does not say what is kept and why the account is found again`);
+    assert.match(text, /If Supabase cannot be reached[^.]*nothing is deleted yet and the next daily\s+check tries again/, `${where} does not say what happens when Supabase cannot be reached`);
+    assert.match(text, /has to sign in with Roblox again\s+before it can export or delete its data afterwards/, `${where} does not say a Roblox-only account must sign in again before exporting or deleting`);
+    assert.match(text, /Open Cloud key is your own key and\s+is not part of this: you remove it in Settings, and deleting your account removes it/, `${where} does not say the Open Cloud key is not part of the wipe`);
+    assert.match(text, /all of it is deleted at the next daily check/, `${where}: the retention line for the Roblox sign-in does not say it is deleted at the next daily check once access is lost`);
+  }
 });
 
 /* ----------------------------------------------------------------------------------- 13 and older --- */
@@ -374,13 +427,16 @@ test('the Supabase secret key is described by what it does: used in one file, fo
   assert.deepEqual(users, ['src/env.ts', 'src/roblox-oauth.ts'], 'the Supabase secret key is read somewhere else now: the pages say it is used in one place');
   const calls = [...code(join(WORKER, 'src', 'roblox-oauth.ts')).matchAll(/admin\(env, (?:cfg|auth), '([A-Z]+)', (['`])([^'`]+)\2/g)]
     .map((m) => `${m[1]} ${m[3].replace(/\$\{[^}]*\}/g, '')}`).sort();
-  assert.deepEqual(calls, ['DELETE /users/', 'GET /users/', 'POST /generate_link', 'POST /users'], 'the Auth admin calls changed: the pages name exactly what the key is used for');
+  assert.deepEqual(calls, ['DELETE /users/', 'GET /users/', 'POST /generate_link', 'POST /users', 'PUT /users/'], 'the Auth admin calls changed: the pages name exactly what the key is used for');
   for (const [where, text] of BOTH) {
     assert.match(text, /create the account/, `${where} does not say the key creates the account`);
     assert.match(text, /read that account's sign-in address/, `${where} does not say the key reads the sign-in address`);
     assert.match(text, /one-time (sign-in )?link/, `${where} does not say the key issues the one-time link`);
     assert.match(text, /delete your account there when you delete it/, `${where} does not say the key deletes the account when its owner deletes it`);
-    assert.match(text, /not used (to read or write your projects or any other table|for your projects or any other table)/, `${where} does not say what the key is not used for`);
+    assert.match(text, /clear your Roblox id and username from your sign-in account/, `${where} does not say the key clears the Roblox id and username from the account when access is lost`);
+    assert.match(text, /not used (to read or write your projects|for your projects)/, `${where} does not say what the key is not used for`);
+    assert.match(text, /only table it touches is the display name in your profile row, which it clears when that name is your Roblox username and Roblox access is lost/, `${where} does not say which table the key touches`);
+    assert.doesNotMatch(text, /not used (to read or write your projects or any other table|for your projects or any other table)|any other table\./, `${where} still says the key touches no table`);
     assert.doesNotMatch(text, /no master key|hold(s)? no (master|service|secret)|no service[- ]role/i, `${where} still says the server holds no master key`);
     assert.doesNotMatch(text, /not to delete accounts|and not used to delete/i, `${where} still says the key is not used to delete accounts`);
   }

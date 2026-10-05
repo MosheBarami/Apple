@@ -5,7 +5,7 @@ import {
   uploadAsset, getAsset, getUploadStatus, reachedRoblox, UNBUILDABLE,
 } from './creator-dashboard';
 import { checkRobloxCredential } from './roblox-check';
-import { describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
+import { checkRobloxGrants, describeGrantCheck, describeRobloxConnection, disconnectRoblox, robloxOAuthRoutes, robloxReauthRefusal } from './roblox-oauth';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import {
@@ -7454,6 +7454,25 @@ async function runScheduled(env: Env, cron: string | null): Promise<void> {
       fatal: false,
       actorId: null,
     });
+  }
+  // ROBLOX GRANTS (owner decision D-14): ask Roblox whether each stored token is still valid, and wipe the Roblox data of a person whose grant is lost
+  // (Roblox Third-Party App Policy). Its own step, after the others: a Roblox outage must not cancel the retention sweep. The counts are recorded either
+  // way, so a night that checked nothing (no Roblox sign-in on this deployment) reads as that and not as a quiet night. `disagreed` and `kept` are the two
+  // results a person has to look at: Roblox contradicted itself (the introspection call is wrong), or a wipe could not finish and is retried tomorrow.
+  const grants = await checkRobloxGrants(env);
+  recordEvent({
+    kind: 'audit',
+    action: 'roblox_grant_check',
+    actorKind: 'system',
+    allowed: !grants.skipped && grants.disagreed === 0 && grants.kept === 0 && grants.unreadable === 0,
+    subject: describeGrantCheck(grants),
+  });
+  for (const [count, scope, message] of [
+    [grants.disagreed, 'roblox-grants:introspection', 'Roblox reported a token inactive and a refresh then worked: the introspection call is misread and no grant was wiped for it'],
+    [grants.kept, 'roblox-grants:wipe', 'a grant Roblox reports lost could not be wiped yet (Supabase or the database could not be reached); it is retried at the next check'],
+    [grants.unreadable, 'roblox-grants:unreadable', 'a stored Roblox token could not be opened (CREDENTIAL_KEY rotated or lost), so it was not checked'],
+  ] as const) {
+    if (count > 0) recordEvent({ kind: 'error', scope, errorKind: 'sweep_failed', message, fatal: false, actorId: null });
   }
   // Flushed here rather than left to `maybeFlush`: a scheduled invocation makes a handful of events
   // and then the isolate goes away, so a threshold-based flush would drop exactly the record that

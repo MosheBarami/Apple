@@ -57,16 +57,29 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>A Roblox refresh token, encrypted</strong> with a key the database does not hold, never returned to anyone and never in your data export. It is a pass Roblox gives StudPilot, and it exists so StudPilot can ask Roblox to withdraw its access when you disconnect, delete your account, or choose "Go back" on first sign-in.</li>
     <li><strong>The permissions Roblox granted</strong> and <strong>technical bookkeeping</strong> for the token, so two requests do not use it at once: a version counter, a lock held for up to 30 seconds during a refresh, and when it was last replaced.</li>
     <li><strong>The time you last confirmed with Roblox that it is you.</strong> An account with no password confirms this way before it exports or deletes its data; the confirmation is good for ten minutes.</li>
-    <li><strong>In Supabase,</strong> a placeholder address ending in users.studpilot.invalid (made up, because Roblox gives us none), your Roblox user id and your Roblox username as the display name.</li>
+    <li><strong>In Supabase,</strong> a placeholder address ending in users.studpilot.invalid (made up, because Roblox gives us none), your Roblox user id and your Roblox username as the display name (both are cleared if Roblox access is lost, as described below).</li>
     <li><strong>Up to five minutes</strong> in short-term storage while you decide whether to create the account on first sign-in; "Go back" deletes it and asks Roblox to withdraw the authorization that was just given. If Roblox cannot be reached it is not withdrawn, and you are not shown a message about that, so check the apps authorized on your Roblox account if you want to be sure.</li>
     <li><strong>During a sign-in only,</strong> two cookies StudPilot's own address sets (not readable by scripts on the page; one lasts ten minutes, one five) and matching short-term records: for ten minutes the state of the sign-in you started (a random value, a one-time secret and the page you were heading to), and for five minutes, if you already have an account, a hash of the one-time sign-in token.</li>
   </ul>
   <p>
     <strong>Roblox data is never used for AI training</strong> — not the sign-in data, not anything
     received through a Roblox authorization or an Open Cloud key — and it is never part of improvement
-    data. If Roblox reports the access lost, StudPilot deletes the stored token the next time it tries
-    to use it; nothing uses it yet beyond withdrawing access, so today our copy stays until you
-    disconnect, delete your account or sign in again. Uploads to your Roblox account are not built yet.
+    data. <strong>When Roblox access is lost, all the Roblox data is deleted.</strong> Once a day
+    StudPilot sends Roblox each stored token and asks whether it is still valid. If Roblox says it is
+    not (you removed StudPilot among the apps authorized on your Roblox account, or the permission ran
+    out), StudPilot asks Roblox once more to be sure, by trying to refresh the token; a refresh that
+    Roblox refuses because the access is gone, at any other time, counts the same way. When Roblox
+    confirms it, StudPilot deletes the stored token and the link holding your Roblox user id and
+    username, and clears your Roblox user id and username from your sign-in account and, while it is
+    still your display name, from your profile. It keeps only a one-way code that cannot be turned back
+    into your Roblox id (made with a secret key that only StudPilot's server holds), so signing in with
+    Roblox again finds your account, with its projects; the sign-in page may ask you to confirm first,
+    and it is this same account that comes back. If Supabase cannot be reached, nothing is deleted yet
+    and the next daily check tries again. An account that signs in only with Roblox has to sign in with
+    Roblox again before it can export or delete its data afterwards. A Roblox Open Cloud key is your
+    own key and is not part of this: you remove it in Settings, and deleting your account removes it.
+    The stored token is used for two things only: asking Roblox to withdraw access, and that daily
+    check. Uploads to your Roblox account are not built yet.
   </p>
 
   <h2>Improvement data</h2>
@@ -85,10 +98,10 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
   <h2>Where it lives</h2>
   <ul>
     <li><strong>Cloudflare</strong> runs the application and stores project session data — chat and checkpoints — isolated per project, and runs text, image, sound and speech inference through AI Gateway. Its Turnstile bot check guards the sign-in, sign-up, password-reset and account-recovery forms, and Cloudflare sees what that check collects.</li>
-    <li><strong>Supabase</strong> runs authentication and the account registry (your email or placeholder address, your display name, your project list). Rows are protected so that requests carrying <em>your</em> verified credentials can read what is yours. Two narrow exceptions exist. For Sign in with Roblox, StudPilot's server holds a Supabase secret key that it uses only to create the account for a new Roblox sign-in, read that account's sign-in address, issue the one-time sign-in link and delete your account there when you delete it; it is not used for your projects or any other table. And a few database functions run with no person's credentials, checked by a secret the database holds instead, each doing one narrow thing: one gives a project's name, place name and remembered notes to someone who opened a share link to it, and the others pass membership changes (who gained or lost access to which project, in what role) on to the running project.</li>
+    <li><strong>Supabase</strong> runs authentication and the account registry (your email or placeholder address, your display name, your project list). Rows are protected so that requests carrying <em>your</em> verified credentials can read what is yours. Two narrow exceptions exist. For Sign in with Roblox, StudPilot's server holds a Supabase secret key that it uses only to create the account for a new Roblox sign-in, read that account's sign-in address, issue the one-time sign-in link, delete your account there when you delete it and, when Roblox access is lost, clear your Roblox id and username from your sign-in account; it is not used for your projects, and the only table it touches is the display name in your profile row, which it clears when that name is your Roblox username and Roblox access is lost. And a few database functions run with no person's credentials, checked by a secret the database holds instead, each doing one narrow thing: one gives a project's name, place name and remembered notes to someone who opened a share link to it, and the others pass membership changes (who gained or lost access to which project, in what role) on to the running project.</li>
     <li><strong>Stripe</strong> takes the payments. It gets your email and billing identifiers and holds the payment method; we get back the subscription state. No card number reaches us.</li>
     <li><strong>Discord</strong> gets whatever StudPilot posts back to the channel you started a build from — only if you linked an account.</li>
-    <li><strong>Roblox</strong> tells us who you are when you sign in, and is asked to withdraw its access when you disconnect or delete your account. If you gave an Open Cloud key, it also gets the requests listed above (uploads, lookups, and game passes and asset permissions if you allowed them), to your own account, under your own key. And whenever the agent looks for a ready-made model, Roblox's Creator Store search gets the search words the agent wrote, with StudPilot's own access and nothing of yours.</li>
+    <li><strong>Roblox</strong> tells us who you are when you sign in, is asked to withdraw its access when you disconnect or delete your account, and is sent your stored token once a day to say whether it is still valid. If you gave an Open Cloud key, it also gets the requests listed above (uploads, lookups, and game passes and asset permissions if you allowed them), to your own account, under your own key. And whenever the agent looks for a ready-made model, Roblox's Creator Store search gets the search words the agent wrote, with StudPilot's own access and nothing of yours.</li>
     <li><strong>Sentry</strong> gets error reports from the web app and the API: the kind of error, a scrubbed message and where it happened, never a request body, header, cookie or query string.</li>
     <li><strong>Tool services</strong>, only when the agent uses the matching tool: web search (Serper or Tavily) gets the search words, documentation lookup (Context7) the question, GitHub's API the public repository being read; Hugging Face and its image provider fal-ai get an image description on the optional Hugging Face route, and for a 3D model the picture goes to a Space that Tencent runs on Hugging Face. Voice input is turned into text by a Cloudflare speech model, or by AssemblyAI where it is configured; the recording is never stored.</li>
   </ul>
@@ -131,7 +144,7 @@ import DocsKit from '../../components/picks-docs/DocsKit.astro';
     <li><strong>Deletion during a running preview:</strong> an in-flight temporary image can remain in cache for up to an hour, but deleted-project images cannot be opened through StudPilot.</li>
     <li><strong>Deleted-image protection:</strong> a deleted project identifier is retained without its images or account details, to stop late-running generation from recreating erased images.</li>
     <li><strong>Deleted workspace files:</strong> 30 days in the trash.</li>
-    <li><strong>The Roblox sign-in:</strong> your Roblox user id and username while the account exists or until you disconnect Roblox; the token until you disconnect, delete your account, sign in again, or Roblox reports the access lost and StudPilot next uses it.</li>
+    <li><strong>The Roblox sign-in:</strong> your Roblox user id and username while the account exists or until you disconnect Roblox; the token until you disconnect, delete your account or sign in again. If Roblox access is lost, all of it is deleted at the next daily check.</li>
     <li><strong>A Roblox Open Cloud key:</strong> the key and its details until you delete it in Settings or delete your account; the log of writes made with it until you delete your account.</li>
     <li><strong>A Discord link:</strong> until you unlink it. Deleting your account unlinks it.</li>
     <li><strong>The record of a deletion:</strong> kept with your account id and no end date, so the receipt can be shown again.</li>

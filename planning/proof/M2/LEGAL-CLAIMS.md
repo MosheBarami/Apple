@@ -330,3 +330,56 @@ which answers success and deletes asynchronously. The list endpoint's `result_in
 **Policy rather than code.** That the log stays 30 days and not 31 is the owner's decision (D-14); the code deletes what is older than the cutoff once a day, so an entry can be up to 31 days old at its deletion. The page
 says "kept for 30 days and then deleted", which is true of the policy and within a day of the mechanism. That Cloudflare honours the delete call (it answers success and deletes asynchronously) is **external**,
 verified by the owner on 2026-10-05 against the old gateway.
+
+### 9.4 D-14: all Roblox-derived data is deleted if StudPilot loses Roblox API access
+
+Supersedes the row of section 2 "When Roblox says the grant is gone (`invalid_grant`) the stored token is deleted; found out only when the token is next used; nothing uses it yet; the id and username stay"
+and item 2 of section 6 (a periodic validity check is now built). Source of the rule: Roblox Third-Party App Policy as the plan (section 7) and `planning/roblox-oauth-setup.md` record it: wipe all Roblox-API data if access is lost.
+
+**What the code stores because of a Roblox sign-in, and what the wipe does to each (searched for, not assumed).**
+
+| Value | Where | On loss |
+|---|---|---|
+| the sealed refresh token | D1 `roblox_oauth_tokens` | deleted |
+| the Roblox user id, username, time linked, time last confirmed | D1 `roblox_identities` | deleted (same D1 batch, only while no token row is left, so a re-sign-in that replaced the grant keeps its link) |
+| the Roblox id | Supabase `auth.users.raw_app_meta_data.roblox_sub` | cleared; replaced by `roblox_code`, a one-way keyed digest of the id (purpose label `roblox-signin-code`) |
+| the Roblox username taken as the display name | Supabase `raw_user_meta_data.display_name`, and `public.profiles.display_name` (copied by `handle_new_user()`) | each cleared **only while it still equals the Roblox username** (a name the person chose is theirs) |
+| the placeholder address | Supabase `auth.users.email` | stays: it is itself a keyed one-way digest of the id (`roblox-<hex>@users.studpilot.invalid`) |
+| a first sight (id, username, sealed token), the state, the handle | KV, TTL 5 to 10 minutes, not tied to an account | not touched: they expire by themselves |
+| the access token cache | Worker isolate memory | dropped |
+| an Open Cloud key, its creator id and scopes, `creator_write_log` | D1 | **not part of this** (see "open"): it is the person's own key, not StudPilot's OAuth access |
+
+| Claim | Evidence | Guard |
+|---|---|---|
+| Once a day StudPilot sends Roblox each stored token and asks whether it is still valid | `roblox-oauth.ts` `introspectAtRoblox` (`POST v1/token/introspect` with `token`, `client_id`, `client_secret`), `checkRobloxGrants`; the daily cron calls it after the retention sweeps and the gateway step (`index.ts` `runScheduled`) | `PC` "WHEN ROBLOX ACCESS IS LOST..." (cron call, the endpoint, the call shape), `RO` "THE DAILY CHECK asks Roblox about each stored token with the client credentials" |
+| If Roblox says it is not valid, StudPilot asks once more to be sure, by trying to refresh; a refresh refused with `invalid_grant` at any other time counts the same way | `checkRobloxGrants` calls `refreshRobloxAccessToken` for an `inactive` verdict only; `refreshRobloxAccessToken` wipes on `invalid_grant` (`robloxSaysGrantGone`: a 4xx other than 429 with `error: invalid_grant`) | `PC` (same test); `RO` "ACCESS LOST ...", "THE DAILY CHECK FINDS A LOST GRANT", "INTROSPECTION THAT IS MISREAD CANNOT WIPE ANYONE", "A CACHED ACCESS TOKEN ... DOES NOT STAND IN", the 4xx/5xx/429 tests |
+| When Roblox confirms, the token, the link and the Roblox id and username on the sign-in account and (while it is still the display name) the profile are deleted or cleared; only the one-way code stays | `wipeLostGrant`, `scrubRobloxFromAccount` | `PC` (the SQL, the Auth `PUT` body, the profile `PATCH` URL and body, exactly one `rest/v1` call in the file); `RO` ("ACCESS LOST ...", "leaves a name the person chose", the one-way code recomputed with node:crypto, "the Supabase user and the profile hold neither the id nor the username") |
+| Signing in with Roblox again finds the same account | `userFor` adopts the user at the keyed address when its `app_metadata` carries the id **or** the one-way code (`provesCode`); it used to demand the id, which the wipe removes, and would have locked the person out (`address_taken`) | `RO` "AFTER A WIPE, signing in with Roblox again finds the SAME account" (same Supabase user, no second account, no ghost), "THE ONE-WAY CODE IS THE PROOF" (another account's code, no code, a non-string code are never adopted) |
+| The app still treats the wiped account as a Roblox-only account (asks it to confirm with Roblox, never for a password it does not have) | `apps/web/src/lib/account-identity.ts` `isRobloxAccount` reads `roblox_sub` or `roblox_code` | `apps/web/tests/roblox-signin.test.mjs` and the `RO` test above (the worker's wiped account is run through the app's own function) |
+| If Supabase cannot be reached, nothing is deleted yet and the next daily check tries again | `wipeLostGrant` returns `kept` before deleting anything; the token row stays as the marker; the refresh releases its lease | `RO` "A WIPE THAT CANNOT FINISH" (account update refused, profile update refused, Supabase unreachable: each followed by a retry that finishes), "A LOST GRANT WHOSE WIPE CANNOT FINISH" |
+| A person who signs in again while Roblox is answering keeps the new grant and its link | the batch is bound to the `version` and `generation` read; the link goes only while no token row is left | `RO` "ACCESS LOST deletes only the row that was refreshed", "A SIGN-IN THAT LANDS BETWEEN THE ACCOUNT UPDATE AND THE DATABASE BATCH" |
+| A Roblox-only account has to sign in with Roblox again before it can export or delete its data afterwards | the re-authentication reads `roblox_identities.reauth_at`, which the wipe deleted, and the re-authentication flow never makes or relinks an account (`callback`, `purpose === 'reauth'`); a fresh sign-in relinks it | `PC` (the gate still reads the identity row) |
+| The stored token is used for two things only: asking Roblox to withdraw access, and the daily check | `refreshRobloxAccessToken` is called only by `checkRobloxGrants`, in `roblox-oauth.ts`; `postToRoblox` is called with `/token` (twice), `/token/introspect`, `/token/revoke` and nothing else | `PC` "Roblox data is never used for AI training, ... the stored token is used only for what the pages say" |
+| Roblox receives the stored token once a day | the introspection call | `PC` (the processors bullet on both pages) |
+| The Supabase secret key is used to clear the Roblox id and username on loss, and touches one table: the display name in the profile row | `scrubRobloxFromAccount`: `PUT /auth/v1/admin/users/<id>` and `PATCH /rest/v1/profiles?id=eq.<id>&display_name=eq.<username>` with `{"display_name":null}` | `PC` "the Supabase secret key is described by what it does" (the call list now includes `PUT /users/`; the pages must name both uses and the one table), `RO` (the test world records any other use of the key as a stray) |
+| What is recorded each night, where an admin reads it | an audit event `roblox_grant_check` with counts only (`checked`, `active`, `lost`, `kept_for_retry`, `unknown`, `disagreed`, `unreadable`, `unchecked`), and an error event for a wipe that could not finish, a misread introspection or an unreadable token; a deployment with no Roblox sign-in records `skipped` | `RO` "THE DAILY CRON runs the check ..." and "... reports a kept wipe and a misread introspection as errors" |
+
+**A deliberate difference from the owner's wording, and why.** D-14 says: if Roblox reports a grant inactive, or a refresh answers `invalid_grant`, the grant is lost. This implementation treats the second as sufficient and the first as the
+trigger for the second: an `inactive` answer from introspection is **confirmed by one refresh** before anything is deleted. Reason: the introspection call was written from the repository's notes and has never been observed;
+if Roblox's endpoint only understood access tokens it would report every refresh token inactive, and a wipe is the one step here the person has to undo by signing in again. With the confirmation a misreading cannot wipe anybody
+(it is reported as `disagreed`, an error event, with the replacement token stored), and a real loss is wiped in the same run, because the refresh of a revoked token answers `invalid_grant`. A healthy grant is never refreshed by the check.
+If the owner wants introspection alone to be sufficient, it is one line in `checkRobloxGrants`.
+
+**To be verified on the first live run (not observable from here; mocks encode my reading of the documentation).**
+1. Roblox accepts a REFRESH token at `v1/token/introspect` and answers `{"active": false}` once StudPilot is removed from the apps authorized on a Roblox account. (If it answers `active: false` for everything, the check reports `disagreed` and wipes nobody; if it answers an error, `unknown`.)
+2. GoTrue's `PUT /auth/v1/admin/users/<id>` merges `app_metadata` and `user_metadata` and removes a key set to `null` (the mock does; from memory of GoTrue).
+3. PostgREST accepts the `sb_secret_` key in `apikey` alone for the profile `PATCH`, and the `display_name=eq.<percent-encoded username>` filter matches a username with spaces and non-ASCII characters.
+4. After a wipe, the returning person is shown the first-sight card ("This creates a new StudPilot account") and confirms; the account that comes back is the old one with its projects. The card's words are the SPA's and were not changed here (apps/web is another lane's).
+5. D1 `batch` is one transaction (documented), so the token delete and the conditional link delete are atomic.
+
+**Open, and decisions that are the owner's.**
+- **The Open Cloud key is not wiped on loss.** It is the person's own key, not StudPilot's OAuth access, and nothing detects its loss. If Roblox's policy is read to cover the creator id and the write log (Roblox's answers, trimmed) it holds, that needs its own detection (a 401/403 from the key) and wipe. The pages say it is not part of the wipe.
+- **No cursor.** One run looks at no more than 2,000 stored grants and says how many it left (`unchecked`); a private-mode app has at most ten. Beyond that a cursor is needed.
+- **A Roblox-only account cannot confirm itself in Settings after a wipe until it has signed in with Roblox again** (the re-authentication flow never makes or relinks an account, and relinking needs the first-sight path). The page says so; making the re-authentication flow relink would need a lookup of the user by address that does not create one, which GoTrue's `generate_link` is not.
+- "Cannot be turned back into your Roblox id" is true of anybody without CREDENTIAL_KEY (an HMAC); somebody who held the key could test numeric ids against the code. The pages say the code is made with a secret key only StudPilot's server holds.
+- Rotating CREDENTIAL_KEY changes every address and every code, so an account could no longer be found by either (this was already true of the address).

@@ -80,6 +80,12 @@ const DEV_ORIGIN = 'http://localhost:5173';
 const SYNTHETIC_EMAIL_DOMAIN = 'users.studpilot.invalid';
 /** Domain-separates the keyed digest the address is made from (user-credentials.ts `keyedId`). Never change it: addresses derive from it. */
 const ADDRESS_PURPOSE = 'roblox-signin-address';
+/**
+ * Domain-separates the one-way code kept on a Supabase account in place of the Roblox id once a lost grant has been wiped (`app_metadata.roblox_code`).
+ * It is a keyed digest of the id like the address, and for the same reason it cannot be turned back into the id by anybody who lacks CREDENTIAL_KEY.
+ * Never change it: accounts that were wiped carry it.
+ */
+const CODE_PURPOSE = 'roblox-signin-code';
 const OUTBOUND_TIMEOUT_MS = 10_000;
 const REFRESH_LEASE_MS = 30_000;
 /**
@@ -396,7 +402,7 @@ async function createAuthUser(env: Env, cfg: Config, email: string, who: RobloxP
 }
 
 /** A one-time sign-in token for the user that owns `email`, with who that user is. Sends no mail. */
-async function mintLink(env: Env, cfg: Config, email: string): Promise<{ hashedToken: string; userId: string; robloxSub: string } | null> {
+async function mintLink(env: Env, cfg: Config, email: string): Promise<{ hashedToken: string; userId: string; robloxSub: string; robloxCode: string } | null> {
   const res = await admin(env, cfg, 'POST', '/generate_link', { type: 'magiclink', email });
   if (!res || res.status !== 200 || !res.json) return null;
   const nested = (res.json.properties ?? {}) as Record<string, unknown>;
@@ -404,22 +410,23 @@ async function mintLink(env: Env, cfg: Config, email: string): Promise<{ hashedT
   const hashedToken = str(res.json.hashed_token) || str(nested.hashed_token);
   const userId = str(res.json.id) || str(user.id);
   const meta = (res.json.app_metadata ?? user.app_metadata ?? {}) as Record<string, unknown>;
-  return hashedToken && userId ? { hashedToken, userId, robloxSub: String(meta.roblox_sub ?? '') } : null;
+  return hashedToken && userId ? { hashedToken, userId, robloxSub: String(meta.roblox_sub ?? ''), robloxCode: String(meta.roblox_code ?? '') } : null;
 }
 
 /** Is this answer GoTrue's own "no such user"? A bare 404 (a wrong SUPABASE_URL, a proxy's error page) says nothing about a user. */
 const saysNoSuchUser = (res: { status: number; json: Record<string, unknown> | null }): boolean =>
   res.status === 404 && /user_not_found|user.{0,12}not.{0,12}found/i.test(`${str(res.json?.error_code)} ${str(res.json?.msg)}`);
 
-/** One Supabase user as Auth holds them now: their address, 'gone' when Auth says there is no such user, null when we cannot tell. */
-async function authUser(env: Env, cfg: Pick<Config, 'supabaseKey'>, userId: string): Promise<{ email: string } | 'gone' | null> {
+/** One Supabase user as Auth holds them now: their address and metadata, 'gone' when Auth says there is no such user, null when we cannot tell. */
+async function authUser(env: Env, cfg: Pick<Config, 'supabaseKey'>, userId: string): Promise<{ email: string; appMetadata: Record<string, unknown>; userMetadata: Record<string, unknown> } | 'gone' | null> {
   const res = await admin(env, cfg, 'GET', `/users/${encodeURIComponent(userId)}`);
   if (!res) return null;
   // Only GoTrue's own "no such user" counts as gone. A bare 404 (a wrong SUPABASE_URL, a proxy's error page) says
   // nothing about this user, and acting on it would delete the link of everybody who signs in.
   if (res.status === 404) return saysNoSuchUser(res) ? 'gone' : null;
   const email = str(res.json?.email);
-  return res.status === 200 && email ? { email } : null;
+  const object = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+  return res.status === 200 && email ? { email, appMetadata: object(res.json?.app_metadata), userMetadata: object(res.json?.user_metadata) } : null;
 }
 
 /** What deleting a sign-in identity did. `detail` is a sentence for the receipt: it says exactly what happened and never carries anything Supabase sent. */
@@ -484,6 +491,9 @@ async function signInTokenFor(env: Env, cfg: Config, userId: string, email: stri
 const syntheticEmail = async (env: Env, sub: string): Promise<string> =>
   `roblox-${await keyedId(env, ADDRESS_PURPOSE, sub)}@${SYNTHETIC_EMAIL_DOMAIN}`;
 
+/** The one-way code that stands in for the Roblox id on an account whose grant was lost (see CODE_PURPOSE). */
+const robloxCode = (env: Env, sub: string): Promise<string> => keyedId(env, CODE_PURPOSE, sub);
+
 /** `address_taken`: the address exists and is not ours. `link`: it could not be said safely (Auth unreachable, a malformed answer). */
 type Linked = { ok: true; userId: string; email: string } | { ok: false; code: 'link' | 'address_taken' };
 
@@ -531,7 +541,12 @@ async function userFor(env: Env, cfg: Config, who: RobloxProfile): Promise<Linke
     // it is reported as its own failure rather than as a generic one.
     const link = await mintLink(env, cfg, email);
     if (!link) return { ok: false, code: 'link' };
-    if (link.robloxSub !== who.sub) return { ok: false, code: 'address_taken' };
+    // THE PROOF THAT THIS ADDRESS IS THIS ROBLOX ACCOUNT'S: the admin-written app_metadata names the same `sub`, OR (after a lost grant was wiped, which
+    // clears the id and the username from it) carries the one-way code made from this `sub`. Either is written only by this worker; neither can be set
+    // through the open sign-up. A user that has neither is somebody else's and fails closed.
+    const provesSub = link.robloxSub === who.sub;
+    const provesCode = link.robloxCode !== '' && link.robloxCode === (await robloxCode(env, who.sub));
+    if (!provesSub && !provesCode) return { ok: false, code: 'address_taken' };
     userId = link.userId;
   } else {
     userId = made;
@@ -1012,13 +1027,23 @@ export async function robloxReauthRefusal(env: Env, user: AuthedUser): Promise<{
 
 export type RefreshResult =
   | { ok: true; accessToken: string; scope: string; version: number }
-  | { ok: false; reason: 'not_connected' | 'busy' | 'refused' | 'unavailable' };
+  | {
+      ok: false;
+      reason: 'not_connected' | 'busy' | 'refused' | 'unavailable';
+      /**
+       * Present only when Roblox answered that the grant is gone. `wiped`: the Roblox data was deleted (see `wipeLostGrant`). `kept`: the grant is lost but the wipe
+       * could not finish (Supabase unreachable), so the token row stays and the next detection retries it.
+       */
+      lost?: 'wiped' | 'kept';
+    };
 
 interface TokenRow {
   sealed_refresh: string;
   version: number;
   generation: string;
   scopes: string;
+  /** The Roblox user id the grant is for. */
+  sub: string;
 }
 
 /**
@@ -1043,16 +1068,89 @@ async function robloxSaysGrantGone(res: Response | null): Promise<boolean> {
 }
 
 /**
- * Delete the stored token of a grant Roblox no longer honours. Bound to the `version` and `generation` that were refreshed, so a
- * person who signed in again while Roblox was answering keeps the new grant: that row is not this one. With the row gone the access
- * token cached from the grant is never served (`not_connected` is answered before the cache is read, as after a disconnect). What
- * stays is the Roblox user id and username in `roblox_identities`, which are the sign-in link (a Roblox-only account could not get
- * back in without them); they go on disconnect (when Roblox is not the only way in) and on account deletion.
+ * WHAT BECAME OF A LOST GRANT. `wiped`: everything StudPilot held because of that grant is gone. `kept`: the grant is lost but the wipe could not finish
+ * (Auth or the profile table could not be reached, or CREDENTIAL_KEY is missing), so NOTHING was deleted and the token row stays as the marker that the next
+ * detection retries. `superseded`: the person signed in again while Roblox was answering, so the row is another grant and nothing is touched.
  */
-async function wipeDeadGrant(env: Env, userId: string, row: TokenRow): Promise<void> {
-  await env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ? and version = ? and generation = ?')
-    .bind(userId, row.version, row.generation).run();
-  note('grant gone, token deleted');
+export type WipeResult = 'wiped' | 'kept' | 'superseded';
+
+/**
+ * ALL ROBLOX-DERIVED DATA GOES WHEN ROBLOX ACCESS IS LOST (owner decision D-14; Roblox Third-Party App Policy: wipe all Roblox-API data if access is lost).
+ *
+ * "Lost" is Roblox's word that this person's grant is gone: a refresh answering `invalid_grant` (the person removed StudPilot in their Roblox settings, the
+ * grant expired, or the token was spent) or, found by the daily check (`checkRobloxGrants`), Roblox reporting the token inactive and confirming it. What
+ * StudPilot holds because of the grant, and what happens to each:
+ *
+ *   - the sealed refresh token (`roblox_oauth_tokens`): deleted;
+ *   - the Roblox user id and username next to the StudPilot account id (`roblox_identities`): deleted;
+ *   - on the person's Supabase account: the Roblox id in `app_metadata.roblox_sub` is cleared, and the Roblox username taken as the display name is cleared from
+ *     `user_metadata.display_name` and from `profiles.display_name`, each ONLY while it still equals the username (a name the person chose is theirs);
+ *   - what stays is `app_metadata.roblox_code`, a one-way code made from the id with CREDENTIAL_KEY, and the placeholder address, which is the same kind of
+ *     code: neither can be turned back into the id by anybody without that key. They are what lets signing in with Roblox again FIND THIS ACCOUNT: the address
+ *     is derived from the id, and `userFor` adopts the existing user when its app_metadata carries the id or this code (it used to demand the id, which this
+ *     wipe has just removed, and would have locked the person out of their own account).
+ *
+ * THE ORDER IS WHAT MAKES IT RETRIABLE. Supabase first (idempotent), then the token row and the identity row together in one D1 batch. A failure anywhere before the batch
+ * leaves the token row, which is what the daily check and the next refresh find again, so a wipe that could not finish is retried and never half-claimed. The
+ * batch is bound to the `version` and `generation` that were refreshed: a person who signed in again while Roblox was answering keeps the new grant AND its identity row.
+ *
+ * Never throws: a D1 or Auth failure is `kept`, not an exception, so one broken grant cannot cancel the others in the daily check.
+ */
+async function wipeLostGrant(env: Env, userId: string, row: TokenRow): Promise<WipeResult> {
+  try {
+    const live = await env.CORPUS.prepare('select 1 as live from roblox_oauth_tokens where user_id = ? and version = ? and generation = ?')
+      .bind(userId, row.version, row.generation).first();
+    if (live === null) return 'superseded';
+    const identity = await env.CORPUS.prepare('select roblox_sub, username from roblox_identities where user_id = ?')
+      .bind(userId).first<{ roblox_sub: string; username: string }>();
+    if (!(await scrubRobloxFromAccount(env, userId, identity?.roblox_sub ?? row.sub, identity?.username ?? null))) {
+      note('grant gone, wipe kept for retry');
+      return 'kept';
+    }
+    const [tokens] = await env.CORPUS.batch([
+      env.CORPUS.prepare('delete from roblox_oauth_tokens where user_id = ? and version = ? and generation = ?').bind(userId, row.version, row.generation),
+      // Only when the token row is gone (this run deleted it): a re-sign-in that replaced the row keeps its identity row.
+      env.CORPUS.prepare('delete from roblox_identities where user_id = ? and not exists (select 1 from roblox_oauth_tokens where user_id = ?)').bind(userId, userId),
+    ]);
+    if (Number(tokens?.meta?.changes ?? 0) === 0) return 'superseded';
+    accessTokens.delete(userId);
+    note('grant gone, roblox data wiped');
+    return 'wiped';
+  } catch {
+    note('grant gone, wipe failed');
+    return 'kept';
+  }
+}
+
+/**
+ * Clear the Roblox id and username from the person's Supabase account, leaving only the one-way code. True when it is done (or when Auth says the account
+ * no longer exists, so there is nothing to clear); false when it could not be done, so the caller deletes nothing and a later run retries. Uses the Supabase
+ * secret key for two things and nothing else: the Auth admin update of this one user, and a PATCH of this one profile's display name.
+ */
+async function scrubRobloxFromAccount(env: Env, userId: string, sub: string, username: string | null): Promise<boolean> {
+  const auth = supabaseKeyOf(env);
+  if (!auth || !env.CREDENTIAL_KEY) return false;
+  const user = await authUser(env, auth, userId);
+  if (user === null) return false;
+  if (user === 'gone') return true;
+  const clearsUserName = username !== null && str(user.userMetadata.display_name) === username;
+  const updated = await admin(env, auth, 'PUT', `/users/${encodeURIComponent(userId)}`, {
+    // `null` removes a key (GoTrue merges metadata and deletes a key set to null).
+    app_metadata: { roblox_sub: null, roblox_code: await robloxCode(env, sub) },
+    ...(clearsUserName ? { user_metadata: { display_name: null } } : {}),
+  });
+  if (!updated || updated.status < 200 || updated.status >= 300) return false;
+  if (username === null) return true;
+  // THE ONE TABLE THE KEY TOUCHES: this person's profile row, its display name, and only while that name is still the Roblox username. A request that
+  // matches no row (the person renamed themselves) is a success, not a failure.
+  const headers: Record<string, string> = { apikey: auth.supabaseKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+  if (auth.supabaseKey.startsWith('eyJ')) headers.Authorization = `Bearer ${auth.supabaseKey}`;
+  const res = await send(`${env.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&display_name=eq.${encodeURIComponent(username)}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ display_name: null }),
+  });
+  return res !== null && res.status >= 200 && res.status < 300;
 }
 
 /**
@@ -1071,7 +1169,7 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   const cfg = configOf(env);
   if (!cfg) return { ok: false, reason: 'unavailable' };
   await ensureRobloxOAuthTables(env);
-  const row = await env.CORPUS.prepare('select sealed_refresh, version, generation, scopes from roblox_oauth_tokens where user_id = ?')
+  const row = await env.CORPUS.prepare('select sealed_refresh, version, generation, scopes, sub from roblox_oauth_tokens where user_id = ?')
     .bind(userId).first<TokenRow>();
   if (!row) return { ok: false, reason: 'not_connected' };
   const cached = accessTokens.get(userId);
@@ -1101,10 +1199,12 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   if (!tokens?.refreshToken) {
     // ACCESS LOST. Roblox saying `invalid_grant` is its word that the grant is gone (the person removed StudPilot in their Roblox
     // settings, it expired, or the token was spent). StudPilot's rule (Roblox Third-Party App Policy: Roblox data is deleted when
-    // access is lost) is that nothing is kept for it, so the stored token is deleted here, in the one function that ever uses it.
+    // access is lost) is that nothing is kept for it: the token, the link and the Roblox id and username on the person's account all go.
     if (await robloxSaysGrantGone(res)) {
-      await wipeDeadGrant(env, userId, row);
-      return { ok: false, reason: 'refused' };
+      const wiped = await wipeLostGrant(env, userId, row);
+      // A wipe that could not finish (`kept`) leaves the row for the next detection, so the lease it holds is let go now rather than lapsing in thirty seconds.
+      if (wiped !== 'wiped') await release();
+      return wiped === 'superseded' ? { ok: false, reason: 'refused' } : { ok: false, reason: 'refused', lost: wiped };
     }
     await release();
     // A 4xx is Roblox saying this request was refused (our credentials were wrong, the grant is no good); anything else may be tried again.
@@ -1124,6 +1224,110 @@ export async function refreshRobloxAccessToken(env: Env, userId: string, now = D
   if (accessTokens.size >= ACCESS_TOKEN_CACHE_MAX) accessTokens.delete(accessTokens.keys().next().value as string);
   accessTokens.set(userId, { accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1, generation: row.generation, until: now + tokens.expiresIn * 1000 - ACCESS_TOKEN_MARGIN_MS });
   return { ok: true, accessToken: tokens.accessToken, scope: tokens.scope, version: row.version + 1 };
+}
+
+// ---------------------------------------------------------------------------------------------
+// the daily check: has Roblox withdrawn any stored grant?
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What Roblox says about one token. `active`: its answer says the token is valid. `inactive`: its answer says it is not. `unknown`: anything else (no answer, a
+ * 4xx or 5xx, an answer that is not a plain `active` boolean). A client-credentials failure (`invalid_client`, which is what a rotated client secret looks
+ * like) is `unknown`, never `inactive`: the grant may be perfectly alive and the wipe is not undone by apologising.
+ */
+type GrantVerdict = 'active' | 'inactive' | 'unknown';
+
+/**
+ * Roblox's token introspection (RFC 7662; `v1/token/introspect` is listed in planning/roblox-oauth-setup.md): POST the token with the client id and secret,
+ * answer `{ "active": true | false, ... }`. WRITTEN FROM THAT NOTE AND NEVER OBSERVED LIVE FROM HERE: whether Roblox accepts a REFRESH token at this endpoint, and
+ * says `active: false` for a revoked one, is what the first live run must show (planning/proof/M2/LEGAL-CLAIMS.md section 9.4).
+ */
+async function introspectAtRoblox(cfg: Config, token: string): Promise<GrantVerdict> {
+  const res = await postToRoblox('/token/introspect', { token, client_id: cfg.clientId, client_secret: cfg.clientSecret });
+  if (!res || !res.ok) return 'unknown';
+  const active = (await jsonOf(res))?.active;
+  return active === true ? 'active' : active === false ? 'inactive' : 'unknown';
+}
+
+export interface GrantCheckReport {
+  /** Set when nothing was checked, with the reason (Roblox sign-in is not configured on this deployment). */
+  skipped?: string;
+  /** Stored grants looked at. */
+  checked: number;
+  active: number;
+  /** Grants found lost, wiped or kept for retry (see `kept`). */
+  lost: number;
+  /** Of the lost, how many could not be wiped yet and will be retried at the next check. */
+  kept: number;
+  /** No answer from Roblox that could be acted on: left alone. */
+  unknown: number;
+  /** Roblox said inactive and a refresh then WORKED: Roblox contradicted itself, nothing was wiped. */
+  disagreed: number;
+  /** A stored token could not be opened (CREDENTIAL_KEY rotated or lost): not asked about. */
+  unreadable: number;
+  /** Rows left unchecked because the run reached its cap. */
+  unchecked: number;
+}
+
+/** The most grants one run looks at, and the time it may spend: a private-mode app has at most ten, and a launch is not a reason to let one night run for ever. */
+const GRANT_CHECK_MAX = 2000;
+const GRANT_CHECK_BUDGET_MS = 8 * 60_000;
+
+/**
+ * THE DAILY CHECK (owner decision D-14): ask Roblox, for every stored grant, whether the token is still valid; when Roblox says it is not, confirm, and wipe.
+ * Called by the Worker's daily cron, after the sweeps. A grant is found lost in either of two ways, and both end in the same wipe: this check (Roblox reports
+ * the token inactive and then answers `invalid_grant` to a refresh) or a refresh anywhere else answering `invalid_grant`.
+ *
+ * WHY THE REFRESH CONFIRMS. `inactive` from an endpoint nobody has watched answer yet is not enough to delete a person's link: if it only understood access
+ * tokens it would report every refresh token inactive, and a wipe is the one step here that cannot be taken back from StudPilot's side (the person has to
+ * sign in again). So an `inactive` verdict triggers ONE refresh, the token endpoint's own definitive answer: `invalid_grant` wipes (inside the refresh), a
+ * working refresh stores the replacement token and is counted as `disagreed` (reported as an error: the introspection call is then wrong and must be fixed),
+ * and anything else changes nothing. A healthy grant is never refreshed by this check, so it never extends a grant's life.
+ *
+ * Never throws, and one grant's trouble does not stop the next: each is its own try. Nothing it records carries a token, an id or a name.
+ */
+export async function checkRobloxGrants(env: Env, now: number = Date.now()): Promise<GrantCheckReport> {
+  const report: GrantCheckReport = { checked: 0, active: 0, lost: 0, kept: 0, unknown: 0, disagreed: 0, unreadable: 0, unchecked: 0 };
+  const cfg = configOf(env);
+  if (!cfg) return { ...report, skipped: 'Roblox sign-in is not configured on this deployment, so no stored grant was checked' };
+  let rows: { user_id: string; sealed_refresh: string }[];
+  try {
+    await ensureRobloxOAuthTables(env);
+    // One more than the cap, so a table that is larger than the cap is seen to be (`unchecked`), not silently cut.
+    rows = (await env.CORPUS.prepare('select user_id, sealed_refresh from roblox_oauth_tokens order by user_id limit ?').bind(GRANT_CHECK_MAX + 1).all<{ user_id: string; sealed_refresh: string }>()).results;
+  } catch {
+    return { ...report, skipped: 'the stored grants could not be read, so none was checked' };
+  }
+  const started = Date.now();
+  for (const [i, row] of rows.entries()) {
+    if (i >= GRANT_CHECK_MAX || Date.now() - started > GRANT_CHECK_BUDGET_MS) {
+      report.unchecked = rows.length - i;
+      break;
+    }
+    report.checked += 1;
+    try {
+      const token = await openSecret(env, row.sealed_refresh);
+      if (!token) { report.unreadable += 1; continue; }
+      const verdict = await introspectAtRoblox(cfg, token);
+      if (verdict === 'active') { report.active += 1; continue; }
+      if (verdict === 'unknown') { report.unknown += 1; continue; }
+      // `inactive`: confirm with the token endpoint. A cached access token from this grant must not stand in for the answer, so it is dropped first.
+      accessTokens.delete(row.user_id);
+      const refreshed = await refreshRobloxAccessToken(env, row.user_id, now);
+      if (refreshed.ok) { report.disagreed += 1; continue; }
+      if (refreshed.lost) { report.lost += 1; if (refreshed.lost === 'kept') report.kept += 1; continue; }
+      report.unknown += 1;
+    } catch {
+      report.unknown += 1;
+    }
+  }
+  return report;
+}
+
+/** `checked=3 active=2 lost=1 unknown=0 ...` — one line for the admin log; counts only, never a person. */
+export function describeGrantCheck(r: GrantCheckReport): string {
+  if (r.skipped) return `skipped: ${r.skipped}`;
+  return `checked=${r.checked} active=${r.active} lost=${r.lost} kept_for_retry=${r.kept} unknown=${r.unknown} disagreed=${r.disagreed} unreadable=${r.unreadable} unchecked=${r.unchecked}`;
 }
 
 /**

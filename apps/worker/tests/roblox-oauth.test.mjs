@@ -34,6 +34,8 @@ import { tmpdir } from 'node:os';
 import { d1, countRows } from './stubs/d1.mjs';
 // The web's own re-authentication window and action list, so the worker's copies are held to them and cannot drift.
 import { REAUTH_WINDOW_MS, SENSITIVE_ACTIONS } from '../../web/src/lib/auth-flows.ts';
+// ...and the web's own test for "is this a Roblox-only account", so what the worker leaves on a wiped account is held to what the app recognises.
+import { isRobloxAccount } from '../../web/src/lib/account-identity.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, '..');
@@ -119,15 +121,19 @@ const rand = (n = 16) => randomBytes(n).toString('hex');
 function makeWorld() {
   const roblox = {
     codes: new Map(), access: new Map(), refresh: new Map(),
-    burned: false, tokenCalls: [], revokeCalls: [], lastRefreshIssued: null,
+    burned: false, tokenCalls: [], revokeCalls: [], introspectCalls: [], lastRefreshIssued: null,
     failToken: null, failRevoke: null, duringRefresh: null, userinfo: null,
+    /** How token introspection answers: 'normal' (the truth), 'misread' (everything inactive), or { status, body } / 'junk' for the answers that say nothing. */
+    introspect: 'normal',
+    /** What the person does in their Roblox settings: remove StudPilot. Every refresh token that grant holds is revoked at once. */
+    removeApp(sub) { for (const rec of roblox.refresh.values()) if (rec.sub === sub) rec.state = 'revoked'; },
     issueCode({ sub, username, challenge, redirectUri }) {
       const code = `code_${rand()}`;
       roblox.codes.set(code, { sub, username, challenge, redirectUri, used: false });
       return code;
     },
   };
-  const sb = { users: new Map(), links: new Map(), createCalls: 0, ghosts: 0, headers: [], strays: [], deleteCalls: [], failDelete: null };
+  const sb = { users: new Map(), links: new Map(), createCalls: 0, ghosts: 0, headers: [], strays: [], deleteCalls: [], failDelete: null, updateCalls: [], failUpdate: null, onUpdate: null, profiles: new Map(), profilePatches: [], failProfile: null };
   const calls = [];
   const unexpected = [];
 
@@ -172,6 +178,16 @@ function makeWorld() {
       if (roblox.userinfo) return json(200, roblox.userinfo(who));
       return json(200, { sub: who.sub, name: `Display ${who.username}`, nickname: `Display ${who.username}`, preferred_username: who.username, created_at: 1500000000 });
     }
+    if (url.pathname === '/oauth/v1/token/introspect' && method === 'POST') {
+      roblox.introspectCalls.push(Object.fromEntries(form));
+      if (form.get('client_id') !== CLIENT_ID || form.get('client_secret') !== CLIENT_SECRET) return json(401, { error: 'invalid_client' });
+      if (roblox.introspect === 'junk') return new Response('<html>not json</html>', { status: 200 });
+      if (roblox.introspect && typeof roblox.introspect === 'object') return json(roblox.introspect.status, roblox.introspect.body);
+      if (roblox.introspect === 'misread') return json(200, { active: false });
+      const token = form.get('token');
+      const rec = roblox.refresh.get(token);
+      return json(200, rec ? { active: rec.state === 'live', ...(rec.state === 'live' ? { sub: rec.sub, scope: 'openid profile' } : {}) } : { active: roblox.access.has(token) });
+    }
     if (url.pathname === '/oauth/v1/token/revoke' && method === 'POST') {
       roblox.revokeCalls.push(form.get('token'));
       if (roblox.failRevoke) {
@@ -188,14 +204,18 @@ function makeWorld() {
 
   async function supabaseCall(url, method, body, headers) {
     sb.headers.push({ apikey: headers.get('apikey'), authorization: headers.get('authorization') });
-    // The secret key is for the Auth admin API. Anything else it is sent to, and any call that arrives without it, is a stray.
-    if (!url.pathname.startsWith('/auth/v1/admin/') || headers.get('apikey') !== SB_SECRET) sb.strays.push(`${method} ${url.pathname}`);
+    // The secret key is for the Auth admin API, and for ONE table call: the PATCH that clears a Roblox username from a profile's display name when a grant is lost.
+    // Anything else it is sent to, and any call that arrives without it, is a stray.
+    const isProfileNamePatch = method === 'PATCH' && url.pathname === '/rest/v1/profiles' && JSON.stringify(body) === '{"display_name":null}';
+    if ((!url.pathname.startsWith('/auth/v1/admin/') && !isProfileNamePatch) || headers.get('apikey') !== SB_SECRET) sb.strays.push(`${method} ${url.pathname}`);
     if (headers.get('apikey') !== SB_SECRET) return json(401, { message: 'invalid api key' });
     if (url.pathname === '/auth/v1/admin/users' && method === 'POST') {
       sb.createCalls += 1;
       if (userByEmail(body.email)) return json(422, { code: 422, error_code: 'email_exists', msg: 'A user with this email address has already been registered' });
       const user = { id: randomUUID(), email: body.email, email_confirmed_at: new Date().toISOString(), app_metadata: { ...body.app_metadata }, user_metadata: { ...body.user_metadata }, confirmedByAdmin: body.email_confirm === true };
       sb.users.set(user.id, user);
+      // handle_new_user(): the profile's display name is the user_metadata display name (0001_init.sql).
+      sb.profiles.set(user.id, { display_name: user.user_metadata.display_name ?? body.email.split('@')[0] });
       return json(200, user);
     }
     const one = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
@@ -203,6 +223,19 @@ function makeWorld() {
       const user = sb.users.get(decodeURIComponent(one[1]));
       // GoTrue's own answer for an id it does not hold; the worker only believes a 404 that says this.
       return user ? json(200, user) : json(404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
+    }
+    if (one && method === 'PUT') {
+      // GoTrue's admin update: app_metadata and user_metadata are MERGED, and a key set to null is removed. `failUpdate` is a status to answer instead.
+      const id = decodeURIComponent(one[1]);
+      sb.updateCalls.push({ id, body });
+      if (sb.failUpdate) return json(sb.failUpdate, { msg: 'update failed' });
+      const user = sb.users.get(id);
+      if (!user) return json(404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
+      for (const field of ['app_metadata', 'user_metadata']) {
+        for (const [k, v] of Object.entries(body[field] ?? {})) { if (v === null) delete user[field][k]; else user[field][k] = v; }
+      }
+      sb.onUpdate?.(id);                 // a hook for the test that has a sign-in land between the Auth update and the database batch
+      return json(200, user);
     }
     if (one && method === 'DELETE') {
       // Account deletion (erasure.ts, last step). `failDelete` is a status to answer instead, for the tests that break it.
@@ -225,6 +258,16 @@ function makeWorld() {
       const hashed = `ht_${rand(20)}`;
       sb.links.set(hashed, user.id);
       return json(200, { ...user, action_link: `${SB}/auth/v1/verify?token=${hashed}&type=magiclink`, email_otp: '123456', hashed_token: hashed, redirect_to: '', verification_type: 'magiclink' });
+    }
+    // PostgREST, for the one table call the secret key makes: PATCH /rest/v1/profiles?id=eq.<id>&display_name=eq.<name> with {"display_name": null}.
+    if (isProfileNamePatch) {
+      sb.profilePatches.push({ search: url.search, prefer: headers.get('prefer') });
+      if (sb.failProfile) return json(sb.failProfile, { message: 'profile update failed' });
+      const id = (url.searchParams.get('id') ?? '').replace(/^eq\./, '');
+      const name = (url.searchParams.get('display_name') ?? '').replace(/^eq\./, '');
+      const profile = sb.profiles.get(id);
+      if (profile && profile.display_name === name) profile.display_name = null;   // a profile whose name is something else matches no row, and the answer is still a success
+      return new Response(null, { status: 204 });
     }
     return null;
   }
@@ -1279,25 +1322,59 @@ test('a refresh Roblox refuses WITHOUT saying the grant is dead releases the lea
   s.db.close();
 });
 
-test('ACCESS LOST: when Roblox answers invalid_grant the stored token is deleted at once, the link stays, nothing is revoked, and signing in again starts a fresh grant', async () => {
+/** The one-way code the worker keeps on a Supabase account in place of the Roblox id: recomputed HERE with node:crypto, so the derivation is pinned (a different purpose label from the address). */
+const CODE_OF = (sub, keyB64 = KEY_B64) => {
+  const subkey = createHmac('sha256', Buffer.from(keyB64, 'base64')).update('studpilot:roblox-signin-code').digest();
+  return createHmac('sha256', subkey).update(sub).digest('hex').slice(0, 32);
+};
+const identityRows = (s) => rowsOf(s.db, 'select * from roblox_identities where user_id = ?', s.userId);
+const supaUser = (s) => s.world.sb.users.get(s.userId);
+const profileName = (s) => s.world.sb.profiles.get(s.userId)?.display_name;
+
+test('ACCESS LOST: when Roblox answers invalid_grant ALL the Roblox data goes at once (the token, the link, and the Roblox id and username on the Supabase account), and only the one-way code and the address stay', async () => {
   // Roblox Third-Party App Policy (planning/STUDPILOT-FINAL-PLAN.md section 7): wipe the Roblox data when access is lost. The person
   // removes StudPilot in their Roblox settings, or the token expires: Roblox then refuses the stored refresh token with invalid_grant.
   const s = await connected();
+  const address = supaUser(s).email;
+  assert.equal(supaUser(s).app_metadata.roblox_sub, SUB_A, 'POSITIVE CONTROL: the account carries the Roblox id and username before the loss');
+  assert.equal(supaUser(s).user_metadata.display_name, 'Builder1');
+  assert.equal(profileName(s), 'Builder1');
   const t0 = Date.now();
   assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId, t0)).ok, true, 'POSITIVE CONTROL: the grant works while Roblox honours it');
-  s.world.roblox.refresh.get(s.world.roblox.lastRefreshIssued).state = 'revoked';
+  s.world.roblox.removeApp(SUB_A);
   const calls = s.world.roblox.tokenCalls.length;
-  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 20 * 60_000), { ok: false, reason: 'refused' });
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 20 * 60_000), { ok: false, reason: 'refused', lost: 'wiped' });
   assert.equal(s.world.roblox.tokenCalls.length, calls + 1, 'Roblox was asked, and said the grant is gone');
   assert.equal(s.row(), undefined, 'the sealed refresh token is deleted, not left to be refused again');
-  assert.equal(rowsOf(s.db, 'select * from roblox_identities where user_id = ?', s.userId).length, 1, 'the sign-in link (Roblox user id and username) is not what a lost grant removes');
+  assert.equal(identityRows(s).length, 0, 'the Roblox user id and username next to the StudPilot account id are deleted too');
+  assert.equal(supaUser(s).app_metadata.roblox_sub, undefined, 'the Roblox id is cleared from the Supabase account');
+  assert.equal(supaUser(s).app_metadata.roblox_code, CODE_OF(SUB_A), 'and a one-way code made from it stays');
+  assert.equal(supaUser(s).user_metadata.display_name, undefined, 'the Roblox username is cleared from the Supabase display name');
+  assert.equal(profileName(s), null, 'and from the profile row\'s display name');
+  assert.equal(supaUser(s).email, address, 'the placeholder address (itself a keyed one-way code) is what stays');
+  assert.equal(isRobloxAccount(supaUser(s)), true, 'the app still recognises the wiped account as a Roblox-only one (no password to ask it for): it reads the one-way code the worker leaves');
+  for (const [where, haystack] of [['the Supabase user', JSON.stringify(supaUser(s))], ['the profile', JSON.stringify(s.world.sb.profiles.get(s.userId))]]) {
+    assert.equal(haystack.includes(SUB_A), false, `${where} still holds the Roblox id`);
+    assert.equal(haystack.includes('Builder1'), false, `${where} still holds the Roblox username`);
+  }
   assert.deepEqual(s.world.roblox.revokeCalls, [], 'a grant Roblox has already withdrawn is not revoked again');
   assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 20 * 60_000 + 1000), { ok: false, reason: 'not_connected' });
   assert.equal(s.world.roblox.tokenCalls.length, calls + 1, 'and nothing is sent to Roblox for an account that holds no token');
+  assert.equal(s.world.sb.profilePatches.length, 1);
+  assert.match(s.world.sb.profilePatches[0].search, new RegExp(`^\\?id=eq\\.${s.userId}&display_name=eq\\.Builder1$`), 'the profile update is for this person, and only while the name is still the Roblox username');
+  s.db.close();
+});
 
-  await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' });
-  assert.equal(s.row().version, 1, 'a new sign-in makes a new grant');
-  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId, t0 + 21 * 60_000)).ok, true, 'which refreshes');
+test('ACCESS LOST leaves a name the person chose: a display name that is no longer the Roblox username is theirs, in Auth and in the profile', async () => {
+  const s = await connected();
+  supaUser(s).user_metadata.display_name = 'My Own Name';
+  s.world.sb.profiles.get(s.userId).display_name = 'My Own Name';
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+  assert.equal(supaUser(s).user_metadata.display_name, 'My Own Name');
+  assert.equal(profileName(s), 'My Own Name');
+  assert.equal(supaUser(s).app_metadata.roblox_sub, undefined, 'the id still goes');
+  assert.equal(JSON.stringify(s.world.sb.updateCalls.map((c) => c.body)).includes('user_metadata'), false, 'the display name was not even sent for clearing');
   s.db.close();
 });
 
@@ -1311,11 +1388,15 @@ test('ACCESS LOST needs Roblox to say so with a 4xx: invalid_grant on a 429 or a
     s.world.roblox.failToken = { status, body: { error: 'invalid_grant' } };
     assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'unavailable' }, `status ${status}`);
     assert.deepEqual({ ...s.row() }, before, `an invalid_grant body on a ${status} says nothing about the grant, so the stored token is left exactly as it was`);
+    assert.equal(identityRows(s).length, 1, `nor is the link, on a ${status}`);
+    assert.equal(supaUser(s).app_metadata.roblox_sub, SUB_A, `nor the Roblox id on the account, on a ${status}`);
   }
+  assert.equal(s.world.sb.updateCalls.length, 0, 'Supabase was not touched for a Roblox that is merely busy');
   // POSITIVE CONTROL: the same body on a 400 is Roblox's word that the grant is gone.
   s.world.roblox.failToken = { status: 400, body: { error: 'invalid_grant' } };
-  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused', lost: 'wiped' });
   assert.equal(s.row(), undefined, 'the same body on a 400 deletes the token');
+  assert.equal(identityRows(s).length, 0, 'and the link');
   s.db.close();
 });
 
@@ -1331,7 +1412,354 @@ test('ACCESS LOST deletes only the row that was refreshed: a sign-in that lands 
   assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused' });
   assert.equal(s.row()?.sealed_refresh, 'NEXT-VERSION', 'a verdict about version 1 did not delete version 2');
   assert.equal(s.row().version, 2);
+  assert.equal(identityRows(s).length, 1, 'nor did it delete the link of the grant that replaced it');
+  assert.equal(supaUser(s).app_metadata.roblox_sub, SUB_A, 'nor did it clear the Roblox id from the account of a grant that is alive');
+  assert.equal(s.world.sb.updateCalls.length, 0);
   s.db.close();
+});
+
+/* ------------------------------------------------------------------------------ a wipe that cannot finish --- */
+
+for (const [name, arm, disarm] of [
+  ['Supabase refuses the account update (500)', (s) => { s.world.sb.failUpdate = 500; }, (s) => { s.world.sb.failUpdate = null; }],
+  ['Supabase refuses the profile update (500)', (s) => { s.world.sb.failProfile = 500; }, (s) => { s.world.sb.failProfile = null; }],
+  ['Supabase cannot be reached', (s) => { const real = globalThis.fetch; s.restoreFetch = real; globalThis.fetch = async (u, i) => { if (String(u).startsWith(SB)) throw new TypeError('network down'); return real(u, i); }; }, (s) => { globalThis.fetch = s.restoreFetch; }],
+]) {
+  test(`A WIPE THAT CANNOT FINISH (${name}) deletes NOTHING, says the grant is lost but kept, releases the lease, and the next detection finishes it`, async () => {
+    const s = await connected();
+    const before = JSON.stringify(supaUser(s));
+    s.world.roblox.removeApp(SUB_A);
+    arm(s);
+    const first = await R.refreshRobloxAccessToken(s.env, s.userId);
+    assert.deepEqual(first, { ok: false, reason: 'refused', lost: 'kept' });
+    assert.ok(s.row(), 'the token row stays: it is the marker the next detection retries from');
+    assert.equal(s.row().lease_until, null, 'the lease is released so the retry is not locked out for thirty seconds');
+    assert.equal(identityRows(s).length, 1, 'the link stays until Supabase is clean');
+    disarm(s);
+    // RETRY: Roblox says invalid_grant again (the refresh token is still dead), and this time everything goes.
+    assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused', lost: 'wiped' });
+    assert.equal(s.row(), undefined);
+    assert.equal(identityRows(s).length, 0);
+    assert.equal(supaUser(s).app_metadata.roblox_sub, undefined);
+    assert.equal(profileName(s), null);
+    assert.notEqual(JSON.stringify(supaUser(s)), before);
+    s.db.close();
+  });
+}
+
+test('ACCESS LOST on an account Supabase no longer has (an operator deleted it) wipes the rest and makes no Supabase write', async () => {
+  const s = await connected();
+  s.world.sb.users.delete(s.userId);
+  s.world.roblox.removeApp(SUB_A);
+  assert.deepEqual(await R.refreshRobloxAccessToken(s.env, s.userId), { ok: false, reason: 'refused', lost: 'wiped' });
+  assert.equal(s.row(), undefined);
+  assert.equal(identityRows(s).length, 0);
+  assert.equal(s.world.sb.updateCalls.length, 0);
+  s.db.close();
+});
+
+test('A SIGN-IN THAT LANDS BETWEEN THE ACCOUNT UPDATE AND THE DATABASE BATCH keeps its new grant AND its link: the batch deletes the token it read and the link only while no token is left', async () => {
+  const s = await connected();
+  s.world.roblox.removeApp(SUB_A);
+  s.world.sb.onUpdate = () => {
+    // The person signs in again while the worker is clearing their Supabase record: the row becomes another grant (another version and generation) with its own link.
+    s.db.raw.prepare("update roblox_oauth_tokens set sealed_refresh = 'NEW-GRANT', version = 5, generation = 'another-generation' where user_id = ?").run(s.userId);
+  };
+  const out = await R.refreshRobloxAccessToken(s.env, s.userId);
+  assert.equal(out.ok, false);
+  assert.equal(out.lost, undefined, 'the dead grant\'s verdict did not become this grant\'s');
+  assert.equal(s.row()?.sealed_refresh, 'NEW-GRANT', 'the new grant\'s token was not deleted');
+  assert.equal(identityRows(s).length, 1, 'nor was its link');
+  s.db.close();
+});
+
+test('A CACHED ACCESS TOKEN FROM THE DEAD GRANT DOES NOT STAND IN FOR ROBLOX\'S ANSWER: the check drops it, so the confirming refresh really asks Roblox', async () => {
+  const s = await connected();
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).ok, true, 'a refresh in this isolate caches a 15-minute access token');
+  s.world.roblox.removeApp(SUB_A);
+  assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, lost: 1 }), 'served from the cache, the refresh would have "worked" and the loss would have been reported as a disagreement');
+  assert.equal(s.row(), undefined);
+  s.db.close();
+});
+
+/* ------------------------------------------------------------------ the account is still found afterwards --- */
+
+test('AFTER A WIPE, signing in with Roblox again finds the SAME account through its address and the one-way code: the same Supabase user, no second account, no ghost', async () => {
+  const s = await connected();
+  const address = supaUser(s).email;
+  s.world.roblox.removeApp(SUB_A);
+  assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+  assert.equal(identityRows(s).length, 0, 'POSITIVE CONTROL: the link is gone, so the account can only be found by its address');
+  const users = s.world.sb.users.size;
+  const back = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1 (renamed)' });
+  assert.equal(back.res.status, 302, 'the sign-in goes through');
+  assert.equal(s.world.sb.users.size, users, 'no second account was made');
+  assert.equal(s.world.sb.ghosts, 0, 'and no empty stranger was signed in');
+  assert.equal(userIdOf(s.db, SUB_A), s.userId, 'the Roblox account is linked to the SAME Supabase user again');
+  assert.equal(supaUser(s).email, address);
+  assert.equal(identityRows(s)[0].username, 'Builder1 (renamed)', 'the link holds what Roblox says now');
+  assert.equal(s.row().version, 1, 'a fresh grant');
+  // The sign-in token minted is for that user, and nobody else.
+  const hash = await tokenHashOf(s.env, back.res);
+  assert.equal(s.world.sb.links.get(hash), s.userId);
+  assert.equal(supaUser(s).app_metadata.roblox_code, CODE_OF(SUB_A), 'the code is still what finds the account');
+  s.db.close();
+});
+
+test('THE ONE-WAY CODE IS THE PROOF, and nothing else is: a user at that address with a code for ANOTHER Roblox account, or with no code and no id, is never adopted', async () => {
+  for (const [what, meta] of [['another account\'s code', { roblox_code: CODE_OF('999') }], ['no code and no id', {}], ['a code that is not a string', { roblox_code: 12345 }]]) {
+    const s = await connected();
+    s.world.roblox.removeApp(SUB_A);
+    assert.equal((await R.refreshRobloxAccessToken(s.env, s.userId)).lost, 'wiped');
+    supaUser(s).app_metadata = { ...meta };
+    const attempt = await signIn(s.env, s.world, { sub: SUB_A, username: 'Builder1' }, { confirm: false });
+    assert.equal(isPending(s.env, attempt.res), true);
+    const created = await createRequest(s.env, { cookie: handleCookieOf(attempt.res), ip: attempt.flow.ip });
+    assert.equal(created.status, 409, `${what}: an address nobody can vouch for fails closed`);
+    assert.equal((await created.json()).reference, 'roblox_address_taken');
+    assert.equal(identityRows(s).length, 0, `${what}: nothing was linked`);
+    assert.equal(s.world.sb.ghosts, 0);
+    s.db.close();
+  }
+});
+
+/* --------------------------------------------------------------------------- the daily check (introspection) --- */
+
+const checkGrants = (s, now) => R.checkRobloxGrants(s.env, now);
+const COUNTS = (o = {}) => ({ checked: 0, active: 0, lost: 0, kept: 0, unknown: 0, disagreed: 0, unreadable: 0, unchecked: 0, ...o });
+
+test('THE DAILY CHECK asks Roblox about each stored token with the client credentials, leaves a grant Roblox says is active exactly as it was, and spends nothing: a healthy grant is never refreshed', async () => {
+  const s = await connected();
+  const bob = await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  assert.equal(bob.res.status, 302);
+  const rowsBefore = rowsOf(s.db, 'select * from roblox_oauth_tokens order by user_id');
+  const tokenCalls = s.world.roblox.tokenCalls.length;
+  const report = await checkGrants(s);
+  assert.deepEqual(report, COUNTS({ checked: 2, active: 2 }));
+  assert.equal(s.world.roblox.introspectCalls.length, 2);
+  // THE CALL: the token, and the client's own credentials, as the token endpoint takes them.
+  const sent = s.world.roblox.introspectCalls[0];
+  assert.deepEqual(Object.keys(sent).sort(), ['client_id', 'client_secret', 'token']);
+  assert.equal(sent.client_id, CLIENT_ID);
+  assert.equal(sent.client_secret, CLIENT_SECRET);
+  assert.ok(s.world.roblox.refresh.has(sent.token), 'it asked about the stored REFRESH token');
+  assert.deepEqual(rowsOf(s.db, 'select * from roblox_oauth_tokens order by user_id'), rowsBefore, 'nothing about a healthy grant changed, not even its version');
+  assert.equal(s.world.roblox.tokenCalls.length, tokenCalls, 'no refresh was made for a healthy grant: the check must not extend a grant\'s life');
+  assert.equal(s.world.sb.updateCalls.length, 0);
+  s.db.close();
+});
+
+test('THE DAILY CHECK FINDS A LOST GRANT: Roblox reports it inactive, a refresh confirms invalid_grant, and everything of that person\'s Roblox data is wiped, and nobody else\'s', async () => {
+  const s = await connected();
+  const bobFlow = await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  const bobId = userIdOf(s.db, SUB_B);
+  assert.equal(bobFlow.res.status, 302);
+  s.world.roblox.removeApp(SUB_A);                // Alice removes StudPilot in her Roblox settings
+  const report = await checkGrants(s);
+  assert.deepEqual(report, COUNTS({ checked: 2, active: 1, lost: 1 }));
+  assert.equal(s.row(), undefined, 'Alice\'s token is gone');
+  assert.equal(identityRows(s).length, 0, 'and her link');
+  assert.equal(supaUser(s).app_metadata.roblox_sub, undefined);
+  assert.equal(supaUser(s).app_metadata.roblox_code, CODE_OF(SUB_A));
+  assert.equal(profileName(s), null);
+  // Bob is untouched.
+  assert.equal(rowsOf(s.db, 'select * from roblox_oauth_tokens where user_id = ?', bobId).length, 1);
+  assert.equal(rowsOf(s.db, 'select * from roblox_identities where user_id = ?', bobId).length, 1);
+  assert.equal(s.world.sb.users.get(bobId).app_metadata.roblox_sub, SUB_B);
+  assert.equal(s.world.sb.profiles.get(bobId).display_name, 'Bob');
+  // The confirming refresh was made for Alice's token only.
+  assert.equal(s.world.roblox.tokenCalls.filter((c) => c.grant_type === 'refresh_token').length, 1);
+  // A second check finds nothing more to do and asks Roblox about Bob only.
+  s.world.roblox.introspectCalls.length = 0;
+  assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, active: 1 }));
+  assert.equal(s.world.roblox.introspectCalls.length, 1);
+  s.db.close();
+});
+
+test('INTROSPECTION THAT IS MISREAD CANNOT WIPE ANYONE: Roblox says "inactive" for a grant that still refreshes, so it is reported as disagreed, the replacement token is stored, and nothing is deleted', async () => {
+  const s = await connected();
+  s.world.roblox.introspect = 'misread';          // an endpoint that only understands access tokens would say this about every refresh token
+  const report = await checkGrants(s);
+  assert.deepEqual(report, COUNTS({ checked: 1, disagreed: 1 }));
+  assert.equal(identityRows(s).length, 1, 'the link stays');
+  assert.equal(supaUser(s).app_metadata.roblox_sub, SUB_A, 'the account keeps its Roblox id');
+  assert.equal(profileName(s), 'Builder1');
+  assert.equal(s.row().version, 2, 'the refresh that proved it stored the replacement token (the old one was spent)');
+  assert.equal(await C.openSecret({ CREDENTIAL_KEY: KEY_B64 }, s.row().sealed_refresh), s.world.roblox.lastRefreshIssued);
+  assert.equal(s.world.sb.updateCalls.length, 0);
+  // And it can go on being checked: the stored token still works.
+  s.world.roblox.introspect = 'normal';
+  assert.equal((await checkGrants(s)).active, 1);
+  s.db.close();
+});
+
+for (const [name, mode] of [
+  ['a 500', { status: 500, body: {} }],
+  ['a 401 invalid_client (the client secret was rotated and the Worker still holds the old one)', { status: 401, body: { error: 'invalid_client' } }],
+  ['a 400', { status: 400, body: { error: 'invalid_request' } }],
+  ['a 429', { status: 429, body: { error: 'rate_limit_exceeded' } }],
+  ['a page that is not JSON', 'junk'],
+  ['a 200 with no "active" boolean', { status: 200, body: { sub: '1' } }],
+  ['a 200 whose "active" is a string', { status: 200, body: { active: 'false' } }],
+  ['a 200 whose "active" is null', { status: 200, body: { active: null } }],
+]) {
+  test(`INTROSPECTION THAT SAYS NOTHING (${name}) wipes nothing, refreshes nothing, and is counted as unknown`, async () => {
+    const s = await connected();
+    s.world.roblox.introspect = mode;
+    const tokenCalls = s.world.roblox.tokenCalls.length;
+    assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, unknown: 1 }));
+    assert.equal(s.world.roblox.tokenCalls.length, tokenCalls);
+    assert.equal(identityRows(s).length, 1);
+    assert.ok(s.row());
+    assert.equal(s.world.sb.updateCalls.length, 0);
+    s.db.close();
+  });
+}
+
+test('A NETWORK FAILURE during the check wipes nothing: no answer is not an answer', async () => {
+  const s = await connected();
+  const real = globalThis.fetch;
+  globalThis.fetch = async (u, i) => { if (String(u).includes('/token/introspect')) throw new TypeError('network down'); return real(u, i); };
+  try {
+    assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, unknown: 1 }));
+  } finally {
+    globalThis.fetch = real;
+  }
+  assert.equal(identityRows(s).length, 1);
+  s.db.close();
+});
+
+test('INACTIVE, THEN THE CONFIRMATION IS NOT CONCLUSIVE (Roblox is down, or a lease is held): nothing is wiped, and the next check asks again', async () => {
+  const s = await connected();
+  s.world.roblox.removeApp(SUB_A);
+  s.world.roblox.failToken = { status: 503, body: {} };
+  assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, unknown: 1 }));
+  assert.ok(s.row());
+  assert.equal(identityRows(s).length, 1);
+  s.world.roblox.failToken = null;
+  s.db.raw.prepare('update roblox_oauth_tokens set lease_until = ? where user_id = ?').run(Date.now() + 25_000, s.userId);   // another request holds the refresh lease
+  assert.equal((await checkGrants(s)).unknown, 1, 'a busy refresh is not a verdict');
+  s.db.raw.prepare('update roblox_oauth_tokens set lease_until = null where user_id = ?').run(s.userId);
+  assert.equal((await checkGrants(s)).lost, 1, 'and once Roblox answers, the grant is found lost and wiped');
+  assert.equal(s.row(), undefined);
+  s.db.close();
+});
+
+test('A LOST GRANT WHOSE WIPE CANNOT FINISH is counted as lost AND kept, deletes nothing, and the next check finishes it', async () => {
+  const s = await connected();
+  s.world.roblox.removeApp(SUB_A);
+  s.world.sb.failUpdate = 500;
+  assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, lost: 1, kept: 1 }));
+  assert.ok(s.row());
+  assert.equal(identityRows(s).length, 1);
+  s.world.sb.failUpdate = null;
+  assert.deepEqual(await checkGrants(s), COUNTS({ checked: 1, lost: 1 }));
+  assert.equal(s.row(), undefined);
+  assert.equal(identityRows(s).length, 0);
+  s.db.close();
+});
+
+test('A TOKEN THAT CANNOT BE OPENED (CREDENTIAL_KEY changed) is counted as unreadable and Roblox is not asked about it', async () => {
+  const s = await connected();
+  const wrongKey = { ...s.env, CREDENTIAL_KEY: Buffer.alloc(32, 9).toString('base64') };
+  const report = await R.checkRobloxGrants(wrongKey);
+  assert.deepEqual(report, COUNTS({ checked: 1, unreadable: 1 }));
+  assert.equal(s.world.roblox.introspectCalls.length, 0);
+  assert.equal(identityRows(s).length, 1);
+  s.db.close();
+});
+
+test('NOT CONFIGURED: with any Roblox secret missing the check says so, asks nobody, and touches nothing', async () => {
+  for (const missing of ['ROBLOX_OAUTH_CLIENT_ID', 'ROBLOX_OAUTH_CLIENT_SECRET', 'SUPABASE_SECRET_KEY', 'CREDENTIAL_KEY']) {
+    const s = await connected();
+    const report = await R.checkRobloxGrants({ ...s.env, [missing]: undefined });
+    assert.match(report.skipped, /not configured/, missing);
+    assert.equal(report.checked, 0);
+    assert.equal(s.world.roblox.introspectCalls.length, 0);
+    assert.equal(R.describeGrantCheck(report).startsWith('skipped: '), true);
+    s.db.close();
+  }
+});
+
+test('THE CHECK IS BOUNDED: more grants than one run looks at leaves the rest unchecked and says how many, and reading nothing at all is "skipped", not "nothing lost"', async () => {
+  const s = await connected();
+  const insert = s.db.raw.prepare("insert into roblox_oauth_tokens(user_id, sealed_refresh, sub, scopes, version, generation, rotated_at, lease_until) values (?, 'not-a-sealed-token', ?, 'openid profile', 1, 'g', 'now', null)");
+  for (let i = 0; i < 2000; i += 1) insert.run(`filler-${String(i).padStart(5, '0')}`, String(900000 + i));
+  const report = await checkGrants(s);
+  assert.equal(report.checked, 2000, 'a run looks at no more than its cap');
+  assert.equal(report.unchecked, 1, 'and says one was left');
+  s.db.close();
+  const broken = scene();
+  await R.ensureRobloxOAuthTables(broken.env);
+  broken.db.raw.exec('drop table roblox_oauth_tokens');                           // the read fails
+  const skipped = await R.checkRobloxGrants(broken.env);
+  assert.match(skipped.skipped ?? '', /could not be read/);
+  broken.db.close();
+});
+
+test('THE CHECK NEVER LOGS A TOKEN, A CLIENT SECRET, AN ID OR A NAME: every console line it and the wipe write is a fixed word', async () => {
+  const s = await connected();
+  LOGS.length = 0;
+  s.world.roblox.removeApp(SUB_A);
+  const refresh = s.world.roblox.lastRefreshIssued;
+  await checkGrants(s);
+  for (const line of LOGS) {
+    for (const secret of [refresh, CLIENT_SECRET, SB_SECRET, KEY_B64, SUB_A, 'Builder1', s.userId]) assert.equal(line.includes(secret), false, `a log line carries a secret or a person: ${line}`);
+  }
+  assert.ok(LOGS.some((l) => /grant gone, roblox data wiped/.test(l)), 'the wipe left no fixed-word trace');
+  s.db.close();
+});
+
+/* ------------------------------------------------------------------------------------- through the cron --- */
+
+function adminRecorder() {
+  const events = [];
+  return { events, ns: { idFromName: (n) => n, get: () => ({ async fetch(url, init) { if (new URL(url).pathname === '/events') events.push(...(JSON.parse(init.body).events ?? [])); return new Response(JSON.stringify({ stored: 1 })); } }) } };
+}
+
+test('THE DAILY CRON runs the check, wipes a lost grant, and records the counts as an audit event (and an error event for anything a person has to look at)', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  await signIn(s.env, s.world, { sub: SUB_B, username: 'Bob' });
+  s.world.roblox.removeApp(SUB_A);
+  await app.scheduled({ scheduledTime: Date.now(), cron: '0 3 * * *' }, s.env, ctx);
+  assert.equal(s.row(), undefined, 'the cron wiped the lost grant');
+  const audit = admin.events.find((e) => e.kind === 'audit' && e.action === 'roblox_grant_check');
+  assert.ok(audit, `no roblox_grant_check event: ${admin.events.map((e) => e.action ?? e.kind).join(', ')}`);
+  assert.equal(audit.allowed, true);
+  assert.equal(audit.actorKind, 'system');
+  assert.equal(audit.subject, 'checked=2 active=1 lost=1 kept_for_retry=0 unknown=0 disagreed=0 unreadable=0 unchecked=0');
+  assert.equal(admin.events.some((e) => e.kind === 'error' && /roblox-grants/.test(e.scope ?? '')), false);
+  for (const e of admin.events) for (const secret of [CLIENT_SECRET, SB_SECRET, SUB_A, 'Builder1', s.userId]) assert.equal(JSON.stringify(e).includes(secret), false, 'the event log carries a secret or a person');
+  s.db.close();
+});
+
+test('THE DAILY CRON reports a kept wipe and a misread introspection as errors, and a deployment with no Roblox sign-in as skipped', async () => {
+  const admin = adminRecorder();
+  const s = await connected({ ADMIN_DO: admin.ns });
+  s.world.roblox.removeApp(SUB_A);
+  s.world.sb.failUpdate = 500;
+  await app.scheduled({ scheduledTime: Date.now(), cron: '0 3 * * *' }, s.env, ctx);
+  const kept = admin.events.find((e) => e.kind === 'error' && e.scope === 'roblox-grants:wipe');
+  assert.ok(kept, 'a grant that could not be wiped left no error');
+  assert.equal(admin.events.find((e) => e.action === 'roblox_grant_check').allowed, false);
+  s.db.close();
+
+  const admin2 = adminRecorder();
+  const m = await connected({ ADMIN_DO: admin2.ns });
+  m.world.roblox.introspect = 'misread';
+  await app.scheduled({ scheduledTime: Date.now(), cron: '0 3 * * *' }, m.env, ctx);
+  assert.ok(admin2.events.find((e) => e.kind === 'error' && e.scope === 'roblox-grants:introspection'), 'a misread introspection left no error');
+  m.db.close();
+
+  const admin3 = adminRecorder();
+  const n = scene({ ADMIN_DO: admin3.ns, ROBLOX_OAUTH_CLIENT_SECRET: undefined });
+  await app.scheduled({ scheduledTime: Date.now(), cron: '0 3 * * *' }, n.env, ctx);
+  const skipped = admin3.events.find((e) => e.action === 'roblox_grant_check');
+  assert.match(skipped.subject, /^skipped: Roblox sign-in is not configured/);
+  assert.equal(skipped.allowed, false, 'a night that checked nothing does not read as a good one');
+  assert.equal(n.world.roblox.introspectCalls.length, 0);
+  n.db.close();
 });
 
 test('a Roblox 429 is "unavailable" (try later), not "refused": the grant is not dead, the caller is only too fast', async () => {

@@ -362,6 +362,11 @@ services. In order of how likely each is to need a fix:
    token anywhere; for one whose link was dropped as stale, revoking may also end the old, dead user's token, which nobody holds. Not
    observed. If Roblox words an already-revoked token differently the revoke is logged (`decline revoke`) and the record is deleted
    all the same.
+12. **D-14 (2026-10-05): the lost-grant wipe and the daily introspection check.** `v1/token/introspect` was written from the endpoint list in
+   `planning/roblox-oauth-setup.md` and never observed; whether it accepts a refresh token and answers `{"active": false}` for a revoked one is the
+   first thing to watch (an `inactive` answer is confirmed by a refresh before anything is deleted, so a misreading wipes nobody). Also unobserved:
+   GoTrue's admin `PUT` removing a metadata key set to `null`, and PostgREST taking the `sb_secret_` key in `apikey` alone for the one profile `PATCH`.
+   The full list, with the guards, is in `planning/proof/M2/LEGAL-CLAIMS.md` section 9.4.
 
 ## 7. Deferred, and not done here
 
